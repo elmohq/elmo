@@ -45,6 +45,7 @@ storybook-static/
 # playwright
 playwright-report/
 test-results/
+test-results-worker/
 blob-report/
 
 # e2e generated config (created by `elmo init --dev --defaults`)

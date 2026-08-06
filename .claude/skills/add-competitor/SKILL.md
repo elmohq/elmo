@@ -50,14 +50,14 @@ Read the feature definitions in `apps/www/src/lib/competitors/types.ts` (the `FE
 
 Be conservative — only mark features as `true` if you can confirm them from the website.
 
-## 3. Fetch domain metrics
+## 3. Fetch the domain rating
 
 Extract the domain from the URL (e.g. `https://www.example.com/foo` → `example.com`). Then run:
 ```bash
-cd apps/www && node scripts/fetch-domain-metrics.mjs "<domain>"
+cd apps/www && node scripts/fetch-domain-rating.mjs "<domain>"
 ```
 
-This returns JSON with `ahrefsDR` and `ahrefsTraffic`. Use these values in the competitor entry.
+This returns JSON with `ahrefsDR`, from Ahrefs' free public API (no API key required). Use it for the competitor entry.
 
 ## 4. Generate the slug
 
@@ -73,6 +73,14 @@ cd apps/www && node scripts/screenshot-competitor.mjs "<slug>" "<url>"
 This requires `SCREENSHOT_ONE_ACCESS_KEY` and `BLOB_READ_WRITE_TOKEN` in `apps/www/.env`.
 
 If the script fails, inform the user and continue with the data entry — the screenshot can be added later.
+
+**Verify the capture — don't trust it blindly.** ScreenshotOne uploads whatever the site serves, and sites with bot protection (Cloudflare, etc.) frequently return a captcha or block page to the headless browser, which then gets stored as the "screenshot." After a successful upload, download the blob URL the script printed and actually view the image:
+
+```bash
+curl -s -o /tmp/<slug>.jpg "<blob URL printed by the script>"
+```
+
+Open `/tmp/<slug>.jpg` and confirm it's genuinely the competitor's homepage/product — **not** a bot challenge ("Checking your browser…", "Select all squares with…", "verify you are human"), an access-denied / 403 page, or a blank/error page. If it's a challenge or error page, do NOT keep it: tell the user automated capture was blocked and ask them to send a real screenshot to upload manually (the script sets `allowOverwrite: true`, so re-uploading replaces the bad image).
 
 ## 6. Insert into data.ts
 
@@ -91,7 +99,6 @@ Use the same code style as the existing entries. Example entry:
         "Longer 2-3 sentence description of the tool, its approach, and what makes it notable.",
     category: "tracking",
     ahrefsDR: 55,
-    ahrefsTraffic: 1234,
     status: "active",
     features: {
         multiLlmTracking: true,
@@ -140,7 +147,7 @@ pnpm exec tsc --noEmit
 
 After completing all steps, tell the user:
 - The competitor name and slug
-- The category, ahrefsDR, and ahrefsTraffic
+- The category and ahrefsDR
 - Which features you marked as true
 - Whether the screenshot uploaded successfully
 - The URL where the comparison page will be: `/ai-visibility-tools/elmo-vs-<slug>`

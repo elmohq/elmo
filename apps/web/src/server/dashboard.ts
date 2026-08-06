@@ -8,14 +8,25 @@ import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { prompts, competitors, brands } from "@workspace/lib/db/schema";
 import { eq, and, count } from "drizzle-orm";
-import { generateDateRange, getDaysFromLookback, applyPerPromptLVCF, applyPerPromptCitationLVCF, type LookbackPeriod } from "@/lib/chart-utils";
+import {
+	generateDateRange,
+	applyPerPromptLVCF,
+	applyPerPromptCitationLVCF,
+	type LookbackPeriod,
+} from "@/lib/chart-utils";
+import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import {
 	getDashboardSummary,
 	getPerPromptVisibilityTimeSeries,
 	getPerPromptDailyCitationStats,
 } from "@/lib/postgres-read";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { type CitationCategory, extractDomain, toRoundedPercentages, emptyCategoryCounts } from "@/lib/domain-categories";
+import {
+	type CitationCategory,
+	extractDomain,
+	toRoundedPercentages,
+	emptyCategoryCounts,
+} from "@/lib/domain-categories";
 import { categorizeDomain } from "@/lib/domain-categories.server";
 
 export interface VisibilityTimeSeriesPoint {
@@ -50,6 +61,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		z.object({
 			brandId: z.string(),
 			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
+			timezone: z.string().default("UTC"),
 		}),
 	)
 	.handler(async ({ data }): Promise<DashboardSummaryResponse> => {
@@ -57,26 +69,36 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		await requireOrgAccess(session.user.id, data.brandId);
 
 		const lookbackParam = data.lookback as LookbackPeriod;
-		const timezone = "UTC";
+		const timezone = resolveTimezone(data.timezone);
 
-		let fromDateStr: string | null = null;
-		let toDateStr: string | null = null;
-
-		if (lookbackParam !== "all") {
-			const toDate = new Date();
-			const fromDate = new Date(toDate);
-			fromDate.setDate(fromDate.getDate() - getDaysFromLookback(lookbackParam));
-			fromDateStr = fromDate.toISOString().split("T")[0];
-			toDateStr = toDate.toISOString().split("T")[0];
-		}
+		// Same timezone-aware window as the visibility and share-of-voice pages, so
+		// the overview's two trend charts share one date domain (issue #413).
+		// `allStrategy: "1y"` keeps the bounds concrete for every lookback, incl. "all".
+		const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookbackParam, timezone, {
+			allStrategy: "1y",
+		}) as { fromDateStr: string; toDateStr: string };
 
 		// Get brand info, competitors, and prompts from PostgreSQL
 		const [brandResult, competitorsList, enabledPromptsResult, totalPromptsResult] = await Promise.all([
-			db.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains, delayOverrideHours: brands.delayOverrideHours }).from(brands).where(eq(brands.id, data.brandId)).limit(1),
+			db
+				.select({
+					name: brands.name,
+					website: brands.website,
+					additionalDomains: brands.additionalDomains,
+					delayOverrideHours: brands.delayOverrideHours,
+				})
+				.from(brands)
+				.where(eq(brands.id, data.brandId))
+				.limit(1),
 			db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
-			db.select({ id: prompts.id, value: prompts.value, systemTags: prompts.systemTags, tags: prompts.tags })
-				.from(prompts).where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
-			db.select({ count: count() }).from(prompts).where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
+			db
+				.select({ id: prompts.id, value: prompts.value, systemTags: prompts.systemTags, tags: prompts.tags })
+				.from(prompts)
+				.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
+			db
+				.select({ count: count() })
+				.from(prompts)
+				.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
 		]);
 
 		const brandWebsite = brandResult[0]?.website || "";
@@ -94,9 +116,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		const [summaryResult, perPromptVisibility, perPromptCitations] = await Promise.all([
 			getDashboardSummary(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),
 			getPerPromptVisibilityTimeSeries(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),
-			fromDateStr && toDateStr
-				? getPerPromptDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds)
-				: Promise.resolve([]),
+			getPerPromptDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),
 		]);
 
 		// Process summary
@@ -104,20 +124,9 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		const totalRuns = summary ? Number(summary.total_runs) : 0;
 		const lastUpdatedAt = summary?.last_updated || null;
 
-		// Generate date range (needed for LVCF before processing visibility)
-		const rawDates = perPromptVisibility.map((r) => String(r.date)).sort();
-		let startDate: Date, endDate: Date;
-		if (lookbackParam === "all" && rawDates.length > 0) {
-			startDate = new Date(rawDates[0]);
-			endDate = new Date(rawDates[rawDates.length - 1]);
-		} else {
-			const daysToSubtract = getDaysFromLookback(lookbackParam);
-			const currentDateInTimezone = new Date().toLocaleDateString("en-CA", { timeZone: timezone });
-			endDate = new Date(currentDateInTimezone);
-			startDate = new Date(endDate);
-			startDate.setDate(startDate.getDate() - (daysToSubtract - 1));
-		}
-		const dateRange = generateDateRange(startDate, endDate);
+		// Same window as the DB queries above (and as share-of-voice), so LVCF
+		// smoothing and the emitted series cover exactly this date domain.
+		const dateRange = generateDateRange(new Date(fromDateStr), new Date(toDateStr));
 
 		// Process visibility via per-prompt LVCF smoothing
 		const {
@@ -131,7 +140,8 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		const totalQualifyingRuns = totalBrandedRuns + totalNonBrandedRuns;
 		const totalMentioned = totalBrandedMentioned + totalNonBrandedMentioned;
 		const averageVisibility = totalQualifyingRuns > 0 ? Math.round((totalMentioned / totalQualifyingRuns) * 100) : 0;
-		const nonBrandedVisibility = totalNonBrandedRuns > 0 ? Math.round((totalNonBrandedMentioned / totalNonBrandedRuns) * 100) : 0;
+		const nonBrandedVisibility =
+			totalNonBrandedRuns > 0 ? Math.round((totalNonBrandedMentioned / totalNonBrandedRuns) * 100) : 0;
 		const brandedVisibility = totalBrandedRuns > 0 ? Math.round((totalBrandedMentioned / totalBrandedRuns) * 100) : 100;
 
 		// Build visibility time series directly from LVCF-smoothed data (no rolling window needed)
@@ -150,7 +160,9 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		});
 
 		const smoothedCitations = applyPerPromptCitationLVCF(
-			perPromptCitations, dateRange, brandResult[0]?.delayOverrideHours,
+			perPromptCitations,
+			dateRange,
+			brandResult[0]?.delayOverrideHours,
 			(domain: string) => categorizeDomain(domain, brandDomains, competitorDomains),
 		);
 		const citationTimeSeries: CitationTimeSeriesPoint[] = dateRange.map((date) => {

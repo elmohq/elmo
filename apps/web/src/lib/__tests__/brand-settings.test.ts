@@ -23,21 +23,31 @@ describe("normalizeBrandUpdate", () => {
 			expect(result).toEqual({ ok: true, updates: { name: "Acme" } });
 		});
 
-		it.each([["empty string", ""], ["whitespace only", "   "]])(
-			"rejects a %s name",
-			(_label, name) => {
-				expect(normalizeBrandUpdate({ name })).toEqual({
-					ok: false,
-					error: "Brand name must be a non-empty string",
-				});
-			},
-		);
+		it.each([
+			["empty string", ""],
+			["whitespace only", "   "],
+		])("rejects a %s name", (_label, name) => {
+			expect(normalizeBrandUpdate({ name })).toEqual({
+				ok: false,
+				error: "Brand name must be a non-empty string",
+			});
+		});
 	});
 
 	describe("website", () => {
-		it("normalizes a bare domain to an origin URL", () => {
-			const result = normalizeBrandUpdate({ website: "acme.com/products" });
+		it("adds a scheme to a bare domain", () => {
+			const result = normalizeBrandUpdate({ website: "acme.com" });
 			expect(result).toEqual({ ok: true, updates: { website: "https://acme.com/" } });
+		});
+
+		it("adds a scheme to a bare domain and keeps the path", () => {
+			const result = normalizeBrandUpdate({ website: "acme.com/products" });
+			expect(result).toEqual({ ok: true, updates: { website: "https://acme.com/products" } });
+		});
+
+		it("keeps the path of a full URL", () => {
+			const result = normalizeBrandUpdate({ website: "https://www.acme.com/products?ref=nav" });
+			expect(result).toEqual({ ok: true, updates: { website: "https://www.acme.com/products?ref=nav" } });
 		});
 
 		it("rejects an invalid website", () => {

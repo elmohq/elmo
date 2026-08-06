@@ -1,4 +1,3 @@
-
 import { memo, useRef, useMemo, useState, useCallback, useLayoutEffect, useEffect } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { CachedPromptChart } from "./cached-prompt-chart";
@@ -52,7 +51,7 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
 
 	// Create a stable key that changes when the prompts list changes
 	const promptsKey = useMemo(() => {
-		return orderedPrompts.map(p => p.id).join(",");
+		return orderedPrompts.map((p) => p.id).join(",");
 	}, [orderedPrompts]);
 
 	// Uniform height estimate — all cards (loading, empty, full) have matching content areas

@@ -49,9 +49,7 @@ function HomePage() {
 	const { redirect: redirectParam } = Route.useSearch();
 
 	const loginUrl = "/auth/login";
-	const signInUrl = redirectParam
-		? `${loginUrl}?returnTo=${encodeURIComponent(redirectParam)}`
-		: loginUrl;
+	const signInUrl = redirectParam ? `${loginUrl}?returnTo=${encodeURIComponent(redirectParam)}` : loginUrl;
 
 	return (
 		<FullPageCard className="">

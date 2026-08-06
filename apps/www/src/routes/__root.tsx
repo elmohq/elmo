@@ -1,19 +1,8 @@
 /// <reference types="vite/client" />
 import { useEffect, type ReactNode } from "react";
-import {
-	Outlet,
-	createRootRoute,
-	HeadContent,
-	Scripts,
-} from "@tanstack/react-router";
+import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { initPostHog } from "@/lib/posthog";
-import {
-	SITE_URL,
-	SITE_NAME,
-	SITE_DESCRIPTION,
-	websiteJsonLd,
-	organizationJsonLd,
-} from "@/lib/seo";
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, websiteJsonLd, organizationJsonLd } from "@/lib/seo";
 import { getMarketingOgImage } from "@/lib/og";
 import { getGitHubStars } from "@/lib/github-stars";
 import { NotFound } from "@/components/not-found";

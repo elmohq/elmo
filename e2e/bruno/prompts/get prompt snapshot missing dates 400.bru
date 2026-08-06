@@ -1,0 +1,15 @@
+meta {
+  name: get prompt snapshot missing dates 400
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}/snapshot
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 400
+}

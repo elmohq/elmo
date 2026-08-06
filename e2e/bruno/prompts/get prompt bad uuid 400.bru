@@ -1,0 +1,15 @@
+meta {
+  name: get prompt bad uuid 400
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{badUuid}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 400
+}

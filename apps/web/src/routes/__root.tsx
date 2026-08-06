@@ -25,8 +25,10 @@ interface RouterContext {
 
 // Client-side cache for config data — avoids HTTP round-trips on every SPA navigation.
 // Server-side (SSR) always fetches fresh (cachedRootData is reset per request).
-let cachedRootData: { clientConfig: PublicClientConfig; envValidation: { mode: DeploymentMode; missing: MissingEnvVar[]; isValid: boolean } } | null =
-	typeof window === "undefined" ? null : null;
+let cachedRootData: {
+	clientConfig: PublicClientConfig;
+	envValidation: { mode: DeploymentMode; missing: MissingEnvVar[]; isValid: boolean };
+} | null = typeof window === "undefined" ? null : null;
 
 export const Route = createRootRouteWithContext<RouterContext>()({
 	notFoundComponent: NotFound,

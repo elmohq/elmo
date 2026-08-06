@@ -9,5 +9,6 @@ export { runStructuredCompletionPrompt, runStructuredResearchPrompt } from "./ll
 export {
 	cleanAndValidateDomain as cleanAndValidateOnboardingDomain,
 	cleanDomain as cleanOnboardingDomain,
+	cleanUrl as cleanOnboardingUrl,
 	inferBrandNameFromDomain,
 } from "./utils";

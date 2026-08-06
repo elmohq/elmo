@@ -8,13 +8,10 @@ import { requireAuthSession, isAdmin } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, promptRuns } from "@workspace/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
-import {
-	getAdminRunsOverTime,
-	getAdminBrandRunStats,
-	getAdminActiveBrandsOverTime,
-} from "@/lib/postgres-read";
+import { getAdminRunsOverTime, getAdminBrandRunStats, getAdminActiveBrandsOverTime } from "@/lib/postgres-read";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { getModelOverdueStatus } from "@workspace/lib/overdue";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
 import { Client } from "pg";
 import { parseScrapeTargets } from "@workspace/lib/providers";
@@ -62,55 +59,49 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 	const thirtyDaysAgo = new Date();
 	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-	const [
-		allBrands,
-		brandsOverTime,
-		promptsOverTime,
-		runsOverTimeData,
-		brandRunStats,
-		activeBrandsData,
-	] = await Promise.all([
-		db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
+	const [allBrands, brandsOverTime, promptsOverTime, runsOverTimeData, brandRunStats, activeBrandsData] =
+		await Promise.all([
+			db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
 
-		// Cumulative brand count over time (last 30 days)
-		db
-			.select({
-				date: sql<string>`date_series::date`,
-				count: sql<number>`COUNT(${brands.id})::int`,
-			})
-			.from(
-				sql`generate_series(
+			// Cumulative brand count over time (last 30 days)
+			db
+				.select({
+					date: sql<string>`date_series::date`,
+					count: sql<number>`COUNT(${brands.id})::int`,
+				})
+				.from(
+					sql`generate_series(
 					NOW()::date - INTERVAL '30 days',
 					NOW()::date,
 					INTERVAL '1 day'
 				) AS date_series`,
-			)
-			.leftJoin(brands, sql`${brands.createdAt}::date <= date_series::date`)
-			.groupBy(sql`date_series`)
-			.orderBy(sql`date_series`),
+				)
+				.leftJoin(brands, sql`${brands.createdAt}::date <= date_series::date`)
+				.groupBy(sql`date_series`)
+				.orderBy(sql`date_series`),
 
-		// Cumulative prompts count over time (enabled vs disabled)
-		db
-			.select({
-				date: sql<string>`date_series::date`,
-				enabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = true)::int`,
-				disabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = false)::int`,
-			})
-			.from(
-				sql`generate_series(
+			// Cumulative prompts count over time (enabled vs disabled)
+			db
+				.select({
+					date: sql<string>`date_series::date`,
+					enabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = true)::int`,
+					disabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = false)::int`,
+				})
+				.from(
+					sql`generate_series(
 					NOW()::date - INTERVAL '30 days',
 					NOW()::date,
 					INTERVAL '1 day'
 				) AS date_series`,
-			)
-			.leftJoin(prompts, sql`${prompts.createdAt}::date <= date_series::date`)
-			.groupBy(sql`date_series`)
-			.orderBy(sql`date_series`),
+				)
+				.leftJoin(prompts, sql`${prompts.createdAt}::date <= date_series::date`)
+				.groupBy(sql`date_series`)
+				.orderBy(sql`date_series`),
 
-		getAdminRunsOverTime(),
-		getAdminBrandRunStats(),
-		getAdminActiveBrandsOverTime(),
-	]);
+			getAdminRunsOverTime(),
+			getAdminBrandRunStats(),
+			getAdminActiveBrandsOverTime(),
+		]);
 
 	const brandRunStatsMap = new Map(brandRunStats.map((stat) => [stat.brand_id, stat]));
 
@@ -604,23 +595,15 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 
 			for (const model of modelList) {
 				const lastRunAt = lastRuns[model] || null;
-				let isOverdue = false;
-				let overdueByMs: number | null = null;
-
-				if (prompt.enabled) {
-					if (lastRunAt) {
-						const timeSinceRun = now - new Date(lastRunAt).getTime();
-						if (timeSinceRun > runFrequencyMs) {
-							isOverdue = true;
-							overdueByMs = timeSinceRun - runFrequencyMs;
-							anyOverdue = true;
-						}
-					} else {
-						isOverdue = true;
-						anyOverdue = true;
-					}
-				}
-
+				const { isOverdue, overdueByMs } = prompt.enabled
+					? getModelOverdueStatus({
+							lastRunAt,
+							promptCreatedAt: prompt.createdAt,
+							runFrequencyMs,
+							now,
+						})
+					: { isOverdue: false, overdueByMs: null };
+				if (isOverdue) anyOverdue = true;
 				lastRunsByModel[model] = { lastRunAt, isOverdue, overdueByMs };
 			}
 
@@ -790,7 +773,11 @@ export const getJobLogsFn = createServerFn({ method: "GET" })
 		if (job.output) {
 			try {
 				const output = typeof job.output === "string" ? JSON.parse(job.output) : job.output;
-				logs.push(job.state === "failed" ? `Error: ${JSON.stringify(output, null, 2)}` : `Output: ${JSON.stringify(output, null, 2)}`);
+				logs.push(
+					job.state === "failed"
+						? `Error: ${JSON.stringify(output, null, 2)}`
+						: `Output: ${JSON.stringify(output, null, 2)}`,
+				);
 			} catch {
 				logs.push(`Output: ${String(job.output)}`);
 			}

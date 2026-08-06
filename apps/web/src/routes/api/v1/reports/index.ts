@@ -10,23 +10,22 @@ import { db } from "@workspace/lib/db/db";
 import { reports, type NewReport } from "@workspace/lib/db/schema";
 import { desc, count, eq } from "drizzle-orm";
 import { z } from "zod";
+import { cleanOnboardingUrl } from "@workspace/lib/onboarding";
 import { sendReportJob } from "@/lib/job-scheduler";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
 
 const createReportBody = z.object({
-	brandName: z.string("brandName is required and must be a non-empty string").trim().min(1, "brandName is required and must be a non-empty string"),
+	brandName: z
+		.string("brandName is required and must be a non-empty string")
+		.trim()
+		.min(1, "brandName is required and must be a non-empty string"),
+	// The report worker fetches this page, so reject anything it can't fetch
+	// (non-http(s) schemes) before the row exists and the job is queued.
 	brandWebsite: z
 		.string("brandWebsite is required and must be a non-empty string")
 		.trim()
 		.min(1, "brandWebsite is required and must be a non-empty string")
-		.refine((website) => {
-			try {
-				new URL(website.startsWith("http") ? website : `https://${website}`);
-				return true;
-			} catch {
-				return false;
-			}
-		}, "brandWebsite must be a valid URL"),
+		.refine((website) => cleanOnboardingUrl(website) !== "", "brandWebsite must be a valid domain or http(s) URL"),
 	manualPrompts: z.array(z.string()).optional(),
 });
 
@@ -42,7 +41,9 @@ export const Route = createFileRoute("/api/v1/reports/")({
 
 					const newReport: NewReport = {
 						brandName: body.brandName,
-						brandWebsite: body.brandWebsite,
+						// Full path is kept — it's what the analysis reads — but credentials
+						// are stripped before the URL is stored or handed to any fetcher.
+						brandWebsite: cleanOnboardingUrl(body.brandWebsite),
 						status: "pending",
 					};
 

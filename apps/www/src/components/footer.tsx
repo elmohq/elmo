@@ -22,6 +22,11 @@ const cols = [
 			{ label: "Blog", href: "/blog" },
 			{ label: "Documentation", href: "/docs" },
 			{ label: "API Reference", href: "/docs/api" },
+			{
+				label: "Elmo Cloud Status",
+				href: "https://status.elmohq.com/",
+				external: true,
+			},
 			{ label: "Provider Status", href: "/status" },
 			{
 				label: "Issues",
@@ -45,6 +50,11 @@ const cols = [
 		links: [
 			{ label: "Vision", href: "/vision" },
 			{ label: "Brand Assets", href: "/brand" },
+			{
+				label: "Merch",
+				href: "https://shop.elmohq.com",
+				external: true,
+			},
 			{ label: "llms.txt", href: "/llms.txt" },
 		],
 	},
@@ -63,20 +73,14 @@ export function Footer() {
 							Open source AI visibility tracking and optimization.
 						</p>
 						<div className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-2.5 py-1 font-mono text-[11px] text-zinc-700">
-							<span className="size-1.5 rounded-full bg-emerald-500" />
-							v0.2.6
+							<span className="size-1.5 rounded-full bg-emerald-500" />v{__APP_VERSION__}
 						</div>
 					</div>
 					<div className="grid grid-cols-2 gap-10 md:col-span-9 md:grid-cols-4">
 						{cols.map((col) => (
 							<div key={col.heading}>
-								<h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-									{col.heading}
-								</h3>
-								<ul
-									role="list"
-									className="mt-4 space-y-2.5 text-sm text-zinc-700"
-								>
+								<h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">{col.heading}</h3>
+								<ul role="list" className="mt-4 space-y-2.5 text-sm text-zinc-700">
 									{col.links.map((link) =>
 										"external" in link && link.external ? (
 											<li key={link.href}>
@@ -91,19 +95,13 @@ export function Footer() {
 											</li>
 										) : link.href.startsWith("/") ? (
 											<li key={link.href}>
-												<a
-													href={link.href}
-													className="hover:text-zinc-950 hover:underline"
-												>
+												<a href={link.href} className="hover:text-zinc-950 hover:underline">
 													{link.label}
 												</a>
 											</li>
 										) : (
 											<li key={link.href}>
-												<a
-													href={link.href}
-													className="hover:text-zinc-950 hover:underline"
-												>
+												<a href={link.href} className="hover:text-zinc-950 hover:underline">
 													{link.label}
 												</a>
 											</li>

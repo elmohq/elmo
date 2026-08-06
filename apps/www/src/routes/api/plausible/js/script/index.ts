@@ -2,11 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 const PLAUSIBLE_SCRIPT_URL = "https://plausible.io/js/script.js";
 
-const UPSTREAM_HEADERS_TO_FORWARD = [
-	"content-type",
-	"etag",
-	"last-modified",
-] as const;
+const UPSTREAM_HEADERS_TO_FORWARD = ["content-type", "etag", "last-modified"] as const;
 
 export const Route = createFileRoute("/api/plausible/js/script/")({
 	server: {
@@ -39,8 +35,7 @@ export const Route = createFileRoute("/api/plausible/js/script/")({
 				}
 
 				const responseHeaders: Record<string, string> = {
-					"Cache-Control":
-						"public, max-age=86400, stale-while-revalidate=604800",
+					"Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
 				};
 
 				for (const name of UPSTREAM_HEADERS_TO_FORWARD) {

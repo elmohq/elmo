@@ -1,4 +1,3 @@
-
 import { GoStack } from "react-icons/go";
 import { Button } from "@workspace/ui/components/button";
 import { Link } from "@tanstack/react-router";
@@ -11,12 +10,7 @@ interface HistoryButtonProps {
 	tab?: "mentions" | "web-queries" | "citations" | "responses";
 }
 
-export function HistoryButton({
-	brandId,
-	promptName,
-	promptId,
-	tab,
-}: HistoryButtonProps) {
+export function HistoryButton({ brandId, promptName, promptId, tab }: HistoryButtonProps) {
 	if (!brandId || !promptId) {
 		return null;
 	}

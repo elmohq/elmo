@@ -1,4 +1,3 @@
-
 import { useLocation } from "@tanstack/react-router";
 
 import { Separator } from "@workspace/ui/components/separator";
@@ -101,7 +100,15 @@ function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 	);
 }
 
-function BrandBreadcrumbs({ pathname, brandId, brandName }: { pathname: string; brandId: string | undefined; brandName: string }) {
+function BrandBreadcrumbs({
+	pathname,
+	brandId,
+	brandName,
+}: {
+	pathname: string;
+	brandId: string | undefined;
+	brandName: string;
+}) {
 	// Extract the page segment from the path (e.g., /app/foo/prompts -> prompts)
 	const pathSegments = pathname.split("/");
 	const brandIndex = pathSegments.findIndex((segment) => segment === "app");
@@ -128,7 +135,13 @@ function BrandBreadcrumbs({ pathname, brandId, brandName }: { pathname: string; 
 		<>
 			<BreadcrumbItem className="hidden md:block">
 				<BreadcrumbLink asChild>
-					{brandId ? <Link to="/app/$brand" params={{ brand: brandId }}>{brandName}</Link> : <span>{brandName}</span>}
+					{brandId ? (
+						<Link to="/app/$brand" params={{ brand: brandId }}>
+							{brandName}
+						</Link>
+					) : (
+						<span>{brandName}</span>
+					)}
 				</BreadcrumbLink>
 			</BreadcrumbItem>
 			<BreadcrumbSeparator className="hidden md:block" />
@@ -136,7 +149,13 @@ function BrandBreadcrumbs({ pathname, brandId, brandName }: { pathname: string; 
 				<>
 					<BreadcrumbItem className="hidden md:block">
 						<BreadcrumbLink asChild>
-							{brandId ? <Link to="/app/$brand/visibility" params={{ brand: brandId }}>Visibility</Link> : <span>Visibility</span>}
+							{brandId ? (
+								<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
+									Visibility
+								</Link>
+							) : (
+								<span>Visibility</span>
+							)}
 						</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
@@ -191,11 +210,7 @@ export function SiteHeader() {
 						{isAdminPage ? (
 							<AdminBreadcrumbs pathname={pathname} />
 						) : (
-							<BrandBreadcrumbs
-								pathname={pathname}
-								brandId={brandId}
-								brandName={brand?.name || "Dashboard"}
-							/>
+							<BrandBreadcrumbs pathname={pathname} brandId={brandId} brandName={brand?.name || "Dashboard"} />
 						)}
 					</BreadcrumbList>
 				</Breadcrumb>

@@ -4,9 +4,7 @@ import { FeedbackBlock } from "@workspace/docs/components/feedback/client";
 import type { ActionResponse, BlockFeedback } from "@workspace/docs/components/feedback/schema";
 import { YouTubeEmbed } from "@/components/youtube-embed";
 
-async function onBlockFeedback(
-	feedback: BlockFeedback,
-): Promise<ActionResponse> {
+async function onBlockFeedback(feedback: BlockFeedback): Promise<ActionResponse> {
 	const { trackEvent } = await import("@/lib/posthog");
 	trackEvent("docs_block_feedback", {
 		block_id: feedback.blockId,

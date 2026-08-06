@@ -15,16 +15,7 @@ import { setMockBrand } from "./_mocks/use-brands";
 // Shared fixtures
 // ---------------------------------------------------------------------------
 
-const CHART_COLORS = [
-	"#2563eb",
-	"#efb118",
-	"#3ca951",
-	"#ff725c",
-	"#a463f2",
-	"#ff8ab7",
-	"#38b2ac",
-	"#9c6b4e",
-];
+const CHART_COLORS = ["#2563eb", "#efb118", "#3ca951", "#ff725c", "#a463f2", "#ff8ab7", "#38b2ac", "#9c6b4e"];
 
 const defaultClientConfig: ClientConfig = {
 	mode: "local",
@@ -54,9 +45,30 @@ const mockBrand = {
 };
 
 const mockCompetitors = [
-	{ id: "comp-1", name: "Competitor Alpha", domain: "alpha.com", brandId: "brand-1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-	{ id: "comp-2", name: "Competitor Beta", domain: "beta.com", brandId: "brand-1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-	{ id: "comp-3", name: "Competitor Gamma", domain: "gamma.com", brandId: "brand-1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+	{
+		id: "comp-1",
+		name: "Competitor Alpha",
+		domain: "alpha.com",
+		brandId: "brand-1",
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+	},
+	{
+		id: "comp-2",
+		name: "Competitor Beta",
+		domain: "beta.com",
+		brandId: "brand-1",
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+	},
+	{
+		id: "comp-3",
+		name: "Competitor Gamma",
+		domain: "gamma.com",
+		brandId: "brand-1",
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+	},
 ];
 
 /** Deterministic chart data for N days */
@@ -99,10 +111,7 @@ function setupMocks() {
 }
 
 /** Configure the chart data context mock */
-function setupContext(opts: {
-	chartData?: ProcessedChartData | null;
-	isLoading?: boolean;
-}) {
+function setupContext(opts: { chartData?: ProcessedChartData | null; isLoading?: boolean }) {
 	setMockChartDataContext({
 		brand: mockBrand,
 		competitors: mockCompetitors,
@@ -240,31 +249,19 @@ export const SuccessStates = () => {
 	return (
 		<PageFrame>
 			<Section label="1 week — high visibility (>75%) green badge">
-				<Chart
-					contextData={{ chartData: successChartData(7, 80) }}
-					props={{ lookback: "1w" }}
-				/>
+				<Chart contextData={{ chartData: successChartData(7, 80) }} props={{ lookback: "1w" }} />
 			</Section>
 
 			<Section label="1 month — medium visibility (45–75%) amber badge">
-				<Chart
-					contextData={{ chartData: successChartData(30, 60) }}
-					props={{ lookback: "1m" }}
-				/>
+				<Chart contextData={{ chartData: successChartData(30, 60) }} props={{ lookback: "1m" }} />
 			</Section>
 
 			<Section label="3 months — low visibility (<45%) red badge">
-				<Chart
-					contextData={{ chartData: successChartData(90, 20) }}
-					props={{ lookback: "3m" }}
-				/>
+				<Chart contextData={{ chartData: successChartData(90, 20) }} props={{ lookback: "3m" }} />
 			</Section>
 
 			<Section label="With search highlight">
-				<Chart
-					contextData={{ chartData: successChartData(30, 80) }}
-					props={{ searchHighlight: "remote teams" }}
-				/>
+				<Chart contextData={{ chartData: successChartData(30, 80) }} props={{ searchHighlight: "remote teams" }} />
 			</Section>
 
 			<Section label="Long prompt name — overflow handling">

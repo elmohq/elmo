@@ -22,13 +22,7 @@ export function setMockRouteContext(ctx: Record<string, unknown>) {
 /**
  * Wraps story content so that useRouteContext returns the provided value.
  */
-export function MockRouteContextProvider({
-	value,
-	children,
-}: {
-	value: Record<string, unknown>;
-	children: ReactNode;
-}) {
+export function MockRouteContextProvider({ value, children }: { value: Record<string, unknown>; children: ReactNode }) {
 	return <RouteCtx.Provider value={value}>{children}</RouteCtx.Provider>;
 }
 
@@ -80,6 +74,18 @@ export function useNavigate() {
 
 export function useLocation() {
 	return { pathname: "/app/mock-brand-id", search: "", hash: "" };
+}
+
+// Stories never navigate, so the blocker is always idle.
+export function useBlocker(_opts?: unknown) {
+	return {
+		status: "idle",
+		current: undefined,
+		next: undefined,
+		action: undefined,
+		proceed: undefined,
+		reset: undefined,
+	};
 }
 
 // Stories render with an empty search (all filters at defaults). Honor
@@ -158,12 +164,7 @@ export const Link = React.forwardRef<HTMLButtonElement, any>(function LinkMock(
 	ref,
 ) {
 	return (
-		<button
-			type="button"
-			ref={ref}
-			onClick={onClick}
-			{...props}
-		>
+		<button type="button" ref={ref} onClick={onClick} {...props}>
 			{children}
 		</button>
 	);

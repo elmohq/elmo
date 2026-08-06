@@ -1,0 +1,25 @@
+meta {
+  name: docs redirects to public reference
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/docs
+  body: none
+  auth: none
+}
+
+script:pre-request {
+  req.setMaxRedirects(0);
+}
+
+assert {
+  res.headers.location: eq https://www.elmohq.com/docs/api
+}
+
+tests {
+  test("redirects with a 3xx status", function() {
+    expect([301, 302, 307, 308]).to.include(res.getStatus());
+  });
+}

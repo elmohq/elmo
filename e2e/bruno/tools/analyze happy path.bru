@@ -1,0 +1,26 @@
+meta {
+  name: analyze returns a suggestion (faked)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/tools/analyze
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "website": "acme.com",
+    "brandName": "Acme"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.brandName: isString
+  res.body.website: isString
+  res.body.competitors: isArray
+  res.body.suggestedPrompts: isArray
+}

@@ -14,14 +14,13 @@
         "tailwindcss",
         "tw-animate-css",
         "@tailwindcss/typography",
-        "@takumi-rs/wasm",
         "@fontsource/geist-sans"
       ]
     },
     "apps/www": {
       "entry": ["src/server.ts", "scripts/**"],
       "ignore": [".source/**", "source.generated.ts"],
-      "ignoreDependencies": ["@takumi-rs/wasm", "shiki"]
+      "ignoreDependencies": ["shiki"]
     },
     "apps/worker": {
       "entry": ["scripts/test-provider.ts"]

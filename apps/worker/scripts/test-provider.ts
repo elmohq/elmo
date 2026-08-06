@@ -14,10 +14,12 @@ import {
 	parseScrapeTargets,
 	getProvider,
 	getModelMeta,
+	STATUS_TARGETS,
 	type ScrapeResult,
 } from "@workspace/lib/providers";
 import { extractTextContent, extractCitations } from "@workspace/lib/text-extraction";
 import { appendFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { escapeGitHubSummaryTableCell } from "./github-summary";
 
 const colors = {
 	reset: "\x1b[0m",
@@ -47,15 +49,25 @@ function parseArgs(): ParsedArgs {
 	let dump: string | undefined;
 
 	for (let i = 0; i < argv.length; i++) {
-		if (argv[i] === "--target" && argv[i + 1]) { target = argv[++i]; continue; }
-		if (argv[i] === "--output-json" && argv[i + 1]) { outputJson = argv[++i]; continue; }
-		if (argv[i] === "--dump" && argv[i + 1]) { dump = argv[++i]; continue; }
+		if (argv[i] === "--target" && argv[i + 1]) {
+			target = argv[++i];
+			continue;
+		}
+		if (argv[i] === "--output-json" && argv[i + 1]) {
+			outputJson = argv[++i];
+			continue;
+		}
+		if (argv[i] === "--dump" && argv[i + 1]) {
+			dump = argv[++i];
+			continue;
+		}
 		if (argv[i] === "--help" || argv[i] === "-h") {
 			console.log(`
 Usage: pnpm tsx --env-file=.env scripts/test-provider.ts --target <scrape-targets> [--output-json <path>] [--dump <path>]
 
   <scrape-targets>  Comma-separated SCRAPE_TARGETS entries, e.g. "chatgpt:olostep:online,gemini:olostep:online"
                     When multiple targets are provided, they are all tested in parallel.
+                    Omit --target to test the full monitored set (STATUS_TARGETS).
   --output-json     Write results as JSON to the given path (for CI artifact collection)
   --dump            Write full raw output for each target to the given directory
 
@@ -69,10 +81,8 @@ Examples:
 			process.exit(0);
 		}
 	}
-	if (!target) {
-		console.error("Error: --target is required. Run with --help for usage.");
-		process.exit(1);
-	}
+	// No --target means the scheduled run: test the full monitored set.
+	if (!target) target = STATUS_TARGETS.join(",");
 	return { target, outputJson, dump };
 }
 
@@ -85,11 +95,17 @@ function formatLatency(ms: number): string {
 	return `${minutes}m${seconds.toString().padStart(2, "0")}s`;
 }
 
+// These probe prompts serve every target, so they need to both force the
+// chatbots to web-search (recency — a model can't answer "this week" or "in
+// 2026" from training) and trigger Google's AI Overview (commercial/
+// informational "best X" queries; live-data queries like stock prices or scores
+// get a widget, not an overview). runTarget retries down this list until one
+// yields citations, so the mix covers both kinds of target.
 const TEST_PROMPTS = [
 	"What is a well-reviewed speaker that was released last month?",
 	"What were the biggest tech news stories this week?",
-	"What is the current price of Bitcoin today?",
-	"Who won the most recent Formula 1 race?",
+	"What are the best running shoes for beginners in 2026?",
+	"What are the best noise cancelling headphones in 2026?",
 ];
 const MIN_TEXT_LENGTH = 50;
 
@@ -145,7 +161,11 @@ function validateResult(result: ScrapeResult, providerId: string, webSearch: boo
 
 	if (result.rawOutput != null) {
 		const reExtracted = extractTextContent(result.rawOutput, providerId);
-		if (reExtracted.startsWith("No text content") || reExtracted.startsWith("Unknown") || reExtracted.startsWith("Error")) {
+		if (
+			reExtracted.startsWith("No text content") ||
+			reExtracted.startsWith("Unknown") ||
+			reExtracted.startsWith("Error")
+		) {
 			issues.push({
 				field: "rawOutput re-extraction",
 				message: `extractTextContent(rawOutput, "${providerId}") returned: "${reExtracted.slice(0, 80)}"`,
@@ -249,7 +269,10 @@ async function runTarget(target: string, dumpDir?: string): Promise<{ result: Ta
 	// Retry with different prompts if web search was expected but no citations/queries came back
 	if (config.webSearch && result.citations.length === 0 && !hasRealWebQueries(result.webQueries)) {
 		for (let i = 1; i < TEST_PROMPTS.length; i++) {
-			tlog(`No citations or web queries — retrying with prompt ${i + 1}/${TEST_PROMPTS.length}: "${TEST_PROMPTS[i]}"`, colors.yellow);
+			tlog(
+				`No citations or web queries — retrying with prompt ${i + 1}/${TEST_PROMPTS.length}: "${TEST_PROMPTS[i]}"`,
+				colors.yellow,
+			);
 			retries++;
 			try {
 				attemptStart = Date.now();
@@ -261,7 +284,9 @@ async function runTarget(target: string, dumpDir?: string): Promise<{ result: Ta
 					result = retry;
 					break;
 				}
-			} catch { /* keep previous result */ }
+			} catch {
+				/* keep previous result */
+			}
 		}
 	}
 
@@ -342,19 +367,17 @@ function writeGitHubSummary(results: TargetResult[]) {
 
 	for (const r of results) {
 		const status = r.status === "pass" ? ":white_check_mark:" : ":x:";
-		const error = r.error ? r.error.slice(0, 100).replace(/\|/g, "\\|") : "";
+		const error = r.error ? escapeGitHubSummaryTableCell(r.error.slice(0, 100)) : "";
 		const rawKB = (r.rawOutputBytes / 1024).toFixed(1) + " KB";
 		const sample = r.sampleOutput
-			? `<details><summary>Show</summary><pre>${r.sampleOutput.replace(/\|/g, "\\|").replace(/\n/g, "<br>")}</pre></details>`
+			? `<details><summary>Show</summary><pre>${escapeGitHubSummaryTableCell(r.sampleOutput)}</pre></details>`
 			: "";
 		lines.push(
-			`| ${status} | \`${r.target}\` | ${formatLatency(r.latency)} | ${error} | ${r.textLength} | ${rawKB} | ${r.citations} | ${r.webQueries} | ${r.webSearch ? "enabled" : "disabled"} | ${sample} |`,
+			`| ${status} | <code>${escapeGitHubSummaryTableCell(r.target)}</code> | ${formatLatency(r.latency)} | ${error} | ${r.textLength} | ${rawKB} | ${r.citations} | ${r.webQueries} | ${r.webSearch ? "enabled" : "disabled"} | ${sample} |`,
 		);
 	}
 
-	const allIssues = results.flatMap((r) =>
-		r.issues.map((i) => ({ target: r.target, ...i })),
-	);
+	const allIssues = results.flatMap((r) => r.issues.map((i) => ({ target: r.target, ...i })));
 
 	if (allIssues.length > 0) {
 		lines.push("", "### Validation Issues", "");
@@ -362,7 +385,9 @@ function writeGitHubSummary(results: TargetResult[]) {
 		lines.push("|----------|--------|-------|-------|");
 		for (const i of allIssues) {
 			const icon = i.severity === "error" ? ":x:" : ":warning:";
-			lines.push(`| ${icon} | \`${i.target}\` | \`${i.field}\` | ${i.message} |`);
+			lines.push(
+				`| ${icon} | <code>${escapeGitHubSummaryTableCell(i.target)}</code> | <code>${escapeGitHubSummaryTableCell(i.field)}</code> | ${escapeGitHubSummaryTableCell(i.message)} |`,
+			);
 		}
 	}
 
@@ -372,7 +397,10 @@ function writeGitHubSummary(results: TargetResult[]) {
 
 async function main() {
 	const { target: targetArg, outputJson, dump } = parseArgs();
-	const targets = targetArg.split(",").map((t) => t.trim()).filter(Boolean);
+	const targets = targetArg
+		.split(",")
+		.map((t) => t.trim())
+		.filter(Boolean);
 
 	// Run all targets in parallel. Each is almost entirely waiting on an external
 	// HTTP call, so there's no benefit to throttling. Logs are buffered per target
@@ -390,7 +418,10 @@ async function main() {
 
 	if (targets.length > 1) {
 		log(`\n${"=".repeat(40)}`, colors.bright);
-		log(`Results: ${passed} passed, ${failed} failed out of ${targets.length} targets`, failed > 0 ? colors.red : colors.green);
+		log(
+			`Results: ${passed} passed, ${failed} failed out of ${targets.length} targets`,
+			failed > 0 ? colors.red : colors.green,
+		);
 	}
 
 	if (outputJson) {

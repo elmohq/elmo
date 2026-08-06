@@ -65,7 +65,13 @@ describe("citationDateWindow", () => {
 		expect(w.toDateStr).toBe("2026-06-09");
 		expect(w.fromDateStr).toBe("2026-06-03"); // 7 days inclusive of today
 		expect(w.dateRange).toEqual([
-			"2026-06-03", "2026-06-04", "2026-06-05", "2026-06-06", "2026-06-07", "2026-06-08", "2026-06-09",
+			"2026-06-03",
+			"2026-06-04",
+			"2026-06-05",
+			"2026-06-06",
+			"2026-06-07",
+			"2026-06-08",
+			"2026-06-09",
 		]);
 		expect(w.dateRange).toHaveLength(7);
 		// previous window: same length, ends the day before the current window starts (no gap, no overlap)

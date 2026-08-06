@@ -1,0 +1,22 @@
+meta {
+  name: create competitor unknown brand 400
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/competitors
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "brandId": "no-such-brand",
+    "name": "X"
+  }
+}
+
+assert {
+  res.status: eq 400
+}

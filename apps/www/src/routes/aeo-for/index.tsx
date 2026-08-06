@@ -1,12 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import {
-	ogMeta,
-	canonicalUrl,
-	breadcrumbJsonLd,
-	itemListJsonLd,
-} from "@/lib/seo";
+import { ogMeta, canonicalUrl, breadcrumbJsonLd, itemListJsonLd } from "@/lib/seo";
 import { aeoVerticals } from "@/data/aeo-verticals";
 
 const title = "Answer Engine Optimization by Industry · Elmo";
@@ -44,15 +39,13 @@ function AeoForIndex() {
 			<main>
 				<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-							/ AEO by industry
-						</p>
+						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ AEO by industry</p>
 						<h1 className="font-heading mt-2 text-4xl text-balance text-zinc-950 md:text-5xl">
 							Answer engine optimization, by industry
 						</h1>
 						<p className="mt-4 max-w-3xl text-lg text-balance text-zinc-600">
-							The fundamentals of AEO are the same everywhere, but the prompts
-							that matter and the stakes are not. Pick your world.
+							The fundamentals of AEO are the same everywhere, but the prompts that matter and the stakes are not. Pick
+							your world.
 						</p>
 					</div>
 				</section>
@@ -66,12 +59,8 @@ function AeoForIndex() {
 									href={`/aeo-for/${v.slug}`}
 									className="flex flex-col rounded-md border border-zinc-200 bg-white p-5 transition-colors hover:border-zinc-300"
 								>
-									<h2 className="font-semibold text-zinc-950">
-										AEO for {v.audience}
-									</h2>
-									<p className="mt-2 text-sm leading-relaxed text-zinc-600">
-										{v.short}
-									</p>
+									<h2 className="font-semibold text-zinc-950">AEO for {v.audience}</h2>
+									<p className="mt-2 text-sm leading-relaxed text-zinc-600">{v.short}</p>
 								</a>
 							))}
 						</div>

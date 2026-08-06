@@ -8,7 +8,7 @@ import { cleanAndValidateDomain } from "@/lib/domain-categories";
  * persistence; this owns the field-level rules:
  *
  *  - name: trimmed; must be non-empty when provided
- *  - website: validated + normalized to an origin URL
+ *  - website: validated + normalized to a full URL (path preserved)
  *  - additionalDomains: each cleaned/validated (hard error listing the invalid
  *    ones), then de-duplicated
  *  - aliases: trimmed, empties dropped, de-duplicated
@@ -30,9 +30,7 @@ export interface BrandUpdateFields {
 	aliases?: string[];
 }
 
-export type NormalizeBrandUpdateResult =
-	| { ok: true; updates: BrandUpdateFields }
-	| { ok: false; error: string };
+export type NormalizeBrandUpdateResult = { ok: true; updates: BrandUpdateFields } | { ok: false; error: string };
 
 export function normalizeBrandUpdate(input: BrandUpdateInput): NormalizeBrandUpdateResult {
 	const updates: BrandUpdateFields = {};

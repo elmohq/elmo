@@ -1,0 +1,16 @@
+meta {
+  name: delete competitor
+  type: http
+  seq: 9
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/competitors/{{createdCompetitorId}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{createdCompetitorId}}
+}

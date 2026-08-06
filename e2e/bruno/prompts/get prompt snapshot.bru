@@ -1,0 +1,23 @@
+meta {
+  name: get prompt snapshot
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}/snapshot?startDate=2000-01-01&endDate=2100-01-01
+  body: none
+  auth: inherit
+}
+
+params:query {
+  startDate: 2000-01-01
+  endDate: 2100-01-01
+}
+
+assert {
+  res.status: eq 200
+  res.body.promptId: eq {{promptId}}
+  res.body.mentions.brandMentionsTotal: isNumber
+  res.body.citations: isDefined
+}

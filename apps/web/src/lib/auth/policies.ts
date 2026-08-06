@@ -64,19 +64,18 @@ export function evaluateDeploymentPolicy(
 ): DeploymentPolicyResult {
 	const { pathname, method, authorizationHeader } = request;
 	const isWriteMethod = WRITE_METHODS.has(method);
-	const isPlausibleEventRoute =
-		pathname === "/api/plausible/event" ||
-		pathname === "/api/plausible/event/";
+	const isPlausibleEventRoute = pathname === "/api/plausible/event" || pathname === "/api/plausible/event/";
 
 	const isApiRoute = pathname.startsWith("/api/");
 	const isServerFunctionRoute = pathname.startsWith("/_server");
 	const isAllowedAuthWrite = DEMO_AUTH_WRITE_ALLOWLIST.has(pathname);
-	const isOrgPluginMutation =
-		pathname.startsWith("/api/auth/organization/") && isWriteMethod;
+	const isOrgPluginMutation = pathname.startsWith("/api/auth/organization/") && isWriteMethod;
 
-	// 0. Better-auth org plugin mutations are blocked everywhere. Orgs are
-	// created server-side only — via the provisioning module (local/demo)
-	// or via Auth0 sync (whitelabel). No mode needs these endpoints.
+	// 0. Better-auth org plugin mutations are blocked everywhere over HTTP.
+	// Orgs are created server-side only — via the provisioning module
+	// (local/demo/cloud create-brand) or Auth0 sync (whitelabel) — and cloud
+	// team invitations go through server functions that call auth.api
+	// in-process, so no mode needs these HTTP endpoints.
 	if (isOrgPluginMutation) {
 		return {
 			action: "block",
@@ -100,9 +99,7 @@ export function evaluateDeploymentPolicy(
 	}
 
 	// 2. Serve OpenAPI spec
-	const isOpenApi =
-		pathname === "/api/v1/openapi.json" ||
-		pathname === "/api/v1/openapi.json/";
+	const isOpenApi = pathname === "/api/v1/openapi.json" || pathname === "/api/v1/openapi.json/";
 
 	if (isOpenApi && method === "GET") {
 		return { action: "serve-openapi" };
@@ -110,14 +107,10 @@ export function evaluateDeploymentPolicy(
 
 	// 3. Public API v1 key authentication (except docs and spec)
 	const isPublicApiV1 = pathname.startsWith("/api/v1/");
-	const isPublicApiV1Doc =
-		pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
+	const isPublicApiV1Doc = pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
 
 	if (isPublicApiV1 && !isPublicApiV1Doc && !isOpenApi) {
-		const keyResult = evaluateApiKeyAuth(
-			authorizationHeader,
-			options?.adminApiKeys ?? [],
-		);
+		const keyResult = evaluateApiKeyAuth(authorizationHeader, options?.adminApiKeys ?? []);
 		if (keyResult !== "allow") {
 			return {
 				action: "block",
@@ -162,8 +155,7 @@ export function evaluateApiKeyAuth(
 	if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
 		return {
 			error: "Unauthorized",
-			message:
-				"Valid API key required as Bearer token in Authorization header",
+			message: "Valid API key required as Bearer token in Authorization header",
 		};
 	}
 
@@ -200,6 +192,46 @@ export function validateApiKeyFromRequest(request: Request): boolean {
 }
 
 // ============================================================================
+// Signup Allowlist
+// ============================================================================
+
+/**
+ * Evaluate whether an email may register, given a signup allowlist.
+ *
+ * Gates cloud self-serve signup while the mode is still being hardened. Entry
+ * forms:
+ *   - exact address — "alice@partner.com"
+ *   - domain suffix — "@elmohq.com" admits any address at that domain
+ *   - "*" — opens signup to everyone (the public-launch escape hatch)
+ * An empty allowlist denies everyone, so cloud fails closed until configured.
+ * Matching is case-insensitive; a domain entry matches the whole domain only,
+ * never a lookalike suffix ("@elmohq.com" rejects "x@evil-elmohq.com").
+ */
+export function evaluateSignupAllowed(email: string, allowlist: readonly string[]): "allow" | "deny" {
+	const entries = allowlist.map((entry) => entry.trim().toLowerCase()).filter(Boolean);
+	if (entries.includes("*")) return "allow";
+	if (entries.length === 0) return "deny";
+
+	const address = email.trim().toLowerCase();
+	const atIndex = address.lastIndexOf("@");
+	const domain = atIndex === -1 ? "" : address.slice(atIndex);
+
+	const allowed = entries.some((entry) => (entry.startsWith("@") ? entry === domain : entry === address));
+	return allowed ? "allow" : "deny";
+}
+
+/**
+ * Parse comma-separated CLOUD_SIGNUP_ALLOWLIST into trimmed, lowercased entries.
+ * Single source of truth — mirrors getAdminApiKeys.
+ */
+export function getSignupAllowlist(): string[] {
+	return (process.env.CLOUD_SIGNUP_ALLOWLIST || "")
+		.split(",")
+		.map((entry) => entry.trim().toLowerCase())
+		.filter(Boolean);
+}
+
+// ============================================================================
 // Auth Function-Level Policies
 // ============================================================================
 
@@ -215,10 +247,24 @@ export function evaluateRequireAdmin(isAdmin: boolean): "allow" | "deny" {
  * Evaluate organization access requirement.
  * Used by server functions via `requireOrgAccess()` in auth helpers.
  */
-export function evaluateRequireOrgAccess(
-	hasAccess: boolean,
-): "allow" | "deny" {
+export function evaluateRequireOrgAccess(hasAccess: boolean): "allow" | "deny" {
 	return hasAccess ? "allow" : "deny";
+}
+
+/**
+ * Org-scoped resource access rule (issue #339), in pure form.
+ *
+ * Every brand carries an `organization_id`; a user may only read or mutate a
+ * resource whose owning org they belong to. The runtime enforces this directly
+ * in SQL — `checkOrgAccess` for a single resource and the
+ * `brands.organization_id IN (member orgs)` filter in `getBrands`. This function
+ * is the canonical statement of that same rule, unit-tested in isolation
+ * (mirroring the sibling `evaluateRequireOrgAccess`); it documents and pins the
+ * "a member of org A is denied org B's resources" invariant, but is not itself
+ * the runtime gate.
+ */
+export function evaluateOrgScope(memberOrgIds: readonly string[], resourceOrgId: string): "allow" | "deny" {
+	return memberOrgIds.includes(resourceOrgId) ? "allow" : "deny";
 }
 
 /**
@@ -248,9 +294,7 @@ export type RouteGuardResult = "allow" | "redirect-to-login" | "not-found";
  * Evaluate the `/_authed` layout guard.
  * Mirrors the `beforeLoad` in `_authed.tsx`.
  */
-export function evaluateAuthedRouteGuard(
-	session: unknown | null,
-): RouteGuardResult {
+export function evaluateAuthedRouteGuard(session: unknown | null): RouteGuardResult {
 	if (!session) return "redirect-to-login";
 	return "allow";
 }
@@ -268,8 +312,6 @@ export function evaluateAdminRouteGuard(isAdmin: boolean): RouteGuardResult {
  * Evaluate the `/app/$brand` layout guard.
  * Mirrors the `loader` in `_authed/app/$brand.tsx`.
  */
-export function evaluateBrandRouteGuard(
-	hasAccess: boolean,
-): RouteGuardResult {
+export function evaluateBrandRouteGuard(hasAccess: boolean): RouteGuardResult {
 	return hasAccess ? "allow" : "not-found";
 }

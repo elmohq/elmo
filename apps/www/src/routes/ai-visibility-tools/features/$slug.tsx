@@ -3,12 +3,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Faq } from "@/components/faq";
 import { ToolGrid } from "@/components/tool-list";
-import {
-	DirectoryBackLink,
-	DirectoryHero,
-	DirectorySection,
-	ElmoCta,
-} from "@/components/directory-shell";
+import { DirectoryBackLink, DirectoryHero, DirectorySection, ElmoCta } from "@/components/directory-shell";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
 import {
 	getFeatureKeyBySlug,
@@ -32,11 +27,7 @@ export const Route = createFileRoute("/ai-visibility-tools/features/$slug")({
 		const description = `See which AI visibility tools offer ${label.toLowerCase()} and how they compare, including the open-source option, Elmo.`;
 		const path = `/ai-visibility-tools/features/${params.slug}`;
 		return {
-			meta: [
-				{ title },
-				{ name: "description", content: description },
-				...ogMeta({ title, description, path }),
-			],
+			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],
 			links: [{ rel: "canonical", href: canonicalUrl(path) }],
 			scripts: [
 				breadcrumbJsonLd([

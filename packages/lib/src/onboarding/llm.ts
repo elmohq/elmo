@@ -7,7 +7,7 @@
  * `runStructuredResearch<T>(prompt, schema)` itself, picking the most
  * idiomatic combo for its API:
  *   • Anthropic / OpenAI — `generateText` + native web-search tool +
- *     `experimental_output: Output.object(schema)`.
+ *     `output: Output.object(schema)`.
  *   • OpenRouter — `generateObject` against a `:online`-suffixed slug
  *     (web search baked into the route).
  *   • Mistral — OpenAI-compat `generateObject` (no web search; users who
@@ -20,12 +20,7 @@
  * preference order if a deployment wants a specific provider/model.
  */
 import type { z } from "zod";
-import {
-	getProvider,
-	parseScrapeTargets,
-	type Provider,
-	type StructuredResearchResult,
-} from "../providers";
+import { getProvider, parseScrapeTargets, type Provider, type StructuredResearchResult } from "../providers";
 
 /**
  * Direct-API providers in the order onboarding prefers them. GPT-5 Mini was
@@ -36,12 +31,7 @@ import {
  * Exported so the compare-onboarding script reads from the same source as
  * production — keeps the two from drifting.
  */
-export const RESEARCH_PROVIDER_PREFERENCE = [
-	"openai-api",
-	"openrouter",
-	"anthropic-api",
-	"mistral-api",
-] as const;
+export const RESEARCH_PROVIDER_PREFERENCE = ["openai-api", "openrouter", "anthropic-api", "mistral-api"] as const;
 
 export type ResearchProviderId = (typeof RESEARCH_PROVIDER_PREFERENCE)[number];
 

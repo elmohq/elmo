@@ -1,24 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import {
-	DirectoryBackLink,
-	DirectoryHero,
-	DirectorySection,
-	ElmoCta,
-} from "@/components/directory-shell";
-import {
-	ogMeta,
-	canonicalUrl,
-	breadcrumbJsonLd,
-	itemListJsonLd,
-} from "@/lib/seo";
-import {
-	indexedCompetitors,
-	indexableCategories,
-	toolsInCategory,
-	CATEGORY_LABELS,
-} from "@/lib/competitors";
+import { DirectoryBackLink, DirectoryHero, DirectorySection, ElmoCta } from "@/components/directory-shell";
+import { ogMeta, canonicalUrl, breadcrumbJsonLd, itemListJsonLd } from "@/lib/seo";
+import { indexedCompetitors, indexableCategories, toolsInCategory, CATEGORY_LABELS } from "@/lib/competitors";
 
 const title = "AI Visibility Tool Alternatives · Elmo";
 const description =

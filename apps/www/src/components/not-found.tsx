@@ -29,8 +29,7 @@ export function NotFound() {
 								This page doesn't exist
 							</h1>
 							<p className="mx-auto mt-6 max-w-[58ch] text-pretty text-base text-zinc-600 md:text-lg">
-								The page you're looking for may have moved, been renamed, or
-								never existed.
+								The page you're looking for may have moved, been renamed, or never existed.
 							</p>
 							<div className="mt-8 flex flex-wrap items-center justify-center gap-2">
 								<Link
@@ -54,9 +53,7 @@ export function NotFound() {
 
 				<section className="border-b border-zinc-200 bg-zinc-50 py-12 lg:py-16">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-							/ POPULAR DESTINATIONS
-						</p>
+						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ POPULAR DESTINATIONS</p>
 						<ul role="list" className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 							{suggestedLinks.map((link) => (
 								<li key={link.href}>
@@ -68,9 +65,7 @@ export function NotFound() {
 											{link.label}
 											<ArrowUpRight className="size-3.5 text-zinc-400 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-zinc-700" />
 										</span>
-										<span className="mt-1 text-sm text-zinc-600">
-											{link.description}
-										</span>
+										<span className="mt-1 text-sm text-zinc-600">{link.description}</span>
 									</a>
 								</li>
 							))}

@@ -7,8 +7,7 @@ export type { DashboardSummaryResponse, VisibilityTimeSeriesPoint, CitationTimeS
 
 export const dashboardKeys = {
 	all: ["dashboard"] as const,
-	summary: (brandId: string, lookback: LookbackPeriod) =>
-		[...dashboardKeys.all, "summary", brandId, lookback] as const,
+	summary: (brandId: string, lookback: LookbackPeriod) => [...dashboardKeys.all, "summary", brandId, lookback] as const,
 };
 
 export function useDashboardSummary(brandId?: string, lookback: LookbackPeriod = "1m") {
@@ -17,7 +16,14 @@ export function useDashboardSummary(brandId?: string, lookback: LookbackPeriod =
 
 	const query = useQuery({
 		queryKey: dashboardKeys.summary(resolvedBrandId || "", lookback),
-		queryFn: () => getDashboardSummaryFn({ data: { brandId: resolvedBrandId!, lookback } }),
+		queryFn: () =>
+			getDashboardSummaryFn({
+				data: {
+					brandId: resolvedBrandId!,
+					lookback,
+					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				},
+			}),
 		enabled: !!resolvedBrandId,
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,

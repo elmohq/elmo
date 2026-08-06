@@ -5,6 +5,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, hasReportAccess } from "@/lib/auth/helpers";
+import { cleanOnboardingUrl } from "@workspace/lib/onboarding";
 import { db } from "@workspace/lib/db/db";
 import { reports, type NewReport } from "@workspace/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
@@ -56,7 +57,12 @@ export const createReportFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandName: z.string().min(1),
-			brandWebsite: z.string().url(),
+			// The report worker fetches this page, so reject anything it can't
+			// fetch (non-http(s) schemes) here rather than after the row exists.
+			brandWebsite: z
+				.string()
+				.min(1)
+				.refine((website) => cleanOnboardingUrl(website) !== "", "Enter a valid domain or http(s) website URL"),
 			manualPrompts: z.string().optional(),
 		}),
 	)
@@ -77,7 +83,9 @@ export const createReportFn = createServerFn({ method: "POST" })
 		// Create report
 		const newReport: NewReport = {
 			brandName: data.brandName.trim(),
-			brandWebsite: data.brandWebsite.trim(),
+			// Full path is kept — it's what the analysis reads — but credentials
+			// are stripped before the URL is stored or handed to any fetcher.
+			brandWebsite: cleanOnboardingUrl(data.brandWebsite),
 			status: "pending",
 		};
 
@@ -95,10 +103,7 @@ export const createReportFn = createServerFn({ method: "POST" })
 			);
 			if (!success) throw new Error("Failed to send report job");
 		} catch (error) {
-			await db
-				.update(reports)
-				.set({ status: "failed", updatedAt: new Date() })
-				.where(eq(reports.id, createdReport.id));
+			await db.update(reports).set({ status: "failed", updatedAt: new Date() }).where(eq(reports.id, createdReport.id));
 			throw new Error("Failed to queue report generation");
 		}
 

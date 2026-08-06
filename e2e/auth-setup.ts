@@ -7,10 +7,9 @@
  */
 import { chromium, type FullConfig } from "@playwright/test";
 import pg from "pg";
-import { TEST_USER, TEST_BRAND_ID, TEST_BRAND_NAME } from "./seed";
+import { DATABASE_URL, TEST_USER, TEST_BRAND_ID, TEST_BRAND_NAME } from "./fixtures";
 
 const AUTH_STATE_PATH = "e2e/.auth/user.json";
-const DATABASE_URL = "postgres://postgres:postgres@localhost:5432/elmo";
 
 export default async function globalSetup(config: FullConfig) {
 	const baseURL = config.projects[0]?.use?.baseURL || "http://localhost:1515";

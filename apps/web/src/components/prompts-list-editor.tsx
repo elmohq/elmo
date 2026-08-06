@@ -8,16 +8,20 @@
  * keeps it inline. The `showSystemTags` prop hides the System Tags column
  * in the wizard since onboarding hasn't yet computed any system tags.
  */
-import { useMemo, useState } from "react";
+
+import { IconInfoCircle } from "@tabler/icons-react";
+import { describeSkipped, parseBulkPrompts } from "@workspace/lib/bulk-prompts";
+import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
 import { Checkbox } from "@workspace/ui/components/checkbox";
+import { Input } from "@workspace/ui/components/input";
 import { Switch } from "@workspace/ui/components/switch";
 import { TagsInput } from "@workspace/ui/components/tags-input";
+import { Textarea } from "@workspace/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { Plus, Inbox } from "lucide-react";
-import { IconInfoCircle } from "@tabler/icons-react";
-import { MAX_PROMPTS } from "@workspace/lib/constants";
+import { cn } from "@workspace/ui/lib/utils";
+import { Inbox, ListPlus, Plus } from "lucide-react";
+import { useMemo, useState } from "react";
 
 export interface EditablePrompt {
 	id?: string;
@@ -44,9 +48,12 @@ interface PromptsListEditorProps {
 	onChange: (next: EditablePrompt[]) => void;
 	/** Show the read-only System Tags column. Default true. */
 	showSystemTags?: boolean;
+	/** `_key`s of rows edited since the last save, flagged with an accent rail
+	 *  so a change is findable in a list of up to {@link MAX_PROMPTS} rows. */
+	changedKeys?: ReadonlySet<string>;
 }
 
-export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: PromptsListEditorProps) {
+export function PromptsListEditor({ prompts, onChange, showSystemTags = true, changedKeys }: PromptsListEditorProps) {
 	const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 
 	const allTagOptions = useMemo(() => {
@@ -61,6 +68,42 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 	const add = () => {
 		if (prompts.length >= MAX_PROMPTS) return;
 		onChange([...prompts, newPromptEntry()]);
+	};
+
+	// Bulk paste. The parse is pure and lives in @workspace/lib so the rules
+	// (trim, dedupe, cap) are tested without a DOM, and it runs on every
+	// keystroke only to label the button and warn about what will be dropped.
+	const [bulkOpen, setBulkOpen] = useState(false);
+	const [bulkText, setBulkText] = useState("");
+
+	// A row only takes a slot once it has text. Blank rows are how this editor
+	// stages a new prompt and they're dropped on save, so counting them against
+	// the cap would refuse prompts the list still has room for.
+	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
+	const atCapacity = filledValues.length >= MAX_PROMPTS;
+
+	const bulkPreview = useMemo(
+		() => parseBulkPrompts(bulkText, { existing: filledValues, limit: MAX_PROMPTS }),
+		[bulkText, filledValues],
+	);
+	const bulkNotice = bulkText.trim().length > 0 ? describeSkipped(bulkPreview.skipped) : null;
+
+	// Over capacity blocks the whole paste rather than quietly taking the lines
+	// that fit, so nobody submits a list believing all of it landed.
+	const overCapacity = bulkPreview.skipped.overCapacity.length;
+	const bulkError =
+		overCapacity > 0
+			? `This paste is ${overCapacity} prompt${overCapacity === 1 ? "" : "s"} over the ${MAX_PROMPTS} limit. Remove ${overCapacity === 1 ? "a line" : "some lines"} to continue.`
+			: null;
+
+	const closeBulk = () => {
+		setBulkOpen(false);
+		setBulkText("");
+	};
+	const addBulk = () => {
+		if (bulkPreview.added.length === 0 || overCapacity > 0) return;
+		onChange([...prompts, ...bulkPreview.added.map((value) => newPromptEntry({ value }))]);
+		closeBulk();
 	};
 
 	// Count selection against current prompts so stale keys (e.g. after the
@@ -120,13 +163,7 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 						>
 							Disable
 						</Button>
-						<Button
-							type="button"
-							size="sm"
-							variant="ghost"
-							onClick={clearSelection}
-							className="cursor-pointer"
-						>
+						<Button type="button" size="sm" variant="ghost" onClick={clearSelection} className="cursor-pointer">
 							Clear
 						</Button>
 					</div>
@@ -161,7 +198,9 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 							</TooltipTrigger>
 							<TooltipContent>
-								<p className="max-w-xs">Auto-generated tags like &quot;branded&quot; or &quot;unbranded&quot; based on prompt content.</p>
+								<p className="max-w-xs">
+									Auto-generated tags like &quot;branded&quot; or &quot;unbranded&quot; based on prompt content.
+								</p>
 							</TooltipContent>
 						</Tooltip>
 					</div>
@@ -192,13 +231,17 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 			) : (
 				<div className="space-y-3">
 					{prompts.map((prompt, index) => (
-						<div key={prompt._key} className={!prompt.enabled ? "opacity-60" : ""}>
+						<div
+							key={prompt._key}
+							className={cn(
+								"-ml-3 border-l-2 pl-3 transition-colors",
+								changedKeys?.has(prompt._key) ? "border-amber-500" : "border-transparent",
+								!prompt.enabled && "opacity-60",
+							)}
+						>
+							{changedKeys?.has(prompt._key) && <span className="sr-only">Has unsaved changes</span>}
 							{/* Mobile: stacked, no selection/bulk */}
-							<div
-								className={`md:hidden flex flex-col gap-2 pb-3 ${
-									index < prompts.length - 1 ? "border-b" : ""
-								}`}
-							>
+							<div className={`md:hidden flex flex-col gap-2 pb-3 ${index < prompts.length - 1 ? "border-b" : ""}`}>
 								<div className="flex items-start gap-2">
 									<Input
 										value={prompt.value}
@@ -263,19 +306,64 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 				</div>
 			)}
 
-			{prompts.length < MAX_PROMPTS && (
-				<Button
-					variant="outline"
-					size="sm"
-					type="button"
-					onClick={add}
-					className="flex items-center gap-2 cursor-pointer"
-				>
-					<Plus className="h-4 w-4" /> Add Prompt
-				</Button>
+			{!atCapacity && (
+				<div className="flex flex-wrap items-center gap-2">
+					{prompts.length < MAX_PROMPTS && (
+						<Button
+							variant="outline"
+							size="sm"
+							type="button"
+							onClick={add}
+							className="flex items-center gap-2 cursor-pointer"
+						>
+							<Plus className="h-4 w-4" /> Add Prompt
+						</Button>
+					)}
+					<Button
+						variant="outline"
+						size="sm"
+						type="button"
+						onClick={() => setBulkOpen((open) => !open)}
+						className="flex items-center gap-2 cursor-pointer"
+					>
+						<ListPlus className="h-4 w-4" /> Add Multiple
+					</Button>
+				</div>
 			)}
 
-			{prompts.length >= MAX_PROMPTS && (
+			{bulkOpen && !atCapacity && (
+				<div className="space-y-2 rounded-md border bg-muted/40 p-3">
+					<Textarea
+						value={bulkText}
+						onChange={(e) => setBulkText(e.target.value)}
+						placeholder="One prompt per line"
+						rows={6}
+						aria-label="Prompts to add, one per line"
+					/>
+					<div className="flex flex-wrap items-center gap-2">
+						<Button
+							size="sm"
+							type="button"
+							onClick={addBulk}
+							disabled={bulkPreview.added.length === 0 || overCapacity > 0}
+						>
+							Add {bulkPreview.added.length > 0 ? `${bulkPreview.added.length} ` : ""}
+							{bulkPreview.added.length === 1 ? "Prompt" : "Prompts"}
+						</Button>
+						<Button variant="ghost" size="sm" type="button" onClick={closeBulk}>
+							Cancel
+						</Button>
+						{bulkNotice && <span className="text-xs text-muted-foreground">{bulkNotice}</span>}
+					</div>
+					{bulkError && (
+						<p role="alert" className="text-xs text-destructive">
+							{bulkError}
+						</p>
+					)}
+				</div>
+			)}
+
+			{atCapacity && (
 				<p className="text-xs text-muted-foreground">
 					Maximum of {MAX_PROMPTS} prompts allowed. Remove a prompt to add a new one.
 				</p>

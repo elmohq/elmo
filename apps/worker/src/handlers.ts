@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 import type { Job, PgBoss } from "pg-boss";
+import { getDeployment } from "@workspace/deployment";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 import { processPromptJob, type ProcessPromptData } from "./jobs/process-prompt";
 import { generateReportJob, type GenerateReportData } from "./jobs/generate-report";
@@ -11,10 +12,7 @@ import { analyzeBrandJob, type AnalyzeBrandData } from "./jobs/analyze-brand";
  * Wraps a pg-boss handler to report errors to Sentry before re-throwing.
  * Preserves the handler's return value (stored by pg-boss as the job output).
  */
-function withSentry<T, R>(
-	queueName: string,
-	handler: (jobs: Job<T>[]) => Promise<R>,
-): (jobs: Job<T>[]) => Promise<R> {
+function withSentry<T, R>(queueName: string, handler: (jobs: Job<T>[]) => Promise<R>): (jobs: Job<T>[]) => Promise<R> {
 	return async (jobs) => {
 		try {
 			return await handler(jobs);
@@ -39,12 +37,14 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 	);
 	console.log("Registered handler: process-prompt");
 
-	await boss.work<GenerateReportData>(
-		"generate-report",
-		{ localConcurrency: 2 },
-		withSentry("generate-report", generateReportJob),
-	);
-	console.log("Registered handler: generate-report");
+	if (getDeployment().features.reportGeneration) {
+		await boss.work<GenerateReportData>(
+			"generate-report",
+			{ localConcurrency: 2 },
+			withSentry("generate-report", generateReportJob),
+		);
+		console.log("Registered handler: generate-report");
+	}
 
 	// batchSize: 1 keeps the returned suggestion mapped 1:1 to a single job's
 	// output, which the web app reads back via getJobById.

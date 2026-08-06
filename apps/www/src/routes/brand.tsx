@@ -7,16 +7,11 @@ import { Footer } from "@/components/footer";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
 
 const title = "Brand · Elmo";
-const description =
-	"Download Elmo logos, icons, and brand assets. Everything you need to represent the Elmo brand.";
+const description = "Download Elmo logos, icons, and brand assets. Everything you need to represent the Elmo brand.";
 
 export const Route = createFileRoute("/brand")({
 	head: () => ({
-		meta: [
-			{ title },
-			{ name: "description", content: description },
-			...ogMeta({ title, description, path: "/brand" }),
-		],
+		meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path: "/brand" })],
 		links: [{ rel: "canonical", href: canonicalUrl("/brand") }],
 		scripts: [
 			breadcrumbJsonLd([
@@ -87,13 +82,7 @@ const logos: BrandAsset[] = [
 	},
 ];
 
-function DownloadButton({
-	href,
-	label,
-}: {
-	href: string;
-	label: string;
-}) {
+function DownloadButton({ href, label }: { href: string; label: string }) {
 	return (
 		<a
 			href={href}
@@ -124,35 +113,20 @@ function AssetCard({ asset }: { asset: BrandAsset }) {
 					...(asset.transparent ? CHECKERED_BG : {}),
 				}}
 			>
-				<img
-					src={asset.path}
-					alt={asset.label}
-					className="max-h-28 max-w-full object-contain"
-					loading="lazy"
-				/>
+				<img src={asset.path} alt={asset.label} className="max-h-28 max-w-full object-contain" loading="lazy" />
 			</div>
 			<div className="flex items-center justify-between border-t border-zinc-200 px-4 py-3">
 				<span className="text-sm font-medium text-zinc-950">{asset.label}</span>
 				<div className="flex items-center gap-1.5">
 					<DownloadButton href={asset.path} label="PNG" />
-					{asset.svgPath && (
-						<DownloadButton href={asset.svgPath} label="SVG" />
-					)}
+					{asset.svgPath && <DownloadButton href={asset.svgPath} label="SVG" />}
 				</div>
 			</div>
 		</div>
 	);
 }
 
-function ColorSwatch({
-	color,
-	label,
-	value,
-}: {
-	color: string;
-	label: string;
-	value: string;
-}) {
+function ColorSwatch({ color, label, value }: { color: string; label: string; value: string }) {
 	const [copied, setCopied] = useState(false);
 
 	function handleCopy() {
@@ -193,16 +167,11 @@ function BrandPage() {
 			<Navbar />
 			<main className="mx-auto max-w-6xl px-4 py-12 md:px-6 lg:py-20">
 				<header className="mb-16 space-y-4">
-					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-						/ BRAND
-					</p>
-					<h1 className="font-heading text-4xl text-zinc-950 lg:text-5xl">
-						Brand Assets
-					</h1>
+					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ BRAND</p>
+					<h1 className="font-heading text-4xl text-zinc-950 lg:text-5xl">Brand Assets</h1>
 					<p className="max-w-2xl text-lg text-balance text-zinc-600">
-						Writing about Elmo or building an integration? Download
-						official logos and icons to use in blog posts, videos,
-						partner pages, or anywhere you reference Elmo.
+						Writing about Elmo or building an integration? Download official logos and icons to use in blog posts,
+						videos, partner pages, or anywhere you reference Elmo.
 					</p>
 				</header>
 
@@ -235,26 +204,10 @@ function BrandPage() {
 				<section className="mb-16">
 					<h2 className="mb-6 text-xl font-semibold text-zinc-950">Colors</h2>
 					<div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-						<ColorSwatch
-							color={BRAND_COLOR}
-							label="Brand Blue"
-							value="#2563eb"
-						/>
-						<ColorSwatch
-							color="#f4d35e"
-							label="Accent Yellow"
-							value="#f4d35e"
-						/>
-						<ColorSwatch
-							color="#ee964b"
-							label="Accent Orange"
-							value="#ee964b"
-						/>
-						<ColorSwatch
-							color="#f95738"
-							label="Accent Red"
-							value="#f95738"
-						/>
+						<ColorSwatch color={BRAND_COLOR} label="Brand Blue" value="#2563eb" />
+						<ColorSwatch color="#f4d35e" label="Accent Yellow" value="#f4d35e" />
+						<ColorSwatch color="#ee964b" label="Accent Orange" value="#ee964b" />
+						<ColorSwatch color="#f95738" label="Accent Red" value="#f95738" />
 					</div>
 				</section>
 
@@ -294,13 +247,9 @@ function BrandPage() {
 							rel="noopener noreferrer"
 							className="group rounded-md border border-zinc-200 bg-white p-6 transition-colors hover:bg-zinc-50"
 						>
-							<p className="font-titan-one text-4xl lowercase text-blue-600">
-								elmo
-							</p>
+							<p className="font-titan-one text-4xl lowercase text-blue-600">elmo</p>
 							<p className="mt-3 text-sm font-medium text-zinc-950 group-hover:text-blue-600">Titan One</p>
-							<p className="text-xs text-zinc-500">
-								Used for the logo wordmark and icon glyph
-							</p>
+							<p className="text-xs text-zinc-500">Used for the logo wordmark and icon glyph</p>
 						</a>
 						<a
 							href="https://vercel.com/font"
@@ -308,13 +257,9 @@ function BrandPage() {
 							rel="noopener noreferrer"
 							className="group rounded-md border border-zinc-200 bg-white p-6 transition-colors hover:bg-zinc-50"
 						>
-							<p className="text-4xl font-semibold tracking-tight text-zinc-950">
-								Geist Sans
-							</p>
+							<p className="text-4xl font-semibold tracking-tight text-zinc-950">Geist Sans</p>
 							<p className="mt-3 text-sm font-medium text-zinc-950 group-hover:text-blue-600">Geist Sans</p>
-							<p className="text-xs text-zinc-500">
-								Used for body text, headings, and UI elements
-							</p>
+							<p className="text-xs text-zinc-500">Used for body text, headings, and UI elements</p>
 						</a>
 					</div>
 				</section>
@@ -323,26 +268,17 @@ function BrandPage() {
 				<div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center">
 					<h3 className="text-lg font-semibold text-zinc-950">Need something else?</h3>
 					<p className="mx-auto mt-2 max-w-md text-sm text-zinc-600">
-						If you need assets in a different format or size, or have
-						questions about brand usage, reach out on Discord or open a
-						GitHub issue.
+						If you need assets in a different format or size, or have questions about brand usage, reach out on Discord
+						or open a GitHub issue.
 					</p>
 					<div className="mt-4 flex flex-wrap items-center justify-center gap-3">
 						<Button asChild variant="outline" size="sm">
-							<a
-								href="https://discord.gg/s24nubCtKz"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
+							<a href="https://discord.gg/s24nubCtKz" target="_blank" rel="noopener noreferrer">
 								Ask on Discord
 							</a>
 						</Button>
 						<Button asChild variant="outline" size="sm">
-							<a
-								href="https://github.com/elmohq/elmo/issues/new"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
+							<a href="https://github.com/elmohq/elmo/issues/new" target="_blank" rel="noopener noreferrer">
 								Open an Issue
 							</a>
 						</Button>

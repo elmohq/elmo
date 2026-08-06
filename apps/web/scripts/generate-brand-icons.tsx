@@ -20,7 +20,7 @@
  *   - favicon.ico   Multi-resolution (16, 32, 48) PNG-in-ICO
  *
  * SVGs embed the Titan One WOFF2 font as base64 so they render without any
- * external fetches. PNGs are rasterized with Takumi (same pipeline used by
+ * external fetches. PNGs are rasterized with Satori + resvg (same pipeline used by
  * the brand-kit generator) so the glyph matches across formats.
  *
  * Usage:
@@ -30,7 +30,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ImageResponse } from "@takumi-rs/image-response";
+import { renderOgPng } from "@workspace/og/rasterize";
 import pngToIco from "png-to-ico";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -44,9 +44,7 @@ const OUTPUT_DIR = resolve(__dirname, "../public/icons");
 // ---------------------------------------------------------------------------
 
 function loadFontBase64(): string {
-	const fontPath = require.resolve(
-		"@fontsource/titan-one/files/titan-one-latin-400-normal.woff2",
-	);
+	const fontPath = require.resolve("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2");
 	return readFileSync(fontPath).toString("base64");
 }
 
@@ -82,7 +80,7 @@ function buildMaskableSvg(fontBase64: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// PNG icons — rendered via Takumi (JSX → image), matches brand-kit sizing
+// PNG icons — rendered via Satori + resvg (JSX → image), matches brand-kit sizing
 // ---------------------------------------------------------------------------
 
 function loadFont(path: string): ArrayBuffer {
@@ -90,30 +88,22 @@ function loadFont(path: string): ArrayBuffer {
 	return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
 }
 
-const takumiFonts = [
+const fonts = [
 	{
 		name: "Titan One",
-		data: loadFont("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2"),
+		data: loadFont("@fontsource/titan-one/files/titan-one-latin-400-normal.woff"),
 		style: "normal" as const,
 		weight: 400 as const,
 	},
 ];
 
 async function renderPng(element: React.ReactElement, size: number): Promise<Buffer> {
-	const response = new ImageResponse(element, {
-		width: size,
-		height: size,
-		fonts: takumiFonts,
-	});
-	return Buffer.from(await response.arrayBuffer());
+	return Buffer.from(await renderOgPng(element, { width: size, height: size, fonts }));
 }
 
 function StandardIcon({ bg, size }: { bg?: string; size: number }) {
 	return (
-		<div
-			tw="flex items-center justify-center w-full h-full"
-			style={{ backgroundColor: bg || "transparent" }}
-		>
+		<div tw="flex items-center justify-center w-full h-full" style={{ backgroundColor: bg || "transparent" }}>
 			<div
 				style={{
 					fontFamily: "Titan One",
@@ -183,7 +173,7 @@ for (const { name, element, size } of pngIcons) {
 }
 
 // ---------------------------------------------------------------------------
-// ICO — multi-resolution PNG-in-ICO built from Takumi-rendered PNGs.
+// ICO — multi-resolution PNG-in-ICO built from Satori-rendered PNGs.
 // Kept at /icons/favicon.ico (not /favicon.ico at the root) so whitelabel
 // deployments don't end up serving Elmo's ICO for default browser requests.
 // ---------------------------------------------------------------------------

@@ -1,4 +1,3 @@
-
 import { useMemo } from "react";
 import {
 	type CitationCategory,
@@ -72,16 +71,24 @@ export function CitationsDisplay({
 		[citationData.categoryCounts],
 	);
 	const chartPageTypes = useMemo(() => {
-		const present = new Set((citationData.pageTypeDistribution ?? []).filter((d) => d.count > 0).map((d) => d.pageType));
+		const present = new Set(
+			(citationData.pageTypeDistribution ?? []).filter((d) => d.count > 0).map((d) => d.pageType),
+		);
 		return CITATION_PAGE_TYPES.filter((p) => present.has(p));
 	}, [citationData.pageTypeDistribution]);
 	const urlSourceTabs = useMemo<{ key: string; label: string }[]>(
-		() => [{ key: "all", label: "All Sources" }, ...chartSourceCategories.map((c) => ({ key: c as string, label: CATEGORY_CONFIG[c].label }))],
+		() => [
+			{ key: "all", label: "All Sources" },
+			...chartSourceCategories.map((c) => ({ key: c as string, label: CATEGORY_CONFIG[c].label })),
+		],
 		[chartSourceCategories],
 	);
 	const domainSourceTabs = urlSourceTabs; // identical by construction (same chart-category list)
 	const urlPageTypeTabs = useMemo<{ key: string; label: string }[]>(
-		() => [{ key: "all", label: "All Page Types" }, ...chartPageTypes.map((p) => ({ key: p as string, label: PAGE_TYPE_CONFIG[p].label }))],
+		() => [
+			{ key: "all", label: "All Page Types" },
+			...chartPageTypes.map((p) => ({ key: p as string, label: PAGE_TYPE_CONFIG[p].label })),
+		],
 		[chartPageTypes],
 	);
 
@@ -133,14 +140,11 @@ export function CitationsDisplay({
 
 			{/* Recent Changes + Content Gaps (side by side) */}
 			{(totalChanges > 0 || hasGaps) && (
-				<div className={totalChanges > 0 && hasGaps ? "grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch" : "contents"}>
+				<div
+					className={totalChanges > 0 && hasGaps ? "grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch" : "contents"}
+				>
 					{totalChanges > 0 && whatsChanged && <RecentChangesCard whatsChanged={whatsChanged} days={days} />}
-					{hasGaps && (
-						<ContentGapsCard
-							prompts={citationData.competitorOnlyPrompts!}
-							brandId={brandId!}
-						/>
-					)}
+					{hasGaps && <ContentGapsCard prompts={citationData.competitorOnlyPrompts!} brandId={brandId!} />}
 				</div>
 			)}
 

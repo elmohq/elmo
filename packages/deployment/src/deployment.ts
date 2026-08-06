@@ -8,11 +8,16 @@
  * The singleton is cached at module scope. On Vercel serverless this
  * persists across warm invocations, which is safe because the
  * Deployment object contains no request-scoped state.
+ *
+ * Factories are imported from their component-free entry points so this
+ * module (and anything that imports getDeployment) stays Node-safe — the
+ * worker builds a Deployment without pulling in the React OptimizeButton.
  */
 import { getDeploymentModeFromEnv } from "@workspace/config/env";
 import type { Deployment } from "@workspace/config/types";
+import { createCloudDeployment } from "@workspace/cloud";
 import { createLocalDeployment } from "@workspace/local";
-import { createWhitelabelDeployment } from "@workspace/whitelabel";
+import { createWhitelabelDeployment } from "@workspace/whitelabel/deployment";
 
 let cached: Deployment | null = null;
 
@@ -37,7 +42,8 @@ export function getDeployment(options?: GetDeploymentOptions): Deployment {
 			cached = createWhitelabelDeployment({ env });
 			break;
 		case "cloud":
-			throw new Error("Cloud deployment mode is not yet implemented");
+			cached = createCloudDeployment(env);
+			break;
 	}
 
 	return cached!;

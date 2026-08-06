@@ -1,4 +1,7 @@
 import { pgEnum, pgTable, uuid, text, timestamp, boolean, json, index, integer, smallint } from "drizzle-orm/pg-core";
+// `organization` is referenced by the brands FK below; the re-export makes it
+// (and the rest of the auth schema) visible to `import * as schema` consumers.
+import { organization } from "./schema-auth";
 
 // Better-auth tables & relations — re-exported so `import * as schema` sees everything.
 // Source file is auto-generated; run `pnpm run generate:auth-schema` to refresh.
@@ -10,22 +13,36 @@ export * from "./schema-auth";
 
 export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
 
-export const brands = pgTable("brands", {
-	id: text("id").primaryKey().notNull(),
-	name: text("name").notNull(),
-	website: text("website").notNull(),
-	additionalDomains: text("additional_domains").array().notNull().default([]),
-	aliases: text("aliases").array().notNull().default([]),
-	enabled: boolean("enabled").default(true).notNull(),
-	onboarded: boolean("onboarded").default(false).notNull(),
-	delayOverrideHours: integer("delay_override_hours"),
-	enabledModels: text("enabled_models").array(),
-	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true })
-		.defaultNow()
-		.$onUpdate(() => new Date())
-		.notNull(),
-}).enableRLS();
+export const brands = pgTable(
+	"brands",
+	{
+		id: text("id").primaryKey().notNull(),
+		name: text("name").notNull(),
+		website: text("website").notNull(),
+		additionalDomains: text("additional_domains").array().notNull().default([]),
+		aliases: text("aliases").array().notNull().default([]),
+		enabled: boolean("enabled").default(true).notNull(),
+		onboarded: boolean("onboarded").default(false).notNull(),
+		delayOverrideHours: integer("delay_override_hours"),
+		enabledModels: text("enabled_models").array(),
+		// Hard tenancy scope. Every brand belongs to exactly one better-auth
+		// organization; org membership (the `member` table) is the access-control
+		// mechanism — see apps/web/src/lib/auth/helpers.ts. Historically `brand.id`
+		// equalled `organization.id`; the 0010 backfill makes that mapping explicit
+		// so cloud entitlements/metering/enforcement can join on it.
+		organizationId: text("organization_id")
+			.references(() => organization.id)
+			.notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => ({
+		organizationIdIdx: index("brands_organization_id_idx").on(table.organizationId),
+	}),
+).enableRLS();
 
 export const prompts = pgTable(
 	"prompts",
@@ -72,7 +89,9 @@ export const promptRuns = pgTable(
 		promptId: uuid("prompt_id")
 			.references(() => prompts.id)
 			.notNull(),
-		brandId: text("brand_id").references(() => brands.id).notNull(),
+		brandId: text("brand_id")
+			.references(() => brands.id)
+			.notNull(),
 		model: text("model").notNull(),
 		provider: text("provider"),
 		version: text("version").notNull(),
@@ -87,7 +106,11 @@ export const promptRuns = pgTable(
 		promptIdCreatedAtIdx: index("prompt_runs_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		createdAtIdx: index("prompt_runs_created_at_idx").on(table.createdAt),
 		webSearchCreatedAtIdx: index("prompt_runs_web_search_created_at_idx").on(table.webSearchEnabled, table.createdAt),
-		webSearchModelCreatedAtIdx: index("prompt_runs_web_search_model_created_at_idx").on(table.webSearchEnabled, table.model, table.createdAt),
+		webSearchModelCreatedAtIdx: index("prompt_runs_web_search_model_created_at_idx").on(
+			table.webSearchEnabled,
+			table.model,
+			table.createdAt,
+		),
 		providerIdx: index("prompt_runs_provider_idx").on(table.provider),
 		modelCreatedAtIdx: index("prompt_runs_model_created_at_idx").on(table.model, table.createdAt),
 	}),
@@ -114,7 +137,15 @@ export const citations = pgTable(
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 	},
 	(table) => ({
-		brandAnalyticsIdx: index("idx_citations_brand_analytics").on(table.brandId, table.createdAt, table.url, table.domain, table.title, table.promptId, table.model),
+		brandAnalyticsIdx: index("idx_citations_brand_analytics").on(
+			table.brandId,
+			table.createdAt,
+			table.url,
+			table.domain,
+			table.title,
+			table.promptId,
+			table.model,
+		),
 		promptCreatedIdx: index("citations_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		domainIdx: index("citations_domain_idx").on(table.domain),
 	}),
@@ -194,3 +225,15 @@ export const SYSTEM_TAGS = {
 } as const;
 
 export type SystemTag = (typeof SYSTEM_TAGS)[keyof typeof SYSTEM_TAGS];
+
+// Encrypted overrides for credential environment variables, keyed by the env-var
+// name they stand in for. Separate table, strictest access.
+export const secrets = pgTable("secrets", {
+	name: text("name").primaryKey().notNull(),
+	encryptedValue: text("encrypted_value").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+}).enableRLS();

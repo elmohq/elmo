@@ -1,24 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import {
-	DirectoryBackLink,
-	DirectoryHero,
-	DirectorySection,
-	ElmoCta,
-} from "@/components/directory-shell";
-import {
-	ogMeta,
-	canonicalUrl,
-	breadcrumbJsonLd,
-	itemListJsonLd,
-} from "@/lib/seo";
-import {
-	indexableCategories,
-	toolsInCategory,
-	CATEGORY_SLUGS,
-	CATEGORY_HEADINGS,
-} from "@/lib/competitors";
+import { DirectoryBackLink, DirectoryHero, DirectorySection, ElmoCta } from "@/components/directory-shell";
+import { ogMeta, canonicalUrl, breadcrumbJsonLd, itemListJsonLd } from "@/lib/seo";
+import { indexableCategories, toolsInCategory, CATEGORY_SLUGS, CATEGORY_HEADINGS } from "@/lib/competitors";
 
 const title = "AI Visibility Tools by Category · Elmo";
 const description =
@@ -36,9 +21,7 @@ export const Route = createFileRoute("/ai-visibility-tools/category/")({
 			{ name: "description", content: description },
 			...ogMeta({ title, description, path: "/ai-visibility-tools/category" }),
 		],
-		links: [
-			{ rel: "canonical", href: canonicalUrl("/ai-visibility-tools/category") },
-		],
+		links: [{ rel: "canonical", href: canonicalUrl("/ai-visibility-tools/category") }],
 		scripts: [
 			breadcrumbJsonLd([
 				{ name: "Home", path: "/" },
@@ -71,9 +54,7 @@ function CategoryHub() {
 									className="flex items-center justify-between rounded-md border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-700 transition-colors hover:border-zinc-300 hover:text-zinc-950"
 								>
 									<span>{CATEGORY_HEADINGS[category]}</span>
-									<span className="font-mono text-[11px] text-zinc-400">
-										{toolsInCategory(category).length}
-									</span>
+									<span className="font-mono text-[11px] text-zinc-400">{toolsInCategory(category).length}</span>
 								</a>
 							</li>
 						))}

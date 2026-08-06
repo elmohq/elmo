@@ -19,10 +19,12 @@ import {
 	evaluateAuthedRouteGuard,
 	evaluateBrandRouteGuard,
 	evaluateDeploymentPolicy,
+	evaluateOrgScope,
 	evaluateReadOnly,
 	evaluateRequireAdmin,
 	evaluateRequireCanCreateBrands,
 	evaluateRequireOrgAccess,
+	evaluateSignupAllowed,
 	type RequestInfo,
 } from "@/lib/auth/policies";
 import { createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
@@ -228,11 +230,9 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 
 		it("blocks POST /api/v1/brands even with a valid key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("POST", "/api/v1/brands", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/v1/brands", `Bearer ${VALID_API_KEY}`), {
+				adminApiKeys: API_KEYS,
+			});
 			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
 		});
 
@@ -246,11 +246,9 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 
 		it("blocks POST /api/v1/competitors even with a valid key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("POST", "/api/v1/competitors", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/v1/competitors", `Bearer ${VALID_API_KEY}`), {
+				adminApiKeys: API_KEYS,
+			});
 			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
 		});
 
@@ -417,6 +415,39 @@ describe("evaluateRequireOrgAccess", () => {
 	});
 });
 
+// Brand/prompt/run/citation org scoping (issue #339). A brand's
+// organization_id is the tenancy boundary; membership is the access mechanism.
+describe("evaluateOrgScope", () => {
+	const ORG_A = "org-a";
+	const ORG_B = "org-b";
+
+	it("allows a member to access their own org's resource", () => {
+		expect(evaluateOrgScope([ORG_A], ORG_A)).toBe("allow");
+	});
+
+	it("denies a member of org A from accessing org B's resource", () => {
+		expect(evaluateOrgScope([ORG_A], ORG_B)).toBe("deny");
+	});
+
+	it("allows access for any org the user belongs to (multi-org member)", () => {
+		expect(evaluateOrgScope([ORG_A, ORG_B], ORG_B)).toBe("allow");
+	});
+
+	it("denies a resource in an org the multi-org user does not belong to", () => {
+		expect(evaluateOrgScope([ORG_A, ORG_B], "org-c")).toBe("deny");
+	});
+
+	it("denies when the user has no memberships", () => {
+		expect(evaluateOrgScope([], ORG_A)).toBe("deny");
+	});
+
+	it("does not treat the brand id as an org membership by itself", () => {
+		// Pre-#339 access leaned on brand.id == org.id; scoping must be driven
+		// by actual membership, not by the resource naming itself.
+		expect(evaluateOrgScope([], "org-a")).toBe("deny");
+	});
+});
+
 describe("evaluateReadOnly", () => {
 	it("denies writes when read-only is enabled", () => {
 		expect(evaluateReadOnly(true)).toBe("deny");
@@ -522,6 +553,58 @@ describe("evaluateApiKeyAuth", () => {
 	it("allows any of the configured keys", () => {
 		expect(evaluateApiKeyAuth("Bearer key-2", keys)).toBe("allow");
 		expect(evaluateApiKeyAuth("Bearer key-3", keys)).toBe("allow");
+	});
+});
+
+// ============================================================================
+// 4b. Signup Allowlist (cloud invite-only gate)
+// ============================================================================
+
+describe("evaluateSignupAllowed", () => {
+	it("denies everyone when the allowlist is empty (fails closed)", () => {
+		expect(evaluateSignupAllowed("anyone@example.com", [])).toBe("deny");
+	});
+
+	it("allows an exact email match", () => {
+		expect(evaluateSignupAllowed("alice@partner.com", ["alice@partner.com"])).toBe("allow");
+	});
+
+	it("denies an address that is not listed", () => {
+		expect(evaluateSignupAllowed("bob@partner.com", ["alice@partner.com"])).toBe("deny");
+	});
+
+	it("allows any address at an allowed domain", () => {
+		expect(evaluateSignupAllowed("anyone@elmohq.com", ["@elmohq.com"])).toBe("allow");
+		expect(evaluateSignupAllowed("someone.else@elmohq.com", ["@elmohq.com"])).toBe("allow");
+	});
+
+	it("denies an address at a domain that is not listed", () => {
+		expect(evaluateSignupAllowed("anyone@gmail.com", ["@elmohq.com"])).toBe("deny");
+	});
+
+	it("is case-insensitive on both the email and the entries", () => {
+		expect(evaluateSignupAllowed("Alice@Elmohq.com", ["@ELMOHQ.COM"])).toBe("allow");
+		expect(evaluateSignupAllowed("BOB@Partner.com", ["bob@partner.com"])).toBe("allow");
+	});
+
+	it("does not let a domain entry match a lookalike domain", () => {
+		expect(evaluateSignupAllowed("x@evil-elmohq.com", ["@elmohq.com"])).toBe("deny");
+		expect(evaluateSignupAllowed("x@elmohq.com.evil.com", ["@elmohq.com"])).toBe("deny");
+	});
+
+	it("opens signup to everyone when '*' is present", () => {
+		expect(evaluateSignupAllowed("anyone@anywhere.com", ["*"])).toBe("allow");
+		expect(evaluateSignupAllowed("anyone@anywhere.com", ["@elmohq.com", "*"])).toBe("allow");
+	});
+
+	it("ignores blank and whitespace-only entries", () => {
+		expect(evaluateSignupAllowed("a@b.com", ["", "  ", "a@b.com"])).toBe("allow");
+		expect(evaluateSignupAllowed("a@b.com", ["", "  "])).toBe("deny");
+	});
+
+	it("denies a malformed email with no domain unless listed exactly", () => {
+		expect(evaluateSignupAllowed("not-an-email", ["@elmohq.com"])).toBe("deny");
+		expect(evaluateSignupAllowed("not-an-email", ["not-an-email"])).toBe("allow");
 	});
 });
 

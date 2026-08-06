@@ -1,0 +1,20 @@
+meta {
+  name: write requires key - post prompts
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 401
+  res.body.error: eq Unauthorized
+}

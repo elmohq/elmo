@@ -58,7 +58,13 @@ export function buildGoogleModule(
 	competitors: { id: string; name: string }[],
 	promptValue: (id: string) => string | undefined,
 ): GoogleModule {
-	type ProductAgg = { name: string; count: number; attribution: ProductAttribution; prompts: Map<string, number>; urls: Map<string, number> };
+	type ProductAgg = {
+		name: string;
+		count: number;
+		attribution: ProductAttribution;
+		prompts: Map<string, number>;
+		urls: Map<string, number>;
+	};
 	type QueryAgg = { query: string; count: number; prompts: Map<string, number> };
 	const productByKey = new Map<string, ProductAgg>();
 	const queryByKey = new Map<string, QueryAgg>();
@@ -72,7 +78,13 @@ export function buildGoogleModule(
 			const key = name.toLowerCase();
 			let e = productByKey.get(key);
 			if (!e) {
-				e = { name, count: 0, attribution: attributeProduct(name, brandName, competitors), prompts: new Map(), urls: new Map() };
+				e = {
+					name,
+					count: 0,
+					attribution: attributeProduct(name, brandName, competitors),
+					prompts: new Map(),
+					urls: new Map(),
+				};
 				productByKey.set(key, e);
 			}
 			e.count += c;

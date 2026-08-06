@@ -1,0 +1,16 @@
+meta {
+  name: delete prompt
+  type: http
+  seq: 14
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/prompts/{{createdPromptId}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{createdPromptId}}
+}

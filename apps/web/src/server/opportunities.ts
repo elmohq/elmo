@@ -109,6 +109,7 @@ export interface OpportunitiesResponse {
 	report: OpportunitiesReport | null;
 	reason: OpportunitiesReason;
 	generatedFor: { brandName: string } | null;
+	lastEvaluatedAt: string | null;
 }
 
 // ============================================================================
@@ -483,27 +484,38 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" })
 			.where(eq(brandOpportunities.brandId, data.brandId))
 			.orderBy(desc(brandOpportunities.createdAt))
 			.limit(1);
+		const lastEvaluatedAt = latest?.createdAt.toISOString() ?? null;
 		const isFresh = latest && Date.now() - new Date(latest.createdAt).getTime() < REFRESH_AFTER_DAYS * 86_400_000;
 		if (latest && isFresh) {
-			return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null };
+			return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
 		}
 
 		const digest = await buildDigest(data.brandId, data.timezone);
 		if (!digest) {
-			if (latest) return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null };
-			return { report: null, reason: "insufficient-data", generatedFor: null };
+			if (latest)
+				return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
+			return { report: null, reason: "insufficient-data", generatedFor: null, lastEvaluatedAt };
 		}
 
 		const prompt = `${GUIDANCE}\n\n=== BRAND DATA ===\n${digest.text}\n\n=== TASK ===\n${TASK}`;
 		const generated = await generateValidReport(prompt);
 		if (!generated) {
 			// Couldn't get a schema-valid report — serve the last good one if we have it.
-			if (latest) return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null };
+			if (latest)
+				return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
 			throw new Error("Failed to generate a valid opportunities report");
 		}
 
 		const report = enrichReport(generated.report, digest);
-		await db.insert(brandOpportunities).values({ brandId: data.brandId, report, model: generated.model });
+		const [savedReport] = await db
+			.insert(brandOpportunities)
+			.values({ brandId: data.brandId, report, model: generated.model })
+			.returning({ createdAt: brandOpportunities.createdAt });
 
-		return { report, reason: null, generatedFor: { brandName: digest.brandName } };
+		return {
+			report,
+			reason: null,
+			generatedFor: { brandName: digest.brandName },
+			lastEvaluatedAt: savedReport?.createdAt.toISOString() ?? null,
+		};
 	});

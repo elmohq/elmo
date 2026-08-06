@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import ImageResponse from "@takumi-rs/image-response/wasm";
-import takumiWasm from "virtual:takumi-wasm";
 import titanOne400Data from "virtual:font/titan-one-400";
 import geistSans400Data from "virtual:font/geist-sans-400";
 import geistSans500Data from "virtual:font/geist-sans-500";
 import { DEFAULT_APP_NAME } from "@workspace/config/constants";
+import { renderOgPng } from "@workspace/og/rasterize";
 import { renderOgImage } from "@workspace/og/render";
 
 export const Route = createFileRoute("/og.png")({
@@ -15,7 +14,7 @@ export const Route = createFileRoute("/og.png")({
 				const title = url.searchParams.get("title") ?? undefined;
 				const description = url.searchParams.get("description") ?? undefined;
 
-				const response = new ImageResponse(
+				const png = await renderOgPng(
 					renderOgImage({
 						appName: DEFAULT_APP_NAME,
 						title,
@@ -24,7 +23,6 @@ export const Route = createFileRoute("/og.png")({
 					{
 						width: 1200,
 						height: 630,
-						module: takumiWasm,
 						fonts: [
 							{
 								name: "Titan One",
@@ -48,11 +46,10 @@ export const Route = createFileRoute("/og.png")({
 					},
 				);
 
-				return new Response(response.body, {
+				return new Response(png, {
 					headers: {
 						"Content-Type": "image/png",
-						"Cache-Control":
-							"public, max-age=86400, s-maxage=604800",
+						"Cache-Control": "public, max-age=86400, s-maxage=604800",
 					},
 				});
 			},

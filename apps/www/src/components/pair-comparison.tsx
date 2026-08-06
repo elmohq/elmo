@@ -11,11 +11,7 @@ import {
 function Cell({ on, highlight }: { on: boolean; highlight?: boolean }) {
 	return (
 		<td className={`px-4 py-3 text-center ${highlight ? "bg-blue-50" : ""}`}>
-			{on ? (
-				<Check className="mx-auto h-4 w-4 text-blue-600" />
-			) : (
-				<X className="mx-auto h-4 w-4 text-zinc-300" />
-			)}
+			{on ? <Check className="mx-auto h-4 w-4 text-blue-600" /> : <X className="mx-auto h-4 w-4 text-zinc-300" />}
 		</td>
 	);
 }
@@ -41,9 +37,7 @@ function ToolSummary({
 			<div className="mt-2 flex flex-wrap gap-2">
 				<Badge variant="secondary">{category}</Badge>
 				{pricing?.hasFree && <Badge variant="secondary">Free tier</Badge>}
-				{pricing?.startingPrice && (
-					<Badge variant="secondary">From {pricing.startingPrice}</Badge>
-				)}
+				{pricing?.startingPrice && <Badge variant="secondary">From {pricing.startingPrice}</Badge>}
 			</div>
 			<p className="mt-3 text-sm text-zinc-600">{tagline}</p>
 			{url && domain && (
@@ -91,8 +85,8 @@ export function PairComparison({ a, b }: { a: Competitor; b: Competitor }) {
 							<Badge variant="secondary">Free</Badge>
 						</div>
 						<p className="mt-3 text-sm text-zinc-600">
-							Open-source AEO platform. Self-host for free and track AI
-							visibility across every major answer engine with full transparency.
+							Open-source AEO platform. Self-host for free and track AI visibility across every major answer engine with
+							full transparency.
 						</p>
 					</div>
 				</div>
@@ -108,18 +102,10 @@ export function PairComparison({ a, b }: { a: Competitor; b: Competitor }) {
 						<table className="w-full text-sm">
 							<thead>
 								<tr className="border-b border-zinc-200">
-									<th className="py-3 pr-4 text-left font-semibold text-zinc-950">
-										Feature
-									</th>
-									<th className="w-28 px-4 py-3 text-center font-semibold text-zinc-950">
-										{a.name}
-									</th>
-									<th className="w-28 px-4 py-3 text-center font-semibold text-zinc-950">
-										{b.name}
-									</th>
-									<th className="w-28 px-4 py-3 text-center font-semibold text-zinc-950">
-										Elmo
-									</th>
+									<th className="py-3 pr-4 text-left font-semibold text-zinc-950">Feature</th>
+									<th className="w-28 px-4 py-3 text-center font-semibold text-zinc-950">{a.name}</th>
+									<th className="w-28 px-4 py-3 text-center font-semibold text-zinc-950">{b.name}</th>
+									<th className="w-28 px-4 py-3 text-center font-semibold text-zinc-950">Elmo</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -136,13 +122,8 @@ export function PairComparison({ a, b }: { a: Competitor; b: Competitor }) {
 										const k = featureKey as FeatureKey;
 										const elmo = ELMO_FEATURES[k] ?? false;
 										return (
-											<tr
-												key={featureKey}
-												className="border-b border-dashed border-zinc-200 last:border-solid"
-											>
-												<td className="py-3 pr-4 text-sm text-zinc-600">
-													{featureDef.label}
-												</td>
+											<tr key={featureKey} className="border-b border-dashed border-zinc-200 last:border-solid">
+												<td className="py-3 pr-4 text-sm text-zinc-600">{featureDef.label}</td>
 												<Cell on={a.features[k] ?? false} />
 												<Cell on={b.features[k] ?? false} />
 												<Cell on={elmo} highlight={elmo} />

@@ -101,13 +101,13 @@ function selectOptimalPrompts(
 		const totalRuns = candidate.runs.length;
 		const brandMentionCount = candidate.runs.filter((r) => r.brandMentioned).length;
 		const competitorMentionCount = candidate.runs.filter((r) => r.competitorsMentioned.length > 0).length;
-		
+
 		const brandMentionRate = totalRuns > 0 ? brandMentionCount / totalRuns : 0;
 		const competitorMentionRate = totalRuns > 0 ? competitorMentionCount / totalRuns : 0;
-		
+
 		// Check if prompt is actually branded (contains brand name/domain)
 		const isActuallyBranded = isPromptBranded(candidate.promptValue, brandName, brandWebsite);
-		
+
 		return {
 			promptValue: candidate.promptValue,
 			brandedPrompt: candidate.brandedPrompt || isActuallyBranded,
@@ -117,11 +117,11 @@ function selectOptimalPrompts(
 			hasCompetitorMention: competitorMentionCount > 0,
 		};
 	});
-	
+
 	// Separate branded and non-branded prompts
 	const nonBrandedPrompts = scoredCandidates.filter((c) => !c.brandedPrompt);
 	const brandedPrompts = scoredCandidates.filter((c) => c.brandedPrompt);
-	
+
 	// Sort non-branded by: 1) has brand mention, 2) competitor mention rate, 3) brand mention rate
 	nonBrandedPrompts.sort((a, b) => {
 		if (a.hasBrandMention !== b.hasBrandMention) {
@@ -132,7 +132,7 @@ function selectOptimalPrompts(
 		}
 		return b.brandMentionRate - a.brandMentionRate;
 	});
-	
+
 	// Sort branded by: 1) brand mention rate, 2) competitor mention rate
 	brandedPrompts.sort((a, b) => {
 		if (Math.abs(a.brandMentionRate - b.brandMentionRate) > 0.1) {
@@ -140,21 +140,21 @@ function selectOptimalPrompts(
 		}
 		return b.competitorMentionRate - a.competitorMentionRate;
 	});
-	
+
 	// Select prompts to meet brand mention requirements
 	const selectedPrompts: string[] = [];
 	let currentBrandMentions = 0;
-	
+
 	// First, add non-branded prompts with brand mentions
 	for (const prompt of nonBrandedPrompts) {
 		if (selectedPrompts.length >= TARGET_PROMPTS_COUNT) break;
-		
+
 		selectedPrompts.push(prompt.promptValue);
 		if (prompt.hasBrandMention) {
 			currentBrandMentions++;
 		}
 	}
-	
+
 	// If we need more prompts or more brand mentions, add branded prompts
 	while (selectedPrompts.length < TARGET_PROMPTS_COUNT && brandedPrompts.length > 0) {
 		const prompt = brandedPrompts.shift()!;
@@ -163,10 +163,10 @@ function selectOptimalPrompts(
 			currentBrandMentions++;
 		}
 	}
-	
+
 	// Log selection summary
 	console.log(`Selected ${selectedPrompts.length} prompts with estimated ${currentBrandMentions} brand mentions`);
-	
+
 	return selectedPrompts;
 }
 
@@ -184,8 +184,8 @@ function analyzeMentions(
 	const brandNameLower = brandName.toLowerCase();
 
 	// Extract domain from brandWebsite using URL constructor
-	const url = new URL(brandWebsite.startsWith('http') ? brandWebsite : `https://${brandWebsite}`);
-	const domain = url.hostname.replace(/^www\./, '').toLowerCase();
+	const url = new URL(brandWebsite.startsWith("http") ? brandWebsite : `https://${brandWebsite}`);
+	const domain = url.hostname.replace(/^www\./, "").toLowerCase();
 
 	// Check for brand mention (brand name or domain)
 	const brandMentioned = contentLower.includes(brandNameLower) || contentLower.includes(domain);
@@ -194,11 +194,13 @@ function analyzeMentions(
 	const competitorsMentioned = competitors
 		.filter((competitor) => {
 			const nameMatch = contentLower.includes(competitor.name.toLowerCase());
-			
+
 			// Extract domain from competitor website
-			const competitorUrl = new URL(competitor.domain.startsWith('http') ? competitor.domain : `https://${competitor.domain}`);
-			const competitorDomain = competitorUrl.hostname.replace(/^www\./, '').toLowerCase();
-			
+			const competitorUrl = new URL(
+				competitor.domain.startsWith("http") ? competitor.domain : `https://${competitor.domain}`,
+			);
+			const competitorDomain = competitorUrl.hostname.replace(/^www\./, "").toLowerCase();
+
 			const domainMatch = contentLower.includes(competitorDomain);
 			return nameMatch || domainMatch;
 		})
@@ -334,7 +336,7 @@ export async function processReportJob(job: ReportJobContext) {
 				competitorsMentioned: string[];
 			}>;
 		}> = [];
-		
+
 		const totalCandidates = candidatePrompts.length;
 		let completedCandidates = 0;
 

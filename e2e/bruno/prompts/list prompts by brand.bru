@@ -1,0 +1,20 @@
+meta {
+  name: list prompts by brand
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?brandId={{brandId}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  brandId: {{brandId}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.prompts[0].brandId: eq default
+}

@@ -29,11 +29,7 @@ export const Route = createFileRoute("/ai-visibility-tools/alternatives/$slug")(
 		const description = `The best ${c.name} alternatives for AI visibility tracking, including Elmo — the open-source, self-hosted option you can run for free.`;
 		const path = `/ai-visibility-tools/alternatives/${params.slug}`;
 		return {
-			meta: [
-				{ title },
-				{ name: "description", content: description },
-				...ogMeta({ title, description, path }),
-			],
+			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],
 			links: [{ rel: "canonical", href: canonicalUrl(path) }],
 			scripts: [
 				breadcrumbJsonLd([
@@ -81,10 +77,7 @@ function AlternativesPage() {
 					<ToolGrid competitors={alternatives} />
 				</DirectorySection>
 
-				<Faq
-					items={getAlternativesFaqs(competitor, alternatives)}
-					eyebrow="/ FAQ"
-				/>
+				<Faq items={getAlternativesFaqs(competitor, alternatives)} eyebrow="/ FAQ" />
 				<ElmoCta />
 			</main>
 			<Footer />

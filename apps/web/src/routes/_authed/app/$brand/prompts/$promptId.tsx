@@ -6,13 +6,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@workspace/ui/components/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Badge } from "@workspace/ui/components/badge";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Separator } from "@workspace/ui/components/separator";
@@ -23,7 +17,13 @@ import { ProgressBarChart } from "@/components/progress-bar-chart";
 import { ListPagination } from "@/components/list-pagination";
 import { CitationsDisplay, type CitationData } from "@/components/citations-display";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
-import { InfoTip, QueryWordsSection, UnknownQueriesNote, VariationsList, type VariationModelCount } from "@/components/fanout-sections";
+import {
+	InfoTip,
+	QueryWordsSection,
+	UnknownQueriesNote,
+	VariationsList,
+	type VariationModelCount,
+} from "@/components/fanout-sections";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { getModelDisplayName } from "@/lib/utils";
 import { promptKeywords } from "@/lib/fanout-analysis";
@@ -104,10 +104,19 @@ function PromptHistoryPage() {
 
 	// Web Queries fetches its own data (useQueryFanout) — stats only back Mentions/Citations.
 	const shouldFetchStats = visitedTabs.has("mentions") || visitedTabs.has("citations");
-	const { isLoading: isStatsLoading, isError: isStatsError, aggregations } = usePromptStats(shouldFetchStats ? promptId : "", { days });
+	const {
+		isLoading: isStatsLoading,
+		isError: isStatsError,
+		aggregations,
+	} = usePromptStats(shouldFetchStats ? promptId : "", { days });
 
 	const shouldFetchRuns = visitedTabs.has("responses");
-	const { runs, pagination, isLoading: isRunsLoading, isError: isRunsError } = usePromptRunsOnly(shouldFetchRuns ? promptId : "", {
+	const {
+		runs,
+		pagination,
+		isLoading: isRunsLoading,
+		isError: isRunsError,
+	} = usePromptRunsOnly(shouldFetchRuns ? promptId : "", {
 		page: currentPage,
 		limit: 15,
 		days,
@@ -310,11 +319,21 @@ function PromptHistoryPage() {
 				)}
 
 				{activeTab === "web-queries" && (
-					<WebQueriesTab brandId={brandId} promptId={promptId} promptValue={promptMeta?.value ?? ""} lookback={lookback} />
+					<WebQueriesTab
+						brandId={brandId}
+						promptId={promptId}
+						promptValue={promptMeta?.value ?? ""}
+						lookback={lookback}
+					/>
 				)}
 
 				{activeTab === "citations" && (
-					<CitationsTab isLoading={isStatsLoading} citationStats={citationStats} brandId={brandId} brandName={brand?.name} />
+					<CitationsTab
+						isLoading={isStatsLoading}
+						citationStats={citationStats}
+						brandId={brandId}
+						brandName={brand?.name}
+					/>
 				)}
 
 				{activeTab === "responses" && (
@@ -369,10 +388,16 @@ function MentionsTab({
 	if (isLoading) return <TabLoadingSkeleton lines={5} />;
 
 	if (mentionStats.length === 0) {
-		return <div className="py-12 text-center text-muted-foreground text-sm">No mention data available for this time period.</div>;
+		return (
+			<div className="py-12 text-center text-muted-foreground text-sm">
+				No mention data available for this time period.
+			</div>
+		);
 	}
 
-	const brandMentionPct = Math.round(((mentionStats.find((s) => s.name === brandName)?.count || 0) / (totalRuns || 1)) * 100);
+	const brandMentionPct = Math.round(
+		((mentionStats.find((s) => s.name === brandName)?.count || 0) / (totalRuns || 1)) * 100,
+	);
 
 	return (
 		<Card className="gap-4">
@@ -396,8 +421,8 @@ function MentionsTab({
 					</Tooltip>
 				</CardTitle>
 				<CardDescription>
-					{brandName} was mentioned in <strong>{brandMentionPct}%</strong> of prompt evaluations ({totalRuns.toLocaleString()}{" "}
-					total runs).
+					{brandName} was mentioned in <strong>{brandMentionPct}%</strong> of prompt evaluations (
+					{totalRuns.toLocaleString()} total runs).
 				</CardDescription>
 			</CardHeader>
 			<Separator />
@@ -446,10 +471,18 @@ function WebQueriesTab({
 
 	if (isLoading && !data) return <TabLoadingSkeleton lines={6} />;
 	if (isError && !data) {
-		return <div className="py-12 text-center text-muted-foreground text-sm">Couldn't load web queries right now. Reload the page to try again.</div>;
+		return (
+			<div className="py-12 text-center text-muted-foreground text-sm">
+				Couldn't load web queries right now. Reload the page to try again.
+			</div>
+		);
 	}
 	if (!data || data.totalQueries === 0) {
-		return <div className="py-12 text-center text-muted-foreground text-sm">No web query data available for this time period.</div>;
+		return (
+			<div className="py-12 text-center text-muted-foreground text-sm">
+				No web query data available for this time period.
+			</div>
+		);
 	}
 
 	return (
@@ -464,8 +497,8 @@ function WebQueriesTab({
 						<CardTitle className="flex items-center gap-1.5 text-base">
 							Prompt Fan-Out
 							<InfoTip>
-								Every distinct search engines ran while answering this prompt, with how many runs each engine issued
-								it. Your prompt's keywords are bolded.
+								Every distinct search engines ran while answering this prompt, with how many runs each engine issued it.
+								Your prompt's keywords are bolded.
 							</InfoTip>
 						</CardTitle>
 						<CardDescription>{data.uniqueQueries.toLocaleString()} distinct searches.</CardDescription>
@@ -505,10 +538,23 @@ function CitationsTab({
 	if (isLoading) return <TabLoadingSkeleton lines={6} />;
 
 	if (!citationStats || citationStats.totalCitations === 0) {
-		return <div className="py-12 text-center text-muted-foreground text-sm">No citation data available for this time period.</div>;
+		return (
+			<div className="py-12 text-center text-muted-foreground text-sm">
+				No citation data available for this time period.
+			</div>
+		);
 	}
 
-	return <CitationsDisplay citationData={citationStats} brandId={brandId} brandName={brandName} showStats={true} maxDomains={10} maxUrls={50} />;
+	return (
+		<CitationsDisplay
+			citationData={citationStats}
+			brandId={brandId}
+			brandName={brandName}
+			showStats={true}
+			maxDomains={10}
+			maxUrls={50}
+		/>
+	);
 }
 
 function ResponsesTab({
@@ -528,7 +574,8 @@ function ResponsesTab({
 }) {
 	const formatDate = (dateString: string) => new Date(dateString).toLocaleString(undefined, { timeZoneName: "short" });
 
-	const formatRawOutput = (rawOutput: any) => (typeof rawOutput === "string" ? rawOutput : JSON.stringify(rawOutput, null, 2));
+	const formatRawOutput = (rawOutput: any) =>
+		typeof rawOutput === "string" ? rawOutput : JSON.stringify(rawOutput, null, 2);
 
 	if (isLoading && runs.length === 0) {
 		return (
@@ -562,7 +609,9 @@ function ResponsesTab({
 	}
 
 	if (runs.length === 0) {
-		return <div className="py-12 text-center text-muted-foreground text-sm">No prompt runs found for this time period.</div>;
+		return (
+			<div className="py-12 text-center text-muted-foreground text-sm">No prompt runs found for this time period.</div>
+		);
 	}
 
 	return (
@@ -627,7 +676,9 @@ function ResponsesTab({
 						<div>
 							<span className="text-xs text-muted-foreground block mb-1.5">Raw Output</span>
 							<div className="rounded-md border bg-muted/20 p-4 max-h-64 overflow-auto">
-								<pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap">{formatRawOutput(run.rawOutput)}</pre>
+								<pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap">
+									{formatRawOutput(run.rawOutput)}
+								</pre>
 							</div>
 						</div>
 					</CardContent>

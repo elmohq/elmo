@@ -1,5 +1,49 @@
 # @workspace/web
 
+## 0.2.17
+
+### Patch Changes
+
+- edcb19d: Competitor domains can now be added by pasting a full URL.
+- 5a0a40c: You can now use the keyboard to select tags for filtering.
+- 9b1a20b: Show when an opportunities report was last evaluated.
+- ab640a1: DeepSeek and Moonshot/Kimi models render with their own logos instead of generic icons.
+- Updated dependencies [5a0a40c]
+  - @workspace/ui@0.2.17
+  - @workspace/whitelabel@0.2.17
+  - @workspace/deployment@0.2.17
+  - @workspace/api-spec@0.2.17
+  - @workspace/cloud@0.2.17
+  - @workspace/config@0.2.17
+  - @workspace/lib@0.2.17
+  - @workspace/og@0.2.17
+
+## 0.2.16
+
+### Patch Changes
+
+- Updated dependencies [91de584]
+  - @workspace/lib@0.2.16
+  - @workspace/whitelabel@0.2.16
+  - @workspace/deployment@0.2.16
+  - @workspace/api-spec@0.2.16
+  - @workspace/config@0.2.16
+  - @workspace/og@0.2.16
+  - @workspace/ui@0.2.16
+
+## 0.2.15
+
+### Patch Changes
+
+- 43d23a3: Ensure the overview charts use the same timezone-specific x-axis.
+  - @workspace/api-spec@0.2.15
+  - @workspace/config@0.2.15
+  - @workspace/deployment@0.2.15
+  - @workspace/lib@0.2.15
+  - @workspace/og@0.2.15
+  - @workspace/ui@0.2.15
+  - @workspace/whitelabel@0.2.15
+
 ## 0.2.14
 
 ### Patch Changes

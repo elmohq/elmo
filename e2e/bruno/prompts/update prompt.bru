@@ -1,0 +1,23 @@
+meta {
+  name: update prompt
+  type: http
+  seq: 12
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/prompts/{{createdPromptId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "value": "Bruno E2E prompt updated",
+    "tags": ["updated"]
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.value: eq Bruno E2E prompt updated
+}

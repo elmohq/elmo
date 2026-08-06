@@ -97,11 +97,11 @@ export function TrackDomainPopover({
 			</PopoverTrigger>
 			<PopoverContent className="w-72 p-3" align="end">
 				<div className="space-y-3">
-					<p className="text-xs font-medium">Track <strong>{domain}</strong></p>
+					<p className="text-xs font-medium">
+						Track <strong>{domain}</strong>
+					</p>
 
-					{error && (
-						<p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">{error}</p>
-					)}
+					{error && <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">{error}</p>}
 
 					<div className="space-y-1">
 						<div className="flex items-center gap-1">
@@ -111,7 +111,8 @@ export function TrackDomainPopover({
 									<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />
 								</TooltipTrigger>
 								<TooltipContent className="max-w-xs text-xs font-normal">
-									Applies <strong>retroactively</strong> &mdash; all existing and future citations from this domain will be classified as your brand.
+									Applies <strong>retroactively</strong> &mdash; all existing and future citations from this domain will
+									be classified as your brand.
 								</TooltipContent>
 							</Tooltip>
 						</div>
@@ -134,7 +135,8 @@ export function TrackDomainPopover({
 										<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />
 									</TooltipTrigger>
 									<TooltipContent className="max-w-xs text-xs font-normal">
-										Applies <strong>retroactively</strong> &mdash; all existing and future citations from this domain will be classified under the selected competitor.
+										Applies <strong>retroactively</strong> &mdash; all existing and future citations from this domain
+										will be classified under the selected competitor.
 									</TooltipContent>
 								</Tooltip>
 							</div>
@@ -162,7 +164,12 @@ export function TrackDomainPopover({
 								onChange={(e) => setNewName(e.target.value)}
 								placeholder="Competitor name"
 								className="h-7 text-xs"
-								onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCreateNew(); } }}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										e.preventDefault();
+										handleCreateNew();
+									}
+								}}
 								disabled={saving}
 							/>
 							<Button

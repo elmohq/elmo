@@ -23,11 +23,16 @@
     "BRIGHTDATA_API_TOKEN",
     "OXYLABS_USERNAME",
     "OXYLABS_PASSWORD",
+    "CLORO_API_KEY",
     "OPENROUTER_API_KEY",
+    "JINA_API_KEY",
+    "ELMO_ENCRYPTION_KEY",
+    "ELMO_ENCRYPTION_KEY_OLD",
     "DEPLOYMENT_MODE",
     "ADMIN_AUTH0_SUB",
     "ADMIN_API_KEYS",
     "DEFAULT_BRAND_DOMAINS",
+    "CLOUD_SIGNUP_ALLOWLIST",
     "ENVIRONMENT",
     "VITE_DEPLOYMENT_MODE",
     "VITE_APP_NAME",
@@ -50,9 +55,22 @@
     "VITE_SENTRY_DSN",
     "VITE_POSTHOG_KEY",
     "VITE_CHART_COLORS",
-    "DISABLE_TELEMETRY"
+    "DISABLE_TELEMETRY",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "RESEND_API_KEY",
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "RESEND_FROM_EMAIL"
   ],
   "tasks": {
+    "//#format": {
+      "cache": false
+    },
+    "//#format-and-lint": {},
+    "//#format-and-lint:fix": {
+      "cache": false
+    },
     "build": {
       "dependsOn": ["^build", "check-types"],
       "outputs": [".output/**", ".vercel/output/**", "dist/**"]

@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
 import {
 	IconDashboard,
 	IconChartBar,
@@ -15,6 +16,7 @@ import {
 	IconReport,
 	IconTimeline,
 	IconTool,
+	IconUsers,
 } from "@tabler/icons-react";
 
 import {
@@ -43,10 +45,19 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	brand?: BrandWithPrompts | null;
 }
 
-export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly = false, brand, ...props }: AppSidebarProps) {
+export function AppSidebar({
+	isAdmin = false,
+	hasReportAccess = false,
+	adminOnly = false,
+	brand,
+	...props
+}: AppSidebarProps) {
 	const { setOpenMobile } = useSidebar();
+	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	// Reports are disabled entirely in cloud; hide the nav entry there.
+	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
 
-	const showAdminSection = isAdmin || hasReportAccess;
+	const showAdminSection = isAdmin || (hasReportAccess && reportsEnabled);
 
 	const groups: NavGroup[] = [];
 
@@ -121,6 +132,9 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 						url: "/settings/llms",
 						icon: IconCpu,
 					},
+					...(context.clientConfig?.features.teamInvites
+						? [{ title: "Team", url: "/settings/members", icon: IconUsers }]
+						: []),
 				],
 			});
 		}
@@ -128,6 +142,12 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 
 	// Admin section
 	if (showAdminSection) {
+		const reportsItem = {
+			title: "Reports",
+			url: "/reports",
+			icon: IconReport,
+			absolute: true,
+		};
 		const adminItems = isAdmin
 			? [
 					{
@@ -136,12 +156,7 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 						icon: IconTable,
 						absolute: true,
 					},
-					{
-						title: "Reports",
-						url: "/reports",
-						icon: IconReport,
-						absolute: true,
-					},
+					...(reportsEnabled ? [reportsItem] : []),
 					{
 						title: "Workflows",
 						url: "/admin/workflows",
@@ -155,14 +170,7 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 						absolute: true,
 					},
 				]
-			: [
-					{
-						title: "Reports",
-						url: "/reports",
-						icon: IconReport,
-						absolute: true,
-					},
-				];
+			: [reportsItem];
 
 		groups.push({
 			label: "Admin",
@@ -175,14 +183,14 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
-					<SidebarMenuButton size="lg" asChild>
-						<Link to="/app" onClick={() => setOpenMobile(false)}>
-							<Logo iconClassName="!size-5" />
-							<div className="ml-auto group-data-[collapsible=icon]:hidden">
-								<DemoModePill />
-							</div>
-						</Link>
-					</SidebarMenuButton>
+						<SidebarMenuButton size="lg" asChild>
+							<Link to="/app" onClick={() => setOpenMobile(false)}>
+								<Logo iconClassName="!size-5" />
+								<div className="ml-auto group-data-[collapsible=icon]:hidden">
+									<DemoModePill />
+								</div>
+							</Link>
+						</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarHeader>

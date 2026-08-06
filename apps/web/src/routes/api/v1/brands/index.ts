@@ -34,12 +34,7 @@ export const Route = createFileRoute("/api/v1/brands/")({
 					const totalCount = totalCountResult?.count || 0;
 					const totalPages = Math.ceil(totalCount / limit);
 
-					const rows = await db
-						.select()
-						.from(brands)
-						.orderBy(desc(brands.createdAt))
-						.limit(limit)
-						.offset(offset);
+					const rows = await db.select().from(brands).orderBy(desc(brands.createdAt)).limit(limit).offset(offset);
 
 					return {
 						brands: rows.map(buildBrandResult),

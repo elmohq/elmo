@@ -2,11 +2,22 @@ import * as client from "dataforseo-client";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import {
 	extractCitationsFromDataforseoLlm,
+	extractCitationsFromDataforseoScraper,
 	extractCitationsFromGoogle,
 	extractTextFromDataforseoLlm,
+	extractTextFromDataforseoScraper,
 	extractTextFromGoogle,
 } from "../../text-extraction";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
+import {
+	assertPromptLength,
+	createDfsAiApi,
+	createDfsSerpApi,
+	DFS_LANGUAGE_CODE,
+	DFS_LOCATION_CODE,
+	isDataforseoConfigured,
+	sanitizeForJson,
+} from "./dataforseo-shared";
 
 /**
  * Models served via the SERP Google AI Mode endpoint (SerpApi). These always
@@ -18,8 +29,10 @@ const SERP_MODELS = new Set(["google-ai-mode"]);
  * Models served via the AI Optimization "LLM Responses" API
  * (chat_gpt / perplexity / gemini), mapping each Elmo model id to the
  * AiOptimizationApi live method plus a sensible default DataForSEO model_name.
- * The model_name can be overridden per target via the version slug, e.g.
- * `chatgpt:dataforseo:gpt-4.1:online`.
+ *
+ * ChatGPT and Gemini only take this route when a target pins a model_name via
+ * the version slug (`chatgpt:dataforseo:gpt-4.1:online`); with no pin they go
+ * to the LLM Scraper below. Perplexity has no scraper, so it always lands here.
  */
 const LLM_MODELS: Record<string, { defaultModelName: string; call: keyof typeof LLM_CALLS }> = {
 	// gpt-5.5 is the model behind ChatGPT's current default ("GPT-5.5 Instant").
@@ -30,45 +43,55 @@ const LLM_MODELS: Record<string, { defaultModelName: string; call: keyof typeof 
 	gemini: { defaultModelName: "gemini-2.5-flash", call: "gemini" },
 };
 
-const SUPPORTED_MODELS = new Set([...SERP_MODELS, ...Object.keys(LLM_MODELS)]);
-const MAX_PROMPT_CHARS = 500;
+/**
+ * Models served via the AI Optimization "LLM Scraper" API, which drives the
+ * real chatgpt.com / gemini.google.com interfaces rather than the vendors'
+ * model APIs. This is the default route for these two models: it's what a
+ * consumer actually sees. The served model is whatever the live product picks,
+ * so pinning a version slug routes to LLM Responses instead.
+ *
+ * DataForSEO has no Perplexity scraper.
+ */
+const SCRAPER_CALLS = {
+	chatgpt: (api: client.AiOptimizationApi, prompt: string) =>
+		api.chatGptLlmScraperLiveAdvanced([
+			new client.AiOptimizationChatGptLlmScraperLiveAdvancedRequestInfo({
+				keyword: prompt,
+				location_code: DFS_LOCATION_CODE,
+				language_code: DFS_LANGUAGE_CODE,
+				// ChatGPT decides per prompt whether to search; force it so a tracked
+				// run always reflects the browsing experience. Gemini always searches
+				// and has no equivalent flag.
+				force_web_search: true,
+			}),
+		]),
+	gemini: (api: client.AiOptimizationApi, prompt: string) =>
+		api.geminiLlmScraperLiveAdvanced([
+			new client.AiOptimizationGeminiLlmScraperLiveAdvancedRequestInfo({
+				keyword: prompt,
+				location_code: DFS_LOCATION_CODE,
+				language_code: DFS_LANGUAGE_CODE,
+			}),
+		]),
+} as const;
+
+// Google AI Overview is the AI summary block on a standard Google results page.
+// It comes from the Organic SERP endpoint (not AI Mode's dedicated SERP), so it
+// gets its own runner rather than joining SERP_MODELS.
+const AI_OVERVIEW_MODEL = "google-ai-overview";
+const SUPPORTED_MODELS = new Set([...SERP_MODELS, AI_OVERVIEW_MODEL, ...Object.keys(LLM_MODELS)]);
+
+/** Models DataForSEO can reach by scraping a live surface rather than an API. */
+export const DATAFORSEO_SCRAPED_MODELS = new Set([
+	...SERP_MODELS,
+	AI_OVERVIEW_MODEL,
+	...Object.keys(SCRAPER_CALLS),
+]);
 
 interface DataForSeoLlmRequest {
 	user_prompt: string;
 	model_name: string;
 	web_search: boolean;
-}
-
-function sanitizeForJson(obj: unknown): unknown {
-	return JSON.parse(JSON.stringify(obj));
-}
-
-function authFetch(url: string | URL | Request, init?: RequestInit): Promise<Response> {
-	const username = process.env.DATAFORSEO_LOGIN;
-	const password = process.env.DATAFORSEO_PASSWORD;
-	if (!username || !password) {
-		throw new Error("DataForSEO requires DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD");
-	}
-	const token = btoa(`${username}:${password}`);
-	return fetch(url, {
-		...init,
-		headers: { ...init?.headers, Authorization: `Basic ${token}`, "Content-Type": "application/json" },
-	});
-}
-
-function createDfsSerpApi() {
-	return new client.SerpApi("https://api.dataforseo.com", { fetch: authFetch });
-}
-
-function createDfsAiApi() {
-	return new client.AiOptimizationApi("https://api.dataforseo.com", { fetch: authFetch });
-}
-
-function assertPromptLength(prompt: string) {
-	const length = Array.from(prompt).length;
-	if (length > MAX_PROMPT_CHARS) {
-		throw new Error(`DataForSEO prompts must be ${MAX_PROMPT_CHARS} characters or fewer (${length} provided)`);
-	}
 }
 
 /** Live LLM Responses call dispatch, keyed by Elmo model id. */
@@ -86,8 +109,8 @@ async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
 	const api = createDfsSerpApi();
 	const requestInfo = new client.SerpGoogleAiModeLiveAdvancedRequestInfo({
 		keyword: prompt,
-		location_code: 2840,
-		language_code: "en",
+		location_code: DFS_LOCATION_CODE,
+		language_code: DFS_LANGUAGE_CODE,
 		depth: 10,
 	});
 
@@ -114,6 +137,49 @@ async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
 		citations,
 		modelVersion: "dataforseo",
 	};
+}
+
+async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
+	assertPromptLength(prompt);
+	const api = createDfsSerpApi();
+	const requestInfo = new client.SerpGoogleOrganicLiveAdvancedRequestInfo({
+		keyword: prompt,
+		location_code: DFS_LOCATION_CODE,
+		language_code: DFS_LANGUAGE_CODE,
+		depth: 10,
+		// AI Overviews are generated on demand; without this DataForSEO only
+		// returns whatever it had cached, so most runs would come back empty.
+		load_async_ai_overview: true,
+	});
+
+	// Loading the AI Overview asynchronously intermittently fails on DataForSEO's
+	// side with a task-level "Internal SE Server Error"; a couple of retries clear
+	// it, so a transient blip doesn't fail the run (matches the BrightData AI
+	// Overview runner).
+	let lastError = "No response or tasks.";
+	for (let attempt = 0; attempt < 3; attempt++) {
+		try {
+			const response = await api.googleOrganicLiveAdvanced([requestInfo]);
+			const task = response?.tasks?.[0];
+			if (task?.status_code === 20000 && task.result?.length) {
+				// The SERP response carries the AI Overview as an items[].type
+				// "ai_overview" element, which the shared Google extractors understand.
+				const citations = extractCitationsFromGoogle(response);
+				return {
+					rawOutput: sanitizeForJson(response),
+					webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
+					textContent: extractTextFromGoogle(response),
+					citations,
+					modelVersion: "dataforseo",
+				};
+			}
+			lastError = task ? `${task.status_code} ${task.status_message}` : "No response or tasks.";
+		} catch (error) {
+			lastError = error instanceof Error ? error.message : String(error);
+		}
+		if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
+	}
+	throw new Error(`DataForSEO API Error: ${lastError}`);
 }
 
 /**
@@ -215,21 +281,57 @@ async function runLlmResponse(model: string, prompt: string, options?: ProviderO
 	};
 }
 
+async function runLlmScraper(model: keyof typeof SCRAPER_CALLS, prompt: string): Promise<ScrapeResult> {
+	const response = await SCRAPER_CALLS[model](createDfsAiApi(), prompt);
+
+	if (!response?.tasks?.length) {
+		throw new Error(`DataForSEO API Error: No response or tasks.`);
+	}
+
+	const task = response.tasks[0];
+	if (task.status_code !== 20000 || !task.result?.length) {
+		throw new Error(`DataForSEO API Error: ${task.status_code} ${task.status_message}`);
+	}
+
+	const result = task.result[0];
+	const raw = sanitizeForJson(response);
+	const citations = extractCitationsFromDataforseoScraper(raw);
+
+	// ChatGPT reports its expanded queries as fan_out_queries; Gemini's scraper
+	// response has no equivalent field, so it falls back to the "unavailable"
+	// marker once citations prove a search ran.
+	const fanOut: string[] = Array.isArray(result.fan_out_queries)
+		? result.fan_out_queries.filter((q: unknown): q is string => typeof q === "string" && q.trim().length > 0)
+		: [];
+
+	return {
+		rawOutput: raw,
+		webQueries: fanOut.length > 0 ? fanOut : citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
+		textContent: extractTextFromDataforseoScraper(raw),
+		citations,
+		modelVersion: result.model ?? model,
+	};
+}
+
 export const dataforseo: Provider = {
 	id: "dataforseo",
 	name: "DataForSEO",
 
-	isConfigured() {
-		return !!process.env.DATAFORSEO_LOGIN && !!process.env.DATAFORSEO_PASSWORD;
-	},
+	isConfigured: isDataforseoConfigured,
 
 	validateTarget(config: ModelConfig) {
 		if (!SUPPORTED_MODELS.has(config.model)) {
 			return `DataForSEO only supports: ${[...SUPPORTED_MODELS].join(", ")}`;
 		}
-		// Google AI Mode is search-only. The LLM Responses engines model the
-		// chatbot UX where web search is always on, so :online is required there
-		// too (matches the BrightData provider for these engines).
+		// A version slug pins the LLM Responses model_name, which only that route
+		// accepts — the SERP and scraper endpoints serve whatever the live surface
+		// returns, so a pin there would silently do nothing.
+		if (config.version && !LLM_MODELS[config.model]) {
+			return `${config.model}:dataforseo does not accept a version slug — that surface is scraped, not requested by model (got "${config.version}")`;
+		}
+		// Google AI Mode is search-only. The chatbot engines model the UX where web
+		// search is always on, so :online is required there too (matches the
+		// BrightData provider for these engines).
 		if (!config.webSearch) {
 			return `${config.model}:dataforseo requires :online — this engine always uses web search`;
 		}
@@ -240,6 +342,14 @@ export const dataforseo: Provider = {
 		assertPromptLength(prompt);
 		if (SERP_MODELS.has(model)) {
 			return runGoogleAiMode(prompt);
+		}
+		if (model === AI_OVERVIEW_MODEL) {
+			return runGoogleAiOverview(prompt);
+		}
+		// Prefer the scraped consumer UI. Pinning a model_name is the opt-in to the
+		// LLM Responses API, which is the only route that can honor one.
+		if (!options?.version && model in SCRAPER_CALLS) {
+			return runLlmScraper(model as keyof typeof SCRAPER_CALLS, prompt);
 		}
 		if (LLM_MODELS[model]) {
 			return runLlmResponse(model, prompt, options);

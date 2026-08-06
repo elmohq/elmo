@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogTitle,
-} from "@workspace/ui/components/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
 import { trackEvent, identifyByEmail } from "@/lib/posthog";
 
 interface ContactFormProps {
@@ -68,9 +64,7 @@ export function ContactForm({ source }: ContactFormProps) {
 					<DialogTitle>White Label Inquiry</DialogTitle>
 					{submitted ? (
 						<div className="py-6 text-center">
-							<p className="text-sm text-muted-foreground">
-								Thanks! We'll be in touch shortly.
-							</p>
+							<p className="text-sm text-muted-foreground">Thanks! We'll be in touch shortly.</p>
 						</div>
 					) : (
 						<form onSubmit={handleSubmit} className="space-y-3">

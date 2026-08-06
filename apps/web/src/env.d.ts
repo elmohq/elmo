@@ -53,6 +53,10 @@ declare global {
 			readonly BRIGHTDATA_API_TOKEN?: string;
 			readonly OXYLABS_USERNAME?: string;
 			readonly OXYLABS_PASSWORD?: string;
+			readonly CLORO_API_KEY?: string;
+			readonly JINA_API_KEY?: string;
+			readonly ELMO_ENCRYPTION_KEY?: string;
+			readonly ELMO_ENCRYPTION_KEY_OLD?: string;
 			readonly DATAFORSEO_LOGIN: string;
 			readonly DATAFORSEO_PASSWORD: string;
 			readonly BETTER_AUTH_SECRET?: string;
@@ -65,6 +69,7 @@ declare global {
 			readonly ADMIN_AUTH0_SUB?: string;
 			readonly ADMIN_API_KEYS?: string;
 			readonly DEFAULT_BRAND_DOMAINS?: string;
+			readonly CLOUD_SIGNUP_ALLOWLIST?: string;
 			readonly ENVIRONMENT?: string;
 			readonly DBOS_SYSTEM_DATABASE_URL?: string;
 			readonly SENTRY_DSN?: string;
@@ -72,6 +77,12 @@ declare global {
 			readonly SENTRY_PROJECT?: string;
 			readonly SENTRY_AUTH_TOKEN?: string;
 			readonly DISABLE_TELEMETRY?: string;
+			readonly STRIPE_SECRET_KEY?: string;
+			readonly STRIPE_WEBHOOK_SECRET?: string;
+			readonly RESEND_API_KEY?: string;
+			readonly GOOGLE_CLIENT_ID?: string;
+			readonly GOOGLE_CLIENT_SECRET?: string;
+			readonly RESEND_FROM_EMAIL?: string;
 		}
 	}
 }

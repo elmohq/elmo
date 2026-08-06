@@ -488,11 +488,7 @@ export const competitors: Competitor[] = [
 			whiteLabelAgency: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
-		highlights: [
-			"Gartner Cool Vendor 2025",
-			"20,000+ users",
-			"GEO Audit evaluating 25+ on-page factors",
-		],
+		highlights: ["Gartner Cool Vendor 2025", "20,000+ users", "GEO Audit evaluating 25+ on-page factors"],
 	},
 	{
 		slug: "scrunch",
@@ -561,7 +557,7 @@ export const competitors: Competitor[] = [
 		url: "https://promptwatch.com/",
 		tagline: "Real UI scraping with 630M+ citations tracked",
 		description:
-			"Promptwatch scrapes actual AI user interfaces rather than using APIs, which they say provides \"real user experience\" data. They report tracking over 630 million citations and 5,700+ brands. Featured in WSJ and Axios, they offer tracking including shopping and geographic features.",
+			'Promptwatch scrapes actual AI user interfaces rather than using APIs, which they say provides "real user experience" data. They report tracking over 630 million citations and 5,700+ brands. Featured in WSJ and Axios, they offer tracking including shopping and geographic features.',
 		category: "tracking",
 		ahrefsDR: 56,
 		ahrefsTraffic: 0,
@@ -641,10 +637,7 @@ export const competitors: Competitor[] = [
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"Optimization recommendations with each insight",
-			"Content-focused improvement suggestions",
-		],
+		highlights: ["Optimization recommendations with each insight", "Content-focused improvement suggestions"],
 	},
 	{
 		slug: "gushwork",
@@ -666,10 +659,7 @@ export const competitors: Competitor[] = [
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
-		highlights: [
-			"$9M raised in funding",
-			"AI agents for end-to-end SEO workflows",
-		],
+		highlights: ["$9M raised in funding", "AI agents for end-to-end SEO workflows"],
 	},
 	{
 		slug: "goodie",
@@ -719,11 +709,7 @@ export const competitors: Competitor[] = [
 			siteAudits: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"E-commerce focused AEO",
-			"JSON-LD schema optimization",
-			"Shopify and WooCommerce support",
-		],
+		highlights: ["E-commerce focused AEO", "JSON-LD schema optimization", "Shopify and WooCommerce support"],
 	},
 	{
 		slug: "rebel-growth",
@@ -745,10 +731,7 @@ export const competitors: Competitor[] = [
 			actionRecommendations: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"Growth-focused approach to AEO",
-			"Consulting + tooling combined",
-		],
+		highlights: ["Growth-focused approach to AEO", "Consulting + tooling combined"],
 	},
 	{
 		slug: "knowatoa",
@@ -860,10 +843,7 @@ export const competitors: Competitor[] = [
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"Combined content creation + rank tracking",
-			"Optimizes content for AI citation",
-		],
+		highlights: ["Combined content creation + rank tracking", "Optimizes content for AI citation"],
 	},
 	{
 		slug: "quattr",
@@ -887,10 +867,7 @@ export const competitors: Competitor[] = [
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
-		highlights: [
-			"GIGA AI Agent for automated content workflows",
-			"Unified SEO + AEO + GEO platform",
-		],
+		highlights: ["GIGA AI Agent for automated content workflows", "Unified SEO + AEO + GEO platform"],
 	},
 	{
 		slug: "gumshoe",
@@ -959,10 +936,7 @@ export const competitors: Competitor[] = [
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"Blog Agent for AI-optimized content",
-			"Combined content creation + tracking",
-		],
+		highlights: ["Blog Agent for AI-optimized content", "Combined content creation + tracking"],
 	},
 	{
 		slug: "gauge",
@@ -1023,10 +997,7 @@ export const competitors: Competitor[] = [
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
-		highlights: [
-			"150,000+ partner media distribution network",
-			"Active citation building through media placement",
-		],
+		highlights: ["150,000+ partner media distribution network", "Active citation building through media placement"],
 	},
 	{
 		slug: "aiclicks",
@@ -1049,18 +1020,14 @@ export const competitors: Competitor[] = [
 			actionRecommendations: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"Done-for-you action plans",
-			"AI agents for competitor gap analysis",
-		],
+		highlights: ["Done-for-you action plans", "AI agents for competitor gap analysis"],
 	},
 	{
 		slug: "wildcard",
 		name: "Wildcard",
 		domain: "wild-card.ai",
 		url: "https://wild-card.ai/",
-		tagline:
-			"AI SEO platform for retail and ecommerce brands",
+		tagline: "AI SEO platform for retail and ecommerce brands",
 		description:
 			"Wildcard is a Y Combinator-backed GEO platform that helps ecommerce brands track and optimize product visibility across AI shopping assistants like ChatGPT, Gemini, Amazon Rufus, and Perplexity. It offers product data enrichment, query intelligence, competitive positioning tracking, and agentic commerce protocols for instant AI-powered checkout.",
 		category: "ecommerce",
@@ -1153,10 +1120,7 @@ export const competitors: Competitor[] = [
 			whiteLabelAgency: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
-		highlights: [
-			"White-label reports for agencies",
-			"GEO competitive intelligence",
-		],
+		highlights: ["White-label reports for agencies", "GEO competitive intelligence"],
 	},
 	{
 		slug: "checkthat",
@@ -1205,10 +1169,7 @@ export const competitors: Competitor[] = [
 			dataExportApi: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
-		highlights: [
-			"Enterprise Fortune 500 focus",
-			"AI Commerce optimization",
-		],
+		highlights: ["Enterprise Fortune 500 focus", "AI Commerce optimization"],
 	},
 	{
 		slug: "parse",
@@ -1230,10 +1191,7 @@ export const competitors: Competitor[] = [
 			brandMentionTracking: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"219,000+ brands database",
-			"Peer visibility and industry benchmarking",
-		],
+		highlights: ["219,000+ brands database", "Peer visibility and industry benchmarking"],
 	},
 	{
 		slug: "amionai",
@@ -1375,11 +1333,7 @@ export const competitors: Competitor[] = [
 			whiteLabelAgency: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
-		highlights: [
-			"Open source (MIT license)",
-			"AI Crawlability Clinic",
-			"GEO playbooks for agencies",
-		],
+		highlights: ["Open source (MIT license)", "AI Crawlability Clinic", "GEO playbooks for agencies"],
 	},
 	{
 		slug: "meridian",
@@ -1402,10 +1356,7 @@ export const competitors: Competitor[] = [
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"Geographic targeting for AI visibility",
-			"Content optimization recommendations",
-		],
+		highlights: ["Geographic targeting for AI visibility", "Content optimization recommendations"],
 	},
 	{
 		slug: "peasy",
@@ -1501,11 +1452,7 @@ export const competitors: Competitor[] = [
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$19.99/mo", hasEnterprise: false },
-		highlights: [
-			"Ultra-affordable at $19.99/month",
-			"Bing auto-indexing",
-			"Developer-focused with GitHub integration",
-		],
+		highlights: ["Ultra-affordable at $19.99/month", "Bing auto-indexing", "Developer-focused with GitHub integration"],
 	},
 	{
 		slug: "anvil",
@@ -1569,11 +1516,7 @@ export const competitors: Competitor[] = [
 			dataExportApi: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"30+ language support",
-			"AI Search Score API",
-			"Developer-focused approach",
-		],
+		highlights: ["30+ language support", "AI Search Score API", "Developer-focused approach"],
 	},
 	{
 		slug: "datagum",
@@ -1595,11 +1538,7 @@ export const competitors: Competitor[] = [
 			siteAudits: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: false },
-		highlights: [
-			"Free JSON-LD schema generator",
-			"Citation analyzer tool",
-			"Auto brand book generator",
-		],
+		highlights: ["Free JSON-LD schema generator", "Citation analyzer tool", "Auto brand book generator"],
 	},
 	{
 		slug: "ecom-ai",
@@ -1621,11 +1560,7 @@ export const competitors: Competitor[] = [
 			siteAudits: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
-		highlights: [
-			"E-commerce focused AEO",
-			"Done-for-you schema injection",
-			"AI shopping visibility tracking",
-		],
+		highlights: ["E-commerce focused AEO", "Done-for-you schema injection", "AI shopping visibility tracking"],
 	},
 	{
 		slug: "lantern",
@@ -1646,10 +1581,7 @@ export const competitors: Competitor[] = [
 			dataExportApi: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"AI traffic attribution focus",
-			"Unified AI + traditional SEO analytics",
-		],
+		highlights: ["AI traffic attribution focus", "Unified AI + traditional SEO analytics"],
 	},
 	{
 		slug: "thirdeye",
@@ -1725,10 +1657,7 @@ export const competitors: Competitor[] = [
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"Content strategist approach",
-			"Combined SEO score and AEO tracking",
-		],
+		highlights: ["Content strategist approach", "Combined SEO score and AEO tracking"],
 	},
 	{
 		slug: "bourd",
@@ -1771,11 +1700,7 @@ export const competitors: Competitor[] = [
 			siteAudits: true,
 		},
 		pricing: { hasFree: true, startingPrice: "$29/mo", hasEnterprise: false },
-		highlights: [
-			"AEO experimentation lab",
-			"Affordable $29/month starter plan",
-			"Free visibility report available",
-		],
+		highlights: ["AEO experimentation lab", "Affordable $29/month starter plan", "Free visibility report available"],
 	},
 	{
 		slug: "ai-serp-tracker",
@@ -1816,11 +1741,7 @@ export const competitors: Competitor[] = [
 			shoppingTracking: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"AI Shopping Visibility Index",
-			"Shopify, Amazon, WooCommerce tracking",
-			"E-commerce focused",
-		],
+		highlights: ["AI Shopping Visibility Index", "Shopify, Amazon, WooCommerce tracking", "E-commerce focused"],
 	},
 	{
 		slug: "chatgeo",
@@ -1842,11 +1763,7 @@ export const competitors: Competitor[] = [
 			contentGeneration: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: false },
-		highlights: [
-			"Free GEO scan",
-			"Entity density optimization",
-			"Hybrid SEO + GEO approach",
-		],
+		highlights: ["Free GEO scan", "Entity density optimization", "Hybrid SEO + GEO approach"],
 		notes: "See TrustMRR listing",
 	},
 	{
@@ -1870,11 +1787,7 @@ export const competitors: Competitor[] = [
 			emailAlerts: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$299/mo", hasEnterprise: false },
-		highlights: [
-			"GEO opportunity identification",
-			"Prompt intelligence and discovery",
-			"Actionable visibility alerts",
-		],
+		highlights: ["GEO opportunity identification", "Prompt intelligence and discovery", "Actionable visibility alerts"],
 	},
 	{
 		slug: "mentionstack",
@@ -1895,10 +1808,7 @@ export const competitors: Competitor[] = [
 			socialMediaTracking: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"Reddit and Quora management for AI influence",
-			"GEO + social media optimization",
-		],
+		highlights: ["Reddit and Quora management for AI influence", "GEO + social media optimization"],
 	},
 	{
 		slug: "searchone",
@@ -1920,10 +1830,7 @@ export const competitors: Competitor[] = [
 			siteAudits: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"GEO proxy tool",
-			"AI crawler visibility checker",
-		],
+		highlights: ["GEO proxy tool", "AI crawler visibility checker"],
 	},
 	{
 		slug: "rankgpt",
@@ -1945,10 +1852,7 @@ export const competitors: Competitor[] = [
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"Citation builder tool",
-			"Auto-publish content for AI citations",
-		],
+		highlights: ["Citation builder tool", "Auto-publish content for AI citations"],
 	},
 	{
 		slug: "gego-analytics",
@@ -1970,10 +1874,7 @@ export const competitors: Competitor[] = [
 			openSource: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: false },
-		highlights: [
-			"Open-source on GitHub",
-			"Self-hostable AEO analytics",
-		],
+		highlights: ["Open-source on GitHub", "Self-hostable AEO analytics"],
 	},
 	{
 		slug: "microsoft-ads",
@@ -1988,12 +1889,8 @@ export const competitors: Competitor[] = [
 		ahrefsTraffic: 23238,
 		status: "active",
 		features: {},
-		highlights: [
-			"Official Microsoft guidance for Copilot/Bing AI",
-			"Not a standalone product",
-		],
-		notes:
-			"Blog post with official optimization guidance, not a competitor product",
+		highlights: ["Official Microsoft guidance for Copilot/Bing AI", "Not a standalone product"],
+		notes: "Blog post with official optimization guidance, not a competitor product",
 	},
 	{
 		slug: "geo-aeo-tracker",
@@ -3124,93 +3021,93 @@ export function getComparisonSlug(competitor: Competitor): string {
  */
 const aeoPopularityRanking: string[] = [
 	// --- Tier A: Category leaders with major funding, customers, and recognition ---
-	"profound",           // Category leader: G2 AEO Leader, enterprise (MongoDB, Figma, Zapier, Ramp), Fortune/WSJ/NYT
-	"peec-ai",            // $21M Series A (Singular), 1,300+ brands onboarded, fastest-growing pure-play
-	"airops",             // $40M Series B / $225M val (Greylock), Ramp/Chime/Wiz/Carta, repositioned as AI-search platform
-	"scrunch",            // $19M (Mayfield/Decibel), G2 category leader, broadest engine coverage, SOC2+HIPAA
-	"otterly-ai",         // Gartner Cool Vendor 2025, 20k+ users, dedicated GEO tracker
-	"evertune",           // $4M seed, NYT/WSJ/Forbes/Adweek, EverPanel consumer panel data
-	"writesonic",         // 120M AI conversation dataset, major brand, combined tracking + content
-	"athenahq",           // Repeatedly named in best-AEO-tools-2026 lists, prompt-level insights
-	"se-ranking",         // Large established platform with dedicated AI Overviews + ChatGPT trackers
+	"profound", // Category leader: G2 AEO Leader, enterprise (MongoDB, Figma, Zapier, Ramp), Fortune/WSJ/NYT
+	"peec-ai", // $21M Series A (Singular), 1,300+ brands onboarded, fastest-growing pure-play
+	"airops", // $40M Series B / $225M val (Greylock), Ramp/Chime/Wiz/Carta, repositioned as AI-search platform
+	"scrunch", // $19M (Mayfield/Decibel), G2 category leader, broadest engine coverage, SOC2+HIPAA
+	"otterly-ai", // Gartner Cool Vendor 2025, 20k+ users, dedicated GEO tracker
+	"evertune", // $4M seed, NYT/WSJ/Forbes/Adweek, EverPanel consumer panel data
+	"writesonic", // 120M AI conversation dataset, major brand, combined tracking + content
+	"athenahq", // Repeatedly named in best-AEO-tools-2026 lists, prompt-level insights
+	"se-ranking", // Large established platform with dedicated AI Overviews + ChatGPT trackers
 
 	// --- Tier B: Known / growing AEO tools ---
-	"nightwatch",         // Established rank tracker (190K locations) with AI search tracking
-	"frase",              // Agentic SEO/GEO platform, 80+ AI tools
-	"amplitude",          // Product analytics giant adding AEO features
-	"local-falcon",       // Early entrant (SAIV metric); local-SEO-primary with AEO
-	"promptwatch",        // UI-scraping prompt monitor, 630M citations, WSJ/Axios
-	"goodie",             // Funded; Amazon Rufus tracking + AEO thought leadership
-	"knowatoa",           // Multi-LLM tracking, BISCUIT framework, BI connectors
-	"llmrefs",            // Citation specialist; lists eBay/HubSpot/NVIDIA users
-	"aiseotracker",       // Dedicated AEO tracker, claims 249K brands, Page Inspector
-	"gracker",            // Cybersecurity/B2B-SaaS vertical with documented customer case studies
-	"rankability",        // AI Search Analyzer with NLP/entity focus, agency-oriented
-	"gauge",              // End-to-end tracking + analysis + content platform
-	"passionfruit",       // Stanford/CMU founders, unified SEO+GEO+AEO + managed service
+	"nightwatch", // Established rank tracker (190K locations) with AI search tracking
+	"frase", // Agentic SEO/GEO platform, 80+ AI tools
+	"amplitude", // Product analytics giant adding AEO features
+	"local-falcon", // Early entrant (SAIV metric); local-SEO-primary with AEO
+	"promptwatch", // UI-scraping prompt monitor, 630M citations, WSJ/Axios
+	"goodie", // Funded; Amazon Rufus tracking + AEO thought leadership
+	"knowatoa", // Multi-LLM tracking, BISCUIT framework, BI connectors
+	"llmrefs", // Citation specialist; lists eBay/HubSpot/NVIDIA users
+	"aiseotracker", // Dedicated AEO tracker, claims 249K brands, Page Inspector
+	"gracker", // Cybersecurity/B2B-SaaS vertical with documented customer case studies
+	"rankability", // AI Search Analyzer with NLP/entity focus, agency-oriented
+	"gauge", // End-to-end tracking + analysis + content platform
+	"passionfruit", // Stanford/CMU founders, unified SEO+GEO+AEO + managed service
 
 	// --- Tier C: Niche / emerging AEO tools with some traction ---
-	"wellows",            // DR 62 / 6K traffic, published citation research; no disclosed funding/customers
-	"superlines",         // 9-platform GEO tracker, customers incl. Supabase/Publicis, Google for AI Startups
-	"bluefish-ai",        // Enterprise AI-commerce (Fortune 500 focus), named in best-AEO-2026 lists
-	"babylovegrowth",     // DR 76, autopilot content + backlink network for AI citations
-	"topify",             // 200+ brands incl. Zoom/TCL/Midea, full GEO feature set
-	"omniseo",            // WebFX-backed, enterprise customers (Darktrace, Fujifilm, Caterpillar)
-	"trakkr",             // 8-model tracker, weekly ROI-scored actions + GA revenue attribution
-	"indexly",            // Unified Google + AI tracker, broad feature set
-	"rankshift",          // 850+ brands, BI connectors (Looker/BigQuery/Power BI)
-	"siftly",             // Y Combinator-backed GEO platform with A/B testing
-	"airefs",             // Hybrid tracker + done-for-you agency service
-	"geneo",              // AI visibility platform with optimization recommendations
-	"gushwork",           // $9M raised, AI agents for end-to-end SEO workflows
-	"quattr",             // GIGA AI agent, unified SEO + AEO + GEO
-	"rank-ai",            // AI content creation + rank tracking
-	"promptmonitor",      // 200+ countries, AI bot analytics (acquired)
-	"gumshoe",            // AI search visibility intelligence
-	"rebel-growth",       // Growth-focused AEO tracking + consulting
-	"aeo-engine",         // E-commerce focused AEO with schema optimization
-	"aiclicks",           // Done-for-you action plans with AI agents
-	"searchable",         // AI search visibility monitoring
-	"llm-pulse",          // LLM monitoring with prompt suggestions + Looker Studio
-	"ai-peekaboo",        // White-label GEO competitive intelligence for agencies
+	"wellows", // DR 62 / 6K traffic, published citation research; no disclosed funding/customers
+	"superlines", // 9-platform GEO tracker, customers incl. Supabase/Publicis, Google for AI Startups
+	"bluefish-ai", // Enterprise AI-commerce (Fortune 500 focus), named in best-AEO-2026 lists
+	"babylovegrowth", // DR 76, autopilot content + backlink network for AI citations
+	"topify", // 200+ brands incl. Zoom/TCL/Midea, full GEO feature set
+	"omniseo", // WebFX-backed, enterprise customers (Darktrace, Fujifilm, Caterpillar)
+	"trakkr", // 8-model tracker, weekly ROI-scored actions + GA revenue attribution
+	"indexly", // Unified Google + AI tracker, broad feature set
+	"rankshift", // 850+ brands, BI connectors (Looker/BigQuery/Power BI)
+	"siftly", // Y Combinator-backed GEO platform with A/B testing
+	"airefs", // Hybrid tracker + done-for-you agency service
+	"geneo", // AI visibility platform with optimization recommendations
+	"gushwork", // $9M raised, AI agents for end-to-end SEO workflows
+	"quattr", // GIGA AI agent, unified SEO + AEO + GEO
+	"rank-ai", // AI content creation + rank tracking
+	"promptmonitor", // 200+ countries, AI bot analytics (acquired)
+	"gumshoe", // AI search visibility intelligence
+	"rebel-growth", // Growth-focused AEO tracking + consulting
+	"aeo-engine", // E-commerce focused AEO with schema optimization
+	"aiclicks", // Done-for-you action plans with AI agents
+	"searchable", // AI search visibility monitoring
+	"llm-pulse", // LLM monitoring with prompt suggestions + Looker Studio
+	"ai-peekaboo", // White-label GEO competitive intelligence for agencies
 
 	// --- Tier D: Early / small AEO tools ---
-	"checkthat",          // No-cold-start tracking, lead gen for GrowthX
-	"parse",              // 219K brands database, peer visibility
-	"amionai",            // Weekly action plans + The Index leaderboards
-	"limy",               // B2A revenue tracking
-	"bear-ai",            // Blog Agent for AI-optimized content
-	"getmint",            // 150K+ partner media distribution network
-	"wildcard",           // YC-backed e-commerce AI visibility
-	"showupinai",         // IndexNow integration for faster AI indexing
-	"omnia",              // AI visibility tracking, multi-language/region
-	"lorelight",          // Shutting down — public postmortem
-	"getcito",            // Open-source (MIT) citation tracker, Crawlability Clinic
-	"geo-aeo-tracker",    // Open-source self-hosted AEO dashboard, 80 GitHub stars
-	"canonry",            // Open-source self-hosted AEO platform, server-log ingestion + MCP, 52 stars
-	"meridian",           // AI search tracking with geographic targeting
-	"peasy",              // Server-side, cookie-free AI traffic analytics
-	"flip-aeo",           // AEO tracking + optimization
-	"llmclicks",          // Search-Console-for-AI positioning — GSC integration + 120-point audit
-	"meikai",             // Enterprise AEO with luxury/finance clients (Chanel, Hennessy, AXA)
-	"citatra",            // Multi-platform tracker with one-click content publishing + GA4
-	"lumen",              // AEO tracker with ChatGPT Shopping + crawler analytics
-	"oneglanse",          // MIT-licensed self-hosted tracker capturing AI web UIs
-	"estran",             // Ecommerce AEO with ACP/UCP protocol support
-	"sitesignal",         // Hallucination detection niche, Looker Studio + white-label
-	"visiblie",           // MCP server integration + agentic workflows, SOC2
-	"airanklab",          // Unified SEO/GEO/AEO with WordPress auto-publish
-	"cairrot",            // Affordable agency-focused AEO with Looker/Databox
-	"rankprompt",         // 6-platform tracker, hyper-local (500+ cities) + 50+ languages
-	"aeotool",            // Page audit tool with Chrome extension, 6-category scoring
+	"checkthat", // No-cold-start tracking, lead gen for GrowthX
+	"parse", // 219K brands database, peer visibility
+	"amionai", // Weekly action plans + The Index leaderboards
+	"limy", // B2A revenue tracking
+	"bear-ai", // Blog Agent for AI-optimized content
+	"getmint", // 150K+ partner media distribution network
+	"wildcard", // YC-backed e-commerce AI visibility
+	"showupinai", // IndexNow integration for faster AI indexing
+	"omnia", // AI visibility tracking, multi-language/region
+	"lorelight", // Shutting down — public postmortem
+	"getcito", // Open-source (MIT) citation tracker, Crawlability Clinic
+	"geo-aeo-tracker", // Open-source self-hosted AEO dashboard, 80 GitHub stars
+	"canonry", // Open-source self-hosted AEO platform, server-log ingestion + MCP, 52 stars
+	"meridian", // AI search tracking with geographic targeting
+	"peasy", // Server-side, cookie-free AI traffic analytics
+	"flip-aeo", // AEO tracking + optimization
+	"llmclicks", // Search-Console-for-AI positioning — GSC integration + 120-point audit
+	"meikai", // Enterprise AEO with luxury/finance clients (Chanel, Hennessy, AXA)
+	"citatra", // Multi-platform tracker with one-click content publishing + GA4
+	"lumen", // AEO tracker with ChatGPT Shopping + crawler analytics
+	"oneglanse", // MIT-licensed self-hosted tracker capturing AI web UIs
+	"estran", // Ecommerce AEO with ACP/UCP protocol support
+	"sitesignal", // Hallucination detection niche, Looker Studio + white-label
+	"visiblie", // MCP server integration + agentic workflows, SOC2
+	"airanklab", // Unified SEO/GEO/AEO with WordPress auto-publish
+	"cairrot", // Affordable agency-focused AEO with Looker/Databox
+	"rankprompt", // 6-platform tracker, hyper-local (500+ cities) + 50+ languages
+	"aeotool", // Page audit tool with Chrome extension, 6-category scoring
 
 	// --- Tier F: Very new or minimal traction ---
-	"orchly",             // Unified SEO+AEO with autonomous agents
-	"temso",              // AEO tracker + content-execution agent, G2 4.8, small case studies
-	"kime",               // AEO tracker with citation source percentages + Action Centre
+	"orchly", // Unified SEO+AEO with autonomous agents
+	"temso", // AEO tracker + content-execution agent, G2 4.8, small case studies
+	"kime", // AEO tracker with citation source percentages + Action Centre
 	"radarkit",
 	"seozast",
-	"brandscan",          // Romania-only GEO tracker, complete product but DR 0 / minimal traction
+	"brandscan", // Romania-only GEO tracker, complete product but DR 0 / minimal traction
 	"anvil",
 	"petra-labs",
 	"searchify",
@@ -3230,27 +3127,20 @@ const aeoPopularityRanking: string[] = [
 	"searchone",
 	"rankgpt",
 	"gego-analytics",
-	"aeospy",             // Cross-engine prompt query tool, narrow scope vs full tracker
-	"ferventers",         // AI SEO agency + tracking platform hybrid
-	"xseek",              // Six-engine AEO tracker
-	"vismore",            // AEO tracker with content distribution actions
-	"scope",              // Agent experience platform — adjacent to AEO, not pure citation tracking
+	"aeospy", // Cross-engine prompt query tool, narrow scope vs full tracker
+	"ferventers", // AI SEO agency + tracking platform hybrid
+	"xseek", // Six-engine AEO tracker
+	"vismore", // AEO tracker with content distribution actions
+	"scope", // Agent experience platform — adjacent to AEO, not pure citation tracking
 ];
 
 /**
  * Tools where AI visibility is NOT the primary product — large platforms
  * that added AEO features. Graded "N/A" and sorted after all ranked tools.
  */
-const aeoNotApplicable = new Set([
-	"semrush-ai-toolkit",
-	"ahrefs-brand-radar",
-	"dataforseo",
-	"hubspot-aeo-grader",
-]);
+const aeoNotApplicable = new Set(["semrush-ai-toolkit", "ahrefs-brand-radar", "dataforseo", "hubspot-aeo-grader"]);
 
-const rankingIndex = new Map(
-	aeoPopularityRanking.map((slug, i) => [slug, i]),
-);
+const rankingIndex = new Map(aeoPopularityRanking.map((slug, i) => [slug, i]));
 
 /** Position in the AEO popularity ranking (0-based). N/A and unranked tools sort last. */
 export function getPopularityRank(competitor: Competitor): number {
@@ -3266,7 +3156,7 @@ export function getPopularityGrade(competitor: Competitor): string {
 	if (rank < total * 0.08) return "A";
 	if (rank < total * 0.21) return "B";
 	if (rank < total * 0.43) return "C";
-	if (rank < total * 0.70) return "D";
+	if (rank < total * 0.7) return "D";
 	return "F";
 }
 

@@ -68,6 +68,7 @@ export const mockShareOfVoice = {
 export const mockOpportunities = {
 	reason: null,
 	generatedFor: { brandName: "Acme" },
+	lastEvaluatedAt: "2026-06-04T09:12:00.000Z",
 	report: {
 		summary: [
 			"Acme is out-cited by Globex and Initech on nearly every unbranded category question.",

@@ -1,0 +1,20 @@
+meta {
+  name: analyze validation 400
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/tools/analyze
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 400
+  res.body.error: eq Validation Error
+}

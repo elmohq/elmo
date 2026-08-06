@@ -1,17 +1,19 @@
 {
   "name": "e2e",
-  "version": "0.2.14",
+  "version": "0.2.17",
   "private": true,
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --project=fixtures",
+    "test:api": "mkdir -p test-results && cd bruno && bru run -r --env local --reporter-junit ../test-results/api-junit.xml --reporter-json ../test-results/api-report.json",
     "seed": "tsx seed.ts"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0",
-    "@types/pg": "^8.20.0",
-    "pg": "^8.21.0",
-    "tsx": "^4.22.4"
+    "@playwright/test": "^1.62.1",
+    "@types/pg": "^8.20.3",
+    "@usebruno/cli": "4.0.0",
+    "pg": "^8.22.0",
+    "tsx": "^4.23.1"
   }
 }

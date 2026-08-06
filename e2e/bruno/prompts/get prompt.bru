@@ -1,0 +1,18 @@
+meta {
+  name: get prompt
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{promptId}}
+  res.body.enabled: isTruthy
+  res.body.value: contains monitoring tool
+}

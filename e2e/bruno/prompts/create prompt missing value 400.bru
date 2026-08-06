@@ -1,0 +1,21 @@
+meta {
+  name: create prompt missing value 400
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}"
+  }
+}
+
+assert {
+  res.status: eq 400
+}

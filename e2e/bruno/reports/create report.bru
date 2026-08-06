@@ -1,0 +1,28 @@
+meta {
+  name: create report
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/reports
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "brandName": "Bruno E2E Report Brand",
+    "brandWebsite": "https://bruno-e2e-report.example.com"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.status: eq pending
+  res.body.reportId: isDefined
+}
+
+script:post-response {
+  bru.setVar("createdReportId", res.getBody().reportId);
+}

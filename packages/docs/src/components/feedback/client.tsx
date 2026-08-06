@@ -1,11 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@workspace/ui/components/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import type { ActionResponse, PageFeedback, BlockFeedback } from "./schema";
 
 interface FeedbackProps {
@@ -37,9 +33,7 @@ export function Feedback({ onSendAction }: FeedbackProps) {
 
 	return (
 		<div className="mt-8 rounded-lg border p-4">
-			<p className="text-sm font-medium text-foreground">
-				Was this page helpful?
-			</p>
+			<p className="text-sm font-medium text-foreground">Was this page helpful?</p>
 			<div className="mt-3 flex items-center gap-2">
 				<Button
 					variant={opinion === "good" ? "default" : "outline"}
@@ -85,12 +79,7 @@ interface FeedbackBlockProps {
 	onSendAction: (feedback: BlockFeedback) => Promise<ActionResponse>;
 }
 
-export function FeedbackBlock({
-	id,
-	body,
-	children,
-	onSendAction,
-}: FeedbackBlockProps) {
+export function FeedbackBlock({ id, body, children, onSendAction }: FeedbackBlockProps) {
 	const [open, setOpen] = useState(false);
 	const [message, setMessage] = useState("");
 	const [submitted, setSubmitted] = useState(false);
@@ -121,14 +110,10 @@ export function FeedbackBlock({
 				</PopoverTrigger>
 				<PopoverContent align="end" className="w-72 p-3">
 					{submitted ? (
-						<p className="text-center text-sm text-muted-foreground">
-							Thanks for your feedback!
-						</p>
+						<p className="text-center text-sm text-muted-foreground">Thanks for your feedback!</p>
 					) : (
 						<div className="space-y-2">
-							<p className="text-sm font-medium">
-								Feedback on this section
-							</p>
+							<p className="text-sm font-medium">Feedback on this section</p>
 							<textarea
 								value={message}
 								onChange={(e) => setMessage(e.target.value)}
@@ -137,12 +122,7 @@ export function FeedbackBlock({
 								rows={3}
 								autoFocus
 							/>
-							<Button
-								size="sm"
-								onClick={handleSubmit}
-								disabled={message.trim().length === 0}
-								className="w-full"
-							>
+							<Button size="sm" onClick={handleSubmit} disabled={message.trim().length === 0} className="w-full">
 								Send Feedback
 							</Button>
 						</div>

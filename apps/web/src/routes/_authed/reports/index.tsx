@@ -23,20 +23,22 @@ import { ExternalLink } from "lucide-react";
 import { requireAuthSession, isAdmin, hasReportAccess } from "@/lib/auth/helpers";
 import { getReportsFn, createReportFn } from "@/server/reports";
 
-const checkReportAccess = createServerFn({ method: "GET" }).handler(async (): Promise<{
-	hasAccess: boolean;
-	isAdmin: boolean;
-	hasReportAccess: boolean;
-}> => {
-	const session = await requireAuthSession();
-	const admin = isAdmin(session);
-	const reportAccess = hasReportAccess(session);
-	return {
-		hasAccess: admin || reportAccess,
-		isAdmin: admin,
-		hasReportAccess: reportAccess,
-	};
-});
+const checkReportAccess = createServerFn({ method: "GET" }).handler(
+	async (): Promise<{
+		hasAccess: boolean;
+		isAdmin: boolean;
+		hasReportAccess: boolean;
+	}> => {
+		const session = await requireAuthSession();
+		const admin = isAdmin(session);
+		const reportAccess = hasReportAccess(session);
+		return {
+			hasAccess: admin || reportAccess,
+			isAdmin: admin,
+			hasReportAccess: reportAccess,
+		};
+	},
+);
 
 export const Route = createFileRoute("/_authed/reports/")({
 	head: ({ match }) => {
@@ -147,9 +149,7 @@ function ReportsPage() {
 														type="text"
 														placeholder="Enter brand name"
 														value={formData.brandName}
-														onChange={(e) =>
-															setFormData({ ...formData, brandName: e.target.value })
-														}
+														onChange={(e) => setFormData({ ...formData, brandName: e.target.value })}
 														required
 														disabled={createMutation.isPending}
 													/>
@@ -161,9 +161,7 @@ function ReportsPage() {
 														type="url"
 														placeholder="https://example.com"
 														value={formData.brandWebsite}
-														onChange={(e) =>
-															setFormData({ ...formData, brandWebsite: e.target.value })
-														}
+														onChange={(e) => setFormData({ ...formData, brandWebsite: e.target.value })}
 														required
 														disabled={createMutation.isPending}
 													/>
@@ -172,16 +170,13 @@ function ReportsPage() {
 
 											<div className="space-y-2">
 												<Label htmlFor="manualPrompts">
-													Manual Prompts{" "}
-													<span className="text-muted-foreground font-normal">(Optional)</span>
+													Manual Prompts <span className="text-muted-foreground font-normal">(Optional)</span>
 												</Label>
 												<Textarea
 													id="manualPrompts"
 													placeholder="Enter one prompt per line, up to 50"
 													value={formData.manualPrompts}
-													onChange={(e) =>
-														setFormData({ ...formData, manualPrompts: e.target.value })
-													}
+													onChange={(e) => setFormData({ ...formData, manualPrompts: e.target.value })}
 													disabled={createMutation.isPending}
 													rows={6}
 													className="font-mono text-sm"
@@ -189,8 +184,7 @@ function ReportsPage() {
 												<p className="text-xs text-muted-foreground">
 													{formData.manualPrompts.trim() ? (
 														<>
-															<strong>Note:</strong> Prompts will NOT be auto-generated.
-															Using your{" "}
+															<strong>Note:</strong> Prompts will NOT be auto-generated. Using your{" "}
 															{
 																formData.manualPrompts
 																	.trim()
@@ -212,19 +206,11 @@ function ReportsPage() {
 												</p>
 											</div>
 
-											{submitError && (
-												<p className="text-sm text-destructive">{submitError}</p>
-											)}
+											{submitError && <p className="text-sm text-destructive">{submitError}</p>}
 											{success && <p className="text-sm text-green-600">{success}</p>}
 
-											<Button
-												type="submit"
-												disabled={createMutation.isPending}
-												className="cursor-pointer"
-											>
-												{createMutation.isPending
-													? "Creating Report..."
-													: "Create Report"}
+											<Button type="submit" disabled={createMutation.isPending} className="cursor-pointer">
+												{createMutation.isPending ? "Creating Report..." : "Create Report"}
 											</Button>
 										</form>
 									</div>
@@ -237,9 +223,7 @@ function ReportsPage() {
 											<Card>
 												<CardContent className="py-8 text-center">
 													<p className="text-destructive">
-														{error instanceof Error
-															? error.message
-															: "Failed to load reports"}
+														{error instanceof Error ? error.message : "Failed to load reports"}
 													</p>
 												</CardContent>
 											</Card>
@@ -262,20 +246,13 @@ function ReportsPage() {
 											!error && (
 												<div className="space-y-3">
 													{reports.map((report: any) => (
-														<div
-															key={report.id}
-															className="bg-gray-50 border border-gray-200 rounded-lg p-4"
-														>
+														<div key={report.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
 															<div className="flex items-center justify-between">
 																<div className="flex-1 min-w-0">
 																	<h3 className="font-semibold text-lg">
 																		{report.brandName}{" "}
 																		<span className="text-gray-600 font-normal">
-																			(
-																			{extractDomain(
-																				report.brandWebsite,
-																			)}
-																			)
+																			({extractDomain(report.brandWebsite)})
 																		</span>
 																	</h3>
 																</div>
@@ -288,26 +265,14 @@ function ReportsPage() {
 																			}}
 																			target="_blank"
 																		>
-																			<Button
-																				variant="default"
-																				size="sm"
-																				className="cursor-pointer h-6 px-2 text-xs"
-																			>
+																			<Button variant="default" size="sm" className="cursor-pointer h-6 px-2 text-xs">
 																				<ExternalLink className="size-3 mr-0.5" />
 																				View Report
 																			</Button>
 																		</Link>
 																	) : (
-																		<Badge
-																			variant={getStatusBadgeVariant(
-																				report.status,
-																			)}
-																			className="text-xs"
-																		>
-																			{report.status
-																				.charAt(0)
-																				.toUpperCase() +
-																				report.status.slice(1)}
+																		<Badge variant={getStatusBadgeVariant(report.status)} className="text-xs">
+																			{report.status.charAt(0).toUpperCase() + report.status.slice(1)}
 																		</Badge>
 																	)}
 																</div>

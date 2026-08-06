@@ -1,6 +1,8 @@
+import * as Sentry from "@sentry/node";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { isPromptOverdue } from "@workspace/lib/overdue";
 import { parseScrapeTargets } from "@workspace/lib/providers";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
@@ -10,12 +12,27 @@ export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
 }
 
+// A prompt counts as overdue for alerting only once it's more than this far past
+// its cadence (or, if it has never run, this long after being created) — a grace
+// window so normal jitter and freshly-created prompts don't trip it.
+const OVERDUE_ALERT_GRACE_MS = 30 * 60 * 1000;
+// Don't re-emit the Sentry error more often than this while an outage persists.
+const OVERDUE_ALERT_THROTTLE_MS = 30 * 60 * 1000;
+let lastOverdueAlertMs = 0;
+
+/**
+ * Minimum time since a prompt's last run before maintenance will expedite its
+ * next job again. Without it, a target that never records a run (e.g. a
+ * consistently-failing provider) keeps every prompt perpetually "overdue", so
+ * maintenance re-fires it every tick — turning one broken provider into a
+ * fleet-wide run/cost storm. Mirrors the 1h throttle on the job-creation path.
+ */
+const EXPEDITE_MIN_INTERVAL_MS = 60 * 60 * 1000;
+
 /**
  * Maintenance job that ensures all enabled prompts have scheduled jobs.
  * This is a self-healing mechanism that catches any prompts that fell through
  * the cracks (e.g., due to worker crashes, failed jobs, etc.).
- *
- * Runs every 6 hours via pg-boss schedule.
  */
 export async function scheduleMaintenanceJob(jobs: Job<ScheduleMaintenanceData>[]): Promise<void> {
 	for (const job of jobs) {
@@ -89,6 +106,15 @@ async function runMaintenanceCheck(): Promise<void> {
 	const promptsToSchedule: { promptId: string; cadenceHours: number }[] = [];
 	const jobsToExpedite: string[] = []; // Job IDs to expedite (move start_after to now)
 
+	reportOverduePrompts({
+		prompts: enabledPrompts,
+		brandDelayHours: brandDelayMap,
+		defaultDelayHours,
+		lastRunsMap,
+		modelNames,
+		now,
+	});
+
 	for (const prompt of enabledPrompts) {
 		const pendingJob = pendingJobMap.get(prompt.id);
 
@@ -101,24 +127,25 @@ async function runMaintenanceCheck(): Promise<void> {
 		const runFrequencyMs = cadenceHours * 60 * 60 * 1000;
 		const lastRuns = lastRunsMap[prompt.id] || {};
 
-		// Check if any model is overdue (matches dashboard logic)
-		let isOverdue = false;
-		for (const model of modelNames) {
-			const lastRunAt = lastRuns[model];
-			if (!lastRunAt) {
-				isOverdue = true;
-				break;
-			}
-			const timeSinceRun = now - new Date(lastRunAt).getTime();
-			if (timeSinceRun > runFrequencyMs) {
-				isOverdue = true;
-				break;
-			}
-		}
+		const isOverdue = isPromptOverdue({
+			models: modelNames,
+			lastRunByModel: lastRuns,
+			promptCreatedAt: prompt.createdAt,
+			runFrequencyMs,
+			now,
+		});
 
 		if (!isOverdue) continue;
 
 		if (pendingJob && pendingJob.state === "created") {
+			// Throttle: if the prompt ran within the window it isn't really stalled,
+			// so don't drag its next job forward again. A never-recording target
+			// would otherwise keep it perpetually "overdue" and re-fire it every tick.
+			const lastRunTimes = Object.values(lastRuns).map((d) => new Date(d).getTime());
+			const mostRecentRunMs = lastRunTimes.length > 0 ? Math.max(...lastRunTimes) : null;
+			if (mostRecentRunMs !== null && now - mostRecentRunMs < Math.min(runFrequencyMs, EXPEDITE_MIN_INTERVAL_MS)) {
+				continue;
+			}
 			// There's a future job scheduled - expedite it to run now
 			jobsToExpedite.push(pendingJob.jobId);
 		} else {
@@ -194,6 +221,49 @@ async function runMaintenanceCheck(): Promise<void> {
 			`[schedule-maintenance] Scheduled ${successCount} new jobs${failCount > 0 ? ` (${failCount} failed)` : ""}`,
 		);
 	}
+}
+
+/**
+ * Report to Sentry (as an error, so it pages) when enabled prompts are overdue on
+ * any of their models — the same per-model definition the dashboard uses — past a
+ * grace window. Throttled in-process so a sustained outage doesn't emit a new event
+ * on every maintenance tick.
+ */
+function reportOverduePrompts(input: {
+	prompts: { id: string; brandId: string; createdAt: Date }[];
+	brandDelayHours: Record<string, number>;
+	defaultDelayHours: number;
+	lastRunsMap: Record<string, Record<string, Date>>;
+	modelNames: string[];
+	now: number;
+}): void {
+	const { prompts: enabled, brandDelayHours, defaultDelayHours, lastRunsMap, modelNames, now } = input;
+
+	let overduePrompts = 0;
+	for (const prompt of enabled) {
+		const runFrequencyMs = (brandDelayHours[prompt.brandId] ?? defaultDelayHours) * 60 * 60 * 1000;
+		const overdue = isPromptOverdue({
+			models: modelNames,
+			lastRunByModel: lastRunsMap[prompt.id] ?? {},
+			promptCreatedAt: prompt.createdAt,
+			runFrequencyMs,
+			now,
+			graceMs: OVERDUE_ALERT_GRACE_MS,
+		});
+		if (overdue) overduePrompts++;
+	}
+
+	if (overduePrompts === 0) return;
+	if (now - lastOverdueAlertMs < OVERDUE_ALERT_THROTTLE_MS) return;
+	lastOverdueAlertMs = now;
+
+	console.warn(`[schedule-maintenance] ${overduePrompts} prompt(s) overdue by >30m — reporting to Sentry`);
+	Sentry.withScope((scope) => {
+		scope.setLevel("error");
+		scope.setTag("scheduler", "overdue-prompts");
+		scope.setFingerprint(["scheduler-overdue-prompts"]);
+		Sentry.captureMessage(`Scheduler: ${overduePrompts} prompt(s) overdue by >30m`, "error");
+	});
 }
 
 /**

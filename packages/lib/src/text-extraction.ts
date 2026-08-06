@@ -54,10 +54,24 @@ export function extractTextFromGoogle(rawOutput: any): string {
 	return extractTextFromDataforseo(rawOutput);
 }
 
+/**
+ * The `dataforseo` provider routes to three different DataForSEO products, so
+ * stored rows under that one provider id carry three shapes. The LLM Scraper is
+ * the one that renders its answer as top-level `markdown` and cites through
+ * top-level `sources`; neither the LLM Responses nor the SERP results have
+ * either field.
+ */
+function isDataforseoScraperResult(result: any): boolean {
+	return typeof result?.markdown === "string" || Array.isArray(result?.sources);
+}
+
 export function extractTextFromDataforseo(rawOutput: any): string {
 	try {
 		const result = rawOutput?.tasks?.[0]?.result?.[0];
 		if (result) {
+			if (isDataforseoScraperResult(result)) {
+				return extractTextFromDataforseoScraper(rawOutput);
+			}
 			const items = result.items || [];
 			// AI Optimization LLM Responses (chatgpt/perplexity/gemini) use
 			// items[].sections[].text; the SERP Google AI Mode shape below uses
@@ -102,6 +116,61 @@ export function extractTextFromDataforseoLlm(rawOutput: any): string {
 	} catch (error) {
 		console.error("Error extracting text from DataForSEO LLM output:", error);
 		return "Error extracting text content.";
+	}
+}
+
+/**
+ * Text extraction for DataForSEO's AI Optimization "LLM Scraper" API
+ * (chatgpt / gemini). The scraped answer arrives pre-rendered as markdown at
+ * tasks[].result[].markdown; items[] carries the same content split into typed
+ * blocks (text, tables, product cards), so the top-level field is preferred.
+ */
+export function extractTextFromDataforseoScraper(rawOutput: any): string {
+	try {
+		const result = rawOutput?.tasks?.[0]?.result?.[0];
+		const markdown = result?.markdown;
+		if (typeof markdown === "string" && markdown.trim()) return markdown;
+		// Older or partial responses may only populate the per-item blocks.
+		const texts: string[] = [];
+		for (const item of result?.items ?? []) {
+			if (typeof item?.markdown === "string" && item.markdown.trim()) texts.push(item.markdown.trim());
+		}
+		if (texts.length) return texts.join("\n");
+		return "No text content found in DataForSEO Scraper output.";
+	} catch (error) {
+		console.error("Error extracting text from DataForSEO Scraper output:", error);
+		return "Error extracting text content.";
+	}
+}
+
+/**
+ * Citation extraction for DataForSEO's AI Optimization "LLM Scraper" API.
+ * tasks[].result[].sources is the deduplicated set the answer actually cited;
+ * items[].sources repeats those same entries. ChatGPT's `search_results` is
+ * deliberately ignored — those are results the model was shown, not sources it
+ * cited.
+ */
+export function extractCitationsFromDataforseoScraper(rawOutput: any): Citation[] {
+	try {
+		const citations: Citation[] = [];
+		const seen = new Set<string>();
+		let idx = 0;
+		const result = rawOutput?.tasks?.[0]?.result?.[0];
+		const sources = [...(result?.sources ?? []), ...(result?.items ?? []).flatMap((i: any) => i?.sources ?? [])];
+		for (const source of sources) {
+			const url = source?.url;
+			if (!url || typeof url !== "string" || !url.startsWith("http")) continue;
+			if (seen.has(url)) continue;
+			seen.add(url);
+			const c = parseCitationUrl(url, source.title, idx);
+			if (c) {
+				citations.push(c);
+				idx++;
+			}
+		}
+		return citations;
+	} catch {
+		return [];
 	}
 }
 
@@ -157,10 +226,51 @@ export function extractTextFromOlostep(rawOutput: any): string {
 	}
 }
 
+// BrightData's SERP `ai_overview.texts` is a tree: paragraph blocks carry a
+// `snippet`, list blocks nest their items under `list` (which can themselves
+// nest), so walk it depth-first and collect snippets in reading order.
+function collectAioSnippets(node: any, out: string[], depth = 0): void {
+	if (node == null || depth > 8) return;
+	if (Array.isArray(node)) {
+		for (const child of node) collectAioSnippets(child, out, depth + 1);
+		return;
+	}
+	if (typeof node === "string") {
+		if (node.trim()) out.push(node.trim());
+		return;
+	}
+	if (typeof node === "object") {
+		if (typeof node.snippet === "string" && node.snippet.trim()) out.push(node.snippet.trim());
+		else if (typeof node.text === "string" && node.text.trim()) out.push(node.text.trim());
+		for (const key of ["list", "texts", "items", "blocks", "paragraphs"]) {
+			if (Array.isArray(node[key])) collectAioSnippets(node[key], out, depth + 1);
+		}
+	}
+}
+
+// Google AI Overview arrives through BrightData's SERP API (brd_json), where the
+// overview sits under `ai_overview` rather than the chatbot answer fields.
+function extractBrightdataAiOverviewText(record: any): string | null {
+	const aio = record?.ai_overview;
+	if (!aio || typeof aio !== "object") return null;
+	for (const key of ["markdown", "text", "aio_text", "content", "answer"]) {
+		if (typeof aio[key] === "string" && aio[key].trim()) return aio[key].trim();
+	}
+	for (const listKey of ["texts", "items", "text_blocks", "blocks", "paragraphs"]) {
+		if (!Array.isArray(aio[listKey])) continue;
+		const snippets: string[] = [];
+		collectAioSnippets(aio[listKey], snippets);
+		if (snippets.length) return snippets.join("\n");
+	}
+	return null;
+}
+
 export function extractTextFromBrightdata(rawOutput: any): string {
 	try {
 		const record = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
 		if (!record) return "No content in BrightData output.";
+		const aiOverview = extractBrightdataAiOverviewText(record);
+		if (aiOverview) return aiOverview;
 		for (const key of [
 			"answer_text_markdown",
 			"answer_text",
@@ -178,20 +288,73 @@ export function extractTextFromBrightdata(rawOutput: any): string {
 	}
 }
 
+// Google AI Overview via Oxylabs' google_search source. The overview sits in the
+// parsed SERP as one or more blocks, each a list of answer fragments that may
+// carry reference URLs. The wrapping has shifted across Oxylabs revisions, so
+// probe both the nested-results and top-level shapes.
+function oxylabsAiOverviews(content: any): any[] {
+	const aio = content?.results?.ai_overviews ?? content?.ai_overviews;
+	return Array.isArray(aio) ? aio : [];
+}
+
+function extractOxylabsAiOverviewText(content: any): string | null {
+	const parts: string[] = [];
+	const push = (v: any) => {
+		if (typeof v === "string" && v.trim()) parts.push(v.trim());
+	};
+	for (const overview of oxylabsAiOverviews(content)) {
+		for (const answer of overview?.answer_text ?? []) {
+			if (typeof answer === "string") push(answer);
+			for (const fragment of answer?.fragments ?? []) push(fragment?.text);
+		}
+		if (parts.length === 0) push(overview?.text ?? overview?.markdown);
+	}
+	return parts.length > 0 ? parts.join("\n\n") : null;
+}
+
 export function extractTextFromOxylabs(rawOutput: any): string {
 	try {
 		const content = rawOutput?.results?.[0]?.content;
 		if (!content) return "No content in Oxylabs output.";
+		// Google AI Overview (google_search source): prefer the overview block
+		// over the SERP's other text fields.
+		const aiOverview = extractOxylabsAiOverviewText(content);
+		if (aiOverview) return aiOverview;
 		for (const key of [
-			"markdown_text",       // ChatGPT parsed
-			"answer_results_md",   // Perplexity parsed
-			"response_text",       // ChatGPT / Google AI Mode fallback
+			"markdown_text", // ChatGPT parsed
+			"answer_results_md", // Perplexity parsed
+			"response_text", // ChatGPT / Google AI Mode fallback
 			"answer_text",
 			"answer",
 		]) {
 			if (typeof content[key] === "string" && content[key].trim()) return content[key].trim();
 		}
 		return "No text content found in Oxylabs output.";
+	} catch {
+		return "Error extracting text content.";
+	}
+}
+
+/**
+ * The answer object inside a Cloro task `response`, or null when there isn't
+ * one. Chatbot tasks (ChatGPT, Perplexity, Copilot, Gemini) and Google AI Mode
+ * put the answer at the top level; the Google AI Overview task nests it under
+ * `aioverview`, which is null when Google showed no overview.
+ */
+export function cloroAnswer(rawOutput: any): Record<string, any> | null {
+	const answer =
+		rawOutput && typeof rawOutput === "object" && "aioverview" in rawOutput ? rawOutput.aioverview : rawOutput;
+	return answer && typeof answer === "object" ? answer : null;
+}
+
+export function extractTextFromCloro(rawOutput: any): string {
+	try {
+		const answer = cloroAnswer(rawOutput);
+		if (!answer) return "No content in Cloro output.";
+		for (const key of ["text", "markdown"]) {
+			if (typeof answer[key] === "string" && answer[key].trim()) return answer[key].trim();
+		}
+		return "No text content found in Cloro output.";
 	} catch {
 		return "Error extracting text content.";
 	}
@@ -227,6 +390,8 @@ export function extractTextContent(rawOutput: any, providerOrEngine: string): st
 			return extractTextFromBrightdata(rawOutput);
 		case "oxylabs":
 			return extractTextFromOxylabs(rawOutput);
+		case "cloro":
+			return extractTextFromCloro(rawOutput);
 		default:
 			return tryGenericExtraction(rawOutput);
 	}
@@ -302,7 +467,11 @@ export function extractCitationsFromDataforseo(rawOutput: any): Citation[] {
 	try {
 		const citations: Citation[] = [];
 		let idx = 0;
-		const items = rawOutput?.tasks?.[0]?.result?.[0]?.items ?? [];
+		const result = rawOutput?.tasks?.[0]?.result?.[0];
+		if (isDataforseoScraperResult(result)) {
+			return extractCitationsFromDataforseoScraper(rawOutput);
+		}
+		const items = result?.items ?? [];
 		// AI Optimization LLM Responses (chatgpt/perplexity/gemini) carry
 		// citations in items[].sections[].annotations[]; delegate when present.
 		if (items.some((item: any) => Array.isArray(item?.sections))) {
@@ -468,6 +637,18 @@ export function extractCitationsFromAnthropic(rawOutput: any): Citation[] {
 	}
 }
 
+// BrightData suffixes AI Overview reference titles with UI noise like
+// ". Opens in new tab." Cut it at a plain indexOf and trim the trailing
+// punctuation — no backtracking regex over the (uncontrolled) title.
+function stripAioTitleNoise(title: string): string {
+	const marker = title.toLowerCase().indexOf("opens in new tab");
+	if (marker === -1) return title.trim();
+	return title
+		.slice(0, marker)
+		.replace(/[.\s]+$/, "")
+		.trim();
+}
+
 export function extractCitationsFromBrightdata(rawOutput: any): Citation[] {
 	try {
 		const record = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
@@ -475,17 +656,34 @@ export function extractCitationsFromBrightdata(rawOutput: any): Citation[] {
 		const citations: Citation[] = [];
 		const seen = new Set<string>();
 		let idx = 0;
+		const push = (url: any, title: any) => {
+			if (typeof url !== "string" || !url.startsWith("http") || seen.has(url)) return;
+			seen.add(url);
+			const c = parseCitationUrl(url, typeof title === "string" ? title : undefined, idx);
+			if (c) {
+				citations.push(c);
+				idx++;
+			}
+		};
+		// SERP API (Google AI Overview) lists its sources under `ai_overview`,
+		// where each reference carries the URL as `href` and a title suffixed with
+		// UI noise (". Opens in new tab.") that we trim off.
+		const aio = record.ai_overview;
+		if (aio && typeof aio === "object") {
+			for (const field of ["references", "source_links", "sources", "links"]) {
+				if (!Array.isArray(aio[field])) continue;
+				for (const item of aio[field]) {
+					const url = typeof item === "string" ? item : (item?.href ?? item?.url ?? item?.link);
+					const title = typeof item?.title === "string" ? stripAioTitleNoise(item.title) : item?.name;
+					push(url, title);
+				}
+			}
+		}
+		// Chatbot dataset citation fields.
 		for (const field of ["citations", "links_attached", "sources"]) {
 			if (!Array.isArray(record[field])) continue;
 			for (const item of record[field]) {
-				const url = typeof item === "string" ? item : item?.url;
-				if (!url || typeof url !== "string" || !url.startsWith("http") || seen.has(url)) continue;
-				seen.add(url);
-				const c = parseCitationUrl(url, item?.title, idx);
-				if (c) {
-					citations.push(c);
-					idx++;
-				}
+				push(typeof item === "string" ? item : item?.url, item?.title);
 			}
 		}
 		return citations;
@@ -506,7 +704,10 @@ export function extractCitationsFromOxylabs(rawOutput: any): Citation[] {
 			if (typeof url !== "string" || !url.startsWith("http") || seen.has(url)) return;
 			seen.add(url);
 			const c = parseCitationUrl(url, typeof title === "string" ? title : undefined, idx);
-			if (c) { citations.push(c); idx++; }
+			if (c) {
+				citations.push(c);
+				idx++;
+			}
 		};
 
 		// Common citation fields across Oxylabs parsed AI sources.
@@ -530,6 +731,58 @@ export function extractCitationsFromOxylabs(rawOutput: any): Citation[] {
 				} else {
 					pushUrl(item?.url ?? item?.link, item?.title ?? item?.name);
 				}
+			}
+		}
+
+		// Google AI Overview references hang off each answer fragment, with any
+		// extra sources listed in the overview's source panel.
+		for (const overview of oxylabsAiOverviews(content)) {
+			for (const answer of overview?.answer_text ?? []) {
+				for (const fragment of answer?.fragments ?? []) {
+					for (const ref of fragment?.references ?? []) pushUrl(ref?.url, ref?.source);
+				}
+			}
+			for (const item of overview?.source_panel?.items ?? []) {
+				pushUrl(item?.url ?? item?.link, item?.title ?? item?.source);
+			}
+		}
+		return citations;
+	} catch {
+		return [];
+	}
+}
+
+export function extractCitationsFromCloro(rawOutput: any): Citation[] {
+	try {
+		const answer = cloroAnswer(rawOutput);
+		if (!answer) return [];
+		const citations: Citation[] = [];
+		const seen = new Set<string>();
+		let idx = 0;
+
+		const push = (url: any, title: any) => {
+			if (typeof url !== "string" || !url.startsWith("http") || seen.has(url)) return;
+			seen.add(url);
+			const c = parseCitationUrl(url, typeof title === "string" ? title : undefined, idx);
+			if (c) {
+				citations.push(c);
+				idx++;
+			}
+		};
+
+		// `sources` is the answer's reference panel and `citationPills` are the
+		// inline citations (a denormalized subset). Each entry exposes the source
+		// URL as `url` and its title as `label`. AI Overview's `relatedLinks` is
+		// the block of links Google offers alongside the answer, not sources it
+		// drew on, so it is not read.
+		//
+		// Google's own Shopping deep links do turn up inside these two fields, and
+		// they stay: the citations page splits them out of the source mix by URL
+		// and builds the Google Shopping module from them.
+		for (const field of ["sources", "citationPills"]) {
+			if (!Array.isArray(answer[field])) continue;
+			for (const item of answer[field]) {
+				push(item?.url ?? item?.link, item?.label ?? item?.title);
 			}
 		}
 		return citations;
@@ -562,6 +815,8 @@ export function extractCitations(rawOutput: any, providerOrEngine: string): Cita
 			return extractCitationsFromBrightdata(rawOutput);
 		case "oxylabs":
 			return extractCitationsFromOxylabs(rawOutput);
+		case "cloro":
+			return extractCitationsFromCloro(rawOutput);
 		case "anthropic-api":
 		case "anthropic":
 		case "claude":

@@ -76,13 +76,13 @@ export function ProgressBarChart({
 		if (customTotal !== undefined) {
 			return customTotal;
 		}
-		
+
 		if (percentageMode === "total") {
 			return items.reduce((sum, item) => sum + item.count, 0);
 		}
-		
+
 		// percentageMode === "max"
-		return Math.max(...items.map(item => item.count), 1);
+		return Math.max(...items.map((item) => item.count), 1);
 	}, [items, percentageMode, customTotal]);
 
 	const getItemColor = (item: ProgressBarItem): string => {
@@ -90,12 +90,12 @@ export function ProgressBarChart({
 		if (item.color) {
 			return item.color;
 		}
-		
+
 		// Category-based color
 		if (item.category && colorMapping[item.category]) {
 			return colorMapping[item.category];
 		}
-		
+
 		// Default color
 		return defaultColor;
 	};
@@ -115,48 +115,46 @@ export function ProgressBarChart({
 
 				return (
 					<div key={item.label} className="space-y-2">
-					<div className="flex items-center justify-between">
-						<div className="flex items-center gap-1 min-w-0 flex-1">
-							{item.tooltip ? (
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<span
-											className={cn(
-												"text-sm cursor-default",
-												isHighlighted ? "font-bold" : "font-medium",
-												truncateLabels && "truncate",
-												isClickable && "cursor-pointer hover:underline"
-											)}
-											onClick={item.onClick}
-										>
-											{item.label}
-										</span>
-									</TooltipTrigger>
-									<TooltipContent className="max-w-xs text-xs font-normal">{item.tooltip}</TooltipContent>
-								</Tooltip>
-							) : (
-								<span
-									className={cn(
-										"text-sm",
-										isHighlighted ? "font-bold" : "font-medium",
-										truncateLabels && "truncate",
-										isClickable && "cursor-pointer hover:underline"
-									)}
-									onClick={item.onClick}
-								>
-									{item.label}
-								</span>
-							)}
-							{item.action}
-						</div>
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-1 min-w-0 flex-1">
+								{item.tooltip ? (
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<span
+												className={cn(
+													"text-sm cursor-default",
+													isHighlighted ? "font-bold" : "font-medium",
+													truncateLabels && "truncate",
+													isClickable && "cursor-pointer hover:underline",
+												)}
+												onClick={item.onClick}
+											>
+												{item.label}
+											</span>
+										</TooltipTrigger>
+										<TooltipContent className="max-w-xs text-xs font-normal">{item.tooltip}</TooltipContent>
+									</Tooltip>
+								) : (
+									<span
+										className={cn(
+											"text-sm",
+											isHighlighted ? "font-bold" : "font-medium",
+											truncateLabels && "truncate",
+											isClickable && "cursor-pointer hover:underline",
+										)}
+										onClick={item.onClick}
+									>
+										{item.label}
+									</span>
+								)}
+								{item.action}
+							</div>
 							<div className="flex items-center gap-2 ml-2 shrink-0">
 								<span className="text-sm">{item.count.toLocaleString()}</span>
 								{item.suffix}
 							</div>
 						</div>
-						{item.subtitle && (
-							<p className="text-xs text-muted-foreground truncate -mt-1">{item.subtitle}</p>
-						)}
+						{item.subtitle && <p className="text-xs text-muted-foreground truncate -mt-1">{item.subtitle}</p>}
 						<div className={cn("relative w-full overflow-hidden rounded-full", trackColor, barHeight)}>
 							<div
 								className="h-full transition-all rounded-full"
@@ -205,4 +203,3 @@ export const MODEL_COLORS: ColorMapping = {
 			.filter((entry): entry is [string, string] => entry[1] !== undefined),
 	),
 };
-

@@ -5,7 +5,7 @@
  * Whitelabel mode: auto-redirects to Auth0 SSO (no form shown).
  */
 
-import { IconInfoCircle } from "@tabler/icons-react";
+import { IconBrandGoogle, IconInfoCircle } from "@tabler/icons-react";
 import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
@@ -13,9 +13,11 @@ import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
+import { Separator } from "@workspace/ui/components/separator";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import FullPageCard from "@/components/full-page-card";
+import { safeReturnTo } from "@/lib/return-to";
 
 export const Route = createFileRoute("/auth/login")({
 	validateSearch: z.object({
@@ -23,19 +25,6 @@ export const Route = createFileRoute("/auth/login")({
 	}),
 	component: LoginPage,
 });
-
-/** Reject cross-origin returnTo values to prevent open redirects. */
-function safeReturnTo(returnTo: string | undefined): string {
-	if (!returnTo) return "/app";
-	if (returnTo.startsWith("/") && !returnTo.startsWith("//")) return returnTo;
-	try {
-		const url = new URL(returnTo, window.location.origin);
-		if (url.origin !== window.location.origin) return "/app";
-		return `${url.pathname}${url.search}${url.hash}`;
-	} catch {
-		return "/app";
-	}
-}
 
 function LoginPage() {
 	const { returnTo } = Route.useSearch();
@@ -47,7 +36,14 @@ function LoginPage() {
 		return <SSOLogin returnTo={returnTo} />;
 	}
 
-	return <EmailPasswordLogin returnTo={returnTo} isDemo={mode === "demo"} canRegister={canRegister} />;
+	return (
+		<EmailPasswordLogin
+			returnTo={returnTo}
+			isDemo={mode === "demo"}
+			isCloud={mode === "cloud"}
+			canRegister={canRegister}
+		/>
+	);
 }
 
 function SSOLogin({ returnTo }: { returnTo?: string }) {
@@ -94,10 +90,12 @@ function SSOLogin({ returnTo }: { returnTo?: string }) {
 export function EmailPasswordLogin({
 	returnTo,
 	isDemo,
+	isCloud,
 	canRegister,
 }: {
 	returnTo?: string;
 	isDemo?: boolean;
+	isCloud?: boolean;
 	canRegister?: boolean;
 }) {
 	const navigate = useNavigate();
@@ -118,7 +116,11 @@ export function EmailPasswordLogin({
 			});
 
 			if (result.error) {
-				setError(result.error.message ?? "Invalid email or password");
+				if (isCloud && result.error.status === 403) {
+					setError("Please verify your email first — we just sent you a new verification link.");
+				} else {
+					setError(result.error.message ?? "Invalid email or password");
+				}
 				setLoading(false);
 				return;
 			}
@@ -132,6 +134,24 @@ export function EmailPasswordLogin({
 
 	return (
 		<FullPageCard title="Sign in" subtitle={isDemo ? undefined : "Enter your email and password to continue"}>
+			{isCloud && (
+				<div className="space-y-4 w-full pb-4">
+					<Button
+						type="button"
+						variant="outline"
+						className="w-full"
+						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: safeReturnTo(returnTo) })}
+					>
+						<IconBrandGoogle className="size-4" />
+						Continue with Google
+					</Button>
+					<div className="flex items-center gap-3">
+						<Separator className="flex-1" />
+						<span className="text-xs text-muted-foreground">or</span>
+						<Separator className="flex-1" />
+					</div>
+				</div>
+			)}
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
 				{isDemo && <DemoCredentialsCallout />}
 				{error && (
@@ -155,7 +175,14 @@ export function EmailPasswordLogin({
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="password">Password</Label>
+							<div className="flex items-center justify-between">
+								<Label htmlFor="password">Password</Label>
+								{isCloud && (
+									<Link to="/auth/forgot-password" className="text-xs text-primary hover:underline">
+										Forgot password?
+									</Link>
+								)}
+							</div>
 							<Input
 								id="password"
 								type="password"

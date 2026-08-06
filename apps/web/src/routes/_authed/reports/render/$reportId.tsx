@@ -37,8 +37,13 @@ interface ReportData {
 	promptRuns: PromptRunResult[];
 }
 
-interface CompetitorResult { name: string; domain: string; }
-interface PromptData { value: string; }
+interface CompetitorResult {
+	name: string;
+	domain: string;
+}
+interface PromptData {
+	value: string;
+}
 
 interface PromptRunResult {
 	promptValue: string;
@@ -54,7 +59,13 @@ interface PromptRunResult {
 	}>;
 }
 
-interface MockPrompt { id: string; brandId: string; value: string; enabled: boolean; createdAt: Date; }
+interface MockPrompt {
+	id: string;
+	brandId: string;
+	value: string;
+	enabled: boolean;
+	createdAt: Date;
+}
 
 // ---------- Server function ----------
 
@@ -73,7 +84,9 @@ function isPromptBranded(promptValue: string, brandName: string, brandWebsite: s
 		const url = new URL(brandWebsite.startsWith("http") ? brandWebsite : `https://${brandWebsite}`);
 		const domain = url.hostname.replace(/^www\./, "").toLowerCase();
 		const domainWithoutTld = domain.split(".")[0];
-		return promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld);
+		return (
+			promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld)
+		);
 	} catch {
 		return promptLower.includes(brandNameLower);
 	}
@@ -88,10 +101,7 @@ export const Route = createFileRoute("/_authed/reports/render/$reportId")({
 		return { report };
 	},
 	head: () => ({
-		meta: [
-			{ title: "AI Share of Voice Report" },
-			{ name: "robots", content: "noindex, nofollow" },
-		],
+		meta: [{ title: "AI Share of Voice Report" }, { name: "robots", content: "noindex, nofollow" }],
 	}),
 	component: ReportRenderPage,
 });
@@ -115,7 +125,9 @@ function ReportRenderPage() {
 	if (report.status !== "completed") {
 		return (
 			<div className="max-w-3xl mx-auto p-8 text-center">
-				<p className="text-slate-500">Report status: <span className="font-medium">{report.status}</span></p>
+				<p className="text-slate-500">
+					Report status: <span className="font-medium">{report.status}</span>
+				</p>
 			</div>
 		);
 	}
@@ -124,16 +136,29 @@ function ReportRenderPage() {
 
 	// Build mock data structures for chart component compatibility
 	const mockBrand = {
-		id: "brand-1", name: report.brandName, website: report.brandWebsite,
-		enabled: true, onboarded: true, delayOverrideHours: null,
-		createdAt: new Date(), updatedAt: new Date(),
+		id: "brand-1",
+		name: report.brandName,
+		website: report.brandWebsite,
+		enabled: true,
+		onboarded: true,
+		delayOverrideHours: null,
+		createdAt: new Date(),
+		updatedAt: new Date(),
 	};
 	const mockCompetitors = data.competitors.map((comp, i) => ({
-		id: `comp-${i + 1}`, name: comp.name, domain: comp.domain,
-		brandId: mockBrand.id, createdAt: new Date(), updatedAt: new Date(),
+		id: `comp-${i + 1}`,
+		name: comp.name,
+		domain: comp.domain,
+		brandId: mockBrand.id,
+		createdAt: new Date(),
+		updatedAt: new Date(),
 	}));
 	const mockPrompts: MockPrompt[] = data.prompts.map((p, i) => ({
-		id: `prompt-${i + 1}`, brandId: mockBrand.id, value: p.value, enabled: true, createdAt: new Date(),
+		id: `prompt-${i + 1}`,
+		brandId: mockBrand.id,
+		value: p.value,
+		enabled: true,
+		createdAt: new Date(),
 	}));
 
 	// Build run arrays
@@ -146,15 +171,25 @@ function ReportRenderPage() {
 			const promptId = `prompt-${pi + 1}`;
 			simpleRuns.push({ promptId, brandMentioned: run.brandMentioned, competitorsMentioned: run.competitorsMentioned });
 			fullRuns.push({
-				promptId, promptValue: pr.promptValue,
-				brandMentioned: run.brandMentioned, competitorsMentioned: run.competitorsMentioned,
-				webQueries: run.webQueries || [], textContent: run.textContent || "", model: run.model,
+				promptId,
+				promptValue: pr.promptValue,
+				brandMentioned: run.brandMentioned,
+				competitorsMentioned: run.competitorsMentioned,
+				webQueries: run.webQueries || [],
+				textContent: run.textContent || "",
+				model: run.model,
 			});
 			chartRuns.push({
-				id: `run-${pi}-${ri}`, promptId, brandMentioned: run.brandMentioned,
-				competitorsMentioned: run.competitorsMentioned, createdAt: new Date(),
-				model: run.model, version: run.version,
-				webSearchEnabled: run.webSearchEnabled, rawOutput: run.rawOutput, webQueries: run.webQueries,
+				id: `run-${pi}-${ri}`,
+				promptId,
+				brandMentioned: run.brandMentioned,
+				competitorsMentioned: run.competitorsMentioned,
+				createdAt: new Date(),
+				model: run.model,
+				version: run.version,
+				webSearchEnabled: run.webSearchEnabled,
+				rawOutput: run.rawOutput,
+				webQueries: run.webQueries,
 			});
 		});
 	});
@@ -176,13 +211,10 @@ function ReportRenderPage() {
 	const promptSoVs = mockPrompts.map((p) => computePromptSoV(p.id, simpleRuns, filteredCompetitors));
 	const promptMap = new Map(mockPrompts.map((p) => [p.id, p]));
 
-	const selectedPrompts = selectRepresentativePrompts(
-		promptSoVs,
-		(id: string) => {
-			const p = promptMap.get(id);
-			return p ? isPromptBranded(p.value, report.brandName, report.brandWebsite) : false;
-		},
-	);
+	const selectedPrompts = selectRepresentativePrompts(promptSoVs, (id: string) => {
+		const p = promptMap.get(id);
+		return p ? isPromptBranded(p.value, report.brandName, report.brandWebsite) : false;
+	});
 
 	// Rich analysis
 	const contentGaps = findContentGaps(fullRuns, 5);
@@ -193,7 +225,7 @@ function ReportRenderPage() {
 	// Enrich web queries with competitor mention data
 	const queryCompetitorMap = new Map<string, { brandMentioned: boolean; competitorCount: number }>();
 	for (const run of fullRuns) {
-		for (const query of (run.webQueries || [])) {
+		for (const query of run.webQueries || []) {
 			const normalized = query.toLowerCase().trim();
 			if (!normalized || normalized.length < 3) continue;
 			const existing = queryCompetitorMap.get(normalized);
@@ -217,15 +249,24 @@ function ReportRenderPage() {
 	const withBrand = enrichedQueries.filter((q) => q.brandMentioned).sort((a, b) => b.count - a.count);
 	for (const q of byFrequency) {
 		if (topSearchQueries.length >= 3) break;
-		if (!usedQueries.has(q.query)) { topSearchQueries.push(q); usedQueries.add(q.query); }
+		if (!usedQueries.has(q.query)) {
+			topSearchQueries.push(q);
+			usedQueries.add(q.query);
+		}
 	}
 	for (const q of withBrand) {
 		if (topSearchQueries.length >= 6) break;
-		if (!usedQueries.has(q.query)) { topSearchQueries.push(q); usedQueries.add(q.query); }
+		if (!usedQueries.has(q.query)) {
+			topSearchQueries.push(q);
+			usedQueries.add(q.query);
+		}
 	}
 	for (const q of byFrequency) {
 		if (topSearchQueries.length >= 6) break;
-		if (!usedQueries.has(q.query)) { topSearchQueries.push(q); usedQueries.add(q.query); }
+		if (!usedQueries.has(q.query)) {
+			topSearchQueries.push(q);
+			usedQueries.add(q.query);
+		}
 	}
 	topSearchQueries.sort((a, b) => b.competitorCount - a.competitorCount);
 
@@ -243,12 +284,16 @@ function ReportRenderPage() {
 
 	return (
 		<div className="max-w-[780px] mx-auto bg-white print:max-w-none text-slate-900">
-			<style dangerouslySetInnerHTML={{ __html: `
+			<style
+				dangerouslySetInnerHTML={{
+					__html: `
 				@media print {
 					@page { size: letter; margin: 0.5in 0.6in; }
 					body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 				}
-			`}} />
+			`,
+				}}
+			/>
 
 			{/* ===== PAGE 1: COVER ===== */}
 			<div className="print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
@@ -275,11 +320,16 @@ function ReportRenderPage() {
 							</span>
 							<div>
 								<div className="text-sm font-semibold">Share of Voice</div>
-								<div className="text-xs text-slate-500">{sovLevel.label} &mdash; {sovLevel.description}</div>
+								<div className="text-xs text-slate-500">
+									{sovLevel.label} &mdash; {sovLevel.description}
+								</div>
 							</div>
 						</div>
 						<div className="mt-4 w-full bg-slate-200 rounded-full h-2">
-							<div className={`h-2 rounded-full ${sovBgColor(overallSoV)}`} style={{ width: `${Math.max(2, overallSoV ?? 0)}%` }} />
+							<div
+								className={`h-2 rounded-full ${sovBgColor(overallSoV)}`}
+								style={{ width: `${Math.max(2, overallSoV ?? 0)}%` }}
+							/>
 						</div>
 					</div>
 
@@ -297,15 +347,23 @@ function ReportRenderPage() {
 			<div className="print:break-before-page print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
 				<RunningHeader brand={report.brandName} />
 
-				<Section title="AI Engine Performance" subtitle={`Brand mention rate across ${engineBreakdown.reduce((s, e) => s + e.totalRuns, 0)} evaluations`} />
+				<Section
+					title="AI Engine Performance"
+					subtitle={`Brand mention rate across ${engineBreakdown.reduce((s, e) => s + e.totalRuns, 0)} evaluations`}
+				/>
 				<div className="grid grid-cols-3 gap-3 mb-8">
 					{engineBreakdown.map((eng) => (
 						<div key={eng.engine} className="border border-slate-200 rounded-lg p-4">
 							<div className="text-[11px] font-medium text-slate-500 mb-2">{eng.engine}</div>
 							<div className={`text-3xl font-bold ${getSoVColor(eng.mentionRate)}`}>{eng.mentionRate}%</div>
-							<div className="text-[10px] text-slate-400 mt-1">{eng.brandMentions} of {eng.totalRuns} runs</div>
+							<div className="text-[10px] text-slate-400 mt-1">
+								{eng.brandMentions} of {eng.totalRuns} runs
+							</div>
 							<div className="mt-2.5 w-full bg-slate-100 rounded-full h-1.5">
-								<div className={`h-1.5 rounded-full ${sovBgColor(eng.mentionRate)}`} style={{ width: `${Math.max(2, eng.mentionRate)}%` }} />
+								<div
+									className={`h-1.5 rounded-full ${sovBgColor(eng.mentionRate)}`}
+									style={{ width: `${Math.max(2, eng.mentionRate)}%` }}
+								/>
 							</div>
 						</div>
 					))}
@@ -317,32 +375,48 @@ function ReportRenderPage() {
 						<thead>
 							<tr className="bg-slate-50 border-b border-slate-200">
 								<TH align="left">Brand</TH>
-								<TH align="right" className="w-16">SoV</TH>
-								<TH align="left" className="w-[40%]">Share</TH>
+								<TH align="right" className="w-16">
+									SoV
+								</TH>
+								<TH align="left" className="w-[40%]">
+									Share
+								</TH>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-slate-100">
 							{[
 								{ name: report.brandName, sov: overallSoV ?? 0, isBrand: true },
-								...competitorSoVs.filter((c) => !isBrandName(c.name)).slice(0, 3).map((c) => ({ name: c.name, sov: c.sov, isBrand: false })),
+								...competitorSoVs
+									.filter((c) => !isBrandName(c.name))
+									.slice(0, 3)
+									.map((c) => ({ name: c.name, sov: c.sov, isBrand: false })),
 							]
 								.sort((a, b) => b.sov - a.sov)
 								.map((row, i) => (
-								<tr key={`sov-${i}`} className={row.isBrand ? "bg-blue-50/30" : ""}>
-									<td className={`py-2.5 px-4 text-sm ${row.isBrand ? "font-semibold" : "text-slate-600"}`}>{row.name}</td>
-									<td className="py-2.5 px-4 text-right">
-										<span className={`text-sm font-bold ${row.isBrand ? sovColor : "text-slate-500"}`}>{row.sov}%</span>
-									</td>
-									<td className="py-2.5 px-4"><Bar value={row.sov} color={row.isBrand ? "bg-blue-500" : "bg-slate-300"} /></td>
-								</tr>
-							))}
+									<tr key={`sov-${i}`} className={row.isBrand ? "bg-blue-50/30" : ""}>
+										<td className={`py-2.5 px-4 text-sm ${row.isBrand ? "font-semibold" : "text-slate-600"}`}>
+											{row.name}
+										</td>
+										<td className="py-2.5 px-4 text-right">
+											<span className={`text-sm font-bold ${row.isBrand ? sovColor : "text-slate-500"}`}>
+												{row.sov}%
+											</span>
+										</td>
+										<td className="py-2.5 px-4">
+											<Bar value={row.sov} color={row.isBrand ? "bg-blue-500" : "bg-slate-300"} />
+										</td>
+									</tr>
+								))}
 						</tbody>
 					</table>
 				</div>
 
 				{competitorFreq.length > 0 && (
 					<>
-						<Section title="Mention Rate" subtitle="Each prompt is evaluated multiple times across AI engines — mentions show total appearances, unique prompts show how many distinct prompts include the brand" />
+						<Section
+							title="Mention Rate"
+							subtitle="Each prompt is evaluated multiple times across AI engines — mentions show total appearances, unique prompts show how many distinct prompts include the brand"
+						/>
 						<div className="border border-slate-200 rounded-lg overflow-hidden print:pb-px">
 							<table className="w-full">
 								<thead>
@@ -354,24 +428,44 @@ function ReportRenderPage() {
 								</thead>
 								<tbody className="divide-y divide-slate-100">
 									{[
-										{ name: report.brandName, mentionCount: simpleRuns.filter((r) => r.brandMentioned).length, promptCount: promptsWithMentions, isBrand: true },
-										...competitorFreq.filter((c) => !isBrandName(c.name)).slice(0, 3).map((c) => ({ ...c, isBrand: false })),
+										{
+											name: report.brandName,
+											mentionCount: simpleRuns.filter((r) => r.brandMentioned).length,
+											promptCount: promptsWithMentions,
+											isBrand: true,
+										},
+										...competitorFreq
+											.filter((c) => !isBrandName(c.name))
+											.slice(0, 3)
+											.map((c) => ({ ...c, isBrand: false })),
 									]
 										.sort((a, b) => b.mentionCount - a.mentionCount)
 										.map((c, i) => (
-										<tr key={`mention-${i}`} className={c.isBrand ? "bg-blue-50/30" : ""}>
-											<td className={`py-2 px-4 text-xs font-medium ${c.isBrand ? "text-slate-900" : "text-slate-700"}`}>{c.name}</td>
-											<td className="py-2 px-4 text-center text-xs text-slate-600">{c.mentionCount}<span className="text-slate-400">/{simpleRuns.length}</span></td>
-											<td className="py-2 px-4 text-center text-xs text-slate-600">{c.promptCount}<span className="text-slate-400">/{totalPrompts}</span></td>
-										</tr>
-									))}
+											<tr key={`mention-${i}`} className={c.isBrand ? "bg-blue-50/30" : ""}>
+												<td
+													className={`py-2 px-4 text-xs font-medium ${c.isBrand ? "text-slate-900" : "text-slate-700"}`}
+												>
+													{c.name}
+												</td>
+												<td className="py-2 px-4 text-center text-xs text-slate-600">
+													{c.mentionCount}
+													<span className="text-slate-400">/{simpleRuns.length}</span>
+												</td>
+												<td className="py-2 px-4 text-center text-xs text-slate-600">
+													{c.promptCount}
+													<span className="text-slate-400">/{totalPrompts}</span>
+												</td>
+											</tr>
+										))}
 								</tbody>
 							</table>
 						</div>
 					</>
 				)}
 
-				<div className="mt-auto"><PageFooter branding={branding} /></div>
+				<div className="mt-auto">
+					<PageFooter branding={branding} />
+				</div>
 			</div>
 
 			{/* ===== CHART PAGES ===== */}
@@ -380,7 +474,10 @@ function ReportRenderPage() {
 					<RunningHeader brand={report.brandName} />
 
 					{pageIdx === 0 ? (
-						<Section title="Prompt Analysis" subtitle="Share of voice for representative prompts — strengths and growth opportunities" />
+						<Section
+							title="Prompt Analysis"
+							subtitle="Share of voice for representative prompts — strengths and growth opportunities"
+						/>
 					) : (
 						<div className="text-xs text-slate-400 italic mb-4">Prompt Analysis (continued)</div>
 					)}
@@ -405,7 +502,9 @@ function ReportRenderPage() {
 						})}
 					</div>
 
-					<div className="mt-auto"><PageFooter branding={branding} /></div>
+					<div className="mt-auto">
+						<PageFooter branding={branding} />
+					</div>
 				</div>
 			))}
 
@@ -413,7 +512,10 @@ function ReportRenderPage() {
 			<div className="print:break-before-page print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
 				<RunningHeader brand={report.brandName} />
 
-				<Section title="Content Gaps" subtitle={`Prompts where competitors appear but ${report.brandName} does not — highest-value opportunities`} />
+				<Section
+					title="Content Gaps"
+					subtitle={`Prompts where competitors appear but ${report.brandName} does not — highest-value opportunities`}
+				/>
 
 				{contentGaps.length > 0 ? (
 					<div className="border border-slate-200 rounded-lg overflow-hidden mb-8">
@@ -421,17 +523,26 @@ function ReportRenderPage() {
 							<thead>
 								<tr className="bg-slate-50 border-b border-slate-200">
 									<TH align="left">Prompt</TH>
-									<TH align="left" className="w-[50%]">Competitors Found</TH>
+									<TH align="left" className="w-[50%]">
+										Competitors Found
+									</TH>
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-slate-100">
 								{contentGaps.map((gap) => (
 									<tr key={gap.promptId}>
-										<td className="py-2.5 px-4 text-xs text-slate-700 leading-relaxed max-w-[320px]">{gap.promptValue}</td>
+										<td className="py-2.5 px-4 text-xs text-slate-700 leading-relaxed max-w-[320px]">
+											{gap.promptValue}
+										</td>
 										<td className="py-2.5 px-4">
 											<div className="flex flex-wrap gap-1">
 												{gap.competitorsMentioned.slice(0, 3).map((c) => (
-													<span key={c} className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium">{c}</span>
+													<span
+														key={c}
+														className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium"
+													>
+														{c}
+													</span>
 												))}
 												{gap.competitorsMentioned.length > 3 && (
 													<span className="text-[10px] text-slate-400">+{gap.competitorsMentioned.length - 3}</span>
@@ -445,20 +556,29 @@ function ReportRenderPage() {
 					</div>
 				) : (
 					<div className="border border-slate-200 rounded-lg p-6 text-center mb-8">
-						<p className="text-slate-500 text-sm">{report.brandName} appears in all prompts where competitors are mentioned.</p>
+						<p className="text-slate-500 text-sm">
+							{report.brandName} appears in all prompts where competitors are mentioned.
+						</p>
 					</div>
 				)}
 
 				{topSearchQueries.length > 0 && (
 					<>
-						<Section title="Top AI Search Queries" subtitle="Common web search queries AI models run when answering prompts in your category" />
+						<Section
+							title="Top AI Search Queries"
+							subtitle="Common web search queries AI models run when answering prompts in your category"
+						/>
 						<div className="border border-slate-200 rounded-lg overflow-hidden">
 							<table className="w-full">
 								<thead>
 									<tr className="bg-slate-50 border-b border-slate-200">
 										<TH align="left">Query</TH>
-										<TH align="center" className="w-28">Competitors Found</TH>
-										<TH align="center" className="w-24">Brand Mentioned</TH>
+										<TH align="center" className="w-28">
+											Competitors Found
+										</TH>
+										<TH align="center" className="w-24">
+											Brand Mentioned
+										</TH>
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-slate-100">
@@ -467,9 +587,11 @@ function ReportRenderPage() {
 											<td className="py-2.5 px-4 text-xs text-slate-700 max-w-[350px] break-words">{q.query}</td>
 											<td className="py-2.5 px-4 text-center text-xs text-slate-600">{q.competitorCount}</td>
 											<td className="py-2.5 px-4 text-center">
-												{q.brandMentioned
-													? <span className="text-emerald-600 font-semibold text-xs">&#10003;</span>
-													: <span className="text-slate-300 text-xs">&mdash;</span>}
+												{q.brandMentioned ? (
+													<span className="text-emerald-600 font-semibold text-xs">&#10003;</span>
+												) : (
+													<span className="text-slate-300 text-xs">&mdash;</span>
+												)}
 											</td>
 										</tr>
 									))}
@@ -479,14 +601,19 @@ function ReportRenderPage() {
 					</>
 				)}
 
-				<div className="mt-auto"><PageFooter branding={branding} /></div>
+				<div className="mt-auto">
+					<PageFooter branding={branding} />
+				</div>
 			</div>
 
 			{/* ===== SoV OPPORTUNITY + WHAT TO DO NEXT ===== */}
 			<div className="print:break-before-page print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
 				<RunningHeader brand={report.brandName} />
 
-				<Section title="Share of Voice Opportunity" subtitle="Overview of your current AI share of voice and growth potential" />
+				<Section
+					title="Share of Voice Opportunity"
+					subtitle="Overview of your current AI share of voice and growth potential"
+				/>
 
 				<div className="border border-slate-200 rounded-lg overflow-hidden mb-8">
 					<table className="w-full">
@@ -503,9 +630,13 @@ function ReportRenderPage() {
 							<tr>
 								<td className="text-center py-3 px-4 text-sm font-semibold">{promptsWithMentions}</td>
 								<td className="text-center py-3 px-4 text-sm text-slate-600">{totalPrompts}</td>
-								<td className="text-center py-3 px-4"><span className={`text-sm font-bold ${sovColor}`}>{overallSoV ?? 0}%</span></td>
 								<td className="text-center py-3 px-4">
-									<span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold ${(overallSoV ?? 0) < 20 ? "bg-rose-50 text-rose-700" : (overallSoV ?? 0) < 40 ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
+									<span className={`text-sm font-bold ${sovColor}`}>{overallSoV ?? 0}%</span>
+								</td>
+								<td className="text-center py-3 px-4">
+									<span
+										className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold ${(overallSoV ?? 0) < 20 ? "bg-rose-50 text-rose-700" : (overallSoV ?? 0) < 40 ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}
+									>
 										{(overallSoV ?? 0) < 20 ? "High" : (overallSoV ?? 0) < 40 ? "Medium" : "Low"}
 									</span>
 								</td>
@@ -521,7 +652,10 @@ function ReportRenderPage() {
 					</table>
 				</div>
 
-				<Section title="What Should I Do Next?" subtitle={`Prompts where competitors outperform ${report.brandName} — your biggest growth opportunities`} />
+				<Section
+					title="What Should I Do Next?"
+					subtitle={`Prompts where competitors outperform ${report.brandName} — your biggest growth opportunities`}
+				/>
 
 				{(() => {
 					const opportunities = promptSoVs
@@ -560,7 +694,9 @@ function ReportRenderPage() {
 					if (opportunities.length === 0) {
 						return (
 							<div className="border border-slate-200 rounded-lg p-6 text-center">
-								<p className="text-slate-500 text-sm">{report.brandName} leads or matches competitors across all tested prompts.</p>
+								<p className="text-slate-500 text-sm">
+									{report.brandName} leads or matches competitors across all tested prompts.
+								</p>
 							</div>
 						);
 					}
@@ -580,7 +716,9 @@ function ReportRenderPage() {
 								<tbody className="divide-y divide-slate-100">
 									{opportunities.map((o) => (
 										<tr key={o.promptValue}>
-											<td className="py-2.5 px-4 text-xs text-slate-700 max-w-[200px] break-words leading-relaxed">{o.promptValue}</td>
+											<td className="py-2.5 px-4 text-xs text-slate-700 max-w-[200px] break-words leading-relaxed">
+												{o.promptValue}
+											</td>
 											<td className="py-2.5 px-4 text-center">
 												<span className={`text-xs font-semibold ${getSoVColor(o.brandSoV)}`}>{o.brandSoV}%</span>
 											</td>
@@ -597,7 +735,9 @@ function ReportRenderPage() {
 					);
 				})()}
 
-				<div className="mt-auto"><PageFooter branding={branding} /></div>
+				<div className="mt-auto">
+					<PageFooter branding={branding} />
+				</div>
 			</div>
 
 			{/* ===== CTA ===== */}
@@ -639,12 +779,10 @@ function ReportRenderPage() {
 					</div>
 
 					<div className="pt-6 border-t border-blue-200">
-						<p className="text-slate-800 font-medium mb-2">
-							Get started with {branding?.name || "Elmo"} today
-						</p>
+						<p className="text-slate-800 font-medium mb-2">Get started with {branding?.name || "Elmo"} today</p>
 						<p className="text-slate-600 text-sm text-balance">
-							Visit <strong>{branding?.url || "elmo.chat"}</strong> to learn more about
-							our AI visibility platform and services.
+							Visit <strong>{branding?.url || "elmo.chat"}</strong> to learn more about our AI visibility platform and
+							services.
 						</p>
 					</div>
 				</div>
@@ -658,7 +796,9 @@ function ReportRenderPage() {
 function RunningHeader({ brand }: { brand: string }) {
 	return (
 		<div className="flex items-center justify-between mb-6 pb-3 border-b border-slate-100">
-			<span className="text-[10px] font-semibold tracking-[0.2em] uppercase text-slate-400">AI Share of Voice Report</span>
+			<span className="text-[10px] font-semibold tracking-[0.2em] uppercase text-slate-400">
+				AI Share of Voice Report
+			</span>
 			<span className="text-[10px] font-medium text-slate-400">{brand}</span>
 		</div>
 	);
@@ -673,10 +813,20 @@ function Section({ title, subtitle }: { title: string; subtitle?: string }) {
 	);
 }
 
-function TH({ children, align, className = "" }: { children: React.ReactNode; align: "left" | "center" | "right"; className?: string }) {
+function TH({
+	children,
+	align,
+	className = "",
+}: {
+	children: React.ReactNode;
+	align: "left" | "center" | "right";
+	className?: string;
+}) {
 	const alignCls = align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left";
 	return (
-		<th className={`py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider text-slate-500 ${alignCls} ${className}`}>
+		<th
+			className={`py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider text-slate-500 ${alignCls} ${className}`}
+		>
 			{children}
 		</th>
 	);
@@ -700,9 +850,10 @@ function Bar({ value, color }: { value: number | null; color: string }) {
 }
 
 function Badge({ category }: { category: PromptCategory }) {
-	const cls = category === "strength"
-		? "bg-emerald-50 text-emerald-700 border-emerald-200"
-		: "bg-amber-50 text-amber-700 border-amber-200";
+	const cls =
+		category === "strength"
+			? "bg-emerald-50 text-emerald-700 border-emerald-200"
+			: "bg-amber-50 text-amber-700 border-amber-200";
 	return (
 		<span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border ${cls}`}>
 			{category === "strength" ? "Strength" : "Opportunity"}

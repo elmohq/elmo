@@ -1,81 +1,135 @@
 ---
-title: Free AI Visibility Tools
-description: "Can you track your AI visibility for free? Yes. Here's what open-source self-hosting, free tiers, and DIY methods can and can't do."
-date: "2026-05-31"
+title: "Free AI Visibility and Answer Engine Monitoring Tools"
+description: "Can you monitor your brand in AI answer engines for free? Yes. Here's what open-source self-hosting, free tiers, graders, and manual AI-visibility checks can and can't do."
+date: "2026-07-15"
 author: ai
-metaTitle: "Free AI Visibility Tools: How to Track for $0"
+metaTitle: "Free Answer Engine Monitoring Tools: AI Visibility for $0"
 tags:
   - ai-visibility
+  - aeo
   - tools
   - free
 itemList:
   - name: Self-host an open-source tool (Elmo)
-    description: "Free and open source under the MIT license, with full features across every major AI engine."
+    description: "Free and open source under the MIT license, with full features across ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews."
   - name: Free tier of a paid tool (AirOps)
     description: "A genuinely free tier, though it tracks ChatGPT only."
+  - name: HubSpot AEO Grader
+    description: "A free one-off audit of your content structure, schema, and AI readability."
   - name: Manual checks
-    description: "Prompt the AI engines yourself and record the answers. No tool required."
+    description: "Prompt the AI answer engines yourself and record the mentions. No tool required."
   - name: DIY script
     description: "Query the model APIs to detect brand mentions, if you're willing to build and maintain it."
 faq:
-  - question: Is there a free AI visibility tool?
-    answer: "Yes. Elmo is free and open source when self-hosted, with full features across every major engine; you only pay for infrastructure and your own AI provider API usage. AirOps offers a free tier that tracks ChatGPT only. Most other tools are paid, though several offer free trials."
-  - question: Can I check my AI visibility for free?
-    answer: "Yes. You can prompt the AI engines by hand and note whether they mention or cite your brand, which costs nothing but your time. For ongoing tracking across several engines, self-hosting an open-source tool like Elmo automates the same loop for free."
-  - question: How do I see if ChatGPT mentions my brand for free?
-    answer: "Ask ChatGPT the questions your buyers ask, in both its base and search modes, and record whether it names or links to you. Repeat on a schedule, since answers vary between runs. To automate it, self-host a tool that queries the API for you."
-  - question: Are free AI visibility tools good enough?
-    answer: "For a quick, occasional check, yes. For ongoing tracking across multiple engines with history and competitor benchmarking, you need either to self-host an open-source tool, which is free but hands-on, or pay for a managed one. Manual checks don't scale."
+  - question: What are the best free answer engine monitoring tools?
+    answer: "The most complete is Elmo, an open-source tool you self-host free under the MIT license, tracking ChatGPT, Claude, Perplexity, Gemini, and Google's AI Overviews. AirOps has a free tier limited to ChatGPT. HubSpot's AEO Grader runs a free one-off audit. Manual checks and a DIY script round out the free options."
+  - question: Can I monitor AI answer engines for free?
+    answer: "Yes. Self-host an open-source tool like Elmo for full, ongoing tracking across every major engine, use a free tier such as AirOps for a single engine, or prompt the engines by hand for occasional checks. Self-hosting is free of software cost; you pay only your own infrastructure and AI provider API usage."
+  - question: Is there a free tool to track brand mentions in answer engines?
+    answer: "Yes. Elmo tracks brand mentions and citations across ChatGPT, Claude, Perplexity, Gemini, and Google's AI Overviews, free and open source when you self-host it. AirOps offers a free tier that tracks mentions in ChatGPT only. For a no-tool option, you can record mentions manually as you prompt each engine."
+  - question: What's the best free alternative to Profound or Peec AI?
+    answer: "Neither Profound nor Peec AI has a free tier, only trials, so the closest free alternative is a self-hosted open-source tool. Elmo covers the same five major engines and the same mention, citation, and competitor metrics, with the trade that you run the infrastructure and supply your own API keys instead of paying a subscription."
+  - question: Is there a free answer engine monitoring tool for digital marketing?
+    answer: "Yes. Marketing teams can self-host Elmo for free to track brand mentions, citations, and competitor share of voice across the major answer engines. Free tiers like AirOps cover a single engine for lighter needs, and HubSpot's AEO Grader gives a free audit of how citable your content is."
+  - question: How do I check if ChatGPT mentions my brand for free?
+    answer: "Ask ChatGPT the questions your buyers ask, in both its base and search modes, and record whether it names or links to you. Repeat on a schedule, since answers vary between runs. To automate it, self-host a tool that queries the API, or use AirOps' free ChatGPT tier."
+  - question: Is there a free AEO grader or audit?
+    answer: "Yes. HubSpot's AEO Grader is free and audits your content structure, schema, and AI readability, then returns recommendations. It is a one-off check of whether your pages are built to be cited, not ongoing tracking of whether engines cite you. Pair it with a monitor like Elmo to measure the effect."
+  - question: Are free answer engine monitoring tools good enough?
+    answer: "For spot-checks and single-engine tracking, yes. For ongoing coverage across every major engine with history and competitor benchmarking, you either self-host an open-source tool, which is free but hands-on, or pay for a managed one. Free tiers usually cap you at one engine, and manual checks leave no history."
 ---
 
-**Yes, you can track your AI visibility for free.** The free options come in three forms: an open-source tool you self-host, the limited free tiers of paid tools, and checking by hand. Each trades the subscription cost for either your time or your own infrastructure. Here is what each can and can't do.
+**Yes, you can monitor your brand in AI answer engines for free.** You have three real options: self-host an open-source tool like Elmo for full multi-engine tracking, use a free tier of a paid tool (usually one engine), or check the engines by hand. Each swaps the subscription for your own time or infrastructure.
+
+Answer engine monitoring and AI visibility tracking are the same job under two names: watching whether ChatGPT, Claude, Perplexity, Gemini, and Google's AI Overviews mention and cite your brand. Below is every free and free-tier option, what it covers, and where each one stops.
 
 **Key takeaways**
 
-- The most capable free option is an open-source tool you self-host, like Elmo, which is free under the MIT license.
-- "Free" still has a cost: self-hosting means running infrastructure and paying for your own AI provider API usage.
-- A few paid tools have genuinely free tiers, but they are usually capped to a single engine.
-- You can check any engine by hand for nothing, though it is slow and leaves you no history.
-- Managed paid tools mostly sell convenience: coverage, history, and not having to run anything yourself.
+- The most complete free option is an open-source tool you self-host, like Elmo, free under the MIT license across every major engine.
+- "Free" still has a cost: self-hosting means running your own infrastructure and paying for your AI provider API usage.
+- Free tiers of paid tools exist (AirOps has one), but they usually track a single engine.
+- Free graders like HubSpot's AEO Grader audit your content once; they don't track mentions over time.
+- Manual checks cost nothing and work for spot-checks, but they leave no history and don't scale.
 
-## Free AI visibility tools at a glance
+## What to look for in a free answer engine monitoring tool
 
-| Approach | What's free | Key limitation |
-|---|---|---|
-| **Self-host an open-source tool** (Elmo) | Full features, every engine, unlimited prompts | You run the infrastructure and pay for your own API usage |
-| **Free tier of a paid tool** (AirOps) | Tracking for a single engine | Capped to ChatGPT; broader coverage is paid |
-| **Manual checks** | Any engine, no tool needed | Slow, no history, doesn't scale |
-| **DIY script** | Whatever you build | Build and maintenance time is on you |
-| **Free trials** | Full features, briefly | Time-limited, then paid |
+Free tools vary more than paid ones, so a few things decide whether one fits.
 
-AI products and prices change quickly, so confirm current details with each vendor.
+- **Engine coverage.** The biggest split. Some free options track a single engine, usually ChatGPT, while a self-hosted open-source tool covers all the major ones. Check that it sees the engines your buyers actually use.
+- **Tracking versus a one-time audit.** A monitor re-checks your prompts on a schedule and builds history. A grader scores your pages once. You often want both, but they are not interchangeable.
+- **The real cost of "free."** A free tier is free because it is capped. Self-hosting is free of software cost but bills you for infrastructure and model API usage. Manual and DIY are free except for your time.
+- **History and competitors.** A spot-check tells you today's answer. Ongoing tracking with competitor share of voice tells you whether you are gaining or losing ground, which is where the value compounds.
 
-## Self-host an open-source tool
+## The best free answer engine monitoring tools
 
-The most capable free option is to self-host an open-source tool. [Elmo](https://www.elmohq.com/) is free under the MIT license, tracks every major engine, and computes each metric in code you can read. There is no license fee and no per-seat pricing.
+Here is every way to track your brand in AI answers without a subscription, from a full open-source platform to a one-off audit. The table shows what each option covers before the sections below go deeper.
 
-Free here means no software cost, not zero cost. You run the infrastructure, typically Docker and a database, and you supply your own AI provider API keys, so you cover the models' usage fees. For most teams that comes to far less than a subscription, and your data stays in-house. For the wider picture, see our roundup of [open-source AI visibility tools](/ai-visibility-tools/category/open-source).
+| Tool | Free option | Engines covered | Best for |
+|---|---|---|---|
+| **Elmo** | Open source (MIT), free self-host | ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews | Full, ongoing monitoring you own |
+| **AirOps** | Free tier | ChatGPT only | A hosted free tier with no setup |
+| **HubSpot AEO Grader** | Free one-off audit | Audits your site, not live answers | A one-time content and schema check |
+| **Manual checks** | Always free | Any engine you prompt | Spot-checks and small brands |
+| **DIY script** | Free to build | Whatever APIs you connect | Developers who want a custom loop |
 
-## Free tiers of paid tools
+AI products and prices change fast, so confirm current details with each vendor before you rely on them.
 
-A few paid tools include a genuinely free tier, though they tend to cap it tightly. AirOps, for example, has a free Insights tier that tracks ChatGPT only; broader engine coverage moves you to a paid plan. Most other tools offer a free trial rather than a free tier, so you get full features for a limited window and then pay.
+## Elmo: the most complete free option
 
-Read the fine print before you commit. A free tier in this category usually means one engine and a small prompt allowance, which is enough to try the product but not to run an ongoing program.
+[Elmo](https://www.elmohq.com/) is an open-source answer engine monitoring tool you self-host, free under the MIT license. It tracks how ChatGPT, Claude, Perplexity, Gemini, and Google's AI Overviews mention and cite your brand, and every metric is computed in code you can read. There is no license fee and no per-seat pricing.
 
-## Check it by hand
+Self-hosted, you get the full product: a visibility score, citation analytics, competitor benchmarking, brand-mention tracking, and data export through the API. Agencies can white-label it for client reporting. What free does not mean here is zero cost. You run the infrastructure, usually Docker and PostgreSQL, and you bring your own AI provider API keys, so you pay each model's usage directly. For most teams that lands well under a monthly subscription, and your data never leaves your servers. Elmo stays focused on measurement, so it tracks and benchmarks your presence rather than generating content or estimating prompt volume.
 
-You can measure AI visibility with no tool at all. Ask the engines the questions your buyers ask, in both base and search modes where they exist, and record whether each answer mentions or cites you. Do it on a schedule, because answers vary between runs.
+A managed cloud version is listed as coming soon, for teams that would rather not run it themselves. For the developer-focused view of this category, see our roundup of [open-source AI visibility tools](/ai-visibility-tools/category/open-source).
 
-Manual checking is fine for a one-off read or a very small brand. It falls apart as you add engines and prompts: there is no history, no competitor benchmarking, and it eats the time you could spend fixing the gaps it finds. For a repeatable method, see [how to track your brand in AI search](/blog/track-brand-ai-search).
+## Free tiers of paid AEO tools
 
-## Build your own
+Some paid tools include a genuinely free tier, but they cap it tightly. [AirOps](https://www.airops.com/) has a free tier that tracks ChatGPT only; broader engine coverage moves you to a paid plan. It is a fair way to watch a single engine without any setup, but a one-engine read misses where a lot of your buyers actually ask, since Perplexity, Gemini, and Google's AI Overviews go untracked.
 
-If you are technical, you can script the loop yourself. Send your [prompt set](/blog/ai-prompt-tracking) to the model APIs, directly or through a router like OpenRouter, parse each answer for your brand and any links to your site, and log the results over time. Getting started is not hard.
+Most other well-known tools offer a free trial rather than a free tier. Profound, Peec AI, Scrunch, Otterly, and AthenaHQ let you try the product for a limited window, then bill you. Two SEO suites price their AI modules openly: Ahrefs Brand Radar starts at $129 per month and the Semrush AI Toolkit at $139.95 per month, both alongside their core subscriptions. Read the fine print, because a free trial ends, and a free tier in this category usually means one engine and a small prompt allowance.
 
-The cost is maintenance. You own the engine coverage, the parsing, the storage, and the reporting, and you keep all of it running as the models change. Self-hosting an existing open-source tool gives you the same loop without building and maintaining it from scratch.
+## Free AEO graders and one-off audits
 
-## Free vs paid: when to upgrade
+Not every free tool tracks mentions over time. Some audit your site once and hand back a score. HubSpot's [AEO Grader](https://www.hubspot.com/products/marketing/aeo-grader) is free and checks your content structure, schema markup, and AI readability, then returns recommendations for making pages easier for answer engines to quote.
 
-Free options are enough until they aren't. The signal to change is usually scale: more engines, more prompts, a need for history and competitor benchmarking, or simply not wanting to run anything yourself.
+A grader answers a different question than a monitor. It tells you whether your pages are built to be cited, not whether ChatGPT or Perplexity actually cite them right now. Run one to fix the on-page basics, then use a monitor to see whether the fixes move your visibility. The two are complements, not substitutes.
 
-At that point you have two upgrades. Self-host an open-source tool and keep it free but hands-on, or pay for a managed tool and buy back the time. Either beats flying blind in a channel that increasingly shapes how buyers find you. To weigh the paid options, see our roundup of the [best AI visibility tools](/blog/best-ai-visibility-tools) and the [AI visibility software](/ai-visibility-tools) hub.
+## How to check your AI visibility for free (manual method)
+
+You can measure answer engine visibility with no tool at all. Open each engine, ask the questions your buyers ask, in both the base model and its search mode where that exists, and record whether the answer names or links to you. Note the competitors it names instead. If you sell project-management software, for instance, ask "What are the best project-management tools?" and "What is a good Asana alternative?", then check whether your brand shows up and which sources the engine cites. Repeat on a schedule, because the same prompt returns different answers between runs.
+
+Manual checking works for a one-off read or a very small brand. It breaks down as you add engines and prompts. There is no history, no competitor share of voice over time, and the checking itself eats the hours you could spend fixing the gaps it surfaces. For a repeatable version of this loop, see [how to track your brand in AI search](/blog/track-brand-ai-search).
+
+## Build your own answer engine monitor
+
+If you write code, you can script the loop. Send your [prompt set](/blog/ai-prompt-tracking) to the model APIs, directly or through a router like OpenRouter, parse each answer for your brand name and any links to your domain, and log the results over time. A first version is not hard to stand up.
+
+The cost shows up later, in maintenance. You own the engine coverage, the parsing rules, the storage, and the reporting, and you keep all of it working as the models and their APIs change. Self-hosting an existing open-source tool gives you the same loop, already built and kept current, which is why most teams that want a free monitor start there instead of from scratch.
+
+## Open-source vs free tier: what you actually get
+
+Free splits into two very different things, and the gap matters. A free tier is hosted and easy to start, but narrow: with AirOps you get one engine, ChatGPT, and you upgrade to see the rest. An open-source tool you self-host is the opposite. It asks for setup, then gives you the full product at no software cost: every supported engine, unlimited prompts, citation analytics, and competitor benchmarking.
+
+So the honest summary is this. The only way to get full, ongoing, multi-engine answer engine monitoring for $0 is to self-host an open-source tool like Elmo. Free tiers are fine for watching a single engine. Graders fix your pages once. Manual checks cover the occasional spot-check. If you want breadth and history without running anything yourself, that is what the paid tools sell, and you can weigh them in our [best AEO tools](/blog/best-aeo-tools) roundup.
+
+## Free alternatives to Profound and Peec AI
+
+Profound and Peec AI are among the most searched paid answer engine tools, and both run as subscriptions rather than free products. If you want their core job, tracking mentions and citations across engines with competitor benchmarking, without the bill, the free route is an open-source tool you self-host. Elmo covers the same five major engines and computes the same visibility and citation metrics, with the trade that you run it yourself.
+
+There is no free tier of Profound or Peec AI to fall back on; both offer time-limited trials. So a genuine free alternative is not a cheaper hosted plan, it is a self-hosted open-source tool, or the manual and DIY methods above for lighter needs. See the wider [AI visibility software](/ai-visibility-tools) hub to compare where each paid and free option fits.
+
+## How to start monitoring your AI visibility for free
+
+You can stand up a free monitoring routine in an afternoon.
+
+1. **List the prompts that matter.** Write the buyer questions where you'd expect to appear, plus a few brand and competitor queries.
+2. **Pick a method.** Self-host an open-source tool for full coverage, use a free tier for a single engine, or run the prompts by hand for a quick read.
+3. **Record mentions and citations.** For each prompt, note whether the engine named you, linked to you, and which competitors it surfaced instead.
+4. **Re-run on a schedule.** Answers drift, so check weekly or monthly and watch the trend rather than a single snapshot.
+5. **Fix and re-measure.** Use a grader to find on-page gaps, publish the fixes, and confirm they moved your visibility.
+
+## When free stops being enough
+
+Free options hold up until they don't, and the limit is almost always scale. The signals to change: more engines than a free tier covers, more prompts than you can check by hand, a need for history and competitor share of voice, or simply not wanting to run infrastructure yourself.
+
+At that point you have two moves. Self-host an open-source tool and stay free but hands-on, or pay for a managed tool and buy back the time. Either beats guessing in a channel that increasingly decides how buyers find you. To compare the paid options, see the [best AI visibility tools](/blog/best-ai-visibility-tools) roundup.

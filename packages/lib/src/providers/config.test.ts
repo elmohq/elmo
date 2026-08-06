@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseScrapeTargets, validateScrapeTargets } from "./config";
 import { brightdata } from "./registry/brightdata";
 import { oxylabs } from "./registry/oxylabs";
+import { cloro } from "./registry/cloro";
 import { dataforseo } from "./registry/dataforseo";
 import { olostep } from "./registry/olostep";
 import type { ModelConfig } from "./types";
@@ -164,6 +165,7 @@ describe("validateScrapeTargets", () => {
 			{ model: "chatgpt", provider: "olostep", webSearch: true },
 			{ model: "chatgpt", provider: "brightdata", webSearch: true },
 			{ model: "chatgpt", provider: "oxylabs", webSearch: true },
+			{ model: "chatgpt", provider: "cloro", webSearch: true },
 			{ model: "google-ai-mode", provider: "dataforseo", webSearch: true },
 		];
 		expect(() =>
@@ -173,6 +175,7 @@ describe("validateScrapeTargets", () => {
 					olostep: configuredProvider,
 					brightdata: configuredProvider,
 					oxylabs: configuredProvider,
+					cloro: configuredProvider,
 					dataforseo: configuredProvider,
 				}),
 			),
@@ -187,15 +190,7 @@ describe("provider validateTarget", () => {
 
 	describe("olostep", () => {
 		it("accepts valid online targets", () => {
-			for (const model of [
-				"chatgpt",
-				"google-ai-mode",
-				"google-ai-overview",
-				"gemini",
-				"copilot",
-				"perplexity",
-				"grok",
-			]) {
+			for (const model of ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]) {
 				expect(olostep.validateTarget!(config(model, "olostep", true))).toBeNull();
 			}
 		});
@@ -216,13 +211,13 @@ describe("provider validateTarget", () => {
 		});
 
 		it("accepts other models with :online", () => {
-			for (const model of ["perplexity", "copilot", "gemini", "grok", "google-ai-mode"]) {
+			for (const model of ["perplexity", "copilot", "gemini", "google-ai-mode"]) {
 				expect(brightdata.validateTarget!(config(model, "brightdata", true))).toBeNull();
 			}
 		});
 
 		it("rejects non-chatgpt models without :online", () => {
-			expect(brightdata.validateTarget!(config("grok", "brightdata", false))).toMatch(/requires :online/);
+			expect(brightdata.validateTarget!(config("gemini", "brightdata", false))).toMatch(/requires :online/);
 			expect(brightdata.validateTarget!(config("perplexity", "brightdata", false))).toMatch(/requires :online/);
 		});
 
@@ -269,20 +264,38 @@ describe("provider validateTarget", () => {
 			expect(oxylabs.validateTarget!(config("chatgpt", "oxylabs", false))).toBeNull();
 		});
 
-		it("accepts perplexity and google-ai-mode with :online", () => {
+		it("accepts perplexity, google-ai-mode, and google-ai-overview with :online", () => {
 			expect(oxylabs.validateTarget!(config("perplexity", "oxylabs", true))).toBeNull();
 			expect(oxylabs.validateTarget!(config("google-ai-mode", "oxylabs", true))).toBeNull();
+			expect(oxylabs.validateTarget!(config("google-ai-overview", "oxylabs", true))).toBeNull();
 		});
 
-		it("rejects perplexity / google-ai-mode without :online", () => {
+		it("rejects perplexity / google-ai-mode / google-ai-overview without :online", () => {
 			expect(oxylabs.validateTarget!(config("perplexity", "oxylabs", false))).toMatch(/requires :online/);
 			expect(oxylabs.validateTarget!(config("google-ai-mode", "oxylabs", false))).toMatch(/requires :online/);
+			expect(oxylabs.validateTarget!(config("google-ai-overview", "oxylabs", false))).toMatch(/requires :online/);
 		});
 
-		it("rejects unsupported models (e.g. copilot, gemini, grok)", () => {
+		it("rejects unsupported models (e.g. copilot, gemini)", () => {
 			expect(oxylabs.validateTarget!(config("copilot", "oxylabs", true))).toMatch(/does not support/);
 			expect(oxylabs.validateTarget!(config("gemini", "oxylabs", true))).toMatch(/does not support/);
-			expect(oxylabs.validateTarget!(config("grok", "oxylabs", true))).toMatch(/does not support/);
+		});
+	});
+
+	describe("cloro", () => {
+		it("accepts all supported surfaces with :online", () => {
+			for (const model of ["chatgpt", "perplexity", "copilot", "gemini", "google-ai-mode", "google-ai-overview"]) {
+				expect(cloro.validateTarget!(config(model, "cloro", true))).toBeNull();
+			}
+		});
+
+		it("rejects targets without :online", () => {
+			expect(cloro.validateTarget!(config("chatgpt", "cloro", false))).toMatch(/requires :online/);
+			expect(cloro.validateTarget!(config("perplexity", "cloro", false))).toMatch(/requires :online/);
+		});
+
+		it("rejects unknown models", () => {
+			expect(cloro.validateTarget!(config("grok", "cloro", true))).toMatch(/does not support/);
 		});
 	});
 });

@@ -28,7 +28,10 @@ try {
 		const eqIdx = trimmed.indexOf("=");
 		if (eqIdx === -1) continue;
 		const key = trimmed.slice(0, eqIdx).trim();
-		const value = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, "");
+		const value = trimmed
+			.slice(eqIdx + 1)
+			.trim()
+			.replace(/^["']|["']$/g, "");
 		if (!process.env[key]) process.env[key] = value;
 	}
 } catch {
@@ -83,6 +86,7 @@ const blob = await put(`screenshots/${slug}.jpg`, Buffer.from(imageBuffer), {
 	access: "public",
 	contentType: "image/jpeg",
 	addRandomSuffix: false,
+	allowOverwrite: true,
 });
 
 console.log(`Uploaded: ${blob.url}`);

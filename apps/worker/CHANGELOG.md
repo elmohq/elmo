@@ -1,5 +1,30 @@
 # @workspace/worker
 
+## 0.2.17
+
+### Patch Changes
+
+- @workspace/whitelabel@0.2.17
+- @workspace/deployment@0.2.17
+- @workspace/lib@0.2.17
+
+## 0.2.16
+
+### Patch Changes
+
+- Updated dependencies [91de584]
+  - @workspace/lib@0.2.16
+  - @workspace/whitelabel@0.2.16
+  - @workspace/deployment@0.2.16
+
+## 0.2.15
+
+### Patch Changes
+
+- @workspace/deployment@0.2.15
+- @workspace/lib@0.2.15
+- @workspace/whitelabel@0.2.15
+
 ## 0.2.14
 
 ### Patch Changes

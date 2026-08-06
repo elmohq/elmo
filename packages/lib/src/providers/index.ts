@@ -2,11 +2,13 @@ import type { Provider } from "./types";
 import { olostep } from "./registry/olostep";
 import { brightdata } from "./registry/brightdata";
 import { oxylabs } from "./registry/oxylabs";
+import { cloro } from "./registry/cloro";
 import { openaiApi } from "./registry/openai-api";
 import { anthropicApi } from "./registry/anthropic-api";
 import { mistralApi } from "./registry/mistral-api";
 import { dataforseo } from "./registry/dataforseo";
 import { openrouter } from "./registry/openrouter";
+import { stub } from "./registry/stub";
 
 export type {
 	Provider,
@@ -20,17 +22,20 @@ export type {
 export { KNOWN_MODELS, getModelMeta } from "./models";
 export type { ModelMeta } from "./models";
 export { parseScrapeTargets, validateScrapeTargets } from "./config";
+export { STATUS_TARGETS } from "@workspace/config/scrape-targets";
 export { selectTargetsForBrand } from "./runner";
 
 const providerMap: Record<string, Provider> = {
 	olostep,
 	brightdata,
 	oxylabs,
+	cloro,
 	"openai-api": openaiApi,
 	"anthropic-api": anthropicApi,
 	"mistral-api": mistralApi,
 	dataforseo,
 	openrouter,
+	stub,
 };
 
 export function getProvider(id: string): Provider {

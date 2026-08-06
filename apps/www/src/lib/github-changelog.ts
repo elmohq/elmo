@@ -81,46 +81,36 @@ function groupByMonth(issues: ChangelogIssue[]): ChangelogMonth[] {
 		});
 }
 
-export const getGitHubChangelog = createServerFn({ method: "GET" }).handler(
-	async (): Promise<ChangelogMonth[]> => {
-		try {
-			const cached = await redis.get<ChangelogMonth[]>(CACHE_KEY);
-			if (Array.isArray(cached)) return cached;
+export const getGitHubChangelog = createServerFn({ method: "GET" }).handler(async (): Promise<ChangelogMonth[]> => {
+	try {
+		const cached = await redis.get<ChangelogMonth[]>(CACHE_KEY);
+		if (Array.isArray(cached)) return cached;
 
-			const pages = await Promise.all([
-				fetchJson<RawIssue[]>(
-					`${API_BASE}/issues?state=closed&sort=updated&direction=desc&per_page=100&page=1`,
-				),
-				fetchJson<RawIssue[]>(
-					`${API_BASE}/issues?state=closed&sort=updated&direction=desc&per_page=100&page=2`,
-				),
-			]);
+		const pages = await Promise.all([
+			fetchJson<RawIssue[]>(`${API_BASE}/issues?state=closed&sort=updated&direction=desc&per_page=100&page=1`),
+			fetchJson<RawIssue[]>(`${API_BASE}/issues?state=closed&sort=updated&direction=desc&per_page=100&page=2`),
+		]);
 
-			const issues: ChangelogIssue[] = pages
-				.flat()
-				.filter(
-					(i) =>
-						!i.pull_request &&
-						i.closed_at &&
-						i.state_reason !== "not_planned" &&
-						i.state_reason !== "duplicate",
-				)
-				.map((i) => ({
-					number: i.number,
-					title: i.title,
-					html_url: i.html_url,
-					closed_at: i.closed_at as string,
-					labels: i.labels.map((l) => ({ name: l.name, color: l.color })),
-				}));
+		const issues: ChangelogIssue[] = pages
+			.flat()
+			.filter(
+				(i) => !i.pull_request && i.closed_at && i.state_reason !== "not_planned" && i.state_reason !== "duplicate",
+			)
+			.map((i) => ({
+				number: i.number,
+				title: i.title,
+				html_url: i.html_url,
+				closed_at: i.closed_at as string,
+				labels: i.labels.map((l) => ({ name: l.name, color: l.color })),
+			}));
 
-			const months = groupByMonth(issues);
-			await redis.set(CACHE_KEY, months, { ex: TTL_SECONDS });
-			return months;
-		} catch {
-			await redis.set(CACHE_KEY, [] as ChangelogMonth[], {
-				ex: ERROR_TTL_SECONDS,
-			});
-			return [];
-		}
-	},
-);
+		const months = groupByMonth(issues);
+		await redis.set(CACHE_KEY, months, { ex: TTL_SECONDS });
+		return months;
+	} catch {
+		await redis.set(CACHE_KEY, [] as ChangelogMonth[], {
+			ex: ERROR_TTL_SECONDS,
+		});
+		return [];
+	}
+});

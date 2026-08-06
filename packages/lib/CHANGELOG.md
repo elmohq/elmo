@@ -1,5 +1,24 @@
 # @workspace/lib
 
+## 0.2.17
+
+### Patch Changes
+
+- @workspace/config@0.2.17
+
+## 0.2.16
+
+### Patch Changes
+
+- 91de584: IMPORTANT BUGFIX: Fixed OpenAI response retrieval that broke in v0.2.15, which caused repeated (but billable) failures. If you are collecting data from the direct OpenAI API using Elmo, please update immediately.
+  - @workspace/config@0.2.16
+
+## 0.2.15
+
+### Patch Changes
+
+- @workspace/config@0.2.15
+
 ## 0.2.14
 
 ### Patch Changes

@@ -38,8 +38,8 @@ export interface EnvVarSpec {
 	description: string;
 }
 
-/** Modes with startup env validation. "cloud" requirements are TODO and intentionally excluded. */
-const VALIDATED_MODES: DeploymentMode[] = ["local", "demo", "whitelabel"];
+/** Modes with startup env validation. */
+const VALIDATED_MODES: DeploymentMode[] = ["local", "demo", "whitelabel", "cloud"];
 
 export const ENV_REGISTRY: EnvVarSpec[] = [
 	{
@@ -51,8 +51,9 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 	{
 		name: "APP_URL",
 		scope: "server",
-		requiredBy: "optional",
-		description: "Public base URL of the web app (written by `elmo init`).",
+		requiredBy: ["cloud"],
+		description:
+			"Public base URL of the web app. Required in cloud (used for auth, email links, and Stripe redirects); written by `elmo init` for local.",
 	},
 	{
 		name: "BETTER_AUTH_SECRET",
@@ -188,11 +189,42 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Oxylabs Web Scraper API password.",
 	},
 	{
+		name: "CLORO_API_KEY",
+		scope: "server",
+		requiredBy: "dynamic-scrape-targets",
+		provider: "cloro",
+		description: "Cloro API key.",
+	},
+	{
 		name: "OPENROUTER_API_KEY",
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",
 		provider: "openrouter",
 		description: "OpenRouter API key.",
+	},
+	{
+		name: "JINA_API_KEY",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Optional Jina Reader API key for website-excerpt fetching. When set, requests are authenticated (tracked by key, not IP), which raises the rate limit and avoids the anonymous 'bad network reputation' 401 block.",
+	},
+	{
+		name: "ELMO_ENCRYPTION_KEY",
+		scope: "server",
+		// Local only: `elmo init` generates it and the CLI backfills it on
+		// upgrade, so every self-hosted deployment has one. The hosted modes are
+		// provisioned out of band and store no credentials of their own.
+		requiredBy: ["local"],
+		description:
+			"Base64-encoded 32-byte key used to encrypt provider credentials stored in the database. Generate one with: openssl rand -base64 32",
+	},
+	{
+		name: "ELMO_ENCRYPTION_KEY_OLD",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Previous ELMO_ENCRYPTION_KEY values, comma-separated, kept readable while rotating. Set only during a rotation.",
 	},
 	{
 		name: "DEPLOYMENT_MODE",
@@ -217,6 +249,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		scope: "server",
 		requiredBy: "optional",
 		description: "Comma-separated domains added as default brands.",
+	},
+	{
+		name: "CLOUD_SIGNUP_ALLOWLIST",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Comma-separated allowlist gating cloud self-serve signup. Entries are exact emails or '@domain' suffixes; '*' opens it to everyone. Empty denies all signups (cloud fails closed).",
 	},
 	{
 		name: "ENVIRONMENT",
@@ -359,4 +398,48 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		requiredBy: "optional",
 		description: "Set to any value to disable telemetry.",
 	},
+	// Cloud-only service credentials. Consumed by the Stripe billing and
+	// Resend transactional-email integrations (implemented in follow-up work);
+	// required here so a cloud deployment fails startup validation without them.
+	{
+		name: "STRIPE_SECRET_KEY",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Stripe secret API key (sk_...) for subscription billing.",
+	},
+	{
+		name: "STRIPE_WEBHOOK_SECRET",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Stripe webhook signing secret (whsec_...) for verifying billing webhooks.",
+	},
+	{
+		name: "RESEND_API_KEY",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Resend API key for transactional email.",
+	},
+	{
+		name: "GOOGLE_CLIENT_ID",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Google OAuth client ID for cloud social sign-in.",
+	},
+	{
+		name: "GOOGLE_CLIENT_SECRET",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Google OAuth client secret.",
+	},
+	{
+		name: "RESEND_FROM_EMAIL",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description:
+			"Sender address for transactional email, in the form: Elmo <notifications@updates.example.com>. The domain must be verified in Resend.",
+	},
 ];
+
+export const CREDENTIAL_ENV_NAMES: ReadonlySet<string> = new Set(
+	ENV_REGISTRY.filter((spec) => spec.requiredBy === "dynamic-scrape-targets" && spec.provider).map((spec) => spec.name),
+);
