@@ -25,7 +25,7 @@ const createReportBody = z.object({
 		.string("brandWebsite is required and must be a non-empty string")
 		.trim()
 		.min(1, "brandWebsite is required and must be a non-empty string")
-		.refine((website) => cleanOnboardingUrl(website) !== "", "brandWebsite must be a valid http(s) URL"),
+		.refine((website) => cleanOnboardingUrl(website) !== "", "brandWebsite must be a valid domain or http(s) URL"),
 	manualPrompts: z.array(z.string()).optional(),
 });
 

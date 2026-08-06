@@ -35,9 +35,9 @@ describe("normalizeBrandUpdate", () => {
 	});
 
 	describe("website", () => {
-		it("normalizes a bare domain to an origin URL", () => {
+		it("adds a scheme to a bare domain and keeps the path", () => {
 			const result = normalizeBrandUpdate({ website: "acme.com/products" });
-			expect(result).toEqual({ ok: true, updates: { website: "https://acme.com/" } });
+			expect(result).toEqual({ ok: true, updates: { website: "https://acme.com/products" } });
 		});
 
 		it("rejects an invalid website", () => {

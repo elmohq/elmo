@@ -14,7 +14,7 @@
  */
 import { sql } from "drizzle-orm";
 import { db } from "@workspace/lib/db/db";
-import { resolveAnalysisUrl, type OnboardingSuggestion } from "@workspace/lib/onboarding";
+import { cleanOnboardingUrl, type OnboardingSuggestion } from "@workspace/lib/onboarding";
 import { getBoss } from "@/lib/boss-client";
 import { extractDomain } from "@/lib/domain-categories";
 
@@ -37,15 +37,13 @@ export interface AnalyzeBrandInput {
 	/** Brand id (== org id) the analysis belongs to. Must be access-checked by the caller. */
 	brandId: string;
 	website: string;
-	/** Page to research instead of `website`; the tracked domain still comes from `website`. */
-	analysisUrl?: string;
 	brandName?: string;
 }
 
 interface JobRow {
 	id: string;
 	state: string;
-	data: { website?: string; analysisUrl?: string } | null;
+	data: { website?: string } | null;
 	output: unknown;
 }
 
@@ -68,12 +66,8 @@ const IN_FLIGHT_STATES = new Set(["created", "active", "retry"]);
  * they research the same URL — `nike.com/golf` and `nike.com/running` share a
  * domain but produce completely different suggestions.
  */
-function analysisKey(input: { website?: string; analysisUrl?: string }): string {
-	const website = input.website ?? "";
-	return (
-		resolveAnalysisUrl({ website, ...(input.analysisUrl && { analysisUrl: input.analysisUrl }) }) ||
-		extractDomain(website)
-	);
+function analysisKey(website: string): string {
+	return cleanOnboardingUrl(website) || extractDomain(website);
 }
 
 /**
@@ -94,10 +88,10 @@ function analysisKey(input: { website?: string; analysisUrl?: string }): string 
  */
 export async function enqueueAnalyzeBrand(input: AnalyzeBrandInput): Promise<void> {
 	const boss = await getBoss();
-	const key = analysisKey(input);
+	const key = analysisKey(input.website);
 
 	const latest = await latestJobForBrand(input.brandId);
-	if (latest && IN_FLIGHT_STATES.has(latest.state) && analysisKey(latest.data ?? {}) === key) {
+	if (latest && IN_FLIGHT_STATES.has(latest.state) && analysisKey(latest.data?.website ?? "") === key) {
 		return;
 	}
 

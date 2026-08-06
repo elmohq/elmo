@@ -24,47 +24,47 @@ describe("validateWebsiteUrl", () => {
 		});
 	});
 
-	it("strips the path from a URL with a path", () => {
+	// A sub-brand page is the whole point: it drives analysis, and everything
+	// that tracks mentions reduces this back to example.com anyway.
+	it("keeps the path from a URL with a path", () => {
 		expect(validateWebsiteUrl("https://example.com/products")).toEqual({
 			isValid: true,
-			formattedUrl: "https://example.com/",
+			formattedUrl: "https://example.com/products",
 		});
 	});
 
-	it("strips path, query, and hash", () => {
+	it("keeps path, query, and hash", () => {
 		expect(validateWebsiteUrl("https://example.com/products?ref=foo#section")).toEqual({
 			isValid: true,
-			formattedUrl: "https://example.com/",
+			formattedUrl: "https://example.com/products?ref=foo#section",
 		});
 	});
 
-	it("strips path from a bare domain input", () => {
+	it("keeps the path from a bare domain input", () => {
 		expect(validateWebsiteUrl("example.com/products")).toEqual({
 			isValid: true,
-			formattedUrl: "https://example.com/",
+			formattedUrl: "https://example.com/products",
 		});
 	});
 
 	it("preserves http protocol when explicitly provided", () => {
 		expect(validateWebsiteUrl("http://example.com/path")).toEqual({
 			isValid: true,
-			formattedUrl: "http://example.com/",
-		});
-	});
-
-	// The tracked website stays the origin even for a sub-brand page; the page
-	// itself is carried separately as the analysis URL.
-	it("stores the origin for a sub-brand page URL", () => {
-		expect(validateWebsiteUrl("https://www.nike.com/golf")).toEqual({
-			isValid: true,
-			formattedUrl: "https://www.nike.com/",
+			formattedUrl: "http://example.com/path",
 		});
 	});
 
 	it("preserves subdomains", () => {
 		expect(validateWebsiteUrl("https://blog.example.com/posts/1")).toEqual({
 			isValid: true,
-			formattedUrl: "https://blog.example.com/",
+			formattedUrl: "https://blog.example.com/posts/1",
+		});
+	});
+
+	it("drops embedded credentials", () => {
+		expect(validateWebsiteUrl("https://alice:secret@example.com/private")).toEqual({
+			isValid: true,
+			formattedUrl: "https://example.com/private",
 		});
 	});
 

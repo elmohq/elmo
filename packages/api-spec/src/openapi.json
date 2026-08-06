@@ -157,7 +157,7 @@
 					},
 					"brandWebsite": {
 						"type": "string",
-						"description": "The brand's website. http(s) only. A full page URL (e.g. https://www.nike.com/golf) scopes the analysis to that page, while mentions stay tracked against its domain.",
+						"description": "The brand's website — a domain (nike.com) or a full URL. A URL with a path (e.g. https://www.nike.com/golf) scopes the analysis to that page; mentions are tracked against its domain either way.",
 						"minLength": 1
 					},
 					"manualPrompts": {
@@ -287,7 +287,7 @@
 				"properties": {
 					"website": {
 						"type": "string",
-						"description": "Brand's website URL or hostname. Must parse to a valid domain.",
+						"description": "Brand's website — a hostname or a full URL. A URL with a path (e.g. https://www.nike.com/golf) is analyzed as given; the returned website is always its domain.",
 						"minLength": 1
 					},
 					"brandName": {

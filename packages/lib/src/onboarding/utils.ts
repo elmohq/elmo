@@ -32,18 +32,6 @@ export function cleanUrl(input: string): string {
 	}
 }
 
-/**
- * The page an analysis run actually reads: an explicit override when the caller
- * wants a sub-brand or product-line page (`https://www.nike.com/golf`), else the
- * brand website itself. Empty when neither parses as an http(s) URL.
- *
- * The tracked identity is derived separately, from `website` via
- * {@link cleanDomain} — an override never changes what mentions match against.
- */
-export function resolveAnalysisUrl(options: { website: string; analysisUrl?: string }): string {
-	return cleanUrl(options.analysisUrl?.trim() || options.website);
-}
-
 export function cleanDomain(input: string): string {
 	if (!input) return "";
 	const trimmed = input.trim();

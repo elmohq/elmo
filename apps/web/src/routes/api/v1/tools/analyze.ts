@@ -20,7 +20,7 @@ const analyzeBody = z.object({
 		.string("website is required")
 		.trim()
 		.min(1, "website is required")
-		.refine((website) => cleanOnboardingUrl(website) !== "", "website must be a valid http(s) domain or URL"),
+		.refine((website) => cleanOnboardingUrl(website) !== "", "website must be a valid domain or http(s) URL"),
 	brandName: z.string().trim().optional(),
 	maxCompetitors: z
 		.int("maxCompetitors must be a non-negative integer")

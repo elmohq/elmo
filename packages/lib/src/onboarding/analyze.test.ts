@@ -59,16 +59,15 @@ describe("analyzeBrand", () => {
 
 	it("rejects unsupported protocols before calling analysis services", async () => {
 		await expect(buildAnalysisContext({ website: "ftp://example.com/private" })).rejects.toThrow(
-			'Could not parse analysis URL "ftp://example.com/private"',
+			'Could not parse website "ftp://example.com/private"',
 		);
 
 		expect(getWebsiteExcerpt).not.toHaveBeenCalled();
 	});
 
-	// The case from the issue: track nike.com, but base the research on the
-	// Nike Golf section of the site.
-	it("researches analysisUrl while tracking the domain from website", async () => {
-		const trackedWebsite = "https://www.nike.com/";
+	// The case from the issue: research the Nike Golf section of the site, but
+	// keep tracking mentions against nike.com.
+	it("scopes a sub-page to its own brand without moving the tracked domain", async () => {
 		const pageUrl = "https://www.nike.com/golf";
 		vi.mocked(getWebsiteExcerpt).mockResolvedValueOnce("Nike Golf clubs, balls, and apparel");
 		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
@@ -80,11 +79,7 @@ describe("analyzeBrand", () => {
 			suggestedPrompts: [{ prompt: "best golf clubs", tags: ["golf"] }],
 		});
 
-		const result = await analyzeBrand({
-			website: trackedWebsite,
-			analysisUrl: pageUrl,
-			brandName: "Nike Golf",
-		});
+		const result = await analyzeBrand({ website: pageUrl, brandName: "Nike Golf" });
 		const prompt = vi.mocked(runStructuredResearchPrompt).mock.calls[0]?.[0];
 
 		expect(getWebsiteExcerpt).toHaveBeenCalledWith(pageUrl);
@@ -124,14 +119,6 @@ describe("analyzeBrand", () => {
 		const result = await analyzeBrand({ website: "acmecorp.com" });
 
 		expect(result.brandName).toBe("Acme");
-	});
-
-	it("rejects an unfetchable analysisUrl without falling back to the website", async () => {
-		await expect(buildAnalysisContext({ website: "nike.com", analysisUrl: "ftp://nike.com/golf" })).rejects.toThrow(
-			'Could not parse analysis URL "ftp://nike.com/golf"',
-		);
-
-		expect(getWebsiteExcerpt).not.toHaveBeenCalled();
 	});
 
 	it("does not add the sub-page note when analyzing a site root", async () => {

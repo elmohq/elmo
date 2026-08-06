@@ -13,7 +13,6 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { cleanOnboardingUrl } from "@workspace/lib/onboarding";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import {
 	cancelAnalyzeBrand,
@@ -34,34 +33,19 @@ import { saveWizardOnboarding, wizardOnboardingInputSchema } from "@/server/onbo
  * Scoped to the brand (== org): the caller must have access to the brand both
  * to start an analysis and to read it back, so a job's output never leaks
  * outside the org that requested it.
- *
- * `analysisUrl` lets the caller research a specific page (a sub-brand or
- * product line) without touching `website`, which stays the tracked domain.
  */
 export const startAnalyzeBrandFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandId: z.string().min(1),
 			website: z.string().min(1),
-			analysisUrl: z.string().optional(),
 			brandName: z.string().optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
-
-		const analysisUrl = data.analysisUrl?.trim();
-		if (analysisUrl && !cleanOnboardingUrl(analysisUrl)) {
-			throw new Error("Enter a valid http(s) URL for the page to analyze");
-		}
-
-		await enqueueAnalyzeBrand({
-			brandId: data.brandId,
-			website: data.website,
-			...(analysisUrl && { analysisUrl }),
-			...(data.brandName && { brandName: data.brandName }),
-		});
+		await enqueueAnalyzeBrand(data);
 		return { ok: true };
 	});
 

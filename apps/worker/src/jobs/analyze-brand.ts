@@ -5,8 +5,6 @@ export interface AnalyzeBrandData {
 	/** Brand id (== org id) the analysis belongs to; the web app reads results back by brand. */
 	brandId: string;
 	website: string;
-	/** Page to research instead of `website` — never becomes the tracked domain. */
-	analysisUrl?: string;
 	brandName?: string;
 	maxCompetitors?: number;
 	maxPrompts?: number;
@@ -30,6 +28,6 @@ export async function analyzeBrandJob(jobs: Job<AnalyzeBrandData>[]): Promise<On
 		throw new Error("analyze-brand handler received an empty batch");
 	}
 
-	const { website, analysisUrl, brandName, maxCompetitors, maxPrompts } = job.data;
-	return analyzeBrand({ website, analysisUrl, brandName, maxCompetitors, maxPrompts });
+	const { website, brandName, maxCompetitors, maxPrompts } = job.data;
+	return analyzeBrand({ website, brandName, maxCompetitors, maxPrompts });
 }

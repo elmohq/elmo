@@ -62,7 +62,7 @@ export const createReportFn = createServerFn({ method: "POST" })
 			brandWebsite: z
 				.string()
 				.min(1)
-				.refine((website) => cleanOnboardingUrl(website) !== "", "Enter a valid http(s) website URL"),
+				.refine((website) => cleanOnboardingUrl(website) !== "", "Enter a valid domain or http(s) website URL"),
 			manualPrompts: z.string().optional(),
 		}),
 	)

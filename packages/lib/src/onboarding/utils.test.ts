@@ -4,7 +4,6 @@ import {
 	cleanDomain,
 	cleanUrl,
 	inferBrandNameFromDomain,
-	resolveAnalysisUrl,
 	uniqueLowercase,
 	uniqueTrim,
 } from "./utils";
@@ -24,30 +23,10 @@ describe("cleanUrl", () => {
 		expect(cleanUrl("javascript:alert(1)")).toBe("");
 		expect(cleanUrl("   ")).toBe("");
 	});
-});
 
-describe("resolveAnalysisUrl", () => {
-	it("prefers an explicit analysis URL over the tracked website", () => {
-		expect(resolveAnalysisUrl({ website: "https://www.nike.com/", analysisUrl: "https://www.nike.com/golf" })).toBe(
-			"https://www.nike.com/golf",
-		);
-	});
-
-	it("falls back to the website when no analysis URL is given", () => {
-		expect(resolveAnalysisUrl({ website: "nike.com" })).toBe("https://nike.com/");
-		expect(resolveAnalysisUrl({ website: "nike.com", analysisUrl: "  " })).toBe("https://nike.com/");
-	});
-
-	// Distinct pages must not collapse to one key, or a second analysis gets
-	// deduped away as "already running".
+	// Sibling pages must not collapse together — analysis job dedupe keys off this.
 	it("keeps sibling pages distinct", () => {
-		const golf = resolveAnalysisUrl({ website: "nike.com", analysisUrl: "nike.com/golf" });
-		const running = resolveAnalysisUrl({ website: "nike.com", analysisUrl: "nike.com/running" });
-		expect(golf).not.toBe(running);
-	});
-
-	it("is empty when the analysis URL can't be fetched", () => {
-		expect(resolveAnalysisUrl({ website: "nike.com", analysisUrl: "ftp://nike.com/golf" })).toBe("");
+		expect(cleanUrl("nike.com/golf")).not.toBe(cleanUrl("nike.com/running"));
 	});
 });
 

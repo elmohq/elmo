@@ -17,8 +17,8 @@ import { runStructuredResearchPrompt } from "./llm";
 import {
 	cleanAndValidateDomain,
 	cleanDomain,
+	cleanUrl,
 	inferBrandNameFromDomain,
-	resolveAnalysisUrl,
 	uniqueLowercase,
 	uniqueTrim,
 } from "./utils";
@@ -59,7 +59,7 @@ function buildSchema(args: { maxCompetitors: number; maxPrompts: number }) {
 		brandName: z
 			.string()
 			.describe(
-				'Canonical brand name in plaintext (preserve casing, but no markdown — no links, no formatting, just the bare name). It must be searchable, because mention-detection matches it as a substring of AI answers. Don\'t include legal entity suffixes like "Inc." or "Ltd." When the page is a sub-brand, product line, or regional arm of a larger company, name THAT (e.g. "Nike Golf" for nike.com/golf) rather than the parent — otherwise use the name the hostname is built around (for nike.com, "Nike").',
+				'Canonical brand name in plaintext (preserve casing, but no markdown — no links, no formatting, just the bare name). The brandName must be searchable, because mention-detection matches it as a substring of AI answers. Don\'t include legal entity suffixes like "Inc." or "Ltd." When the page is a sub-brand, product line, or regional arm of a larger company, name THAT (e.g. "Nike Golf" for nike.com/golf) rather than the parent — otherwise use the name the hostname is built around (for nike.com, "Nike").',
 			),
 		additionalDomains: z
 			.array(z.string())
@@ -107,14 +107,13 @@ export interface OnboardingSuggestion {
 }
 
 export interface AnalyzeBrandOptions {
-	/** Brand website. Its hostname is the identity mentions are tracked against. */
-	website: string;
 	/**
-	 * Page to research instead of `website` — e.g. `https://www.nike.com/golf`
-	 * to describe Nike Golf while mentions stay tracked against `nike.com`.
-	 * Path, query, and fragment are preserved; the tracked domain is unaffected.
+	 * Brand website — a domain or a full URL. A URL with a path (e.g.
+	 * `https://www.nike.com/golf`) is researched as given, so a sub-brand can be
+	 * analyzed from its own section of a larger site; the identity mentions are
+	 * tracked against is always its hostname.
 	 */
-	analysisUrl?: string;
+	website: string;
 	brandName?: string;
 	/** 0 disables competitor generation entirely. */
 	maxCompetitors?: number;
@@ -149,14 +148,9 @@ export async function buildAnalysisContext(options: AnalyzeBrandOptions): Promis
 	const { website, brandName, maxCompetitors = DEFAULT_MAX_COMPETITORS, maxPrompts = DEFAULT_MAX_PROMPTS } = options;
 
 	const normalizedWebsite = cleanDomain(website);
-	if (!normalizedWebsite) {
+	const analysisUrl = cleanUrl(website);
+	if (!normalizedWebsite || !analysisUrl) {
 		throw new Error(`Could not parse website "${website}"`);
-	}
-
-	const requestedAnalysisUrl = options.analysisUrl?.trim() || website;
-	const analysisUrl = resolveAnalysisUrl(options);
-	if (!analysisUrl) {
-		throw new Error(`Could not parse analysis URL "${requestedAnalysisUrl}"`);
 	}
 
 	const providedBrandName = brandName?.trim() || undefined;
@@ -200,7 +194,7 @@ export function normalizeAnalysisResult(raw: RawSuggestion, ctx: AnalysisContext
 
 export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<OnboardingSuggestion> {
 	const start = Date.now();
-	console.log(`[onboarding] analyzeBrand start: ${options.analysisUrl?.trim() || options.website}`);
+	console.log(`[onboarding] analyzeBrand start: ${options.website}`);
 	const ctx = await buildAnalysisContext(options);
 	const raw = await runStructuredResearchPrompt(ctx.prompt, ctx.schema);
 	const result = normalizeAnalysisResult(raw, ctx);
