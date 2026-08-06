@@ -173,7 +173,7 @@ importers:
         version: 6.1.0
       drizzle-orm:
         specifier: ^0.45.2
-        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)
+        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)
       html2canvas-pro:
         specifier: ^2.3.3
         version: 2.3.3
@@ -184,8 +184,8 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
       pg-boss:
-        specifier: ^12.26.3
-        version: 12.26.3
+        specifier: ^12.26.4
+        version: 12.26.4
       posthog-js:
         specifier: ^1.409.5
         version: 1.409.5
@@ -236,8 +236,8 @@ importers:
         specifier: ^26.1.2
         version: 26.1.2
       '@types/pg':
-        specifier: ^8.20.1
-        version: 8.20.1
+        specifier: ^8.20.3
+        version: 8.20.3
       '@types/react':
         specifier: ^19.2.14
         version: 19.2.18
@@ -258,7 +258,7 @@ importers:
         version: 8.0.0
       nitro:
         specifier: npm:nitro-nightly@3.0.1-20260223-102354-c0b46421
-        version: nitro-nightly@3.0.1-20260223-102354-c0b46421(@azure/identity@4.13.1)(@azure/keyvault-secrets@4.11.2)(@upstash/redis@1.38.1)(@vercel/blob@2.6.1)(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(jiti@2.7.0)(lru-cache@11.5.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(xml2js@0.6.2)
+        version: nitro-nightly@3.0.1-20260223-102354-c0b46421(@azure/identity@4.13.1)(@azure/keyvault-secrets@4.11.2)(@upstash/redis@1.38.1)(@vercel/blob@2.6.1)(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(jiti@2.7.0)(lru-cache@11.5.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(xml2js@0.6.2)
       playwright:
         specifier: ^1.62.1
         version: 1.62.1
@@ -297,13 +297,13 @@ importers:
         version: 6.1.0
       drizzle-orm:
         specifier: ^0.45.2
-        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)
+        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)
       pg:
         specifier: ^8.22.0
         version: 8.22.0
       pg-boss:
-        specifier: ^12.26.3
-        version: 12.26.3
+        specifier: ^12.26.4
+        version: 12.26.4
       posthog-node:
         specifier: ^5.47.3
         version: 5.47.3
@@ -312,8 +312,8 @@ importers:
         specifier: ^26.1.2
         version: 26.1.2
       '@types/pg':
-        specifier: ^8.20.1
-        version: 8.20.1
+        specifier: ^8.20.3
+        version: 8.20.3
       tsx:
         specifier: ^4.23.1
         version: 4.23.1
@@ -385,7 +385,7 @@ importers:
         version: 1.28.0(react@19.2.8)
       nitro:
         specifier: npm:nitro-nightly@3.0.1-20260223-102354-c0b46421
-        version: nitro-nightly@3.0.1-20260223-102354-c0b46421(@azure/identity@4.13.1)(@azure/keyvault-secrets@4.11.2)(@upstash/redis@1.38.1)(@vercel/blob@2.6.1)(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(jiti@2.7.0)(lru-cache@11.5.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(xml2js@0.6.2)
+        version: nitro-nightly@3.0.1-20260223-102354-c0b46421(@azure/identity@4.13.1)(@azure/keyvault-secrets@4.11.2)(@upstash/redis@1.38.1)(@vercel/blob@2.6.1)(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(jiti@2.7.0)(lru-cache@11.5.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(xml2js@0.6.2)
       posthog-js:
         specifier: ^1.409.5
         version: 1.409.5
@@ -454,8 +454,8 @@ importers:
         specifier: ^1.62.1
         version: 1.62.1
       '@types/pg':
-        specifier: ^8.20.1
-        version: 8.20.1
+        specifier: ^8.20.3
+        version: 8.20.3
       '@usebruno/cli':
         specifier: 4.0.0
         version: 4.0.0(supports-color@7.2.0)
@@ -478,7 +478,7 @@ importers:
         version: link:../lib
       better-auth:
         specifier: ^1.6.25
-        version: 1.6.25(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.34(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.1)(supports-color@7.2.0)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(pg@8.22.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10)
+        version: 1.6.25(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.34(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.1)(supports-color@7.2.0)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(pg@8.22.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10)
       disposable-email-domains:
         specifier: ^1.0.62
         version: 1.0.62
@@ -561,17 +561,17 @@ importers:
   packages/lib:
     dependencies:
       '@ai-sdk/anthropic':
-        specifier: ^4.0.26
-        version: 4.0.26(zod@4.4.3)
+        specifier: ^4.0.27
+        version: 4.0.27(zod@4.4.3)
       '@ai-sdk/openai':
-        specifier: ^4.0.26
-        version: 4.0.26(zod@4.4.3)
+        specifier: ^4.0.27
+        version: 4.0.27(zod@4.4.3)
       '@anthropic-ai/sdk':
         specifier: ^0.115.0
         version: 0.115.0(zod@4.4.3)
       '@better-auth/sso':
         specifier: ^1.6.25
-        version: 1.6.25(@better-auth/core@1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.6)(kysely@0.28.17)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.6.25(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.34(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.1)(supports-color@7.2.0)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(pg@8.22.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10))(better-call@1.3.7(zod@4.4.3))
+        version: 1.6.25(@better-auth/core@1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.7)(kysely@0.28.17)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.6.25(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.34(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.1)(supports-color@7.2.0)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(pg@8.22.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10))(better-call@1.3.7(zod@4.4.3))
       '@brightdata/sdk':
         specifier: ^1.1.0
         version: 1.1.0
@@ -582,20 +582,20 @@ importers:
         specifier: workspace:*
         version: link:../config
       ai:
-        specifier: ^7.0.45
-        version: 7.0.45(zod@4.4.3)
+        specifier: ^7.0.48
+        version: 7.0.48(zod@4.4.3)
       better-auth:
         specifier: ^1.6.25
-        version: 1.6.25(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.34(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.1)(supports-color@7.2.0)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(pg@8.22.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10)
+        version: 1.6.25(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.34(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.1)(supports-color@7.2.0)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(pg@8.22.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10)
       dataforseo-client:
         specifier: ^2.1.2
         version: 2.1.2
       drizzle-orm:
         specifier: ^0.45.2
-        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)
+        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)
       jose:
-        specifier: 6.2.6
-        version: 6.2.6
+        specifier: 6.2.7
+        version: 6.2.7
       linkedom:
         specifier: ^0.18.13
         version: 0.18.13
@@ -610,8 +610,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@types/pg':
-        specifier: ^8.20.1
-        version: 8.20.1
+        specifier: ^8.20.3
+        version: 8.20.3
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
@@ -661,7 +661,7 @@ importers:
         version: 19.2.18
       nitro:
         specifier: npm:nitro-nightly@3.0.1-20260223-102354-c0b46421
-        version: nitro-nightly@3.0.1-20260223-102354-c0b46421(@azure/identity@4.13.1)(@azure/keyvault-secrets@4.11.2)(@upstash/redis@1.38.1)(@vercel/blob@2.6.1)(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(jiti@2.7.0)(lru-cache@11.5.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(xml2js@0.6.2)
+        version: nitro-nightly@3.0.1-20260223-102354-c0b46421(@azure/identity@4.13.1)(@azure/keyvault-secrets@4.11.2)(@upstash/redis@1.38.1)(@vercel/blob@2.6.1)(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(jiti@2.7.0)(lru-cache@11.5.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(xml2js@0.6.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -672,8 +672,8 @@ importers:
   packages/ui:
     dependencies:
       '@hookform/resolvers':
-        specifier: ^5.5.7
-        version: 5.5.7(@standard-schema/spec@1.1.0)(ajv-formats@2.1.1(ajv@8.20.0))(ajv@8.20.0)(react-hook-form@7.83.0(react@19.2.8))(zod@4.4.3)
+        specifier: ^5.6.0
+        version: 5.6.0(@standard-schema/spec@1.1.0)(ajv-formats@2.1.1(ajv@8.20.0))(ajv@8.20.0)(react-hook-form@7.84.0(react@19.2.8))(zod@4.4.3)
       '@radix-ui/react-avatar':
         specifier: ^1.2.6
         version: 1.2.6(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -735,8 +735,8 @@ importers:
         specifier: ^19
         version: 19.2.8(react@19.2.8)
       react-hook-form:
-        specifier: ^7.83.0
-        version: 7.83.0(react@19.2.8)
+        specifier: ^7.84.0
+        version: 7.84.0(react@19.2.8)
       recharts:
         specifier: ^3.10.1
         version: 3.10.1(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-is@18.3.1)(react@19.2.8)(redux@5.0.1)
@@ -802,26 +802,26 @@ packages:
   '@adobe/css-tools@4.5.0':
     resolution: {integrity: sha512-6OzddxPio9UiWTCemp4N8cYLV2ZN1ncRnV1cVGtve7dhPOtRkleRyx32GQCYSwDYgaHU3USMm84tNsvKzRCa1Q==}
 
-  '@ai-sdk/anthropic@4.0.26':
-    resolution: {integrity: sha512-6EhDtXgmpIKApSxLZmK69iMetnGYCzH3hllb/ZBDVslsH6GnmNpPN6sR7xcPUyBIHf83fwEMYbOZOtb71Um1jQ==}
+  '@ai-sdk/anthropic@4.0.27':
+    resolution: {integrity: sha512-ecrPWkYf+sHDLHErHAU/yjJfNevUzT0i6TuoQLb58oadnquSHcLQ5NMLLWjbr6d1rxYdzI7ftulIJ03VH9yM3w==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/gateway@4.0.34':
-    resolution: {integrity: sha512-r9h1pwSjAFI75c6PFNGVnhrZIQ3zfWnjwnrc+qGgbnqkWdiuq3ZpTCrAlsphy3h/b3T10OwjfsLd+3yKpyoa/g==}
+  '@ai-sdk/gateway@4.0.37':
+    resolution: {integrity: sha512-YBCTsSlX0ETVsjo0ihfBOeJ3p3y1wXKXDzF9Ygp9dscUY06dzOGmyWJSGsKg+khKVArzBWUW4UCSAKms20ZDmg==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/openai@4.0.26':
-    resolution: {integrity: sha512-WS8HhCu360mVOTh684uAFHUCAblDuzb9o/QQbWXFXQ7k4UELld6UdhlnCoptlP06D2rr81Ocaaa+zaEmVCGvfg==}
+  '@ai-sdk/openai@4.0.27':
+    resolution: {integrity: sha512-6MsWnbNG0ZjZgzYimNNjnTAlOFXn+jdLMFB47dDVUsRNjxdUoTSduCQPZZeTKoUl0ZNwCjsJ31of49l/t1r9MA==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/provider-utils@5.0.17':
-    resolution: {integrity: sha512-U3h3xgaga1OOELBxhtwTfgfr0z++kHCD4YSFm4pfcqzUWolntINS0/21ktZ/5k2A1ozAiRPYqkCg90iwiYrwyw==}
+  '@ai-sdk/provider-utils@5.0.18':
+    resolution: {integrity: sha512-UBNCrkxS5llgN2/RXLBRkjCFTIuL6YB1Goq5c+yRecnznhtX4XPjTwLHz2hrsTltTVZ0rqVegtnwFXdPBkjDHA==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -882,6 +882,9 @@ packages:
   '@aws-sdk/core@3.977.1':
     resolution: {integrity: sha512-KVtQRtc00ES/y+Sc3vYXeP6pCIcNlBJCZOwvqSy8ZpVGmbM5+IG+AfhuTKQ2oXmIVqZJewaGMMpzPkywC6xg0w==}
     engines: {node: '>=20.0.0'}
+    deprecated: |-
+      Deprecated due to Document number parsing bug in JSON, see
+        https://github.com/aws/aws-sdk-js-v3/issues/8246. Newer version available.
 
   '@aws-sdk/credential-provider-cognito-identity@3.972.60':
     resolution: {integrity: sha512-16Fxa3veKIO6nHJr+vN76z3BkSU7725lzruc5S2SQSTUTbK4TXtmi8033WQljZj4k1+383UsMaNOHN6B76fK5A==}
@@ -1932,8 +1935,8 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
-  '@hookform/resolvers@5.5.7':
-    resolution: {integrity: sha512-CyPCYV8/KlXfEXLWj8HHHhVsR/IZ6Ckm3b/a4fWtO/lRnRK1huqncb8LlAWrmpPRsse5glF5aVuDRMHEr3UGag==}
+  '@hookform/resolvers@5.6.0':
+    resolution: {integrity: sha512-qtgE4NUK/WQFPq8aDe+GOhr0/UiUSKT0m9ta9SMnDS5ZE63yC850ShAGz1lxtwO+dBjhUKvUxmHwkp4eN7/kBQ==}
     peerDependencies:
       '@sinclair/typebox': '>=0.25.24'
       '@standard-schema/spec': ^1.0.0
@@ -4751,8 +4754,8 @@ packages:
   '@types/node@26.1.2':
     resolution: {integrity: sha512-Vu4a5UFA9rIIFJ7rB/Vaafh9lrCQszopTCx6KjFboXTGQbPNasehVR5TEiithSDGyd1DEiUByggTZsg8jukeIg==}
 
-  '@types/pg@8.20.1':
-    resolution: {integrity: sha512-ybDwWypSo+Rs2LhUxSTfz5VDoon8FMvntvAZMLbFx4U4csIoXVnDjRdnp634rKgqldGio33/aZSG6aN36CzAJg==}
+  '@types/pg@8.20.3':
+    resolution: {integrity: sha512-4Tvg+HO6+oQaAkpT8GTYoSExzpGGZz532GXgbbCElWJQeQdMozBWxEKNBhJJpHFjWXsMxqPbyypvj/89FWNoSQ==}
 
   '@types/qs@6.15.1':
     resolution: {integrity: sha512-GZHUBZR9hckSUhrxmp1nG6NwdpM9fCunJwyThLW1X3AyHgd9IlHb6VANpQQqDr2o/qQp6McZ3y/IA2rVzKzSbw==}
@@ -5141,8 +5144,8 @@ packages:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
 
-  ai@7.0.45:
-    resolution: {integrity: sha512-BLMm4DGw1o2KgDhwWixiRNFQu2zeiNi6XfQlT++japjTbLpIFKST6TRKfsn90Ski6eZ06M34lQlb4viOcFl48Q==}
+  ai@7.0.48:
+    resolution: {integrity: sha512-QmqshWFEDdkFFqSgdJ4cogaoDIYaedqbv73q/NXEYNkSIocJCzXnGFVyM9lrtAGTSBfm+5hq3/292ooXJ1jDSw==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -5660,10 +5663,9 @@ packages:
     resolution: {integrity: sha512-IBWsY8xznyQrcHn8h4bC8/4ErNke5elzgG8GcqF4RFPw6aHkWWRc7Tgw6upjaTX/CT/yQgqYENkxYsTYN+hW2g==}
     engines: {node: '>=18'}
 
-  cron-parser@5.6.2:
-    resolution: {integrity: sha512-yJ/G1LVir6CnlkLI40CsampPLKl1SprGGlUagWtGJxewytRVYezv5xVyzzbT+Pvzx+VIRvZVF7/a0eEMTxdnTA==}
+  cron-parser@5.7.0:
+    resolution: {integrity: sha512-iSpDHpwwW/GhIg4JVODYlWUEpMNSimaHvqOhHpOz1W+Y97z1lL1nf+dpcF17cNwFRpTtKN9devgi1fxflp3Phw==}
     engines: {node: '>=18'}
-    deprecated: 'Published tarball was built from a stale dist/ and is missing the fixes from #414 and #415 — its contents are effectively v5.6.1. Upgrade to v5.7.0.'
 
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
@@ -5679,6 +5681,7 @@ packages:
 
   crypto-js@4.2.0:
     resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
+    deprecated: Active development of CryptoJS has been discontinued. This library is no longer maintained.
 
   css-background-parser@0.1.0:
     resolution: {integrity: sha512-2EZLisiZQ+7m4wwur/qiYJRniHX4K5Tc9w93MT3AS0WS1u5kaZ4FKXlOTBhOjc+CgEgPiGY+fX1yWD8UwpEqUA==}
@@ -6941,8 +6944,8 @@ packages:
   jose@6.2.3:
     resolution: {integrity: sha512-YYVDInQKFJfR/xa3ojUTl8c2KoTwiL1R5Wg9YCydwH0x0B9grbzlg5HC7mMjCtUJjbQ/YnGEZIhI5tCgfTb4Hw==}
 
-  jose@6.2.6:
-    resolution: {integrity: sha512-HwMtbJjMw8rC8dUTwCNilHJD+fxTeKM3JV1eprSmTjS41qwXSSt6exJXgyPK1QOu0jB9eDYLESRDkB3qaT3jnw==}
+  jose@6.2.7:
+    resolution: {integrity: sha512-hq1OB1bALKfydZNoViyg6hPVGV4i93ny9Op+n4zP5RSf7SCZEXa/TsG2O3IEr7+WlHRTPnpqDmHfMH6qXAD60w==}
 
   js-md4@0.3.2:
     resolution: {integrity: sha512-/GDnfQYsltsjRswQhN9fhv3EMw2sCpUdrdxyWDOUK7eyD++r3gRhzgiQgc/x4MAv2i1iuQ4lxO5mvqM3vj4bwA==}
@@ -7819,8 +7822,8 @@ packages:
     resolution: {integrity: sha512-//nshmD55c46FuFw26xV/xFAaB5HF9Xdap7HJBBnrKdAd6/GxDBaNA1870O79+9ueg61cZLSVc+OaFlfmObYVQ==}
     engines: {node: '>= 14.16'}
 
-  pg-boss@12.26.3:
-    resolution: {integrity: sha512-slpR0zeMXzX3c+gAI6035XzJfNfUYndCdvxudJojB2S1LZEMxT31xBBEVm7shEcJQ35Vj2ik+w2Hf7lmLuvrZQ==}
+  pg-boss@12.26.4:
+    resolution: {integrity: sha512-CLcn6WKhmBbSNTMckx5wKeqlMDryIN/X71zQFOLc0okjDsQwtSym2O2bvB5iSIxvlVF6sHrVld8NZ7QrQuYaVg==}
     engines: {node: '>=22.12.0'}
     hasBin: true
 
@@ -8055,8 +8058,8 @@ packages:
     peerDependencies:
       react: ^19.2.8
 
-  react-hook-form@7.83.0:
-    resolution: {integrity: sha512-AXt8cMCmx5a7u4uvpb2uRFVrWQhllI4pV+LSykxIac/hjt44TnQkmX9BKuQi2i+LDC62esmiLpilkav+kjVf/A==}
+  react-hook-form@7.84.0:
+    resolution: {integrity: sha512-+hWvQP6GLco56mDwrbU4XnHix8t1z90ltZsDIrREl+jnQFQxYLX8oAzqe/Xn8nHpmoXTY5M6oEXrAhbP1qevNQ==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
@@ -9268,26 +9271,26 @@ snapshots:
 
   '@adobe/css-tools@4.5.0': {}
 
-  '@ai-sdk/anthropic@4.0.26(zod@4.4.3)':
+  '@ai-sdk/anthropic@4.0.27(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 4.0.4
-      '@ai-sdk/provider-utils': 5.0.17(zod@4.4.3)
+      '@ai-sdk/provider-utils': 5.0.18(zod@4.4.3)
       zod: 4.4.3
 
-  '@ai-sdk/gateway@4.0.34(zod@4.4.3)':
+  '@ai-sdk/gateway@4.0.37(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 4.0.4
-      '@ai-sdk/provider-utils': 5.0.17(zod@4.4.3)
+      '@ai-sdk/provider-utils': 5.0.18(zod@4.4.3)
       '@vercel/oidc': 3.2.0
       zod: 4.4.3
 
-  '@ai-sdk/openai@4.0.26(zod@4.4.3)':
+  '@ai-sdk/openai@4.0.27(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 4.0.4
-      '@ai-sdk/provider-utils': 5.0.17(zod@4.4.3)
+      '@ai-sdk/provider-utils': 5.0.18(zod@4.4.3)
       zod: 4.4.3
 
-  '@ai-sdk/provider-utils@5.0.17(zod@4.4.3)':
+  '@ai-sdk/provider-utils@5.0.18(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 4.0.4
       '@standard-schema/spec': 1.1.0
@@ -10099,26 +10102,26 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
 
-  '@better-auth/core@1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.6)(kysely@0.28.17)(nanostores@1.4.2)':
+  '@better-auth/core@1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.7)(kysely@0.28.17)(nanostores@1.4.2)':
     dependencies:
       '@better-auth/utils': 0.4.2
       '@better-fetch/fetch': 1.3.1
       '@opentelemetry/semantic-conventions': 1.43.0
       '@standard-schema/spec': 1.1.0
       better-call: 1.3.7(zod@4.4.3)
-      jose: 6.2.6
+      jose: 6.2.7
       kysely: 0.28.17
       nanostores: 1.4.2
       zod: 4.4.3
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
 
-  '@better-auth/drizzle-adapter@1.6.25(@better-auth/core@1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))':
+  '@better-auth/drizzle-adapter@1.6.25(@better-auth/core@1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))':
     dependencies:
       '@better-auth/core': 1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.4.2)
       '@better-auth/utils': 0.4.2
     optionalDependencies:
-      drizzle-orm: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)
+      drizzle-orm: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)
 
   '@better-auth/kysely-adapter@1.6.25(@better-auth/core@1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(kysely@0.28.17)':
     dependencies:
@@ -10142,15 +10145,15 @@ snapshots:
       '@better-auth/core': 1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.4.2)
       '@better-auth/utils': 0.4.2
 
-  '@better-auth/sso@1.6.25(@better-auth/core@1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.6)(kysely@0.28.17)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.6.25(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.34(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.1)(supports-color@7.2.0)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(pg@8.22.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10))(better-call@1.3.7(zod@4.4.3))':
+  '@better-auth/sso@1.6.25(@better-auth/core@1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.7)(kysely@0.28.17)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.6.25(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.34(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.1)(supports-color@7.2.0)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(pg@8.22.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10))(better-call@1.3.7(zod@4.4.3))':
     dependencies:
-      '@better-auth/core': 1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.6)(kysely@0.28.17)(nanostores@1.4.2)
+      '@better-auth/core': 1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.7)(kysely@0.28.17)(nanostores@1.4.2)
       '@better-auth/utils': 0.4.2
       '@better-fetch/fetch': 1.3.1
-      better-auth: 1.6.25(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.34(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.1)(supports-color@7.2.0)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(pg@8.22.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10)
+      better-auth: 1.6.25(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.34(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.1)(supports-color@7.2.0)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(pg@8.22.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10)
       better-call: 1.3.7(zod@4.4.3)
       fast-xml-parser: 5.10.1
-      jose: 6.2.6
+      jose: 6.2.7
       samlify: 2.13.1
       tldts: 6.1.86
       zod: 4.4.3
@@ -10670,10 +10673,10 @@ snapshots:
       protobufjs: 7.6.5
       yargs: 17.7.3
 
-  '@hookform/resolvers@5.5.7(@standard-schema/spec@1.1.0)(ajv-formats@2.1.1(ajv@8.20.0))(ajv@8.20.0)(react-hook-form@7.83.0(react@19.2.8))(zod@4.4.3)':
+  '@hookform/resolvers@5.6.0(@standard-schema/spec@1.1.0)(ajv-formats@2.1.1(ajv@8.20.0))(ajv@8.20.0)(react-hook-form@7.84.0(react@19.2.8))(zod@4.4.3)':
     dependencies:
       '@standard-schema/utils': 0.3.0
-      react-hook-form: 7.83.0(react@19.2.8)
+      react-hook-form: 7.84.0(react@19.2.8)
     optionalDependencies:
       '@standard-schema/spec': 1.1.0
       ajv: 8.20.0
@@ -13333,7 +13336,7 @@ snapshots:
     dependencies:
       undici-types: 8.3.0
 
-  '@types/pg@8.20.1':
+  '@types/pg@8.20.3':
     dependencies:
       '@types/node': 26.1.2
       pg-protocol: 1.15.0
@@ -13780,11 +13783,11 @@ snapshots:
 
   agent-base@7.1.4: {}
 
-  ai@7.0.45(zod@4.4.3):
+  ai@7.0.48(zod@4.4.3):
     dependencies:
-      '@ai-sdk/gateway': 4.0.34(zod@4.4.3)
+      '@ai-sdk/gateway': 4.0.37(zod@4.4.3)
       '@ai-sdk/provider': 4.0.4
-      '@ai-sdk/provider-utils': 5.0.17(zod@4.4.3)
+      '@ai-sdk/provider-utils': 5.0.18(zod@4.4.3)
       zod: 4.4.3
 
   ajv-formats@2.1.1(ajv@8.20.0):
@@ -13985,10 +13988,10 @@ snapshots:
 
   baseline-browser-mapping@2.10.43: {}
 
-  better-auth@1.6.25(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.34(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.1)(supports-color@7.2.0)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(pg@8.22.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10):
+  better-auth@1.6.25(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.34(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.1)(supports-color@7.2.0)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(pg@8.22.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10):
     dependencies:
       '@better-auth/core': 1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.4.2)
-      '@better-auth/drizzle-adapter': 1.6.25(@better-auth/core@1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))
+      '@better-auth/drizzle-adapter': 1.6.25(@better-auth/core@1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))
       '@better-auth/kysely-adapter': 1.6.25(@better-auth/core@1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(kysely@0.28.17)
       '@better-auth/memory-adapter': 1.6.25(@better-auth/core@1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.4.2))(@better-auth/utils@0.4.2)
       '@better-auth/mongo-adapter': 1.6.25(@better-auth/core@1.6.25(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.4.2))(@better-auth/utils@0.4.2)
@@ -14007,7 +14010,7 @@ snapshots:
     optionalDependencies:
       '@tanstack/react-start': 1.168.34(crossws@0.4.4(srvx@0.11.15))(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.1)(supports-color@7.2.0)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
       drizzle-kit: 0.31.10
-      drizzle-orm: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)
+      drizzle-orm: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)
       pg: 8.22.0
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
@@ -14264,7 +14267,7 @@ snapshots:
       crc-32: 1.2.2
       readable-stream: 4.7.0
 
-  cron-parser@5.6.2:
+  cron-parser@5.7.0:
     dependencies:
       luxon: 3.7.2
 
@@ -14376,9 +14379,9 @@ snapshots:
 
   dayjs@1.11.21: {}
 
-  db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)):
+  db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)):
     optionalDependencies:
-      drizzle-orm: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)
+      drizzle-orm: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)
 
   debug@4.4.3(supports-color@7.2.0):
     dependencies:
@@ -14509,10 +14512,10 @@ snapshots:
       esbuild: 0.28.1
       tsx: 4.23.1
 
-  drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0):
+  drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0):
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
-      '@types/pg': 8.20.1
+      '@types/pg': 8.20.3
       '@upstash/redis': 1.38.1
       kysely: 0.28.17
       pg: 8.22.0
@@ -15453,7 +15456,7 @@ snapshots:
 
   jose@6.2.3: {}
 
-  jose@6.2.6: {}
+  jose@6.2.7: {}
 
   js-md4@0.3.2: {}
 
@@ -16295,11 +16298,11 @@ snapshots:
 
   nf3@0.3.10: {}
 
-  nitro-nightly@3.0.1-20260223-102354-c0b46421(@azure/identity@4.13.1)(@azure/keyvault-secrets@4.11.2)(@upstash/redis@1.38.1)(@vercel/blob@2.6.1)(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(jiti@2.7.0)(lru-cache@11.5.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(xml2js@0.6.2):
+  nitro-nightly@3.0.1-20260223-102354-c0b46421(@azure/identity@4.13.1)(@azure/keyvault-secrets@4.11.2)(@upstash/redis@1.38.1)(@vercel/blob@2.6.1)(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))(jiti@2.7.0)(lru-cache@11.5.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))(xml2js@0.6.2):
     dependencies:
       consola: 3.4.2
       crossws: 0.4.4(srvx@0.11.15)
-      db0: 0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))
+      db0: 0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))
       h3: 2.0.1-rc.20(crossws@0.4.4(srvx@0.11.15))
       hookable: 6.1.0
       nf3: 0.3.10
@@ -16308,7 +16311,7 @@ snapshots:
       rolldown: 1.2.0
       srvx: 0.11.15
       unenv: 2.0.0-rc.24
-      unstorage: 2.0.0-alpha.5(@azure/identity@4.13.1)(@azure/keyvault-secrets@4.11.2)(@upstash/redis@1.38.1)(@vercel/blob@2.6.1)(chokidar@5.0.0)(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)))(lru-cache@11.5.2)(ofetch@2.0.0-alpha.3)
+      unstorage: 2.0.0-alpha.5(@azure/identity@4.13.1)(@azure/keyvault-secrets@4.11.2)(@upstash/redis@1.38.1)(@vercel/blob@2.6.1)(chokidar@5.0.0)(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)))(lru-cache@11.5.2)(ofetch@2.0.0-alpha.3)
     optionalDependencies:
       dotenv: 17.4.2
       jiti: 2.7.0
@@ -16613,9 +16616,9 @@ snapshots:
 
   pathval@2.0.1: {}
 
-  pg-boss@12.26.3:
+  pg-boss@12.26.4:
     dependencies:
-      cron-parser: 5.6.2
+      cron-parser: 5.7.0
       pg: 8.22.0
       serialize-error: 13.0.1
     transitivePeerDependencies:
@@ -16899,7 +16902,7 @@ snapshots:
       react: 19.2.8
       scheduler: 0.27.0
 
-  react-hook-form@7.83.0(react@19.2.8):
+  react-hook-form@7.84.0(react@19.2.8):
     dependencies:
       react: 19.2.8
 
@@ -17810,14 +17813,14 @@ snapshots:
       rolldown: 1.2.1
       vite: 8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)
 
-  unstorage@2.0.0-alpha.5(@azure/identity@4.13.1)(@azure/keyvault-secrets@4.11.2)(@upstash/redis@1.38.1)(@vercel/blob@2.6.1)(chokidar@5.0.0)(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)))(lru-cache@11.5.2)(ofetch@2.0.0-alpha.3):
+  unstorage@2.0.0-alpha.5(@azure/identity@4.13.1)(@azure/keyvault-secrets@4.11.2)(@upstash/redis@1.38.1)(@vercel/blob@2.6.1)(chokidar@5.0.0)(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0)))(lru-cache@11.5.2)(ofetch@2.0.0-alpha.3):
     optionalDependencies:
       '@azure/identity': 4.13.1(supports-color@7.2.0)
       '@azure/keyvault-secrets': 4.11.2(supports-color@7.2.0)
       '@upstash/redis': 1.38.1
       '@vercel/blob': 2.6.1
       chokidar: 5.0.0
-      db0: 0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.1)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))
+      db0: 0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.3)(@upstash/redis@1.38.1)(kysely@0.28.17)(pg@8.22.0))
       lru-cache: 11.5.2
       ofetch: 2.0.0-alpha.3
 
