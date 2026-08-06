@@ -17,11 +17,23 @@ describe("validateWebsiteUrl", () => {
 		});
 	});
 
+	it("accepts a bare domain with www", () => {
+		expect(validateWebsiteUrl("www.example.com")).toEqual({
+			isValid: true,
+			formattedUrl: "https://www.example.com/",
+		});
+	});
+
 	it("accepts a full https URL with no path", () => {
 		expect(validateWebsiteUrl("https://example.com")).toEqual({
 			isValid: true,
 			formattedUrl: "https://example.com/",
 		});
+	});
+
+	// A domain and its URL form name the same site and must store identically.
+	it("normalizes a bare domain and its URL form to the same value", () => {
+		expect(validateWebsiteUrl("example.com/products")).toEqual(validateWebsiteUrl("https://example.com/products"));
 	});
 
 	// A sub-brand page is the whole point: it drives analysis, and everything

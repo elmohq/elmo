@@ -77,6 +77,14 @@ describe("getWebsiteExcerpt", () => {
 		expect(String(fetchMock.mock.calls[0][0])).toBe("https://r.jina.ai/https://acme.com");
 	});
 
+	it("prepends a scheme to a bare domain that carries a path", async () => {
+		const fetchMock = stubFetch({ jina: response({ body: "content" }) });
+
+		await getWebsiteExcerpt("nike.com/golf");
+
+		expect(String(fetchMock.mock.calls[0][0])).toBe("https://r.jina.ai/https://nike.com/golf");
+	});
+
 	it("preserves an absolute page URL through both excerpt sources", async () => {
 		const pageUrl = "https://www.nike.com/golf?category=clubs#featured";
 		const fetchMock = stubFetch({

@@ -121,10 +121,29 @@ describe("analyzeBrand", () => {
 		expect(result.brandName).toBe("Acme");
 	});
 
-	it("does not add the sub-page note when analyzing a site root", async () => {
-		const ctx = await buildAnalysisContext({ website: "https://nike.com/" });
+	// Same page, written two ways — the website field accepts either, so both
+	// must resolve to one analysis URL and one tracked domain.
+	it("treats a plain domain with a path the same as its full URL", async () => {
+		const contexts = [];
+		for (const website of ["nike.com/golf", "https://nike.com/golf"]) {
+			contexts.push(await buildAnalysisContext({ website }));
+		}
 
-		expect(ctx.prompt).not.toContain("not the site root");
+		for (const ctx of contexts) {
+			expect(ctx.analysisUrl).toBe("https://nike.com/golf");
+			expect(ctx.website).toBe("nike.com");
+			expect(ctx.prompt).toContain("not the site root");
+		}
+		expect(getWebsiteExcerpt).toHaveBeenCalledWith("https://nike.com/golf");
+	});
+
+	it("does not add the sub-page note for a site root, in either form", async () => {
+		for (const website of ["nike.com", "www.nike.com", "https://nike.com/", "https://www.nike.com"]) {
+			const ctx = await buildAnalysisContext({ website });
+
+			expect(ctx.prompt).not.toContain("not the site root");
+			expect(ctx.website).toBe("nike.com");
+		}
 	});
 
 	it("normalizes brand fields, dedupes domains, and filters self-referential competitors", async () => {

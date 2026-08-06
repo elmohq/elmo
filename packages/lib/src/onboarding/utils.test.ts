@@ -9,12 +9,31 @@ import {
 } from "./utils";
 
 describe("cleanUrl", () => {
-	it("preserves the page path, query, and fragment", () => {
+	// The brand website field accepts either shape, so both have to normalize to
+	// something the page fetcher can use.
+	it("adds a scheme to plain domains", () => {
+		expect(cleanUrl("nike.com")).toBe("https://nike.com/");
+		expect(cleanUrl("www.nike.com")).toBe("https://www.nike.com/");
+		expect(cleanUrl("nike.com/")).toBe("https://nike.com/");
+		expect(cleanUrl(" nike.com ")).toBe("https://nike.com/");
+	});
+
+	it("keeps the path, query, and fragment of a plain domain", () => {
+		expect(cleanUrl("nike.com/golf")).toBe("https://nike.com/golf");
 		expect(cleanUrl(" www.example.com/golf?category=clubs#featured ")).toBe(
 			"https://www.example.com/golf?category=clubs#featured",
 		);
-		expect(cleanUrl("nike.com")).toBe("https://nike.com/");
+	});
+
+	it("leaves full URLs intact apart from host casing", () => {
+		expect(cleanUrl("https://nike.com")).toBe("https://nike.com/");
+		expect(cleanUrl("https://www.nike.com/golf")).toBe("https://www.nike.com/golf");
 		expect(cleanUrl("HTTP://EXAMPLE.COM:8080/Golf")).toBe("http://example.com:8080/Golf");
+	});
+
+	// A domain and its URL form describe the same page and must agree.
+	it("normalizes a plain domain and its URL form to the same value", () => {
+		expect(cleanUrl("nike.com/golf")).toBe(cleanUrl("https://nike.com/golf"));
 	});
 
 	it("removes embedded credentials and rejects unsupported schemes", () => {
