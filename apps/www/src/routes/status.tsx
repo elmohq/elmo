@@ -18,16 +18,21 @@ import {
 	PROVIDER_FILTER_ORDER,
 	providerCategory,
 	rateTier,
+	runStats,
+	unavailableReason,
 	type CellAvailability,
 	type MatrixCell,
+	type MetricStats,
 	type RateTier,
+	type RunStats,
 	type StatusEntry,
 	type TargetStatus,
 } from "@/lib/status-helpers";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@workspace/ui/components/chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Badge } from "@workspace/ui/components/badge";
-import { Fragment, useState, useRef, useEffect, type ReactNode } from "react";
+import { ArrowUpRight } from "lucide-react";
+import { Fragment, useState, useRef, useEffect, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 
@@ -587,53 +592,262 @@ function FilterRow({
 
 // ─── At-a-glance matrix ───────────────────────────────────────────────────
 
-function MatrixCellView({ cell, availability }: { cell: MatrixCell | null; availability: CellAvailability }) {
+// One fixed width for every matrix tooltip: the stat columns line up from cell
+// to cell, and a trigger can keep the tooltip inside the viewport on hover
+// without having to measure it first.
+const TIP_WIDTH = 272;
+
+function MatrixTip({
+	tip,
+	interactive,
+	className,
+	style,
+	children,
+}: {
+	tip: ReactNode;
+	/** Keeps the tooltip alive while the pointer travels into it, for tips with a link. */
+	interactive?: boolean;
+	className: string;
+	style?: CSSProperties;
+	children: ReactNode;
+}) {
+	const [open, setOpen] = useState(false);
+	const [pos, setPos] = useState({ x: 0, y: 0 });
+	const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const cancelClose = () => {
+		if (closeTimer.current) {
+			clearTimeout(closeTimer.current);
+			closeTimer.current = null;
+		}
+	};
+	useEffect(() => cancelClose, []);
+
+	const show = (el: HTMLElement) => {
+		const rect = el.getBoundingClientRect();
+		const half = TIP_WIDTH / 2;
+		const margin = 8;
+		setPos({
+			x: Math.min(Math.max(rect.left + rect.width / 2, half + margin), window.innerWidth - half - margin),
+			y: rect.top,
+		});
+		cancelClose();
+		setOpen(true);
+	};
+	const hide = () => {
+		cancelClose();
+		if (interactive) closeTimer.current = setTimeout(() => setOpen(false), 150);
+		else setOpen(false);
+	};
+
+	return (
+		<>
+			<button
+				type="button"
+				className={`w-full cursor-default ${className}`}
+				style={style}
+				onMouseEnter={(e) => show(e.currentTarget)}
+				onMouseLeave={hide}
+				onFocus={(e) => show(e.currentTarget)}
+				onBlur={hide}
+			>
+				{children}
+			</button>
+			{open &&
+				createPortal(
+					// The wrapper's bottom padding bridges the gap to the cell, so the
+					// pointer can reach an interactive tooltip without it closing.
+					<div
+						className={`fixed z-50 pb-1.5 ${interactive ? "" : "pointer-events-none"}`}
+						style={{ left: pos.x, top: pos.y, width: TIP_WIDTH, transform: "translate(-50%, -100%)" }}
+						onMouseEnter={cancelClose}
+						onMouseLeave={hide}
+					>
+						<div className="rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-xs text-zinc-950 shadow-xl">
+							{tip}
+						</div>
+					</div>,
+					document.body,
+				)}
+		</>
+	);
+}
+
+function TipHeader({ title, subtitle }: { title: string; subtitle: string }) {
+	return (
+		<>
+			<div className="font-medium">{title}</div>
+			<div className="text-[11px] text-zinc-500">{subtitle}</div>
+		</>
+	);
+}
+
+function formatStat(value: number) {
+	return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+}
+
+function TipStats({ stats }: { stats: RunStats }) {
+	if (!stats.metrics)
+		return (
+			<div className="mt-1.5 text-zinc-600">
+				{stats.runs === 0 ? "Nothing has run here yet." : "No successful runs to average."}
+			</div>
+		);
+	const rows: [string, MetricStats, (v: number) => string][] = [
+		["Latency", stats.metrics.latency, (v) => formatLatency(Math.round(v))],
+		["Citations", stats.metrics.citations, formatStat],
+		["Web queries", stats.metrics.webQueries, formatStat],
+		["Text (chars)", stats.metrics.textLength, formatStat],
+		["Retries", stats.metrics.retries, formatStat],
+	];
+	return (
+		<div className="mt-1.5 grid grid-cols-[1fr_auto_auto] items-baseline gap-x-3 gap-y-0.5">
+			<div />
+			<div className="text-right text-[10px] uppercase tracking-wide text-zinc-400">Avg</div>
+			<div className="text-right text-[10px] uppercase tracking-wide text-zinc-400">Median</div>
+			{rows.map(([label, metric, format]) => (
+				<Fragment key={label}>
+					<div className="text-zinc-600">{label}</div>
+					<div className="text-right font-mono tabular-nums">{format(metric.avg)}</div>
+					<div className="text-right font-mono tabular-nums">{format(metric.median)}</div>
+				</Fragment>
+			))}
+		</div>
+	);
+}
+
+function plural(count: number, noun: string) {
+	return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+// Shared by data cells and the aggregate row/column/overall cells — the only
+// difference is how many targets get folded into one set of runs.
+function StatsTip({ title, targets }: { title: string; targets: TargetStatus[] }) {
+	const stats = runStats(targets);
+	const rate = passRate(targets);
+	const subtitle =
+		rate === null
+			? "No runs in the last 7 days"
+			: [
+					`${rate.toFixed(1)}% success`,
+					plural(stats.runs, "run"),
+					stats.targets > 1 ? plural(stats.targets, "target") : null,
+					"7 days",
+				]
+					.filter(Boolean)
+					.join(" · ");
+
+	return (
+		<>
+			<TipHeader title={title} subtitle={subtitle} />
+			<TipStats stats={stats} />
+			{stats.metrics && stats.passed < stats.runs && (
+				<div className="mt-2 text-[11px] text-zinc-500">Averages cover the {plural(stats.passed, "run")} that passed.</div>
+			)}
+			{stats.failingNow > 0 && (
+				<div className="mt-2 text-[11px] text-red-500">
+					{stats.targets > 1 ? `${stats.failingNow} of ${stats.targets} targets failing` : "Last check failed"}
+					{stats.lastError ? `: ${stats.lastError.slice(0, 120)}` : ""}
+				</div>
+			)}
+		</>
+	);
+}
+
+function UnavailableTip({ model, provider }: { model: string; provider: string }) {
+	return (
+		<>
+			<TipHeader title="Not available" subtitle={`${formatModel(model)} · ${PROVIDER_FILTER_LABELS[provider]}`} />
+			<div className="mt-1.5 text-zinc-600">{unavailableReason(model, provider)}</div>
+		</>
+	);
+}
+
+function UntrackedTip({ model, provider }: { model: string; provider: string }) {
+	const modelLabel = formatModel(model);
+	const providerLabel = PROVIDER_FILTER_LABELS[provider];
+	const href = `https://github.com/elmohq/elmo/issues/new?title=${encodeURIComponent(
+		`Track ${modelLabel} via ${providerLabel}`,
+	)}`;
+	return (
+		<>
+			<TipHeader title="Not supported yet" subtitle={`${modelLabel} · ${providerLabel}`} />
+			<div className="mt-1.5 text-zinc-600">
+				Elmo could reach {modelLabel} through {providerLabel}, but doesn't track it today.
+			</div>
+			<a
+				href={href}
+				target="_blank"
+				rel={externalRel(href)}
+				className="mt-2 inline-flex items-center gap-1 font-medium text-blue-600 underline underline-offset-2 hover:text-blue-700"
+			>
+				Request it on GitHub
+				<ArrowUpRight className="size-3" />
+			</a>
+		</>
+	);
+}
+
+function MatrixCellView({
+	model,
+	provider,
+	cell,
+	availability,
+}: {
+	model: string;
+	provider: string;
+	cell: MatrixCell | null;
+	availability: CellAvailability;
+}) {
 	if (!cell) {
 		if (availability === "unavailable") {
 			return (
-				<div
+				<MatrixTip
+					tip={<UnavailableTip model={model} provider={provider} />}
 					className="flex h-9 items-center justify-center rounded-sm bg-zinc-50 text-[10px] font-medium text-zinc-300"
 					style={{ backgroundImage: HATCH_BG }}
-					title="Not available through this type of provider"
 				>
 					N/A
-				</div>
+				</MatrixTip>
 			);
 		}
 		return (
-			<div
+			<MatrixTip
+				interactive
+				tip={<UntrackedTip model={model} provider={provider} />}
 				className="flex h-9 items-center justify-center rounded-sm bg-zinc-50 text-zinc-300"
-				title="Not currently tracked by Elmo"
 			>
 				·
-			</div>
+			</MatrixTip>
 		);
 	}
 	const tier = rateTier(cell.rate);
 	return (
-		<div
+		<MatrixTip
+			tip={<StatsTip title={`${formatModel(model)} · ${PROVIDER_FILTER_LABELS[provider]}`} targets={cell.targets} />}
 			className={`flex h-9 items-center justify-center rounded-sm text-xs font-medium tabular-nums ${TIER_CELL[tier]} ${
 				cell.down ? "ring-2 ring-inset ring-red-500" : ""
 			}`}
-			title={cell.down ? "Last check failed" : undefined}
 		>
 			{cell.rate === null ? "—" : `${Math.round(cell.rate)}%`}
-		</div>
+		</MatrixTip>
 	);
 }
 
 // Row / column / overall health cells: one shade darker than data cells, with
 // the overall corner solid.
-function MatrixSummaryCell({ rate, solid }: { rate: number | null; solid?: boolean }) {
+function MatrixSummaryCell({ title, targets, solid }: { title: string; targets: TargetStatus[]; solid?: boolean }) {
+	const rate = passRate(targets);
 	const tier = rateTier(rate);
 	return (
-		<div
+		<MatrixTip
+			tip={<StatsTip title={title} targets={targets} />}
 			className={`flex h-9 items-center justify-center rounded-sm text-xs font-semibold tabular-nums ${
 				solid ? TIER_SOLID[tier] : TIER_CELL_AVG[tier]
 			}`}
 		>
 			{rate === null ? "—" : `${Math.round(rate)}%`}
-		</div>
+		</MatrixTip>
 	);
 }
 
@@ -734,19 +948,32 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 							<Fragment key={model}>
 								<div className="flex items-center pr-2 text-sm font-medium text-zinc-700">{formatModel(model)}</div>
 								{renderProviderCells((p) => (
-									<MatrixCellView key={p} cell={matrix.cell(model, p)} availability={matrix.availability(model, p)} />
+									<MatrixCellView
+										key={p}
+										model={model}
+										provider={p}
+										cell={matrix.cell(model, p)}
+										availability={matrix.availability(model, p)}
+									/>
 								))}
 								<div />
-								<MatrixSummaryCell rate={matrix.rowRate(model)} />
+								<MatrixSummaryCell
+									title={`${formatModel(model)} · every provider`}
+									targets={matrix.rowTargets(model)}
+								/>
 							</Fragment>
 						))}
 						<div className="col-span-full h-2" />
 						<div />
 						{renderProviderCells((p) => (
-							<MatrixSummaryCell key={p} rate={matrix.colRate(p)} />
+							<MatrixSummaryCell
+								key={p}
+								title={`${PROVIDER_FILTER_LABELS[p]} · every model`}
+								targets={matrix.colTargets(p)}
+							/>
 						))}
 						<div />
-						<MatrixSummaryCell rate={matrix.overall} solid />
+						<MatrixSummaryCell title="Every tracked target" targets={data} solid />
 					</div>
 				</div>
 			</CardContent>

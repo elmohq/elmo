@@ -123,6 +123,17 @@ export const PROVIDER_FILTER_LABELS: Record<string, string> = {
 	dataforseo: "DataForSEO",
 };
 
+// Why a combination classified "unavailable" can't exist, phrased for the
+// matrix tooltip.
+export function unavailableReason(model: string, provider: string): string {
+	const modelLabel = formatModel(model);
+	const providerLabel = PROVIDER_FILTER_LABELS[provider] ?? provider;
+	if (MODEL_API_CATEGORIES.includes(provider)) {
+		return `${modelLabel} has no public inference endpoint — it only exists as a live web surface, so ${providerLabel} can't reach it.`;
+	}
+	return `${providerLabel} has no ${modelLabel} collector, so that surface can't be reached through it.`;
+}
+
 export function formatLatency(ms: number) {
 	if (ms < 1000) return `${ms}ms`;
 	if (ms < 10_000) return `${(ms / 1000).toFixed(1)}s`;
@@ -202,10 +213,73 @@ export function overallStatus(targets: TargetStatus[]): OverallStatus {
 	};
 }
 
+export interface MetricStats {
+	avg: number;
+	median: number;
+}
+
+export interface RunStats {
+	targets: number;
+	runs: number;
+	passed: number;
+	/** Targets whose most recent run failed. */
+	failingNow: number;
+	lastError: string | null;
+	/** Null when nothing succeeded — the per-run numbers would all be zeros. */
+	metrics: {
+		latency: MetricStats;
+		citations: MetricStats;
+		webQueries: MetricStats;
+		textLength: MetricStats;
+		retries: MetricStats;
+	} | null;
+}
+
+function metricStats(values: number[]): MetricStats {
+	const sorted = [...values].sort((a, b) => a - b);
+	const mid = Math.floor(sorted.length / 2);
+	return {
+		avg: values.reduce((sum, v) => sum + v, 0) / values.length,
+		median: sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid],
+	};
+}
+
+/**
+ * Per-run shape of one or many targets over the loaded window. The run counts
+ * cover every deduped square — the same set the success rate is computed from —
+ * while the metrics cover only the successful ones, since a failed run's
+ * latency is time-to-error and its citations and text are always zero.
+ */
+export function runStats(targets: TargetStatus[]): RunStats {
+	const runs = targets.flatMap((t) => dedupeEntries(t.entries));
+	const passing = runs.filter((e) => e.status === "pass");
+	const failingLatest = targets
+		.map((t) => latestOf(t.entries))
+		.filter((e): e is StatusEntry => e?.status === "fail")
+		.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
+
+	return {
+		targets: targets.length,
+		runs: runs.length,
+		passed: passing.length,
+		failingNow: failingLatest.length,
+		lastError: failingLatest[0]?.error ?? null,
+		metrics: passing.length
+			? {
+					latency: metricStats(passing.map((e) => e.latency)),
+					citations: metricStats(passing.map((e) => e.citations)),
+					webQueries: metricStats(passing.map((e) => e.webQueries)),
+					textLength: metricStats(passing.map((e) => e.textLength)),
+					retries: metricStats(passing.map((e) => e.retries)),
+				}
+			: null,
+	};
+}
+
 export interface MatrixCell {
 	rate: number | null;
 	down: boolean;
-	count: number;
+	targets: TargetStatus[];
 }
 
 export interface StatusMatrix {
@@ -213,9 +287,8 @@ export interface StatusMatrix {
 	providers: string[];
 	cell: (model: string, provider: string) => MatrixCell | null;
 	availability: (model: string, provider: string) => CellAvailability;
-	rowRate: (model: string) => number | null;
-	colRate: (provider: string) => number | null;
-	overall: number | null;
+	rowTargets: (model: string) => TargetStatus[];
+	colTargets: (provider: string) => TargetStatus[];
 }
 
 // A model (rows) by provider-category (columns) grid of uptime, with a `down`
@@ -256,15 +329,14 @@ export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
 			return {
 				rate: passRate(targets),
 				down: targets.some((t) => latestOf(t.entries)?.status === "fail"),
-				count: targets.length,
+				targets,
 			};
 		},
 		availability(model, provider) {
 			const targets = byCell.get(`${model} ${provider}`);
 			return cellAvailability(model, provider, !!targets && targets.length > 0);
 		},
-		rowRate: (model) => passRate(byModel.get(model) ?? []),
-		colRate: (provider) => passRate(byProvider.get(provider) ?? []),
-		overall: passRate(data),
+		rowTargets: (model) => byModel.get(model) ?? [],
+		colTargets: (provider) => byProvider.get(provider) ?? [],
 	};
 }
