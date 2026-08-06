@@ -422,8 +422,8 @@ const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
 // consumer UIs. Perplexity has no scraper endpoint, and the two Google surfaces
 // are SERP scrapes, so both stay on the plain `dataforseo` provider.
 const DATAFORSEO_TARGETS = [
-	{ model: "google-ai-mode", provider: "dataforseo", kind: "SERP" },
-	{ model: "google-ai-overview", provider: "dataforseo", kind: "SERP" },
+	{ model: "google-ai-mode", provider: "dataforseo", kind: "scraper" },
+	{ model: "google-ai-overview", provider: "dataforseo", kind: "scraper" },
 	{ model: "chatgpt", provider: "dataforseo-scraper", kind: "scraper" },
 	{ model: "gemini", provider: "dataforseo-scraper", kind: "scraper" },
 	{ model: "perplexity", provider: "dataforseo", kind: "LLM Responses API" },

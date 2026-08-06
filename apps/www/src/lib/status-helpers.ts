@@ -59,20 +59,21 @@ export function formatProvider(provider: string) {
 
 // The DataForSEO provider id spans both kinds of route: its AI Optimization
 // "LLM Responses" endpoints call the vendors' model APIs, while its SERP
-// endpoints scrape Google. Split it across the two column groups by model.
+// endpoints scrape Google. Split it by model, so the Google surfaces join the
+// LLM Scraper targets in one DataForSEO scraper column.
 const DATAFORSEO_API_MODELS = new Set(["chatgpt", "perplexity", "gemini"]);
 
 // The three first-party API providers collapse into one "Direct API" filter.
 export function providerCategory(provider: string, model: string) {
 	if (provider === "openai-api" || provider === "anthropic-api" || provider === "mistral-api") return "direct-api";
-	if (provider === "dataforseo") return DATAFORSEO_API_MODELS.has(model) ? "dataforseo-api" : "dataforseo";
+	if (provider === "dataforseo") return DATAFORSEO_API_MODELS.has(model) ? "dataforseo-api" : "dataforseo-scraper";
 	return provider;
 }
 
 // The matrix columns split into two kinds of route: Model APIs (Direct API,
 // OpenRouter, DataForSEO API) call an LLM inference endpoint, while AI Search
-// Scrapers (Olostep, BrightData, Oxylabs, Cloro, DataForSEO SERP/Scraper)
-// scrape a live web surface.
+// Scrapers (Olostep, BrightData, Oxylabs, Cloro, DataForSEO Scraper) scrape a
+// live web surface.
 export const MODEL_API_CATEGORIES = ["direct-api", "openrouter", "dataforseo-api"];
 
 // Models that only exist as a scraped web surface. Google's AI Mode and AI
@@ -90,9 +91,10 @@ const PROVIDER_MODELS: Record<string, Set<string>> = {
 	brightdata: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	oxylabs: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"]),
 	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
-	dataforseo: new Set(["google-ai-mode", "google-ai-overview"]),
-	// The LLM Scraper API has no Perplexity endpoint.
-	"dataforseo-scraper": new Set(["chatgpt", "gemini"]),
+	// Google AI Mode and AI Overview come from the SERP endpoints, ChatGPT and
+	// Gemini from the LLM Scraper API — all four scrape a live surface. There is
+	// no Perplexity scraper on either.
+	"dataforseo-scraper": new Set(["google-ai-mode", "google-ai-overview", "chatgpt", "gemini"]),
 	// Claude is reachable via LLM Responses but Elmo doesn't track it there.
 	"dataforseo-api": new Set(["chatgpt", "perplexity", "gemini", "claude"]),
 };
@@ -123,7 +125,6 @@ export const PROVIDER_FILTER_ORDER = [
 	"brightdata",
 	"oxylabs",
 	"cloro",
-	"dataforseo",
 	"dataforseo-scraper",
 ];
 
@@ -135,7 +136,6 @@ export const PROVIDER_FILTER_LABELS: Record<string, string> = {
 	brightdata: "BrightData",
 	oxylabs: "Oxylabs",
 	cloro: "Cloro",
-	dataforseo: "DataForSEO SERP",
 	"dataforseo-scraper": "DataForSEO Scraper",
 };
 
