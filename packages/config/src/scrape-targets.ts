@@ -108,7 +108,7 @@ export const STATUS_TARGETS = [
 	"mistral:openrouter:mistralai/mistral-medium-3.1",
 	// Perplexity's own search, not OpenRouter's Exa fallback: with the plugin
 	// engine left unset, OpenRouter routes Perplexity slugs to native search.
-	"perplexity:openrouter:perplexity/sonar:online",
+	"perplexity:openrouter:perplexity/sonar-pro-search:online",
 	"mistral:mistral-api:mistral-medium-latest",
 	"mistral:mistral-api:mistral-medium-latest:online",
 ];
