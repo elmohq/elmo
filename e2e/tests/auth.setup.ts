@@ -17,7 +17,15 @@
 import { test as setup } from "@playwright/test";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { authStatePath, isDeploymentMode, TEST_USER, type DeploymentMode } from "../fixtures";
-import { assertSessionAccepted, ensureOrgMembership, ensureUser, issueSessionCookie, sessionCookie, withDb } from "../session";
+import {
+  assertSessionAccepted,
+  ensureOrgMembership,
+  ensureUser,
+  issueSessionCookie,
+  sessionCookie,
+  userExists,
+  withDb,
+} from "../session";
 
 setup("authenticate", async ({ page, baseURL }, testInfo) => {
   const mode = testInfo.project.name.replace(/:setup$/, "");
@@ -30,11 +38,7 @@ setup("authenticate", async ({ page, baseURL }, testInfo) => {
     // synced, then mint its session.
     await authenticateWithSeededSession(page, baseURL!, await ensureAdminOfSeededBrand());
   } else {
-    // Must come first: local refuses every signup after the first account
-    // exists, so writing the row up front would break its bootstrap path.
     await authenticateWithPassword(page.request, mode);
-    // Demo blocks this too — but at the HTTP layer, not in the database.
-    await ensureAdminOfSeededBrand();
   }
 
   await assertSessionAccepted(page.request, TEST_USER.email);
@@ -52,40 +56,54 @@ async function ensureAdminOfSeededBrand(): Promise<string> {
 }
 
 /**
- * local, cloud, and demo all expose email/password. Sign in if the account
- * already exists, otherwise register it — in local that is the bootstrap
- * signup, in cloud it is ordinary self-serve signup.
+ * local, cloud, and demo all expose email/password. Register the account if it
+ * doesn't exist yet — in local that is the bootstrap signup, in cloud it is
+ * ordinary self-serve signup — then grant it admin and sign in.
  *
  * Cloud refuses sign-in until the address is verified, so we mark it verified
  * directly rather than putting a real transactional-email provider in the loop.
- * That happens before the first attempt too: the account usually carries over
- * from the local pass, where nothing verifies it.
+ *
+ * The sign-in comes last on purpose. better-auth caches the session's user
+ * fields in a cookie for five minutes, so a session opened before the admin
+ * role was granted would keep reporting the old role for the whole run.
  */
 async function authenticateWithPassword(request: APIRequestContext, mode: DeploymentMode): Promise<void> {
   if (mode === "cloud") await markEmailVerified();
-  if (await signIn(request)) return;
+  if (!(await userExists(TEST_USER.email))) {
+    await register(request, mode);
+    await markEmailVerified();
+  }
 
+  await ensureAdminOfSeededBrand();
+
+  if (!(await signIn(request))) {
+    throw new Error(`[auth.setup] ${mode}: sign-in failed for ${TEST_USER.email}`);
+  }
+}
+
+async function register(request: APIRequestContext, mode: DeploymentMode): Promise<void> {
   if (mode === "demo") {
     // A demo deployment has no signup at all — it is pointed at a database
     // some earlier local install bootstrapped, which is what the local phase
     // does in CI.
     throw new Error(
-      `[auth.setup] demo: cannot sign in as ${TEST_USER.email}. ` +
+      `[auth.setup] demo: no account for ${TEST_USER.email}. ` +
         `Demo has no signup — bootstrap the account by running the local project first.`,
     );
   }
 
-  const signUp = await request.post("/api/auth/sign-up/email", {
+  const response = await request.post("/api/auth/sign-up/email", {
     data: { email: TEST_USER.email, password: TEST_USER.password, name: TEST_USER.name },
     failOnStatusCode: false,
   });
-  if (!signUp.ok()) {
-    throw new Error(`[auth.setup] ${mode}: sign-up failed: ${signUp.status()} ${await signUp.text()}`);
-  }
 
-  await markEmailVerified();
-  if (!(await signIn(request))) {
-    throw new Error(`[auth.setup] ${mode}: sign-in failed after sign-up`);
+  // Local's signup hook creates the account and then provisions the "default"
+  // org with a plain INSERT. The seeder has already created that org, so the
+  // hook hits a duplicate key and the response is a 500 even though the account
+  // now exists. Only that outcome is tolerated — anything that leaves no
+  // account behind is still a failure.
+  if (!response.ok() && !(await userExists(TEST_USER.email))) {
+    throw new Error(`[auth.setup] ${mode}: sign-up failed: ${response.status()} ${await response.text()}`);
   }
 }
 

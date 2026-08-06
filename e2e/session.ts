@@ -161,14 +161,33 @@ export async function verifyEmail(email: string): Promise<void> {
   });
 }
 
-/** Fail loudly if the session the setup just established isn't usable. */
+/**
+ * Fail loudly if the session the setup just established isn't usable.
+ *
+ * The role check is not incidental: better-auth caches the session's user
+ * fields in a cookie for five minutes, so a session opened before the admin
+ * role was granted keeps reporting the old one until that cache expires. It
+ * surfaces as the sidebar's admin section and /reports quietly going missing,
+ * which is far easier to read here than spread across the specs.
+ */
 export async function assertSessionAccepted(request: APIRequestContext, expectedEmail: string): Promise<void> {
   const response = await request.get("/api/auth/get-session");
   const body = await response.text();
   if (!response.ok()) {
     throw new Error(`Session check failed: ${response.status()} ${body}`);
   }
-  if (!body.includes(expectedEmail)) {
+
+  let session: { user?: { email?: string; role?: string } } | null = null;
+  try {
+    session = body ? JSON.parse(body) : null;
+  } catch {
+    throw new Error(`Session check returned an unparseable body: ${body}`);
+  }
+
+  if (session?.user?.email !== expectedEmail) {
     throw new Error(`Session check did not return ${expectedEmail}. Body: ${body || "(empty)"}`);
+  }
+  if (session.user.role !== "admin") {
+    throw new Error(`Session reports role "${session.user.role}", expected "admin" (stale session cookie cache?)`);
   }
 }
