@@ -220,8 +220,10 @@ export function overallStatus(targets: TargetStatus[]): OverallStatus {
 }
 
 export interface MetricStats {
+	min: number;
 	avg: number;
 	median: number;
+	max: number;
 }
 
 export interface RunStats {
@@ -242,8 +244,10 @@ function metricStats(values: number[]): MetricStats {
 	const sorted = [...values].sort((a, b) => a - b);
 	const mid = Math.floor(sorted.length / 2);
 	return {
+		min: sorted[0],
 		avg: values.reduce((sum, v) => sum + v, 0) / values.length,
 		median: sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid],
+		max: sorted[sorted.length - 1],
 	};
 }
 

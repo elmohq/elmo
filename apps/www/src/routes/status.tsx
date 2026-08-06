@@ -99,6 +99,177 @@ const TIER_SOLID: Record<RateTier, string> = {
 const HATCH_BG =
 	"repeating-linear-gradient(-45deg, rgb(228 228 231) 0, rgb(228 228 231) 1px, transparent 1px, transparent 6px)";
 
+// ─── Tooltips ─────────────────────────────────────────────────────────────
+
+// One fixed width per tooltip kind: the stat columns line up from cell to cell,
+// and a trigger can keep the tooltip inside the viewport on hover without having
+// to measure it first.
+const TIP_WIDTH = 344;
+const RUN_TIP_WIDTH = 208;
+
+function HoverTip({
+	tip,
+	width = TIP_WIDTH,
+	label,
+	tabIndex,
+	interactive,
+	className,
+	style,
+	children,
+}: {
+	tip: ReactNode;
+	width?: number;
+	label?: string;
+	/** -1 for triggers that repeat per run, which would otherwise flood the tab order. */
+	tabIndex?: number;
+	/** Keeps the tooltip alive while the pointer travels into it, for tips with a link. */
+	interactive?: boolean;
+	className: string;
+	style?: CSSProperties;
+	children?: ReactNode;
+}) {
+	const [open, setOpen] = useState(false);
+	const [pos, setPos] = useState({ x: 0, y: 0 });
+	const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const cancelClose = () => {
+		if (closeTimer.current) {
+			clearTimeout(closeTimer.current);
+			closeTimer.current = null;
+		}
+	};
+	useEffect(() => cancelClose, []);
+
+	const show = (el: HTMLElement) => {
+		const rect = el.getBoundingClientRect();
+		const half = width / 2;
+		const margin = 8;
+		setPos({
+			x: Math.min(Math.max(rect.left + rect.width / 2, half + margin), window.innerWidth - half - margin),
+			y: rect.top,
+		});
+		cancelClose();
+		setOpen(true);
+	};
+	const hide = () => {
+		cancelClose();
+		if (interactive) closeTimer.current = setTimeout(() => setOpen(false), 150);
+		else setOpen(false);
+	};
+
+	return (
+		<>
+			<button
+				type="button"
+				aria-label={label}
+				tabIndex={tabIndex}
+				className={`w-full cursor-default ${className}`}
+				style={style}
+				onMouseEnter={(e) => show(e.currentTarget)}
+				onMouseLeave={hide}
+				onFocus={(e) => show(e.currentTarget)}
+				onBlur={hide}
+			>
+				{children}
+			</button>
+			{open &&
+				createPortal(
+					// The wrapper's bottom padding bridges the gap to the trigger, so the
+					// pointer can reach an interactive tooltip without it closing.
+					<div
+						className={`fixed z-50 pb-1.5 ${interactive ? "" : "pointer-events-none"}`}
+						style={{ left: pos.x, top: pos.y, width, transform: "translate(-50%, -100%)" }}
+						onMouseEnter={cancelClose}
+						onMouseLeave={hide}
+					>
+						<div className="rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-xs text-zinc-950 shadow-xl">
+							{tip}
+						</div>
+					</div>,
+					document.body,
+				)}
+		</>
+	);
+}
+
+function TipRule() {
+	return <div className="my-2 border-t border-zinc-100" />;
+}
+
+function TipHeader({ title, subtitle }: { title: string; subtitle: string }) {
+	return (
+		<>
+			<div className="font-medium">{title}</div>
+			<div className="text-[11px] text-zinc-500">{subtitle}</div>
+			<TipRule />
+		</>
+	);
+}
+
+function formatStat(value: number) {
+	return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+}
+
+interface Metric {
+	key: keyof NonNullable<RunStats["metrics"]>;
+	label: string;
+	/** Only where the grid label's unit would be redundant next to the value. */
+	inlineLabel?: string;
+	color: string;
+	of: (entry: StatusEntry) => number;
+	format: (value: number) => string;
+	/** Inline values carry their unit; the stat grids stay bare so columns line up. */
+	formatInline?: (value: number) => string;
+}
+
+// The per-run measurements, in the order every stat readout on the page uses.
+const METRICS: Metric[] = [
+	{
+		key: "latency",
+		label: "Latency",
+		color: "hsl(221, 83%, 53%)",
+		of: (e) => e.latency,
+		format: (v) => formatLatency(Math.round(v)),
+	},
+	{
+		key: "citations",
+		label: "Citations",
+		color: "hsl(262, 83%, 58%)",
+		of: (e) => e.citations,
+		format: formatStat,
+	},
+	{
+		key: "webQueries",
+		label: "Web queries",
+		color: "hsl(174, 72%, 40%)",
+		of: (e) => e.webQueries,
+		format: formatStat,
+	},
+	{
+		key: "textLength",
+		label: "Text (chars)",
+		inlineLabel: "Text",
+		color: "hsl(38, 92%, 50%)",
+		of: (e) => e.textLength,
+		format: formatStat,
+		formatInline: (v) => `${formatStat(v)} chars`,
+	},
+	{
+		key: "retries",
+		label: "Retries",
+		color: "hsl(0, 84%, 60%)",
+		of: (e) => e.retries,
+		format: formatStat,
+	},
+];
+
+const STAT_COLUMNS: { label: string; of: (stats: MetricStats) => number }[] = [
+	{ label: "Min", of: (s) => s.min },
+	{ label: "Avg", of: (s) => s.avg },
+	{ label: "Median", of: (s) => s.median },
+	{ label: "Max", of: (s) => s.max },
+];
+
 // ─── Components ───────────────────────────────────────────────────────────
 
 function UptimeBadge({ entries }: { entries: StatusEntry[] }) {
@@ -108,58 +279,57 @@ function UptimeBadge({ entries }: { entries: StatusEntry[] }) {
 	return <Badge className="bg-green-600 text-white">Operational</Badge>;
 }
 
+function formatRunTime(ts: string) {
+	return new Date(ts).toLocaleString(undefined, {
+		month: "short",
+		day: "numeric",
+		hour: "numeric",
+		minute: "2-digit",
+	});
+}
+
+// Everything measured for one run. Unlike the aggregate tips these numbers stand
+// for a failing run too — a zero there is what that run actually returned.
+function RunTip({ entry }: { entry: StatusEntry }) {
+	return (
+		<>
+			<TipHeader title={formatRunTime(entry.ts)} subtitle={entry.status === "fail" ? "Failed" : "Operational"} />
+			<div className="grid grid-cols-[1fr_auto] items-baseline gap-x-3 gap-y-0.5">
+				{METRICS.map((metric) => (
+					<Fragment key={metric.key}>
+						<div className="text-zinc-600">{metric.label}</div>
+						<div className="text-right font-mono tabular-nums">{metric.format(metric.of(entry))}</div>
+					</Fragment>
+				))}
+			</div>
+			{entry.status === "fail" && entry.error && (
+				<>
+					<TipRule />
+					<div className="text-red-500">{entry.error.slice(0, 160)}</div>
+				</>
+			)}
+		</>
+	);
+}
+
 function UptimeBar({ entries }: { entries: StatusEntry[] }) {
-	const [hovered, setHovered] = useState<number | null>(null);
-	const [pos, setPos] = useState({ x: 0, y: 0 });
 	const deduped = dedupeEntries(entries);
 	if (deduped.length === 0) return null;
 
 	// One square per run, oldest to newest, colored by that run's status. A
 	// manual re-run just appends another square; a missed run leaves no gap.
-	const active = hovered !== null ? deduped[hovered] : null;
-
 	return (
 		<div className="flex gap-0.5">
-			{deduped.map((entry, i) => (
-				<div
+			{deduped.map((entry) => (
+				<HoverTip
 					key={entry.ts}
-					onMouseEnter={(e) => {
-						const r = e.currentTarget.getBoundingClientRect();
-						setPos({ x: r.left + r.width / 2, y: r.top });
-						setHovered(i);
-					}}
-					onMouseLeave={() => setHovered(null)}
+					tip={<RunTip entry={entry} />}
+					width={RUN_TIP_WIDTH}
+					label={`${formatRunTime(entry.ts)} — ${entry.status === "fail" ? "failed" : "operational"}`}
+					tabIndex={-1}
 					className={`h-6 flex-1 rounded-sm ${entry.status === "fail" ? "bg-red-500" : "bg-green-500"}`}
 				/>
 			))}
-			{active &&
-				createPortal(
-					<div
-						className="pointer-events-none fixed z-50 rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-xs text-zinc-950 shadow-lg"
-						style={{
-							left: pos.x,
-							top: pos.y,
-							transform: "translate(-50%, calc(-100% - 6px))",
-						}}
-					>
-						<div className="font-medium whitespace-nowrap">
-							{new Date(active.ts).toLocaleString(undefined, {
-								month: "short",
-								day: "numeric",
-								hour: "numeric",
-								minute: "2-digit",
-							})}
-						</div>
-						<div className="mt-0.5 text-zinc-600">
-							{active.status === "fail" ? "Failing" : "Operational"}
-							{` · ${formatLatency(active.latency)}`}
-						</div>
-						{active.status === "fail" && active.error && (
-							<div className="mt-0.5 max-w-[16rem] text-red-500">{active.error.slice(0, 120)}</div>
-						)}
-					</div>,
-					document.body,
-				)}
 		</div>
 	);
 }
@@ -319,20 +489,16 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 	);
 }
 
+// One metric under the full breakdown: the 7-day average on the pill, with its
+// spread and its run-by-run trend on hover.
 function StatWithSparkline({
-	label,
-	value,
-	sparkData,
-	timestamps,
-	sparkColor = "hsl(221, 83%, 53%)",
-	formatFn,
+	metric,
+	stats,
+	entries,
 }: {
-	label: string;
-	value: string;
-	sparkData: number[];
-	timestamps: string[];
-	sparkColor?: string;
-	formatFn?: (v: number) => string;
+	metric: Metric;
+	stats: MetricStats | null;
+	entries: StatusEntry[];
 }) {
 	const [show, setShow] = useState(false);
 	const triggerRef = useRef<HTMLButtonElement>(null);
@@ -345,20 +511,21 @@ function StatWithSparkline({
 		}
 	}, [show]);
 
-	if (sparkData.length === 0) {
+	const inlineLabel = metric.inlineLabel ?? metric.label;
+	const formatInline = metric.formatInline ?? metric.format;
+	const value = stats ? formatInline(stats.avg) : "—";
+	const sparkData = entries.map(metric.of);
+	const timestamps = entries.map((e) => e.ts);
+
+	if (!stats || sparkData.length === 0) {
 		return (
 			<span>
-				{label}: {value}
+				{inlineLabel}: {value}
 			</span>
 		);
 	}
 
 	const isInteger = sparkData.every((v) => Number.isInteger(v));
-	const yTickFmt = (v: number) => {
-		if (formatFn) return formatFn(v);
-		if (isInteger) return String(Math.round(v));
-		return String(v);
-	};
 
 	// For a single data point, pad with a synthetic earlier point to create a dotted line
 	let chartData: { ts: string; v: number; synthetic?: boolean }[];
@@ -390,15 +557,25 @@ function StatWithSparkline({
 				onMouseEnter={() => setShow(true)}
 				onMouseLeave={() => setShow(false)}
 			>
-				{label}: {value}
+				{inlineLabel}: {value}
 			</button>
 			{show &&
 				createPortal(
 					<div
-						className="pointer-events-none fixed z-50 rounded-md border border-zinc-200 bg-white px-2 pt-3 pb-1 text-zinc-950 shadow-lg"
+						className="pointer-events-none fixed z-50 rounded-md border border-zinc-200 bg-white px-2 pt-2 pb-1 text-xs text-zinc-950 shadow-lg"
 						style={{ left: pos.x, top: pos.y, transform: "translate(-50%, calc(-100% - 6px))" }}
 					>
-						<div style={{ width: 220, height: 90 }}>
+						<div className="px-1 font-medium">{metric.label}</div>
+						{/* The pill shows the average, so the tooltip names all four rather than repeating one. */}
+						<div className="mt-0.5 grid grid-cols-2 gap-x-3 px-1 text-[11px] text-zinc-500">
+							{STAT_COLUMNS.map((column) => (
+								<div key={column.label} className="flex justify-between gap-2">
+									<span>{column.label.toLowerCase()}</span>
+									<span className="font-mono tabular-nums text-zinc-600">{metric.format(column.of(stats))}</span>
+								</div>
+							))}
+						</div>
+						<div className="mt-1" style={{ width: 220, height: 90 }}>
 							<ResponsiveContainer width="100%" height="100%">
 								<LineChart data={chartData} margin={{ top: 4, right: 30, bottom: 2, left: 4 }}>
 									<CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -442,7 +619,7 @@ function StatWithSparkline({
 									/>
 									<YAxis
 										tick={{ fontSize: 9 }}
-										tickFormatter={yTickFmt}
+										tickFormatter={metric.format}
 										width={40}
 										domain={[isInteger ? Math.floor(yMin) : yMin, isInteger ? Math.ceil(yMax) : yMax]}
 										allowDecimals={!isInteger}
@@ -450,7 +627,7 @@ function StatWithSparkline({
 									<Line
 										type="monotone"
 										dataKey="v"
-										stroke={sparkColor}
+										stroke={metric.color}
 										strokeWidth={1.5}
 										dot={sparkData.length <= 3}
 										connectNulls
@@ -472,14 +649,12 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 	const deduped = dedupeEntries(data.entries);
 	const latest = getLatest(deduped);
 	const uptime = passRate([data]);
+	const stats = runStats([data]);
 
-	// Build sparkline data from all deduped entries
-	const allTimestamps = deduped.map((e) => e.ts);
-	const latencyData = deduped.map((e) => e.latency);
-	const citationData = deduped.map((e) => e.citations);
-	const webQueryData = deduped.map((e) => e.webQueries);
-	const textData = deduped.map((e) => e.textLength);
-	const retryData = deduped.map((e) => e.retries);
+	// Averages and sparklines cover the passing runs, the same set the matrix
+	// tooltips summarize: a failed run's latency is time-to-error and its
+	// citations and text are zero, which would drag every average down.
+	const passing = deduped.filter((e) => e.status === "pass");
 
 	return (
 		<div className="space-y-2 rounded-md border border-zinc-200 bg-white p-4">
@@ -504,43 +679,14 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 				{latest && (
 					<>
 						<span>Success: {uptime !== null ? `${uptime.toFixed(1)}%` : "—"}</span>
-						<StatWithSparkline
-							label="Latency"
-							value={formatLatency(latest.latency)}
-							sparkData={latencyData}
-							timestamps={allTimestamps}
-							sparkColor="hsl(221, 83%, 53%)"
-							formatFn={formatLatency}
-						/>
-						<StatWithSparkline
-							label="Citations"
-							value={String(latest.citations)}
-							sparkData={citationData}
-							timestamps={allTimestamps}
-							sparkColor="hsl(262, 83%, 58%)"
-						/>
-						<StatWithSparkline
-							label="Web Queries"
-							value={String(latest.webQueries)}
-							sparkData={webQueryData}
-							timestamps={allTimestamps}
-							sparkColor="hsl(174, 72%, 40%)"
-						/>
-						<StatWithSparkline
-							label="Text"
-							value={`${latest.textLength} chars`}
-							sparkData={textData}
-							timestamps={allTimestamps}
-							sparkColor="hsl(38, 92%, 50%)"
-							formatFn={(v) => `${v}`}
-						/>
-						<StatWithSparkline
-							label="Retries"
-							value={String(latest.retries)}
-							sparkData={retryData}
-							timestamps={allTimestamps}
-							sparkColor="hsl(0, 84%, 60%)"
-						/>
+						{METRICS.map((metric) => (
+							<StatWithSparkline
+								key={metric.key}
+								metric={metric}
+								stats={stats.metrics?.[metric.key] ?? null}
+								entries={passing}
+							/>
+						))}
 					</>
 				)}
 				{!latest && <span>No data yet</span>}
@@ -593,129 +739,30 @@ function FilterRow({
 
 // ─── At-a-glance matrix ───────────────────────────────────────────────────
 
-// One fixed width for every matrix tooltip: the stat columns line up from cell
-// to cell, and a trigger can keep the tooltip inside the viewport on hover
-// without having to measure it first.
-const TIP_WIDTH = 272;
-
-function MatrixTip({
-	tip,
-	interactive,
-	className,
-	style,
-	children,
-}: {
-	tip: ReactNode;
-	/** Keeps the tooltip alive while the pointer travels into it, for tips with a link. */
-	interactive?: boolean;
-	className: string;
-	style?: CSSProperties;
-	children: ReactNode;
-}) {
-	const [open, setOpen] = useState(false);
-	const [pos, setPos] = useState({ x: 0, y: 0 });
-	const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-	const cancelClose = () => {
-		if (closeTimer.current) {
-			clearTimeout(closeTimer.current);
-			closeTimer.current = null;
-		}
-	};
-	useEffect(() => cancelClose, []);
-
-	const show = (el: HTMLElement) => {
-		const rect = el.getBoundingClientRect();
-		const half = TIP_WIDTH / 2;
-		const margin = 8;
-		setPos({
-			x: Math.min(Math.max(rect.left + rect.width / 2, half + margin), window.innerWidth - half - margin),
-			y: rect.top,
-		});
-		cancelClose();
-		setOpen(true);
-	};
-	const hide = () => {
-		cancelClose();
-		if (interactive) closeTimer.current = setTimeout(() => setOpen(false), 150);
-		else setOpen(false);
-	};
-
-	return (
-		<>
-			<button
-				type="button"
-				className={`w-full cursor-default ${className}`}
-				style={style}
-				onMouseEnter={(e) => show(e.currentTarget)}
-				onMouseLeave={hide}
-				onFocus={(e) => show(e.currentTarget)}
-				onBlur={hide}
-			>
-				{children}
-			</button>
-			{open &&
-				createPortal(
-					// The wrapper's bottom padding bridges the gap to the cell, so the
-					// pointer can reach an interactive tooltip without it closing.
-					<div
-						className={`fixed z-50 pb-1.5 ${interactive ? "" : "pointer-events-none"}`}
-						style={{ left: pos.x, top: pos.y, width: TIP_WIDTH, transform: "translate(-50%, -100%)" }}
-						onMouseEnter={cancelClose}
-						onMouseLeave={hide}
-					>
-						<div className="rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-xs text-zinc-950 shadow-xl">
-							{tip}
-						</div>
-					</div>,
-					document.body,
-				)}
-		</>
-	);
-}
-
-function TipRule() {
-	return <div className="my-2 border-t border-zinc-100" />;
-}
-
-function TipHeader({ title, subtitle }: { title: string; subtitle: string }) {
-	return (
-		<>
-			<div className="font-medium">{title}</div>
-			<div className="text-[11px] text-zinc-500">{subtitle}</div>
-			<TipRule />
-		</>
-	);
-}
-
-function formatStat(value: number) {
-	return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
-}
-
 function TipStats({ stats }: { stats: RunStats }) {
-	if (!stats.metrics)
+	const metrics = stats.metrics;
+	if (!metrics)
 		return (
 			<div className="text-zinc-600">
-				{stats.runs === 0 ? "Nothing has run here yet." : "No successful runs to average."}
+				{stats.runs === 0 ? "Nothing has run here yet." : "No successful runs to summarize."}
 			</div>
 		);
-	const rows: [string, MetricStats, (v: number) => string][] = [
-		["Latency", stats.metrics.latency, (v) => formatLatency(Math.round(v))],
-		["Citations", stats.metrics.citations, formatStat],
-		["Web queries", stats.metrics.webQueries, formatStat],
-		["Text (chars)", stats.metrics.textLength, formatStat],
-		["Retries", stats.metrics.retries, formatStat],
-	];
 	return (
-		<div className="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-3 gap-y-0.5">
+		<div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-baseline gap-x-2.5 gap-y-0.5">
 			<div />
-			<div className="text-right text-[10px] uppercase tracking-wide text-zinc-400">Avg</div>
-			<div className="text-right text-[10px] uppercase tracking-wide text-zinc-400">Median</div>
-			{rows.map(([label, metric, format]) => (
-				<Fragment key={label}>
-					<div className="text-zinc-600">{label}</div>
-					<div className="text-right font-mono tabular-nums">{format(metric.avg)}</div>
-					<div className="text-right font-mono tabular-nums">{format(metric.median)}</div>
+			{STAT_COLUMNS.map((column) => (
+				<div key={column.label} className="text-right text-[10px] uppercase tracking-wide text-zinc-400">
+					{column.label}
+				</div>
+			))}
+			{METRICS.map((metric) => (
+				<Fragment key={metric.key}>
+					<div className="text-zinc-600">{metric.label}</div>
+					{STAT_COLUMNS.map((column) => (
+						<div key={column.label} className="text-right font-mono tabular-nums">
+							{metric.format(column.of(metrics[metric.key]))}
+						</div>
+					))}
 				</Fragment>
 			))}
 		</div>
@@ -750,7 +797,7 @@ function StatsTip({ title, targets }: { title: string; targets: TargetStatus[] }
 			{stats.metrics && stats.passed < stats.runs && (
 				<>
 					<TipRule />
-					<div className="text-[11px] text-zinc-500">Averages cover the {plural(stats.passed, "run")} that passed.</div>
+					<div className="text-[11px] text-zinc-500">Stats cover the {plural(stats.passed, "run")} that passed.</div>
 				</>
 			)}
 		</>
@@ -805,35 +852,35 @@ function MatrixCellView({
 	if (!cell) {
 		if (availability === "unavailable") {
 			return (
-				<MatrixTip
+				<HoverTip
 					tip={<UnavailableTip model={model} provider={provider} />}
 					className="flex h-9 items-center justify-center rounded-sm bg-zinc-50 text-[10px] font-medium text-zinc-300"
 					style={{ backgroundImage: HATCH_BG }}
 				>
 					N/A
-				</MatrixTip>
+				</HoverTip>
 			);
 		}
 		return (
-			<MatrixTip
+			<HoverTip
 				interactive
 				tip={<UntrackedTip model={model} provider={provider} />}
 				className="flex h-9 items-center justify-center rounded-sm bg-zinc-50 text-zinc-300"
 			>
 				·
-			</MatrixTip>
+			</HoverTip>
 		);
 	}
 	const tier = rateTier(cell.rate);
 	return (
-		<MatrixTip
+		<HoverTip
 			tip={<StatsTip title={`${formatModel(model)} · ${PROVIDER_FILTER_LABELS[provider]}`} targets={cell.targets} />}
 			className={`flex h-9 items-center justify-center rounded-sm text-xs font-medium tabular-nums ${TIER_CELL[tier]} ${
 				cell.down ? "ring-2 ring-inset ring-red-500" : ""
 			}`}
 		>
 			{cell.rate === null ? "—" : `${Math.round(cell.rate)}%`}
-		</MatrixTip>
+		</HoverTip>
 	);
 }
 
@@ -843,14 +890,14 @@ function MatrixSummaryCell({ title, targets, solid }: { title: string; targets: 
 	const rate = passRate(targets);
 	const tier = rateTier(rate);
 	return (
-		<MatrixTip
+		<HoverTip
 			tip={<StatsTip title={title} targets={targets} />}
 			className={`flex h-9 items-center justify-center rounded-sm text-xs font-semibold tabular-nums ${
 				solid ? TIER_SOLID[tier] : TIER_CELL_AVG[tier]
 			}`}
 		>
 			{rate === null ? "—" : `${Math.round(rate)}%`}
-		</MatrixTip>
+		</HoverTip>
 	);
 }
 
@@ -1054,8 +1101,8 @@ function StatusPage() {
 				<div className="mt-4 mb-6 border-t border-zinc-200 pt-10">
 					<h2 className="font-heading text-2xl text-zinc-950">Full breakdown</h2>
 					<p className="mt-1 text-sm text-zinc-600">
-						Filter to a provider or model, then expand any target for its 7-day run history, latency, citations, and
-						errors.
+						Filter to a provider or model. Every target shows its 7-day averages — hover a stat for its spread and
+						trend, or a run for everything that run measured.
 					</p>
 				</div>
 
