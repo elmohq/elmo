@@ -147,13 +147,18 @@ export function providerPhrase(provider: string): string {
 }
 
 // Why a combination classified "unavailable" can't exist, phrased for the
-// matrix tooltip.
+// matrix tooltip. Follows cellAvailability's precedence: a category with a fixed
+// collector list is bounded by that list whichever kind of route it is, so a
+// model API with a short menu (DataForSEO API) reads as a missing endpoint
+// rather than the model lacking one.
 export function unavailableReason(model: string, provider: string): string {
 	const modelLabel = formatModel(model);
-	if (MODEL_API_CATEGORIES.includes(provider)) {
-		return `${modelLabel} has no public inference endpoint — it only exists as a live web surface, so ${providerPhrase(provider)} can't reach it.`;
+	if (PROVIDER_MODELS[provider]) {
+		return MODEL_API_CATEGORIES.includes(provider)
+			? `${providerPhrase(provider)} has no ${modelLabel} endpoint, so that model can't be reached through it.`
+			: `${providerPhrase(provider)} has no ${modelLabel} collector, so that surface can't be reached through it.`;
 	}
-	return `${providerPhrase(provider)} has no ${modelLabel} collector, so that surface can't be reached through it.`;
+	return `${modelLabel} has no public inference endpoint — it only exists as a live web surface, so ${providerPhrase(provider)} can't reach it.`;
 }
 
 export function formatLatency(ms: number) {
