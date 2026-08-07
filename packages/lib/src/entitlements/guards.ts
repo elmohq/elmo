@@ -175,35 +175,40 @@ export async function countOrgAssignedClaudePrompts(organizationId: string): Pro
 // Asserts wired into write paths
 // ---------------------------------------------------------------------------
 
-export async function assertCanCreateBrand(organizationId: string): Promise<void> {
+async function withEntitlements(
+	organizationId: string,
+	decide: (entitlements: Entitlements) => EntitlementDecision | Promise<EntitlementDecision>,
+): Promise<void> {
 	const entitlements = await getOrgEntitlements(organizationId);
 	if (entitlements.unlimited) return;
-	assertAllowed(decideBrandCreate(entitlements, await countOrgBrands(organizationId)));
+	assertAllowed(await decide(entitlements));
+}
+
+export async function assertCanCreateBrand(organizationId: string): Promise<void> {
+	await withEntitlements(organizationId, async (entitlements) =>
+		decideBrandCreate(entitlements, await countOrgBrands(organizationId)),
+	);
 }
 
 /** Guard creating `adding` new enabled prompts (or re-enabling that many). */
 export async function assertCanAddPrompts(organizationId: string, adding: number): Promise<void> {
 	if (adding <= 0) return;
-	const entitlements = await getOrgEntitlements(organizationId);
-	if (entitlements.unlimited) return;
-	assertAllowed(decidePromptAdd(entitlements, await countOrgEnabledPrompts(organizationId), adding));
+	await withEntitlements(organizationId, async (entitlements) =>
+		decidePromptAdd(entitlements, await countOrgEnabledPrompts(organizationId), adding),
+	);
 }
 
 export async function assertEnabledModelsAllowed(organizationId: string, requestedModels: string[]): Promise<void> {
-	const entitlements = await getOrgEntitlements(organizationId);
-	if (entitlements.unlimited) return;
-	assertAllowed(decideEnabledModels(entitlements, requestedModels));
+	await withEntitlements(organizationId, (entitlements) => decideEnabledModels(entitlements, requestedModels));
 }
 
 export async function assertCanAssignClaude(organizationId: string, adding: number): Promise<void> {
 	if (adding <= 0) return;
-	const entitlements = await getOrgEntitlements(organizationId);
-	if (entitlements.unlimited) return;
-	assertAllowed(decideClaudeAssign(entitlements, await countOrgAssignedClaudePrompts(organizationId), adding));
+	await withEntitlements(organizationId, async (entitlements) =>
+		decideClaudeAssign(entitlements, await countOrgAssignedClaudePrompts(organizationId), adding),
+	);
 }
 
 export async function assertCadenceConfigurable(organizationId: string): Promise<void> {
-	const entitlements = await getOrgEntitlements(organizationId);
-	if (entitlements.unlimited) return;
-	assertAllowed(decideCadenceOverride(entitlements));
+	await withEntitlements(organizationId, decideCadenceOverride);
 }
