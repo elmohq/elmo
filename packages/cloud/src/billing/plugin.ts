@@ -19,6 +19,7 @@ import { db } from "@workspace/lib/db/db";
 import { member } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { syncClaudeAddonFromSubscription, saveClaudeAddonQuantity } from "./addon";
+import { dunningNoticeForStatusChange, sendDunningNotice } from "./dunning";
 import { getStripeClient } from "./stripe-client";
 
 /**
@@ -63,12 +64,21 @@ export function createStripeBillingPlugin() {
 			authorizeReference: async ({ user, referenceId }) => isOrgBillingAdmin(user.id, referenceId),
 			// Fires on every subscription webhook update — the point where
 			// add-on quantity changes (from this app, the customer portal, or
-			// the Stripe dashboard) converge into organization_settings.
-			onSubscriptionUpdate: async ({ subscription, stripeSubscription }) => {
+			// the Stripe dashboard) converge into organization_settings, and
+			// where status transitions surface for dunning email.
+			onSubscriptionUpdate: async ({ event, subscription, stripeSubscription }) => {
 				await syncClaudeAddonFromSubscription(subscription.referenceId, stripeSubscription);
+				if (event.type === "customer.subscription.updated") {
+					const notice = dunningNoticeForStatusChange(
+						event.data.previous_attributes?.status,
+						stripeSubscription.status,
+					);
+					if (notice) await sendDunningNotice(subscription.referenceId, notice);
+				}
 			},
 			onSubscriptionDeleted: async ({ subscription }) => {
 				await saveClaudeAddonQuantity(subscription.referenceId, 0);
+				await sendDunningNotice(subscription.referenceId, "subscription-ended");
 			},
 		},
 	});
