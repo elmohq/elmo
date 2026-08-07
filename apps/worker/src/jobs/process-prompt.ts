@@ -16,10 +16,8 @@ import { and, eq, gt, sql } from "drizzle-orm";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
 import {
-	computePoolPositions,
 	dailyRunCeiling,
 	lastRunQueryWindowMs,
-	resolvePromptRunPlan,
 	selectDueTargets,
 	targetKey,
 	type PromptRunPlan,
@@ -28,6 +26,7 @@ import { getProvider, parseScrapeTargets, type ModelConfig, type Provider } from
 import { estimateRunCostUsd } from "@workspace/lib/usage";
 import type { Citation } from "@workspace/lib/text-extraction";
 import boss from "../boss";
+import { resolveBrandPromptRunPlans } from "./run-plans";
 import { trackWorkerEvent } from "../telemetry";
 
 export interface ProcessPromptData {
@@ -111,35 +110,26 @@ async function resolvePlanForPrompt(
 	scrapeTargets: ModelConfig[],
 ): Promise<{ plan: PromptRunPlan; entitlements: Awaited<ReturnType<typeof getOrgEntitlements>> }> {
 	const { prompt, brand } = context;
-	const mode = getDeployment().mode;
 	const entitlements = await getOrgEntitlements(brand.organizationId);
 
-	let withinPromptPool = true;
-	let withinClaudePool = true;
-	if (!entitlements.unlimited) {
-		const orgPrompts = await db
-			.select({ id: prompts.id, createdAt: prompts.createdAt, claudeMode: prompts.claudeMode })
-			.from(prompts)
-			.innerJoin(brands, eq(prompts.brandId, brands.id))
-			.where(and(eq(brands.organizationId, brand.organizationId), eq(prompts.enabled, true)));
-		const pools = computePoolPositions(orgPrompts, {
-			maxPrompts: entitlements.maxPrompts,
-			claudePool: entitlements.claudePool,
-		});
-		withinPromptPool = pools.withinPromptPool.has(prompt.id);
-		withinClaudePool = pools.withinClaudePool.has(prompt.id);
-	}
+	const orgPrompts = entitlements.unlimited
+		? []
+		: await db
+				.select({ id: prompts.id, createdAt: prompts.createdAt, claudeMode: prompts.claudeMode })
+				.from(prompts)
+				.innerJoin(brands, eq(prompts.brandId, brands.id))
+				.where(and(eq(brands.organizationId, brand.organizationId), eq(prompts.enabled, true)));
 
-	const plan = resolvePromptRunPlan({
-		mode,
+	const plans = resolveBrandPromptRunPlans({
+		mode: getDeployment().mode,
 		scrapeTargets,
-		brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
-		prompt: { claudeMode: prompt.claudeMode },
-		entitlements,
 		defaultDelayHours: getDefaultDelayHours(),
-		withinPromptPool,
-		withinClaudePool,
+		entitlements,
+		orgPrompts,
+		brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
+		prompts: [{ id: prompt.id, claudeMode: prompt.claudeMode }],
 	});
+	const plan = plans.get(prompt.id) ?? { targets: [], rescheduleHours: null };
 	return { plan, entitlements };
 }
 

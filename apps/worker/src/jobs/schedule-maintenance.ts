@@ -6,9 +6,7 @@ import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { getOrgEntitlementsMap } from "@workspace/lib/entitlements";
 import {
 	computeMaintenanceDecisions,
-	computePoolPositions,
 	lastRunQueryWindowMs,
-	resolvePromptRunPlan,
 	targetKey,
 	type MaintenancePromptState,
 	type PromptRunPlan,
@@ -17,6 +15,7 @@ import { parseScrapeTargets } from "@workspace/lib/providers";
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
+import { resolveBrandPromptRunPlans } from "./run-plans";
 
 export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
@@ -80,63 +79,50 @@ async function runMaintenanceCheck(): Promise<void> {
 
 	console.log(`[schedule-maintenance] Checking ${enabledPrompts.length} enabled prompts`);
 
-	// Pool positions per org (which prompts are inside the plan's tracked and
-	// Claude pools — everything, outside cloud).
+	// Pool positions are decided across the whole org, while run plans resolve
+	// per brand — group the prompts both ways.
 	const promptsByOrg = new Map<string, typeof enabledPrompts>();
+	const promptsByBrand = new Map<string, typeof enabledPrompts>();
 	for (const prompt of enabledPrompts) {
 		const orgId = brandById.get(prompt.brandId)?.organizationId;
 		if (!orgId) continue;
-		const list = promptsByOrg.get(orgId) ?? [];
-		list.push(prompt);
-		promptsByOrg.set(orgId, list);
-	}
-	const poolsByOrg = new Map<string, ReturnType<typeof computePoolPositions>>();
-	for (const [orgId, orgPrompts] of promptsByOrg) {
-		const entitlements = entitlementsByOrg.get(orgId);
-		if (!entitlements || entitlements.unlimited) continue;
-		poolsByOrg.set(
-			orgId,
-			computePoolPositions(orgPrompts, {
-				maxPrompts: entitlements.maxPrompts,
-				claudePool: entitlements.claudePool,
-			}),
-		);
+		const orgList = promptsByOrg.get(orgId) ?? [];
+		orgList.push(prompt);
+		promptsByOrg.set(orgId, orgList);
+		const brandList = promptsByBrand.get(prompt.brandId) ?? [];
+		brandList.push(prompt);
+		promptsByBrand.set(prompt.brandId, brandList);
 	}
 
 	const mode = getDeployment().mode;
 	const scrapeTargets = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 	const defaultDelayHours = getDefaultDelayHours();
 
-	// Resolve every prompt's plan. A brand with a broken configuration (e.g.
-	// enabledModels referencing a model no longer in SCRAPE_TARGETS) must not
-	// take maintenance down for everyone — contain it and move on.
+	// Resolve every prompt's plan, brand by brand. A brand with a broken
+	// configuration (e.g. enabledModels referencing a model no longer in
+	// SCRAPE_TARGETS) must not take maintenance down for everyone — contain it
+	// and move on.
 	const planByPromptId = new Map<string, PromptRunPlan>();
-	const brokenBrands = new Set<string>();
-	for (const prompt of enabledPrompts) {
-		const brand = brandById.get(prompt.brandId);
+	for (const [brandId, brandPrompts] of promptsByBrand) {
+		const brand = brandById.get(brandId);
 		if (!brand) continue;
 		const entitlements = entitlementsByOrg.get(brand.organizationId);
 		if (!entitlements) continue;
-		const pools = poolsByOrg.get(brand.organizationId);
 		try {
-			planByPromptId.set(
-				prompt.id,
-				resolvePromptRunPlan({
-					mode,
-					scrapeTargets,
-					brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
-					prompt: { claudeMode: prompt.claudeMode },
-					entitlements,
-					defaultDelayHours,
-					withinPromptPool: pools ? pools.withinPromptPool.has(prompt.id) : true,
-					withinClaudePool: pools ? pools.withinClaudePool.has(prompt.id) : true,
-				}),
-			);
-		} catch (error) {
-			if (!brokenBrands.has(brand.id)) {
-				brokenBrands.add(brand.id);
-				console.error(`[schedule-maintenance] Skipping brand ${brand.id} (invalid target config):`, error);
+			const plans = resolveBrandPromptRunPlans({
+				mode,
+				scrapeTargets,
+				defaultDelayHours,
+				entitlements,
+				orgPrompts: promptsByOrg.get(brand.organizationId) ?? [],
+				brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
+				prompts: brandPrompts,
+			});
+			for (const [promptId, plan] of plans) {
+				planByPromptId.set(promptId, plan);
 			}
+		} catch (error) {
+			console.error(`[schedule-maintenance] Skipping brand ${brand.id} (invalid target config):`, error);
 		}
 	}
 
