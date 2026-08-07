@@ -48,10 +48,10 @@ export function formatModel(model: string) {
 
 export function formatProvider(provider: string) {
 	const names: Record<string, string> = {
-		olostep: "Olostep",
+		cloro: "Cloro",
 		brightdata: "BrightData",
 		oxylabs: "Oxylabs",
-		cloro: "Cloro",
+		olostep: "Olostep",
 		dataforseo: "DataForSEO",
 		"openai-api": "OpenAI API",
 		"anthropic-api": "Anthropic API",
@@ -80,7 +80,7 @@ export function providerCategory(provider: string, model: string, version?: stri
 
 // The matrix columns split into two kinds of route: Model APIs (Direct API,
 // OpenRouter, DataForSEO API) call an LLM inference endpoint, while AI Search
-// Scrapers (Olostep, BrightData, Oxylabs, Cloro, DataForSEO Scraper) scrape a
+// Scrapers (Cloro, BrightData, Oxylabs, Olostep, DataForSEO Scraper) scrape a
 // live web surface.
 export const MODEL_API_CATEGORIES = ["direct-api", "openrouter", "dataforseo-api"];
 
@@ -95,10 +95,10 @@ const SCRAPE_ONLY_MODELS = new Set(["google-ai-mode", "google-ai-overview", "cop
 // @workspace/lib. Categories absent here (direct-api, openrouter) reach any
 // model that exposes an inference endpoint.
 const PROVIDER_MODELS: Record<string, Set<string>> = {
-	olostep: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
+	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	brightdata: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	oxylabs: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"]),
-	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
+	olostep: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	// Google AI Mode and AI Overview come from the SERP endpoints, ChatGPT and
 	// Gemini from the LLM Scraper API — all four scrape a live surface. There is
 	// no Perplexity scraper on either.
@@ -129,10 +129,10 @@ export const PROVIDER_FILTER_ORDER = [
 	"direct-api",
 	"openrouter",
 	"dataforseo-api",
-	"olostep",
+	"cloro",
 	"brightdata",
 	"oxylabs",
-	"cloro",
+	"olostep",
 	"dataforseo-scraper",
 ];
 
@@ -140,10 +140,10 @@ export const PROVIDER_FILTER_LABELS: Record<string, string> = {
 	"direct-api": "Direct API",
 	openrouter: "OpenRouter",
 	"dataforseo-api": "DataForSEO API",
-	olostep: "Olostep",
+	cloro: "Cloro",
 	brightdata: "BrightData",
 	oxylabs: "Oxylabs",
-	cloro: "Cloro",
+	olostep: "Olostep",
 	"dataforseo-scraper": "DataForSEO Scraper",
 };
 
