@@ -1,5 +1,16 @@
 # @workspace/lib
 
+## 0.2.18
+
+### Patch Changes
+
+- d0187ed: Prompts can now be added in bulk by pasting one per line.
+- bfa6282: BREAKING CHANGE: DataForSEO now scrapes the real ChatGPT and Gemini interfaces instead of calling their model APIs, with no change needed to existing `SCRAPE_TARGETS`. This is more expensive (about $0.004 instead of $0.0006 to run). This could also impact visibility/citations as it switches to better reflect what users see in the actual chat website. If you would prefer to keep the old behavior, you will need to update your `SCRAPE_TARGETS` to pin the specific version of the model (`chatgpt:dataforseo:gpt-5.5:online` or `gemini:dataforseo:gemini-2.5-flash:online`) to keep using the LLM Responses API instead of the LLM Scraper API.
+- 9394d65: Fix Oxylabs Perplexity query fan-out which incorrectly included follow-up questions.
+- d9faaec: Brand analysis can now be pointed at a full page URL to research a sub-brand, while mentions stay tracked against the site's domain.
+- 72e7091: Cap per-request spend on the direct API providers: output tokens on Anthropic, OpenAI, OpenRouter, and Mistral, plus web-search budget (Anthropic `max_uses`, OpenAI `maxToolCalls`), so no single tracked run can spend unboundedly.
+  - @workspace/config@0.2.18
+
 ## 0.2.17
 
 ### Patch Changes

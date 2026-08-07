@@ -113,6 +113,10 @@ jobs:
 
       - name: Setup Blacksmith Builder
         uses: useblacksmith/setup-docker-builder@v2
+        with:
+          # Scoped per arch: the two matrix jobs share no layers and commit
+          # concurrently, and cache commits are last-write-wins.
+          cache-key: docker/Dockerfile-${{ matrix.arch }}
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v4
