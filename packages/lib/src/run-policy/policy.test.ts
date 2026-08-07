@@ -136,11 +136,36 @@ describe("resolvePromptRunPlan: cloud", () => {
 		expect(plan.rescheduleHours).toBe(6);
 	});
 
-	it("ignores delayOverrideHours in cloud — cadence is plan-defined", () => {
+	it("clamps a stored too-fast override to the plan cadence (downgrade behavior)", () => {
 		const plan = resolvePromptRunPlan(
 			cloudInput({ brand: { enabledModels: ["chatgpt"], delayOverrideHours: 1 } }),
 		);
 		expect(plan.targets[0].intervalHours).toBe(6);
+		expect(plan.rescheduleHours).toBe(6);
+	});
+
+	it("a slower override stretches standard and claude cadence alike", () => {
+		const plan = resolvePromptRunPlan(
+			cloudInput({
+				brand: { enabledModels: ["chatgpt"], delayOverrideHours: 48 },
+				prompt: { claudeMode: "base" },
+			}),
+		);
+		expect(plan.targets.find((t) => t.config.model === "chatgpt")?.intervalHours).toBe(48);
+		expect(plan.targets.find((t) => t.config.model === "claude")?.intervalHours).toBe(48);
+		expect(plan.rescheduleHours).toBe(48);
+	});
+
+	it("an override between the standard and claude floors slows only standard", () => {
+		// 12h is slower than pro's 6h standard floor but faster than claude's 24h.
+		const plan = resolvePromptRunPlan(
+			cloudInput({
+				brand: { enabledModels: ["chatgpt"], delayOverrideHours: 12 },
+				prompt: { claudeMode: "base" },
+			}),
+		);
+		expect(plan.targets.find((t) => t.config.model === "chatgpt")?.intervalHours).toBe(12);
+		expect(plan.targets.find((t) => t.config.model === "claude")?.intervalHours).toBe(24);
 	});
 
 	it("starter runs its single pick once daily", () => {
@@ -245,6 +270,37 @@ describe("resolvePromptRunPlan: cloud", () => {
 		expect(plan.targets.map((t) => t.config.model).sort()).toEqual(["chatgpt", "deepseek"]);
 		expect(plan.targets[0].intervalHours).toBeCloseTo(24 / 7);
 	});
+
+	it("custom sampling lowers the clamp floor for overrides too", () => {
+		const custom = resolveEntitlements({
+			mode: "cloud",
+			subscription: { status: "active", plan: "business", periodEnd: new Date("2026-09-01") },
+			claudeAddonQuantity: 0,
+			overrides: { standardRunsPerDay: 7 },
+			now: NOW,
+		});
+		const tooFast = resolvePromptRunPlan(
+			cloudInput({ entitlements: custom, brand: { enabledModels: ["chatgpt"], delayOverrideHours: 2 } }),
+		);
+		expect(tooFast.targets[0].intervalHours).toBeCloseTo(24 / 7);
+
+		const slower = resolvePromptRunPlan(
+			cloudInput({ entitlements: custom, brand: { enabledModels: ["chatgpt"], delayOverrideHours: 4 } }),
+		);
+		expect(slower.targets[0].intervalHours).toBe(4);
+	});
+
+	it("a custom claudeRunsPerDay doubles claude dueness", () => {
+		const custom = resolveEntitlements({
+			mode: "cloud",
+			subscription: { status: "active", plan: "pro", periodEnd: new Date("2026-09-01") },
+			claudeAddonQuantity: 0,
+			overrides: { claudeRunsPerDay: 2 },
+			now: NOW,
+		});
+		const plan = resolvePromptRunPlan(cloudInput({ entitlements: custom, prompt: { claudeMode: "base" } }));
+		expect(plan.targets.find((t) => t.config.model === "claude")?.intervalHours).toBe(12);
+	});
 });
 
 describe("dueness metering", () => {
@@ -291,5 +347,10 @@ describe("dailyRunCeiling", () => {
 	it("scales with plan limits with 1.5x headroom", () => {
 		// pro: 150 prompts × 4 picks × 4 runs × 1 replication + 20 claude = 9620 × 1.5
 		expect(dailyRunCeiling(cloudEntitlements("pro"))).toBe(Math.ceil(1.5 * (150 * 4 * 4 + 20)));
+	});
+
+	it("counts a custom claude cadence", () => {
+		const custom = cloudEntitlements("pro", { overrides: { claudeRunsPerDay: 2 } });
+		expect(dailyRunCeiling(custom)).toBe(Math.ceil(1.5 * (150 * 4 * 4 + 20 * 2)));
 	});
 });

@@ -18,7 +18,6 @@
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
-import { CLAUDE_RUNS_PER_DAY } from "@workspace/config/plans";
 import type { ModelConfig } from "@workspace/config/scrape-targets";
 import type { DeploymentMode } from "@workspace/config/types";
 import { RUNS_PER_PROMPT } from "../constants";
@@ -93,7 +92,12 @@ export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan 
 				// silently untracked.
 				defaultPlatformPicks(entitlements, input.scrapeTargets);
 
-	const standardInterval = 24 / Math.max(1, entitlements.standardRunsPerDay ?? 1);
+	// A cadence override may only slow sampling below the plan rate. The write
+	// path enforces the same floor, but a stored override can be faster than
+	// the plan after a downgrade — clamp it here so it never speeds anything up.
+	const overrideHours = input.brand.delayOverrideHours;
+	const planStandardInterval = 24 / Math.max(1, entitlements.standardRunsPerDay ?? 1);
+	const standardInterval = Math.max(overrideHours ?? planStandardInterval, planStandardInterval);
 	const replication = entitlements.replication ?? 1;
 	for (const model of picks.slice(0, entitlements.platformPicks ?? picks.length)) {
 		const config = input.scrapeTargets.find((t) => t.model === model);
@@ -109,9 +113,10 @@ export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan 
 			(t) => t.model === CLAUDE_MODEL_NAME && t.webSearch === wantWebSearch,
 		);
 		if (config) {
+			const planClaudeInterval = 24 / Math.max(1, entitlements.claudeRunsPerDay);
 			targets.push({
 				config,
-				intervalHours: 24 / CLAUDE_RUNS_PER_DAY,
+				intervalHours: Math.max(overrideHours ?? planClaudeInterval, planClaudeInterval),
 				replication: 1,
 			});
 		}
@@ -174,6 +179,6 @@ export function dailyRunCeiling(entitlements: Entitlements): number | null {
 		(entitlements.platformPicks ?? 0) *
 		(entitlements.standardRunsPerDay ?? 0) *
 		(entitlements.replication ?? 1);
-	const claude = entitlements.claudePool * CLAUDE_RUNS_PER_DAY;
+	const claude = entitlements.claudePool * entitlements.claudeRunsPerDay;
 	return Math.ceil(1.5 * (standard + claude));
 }
