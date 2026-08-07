@@ -25,29 +25,17 @@ Which surfaces each one reaches:
 | Google AI Mode | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Google AI Overview | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Gemini | ✅ | ✅ | – | ✅ | ✅ |
-| Perplexity | ✅ | ✅ | ✅ | ✅ | API |
+| Perplexity | ✅ | ✅ | ✅ | ✅ | API-only |
 | Copilot | ✅ | ✅ | – | ✅ | – |
-
-**API** marks a surface reached through a model API rather than the live UI: no Perplexity scraper exists, so DataForSEO routes that target through [LLM Responses](#pinning-a-model).
-
-Reaching a surface and reaching it reliably are different things. **Google AI Overview is the one that separates these providers** — it's a fragment of an ordinary results page rather than a standalone product, and in recent monitoring BrightData and Oxylabs both land it only 71% of the time while clearing 96%+ elsewhere. If AI Overview matters to you, that's the deciding factor. The [status page](https://www.elmohq.com/status) has the current numbers for every combination.
 
 <Callout>
 Cost estimates assume Elmo's default cadence of about 5 runs/day per target across 2 surfaces (ChatGPT + Google AI Mode), so roughly 300 evaluations/mo per prompt.
-
-- [**Cloro**](https://cloro.dev?fpr=elmo) — sells credits on a monthly plan rather than per request. ChatGPT costs 7 credits and Google AI Mode 4, so those 300 evaluations run ≈1,650 credits/mo → **$0.65/mo per prompt** on the mid-tier plans. The $30 Lite plan includes 37,500 credits, which covers about **22 prompts**; because the plan fee is fixed, a handful of prompts costs the same as a plan's worth (nearer $1.30 each).
-- [**BrightData**](https://get.brightdata.com/67h1b7h0shcn) — list price of about $0.0015 per evaluation → **$0.45/mo per prompt**.
-- [**Oxylabs**](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) — $0.50 per 1K results on the entry plan (lower at volume) → **$0.15/mo per prompt** at the marginal rate, but there's no pay-as-you-go tier. The $49/mo Micro plan is the floor and covers up to 98K results, or about **325 prompts**.
-- [**Olostep**](https://olostep.com/?ref=elmo) — roughly 5× BrightData → **$2.25/mo per prompt**.
-- [**DataForSEO**](https://dataforseo.com/?aff=184966) — Live mode is $0.004 per page for both the ChatGPT LLM Scraper and the Google AI Mode SERP endpoint → **$1.20/mo per prompt**. Slower queues cost less: Priority is $0.0024 and Standard $0.0012. No subscription, $50 minimum top-up.
-
-Actual cost depends on volume tier and provider promos.
 </Callout>
 
 <Callout title="How we make money on this page">
-Every scraping-provider link on this page is an Elmo affiliate link. If you sign up through one, we get a small kickback at no extra cost to you — that's one of the ways we fund work on the open-source project. It doesn't change the ranking above: we rank Cloro first because it's what we pay for at Elmo Cloud, and the numbers backing that are public on the [status page](https://www.elmohq.com/status).
+Every scraping-provider link on this page is an Elmo affiliate link. If you sign up through one, we get a small kickback at no extra cost to you. This is one of the ways we fund work on the project. Our rankings are based on repeated testing we publish on the [provider status page](https://www.elmohq.com/status).
 
-If you'd rather support the project directly, please consider [sponsoring Elmo on GitHub](https://github.com/sponsors/elmohq).
+If you would like to support the project directly, please [sponsor Elmo on GitHub](https://github.com/sponsors/elmohq).
 </Callout>
 
 ### Cloro
