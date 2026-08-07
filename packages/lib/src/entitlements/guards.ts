@@ -27,7 +27,7 @@ export type EntitlementDenialCode =
 	| "platform-picks-exceeded"
 	| "claude-not-in-plan"
 	| "claude-pool-exhausted"
-	| "cadence-not-configurable";
+	| "cadence-faster-than-plan";
 
 /**
  * Thrown by the assert* helpers. `status` is the HTTP status /api/v1 maps it
@@ -134,10 +134,27 @@ export function decideClaudeAssign(
 	return ALLOWED;
 }
 
-/** Cadence is plan-defined in cloud; only custom-plan overrides change it. */
-export function decideCadenceOverride(entitlements: Entitlements): EntitlementDecision {
-	if (entitlements.unlimited) return ALLOWED;
-	return deny("cadence-not-configurable", "Sampling cadence is set by your plan.");
+/**
+ * A cadence override may slow sampling down, never speed it past the plan
+ * rate — so the floor moves with the plan (custom plans with higher
+ * standardRunsPerDay allow proportionally faster overrides). Null clears the
+ * override back to the plan cadence.
+ */
+export function decideCadenceOverride(
+	entitlements: Entitlements,
+	requestedDelayHours: number | null,
+): EntitlementDecision {
+	const gate = requireActivePlan(entitlements);
+	if (gate) return gate;
+	if (requestedDelayHours === null) return ALLOWED;
+	const runsPerDay = entitlements.standardRunsPerDay;
+	// Multiply instead of comparing against 24/runsPerDay so fractional floors
+	// (e.g. 7×/day) can't be rejected by float noise at exactly the floor.
+	if (runsPerDay === null || requestedDelayHours * runsPerDay >= 24) return ALLOWED;
+	return deny(
+		"cadence-faster-than-plan",
+		`Your plan samples ${runsPerDay} time${runsPerDay === 1 ? "" : "s"} per day; a cadence override can only slow that down.`,
+	);
 }
 
 function assertAllowed(decision: EntitlementDecision): void {
@@ -209,6 +226,6 @@ export async function assertCanAssignClaude(organizationId: string, adding: numb
 	);
 }
 
-export async function assertCadenceConfigurable(organizationId: string): Promise<void> {
-	await withEntitlements(organizationId, decideCadenceOverride);
+export async function assertCadenceAllowed(organizationId: string, requestedDelayHours: number | null): Promise<void> {
+	await withEntitlements(organizationId, (entitlements) => decideCadenceOverride(entitlements, requestedDelayHours));
 }

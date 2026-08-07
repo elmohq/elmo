@@ -33,7 +33,7 @@ describe("unlimited entitlements short-circuit every guard", () => {
 		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, 10_000, 500).allowed).toBe(true);
 		expect(decideEnabledModels(UNLIMITED_ENTITLEMENTS, ["anything", "claude", "made-up"]).allowed).toBe(true);
 		expect(decideClaudeAssign(UNLIMITED_ENTITLEMENTS, 10_000, 10).allowed).toBe(true);
-		expect(decideCadenceOverride(UNLIMITED_ENTITLEMENTS).allowed).toBe(true);
+		expect(decideCadenceOverride(UNLIMITED_ENTITLEMENTS, 1).allowed).toBe(true);
 	});
 });
 
@@ -44,6 +44,7 @@ describe("no active plan blocks all additions", () => {
 			decidePromptAdd(NO_PLAN_ENTITLEMENTS, 0, 1),
 			decideEnabledModels(NO_PLAN_ENTITLEMENTS, ["chatgpt"]),
 			decideClaudeAssign(NO_PLAN_ENTITLEMENTS, 0, 1),
+			decideCadenceOverride(NO_PLAN_ENTITLEMENTS, 48),
 		]) {
 			expect(decision).toMatchObject({ allowed: false, code: "no-active-plan" });
 		}
@@ -137,9 +138,41 @@ describe("decideClaudeAssign", () => {
 });
 
 describe("decideCadenceOverride", () => {
-	it("denies for every cloud org, active plan or not", () => {
-		expect(decideCadenceOverride(PRO)).toMatchObject({ allowed: false, code: "cadence-not-configurable" });
-		expect(decideCadenceOverride(NO_PLAN_ENTITLEMENTS).allowed).toBe(false);
+	it("denies an override faster than the plan cadence, naming the plan rate", () => {
+		// pro samples 4×/day → 6h floor
+		expect(decideCadenceOverride(PRO, 4)).toMatchObject({
+			allowed: false,
+			code: "cadence-faster-than-plan",
+			message: expect.stringContaining("4"),
+		});
+	});
+
+	it("allows the plan cadence exactly and anything slower", () => {
+		expect(decideCadenceOverride(PRO, 6).allowed).toBe(true);
+		expect(decideCadenceOverride(PRO, 48).allowed).toBe(true);
+	});
+
+	it("allows clearing the override back to the plan cadence", () => {
+		expect(decideCadenceOverride(PRO, null).allowed).toBe(true);
+	});
+
+	it("the floor follows the plan: starter's once-daily rejects a half-day override", () => {
+		const starter = planEntitlements("starter");
+		expect(decideCadenceOverride(starter, 12)).toMatchObject({ allowed: false, code: "cadence-faster-than-plan" });
+		expect(decideCadenceOverride(starter, 24).allowed).toBe(true);
+	});
+
+	it("a custom plan's higher sampling lowers the floor", () => {
+		const custom = resolveEntitlements({
+			mode: "cloud",
+			subscription: { status: "active", plan: "business", periodEnd: new Date("2026-09-01") },
+			claudeAddonQuantity: 0,
+			overrides: { standardRunsPerDay: 7 },
+			now: NOW,
+		});
+		expect(decideCadenceOverride(custom, 4).allowed).toBe(true);
+		expect(decideCadenceOverride(planEntitlements("business"), 4).allowed).toBe(false);
+		expect(decideCadenceOverride(custom, 3)).toMatchObject({ allowed: false, code: "cadence-faster-than-plan" });
 	});
 });
 

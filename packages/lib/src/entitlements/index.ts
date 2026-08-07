@@ -8,7 +8,7 @@ export {
 } from "./service";
 export {
 	EntitlementError,
-	assertCadenceConfigurable,
+	assertCadenceAllowed,
 	assertCanAddPrompts,
 	assertCanAssignClaude,
 	assertCanCreateBrand,
