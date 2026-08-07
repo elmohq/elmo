@@ -5,6 +5,7 @@
 	"license": "MIT",
 	"type": "module",
 	"scripts": {
+		"postinstall": "fumadocs-mdx",
 		"dev": "vite dev --port 3001",
 		"build": "vite build",
 		"start": "node .output/server/index.mjs",
