@@ -244,44 +244,6 @@ export function evaluateRequireAdmin(isAdmin: boolean): "allow" | "deny" {
 }
 
 /**
- * Evaluate organization access requirement.
- * Used by server functions via `requireOrgAccess()` in auth helpers.
- */
-export function evaluateRequireOrgAccess(hasAccess: boolean): "allow" | "deny" {
-	return hasAccess ? "allow" : "deny";
-}
-
-/**
- * Org-scoped resource access rule, in pure form.
- *
- * Every brand carries an `organization_id`; a user may only read or mutate a
- * resource whose owning org they belong to. The runtime enforces this directly
- * in SQL — `checkOrgAccess` for a single resource and the
- * `brands.organization_id IN (member orgs)` filter in `getBrands`. This function
- * is the canonical statement of that same rule, unit-tested in isolation
- * (mirroring the sibling `evaluateRequireOrgAccess`); it documents and pins the
- * "a member of org A is denied org B's resources" invariant, but is not itself
- * the runtime gate.
- */
-export function evaluateOrgScope(memberOrgIds: readonly string[], resourceOrgId: string): "allow" | "deny" {
-	return memberOrgIds.includes(resourceOrgId) ? "allow" : "deny";
-}
-
-/**
- * Brand-scoped access rule for the umbrella-org model: a user may act on a
- * brand only if they are a member of the brand's owning org. `brandOrgId` is
- * null when the brand does not exist — which must deny, never fall through to
- * a brand-id-as-org-id match.
- */
-export function evaluateBrandAccess(
-	memberOrgIds: readonly string[],
-	brandOrgId: string | null,
-): "allow" | "deny" {
-	if (brandOrgId === null) return "deny";
-	return memberOrgIds.includes(brandOrgId) ? "allow" : "deny";
-}
-
-/**
  * Which org a newly created brand attaches to, in pure form.
  *
  * An explicit choice must be one the caller belongs to. Without one, a single

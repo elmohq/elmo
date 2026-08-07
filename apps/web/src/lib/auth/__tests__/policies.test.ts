@@ -17,15 +17,12 @@ import {
 	evaluateAdminRouteGuard,
 	evaluateApiKeyAuth,
 	evaluateAuthedRouteGuard,
-	evaluateBrandAccess,
 	resolveBrandOrganization,
 	evaluateBrandRouteGuard,
 	evaluateDeploymentPolicy,
-	evaluateOrgScope,
 	evaluateReadOnly,
 	evaluateRequireAdmin,
 	evaluateRequireCanCreateBrands,
-	evaluateRequireOrgAccess,
 	evaluateSignupAllowed,
 	type RequestInfo,
 } from "@/lib/auth/policies";
@@ -407,76 +404,6 @@ describe("evaluateRequireAdmin", () => {
 	});
 });
 
-describe("evaluateRequireOrgAccess", () => {
-	it("denies when user has no org access", () => {
-		expect(evaluateRequireOrgAccess(false)).toBe("deny");
-	});
-
-	it("allows when user has org access", () => {
-		expect(evaluateRequireOrgAccess(true)).toBe("allow");
-	});
-});
-
-// Brand/prompt/run/citation org scoping. A brand's organization_id is the
-// tenancy boundary; membership is the access mechanism.
-describe("evaluateOrgScope", () => {
-	const ORG_A = "org-a";
-	const ORG_B = "org-b";
-
-	it("allows a member to access their own org's resource", () => {
-		expect(evaluateOrgScope([ORG_A], ORG_A)).toBe("allow");
-	});
-
-	it("denies a member of org A from accessing org B's resource", () => {
-		expect(evaluateOrgScope([ORG_A], ORG_B)).toBe("deny");
-	});
-
-	it("allows access for any org the user belongs to (multi-org member)", () => {
-		expect(evaluateOrgScope([ORG_A, ORG_B], ORG_B)).toBe("allow");
-	});
-
-	it("denies a resource in an org the multi-org user does not belong to", () => {
-		expect(evaluateOrgScope([ORG_A, ORG_B], "org-c")).toBe("deny");
-	});
-
-	it("denies when the user has no memberships", () => {
-		expect(evaluateOrgScope([], ORG_A)).toBe("deny");
-	});
-
-	it("does not treat the brand id as an org membership by itself", () => {
-		// Scoping must be driven by actual membership, not by the resource
-		// naming itself.
-		expect(evaluateOrgScope([], "org-a")).toBe("deny");
-	});
-});
-
-// Umbrella-org model: a brand's owning org is resolved via
-// `brands.organizationId`, not assumed equal to the brand id.
-describe("evaluateBrandAccess", () => {
-	const ORG_A = "org-a";
-	const ORG_B = "org-b";
-
-	it("allows a member of the brand's owning org", () => {
-		expect(evaluateBrandAccess([ORG_A], ORG_A)).toBe("allow");
-	});
-
-	it("denies a member of a different org", () => {
-		expect(evaluateBrandAccess([ORG_A], ORG_B)).toBe("deny");
-	});
-
-	it("allows a multi-org member whose set includes the brand's org", () => {
-		expect(evaluateBrandAccess([ORG_A, ORG_B], ORG_B)).toBe("allow");
-	});
-
-	it("denies when the brand does not exist (brandOrgId is null)", () => {
-		expect(evaluateBrandAccess([ORG_A], null)).toBe("deny");
-	});
-
-	it("denies when the user has no memberships", () => {
-		expect(evaluateBrandAccess([], ORG_A)).toBe("deny");
-	});
-});
-
 describe("resolveBrandOrganization", () => {
 	const ORG_A = "org-a";
 	const ORG_B = "org-b";
@@ -725,7 +652,6 @@ describe("full access-control scenarios", () => {
 
 			// Auth: passes
 			expect(evaluateRequireAdmin(true)).toBe("allow");
-			expect(evaluateRequireOrgAccess(true)).toBe("allow");
 
 			// Route guards: all pass
 			expect(evaluateAuthedRouteGuard(session)).toBe("allow");
@@ -741,8 +667,6 @@ describe("full access-control scenarios", () => {
 			expect(evaluateAdminRouteGuard(false)).toBe("not-found");
 
 			// Org access depends on membership
-			expect(evaluateRequireOrgAccess(true)).toBe("allow");
-			expect(evaluateRequireOrgAccess(false)).toBe("deny");
 			expect(evaluateBrandRouteGuard(true)).toBe("allow");
 			expect(evaluateBrandRouteGuard(false)).toBe("not-found");
 		});
