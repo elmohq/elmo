@@ -118,36 +118,7 @@ perplexity:olostep:online
 
 [Olostep](https://olostep.com/?ref=elmo) models always use web search, so the `:online` suffix is required.
 
-## Direct model APIs
-
-These hit the provider API directly — cheaper per token than scrapers, but they don't represent the actual ChatGPT / Google AI Mode experience. Use them alongside a scraper when you want extra Claude or OSS model coverage.
-
-| Provider | Tracks | Cost per prompt/month* |
-|---|---|---|
-| **Anthropic API** (`ANTHROPIC_API_KEY`) | Claude Sonnet / Opus / Haiku | ~$4–5 per tracked model |
-| **OpenAI API** (`OPENAI_API_KEY`) | `gpt-5-mini` with web search (ChatGPT-like, but not the real UI) | ~$2–3 per tracked model |
-| **Mistral API** (`MISTRAL_API_KEY`) | Mistral Small / Medium / Large, optional web search via the beta Conversations API | pass-through |
-| **OpenRouter** (`OPENROUTER_API_KEY`) | Any OpenRouter-hosted model (Claude, Llama, Mistral, etc.) | pass-through |
-
-\*Direct-API estimates also assume ~5 runs/day × 30 days = 150 calls/mo per tracked model, with typical prompt/response lengths. Prompt length drives real cost.
-
-Example scrape targets:
-
-```
-claude:anthropic-api:claude-sonnet-4-6
-chatgpt:openai-api:gpt-5-mini:online
-mistral:mistral-api:mistral-medium-latest:online
-claude:openrouter:anthropic/claude-sonnet-4.6
-grok:openrouter:x-ai/grok-4.5:online
-kimi:openrouter:moonshotai/kimi-k3
-perplexity:openrouter:perplexity/sonar:online
-```
-
-OpenAI/Anthropic/Mistral/OpenRouter entries all require a version slug as the third segment. For Mistral, append `:online` to route through the beta Conversations API with the `web_search` tool; without it the request goes to the standard chat completions endpoint and no citations are returned.
-
-On OpenRouter, `:online` runs the underlying model's own web search where one exists (Anthropic, Google, OpenAI, Perplexity, xAI) and falls back to OpenRouter's Exa search elsewhere. `perplexity/sonar` is the cheapest way to track Perplexity: $1/M tokens each way plus $0.005 per request. `perplexity/sonar-pro-search` is closer to the agentic stack perplexity.ai itself serves, at roughly seven times the cost ($3/$15 per M tokens plus $0.018 per request).
-
-## DataForSEO
+### DataForSEO
 
 [DataForSEO](https://dataforseo.com/?aff=184966) is pay-as-you-go with no subscription. `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` enable several surfaces:
 
@@ -170,7 +141,7 @@ One account reaches three different DataForSEO products, and the target picks be
 
 The scraped ChatGPT and Gemini runs return what a real user sees, including product cards and tables, and ChatGPT reports its query fan-out. They take roughly a minute, since a live session has to finish.
 
-### Pinning a model
+#### Pinning a model
 
 Adding a version slug switches ChatGPT or Gemini to the **LLM Responses** API, which calls the vendor's model API instead of the consumer product:
 
@@ -185,12 +156,46 @@ All DataForSEO targets require `:online`.
 
 DataForSEO prompt text is limited to 500 characters. Country localization is intentionally not exposed in `SCRAPE_TARGETS` yet because support differs by DataForSEO surface and underlying model.
 
+## Direct model APIs
+
+These hit the provider API directly — cheaper per token than scrapers, but they don't represent the actual ChatGPT / Google AI Mode experience. Use them alongside a scraper when you want extra Claude or OSS model coverage.
+
+| Provider | Tracks | Cost per prompt/month* |
+|---|---|---|
+| **Anthropic API** (`ANTHROPIC_API_KEY`) | Claude Sonnet / Opus / Haiku | ~$4–5 per tracked model |
+| **OpenAI API** (`OPENAI_API_KEY`) | `gpt-5-mini` with web search (ChatGPT-like, but not the real UI) | ~$2–3 per tracked model |
+| **Mistral API** (`MISTRAL_API_KEY`) | Mistral Small / Medium / Large, optional web search via the beta Conversations API | pass-through |
+| **OpenRouter** (`OPENROUTER_API_KEY`) | Any OpenRouter-hosted model (Claude, Llama, Mistral, etc.) | pass-through |
+| **DataForSEO** (`DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD`) | ChatGPT, Gemini, or Perplexity through its LLM Responses API — see [Pinning a model](#pinning-a-model) | pass-through |
+
+\*Direct-API estimates also assume ~5 runs/day × 30 days = 150 calls/mo per tracked model, with typical prompt/response lengths. Prompt length drives real cost.
+
+Example scrape targets:
+
+```
+claude:anthropic-api:claude-sonnet-4-6
+chatgpt:openai-api:gpt-5-mini:online
+mistral:mistral-api:mistral-medium-latest:online
+claude:openrouter:anthropic/claude-sonnet-4.6
+grok:openrouter:x-ai/grok-4.5:online
+kimi:openrouter:moonshotai/kimi-k3
+perplexity:openrouter:perplexity/sonar:online
+```
+
+OpenAI/Anthropic/Mistral/OpenRouter entries all require a version slug as the third segment. For Mistral, append `:online` to route through the beta Conversations API with the `web_search` tool; without it the request goes to the standard chat completions endpoint and no citations are returned.
+
+DataForSEO straddles both halves of this page. Left alone it scrapes, but pinning a `model_name` switches ChatGPT or Gemini to a model API instead, and Perplexity always goes that way because no Perplexity scraper exists. See [DataForSEO](#dataforseo) above.
+
+On OpenRouter, `:online` runs the underlying model's own web search where one exists (Anthropic, Google, OpenAI, Perplexity, xAI) and falls back to OpenRouter's Exa search elsewhere. `perplexity/sonar` is the cheapest way to track Perplexity: $1/M tokens each way plus $0.005 per request. `perplexity/sonar-pro-search` is closer to the agentic stack perplexity.ai itself serves, at roughly seven times the cost ($3/$15 per M tokens plus $0.018 per request).
+
 ## Recommended setups
 
-**Starter (scrape the two that matter).** Pick one scraper and you're done:
+**Starter (scrape the two that matter).** Pick one scraper, add one direct API key for onboarding analysis and sentiment scoring, and you're done:
 
 ```bash
 CLORO_API_KEY=...
+OPENROUTER_API_KEY=...
+# or ANTHROPIC_API_KEY=... or OPENAI_API_KEY=...
 SCRAPE_TARGETS=chatgpt:cloro:online,google-ai-mode:cloro:online
 ```
 
@@ -198,31 +203,19 @@ or
 
 ```bash
 BRIGHTDATA_API_TOKEN=...
+OPENROUTER_API_KEY=...
+# or ANTHROPIC_API_KEY=... or OPENAI_API_KEY=...
 SCRAPE_TARGETS=chatgpt:brightdata:online,google-ai-mode:brightdata:online
 ```
 
-**Starter + Claude.** Add Anthropic direct for cheap Claude coverage:
-
-```bash
-BRIGHTDATA_API_TOKEN=...
-ANTHROPIC_API_KEY=...
-SCRAPE_TARGETS=chatgpt:brightdata:online,google-ai-mode:brightdata:online,claude:anthropic-api:claude-sonnet-4-6
-```
-
-**DataForSEO only.** One account covers the real ChatGPT and Gemini UIs plus both Google surfaces:
+or
 
 ```bash
 DATAFORSEO_LOGIN=...
 DATAFORSEO_PASSWORD=...
-SCRAPE_TARGETS=chatgpt:dataforseo:online,gemini:dataforseo:online,google-ai-mode:dataforseo:online
-```
-
-**No scraper (APIs only).** Cheapest option, but you're tracking model APIs instead of the real consumer surfaces:
-
-```bash
-OPENAI_API_KEY=...
-ANTHROPIC_API_KEY=...
-SCRAPE_TARGETS=chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-sonnet-4-6
+OPENROUTER_API_KEY=...
+# or ANTHROPIC_API_KEY=... or OPENAI_API_KEY=...
+SCRAPE_TARGETS=chatgpt:dataforseo:online,google-ai-mode:dataforseo:online
 ```
 
 ## SCRAPE_TARGETS format
