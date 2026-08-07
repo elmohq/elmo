@@ -142,6 +142,12 @@ export function isClaudeAddonAvailable(planKey: PlanKey | "custom" | null): bool
 	return planKey !== null && PLANS[planKey].claudeAddonAvailable;
 }
 
+/** Human-readable name for a resolved plan key. */
+export function planDisplayName(planKey: PlanKey | "custom" | null): string {
+	if (planKey === "custom") return "Custom";
+	return planKey === null ? "None" : PLANS[planKey].name;
+}
+
 /**
  * Stripe price lookup key for a plan/interval. The @better-auth/stripe plugin
  * resolves these to price IDs at checkout time, so the same code works against

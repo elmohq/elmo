@@ -10,7 +10,7 @@
 import { IconExternalLink, IconLoader2 } from "@tabler/icons-react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { CLAUDE_ADDON_MONTHLY_USD, PLANS, isPlanKey } from "@workspace/config/plans";
+import { CLAUDE_ADDON_MONTHLY_USD, PLANS, planDisplayName } from "@workspace/config/plans";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
@@ -63,12 +63,7 @@ function BillingSettingsPage() {
 	const [busy, setBusy] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
-	const planName =
-		entitlements.planKey === "custom"
-			? "Custom"
-			: entitlements.planKey && isPlanKey(entitlements.planKey)
-				? PLANS[entitlements.planKey].name
-				: "None";
+	const planName = planDisplayName(entitlements.planKey);
 
 	const openPortal = async () => {
 		setBusy("portal");
