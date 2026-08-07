@@ -12,10 +12,10 @@ These cover the ChatGPT + Google AI Mode experiences that drive the bulk of AI r
 | Provider | Why | Rough cost per prompt/month | Floor |
 |---|---|---|---|
 | [**Cloro**](https://cloro.dev?fpr=elmo) | The most reliable of the five, and it covers every surface Elmo scrapes. Good docs, ergonomic API, slightly pricier than BrightData. Also behind Ahrefs, Scrunch, and Evertune — and it's the primary data provider for Elmo Cloud, so it's the one we pay for ourselves. | ~$0.65 | $30/mo plan (≈22 prompts) |
-| [**BrightData**](https://get.brightdata.com/67h1b7h0shcn) | The most common scraping option, pay-as-you-go and a little cheaper — but measurably slower than Cloro. | ~$0.45 | Pay-as-you-go |
+| [**BrightData**](https://get.brightdata.com/67h1b7h0shcn) | The most common scraping option, pay-as-you-go and a little cheaper — but measurably slower than Cloro, and weak on Google AI Overview. | ~$0.45 | Pay-as-you-go |
 | [**Oxylabs**](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) | Cheapest per run, but it can't reach Gemini or Copilot and it's the least reliable of the five. | ~$0.15 | $49/mo plan (≈325 prompts) |
-| [**Olostep**](https://olostep.com/?ref=elmo) | Premium option used by Profound, Athena, and AirOps. Very strong at high-volume scraping with an ergonomic API, but reliability is inconsistent. | ~$2.25 | Pay-as-you-go |
-| [**DataForSEO**](https://dataforseo.com/?aff=184966) | Solid pay-as-you-go all-rounder with good reliability, and the only one here that also fronts direct model APIs. | ~$1.20 | $50 minimum top-up |
+| [**Olostep**](https://olostep.com/?ref=elmo) | Premium option used by Profound, Athena, and AirOps. Very strong at high-volume scraping with an ergonomic API, but reliability is inconsistent and it's the slowest by a wide margin. | ~$2.25 | Pay-as-you-go |
+| [**DataForSEO**](https://dataforseo.com/?aff=184966) | Solid pay-as-you-go all-rounder with good reliability, the fastest of the five, and the only one here that also fronts direct model APIs. | ~$1.20 | $50 minimum top-up |
 
 Which surfaces each one reaches:
 
@@ -29,6 +29,8 @@ Which surfaces each one reaches:
 | Copilot | ✅ | ✅ | – | ✅ | – |
 
 **API** marks a surface reached through a model API rather than the live UI: no Perplexity scraper exists, so DataForSEO routes that target through [LLM Responses](#pinning-a-model).
+
+Reaching a surface and reaching it reliably are different things. **Google AI Overview is the one that separates these providers** — it's a fragment of an ordinary results page rather than a standalone product, and over the 30 days to 7 August 2026 BrightData and Oxylabs both landed it only 71% of the time while clearing 96%+ elsewhere. If AI Overview matters to you, that's the deciding factor. The [status page](https://www.elmohq.com/status) has the current numbers for every combination.
 
 <Callout>
 Cost estimates assume Elmo's default cadence of about 5 runs/day per target across 2 surfaces (ChatGPT + Google AI Mode), so roughly 300 evaluations/mo per prompt.
