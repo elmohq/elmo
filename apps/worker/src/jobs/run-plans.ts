@@ -1,8 +1,8 @@
 import {
 	computePoolPositions,
-	resolvePromptRunPlan,
 	type PromptRunPlan,
 	type ResolveRunPlanInput,
+	resolvePromptRunPlan,
 } from "@workspace/lib/run-policy";
 
 type ClaudeMode = ResolveRunPlanInput["prompt"]["claudeMode"];

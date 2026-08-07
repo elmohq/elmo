@@ -17,7 +17,6 @@ import {
 	evaluateAdminRouteGuard,
 	evaluateApiKeyAuth,
 	evaluateAuthedRouteGuard,
-	resolveBrandOrganization,
 	evaluateBrandRouteGuard,
 	evaluateDeploymentPolicy,
 	evaluateReadOnly,
@@ -25,6 +24,7 @@ import {
 	evaluateRequireCanCreateBrands,
 	evaluateSignupAllowed,
 	type RequestInfo,
+	resolveBrandOrganization,
 } from "@/lib/auth/policies";
 import { createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
 

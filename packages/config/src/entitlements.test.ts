@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
-	NO_PLAN_ENTITLEMENTS,
-	UNLIMITED_ENTITLEMENTS,
 	deriveSubscriptionStanding,
+	NO_PLAN_ENTITLEMENTS,
 	parseEntitlementOverrides,
-	resolveEntitlements,
 	type ResolveEntitlementsInput,
+	resolveEntitlements,
 	type SubscriptionSnapshot,
+	UNLIMITED_ENTITLEMENTS,
 } from "./entitlements";
 import { CLAUDE_RUNS_PER_DAY, MAX_STANDARD_RUNS_PER_DAY, PLANS } from "./plans";
 import type { DeploymentMode } from "./types";

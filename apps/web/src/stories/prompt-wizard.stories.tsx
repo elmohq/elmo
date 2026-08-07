@@ -11,19 +11,20 @@
  * .storybook/main.ts swaps `@/server/onboarding` and `@/server/brands` for
  * the mocks at bundle time.
  */
-import { useEffect } from "react";
+
 import type { Meta, StoryObj } from "@storybook/react";
-import { within, userEvent, expect, waitFor } from "storybook/test";
+import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
+import { useEffect } from "react";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import BrandOnboarding from "@/components/brand-onboarding";
 import PromptWizard from "@/components/prompt-wizard";
-import { setMockBrand } from "./_mocks/use-brands";
 import { setMockOnboardingPlatformState } from "./_mocks/server-brands";
 import {
 	setMockOnboardingDelay,
 	setMockOnboardingError,
 	setMockOnboardingSuggestion,
 } from "./_mocks/server-onboarding";
-import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
+import { setMockBrand } from "./_mocks/use-brands";
 
 const RICH_SUGGESTION: OnboardingSuggestion = {
 	brandName: "Acme",

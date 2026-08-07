@@ -8,26 +8,21 @@
  * (?status=success) the page polls until the webhook lands, then enters the
  * app.
  */
+
+import { IconCheck, IconLoader2 } from "@tabler/icons-react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import {
-	CLAUDE_ADDON_MONTHLY_USD,
-	PLANS,
-	PLAN_KEYS,
-	type PlanDefinition,
-	type PlanKey,
-} from "@workspace/config/plans";
+import { CLAUDE_ADDON_MONTHLY_USD, PLAN_KEYS, PLANS, type PlanDefinition, type PlanKey } from "@workspace/config/plans";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Switch } from "@workspace/ui/components/switch";
-import { IconCheck, IconLoader2 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
-import { getPaywallStateFn, type PaywallState } from "@/server/billing";
-import { getAppName, buildTitle } from "@/lib/route-head";
-import { getModelDisplayName } from "@/lib/utils";
 import { z } from "zod";
+import { buildTitle, getAppName } from "@/lib/route-head";
+import { getModelDisplayName } from "@/lib/utils";
+import { getPaywallStateFn, type PaywallState } from "@/server/billing";
 
 const searchSchema = z.object({
 	status: z.enum(["success"]).optional(),
@@ -201,11 +196,7 @@ function ChoosePlanPage() {
 								</ul>
 							</CardContent>
 							<CardFooter>
-								<Button
-									className="w-full"
-									disabled={!isAdmin || subscribing !== null}
-									onClick={() => subscribe(key)}
-								>
+								<Button className="w-full" disabled={!isAdmin || subscribing !== null} onClick={() => subscribe(key)}>
 									{subscribing === key ? <IconLoader2 className="h-4 w-4 animate-spin" /> : `Subscribe to ${plan.name}`}
 								</Button>
 							</CardFooter>

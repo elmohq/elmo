@@ -22,7 +22,7 @@ import { Progress } from "@workspace/ui/components/progress";
 import { useState } from "react";
 import { getDeployment } from "@/lib/config/server";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
-import { getBillingStateFn, setClaudeAddonQuantityFn, type BillingState } from "@/server/billing";
+import { type BillingState, getBillingStateFn, setClaudeAddonQuantityFn } from "@/server/billing";
 
 const getBillingEnabled = createServerFn({ method: "GET" }).handler(async () => {
 	return { billing: getDeployment().features.billing };

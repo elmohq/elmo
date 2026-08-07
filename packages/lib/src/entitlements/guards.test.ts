@@ -1,8 +1,8 @@
 import {
-	NO_PLAN_ENTITLEMENTS,
-	UNLIMITED_ENTITLEMENTS,
-	resolveEntitlements,
 	type Entitlements,
+	NO_PLAN_ENTITLEMENTS,
+	resolveEntitlements,
+	UNLIMITED_ENTITLEMENTS,
 } from "@workspace/config/entitlements";
 import { describe, expect, it } from "vitest";
 import {

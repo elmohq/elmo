@@ -1,15 +1,14 @@
-import { useEffect, useState } from "react";
+import { useNavigate, useRouter } from "@tanstack/react-router";
+import { getModelMeta } from "@workspace/lib/providers/models";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
-
-import { useNavigate, useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { PlatformPicker } from "@/components/platform-picker";
-import { createBrandFn, getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/brands";
-import { getModelMeta } from "@workspace/lib/providers/models";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
+import { createBrandFn, getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/brands";
 
 interface BrandOnboardingProps {
 	brandId: string;

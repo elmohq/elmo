@@ -1,13 +1,4 @@
 export {
-	getBrandOrganizationId,
-	getOrgBillingState,
-	getOrgEntitlements,
-	getOrgEntitlementsMap,
-	selectRelevantSubscription,
-	type OrgBillingState,
-} from "./service";
-export {
-	EntitlementError,
 	assertCadenceAllowed,
 	assertCanAddPrompts,
 	assertCanAssignClaude,
@@ -23,4 +14,13 @@ export {
 	decidePromptAdd,
 	type EntitlementDecision,
 	type EntitlementDenialCode,
+	EntitlementError,
 } from "./guards";
+export {
+	getBrandOrganizationId,
+	getOrgBillingState,
+	getOrgEntitlements,
+	getOrgEntitlementsMap,
+	type OrgBillingState,
+	selectRelevantSubscription,
+} from "./service";

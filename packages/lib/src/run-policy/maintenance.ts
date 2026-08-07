@@ -7,7 +7,7 @@
  * the scheduler — exhaustively unit-testable.
  */
 
-import { dueToleranceMs, targetKey, type PromptRunPlan } from "./policy";
+import { dueToleranceMs, type PromptRunPlan, targetKey } from "./policy";
 
 /** Floor on how often maintenance may drag a prompt's next job forward. */
 export const EXPEDITE_MIN_INTERVAL_MS = 60 * 60 * 1000;

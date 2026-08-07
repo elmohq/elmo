@@ -5,7 +5,7 @@ import {
 	lastRunQueryWindowMs,
 	type MaintenancePromptState,
 } from "./maintenance";
-import { targetKey, type PromptRunPlan } from "./policy";
+import { type PromptRunPlan, targetKey } from "./policy";
 
 const NOW = new Date("2026-08-05T12:00:00Z");
 const HOUR = 3600 * 1000;
@@ -148,7 +148,10 @@ describe("computeMaintenanceDecisions", () => {
 					plan: mixed,
 					lastRunAtByKey: new Map([
 						[targetKey(CHATGPT), new Date(NOW.getTime() - 7 * HOUR)],
-						[targetKey({ model: "claude", provider: "anthropic-api", webSearch: true }), new Date(NOW.getTime() - 2 * HOUR)],
+						[
+							targetKey({ model: "claude", provider: "anthropic-api", webSearch: true }),
+							new Date(NOW.getTime() - 2 * HOUR),
+						],
 					]),
 				}),
 			],

@@ -1,8 +1,8 @@
 import {
-	NO_PLAN_ENTITLEMENTS,
-	UNLIMITED_ENTITLEMENTS,
-	resolveEntitlements,
 	type Entitlements,
+	NO_PLAN_ENTITLEMENTS,
+	resolveEntitlements,
+	UNLIMITED_ENTITLEMENTS,
 } from "@workspace/config/entitlements";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { describe, expect, it } from "vitest";
@@ -11,10 +11,10 @@ import {
 	dailyRunCeiling,
 	dueToleranceMs,
 	isTargetDue,
+	type ResolveRunPlanInput,
 	resolvePromptRunPlan,
 	selectDueTargets,
 	targetKey,
-	type ResolveRunPlanInput,
 } from "./policy";
 
 const NOW = new Date("2026-08-05T12:00:00Z");
@@ -137,9 +137,7 @@ describe("resolvePromptRunPlan: cloud", () => {
 	});
 
 	it("clamps a stored too-fast override to the plan cadence (downgrade behavior)", () => {
-		const plan = resolvePromptRunPlan(
-			cloudInput({ brand: { enabledModels: ["chatgpt"], delayOverrideHours: 1 } }),
-		);
+		const plan = resolvePromptRunPlan(cloudInput({ brand: { enabledModels: ["chatgpt"], delayOverrideHours: 1 } }));
 		expect(plan.targets[0].intervalHours).toBe(6);
 		expect(plan.rescheduleHours).toBe(6);
 	});
@@ -236,9 +234,7 @@ describe("resolvePromptRunPlan: cloud", () => {
 		const outOfPool = resolvePromptRunPlan(cloudInput({ withinPromptPool: false }));
 		expect(outOfPool.targets).toEqual([]);
 
-		const outOfClaude = resolvePromptRunPlan(
-			cloudInput({ prompt: { claudeMode: "web" }, withinClaudePool: false }),
-		);
+		const outOfClaude = resolvePromptRunPlan(cloudInput({ prompt: { claudeMode: "web" }, withinClaudePool: false }));
 		expect(outOfClaude.targets.some((t) => t.config.model === "claude")).toBe(false);
 		expect(outOfClaude.targets.map((t) => t.config.model)).toEqual(["chatgpt", "perplexity"]);
 	});
@@ -304,7 +300,11 @@ describe("resolvePromptRunPlan: cloud", () => {
 });
 
 describe("dueness metering", () => {
-	const plan = { config: { model: "chatgpt", provider: "brightdata", webSearch: true }, intervalHours: 6, replication: 1 };
+	const plan = {
+		config: { model: "chatgpt", provider: "brightdata", webSearch: true },
+		intervalHours: 6,
+		replication: 1,
+	};
 
 	it("never-run targets are due", () => {
 		expect(isTargetDue(plan, undefined, NOW)).toBe(true);
@@ -322,8 +322,16 @@ describe("dueness metering", () => {
 	});
 
 	it("selectDueTargets keys claude base and web separately", () => {
-		const base = { config: { model: "claude", provider: "anthropic-api", webSearch: false }, intervalHours: 24, replication: 1 };
-		const web = { config: { model: "claude", provider: "anthropic-api", webSearch: true }, intervalHours: 24, replication: 1 };
+		const base = {
+			config: { model: "claude", provider: "anthropic-api", webSearch: false },
+			intervalHours: 24,
+			replication: 1,
+		};
+		const web = {
+			config: { model: "claude", provider: "anthropic-api", webSearch: true },
+			intervalHours: 24,
+			replication: 1,
+		};
 		const lastRuns = new Map([[targetKey(web.config), new Date(NOW.getTime() - 3600 * 1000)]]);
 		const due = selectDueTargets([base, web], lastRuns, NOW);
 		expect(due).toEqual([base]);

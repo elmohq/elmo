@@ -14,11 +14,11 @@
  */
 
 import { stripe } from "@better-auth/stripe";
-import { PLANS, PLAN_KEYS, stripePlanLookupKey } from "@workspace/config/plans";
+import { PLAN_KEYS, PLANS, stripePlanLookupKey } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import { member } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
-import { syncClaudeAddonFromSubscription, saveClaudeAddonQuantity } from "./addon";
+import { saveClaudeAddonQuantity, syncClaudeAddonFromSubscription } from "./addon";
 import { dunningNoticeForStatusChange, sendDunningNotice } from "./dunning";
 import { getStripeClient } from "./stripe-client";
 

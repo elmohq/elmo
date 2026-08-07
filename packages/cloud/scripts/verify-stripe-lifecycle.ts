@@ -120,9 +120,10 @@ console.log("✓ upgrade: resolved entitlements follow the new plan");
 const addonPrice = await priceByLookupKey(CLAUDE_ADDON_LOOKUP_KEYS.monthly);
 await stripe.subscriptionItems.create({ subscription: subscription.id, price: addonPrice, quantity: 7 });
 await waitForDb("add-on: organization_settings.claude_addon_quantity = 7", async () => {
-	const { rows } = await db.query("SELECT claude_addon_quantity FROM organization_settings WHERE organization_id = $1", [
-		orgId,
-	]);
+	const { rows } = await db.query(
+		"SELECT claude_addon_quantity FROM organization_settings WHERE organization_id = $1",
+		[orgId],
+	);
 	return rows[0]?.claude_addon_quantity === 7 ? rows[0] : null;
 });
 
@@ -148,9 +149,10 @@ await expectStatus("recovery: subscription active again", "active");
 await stripe.subscriptions.cancel(subscription.id);
 await expectStatus("cancel: subscription canceled", "canceled");
 await waitForDb("cancel: add-on quantity reset to 0", async () => {
-	const { rows } = await db.query("SELECT claude_addon_quantity FROM organization_settings WHERE organization_id = $1", [
-		orgId,
-	]);
+	const { rows } = await db.query(
+		"SELECT claude_addon_quantity FROM organization_settings WHERE organization_id = $1",
+		[orgId],
+	);
 	return rows[0]?.claude_addon_quantity === 0 ? rows[0] : null;
 });
 

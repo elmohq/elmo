@@ -3,42 +3,42 @@
  * Replaces apps/web/src/app/api/prompts/* and brands/[id]/prompts-summary API routes.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireAuthSession, requireBrandAccess, requireBrandOrganization } from "@/lib/auth/helpers";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
+import { db } from "@workspace/lib/db/db";
+import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import {
 	assertCanAddPrompts,
 	assertCanAssignClaude,
 	countOrgAssignedClaudePrompts,
 	getOrgEntitlements,
 } from "@workspace/lib/entitlements";
-import { db } from "@workspace/lib/db/db";
-import { prompts, promptRuns, brands, competitors, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { eq, and, desc, gte, count, sql } from "drizzle-orm";
-import {
-	getPromptsSummary,
-	getPromptsFirstEvaluatedAt,
-	getPromptCitationUrlStats,
-	getPromptDailyStats,
-	getPromptCompetitorDailyStats,
-	getPromptWebQueriesForMapping,
-	getPromptWebQueryCounts,
-} from "@/lib/postgres-read";
-import { generateDateRange } from "@/lib/chart-utils";
+import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { and, count, desc, eq, gte, sql } from "drizzle-orm";
+import { z } from "zod";
+import { requireAuthSession, requireBrandAccess, requireBrandOrganization } from "@/lib/auth/helpers";
 import type { LookbackPeriod } from "@/lib/chart-utils";
-import { getEffectiveBrandedStatus, computeSystemTags } from "@workspace/lib/tag-utils";
-import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
+import { generateDateRange } from "@/lib/chart-utils";
 import {
-	extractDomain,
-	normalizeUrl,
+	CITATION_PAGE_TYPES,
 	emptyCategoryCounts,
 	emptyPageTypeCounts,
-	resolvePageType,
+	extractDomain,
 	isGoogleSurfaceUrl,
-	CITATION_PAGE_TYPES,
+	normalizeUrl,
+	resolvePageType,
 } from "@/lib/domain-categories";
 import { classifyUrl } from "@/lib/domain-categories.server";
 import { buildGoogleModule } from "@/lib/google-module";
+import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
+import {
+	getPromptCitationUrlStats,
+	getPromptCompetitorDailyStats,
+	getPromptDailyStats,
+	getPromptsFirstEvaluatedAt,
+	getPromptsSummary,
+	getPromptWebQueriesForMapping,
+	getPromptWebQueryCounts,
+} from "@/lib/postgres-read";
 // Server Functions
 // ============================================================================
 
@@ -324,7 +324,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			// Tally competitor mentions
 			competitorMentionsResult.forEach((row: any) => {
 				(row.competitorsMentioned || []).forEach((name: string) => {
-					if (name?.trim() && competitorCounts.hasOwnProperty(name)) {
+					if (name?.trim() && Object.hasOwn(competitorCounts, name)) {
 						competitorCounts[name] += 1;
 					}
 				});
@@ -361,7 +361,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		// prompt level: classify each citation at the URL level, pull Google AI Mode
 		// search/shopping surfaces OUT of the source mix into a dedicated Google
 		// Shopping module, and rebuild the domain distribution from the URL data.
-		let citationStats = undefined;
+		let citationStats;
 		const [brandInfo, competitorsList] = await Promise.all([
 			db
 				.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains })

@@ -109,9 +109,7 @@ export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan 
 	// pick. Base vs web selects between the instance's claude targets.
 	if (input.prompt.claudeMode && input.withinClaudePool !== false && entitlements.claudePool > 0) {
 		const wantWebSearch = input.prompt.claudeMode === "web";
-		const config = input.scrapeTargets.find(
-			(t) => t.model === CLAUDE_MODEL_NAME && t.webSearch === wantWebSearch,
-		);
+		const config = input.scrapeTargets.find((t) => t.model === CLAUDE_MODEL_NAME && t.webSearch === wantWebSearch);
 		if (config) {
 			const planClaudeInterval = 24 / Math.max(1, entitlements.claudeRunsPerDay);
 			targets.push({

@@ -8,20 +8,21 @@
  * pool. The server functions hold the real limits; this page only renders
  * them.
  */
+
+import { IconInfoCircle, IconLoader2 } from "@tabler/icons-react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { IconInfoCircle, IconLoader2 } from "@tabler/icons-react";
 import { useState } from "react";
 import { iconForModel } from "@/components/filter-bar";
 import { PlatformPicker } from "@/components/platform-picker";
-import { getModelPickerStateFn, updateEnabledModelsFn, type ModelPickerState } from "@/server/brands";
-import { getClaudeAssignmentsFn, setPromptClaudeModeFn, type ClaudeAssignmentsState } from "@/server/prompts";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { getModelPickerStateFn, type ModelPickerState, updateEnabledModelsFn } from "@/server/brands";
+import { type ClaudeAssignmentsState, getClaudeAssignmentsFn, setPromptClaudeModeFn } from "@/server/prompts";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
 	loader: async ({ params }): Promise<{ picker: ModelPickerState; claude: ClaudeAssignmentsState }> => {
@@ -176,8 +177,8 @@ function ClaudeAssignments({ claude }: { claude: ClaudeAssignmentsState }) {
 								<IconInfoCircle className="h-4 w-4 cursor-help text-muted-foreground" />
 							</TooltipTrigger>
 							<TooltipContent className="max-w-xs text-xs">
-								Assigned prompts run Claude once daily — web-grounded (Anthropic native web search) or base-model.
-								The pool is shared across your whole workspace; buy extra prompts on the Billing page.
+								Assigned prompts run Claude once daily — web-grounded (Anthropic native web search) or base-model. The
+								pool is shared across your whole workspace; buy extra prompts on the Billing page.
 							</TooltipContent>
 						</Tooltip>
 					</span>
@@ -207,9 +208,7 @@ function ClaudeAssignments({ claude }: { claude: ClaudeAssignmentsState }) {
 								) : (
 									<Select
 										value={prompt.claudeMode ?? "off"}
-										onValueChange={(value) =>
-											setMode(prompt.id, value === "off" ? null : (value as "base" | "web"))
-										}
+										onValueChange={(value) => setMode(prompt.id, value === "off" ? null : (value as "base" | "web"))}
 									>
 										<SelectTrigger className="w-40" size="sm">
 											<SelectValue />

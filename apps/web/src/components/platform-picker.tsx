@@ -1,8 +1,8 @@
 import { IconWorld, IconWorldOff } from "@tabler/icons-react";
+import { getModelMeta } from "@workspace/lib/providers/models";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
-import { getModelMeta } from "@workspace/lib/providers/models";
 import { iconForModel } from "@/components/filter-bar";
 
 export type PlatformOption = {

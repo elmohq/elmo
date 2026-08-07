@@ -1,16 +1,16 @@
 import {
-	pgEnum,
-	pgTable,
-	uuid,
-	text,
-	timestamp,
 	boolean,
-	json,
-	jsonb,
 	index,
 	integer,
+	json,
+	jsonb,
 	numeric,
+	pgEnum,
+	pgTable,
 	smallint,
+	text,
+	timestamp,
+	uuid,
 } from "drizzle-orm/pg-core";
 // `organization` is referenced by the brands FK below; the re-export makes it
 // (and the rest of the auth schema) visible to `import * as schema` consumers.

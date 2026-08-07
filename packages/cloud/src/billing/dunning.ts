@@ -29,10 +29,7 @@ export type DunningNotice = "payment-failed" | "payment-recovered" | "subscripti
  * the event's previous_attributes and is undefined when the status did not
  * change.
  */
-export function dunningNoticeForStatusChange(
-	previousStatus: string | undefined,
-	status: string,
-): DunningNotice | null {
+export function dunningNoticeForStatusChange(previousStatus: string | undefined, status: string): DunningNotice | null {
 	if (!previousStatus || previousStatus === status) return null;
 	if (status === "past_due") return "payment-failed";
 	if (status === "active" && (previousStatus === "past_due" || previousStatus === "unpaid")) {

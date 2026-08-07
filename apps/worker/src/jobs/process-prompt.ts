@@ -1,33 +1,33 @@
 import * as Sentry from "@sentry/node";
-import type { Job } from "pg-boss";
 import { getDeployment } from "@workspace/deployment";
+import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import {
+	type Brand,
 	brands,
+	type Competitor,
 	citations,
 	competitors,
 	promptRuns,
 	prompts,
 	usageEvents,
-	type Brand,
-	type Competitor,
 } from "@workspace/lib/db/schema";
-import { and, eq, gt, sql } from "drizzle-orm";
-import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
+import { getProvider, type ModelConfig, type Provider, parseScrapeTargets } from "@workspace/lib/providers";
 import {
 	dailyRunCeiling,
 	lastRunQueryWindowMs,
+	type PromptRunPlan,
 	selectDueTargets,
 	targetKey,
-	type PromptRunPlan,
 } from "@workspace/lib/run-policy";
-import { getProvider, parseScrapeTargets, type ModelConfig, type Provider } from "@workspace/lib/providers";
-import { estimateRunCostUsd } from "@workspace/lib/usage";
 import type { Citation } from "@workspace/lib/text-extraction";
+import { estimateRunCostUsd } from "@workspace/lib/usage";
+import { and, eq, gt, sql } from "drizzle-orm";
+import type { Job } from "pg-boss";
 import boss from "../boss";
-import { resolveBrandPromptRunPlans } from "./run-plans";
 import { trackWorkerEvent } from "../telemetry";
+import { resolveBrandPromptRunPlans } from "./run-plans";
 
 export interface ProcessPromptData {
 	promptId: string;
