@@ -17,6 +17,7 @@ import { within, userEvent, expect, waitFor } from "storybook/test";
 import BrandOnboarding from "@/components/brand-onboarding";
 import PromptWizard from "@/components/prompt-wizard";
 import { setMockBrand } from "./_mocks/use-brands";
+import { setMockOnboardingPlatformState } from "./_mocks/server-brands";
 import {
 	setMockOnboardingDelay,
 	setMockOnboardingError,
@@ -106,8 +107,79 @@ function AutoAnalyze() {
  * flow renders this when the auth-side brand exists but no DB row does;
  * once the user submits, createBrandFn writes the row and the route
  * re-renders into the wizard.
+ *
+ * The platform-state mock is set during render (not in an effect): the
+ * component fetches it on mount, and child effects run before the story's
+ * own would.
  */
-export const Setup = () => <BrandOnboarding brandId="mock-brand-id" brandName="Acme" />;
+export const Setup = () => {
+	setMockOnboardingPlatformState(null);
+	return <BrandOnboarding brandId="mock-brand-id" brandName="Acme" />;
+};
+
+const CLOUD_PLATFORM_STATE = {
+	available: [
+		{ model: "chatgpt", provider: "openai", webSearch: true },
+		{ model: "google-ai-overview", provider: "dataforseo", webSearch: true },
+		{ model: "copilot", provider: "dataforseo", webSearch: true },
+		{ model: "perplexity", provider: "openrouter", webSearch: true },
+		{ model: "gemini", provider: "openrouter", webSearch: false },
+	],
+	platformPicks: 4,
+	defaultSelected: ["chatgpt", "google-ai-overview", "copilot", "perplexity"],
+};
+
+/**
+ * Cloud plans insert a platform-selection step between the website form and
+ * brand creation: plan defaults pre-selected, extra options disabled at the
+ * pick limit.
+ */
+export const SetupPlatformStep: StoryObj = {
+	render: () => {
+		setMockOnboardingPlatformState(CLOUD_PLATFORM_STATE);
+		return <BrandOnboarding brandId="mock-brand-id" brandName="Acme" />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		await userEvent.type(await canvas.findByLabelText("Website"), "acme.com");
+		await userEvent.click(await canvas.findByRole("button", { name: /continue/i }));
+
+		expect(await canvas.findByRole("checkbox", { name: /chatgpt/i })).toBeChecked();
+		// Gemini is the fifth option on a 4-pick plan: unchecked and disabled.
+		const gemini = canvas.getByRole("checkbox", { name: /gemini/i });
+		expect(gemini).not.toBeChecked();
+		expect(gemini).toBeDisabled();
+		expect(canvas.getByText("4 of 4 selected")).toBeInTheDocument();
+		expect(canvas.getByRole("button", { name: /complete setup/i })).toBeEnabled();
+	},
+};
+
+/**
+ * A single-platform menu (Starter) shows the pick locked in rather than a
+ * one-checkbox chooser.
+ */
+export const SetupSinglePlatformPlan: StoryObj = {
+	render: () => {
+		setMockOnboardingPlatformState({
+			available: [{ model: "chatgpt", provider: "openai", webSearch: true }],
+			platformPicks: 1,
+			defaultSelected: ["chatgpt"],
+		});
+		return <BrandOnboarding brandId="mock-brand-id" brandName="Acme" />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		await userEvent.type(await canvas.findByLabelText("Website"), "acme.com");
+		await userEvent.click(await canvas.findByRole("button", { name: /continue/i }));
+
+		const checkbox = await canvas.findByRole("checkbox", { name: /chatgpt/i });
+		expect(checkbox).toBeChecked();
+		expect(checkbox).toBeDisabled();
+		expect(canvas.getByRole("button", { name: /complete setup/i })).toBeEnabled();
+	},
+};
 
 /** Initial state — analyze button visible, no suggestion fetched yet. */
 export const Idle = () => {

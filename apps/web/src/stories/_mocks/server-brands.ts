@@ -6,6 +6,11 @@
  */
 let _delayMs = 0;
 let _shouldThrow: string | null = null;
+let _platformState: {
+	available: { model: string; provider: string; version?: string; webSearch: boolean }[];
+	platformPicks: number;
+	defaultSelected: string[];
+} | null = null;
 
 export function setMockCreateBrandDelay(ms: number) {
 	_delayMs = ms;
@@ -14,6 +19,12 @@ export function setMockCreateBrandDelay(ms: number) {
 export function setMockCreateBrandError(message: string | null) {
 	_shouldThrow = message;
 }
+
+export function setMockOnboardingPlatformState(state: typeof _platformState) {
+	_platformState = state;
+}
+
+export const getOnboardingPlatformStateFn = async (_args: { data: unknown }) => _platformState;
 
 export const getBrands = async () => [];
 
