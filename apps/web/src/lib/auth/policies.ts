@@ -252,7 +252,7 @@ export function evaluateRequireOrgAccess(hasAccess: boolean): "allow" | "deny" {
 }
 
 /**
- * Org-scoped resource access rule (issue #339), in pure form.
+ * Org-scoped resource access rule, in pure form.
  *
  * Every brand carries an `organization_id`; a user may only read or mutate a
  * resource whose owning org they belong to. The runtime enforces this directly

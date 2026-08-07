@@ -1,6 +1,6 @@
 /**
  * Rough per-run cost estimates in USD, by provider, used to stamp
- * usage_events.estimated_cost_usd (issue #348).
+ * usage_events.estimated_cost_usd.
  *
  * These are deliberately coarse placeholders for internal attribution and
  * anomaly spotting — tune them against real provider invoices (that

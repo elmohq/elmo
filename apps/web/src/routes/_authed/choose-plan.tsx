@@ -1,5 +1,5 @@
 /**
- * /choose-plan — checkout-first cloud onboarding (issue #346).
+ * /choose-plan — checkout-first cloud onboarding.
  *
  * An authenticated org with no active subscription lands here (redirected from
  * the app routes) and can't reach anything else until Stripe Checkout

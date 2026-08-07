@@ -417,8 +417,8 @@ describe("evaluateRequireOrgAccess", () => {
 	});
 });
 
-// Brand/prompt/run/citation org scoping (issue #339). A brand's
-// organization_id is the tenancy boundary; membership is the access mechanism.
+// Brand/prompt/run/citation org scoping. A brand's organization_id is the
+// tenancy boundary; membership is the access mechanism.
 describe("evaluateOrgScope", () => {
 	const ORG_A = "org-a";
 	const ORG_B = "org-b";
@@ -444,13 +444,13 @@ describe("evaluateOrgScope", () => {
 	});
 
 	it("does not treat the brand id as an org membership by itself", () => {
-		// Pre-#339 access leaned on brand.id == org.id; scoping must be driven
-		// by actual membership, not by the resource naming itself.
+		// Scoping must be driven by actual membership, not by the resource
+		// naming itself.
 		expect(evaluateOrgScope([], "org-a")).toBe("deny");
 	});
 });
 
-// Umbrella-org model (issue #432): a brand's owning org is resolved via
+// Umbrella-org model: a brand's owning org is resolved via
 // `brands.organizationId`, not assumed equal to the brand id.
 describe("evaluateBrandAccess", () => {
 	const ORG_A = "org-a";

@@ -65,7 +65,7 @@ describe("computeMaintenanceDecisions", () => {
 		expect(decisions.toSchedule).toEqual([]);
 	});
 
-	it("throttles expedites when the prompt ran recently on another target (#440 fix)", () => {
+	it("throttles expedites when the prompt ran recently on another target", () => {
 		const decisions = computeMaintenanceDecisions(
 			[
 				state({

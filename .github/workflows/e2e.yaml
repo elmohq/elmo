@@ -173,7 +173,7 @@ jobs:
             e2e/test-results-worker/
           retention-days: 7
 
-  # Scheduling-policy verification (issues #340/#347/#348): drives a real
+  # Scheduling-policy verification: drives a real
   # worker over a real database with the no-network stub provider, in local
   # mode (legacy volume + dueness metering must match the pre-policy behavior
   # exactly) and in cloud mode (plan cadence/replication, Claude assignment,

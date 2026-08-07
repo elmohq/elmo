@@ -1,5 +1,5 @@
 /**
- * The Elmo Cloud plan catalog (issue #8).
+ * The Elmo Cloud plan catalog.
  *
  * This file is the single source of truth for what each cloud plan includes.
  * Billing (Stripe products/prices), write-time enforcement, the worker's run
@@ -18,7 +18,7 @@ export type BillingInterval = "monthly" | "annual";
 
 /**
  * The standard platform menu: model names a cloud brand may pick as its
- * tracked platforms (issue #8's "choose 4"). Claude is deliberately absent —
+ * tracked platforms. Claude is deliberately absent —
  * Claude tracking is a per-prompt allowance (prompts.claude_mode), not a
  * platform pick. Custom-only targets (e.g. GPT-5 Search) are granted per org
  * via entitlement overrides, never through this menu.
@@ -38,13 +38,13 @@ export const STANDARD_PLATFORM_MENU = [
 	"deepseek",
 ] as const;
 
-/** Claude tracking always samples once per day, on every plan (issue #8). */
+/** Claude tracking always samples once per day, on every plan. */
 export const CLAUDE_RUNS_PER_DAY = 1;
 
-/** Ceiling for custom-plan sampling overrides (research-grade, issue #8). */
+/** Ceiling for custom-plan sampling overrides (research-grade). */
 export const MAX_STANDARD_RUNS_PER_DAY = 7;
 
-/** Dunning: how long past_due keeps tracking alive before it pauses (issue #345). */
+/** Dunning: how long past_due keeps tracking alive before it pauses. */
 export const PAST_DUE_GRACE_DAYS = 7;
 
 /** Extra Claude prompts add-on: $5/prompt/month, Pro and Business only. */

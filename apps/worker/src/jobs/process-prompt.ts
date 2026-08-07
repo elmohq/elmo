@@ -164,7 +164,7 @@ async function getLastRunsByTargetKey(promptId: string, maxIntervalHours: number
 }
 
 /**
- * Runaway protection (issue #348): how many runs the org has recorded in the
+ * Runaway protection: how many runs the org has recorded in the
  * last 24h, compared against its plan-derived ceiling before spending more.
  */
 async function isOrgOverDailyCeiling(organizationId: string, ceiling: number): Promise<boolean> {
@@ -272,7 +272,7 @@ async function saveCitations(
 }
 
 /**
- * Billing-grade attribution (issue #348): one row per provider call, success
+ * Billing-grade attribution: one row per provider call, success
  * or failure. Never fails the run — attribution must not break tracking.
  */
 async function recordUsageEvent(input: {

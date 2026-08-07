@@ -2,7 +2,7 @@
  * Schedule-time run policy: which targets a prompt should run, at what
  * per-target cadence, with what replication — resolved fresh on every firing
  * so subscription changes, plan changes, and platform-pick edits apply without
- * touching queued jobs (issues #340/#347).
+ * touching queued jobs.
  *
  * Two halves, both pure:
  *  - resolvePromptRunPlan: the prompt's target set + intervals.
@@ -11,7 +11,7 @@
  *    trusting the job cadence) is what makes per-target cadence work with the
  *    existing one-job-per-prompt scheduler, keeps in-flight jobs from before
  *    an upgrade valid, and structurally prevents duplicate-fire oversampling
- *    (a maintenance expedite re-runs only what is due — the #439 class).
+ *    (a maintenance expedite re-runs only what is due).
  *
  * Non-cloud modes resolve exactly today's behavior: every brand-selected
  * target at the brand cadence with RUNS_PER_PROMPT replication.
@@ -166,7 +166,7 @@ export function selectDueTargets(targets: TargetPlan[], lastRunAtByKey: Map<stri
 }
 
 /**
- * Runaway-tenant ceiling (issue #348): the theoretical daily maximum the plan
+ * Runaway-tenant ceiling: the theoretical daily maximum the plan
  * can produce, with headroom for pick changes and retries. Null = no ceiling.
  * Deliberately derived from plan limits (not current usage) so it's stable
  * and generous — it exists to stop pathology, not to shave legitimate runs.

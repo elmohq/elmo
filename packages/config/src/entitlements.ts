@@ -35,7 +35,7 @@ export type SubscriptionStanding = "active" | "grace" | "paused" | "none";
  * Per-org overrides for custom plans, stored in
  * organization_settings.entitlement_overrides (jsonb) and applied on top of
  * the plan definition. Sparse: set only what differs. Provisioning a custom
- * plan is config-only — no code changes (issue #344).
+ * plan is config-only — no code changes.
  */
 export const entitlementOverridesSchema = z
 	.object({

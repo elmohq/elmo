@@ -27,7 +27,7 @@ export * from "./schema-auth";
 export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
 
 /**
- * Per-prompt Claude tracking assignment (cloud plans; issue #344). NULL = not
+ * Per-prompt Claude tracking assignment (cloud plans). NULL = not
  * assigned. Assigned prompts run Claude once daily — "web" uses Anthropic
  * native web search (capped), "base" runs the bare model. Counted against the
  * org's Claude pool (plan included + purchased add-on). Unused outside cloud:
@@ -254,9 +254,9 @@ export type SystemTag = (typeof SYSTEM_TAGS)[keyof typeof SYSTEM_TAGS];
  * better-auth-managed `subscription` table). One optional row per org:
  * - entitlementOverrides: sparse custom-plan overrides (see
  *   entitlementOverridesSchema in @workspace/config/entitlements) — the
- *   config-only lever for custom plans (issue #344)
+ *   config-only lever for custom plans
  * - claudeAddonQuantity: purchased extra-Claude-prompts quantity, synced from
- *   Stripe subscription items by the billing webhook (issue #345)
+ *   Stripe subscription items by the billing webhook
  * Absent row = no overrides, no add-on. Unused outside cloud.
  */
 export const organizationSettings = pgTable("organization_settings", {
@@ -276,7 +276,7 @@ export const organizationSettings = pgTable("organization_settings", {
 export type OrganizationSettings = typeof organizationSettings.$inferSelect;
 
 /**
- * Billing-grade usage attribution (issue #348): one row per provider call the
+ * Billing-grade usage attribution: one row per provider call the
  * worker makes, so every run is attributable to an org with an estimated
  * cost. Written in every mode (self-hosted operators get the same spend
  * visibility); estimated costs come from the tunable table in

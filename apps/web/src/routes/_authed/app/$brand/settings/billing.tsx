@@ -1,6 +1,6 @@
 /**
  * /app/$brand/settings/billing — plan, usage meters, and the extra-Claude-
- * prompts add-on (cloud only; issue #349).
+ * prompts add-on (cloud only).
  *
  * Card changes, invoices, plan switches, and cancellation go through the
  * Stripe Customer Portal / Checkout via better-auth — no card data or payment

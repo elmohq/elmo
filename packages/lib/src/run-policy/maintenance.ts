@@ -4,7 +4,7 @@
  * jobs); this decides which chains to revive, which future jobs to expedite,
  * and how many prompts are overdue enough to alert on. Keeping it pure makes
  * the self-healing behavior — historically the most incident-prone part of
- * the scheduler (#439, #440) — exhaustively unit-testable.
+ * the scheduler — exhaustively unit-testable.
  */
 
 import { dueToleranceMs, targetKey, type PromptRunPlan } from "./policy";

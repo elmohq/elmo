@@ -1,6 +1,6 @@
 /**
  * Write-time plan enforcement, shared by the web server functions and the
- * /api/v1 handlers so the two surfaces cannot drift (issue #347).
+ * /api/v1 handlers so the two surfaces cannot drift.
  *
  * Shape: pure decide* functions (entitlements + usage counts → verdict) that
  * the tests exercise exhaustively, wrapped by assert* helpers that load
