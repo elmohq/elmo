@@ -71,6 +71,22 @@ async function initialEnabledModels(organizationId: string): Promise<string[] | 
 	return picks.length > 0 ? picks : null;
 }
 
+/**
+ * Picks supplied at creation time go through the same checks as a
+ * post-creation edit: the loud configured-target validation plus plan
+ * enforcement. Without picks, creation falls back to the plan defaults.
+ */
+async function resolveCreateEnabledModels(
+	organizationId: string,
+	requested: string[] | undefined,
+): Promise<string[] | null> {
+	if (!requested || requested.length === 0) return initialEnabledModels(organizationId);
+	const models = [...new Set(requested)];
+	selectTargetsForBrand(parseScrapeTargets(process.env.SCRAPE_TARGETS), models);
+	await assertEnabledModelsAllowed(organizationId, models);
+	return models;
+}
+
 function getDefaultBrandDomains(): string[] {
 	const raw = process.env.DEFAULT_BRAND_DOMAINS;
 	if (!raw) return [];
@@ -172,6 +188,8 @@ export const createBrandFn = createServerFn({ method: "POST" })
 			brandId: z.string(),
 			brandName: z.string(),
 			website: z.string(),
+			/** Platform picks from the onboarding wizard; omitted → plan defaults. */
+			enabledModels: z.array(z.string().min(1)).max(50).optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -187,7 +205,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 		}
 
 		const defaultDomains = getDefaultBrandDomains();
-		const enabledModels = await initialEnabledModels(data.brandId);
+		const enabledModels = await resolveCreateEnabledModels(data.brandId, data.enabledModels);
 
 		const result = await db
 			.insert(brands)
@@ -513,6 +531,28 @@ export type ModelPickerState = {
 	planLimits: { platformPicks: number; platformMenu: string[] } | null;
 };
 
+/**
+ * The plan menu (plus custom extras) that this instance actually configures,
+ * deduped by model. Claude is deliberately never offered — it is not a
+ * platform pick and has its own per-prompt assignment surface.
+ */
+function planPlatformOptions(platformMenu: string[] | null, configs: ModelConfig[]): ModelPickerState["available"] {
+	const menu = new Set(platformMenu ?? []);
+	const seen = new Set<string>();
+	const available: ModelPickerState["available"] = [];
+	for (const config of configs) {
+		if (!menu.has(config.model) || seen.has(config.model)) continue;
+		seen.add(config.model);
+		available.push({
+			model: config.model,
+			provider: config.provider,
+			version: config.version,
+			webSearch: config.webSearch,
+		});
+	}
+	return available;
+}
+
 export const getModelPickerStateFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }): Promise<ModelPickerState> => {
@@ -533,22 +573,7 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 			};
 		}
 
-		// Cloud: offer the plan menu (plus custom extras) that this instance
-		// actually configures. Claude is not a platform pick — it has its own
-		// per-prompt assignment surface.
-		const menu = new Set(entitlements.platformMenu ?? []);
-		const seen = new Set<string>();
-		const available: ModelPickerState["available"] = [];
-		for (const config of configs) {
-			if (!menu.has(config.model) || seen.has(config.model)) continue;
-			seen.add(config.model);
-			available.push({
-				model: config.model,
-				provider: config.provider,
-				version: config.version,
-				webSearch: config.webSearch,
-			});
-		}
+		const available = planPlatformOptions(entitlements.platformMenu, configs);
 		return {
 			available,
 			enabledModels: brand.enabledModels,
@@ -556,6 +581,40 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 				platformPicks: entitlements.platformPicks ?? available.length,
 				platformMenu: entitlements.platformMenu ?? [],
 			},
+		};
+	});
+
+export type OnboardingPlatformState = {
+	available: ModelPickerState["available"];
+	platformPicks: number;
+	/** What brand creation would pick on its own; the wizard pre-selects these. */
+	defaultSelected: string[];
+} | null;
+
+/**
+ * Platform choices for the brand onboarding wizard, resolved from the
+ * organization because the brand row does not exist yet. Null — non-cloud,
+ * unlimited entitlements, or nothing offerable — means the wizard skips the
+ * step and creation falls back to the plan defaults.
+ */
+export const getOnboardingPlatformStateFn = createServerFn({ method: "GET" })
+	.validator(z.object({ organizationId: z.string() }))
+	.handler(async ({ data }): Promise<OnboardingPlatformState> => {
+		const session = await requireAuthSession();
+		await requireOrgAccess(session.user.id, data.organizationId);
+
+		if (getDeployment().mode !== "cloud") return null;
+		const entitlements = await getOrgEntitlements(data.organizationId);
+		if (entitlements.unlimited) return null;
+
+		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+		const available = planPlatformOptions(entitlements.platformMenu, configs);
+		if (available.length === 0) return null;
+
+		return {
+			available,
+			platformPicks: entitlements.platformPicks ?? available.length,
+			defaultSelected: defaultPlatformPicks(entitlements, configs),
 		};
 	});
 
