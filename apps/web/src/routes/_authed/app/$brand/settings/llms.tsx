@@ -14,13 +14,12 @@ import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { IconInfoCircle, IconLoader2, IconWorld, IconWorldOff } from "@tabler/icons-react";
-import { getModelMeta } from "@workspace/lib/providers/models";
+import { IconInfoCircle, IconLoader2 } from "@tabler/icons-react";
 import { useState } from "react";
 import { iconForModel } from "@/components/filter-bar";
+import { PlatformPicker } from "@/components/platform-picker";
 import { getModelPickerStateFn, updateEnabledModelsFn, type ModelPickerState } from "@/server/brands";
 import { getClaudeAssignmentsFn, setPromptClaudeModeFn, type ClaudeAssignmentsState } from "@/server/prompts";
 
@@ -127,42 +126,13 @@ function ModelPicker({ picker }: { picker: ModelPickerState }) {
 						No models are configured on this deployment. Set <code className="font-mono text-xs">SCRAPE_TARGETS</code>.
 					</p>
 				) : (
-					<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-						{picker.available.map((target) => {
-							const checked = selected.has(target.model);
-							const disableCheck = !checked && limit !== null && selected.size >= limit;
-							return (
-								<label
-									key={target.model}
-									className={`flex items-center gap-3 rounded-md border p-3 ${
-										disableCheck ? "opacity-50" : "cursor-pointer hover:bg-accent/50"
-									}`}
-								>
-									<Checkbox
-										checked={checked}
-										disabled={disableCheck || saving}
-										onCheckedChange={(value) => toggle(target.model, value === true)}
-									/>
-									{iconForModel(target.model, "h-5 w-5")}
-									<span className="flex-1 text-sm font-medium">{getModelMeta(target.model).label}</span>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											{target.webSearch ? (
-												<IconWorld className="h-4 w-4 text-muted-foreground" />
-											) : (
-												<IconWorldOff className="h-4 w-4 text-muted-foreground" />
-											)}
-										</TooltipTrigger>
-										<TooltipContent className="max-w-xs text-xs">
-											{target.provider}
-											{target.version ? ` · ${target.version}` : ""} ·{" "}
-											{target.webSearch ? "web search" : "no web search"}
-										</TooltipContent>
-									</Tooltip>
-								</label>
-							);
-						})}
-					</div>
+					<PlatformPicker
+						options={picker.available}
+						selected={selected}
+						onToggle={toggle}
+						limit={limit}
+						disabled={saving}
+					/>
 				)}
 				<div className="flex items-center gap-3">
 					<Button onClick={save} disabled={!changed || overLimit || selected.size === 0 || saving}>
