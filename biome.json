@@ -12,8 +12,7 @@
 			"packages/**",
 			"!**/node_modules/**",
 			"!packages/ui/src/components/**",
-			"!**/routeTree.gen.ts",
-			"!apps/www/.source/**"
+			"!**/routeTree.gen.ts"
 		]
 	},
 	"formatter": {

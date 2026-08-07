@@ -1,16 +1,15 @@
 # Host-side checks: type check, unit + Storybook tests, and a real `pnpm build`
 # that must leave the working tree clean.
 #
-# The clean-tree check is the point of running a host build at all. Several
-# build artifacts are committed because `tsc` needs them to resolve imports
-# (`routeTree.gen.ts`, and the fumadocs collections under `apps/www/.source`
-# behind the `collections/*` alias), so they can go stale in git. e2e.yaml
-# can't catch that: it builds inside Docker, where the artifacts are
-# regenerated in the image and the checked-in copies are never consulted.
+# The clean-tree check is the point of running a host build at all.
+# `routeTree.gen.ts` is committed because `tsc` needs it to resolve routes, so
+# it can go stale in git. e2e.yaml can't catch that: it builds inside Docker,
+# where the file is regenerated in the image and the checked-in copy is never
+# consulted.
 #
-# Keep the generated files excluded from Biome (see biome.json) — the
-# generators format their own output, and a formatter fighting them would make
-# every build dirty this job.
+# Keep it excluded from Biome (see biome.json) — the router generator formats
+# its own output with Prettier, and a formatter fighting it would make every
+# build dirty this job.
 
 name: Build
 
