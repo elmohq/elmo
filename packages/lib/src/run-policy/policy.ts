@@ -84,18 +84,14 @@ export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan 
 	// Standard platforms: the brand's picks, clamped to the plan menu, one
 	// target per model (first SCRAPE_TARGETS match wins — the cloud operator
 	// configures one implementation per menu model).
-	const menu = entitlements.platformMenu ?? [];
-	const menuSet = new Set(menu);
-	const availableModels = new Set(
-		input.scrapeTargets.filter((t) => t.model !== CLAUDE_MODEL_NAME).map((t) => t.model),
-	);
+	const menuSet = new Set(entitlements.platformMenu ?? []);
 	const picks =
 		input.brand.enabledModels !== null
 			? input.brand.enabledModels.filter((model) => menuSet.has(model))
 			: // No explicit picks yet (e.g. brand created via the API before the
-				// platform step): default to the first available menu entries so a
-				// paying org is never silently untracked.
-				menu.filter((model) => availableModels.has(model)).slice(0, entitlements.platformPicks ?? 0);
+				// platform step): apply the defaults so a paying org is never
+				// silently untracked.
+				defaultPlatformPicks(entitlements, input.scrapeTargets);
 
 	const standardInterval = 24 / Math.max(1, entitlements.standardRunsPerDay ?? 1);
 	const replication = entitlements.replication ?? 1;
