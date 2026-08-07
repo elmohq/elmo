@@ -13,8 +13,7 @@
 			"!**/node_modules/**",
 			"!packages/ui/src/components/**",
 			"!**/routeTree.gen.ts",
-			"!apps/www/.source/**",
-			"!apps/www/source.generated.ts"
+			"!apps/www/.source/**"
 		]
 	},
 	"formatter": {
