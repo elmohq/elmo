@@ -62,18 +62,6 @@ jobs:
       - name: Unit tests
         run: pnpm turbo test
 
-      - name: Cache Playwright browsers
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
-      - name: Install Playwright browsers
-        run: pnpm -C apps/web exec playwright install chromium --with-deps
-
-      - name: Storybook tests
-        run: pnpm -C apps/web test:storybook
-
       - name: Build
         run: pnpm build
 
@@ -85,3 +73,19 @@ jobs:
             git diff --
             exit 1
           fi
+
+      # Last, because the browser is only needed by the Storybook suite — it
+      # runs in Vitest browser mode (see apps/web/vitest.config.ts). A broken
+      # build shouldn't pay for the install. The cache key matches e2e.yaml's
+      # so both workflows share one entry.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Playwright browsers
+        run: pnpm -C apps/web exec playwright install chromium --with-deps
+
+      - name: Storybook tests
+        run: pnpm -C apps/web test:storybook
