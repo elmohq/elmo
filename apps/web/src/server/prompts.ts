@@ -4,13 +4,12 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
+import { requireAuthSession, requireBrandAccess, requireBrandOrganization } from "@/lib/auth/helpers";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import {
 	assertCanAddPrompts,
 	assertCanAssignClaude,
 	countOrgAssignedClaudePrompts,
-	getBrandOrganizationId,
 	getOrgEntitlements,
 } from "@workspace/lib/entitlements";
 import { db } from "@workspace/lib/db/db";
@@ -902,9 +901,8 @@ export const getClaudeAssignmentsFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }): Promise<ClaudeAssignmentsState> => {
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		const { id: organizationId } = await requireBrandOrganization(session.user.id, data.brandId);
 
-		const organizationId = await getBrandOrganizationId(data.brandId);
 		const entitlements = await getOrgEntitlements(organizationId);
 		if (entitlements.unlimited || entitlements.claudePool <= 0) {
 			return { enabled: false, pool: { assigned: 0, total: 0 }, prompts: [] };
@@ -938,12 +936,12 @@ export const setPromptClaudeModeFn = createServerFn({ method: "POST" })
 
 		const prompt = await db.query.prompts.findFirst({ where: eq(prompts.id, data.promptId) });
 		if (!prompt) throw new Error("Prompt not found");
-		await requireBrandAccess(session.user.id, prompt.brandId);
+		const organization = await requireBrandOrganization(session.user.id, prompt.brandId);
 
 		// Only the off→on transition consumes the pool; switching base↔web or
 		// unassigning is always allowed.
 		if (prompt.claudeMode === null && data.mode !== null) {
-			await assertCanAssignClaude(await getBrandOrganizationId(prompt.brandId), 1);
+			await assertCanAssignClaude(organization.id, 1);
 		}
 
 		const [updated] = await db
