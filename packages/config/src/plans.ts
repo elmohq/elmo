@@ -134,6 +134,15 @@ export function isPlanKey(value: string): value is PlanKey {
 }
 
 /**
+ * Whether the extra-Claude-prompts add-on can be purchased for a resolved plan
+ * key. Custom plans always may; no plan means nothing to attach the add-on to.
+ */
+export function isClaudeAddonAvailable(planKey: PlanKey | "custom" | null): boolean {
+	if (planKey === "custom") return true;
+	return planKey !== null && PLANS[planKey].claudeAddonAvailable;
+}
+
+/**
  * Stripe price lookup key for a plan/interval. The @better-auth/stripe plugin
  * resolves these to price IDs at checkout time, so the same code works against
  * any Stripe account bootstrapped with scripts/stripe/bootstrap.ts.

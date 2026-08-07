@@ -7,7 +7,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import type { Entitlements } from "@workspace/config/entitlements";
-import { PLANS, isPlanKey } from "@workspace/config/plans";
+import { isClaudeAddonAvailable } from "@workspace/config/plans";
 import { setClaudeAddonQuantity } from "@workspace/cloud/billing";
 import {
 	countOrgAssignedClaudePrompts,
@@ -60,7 +60,6 @@ export const getBillingStateFn = createServerFn({ method: "GET" })
 					countOrgAssignedClaudePrompts(org.id),
 				]);
 
-		const planKey = state.entitlements.planKey;
 		return {
 			billingEnabled: deployment.features.billing,
 			organization: org,
@@ -77,8 +76,7 @@ export const getBillingStateFn = createServerFn({ method: "GET" })
 					}
 				: null,
 			claudeAddonQuantity: state.settings?.claudeAddonQuantity ?? 0,
-			claudeAddonAvailable:
-				planKey === "custom" || (planKey !== null && isPlanKey(planKey) && PLANS[planKey].claudeAddonAvailable),
+			claudeAddonAvailable: isClaudeAddonAvailable(state.entitlements.planKey),
 			usage: { brands: brandsUsed, enabledPrompts: promptsUsed, claudeAssigned },
 		};
 	});
@@ -137,10 +135,7 @@ export const setClaudeAddonQuantityFn = createServerFn({ method: "POST" })
 		}
 
 		const state = await getOrgBillingState(org.id);
-		const planKey = state.entitlements.planKey;
-		const addonAllowed =
-			planKey === "custom" || (planKey !== null && isPlanKey(planKey) && PLANS[planKey].claudeAddonAvailable);
-		if (!addonAllowed) {
+		if (!isClaudeAddonAvailable(state.entitlements.planKey)) {
 			throw new Error("Extra Claude prompts are available on the Pro and Business plans");
 		}
 		if (!state.subscription?.stripeSubscriptionId) {
