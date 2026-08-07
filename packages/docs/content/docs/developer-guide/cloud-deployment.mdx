@@ -45,6 +45,10 @@ the web app and the worker read it on every decision, so plan changes, payment f
 cancellations apply without restarts. A payment failure keeps tracking alive for a 7-day grace
 window, then pauses tracking (data stays readable) until Stripe recovers the payment.
 
+The webhook also emails the org's admins on payment failure, recovery, and subscription end. These
+notices go through the same `RESEND_API_KEY` / `RESEND_FROM_EMAIL` configuration as the auth
+emails — no additional setup.
+
 Enable Stripe Tax and Smart Retries in the Stripe dashboard. Before launch, walk the full lifecycle
 against a test-clock customer with `packages/cloud/scripts/verify-stripe-lifecycle.ts` (see its
 header for usage).
@@ -110,6 +114,6 @@ unlimited. `extraPlatforms` entries must also exist in `SCRAPE_TARGETS` to actua
 The cloud build-out ships in the same migrations every deployment runs. For local and whitelabel
 installs the new tables (`subscription`, `organization_settings`, `usage_events`, plus
 `prompts.claude_mode`) sit empty or unused, and behavior is unchanged, with two deliberate
-improvements: the LLMs settings page now edits `brands.enabledModels` directly (previously
-database-only), and a prompt re-fired early (e.g. by the self-healing scheduler after a provider
-outage) re-runs only the targets that are actually stale instead of re-sampling every model.
+improvements: the LLMs settings page edits `brands.enabledModels` directly, and a prompt re-fired
+early (e.g. by the self-healing scheduler after a provider outage) re-runs only the targets that
+are actually stale instead of re-sampling every model.
