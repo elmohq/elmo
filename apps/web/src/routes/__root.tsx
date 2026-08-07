@@ -116,7 +116,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 								as: "font",
 								type: "font/woff2",
 								href: titanOneFont,
-								crossOrigin: "anonymous",
+								// Inside a conditional spread the literal widens to `string`,
+								// which doesn't satisfy React's `CrossOrigin` union.
+								crossOrigin: "anonymous" as const,
 							},
 						]
 					: []),
