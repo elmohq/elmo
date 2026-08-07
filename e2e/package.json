@@ -1,6 +1,6 @@
 {
   "name": "e2e",
-  "version": "0.2.17",
+  "version": "0.2.18",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
-    "@types/pg": "^8.20.1",
+    "@types/pg": "^8.20.3",
     "@usebruno/cli": "4.0.0",
     "pg": "^8.22.0",
     "pg-boss": "^12.26.3",

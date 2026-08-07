@@ -67,12 +67,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Type check
-        run: pnpm turbo check-types
-
-      - name: Unit tests
-        run: pnpm turbo test
-
       - name: Cache Playwright browsers
         uses: actions/cache@v6
         with:
@@ -81,9 +75,6 @@ jobs:
 
       - name: Install Playwright browsers
         run: pnpm -C apps/web exec playwright install chromium --with-deps
-
-      - name: Storybook tests
-        run: pnpm -C apps/web test:storybook
 
       - name: Build elmo CLI
         run: pnpm -C apps/cli build

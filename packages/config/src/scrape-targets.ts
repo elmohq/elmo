@@ -89,8 +89,12 @@ export const STATUS_TARGETS = [
 	"google-ai-mode:dataforseo:online",
 	"google-ai-overview:dataforseo:online",
 	"chatgpt:dataforseo:online",
-	"perplexity:dataforseo:online",
 	"gemini:dataforseo:online",
+	"perplexity:dataforseo:online",
+	// Pinning a model_name routes to LLM Responses instead of the scraper, so
+	// these keep the API side of the provider monitored too.
+	"chatgpt:dataforseo:gpt-5.5:online",
+	"gemini:dataforseo:gemini-2.5-flash:online",
 	"chatgpt:openai-api:gpt-5-mini",
 	"chatgpt:openai-api:gpt-5-mini:online",
 	"claude:anthropic-api:claude-sonnet-4-6",
@@ -106,6 +110,9 @@ export const STATUS_TARGETS = [
 	"grok:openrouter:x-ai/grok-4.5",
 	"grok:openrouter:x-ai/grok-4.5:online",
 	"mistral:openrouter:mistralai/mistral-medium-3.1",
+	// Perplexity's own search, not OpenRouter's Exa fallback: with the plugin
+	// engine left unset, OpenRouter routes Perplexity slugs to native search.
+	"perplexity:openrouter:perplexity/sonar:online",
 	"mistral:mistral-api:mistral-medium-latest",
 	"mistral:mistral-api:mistral-medium-latest:online",
 ];

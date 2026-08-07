@@ -4,9 +4,13 @@ export type WebsiteValidationResult = { isValid: true; formattedUrl: string } | 
 
 /**
  * Validate a user-entered brand website. Accepts either a bare domain
- * (`example.com`) or a full URL, and normalizes the result to an
- * origin-only URL (path, query, and hash are stripped) so we always
- * store `https://example.com/` rather than `https://example.com/products`.
+ * (`example.com`) or a full URL, and keeps the path, query, and hash: pointing
+ * a brand at `https://www.nike.com/golf` is how a sub-brand gets analyzed from
+ * its own section of a larger site. Everything that tracks mentions and
+ * citations reduces this to its hostname, so the tracked domain is unchanged
+ * either way.
+ *
+ * Credentials are dropped — this value is handed to the page fetcher.
  */
 export function validateWebsiteUrl(input: string): WebsiteValidationResult {
 	if (!input || input.trim() === "") {
@@ -25,5 +29,7 @@ export function validateWebsiteUrl(input: string): WebsiteValidationResult {
 	if (!cleanAndValidateDomain(urlObj.hostname)) {
 		return { isValid: false, error: "Website URL must have a valid domain name" };
 	}
-	return { isValid: true, formattedUrl: `${urlObj.origin}/` };
+	urlObj.username = "";
+	urlObj.password = "";
+	return { isValid: true, formattedUrl: urlObj.toString() };
 }

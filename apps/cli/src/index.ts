@@ -395,11 +395,16 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 
 // ── Provider Configuration ───────────────────────────────────────────────────
 
-const BRIGHTDATA_AFFILIATE = "https://get.brightdata.com/67h1b7h0shcn";
-const OLOSTEP_AFFILIATE = "https://olostep.com/?ref=elmo";
-const OXYLABS_AFFILIATE = "https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32";
 const CLORO_AFFILIATE = "https://cloro.dev?fpr=elmo";
+const BRIGHTDATA_AFFILIATE = "https://get.brightdata.com/67h1b7h0shcn";
+const OXYLABS_AFFILIATE = "https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32";
+const OLOSTEP_AFFILIATE = "https://olostep.com/?ref=elmo";
+const DATAFORSEO_AFFILIATE = "https://dataforseo.com/?aff=184966";
 const PROVIDERS_DOC_URL = "https://docs.elmohq.com/docs/user-guide/providers";
+
+// Order here is the order they're offered everywhere in the wizard, ranked the
+// same way the providers doc ranks them.
+type RecommendedScraper = "cloro" | "brightdata" | "oxylabs" | "olostep" | "dataforseo";
 
 // Surfaces each scraper can track — the first two are the "recommended starter" set.
 const BRIGHTDATA_MODELS = [
@@ -418,7 +423,16 @@ const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perp
 const CLORO_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity", "copilot", "gemini"] as const;
 
 const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
-const DATAFORSEO_MODELS = ["google-ai-mode", "google-ai-overview", "chatgpt", "perplexity", "gemini"] as const;
+// DataForSEO scrapes wherever it can — the two Google SERP surfaces plus the
+// LLM Scraper's ChatGPT and Gemini. Perplexity has no scraper, so it's the one
+// surface that goes through the LLM Responses API.
+const DATAFORSEO_TARGETS = [
+	{ model: "google-ai-mode", kind: "scraper" },
+	{ model: "google-ai-overview", kind: "scraper" },
+	{ model: "chatgpt", kind: "scraper" },
+	{ model: "gemini", kind: "scraper" },
+	{ model: "perplexity", kind: "api" },
+] as const;
 
 const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
@@ -431,10 +445,11 @@ async function configureProvidersInteractive(env: EnvMap): Promise<"recommended"
 			"Elmo needs two kinds of providers:",
 			"",
 			pc.bold("1. A scraper") + " — to track ChatGPT and Google AI Mode (no public APIs):",
-			`     • ${pc.cyan("BrightData")} — cheap solid option, ~$0.45/mo per prompt`,
-			`     • ${pc.cyan("Oxylabs")}    — async job API, pay-as-you-go`,
-			`     • ${pc.cyan("Cloro")}      — every surface, credit plans from $30/mo, ~$0.65/mo per prompt`,
-			`     • ${pc.cyan("Olostep")}    — premium option, powers Peec/AirOps, ~$2.25/mo per prompt`,
+			`     • ${pc.cyan("Cloro")}      — most reliable, every surface, ~$0.65/mo per prompt ($30/mo min)`,
+			`     • ${pc.cyan("BrightData")} — pay-as-you-go and cheaper, but slower, ~$0.45/mo per prompt`,
+			`     • ${pc.cyan("Oxylabs")}    — cheapest per run, no Gemini/Copilot, $49/mo min`,
+			`     • ${pc.cyan("Olostep")}    — premium, built for high volume, ~$2.25/mo per prompt`,
+			`     • ${pc.cyan("DataForSEO")} — pay-as-you-go, scrapers + direct APIs, ~$1.20/mo per prompt`,
 			"",
 			pc.bold("2. A direct LLM API") + " — for low-latency tasks (onboarding analysis, sentiment scoring,",
 			"   ad-hoc LLM calls). Required:",
@@ -471,12 +486,13 @@ async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 	const scraper = await p.select({
 		message: "Scraper (tracks ChatGPT + Google AI Mode)",
 		options: [
-			{ value: "brightdata" as const, label: "BrightData — ~$0.45/mo per prompt (cheaper)" },
-			{ value: "oxylabs" as const, label: "Oxylabs — async job API, pay-as-you-go" },
-			{ value: "cloro" as const, label: "Cloro — ~$0.65/mo per prompt (credit plans from $30/mo)" },
-			{ value: "olostep" as const, label: "Olostep — ~$2.25/mo per prompt (premium)" },
+			{ value: "cloro" as const, label: "Cloro — most reliable, every surface (~$0.65/mo per prompt, $30/mo min)" },
+			{ value: "brightdata" as const, label: "BrightData — pay-as-you-go, cheaper but slower (~$0.45/mo per prompt)" },
+			{ value: "oxylabs" as const, label: "Oxylabs — cheapest per run, no Gemini/Copilot ($49/mo min)" },
+			{ value: "olostep" as const, label: "Olostep — premium, built for high volume (~$2.25/mo per prompt)" },
+			{ value: "dataforseo" as const, label: "DataForSEO — pay-as-you-go, scrapers + direct APIs (~$1.20/mo per prompt)" },
 		],
-		initialValue: "brightdata" as const,
+		initialValue: "cloro" as const,
 	});
 	assertNotCancelled(scraper);
 	await collectScraperKey(scraper, env);
@@ -520,9 +536,9 @@ async function configureProvidersCustom(env: EnvMap): Promise<void> {
 	}
 
 	p.log.step(pc.bold("Step 2 of 2 — Scrapers (optional, but needed to track ChatGPT / Google AI Mode)"));
+	await collectCloro(env, targets);
 	await collectBrightData(env, targets);
 	await collectOxylabs(env, targets);
-	await collectCloro(env, targets);
 	await collectOlostep(env, targets);
 	await collectDataForSEO(env, targets);
 
@@ -533,8 +549,16 @@ function hasDirectApiConfigured(env: EnvMap): boolean {
 	return Boolean(env.ANTHROPIC_API_KEY || env.OPENAI_API_KEY || env.MISTRAL_API_KEY || env.OPENROUTER_API_KEY);
 }
 
-async function collectScraperKey(scraper: "brightdata" | "olostep" | "oxylabs" | "cloro", env: EnvMap): Promise<void> {
-	if (scraper === "brightdata") {
+async function collectScraperKey(scraper: RecommendedScraper, env: EnvMap): Promise<void> {
+	if (scraper === "cloro") {
+		p.log.info(`Sign up: ${link(pc.cyan(CLORO_AFFILIATE), CLORO_AFFILIATE)}`);
+		const key = await p.password({
+			message: "Cloro API key",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.CLORO_API_KEY = key;
+	} else if (scraper === "brightdata") {
 		p.log.info(`Sign up: ${link(pc.cyan(BRIGHTDATA_AFFILIATE), BRIGHTDATA_AFFILIATE)}`);
 		const key = await p.password({
 			message: "BrightData API token",
@@ -556,15 +580,7 @@ async function collectScraperKey(scraper: "brightdata" | "olostep" | "oxylabs" |
 		});
 		assertNotCancelled(password);
 		env.OXYLABS_PASSWORD = password;
-	} else if (scraper === "cloro") {
-		p.log.info(`Sign up: ${link(pc.cyan(CLORO_AFFILIATE), CLORO_AFFILIATE)}`);
-		const key = await p.password({
-			message: "Cloro API key",
-			validate: (v) => (!v ? "Required" : undefined),
-		});
-		assertNotCancelled(key);
-		env.CLORO_API_KEY = key;
-	} else {
+	} else if (scraper === "olostep") {
 		p.log.info(`Sign up: ${link(pc.cyan(OLOSTEP_AFFILIATE), OLOSTEP_AFFILIATE)}`);
 		const key = await p.password({
 			message: "Olostep API key",
@@ -572,6 +588,20 @@ async function collectScraperKey(scraper: "brightdata" | "olostep" | "oxylabs" |
 		});
 		assertNotCancelled(key);
 		env.OLOSTEP_API_KEY = key;
+	} else {
+		p.log.info(`Sign up: ${link(pc.cyan(DATAFORSEO_AFFILIATE), DATAFORSEO_AFFILIATE)}`);
+		const login = await p.text({
+			message: "DataForSEO login",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(login);
+		env.DATAFORSEO_LOGIN = login;
+		const password = await p.password({
+			message: "DataForSEO password",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(password);
+		env.DATAFORSEO_PASSWORD = password;
 	}
 }
 
@@ -612,8 +642,8 @@ async function collectDirectApiQuick(
 
 async function collectBrightData(env: EnvMap, targets: string[]): Promise<void> {
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold("BrightData")}? (~$0.45/mo per prompt)`,
-		initialValue: true,
+		message: `Configure ${pc.bold("BrightData")}? (pay-as-you-go, cheaper but slower — ~$0.45/mo per prompt)`,
+		initialValue: false,
 	});
 	assertNotCancelled(enable);
 	if (!enable) return;
@@ -636,7 +666,7 @@ async function collectBrightData(env: EnvMap, targets: string[]): Promise<void> 
 
 async function collectOlostep(env: EnvMap, targets: string[]): Promise<void> {
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold("Olostep")}? (~$2.25/mo per prompt)`,
+		message: `Configure ${pc.bold("Olostep")}? (premium, built for high volume — ~$2.25/mo per prompt)`,
 		initialValue: false,
 	});
 	assertNotCancelled(enable);
@@ -660,7 +690,7 @@ async function collectOlostep(env: EnvMap, targets: string[]): Promise<void> {
 
 async function collectOxylabs(env: EnvMap, targets: string[]): Promise<void> {
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold("Oxylabs")}? (async job API, pay-as-you-go)`,
+		message: `Configure ${pc.bold("Oxylabs")}? (cheapest per run, no Gemini/Copilot — $49/mo min)`,
 		initialValue: false,
 	});
 	assertNotCancelled(enable);
@@ -691,8 +721,8 @@ async function collectOxylabs(env: EnvMap, targets: string[]): Promise<void> {
 
 async function collectCloro(env: EnvMap, targets: string[]): Promise<void> {
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold("Cloro")}? (async task API, credit plans from $30/mo)`,
-		initialValue: false,
+		message: `Configure ${pc.bold("Cloro")}? (most reliable, every surface — ~$0.65/mo per prompt, $30/mo min)`,
+		initialValue: true,
 	});
 	assertNotCancelled(enable);
 	if (!enable) return;
@@ -862,12 +892,13 @@ async function collectOpenRouter(env: EnvMap, targets: string[]): Promise<void> 
 
 async function collectDataForSEO(env: EnvMap, targets: string[]): Promise<void> {
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold("DataForSEO")}? (Google AI Mode + LLM Responses)`,
+		message: `Configure ${pc.bold("DataForSEO")}? (pay-as-you-go, scrapers + direct APIs — ~$1.20/mo per prompt)`,
 		initialValue: false,
 	});
 	assertNotCancelled(enable);
 	if (!enable) return;
 
+	p.log.info(`Sign up: ${link(pc.cyan(DATAFORSEO_AFFILIATE), DATAFORSEO_AFFILIATE)}`);
 	const login = await p.text({
 		message: "DataForSEO login",
 		validate: (v) => (!v ? "Required" : undefined),
@@ -884,15 +915,16 @@ async function collectDataForSEO(env: EnvMap, targets: string[]): Promise<void> 
 
 	const selected = (await p.multiselect({
 		message: "LLM Providers to track via DataForSEO",
-		options: DATAFORSEO_MODELS.map((model) => ({ value: model, label: model })),
+		options: DATAFORSEO_TARGETS.map((t) => ({
+			value: formatScrapeTarget({ model: t.model, provider: "dataforseo", webSearch: true }),
+			label: `${t.model} (${t.kind})`,
+		})),
 		required: false,
-		initialValues: ["google-ai-mode"],
+		initialValues: [formatScrapeTarget({ model: "google-ai-mode", provider: "dataforseo", webSearch: true })],
 	})) as string[] | symbol;
 	assertNotCancelled(selected);
 
-	for (const model of selected) {
-		targets.push(formatScrapeTarget({ model, provider: "dataforseo", webSearch: true }));
-	}
+	targets.push(...selected);
 }
 
 async function finalizeScrapeTargets(

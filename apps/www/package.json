@@ -1,10 +1,11 @@
 {
 	"name": "@workspace/www",
-	"version": "0.2.17",
+	"version": "0.2.18",
 	"private": true,
 	"license": "MIT",
 	"type": "module",
 	"scripts": {
+		"postinstall": "fumadocs-mdx",
 		"dev": "vite dev --port 3001",
 		"build": "vite build",
 		"start": "node .output/server/index.mjs",

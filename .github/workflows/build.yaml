@@ -1,0 +1,90 @@
+# Host-side checks: type check, unit + Storybook tests, and a real `pnpm build`
+# that must leave the working tree clean.
+#
+# The clean-tree check is the point of running a host build at all.
+# `routeTree.gen.ts` is committed because `tsc` needs it to resolve routes, so
+# it can go stale in git. e2e.yaml can't catch that: it builds inside Docker,
+# where the file is regenerated in the image and the checked-in copy is never
+# consulted.
+#
+# Keep it excluded from Biome (see biome.json) — the router generator formats
+# its own output with Prettier, and a formatter fighting it would make every
+# build dirty this job.
+
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # Frozen, unlike the other workflows: a lockfile that doesn't match the
+      # manifests is a failure in its own right here, and letting pnpm repair
+      # it in place would surface as unexplained churn in the clean-tree check.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Redundant with `pnpm build` (turbo's build depends on check-types), but
+      # it fails in a minute instead of after the whole build, and turbo caches
+      # the result so the build step doesn't repeat it.
+      - name: Type check
+        run: pnpm turbo check-types
+
+      - name: Unit tests
+        run: pnpm turbo test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Verify the build left the working tree clean
+        run: |
+          if [ -n "$(git status --porcelain=v1 --untracked-files=all)" ]; then
+            echo "::error::The build changed files tracked by git. Run 'pnpm build' locally and commit the result."
+            git status --porcelain=v1 --untracked-files=all
+            git diff --
+            exit 1
+          fi
+
+      # Last, because the browser is only needed by the Storybook suite — it
+      # runs in Vitest browser mode (see apps/web/vitest.config.ts). A broken
+      # build shouldn't pay for the install. The cache key matches e2e.yaml's
+      # so both workflows share one entry.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Playwright browsers
+        run: pnpm -C apps/web exec playwright install chromium --with-deps
+
+      - name: Storybook tests
+        run: pnpm -C apps/web test:storybook

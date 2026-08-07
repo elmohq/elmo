@@ -1,6 +1,6 @@
 {
 	"name": "@workspace/lib",
-	"version": "0.2.17",
+	"version": "0.2.18",
 	"private": true,
 	"license": "MIT",
 	"scripts": {
@@ -33,19 +33,19 @@
 		"./usage": "./src/usage/cost.ts"
 	},
 	"dependencies": {
-		"@ai-sdk/anthropic": "^4.0.26",
-		"@ai-sdk/openai": "^4.0.26",
+		"@ai-sdk/anthropic": "^4.0.27",
+		"@ai-sdk/openai": "^4.0.27",
 		"@anthropic-ai/sdk": "^0.115.0",
 		"@better-auth/sso": "^1.6.25",
 		"@better-auth/stripe": "^1.6.25",
 		"@brightdata/sdk": "^1.1.0",
 		"@mozilla/readability": "^0.6.0",
 		"@workspace/config": "workspace:*",
-		"ai": "^7.0.45",
+		"ai": "^7.0.48",
 		"better-auth": "^1.6.25",
 		"dataforseo-client": "^2.1.2",
 		"drizzle-orm": "^0.45.2",
-		"jose": "6.2.6",
+		"jose": "6.2.7",
 		"linkedom": "^0.18.13",
 		"olostep": "^1.2.2",
 		"pg": "^8.22.0",
@@ -53,7 +53,7 @@
 	},
 	"devDependencies": {
 		"@better-auth/cli": "^1.4.22",
-		"@types/pg": "^8.20.1",
+		"@types/pg": "^8.20.3",
 		"drizzle-kit": "^0.31.10",
 		"stripe": "^22.4.0",
 		"typescript": "^7.0.2",

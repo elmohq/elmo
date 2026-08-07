@@ -1,5 +1,27 @@
 # @workspace/web
 
+## 0.2.18
+
+### Patch Changes
+
+- d0187ed: Prompts can now be added in bulk by pasting one per line.
+- d9faaec: Brand analysis can now be pointed at a full page URL to research a sub-brand, while mentions stay tracked against the site's domain.
+- 6cd51af: The prompts page now keeps a save bar in view that flags unsaved changes, highlights the rows you edited, and warns before you navigate away or close the tab.
+- 69b2b77: Sort prompts alphabetically on the prompt settings page.
+- Updated dependencies [d0187ed]
+- Updated dependencies [bfa6282]
+- Updated dependencies [9394d65]
+- Updated dependencies [d9faaec]
+- Updated dependencies [72e7091]
+  - @workspace/lib@0.2.18
+  - @workspace/cloud@0.2.18
+  - @workspace/whitelabel@0.2.18
+  - @workspace/deployment@0.2.18
+  - @workspace/api-spec@0.2.18
+  - @workspace/config@0.2.18
+  - @workspace/og@0.2.18
+  - @workspace/ui@0.2.18
+
 ## 0.2.17
 
 ### Patch Changes
