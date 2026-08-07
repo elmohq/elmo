@@ -9,7 +9,13 @@
  * app.
  */
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { CLAUDE_ADDON_MONTHLY_USD, PLANS, PLAN_KEYS, type PlanKey } from "@workspace/config/plans";
+import {
+	CLAUDE_ADDON_MONTHLY_USD,
+	PLANS,
+	PLAN_KEYS,
+	type PlanDefinition,
+	type PlanKey,
+} from "@workspace/config/plans";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
@@ -20,6 +26,7 @@ import { IconCheck, IconLoader2 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { getPaywallStateFn, type PaywallState } from "@/server/billing";
 import { getAppName, buildTitle } from "@/lib/route-head";
+import { getModelDisplayName } from "@/lib/utils";
 import { z } from "zod";
 
 const searchSchema = z.object({
@@ -45,35 +52,30 @@ export const Route = createFileRoute("/_authed/choose-plan")({
 	component: ChoosePlanPage,
 });
 
-const PLAN_FEATURES: Record<PlanKey, string[]> = {
-	starter: ["1 brand", "50 tracked prompts", "ChatGPT tracking", "1 sample per day", "API access", "Unlimited seats"],
-	basic: [
-		"1 brand",
-		"50 tracked prompts",
-		"Choose 4 AI platforms",
-		"4 samples per day",
-		"API access",
-		"Unlimited seats",
-	],
-	pro: [
-		"2 brands",
-		"150 tracked prompts",
-		"Choose 4 AI platforms",
-		"4 samples per day",
-		"Claude tracking on 20 prompts",
-		`Extra Claude prompts $${CLAUDE_ADDON_MONTHLY_USD}/prompt/mo`,
-		"API access · Unlimited seats",
-	],
-	business: [
-		"5 brands",
-		"350 tracked prompts",
-		"Choose 4 AI platforms",
-		"4 samples per day",
-		"Claude tracking on 30 prompts",
-		`Extra Claude prompts $${CLAUDE_ADDON_MONTHLY_USD}/prompt/mo`,
-		"API access · Unlimited seats",
-	],
-};
+function planFeatures(plan: PlanDefinition): string[] {
+	const features = [
+		`${plan.maxBrands} brand${plan.maxBrands === 1 ? "" : "s"}`,
+		`${plan.maxPrompts} tracked prompts`,
+		plan.platformMenu.length === 1
+			? `${getModelDisplayName(plan.platformMenu[0])} tracking`
+			: `Choose ${plan.platformPicks} AI platforms`,
+		`${plan.standardRunsPerDay} sample${plan.standardRunsPerDay === 1 ? "" : "s"} per day`,
+	];
+	if (plan.claudeIncluded > 0) {
+		features.push(`Claude tracking on ${plan.claudeIncluded} prompts`);
+	}
+	if (plan.claudeAddonAvailable) {
+		features.push(`Extra Claude prompts $${CLAUDE_ADDON_MONTHLY_USD}/prompt/mo`);
+	}
+	// The Claude lines already lengthen those cards, so their constant tail
+	// collapses to one line to keep the lists close in height.
+	if (plan.claudeIncluded > 0) {
+		features.push("API access · Unlimited seats");
+	} else {
+		features.push("API access", "Unlimited seats");
+	}
+	return features;
+}
 
 function ChoosePlanPage() {
 	const paywall = Route.useLoaderData();
@@ -190,7 +192,7 @@ function ChoosePlanPage() {
 							</CardHeader>
 							<CardContent className="flex-1">
 								<ul className="space-y-2 text-sm">
-									{PLAN_FEATURES[key].map((feature) => (
+									{planFeatures(plan).map((feature) => (
 										<li key={feature} className="flex items-start gap-2">
 											<IconCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
 											{feature}
