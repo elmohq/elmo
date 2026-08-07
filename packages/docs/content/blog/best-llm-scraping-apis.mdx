@@ -1,6 +1,6 @@
 ---
 title: "The Best LLM Scraping APIs, Compared"
-description: "Cloro, BrightData, Oxylabs, Olostep, and DataForSEO compared on cost, coverage, and 30 days of measured success rates from a tool that runs all five in production."
+description: "Cloro, BrightData, Oxylabs, Olostep, and DataForSEO compared on cost, coverage, and measured success rates from a tool that runs all five in production."
 date: "2026-08-06"
 author: ai
 metaTitle: "Best LLM Scraping APIs: 5 Compared (2026)"
@@ -41,7 +41,7 @@ faq:
   - question: Which AI surfaces can be scraped?
     answer: "ChatGPT, Google AI Mode, Google AI Overview, Gemini, Perplexity, and Microsoft Copilot all have working scrapers from at least one provider. Coverage is not uniform: Cloro, BrightData, and Olostep reach all six, Oxylabs cannot reach Gemini or Copilot, and DataForSEO has no Perplexity scraper and serves that surface from a model API instead."
   - question: Which LLM scraping API is the most reliable?
-    answer: "Cloro. In Elmo's own monitoring it has not dropped a run, against 95% for both DataForSEO and BrightData, 83% for Oxylabs, and 82% for Olostep over the 30 days to 7 August 2026. Failures concentrate on Google AI Overview, where BrightData and Oxylabs both sit at 71% while clearing 96% or better everywhere else."
+    answer: "Cloro. In Elmo's own recent monitoring it has not dropped a run, against 95% for both DataForSEO and BrightData, 83% for Oxylabs, and 82% for Olostep. Failures concentrate on Google AI Overview, where BrightData and Oxylabs both sit at 71% while clearing 96% or better everywhere else."
   - question: Do I need more than one scraping provider?
     answer: "Most teams do not. One provider covering ChatGPT and Google AI Mode captures the bulk of AI referral traffic. A second provider is worth it mainly as a failover, since a single provider's outage otherwise leaves a gap in your history that cannot be backfilled."
 ---
@@ -53,7 +53,7 @@ faq:
 - The price spread between the cheapest and most expensive provider is about 15x for identical work. Tracking one prompt across ChatGPT and Google AI Mode for a month costs roughly $0.15 on Oxylabs and $2.25 on Olostep.
 - Headline per-run pricing is the wrong number to compare. Plan minimums dominate at small scale: Oxylabs has no pay-as-you-go tier at all, and Cloro's $30 entry plan covers about 22 prompts, so a five-prompt project pays the same as a twenty-two-prompt one.
 - Coverage is not uniform. Cloro, BrightData, and Olostep reach all six surfaces; Oxylabs cannot reach Gemini or Copilot; DataForSEO has no Perplexity scraper.
-- Reliability varies more than price does, and it is the variable nobody publishes. Over 30 days of our own monitoring the spread ran from 82% to 100%, and a failed scrape is a hole in a time series you cannot backfill.
+- Reliability varies more than price does, and it is the variable nobody publishes. In our own monitoring the spread runs from 82% to 100%, and a failed scrape is a hole in a time series you cannot backfill.
 - The aggregate uptime figure hides where the failures land. Google AI Overview is the surface that breaks: two providers sit at 71% on it while clearing 97% elsewhere.
 - Latency ranges from an 11-second median to individual runs of nearly 19 minutes. It rarely matters for scheduled tracking and matters enormously for anything a user is waiting on.
 
@@ -110,7 +110,7 @@ Price and coverage are on every vendor's website. Success rate is not, and it is
 
 A failed scrape is not the same kind of problem as a slow one. Retries cost money and eventually give up, and a run that never completes leaves a gap in a time series that cannot be backfilled, because the answer that surface would have given yesterday no longer exists. A provider that is 10% cheaper and fails 10% of the time is not cheaper.
 
-We run every provider against every surface it supports, several times a day, and [publish every result](https://www.elmohq.com/status) including the failures. Here is the last 30 days, to 7 August 2026:
+We run every provider against every surface it supports, several times a day, and [publish every result](https://www.elmohq.com/status) including the failures. Here is what recent monitoring shows:
 
 | Provider | Success rate | Runs | Median latency | Slowest run |
 |---|:---:|:---:|:---:|:---:|
@@ -120,9 +120,9 @@ We run every provider against every surface it supports, several times a day, an
 | Oxylabs | 83% | 508 | 33s | 9m08s |
 | Olostep | 82% | 666 | 58s | 18m57s |
 
-Cloro's runs start on 4 August, when we added it to monitoring. Over that same window the others ran at 91% (BrightData), 93% (DataForSEO), 90% (Olostep), and 83% (Oxylabs) — the same ordering as the 30-day column, with Cloro the only one that did not drop a single run.
+Cloro entered monitoring more recently than the others, so it has fewer runs behind it. Over the period where all five overlap the others ran at 91% (BrightData), 93% (DataForSEO), 90% (Olostep), and 83% (Oxylabs) — the same ordering, with Cloro the only one that did not drop a single run.
 
-The aggregate hides the more useful finding. Broken out by surface over the same 30 days:
+The aggregate hides the more useful finding. Broken out by surface:
 
 | Surface | Cloro | BrightData | Oxylabs | Olostep | DataForSEO |
 |---|:---:|:---:|:---:|:---:|:---:|
@@ -139,9 +139,9 @@ Two things fall out of that.
 
 **Olostep's Google AI Mode number is the outlier.** 68% on one of the two surfaces that matter most, from the most expensive provider here, is hard to justify. Its 82% aggregate is dragged there by that one cell.
 
-Latency mostly does not matter for scheduled tracking and matters enormously for anything else. DataForSEO's 11-second median reflects two of its four surfaces being SERP endpoints rather than live sessions. Olostep's slowest run in 30 days took nearly 19 minutes.
+Latency mostly does not matter for scheduled tracking and matters enormously for anything else. DataForSEO's 11-second median reflects two of its four surfaces being SERP endpoints rather than live sessions. Olostep's slowest run took nearly 19 minutes.
 
-These numbers move. The [status page](https://www.elmohq.com/status) is live and shows a rolling seven-day window, so check it rather than trusting a table in a post from August.
+These numbers move. The [status page](https://www.elmohq.com/status) is live, so check it rather than trusting a table in a blog post.
 
 ## The five providers
 
@@ -167,7 +167,7 @@ Two trade-offs. It is slower than Cloro on identical surfaces, which does not ma
 
 Cheapest per run of any provider here, by roughly 3x against BrightData. Requests go through an asynchronous Push-Pull API that avoids the connection timeouts of their realtime endpoint.
 
-Three real limitations. It cannot reach Gemini or Copilot, so it is a non-starter if either matters to you. There is no pay-as-you-go tier, so you are committing $49/mo whether you use it or not. And it has been the least reliable provider we run, at 83% over 30 days, with ChatGPT at 85% and Perplexity at 80% — the saving is real, and so is the missing fifth of your data.
+Three real limitations. It cannot reach Gemini or Copilot, so it is a non-starter if either matters to you. There is no pay-as-you-go tier, so you are committing $49/mo whether you use it or not. And it has been the least reliable provider we run, at 83%, with ChatGPT at 85% and Perplexity at 80% — the saving is real, and so is the missing fifth of your data.
 
 **Best for**: high volume on ChatGPT, Perplexity, and the Google surfaces, where the per-run saving actually compounds.
 
@@ -175,13 +175,13 @@ Three real limitations. It cannot reach Gemini or Copilot, so it is a non-starte
 
 The premium option, at roughly 5x BrightData, and the provider behind Profound, Athena, and AirOps. It is genuinely good at high-volume scraping and the API is well designed, and it covers all six surfaces.
 
-At roughly 5x BrightData's price, 82% over 30 days is hard to justify for a tracker running on a schedule, and the 68% on Google AI Mode is the worst single result in our monitoring. It is also the slowest provider by a wide margin, with a 58-second median and individual runs approaching 19 minutes.
+At roughly 5x BrightData's price, 82% is hard to justify for a tracker running on a schedule, and the 68% on Google AI Mode is the worst single result in our monitoring. It is also the slowest provider by a wide margin, with a 58-second median and individual runs approaching 19 minutes.
 
 **Best for**: large-scale batch scraping where throughput matters more than per-run cost.
 
 ### DataForSEO
 
-The most flexible of the five, and the only one that fronts both scrapers and direct model APIs behind a single account. ChatGPT and Gemini come from its [LLM Scraper](https://docs.dataforseo.com/v3/ai_optimization-chat_gpt-llm_scraper-live-advanced/), the two Google surfaces from SERP endpoints, and Perplexity from the LLM Responses API. It ties BrightData at 95% over 30 days and it is comfortably the fastest, with an 11-second median against 30–58 seconds for everyone else.
+The most flexible of the five, and the only one that fronts both scrapers and direct model APIs behind a single account. ChatGPT and Gemini come from its [LLM Scraper](https://docs.dataforseo.com/v3/ai_optimization-chat_gpt-llm_scraper-live-advanced/), the two Google surfaces from SERP endpoints, and Perplexity from the LLM Responses API. It ties BrightData at 95% and it is comfortably the fastest, with an 11-second median against 30–58 seconds for everyone else.
 
 Pay-as-you-go with a $50 minimum top-up and no subscription, and the tiered queues give you a real cost lever if you can tolerate latency.
 
@@ -202,9 +202,9 @@ Whichever you pick, use one provider consistently. Switching mid-history introdu
 
 Elmo is open source, and the [provider integrations](https://github.com/elmohq/elmo/tree/main/packages/lib/src/providers/registry) are readable if you want to see exactly what each request does. Coverage in the table above is taken from those integrations rather than from vendor marketing.
 
-The reliability and latency figures come from the same store that backs Elmo's [status page](https://www.elmohq.com/status), which runs real prompts against every provider and surface four times a day and records every result, pass or fail. The tables above cover 4,213 runs across 49 targets in the 30 days to 7 August 2026, de-duplicated so that retries within five minutes count once, which is the same aggregation the status page renders. Success rate is passing runs over total runs; latency is measured on passing runs only, since a failure's latency is time-to-error.
+The reliability and latency figures come from the same store that backs Elmo's [status page](https://www.elmohq.com/status), which runs real prompts against every provider and surface four times a day and records every result, pass or fail. The tables above cover 4,213 runs across 49 targets, de-duplicated so that retries within five minutes count once, which is the same aggregation the status page renders. Success rate is passing runs over total runs; latency is measured on passing runs only, since a failure's latency is time-to-error.
 
-Cloro entered monitoring on 4 August, so its 60 runs cover three days; every other provider has the full 30. The three-day figures for all five are given alongside the table so the comparison can be read like for like.
+Cloro was added to monitoring after the others, so it has fewer runs behind it. The figures for the period where all five overlap are given alongside the table so the comparison can be read like for like.
 
 Pricing is taken from each vendor's public pricing pages as of August 2026 and normalised to the same workload. Vendors change prices; check before you commit.
 
