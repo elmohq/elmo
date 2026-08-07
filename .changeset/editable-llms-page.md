@@ -3,4 +3,4 @@
 "@workspace/lib": patch
 ---
 
-Choose which AI platforms a brand tracks directly from the LLMs settings page (previously database-only).
+Choose which AI platforms a brand tracks directly from the LLMs settings page.
