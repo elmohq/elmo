@@ -1,9 +1,9 @@
 /**
  * Pre-launch billing lifecycle verification against a REAL Stripe test-mode
- * account with test clocks (issue #345 acceptance): subscribe → add-on
- * quantity change → payment failure → recovery → cancel, asserting after each
- * webhook that the local database (subscription row + organization_settings)
- * converged to the expected state.
+ * account with test clocks: subscribe → plan upgrade → add-on quantity change
+ * → payment failure → recovery → cancel, asserting after each webhook that the
+ * local database (subscription row + organization_settings) converged to the
+ * expected state.
  *
  * Prerequisites (run all three in parallel):
  *   1. The web app running in cloud mode against your database
@@ -17,7 +17,8 @@
  * The catalog must be bootstrapped first (scripts/bootstrap-stripe.ts).
  */
 
-import { CLAUDE_ADDON_LOOKUP_KEYS, stripePlanLookupKey } from "@workspace/config/plans";
+import { resolveEntitlements } from "@workspace/config/entitlements";
+import { CLAUDE_ADDON_LOOKUP_KEYS, PLANS, stripePlanLookupKey } from "@workspace/config/plans";
 import pg from "pg";
 import Stripe from "stripe";
 
@@ -64,6 +65,17 @@ async function expectStatus(label: string, expected: string): Promise<void> {
 	});
 }
 
+async function expectPlanAndStatus(
+	label: string,
+	expectedPlan: string,
+	expectedStatus: string,
+): Promise<{ status: string; plan: string }> {
+	return waitForDb(`${label} (plan=${expectedPlan}, status=${expectedStatus})`, async () => {
+		const state = await subscriptionState();
+		return state?.plan === expectedPlan && state.status === expectedStatus ? state : null;
+	});
+}
+
 // --- 1. Test-clock customer wired to the org --------------------------------
 const clock = await stripe.testHelpers.testClocks.create({ frozen_time: Math.floor(Date.now() / 1000) });
 const customer = await stripe.customers.create({
@@ -75,15 +87,36 @@ const customer = await stripe.customers.create({
 await db.query("UPDATE organization SET stripe_customer_id = $1 WHERE id = $2", [customer.id, orgId]);
 console.log(`✓ test-clock customer ${customer.id} attached to org ${orgId}`);
 
-// --- 2. Subscribe (pro monthly) --------------------------------------------
-const proPrice = await priceByLookupKey(stripePlanLookupKey("pro", "monthly"));
+// --- 2. Subscribe (basic monthly) -------------------------------------------
+const basicPrice = await priceByLookupKey(stripePlanLookupKey("basic", "monthly"));
 const subscription = await stripe.subscriptions.create({
 	customer: customer.id,
-	items: [{ price: proPrice }],
+	items: [{ price: basicPrice }],
 });
-await expectStatus("subscribe: webhook recorded the subscription", "active");
+await expectPlanAndStatus("subscribe: webhook recorded the subscription", "basic", "active");
 
-// --- 3. Add-on quantity ------------------------------------------------------
+// --- 3. Plan upgrade (basic → pro) ------------------------------------------
+// The app's upgrade path (better-auth's subscription.upgrade endpoint) swaps
+// the base item's price on the live subscription; mirror that call here.
+const proPrice = await priceByLookupKey(stripePlanLookupKey("pro", "monthly"));
+await stripe.subscriptions.update(subscription.id, {
+	items: [{ id: subscription.items.data[0].id, price: proPrice }],
+	proration_behavior: "create_prorations",
+});
+const upgraded = await expectPlanAndStatus("upgrade: subscription row moved to the new plan", "pro", "active");
+const entitlements = resolveEntitlements({
+	mode: "cloud",
+	subscription: { status: upgraded.status, plan: upgraded.plan, periodEnd: null },
+	claudeAddonQuantity: 0,
+	overrides: null,
+	now: new Date(),
+});
+if (entitlements.maxPrompts !== PLANS.pro.maxPrompts || entitlements.claudePool !== PLANS.pro.claudeIncluded) {
+	throw new Error(`upgrade: entitlements did not follow the new plan (got ${JSON.stringify(entitlements)})`);
+}
+console.log("✓ upgrade: resolved entitlements follow the new plan");
+
+// --- 4. Add-on quantity ------------------------------------------------------
 const addonPrice = await priceByLookupKey(CLAUDE_ADDON_LOOKUP_KEYS.monthly);
 await stripe.subscriptionItems.create({ subscription: subscription.id, price: addonPrice, quantity: 7 });
 await waitForDb("add-on: organization_settings.claude_addon_quantity = 7", async () => {
@@ -93,7 +126,7 @@ await waitForDb("add-on: organization_settings.claude_addon_quantity = 7", async
 	return rows[0]?.claude_addon_quantity === 7 ? rows[0] : null;
 });
 
-// --- 4. Payment failure at renewal ------------------------------------------
+// --- 5. Payment failure at renewal ------------------------------------------
 await stripe.customers.update(customer.id, {
 	invoice_settings: { default_payment_method: undefined },
 });
@@ -104,14 +137,14 @@ await stripe.testHelpers.testClocks.advance(clock.id, {
 });
 await expectStatus("renewal failure: subscription past_due", "past_due");
 
-// --- 5. Recovery -------------------------------------------------------------
+// --- 6. Recovery -------------------------------------------------------------
 const goodCard = await stripe.paymentMethods.attach("pm_card_visa", { customer: customer.id });
 await stripe.customers.update(customer.id, { invoice_settings: { default_payment_method: goodCard.id } });
 const invoices = await stripe.invoices.list({ customer: customer.id, status: "open", limit: 1 });
 if (invoices.data[0]?.id) await stripe.invoices.pay(invoices.data[0].id, { payment_method: goodCard.id });
 await expectStatus("recovery: subscription active again", "active");
 
-// --- 6. Cancel ---------------------------------------------------------------
+// --- 7. Cancel ---------------------------------------------------------------
 await stripe.subscriptions.cancel(subscription.id);
 await expectStatus("cancel: subscription canceled", "canceled");
 await waitForDb("cancel: add-on quantity reset to 0", async () => {
