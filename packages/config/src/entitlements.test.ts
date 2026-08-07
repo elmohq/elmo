@@ -8,7 +8,7 @@ import {
 	type ResolveEntitlementsInput,
 	type SubscriptionSnapshot,
 } from "./entitlements";
-import { MAX_STANDARD_RUNS_PER_DAY, PLANS } from "./plans";
+import { CLAUDE_RUNS_PER_DAY, MAX_STANDARD_RUNS_PER_DAY, PLANS } from "./plans";
 import type { DeploymentMode } from "./types";
 
 const NOW = new Date("2026-08-05T12:00:00Z");
@@ -68,6 +68,7 @@ describe("resolveEntitlements: cloud plans", () => {
 			expect(result.standardRunsPerDay).toBe(plan.standardRunsPerDay);
 			expect(result.replication).toBe(1);
 			expect(result.claudePool).toBe(plan.claudeIncluded);
+			expect(result.claudeRunsPerDay).toBe(CLAUDE_RUNS_PER_DAY);
 		}
 	});
 
@@ -210,6 +211,15 @@ describe("resolveEntitlements: custom plan overrides", () => {
 		expect(result.maxPrompts).toBe(PLANS.business.maxPrompts);
 	});
 
+	it("claudeRunsPerDay raises the claude cadence for this org only when set", () => {
+		const result = resolve({
+			subscription: activeSubscription("business"),
+			overrides: { claudeRunsPerDay: 2 },
+		});
+		expect(result.claudeRunsPerDay).toBe(2);
+		expect(resolve({ subscription: activeSubscription("business") }).claudeRunsPerDay).toBe(CLAUDE_RUNS_PER_DAY);
+	});
+
 	it("sampling overrides clamp to the research ceiling", () => {
 		const result = resolve({
 			subscription: activeSubscription("business"),
@@ -234,5 +244,7 @@ describe("parseEntitlementOverrides", () => {
 		expect(parseEntitlementOverrides({ maxBrands: "lots" })).toBeNull();
 		expect(parseEntitlementOverrides({ unlimitedEverything: true })).toBeNull();
 		expect(parseEntitlementOverrides({ standardRunsPerDay: 24 })).toBeNull();
+		expect(parseEntitlementOverrides({ claudeRunsPerDay: 24 })).toBeNull();
+		expect(parseEntitlementOverrides({ claudeRunsPerDay: 0 })).toBeNull();
 	});
 });

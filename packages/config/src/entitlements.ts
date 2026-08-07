@@ -53,6 +53,8 @@ export const entitlementOverridesSchema = z
 		standardRunsPerDay: z.number().int().min(1).max(MAX_STANDARD_RUNS_PER_DAY).optional(),
 		/** Replaces the plan's included Claude pool (add-on quantity still adds on top). */
 		claudePoolIncluded: z.number().int().min(0).optional(),
+		/** Replaces the fixed once-daily Claude sampling cadence. */
+		claudeRunsPerDay: z.number().int().min(1).max(MAX_STANDARD_RUNS_PER_DAY).optional(),
 		/** Runs per firing for standard targets (cloud default 1). */
 		replication: z.number().int().min(1).max(10).optional(),
 	})
@@ -206,6 +208,6 @@ export function resolveEntitlements(input: ResolveEntitlementsInput): Entitlemen
 		),
 		replication: overrides.replication ?? 1,
 		claudePool: claudeIncluded + addonQuantity,
-		claudeRunsPerDay: CLAUDE_RUNS_PER_DAY,
+		claudeRunsPerDay: Math.min(overrides.claudeRunsPerDay ?? CLAUDE_RUNS_PER_DAY, MAX_STANDARD_RUNS_PER_DAY),
 	};
 }
