@@ -29,6 +29,7 @@ import {
 	classifyUrl as classifyUrlShared,
 } from "@/lib/domain-categories.server";
 import { buildGoogleModule, emptyGoogleModule } from "@/lib/google-module";
+import { isMarketplaceDomain } from "@/lib/marketplace-filter";
 
 /**
  * Get citation statistics for a brand
@@ -290,6 +291,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 					exampleTitle: v.exampleTitle,
 					previousCount,
 					changePercent: previousCount > 0 ? Math.round(((v.count - previousCount) / previousCount) * 100) : null,
+					isMarketplace: isMarketplaceDomain(domain),
 				};
 			})
 			.sort((a, b) => b.count - a.count);

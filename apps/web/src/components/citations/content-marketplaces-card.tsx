@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { useMarketplaceDomains } from "@/hooks/use-marketplace-domains";
 import type { CitationData } from "@/components/citations/types";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
 
@@ -13,19 +12,13 @@ export function ContentMarketplacesCard({
 }: {
 	domains: CitationData["domainDistribution"];
 }) {
-	const domainList = useMemo(() => domains.map((d) => d.domain), [domains]);
-	const { ready, set: marketplaceSet } = useMarketplaceDomains(domainList);
-
 	const stats = useMemo(() => {
-		if (!ready) return null;
-
-		const marketplaceDomains = domains.filter((d) => marketplaceSet.has(d.domain));
+		const marketplaceDomains = domains.filter((d) => d.isMarketplace);
 		const totalCount = marketplaceDomains.reduce((sum, d) => sum + d.count, 0);
 		const totalAcrossAllDomains = domains.reduce((sum, d) => sum + d.count, 0);
 		const pct = totalAcrossAllDomains > 0 ? Math.round((totalCount / totalAcrossAllDomains) * 100) : 0;
 		const uniqueMarketplaceDomains = marketplaceDomains.length;
 
-		// Top 10 most-cited marketplace domains
 		const topMarketplace = [...marketplaceDomains]
 			.sort((a, b) => b.count - a.count)
 			.slice(0, 10);
@@ -36,9 +29,9 @@ export function ContentMarketplacesCard({
 			uniqueMarketplaceDomains,
 			topMarketplace,
 		};
-	}, [domains, marketplaceSet, ready]);
+	}, [domains]);
 
-	if (!stats || stats.uniqueMarketplaceDomains === 0) {
+	if (stats.uniqueMarketplaceDomains === 0) {
 		return null;
 	}
 

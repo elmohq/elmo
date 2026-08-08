@@ -3,13 +3,54 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@work
 import { Input } from "@workspace/ui/components/input";
 import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { UnderlineTabs } from "@/components/citations/shared";
 import { TrackDomainPopover } from "@/components/citations/track-domain-popover";
 import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 import { DOMAIN_CATEGORY_COLORS, ProgressBarChart } from "@/components/progress-bar-chart";
-import { useMarketplaceDomains } from "@/hooks/use-marketplace-domains";
+
+function DomainAction({
+	domain,
+	isMarketplace,
+	category,
+	brandId,
+	brandName,
+	competitors,
+	onCompetitorAdded,
+}: {
+	domain: string;
+	isMarketplace: boolean;
+	category: string;
+	brandId?: string;
+	brandName?: string;
+	competitors?: CitationData["competitors"];
+	onCompetitorAdded?: () => void;
+}): ReactNode {
+	return (
+		<>
+			{isMarketplace && (
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<span className="text-amber-500 cursor-help text-sm font-bold">$</span>
+					</TooltipTrigger>
+					<TooltipContent className="text-xs">
+						Pay-to-win link marketplace — this domain sells placements in AI-generated content.
+					</TooltipContent>
+				</Tooltip>
+			)}
+			{category === "other" && brandId && competitors ? (
+				<TrackDomainPopover
+					domain={domain}
+					brandId={brandId}
+					brandName={brandName}
+					competitors={competitors}
+					onAdded={onCompetitorAdded}
+				/>
+			) : undefined}
+		</>
+	);
+}
 
 export function TopDomainsCard({
 	domains,
@@ -44,10 +85,6 @@ export function TopDomainsCard({
 	}, [domains, selectedCategory, domainSearch]);
 
 	const { page, setPage, pageItems, totalItems } = usePagedList(filteredDomains, maxDomains);
-
-	// Load bloom filter and check which domains are on marketplaces
-	const allDomainNames = useMemo(() => domains.map((d) => d.domain), [domains]);
-	const { set: marketplaceSet } = useMarketplaceDomains(allDomainNames);
 
 	return (
 		<Card className="gap-4">
@@ -104,7 +141,7 @@ export function TopDomainsCard({
 					<>
 						<ProgressBarChart
 							items={pageItems.map((domain) => {
-								const isMarketplace = marketplaceSet.has(domain.domain);
+								const isMarketplace = domain.isMarketplace ?? false;
 								return {
 									label: domain.domain,
 									count: domain.count,
@@ -113,28 +150,15 @@ export function TopDomainsCard({
 										? "Pay-to-win link marketplace — citations may reflect paid placements."
 										: undefined,
 									action: (
-										<>
-											{isMarketplace && (
-												<Tooltip>
-													<TooltipTrigger asChild>
-														<span className="text-amber-500 cursor-help text-sm font-bold">$</span>
-													</TooltipTrigger>
-													<TooltipContent className="text-xs">
-														Pay-to-win link marketplace — this domain sells placements in AI-generated
-														content.
-													</TooltipContent>
-												</Tooltip>
-											)}
-											{domain.category === "other" && brandId && competitors ? (
-												<TrackDomainPopover
-													domain={domain.domain}
-													brandId={brandId}
-													brandName={brandName}
-													competitors={competitors}
-													onAdded={onCompetitorAdded}
-												/>
-											) : undefined}
-										</>
+										<DomainAction
+											domain={domain.domain}
+											isMarketplace={isMarketplace}
+											category={domain.category || "other"}
+											brandId={brandId}
+											brandName={brandName}
+											competitors={competitors}
+											onCompetitorAdded={onCompetitorAdded}
+										/>
 									),
 								};
 							})}

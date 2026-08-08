@@ -26,12 +26,15 @@
  *   collaborator-sites.csv   — free-text marketplace CSV with ahrefs_dr
  *
  * Outputs (to apps/web/public/data/):
- *   marketplace-bloom.bin   — bloom filter binary
- *   marketplace-domains.txt — full list of domains included (for debugging / transparency)
+ *   marketplace-bloom.json   — bloom filter JSON (loaded server-side at startup)
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve, dirname, basename } from "node:path";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const { BloomFilter } = require("bloom-filters");
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -71,7 +74,7 @@ const OUT_DIR = resolve(
 	"public",
 	"data",
 );
-const BLOOM_OUT = resolve(OUT_DIR, "marketplace-bloom.bin");
+const BLOOM_OUT = resolve(OUT_DIR, "marketplace-bloom.json");
 const DOMAINS_OUT = resolve(OUT_DIR, "..", "..", "scripts", "marketplace-domains.txt");
 const SPOTCHECK_OUT = resolve(OUT_DIR, "..", "..", "scripts", "marketplace-spotcheck.txt");
 
@@ -133,10 +136,6 @@ function findCol(headers: string[], name: string): number {
 
 // ---------------------------------------------------------------------------
 // Filter Adsy
-//   link_type must be exactly "Dofollow" — all Dofollow entries included.
-//   (The traffic > 100k filter was only used during spotchecking to
-//    determine which types of sites to exclude via the editorial/platform
-//    exclusion lists below.)
 // ---------------------------------------------------------------------------
 function filterAdsy(path: string): { included: Map<string, { traffic: number; dr: number }>; rejected: number } {
 	const text = readFileSync(path, "utf-8");
@@ -164,12 +163,10 @@ function filterAdsy(path: string): { included: Map<string, { traffic: number; dr
 
 		const linkType = row[linkTypeIdx]?.trim() ?? "";
 
-		// Must be exactly "Dofollow"
 		if (linkType !== "Dofollow") { rejected++; continue; }
 
 		const traffic = ahrefsTrafficIdx !== -1 ? parseFloat(row[ahrefsTrafficIdx] ?? "0") : 0;
 		const dr = drIdx !== -1 ? parseFloat(row[drIdx] ?? "0") : 0;
-		// Keep entry with highest traffic for dedup
 		const existing = included.get(domain);
 		if (!existing || traffic > existing.traffic) {
 			included.set(domain, { traffic, dr });
@@ -180,9 +177,7 @@ function filterAdsy(path: string): { included: Map<string, { traffic: number; dr
 }
 
 // ---------------------------------------------------------------------------
-// Filter Collaborator Pro — include all domains with a valid domain.
-//   (The DR > 30 filter was only used during spotchecking to determine which
-//    types of sites to exclude via the editorial/platform lists below.)
+// Filter Collaborator Pro
 // ---------------------------------------------------------------------------
 function filterCollaborator(path: string): { included: Map<string, { traffic: number; dr: number }>; rejected: number } {
 	const text = readFileSync(path, "utf-8");
@@ -204,7 +199,6 @@ function filterCollaborator(path: string): { included: Map<string, { traffic: nu
 		const row = rows[i]!;
 		const domain = row[domainIdx]?.trim().toLowerCase() ?? "";
 		if (!domain) { rejected++; continue; }
-		// Deduplicate: first occurrence wins
 		if (!included.has(domain)) {
 			included.set(domain, { traffic: 0, dr: 0 });
 		}
@@ -214,77 +208,7 @@ function filterCollaborator(path: string): { included: Map<string, { traffic: nu
 }
 
 // ---------------------------------------------------------------------------
-// FNV-1a 32-bit (unsigned) — two independent hash functions
-// ---------------------------------------------------------------------------
-function fnv1a(str: string): number {
-	let hash = 0x811c9dc5;
-	for (let i = 0; i < str.length; i++) {
-		hash ^= str.charCodeAt(i);
-		hash = Math.imul(hash, 0x01000193);
-	}
-	return hash >>> 0;
-}
-
-function fnv1aB(str: string): number {
-	let hash = 0x84222325;
-	for (let i = 0; i < str.length; i++) {
-		hash ^= str.charCodeAt(i);
-		hash = Math.imul(hash, 0x01000193);
-	}
-	return hash >>> 0;
-}
-
-// ---------------------------------------------------------------------------
-// Bloom filter builder
-// ---------------------------------------------------------------------------
-function buildBloom(
-	items: string[],
-	falsePositiveRate: number,
-): { bits: Uint8Array; numHashes: number; bitArraySize: number } {
-	const n = items.length;
-	const bitArraySize = Math.ceil((-n * Math.log(falsePositiveRate)) / (Math.LN2 * Math.LN2));
-	const numHashes = Math.max(1, Math.round((bitArraySize / n) * Math.LN2));
-
-	const byteSize = Math.ceil(bitArraySize / 8);
-	const bits = new Uint8Array(byteSize);
-
-	function setBit(idx: number) {
-		const byteIdx = Math.floor(idx / 8);
-		const bitIdx = idx % 8;
-		bits[byteIdx]! |= 1 << bitIdx;
-	}
-
-	for (const item of items) {
-		const d = item.toLowerCase();
-		const h1 = fnv1a(d);
-		const h2 = fnv1aB(d);
-		for (let i = 0; i < numHashes; i++) {
-			const idx = (h1 + i * h2) >>> 0;
-			setBit(idx % bitArraySize);
-		}
-	}
-
-	return { bits, numHashes, bitArraySize };
-}
-
-// ---------------------------------------------------------------------------
-// Binary serialization
-// ---------------------------------------------------------------------------
-function serialize(
-	bits: Uint8Array,
-	numHashes: number,
-	bitArraySize: number,
-): Buffer {
-	const header = Buffer.alloc(5);
-	header.writeUInt32LE(bitArraySize, 0);
-	header[4] = numHashes;
-	return Buffer.concat([header, Buffer.from(bits)]);
-}
-
-// ---------------------------------------------------------------------------
-// Exclusion: editorial domains that sell sponsored content but are legitimate
-// publishers, not spammy backlink farms. Cross-referenced against the
-// project's editorial-domain list at build time.
+// Exclusion: editorial domains
 // ---------------------------------------------------------------------------
 const EDITORIAL_DOMAINS_PATH = resolve(
 	dirname(new URL(import.meta.url).pathname),
@@ -297,7 +221,6 @@ const EDITORIAL_DOMAINS_PATH = resolve(
 function loadEditorialDomains(path: string): Set<string> {
 	const text = readFileSync(path, "utf-8");
 	const domains = new Set<string>();
-	// Match quoted strings assigned to the EDITORIAL_DOMAINS array
 	const re = /"([a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+)"/gi;
 	let match;
 	while ((match = re.exec(text)) !== null) {
@@ -309,7 +232,7 @@ function loadEditorialDomains(path: string): Set<string> {
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
-async function main() {
+function main() {
 	if (!existsSync(ADSY_PATH)) {
 		console.error(`Adsy CSV not found at ${ADSY_PATH}`);
 		process.exit(1);
@@ -363,18 +286,17 @@ async function main() {
 	console.log(`  Removed: ${excludedPlatforms.length.toLocaleString()} platform domain(s)`);
 	console.log(`  After exclusion: ${allDomains.length.toLocaleString()}`);
 
-	// 4. Build bloom filter
-	const { bits, numHashes, bitArraySize } = buildBloom(allDomains, FPR);
-	const serialized = serialize(bits, numHashes, bitArraySize);
+	// 4. Build bloom filter using the library
+	const filter = BloomFilter.from(allDomains, FPR);
+	const json = filter.saveAsJSON();
 
 	mkdirSync(OUT_DIR, { recursive: true });
-	writeFileSync(BLOOM_OUT, serialized);
+	writeFileSync(BLOOM_OUT, JSON.stringify(json));
 
-	const kb = (serialized.length / 1024).toFixed(1);
+	const kb = (JSON.stringify(json).length / 1024).toFixed(1);
 	console.log(`\nBloom filter written to ${basename(BLOOM_OUT)}`);
-	console.log(`  Bit array: ${(bitArraySize / 8 / 1024).toFixed(1)} KB (${bitArraySize.toLocaleString()} bits)`);
 	console.log(`  File size: ${kb} KB`);
-	console.log(`  Hashes per lookup: ${numHashes}`);
+	console.log(`  Elements: ${allDomains.length.toLocaleString()}`);
 	console.log(`  Target FPR: ${FPR * 100}%`);
 
 	// 5. Write domain list for debugging / transparency
@@ -382,8 +304,7 @@ async function main() {
 	writeFileSync(DOMAINS_OUT, domainLines.join("\n") + "\n");
 	console.log(`\nDomain list written to ${basename(DOMAINS_OUT)}`);
 
-	// 6. Write spotcheck candidates (Adsy Dofollow + traffic > 100k, for manual
-	//    review only — doesn't affect what goes into the bloom filter).
+	// 6. Write spotcheck candidates (Adsy Dofollow + traffic > 100k)
 	const SPOTCHECK_TRAFFIC = 100_000;
 	const spotcheckLines: string[] = [];
 	const spotcheckSet = new Set(allDomains);
