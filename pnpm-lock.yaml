@@ -449,6 +449,10 @@ importers:
         version: 8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0)
 
   e2e:
+    dependencies:
+      '@workspace/lib':
+        specifier: workspace:*
+        version: link:../packages/lib
     devDependencies:
       '@playwright/test':
         specifier: ^1.62.1
