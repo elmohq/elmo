@@ -8,34 +8,39 @@
  */
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { createRequire } from "node:module";
-import type { BloomFilter as BloomFilterType } from "bloom-filters";
+import { BloomFilter, type BloomFilter as BloomFilterInstance } from "@/lib/bloom-filters";
 
-const require = createRequire(import.meta.url);
-const { BloomFilter: BloomFilterCtor } = require("bloom-filters");
-
-// The path the file will live at after `vite build` (static assets get copied
-// into `.output/public/data/` by the Vite static plugin).  Also fall back to
-// a dev-time location under `public/` for local development.
-// We try both so that `pnpm dev` (Vite dev server) works too (the dev server
-// serves files under `public/` relative to the project root).
+// Matches the output path written by scripts/generate-marketplace-bloom.ts.
+// After `vite build`, static assets land under `.output/public/data/`; in dev,
+// the Vite dev server serves files directly under `public/`.
 const PROD_PATH = resolve(import.meta.dirname, "..", ".output", "public", "data", "marketplace-bloom.json");
 const DEV_PATH = resolve(import.meta.dirname, "..", "public", "data", "marketplace-bloom.json");
 
-function loadBloomFilter(): BloomFilterType {
+/**
+ * Loads the bloom filter JSON produced by generate-marketplace-bloom.ts.
+ *
+ * Degrades to an empty (always-false) filter on missing OR corrupt assets so a
+ * bad blob never takes down the whole server — the feature silently no-ops.
+ * Presence is a hard requirement of the build; a load failure here is logged
+ * loudly rather than hidden.
+ */
+function loadBloomFilter(): BloomFilterInstance {
 	const path = existsSync(PROD_PATH) ? PROD_PATH : DEV_PATH;
-	if (!existsSync(path)) {
-		console.warn(`[marketplace-filter] bloom filter not found at ${path}; all domains pass through unmarked`);
-		// Return a filter that always returns false — safe no-op.
-		const empty = new BloomFilterCtor(1, 1);
-		return empty;
+	try {
+		if (!existsSync(path)) {
+			console.warn(`[marketplace-filter] bloom filter not found at ${path}; all domains pass through unmarked`);
+			return new BloomFilter(1, 1);
+		}
+		const raw = readFileSync(path, "utf-8");
+		return BloomFilter.fromJSON(JSON.parse(raw));
+	} catch (err) {
+		console.error(`[marketplace-filter] failed to load bloom filter from ${path}:`, err);
+		console.warn("[marketplace-filter] all domains pass through unmarked (empty filter fallback)");
+		return new BloomFilter(1, 1);
 	}
-	const raw = readFileSync(path, "utf-8");
-	const json = JSON.parse(raw);
-	return BloomFilterCtor.fromJSON(json);
 }
 
-const filter: BloomFilterType = loadBloomFilter();
+const filter: BloomFilterInstance = loadBloomFilter();
 
 /**
  * Check whether a domain appears in the pay-to-win marketplace list.

@@ -141,7 +141,7 @@ export function TopDomainsCard({
 					<>
 						<ProgressBarChart
 							items={pageItems.map((domain) => {
-								const isMarketplace = domain.isMarketplace ?? false;
+								const isMarketplace = domain.isMarketplace;
 								return {
 									label: domain.domain,
 									count: domain.count,

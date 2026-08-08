@@ -125,6 +125,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 						exampleTitle?: string;
 						previousCount: number;
 						changePercent: number | null;
+						isMarketplace: boolean;
 					}[],
 					specificUrls: [] as {
 						url: string;

@@ -33,6 +33,7 @@ import {
 } from "@/lib/domain-categories";
 import { classifyUrl } from "@/lib/domain-categories.server";
 import { buildGoogleModule } from "@/lib/google-module";
+import { isMarketplaceDomain } from "@/lib/marketplace-filter";
 // Server Functions
 // ============================================================================
 
@@ -448,7 +449,13 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 				}
 			}
 			const domainDistribution = Array.from(domainAgg.entries())
-				.map(([domain, v]) => ({ domain, count: v.count, category: v.category, exampleTitle: v.exampleTitle }))
+				.map(([domain, v]) => ({
+					domain,
+					count: v.count,
+					category: v.category,
+					exampleTitle: v.exampleTitle,
+					isMarketplace: isMarketplaceDomain(domain),
+				}))
 				.sort((a, b) => b.count - a.count);
 
 			const categoryCounts = emptyCategoryCounts();

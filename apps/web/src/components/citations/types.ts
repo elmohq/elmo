@@ -29,7 +29,7 @@ export interface CitationData {
 		exampleTitle?: string;
 		previousCount?: number;
 		changePercent?: number | null;
-		isMarketplace?: boolean;
+		isMarketplace: boolean;
 	}[];
 	specificUrls: {
 		url: string;

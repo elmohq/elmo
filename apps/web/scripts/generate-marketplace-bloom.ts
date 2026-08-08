@@ -31,10 +31,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve, dirname, basename } from "node:path";
-import { createRequire } from "node:module";
-
-const require = createRequire(import.meta.url);
-const { BloomFilter } = require("bloom-filters");
+import { BloomFilter } from "../src/lib/bloom-filters";
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -268,7 +265,6 @@ function main() {
 	// 3. Exclude legitimate editorial domains
 	console.log("Excluding editorial and platform domains...");
 	const editorialDomains = loadEditorialDomains(EDITORIAL_DOMAINS_PATH);
-	const beforeExclusion = allDomains.length;
 	const excluded: string[] = [];
 	const excludedPlatforms: string[] = [];
 	allDomains = allDomains.filter((d) => {
@@ -288,12 +284,12 @@ function main() {
 
 	// 4. Build bloom filter using the library
 	const filter = BloomFilter.from(allDomains, FPR);
-	const json = filter.saveAsJSON();
+	const json = JSON.stringify(filter.saveAsJSON());
 
 	mkdirSync(OUT_DIR, { recursive: true });
-	writeFileSync(BLOOM_OUT, JSON.stringify(json));
+	writeFileSync(BLOOM_OUT, json);
 
-	const kb = (JSON.stringify(json).length / 1024).toFixed(1);
+	const kb = (json.length / 1024).toFixed(1);
 	console.log(`\nBloom filter written to ${basename(BLOOM_OUT)}`);
 	console.log(`  File size: ${kb} KB`);
 	console.log(`  Elements: ${allDomains.length.toLocaleString()}`);
