@@ -11,7 +11,14 @@
 
 import { IconCheck, IconLoader2 } from "@tabler/icons-react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { CLAUDE_ADDON_MONTHLY_USD, PLAN_KEYS, PLANS, type PlanDefinition, type PlanKey } from "@workspace/config/plans";
+import {
+	CLAUDE_ADDON_MONTHLY_USD,
+	MAX_STANDARD_RUNS_PER_DAY,
+	PLAN_KEYS,
+	PLANS,
+	type PlanDefinition,
+	type PlanKey,
+} from "@workspace/config/plans";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
@@ -22,7 +29,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { buildTitle, getAppName } from "@/lib/route-head";
 import { getModelDisplayName } from "@/lib/utils";
-import { getPaywallStateFn, type PaywallState } from "@/server/billing";
+import { getPaywallStateFn, type PaywallRequired, type PaywallState } from "@/server/billing";
 
 const searchSchema = z.object({
 	status: z.enum(["success"]).optional(),
@@ -62,27 +69,26 @@ function planFeatures(plan: PlanDefinition): string[] {
 	if (plan.claudeAddonAvailable) {
 		features.push(`Extra Claude prompts $${CLAUDE_ADDON_MONTHLY_USD}/prompt/mo`);
 	}
-	// The Claude lines already lengthen those cards, so their constant tail
-	// collapses to one line to keep the lists close in height.
-	if (plan.claudeIncluded > 0) {
-		features.push("API access · Unlimited seats");
-	} else {
-		features.push("API access", "Unlimited seats");
-	}
+	features.push("API access", "Unlimited seats");
 	return features;
 }
 
 function ChoosePlanPage() {
 	const paywall = Route.useLoaderData();
 	const { status } = Route.useSearch();
-	const navigate = useNavigate();
-	const [annual, setAnnual] = useState(false);
-	const [subscribing, setSubscribing] = useState<PlanKey | null>(null);
-	const [error, setError] = useState<string | null>(null);
 
-	// Post-checkout: wait for the webhook to record the subscription.
+	if (status === "success") return <ActivatingWorkspace />;
+	// The loader redirects an entitled org away unless it is returning from
+	// checkout, which the branch above already handled.
+	if (!paywall.needsPlan) return null;
+	return <PlanPicker paywall={paywall} />;
+}
+
+/** Post-checkout: wait for the Stripe webhook to record the subscription. */
+function ActivatingWorkspace() {
+	const navigate = useNavigate();
+
 	useEffect(() => {
-		if (status !== "success") return;
 		let cancelled = false;
 		const poll = async () => {
 			for (let i = 0; i < 30 && !cancelled; i++) {
@@ -98,20 +104,24 @@ function ChoosePlanPage() {
 		return () => {
 			cancelled = true;
 		};
-	}, [status, navigate]);
+	}, [navigate]);
 
-	if (status === "success") {
-		return (
-			<div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
-				<IconLoader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-				<h1 className="text-2xl font-bold">Activating your workspace…</h1>
-				<p className="text-muted-foreground">Payment received — finishing setup. This takes a few seconds.</p>
-			</div>
-		);
-	}
+	return (
+		<div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
+			<IconLoader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+			<h1 className="text-2xl font-bold">Activating your workspace…</h1>
+			<p className="text-muted-foreground">Payment received — finishing setup. This takes a few seconds.</p>
+		</div>
+	);
+}
+
+function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
+	const [annual, setAnnual] = useState(false);
+	const [subscribing, setSubscribing] = useState<PlanKey | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const isAdmin = paywall.isOrgAdmin;
 
 	const subscribe = async (plan: PlanKey) => {
-		if (!paywall.needsPlan) return;
 		setSubscribing(plan);
 		setError(null);
 		const origin = window.location.origin;
@@ -129,8 +139,6 @@ function ChoosePlanPage() {
 			setSubscribing(null);
 		}
 	};
-
-	const isAdmin = !paywall.needsPlan || paywall.isOrgAdmin !== false;
 
 	return (
 		<div className="mx-auto max-w-6xl space-y-8 p-8">
@@ -206,7 +214,7 @@ function ChoosePlanPage() {
 			</div>
 
 			<p className="text-center text-sm text-muted-foreground">
-				Need GPT-5 Search, research-grade sampling (7×/day), SSO, or custom limits?{" "}
+				Need GPT-5 Search, research-grade sampling ({MAX_STANDARD_RUNS_PER_DAY}×/day), SSO, or custom limits?{" "}
 				<a className="underline" href="mailto:hello@elmohq.com?subject=Elmo%20Cloud%20custom%20plan">
 					Talk to us about a custom plan
 				</a>

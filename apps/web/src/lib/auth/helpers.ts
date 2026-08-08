@@ -99,9 +99,11 @@ export async function requireBrandOrganization(
  * invited into. `organization.id` breaks ties, which a batch Auth0 sync
  * produces by stamping every membership it creates with the same timestamp.
  */
-export async function listUserOrganizations(userId: string): Promise<{ id: string; name: string }[]> {
+export async function listUserOrganizations(
+	userId: string,
+): Promise<{ id: string; name: string; role: string }[]> {
 	return db
-		.select({ id: organization.id, name: organization.name })
+		.select({ id: organization.id, name: organization.name, role: member.role })
 		.from(member)
 		.innerJoin(organization, eq(member.organizationId, organization.id))
 		.where(eq(member.userId, userId))

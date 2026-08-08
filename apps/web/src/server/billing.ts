@@ -14,6 +14,7 @@ import {
 	countOrgBrands,
 	countOrgEnabledPrompts,
 	getOrgBillingState,
+	getOrgEntitlementsMap,
 } from "@workspace/lib/entitlements";
 import { z } from "zod";
 import { listUserOrganizations, requireAuthSession, requireBrandOrganization } from "@/lib/auth/helpers";
@@ -38,14 +39,14 @@ export type BillingState = {
 	usage: { brands: number; enabledPrompts: number; claudeAssigned: number };
 };
 
-export type PaywallState =
-	| { needsPlan: false }
-	| {
-			needsPlan: true;
-			organizationId: string;
-			organizationName: string;
-			isOrgAdmin: boolean;
-	  };
+export type PaywallRequired = {
+	needsPlan: true;
+	organizationId: string;
+	organizationName: string;
+	isOrgAdmin: boolean;
+};
+
+export type PaywallState = { needsPlan: false } | PaywallRequired;
 
 export const getBillingStateFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
@@ -99,19 +100,18 @@ export const getPaywallStateFn = createServerFn({ method: "GET" })
 		if (orgs.length === 0) return { needsPlan: false };
 
 		// Any entitled org (e.g. a team they joined) keeps the app usable.
-		// resolve sequentially because listUserOrganizations is already scoped;
-		// a bulk entitlements map exists (getOrgEntitlementsMap) if this
-		// becomes a hotspot.
-		for (const org of orgs) {
-			const state = await getOrgBillingState(org.id);
-			if (state.entitlements.standing !== "none") return { needsPlan: false };
+		const entitlementsByOrg = await getOrgEntitlementsMap(orgs.map((org) => org.id));
+		if (orgs.some((org) => entitlementsByOrg.get(org.id)?.standing !== "none")) {
+			return { needsPlan: false };
 		}
+
+		// listUserOrganizations is oldest-first, so this is the user's own workspace.
 		const own = orgs[0];
 		return {
 			needsPlan: true,
 			organizationId: own.id,
 			organizationName: own.name,
-			isOrgAdmin: true,
+			isOrgAdmin: isOrgAdminRole(own.role),
 		};
 	});
 
