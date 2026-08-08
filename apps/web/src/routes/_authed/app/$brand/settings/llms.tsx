@@ -22,7 +22,7 @@ import { iconForModel } from "@/components/filter-bar";
 import { PlatformPicker } from "@/components/platform-picker";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { getModelPickerStateFn, type ModelPickerState, updateEnabledModelsFn } from "@/server/platform-picks";
-import { type ClaudeAssignmentsState, getClaudeAssignmentsFn, setPromptClaudeModeFn } from "@/server/prompts";
+import { type ClaudeAssignmentsState, getClaudeAssignmentsFn, setPromptClaudeModeFn } from "@/server/claude-tracking";
 import type { ClaudeMode } from "@workspace/lib/db/schema";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
