@@ -2,4 +2,4 @@
 "@workspace/web": patch
 ---
 
-Added a "Content Marketplaces" section to the citations page showing the percent of citations originating from pay-to-win link marketplaces, and added dollar-sign ($) icons with tooltips on flagged domains in the Top Cited Domains list.
+Flag citations from pay-to-win link marketplaces on the citations page, with a new Content Marketplaces card and a $ marker on affected domains in Top Cited Domains.

@@ -33,7 +33,7 @@ import {
 } from "@/lib/domain-categories";
 import { classifyUrl } from "@/lib/domain-categories.server";
 import { buildGoogleModule } from "@/lib/google-module";
-import { isMarketplaceDomain } from "@/lib/marketplace-filter";
+import { isMarketplaceDomain } from "@/lib/marketplace-domains";
 // Server Functions
 // ============================================================================
 

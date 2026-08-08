@@ -1,39 +1,33 @@
-import { useMemo } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useMemo } from "react";
 import type { CitationData } from "@/components/citations/types";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
 
 const MARKETPLACE_COLOR = "#dc2626"; // red-600
+const TOP_DOMAINS_SHOWN = 10;
 
-export function ContentMarketplacesCard({
-	domains,
-}: {
-	domains: CitationData["domainDistribution"];
-}) {
-	const stats = useMemo(() => {
-		const marketplaceDomains = domains.filter((d) => d.isMarketplace);
-		const totalCount = marketplaceDomains.reduce((sum, d) => sum + d.count, 0);
-		const totalAcrossAllDomains = domains.reduce((sum, d) => sum + d.count, 0);
-		const pct = totalAcrossAllDomains > 0 ? Math.round((totalCount / totalAcrossAllDomains) * 100) : 0;
-		const uniqueMarketplaceDomains = marketplaceDomains.length;
+function Stat({ label, value }: { label: string; value: string }) {
+	return (
+		<div>
+			<p className="text-xs text-muted-foreground">{label}</p>
+			<p className="text-xl font-bold">{value}</p>
+		</div>
+	);
+}
 
-		const topMarketplace = [...marketplaceDomains]
-			.sort((a, b) => b.count - a.count)
-			.slice(0, 10);
+export function ContentMarketplacesCard({ domains }: { domains: CitationData["domainDistribution"] }) {
+	const marketplaces = useMemo(
+		() => domains.filter((d) => d.isMarketplace).sort((a, b) => b.count - a.count),
+		[domains],
+	);
 
-		return {
-			marketplaceCitationCount: totalCount,
-			pct,
-			uniqueMarketplaceDomains,
-			topMarketplace,
-		};
-	}, [domains]);
+	if (marketplaces.length === 0) return null;
 
-	if (stats.uniqueMarketplaceDomains === 0) {
-		return null;
-	}
+	const citations = marketplaces.reduce((sum, d) => sum + d.count, 0);
+	const allCitations = domains.reduce((sum, d) => sum + d.count, 0);
+	const share = allCitations > 0 ? Math.round((citations / allCitations) * 100) : 0;
 
 	return (
 		<Card>
@@ -56,34 +50,18 @@ export function ContentMarketplacesCard({
 			</CardHeader>
 			<CardContent>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-					<div>
-						<p className="text-xs text-muted-foreground">Marketplace Citations</p>
-						<p className="text-xl font-bold">{stats.marketplaceCitationCount.toLocaleString()}</p>
-					</div>
-					<div>
-						<p className="text-xs text-muted-foreground">% of All Citations</p>
-						<p className="text-xl font-bold">{stats.pct}%</p>
-					</div>
-					<div>
-						<p className="text-xs text-muted-foreground">Unique Marketplace Domains</p>
-						<p className="text-xl font-bold">{stats.uniqueMarketplaceDomains.toLocaleString()}</p>
-					</div>
+					<Stat label="Marketplace Citations" value={citations.toLocaleString()} />
+					<Stat label="% of All Citations" value={`${share}%`} />
+					<Stat label="Unique Marketplace Domains" value={marketplaces.length.toLocaleString()} />
 				</div>
-				{stats.topMarketplace.length > 0 && (
-					<div>
-						<p className="text-xs text-muted-foreground mb-2">Top Marketplace Domains</p>
-						<ProgressBarChart
-							items={stats.topMarketplace.map((d) => ({
-								label: d.domain,
-								count: d.count,
-							}))}
-							defaultColor={MARKETPLACE_COLOR}
-							percentageMode="max"
-							barHeight="h-1.5"
-							spacing="space-y-2"
-						/>
-					</div>
-				)}
+				<p className="text-xs text-muted-foreground mb-2">Top Marketplace Domains</p>
+				<ProgressBarChart
+					items={marketplaces.slice(0, TOP_DOMAINS_SHOWN).map((d) => ({ label: d.domain, count: d.count }))}
+					defaultColor={MARKETPLACE_COLOR}
+					percentageMode="max"
+					barHeight="h-1.5"
+					spacing="space-y-2"
+				/>
 			</CardContent>
 		</Card>
 	);

@@ -3,52 +3,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@work
 import { Input } from "@workspace/ui/components/input";
 import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { UnderlineTabs } from "@/components/citations/shared";
 import { TrackDomainPopover } from "@/components/citations/track-domain-popover";
 import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 import { DOMAIN_CATEGORY_COLORS, ProgressBarChart } from "@/components/progress-bar-chart";
 
-function DomainAction({
-	domain,
-	isMarketplace,
-	category,
-	brandId,
-	brandName,
-	competitors,
-	onCompetitorAdded,
-}: {
-	domain: string;
-	isMarketplace: boolean;
-	category: string;
-	brandId?: string;
-	brandName?: string;
-	competitors?: CitationData["competitors"];
-	onCompetitorAdded?: () => void;
-}): ReactNode {
+function MarketplaceBadge() {
 	return (
-		<>
-			{isMarketplace && (
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<span className="text-amber-500 cursor-help text-sm font-bold">$</span>
-					</TooltipTrigger>
-					<TooltipContent className="text-xs">
-						Pay-to-win link marketplace — this domain sells placements in AI-generated content.
-					</TooltipContent>
-				</Tooltip>
-			)}
-			{category === "other" && brandId && competitors ? (
-				<TrackDomainPopover
-					domain={domain}
-					brandId={brandId}
-					brandName={brandName}
-					competitors={competitors}
-					onAdded={onCompetitorAdded}
-				/>
-			) : undefined}
-		</>
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<span className="text-amber-500 cursor-help text-sm font-bold">$</span>
+			</TooltipTrigger>
+			<TooltipContent className="text-xs">
+				Pay-to-win link marketplace — this domain sells placements in AI-generated content.
+			</TooltipContent>
+		</Tooltip>
 	);
 }
 
@@ -140,28 +111,25 @@ export function TopDomainsCard({
 				{filteredDomains.length > 0 ? (
 					<>
 						<ProgressBarChart
-							items={pageItems.map((domain) => {
-								const isMarketplace = domain.isMarketplace;
-								return {
-									label: domain.domain,
-									count: domain.count,
-									category: domain.category || "other",
-									tooltip: isMarketplace
-										? "Pay-to-win link marketplace — citations may reflect paid placements."
-										: undefined,
-									action: (
-										<DomainAction
-											domain={domain.domain}
-											isMarketplace={isMarketplace}
-											category={domain.category || "other"}
-											brandId={brandId}
-											brandName={brandName}
-											competitors={competitors}
-											onCompetitorAdded={onCompetitorAdded}
-										/>
-									),
-								};
-							})}
+							items={pageItems.map((domain) => ({
+								label: domain.domain,
+								count: domain.count,
+								category: domain.category || "other",
+								action: (
+									<>
+										{domain.isMarketplace && <MarketplaceBadge />}
+										{domain.category === "other" && brandId && competitors && (
+											<TrackDomainPopover
+												domain={domain.domain}
+												brandId={brandId}
+												brandName={brandName}
+												competitors={competitors}
+												onAdded={onCompetitorAdded}
+											/>
+										)}
+									</>
+								),
+							}))}
 							colorMapping={DOMAIN_CATEGORY_COLORS}
 							percentageMode="max"
 						/>

@@ -1,51 +1,34 @@
 #!/usr/bin/env tsx
 /**
- * Generates a bloom filter from pay-to-win link marketplace domain lists.
- *
- * Filters:
- *   - Adsy:      exact Dofollow link type (all traffic levels)
- *   - Collaborator:  all domains (no traffic/DR filter)
- *   - Both:     cross-referenced against apps/web/src/lib/editorial-domains.ts
- *               (legitimate editorial/news publisher domains that may sell
- *                sponsored content but aren't spammy backlink farms) — those
- *                are excluded from the bloom filter.
- *               Also excludes a small set of platform/infrastructure domains
- *               (e.g. LinkedIn, NCBI, Patreon).
- *
- * The spotcheck list uses the traffic > 100k filter to produce a manageable
- * set for manual review — this doesn't affect what goes into the bloom filter.
- *
- * The filtered domain list is saved alongside the bloom filter so you can
- * spotcheck high-traffic Adsy candidates for false positives.
+ * Regenerates `src/lib/marketplace-domains.gen.json` from pay-to-win link
+ * marketplace exports.
  *
  * Usage:
- *   tsx apps/web/scripts/generate-marketplace-bloom.ts
+ *   tsx apps/web/scripts/generate-marketplace-bloom.ts <adsy.csv> <collaborator.csv>
  *
- * Inputs (from ~/code/backlinkeval/):
- *   adsy-sites.csv           — structured marketplace CSV with link_type, ahrefs_organic_traffic
- *   collaborator-sites.csv   — free-text marketplace CSV with ahrefs_dr
+ * Both inputs are CSVs exported from a marketplace's own site list, keyed by a
+ * `domain` column. Adsy also carries a `link_type` column and only its
+ * `Dofollow` listings count — a nofollow placement can't move rankings, so
+ * selling one isn't the signal we're flagging. Collaborator has no equivalent
+ * column, so every listing counts.
  *
- * Outputs (to apps/web/public/data/):
- *   marketplace-bloom.json   — bloom filter JSON (loaded server-side at startup)
+ * Domains in EDITORIAL_DOMAINS are dropped: a real newspaper that also runs a
+ * sponsored-content desk shouldn't be labelled a link farm.
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { homedir } from "node:os";
-import { resolve, dirname, basename } from "node:path";
-import { BloomFilter } from "../src/lib/bloom-filters";
+import { readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { BloomFilter } from "bloom-filters";
+import { EDITORIAL_DOMAINS } from "../src/lib/editorial-domains";
 
-// ---------------------------------------------------------------------------
-// Configuration
-// ---------------------------------------------------------------------------
-const FPR = 1e-5; // 0.001% — tiny; obfuscation matters more than space here
+// 0.001%. Over ~100k domains that's a mislabelled domain about once per
+// thousand full passes of the list, which is worth ~430KB of filter.
+const FALSE_POSITIVE_RATE = 1e-5;
 
-const ADSY_PATH = resolve(homedir(), "code/backlinkeval/adsy-sites.csv");
-const COLLAB_PATH = resolve(homedir(), "code/backlinkeval/collaborator-sites.csv");
+const OUT_PATH = resolve(import.meta.dirname, "..", "src", "lib", "marketplace-domains.gen.json");
 
-// ---------------------------------------------------------------------------
-// Exclusion: domains that are clearly NOT spammy backlink farms.
-// These are legitimate platforms, infrastructure, or tools that appear on
-// marketplaces but aren't pay-to-win content farms.
-// ---------------------------------------------------------------------------
+// Platforms and infrastructure that show up in marketplace inventory because
+// someone is selling profile or user-generated pages hosted on them. The host
+// itself isn't a link farm, and flagging it would tar every citation to it.
 const PLATFORM_EXCLUSIONS = new Set([
 	"linkedin.com",
 	"ncbi.nlm.nih.gov",
@@ -65,267 +48,76 @@ const PLATFORM_EXCLUSIONS = new Set([
 	"sendpulse.com",
 ]);
 
-const OUT_DIR = resolve(
-	dirname(new URL(import.meta.url).pathname),
-	"..",
-	"public",
-	"data",
-);
-const BLOOM_OUT = resolve(OUT_DIR, "marketplace-bloom.json");
-const DOMAINS_OUT = resolve(OUT_DIR, "..", "..", "scripts", "marketplace-domains.txt");
-const SPOTCHECK_OUT = resolve(OUT_DIR, "..", "..", "scripts", "marketplace-spotcheck.txt");
-
-// ---------------------------------------------------------------------------
-// CSV parsing (lenient — handles the collaborator CSV which has variable
-// column counts and embedded commas / newlines within quoted fields).
-// ---------------------------------------------------------------------------
-function parseCsv(text: string): string[][] {
+/**
+ * Reads a CSV into header-keyed rows. Hand-rolled because the marketplace
+ * exports quote fields containing commas and newlines, which `split` can't
+ * survive, and this is the only CSV the repo reads.
+ */
+function readCsv(path: string): Record<string, string>[] {
+	const text = readFileSync(path, "utf-8");
 	const rows: string[][] = [];
 	let row: string[] = [];
 	let field = "";
-	let inQuotes = false;
+	let quoted = false;
+
+	const endField = () => {
+		row.push(field.trim());
+		field = "";
+	};
+	const endRow = () => {
+		endField();
+		rows.push(row);
+		row = [];
+	};
 
 	for (let i = 0; i < text.length; i++) {
-		const ch = text[i];
-		const next = text[i + 1];
-
-		if (inQuotes) {
-			if (ch === '"' && next === '"') {
-				field += '"';
-				i++; // skip escaped quote
-			} else if (ch === '"') {
-				inQuotes = false;
-			} else {
-				field += ch;
-			}
+		const char = text[i];
+		if (quoted) {
+			if (char !== '"') field += char;
+			else if (text[i + 1] === '"') field += text[i++];
+			else quoted = false;
+		} else if (char === '"') {
+			quoted = true;
+		} else if (char === ",") {
+			endField();
+		} else if (char === "\n" || char === "\r") {
+			if (char === "\r" && text[i + 1] === "\n") i++;
+			if (field || row.length > 0) endRow();
 		} else {
-			if (ch === '"') {
-				inQuotes = true;
-			} else if (ch === ",") {
-				row.push(field.trim());
-				field = "";
-			} else if (ch === "\n" || ch === "\r") {
-				if (ch === "\r" && next === "\n") i++; // CRLF
-				if (field || row.length > 0) {
-					row.push(field.trim());
-					rows.push(row);
-				}
-				row = [];
-				field = "";
-			} else {
-				field += ch;
-			}
+			field += char;
 		}
 	}
-	// Catch the last row if no trailing newline
-	if (field || row.length > 0) {
-		row.push(field.trim());
-		rows.push(row);
-	}
+	if (field || row.length > 0) endRow();
 
-	return rows;
+	const headers = rows.shift();
+	if (!headers) return [];
+	return rows.map((cells) => Object.fromEntries(headers.map((header, i) => [header.toLowerCase(), cells[i] ?? ""])));
 }
 
-function findCol(headers: string[], name: string): number {
-	const lc = name.toLowerCase();
-	return headers.findIndex((h) => h.toLowerCase() === lc);
-}
-
-// ---------------------------------------------------------------------------
-// Filter Adsy
-// ---------------------------------------------------------------------------
-function filterAdsy(path: string): { included: Map<string, { traffic: number; dr: number }>; rejected: number } {
-	const text = readFileSync(path, "utf-8");
-	const rows = parseCsv(text);
-	if (rows.length < 2) return { included: new Map(), rejected: 0 };
-
-	const headers = rows[0]!;
-	const domainIdx = findCol(headers, "domain");
-	const linkTypeIdx = findCol(headers, "link_type");
-	const ahrefsTrafficIdx = findCol(headers, "ahrefs_organic_traffic");
-	const drIdx = findCol(headers, "ahrefs_dr");
-
-	if (domainIdx === -1 || linkTypeIdx === -1) {
-		console.error("Adsy CSV missing required columns");
-		return { included: new Map(), rejected: rows.length - 1 };
-	}
-
-	const included = new Map<string, { traffic: number; dr: number }>();
-	let rejected = 0;
-
-	for (let i = 1; i < rows.length; i++) {
-		const row = rows[i]!;
-		const domain = row[domainIdx]?.trim().toLowerCase() ?? "";
-		if (!domain) { rejected++; continue; }
-
-		const linkType = row[linkTypeIdx]?.trim() ?? "";
-
-		if (linkType !== "Dofollow") { rejected++; continue; }
-
-		const traffic = ahrefsTrafficIdx !== -1 ? parseFloat(row[ahrefsTrafficIdx] ?? "0") : 0;
-		const dr = drIdx !== -1 ? parseFloat(row[drIdx] ?? "0") : 0;
-		const existing = included.get(domain);
-		if (!existing || traffic > existing.traffic) {
-			included.set(domain, { traffic, dr });
-		}
-	}
-
-	return { included, rejected };
-}
-
-// ---------------------------------------------------------------------------
-// Filter Collaborator Pro
-// ---------------------------------------------------------------------------
-function filterCollaborator(path: string): { included: Map<string, { traffic: number; dr: number }>; rejected: number } {
-	const text = readFileSync(path, "utf-8");
-	const rows = parseCsv(text);
-	if (rows.length < 2) return { included: new Map(), rejected: 0 };
-
-	const headers = rows[0]!;
-	const domainIdx = findCol(headers, "domain");
-
-	if (domainIdx === -1) {
-		console.error("Collaborator CSV missing 'domain' column");
-		return { included: new Map(), rejected: rows.length - 1 };
-	}
-
-	const included = new Map<string, { traffic: number; dr: number }>();
-	let rejected = 0;
-
-	for (let i = 1; i < rows.length; i++) {
-		const row = rows[i]!;
-		const domain = row[domainIdx]?.trim().toLowerCase() ?? "";
-		if (!domain) { rejected++; continue; }
-		if (!included.has(domain)) {
-			included.set(domain, { traffic: 0, dr: 0 });
-		}
-	}
-
-	return { included, rejected };
-}
-
-// ---------------------------------------------------------------------------
-// Exclusion: editorial domains
-// ---------------------------------------------------------------------------
-const EDITORIAL_DOMAINS_PATH = resolve(
-	dirname(new URL(import.meta.url).pathname),
-	"..",
-	"src",
-	"lib",
-	"editorial-domains.ts",
-);
-
-function loadEditorialDomains(path: string): Set<string> {
-	const text = readFileSync(path, "utf-8");
-	const domains = new Set<string>();
-	const re = /"([a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+)"/gi;
-	let match;
-	while ((match = re.exec(text)) !== null) {
-		domains.add(match[1]!.toLowerCase());
-	}
-	return domains;
-}
-
-// ---------------------------------------------------------------------------
-// Main
-// ---------------------------------------------------------------------------
 function main() {
-	if (!existsSync(ADSY_PATH)) {
-		console.error(`Adsy CSV not found at ${ADSY_PATH}`);
-		process.exit(1);
-	}
-	if (!existsSync(COLLAB_PATH)) {
-		console.error(`Collaborator CSV not found at ${COLLAB_PATH}`);
+	const [adsyPath, collaboratorPath] = process.argv.slice(2);
+	if (!adsyPath || !collaboratorPath) {
+		console.error("usage: generate-marketplace-bloom.ts <adsy.csv> <collaborator.csv>");
 		process.exit(1);
 	}
 
-	// 1. Filter both sources
-	console.log("Filtering Adsy...");
-	const adsy = filterAdsy(ADSY_PATH);
-	console.log(`  Included: ${adsy.included.size.toLocaleString()}, Rejected: ${adsy.rejected.toLocaleString()}`);
+	const listings = [...readCsv(adsyPath).filter((row) => row.link_type === "Dofollow"), ...readCsv(collaboratorPath)];
 
-	console.log("Filtering Collaborator Pro...");
-	const collab = filterCollaborator(COLLAB_PATH);
-	console.log(`  Included: ${collab.included.size.toLocaleString()}, Rejected: ${collab.rejected.toLocaleString()}`);
+	const excluded = new Set([...EDITORIAL_DOMAINS, ...PLATFORM_EXCLUSIONS]);
+	const domains = [...new Set(listings.map((row) => row.domain?.toLowerCase() ?? ""))]
+		.filter((domain) => domain.length > 0 && !excluded.has(domain))
+		.sort();
 
-	// 2. Merge (Adsy takes priority for dupe domains)
-	const merged = new Map<string, { source: string; traffic: number; dr: number }>();
-	for (const [domain, info] of adsy.included) {
-		merged.set(domain, { ...info, source: "adsy" });
-	}
-	for (const [domain, info] of collab.included) {
-		if (!merged.has(domain)) {
-			merged.set(domain, { ...info, source: "collaborator" });
-		}
+	if (domains.length === 0) {
+		console.error("no domains survived filtering — check the inputs have a `domain` column");
+		process.exit(1);
 	}
 
-	let allDomains = Array.from(merged.keys());
-	console.log(`\nMerged unique domains: ${allDomains.length.toLocaleString()}`);
-
-	// 3. Exclude legitimate editorial domains
-	console.log("Excluding editorial and platform domains...");
-	const editorialDomains = loadEditorialDomains(EDITORIAL_DOMAINS_PATH);
-	const excluded: string[] = [];
-	const excludedPlatforms: string[] = [];
-	allDomains = allDomains.filter((d) => {
-		if (editorialDomains.has(d)) {
-			excluded.push(d);
-			return false;
-		}
-		if (PLATFORM_EXCLUSIONS.has(d)) {
-			excludedPlatforms.push(d);
-			return false;
-		}
-		return true;
-	});
-	console.log(`  Removed: ${excluded.length.toLocaleString()} editorial domain(s)`);
-	console.log(`  Removed: ${excludedPlatforms.length.toLocaleString()} platform domain(s)`);
-	console.log(`  After exclusion: ${allDomains.length.toLocaleString()}`);
-
-	// 4. Build bloom filter using the library
-	const filter = BloomFilter.from(allDomains, FPR);
-	const json = JSON.stringify(filter.saveAsJSON());
-
-	mkdirSync(OUT_DIR, { recursive: true });
-	writeFileSync(BLOOM_OUT, json);
-
-	const kb = (json.length / 1024).toFixed(1);
-	console.log(`\nBloom filter written to ${basename(BLOOM_OUT)}`);
-	console.log(`  File size: ${kb} KB`);
-	console.log(`  Elements: ${allDomains.length.toLocaleString()}`);
-	console.log(`  Target FPR: ${FPR * 100}%`);
-
-	// 5. Write domain list for debugging / transparency
-	const domainLines = allDomains.sort();
-	writeFileSync(DOMAINS_OUT, domainLines.join("\n") + "\n");
-	console.log(`\nDomain list written to ${basename(DOMAINS_OUT)}`);
-
-	// 6. Write spotcheck candidates (Adsy Dofollow + traffic > 100k)
-	const SPOTCHECK_TRAFFIC = 100_000;
-	const spotcheckLines: string[] = [];
-	const spotcheckSet = new Set(allDomains);
-	const spotcheckEntries = Array.from(merged.entries())
-		.filter(
-			([domain, info]) =>
-				info.source === "adsy" && info.traffic > SPOTCHECK_TRAFFIC && spotcheckSet.has(domain),
-		)
-		.sort((a, b) => b[1].traffic - a[1].traffic);
-
-	for (const [domain, info] of spotcheckEntries) {
-		spotcheckLines.push(`${domain}\ttraffic=${info.traffic.toLocaleString()}\tdr=${info.dr}`);
-	}
-	writeFileSync(SPOTCHECK_OUT, spotcheckLines.join("\n") + "\n");
-	console.log(
-		`\nSpotcheck list written to ${basename(SPOTCHECK_OUT)} (${spotcheckLines.length.toLocaleString()} sites)`,
-	);
-
-	// 7. Stats per source
-	const adsyFinalCount = Array.from(merged.entries()).filter(([_, info]) => info.source === "adsy").length;
-	const collabFinalCount = Array.from(merged.entries()).filter(([_, info]) => info.source === "collaborator").length;
-	console.log(`\nBreakdown:`);
-	console.log(`  Adsy (Dofollow): ${adsyFinalCount.toLocaleString()}`);
-	console.log(`  Collaborator Pro: ${collabFinalCount.toLocaleString()}`);
-	console.log(`  Total before exclusion: ${(adsyFinalCount + collabFinalCount).toLocaleString()}`);
+	// Tab-indented with a trailing newline so Biome treats the output as already
+	// formatted and `pnpm format` leaves the generated file alone.
+	const bloom = BloomFilter.from(domains, FALSE_POSITIVE_RATE).saveAsJSON();
+	writeFileSync(OUT_PATH, `${JSON.stringify(bloom, null, "\t")}\n`);
+	console.log(`wrote ${domains.length.toLocaleString()} domains to ${OUT_PATH}`);
 }
 
 main();

@@ -29,7 +29,7 @@ import {
 	classifyUrl as classifyUrlShared,
 } from "@/lib/domain-categories.server";
 import { buildGoogleModule, emptyGoogleModule } from "@/lib/google-module";
-import { isMarketplaceDomain } from "@/lib/marketplace-filter";
+import { isMarketplaceDomain } from "@/lib/marketplace-domains";
 
 /**
  * Get citation statistics for a brand
