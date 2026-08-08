@@ -1,4 +1,4 @@
-import { CLAUDE_ADDON_LOOKUP_KEYS, PLANS, PLAN_KEYS, stripePlanLookupKey } from "@workspace/config/plans";
+import { CLAUDE_ADDON_LOOKUP_KEYS, PLAN_KEYS, type PLANS, stripePlanLookupKey } from "@workspace/config/plans";
 import { describe, expect, it } from "vitest";
 import { baseItemInterval, extractClaudeAddonQuantity, isClaudeAddonItem, type SubscriptionItemLike } from "./addon";
 import { buildStripePlans } from "./plugin";
@@ -40,7 +40,10 @@ describe("baseItemInterval", () => {
 	});
 
 	it("ignores the add-on item when finding the base", () => {
-		const items = [item(CLAUDE_ADDON_LOOKUP_KEYS.annual, 4, "year"), item(stripePlanLookupKey("pro", "annual"), 1, "year")];
+		const items = [
+			item(CLAUDE_ADDON_LOOKUP_KEYS.annual, 4, "year"),
+			item(stripePlanLookupKey("pro", "annual"), 1, "year"),
+		];
 		expect(baseItemInterval(items)).toBe("annual");
 		expect(isClaudeAddonItem(items[0])).toBe(true);
 	});

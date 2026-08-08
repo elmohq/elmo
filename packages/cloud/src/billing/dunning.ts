@@ -10,6 +10,8 @@
  * kept.
  */
 
+import { DEFAULT_APP_URL } from "@workspace/config/constants";
+import { getEnv } from "@workspace/config/env";
 import { PAST_DUE_GRACE_DAYS } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import { brands, member, organization, user } from "@workspace/lib/db/schema";
@@ -57,7 +59,9 @@ async function billingRecipients(organizationId: string): Promise<string[]> {
  * page's "Manage billing" button opens a fresh Customer Portal session.
  */
 async function billingSettingsUrl(organizationId: string): Promise<string> {
-	const appUrl = process.env.APP_URL!;
+	// Same total accessor createCloudDeployment uses, so a missing APP_URL
+	// surfaces on the env-validation page instead of emailing "undefined/app/…".
+	const appUrl = getEnv("APP_URL", DEFAULT_APP_URL).replace(/\/+$/, "");
 	const [brand] = await db
 		.select({ id: brands.id })
 		.from(brands)

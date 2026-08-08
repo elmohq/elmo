@@ -26,7 +26,7 @@ import { CLAUDE_ADDON_LOOKUP_KEYS, PLANS, stripePlanLookupKey } from "@workspace
 import { db } from "@workspace/lib/db/db";
 import { organizationSettings } from "@workspace/lib/db/schema";
 import { getOrgBillingState } from "@workspace/lib/entitlements";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import Stripe from "stripe";
 
 const orgId = process.argv[2];
@@ -87,10 +87,7 @@ const customer = await stripe.customers.create({
 	payment_method: "pm_card_visa",
 	invoice_settings: { default_payment_method: "pm_card_visa" },
 });
-await db.execute(
-	`UPDATE organization SET stripe_customer_id = $1 WHERE id = $2`,
-	[customer.id, orgId] as any,
-);
+await db.execute(sql`UPDATE organization SET stripe_customer_id = ${customer.id} WHERE id = ${orgId}`);
 console.log(`✓ test-clock customer ${customer.id} attached to org ${orgId}`);
 
 // --- 2. Subscribe (basic monthly) -------------------------------------------
