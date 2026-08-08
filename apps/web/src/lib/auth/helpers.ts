@@ -52,7 +52,7 @@ export async function requireOrgAccess(userId: string, orgId: string): Promise<v
  * (`brands.organizationId`) — the umbrella-org access rule. A single joined
  * query: brand → its org → a membership row for this user.
  */
-export async function checkBrandAccess(userId: string, brandId: string): Promise<boolean> {
+async function checkBrandAccess(userId: string, brandId: string): Promise<boolean> {
 	const [row] = await db
 		.select({ id: member.id })
 		.from(brands)
