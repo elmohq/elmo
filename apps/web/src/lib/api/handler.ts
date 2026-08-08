@@ -89,11 +89,8 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 			}
 			return Response.json(result, { status: opts.status ?? 200 });
 		} catch (err) {
-			if (err instanceof ApiError) {
+			if (err instanceof ApiError || err instanceof EntitlementError) {
 				return errorResponse(err.status, err.error, err.message);
-			}
-			if (err instanceof EntitlementError) {
-				return errorResponse(err.status, err.status === 402 ? "Payment Required" : "Conflict", err.message);
 			}
 			let mapped: ApiError | undefined;
 			try {

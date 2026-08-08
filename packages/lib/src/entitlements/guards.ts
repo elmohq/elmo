@@ -30,18 +30,22 @@ export type EntitlementDenialCode =
 	| "cadence-faster-than-plan";
 
 /**
- * Thrown by the assert* helpers. `status` is the HTTP status /api/v1 maps it
- * to; server functions surface `message` directly.
+ * Thrown by the assert* helpers. `status`/`error` are the HTTP response /api/v1
+ * renders; server functions surface `message` directly. Having no plan at all
+ * is a payment problem; every other denial is a request that conflicts with
+ * the limits of the plan the org does have.
  */
 export class EntitlementError extends Error {
 	readonly code: EntitlementDenialCode;
 	readonly status: number;
+	readonly error: string;
 
 	constructor(code: EntitlementDenialCode, message: string) {
 		super(message);
 		this.name = "EntitlementError";
 		this.code = code;
 		this.status = code === "no-active-plan" ? 402 : 409;
+		this.error = code === "no-active-plan" ? "Payment Required" : "Conflict";
 	}
 }
 
