@@ -15,6 +15,7 @@ import { ContentGapsCard } from "@/components/citations/content-gaps-card";
 import { TopDomainsCard } from "@/components/citations/top-domains-card";
 import { TopUrlsCard } from "@/components/citations/top-urls-card";
 import { GoogleShoppingCard } from "@/components/citations/google-shopping-card";
+import { ContentMarketplacesCard } from "@/components/citations/content-marketplaces-card";
 import { RedditCard, useSubredditData } from "@/components/citations/reddit-card";
 
 export type {
@@ -147,6 +148,9 @@ export function CitationsDisplay({
 					{hasGaps && <ContentGapsCard prompts={citationData.competitorOnlyPrompts!} brandId={brandId!} />}
 				</div>
 			)}
+
+			{/* Content Marketplaces */}
+			<ContentMarketplacesCard domains={citationData.domainDistribution} />
 
 			{/* Top Cited Domains */}
 			{citationData.domainDistribution.length > 0 && (

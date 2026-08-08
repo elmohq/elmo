@@ -10,6 +10,19 @@ import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 import { DOMAIN_CATEGORY_COLORS, ProgressBarChart } from "@/components/progress-bar-chart";
 
+function MarketplaceBadge() {
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<span className="text-amber-500 cursor-help text-sm font-bold">$</span>
+			</TooltipTrigger>
+			<TooltipContent className="text-xs">
+				Pay-to-win link marketplace — this domain sells placements in AI-generated content.
+			</TooltipContent>
+		</Tooltip>
+	);
+}
+
 export function TopDomainsCard({
 	domains,
 	sourceTabs,
@@ -57,7 +70,8 @@ export function TopDomainsCard({
 								</TooltipTrigger>
 								<TooltipContent className="max-w-xs text-sm font-normal">
 									The most frequently cited domains across all prompt evaluations. Each domain is colored by its
-									category (brand, competitor, etc.).
+									category (brand, competitor, etc.). Domains marked with <strong>$</strong> are pay-to-win link
+									marketplaces.
 								</TooltipContent>
 							</Tooltip>
 						</CardTitle>
@@ -101,16 +115,20 @@ export function TopDomainsCard({
 								label: domain.domain,
 								count: domain.count,
 								category: domain.category || "other",
-								action:
-									domain.category === "other" && brandId && competitors ? (
-										<TrackDomainPopover
-											domain={domain.domain}
-											brandId={brandId}
-											brandName={brandName}
-											competitors={competitors}
-											onAdded={onCompetitorAdded}
-										/>
-									) : undefined,
+								action: (
+									<>
+										{domain.isMarketplace && <MarketplaceBadge />}
+										{domain.category === "other" && brandId && competitors && (
+											<TrackDomainPopover
+												domain={domain.domain}
+												brandId={brandId}
+												brandName={brandName}
+												competitors={competitors}
+												onAdded={onCompetitorAdded}
+											/>
+										)}
+									</>
+								),
 							}))}
 							colorMapping={DOMAIN_CATEGORY_COLORS}
 							percentageMode="max"
