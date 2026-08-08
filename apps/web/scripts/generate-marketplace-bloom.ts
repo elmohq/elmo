@@ -332,4 +332,4 @@ function main() {
 	console.log(`  Total before exclusion: ${(adsyFinalCount + collabFinalCount).toLocaleString()}`);
 }
 
-main().catch(console.error);
+main();
