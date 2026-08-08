@@ -62,8 +62,8 @@ export function AppSidebar({
 
 	const groups: NavGroup[] = [];
 
-	// Dashboard section - only show if we have a brand context and not admin-only
-	if (!adminOnly) {
+	// Brand routes provide a brand; global settings and admin-only surfaces do not.
+	if (!adminOnly && brand) {
 		const dashboardItems = [
 			{
 				title: m.nav_overview(),
