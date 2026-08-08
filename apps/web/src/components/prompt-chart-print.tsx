@@ -14,6 +14,8 @@ import {
 	type ChartDataPoint,
 } from "@/lib/chart-utils";
 import { getSoVBadgeClasses, type PromptCategory } from "@workspace/lib/report-metrics";
+import { formatPercent } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 interface PromptRunData {
 	id: string;
@@ -136,10 +138,10 @@ export function PromptChartPrint({
 				return lastDataPoint && brand ? (lastDataPoint[brand.id] as number) : null;
 			})();
 
-	const badgeLabel = isReportContext ? "SoV" : "Visibility";
+	const badgeLabel = isReportContext ? m.chart_sov() : m.visibility_label();
 
 	if (hasNoRuns) {
-		const message = hasEverBeenEvaluated ? "No data in selected time range" : "Evaluating for the first time...";
+		const message = hasEverBeenEvaluated ? m.chart_no_data_range() : m.chart_first_evaluation();
 
 		return (
 			<Card ref={chartRef} className="py-3 gap-3 print:shadow-none print:border">
@@ -170,9 +172,9 @@ export function PromptChartPrint({
 				<CardContent className="px-3">
 					<div className="h-[250px] flex items-center justify-center">
 						<div className="flex flex-col items-center text-center max-w-xs">
-							<p className="text-sm font-medium text-muted-foreground print:text-xs">No brands found in responses</p>
+							<p className="text-sm font-medium text-muted-foreground print:text-xs">{m.chart_no_brands()}</p>
 							<p className="text-xs text-muted-foreground/70 mt-1 print:text-[10px]">
-								Your brand and competitors weren't mentioned in the evaluated responses for this prompt.
+								{m.chart_no_brand_mentions()}
 							</p>
 						</div>
 					</div>
@@ -199,7 +201,7 @@ export function PromptChartPrint({
 				<div className="flex items-center gap-2">
 					{badgeClasses && badgeValue !== null && (
 						<Badge variant={badgeClasses.variant} className={`${badgeClasses.className} print:text-xs`}>
-							{badgeValue}% {badgeLabel}
+							{formatPercent(badgeValue / 100)} {badgeLabel}
 						</Badge>
 					)}
 				</div>

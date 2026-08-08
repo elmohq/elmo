@@ -14,6 +14,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import FullPageCard from "@/components/full-page-card";
 import { getSession } from "@/lib/auth/session";
+import * as m from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/")({
 	validateSearch: (search: Record<string, unknown>) => ({
@@ -54,7 +55,7 @@ function HomePage() {
 	return (
 		<FullPageCard className="">
 			<Button asChild>
-				<a href={signInUrl}>Sign In</a>
+				<a href={signInUrl}>{m.auth_sign_in()}</a>
 			</Button>
 		</FullPageCard>
 	);

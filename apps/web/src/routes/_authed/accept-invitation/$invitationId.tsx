@@ -12,6 +12,7 @@ import { Button } from "@workspace/ui/components/button";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { acceptInvitationFn, getInvitationFn } from "@/server/team";
+import * as m from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/_authed/accept-invitation/$invitationId")({
 	loader: async ({ params }) => {
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/_authed/accept-invitation/$invitationId")
 		} catch (err) {
 			return {
 				invitation: null,
-				error: err instanceof Error ? err.message : "This invitation could not be loaded",
+				error: err instanceof Error ? err.message : m.invitation_load_failed(),
 			};
 		}
 	},
@@ -37,16 +38,16 @@ function AcceptInvitationPage() {
 
 	if (loadError || !invitation) {
 		return (
-			<FullPageCard title="Invitation unavailable">
+			<FullPageCard title={m.invitation_unavailable()}>
 				<div className="space-y-4 w-full">
 					<Alert variant="destructive">
-						<AlertDescription>{loadError ?? "This invitation could not be loaded"}</AlertDescription>
+						<AlertDescription>{loadError ?? m.invitation_load_failed()}</AlertDescription>
 					</Alert>
 					<p className="text-sm text-muted-foreground text-center">
-						Make sure you're signed in with the email address that received this invitation.
+						{m.invitation_email_hint()}
 					</p>
 					<Button variant="outline" className="w-full" asChild>
-						<Link to="/auth/logout">Switch account</Link>
+						<Link to="/auth/logout">{m.invitation_switch_account()}</Link>
 					</Button>
 				</div>
 			</FullPageCard>
@@ -60,15 +61,15 @@ function AcceptInvitationPage() {
 			const { orgId } = await acceptInvitationFn({ data: { invitationId } });
 			navigate({ to: "/app/$brand", params: { brand: orgId } });
 		} catch (err) {
-			setAcceptError(err instanceof Error ? err.message : "Failed to accept the invitation");
+			setAcceptError(err instanceof Error ? err.message : m.invitation_accept_failed());
 			setAccepting(false);
 		}
 	}
 
 	return (
 		<FullPageCard
-			title={`You've been invited to join ${invitation.organizationName}`}
-			subtitle={`Invited by ${invitation.inviterEmail}`}
+			title={m.invitation_title({ organization: invitation.organizationName })}
+			subtitle={m.invitation_by({ email: invitation.inviterEmail })}
 		>
 			<div className="space-y-4 w-full">
 				{acceptError && (
@@ -77,7 +78,7 @@ function AcceptInvitationPage() {
 					</Alert>
 				)}
 				<Button className="w-full" onClick={handleAccept} disabled={accepting}>
-					{accepting ? "Accepting..." : "Accept invitation"}
+					{accepting ? m.invitation_accepting() : m.invitation_accept()}
 				</Button>
 			</div>
 		</FullPageCard>

@@ -16,6 +16,8 @@ import { OpportunitiesReport } from "@/components/opportunities-report";
 import { PageHeader } from "@/components/page-header";
 import { useOpportunities } from "@/hooks/use-opportunities";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { formatDate } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/_authed/app/$brand/opportunities")({
 	head: ({ matches, match }) => {
@@ -23,8 +25,8 @@ export const Route = createFileRoute("/_authed/app/$brand/opportunities")({
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Opportunities", { appName, brandName }) },
-				{ name: "description", content: "AI-generated opportunities to earn more AI citations." },
+				{ title: buildTitle(m.page_opportunities_title(), { appName, brandName }) },
+				{ name: "description", content: m.page_opportunities_meta_description() },
 			],
 		};
 	},
@@ -35,19 +37,16 @@ function OpportunitiesPage() {
 	const { brand: brandId } = Route.useParams();
 	const { data, isLoading, isError } = useOpportunities(brandId);
 
-	const infoContent = "Recommendations based on your visibility and citation metrics. Refreshed weekly.";
+	const infoContent = m.page_opportunities_info();
 
 	let content: React.ReactNode;
 	if (isLoading) {
 		content = <LoadingState />;
 	} else if (isError) {
-		content = <EmptyCard>Couldn't generate recommendations right now. Reload the page to try again.</EmptyCard>;
+		content = <EmptyCard>{m.opportunities_error()}</EmptyCard>;
 	} else if (!data || data.reason === "insufficient-data" || !data.report) {
 		content = (
-			<EmptyCard>
-				We need a bit more tracking data before we can recommend opportunities — check back once your prompts have run
-				for a few days.
-			</EmptyCard>
+			<EmptyCard>{m.opportunities_insufficient()}</EmptyCard>
 		);
 	} else {
 		content = <OpportunitiesReport report={data.report} brandId={brandId} />;
@@ -55,8 +54,8 @@ function OpportunitiesPage() {
 
 	return (
 		<PageHeader
-			title="Opportunities"
-			subtitle="What to create, pitch, and seed to earn more AI citations — generated from your tracked answer data."
+			title={m.page_opportunities_title()}
+			subtitle={m.page_opportunities_description()}
 			infoContent={infoContent}
 		>
 			<div className="space-y-6">
@@ -71,9 +70,10 @@ function LastEvaluatedAt({ date }: { date: string }) {
 	return (
 		<p className="flex items-center gap-1.5 text-sm text-muted-foreground">
 			<IconClock className="size-4" aria-hidden />
-			Last evaluated{" "}
 			<time dateTime={date}>
-				{new Date(date).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}
+				{m.opportunities_last_evaluated({
+					date: formatDate(date, { month: "long", day: "numeric", year: "numeric" }),
+				})}
 			</time>
 		</p>
 	);
@@ -92,7 +92,7 @@ function LoadingState() {
 		<div className="space-y-6">
 			<div className="flex items-center gap-2 text-sm text-muted-foreground">
 				<IconLoader2 className="size-4 animate-spin" />
-				Analyzing your citation landscape and drafting your opportunities…
+				{m.opportunities_analyzing()}
 			</div>
 			<div className="space-y-2">
 				<Skeleton className="h-6 w-2/3" />

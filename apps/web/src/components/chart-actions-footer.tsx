@@ -7,6 +7,7 @@ import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { getOptimizeButtonForMode } from "@workspace/deployment/client";
 import { getPromptWebQueryFn } from "@/server/prompts";
+import * as m from "@/paraglide/messages.js";
 
 type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
@@ -77,10 +78,10 @@ export function ChartActionsFooter({
 							size="sm"
 							variant="secondary"
 							className="text-xs cursor-pointer h-6 flex items-center px-2"
-							title="Download chart as PNG"
+							title={m.chart_download_png()}
 						>
 							<Download className="size-3 mr-0.5" />
-							<span className="text-xs font-normal">{isDownloading ? "Exporting..." : "Export (PNG)"}</span>
+							<span className="text-xs font-normal">{isDownloading ? m.chart_exporting() : m.chart_export_png()}</span>
 						</Button>
 					)}
 				</div>

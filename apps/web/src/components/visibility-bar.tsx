@@ -2,6 +2,8 @@ import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { formatNumber, formatPercent } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 interface VisibilityTimeSeriesPoint {
 	date: string;
@@ -83,7 +85,7 @@ export function VisibilityBar({
 			{/* Left side: visibility + chart + info */}
 			<div className="flex items-center gap-2 min-w-0 shrink-0">
 				<span className={`text-base sm:text-lg font-semibold whitespace-nowrap ${colors.text}`}>
-					{currentVisibility}% <span className="font-normal">Visibility</span>
+					{formatPercent(currentVisibility / 100)} <span className="font-normal">{m.visibility_label()}</span>
 				</span>
 
 				{showChart && (
@@ -112,9 +114,7 @@ export function VisibilityBar({
 						<IconInfoCircle className={`h-3.5 w-3.5 shrink-0 ${colors.muted} cursor-help`} />
 					</TooltipTrigger>
 					<TooltipContent side="bottom" className="max-w-xs text-sm">
-						AI visibility for the {totalPrompts.toLocaleString()} prompt{totalPrompts !== 1 ? "s" : ""} shown below,
-						calculated as the percentage of AI responses that mention your brand over the time period for the selected
-						filters.
+						{m.visibility_explanation({ prompts: formatNumber(totalPrompts) })}
 					</TooltipContent>
 				</Tooltip>
 			</div>
@@ -122,13 +122,13 @@ export function VisibilityBar({
 			{/* Right side: stats */}
 			<div className={`flex items-center gap-x-3 text-xs sm:text-sm ${colors.muted}`}>
 				<span>
-					<span className="font-medium">{totalPrompts.toLocaleString()}</span> prompts
+					<span className="font-medium">{formatNumber(totalPrompts)}</span> {m.visibility_prompts()}
 				</span>
 				<span>
-					<span className="font-medium">{totalRuns.toLocaleString()}</span> runs
+					<span className="font-medium">{formatNumber(totalRuns)}</span> {m.visibility_runs()}
 				</span>
 				<span>
-					<span className="font-medium">{totalCitations.toLocaleString()}</span> citations
+					<span className="font-medium">{formatNumber(totalCitations)}</span> {m.visibility_citations()}
 				</span>
 			</div>
 		</div>
@@ -154,7 +154,7 @@ export function VisibilityBarSkeleton() {
 export function VisibilityBarEmpty() {
 	return (
 		<div className="flex items-center min-h-10 px-3 py-2 rounded-lg border border-border/60 bg-muted/20">
-			<span className="text-sm text-muted-foreground">No visibility data for the selected time range and filters.</span>
+			<span className="text-sm text-muted-foreground">{m.visibility_no_data()}</span>
 		</div>
 	);
 }

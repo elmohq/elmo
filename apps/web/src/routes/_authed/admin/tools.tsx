@@ -21,6 +21,8 @@ import {
 import { Sparkles, Loader2, Copy, Check } from "lucide-react";
 import { adminAnalyzeBrandFn } from "@/server/admin";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
+import { formatNumber } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 function AnalyzeBrandDialog() {
 	const [open, setOpen] = useState(false);
@@ -33,7 +35,7 @@ function AnalyzeBrandDialog() {
 
 	const handleAnalyze = async () => {
 		if (!website.trim()) {
-			setError("Please enter a website URL");
+			setError(m.admin_website_required());
 			return;
 		}
 		setError(null);
@@ -48,7 +50,7 @@ function AnalyzeBrandDialog() {
 			});
 			setResult(data);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "An error occurred");
+			setError(err instanceof Error ? err.message : m.common_error());
 		} finally {
 			setIsLoading(false);
 		}
@@ -81,19 +83,19 @@ function AnalyzeBrandDialog() {
 			<DialogTrigger asChild>
 				<Button variant="outline" className="cursor-pointer w-full">
 					<Sparkles className="h-4 w-4 mr-2" />
-					Analyze brand
+					{m.admin_analyze_brand()}
 				</Button>
 			</DialogTrigger>
-			<DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+			<DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto" closeLabel={m.common_close()}>
 				<DialogHeader>
-					<DialogTitle>Analyze brand</DialogTitle>
-					<DialogDescription>Run the onboarding analysis for any website.</DialogDescription>
+					<DialogTitle>{m.admin_analyze_brand()}</DialogTitle>
+					<DialogDescription>{m.admin_analyze_description()}</DialogDescription>
 				</DialogHeader>
 
 				<div className="space-y-4 py-4">
 					<div className="grid grid-cols-2 gap-4">
 						<div className="space-y-2">
-							<Label htmlFor="analyze-website">Website URL</Label>
+							<Label htmlFor="analyze-website">{m.wizard_website_url()}</Label>
 							<Input
 								id="analyze-website"
 								placeholder="https://example.com"
@@ -103,10 +105,10 @@ function AnalyzeBrandDialog() {
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="analyze-brand">Brand name (optional)</Label>
+							<Label htmlFor="analyze-brand">{m.admin_brand_optional()}</Label>
 							<Input
 								id="analyze-brand"
-								placeholder="Auto-detected from URL"
+								placeholder={m.admin_brand_auto_detected()}
 								value={brandName}
 								onChange={(e) => setBrandName(e.target.value)}
 								disabled={isLoading}
@@ -118,10 +120,10 @@ function AnalyzeBrandDialog() {
 						{isLoading ? (
 							<>
 								<Loader2 className="h-4 w-4 mr-2 animate-spin" />
-								Analyzing… (this may take a minute)
+								{m.admin_analyzing()}
 							</>
 						) : (
-							"Analyze"
+							m.admin_analyze()
 						)}
 					</Button>
 
@@ -135,33 +137,33 @@ function AnalyzeBrandDialog() {
 									<Button variant="ghost" size="sm" onClick={handleCopyPrompts} className="cursor-pointer">
 										{copied ? (
 											<>
-												<Check className="h-4 w-4 mr-1" /> Copied
+										<Check className="h-4 w-4 mr-1" /> {m.admin_copied()}
 											</>
 										) : (
 											<>
-												<Copy className="h-4 w-4 mr-1" /> Copy prompts
+										<Copy className="h-4 w-4 mr-1" /> {m.admin_copy_prompts()}
 											</>
 										)}
 									</Button>
 									<Button variant="ghost" size="sm" onClick={handleCopy} className="cursor-pointer">
-										<Copy className="h-4 w-4 mr-1" /> Copy JSON
+									<Copy className="h-4 w-4 mr-1" /> {m.admin_copy_json()}
 									</Button>
 								</div>
 							</div>
 
 							<div className="grid grid-cols-2 gap-4 text-sm">
-								<Stat label="Competitors" value={result.competitors.length} />
-								<Stat label="Prompts" value={result.suggestedPrompts.length} />
+								<Stat label={m.settings_competitors_title()} value={result.competitors.length} />
+								<Stat label={m.wizard_prompts_title()} value={result.suggestedPrompts.length} />
 							</div>
 
 							{result.additionalDomains.length > 0 && (
-								<TagSection title="Additional domains" items={result.additionalDomains} />
+								<TagSection title={m.settings_additional_domains()} items={result.additionalDomains} />
 							)}
-							{result.aliases.length > 0 && <TagSection title="Aliases" items={result.aliases} />}
+							{result.aliases.length > 0 && <TagSection title={m.competitor_aliases()} items={result.aliases} />}
 
 							{result.competitors.length > 0 && (
 								<div className="space-y-2">
-									<Label className="text-muted-foreground">Competitors</Label>
+									<Label className="text-muted-foreground">{m.settings_competitors_title()}</Label>
 									<div className="space-y-1 text-sm">
 										{result.competitors.map((c) => (
 											<div key={c.name} className="flex items-center gap-2">
@@ -175,7 +177,7 @@ function AnalyzeBrandDialog() {
 
 							{result.suggestedPrompts.length > 0 && (
 								<div className="space-y-2">
-									<Label className="text-muted-foreground">Prompts</Label>
+									<Label className="text-muted-foreground">{m.wizard_prompts_title()}</Label>
 									<div className="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1 text-sm">
 										{result.suggestedPrompts.map((p, i) => (
 											<div key={p.prompt} className="flex items-start gap-2 py-1 border-b last:border-0">
@@ -205,7 +207,7 @@ function Stat({ label, value }: { label: string; value: number }) {
 	return (
 		<div>
 			<Label className="text-muted-foreground">{label}</Label>
-			<p className="font-medium">{value.toLocaleString()}</p>
+			<p className="font-medium">{formatNumber(value)}</p>
 		</div>
 	);
 }
@@ -229,7 +231,7 @@ export const Route = createFileRoute("/_authed/admin/tools")({
 	head: ({ match }) => {
 		const appName = getAppName(match);
 		return {
-			meta: [{ title: `Tools · ${appName}` }, { name: "description", content: "Brand onboarding analysis." }],
+			meta: [{ title: `${m.admin_tools_title()} · ${appName}` }, { name: "description", content: m.admin_tools_meta_description() }],
 		};
 	},
 	component: ToolsPage,
@@ -239,10 +241,9 @@ function ToolsPage() {
 	return (
 		<div className="space-y-8">
 			<div className="space-y-2">
-				<h1 className="text-3xl font-bold tracking-tight">Tools</h1>
+				<h1 className="text-3xl font-bold tracking-tight">{m.admin_tools_title()}</h1>
 				<p className="text-muted-foreground">
-					Run the onboarding analysis for any brand without creating it. Same pipeline as the wizard and
-					<code className="mx-1 rounded bg-muted px-1">POST /api/v1/tools/analyze</code>.
+					{m.admin_tools_description()}
 				</p>
 			</div>
 
@@ -251,11 +252,10 @@ function ToolsPage() {
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
 							<Sparkles className="h-5 w-5" />
-							Brand analysis
+							{m.admin_brand_analysis()}
 						</CardTitle>
 						<CardDescription>
-							Analyze a website to discover its competitors, additional brand domains, aliases, and suggested AI
-							tracking prompts. Works with any configured LLM provider.
+							{m.admin_brand_analysis_description()}
 						</CardDescription>
 					</CardHeader>
 					<CardContent>

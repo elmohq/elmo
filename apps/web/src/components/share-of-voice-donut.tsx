@@ -6,6 +6,7 @@ import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import { ChartContainer } from "@workspace/ui/components/chart";
 import type { ShareOfVoiceEntry } from "@/server/analysis";
 import { BRAND_COLOR, COMPETITOR_PALETTE as PALETTE, OTHERS_COLOR } from "@/lib/share-of-voice-palette";
+import { formatPercent } from "@/i18n/formatting";
 
 interface Slice {
 	name: string;
@@ -57,7 +58,7 @@ export function ShareOfVoiceDonut({ entries, topN = 6 }: { entries: ShareOfVoice
 						const s = payload[0].payload as Slice;
 						return (
 							<div className="rounded-md border bg-background px-2 py-1 text-xs shadow-md">
-								{s.name}: {Math.round((s.value / total) * 100)}%
+								{s.name}: {formatPercent(s.value / total, { maximumFractionDigits: 0 })}
 							</div>
 						);
 					}}

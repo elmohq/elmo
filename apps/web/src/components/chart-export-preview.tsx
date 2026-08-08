@@ -4,6 +4,8 @@ import { DEFAULT_APP_ICON, DEFAULT_APP_NAME } from "@workspace/config/constants"
 import type { Brand, Competitor } from "@workspace/lib/db/schema";
 import type { ChartDataPoint, LookbackPeriod } from "@/lib/chart-utils";
 import { getBadgeVariant, getBadgeClassName } from "@/lib/chart-utils";
+import { formatPercent } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 export interface ChartExportBranding {
 	name?: string;
@@ -66,7 +68,9 @@ export function ChartExportPreview({
 						className={`${getBadgeClassName(visibility)} shrink-0`}
 						style={{ fontSize: 16, padding: "4px 14px" }}
 					>
-						{visibility}% Visibility
+						{m.chart_export_visibility({
+							value: formatPercent(visibility / 100, { maximumFractionDigits: 1 }),
+						})}
 					</Badge>
 				)}
 			</div>
@@ -96,7 +100,7 @@ export function ChartExportPreview({
 					{isWhitelabel && hasCustomIcon && (
 						<img
 							src={branding.icon}
-							alt={`${name} logo`}
+							alt={m.common_logo_alt({ name })}
 							style={{ width: 28, height: 28 }}
 							className="object-contain"
 							crossOrigin="anonymous"

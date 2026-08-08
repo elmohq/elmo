@@ -14,6 +14,7 @@ import { IconCircleCheck, IconCircleX, IconInfoCircle } from "@tabler/icons-reac
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { useBrand } from "@/hooks/use-brands";
 import { iconForModel } from "@/components/filter-bar";
+import * as m from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
 	head: ({ matches, match }) => {
@@ -21,8 +22,8 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("LLMs", { appName, brandName }) },
-				{ name: "description", content: "View tracked AI models and configuration." },
+				{ title: buildTitle(m.settings_llms_title(), { appName, brandName }) },
+				{ name: "description", content: m.settings_llms_meta_description() },
 			],
 		};
 	},
@@ -36,10 +37,9 @@ function LlmsSettingsPage() {
 	return (
 		<div className="space-y-6 max-w-6xl">
 			<div>
-				<h1 className="text-3xl font-bold">LLMs</h1>
+				<h1 className="text-3xl font-bold">{m.settings_llms_title()}</h1>
 				<p className="text-muted-foreground">
-					Your prompts are evaluated against these AI models to track how your brand appears across different types of
-					AI search.
+					{m.settings_llms_description()}
 				</p>
 			</div>
 
@@ -61,8 +61,7 @@ function LlmsSettingsPage() {
 			) : configs.length === 0 ? (
 				<Card>
 					<CardContent className="pt-6 text-sm text-muted-foreground">
-						No models are configured for this brand. Set <code className="font-mono text-xs">SCRAPE_TARGETS</code> at
-						the deployment level, or adjust this brand&apos;s <code className="font-mono text-xs">enabledModels</code>.
+						{m.settings_llms_none()}
 					</CardContent>
 				</Card>
 			) : (
@@ -72,25 +71,25 @@ function LlmsSettingsPage() {
 							<CardHeader className="py-2 border-b">{iconForModel(config.model, "h-6 w-6")}</CardHeader>
 							<CardContent className="pt-2">
 								<div className="divide-y text-sm">
-									<ConfigRow label="Model" tooltip="Which AI model this card covers.">
+					<ConfigRow label={m.settings_llms_model()} tooltip={m.settings_llms_model_tip()}>
 										<span className="font-mono text-xs text-foreground">{config.model}</span>
 									</ConfigRow>
 									<ConfigRow
-										label="Provider"
-										tooltip="How this deployment reaches the model — direct API, a scraping proxy, etc."
+										label={m.settings_llms_provider()}
+										tooltip={m.settings_llms_provider_tip()}
 									>
 										<span className="font-mono text-xs text-foreground">{config.provider}</span>
 									</ConfigRow>
-									<ConfigRow label="Version" tooltip="Exact upstream model version requested from the provider.">
+									<ConfigRow label={m.settings_llms_version()} tooltip={m.settings_llms_version_tip()}>
 										<span className="font-mono text-xs text-foreground">{config.version ?? "—"}</span>
 									</ConfigRow>
-									<ConfigRow label="Web search" tooltip="Is web search used to answer prompts?">
+									<ConfigRow label={m.settings_llms_web_search()} tooltip={m.settings_llms_web_search_tip()}>
 										{config.webSearch ? (
 											<IconCircleCheck className="h-4 w-4 text-emerald-600" />
 										) : (
 											<IconCircleX className="h-4 w-4 text-muted-foreground" />
 										)}
-										<span className="sr-only">{config.webSearch ? "Enabled" : "Disabled"}</span>
+										<span className="sr-only">{config.webSearch ? m.common_enabled() : m.common_disabled()}</span>
 									</ConfigRow>
 								</div>
 							</CardContent>

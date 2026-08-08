@@ -4,6 +4,7 @@ import { Button } from "@workspace/ui/components/button";
 import { FilterBar } from "@/components/filter-bar";
 import { FilterSection } from "@/components/page-header";
 import type { ListFilterState } from "@/hooks/use-list-filters";
+import * as m from "@/paraglide/messages.js";
 
 interface FilteredListShellProps {
 	/** The page's `useListFilters()` result. */
@@ -78,10 +79,10 @@ export function FilteredListShell({
 			<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
 				<div className="text-center py-8 text-muted-foreground">
 					<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
-					<p className="mb-2">{noMatchesTitle ?? "No results match your filters."}</p>
-					<p className="text-sm mb-4">{noMatchesDescription ?? "Try adjusting your search or filters."}</p>
+					<p className="mb-2">{noMatchesTitle ?? m.filter_no_matches()}</p>
+					<p className="text-sm mb-4">{noMatchesDescription ?? m.filter_adjust()}</p>
 					<Button variant="outline" size="sm" onClick={filters.clearFilters} className="cursor-pointer">
-						Clear filters
+						{m.filter_clear_filters()}
 					</Button>
 				</div>
 			</div>

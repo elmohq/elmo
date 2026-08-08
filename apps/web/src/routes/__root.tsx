@@ -16,6 +16,9 @@ import appCss from "../styles.css?url";
 // Preloaded so the wordmark font downloads in parallel with the CSS rather than
 // after it. Must resolve to the same emitted asset as the @font-face src.
 import titanOneFont from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
+import "@/i18n/client";
+import { getLocale, getTextDirection } from "@/paraglide/runtime.js";
+import * as m from "@/paraglide/messages.js";
 
 interface RouterContext {
 	queryClient: QueryClient;
@@ -26,6 +29,14 @@ interface RouterContext {
 		isValid: boolean;
 	};
 }
+
+const openGraphLocales = {
+	en: "en_US",
+	es: "es_ES",
+	ja: "ja_JP",
+	"zh-CN": "zh_CN",
+	"zh-TW": "zh_TW",
+} as const;
 
 // Client-side cache for config data — avoids HTTP round-trips on every SPA navigation.
 // Server-side (SSR) always fetches fresh (cachedRootData is reset per request).
@@ -66,8 +77,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 		const themeColor = hasCustomIcon ? "#000000" : ELMO_THEME_COLOR;
 		const appUrl = branding?.url ? branding.url.replace(/\/$/, "") : undefined;
 
-		const title = `${appName} - AI Search Optimization`;
-		const description = "Track and optimize your brand's visibility across AI models.";
+		const title = m.meta_app_title({ appName });
+		const description = m.meta_app_description();
+		const locale = getLocale();
 		// Don't pass `title` to /api/og — the renderer already shows the brand
 		// (Elmo logo or whitelabel icon + name), so a "Brand - AI Search Optimization"
 		// title would render redundantly. Pages that override og:image can supply
@@ -92,7 +104,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 				{ name: "theme-color", content: themeColor },
 				{ name: "apple-mobile-web-app-title", content: appName },
 				{ property: "og:site_name", content: appName },
-				{ property: "og:locale", content: "en_US" },
+				{ property: "og:locale", content: openGraphLocales[locale] },
 				{ property: "og:title", content: title },
 				{ property: "og:description", content: description },
 				{ property: "og:image", content: ogImage },
@@ -150,6 +162,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 function RootComponent() {
 	const { envValidation, clientConfig } = Route.useRouteContext();
 	const clarityProjectId = clientConfig?.analytics?.clarityProjectId;
+	const locale = getLocale();
+	const direction = getTextDirection(locale);
 
 	useEffect(() => {
 		const key = clientConfig?.analytics?.posthogKey;
@@ -160,7 +174,7 @@ function RootComponent() {
 
 	if (!envValidation.isValid) {
 		return (
-			<html lang="en">
+			<html lang={locale} dir={direction}>
 				<head>
 					<HeadContent />
 				</head>
@@ -173,7 +187,7 @@ function RootComponent() {
 	}
 
 	return (
-		<html lang="en">
+		<html lang={locale} dir={direction}>
 			<head>
 				{clarityProjectId && <ScriptOnce>{clarityQueueScript}</ScriptOnce>}
 				<HeadContent />

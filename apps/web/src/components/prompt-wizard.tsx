@@ -26,6 +26,9 @@ import {
 import { trackEvent } from "@/lib/posthog";
 import { CompetitorsEditor, newCompetitorEntry, type CompetitorEntry } from "@/components/competitors-editor";
 import { PromptsListEditor, newPromptEntry, type EditablePrompt } from "@/components/prompts-list-editor";
+import { formatNumber } from "@/i18n/formatting";
+import { getTagsInputLabels } from "@/i18n/ui-labels";
+import * as m from "@/paraglide/messages.js";
 
 interface PromptWizardProps {
 	onComplete: () => void;
@@ -50,7 +53,7 @@ const EditableTagsInput = memo(
 	({
 		items,
 		onValueChange,
-		placeholder = "Add item...",
+		placeholder = m.wizard_add_item(),
 		maxItems = 10,
 	}: {
 		items: string[];
@@ -64,13 +67,14 @@ const EditableTagsInput = memo(
 				onValueChange={onValueChange}
 				placeholder={placeholder}
 				searchPlaceholder={placeholder}
+				emptyText={m.tags_no_results()}
+				labels={getTagsInputLabels()}
 				maxItems={maxItems}
 			/>
 			<p className="text-xs text-muted-foreground">
-				<strong>
-					{items.length}/{maxItems}
-				</strong>{" "}
-				{items.length >= maxItems ? "items added. Remove an item to add a new one." : "items entered."}
+				{items.length >= maxItems
+					? m.wizard_items_at_limit({ current: items.length, max: maxItems })
+					: m.wizard_items_entered({ current: items.length, max: maxItems })}
 			</p>
 		</div>
 	),
@@ -114,7 +118,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const { mutate: enqueueAnalysis, isSuccess: analysisEnqueued } = useMutation({
 		mutationFn: (vars: { brandId: string; website: string; brandName?: string }) => startAnalyzeBrandFn({ data: vars }),
 		onError: (err) => {
-			setError(err instanceof Error ? err.message : "Analysis failed");
+			setError(err instanceof Error ? err.message : m.wizard_analysis_failed());
 			setPhase("idle");
 		},
 	});
@@ -184,7 +188,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	useEffect(() => {
 		if (phase !== "analyzing") return;
 		const timer = window.setTimeout(
-			() => stopAnalyzing("Brand analysis timed out. Please try again."),
+			() => stopAnalyzing(m.wizard_analysis_timeout()),
 			ANALYZE_TIMEOUT_MS,
 		);
 		return () => window.clearTimeout(timer);
@@ -253,7 +257,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 			onComplete();
 		} catch (err) {
-			setSubmitError(err instanceof Error ? err.message : "Failed to save");
+			setSubmitError(err instanceof Error ? err.message : m.wizard_save_failed());
 		} finally {
 			setIsSaving(false);
 		}
@@ -263,8 +267,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		return (
 			<div className="max-w-2xl mx-auto space-y-3">
 				<p className="text-sm text-muted-foreground">
-					We'll analyze <strong>{brand?.website}</strong> using web search to suggest competitors, additional
-					domains/aliases, and a starter set of AI prompts to track.
+					{m.wizard_analysis_intro({ website: brand?.website ?? "" })}
 				</p>
 				{error && (
 					<div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
@@ -280,17 +283,17 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					>
 						{phase === "analyzing" ? (
 							<>
-								<Loader2 className="h-4 w-4 animate-spin" /> Analyzing brand…
+							<Loader2 className="h-4 w-4 animate-spin" /> {m.wizard_analyzing()}
 							</>
 						) : (
 							<>
-								<Play className="h-4 w-4" /> Analyze brand
+							<Play className="h-4 w-4" /> {m.wizard_analyze()}
 							</>
 						)}
 					</Button>
 					{phase === "analyzing" && (
 						<Button variant="outline" onClick={() => stopAnalyzing(null)} className="cursor-pointer">
-							Cancel
+							{m.common_cancel()}
 						</Button>
 					)}
 				</div>
@@ -301,17 +304,17 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	return (
 		<div className="max-w-2xl mx-auto space-y-6">
 			<div className="space-y-2">
-				<h2 className="text-2xl font-bold">Brand details</h2>
+				<h2 className="text-2xl font-bold">{m.wizard_brand_details()}</h2>
 				<p className="text-muted-foreground">
-					Confirm the brand identity, additional domains, and aliases used for tracking.
+					{m.wizard_brand_details_description()}
 				</p>
 				<div className="space-y-3">
 					<div>
-						<p className="text-xs text-muted-foreground">Brand name</p>
-						<Input value={data.brandName} onChange={(e) => updateBrandName(e.target.value)} placeholder="Brand name" />
+						<p className="text-xs text-muted-foreground">{m.wizard_brand_name()}</p>
+						<Input value={data.brandName} onChange={(e) => updateBrandName(e.target.value)} placeholder={m.wizard_brand_name()} />
 					</div>
 					<div>
-						<p className="text-xs text-muted-foreground">Website URL</p>
+						<p className="text-xs text-muted-foreground">{m.wizard_website_url()}</p>
 						<Input
 							type="url"
 							value={data.website}
@@ -320,20 +323,20 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						/>
 					</div>
 					<div>
-						<p className="text-xs text-muted-foreground">Additional domains</p>
+						<p className="text-xs text-muted-foreground">{m.settings_additional_domains()}</p>
 						<EditableTagsInput
 							items={data.additionalDomains}
 							onValueChange={updateAdditionalDomains}
-							placeholder="Add domain..."
+							placeholder={m.settings_add_domain()}
 							maxItems={10}
 						/>
 					</div>
 					<div>
-						<p className="text-xs text-muted-foreground">Aliases</p>
+						<p className="text-xs text-muted-foreground">{m.competitor_aliases()}</p>
 						<EditableTagsInput
 							items={data.aliases}
 							onValueChange={updateAliases}
-							placeholder="Add alias..."
+							placeholder={m.settings_add_alias()}
 							maxItems={10}
 						/>
 					</div>
@@ -344,8 +347,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 			<div className="space-y-3">
 				<div>
-					<h2 className="text-2xl font-bold">Competitors</h2>
-					<p className="text-muted-foreground">Companies you want tracked alongside your brand.</p>
+					<h2 className="text-2xl font-bold">{m.settings_competitors_title()}</h2>
+					<p className="text-muted-foreground">{m.wizard_competitors_description()}</p>
 				</div>
 				<CompetitorsEditor competitors={data.competitors} onChange={updateCompetitors} disabled={isSaving} />
 			</div>
@@ -354,10 +357,9 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 			<div className="space-y-3">
 				<div>
-					<h2 className="text-2xl font-bold">Prompts</h2>
+					<h2 className="text-2xl font-bold">{m.wizard_prompts_title()}</h2>
 					<p className="text-muted-foreground">
-						Pick which AI tracking prompts to start with. Untick any you don't want, edit tags, or add your own at the
-						bottom.
+						{m.wizard_prompts_description()}
 					</p>
 				</div>
 				<PromptsListEditor prompts={data.prompts} onChange={updatePrompts} showSystemTags={false} />
@@ -377,11 +379,11 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			>
 				{isSaving ? (
 					<>
-						<Loader2 className="h-4 w-4 animate-spin" /> Saving…
+						<Loader2 className="h-4 w-4 animate-spin" /> {m.common_saving()}
 					</>
 				) : (
 					<>
-						<Rocket className="h-4 w-4" /> Start tracking ({previewCounts.totalNew} new prompts)
+						<Rocket className="h-4 w-4" /> {m.wizard_start_tracking({ count: formatNumber(previewCounts.totalNew) })}
 					</>
 				)}
 			</Button>

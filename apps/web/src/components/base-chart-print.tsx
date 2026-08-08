@@ -5,6 +5,8 @@ import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { ChartDataPoint, getBadgeVariant, getBadgeClassName } from "@/lib/chart-utils";
 import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import * as m from "@/paraglide/messages.js";
+import { formatPercent } from "@/i18n/formatting";
 
 interface BaseChartPrintProps {
 	data: ChartDataPoint[];
@@ -72,7 +74,7 @@ export function BaseChartPrint({
 					</div>
 				)}
 				<div className="h-[200px] print:h-[150px] flex items-center justify-center text-muted-foreground text-sm print:text-xs">
-					No data available
+					{m.chart_no_data_available()}
 				</div>
 			</div>
 		);
@@ -120,7 +122,7 @@ export function BaseChartPrint({
 							variant={getBadgeVariant(visibility!)}
 							className={`text-xs ${getBadgeClassName(visibility!)} print:text-xs`}
 						>
-							{visibility}%
+							{formatPercent(visibility! / 100, { maximumFractionDigits: 1 })}
 						</Badge>
 					)}
 				</div>
@@ -144,7 +146,7 @@ export function BaseChartPrint({
 								fontSize: 10,
 								fill: "#6B7280",
 							}}
-							tickFormatter={(value) => `${value}%`}
+							tickFormatter={(value) => formatPercent(Number(value) / 100, { maximumFractionDigits: 0 })}
 							width={40}
 						/>
 						<Bar
@@ -156,7 +158,7 @@ export function BaseChartPrint({
 								fontSize: 11,
 								fontWeight: "bold",
 								fill: "#374151",
-								formatter: (value: unknown) => `${value}%`,
+								formatter: (value: unknown) => formatPercent(Number(value) / 100, { maximumFractionDigits: 1 }),
 							}}
 						>
 							{sortedEntities.map((entry) => (

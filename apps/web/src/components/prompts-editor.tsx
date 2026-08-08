@@ -4,6 +4,7 @@ import { updatePromptsFn } from "@/server/prompts";
 import { trackEvent } from "@/lib/posthog";
 import { PromptsListEditor, type EditablePrompt } from "@/components/prompts-list-editor";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
+import * as m from "@/paraglide/messages.js";
 
 interface PromptRow {
 	id: string;
@@ -90,9 +91,9 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 
 	const isDirty = changedKeys.size > 0 || removedCount > 0;
 	const summary = [
-		addedCount && `${addedCount} added`,
-		editedCount && `${editedCount} edited`,
-		removedCount && `${removedCount} removed`,
+		addedCount && m.prompts_summary_added({ count: addedCount }),
+		editedCount && m.prompts_summary_edited({ count: editedCount }),
+		removedCount && m.prompts_summary_removed({ count: removedCount }),
 	]
 		.filter(Boolean)
 		.join(" · ");
@@ -133,7 +134,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 			invalidatePromptsSummary(brandId);
 		} catch (err) {
 			console.error("Error saving prompts:", err);
-			setError(`Failed to save prompts: ${err instanceof Error ? err.message : "Unknown error"}`);
+			setError(m.prompts_save_failed({ error: err instanceof Error ? err.message : m.common_unknown() }));
 		} finally {
 			setIsSaving(false);
 			saveInProgress.current = false;

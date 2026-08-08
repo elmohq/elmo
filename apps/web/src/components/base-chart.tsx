@@ -22,6 +22,8 @@ import {
 	selectCompetitorsToDisplay,
 } from "@/lib/chart-utils";
 import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import { formatDate, formatPercent } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 interface BaseChartProps {
 	data: ChartDataPoint[];
@@ -68,7 +70,7 @@ export function BaseChart({
 	const chartColors = chartColorsProp ?? context.clientConfig?.branding.chartColors ?? [];
 	const chartConfig: ChartConfig = {
 		visitors: {
-			label: "Visibility",
+			label: m.page_visibility_title(),
 		},
 		[brand.id]: {
 			label: brand.name,
@@ -131,7 +133,7 @@ export function BaseChart({
 					{title && <h3 className="text-sm font-medium capitalize">{title}</h3>}
 					{showBadge && visibility !== null && (
 						<Badge variant={getBadgeVariant(visibility!)} className={`text-xs ${getBadgeClassName(visibility!)}`}>
-							{visibility}%
+							{formatPercent(visibility! / 100, { maximumFractionDigits: 1 })}
 						</Badge>
 					)}
 				</div>
@@ -153,7 +155,7 @@ export function BaseChart({
 								// value is already a properly bucketed date string like "2025-07-21"
 								const [year, month, day] = value.split("-").map(Number);
 								const date = new Date(year, month - 1, day); // Create local date
-								return date.toLocaleDateString("en-US", {
+								return formatDate(date, {
 									month: "short",
 									day: "numeric",
 								});
@@ -167,7 +169,7 @@ export function BaseChart({
 							axisLine={false}
 							tickMargin={8}
 							tickCount={6}
-							tickFormatter={(value) => `${value}%`}
+							tickFormatter={(value) => formatPercent(Number(value) / 100, { maximumFractionDigits: 0 })}
 						/>
 						<ChartTooltip
 							isAnimationActive={false}
@@ -177,7 +179,7 @@ export function BaseChart({
 									labelFormatter={(value) => {
 										const [year, month, day] = String(value).split("-").map(Number);
 										const date = new Date(year, month - 1, day);
-										return date.toLocaleDateString("en-US", {
+										return formatDate(date, {
 											month: "short",
 											day: "numeric",
 										});
@@ -198,7 +200,9 @@ export function BaseChart({
 														<span className="text-muted-foreground">{chartConfig[name as string]?.label || name}</span>
 													</div>
 													{value !== null && value !== undefined && (
-														<span className="text-foreground font-mono font-xs tabular-nums">{value}%</span>
+																<span className="text-foreground font-mono font-xs tabular-nums">
+																	{formatPercent(Number(value) / 100, { maximumFractionDigits: 1 })}
+																</span>
 													)}
 												</div>
 											</>
@@ -232,7 +236,7 @@ export function BaseChart({
 								// value is already a properly bucketed date string like "2025-07-21"
 								const [year, month, day] = value.split("-").map(Number);
 								const date = new Date(year, month - 1, day); // Create local date
-								return date.toLocaleDateString("en-US", {
+								return formatDate(date, {
 									month: "short",
 									day: "numeric",
 								});
@@ -246,7 +250,7 @@ export function BaseChart({
 							axisLine={false}
 							tickMargin={8}
 							tickCount={6}
-							tickFormatter={(value) => `${value}%`}
+							tickFormatter={(value) => formatPercent(Number(value) / 100, { maximumFractionDigits: 0 })}
 						/>
 						<ChartTooltip
 							isAnimationActive={false}
@@ -274,7 +278,7 @@ export function BaseChart({
 								// Format the date label
 								const [year, month, day] = (label as string).split("-").map(Number);
 								const date = new Date(year, month - 1, day);
-								const formattedDate = date.toLocaleDateString("en-US", {
+								const formattedDate = formatDate(date, {
 									month: "short",
 									day: "numeric",
 								});
@@ -295,7 +299,9 @@ export function BaseChart({
 															<span className="text-muted-foreground">
 																{chartConfig[item.dataKey as string]?.label || item.dataKey}
 															</span>
-															<span className="text-foreground font-mono font-xs tabular-nums">{item.value}%</span>
+																	<span className="text-foreground font-mono font-xs tabular-nums">
+																		{formatPercent(Number(item.value) / 100, { maximumFractionDigits: 1 })}
+																	</span>
 														</div>
 													</div>
 												);

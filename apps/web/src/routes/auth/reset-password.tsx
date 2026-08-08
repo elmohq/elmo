@@ -14,6 +14,7 @@ import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import { z } from "zod";
 import FullPageCard from "@/components/full-page-card";
+import * as m from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/auth/reset-password")({
 	validateSearch: z.object({
@@ -33,10 +34,10 @@ function ResetPasswordPage() {
 
 	if (searchError || !token) {
 		return (
-			<FullPageCard title="Reset link invalid or expired">
+			<FullPageCard title={m.auth_reset_link_invalid()}>
 				<p className="text-center text-sm text-muted-foreground w-full">
 					<Link to="/auth/forgot-password" className="text-primary hover:underline font-medium">
-						Request a new reset link
+						{m.auth_request_new_reset()}
 					</Link>
 				</p>
 			</FullPageCard>
@@ -47,7 +48,7 @@ function ResetPasswordPage() {
 		e.preventDefault();
 		setError(null);
 		if (newPassword !== confirmPassword) {
-			setError("Passwords do not match");
+			setError(m.auth_passwords_mismatch());
 			return;
 		}
 		setLoading(true);
@@ -55,19 +56,19 @@ function ResetPasswordPage() {
 		try {
 			const result = await authClient.resetPassword({ newPassword, token: token as string });
 			if (result.error) {
-				setError(result.error.message ?? "Failed to reset password");
+				setError(m.auth_reset_failed());
 				setLoading(false);
 				return;
 			}
 			navigate({ to: "/auth/login" });
 		} catch {
-			setError("Something went wrong. Please try again.");
+			setError(m.common_error());
 			setLoading(false);
 		}
 	}
 
 	return (
-		<FullPageCard title="Choose a new password">
+		<FullPageCard title={m.auth_choose_new_password()}>
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
 				{error && (
 					<Alert variant="destructive">
@@ -75,11 +76,11 @@ function ResetPasswordPage() {
 					</Alert>
 				)}
 				<div className="space-y-2">
-					<Label htmlFor="new-password">New password</Label>
+					<Label htmlFor="new-password">{m.auth_new_password()}</Label>
 					<Input
 						id="new-password"
 						type="password"
-						placeholder="New password"
+						placeholder={m.auth_new_password()}
 						value={newPassword}
 						onChange={(e) => setNewPassword(e.target.value)}
 						required
@@ -89,11 +90,11 @@ function ResetPasswordPage() {
 					/>
 				</div>
 				<div className="space-y-2">
-					<Label htmlFor="confirm-password">Confirm password</Label>
+					<Label htmlFor="confirm-password">{m.auth_confirm_password()}</Label>
 					<Input
 						id="confirm-password"
 						type="password"
-						placeholder="Confirm password"
+						placeholder={m.auth_confirm_password()}
 						value={confirmPassword}
 						onChange={(e) => setConfirmPassword(e.target.value)}
 						required
@@ -102,7 +103,7 @@ function ResetPasswordPage() {
 					/>
 				</div>
 				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Resetting..." : "Reset password"}
+					{loading ? m.auth_resetting() : m.auth_reset_password()}
 				</Button>
 			</form>
 		</FullPageCard>

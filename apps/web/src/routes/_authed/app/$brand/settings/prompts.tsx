@@ -13,6 +13,7 @@ import { prompts } from "@workspace/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { PromptsEditor } from "@/components/prompts-editor";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import * as m from "@/paraglide/messages.js";
 
 const getPromptsForEditing = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
@@ -60,8 +61,8 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/prompts")({
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Prompts", { appName, brandName }) },
-				{ name: "description", content: "Add, edit, or remove tracked prompts." },
+				{ title: buildTitle(m.settings_prompts_title(), { appName, brandName }) },
+				{ name: "description", content: m.settings_prompts_meta_description() },
 			],
 		};
 	},
@@ -77,8 +78,8 @@ function PromptsSettingsPage() {
 		<PromptsEditor
 			initialPrompts={brandPrompts}
 			brandId={brandId}
-			pageTitle="Prompts"
-			pageDescription="Add, edit, or remove your brand tracking keywords and prompts"
+			pageTitle={m.settings_prompts_title()}
+			pageDescription={m.settings_prompts_description()}
 		/>
 	);
 }

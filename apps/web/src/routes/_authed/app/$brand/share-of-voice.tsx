@@ -22,6 +22,8 @@ import { useListFilters } from "@/hooks/use-list-filters";
 import { ColHead } from "@/components/col-head";
 import { ShareOfVoiceDonut } from "@/components/share-of-voice-donut";
 import { TrendChart } from "@/components/trend-chart";
+import { formatNumber, formatPercent } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/_authed/app/$brand/share-of-voice")({
 	head: ({ matches, match }) => {
@@ -29,15 +31,15 @@ export const Route = createFileRoute("/_authed/app/$brand/share-of-voice")({
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Share of Voice", { appName, brandName }) },
-				{ name: "description", content: "See how often AI engines mention you versus your competitors." },
+				{ title: buildTitle(m.page_share_title(), { appName, brandName }) },
+				{ name: "description", content: m.page_share_description() },
 			],
 		};
 	},
 	component: ShareOfVoicePage,
 });
 
-const formatPct = (share: number) => `${Math.round(share * 100)}%`;
+const formatPct = (share: number) => formatPercent(share, { maximumFractionDigits: 0 });
 
 /** Latest non-null point of the share-of-voice trend — the value the line ends on. */
 function currentShareOf(series: Array<{ share: number | null }>): number | null {
@@ -49,9 +51,9 @@ function currentShareOf(series: Array<{ share: number | null }>): number | null 
 }
 
 const TIPS = {
-	mentions: "Number of runs in which this brand was mentioned in the AI answer.",
-	share: "This brand's share of all brand + competitor mentions.",
-	prompts: "Number of distinct prompts this brand appeared in.",
+	mentions: m.share_mentions_tip,
+	share: m.share_share_tip,
+	prompts: m.share_prompts_tip,
 };
 
 function ShareOfVoicePage() {
@@ -69,11 +71,8 @@ function ShareOfVoicePage() {
 
 	const infoContent = (
 		<>
-			<p className="mb-2">
-				Share of voice is how often each brand is mentioned in the AI answers to your prompts. Mentions are counted per
-				run, so the brand and competitor figures use the same unit and are directly comparable.
-			</p>
-			<p>Competitors are the ones you track in settings. Switch the model filter to compare engines.</p>
+			<p className="mb-2">{m.page_share_info()}</p>
+			<p>{m.page_share_info_filters()}</p>
 		</>
 	);
 
@@ -99,7 +98,7 @@ function ShareOfVoicePage() {
 			<Card>
 				<CardContent className="pt-6">
 					<div className="text-muted-foreground text-center py-8">
-						No mention data yet for the selected filters. Mentions appear once your prompts have been run.
+						{m.page_share_empty()}
 					</div>
 				</CardContent>
 			</Card>
@@ -112,16 +111,23 @@ function ShareOfVoicePage() {
 				<div className="grid gap-6 lg:grid-cols-2">
 					<Card>
 						<CardHeader>
-							<CardTitle>Share of Voice</CardTitle>
+							<CardTitle>{m.page_share_title()}</CardTitle>
 						</CardHeader>
 						<CardContent className="flex items-center justify-between gap-4">
 							<div>
 								<div className="text-3xl sm:text-4xl font-bold tabular-nums">
-									{currentShare !== null ? `${currentShare}%` : "—"}
+									{currentShare !== null
+										? formatPercent(currentShare / 100, { maximumFractionDigits: 0 })
+										: "—"}
 								</div>
 								<p className="text-sm text-muted-foreground mt-1 max-w-[18rem]">
-									{data.brandName} across {data.totalRuns.toLocaleString()} runs
-									{data.entries.length > 1 ? ` and ${data.entries.length - 1} competitors` : ""}.
+									{data.entries.length > 1
+										? m.share_summary_competitors({
+												brandName: data.brandName,
+												runs: formatNumber(data.totalRuns),
+												competitors: formatNumber(data.entries.length - 1),
+											})
+										: m.share_summary({ brandName: data.brandName, runs: formatNumber(data.totalRuns) })}
 								</p>
 							</div>
 							<ShareOfVoiceDonut entries={data.entries} />
@@ -130,12 +136,12 @@ function ShareOfVoicePage() {
 
 					<Card>
 						<CardHeader>
-							<CardTitle>Share of Voice Trends</CardTitle>
+							<CardTitle>{m.share_trends()}</CardTitle>
 						</CardHeader>
 						<CardContent>
 							<TrendChart
 								data={data.shareTimeSeries.map((p) => ({ date: p.date, value: p.share }))}
-								label="Share of Voice"
+								label={m.page_share_title()}
 								color="#2563eb"
 								className="aspect-auto h-[180px] w-full"
 							/>
@@ -145,22 +151,22 @@ function ShareOfVoicePage() {
 
 				<Card>
 					<CardHeader>
-						<CardTitle>Share of Voice Leaderboard</CardTitle>
+						<CardTitle>{m.share_leaderboard()}</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<Table>
 							<TableHeader>
 								<TableRow>
 									<TableHead className="w-10">#</TableHead>
-									<TableHead>Brand</TableHead>
+									<TableHead>{m.share_brand()}</TableHead>
 									<TableHead className="text-right">
-										<ColHead label="Mentions" tip={TIPS.mentions} right />
+										<ColHead label={m.share_mentions()} tip={TIPS.mentions()} right />
 									</TableHead>
 									<TableHead className="w-[34%]">
-										<ColHead label="Share" tip={TIPS.share} />
+										<ColHead label={m.share_share()} tip={TIPS.share()} />
 									</TableHead>
 									<TableHead className="text-right">
-										<ColHead label="Prompts" tip={TIPS.prompts} right />
+										<ColHead label={m.share_prompts()} tip={TIPS.prompts()} right />
 									</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -173,12 +179,12 @@ function ShareOfVoicePage() {
 												{e.name}
 												{e.isBrand && (
 													<Badge variant="secondary" className="text-xs">
-														You
+												{m.share_you()}
 													</Badge>
 												)}
 											</span>
 										</TableCell>
-										<TableCell className="text-right tabular-nums">{e.mentions.toLocaleString()}</TableCell>
+										<TableCell className="text-right tabular-nums">{formatNumber(e.mentions)}</TableCell>
 										<TableCell>
 											<div className="flex items-center gap-2">
 												<div className="bg-muted h-2 w-full overflow-hidden rounded-full">
@@ -195,7 +201,9 @@ function ShareOfVoicePage() {
 												</span>
 											</div>
 										</TableCell>
-										<TableCell className="text-right tabular-nums text-muted-foreground">{e.prompts}</TableCell>
+										<TableCell className="text-right tabular-nums text-muted-foreground">
+											{formatNumber(e.prompts)}
+										</TableCell>
 									</TableRow>
 								))}
 							</TableBody>
@@ -208,8 +216,8 @@ function ShareOfVoicePage() {
 
 	return (
 		<PageHeader
-			title="Share of Voice"
-			subtitle="How often AI engines mention you versus your competitors."
+			title={m.page_share_title()}
+			subtitle={m.page_share_description()}
 			infoContent={infoContent}
 		>
 			<FilterSection>

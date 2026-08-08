@@ -17,6 +17,7 @@ import { FilteredListShell } from "@/components/filtered-list-shell";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { PageHeader } from "@/components/page-header";
 import { getAvailableModels, ALL_MODELS_VALUE } from "@/components/filter-bar";
+import * as m from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/_authed/app/$brand/citations")({
 	head: ({ matches, match }) => {
@@ -24,8 +25,8 @@ export const Route = createFileRoute("/_authed/app/$brand/citations")({
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Citations", { appName, brandName }) },
-				{ name: "description", content: "See which sources LLMs cite in responses to your prompts." },
+				{ title: buildTitle(m.page_citations_title(), { appName, brandName }) },
+				{ name: "description", content: m.page_citations_meta_description() },
 			],
 		};
 	},
@@ -57,16 +58,13 @@ function CitationsPage() {
 
 	const infoContent = (
 		<>
-			<p className="mb-2">
-				Citations are the links and sources that AI models include in their responses when answering your prompts. They
-				show which websites the AI considers authoritative or relevant to your topics.
-			</p>
+			<p className="mb-2">{m.page_citations_info()}</p>
 			<p>
-				<strong>Competitor</strong> domains are only those you&apos;ve added to your{" "}
+				{m.page_citations_competitor_prefix()} {" "}
 				<Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">
-					tracked competitors list
+					{m.page_citations_competitor_link()}
 				</Link>
-				. Other domains appear under their detected category (Google, Social Media, Institutional, or Other).
+				. {m.page_citations_competitor_suffix()}
 			</p>
 		</>
 	);
@@ -75,8 +73,8 @@ function CitationsPage() {
 
 	return (
 		<PageHeader
-			title="Citations"
-			subtitle="See which sources LLMs cite when responding to your prompts."
+			title={m.page_citations_title()}
+			subtitle={m.page_citations_description()}
 			infoContent={infoContent}
 		>
 			<FilteredListShell
@@ -104,19 +102,19 @@ function CitationsPage() {
 					<Card>
 						<CardContent className="pt-6">
 							<div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
-								Failed to load citation data. Please try again.
+								{m.citations_load_error()}
 							</div>
 						</CardContent>
 					</Card>
 				}
 				totalCount={citationData?.totalCitations}
-				noMatchesTitle="No citations found for the selected filters."
-				noMatchesDescription="Try adjusting your filters or time period."
+				noMatchesTitle={m.citations_no_matches()}
+				noMatchesDescription={m.citations_adjust_filters()}
 				emptyState={
 					<Card>
 						<CardContent className="pt-6">
 							<div className="text-muted-foreground text-center py-8">
-								No citations found. Citations are only available from prompts evaluated with web search enabled.
+								{m.citations_empty()}
 							</div>
 						</CardContent>
 					</Card>

@@ -4,6 +4,8 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/component
 import { IconInfoCircle, IconAlertTriangle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
+import { formatNumber } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 const PAGE_SIZE = 6;
 
@@ -20,18 +22,17 @@ export function ContentGapsCard({
 		<Card className="h-full flex flex-col">
 			<CardHeader>
 				<CardTitle className="flex items-center gap-1.5">
-					Content Gaps
+					{m.citations_content_gaps()}
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 						</TooltipTrigger>
 						<TooltipContent className="max-w-xs text-sm font-normal">
-							Prompts where competitors are cited but your brand isn&apos;t — opportunities to improve your citation
-							presence.
+							{m.citations_content_gaps_tip()}
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>
-				<CardDescription>Prompts where competitors are cited but your brand isn&apos;t</CardDescription>
+				<CardDescription>{m.citations_content_gaps_description()}</CardDescription>
 			</CardHeader>
 			<Separator />
 			<CardContent className="flex-1 flex flex-col">
@@ -53,9 +54,9 @@ export function ContentGapsCard({
 									</span>
 								</div>
 								<p className="text-xs text-muted-foreground mt-0.5">
-									{prompt.uniqueCompetitors} {prompt.uniqueCompetitors === 1 ? "competitor" : "competitors"} cited{" "}
-									{prompt.competitorCitationCount} {prompt.competitorCitationCount === 1 ? "time" : "times"} &mdash;
-									your brand cited 0 times
+									{prompt.uniqueCompetitors === 1
+										? m.citations_gap_summary_one({ competitors: formatNumber(prompt.uniqueCompetitors), citations: formatNumber(prompt.competitorCitationCount) })
+										: m.citations_gap_summary_many({ competitors: formatNumber(prompt.uniqueCompetitors), citations: formatNumber(prompt.competitorCitationCount) })}
 								</p>
 							</div>
 						</Link>

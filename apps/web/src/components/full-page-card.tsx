@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/componen
 import { Button } from "@workspace/ui/components/button";
 import { Separator } from "@workspace/ui/components/separator";
 import { Logo } from "@/components/logo";
+import * as m from "@/paraglide/messages.js";
 
 interface FullPageCardProps {
 	title?: string;
@@ -22,7 +23,7 @@ export default function FullPageCard({
 	children = undefined,
 	showBackButton = false,
 	backButtonHref = "/app",
-	backButtonText = "Go Back",
+	backButtonText = m.common_go_back(),
 	customBackButton,
 	className = "w-md",
 }: FullPageCardProps) {

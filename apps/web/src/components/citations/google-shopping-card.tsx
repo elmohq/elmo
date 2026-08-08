@@ -7,6 +7,8 @@ import { Link } from "@tanstack/react-router";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 import { attributionDotClass } from "@/components/citations/shared";
 import type { GoogleModuleData } from "@/components/citations/types";
+import { formatNumber } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 const PRODUCTS_PAGE_SIZE = 10;
 
@@ -30,12 +32,12 @@ function PromptCountList({
 						<span className="text-muted-foreground group-hover:text-foreground group-hover:underline truncate min-w-0">
 							{p.value}
 						</span>
-						<span className="tabular-nums text-muted-foreground shrink-0 ml-3">{p.count.toLocaleString()}</span>
+						<span className="tabular-nums text-muted-foreground shrink-0 ml-3">{formatNumber(p.count)}</span>
 					</Link>
 				) : (
 					<div key={p.id} className="flex items-center justify-between py-1 text-xs">
 						<span className="text-muted-foreground truncate min-w-0">{p.value}</span>
-						<span className="tabular-nums text-muted-foreground shrink-0 ml-3">{p.count.toLocaleString()}</span>
+						<span className="tabular-nums text-muted-foreground shrink-0 ml-3">{formatNumber(p.count)}</span>
 					</div>
 				),
 			)}
@@ -74,18 +76,12 @@ export function GoogleShoppingCard({ googleModule, brandId }: { googleModule: Go
 							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 						</TooltipTrigger>
 						<TooltipContent className="max-w-xs text-sm font-normal">
-							Product cards Google AI Mode showed when answering your prompts. The number next to each is how many times
-							that card appeared across results (card inclusions, not unique products). Kept separate from the citation
-							mix above.
+							{m.citations_google_shopping_tip()}
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>
 				<CardDescription>
-					Products Google AI Mode surfaced —{" "}
-					<span className="font-medium text-emerald-600">{googleModule.shopping.brandCount.toLocaleString()}</span>{" "}
-					appearances for yours vs{" "}
-					<span className="font-medium text-red-600">{googleModule.shopping.competitorCount.toLocaleString()}</span> for
-					competitors
+					{m.citations_google_shopping_description({ brandCount: formatNumber(googleModule.shopping.brandCount), competitorCount: formatNumber(googleModule.shopping.competitorCount) })}
 				</CardDescription>
 			</CardHeader>
 			<Separator />
@@ -93,13 +89,13 @@ export function GoogleShoppingCard({ googleModule, brandId }: { googleModule: Go
 				{googleModule.shopping.products.length > 0 && (
 					<div>
 						<div className="flex items-center justify-between mb-2 gap-2">
-							<h4 className="text-sm font-medium shrink-0">Products</h4>
+							<h4 className="text-sm font-medium shrink-0">{m.citations_products()}</h4>
 							<div className="flex items-center gap-1">
 								{(
 									[
-										["all", "All"],
-										["brand", "Yours"],
-										["competitor", "Competitors"],
+									["all", m.common_all()],
+									["brand", m.common_yours()],
+									["competitor", m.settings_competitors_title()],
 									] as const
 								).map(([key, label]) => (
 									<button
@@ -111,7 +107,7 @@ export function GoogleShoppingCard({ googleModule, brandId }: { googleModule: Go
 										}}
 										className={`px-2 py-0.5 rounded text-[11px] cursor-pointer transition-colors ${productFilter === key ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
 									>
-										{label} ({productCounts[key].toLocaleString()})
+									{label} ({formatNumber(productCounts[key])})
 									</button>
 								))}
 							</div>
@@ -141,7 +137,7 @@ export function GoogleShoppingCard({ googleModule, brandId }: { googleModule: Go
 												)}
 											</button>
 											<span className="text-sm font-semibold tabular-nums shrink-0">
-												{product.count.toLocaleString()}
+								{formatNumber(product.count)}
 											</span>
 										</div>
 										{isExpanded && product.prompts.length > 0 && (
@@ -157,7 +153,7 @@ export function GoogleShoppingCard({ googleModule, brandId }: { googleModule: Go
 
 				{googleModule.search.queries.length > 0 && (
 					<div>
-						<h4 className="text-sm font-medium mb-2">Search queries</h4>
+					<h4 className="text-sm font-medium mb-2">{m.citations_search_queries()}</h4>
 						<div className="divide-y divide-border/50">
 							{(showAllQueries ? googleModule.search.queries : googleModule.search.queries.slice(0, 5)).map((q) => {
 								const isExpanded = expandedQuery === q.query;
@@ -177,7 +173,7 @@ export function GoogleShoppingCard({ googleModule, brandId }: { googleModule: Go
 													{q.query}
 												</span>
 											</button>
-											<span className="text-sm font-semibold tabular-nums shrink-0">{q.count.toLocaleString()}</span>
+										<span className="text-sm font-semibold tabular-nums shrink-0">{formatNumber(q.count)}</span>
 										</div>
 										{isExpanded && q.prompts.length > 0 && <PromptCountList prompts={q.prompts} brandId={brandId} />}
 									</div>
@@ -190,7 +186,7 @@ export function GoogleShoppingCard({ googleModule, brandId }: { googleModule: Go
 								onClick={() => setShowAllQueries(true)}
 								className="mt-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
 							>
-								Show {googleModule.search.queries.length - 5} more
+								{m.common_show_more({ count: formatNumber(googleModule.search.queries.length - 5) })}
 							</button>
 						)}
 					</div>

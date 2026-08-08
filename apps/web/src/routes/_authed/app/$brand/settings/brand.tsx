@@ -18,6 +18,8 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/component
 import { IconInfoCircle } from "@tabler/icons-react";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { getTagsInputLabels } from "@/i18n/ui-labels";
+import * as m from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/brand")({
 	head: ({ matches, match }) => {
@@ -25,8 +27,8 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/brand")({
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Brand Settings", { appName, brandName }) },
-				{ name: "description", content: "Manage your brand name and website." },
+				{ title: buildTitle(m.settings_brand_meta_title(), { appName, brandName }) },
+				{ name: "description", content: m.settings_brand_description() },
 			],
 		};
 	},
@@ -51,7 +53,7 @@ function BrandSettingsPage() {
 
 	const validateDomain = useCallback((val: string): true | string => {
 		const cleaned = cleanAndValidateDomain(val);
-		if (!cleaned) return `"${val}" is not a valid domain`;
+		if (!cleaned) return m.settings_invalid_domain({ domain: val });
 		return true;
 	}, []);
 	const handleAliasesChange = useCallback((values: string[]) => setAliases(values), []);
@@ -60,8 +62,8 @@ function BrandSettingsPage() {
 		return (
 			<div className="space-y-6">
 				<div>
-					<h1 className="text-3xl font-bold">Brand</h1>
-					<p className="text-muted-foreground">Loading...</p>
+					<h1 className="text-3xl font-bold">{m.settings_brand_title()}</h1>
+					<p className="text-muted-foreground">{m.common_loading()}</p>
 				</div>
 			</div>
 		);
@@ -71,8 +73,8 @@ function BrandSettingsPage() {
 		return (
 			<div className="space-y-6">
 				<div>
-					<h1 className="text-3xl font-bold">Brand</h1>
-					<p className="text-destructive">Brand not found</p>
+					<h1 className="text-3xl font-bold">{m.settings_brand_title()}</h1>
+					<p className="text-destructive">{m.common_brand_not_found()}</p>
 				</div>
 			</div>
 		);
@@ -101,10 +103,10 @@ function BrandSettingsPage() {
 			queryClient.invalidateQueries({ queryKey: citationKeys.all });
 			queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 
-			setSuccess("Brand details updated successfully!");
+			setSuccess(m.settings_brand_updated());
 			await revalidate();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "An error occurred");
+			setError(err instanceof Error ? err.message : m.common_error());
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -113,28 +115,28 @@ function BrandSettingsPage() {
 	return (
 		<div className="space-y-6 max-w-2xl">
 			<div>
-				<h1 className="text-3xl font-bold">Brand</h1>
-				<p className="text-muted-foreground">Manage your brand name and website</p>
+				<h1 className="text-3xl font-bold">{m.settings_brand_title()}</h1>
+				<p className="text-muted-foreground">{m.settings_brand_description()}</p>
 			</div>
 
 			<form action={handleSubmit} className="space-y-6">
 				<div className="space-y-4">
 					<div className="space-y-2">
-						<Label htmlFor="name">Brand Name</Label>
+						<Label htmlFor="name">{m.settings_brand_name()}</Label>
 						<Input
 							id="name"
 							name="name"
 							type="text"
-							placeholder="Brand Name"
+							placeholder={m.settings_brand_name()}
 							defaultValue={brand.name}
 							required
 							disabled={isSubmitting}
 						/>
-						<p className="text-xs text-muted-foreground">Enter your brand&apos;s name</p>
+						<p className="text-xs text-muted-foreground">{m.settings_brand_name_hint()}</p>
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="website">Website</Label>
+						<Label htmlFor="website">{m.settings_website()}</Label>
 						<Input
 							id="website"
 							name="website"
@@ -144,28 +146,28 @@ function BrandSettingsPage() {
 							required
 							disabled={isSubmitting}
 						/>
-						<p className="text-xs text-muted-foreground">Your brand&apos;s primary website</p>
+						<p className="text-xs text-muted-foreground">{m.settings_website_hint()}</p>
 					</div>
 
 					<div className="space-y-2">
 						<Label className="flex items-center gap-1.5">
-							Additional Domains
+							{m.settings_additional_domains()}
 							<Tooltip>
 								<TooltipTrigger asChild>
 									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 								</TooltipTrigger>
 								<TooltipContent className="max-w-xs text-xs font-normal">
-									Other domains your brand owns (e.g. blog.example.com, shop.example.com). Citations from these domains
-									will be counted as your brand&apos;s citations. <strong>Updates retroactively</strong> &mdash;
-									existing citations will be reclassified immediately.
+									{m.settings_additional_domains_tip()}
 								</TooltipContent>
 							</Tooltip>
 						</Label>
 						<TagsInput
 							value={additionalDomains}
 							onValueChange={setAdditionalDomains}
-							placeholder="Add domain..."
-							searchPlaceholder="Add domain..."
+							placeholder={m.settings_add_domain()}
+							searchPlaceholder={m.settings_add_domain()}
+							emptyText={m.tags_no_results()}
+							labels={getTagsInputLabels()}
 							maxItems={10}
 							normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}
 							onValidate={validateDomain}
@@ -174,23 +176,23 @@ function BrandSettingsPage() {
 
 					<div className="space-y-2">
 						<Label className="flex items-center gap-1.5">
-							Brand Aliases
+							{m.settings_brand_aliases()}
 							<Tooltip>
 								<TooltipTrigger asChild>
 									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 								</TooltipTrigger>
 								<TooltipContent className="max-w-xs text-xs font-normal">
-									Alternative names for your brand (sub-brands, product lines, abbreviations). Used for mention
-									detection in <strong>future</strong> prompt runs only &mdash; does not apply retroactively to past
-									results.
+									{m.settings_brand_aliases_tip()}
 								</TooltipContent>
 							</Tooltip>
 						</Label>
 						<TagsInput
 							value={aliases}
 							onValueChange={handleAliasesChange}
-							placeholder="Add alias..."
-							searchPlaceholder="Add alias..."
+							placeholder={m.settings_add_alias()}
+							searchPlaceholder={m.settings_add_alias()}
+							emptyText={m.tags_no_results()}
+							labels={getTagsInputLabels()}
 							maxItems={10}
 						/>
 					</div>
@@ -201,7 +203,7 @@ function BrandSettingsPage() {
 
 				<div className="flex gap-2">
 					<Button type="submit" disabled={isSubmitting} className="cursor-pointer">
-						{isSubmitting ? "Saving..." : "Save Changes"}
+						{isSubmitting ? m.common_saving() : m.common_save_changes()}
 					</Button>
 				</div>
 			</form>

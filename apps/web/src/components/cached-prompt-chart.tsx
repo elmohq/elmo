@@ -10,6 +10,8 @@ import { useChartExport } from "@/hooks/use-chart-export";
 import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
 import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
 import { getBadgeVariant, getBadgeClassName } from "@/lib/chart-utils";
+import { formatPercent } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 const PLACEHOLDER_BARS_NO_DATA = [20, 35, 15, 45, 25, 40, 30, 50, 20, 35, 45, 28].map((h, i) => ({
 	key: String(i),
@@ -147,8 +149,8 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 										<div className="h-2 w-2 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:0.2s]" />
 										<div className="h-2 w-2 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:0.4s]" />
 									</div>
-									<p className="text-sm font-medium text-muted-foreground">Evaluating for the first time</p>
-									<p className="text-xs text-muted-foreground/70 mt-1">Results will appear here shortly.</p>
+									<p className="text-sm font-medium text-muted-foreground">{m.chart_first_evaluation()}</p>
+									<p className="text-xs text-muted-foreground/70 mt-1">{m.chart_results_soon()}</p>
 								</>
 							) : (
 								<>
@@ -161,9 +163,9 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 											/>
 										))}
 									</div>
-									<p className="text-sm font-medium text-muted-foreground">No data in selected time range</p>
+									<p className="text-sm font-medium text-muted-foreground">{m.chart_no_data_range()}</p>
 									<p className="text-xs text-muted-foreground/70 mt-1">
-										Try selecting a longer time period to see historical data.
+										{m.chart_longer_period()}
 									</p>
 								</>
 							)}
@@ -196,9 +198,9 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 										/>
 									))}
 								</div>
-								<p className="text-sm font-medium text-muted-foreground">No brands found in responses</p>
+								<p className="text-sm font-medium text-muted-foreground">{m.chart_no_brands()}</p>
 								<p className="text-xs text-muted-foreground/70 mt-1">
-									Your brand and competitors weren't mentioned in the evaluated responses for this prompt.
+									{m.chart_no_brand_mentions()}
 								</p>
 							</div>
 						</div>
@@ -229,7 +231,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 					<PromptTitle name={promptName} highlight={searchHighlight} />
 					{lastBrandVisibility !== null && (
 						<Badge variant={getBadgeVariant(lastBrandVisibility)} className={getBadgeClassName(lastBrandVisibility)}>
-							{lastBrandVisibility}% Visibility
+							{m.chart_visibility_badge({ value: formatPercent(lastBrandVisibility / 100) })}
 						</Badge>
 					)}
 				</CardHeader>

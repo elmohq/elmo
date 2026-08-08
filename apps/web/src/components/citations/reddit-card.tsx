@@ -7,6 +7,8 @@ import { IconExternalLink, IconInfoCircle, IconChevronDown } from "@tabler/icons
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 import { extractSubreddit, formatUrlForDisplay } from "@/components/citations/shared";
 import type { CitationData } from "@/components/citations/types";
+import { formatNumber } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 const SUBREDDITS_PAGE_SIZE = 8;
 
@@ -84,13 +86,12 @@ export function RedditCard({ subreddits }: { subreddits: ReturnType<typeof useSu
 							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 						</TooltipTrigger>
 						<TooltipContent className="max-w-xs text-sm font-normal">
-							Reddit communities most frequently cited by AI models. Extracted from all reddit.com URLs in your citation
-							data.
+							{m.citations_reddit_tip()}
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>
 				<CardDescription>
-					Top cited subreddits — which Reddit communities AI models reference when answering your prompts
+					{m.citations_reddit_description()}
 				</CardDescription>
 			</CardHeader>
 			<Separator />
@@ -114,16 +115,16 @@ export function RedditCard({ subreddits }: { subreddits: ReturnType<typeof useSu
 										</span>
 										{sub.allNew && (
 											<Badge className="text-[10px] px-1.5 py-0 h-[18px] border-0 shadow-none bg-green-100 text-green-700">
-												NEW
+												{m.common_new()}
 											</Badge>
 										)}
 										{!sub.allNew && sub.newPages > 0 && (
-											<span className="text-[10px] text-green-600 whitespace-nowrap">+{sub.newPages} new</span>
+											<span className="text-[10px] text-green-600 whitespace-nowrap">{m.citations_new_count({ count: formatNumber(sub.newPages) })}</span>
 										)}
-										{sub.hasDropped && <span className="text-[10px] text-red-500 whitespace-nowrap">some dropped</span>}
+										{sub.hasDropped && <span className="text-[10px] text-red-500 whitespace-nowrap">{m.citations_some_dropped()}</span>}
 									</button>
 									<div className="flex items-center gap-2 shrink-0 ml-3">
-										<span className="text-sm font-semibold tabular-nums">{sub.count.toLocaleString()}</span>
+										<span className="text-sm font-semibold tabular-nums">{formatNumber(sub.count)}</span>
 										<a
 											href={`https://reddit.com/${sub.name}`}
 											target="_blank"
@@ -149,12 +150,12 @@ export function RedditCard({ subreddits }: { subreddits: ReturnType<typeof useSu
 													{u.title || formatUrlForDisplay(u.url)}
 													{u.isNew && (
 														<Badge className="text-[9px] px-1 py-0 h-[14px] border-0 shadow-none bg-green-100 text-green-700 shrink-0">
-															NEW
+													{m.common_new()}
 														</Badge>
 													)}
 												</span>
 												<span className="tabular-nums text-muted-foreground shrink-0 ml-3">
-													{u.count.toLocaleString()}
+											{formatNumber(u.count)}
 												</span>
 											</a>
 										))}

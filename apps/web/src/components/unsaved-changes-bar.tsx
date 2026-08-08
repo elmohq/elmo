@@ -18,6 +18,7 @@ import {
 	DialogTitle,
 } from "@workspace/ui/components/dialog";
 import { Loader2, Save } from "lucide-react";
+import * as m from "@/paraglide/messages.js";
 
 interface UnsavedChangesBarProps {
 	isDirty: boolean;
@@ -54,7 +55,7 @@ export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, o
 									<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-75" />
 									<span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
 								</span>
-								<span className="font-medium text-amber-700 dark:text-amber-400">Unsaved changes</span>
+								<span className="font-medium text-amber-700 dark:text-amber-400">{m.unsaved_title()}</span>
 								{summary && <span className="text-muted-foreground">{summary}</span>}
 							</div>
 
@@ -67,7 +68,7 @@ export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, o
 									onClick={() => setConfirmingDiscard(true)}
 									className="cursor-pointer"
 								>
-									Discard
+									{m.common_discard()}
 								</Button>
 								<Button
 									type="button"
@@ -78,11 +79,11 @@ export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, o
 								>
 									{isSaving ? (
 										<>
-											<Loader2 className="h-4 w-4 animate-spin" /> Saving…
+											<Loader2 className="h-4 w-4 animate-spin" /> {m.common_saving()}
 										</>
 									) : (
 										<>
-											<Save className="h-4 w-4" /> Save changes
+											<Save className="h-4 w-4" /> {m.common_save_changes()}
 										</>
 									)}
 								</Button>
@@ -99,16 +100,16 @@ export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, o
 			)}
 
 			<Dialog open={confirmingDiscard} onOpenChange={setConfirmingDiscard}>
-				<DialogContent>
+				<DialogContent closeLabel={m.common_close()}>
 					<DialogHeader>
-						<DialogTitle>Discard changes?</DialogTitle>
+						<DialogTitle>{m.unsaved_discard_title()}</DialogTitle>
 						<DialogDescription>
-							{summary ? `${summary} will be reverted.` : "Your changes will be reverted."} This can&apos;t be undone.
+							{summary ? m.unsaved_discard_summary({ summary }) : m.unsaved_discard_generic()}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
 						<Button variant="outline" onClick={() => setConfirmingDiscard(false)} className="cursor-pointer">
-							Keep editing
+							{m.common_keep_editing()}
 						</Button>
 						<Button
 							variant="destructive"
@@ -118,27 +119,26 @@ export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, o
 							}}
 							className="cursor-pointer"
 						>
-							Discard changes
+							{m.unsaved_discard_title()}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 
 			<Dialog open={blocker.status === "blocked"} onOpenChange={(open) => !open && blocker.reset?.()}>
-				<DialogContent>
+				<DialogContent closeLabel={m.common_close()}>
 					<DialogHeader>
-						<DialogTitle>Leave without saving?</DialogTitle>
+						<DialogTitle>{m.unsaved_leave_title()}</DialogTitle>
 						<DialogDescription>
-							{summary ? `You have unsaved changes (${summary}).` : "You have unsaved changes."} They&apos;ll be lost if
-							you leave this page.
+							{summary ? m.unsaved_leave_summary({ summary }) : m.unsaved_leave_generic()}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
 						<Button variant="outline" onClick={() => blocker.reset?.()} className="cursor-pointer">
-							Stay on page
+							{m.unsaved_stay()}
 						</Button>
 						<Button variant="destructive" onClick={() => blocker.proceed?.()} className="cursor-pointer">
-							Leave without saving
+							{m.unsaved_leave()}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

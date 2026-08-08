@@ -9,6 +9,7 @@ import { TrackDomainPopover } from "@/components/citations/track-domain-popover"
 import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 import { DOMAIN_CATEGORY_COLORS, ProgressBarChart } from "@/components/progress-bar-chart";
+import * as m from "@/paraglide/messages.js";
 
 export function TopDomainsCard({
 	domains,
@@ -50,23 +51,22 @@ export function TopDomainsCard({
 				<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 					<div className="space-y-1 min-w-0">
 						<CardTitle className="flex items-center gap-1.5">
-							Top Cited Domains
+							{m.citations_top_domains()}
 							<Tooltip>
 								<TooltipTrigger asChild>
 									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 								</TooltipTrigger>
 								<TooltipContent className="max-w-xs text-sm font-normal">
-									The most frequently cited domains across all prompt evaluations. Each domain is colored by its
-									category (brand, competitor, etc.).
+									{m.citations_top_domains_tip()}
 								</TooltipContent>
 							</Tooltip>
 						</CardTitle>
-						<CardDescription>Which domains LLMs reference most when responding to your prompts</CardDescription>
+						<CardDescription>{m.citations_top_domains_description()}</CardDescription>
 					</div>
 					<div className="relative w-full sm:w-48 shrink-0">
 						<IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
 						<Input
-							placeholder="Search domains..."
+							placeholder={m.citations_search_domains()}
 							value={domainSearch}
 							onChange={(e) => {
 								setDomainSearch(e.target.value);
@@ -118,7 +118,7 @@ export function TopDomainsCard({
 						<ListPagination page={page} pageSize={maxDomains} totalItems={totalItems} onPageChange={setPage} />
 					</>
 				) : (
-					<p className="text-sm text-muted-foreground text-center py-4">No domains match the current filters.</p>
+					<p className="text-sm text-muted-foreground text-center py-4">{m.citations_no_domain_matches()}</p>
 				)}
 			</CardContent>
 		</Card>

@@ -2,6 +2,7 @@ import React from "react";
 import { cn } from "@workspace/ui/lib/utils";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { getModelMeta, KNOWN_MODELS } from "@workspace/lib/providers/models";
+import { formatNumber } from "@/i18n/formatting";
 
 export type ProgressBarItem = {
 	/** The label to display */
@@ -150,7 +151,7 @@ export function ProgressBarChart({
 								{item.action}
 							</div>
 							<div className="flex items-center gap-2 ml-2 shrink-0">
-								<span className="text-sm">{item.count.toLocaleString()}</span>
+								<span className="text-sm">{formatNumber(item.count)}</span>
 								{item.suffix}
 							</div>
 						</div>

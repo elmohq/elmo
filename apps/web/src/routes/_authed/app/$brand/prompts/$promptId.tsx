@@ -34,6 +34,8 @@ import { useQueryFanout } from "@/hooks/use-query-fanout";
 import { getPromptMetadataFn } from "@/server/prompts";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import ReactMarkdown from "react-markdown";
+import { formatDate as formatLocaleDate, formatNumber, formatPercent } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 // -------------------------------------------------------------------
 // Types
@@ -52,11 +54,11 @@ type PromptMetadata = {
 const TAB_KEYS = ["mentions", "web-queries", "citations", "responses"] as const;
 type TabKey = (typeof TAB_KEYS)[number];
 
-const TABS: { key: TabKey; label: string }[] = [
-	{ key: "mentions", label: "Mentions" },
-	{ key: "web-queries", label: "Web Queries" },
-	{ key: "citations", label: "Citations" },
-	{ key: "responses", label: "LLM Responses" },
+const getTabs = (): { key: TabKey; label: string }[] => [
+	{ key: "mentions", label: m.prompt_tab_mentions() },
+	{ key: "web-queries", label: m.prompt_tab_web_queries() },
+	{ key: "citations", label: m.prompt_tab_citations() },
+	{ key: "responses", label: m.prompt_tab_responses() },
 ];
 
 export const Route = createFileRoute("/_authed/app/$brand/prompts/$promptId")({
@@ -70,8 +72,8 @@ export const Route = createFileRoute("/_authed/app/$brand/prompts/$promptId")({
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Prompt Details", { appName, brandName }) },
-				{ name: "description", content: "Detailed analysis of a tracked prompt's performance." },
+				{ title: buildTitle(m.prompt_details_title(), { appName, brandName }) },
+				{ name: "description", content: m.prompt_details_description() },
 			],
 		};
 	},
@@ -168,13 +170,13 @@ function PromptHistoryPage() {
 		return (
 			<div className="space-y-6">
 				<div className="flex justify-between items-start">
-					<h1 className="text-3xl font-bold">Prompt Details</h1>
+					<h1 className="text-3xl font-bold">{m.prompt_details_title()}</h1>
 					<LookbackSelector onLookbackChange={handleLookbackChange} />
 				</div>
 				<Card>
 					<CardContent className="pt-6">
 						<div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
-							Failed to load prompt data. Please try again.
+							{m.prompt_load_failed()}
 						</div>
 					</CardContent>
 				</Card>
@@ -185,10 +187,10 @@ function PromptHistoryPage() {
 	if (!isMetaLoading && !promptMeta) {
 		return (
 			<div className="space-y-6">
-				<h1 className="text-3xl font-bold">Prompt Details</h1>
+				<h1 className="text-3xl font-bold">{m.prompt_details_title()}</h1>
 				<Card>
 					<CardContent className="pt-6">
-						<div className="text-muted-foreground">No prompt data found.</div>
+						<div className="text-muted-foreground">{m.prompt_no_data()}</div>
 					</CardContent>
 				</Card>
 			</div>
@@ -225,24 +227,23 @@ function PromptHistoryPage() {
 									<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
 									<span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
 								</span>
-								Active
+								{m.prompt_active()}
 							</span>
 						) : (
-							<span className="text-muted-foreground">Disabled</span>
+							<span className="text-muted-foreground">{m.common_disabled()}</span>
 						)}
 
 						{promptMeta?.nextRunAt && (
 							<>
 								<span className="text-border">|</span>
 								<span className="text-muted-foreground">
-									Next run:{" "}
 									<span className="text-foreground tabular-nums">
-										{new Date(promptMeta.nextRunAt).toLocaleString(undefined, {
+										{m.prompt_next_run({ date: formatLocaleDate(promptMeta.nextRunAt, {
 											month: "short",
 											day: "numeric",
 											hour: "numeric",
 											minute: "2-digit",
-										})}
+										}) })}
 									</span>
 								</span>
 							</>
@@ -252,7 +253,7 @@ function PromptHistoryPage() {
 
 						{hasTags && (
 							<div className="flex items-center gap-1.5">
-								<span className="text-muted-foreground">Tags:</span>
+								<span className="text-muted-foreground">{m.filter_tags()}:</span>
 								{systemTags.map((tag) => (
 									<Badge key={`sys-${tag}`} variant="secondary" className="text-xs capitalize font-normal">
 										{tag}
@@ -273,7 +274,7 @@ function PromptHistoryPage() {
 							params={{ brand: brandId }}
 							className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 decoration-muted-foreground/40 hover:decoration-foreground/40"
 						>
-							Edit prompts
+							{m.prompt_edit()}
 						</Link>
 					</div>
 				)}
@@ -282,8 +283,8 @@ function PromptHistoryPage() {
 			{/* TABS */}
 			<div className="border-b border-border">
 				<div className="flex items-end justify-between">
-					<nav className="-mb-px flex gap-6" aria-label="Tabs">
-						{TABS.map(({ key, label }) => (
+					<nav className="-mb-px flex gap-6" aria-label={m.common_tabs()}>
+						{getTabs().map(({ key, label }) => (
 							<button
 								key={key}
 								type="button"
@@ -300,7 +301,7 @@ function PromptHistoryPage() {
 					</nav>
 					{aggregations?.totalRuns != null && (
 						<span className="pb-3 text-xs text-muted-foreground tabular-nums">
-							{aggregations.totalRuns.toLocaleString()} runs in period
+							{m.prompt_runs_period({ count: formatNumber(aggregations.totalRuns) })}
 						</span>
 					)}
 				</div>
@@ -390,7 +391,7 @@ function MentionsTab({
 	if (mentionStats.length === 0) {
 		return (
 			<div className="py-12 text-center text-muted-foreground text-sm">
-				No mention data available for this time period.
+				{m.prompt_no_mentions()}
 			</div>
 		);
 	}
@@ -403,26 +404,25 @@ function MentionsTab({
 		<Card className="gap-4">
 			<CardHeader>
 				<CardTitle className="flex items-center gap-1.5 text-base">
-					Mentions
+					{m.prompt_tab_mentions()}
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 						</TooltipTrigger>
 						<TooltipContent className="max-w-xs text-sm font-normal">
 							<p>
-								Only competitors from your{" "}
+								{m.prompt_mentions_tip_prefix()}{" "}
 								<Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">
-									tracked competitors list
+									{m.citations_tracked_competitors()}
 								</Link>{" "}
-								are shown here.
+								{m.prompt_mentions_tip_suffix()}
 							</p>
-							<p className="mt-2">If a competitor isn&apos;t showing up, add them to your list.</p>
+							<p className="mt-2">{m.prompt_mentions_add_hint()}</p>
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>
 				<CardDescription>
-					{brandName} was mentioned in <strong>{brandMentionPct}%</strong> of prompt evaluations (
-					{totalRuns.toLocaleString()} total runs).
+					{m.prompt_mentions_summary({ brand: brandName ?? "", percent: formatPercent(brandMentionPct / 100), runs: formatNumber(totalRuns) })}
 				</CardDescription>
 			</CardHeader>
 			<Separator />
@@ -473,14 +473,14 @@ function WebQueriesTab({
 	if (isError && !data) {
 		return (
 			<div className="py-12 text-center text-muted-foreground text-sm">
-				Couldn't load web queries right now. Reload the page to try again.
+				{m.prompt_web_queries_error()}
 			</div>
 		);
 	}
 	if (!data || data.totalQueries === 0) {
 		return (
 			<div className="py-12 text-center text-muted-foreground text-sm">
-				No web query data available for this time period.
+				{m.prompt_no_web_queries()}
 			</div>
 		);
 	}
@@ -488,20 +488,19 @@ function WebQueriesTab({
 	return (
 		<Tabs defaultValue="fanout" className="gap-4">
 			<TabsList>
-				<TabsTrigger value="fanout">Prompt Fan-Out</TabsTrigger>
-				<TabsTrigger value="words">Query Words</TabsTrigger>
+				<TabsTrigger value="fanout">{m.fanout_prompt_tab()}</TabsTrigger>
+				<TabsTrigger value="words">{m.fanout_query_words_tab()}</TabsTrigger>
 			</TabsList>
 			<TabsContent value="fanout">
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-1.5 text-base">
-							Prompt Fan-Out
+							{m.fanout_prompt_tab()}
 							<InfoTip>
-								Every distinct search engines ran while answering this prompt, with how many runs each engine issued it.
-								Your prompt's keywords are bolded.
+								{m.prompt_fanout_tip()}
 							</InfoTip>
 						</CardTitle>
-						<CardDescription>{data.uniqueQueries.toLocaleString()} distinct searches.</CardDescription>
+						<CardDescription>{m.prompt_distinct_searches({ count: formatNumber(data.uniqueQueries) })}</CardDescription>
 					</CardHeader>
 					<Separator />
 					<CardContent>
@@ -540,7 +539,7 @@ function CitationsTab({
 	if (!citationStats || citationStats.totalCitations === 0) {
 		return (
 			<div className="py-12 text-center text-muted-foreground text-sm">
-				No citation data available for this time period.
+				{m.prompt_no_citations()}
 			</div>
 		);
 	}
@@ -572,8 +571,6 @@ function ResponsesTab({
 	onPageChange: (page: number) => void;
 	brandName?: string;
 }) {
-	const formatDate = (dateString: string) => new Date(dateString).toLocaleString(undefined, { timeZoneName: "short" });
-
 	const formatRawOutput = (rawOutput: any) =>
 		typeof rawOutput === "string" ? rawOutput : JSON.stringify(rawOutput, null, 2);
 
@@ -610,29 +607,38 @@ function ResponsesTab({
 
 	if (runs.length === 0) {
 		return (
-			<div className="py-12 text-center text-muted-foreground text-sm">No prompt runs found for this time period.</div>
+			<div className="py-12 text-center text-muted-foreground text-sm">{m.prompt_no_runs()}</div>
 		);
 	}
 
 	return (
 		<div className="space-y-4">
-			<h3 className="text-base font-medium">Individual Prompt Runs</h3>
+			<h3 className="text-base font-medium">{m.prompt_individual_runs()}</h3>
 
 			{runs.map((run: any) => (
 				<Card key={run.id}>
 					<CardHeader className="pb-0 gap-y-0">
 						<div className="grid grid-cols-3 gap-x-4 text-sm">
 							<div>
-								<span className="text-muted-foreground block text-xs mb-0.5">Model</span>
+								<span className="text-muted-foreground block text-xs mb-0.5">{m.prompt_model()}</span>
 								<span>{getModelDisplayName(run.model)}</span>
 							</div>
 							<div>
-								<span className="text-muted-foreground block text-xs mb-0.5">Version</span>
+								<span className="text-muted-foreground block text-xs mb-0.5">{m.prompt_version()}</span>
 								<span>{run.version}</span>
 							</div>
 							<div>
-								<span className="text-muted-foreground block text-xs mb-0.5">Evaluated</span>
-								<span>{formatDate(run.createdAt)}</span>
+								<span className="text-muted-foreground block text-xs mb-0.5">{m.prompt_evaluated()}</span>
+								<span>
+									{formatLocaleDate(run.createdAt, {
+										year: "numeric",
+										month: "short",
+										day: "numeric",
+										hour: "numeric",
+										minute: "2-digit",
+										timeZoneName: "short",
+									})}
+								</span>
 							</div>
 						</div>
 					</CardHeader>
@@ -640,7 +646,7 @@ function ResponsesTab({
 					<CardContent className="space-y-5">
 						{run.webQueries && run.webQueries.length > 0 && (
 							<div>
-								<span className="text-xs text-muted-foreground block mb-1.5">Web Queries</span>
+								<span className="text-xs text-muted-foreground block mb-1.5">{m.prompt_tab_web_queries()}</span>
 								<div className="flex flex-wrap gap-1.5">
 									{run.webQueries.map((query: string, qIndex: number) => (
 										<Badge key={qIndex} variant="outline" className="text-xs font-normal">
@@ -652,7 +658,7 @@ function ResponsesTab({
 						)}
 
 						<div>
-							<span className="text-xs text-muted-foreground block mb-1.5">Brands Mentioned</span>
+							<span className="text-xs text-muted-foreground block mb-1.5">{m.prompt_brands_mentioned()}</span>
 							<div className="flex flex-wrap gap-1.5">
 								{run.brandMentioned && brandName && <Badge className="text-xs font-normal">{brandName}</Badge>}
 								{run.competitorsMentioned?.map((competitor: string, cIndex: number) => (
@@ -661,20 +667,20 @@ function ResponsesTab({
 									</Badge>
 								))}
 								{!run.brandMentioned && (!run.competitorsMentioned || run.competitorsMentioned.length === 0) && (
-									<span className="text-xs text-muted-foreground">None</span>
+									<span className="text-xs text-muted-foreground">{m.common_none()}</span>
 								)}
 							</div>
 						</div>
 
 						<div>
-							<span className="text-xs text-muted-foreground block mb-1.5">LLM Response</span>
+							<span className="text-xs text-muted-foreground block mb-1.5">{m.prompt_llm_response()}</span>
 							<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto prose prose-sm max-w-none">
 								<ReactMarkdown>{extractTextContent(run.rawOutput, run.provider ?? run.model)}</ReactMarkdown>
 							</div>
 						</div>
 
 						<div>
-							<span className="text-xs text-muted-foreground block mb-1.5">Raw Output</span>
+							<span className="text-xs text-muted-foreground block mb-1.5">{m.prompt_raw_output()}</span>
 							<div className="rounded-md border bg-muted/20 p-4 max-h-64 overflow-auto">
 								<pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap">
 									{formatRawOutput(run.rawOutput)}

@@ -2,6 +2,7 @@ import { IconBrandGithub, IconWorld } from "@tabler/icons-react";
 import { useRouteContext } from "@tanstack/react-router";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import type { ClientConfig } from "@workspace/config/types";
+import * as m from "@/paraglide/messages.js";
 
 export function NavAppInfo() {
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
@@ -38,7 +39,7 @@ export function NavAppInfo() {
 							<IconBrandGithub className="size-4" />
 						</a>
 					</TooltipTrigger>
-					<TooltipContent>View on GitHub</TooltipContent>
+					<TooltipContent>{m.nav_view_github()}</TooltipContent>
 				</Tooltip>
 			</div>
 		</div>
