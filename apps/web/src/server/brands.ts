@@ -79,15 +79,6 @@ async function initialEnabledModels(organizationId: string): Promise<string[] | 
 }
 
 /**
- * Picks supplied at creation time or during update go through the same
- * checks: loud configured-target validation plus plan enforcement.
- */
-async function validateEnabledModels(organizationId: string, models: string[]): Promise<void> {
-	selectTargetsForBrand(parseScrapeTargets(process.env.SCRAPE_TARGETS), models);
-	await assertEnabledModelsAllowed(organizationId, models);
-}
-
-/**
  * Picks supplied at creation time go through the same checks as a
  * post-creation edit: the loud configured-target validation plus plan
  * enforcement. Without picks, creation falls back to the plan defaults.
@@ -98,7 +89,8 @@ async function resolveCreateEnabledModels(
 ): Promise<string[] | null> {
 	if (!requested || requested.length === 0) return initialEnabledModels(organizationId);
 	const models = [...new Set(requested)];
-	await validateEnabledModels(organizationId, models);
+	selectTargetsForBrand(parseScrapeTargets(process.env.SCRAPE_TARGETS), models);
+	await assertEnabledModelsAllowed(organizationId, models);
 	return models;
 }
 
@@ -532,4 +524,3 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 
 		return result;
 	});
-
