@@ -244,6 +244,18 @@ export function evaluateRequireAdmin(isAdmin: boolean): "allow" | "deny" {
 }
 
 /**
+ * Whether a membership role is an org admin. "admin" is written by our
+ * provisioning (provisionLocalOrg, provisionUmbrellaOrg); "owner" is what
+ * better-auth's own org creation writes — accept either.
+ *
+ * Lives in the pure policy module (no server imports) so client-side routes
+ * can call it without triggering Vite's import-protection for server modules.
+ */
+export function isOrgAdminRole(role: string): boolean {
+	return role === "admin" || role === "owner";
+}
+
+/**
  * Which org a newly created brand attaches to, in pure form.
  *
  * An explicit choice must be one the caller belongs to. Without one, a single

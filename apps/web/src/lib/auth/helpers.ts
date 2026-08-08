@@ -25,15 +25,6 @@ export function isAdmin(session: SessionLike): boolean {
 	return session.user.role === "admin";
 }
 
-/**
- * Whether a membership role is an org admin. "admin" is written by our
- * provisioning (provisionLocalOrg, provisionUmbrellaOrg); "owner" is what
- * better-auth's own org creation writes — accept either.
- */
-export function isOrgAdminRole(role: string): boolean {
-	return role === "admin" || role === "owner";
-}
-
 export function hasReportAccess(session: SessionLike): boolean {
 	// Report generation is disabled entirely in deployments that don't support
 	// it (cloud), so the per-user flag is ignored there.

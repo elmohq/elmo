@@ -12,7 +12,8 @@ import { db } from "@workspace/lib/db/db";
 import { invitation, member, organization, user } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { isOrgAdminRole, requireAuthSession, requireBrandAccess, requireBrandOrganization } from "@/lib/auth/helpers";
+import { requireAuthSession, requireBrandAccess, requireBrandOrganization } from "@/lib/auth/helpers";
+import { isOrgAdminRole } from "@/lib/auth/policies";
 import { auth } from "@/lib/auth/server";
 import { getDeployment } from "@/lib/config/server";
 

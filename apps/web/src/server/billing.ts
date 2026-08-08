@@ -16,7 +16,8 @@ import {
 	getOrgBillingState,
 } from "@workspace/lib/entitlements";
 import { z } from "zod";
-import { isOrgAdminRole, listUserOrganizations, requireAuthSession, requireBrandOrganization } from "@/lib/auth/helpers";
+import { listUserOrganizations, requireAuthSession, requireBrandOrganization } from "@/lib/auth/helpers";
+import { isOrgAdminRole } from "@/lib/auth/policies";
 import { getDeployment } from "@/lib/config/server";
 
 export type BillingState = {

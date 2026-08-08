@@ -19,7 +19,7 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Progress } from "@workspace/ui/components/progress";
 import { useState } from "react";
-import { isOrgAdminRole } from "@/lib/auth/helpers";
+import { isOrgAdminRole } from "@/lib/auth/policies";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { type BillingState, getBillingStateFn, setClaudeAddonQuantityFn } from "@/server/billing";
 
