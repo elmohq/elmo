@@ -153,10 +153,7 @@ async function findUniqueOrgSlug(baseSlug: string, conn: DbConnection = db): Pro
  * from Auth0 (whitelabel) or created on signup. The brand id is reused as the
  * org id (the long-standing convention), with a collision-free slug.
  */
-export async function ensureOrganization(
-	input: { id: string; name: string },
-	conn: DbConnection = db,
-): Promise<void> {
+export async function ensureOrganization(input: { id: string; name: string }, conn: DbConnection = db): Promise<void> {
 	const [existing] = await conn
 		.select({ id: organization.id })
 		.from(organization)
@@ -185,10 +182,13 @@ export async function ensureOrganization(
  */
 export async function provisionUmbrellaOrg(input: { userId: string; name: string }): Promise<{ orgId: string }> {
 	const orgId = crypto.randomUUID();
-	const baseSlug = slugify(input.name);
-	const slug = await findUniqueOrgSlug(baseSlug);
 
 	await db.transaction(async (tx) => {
+		// Resolve the slug inside the transaction so the uniqueness check and the
+		// insert it guards see the same snapshot. Two same-named signups can still
+		// collide on the slug unique index; that surfaces as a failed signup
+		// rather than a duplicate org.
+		const slug = await findUniqueOrgSlug(slugify(input.name), tx);
 		await tx.insert(organization).values({ id: orgId, name: input.name, slug, createdAt: new Date() });
 		await tx.insert(member).values({
 			id: crypto.randomUUID(),
