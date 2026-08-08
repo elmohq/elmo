@@ -12,7 +12,7 @@ import {
 	prompts,
 	usageEvents,
 } from "@workspace/lib/db/schema";
-import { getOrgEntitlements } from "@workspace/lib/entitlements";
+import { type Entitlements, getOrgEntitlements } from "@workspace/lib/entitlements";
 import { getProvider, type ModelConfig, type Provider, parseScrapeTargets } from "@workspace/lib/providers";
 import {
 	dailyRunCeiling,
@@ -108,7 +108,7 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 async function resolvePlanForPrompt(
 	context: PromptContext,
 	scrapeTargets: ModelConfig[],
-): Promise<{ plan: PromptRunPlan; entitlements: Awaited<ReturnType<typeof getOrgEntitlements>> }> {
+): Promise<{ plan: PromptRunPlan; entitlements: Entitlements }> {
 	const { prompt, brand } = context;
 	const entitlements = await getOrgEntitlements(brand.organizationId);
 
@@ -378,6 +378,118 @@ async function runModelIteration({
 }
 
 /**
+ * One prompt's firing: resolve what should run now, run it, and schedule the
+ * next link in the chain. Returning without rescheduling parks the chain —
+ * schedule-maintenance revives it once the run plan produces targets again.
+ * Throwing fails the job so pg-boss retries.
+ */
+async function processPrompt(promptId: string, scrapeConfigs: ModelConfig[]): Promise<void> {
+	console.log(`Processing prompt ${promptId}`);
+
+	const context = await getPromptContext(promptId);
+	if (!context) {
+		// The prompt was deleted: complete the job and let the chain end.
+		console.log(`Prompt ${promptId} not found, skipping (no reschedule)`);
+		return;
+	}
+
+	const { prompt, brand, competitors: competitorsList } = context;
+
+	if (!prompt.enabled || !brand.enabled) {
+		console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
+		// Still reschedule at the brand cadence - the prompt might be enabled later
+		await scheduleNextRun(promptId, brand.delayOverrideHours ?? getDefaultDelayHours());
+		return;
+	}
+
+	const { plan, entitlements } = await resolvePlanForPrompt(context, scrapeConfigs);
+	if (plan.targets.length === 0 || plan.rescheduleHours === null) {
+		// Nothing to run and nothing to wait for: unentitled org, no platform
+		// picks, or outside the plan pool. The chain parks here — no
+		// reschedule — and schedule-maintenance revives it within one tick of
+		// the plan producing targets again (resubscribe, upgrade, new picks).
+		console.log(`Prompt ${promptId} has no runnable targets (org ${brand.organizationId}); parking chain`);
+		return;
+	}
+
+	const maxIntervalHours = Math.max(...plan.targets.map((t) => t.intervalHours));
+	const lastRuns = await getLastRunsByTargetKey(promptId, maxIntervalHours);
+	const dueTargets = selectDueTargets(plan.targets, lastRuns, new Date());
+
+	if (dueTargets.length === 0) {
+		// Fired early (expedite, duplicate send): everything is fresh. Keep the
+		// chain alive without spending anything.
+		console.log(`Prompt ${promptId}: no targets due yet, rescheduling in ${plan.rescheduleHours}h`);
+		await scheduleNextRun(promptId, plan.rescheduleHours);
+		return;
+	}
+
+	const ceiling = dailyRunCeiling(entitlements);
+	if (ceiling !== null && (await isOrgOverDailyCeiling(brand.organizationId, ceiling))) {
+		console.warn(`Org ${brand.organizationId} is over its daily run ceiling (${ceiling}); skipping this cycle`);
+		Sentry.withScope((scope) => {
+			scope.setLevel("warning");
+			scope.setTag("scheduler", "org-daily-ceiling");
+			scope.setFingerprint(["org-daily-ceiling", brand.organizationId]);
+			Sentry.captureMessage(`Org ${brand.organizationId} hit its daily run ceiling (${ceiling})`, "warning");
+		});
+		await scheduleNextRun(promptId, plan.rescheduleHours);
+		return;
+	}
+
+	console.log(
+		`Processing prompt "${prompt.value}" for brand "${brand.name}" — ${dueTargets.length}/${plan.targets.length} targets due`,
+	);
+
+	// Run all due model iterations in parallel
+	const runPromises = dueTargets.flatMap((target) => {
+		const providerImpl = getProvider(target.config.provider);
+		return Array.from({ length: target.replication }, (_, i) =>
+			runModelIteration({
+				promptId,
+				promptValue: prompt.value,
+				brand,
+				competitorsList,
+				config: target.config,
+				providerImpl,
+				runIndex: i + 1,
+			}),
+		);
+	});
+
+	const results = await Promise.allSettled(runPromises);
+	const failures = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
+
+	if (failures.length > 0) {
+		const errorMessages = failures
+			.map((f, i) => `Run ${i + 1}: ${f.reason instanceof Error ? f.reason.message : String(f.reason)}`)
+			.join("; ");
+
+		// Log failures but don't throw if some succeeded
+		console.error(`Prompt ${promptId} had ${failures.length}/${runPromises.length} failed runs: ${errorMessages}`);
+
+		// If ALL runs failed, throw to trigger retry
+		if (failures.length === runPromises.length) {
+			throw new Error(`All runs failed for prompt ${promptId}: ${errorMessages}`);
+		}
+	}
+
+	const successCount = runPromises.length - failures.length;
+	console.log(`Completed prompt ${promptId}: ${successCount}/${runPromises.length} successful runs`);
+
+	trackWorkerEvent("prompt_processed", {
+		brand_id: brand.id,
+		models: [...new Set(dueTargets.map((t) => t.config.model))],
+		providers: [...new Set(dueTargets.map((t) => t.config.provider))],
+		total_runs: runPromises.length,
+		successful_runs: successCount,
+		failed_runs: failures.length,
+	});
+
+	await scheduleNextRun(promptId, plan.rescheduleHours);
+}
+
+/**
  * Process a prompt - runs AI models and saves results.
  * This is a pg-boss job handler, called when a scheduled job fires.
  * After successful completion, schedules the next run.
@@ -387,115 +499,6 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 
 	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
-		const { promptId } = job.data;
-		console.log(`Processing prompt ${promptId}`);
-
-		// Get prompt context
-		const context = await getPromptContext(promptId);
-		if (!context) {
-			console.log(`Prompt ${promptId} not found, skipping (no reschedule)`);
-			continue; // Job completes successfully - prompt was deleted, don't reschedule
-		}
-
-		const { prompt, brand, competitors: competitorsList } = context;
-
-		// Check if prompt and brand are enabled
-		if (!prompt.enabled || !brand.enabled) {
-			console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
-			// Still reschedule at the brand cadence - the prompt might be enabled later
-			await scheduleNextRun(promptId, brand.delayOverrideHours ?? getDefaultDelayHours());
-			continue;
-		}
-
-		const { plan, entitlements } = await resolvePlanForPrompt(context, scrapeConfigs);
-		if (plan.targets.length === 0 || plan.rescheduleHours === null) {
-			// Nothing to run and nothing to wait for: unentitled org, no platform
-			// picks, or outside the plan pool. The chain parks here — no
-			// reschedule — and schedule-maintenance revives it within one tick of
-			// the plan producing targets again (resubscribe, upgrade, new picks).
-			console.log(`Prompt ${promptId} has no runnable targets (org ${brand.organizationId}); parking chain`);
-			continue;
-		}
-
-		const maxIntervalHours = Math.max(...plan.targets.map((t) => t.intervalHours));
-		const lastRuns = await getLastRunsByTargetKey(promptId, maxIntervalHours);
-		const dueTargets = selectDueTargets(plan.targets, lastRuns, new Date());
-
-		if (dueTargets.length === 0) {
-			// Fired early (expedite, duplicate send): everything is fresh. Keep the
-			// chain alive without spending anything.
-			console.log(`Prompt ${promptId}: no targets due yet, rescheduling in ${plan.rescheduleHours}h`);
-			await scheduleNextRun(promptId, plan.rescheduleHours);
-			continue;
-		}
-
-		const ceiling = dailyRunCeiling(entitlements);
-		if (ceiling !== null && (await isOrgOverDailyCeiling(brand.organizationId, ceiling))) {
-			console.warn(`Org ${brand.organizationId} is over its daily run ceiling (${ceiling}); skipping this cycle`);
-			Sentry.withScope((scope) => {
-				scope.setLevel("warning");
-				scope.setTag("scheduler", "org-daily-ceiling");
-				scope.setFingerprint(["org-daily-ceiling", brand.organizationId]);
-				Sentry.captureMessage(`Org ${brand.organizationId} hit its daily run ceiling (${ceiling})`, "warning");
-			});
-			await scheduleNextRun(promptId, plan.rescheduleHours);
-			continue;
-		}
-
-		console.log(
-			`Processing prompt "${prompt.value}" for brand "${brand.name}" — ${dueTargets.length}/${plan.targets.length} targets due`,
-		);
-
-		// Run all due model iterations in parallel
-		const runPromises: Promise<void>[] = [];
-
-		for (const target of dueTargets) {
-			const providerImpl = getProvider(target.config.provider);
-			for (let i = 0; i < target.replication; i++) {
-				runPromises.push(
-					runModelIteration({
-						promptId,
-						promptValue: prompt.value,
-						brand,
-						competitorsList,
-						config: target.config,
-						providerImpl,
-						runIndex: i + 1,
-					}),
-				);
-			}
-		}
-
-		const results = await Promise.allSettled(runPromises);
-		const failures = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
-
-		if (failures.length > 0) {
-			const errorMessages = failures
-				.map((f, i) => `Run ${i + 1}: ${f.reason instanceof Error ? f.reason.message : String(f.reason)}`)
-				.join("; ");
-
-			// Log failures but don't throw if some succeeded
-			console.error(`Prompt ${promptId} had ${failures.length}/${runPromises.length} failed runs: ${errorMessages}`);
-
-			// If ALL runs failed, throw to trigger retry
-			if (failures.length === runPromises.length) {
-				throw new Error(`All runs failed for prompt ${promptId}: ${errorMessages}`);
-			}
-		}
-
-		const successCount = runPromises.length - failures.length;
-		console.log(`Completed prompt ${promptId}: ${successCount}/${runPromises.length} successful runs`);
-
-		trackWorkerEvent("prompt_processed", {
-			brand_id: brand.id,
-			models: [...new Set(dueTargets.map((t) => t.config.model))],
-			providers: [...new Set(dueTargets.map((t) => t.config.provider))],
-			total_runs: runPromises.length,
-			successful_runs: successCount,
-			failed_runs: failures.length,
-		});
-
-		// Schedule the next run
-		await scheduleNextRun(promptId, plan.rescheduleHours);
+		await processPrompt(job.data.promptId, scrapeConfigs);
 	}
 }
