@@ -1,12 +1,15 @@
 // Pay-to-win link marketplaces — sites that sell placements to anyone willing
 // to pay, so a citation from one says more about a budget than about authority.
 //
-// Server-only, like the editorial set in `domain-categories.server.ts`: the
-// membership set is a bloom filter so publishing the app doesn't republish a
-// scraped marketplace inventory, and it's imported (not read from disk) so a
-// deployment can't lose the asset and silently stop flagging anything.
+// This is a flag rather than a `CitationCategory`, so it sits beside
+// `domain-categories.server.ts` instead of inside it: a marketplace domain
+// still has whatever category it earned, and the classifier stays free of the
+// bloom filter dependency.
 //
-// Regenerate `marketplace-domains.gen.json` with
+// The membership set is a bloom filter so shipping the app doesn't also ship a
+// republishable copy of the marketplaces' inventory, and it's imported rather
+// than read from disk so a deployment can't misplace the asset and silently
+// stop flagging anything. Regenerate it with
 // `scripts/generate-marketplace-bloom.ts` when the marketplace exports change.
 import { BloomFilter } from "bloom-filters";
 import bloom from "./marketplace-domains.gen.json";
