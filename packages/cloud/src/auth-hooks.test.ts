@@ -21,6 +21,7 @@ describe("getCloudAuthOptions", () => {
 		vi.stubEnv("RESEND_API_KEY", "re_test_x");
 		vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_x");
 		vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_x");
+		vi.stubEnv("CLOUD_SIGNUP_ALLOWLIST", "*");
 	});
 
 	it("injects the Stripe billing plugin", () => {
