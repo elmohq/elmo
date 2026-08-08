@@ -65,6 +65,26 @@ describe("computeMaintenanceDecisions", () => {
 		expect(decisions.toSchedule).toEqual([]);
 	});
 
+	it("revives a revived prompt (no runs, has pending future job) by expediting, not re-scheduling", () => {
+		// A resubscribed org's prompt: its history fell outside the maintenance
+		// query window (empty lastRunAtByKey) and a self-rescheduled future job
+		// is still queued. An immediate re-send would be deduped by pg-boss's
+		// singleton, so the correct action is to expedite the existing job.
+		const decisions = computeMaintenanceDecisions(
+			[
+				state({
+					promptId: "p1",
+					promptCreatedAt: new Date(NOW.getTime() - 5 * 60 * 1000),
+					lastRunAtByKey: new Map(),
+					pendingJob: { jobId: "job-1", state: "created" },
+				}),
+			],
+			NOW,
+		);
+		expect(decisions.toExpedite).toEqual([{ promptId: "p1", jobId: "job-1" }]);
+		expect(decisions.toSchedule).toEqual([]);
+	});
+
 	it("throttles expedites when the prompt ran recently on another target", () => {
 		const decisions = computeMaintenanceDecisions(
 			[
