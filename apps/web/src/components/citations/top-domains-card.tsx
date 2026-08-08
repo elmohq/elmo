@@ -9,6 +9,7 @@ import { TrackDomainPopover } from "@/components/citations/track-domain-popover"
 import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 import { DOMAIN_CATEGORY_COLORS, ProgressBarChart } from "@/components/progress-bar-chart";
+import { useMarketplaceDomains } from "@/hooks/use-marketplace-domains";
 
 export function TopDomainsCard({
 	domains,
@@ -44,6 +45,10 @@ export function TopDomainsCard({
 
 	const { page, setPage, pageItems, totalItems } = usePagedList(filteredDomains, maxDomains);
 
+	// Load bloom filter and check which domains are on marketplaces
+	const allDomainNames = useMemo(() => domains.map((d) => d.domain), [domains]);
+	const { set: marketplaceSet } = useMarketplaceDomains(allDomainNames);
+
 	return (
 		<Card className="gap-4">
 			<CardHeader>
@@ -57,7 +62,8 @@ export function TopDomainsCard({
 								</TooltipTrigger>
 								<TooltipContent className="max-w-xs text-sm font-normal">
 									The most frequently cited domains across all prompt evaluations. Each domain is colored by its
-									category (brand, competitor, etc.).
+									category (brand, competitor, etc.). Domains marked with <strong>$</strong> are pay-to-win link
+									marketplaces.
 								</TooltipContent>
 							</Tooltip>
 						</CardTitle>
@@ -97,21 +103,41 @@ export function TopDomainsCard({
 				{filteredDomains.length > 0 ? (
 					<>
 						<ProgressBarChart
-							items={pageItems.map((domain) => ({
-								label: domain.domain,
-								count: domain.count,
-								category: domain.category || "other",
-								action:
-									domain.category === "other" && brandId && competitors ? (
-										<TrackDomainPopover
-											domain={domain.domain}
-											brandId={brandId}
-											brandName={brandName}
-											competitors={competitors}
-											onAdded={onCompetitorAdded}
-										/>
-									) : undefined,
-							}))}
+							items={pageItems.map((domain) => {
+								const isMarketplace = marketplaceSet.has(domain.domain);
+								return {
+									label: domain.domain,
+									count: domain.count,
+									category: domain.category || "other",
+									tooltip: isMarketplace
+										? "Pay-to-win link marketplace — citations may reflect paid placements."
+										: undefined,
+									action: (
+										<>
+											{isMarketplace && (
+												<Tooltip>
+													<TooltipTrigger asChild>
+														<span className="text-amber-500 cursor-help text-sm font-bold">$</span>
+													</TooltipTrigger>
+													<TooltipContent className="text-xs">
+														Pay-to-win link marketplace — this domain sells placements in AI-generated
+														content.
+													</TooltipContent>
+												</Tooltip>
+											)}
+											{domain.category === "other" && brandId && competitors ? (
+												<TrackDomainPopover
+													domain={domain.domain}
+													brandId={brandId}
+													brandName={brandName}
+													competitors={competitors}
+													onAdded={onCompetitorAdded}
+												/>
+											) : undefined}
+										</>
+									),
+								};
+							})}
 							colorMapping={DOMAIN_CATEGORY_COLORS}
 							percentageMode="max"
 						/>
