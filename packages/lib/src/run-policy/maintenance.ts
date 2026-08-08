@@ -59,6 +59,19 @@ export function computeMaintenanceDecisions(promptStates: MaintenancePromptState
 		// A job that is running or retrying is already being handled.
 		if (state.pendingJob && state.pendingJob.state !== "created") continue;
 
+		// Brand-new or revived prompt with no runs at all and at least one
+		// target: schedule immediately regardless of creation time. The
+		// existing isPromptOverdue check uses promptCreatedAt, which is wrong
+		// for revived prompts whose runs all fell outside the query window.
+		const hasAnyRun = state.lastRunAtByKey.size > 0;
+		if (!hasAnyRun) {
+			decisions.toSchedule.push({
+				promptId: state.promptId,
+				cadenceHours: state.plan.rescheduleHours,
+			});
+			continue;
+		}
+
 		if (!isPromptOverdue(state, nowMs, 0)) continue;
 
 		const minIntervalMs = Math.min(...state.plan.targets.map((t) => t.intervalHours)) * 3600 * 1000;
