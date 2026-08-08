@@ -4,10 +4,19 @@ import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
 import pkg from "./package.json" with { type: "json" };
+import { paraglideVitePlugin } from "@inlang/paraglide-js";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+	plugins: [
+		paraglideVitePlugin({
+			project: "./project.inlang",
+			outdir: "./src/paraglide",
+			strategy: ["custom-account-locale", "baseLocale"],
+			emitTsDeclarations: true,
+		}),
+	],
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version),
 	},

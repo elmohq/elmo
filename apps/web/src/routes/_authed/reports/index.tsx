@@ -22,6 +22,8 @@ import { trackEvent } from "@/lib/posthog";
 import { ExternalLink } from "lucide-react";
 import { requireAuthSession, isAdmin, hasReportAccess } from "@/lib/auth/helpers";
 import { getReportsFn, createReportFn } from "@/server/reports";
+import { formatNumber } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 const checkReportAccess = createServerFn({ method: "GET" }).handler(
 	async (): Promise<{
@@ -45,8 +47,8 @@ export const Route = createFileRoute("/_authed/reports/")({
 		const appName = getAppName(match);
 		return {
 			meta: [
-				{ title: `Reports · ${appName}` },
-				{ name: "description", content: "Generate and view one-time brand reports." },
+				{ title: `${m.reports_title()} · ${appName}` },
+				{ name: "description", content: m.reports_description() },
 			],
 		};
 	},
@@ -85,12 +87,12 @@ function ReportsPage() {
 		mutationFn: (data: typeof formData) => createReportFn({ data }),
 		onSuccess: (_data, variables) => {
 			trackEvent("report_created", { has_manual_prompts: Boolean(variables.manualPrompts) });
-			setSuccess("Report request submitted successfully!");
+			setSuccess(m.reports_submitted());
 			setFormData({ brandName: "", brandWebsite: "", manualPrompts: "" });
 			queryClient.invalidateQueries({ queryKey: ["reports"] });
 		},
 		onError: (err: Error) => {
-			setSubmitError(err.message || "An error occurred");
+			setSubmitError(err.message || m.common_error());
 		},
 	});
 
@@ -114,6 +116,15 @@ function ReportsPage() {
 		}
 	};
 
+	const getStatusLabel = (status: string) => {
+		switch (status) {
+			case "completed": return m.status_completed();
+			case "processing": return m.status_processing();
+			case "failed": return m.status_failed();
+			default: return m.status_pending();
+		}
+	};
+
 	const extractDomain = (url: string) => {
 		try {
 			return new URL(url).hostname.replace("www.", "");
@@ -132,22 +143,22 @@ function ReportsPage() {
 						<div className="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
 							<div className="space-y-8">
 								<div className="space-y-2">
-									<h1 className="text-3xl font-bold tracking-tight">Reports</h1>
-									<p className="text-muted-foreground">Generate one-time brand reports.</p>
+									<h1 className="text-3xl font-bold tracking-tight">{m.reports_title()}</h1>
+									<p className="text-muted-foreground">{m.reports_short_description()}</p>
 								</div>
 								<div className="space-y-6 max-w-4xl">
 									{/* Report Creation Form */}
 									<div className="space-y-4">
-										<h2 className="text-2xl font-semibold">Create New Report</h2>
+										<h2 className="text-2xl font-semibold">{m.reports_create()}</h2>
 
 										<form onSubmit={handleSubmit} className="space-y-4">
 											<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 												<div className="space-y-2">
-													<Label htmlFor="brandName">Brand Name</Label>
+												<Label htmlFor="brandName">{m.reports_brand_name()}</Label>
 													<Input
 														id="brandName"
 														type="text"
-														placeholder="Enter brand name"
+													placeholder={m.reports_enter_brand()}
 														value={formData.brandName}
 														onChange={(e) => setFormData({ ...formData, brandName: e.target.value })}
 														required
@@ -155,7 +166,7 @@ function ReportsPage() {
 													/>
 												</div>
 												<div className="space-y-2">
-													<Label htmlFor="brandWebsite">Brand Website</Label>
+												<Label htmlFor="brandWebsite">{m.reports_brand_website()}</Label>
 													<Input
 														id="brandWebsite"
 														type="url"
@@ -170,11 +181,11 @@ function ReportsPage() {
 
 											<div className="space-y-2">
 												<Label htmlFor="manualPrompts">
-													Manual Prompts <span className="text-muted-foreground font-normal">(Optional)</span>
+												{m.reports_manual_prompts()} <span className="text-muted-foreground font-normal">({m.common_optional()})</span>
 												</Label>
 												<Textarea
 													id="manualPrompts"
-													placeholder="Enter one prompt per line, up to 50"
+											placeholder={m.reports_manual_placeholder()}
 													value={formData.manualPrompts}
 													onChange={(e) => setFormData({ ...formData, manualPrompts: e.target.value })}
 													disabled={createMutation.isPending}
@@ -183,25 +194,9 @@ function ReportsPage() {
 												/>
 												<p className="text-xs text-muted-foreground">
 													{formData.manualPrompts.trim() ? (
-														<>
-															<strong>Note:</strong> Prompts will NOT be auto-generated. Using your{" "}
-															{
-																formData.manualPrompts
-																	.trim()
-																	.split("\n")
-																	.filter((line) => line.trim()).length
-															}{" "}
-															manual prompt
-															{formData.manualPrompts
-																.trim()
-																.split("\n")
-																.filter((line) => line.trim()).length !== 1
-																? "s"
-																: ""}
-															.
-														</>
+												m.reports_manual_note({ count: formatNumber(formData.manualPrompts.trim().split("\n").filter((line) => line.trim()).length) })
 													) : (
-														"Leave empty to auto-generate prompts based on website analysis, competitors, and keywords."
+												m.reports_auto_note()
 													)}
 												</p>
 											</div>
@@ -210,20 +205,20 @@ function ReportsPage() {
 											{success && <p className="text-sm text-green-600">{success}</p>}
 
 											<Button type="submit" disabled={createMutation.isPending} className="cursor-pointer">
-												{createMutation.isPending ? "Creating Report..." : "Create Report"}
+										{createMutation.isPending ? m.reports_creating() : m.reports_create_button()}
 											</Button>
 										</form>
 									</div>
 
 									{/* Reports List */}
 									<div className="space-y-4">
-										<h2 className="text-2xl font-semibold">Report History</h2>
+									<h2 className="text-2xl font-semibold">{m.reports_history()}</h2>
 
 										{error && (
 											<Card>
 												<CardContent className="py-8 text-center">
 													<p className="text-destructive">
-														{error instanceof Error ? error.message : "Failed to load reports"}
+											{error instanceof Error ? error.message : m.reports_load_failed()}
 													</p>
 												</CardContent>
 											</Card>
@@ -233,13 +228,13 @@ function ReportsPage() {
 											<div className="flex items-center justify-center py-8">
 												<div className="flex items-center space-x-2">
 													<div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-													<span>Loading reports...</span>
+											<span>{m.reports_loading()}</span>
 												</div>
 											</div>
 										) : !error && reports.length === 0 ? (
 											<Card>
 												<CardContent className="py-8 text-center">
-													<p className="text-muted-foreground">No reports found.</p>
+											<p className="text-muted-foreground">{m.reports_none()}</p>
 												</CardContent>
 											</Card>
 										) : (
@@ -267,12 +262,12 @@ function ReportsPage() {
 																		>
 																			<Button variant="default" size="sm" className="cursor-pointer h-6 px-2 text-xs">
 																				<ExternalLink className="size-3 mr-0.5" />
-																				View Report
+													{m.reports_view()}
 																			</Button>
 																		</Link>
 																	) : (
 																		<Badge variant={getStatusBadgeVariant(report.status)} className="text-xs">
-																			{report.status.charAt(0).toUpperCase() + report.status.slice(1)}
+											{getStatusLabel(report.status)}
 																		</Badge>
 																	)}
 																</div>

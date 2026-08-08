@@ -12,24 +12,25 @@ import {
 } from "@workspace/ui/components/breadcrumb";
 import { useBrand } from "@/hooks/use-brands";
 import { Link } from "@tanstack/react-router";
+import * as m from "@/paraglide/messages.js";
 
 /** Map of page segments to display names */
-const PAGE_NAMES: Record<string, string> = {
-	visibility: "Visibility",
-	"share-of-voice": "Share of Voice",
-	"query-fan-out": "Query Fan-Out",
-	opportunities: "Opportunities",
-	prompts: "Prompts",
-	citations: "Citations",
-	brand: "Brand",
-	competitors: "Competitors",
-	llms: "LLMs",
-	workflows: "Workflows",
-	tools: "Tools",
+const PAGE_NAMES: Record<string, () => string> = {
+	visibility: m.nav_visibility,
+	"share-of-voice": m.nav_share_of_voice,
+	"query-fan-out": m.nav_query_fan_out,
+	opportunities: m.nav_opportunities,
+	prompts: m.nav_prompts,
+	citations: m.nav_citations,
+	brand: m.nav_brand,
+	competitors: m.nav_competitors,
+	llms: m.nav_llms,
+	workflows: m.nav_workflows,
+	tools: m.nav_tools,
 };
 
 function getPageDisplayName(segment: string): string {
-	return PAGE_NAMES[segment] || segment.charAt(0).toUpperCase() + segment.slice(1);
+	return PAGE_NAMES[segment]?.() || segment.charAt(0).toUpperCase() + segment.slice(1);
 }
 
 function AdminBreadcrumbs({ pathname }: { pathname: string }) {
@@ -46,12 +47,12 @@ function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 				<>
 					<BreadcrumbItem className="hidden md:block">
 						<BreadcrumbLink asChild>
-							<Link to="/reports">Reports</Link>
+							<Link to="/reports">{m.nav_reports()}</Link>
 						</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
 					<BreadcrumbItem>
-						<BreadcrumbPage>View Report</BreadcrumbPage>
+						<BreadcrumbPage>{m.breadcrumb_view_report()}</BreadcrumbPage>
 					</BreadcrumbItem>
 				</>
 			);
@@ -60,11 +61,11 @@ function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 		return (
 			<>
 				<BreadcrumbItem className="hidden md:block">
-					<span className="text-muted-foreground">Admin</span>
+					<span className="text-muted-foreground">{m.nav_admin()}</span>
 				</BreadcrumbItem>
 				<BreadcrumbSeparator className="hidden md:block" />
 				<BreadcrumbItem>
-					<BreadcrumbPage>Reports</BreadcrumbPage>
+					<BreadcrumbPage>{m.nav_reports()}</BreadcrumbPage>
 				</BreadcrumbItem>
 			</>
 		);
@@ -75,11 +76,11 @@ function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 		return (
 			<>
 				<BreadcrumbItem className="hidden md:block">
-					<span className="text-muted-foreground">Admin</span>
+					<span className="text-muted-foreground">{m.nav_admin()}</span>
 				</BreadcrumbItem>
 				<BreadcrumbSeparator className="hidden md:block" />
 				<BreadcrumbItem>
-					<BreadcrumbPage>Brands</BreadcrumbPage>
+					<BreadcrumbPage>{m.nav_brands()}</BreadcrumbPage>
 				</BreadcrumbItem>
 			</>
 		);
@@ -90,7 +91,7 @@ function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 	return (
 		<>
 			<BreadcrumbItem className="hidden md:block">
-				<span className="text-muted-foreground">Admin</span>
+				<span className="text-muted-foreground">{m.nav_admin()}</span>
 			</BreadcrumbItem>
 			<BreadcrumbSeparator className="hidden md:block" />
 			<BreadcrumbItem>
@@ -129,7 +130,7 @@ function BrandBreadcrumbs({
 	const isSettingsSubPage = pageSegment === "settings" && subSegment;
 
 	// Determine page name
-	const pageName = pageSegment ? getPageDisplayName(pageSegment) : "Overview";
+	const pageName = pageSegment ? getPageDisplayName(pageSegment) : m.nav_overview();
 
 	return (
 		<>
@@ -151,22 +152,22 @@ function BrandBreadcrumbs({
 						<BreadcrumbLink asChild>
 							{brandId ? (
 								<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
-									Visibility
+									{m.nav_visibility()}
 								</Link>
 							) : (
-								<span>Visibility</span>
+								<span>{m.nav_visibility()}</span>
 							)}
 						</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
 					<BreadcrumbItem>
-						<BreadcrumbPage>Prompt History</BreadcrumbPage>
+						<BreadcrumbPage>{m.breadcrumb_prompt_history()}</BreadcrumbPage>
 					</BreadcrumbItem>
 				</>
 			) : isSettingsSubPage ? (
 				<>
 					<BreadcrumbItem className="hidden md:block">
-						<span className="text-muted-foreground">Settings</span>
+						<span className="text-muted-foreground">{m.nav_settings()}</span>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
 					<BreadcrumbItem>
@@ -182,7 +183,7 @@ function BrandBreadcrumbs({
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
 					<BreadcrumbItem>
-						<BreadcrumbPage>Edit</BreadcrumbPage>
+						<BreadcrumbPage>{m.breadcrumb_edit()}</BreadcrumbPage>
 					</BreadcrumbItem>
 				</>
 			) : (
@@ -199,15 +200,20 @@ export function SiteHeader() {
 	const { pathname } = useLocation();
 
 	const isAdminPage = pathname.startsWith("/admin") || pathname.startsWith("/reports");
+	const isGlobalSettingsPage = pathname === "/settings" || pathname.startsWith("/settings/");
 
 	return (
 		<header className="bg-background sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
 			<div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
-				<SidebarTrigger className="-ml-1 cursor-pointer" />
+				<SidebarTrigger className="-ml-1 cursor-pointer" label={m.ui_toggle_sidebar()} />
 				<Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
 				<Breadcrumb>
 					<BreadcrumbList>
-						{isAdminPage ? (
+						{isGlobalSettingsPage ? (
+							<BreadcrumbItem>
+								<BreadcrumbPage>{m.nav_system_settings()}</BreadcrumbPage>
+							</BreadcrumbItem>
+						) : isAdminPage ? (
 							<AdminBreadcrumbs pathname={pathname} />
 						) : (
 							<BrandBreadcrumbs pathname={pathname} brandId={brandId} brandName={brand?.name || "Dashboard"} />

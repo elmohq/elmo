@@ -1,7 +1,7 @@
 import { pgEnum, pgTable, uuid, text, timestamp, boolean, json, index, integer, smallint } from "drizzle-orm/pg-core";
 // `organization` is referenced by the brands FK below; the re-export makes it
 // (and the rest of the auth schema) visible to `import * as schema` consumers.
-import { organization } from "./schema-auth";
+import { organization, user } from "./schema-auth";
 
 // Better-auth tables & relations — re-exported so `import * as schema` sees everything.
 // Source file is auto-generated; run `pnpm run generate:auth-schema` to refresh.
@@ -10,6 +10,31 @@ export * from "./schema-auth";
 // ============================================================================
 // Application tables
 // ============================================================================
+
+export const userPreferences = pgTable("user_preferences", {
+	userId: text("user_id")
+		.primaryKey()
+		.references(() => user.id, { onDelete: "cascade" }),
+	localePreference: text("locale_preference").default("auto").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+}).enableRLS();
+
+export const systemSettings = pgTable("system_settings", {
+	id: text("id").primaryKey().notNull(),
+	defaultLocale: text("default_locale").default("en").notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+	updatedBy: text("updated_by").references(() => user.id, { onDelete: "set null" }),
+}).enableRLS();
+
+export type UserPreference = typeof userPreferences.$inferSelect;
+export type SystemSetting = typeof systemSettings.$inferSelect;
 
 export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
 

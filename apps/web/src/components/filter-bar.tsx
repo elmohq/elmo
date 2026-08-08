@@ -40,6 +40,8 @@ import { ALL_MODELS_VALUE } from "@/lib/model-filter";
 // no optimistic layer is needed (nuqs throttled URL writes, which is why the
 // old code wrapped every change in `useOptimistic` + `startTransition`).
 import { useFilterNavigate, splitTags, joinTags, coerceLookback } from "@/hooks/use-list-filters";
+import { formatNumber } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 /** "all" is the no-filter sentinel; any other string is a concrete model id
  *  from the deployment's `SCRAPE_TARGETS`. Deployments can configure arbitrary
@@ -78,21 +80,23 @@ export function iconForModel(model: string, className = "size-3.5") {
 }
 
 export function labelForModel(model: string): string {
-	if (model === ALL_MODELS_VALUE) return "All models";
+	if (model === ALL_MODELS_VALUE) return m.filter_all_models();
 	return getModelMeta(model).label;
 }
 
-const LOOKBACK_OPTIONS: { value: LookbackPeriod; label: string }[] = [
-	{ value: "1w", label: "Last 7 days" },
-	{ value: "1m", label: "Last 30 days" },
-	{ value: "3m", label: "Last 3 months" },
-	{ value: "6m", label: "Last 6 months" },
-	{ value: "1y", label: "Last 12 months" },
-	{ value: "all", label: "All time" },
-];
+function getLookbackOptions(): { value: LookbackPeriod; label: string }[] {
+	return [
+		{ value: "1w", label: m.filter_last_7_days() },
+		{ value: "1m", label: m.filter_last_30_days() },
+		{ value: "3m", label: m.filter_last_3_months() },
+		{ value: "6m", label: m.filter_last_6_months() },
+		{ value: "1y", label: m.filter_last_12_months() },
+		{ value: "all", label: m.filter_all_time() },
+	];
+}
 
 function getLookbackLabel(lookback: LookbackPeriod): string {
-	return LOOKBACK_OPTIONS.find((o) => o.value === lookback)?.label ?? lookback;
+	return getLookbackOptions().find((o) => o.value === lookback)?.label ?? lookback;
 }
 
 // ------------------------------------------------------------------
@@ -202,7 +206,7 @@ export function LookbackDropdown() {
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="w-48">
 				<DropdownMenuRadioGroup value={selected} onValueChange={(v) => handleChange(v as LookbackPeriod)}>
-					{LOOKBACK_OPTIONS.map((opt) => (
+					{getLookbackOptions().map((opt) => (
 						<DropdownMenuRadioItem key={opt.value} value={opt.value} className="cursor-pointer">
 							{opt.label}
 						</DropdownMenuRadioItem>
@@ -238,26 +242,26 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 			<PopoverTrigger asChild>
 				<FilterTriggerButton
 					icon={<TagIcon className="size-3.5" />}
-					label="Tags"
+					label={m.filter_tags()}
 					active={selected.length > 0}
 					badgeCount={selected.length > 0 ? selected.length : undefined}
 				/>
 			</PopoverTrigger>
 			<PopoverContent align="start" className="w-64 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
 				<div className="flex items-center justify-between px-3 h-10 border-b">
-					<span className="font-medium text-sm">Tags</span>
+					<span className="font-medium text-sm">{m.filter_tags()}</span>
 					{selected.length > 0 && (
 						<button
 							type="button"
 							onClick={() => commit([])}
 							className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
 						>
-							Clear
+							{m.filter_clear()}
 						</button>
 					)}
 				</div>
 				{availableTags.length === 0 ? (
-					<p className="text-sm text-muted-foreground py-6 text-center">No tags available</p>
+					<p className="text-sm text-muted-foreground py-6 text-center">{m.filter_no_tags()}</p>
 				) : (
 					<div className="py-1 max-h-64 overflow-y-auto">
 						{availableTags.map((tag) => {
@@ -300,7 +304,7 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 // setState) to avoid flashing back when the URL echo races with typing.
 // ------------------------------------------------------------------
 
-export function SearchInput({ placeholder = "Search prompts..." }: { placeholder?: string }) {
+export function SearchInput({ placeholder = m.filter_search_prompts() }: { placeholder?: string }) {
 	const urlValue = useSearch({ strict: false, select: (s) => s.q });
 	const setFilters = useFilterNavigate();
 	const value = urlValue ?? "";
@@ -363,7 +367,7 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 					type="button"
 					onClick={clear}
 					className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-					aria-label="Clear search"
+					aria-label={m.filter_clear_search()}
 				>
 					<X className="h-3.5 w-3.5" />
 				</button>
@@ -386,8 +390,8 @@ export function ResultCount({ count, total }: { count: number | undefined; total
 	const showTotal = total !== undefined && total !== count;
 	return (
 		<span className="text-xs text-muted-foreground tabular-nums ml-1">
-			{count.toLocaleString()}
-			{showTotal && ` of ${total.toLocaleString()}`} {count === 1 && !showTotal ? "result" : "results"}
+			{formatNumber(count)}
+			{showTotal && ` ${m.filter_of()} ${formatNumber(total)}`} {count === 1 && !showTotal ? m.filter_result() : m.filter_results()}
 		</span>
 	);
 }

@@ -26,6 +26,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import BrandOnboarding from "@/components/brand-onboarding";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
+import * as m from "@/paraglide/messages.js";
 
 const getBrandData = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
@@ -157,7 +158,9 @@ export const Route = createFileRoute("/_authed/app/$brand")({
 				{ title: brandName ? `${brandName} · ${appName}` : appName },
 				{
 					name: "description",
-					content: brandName ? `AI visibility tracking for ${brandName}.` : "AI visibility tracking and optimization.",
+					content: brandName
+						? m.brand_meta_description({ brand: brandName })
+						: m.brand_meta_description_generic(),
 				},
 			],
 		};

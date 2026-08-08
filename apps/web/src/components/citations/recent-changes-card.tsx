@@ -11,15 +11,17 @@ import {
 } from "@tabler/icons-react";
 import type { CitationData } from "@/components/citations/types";
 import { formatPeriodLabel, formatUrlForDisplay, UnderlineTabs } from "@/components/citations/shared";
+import { formatNumber } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 type ChangeType = "new_pages" | "dropped_pages" | "title" | "new_domains" | "dropped_domains";
 
-const CHANGE_TYPE_TABS: { key: ChangeType; label: string }[] = [
-	{ key: "new_pages", label: "New Pages" },
-	{ key: "dropped_pages", label: "Dropped Pages" },
-	{ key: "title", label: "Title Changes" },
-	{ key: "new_domains", label: "New Domains" },
-	{ key: "dropped_domains", label: "Dropped Domains" },
+const getChangeTypeTabs = (): { key: ChangeType; label: string }[] => [
+	{ key: "new_pages", label: m.citations_new_pages() },
+	{ key: "dropped_pages", label: m.citations_dropped_pages() },
+	{ key: "title", label: m.citations_title_changes() },
+	{ key: "new_domains", label: m.citations_new_domains() },
+	{ key: "dropped_domains", label: m.citations_dropped_domains() },
 ];
 
 export function RecentChangesCard({
@@ -46,28 +48,28 @@ export function RecentChangesCard({
 	}, [allChanges, changeTypeFilter]);
 
 	const visibleChanges = filteredChanges.slice(0, 6);
+	const changeTypeTabs = getChangeTypeTabs();
 
 	return (
 		<Card className="h-full flex flex-col">
 			<CardHeader>
 				<CardTitle className="flex items-center gap-1.5">
-					Recent Changes
+					{m.citations_recent_changes()}
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 						</TooltipTrigger>
 						<TooltipContent className="max-w-xs text-sm font-normal">
-							Compares this {formatPeriodLabel(days)} with the {formatPeriodLabel(days)} before it. Shows new and
-							dropped pages, title changes, and new and dropped domains.
+							{m.citations_recent_changes_tip({ period: formatPeriodLabel(days) })}
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>
-				<CardDescription>How AI citations have shifted over the past {formatPeriodLabel(days)}</CardDescription>
+				<CardDescription>{m.citations_recent_changes_description({ period: formatPeriodLabel(days) })}</CardDescription>
 			</CardHeader>
 			<Separator />
 			<CardContent className="flex-1">
 				<UnderlineTabs
-					tabs={CHANGE_TYPE_TABS}
+					tabs={changeTypeTabs}
 					activeKey={changeTypeFilter}
 					onSelect={(key) => setChangeTypeFilter(key)}
 				/>
@@ -91,9 +93,9 @@ export function RecentChangesCard({
 
 						let description: React.ReactNode = null;
 						if (change.type === "new_pages" && "promptCount" in change) {
-							description = `0 → ${change.count} citations across ${change.promptCount} prompt${change.promptCount !== 1 ? "s" : ""}`;
+							description = m.citations_change_new_page({ citations: formatNumber(change.count), prompts: formatNumber(change.promptCount) });
 						} else if (change.type === "dropped_pages" && "previousCount" in change) {
-							description = `${change.previousCount} → ${change.currentCount} citations`;
+							description = m.citations_change_dropped_page({ previous: formatNumber(change.previousCount), current: formatNumber(change.currentCount) });
 						} else if (change.type === "title" && "currentTitle" in change && "previousTitle" in change) {
 							description = (
 								<>
@@ -103,9 +105,9 @@ export function RecentChangesCard({
 								</>
 							);
 						} else if (change.type === "new_domains" && "count" in change) {
-							description = `${change.count} citation${change.count !== 1 ? "s" : ""} in the current period`;
+							description = m.citations_change_new_domain({ count: formatNumber(change.count) });
 						} else if (change.type === "dropped_domains" && "previousCount" in change) {
-							description = `${change.previousCount} citation${change.previousCount !== 1 ? "s" : ""} last period, none now`;
+							description = m.citations_change_dropped_domain({ count: formatNumber(change.previousCount) });
 						}
 
 						const inner = (
@@ -141,8 +143,7 @@ export function RecentChangesCard({
 					})}
 					{visibleChanges.length === 0 && (
 						<p className="text-sm text-muted-foreground text-center py-4">
-							No {CHANGE_TYPE_TABS.find((t) => t.key === changeTypeFilter)?.label.toLowerCase() ?? changeTypeFilter}{" "}
-							changes in this period.
+							{m.citations_no_changes({ type: changeTypeTabs.find((t) => t.key === changeTypeFilter)?.label.toLowerCase() ?? changeTypeFilter })}
 						</p>
 					)}
 				</div>

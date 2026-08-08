@@ -28,6 +28,9 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import type { ClientConfig } from "@workspace/config/types";
 import { setPersonProperties } from "@/lib/posthog";
+import { formatDate, formatNumber, formatPercent } from "@/i18n/formatting";
+import { getLocale } from "@/paraglide/runtime.js";
+import * as m from "@/paraglide/messages.js";
 
 function getVisibilityBgColor(value: number): string {
 	if (value > 75) return "bg-emerald-50 dark:bg-emerald-950/30";
@@ -57,7 +60,7 @@ function lastValue<T>(series: T[], key: keyof T): number | null {
 }
 
 function formatRelativeTime(dateString: string | null): string {
-	if (!dateString) return "Never";
+	if (!dateString) return "—";
 
 	const date = new Date(dateString);
 	const now = new Date();
@@ -66,12 +69,13 @@ function formatRelativeTime(dateString: string | null): string {
 	const diffHours = Math.floor(diffMs / 3600000);
 	const diffDays = Math.floor(diffMs / 86400000);
 
-	if (diffMins < 1) return "Just now";
-	if (diffMins < 60) return `${diffMins}m ago`;
-	if (diffHours < 24) return `${diffHours}h ago`;
-	if (diffDays < 7) return `${diffDays}d ago`;
+	const formatter = new Intl.RelativeTimeFormat(getLocale(), { numeric: "auto", style: "short" });
+	if (diffMins < 1) return formatter.format(0, "minute");
+	if (diffMins < 60) return formatter.format(-diffMins, "minute");
+	if (diffHours < 24) return formatter.format(-diffHours, "hour");
+	if (diffDays < 7) return formatter.format(-diffDays, "day");
 
-	return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+	return formatDate(date, { month: "short", day: "numeric" });
 }
 
 function formatRunFrequency(hours: number): string {
@@ -80,11 +84,11 @@ function formatRunFrequency(hours: number): string {
 	const remainingHours = hours % 24;
 
 	const parts: string[] = [];
-	if (weeks > 0) parts.push(`${weeks}w`);
-	if (days > 0) parts.push(`${days}d`);
-	if (remainingHours > 0) parts.push(`${remainingHours}h`);
+	if (weeks > 0) parts.push(m.duration_week_short({ count: weeks }));
+	if (days > 0) parts.push(m.duration_day_short({ count: days }));
+	if (remainingHours > 0) parts.push(m.duration_hour_short({ count: remainingHours }));
 
-	return parts.length > 0 ? `~${parts.join(" ")}` : "~1h";
+	return parts.length > 0 ? `~${parts.join(" ")}` : `~${m.duration_hour_short({ count: 1 })}`;
 }
 
 export const Route = createFileRoute("/_authed/app/$brand/")({
@@ -93,8 +97,8 @@ export const Route = createFileRoute("/_authed/app/$brand/")({
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Overview", { appName, brandName }) },
-				{ name: "description", content: "Dashboard overview of AI visibility and citations." },
+				{ title: buildTitle(m.page_overview_title(), { appName, brandName }) },
+				{ name: "description", content: m.page_overview_description() },
 			],
 		};
 	},
@@ -158,7 +162,13 @@ function HeroStat({ value, loading }: { value: number | null; loading: boolean }
 				className={`font-bold tracking-tight tabular-nums ${value === null ? "text-muted-foreground" : getVisibilityTextColor(value)}`}
 				style={{ fontSize: "clamp(2.5rem, 6vw, 5rem)" }}
 			>
-				{loading ? <Skeleton className="h-16 w-32" /> : value === null ? "—" : `${value}%`}
+				{loading ? (
+					<Skeleton className="h-16 w-32" />
+				) : value === null ? (
+					"—"
+				) : (
+					formatPercent(value / 100, { maximumFractionDigits: 1 })
+				)}
 			</div>
 		</CardContent>
 	);
@@ -196,11 +206,11 @@ function DashboardPage() {
 						<div className="flex items-center justify-between">
 							<h2 className="text-lg font-semibold flex items-center gap-2">
 								<IconEye className="h-5 w-5 text-muted-foreground" />
-								AI Visibility
+								{m.dashboard_ai_visibility()}
 							</h2>
 							<Button asChild variant="ghost" size="sm" className="h-8">
 								<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
-									View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
+									{m.dashboard_view_visibility()} <IconArrowRight className="h-4 w-4 ml-1" />
 								</Link>
 							</Button>
 						</div>
@@ -211,7 +221,7 @@ function DashboardPage() {
 							<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
 								<CardHeader className="border-b border-dotted pb-2!">
 									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
-										Visibility Trends (30d)
+										{m.dashboard_visibility_trends()}
 										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
 									</CardTitle>
 								</CardHeader>
@@ -227,11 +237,11 @@ function DashboardPage() {
 						<div className="flex items-center justify-between">
 							<h2 className="text-lg font-semibold flex items-center gap-2">
 								<IconSpeakerphone className="h-5 w-5 text-muted-foreground" />
-								Share of Voice
+								{m.page_share_title()}
 							</h2>
 							<Button asChild variant="ghost" size="sm" className="h-8">
 								<Link to="/app/$brand/share-of-voice" params={{ brand: brandId }}>
-									View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
+									{m.dashboard_view_share()} <IconArrowRight className="h-4 w-4 ml-1" />
 								</Link>
 							</Button>
 						</div>
@@ -242,7 +252,7 @@ function DashboardPage() {
 							<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
 								<CardHeader className="border-b border-dotted pb-2!">
 									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
-										Share of Voice Trends (30d)
+										{m.dashboard_share_trends()}
 										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
 									</CardTitle>
 								</CardHeader>
@@ -285,10 +295,9 @@ function DashboardPage() {
 		return (
 			<div className="space-y-6 max-w-2xl p-4">
 				<div className="space-y-2">
-					<h2 className="text-2xl font-bold">Research Brand Data</h2>
+					<h2 className="text-2xl font-bold">{m.dashboard_research_title()}</h2>
 					<p className="text-muted-foreground text-balance">
-						We will analyze your website and find the best generative AI prompts to track. This process may take a
-						couple of minutes.
+						{m.dashboard_research_description()}
 					</p>
 				</div>
 				<PromptWizard
@@ -316,12 +325,12 @@ function DashboardPage() {
 	if (hasNoEvaluations) {
 		const getMessage = () => {
 			if (hasEnabledPrompts) {
-				return "You are ready to track your AI visibility. We're currently running the first evaluation against AI models. This usually takes a few minutes.";
+				return m.dashboard_waiting_message();
 			}
 			if (hasPrompts) {
-				return "You have prompts configured but none are currently enabled. Add or enable some prompts to start tracking your AI visibility.";
+				return m.dashboard_disabled_prompts_message();
 			}
-			return "Set up prompts to start tracking your AI visibility. Once configured, we'll evaluate them against AI models automatically.";
+			return m.dashboard_no_prompts_message();
 		};
 
 		return (
@@ -330,7 +339,7 @@ function DashboardPage() {
 					<IconClock className="h-10 w-10 text-muted-foreground" />
 				</div>
 				<h2 className="text-2xl font-bold mb-3">
-					{hasEnabledPrompts ? "Waiting for First Evaluation" : "No Data Yet"}
+					{hasEnabledPrompts ? m.dashboard_waiting_title() : m.dashboard_no_data_title()}
 				</h2>
 				<p className="text-muted-foreground mb-6 text-balance">{getMessage()}</p>
 				<div className="flex flex-col gap-3 w-full">
@@ -338,21 +347,25 @@ function DashboardPage() {
 						<div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
 							<div className="flex items-center gap-2">
 								<IconList className="h-5 w-5 text-muted-foreground" />
-								<span className="text-sm">Prompts configured and enabled</span>
+								<span className="text-sm">{m.dashboard_prompts_enabled()}</span>
 							</div>
-							<span className="font-semibold">{totalPrompts.toLocaleString()}</span>
+							<span className="font-semibold">{formatNumber(totalPrompts)}</span>
 						</div>
 					)}
 					<Button asChild variant="outline" className="w-full">
 						<Link to="/app/$brand/settings/prompts" params={{ brand: brandId }}>
-							{hasEnabledPrompts ? "View Your Prompts" : hasPrompts ? "Edit Prompts" : "Set Up Prompts"}{" "}
+							{hasEnabledPrompts
+								? m.dashboard_view_prompts()
+								: hasPrompts
+									? m.dashboard_edit_prompts()
+									: m.dashboard_setup_prompts()} {" "}
 							<IconArrowRight className="h-4 w-4 ml-1" />
 						</Link>
 					</Button>
 				</div>
 				{hasEnabledPrompts && (
 					<p className="text-xs text-muted-foreground mt-6">
-						Refresh this page in a few minutes to see your AI visibility data.
+						{m.dashboard_refresh_hint()}
 					</p>
 				)}
 			</div>
@@ -367,11 +380,11 @@ function DashboardPage() {
 					<div className="flex items-center justify-between">
 						<h2 className="text-lg font-semibold flex items-center gap-2">
 							<IconEye className="h-5 w-5 text-muted-foreground" />
-							AI Visibility
+							{m.dashboard_ai_visibility()}
 						</h2>
 						<Button asChild variant="ghost" size="sm" className="h-8">
 							<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
-								View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
+								{m.dashboard_view_visibility()} <IconArrowRight className="h-4 w-4 ml-1" />
 							</Link>
 						</Button>
 					</div>
@@ -388,8 +401,8 @@ function DashboardPage() {
 						<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
 							<CardHeader className="border-b border-dotted pb-2!">
 								<CardTitleWithTooltip
-									title="Visibility Trends (30d)"
-									tooltip={`The percentage of AI answers to your prompts that mention your brand — the big number is the latest point on this line. For prompts that don't name your brand, it's ${nonBrandedVisibility}%. Visibility shifts as AI models, the prompts you track, or the sites AI scans change; the line is smoothed for staggered prompt schedules.`}
+								title={m.dashboard_visibility_trends()}
+								tooltip={m.dashboard_visibility_tip({ nonBrandedVisibility })}
 								/>
 							</CardHeader>
 							<CardContent className="flex-1 min-h-[100px]">
@@ -398,7 +411,7 @@ function DashboardPage() {
 								) : (
 									<TrendChart
 										data={visibilityTimeSeries.map((p) => ({ date: p.date, value: p.overall }))}
-										label="AI Visibility (7d avg)"
+									label={m.dashboard_visibility_chart_label()}
 										color="#2563eb"
 									/>
 								)}
@@ -412,11 +425,11 @@ function DashboardPage() {
 					<div className="flex items-center justify-between">
 						<h2 className="text-lg font-semibold flex items-center gap-2">
 							<IconSpeakerphone className="h-5 w-5 text-muted-foreground" />
-							Share of Voice
+							{m.page_share_title()}
 						</h2>
 						<Button asChild variant="ghost" size="sm" className="h-8">
 							<Link to="/app/$brand/share-of-voice" params={{ brand: brandId }}>
-								View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
+								{m.dashboard_view_share()} <IconArrowRight className="h-4 w-4 ml-1" />
 							</Link>
 						</Button>
 					</div>
@@ -431,8 +444,8 @@ function DashboardPage() {
 						<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
 							<CardHeader className="border-b border-dotted pb-2!">
 								<CardTitleWithTooltip
-									title="Share of Voice Trends (30d)"
-									tooltip="Your brand's share of all brand and competitor mentions across the AI answers to your prompts — the big number is the latest point on this line. It shifts as AI models change, as you and competitors publish, or as the sites AI scans move; the line is smoothed for staggered prompt schedules."
+								title={m.dashboard_share_trends()}
+								tooltip={m.dashboard_share_tip()}
 								/>
 							</CardHeader>
 							<CardContent className="flex-1 min-h-[100px]">
@@ -441,7 +454,7 @@ function DashboardPage() {
 								) : (
 									<TrendChart
 										data={(sovData?.shareTimeSeries ?? []).map((p) => ({ date: p.date, value: p.share }))}
-										label="Share of Voice"
+									label={m.page_share_title()}
 										color="#2563eb"
 									/>
 								)}
@@ -476,30 +489,36 @@ function DashboardPage() {
 							<>
 								<StatWithTooltip
 									icon={IconList}
-									label="prompts tracked"
-									value={totalPrompts.toLocaleString()}
-									tooltip="Total number of unique prompts being monitored for AI visibility across ChatGPT, Claude, and Gemini."
+									label={m.dashboard_prompts_tracked()}
+									value={formatNumber(totalPrompts)}
+									tooltip={m.dashboard_prompts_tracked_tip()}
 								/>
 								<StatWithTooltip
 									icon={IconActivity}
-									label="evaluations (30d)"
-									value={totalRuns.toLocaleString()}
-									tooltip="Total number of times we have evaluated prompts against LLMs in the last 30 days. Each prompt is evaluated multiple times across different AI models."
+									label={m.dashboard_evaluations()}
+									value={formatNumber(totalRuns)}
+									tooltip={m.dashboard_evaluations_tip()}
 								/>
 								<StatWithTooltip
 									icon={IconClock}
-									label="run frequency"
+									label={m.dashboard_run_frequency()}
 									value={formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24)}
-									tooltip={`Prompts are automatically evaluated every ${formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24).replace("~", "")} on average to track changes in AI model responses over time.`}
+									tooltip={m.dashboard_run_frequency_tip({
+										frequency: formatRunFrequency(
+											brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24,
+										).replace("~", ""),
+									})}
 								/>
 								<StatWithTooltip
 									icon={IconRefresh}
-									label="last updated"
+									label={m.dashboard_last_updated()}
 									value={formatRelativeTime(lastUpdatedAt)}
 									tooltip={
 										lastUpdatedAt
-											? `The last prompts we evaluated for your brand were run on ${new Date(lastUpdatedAt).toLocaleString()}`
-											: "No evaluations have been run yet."
+											? m.dashboard_last_updated_tip({
+													date: formatDate(lastUpdatedAt, { dateStyle: "medium", timeStyle: "short" }),
+												})
+											: m.dashboard_no_evaluations_tip()
 									}
 								/>
 							</>

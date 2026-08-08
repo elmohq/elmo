@@ -13,6 +13,7 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
+import * as m from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/auth/forgot-password")({
 	component: ForgotPasswordPage,
@@ -44,12 +45,12 @@ function ForgotPasswordPage() {
 	if (submitted) {
 		return (
 			<FullPageCard
-				title="Check your email"
-				subtitle={`If an account exists for ${email}, a reset link is on its way.`}
+					title={m.auth_check_email()}
+					subtitle={m.auth_reset_sent({ email })}
 			>
 				<p className="text-center text-sm text-muted-foreground w-full">
 					<Link to="/auth/login" className="text-primary hover:underline font-medium">
-						Back to sign in
+						{m.auth_back_to_sign_in()}
 					</Link>
 				</p>
 			</FullPageCard>
@@ -57,10 +58,10 @@ function ForgotPasswordPage() {
 	}
 
 	return (
-		<FullPageCard title="Reset your password" subtitle="Enter your email and we'll send you a reset link">
+		<FullPageCard title={m.auth_reset_title()} subtitle={m.auth_reset_description()}>
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
 				<div className="space-y-2">
-					<Label htmlFor="email">Email</Label>
+					<Label htmlFor="email">{m.auth_email()}</Label>
 					<Input
 						id="email"
 						type="email"
@@ -73,12 +74,12 @@ function ForgotPasswordPage() {
 					/>
 				</div>
 				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Sending..." : "Send reset link"}
+					{loading ? m.auth_sending() : m.auth_send_reset_link()}
 				</Button>
 			</form>
 			<p className="text-center text-sm text-muted-foreground pt-4">
 				<Link to="/auth/login" className="text-primary hover:underline font-medium">
-					Back to sign in
+					{m.auth_back_to_sign_in()}
 				</Link>
 			</p>
 		</FullPageCard>

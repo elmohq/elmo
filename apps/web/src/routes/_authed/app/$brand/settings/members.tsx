@@ -18,6 +18,8 @@ import { getDeployment } from "@/lib/config/server";
 import { trackEvent } from "@/lib/posthog";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import { cancelInvitationFn, inviteTeamMemberFn, listTeamFn, removeTeamMemberFn, type TeamData } from "@/server/team";
+import { formatDate } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 const getTeamInvitesEnabled = createServerFn({ method: "GET" }).handler(async () => {
 	return { teamInvites: getDeployment().features.teamInvites };
@@ -36,8 +38,8 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/members")({
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Team", { appName, brandName }) },
-				{ name: "description", content: "Invite teammates and manage team members." },
+				{ title: buildTitle(m.settings_team_title(), { appName, brandName }) },
+				{ name: "description", content: m.settings_team_meta_description() },
 			],
 		};
 	},
@@ -64,7 +66,7 @@ function TeamSettingsPage() {
 			setInviteRole("member");
 			await router.invalidate();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to send invitation");
+			setError(err instanceof Error ? err.message : m.team_invite_failed());
 		} finally {
 			setInviting(false);
 		}
@@ -76,7 +78,7 @@ function TeamSettingsPage() {
 			await removeTeamMemberFn({ data: { brandId, memberId } });
 			await router.invalidate();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to remove member");
+			setError(err instanceof Error ? err.message : m.team_remove_failed());
 		}
 	}
 
@@ -86,15 +88,15 @@ function TeamSettingsPage() {
 			await cancelInvitationFn({ data: { brandId, invitationId } });
 			await router.invalidate();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to cancel invitation");
+			setError(err instanceof Error ? err.message : m.team_cancel_failed());
 		}
 	}
 
 	return (
 		<div className="space-y-6">
 			<div>
-				<h1 className="text-3xl font-bold">Team</h1>
-				<p className="text-muted-foreground">Invite teammates and manage who has access to this brand.</p>
+				<h1 className="text-3xl font-bold">{m.settings_team_title()}</h1>
+				<p className="text-muted-foreground">{m.settings_team_description()}</p>
 			</div>
 
 			{error && (
@@ -105,7 +107,7 @@ function TeamSettingsPage() {
 
 			<form onSubmit={handleInvite} className="flex flex-wrap items-end gap-3">
 				<div className="space-y-2">
-					<Label htmlFor="invite-email">Email</Label>
+					<Label htmlFor="invite-email">{m.team_email()}</Label>
 					<Input
 						id="invite-email"
 						type="email"
@@ -117,36 +119,36 @@ function TeamSettingsPage() {
 					/>
 				</div>
 				<div className="space-y-2">
-					<Label htmlFor="invite-role">Role</Label>
+					<Label htmlFor="invite-role">{m.team_role()}</Label>
 					<Select value={inviteRole} onValueChange={(value) => setInviteRole(value as "member" | "admin")}>
 						<SelectTrigger id="invite-role" className="w-32">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="member">Member</SelectItem>
-							<SelectItem value="admin">Admin</SelectItem>
+							<SelectItem value="member">{m.team_member()}</SelectItem>
+							<SelectItem value="admin">{m.team_admin()}</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>
 				<Button type="submit" disabled={inviting}>
-					{inviting ? "Inviting..." : "Invite"}
+					{inviting ? m.team_inviting() : m.team_invite()}
 				</Button>
 			</form>
 
 			<div className="space-y-3">
-				<h2 className="text-lg font-semibold">Members</h2>
+				<h2 className="text-lg font-semibold">{m.team_members()}</h2>
 				<div className="divide-y rounded-md border">
-					{members.map((m) => (
-						<div key={m.id} className="flex items-center justify-between gap-3 p-3">
+					{members.map((member) => (
+						<div key={member.id} className="flex items-center justify-between gap-3 p-3">
 							<div className="min-w-0">
-								<p className="truncate font-medium">{m.name}</p>
-								<p className="truncate text-sm text-muted-foreground">{m.email}</p>
+								<p className="truncate font-medium">{member.name}</p>
+								<p className="truncate text-sm text-muted-foreground">{member.email}</p>
 							</div>
 							<div className="flex shrink-0 items-center gap-3">
-								<Badge variant="secondary">{m.role}</Badge>
-								{m.userId !== currentUserId && (
-									<Button type="button" variant="outline" size="sm" onClick={() => handleRemove(m.id)}>
-										Remove
+								<Badge variant="secondary">{member.role}</Badge>
+								{member.userId !== currentUserId && (
+									<Button type="button" variant="outline" size="sm" onClick={() => handleRemove(member.id)}>
+										{m.team_remove()}
 									</Button>
 								)}
 							</div>
@@ -157,20 +159,20 @@ function TeamSettingsPage() {
 
 			{invitations.length > 0 && (
 				<div className="space-y-3">
-					<h2 className="text-lg font-semibold">Pending invitations</h2>
+					<h2 className="text-lg font-semibold">{m.team_pending()}</h2>
 					<div className="divide-y rounded-md border">
 						{invitations.map((inv) => (
 							<div key={inv.id} className="flex items-center justify-between gap-3 p-3">
 								<div className="min-w-0">
 									<p className="truncate font-medium">{inv.email}</p>
 									<p className="text-sm text-muted-foreground">
-										Expires {new Date(inv.expiresAt).toLocaleDateString()}
+										{m.team_expires({ date: formatDate(inv.expiresAt) })}
 									</p>
 								</div>
 								<div className="flex shrink-0 items-center gap-3">
 									<Badge variant="secondary">{inv.role ?? "member"}</Badge>
 									<Button type="button" variant="outline" size="sm" onClick={() => handleCancel(inv.id)}>
-										Cancel
+										{m.common_cancel()}
 									</Button>
 								</div>
 							</div>

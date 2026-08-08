@@ -1,13 +1,11 @@
 import { useMemo } from "react";
 import {
 	type CitationCategory,
-	CATEGORY_CONFIG,
 	CITATION_CATEGORIES,
 	CITATION_PAGE_TYPES,
-	PAGE_TYPE_CONFIG,
 } from "@/lib/domain-categories";
 import type { CitationData } from "@/components/citations/types";
-import { CATEGORY_META, PAGE_TYPE_META } from "@/components/citations/shared";
+import { getCategoryLabel, getCategoryMeta, getPageTypeLabel, getPageTypeMeta } from "@/components/citations/shared";
 import { CitationStatsCards } from "@/components/citations/stats-cards";
 import { TrendAreaChart } from "@/components/citations/trend-area-chart";
 import { RecentChangesCard } from "@/components/citations/recent-changes-card";
@@ -16,6 +14,7 @@ import { TopDomainsCard } from "@/components/citations/top-domains-card";
 import { TopUrlsCard } from "@/components/citations/top-urls-card";
 import { GoogleShoppingCard } from "@/components/citations/google-shopping-card";
 import { RedditCard, useSubredditData } from "@/components/citations/reddit-card";
+import * as m from "@/paraglide/messages.js";
 
 export type {
 	CitationData,
@@ -78,16 +77,16 @@ export function CitationsDisplay({
 	}, [citationData.pageTypeDistribution]);
 	const urlSourceTabs = useMemo<{ key: string; label: string }[]>(
 		() => [
-			{ key: "all", label: "All Sources" },
-			...chartSourceCategories.map((c) => ({ key: c as string, label: CATEGORY_CONFIG[c].label })),
+			{ key: "all", label: m.citations_all_sources() },
+			...chartSourceCategories.map((c) => ({ key: c as string, label: getCategoryLabel(c) })),
 		],
 		[chartSourceCategories],
 	);
 	const domainSourceTabs = urlSourceTabs; // identical by construction (same chart-category list)
 	const urlPageTypeTabs = useMemo<{ key: string; label: string }[]>(
 		() => [
-			{ key: "all", label: "All Page Types" },
-			...chartPageTypes.map((p) => ({ key: p as string, label: PAGE_TYPE_CONFIG[p].label })),
+			{ key: "all", label: m.citations_all_page_types() },
+			...chartPageTypes.map((p) => ({ key: p as string, label: getPageTypeLabel(p) })),
 		],
 		[chartPageTypes],
 	);
@@ -119,22 +118,22 @@ export function CitationsDisplay({
 			{/* Citation Categories over time */}
 			{citationData.citationTimeSeries && citationData.citationTimeSeries.length > 0 && (
 				<TrendAreaChart
-					title="Citation Categories"
-					tooltip="Share of citations by source category over time, as a percentage of all citations each day. Smoothed to account for staggered prompt schedules; Google AI Mode search/shopping are excluded (see the Google Shopping section)."
+					title={m.citations_categories()}
+					tooltip={m.citations_categories_tip()}
 					data={(citationData.citationTimeSeries ?? []) as unknown as Array<Record<string, number | string>>}
 					keys={chartSourceCategories}
-					meta={CATEGORY_META}
+					meta={getCategoryMeta()}
 				/>
 			)}
 
 			{/* Citation Page Types over time */}
 			{citationData.pageTypeTimeSeries && citationData.pageTypeTimeSeries.length > 0 && (
 				<TrendAreaChart
-					title="Citation Page Types"
-					tooltip="Share of citations by page type over time — what kind of page each citation points to, inferred from the URL and title."
+					title={m.citations_page_types()}
+					tooltip={m.citations_page_types_tip()}
 					data={(citationData.pageTypeTimeSeries ?? []) as unknown as Array<Record<string, number | string>>}
 					keys={chartPageTypes}
-					meta={PAGE_TYPE_META}
+					meta={getPageTypeMeta()}
 				/>
 			)}
 

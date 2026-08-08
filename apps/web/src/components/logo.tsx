@@ -3,6 +3,7 @@ import { useRouteContext } from "@tanstack/react-router";
 import { cn } from "@workspace/ui/lib/utils";
 import { DEFAULT_APP_ICON, DEFAULT_APP_NAME } from "@workspace/config/constants";
 import type { ClientConfig } from "@workspace/config/types";
+import * as m from "@/paraglide/messages.js";
 
 interface LogoProps extends ComponentPropsWithoutRef<"div"> {
 	iconClassName?: string;
@@ -34,7 +35,7 @@ export function Logo({ className, iconClassName, textClassName, ...props }: Logo
 			{branding?.icon && (
 				<img
 					src={branding.icon}
-					alt={`${branding.name} logo`}
+					alt={m.common_logo_alt({ name: branding.name ?? DEFAULT_APP_NAME })}
 					className={cn("size-5", iconClassName)}
 					fetchPriority="low"
 				/>

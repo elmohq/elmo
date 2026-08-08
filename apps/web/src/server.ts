@@ -2,6 +2,13 @@ import "../instrument.server.mjs";
 import { wrapFetchWithSentry } from "@sentry/tanstackstart-react";
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
+import { defineCustomServerStrategy } from "@/paraglide/runtime.js";
+import { paraglideMiddleware } from "@/paraglide/server.js";
+import { resolveRequestLocale } from "@/i18n/locale.server";
+
+defineCustomServerStrategy("custom-account-locale", {
+	getLocale: (request) => (request ? resolveRequestLocale(request) : undefined),
+});
 
 // Not awaited: the app has to serve sign-in and settings whether or not the
 // credential store is reachable.
@@ -48,7 +55,9 @@ function addSecurityHeaders(response: Response): Response {
 export default createServerEntry(
 	wrapFetchWithSentry({
 		async fetch(request: Request) {
-			const response = await handler.fetch(request);
+			const response = await paraglideMiddleware(request, ({ request: localizedRequest }) =>
+				handler.fetch(localizedRequest),
+			);
 			return addSecurityHeaders(response);
 		},
 	}),

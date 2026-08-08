@@ -24,6 +24,8 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui
 import { Settings, TrendingUp, TrendingDown } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { getAdminStatsFn, updateDelayOverrideFn } from "@/server/admin";
+import { formatDate as formatLocaleDate, formatNumber } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 interface BrandStats {
 	id: string;
@@ -55,10 +57,10 @@ function formatDelayHours(hours: number): string {
 	const days = Math.floor((hours % (7 * 24)) / 24);
 	const remainingHours = hours % 24;
 	const parts: string[] = [];
-	if (weeks > 0) parts.push(`${weeks}w`);
-	if (days > 0) parts.push(`${days}d`);
-	if (remainingHours > 0) parts.push(`${remainingHours}h`);
-	return parts.length > 0 ? parts.join(" ") : "0h";
+	if (weeks > 0) parts.push(m.duration_week_short({ count: weeks }));
+	if (days > 0) parts.push(m.duration_day_short({ count: days }));
+	if (remainingHours > 0) parts.push(m.duration_hour_short({ count: remainingHours }));
+	return parts.length > 0 ? parts.join(" ") : m.duration_hour_short({ count: 0 });
 }
 
 function hoursToTimeUnits(hours: number) {
@@ -97,11 +99,11 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 		setError(null);
 		const totalHours = timeUnitsToHours(timeUnits);
 		if (totalHours === 0) {
-			setError("Please enter a delay value");
+			setError(m.admin_delay_required());
 			return;
 		}
 		if (totalHours < 1) {
-			setError("Delay must be at least 1 hour");
+			setError(m.admin_delay_minimum());
 			return;
 		}
 		setIsUpdating(true);
@@ -110,7 +112,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 			onUpdate();
 			setOpen(false);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to update");
+			setError(err instanceof Error ? err.message : m.admin_update_failed());
 		} finally {
 			setIsUpdating(false);
 		}
@@ -124,7 +126,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 			onUpdate();
 			setOpen(false);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to clear override");
+			setError(err instanceof Error ? err.message : m.admin_clear_failed());
 		} finally {
 			setIsUpdating(false);
 		}
@@ -137,20 +139,20 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 					<Settings className="h-4 w-4" />
 				</Button>
 			</DialogTrigger>
-			<DialogContent className="max-w-2xl">
+			<DialogContent className="max-w-2xl" closeLabel={m.common_close()}>
 				<DialogHeader>
-					<DialogTitle>Configure Job Delay for {brand.name}</DialogTitle>
+					<DialogTitle>{m.admin_configure_delay({ brand: brand.name })}</DialogTitle>
 					<DialogDescription>
-						Set a custom delay for how often prompt jobs run. Default is {formatDelayHours(defaultDelayHours)}.
+						{m.admin_configure_delay_description({ delay: formatDelayHours(defaultDelayHours) })}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="space-y-4 py-4">
 					<div className="space-y-3">
-						<Label>Custom Delay</Label>
+						<Label>{m.admin_custom_delay()}</Label>
 						<div className="grid grid-cols-3 gap-4">
 							<div className="space-y-2">
 								<Label htmlFor="weeks" className="text-xs text-muted-foreground">
-									Weeks
+									{m.admin_weeks()}
 								</Label>
 								<Input
 									id="weeks"
@@ -164,7 +166,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 							</div>
 							<div className="space-y-2">
 								<Label htmlFor="days" className="text-xs text-muted-foreground">
-									Days
+									{m.admin_days()}
 								</Label>
 								<Input
 									id="days"
@@ -178,7 +180,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 							</div>
 							<div className="space-y-2">
 								<Label htmlFor="hours" className="text-xs text-muted-foreground">
-									Hours
+									{m.admin_hours()}
 								</Label>
 								<Input
 									id="hours"
@@ -192,12 +194,11 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 							</div>
 						</div>
 						<p className="text-sm text-muted-foreground">
-							Current: <strong>{formatDelayHours(currentDelay)}</strong>
-							{brand.delayOverrideHours !== null && " (custom)"}
-							{brand.delayOverrideHours === null && " (default)"}
+							{m.admin_current({ delay: formatDelayHours(currentDelay) })}
+							 {brand.delayOverrideHours !== null ? `(${m.admin_custom()})` : `(${m.admin_default()})`}
 						</p>
 						<p className="text-sm text-muted-foreground">
-							Total: <strong>{formatDelayHours(timeUnitsToHours(timeUnits))}</strong>
+							{m.admin_total({ delay: formatDelayHours(timeUnitsToHours(timeUnits)) })}
 						</p>
 					</div>
 					{error && <p className="text-sm text-destructive">{error}</p>}
@@ -206,15 +207,15 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 					<div className="flex justify-between w-full">
 						{brand.delayOverrideHours !== null && (
 							<Button variant="outline" onClick={handleClearOverride} disabled={isUpdating} className="cursor-pointer">
-								Clear Override
+								{m.admin_clear_override()}
 							</Button>
 						)}
 						<div className="flex gap-2 ml-auto">
 							<Button variant="outline" onClick={() => setOpen(false)} disabled={isUpdating} className="cursor-pointer">
-								Cancel
+								{m.common_cancel()}
 							</Button>
 							<Button onClick={handleUpdate} disabled={isUpdating} className="cursor-pointer">
-								{isUpdating ? "Updating..." : "Update"}
+								{isUpdating ? m.admin_updating() : m.admin_update()}
 							</Button>
 						</div>
 					</div>
@@ -256,8 +257,8 @@ export const Route = createFileRoute("/_authed/admin/")({
 		const appName = getAppName(match);
 		return {
 			meta: [
-				{ title: `Admin · ${appName}` },
-				{ name: "description", content: "Monitor and manage brands, prompts, and scheduling." },
+				{ title: `${m.admin_meta_title()} · ${appName}` },
+				{ name: "description", content: m.admin_description() },
 			],
 		};
 	},
@@ -283,7 +284,7 @@ function AdminDashboard() {
 			setPromptsOverTime(data.promptsOverTime || []);
 			setRunsOverTime(data.runsOverTime || []);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "An error occurred");
+			setError(err instanceof Error ? err.message : m.common_error());
 		} finally {
 			setLoading(false);
 		}
@@ -320,7 +321,7 @@ function AdminDashboard() {
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle className="text-destructive">Error</CardTitle>
+					<CardTitle className="text-destructive">{m.common_error_title()}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<p>{error}</p>
@@ -348,20 +349,20 @@ function AdminDashboard() {
 
 	const dateFormatter = (value: string) => {
 		const date = new Date(value);
-		return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+		return formatLocaleDate(date, { month: "short", day: "numeric" });
 	};
 
 	const tooltipLabelFormatter = (value: ReactNode) => {
 		const date = new Date(String(value));
-		return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+		return formatLocaleDate(date, { month: "long", day: "numeric", year: "numeric" });
 	};
 
 	return (
 		<div className="space-y-8">
 			<div className="flex items-center justify-between">
 				<div className="space-y-2">
-					<h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-					<p className="text-muted-foreground">Monitor and manage brands, prompts, and job scheduling</p>
+					<h1 className="text-3xl font-bold tracking-tight">{m.admin_title()}</h1>
+					<p className="text-muted-foreground">{m.admin_description()}</p>
 				</div>
 			</div>
 
@@ -369,12 +370,12 @@ function AdminDashboard() {
 			<div className="grid gap-4 sm:grid-cols-2">
 				<Card>
 					<CardHeader>
-						<CardTitle>All Brands</CardTitle>
-						<CardDescription>Total: {totals.totalBrands} brands</CardDescription>
+						<CardTitle>{m.admin_all_brands()}</CardTitle>
+						<CardDescription>{m.admin_total_brands({ count: formatNumber(totals.totalBrands) })}</CardDescription>
 					</CardHeader>
 					<CardContent className="p-0 pb-4">
 						<ChartContainer
-							config={{ count: { label: "Total Brands", color: "#3b82f6" } }}
+							config={{ count: { label: m.admin_all_brands(), color: "#3b82f6" } }}
 							className="h-[120px] w-full px-4"
 						>
 							<ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
@@ -408,14 +409,14 @@ function AdminDashboard() {
 
 				<Card>
 					<CardHeader>
-						<CardTitle>Active Brands</CardTitle>
+						<CardTitle>{m.admin_active_brands()}</CardTitle>
 						<CardDescription>
-							With runs in last 30 days: {activeBrandsOverTime[activeBrandsOverTime.length - 1]?.count ?? 0}
+							{m.admin_active_brands_description({ count: formatNumber(activeBrandsOverTime[activeBrandsOverTime.length - 1]?.count ?? 0) })}
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="p-0 pb-4">
 						<ChartContainer
-							config={{ count: { label: "Active Brands", color: "#22c55e" } }}
+							config={{ count: { label: m.admin_active_brands(), color: "#22c55e" } }}
 							className="h-[120px] w-full px-4"
 						>
 							<ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
@@ -455,16 +456,16 @@ function AdminDashboard() {
 
 				<Card>
 					<CardHeader>
-						<CardTitle>Prompts</CardTitle>
+						<CardTitle>{m.wizard_prompts_title()}</CardTitle>
 						<CardDescription>
-							Active: {totals.activePrompts} | Total: {totals.totalPrompts}
+							{m.admin_prompts_summary({ active: formatNumber(totals.activePrompts), total: formatNumber(totals.totalPrompts) })}
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="p-0 pb-4">
 						<ChartContainer
 							config={{
-								enabled: { label: "Enabled", color: "#10b981" },
-								disabled: { label: "Disabled", color: "#ef4444" },
+								enabled: { label: m.common_enabled(), color: "#10b981" },
+								disabled: { label: m.common_disabled(), color: "#ef4444" },
 							}}
 							className="h-[120px] w-full px-4"
 						>
@@ -532,13 +533,13 @@ function AdminDashboard() {
 
 				<Card>
 					<CardHeader>
-						<CardTitle>Runs</CardTitle>
+						<CardTitle>{m.admin_runs()}</CardTitle>
 						<CardDescription>
-							7d: {totals.promptRuns7Days.toLocaleString()} | 30d: {totals.promptRuns30Days.toLocaleString()}
+							{m.admin_runs_summary({ week: formatNumber(totals.promptRuns7Days), month: formatNumber(totals.promptRuns30Days) })}
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="p-0 pb-4">
-						<ChartContainer config={{ count: { label: "Runs", color: "#8b5cf6" } }} className="h-[120px] w-full px-4">
+						<ChartContainer config={{ count: { label: m.admin_runs(), color: "#8b5cf6" } }} className="h-[120px] w-full px-4">
 							<ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
 								<BarChart data={runsOverTime}>
 									<CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -566,23 +567,23 @@ function AdminDashboard() {
 			{/* Brand Statistics Table */}
 			<Card>
 				<CardHeader>
-					<CardTitle>Brand Statistics</CardTitle>
-					<CardDescription>Detailed statistics and configuration for each brand</CardDescription>
+					<CardTitle>{m.admin_brand_statistics()}</CardTitle>
+					<CardDescription>{m.admin_brand_statistics_description()}</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<div className="overflow-x-auto">
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead>Brand</TableHead>
-									<TableHead className="text-right">Prompts</TableHead>
-									<TableHead className="text-right">Prompts (7d)</TableHead>
-									<TableHead className="text-right">Prompts (30d)</TableHead>
-									<TableHead className="text-right">Runs (7d)</TableHead>
-									<TableHead className="text-right">Runs (30d)</TableHead>
-									<TableHead>Last Run</TableHead>
-									<TableHead>Run Delay</TableHead>
-									<TableHead>Actions</TableHead>
+									<TableHead>{m.report_brand()}</TableHead>
+									<TableHead className="text-right">{m.wizard_prompts_title()}</TableHead>
+									<TableHead className="text-right">{m.admin_prompts_7d()}</TableHead>
+									<TableHead className="text-right">{m.admin_prompts_30d()}</TableHead>
+									<TableHead className="text-right">{m.admin_runs_7d()}</TableHead>
+									<TableHead className="text-right">{m.admin_runs_30d()}</TableHead>
+									<TableHead>{m.admin_last_run()}</TableHead>
+									<TableHead>{m.admin_run_delay()}</TableHead>
+									<TableHead>{m.admin_actions()}</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -623,22 +624,22 @@ function AdminDashboard() {
 													/>
 												</div>
 											</TableCell>
-											<TableCell className="text-right">{brand.promptRuns7Days?.toLocaleString() || 0}</TableCell>
-											<TableCell className="text-right">{brand.promptRuns30Days?.toLocaleString() || 0}</TableCell>
+											<TableCell className="text-right">{formatNumber(brand.promptRuns7Days ?? 0)}</TableCell>
+											<TableCell className="text-right">{formatNumber(brand.promptRuns30Days ?? 0)}</TableCell>
 											<TableCell>
 												{brand.lastPromptRunAt ? (
 													<span className={`text-sm ${isOverdue ? "text-red-600 font-semibold" : ""}`}>
-														{new Date(brand.lastPromptRunAt).toLocaleDateString()}
+												{formatLocaleDate(brand.lastPromptRunAt)}
 													</span>
 												) : (
-													<span className="text-muted-foreground">Never</span>
+											<span className="text-muted-foreground">{m.common_never()}</span>
 												)}
 											</TableCell>
 											<TableCell>
 												<div className="space-y-1">
 													<div className="font-medium">{formatDelayHours(currentDelayHours)}</div>
 													<span className="text-xs text-muted-foreground">
-														{brand.delayOverrideHours !== null ? "Custom" : "Default"}
+												{brand.delayOverrideHours !== null ? m.common_custom() : m.common_default()}
 													</span>
 												</div>
 											</TableCell>

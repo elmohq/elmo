@@ -8,6 +8,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PromptsDisplay } from "@/components/prompts-display";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
+import * as m from "@/paraglide/messages.js";
 import { coercePromptOrder, DEFAULT_PROMPT_ORDER, type PromptOrder } from "@/lib/prompt-order";
 
 export const Route = createFileRoute("/_authed/app/$brand/visibility")({
@@ -23,8 +24,8 @@ export const Route = createFileRoute("/_authed/app/$brand/visibility")({
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Visibility", { appName, brandName }) },
-				{ name: "description", content: "Track how LLMs respond to prompts about your brand." },
+				{ title: buildTitle(m.page_visibility_title(), { appName, brandName }) },
+				{ name: "description", content: m.page_visibility_description() },
 			],
 		};
 	},
@@ -36,9 +37,9 @@ function VisibilityPage() {
 
 	const infoContent = (
 		<>
-			Track how different LLMs respond to prompts related to your brand, products, and{" "}
+			{m.page_visibility_info_prefix()} {" "}
 			<Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">
-				competitors
+				{m.page_visibility_info_competitors()}
 			</Link>
 			.
 		</>
@@ -46,8 +47,8 @@ function VisibilityPage() {
 
 	return (
 		<PromptsDisplay
-			pageTitle="Visibility"
-			pageDescription="See how LLMs are evaluating prompts related to your brand."
+			pageTitle={m.page_visibility_title()}
+			pageDescription={m.page_visibility_description()}
 			pageInfoContent={infoContent}
 			editLink={`/app/${brandId}/settings/prompts`}
 		/>

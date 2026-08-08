@@ -1,6 +1,7 @@
 import type { DeploymentMode } from "@workspace/config/types";
 import type { MissingEnvVar } from "@workspace/config/env";
 import FullPageCard from "@/components/full-page-card";
+import * as m from "@/paraglide/messages.js";
 
 interface MissingEnvPageProps {
 	mode: DeploymentMode;
@@ -11,10 +12,10 @@ export default function MissingEnvPage({ mode, missing }: MissingEnvPageProps) {
 	const sortedMissing = [...missing].sort((a, b) => a.label.localeCompare(b.label));
 
 	const localHint =
-		mode === "local" ? "Set these via the CLI." : "Set these in the deployment environment, then redeploy or restart.";
+		mode === "local" ? m.env_local_hint() : m.env_deployment_hint();
 
 	return (
-		<FullPageCard title="Missing environment configuration" subtitle={`Deployment mode: ${mode}`} className="max-w-2xl">
+		<FullPageCard title={m.env_missing_title()} subtitle={m.env_deployment_mode({ mode })} className="max-w-2xl">
 			<div className="space-y-4 text-sm">
 				<p>{localHint}</p>
 				<ul className="space-y-3 rounded-md border bg-background p-4">

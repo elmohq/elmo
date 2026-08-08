@@ -20,6 +20,7 @@ import { VisibilityBarSection } from "@/components/visibility-bar-section";
 import { coercePromptOrder, orderPrompts } from "@/lib/prompt-order";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import * as m from "@/paraglide/messages.js";
 
 interface PromptsDisplayProps {
 	pageTitle: string;
@@ -110,24 +111,24 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 			errorState={
 				<Card className="p-6">
 					<div className="text-center text-muted-foreground">
-						<p className="mb-2">Failed to load prompts data</p>
-						<p className="text-sm">Try refreshing the page</p>
+						<p className="mb-2">{m.prompts_load_error()}</p>
+						<p className="text-sm">{m.common_refresh_page()}</p>
 					</div>
 				</Card>
 			}
 			totalCount={promptsSummary?.prompts?.length}
 			filteredCount={sortedPrompts.length}
-			noMatchesTitle="No prompts match your filters."
-			noMatchesDescription="Try adjusting your search or tag filters."
+			noMatchesTitle={m.prompts_no_matches()}
+			noMatchesDescription={m.prompts_adjust_filters()}
 			emptyState={
 				<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
 					<div className="text-center py-8 text-muted-foreground">
 						<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
-						<p className="mb-4">No prompts yet.</p>
+						<p className="mb-4">{m.prompts_none()}</p>
 						<Button asChild size="sm" className="h-7 flex cursor-pointer">
 							<Link to={editLink}>
 								<IconEditCircle />
-								<span>Edit</span>
+								<span>{m.common_edit()}</span>
 							</Link>
 						</Button>
 					</div>

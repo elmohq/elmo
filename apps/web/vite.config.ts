@@ -6,6 +6,7 @@ import { nitro } from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
+import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import { embedBinaries, externalizeResvg } from "@workspace/og/vite-plugin";
 import pkg from "./package.json" with { type: "json" };
 
@@ -26,6 +27,12 @@ export default defineConfig({
 		},
 	},
 	plugins: [
+		paraglideVitePlugin({
+			project: "./project.inlang",
+			outdir: "./src/paraglide",
+			strategy: ["custom-account-locale", "baseLocale"],
+			emitTsDeclarations: true,
+		}),
 		embedBinaries(),
 		externalizeResvg(),
 		devtools(),

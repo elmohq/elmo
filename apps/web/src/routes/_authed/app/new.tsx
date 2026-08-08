@@ -16,6 +16,7 @@ import FullPageCard from "@/components/full-page-card";
 import { trackEvent } from "@/lib/posthog";
 import { createBrandWithOrgFn } from "@/server/brands";
 import { getDeployment } from "@/lib/config/server";
+import * as m from "@/paraglide/messages.js";
 
 const getCanCreateBrands = createServerFn({ method: "GET" }).handler(async () => {
 	return { canCreateBrands: getDeployment().features.canCreateBrands };
@@ -54,29 +55,29 @@ function NewBrandPage() {
 			await router.invalidate();
 			await navigate({ to: "/app/$brand", params: { brand: brandId } });
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "An error occurred");
+			setError(m.common_error());
 		} finally {
 			setIsLoading(false);
 		}
 	};
 
 	return (
-		<FullPageCard title="Create a new brand" subtitle="Set up a brand to start tracking" showBackButton>
+		<FullPageCard title={m.brand_create_title()} subtitle={m.brand_create_description()} showBackButton>
 			<form action={handleSubmit} className="space-y-4">
 				<div className="space-y-2">
-					<Label htmlFor="brandName">Brand name</Label>
+					<Label htmlFor="brandName">{m.brand_name()}</Label>
 					<Input id="brandName" name="brandName" type="text" placeholder="Acme" required disabled={isLoading} />
 				</div>
 
 				<div className="space-y-2">
-					<Label htmlFor="website">Website</Label>
+					<Label htmlFor="website">{m.brand_website()}</Label>
 					<Input id="website" name="website" type="text" placeholder="example.com" required disabled={isLoading} />
 				</div>
 
 				{error && <p className="text-sm text-destructive">{error}</p>}
 
 				<Button type="submit" className="w-full" disabled={isLoading}>
-					{isLoading ? "Creating..." : "Create brand"}
+					{isLoading ? m.brand_creating() : m.brand_create_action()}
 				</Button>
 			</form>
 		</FullPageCard>

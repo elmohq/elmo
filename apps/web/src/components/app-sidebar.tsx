@@ -35,6 +35,7 @@ import { NavAppInfo } from "@/components/nav-app-info";
 import { DemoModePill } from "@/components/demo-mode-pill";
 import { Logo } from "@/components/logo";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
+import * as m from "@/paraglide/messages.js";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	isAdmin?: boolean;
@@ -65,7 +66,7 @@ export function AppSidebar({
 	if (!adminOnly) {
 		const dashboardItems = [
 			{
-				title: "Overview",
+				title: m.nav_overview(),
 				url: "/",
 				icon: IconDashboard,
 			},
@@ -75,27 +76,27 @@ export function AppSidebar({
 		if (brand?.onboarded) {
 			dashboardItems.push(
 				{
-					title: "Visibility",
+					title: m.nav_visibility(),
 					url: "/visibility",
 					icon: IconChartBar,
 				},
 				{
-					title: "Share of Voice",
+					title: m.nav_share_of_voice(),
 					url: "/share-of-voice",
 					icon: IconSpeakerphone,
 				},
 				{
-					title: "Query Fan-Out",
+					title: m.nav_query_fan_out(),
 					url: "/query-fan-out",
 					icon: IconSitemap,
 				},
 				{
-					title: "Citations",
+					title: m.nav_citations(),
 					url: "/citations",
 					icon: IconLink,
 				},
 				{
-					title: "Opportunities",
+					title: m.nav_opportunities(),
 					url: "/opportunities",
 					icon: IconTarget,
 				},
@@ -103,37 +104,37 @@ export function AppSidebar({
 		}
 
 		groups.push({
-			label: "Dashboard",
+			label: m.nav_dashboard(),
 			items: dashboardItems,
 		});
 
 		// Settings section - only show if onboarded
 		if (brand?.onboarded) {
 			groups.push({
-				label: "Settings",
+				label: m.nav_settings(),
 				items: [
 					{
-						title: "Brand",
+						title: m.nav_brand(),
 						url: "/settings/brand",
 						icon: IconBuilding,
 					},
 					{
-						title: "Competitors",
+						title: m.nav_competitors(),
 						url: "/settings/competitors",
 						icon: IconBuildings,
 					},
 					{
-						title: "Prompts",
+						title: m.nav_prompts(),
 						url: "/settings/prompts",
 						icon: IconListDetails,
 					},
 					{
-						title: "LLMs",
+						title: m.nav_llms(),
 						url: "/settings/llms",
 						icon: IconCpu,
 					},
 					...(context.clientConfig?.features.teamInvites
-						? [{ title: "Team", url: "/settings/members", icon: IconUsers }]
+						? [{ title: m.nav_team(), url: "/settings/members", icon: IconUsers }]
 						: []),
 				],
 			});
@@ -143,7 +144,7 @@ export function AppSidebar({
 	// Admin section
 	if (showAdminSection) {
 		const reportsItem = {
-			title: "Reports",
+			title: m.nav_reports(),
 			url: "/reports",
 			icon: IconReport,
 			absolute: true,
@@ -151,20 +152,20 @@ export function AppSidebar({
 		const adminItems = isAdmin
 			? [
 					{
-						title: "Brands",
+						title: m.nav_brands(),
 						url: "/admin",
 						icon: IconTable,
 						absolute: true,
 					},
 					...(reportsEnabled ? [reportsItem] : []),
 					{
-						title: "Workflows",
+						title: m.nav_workflows(),
 						url: "/admin/workflows",
 						icon: IconTimeline,
 						absolute: true,
 					},
 					{
-						title: "Tools",
+						title: m.nav_tools(),
 						url: "/admin/tools",
 						icon: IconTool,
 						absolute: true,
@@ -173,13 +174,22 @@ export function AppSidebar({
 			: [reportsItem];
 
 		groups.push({
-			label: "Admin",
+			label: m.nav_admin(),
 			items: adminItems,
 		});
 	}
 
 	return (
-		<Sidebar variant="inset" {...props}>
+		<Sidebar
+			variant="inset"
+			labels={{
+				title: m.ui_sidebar_title(),
+				description: m.ui_sidebar_description(),
+				toggle: m.ui_toggle_sidebar(),
+				close: m.ui_close(),
+			}}
+			{...props}
+		>
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>

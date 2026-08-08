@@ -3,10 +3,11 @@ import type { ErrorComponentProps } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import FullPageCard from "./components/full-page-card";
+import * as m from "@/paraglide/messages.js";
 
 export function NotFound() {
 	return (
-		<FullPageCard title="404 Not Found" subtitle="The page you're looking for doesn't exist." showBackButton={true} />
+		<FullPageCard title={m.error_not_found_title()} subtitle={m.error_not_found_description()} showBackButton={true} />
 	);
 }
 
@@ -33,8 +34,8 @@ export function DefaultErrorComponent({ error }: ErrorComponentProps) {
 
 	return (
 		<FullPageCard
-			title="Something went wrong"
-			subtitle="An unexpected error occurred while loading this page."
+			title={m.error_unexpected_title()}
+			subtitle={m.error_unexpected_description()}
 			showBackButton={true}
 		/>
 	);

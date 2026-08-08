@@ -19,6 +19,13 @@ export type TagsInputOption = {
   label?: string;
 };
 
+export type TagsInputLabels = {
+  remove: (value: string) => string;
+  maximumReached: string;
+  typeOrPaste: string;
+  add: string;
+};
+
 export interface TagsInputProps {
   value: string[];
   onValueChange: (next: string[]) => void;
@@ -26,6 +33,7 @@ export interface TagsInputProps {
   placeholder?: string;
   searchPlaceholder?: string;
   emptyText?: string;
+  labels?: TagsInputLabels;
   allowCustomValues?: boolean;
   normalizeValue?: (raw: string) => string;
   /** Splits clipboard text into values. Providing this also handles single-value pastes. */
@@ -40,6 +48,13 @@ export interface TagsInputProps {
 
 const PASTE_SPLITTER = /[\n#?=&\t,./-]+/;
 
+const DEFAULT_LABELS: TagsInputLabels = {
+  remove: (value) => `Remove ${value}`,
+  maximumReached: "Maximum reached",
+  typeOrPaste: "Type or paste to add a value",
+  add: "Add",
+};
+
 export function TagsInput({
   value,
   onValueChange,
@@ -47,6 +62,7 @@ export function TagsInput({
   placeholder = "Select...",
   searchPlaceholder = "Search...",
   emptyText = "No results.",
+  labels = DEFAULT_LABELS,
   allowCustomValues = true,
   normalizeValue,
   pasteSplitter,
@@ -180,7 +196,7 @@ export function TagsInput({
                       <button
                         type="button"
                         tabIndex={-1}
-                        aria-label={`Remove ${v}`}
+                        aria-label={labels.remove(v)}
                         onClick={(e) => {
                           e.stopPropagation();
                           remove(v);
@@ -205,7 +221,7 @@ export function TagsInput({
                 setQuery(v);
                 if (validationError) setValidationError("");
               }}
-              placeholder={atMax ? "Maximum reached" : searchPlaceholder}
+              placeholder={atMax ? labels.maximumReached : searchPlaceholder}
               disabled={disabled || atMax}
               onKeyDown={(e) => {
                 if (e.key === "Backspace" && query === "" && value.length > 0 && canRemove) {
@@ -228,7 +244,7 @@ export function TagsInput({
               )}
               {showHint && (
                 <div className="px-3 py-3 text-center text-xs text-muted-foreground">
-                  Type or paste to add a value
+                  {labels.typeOrPaste}
                 </div>
               )}
               {(showCreate || filteredOptions.length > 0) && (
@@ -237,7 +253,7 @@ export function TagsInput({
                     <CommandItem value={`__create__:${candidate}`} onSelect={handleCreate}>
                       <Plus className="size-4 opacity-60" />
                       <span className="truncate">
-                        Add <span className="font-medium">&ldquo;{candidate}&rdquo;</span>
+                        {labels.add} <span className="font-medium">&ldquo;{candidate}&rdquo;</span>
                       </span>
                     </CommandItem>
                   )}

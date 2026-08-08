@@ -1,4 +1,4 @@
-import { IconSelector, IconExternalLink, IconLogout, IconStatusChange, IconUser } from "@tabler/icons-react";
+import { IconSelector, IconExternalLink, IconLogout, IconSettings, IconStatusChange, IconUser } from "@tabler/icons-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import {
@@ -17,6 +17,7 @@ import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { useAuth } from "@/hooks/use-auth";
 import { resetPostHog } from "@/lib/posthog";
+import * as m from "@/paraglide/messages.js";
 
 export function NavUser() {
 	const { user } = useAuth();
@@ -47,7 +48,7 @@ export function NavUser() {
 							</Avatar>
 							<div className="grid flex-1 text-left text-sm leading-tight">
 								<span className="truncate font-medium">{user.name}</span>
-								<span className="truncate text-xs">{isNameEmailSame ? "Your Account" : user.email}</span>
+								<span className="truncate text-xs">{isNameEmailSame ? m.nav_your_account() : user.email}</span>
 							</div>
 							<IconSelector className="ml-auto size-4" />
 						</SidebarMenuButton>
@@ -68,7 +69,7 @@ export function NavUser() {
 								</Avatar>
 								<div className="grid flex-1 text-left text-sm leading-tight">
 									<span className="truncate font-medium">{user.name}</span>
-									<span className="truncate text-xs">{isNameEmailSame ? "Your Account" : user.email}</span>
+									<span className="truncate text-xs">{isNameEmailSame ? m.nav_your_account() : user.email}</span>
 								</div>
 							</div>
 						</DropdownMenuLabel>
@@ -77,14 +78,20 @@ export function NavUser() {
 							<DropdownMenuItem asChild className="cursor-pointer">
 								<Link to="/app" onClick={() => setOpenMobile(false)}>
 									<IconStatusChange />
-									Switch Brand
+									{m.nav_switch_brand()}
+								</Link>
+							</DropdownMenuItem>
+							<DropdownMenuItem asChild className="cursor-pointer">
+								<Link to="/settings" onClick={() => setOpenMobile(false)}>
+									<IconSettings />
+									{m.nav_system_settings()}
 								</Link>
 							</DropdownMenuItem>
 							{clientConfig?.branding.parentUrl && clientConfig?.branding.parentName && (
 								<DropdownMenuItem asChild className="cursor-pointer">
 									<a href={clientConfig.branding.parentUrl} target="_blank" rel="noreferrer">
 										<IconExternalLink />
-										{clientConfig.branding.parentName} Dashboard
+										{m.nav_external_dashboard({ name: clientConfig.branding.parentName })}
 									</a>
 								</DropdownMenuItem>
 							)}
@@ -104,7 +111,7 @@ export function NavUser() {
 							}}
 						>
 							<IconLogout />
-							Log out
+							{m.nav_log_out()}
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>

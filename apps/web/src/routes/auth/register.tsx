@@ -19,6 +19,7 @@ import { useState } from "react";
 import { z } from "zod";
 import FullPageCard from "@/components/full-page-card";
 import { safeReturnTo } from "@/lib/return-to";
+import * as m from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/auth/register")({
 	validateSearch: z.object({
@@ -61,7 +62,7 @@ function RegisterPage() {
 			});
 
 			if (result.error) {
-				setError(result.error.message ?? "Registration failed");
+				setError(m.auth_registration_failed());
 				setLoading(false);
 				return;
 			}
@@ -74,7 +75,7 @@ function RegisterPage() {
 
 			navigate({ to: returnTo ?? "/app" });
 		} catch {
-			setError("Something went wrong. Please try again.");
+			setError(m.common_error());
 			setLoading(false);
 		}
 	}
@@ -90,13 +91,13 @@ function RegisterPage() {
 
 	if (pendingVerification) {
 		return (
-			<FullPageCard title="Check your email" subtitle={`We sent a verification link to ${email}`}>
+			<FullPageCard title={m.auth_check_email()} subtitle={m.auth_verification_sent({ email })}>
 				<div className="space-y-4 w-full">
 					<p className="text-sm text-muted-foreground text-center">
-						Click the link in the email to verify your address and get started. The link expires, so verify soon.
+						{m.auth_verification_instructions()}
 					</p>
 					<Button type="button" variant="outline" className="w-full" onClick={handleResend} disabled={resending}>
-						{resending ? "Sending..." : "Resend verification email"}
+						{resending ? m.auth_sending() : m.auth_resend_verification()}
 					</Button>
 				</div>
 			</FullPageCard>
@@ -104,7 +105,7 @@ function RegisterPage() {
 	}
 
 	return (
-		<FullPageCard title="Create account" subtitle="Sign up to get started">
+		<FullPageCard title={m.auth_create_account()} subtitle={m.auth_create_description()}>
 			{isCloud && (
 				<div className="space-y-4 w-full pb-4">
 					<Button
@@ -114,11 +115,11 @@ function RegisterPage() {
 						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: safeReturnTo(returnTo) })}
 					>
 						<IconBrandGoogle className="size-4" />
-						Continue with Google
+						{m.auth_continue_google()}
 					</Button>
 					<div className="flex items-center gap-3">
 						<Separator className="flex-1" />
-						<span className="text-xs text-muted-foreground">or</span>
+						<span className="text-xs text-muted-foreground">{m.auth_or()}</span>
 						<Separator className="flex-1" />
 					</div>
 				</div>
@@ -130,11 +131,11 @@ function RegisterPage() {
 					</Alert>
 				)}
 				<div className="space-y-2">
-					<Label htmlFor="name">Name</Label>
+					<Label htmlFor="name">{m.auth_name()}</Label>
 					<Input
 						id="name"
 						type="text"
-						placeholder="Your name"
+						placeholder={m.auth_name_placeholder()}
 						value={name}
 						onChange={(e) => setName(e.target.value)}
 						required
@@ -143,7 +144,7 @@ function RegisterPage() {
 					/>
 				</div>
 				<div className="space-y-2">
-					<Label htmlFor="email">Email</Label>
+					<Label htmlFor="email">{m.auth_email()}</Label>
 					<Input
 						id="email"
 						type="email"
@@ -155,11 +156,11 @@ function RegisterPage() {
 					/>
 				</div>
 				<div className="space-y-2">
-					<Label htmlFor="password">Password</Label>
+					<Label htmlFor="password">{m.auth_password()}</Label>
 					<Input
 						id="password"
 						type="password"
-						placeholder="Create a password"
+						placeholder={m.auth_create_password_placeholder()}
 						value={password}
 						onChange={(e) => setPassword(e.target.value)}
 						required
@@ -168,18 +169,18 @@ function RegisterPage() {
 					/>
 				</div>
 				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Creating account..." : "Create account"}
+					{loading ? m.auth_creating_account() : m.auth_create_account()}
 				</Button>
 			</form>
 			{hasUsers && (
 				<p className="text-center text-sm text-muted-foreground pt-4">
-					Already have an account?{" "}
+					{m.auth_already_account()} {" "}
 					<Link
 						to="/auth/login"
 						search={returnTo ? { returnTo } : {}}
 						className="text-primary hover:underline font-medium"
 					>
-						Sign in
+						{m.auth_sign_in()}
 					</Link>
 				</p>
 			)}

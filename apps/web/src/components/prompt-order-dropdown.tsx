@@ -9,6 +9,26 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { FilterTriggerButton } from "@/components/filter-bar";
 import { PROMPT_ORDER_OPTIONS, DEFAULT_PROMPT_ORDER, coercePromptOrder, type PromptOrder } from "@/lib/prompt-order";
+import * as m from "@/paraglide/messages.js";
+
+function getPromptOrderLabel(order: PromptOrder): string {
+	switch (order) {
+		case "default":
+			return m.sort_default();
+		case "brand-desc":
+			return m.sort_brand_desc();
+		case "brand-asc":
+			return m.sort_brand_asc();
+		case "competitor-desc":
+			return m.sort_competitor_desc();
+		case "competitor-asc":
+			return m.sort_competitor_asc();
+		case "prompt-asc":
+			return m.sort_prompt_asc();
+		case "prompt-desc":
+			return m.sort_prompt_desc();
+	}
+}
 
 /** Sort control for the prompts list (#60). Reads/writes the `order` URL key
  *  the visibility route declares in its `validateSearch`. Like the filter-bar
@@ -37,8 +57,8 @@ export function PromptOrderDropdown() {
 	// chosen order's menu label (arrows and all).
 	const label =
 		selected === DEFAULT_PROMPT_ORDER
-			? "Sort"
-			: (PROMPT_ORDER_OPTIONS.find((o) => o.value === selected)?.label ?? "Sort");
+			? m.sort_label()
+			: getPromptOrderLabel(selected);
 
 	return (
 		<DropdownMenu>
@@ -53,7 +73,7 @@ export function PromptOrderDropdown() {
 				<DropdownMenuRadioGroup value={selected} onValueChange={(v) => setOrder(v as PromptOrder)}>
 					{PROMPT_ORDER_OPTIONS.map((o) => (
 						<DropdownMenuRadioItem key={o.value} value={o.value} className="cursor-pointer whitespace-nowrap">
-							{o.label}
+							{getPromptOrderLabel(o.value)}
 						</DropdownMenuRadioItem>
 					))}
 				</DropdownMenuRadioGroup>

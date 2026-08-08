@@ -5,6 +5,8 @@
  * placement — so it's SSR-stable.
  */
 import { cn } from "@workspace/ui/lib/utils";
+import * as m from "@/paraglide/messages.js";
+import { formatNumber } from "@/i18n/formatting";
 
 export interface WordCloudTerm {
 	term: string;
@@ -38,7 +40,7 @@ export function WordCloud({
 	// center-weighted ordering below both assume descending counts.
 	const items = [...terms].sort((a, b) => b.count - a.count).slice(0, maxItems);
 	if (items.length === 0) {
-		return <div className="text-muted-foreground py-6 text-center text-sm">No terms for this period.</div>;
+		return <div className="text-muted-foreground py-6 text-center text-sm">{m.fanout_no_terms()}</div>;
 	}
 
 	const counts = items.map((i) => i.count);
@@ -64,7 +66,7 @@ export function WordCloud({
 				return (
 					<span
 						key={it.term}
-						title={`${it.term} · ${it.count.toLocaleString()}`}
+						title={`${it.term} · ${formatNumber(it.count)}`}
 						className="font-semibold"
 						style={{ fontSize: Math.round(MIN_PX + t * (MAX_PX - MIN_PX)), color, opacity: 0.62 + t * 0.38 }}
 					>

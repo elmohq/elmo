@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import FullPageCard from "@/components/full-page-card";
 import { safeReturnTo } from "@/lib/return-to";
+import * as m from "@/paraglide/messages.js";
 
 export const Route = createFileRoute("/auth/login")({
 	validateSearch: z.object({
@@ -57,12 +58,12 @@ function SSOLogin({ returnTo }: { returnTo?: string }) {
 			.then((result) => {
 				if (cancelled) return;
 				if (result.error) {
-					setError(result.error.message ?? "Failed to start sign-in");
+					setError(m.auth_sign_in_failed());
 				}
 			})
 			.catch(() => {
 				if (!cancelled) {
-					setError("Something went wrong. Please try again.");
+					setError(m.common_error());
 				}
 			});
 
@@ -73,18 +74,18 @@ function SSOLogin({ returnTo }: { returnTo?: string }) {
 
 	if (error) {
 		return (
-			<FullPageCard title="Sign in">
+			<FullPageCard title={m.auth_sign_in()}>
 				<Alert variant="destructive">
 					<AlertDescription>{error}</AlertDescription>
 				</Alert>
 				<Button className="w-full" onClick={() => window.location.reload()}>
-					Try Again
+					{m.common_try_again()}
 				</Button>
 			</FullPageCard>
 		);
 	}
 
-	return <FullPageCard title="Signing in..." subtitle="Redirecting to your identity provider" />;
+	return <FullPageCard title={m.auth_signing_in()} subtitle={m.auth_sign_in_redirect()} />;
 }
 
 export function EmailPasswordLogin({
@@ -117,9 +118,9 @@ export function EmailPasswordLogin({
 
 			if (result.error) {
 				if (isCloud && result.error.status === 403) {
-					setError("Please verify your email first — we just sent you a new verification link.");
+					setError(m.auth_verify_email_first());
 				} else {
-					setError(result.error.message ?? "Invalid email or password");
+					setError(m.auth_invalid_credentials());
 				}
 				setLoading(false);
 				return;
@@ -127,13 +128,13 @@ export function EmailPasswordLogin({
 
 			navigate({ to: safeReturnTo(returnTo) });
 		} catch {
-			setError("Something went wrong. Please try again.");
+			setError(m.common_error());
 			setLoading(false);
 		}
 	}
 
 	return (
-		<FullPageCard title="Sign in" subtitle={isDemo ? undefined : "Enter your email and password to continue"}>
+		<FullPageCard title={m.auth_sign_in()} subtitle={isDemo ? undefined : m.auth_sign_in_subtitle()}>
 			{isCloud && (
 				<div className="space-y-4 w-full pb-4">
 					<Button
@@ -143,11 +144,11 @@ export function EmailPasswordLogin({
 						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: safeReturnTo(returnTo) })}
 					>
 						<IconBrandGoogle className="size-4" />
-						Continue with Google
+						{m.auth_continue_google()}
 					</Button>
 					<div className="flex items-center gap-3">
 						<Separator className="flex-1" />
-						<span className="text-xs text-muted-foreground">or</span>
+						<span className="text-xs text-muted-foreground">{m.auth_or()}</span>
 						<Separator className="flex-1" />
 					</div>
 				</div>
@@ -162,7 +163,7 @@ export function EmailPasswordLogin({
 				{!isDemo && (
 					<>
 						<div className="space-y-2">
-							<Label htmlFor="email">Email</Label>
+							<Label htmlFor="email">{m.auth_email()}</Label>
 							<Input
 								id="email"
 								type="email"
@@ -176,17 +177,17 @@ export function EmailPasswordLogin({
 						</div>
 						<div className="space-y-2">
 							<div className="flex items-center justify-between">
-								<Label htmlFor="password">Password</Label>
+								<Label htmlFor="password">{m.auth_password()}</Label>
 								{isCloud && (
 									<Link to="/auth/forgot-password" className="text-xs text-primary hover:underline">
-										Forgot password?
+										{m.auth_forgot_password()}
 									</Link>
 								)}
 							</div>
 							<Input
 								id="password"
 								type="password"
-								placeholder="Password"
+								placeholder={m.auth_password_placeholder()}
 								value={password}
 								onChange={(e) => setPassword(e.target.value)}
 								required
@@ -196,18 +197,18 @@ export function EmailPasswordLogin({
 					</>
 				)}
 				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Signing in..." : "Sign in"}
+					{loading ? m.auth_signing_in() : m.auth_sign_in()}
 				</Button>
 			</form>
 			{canRegister && (
 				<p className="text-center text-sm text-muted-foreground pt-4">
-					Don't have an account?{" "}
+					{m.auth_no_account()} {" "}
 					<Link
 						to="/auth/register"
 						search={returnTo ? { returnTo } : {}}
 						className="text-primary hover:underline font-medium"
 					>
-						Create one
+						{m.auth_create_one()}
 					</Link>
 				</p>
 			)}
@@ -220,14 +221,14 @@ function DemoCredentialsCallout() {
 		<div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
 			<IconInfoCircle className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
 			<div className="space-y-2">
-				<p className="font-medium text-amber-900 dark:text-amber-100">Demo Account</p>
+				<p className="font-medium text-amber-900 dark:text-amber-100">{m.auth_demo_account()}</p>
 				<dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-amber-900/90 dark:text-amber-100/80">
 					<div className="flex items-center gap-1.5">
-						<dt className="opacity-70">Email</dt>
+						<dt className="opacity-70">{m.auth_email()}</dt>
 						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">demo@elmohq.com</dd>
 					</div>
 					<div className="flex items-center gap-1.5">
-						<dt className="opacity-70">Password</dt>
+						<dt className="opacity-70">{m.auth_password()}</dt>
 						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">demo</dd>
 					</div>
 				</dl>

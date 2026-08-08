@@ -22,6 +22,8 @@ import {
 	type WordChanges,
 	type WordChangeStat,
 } from "@/lib/fanout-analysis";
+import { formatNumber, formatPercent } from "@/i18n/formatting";
+import * as m from "@/paraglide/messages.js";
 
 export const FANOUT_PURPLE = "#8b5cf6";
 
@@ -50,9 +52,7 @@ export function UnknownQueriesNote({ byModel }: { byModel: ModelFanoutStat[] }) 
 	if (hidden.length === 0) return null;
 	return (
 		<div className="text-muted-foreground text-xs">
-			{hidden.map((m) => getModelDisplayName(m.model)).join(", ")} ran with web search enabled but the queries are
-			unknown — the engine may not have searched, searched with just the prompt itself, or searched without revealing
-			its queries.
+			{m.fanout_unknown_queries({ models: hidden.map((model) => getModelDisplayName(model.model)).join(", ") })}
 		</div>
 	);
 }
@@ -98,13 +98,13 @@ export function VariationLine({
 			{modelCounts?.length ? (
 				<span
 					className="text-muted-foreground shrink-0 text-right text-xs tabular-nums leading-6"
-					title="Times each engine ran this search"
+					title={m.fanout_engine_count_tip()}
 				>
-					{modelCounts.map((mc) => `${mc.count.toLocaleString()}× ${getModelDisplayName(mc.model)}`).join(" · ")}
+					{modelCounts.map((mc) => `${formatNumber(mc.count)}× ${getModelDisplayName(mc.model)}`).join(" · ")}
 				</span>
 			) : (
-				<span className="text-muted-foreground shrink-0 text-sm tabular-nums" title="Times engines ran this search">
-					{variation.count.toLocaleString()}×
+				<span className="text-muted-foreground shrink-0 text-sm tabular-nums" title={m.fanout_count_tip()}>
+					{formatNumber(variation.count)}×
 				</span>
 			)}
 		</div>
@@ -125,7 +125,7 @@ export function VariationsList({
 	modelCounts?: Map<string, VariationModelCount[]>;
 }) {
 	if (variations.length === 0) {
-		return <div className="text-muted-foreground py-4 text-sm">No web queries for this selection.</div>;
+		return <div className="text-muted-foreground py-4 text-sm">{m.fanout_no_queries_selection()}</div>;
 	}
 	return (
 		<div className="space-y-2">
@@ -134,7 +134,7 @@ export function VariationsList({
 			))}
 			{totalUnique !== undefined && totalUnique > variations.length && (
 				<div className="text-muted-foreground text-xs">
-					Top {variations.length} of {totalUnique.toLocaleString()} variations shown
+					{m.fanout_top_variations({ shown: formatNumber(variations.length), total: formatNumber(totalUnique) })}
 				</div>
 			)}
 		</div>
@@ -147,11 +147,17 @@ export function VariationsList({
 
 type WordTab = "added" | "preserved" | "dropped";
 
-const WORD_TAB_HELP: Record<WordTab, string> = {
-	added: "Words engines add that weren't in your prompt — the intent they layer on (e.g. “best”, “2026”, “vs”).",
-	preserved: "Words from your prompt engines keep in their searches.",
-	dropped: "Words from your prompt engines leave out of their searches.",
-};
+const getWordTabHelp = (tab: WordTab): string => ({
+	added: m.fanout_words_added_tip(),
+	preserved: m.fanout_words_preserved_tip(),
+	dropped: m.fanout_words_dropped_tip(),
+})[tab];
+
+const getWordTabLabel = (tab: WordTab): string => ({
+	added: m.fanout_added(),
+	preserved: m.fanout_preserved(),
+	dropped: m.fanout_dropped(),
+})[tab];
 
 export function QueryWordsSection({ terms, wordChanges }: { terms: TermStat[]; wordChanges: WordChanges }) {
 	const [tab, setTab] = useState<WordTab>("added");
@@ -162,7 +168,11 @@ export function QueryWordsSection({ terms, wordChanges }: { terms: TermStat[]; w
 	const items = shown.slice(0, 18).map((w) => ({
 		label: w.word,
 		count: w.count,
-		suffix: <span className="text-muted-foreground tabular-nums text-xs">{w.share}%</span>,
+		suffix: (
+			<span className="text-muted-foreground tabular-nums text-xs">
+				{formatPercent(w.share / 100, { maximumFractionDigits: 1 })}
+			</span>
+		),
 	}));
 
 	return (
@@ -178,23 +188,23 @@ export function QueryWordsSection({ terms, wordChanges }: { terms: TermStat[]; w
 					<div className="flex flex-wrap items-center justify-between gap-3">
 						<div>
 							<CardTitle className="flex items-center gap-1.5 text-base">
-								Word Changes
-								<InfoTip>{WORD_TAB_HELP[tab]}</InfoTip>
+								{m.fanout_word_changes()}
+								<InfoTip>{getWordTabHelp(tab)}</InfoTip>
 							</CardTitle>
-							<CardDescription>How engines rewrite your prompt wording.</CardDescription>
+							<CardDescription>{m.fanout_rewrite_description()}</CardDescription>
 						</div>
 						<div className="flex items-center gap-4">
 							<div className="flex items-center gap-2">
 								<Switch id="qf-hide-stop" checked={hideStop} onCheckedChange={setHideStop} />
 								<label htmlFor="qf-hide-stop" className="text-muted-foreground cursor-pointer text-sm">
-									Hide stop words
+									{m.fanout_hide_stop_words()}
 								</label>
 							</div>
 							<Tabs value={tab} onValueChange={(v) => setTab(v as WordTab)}>
 								<TabsList>
-									<TabsTrigger value="added">Added</TabsTrigger>
-									<TabsTrigger value="preserved">Preserved</TabsTrigger>
-									<TabsTrigger value="dropped">Dropped</TabsTrigger>
+									<TabsTrigger value="added">{m.fanout_added()}</TabsTrigger>
+									<TabsTrigger value="preserved">{m.fanout_preserved()}</TabsTrigger>
+									<TabsTrigger value="dropped">{m.fanout_dropped()}</TabsTrigger>
 								</TabsList>
 							</Tabs>
 						</div>
@@ -206,7 +216,9 @@ export function QueryWordsSection({ terms, wordChanges }: { terms: TermStat[]; w
 						<ProgressBarChart items={items} defaultColor={FANOUT_PURPLE} />
 					) : (
 						<div className="text-muted-foreground py-6 text-center text-sm">
-							No {tab} words{hideStop ? " (try showing stop words)" : ""}.
+							{hideStop
+								? m.fanout_no_words_hint({ type: getWordTabLabel(tab).toLowerCase() })
+								: m.fanout_no_words({ type: getWordTabLabel(tab).toLowerCase() })}
 						</div>
 					)}
 				</CardContent>

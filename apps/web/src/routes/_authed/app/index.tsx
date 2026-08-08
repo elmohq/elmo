@@ -13,6 +13,7 @@ import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import FullPageCard from "@/components/full-page-card";
 import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
+import * as m from "@/paraglide/messages.js";
 
 const getOrganizations = createServerFn({ method: "GET" }).handler(
 	async (): Promise<{
@@ -72,7 +73,7 @@ function BrandSwitcherPage() {
 	const { organizations, canCreateBrands } = Route.useLoaderData();
 
 	return (
-		<FullPageCard title="Brand Switcher" subtitle="Select a brand to get started">
+		<FullPageCard title={m.brand_switcher_title()} subtitle={m.brand_switcher_description()}>
 			<div className="flex flex-col space-y-3 min-w-[200px]">
 				{organizations.length > 0 ? (
 					organizations.map((org: { id: string; name: string }) => (
@@ -83,11 +84,11 @@ function BrandSwitcherPage() {
 						</Button>
 					))
 				) : (
-					<p className="text-muted-foreground text-center">No brands available</p>
+					<p className="text-muted-foreground text-center">{m.brand_none_available()}</p>
 				)}
 				{canCreateBrands && (
 					<Button asChild variant="outline">
-						<Link to="/app/new">+ Create new brand</Link>
+						<Link to="/app/new">+ {m.brand_create()}</Link>
 					</Button>
 				)}
 			</div>
