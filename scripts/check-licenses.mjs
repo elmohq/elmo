@@ -49,6 +49,9 @@ const ALLOWED_LICENSES = new Set([
   // Transitive deps of @usebruno/cli (e2e API tests); every component permissive.
   "(BSD-3-Clause AND Apache-2.0)", // google-protobuf
   "(Public Domain OR MIT)", // tv4 – we use MIT
+  // Parenthesized OR-expressions where every alternative is permissive.
+  "(MIT OR WTFPL)", // expand-template
+  "(BSD-2-Clause OR MIT OR Apache-2.0)", // rc
 ]);
 
 // ── Per-package exceptions ───────────────────────────────────────────
