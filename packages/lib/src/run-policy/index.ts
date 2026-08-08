@@ -1,4 +1,8 @@
 export {
+	resolveBrandPromptRunPlans,
+	type ResolveBrandPromptRunPlansInput,
+} from "./brand-plans";
+export {
 	CLAUDE_MODEL_NAME,
 	dailyRunCeiling,
 	defaultPlatformPicks,

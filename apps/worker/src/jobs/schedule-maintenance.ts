@@ -10,12 +10,12 @@ import {
 	lastRunQueryWindowMs,
 	type MaintenancePromptState,
 	type PromptRunPlan,
+	resolveBrandPromptRunPlans,
 	targetKey,
 } from "@workspace/lib/run-policy";
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
-import { resolveBrandPromptRunPlans } from "./run-plans";
 
 export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
@@ -193,9 +193,7 @@ async function runMaintenanceCheck(): Promise<void> {
 				jobIds.map((id) => sql`${id}::uuid`),
 				sql`, `,
 			);
-			await db.execute(
-				sql`UPDATE pgboss.job SET start_after = now() WHERE id IN (${inList}) AND state = 'created'`,
-			);
+			await db.execute(sql`UPDATE pgboss.job SET start_after = now() WHERE id IN (${inList}) AND state = 'created'`);
 			console.log(`[schedule-maintenance] Expedited ${jobIds.length} future jobs to run now`);
 		} catch (error) {
 			console.error(`[schedule-maintenance] Failed to expedite jobs:`, error);

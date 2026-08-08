@@ -18,6 +18,7 @@ import {
 	dailyRunCeiling,
 	lastRunQueryWindowMs,
 	type PromptRunPlan,
+	resolveBrandPromptRunPlans,
 	selectDueTargets,
 	targetKey,
 } from "@workspace/lib/run-policy";
@@ -27,7 +28,6 @@ import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
 import { trackWorkerEvent } from "../telemetry";
-import { resolveBrandPromptRunPlans } from "./run-plans";
 
 export interface ProcessPromptData {
 	promptId: string;
@@ -167,7 +167,9 @@ async function isOrgOverDailyCeiling(organizationId: string, ceiling: number): P
 	const [row] = await db
 		.select({ value: sql<number>`COUNT(*)` })
 		.from(usageEvents)
-		.where(and(eq(usageEvents.organizationId, organizationId), gt(usageEvents.createdAt, sql`now() - interval '24 hours'`)));
+		.where(
+			and(eq(usageEvents.organizationId, organizationId), gt(usageEvents.createdAt, sql`now() - interval '24 hours'`)),
+		);
 	return Number(row?.value ?? 0) >= ceiling;
 }
 
