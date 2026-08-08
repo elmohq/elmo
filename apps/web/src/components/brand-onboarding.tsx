@@ -5,16 +5,16 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
-import { PlatformPicker, usePlatformToggle } from "@/components/platform-picker";
+import { PlatformPicker } from "@/components/platform-picker";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
 import { createBrandFn } from "@/server/brands";
-import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
+import type { OnboardingPlatformState } from "@/server/platform-picks";
 
 interface BrandOnboardingProps {
 	brandId: string;
 	brandName: string;
-	platformState: OnboardingPlatformState | null;
+	platformState: OnboardingPlatformState;
 }
 
 export default function BrandOnboarding({
@@ -72,8 +72,6 @@ export default function BrandOnboarding({
 		await createBrand(null);
 	};
 
-	const toggle = usePlatformToggle(selected, setSelected);
-
 	if (step === "platforms" && platformState) {
 		const limit = platformState.platformPicks;
 		const locked = platformState.available.length === 1;
@@ -91,7 +89,7 @@ export default function BrandOnboarding({
 					<PlatformPicker
 						options={platformState.available}
 						selected={selected}
-						onToggle={toggle}
+						onSelectedChange={setSelected}
 						limit={limit}
 						disabled={isLoading || locked}
 						className="sm:grid-cols-1 lg:grid-cols-1"

@@ -3,36 +3,21 @@ import { getModelMeta } from "@workspace/lib/providers/models";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
+import { useId } from "react";
 import { iconForModel } from "@/components/filter-bar";
 
-export type PlatformOption = {
+type PlatformOption = {
 	model: string;
 	provider: string;
 	version?: string;
 	webSearch: boolean;
 };
 
-/**
- * Shared toggle handler for sets — the pattern every PlatformPicker caller
- * re-implements identically. Use this hook instead of writing a local toggle
- * function.
- */
-export function usePlatformToggle(
-	selected: Set<string>,
-	setSelected: (next: Set<string>) => void,
-): (model: string, checked: boolean) => void {
-	return (model: string, checked: boolean) => {
-		const next = new Set(selected);
-		if (checked) next.add(model);
-		else next.delete(model);
-		setSelected(next);
-	};
-}
-
 interface PlatformPickerProps {
 	options: PlatformOption[];
 	selected: Set<string>;
-	onToggle: (model: string, checked: boolean) => void;
+	/** Receives the whole next selection; the picker owns what a toggle means. */
+	onSelectedChange: (next: Set<string>) => void;
 	/** Unchecked options disable once this many are selected; null = no limit. */
 	limit: number | null;
 	disabled?: boolean;
@@ -42,27 +27,39 @@ interface PlatformPickerProps {
 export function PlatformPicker({
 	options,
 	selected,
-	onToggle,
+	onSelectedChange,
 	limit,
 	disabled = false,
 	className,
 }: PlatformPickerProps) {
+	const idPrefix = useId();
+
+	const toggle = (model: string, checked: boolean) => {
+		const next = new Set(selected);
+		if (checked) next.add(model);
+		else next.delete(model);
+		onSelectedChange(next);
+	};
+
 	return (
 		<div className={cn("grid gap-2 sm:grid-cols-2 lg:grid-cols-3", className)}>
 			{options.map((option) => {
 				const checked = selected.has(option.model);
 				const atLimit = !checked && limit !== null && selected.size >= limit;
+				const checkboxId = `${idPrefix}-${option.model}`;
 				return (
 					<label
 						key={option.model}
+						htmlFor={checkboxId}
 						className={`flex items-center gap-3 rounded-md border p-3 ${
 							atLimit ? "opacity-50" : "cursor-pointer hover:bg-accent/50"
 						}`}
 					>
 						<Checkbox
+							id={checkboxId}
 							checked={checked}
 							disabled={atLimit || disabled}
-							onCheckedChange={(value) => onToggle(option.model, value === true)}
+							onCheckedChange={(value) => toggle(option.model, value === true)}
 						/>
 						{iconForModel(option.model, "h-5 w-5")}
 						<span className="flex-1 text-sm font-medium">{getModelMeta(option.model).label}</span>

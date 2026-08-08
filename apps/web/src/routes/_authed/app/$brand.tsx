@@ -9,9 +9,7 @@ import { createFileRoute, Outlet, notFound, redirect } from "@tanstack/react-rou
 import { getAppName } from "@/lib/route-head";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getDeployment } from "@/lib/config/server";
-import { getOnboardingPlatformStateFn } from "@/server/platform-picks";
-import type { OnboardingPlatformState } from "@/server/platform-picks";
+import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
 import {
 	requireAuthSession,
 	isAdmin,
@@ -170,7 +168,7 @@ export const Route = createFileRoute("/_authed/app/$brand")({
 		isAdmin: boolean;
 		hasReportAccess: boolean;
 		needsOnboarding: boolean;
-		onboardingPlatformState: OnboardingPlatformState | null;
+		onboardingPlatformState: OnboardingPlatformState;
 	}> => {
 		const result = await getBrandData({ data: { brandId: params.brand } });
 
@@ -182,17 +180,19 @@ export const Route = createFileRoute("/_authed/app/$brand")({
 			throw redirect({ to: "/choose-plan" });
 		}
 
-		const onboardingPlatformState =
-			result.brand === null && result.hasAccess
-				? await getOnboardingPlatformStateFn({ data: { organizationId: params.brand } })
-				: null;
+		// Access was established above, so a missing brand row means the URL param
+		// is an org awaiting its first brand: the onboarding wizard's territory.
+		const needsOnboarding = result.brand === null;
+		const onboardingPlatformState = needsOnboarding
+			? await getOnboardingPlatformStateFn({ data: { organizationId: params.brand } })
+			: null;
 
 		return {
 			brand: result.brand,
 			brandName: result.brandName,
 			isAdmin: result.isAdmin,
 			hasReportAccess: result.hasReportAccess,
-			needsOnboarding: result.hasAccess && !result.brand,
+			needsOnboarding,
 			onboardingPlatformState,
 		};
 	},

@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useState } from "react";
 import { iconForModel } from "@/components/filter-bar";
-import { PlatformPicker, usePlatformToggle } from "@/components/platform-picker";
+import { PlatformPicker } from "@/components/platform-picker";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { getModelPickerStateFn, type ModelPickerState, updateEnabledModelsFn } from "@/server/platform-picks";
 import { type ClaudeAssignmentsState, getClaudeAssignmentsFn, setPromptClaudeModeFn } from "@/server/prompts";
@@ -80,8 +80,6 @@ function ModelPicker({ picker }: { picker: ModelPickerState }) {
 	const limit = picker.planLimits?.platformPicks ?? null;
 	const overLimit = limit !== null && selected.size > limit;
 
-	const toggle = usePlatformToggle(selected, setSelected);
-
 	const save = async () => {
 		setSaving(true);
 		setError(null);
@@ -126,7 +124,7 @@ function ModelPicker({ picker }: { picker: ModelPickerState }) {
 					<PlatformPicker
 						options={picker.available}
 						selected={selected}
-						onToggle={toggle}
+						onSelectedChange={setSelected}
 						limit={limit}
 						disabled={saving}
 					/>
