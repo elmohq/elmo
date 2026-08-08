@@ -5,6 +5,10 @@
  * Filters:
  *   - Adsy:      exact Dofollow link type AND ahrefs organic traffic > 100k
  *   - Collaborator:  ahrefs DR > 30
+ *   - Both:     cross-referenced against apps/web/src/lib/editorial-domains.ts
+ *               (legitimate editorial/news publisher domains that may sell
+ *                sponsored content but aren't spammy backlink farms) — those
+ *                are excluded from the bloom filter.
  *
  * The filtered domain list is saved alongside the bloom filter so you can
  * spotcheck high-traffic Adsy candidates for false positives.
@@ -34,6 +38,30 @@ const COLLAB_DR_THRESHOLD = 30;
 
 const ADSY_PATH = resolve(homedir(), "code/backlinkeval/adsy-sites.csv");
 const COLLAB_PATH = resolve(homedir(), "code/backlinkeval/collaborator-sites.csv");
+
+// ---------------------------------------------------------------------------
+// Exclusion: domains that are clearly NOT spammy backlink farms.
+// These are legitimate platforms, infrastructure, or tools that appear on
+// marketplaces but aren't pay-to-win content farms.
+// ---------------------------------------------------------------------------
+const PLATFORM_EXCLUSIONS = new Set([
+	"linkedin.com",
+	"ncbi.nlm.nih.gov",
+	"msn.com",
+	"patreon.com",
+	"kickstarter.com",
+	"notion.com",
+	"picsart.com",
+	"canva.com",
+	"codepen.io",
+	"storage.googleapis.com",
+	"podcasts.apple.com",
+	"gimkit.com",
+	"pewresearch.org",
+	"placeit.net",
+	"spocket.co",
+	"sendpulse.com",
+]);
 
 const OUT_DIR = resolve(
 	dirname(new URL(import.meta.url).pathname),
@@ -268,6 +296,31 @@ function serialize(
 }
 
 // ---------------------------------------------------------------------------
+// Exclusion: editorial domains that sell sponsored content but are legitimate
+// publishers, not spammy backlink farms. Cross-referenced against the
+// project's editorial-domain list at build time.
+// ---------------------------------------------------------------------------
+const EDITORIAL_DOMAINS_PATH = resolve(
+	dirname(new URL(import.meta.url).pathname),
+	"..",
+	"src",
+	"lib",
+	"editorial-domains.ts",
+);
+
+function loadEditorialDomains(path: string): Set<string> {
+	const text = readFileSync(path, "utf-8");
+	const domains = new Set<string>();
+	// Match quoted strings assigned to the EDITORIAL_DOMAINS array
+	const re = /"([a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+)"/gi;
+	let match;
+	while ((match = re.exec(text)) !== null) {
+		domains.add(match[1]!.toLowerCase());
+	}
+	return domains;
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 async function main() {
@@ -300,10 +353,31 @@ async function main() {
 		}
 	}
 
-	const allDomains = Array.from(merged.keys());
+	let allDomains = Array.from(merged.keys());
 	console.log(`\nMerged unique domains: ${allDomains.length.toLocaleString()}`);
 
-	// 3. Build bloom filter
+	// 3. Exclude legitimate editorial domains
+	console.log("Excluding editorial and platform domains...");
+	const editorialDomains = loadEditorialDomains(EDITORIAL_DOMAINS_PATH);
+	const beforeExclusion = allDomains.length;
+	const excluded: string[] = [];
+	const excludedPlatforms: string[] = [];
+	allDomains = allDomains.filter((d) => {
+		if (editorialDomains.has(d)) {
+			excluded.push(d);
+			return false;
+		}
+		if (PLATFORM_EXCLUSIONS.has(d)) {
+			excludedPlatforms.push(d);
+			return false;
+		}
+		return true;
+	});
+	console.log(`  Removed: ${excluded.length.toLocaleString()} editorial domain(s)`);
+	console.log(`  Removed: ${excludedPlatforms.length.toLocaleString()} platform domain(s)`);
+	console.log(`  After exclusion: ${allDomains.length.toLocaleString()}`);
+
+	// 4. Build bloom filter
 	const { bits, numHashes, bitArraySize } = buildBloom(allDomains, FPR);
 	const serialized = serialize(bits, numHashes, bitArraySize);
 
@@ -317,16 +391,17 @@ async function main() {
 	console.log(`  Hashes per lookup: ${numHashes}`);
 	console.log(`  Target FPR: ${FPR * 100}%`);
 
-	// 4. Write domain list for debugging / transparency
+	// 5. Write domain list for debugging / transparency
 	const domainLines = allDomains.sort();
 	writeFileSync(DOMAINS_OUT, domainLines.join("\n") + "\n");
 	console.log(`\nDomain list written to ${basename(DOMAINS_OUT)}`);
 
-	// 5. Write spotcheck candidates (Adsy Dofollow + high traffic)
+	// 6. Write spotcheck candidates (Adsy Dofollow + high traffic, non-editorial)
 	const spotcheckLines: string[] = [];
+	const spotcheckSet = new Set(allDomains);
 	// Sort by source then traffic descending
 	const spotcheckEntries = Array.from(merged.entries())
-		.filter(([_, info]) => info.source === "adsy")
+		.filter(([domain, info]) => info.source === "adsy" && spotcheckSet.has(domain))
 		.sort((a, b) => b[1].traffic - a[1].traffic);
 
 	for (const [domain, info] of spotcheckEntries) {
@@ -335,7 +410,7 @@ async function main() {
 	writeFileSync(SPOTCHECK_OUT, spotcheckLines.join("\n") + "\n");
 	console.log(`\nSpotcheck list written to ${basename(SPOTCHECK_OUT)} (${spotcheckLines.length.toLocaleString()} sites)`);
 
-	// 6. Stats per source
+	// 7. Stats per source
 	const adsyCount = spotcheckEntries.length;
 	const collabCount = allDomains.length - adsyCount;
 	console.log(`\nBreakdown:`);
