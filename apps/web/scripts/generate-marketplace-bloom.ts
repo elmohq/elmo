@@ -4,13 +4,13 @@
  * marketplace exports.
  *
  * Usage:
- *   tsx apps/web/scripts/generate-marketplace-bloom.ts <adsy.csv> <collaborator.csv>
+ *   tsx apps/web/scripts/generate-marketplace-bloom.ts <export.csv>...
  *
- * Both inputs are CSVs exported from a marketplace's own site list, keyed by a
- * `domain` column. Adsy also carries a `link_type` column and only its
- * `Dofollow` listings count — a nofollow placement can't move rankings, so
- * selling one isn't the signal we're flagging. Collaborator has no equivalent
- * column, so every listing counts.
+ * Each input is a CSV of one marketplace's site list, keyed by a `domain`
+ * column; the union of every input goes into the filter. An export that also
+ * carries a `link_type` column is narrowed to its `Dofollow` rows — a nofollow
+ * placement can't move rankings, so selling one isn't the signal we're
+ * flagging. Exports without that column contribute every listing.
  *
  * Domains in EDITORIAL_DOMAINS are dropped: a real newspaper that also runs a
  * sponsored-content desk shouldn't be labelled a link farm.
@@ -95,13 +95,15 @@ function readCsv(path: string): Record<string, string>[] {
 }
 
 function main() {
-	const [adsyPath, collaboratorPath] = process.argv.slice(2);
-	if (!adsyPath || !collaboratorPath) {
-		console.error("usage: generate-marketplace-bloom.ts <adsy.csv> <collaborator.csv>");
+	const inputs = process.argv.slice(2);
+	if (inputs.length === 0) {
+		console.error("usage: generate-marketplace-bloom.ts <export.csv>...");
 		process.exit(1);
 	}
 
-	const listings = [...readCsv(adsyPath).filter((row) => row.link_type === "Dofollow"), ...readCsv(collaboratorPath)];
+	const listings = inputs.flatMap((input) =>
+		readCsv(input).filter((row) => !("link_type" in row) || row.link_type === "Dofollow"),
+	);
 
 	const excluded = new Set([...EDITORIAL_DOMAINS, ...PLATFORM_EXCLUSIONS]);
 	const domains = [...new Set(listings.map((row) => row.domain?.toLowerCase() ?? ""))]
