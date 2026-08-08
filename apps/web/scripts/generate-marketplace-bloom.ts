@@ -3,12 +3,17 @@
  * Generates a bloom filter from pay-to-win link marketplace domain lists.
  *
  * Filters:
- *   - Adsy:      exact Dofollow link type AND ahrefs organic traffic > 100k
- *   - Collaborator:  ahrefs DR > 30
+ *   - Adsy:      exact Dofollow link type (all traffic levels)
+ *   - Collaborator:  all domains (no traffic/DR filter)
  *   - Both:     cross-referenced against apps/web/src/lib/editorial-domains.ts
  *               (legitimate editorial/news publisher domains that may sell
  *                sponsored content but aren't spammy backlink farms) — those
  *                are excluded from the bloom filter.
+ *               Also excludes a small set of platform/infrastructure domains
+ *               (e.g. LinkedIn, NCBI, Patreon).
+ *
+ * The spotcheck list uses the traffic > 100k filter to produce a manageable
+ * set for manual review — this doesn't affect what goes into the bloom filter.
  *
  * The filtered domain list is saved alongside the bloom filter so you can
  * spotcheck high-traffic Adsy candidates for false positives.
@@ -32,9 +37,6 @@ import { resolve, dirname, basename } from "node:path";
 // Configuration
 // ---------------------------------------------------------------------------
 const FPR = 1e-5; // 0.001% — tiny; obfuscation matters more than space here
-
-const ADS_TRAFFIC_THRESHOLD = 100_000;
-const COLLAB_DR_THRESHOLD = 30;
 
 const ADSY_PATH = resolve(homedir(), "code/backlinkeval/adsy-sites.csv");
 const COLLAB_PATH = resolve(homedir(), "code/backlinkeval/collaborator-sites.csv");
@@ -131,8 +133,10 @@ function findCol(headers: string[], name: string): number {
 
 // ---------------------------------------------------------------------------
 // Filter Adsy
-//   link_type must be exactly "Dofollow"
-//   ahrefs_organic_traffic > 100k
+//   link_type must be exactly "Dofollow" — all Dofollow entries included.
+//   (The traffic > 100k filter was only used during spotchecking to
+//    determine which types of sites to exclude via the editorial/platform
+//    exclusion lists below.)
 // ---------------------------------------------------------------------------
 function filterAdsy(path: string): { included: Map<string, { traffic: number; dr: number }>; rejected: number } {
 	const text = readFileSync(path, "utf-8");
@@ -143,7 +147,6 @@ function filterAdsy(path: string): { included: Map<string, { traffic: number; dr
 	const domainIdx = findCol(headers, "domain");
 	const linkTypeIdx = findCol(headers, "link_type");
 	const ahrefsTrafficIdx = findCol(headers, "ahrefs_organic_traffic");
-	const semrushTrafficIdx = findCol(headers, "semrush_total_traffic");
 	const drIdx = findCol(headers, "ahrefs_dr");
 
 	if (domainIdx === -1 || linkTypeIdx === -1) {
@@ -164,17 +167,9 @@ function filterAdsy(path: string): { included: Map<string, { traffic: number; dr
 		// Must be exactly "Dofollow"
 		if (linkType !== "Dofollow") { rejected++; continue; }
 
-		// Check traffic thresholds
-		const ahrefsTraffic = ahrefsTrafficIdx !== -1 ? parseFloat(row[ahrefsTrafficIdx] ?? "0") : 0;
-
-		const hasHighTraffic =
-			ahrefsTrafficIdx !== -1 && ahrefsTraffic > ADS_TRAFFIC_THRESHOLD;
-
-		if (!hasHighTraffic) { rejected++; continue; }
-
+		const traffic = ahrefsTrafficIdx !== -1 ? parseFloat(row[ahrefsTrafficIdx] ?? "0") : 0;
 		const dr = drIdx !== -1 ? parseFloat(row[drIdx] ?? "0") : 0;
-		// Keep the entry with the highest traffic for a given domain
-		const traffic = ahrefsTraffic;
+		// Keep entry with highest traffic for dedup
 		const existing = included.get(domain);
 		if (!existing || traffic > existing.traffic) {
 			included.set(domain, { traffic, dr });
@@ -185,8 +180,9 @@ function filterAdsy(path: string): { included: Map<string, { traffic: number; dr
 }
 
 // ---------------------------------------------------------------------------
-// Filter Collaborator Pro
-//   ahrefs_dr > COLLAB_DR_THRESHOLD
+// Filter Collaborator Pro — include all domains with a valid domain.
+//   (The DR > 30 filter was only used during spotchecking to determine which
+//    types of sites to exclude via the editorial/platform lists below.)
 // ---------------------------------------------------------------------------
 function filterCollaborator(path: string): { included: Map<string, { traffic: number; dr: number }>; rejected: number } {
 	const text = readFileSync(path, "utf-8");
@@ -195,7 +191,6 @@ function filterCollaborator(path: string): { included: Map<string, { traffic: nu
 
 	const headers = rows[0]!;
 	const domainIdx = findCol(headers, "domain");
-	const drIdx = findCol(headers, "ahrefs_dr");
 
 	if (domainIdx === -1) {
 		console.error("Collaborator CSV missing 'domain' column");
@@ -209,17 +204,8 @@ function filterCollaborator(path: string): { included: Map<string, { traffic: nu
 		const row = rows[i]!;
 		const domain = row[domainIdx]?.trim().toLowerCase() ?? "";
 		if (!domain) { rejected++; continue; }
-
-		if (drIdx !== -1) {
-			const drText = row[drIdx]?.trim() ?? "";
-			const dr = parseFloat(drText);
-			if (isNaN(dr) || dr <= COLLAB_DR_THRESHOLD) {
-				rejected++;
-				continue;
-			}
-			included.set(domain, { traffic: 0, dr });
-		} else {
-			// No DR column — include everything
+		// Deduplicate: first occurrence wins
+		if (!included.has(domain)) {
 			included.set(domain, { traffic: 0, dr: 0 });
 		}
 	}
@@ -396,26 +382,33 @@ async function main() {
 	writeFileSync(DOMAINS_OUT, domainLines.join("\n") + "\n");
 	console.log(`\nDomain list written to ${basename(DOMAINS_OUT)}`);
 
-	// 6. Write spotcheck candidates (Adsy Dofollow + high traffic, non-editorial)
+	// 6. Write spotcheck candidates (Adsy Dofollow + traffic > 100k, for manual
+	//    review only — doesn't affect what goes into the bloom filter).
+	const SPOTCHECK_TRAFFIC = 100_000;
 	const spotcheckLines: string[] = [];
 	const spotcheckSet = new Set(allDomains);
-	// Sort by source then traffic descending
 	const spotcheckEntries = Array.from(merged.entries())
-		.filter(([domain, info]) => info.source === "adsy" && spotcheckSet.has(domain))
+		.filter(
+			([domain, info]) =>
+				info.source === "adsy" && info.traffic > SPOTCHECK_TRAFFIC && spotcheckSet.has(domain),
+		)
 		.sort((a, b) => b[1].traffic - a[1].traffic);
 
 	for (const [domain, info] of spotcheckEntries) {
 		spotcheckLines.push(`${domain}\ttraffic=${info.traffic.toLocaleString()}\tdr=${info.dr}`);
 	}
 	writeFileSync(SPOTCHECK_OUT, spotcheckLines.join("\n") + "\n");
-	console.log(`\nSpotcheck list written to ${basename(SPOTCHECK_OUT)} (${spotcheckLines.length.toLocaleString()} sites)`);
+	console.log(
+		`\nSpotcheck list written to ${basename(SPOTCHECK_OUT)} (${spotcheckLines.length.toLocaleString()} sites)`,
+	);
 
 	// 7. Stats per source
-	const adsyCount = spotcheckEntries.length;
-	const collabCount = allDomains.length - adsyCount;
+	const adsyFinalCount = Array.from(merged.entries()).filter(([_, info]) => info.source === "adsy").length;
+	const collabFinalCount = Array.from(merged.entries()).filter(([_, info]) => info.source === "collaborator").length;
 	console.log(`\nBreakdown:`);
-	console.log(`  Adsy (Dofollow + traffic > ${(ADS_TRAFFIC_THRESHOLD / 1000).toLocaleString()}k): ${adsyCount.toLocaleString()}`);
-	console.log(`  Collaborator Pro (DR > ${COLLAB_DR_THRESHOLD}): ${collabCount.toLocaleString()}`);
+	console.log(`  Adsy (Dofollow): ${adsyFinalCount.toLocaleString()}`);
+	console.log(`  Collaborator Pro: ${collabFinalCount.toLocaleString()}`);
+	console.log(`  Total before exclusion: ${(adsyFinalCount + collabFinalCount).toLocaleString()}`);
 }
 
 main().catch(console.error);
