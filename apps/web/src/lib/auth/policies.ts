@@ -195,42 +195,6 @@ export function validateApiKeyFromRequest(request: Request): boolean {
 // Signup Allowlist
 // ============================================================================
 
-/**
- * Evaluate whether an email may register, given a signup allowlist.
- *
- * Gates cloud self-serve signup while the mode is still being hardened. Entry
- * forms:
- *   - exact address — "alice@partner.com"
- *   - domain suffix — "@elmohq.com" admits any address at that domain
- *   - "*" — opens signup to everyone (the public-launch escape hatch)
- * An empty allowlist denies everyone, so cloud fails closed until configured.
- * Matching is case-insensitive; a domain entry matches the whole domain only,
- * never a lookalike suffix ("@elmohq.com" rejects "x@evil-elmohq.com").
- */
-export function evaluateSignupAllowed(email: string, allowlist: readonly string[]): "allow" | "deny" {
-	const entries = allowlist.map((entry) => entry.trim().toLowerCase()).filter(Boolean);
-	if (entries.includes("*")) return "allow";
-	if (entries.length === 0) return "deny";
-
-	const address = email.trim().toLowerCase();
-	const atIndex = address.lastIndexOf("@");
-	const domain = atIndex === -1 ? "" : address.slice(atIndex);
-
-	const allowed = entries.some((entry) => (entry.startsWith("@") ? entry === domain : entry === address));
-	return allowed ? "allow" : "deny";
-}
-
-/**
- * Parse comma-separated CLOUD_SIGNUP_ALLOWLIST into trimmed, lowercased entries.
- * Single source of truth — mirrors getAdminApiKeys.
- */
-export function getSignupAllowlist(): string[] {
-	return (process.env.CLOUD_SIGNUP_ALLOWLIST || "")
-		.split(",")
-		.map((entry) => entry.trim().toLowerCase())
-		.filter(Boolean);
-}
-
 // ============================================================================
 // Auth Function-Level Policies
 // ============================================================================
@@ -244,27 +208,41 @@ export function evaluateRequireAdmin(isAdmin: boolean): "allow" | "deny" {
 }
 
 /**
- * Evaluate organization access requirement.
- * Used by server functions via `requireOrgAccess()` in auth helpers.
+ * Whether a membership role is an org admin. "admin" is written by our
+ * provisioning (provisionLocalOrg, provisionUmbrellaOrg); "owner" is what
+ * better-auth's own org creation writes — accept either.
+ *
+ * Lives in the pure policy module (no server imports) so client-side routes
+ * can call it without triggering Vite's import-protection for server modules.
  */
-export function evaluateRequireOrgAccess(hasAccess: boolean): "allow" | "deny" {
-	return hasAccess ? "allow" : "deny";
+export function isOrgAdminRole(role: string): boolean {
+	return role === "admin" || role === "owner";
 }
 
 /**
- * Org-scoped resource access rule (issue #339), in pure form.
+ * Which org a newly created brand attaches to, in pure form.
  *
- * Every brand carries an `organization_id`; a user may only read or mutate a
- * resource whose owning org they belong to. The runtime enforces this directly
- * in SQL — `checkOrgAccess` for a single resource and the
- * `brands.organization_id IN (member orgs)` filter in `getBrands`. This function
- * is the canonical statement of that same rule, unit-tested in isolation
- * (mirroring the sibling `evaluateRequireOrgAccess`); it documents and pins the
- * "a member of org A is denied org B's resources" invariant, but is not itself
- * the runtime gate.
+ * An explicit choice must be one the caller belongs to. Without one, a single
+ * membership is unambiguous and anything more is not — the caller is asked
+ * rather than picked for, because the answer decides who can see the brand and
+ * which org is billed for it. Never falls back to an arbitrary membership.
  */
-export function evaluateOrgScope(memberOrgIds: readonly string[], resourceOrgId: string): "allow" | "deny" {
-	return memberOrgIds.includes(resourceOrgId) ? "allow" : "deny";
+export type BrandOrgChoice =
+	| { ok: true; organizationId: string }
+	| { ok: false; reason: "no-organization" | "forbidden" | "ambiguous" };
+
+export function resolveBrandOrganization(
+	memberOrgIds: readonly string[],
+	requestedOrgId: string | undefined,
+): BrandOrgChoice {
+	if (memberOrgIds.length === 0) return { ok: false, reason: "no-organization" };
+	if (requestedOrgId) {
+		return memberOrgIds.includes(requestedOrgId)
+			? { ok: true, organizationId: requestedOrgId }
+			: { ok: false, reason: "forbidden" };
+	}
+	if (memberOrgIds.length === 1) return { ok: true, organizationId: memberOrgIds[0] };
+	return { ok: false, reason: "ambiguous" };
 }
 
 /**

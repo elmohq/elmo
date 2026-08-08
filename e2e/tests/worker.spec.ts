@@ -53,6 +53,28 @@ test.describe("Worker job processing", () => {
           },
         )
         .toBe("stub");
+
+      // Volume contract: one firing = RUNS_PER_PROMPT (5) replicated runs of
+      // the single stub target — no more (duplicate fires are metered away by
+      // the run policy), no fewer. Poll to settle, then pin the exact count.
+      await expect
+        .poll(
+          async () => {
+            const { rows } = await client.query<{ n: number }>(
+              `SELECT COUNT(*)::int AS n FROM prompt_runs WHERE prompt_id = $1`,
+              [prompt.id],
+            );
+            return rows[0]?.n ?? 0;
+          },
+          { message: `expected 5 runs for ${prompt.id}`, timeout: 60_000 },
+        )
+        .toBe(5);
+      await new Promise((resolve) => setTimeout(resolve, 3_000));
+      const { rows: settled } = await client.query<{ n: number }>(
+        `SELECT COUNT(*)::int AS n FROM prompt_runs WHERE prompt_id = $1`,
+        [prompt.id],
+      );
+      expect(settled[0]?.n, "run volume must not exceed RUNS_PER_PROMPT").toBe(5);
     } finally {
       await client.end();
     }

@@ -9,10 +9,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { db } from "@workspace/lib/db/db";
-import { invitation, member, user } from "@workspace/lib/db/schema";
+import { invitation, member, organization, user } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
+import { requireAuthSession, requireBrandAccess, requireBrandOrganization } from "@/lib/auth/helpers";
+import { isOrgAdminRole } from "@/lib/auth/policies";
 import { auth } from "@/lib/auth/server";
 import { getDeployment } from "@/lib/config/server";
 
@@ -26,17 +27,18 @@ export type TeamData = {
 	members: { id: string; role: string; userId: string; name: string; email: string; createdAt: Date }[];
 	invitations: { id: string; email: string; role: string | null; expiresAt: Date }[];
 	currentUserId: string;
+	organization: { id: string; name: string };
 };
 
 export const listTeamFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	// The explicit return type breaks the type-inference cycle between this
 	// fn and route loaders that both consume it and redirect to typed routes
-	// (same pattern as getOrganizations in routes/_authed/app/index.tsx).
+	// (same pattern as getBrandSwitcherData in routes/_authed/app/index.tsx).
 	.handler(async ({ data }): Promise<TeamData> => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		const org = await requireBrandOrganization(session.user.id, data.brandId);
 
 		const members = await db
 			.select({
@@ -49,7 +51,7 @@ export const listTeamFn = createServerFn({ method: "GET" })
 			})
 			.from(member)
 			.innerJoin(user, eq(member.userId, user.id))
-			.where(eq(member.organizationId, data.brandId));
+			.where(eq(member.organizationId, org.id));
 
 		const invitations = await db
 			.select({
@@ -59,9 +61,28 @@ export const listTeamFn = createServerFn({ method: "GET" })
 				expiresAt: invitation.expiresAt,
 			})
 			.from(invitation)
-			.where(and(eq(invitation.organizationId, data.brandId), eq(invitation.status, "pending")));
+			.where(and(eq(invitation.organizationId, org.id), eq(invitation.status, "pending")));
 
-		return { members, invitations, currentUserId: session.user.id };
+		return {
+			members,
+			invitations,
+			currentUserId: session.user.id,
+			organization: { id: org.id, name: org.name },
+		};
+	});
+
+export const updateOrganizationFn = createServerFn({ method: "POST" })
+	.validator(z.object({ brandId: z.string(), name: z.string().min(1).max(100) }))
+	.handler(async ({ data }) => {
+		requireTeamInvites();
+		const session = await requireAuthSession();
+		const org = await requireBrandOrganization(session.user.id, data.brandId);
+
+		// Org rename is an admin action.
+		if (!isOrgAdminRole(org.role)) throw new Error("Only admins can rename the workspace");
+
+		await db.update(organization).set({ name: data.name.trim() }).where(eq(organization.id, org.id));
+		return { success: true };
 	});
 
 export const inviteTeamMemberFn = createServerFn({ method: "POST" })
@@ -75,10 +96,10 @@ export const inviteTeamMemberFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		const org = await requireBrandOrganization(session.user.id, data.brandId);
 
 		await auth.api.createInvitation({
-			body: { email: data.email, role: data.role, organizationId: data.brandId },
+			body: { email: data.email, role: data.role, organizationId: org.id },
 			headers: getRequestHeaders(),
 		});
 
@@ -90,7 +111,7 @@ export const cancelInvitationFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		await auth.api.cancelInvitation({
 			body: { invitationId: data.invitationId },
@@ -105,19 +126,19 @@ export const removeTeamMemberFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		const org = await requireBrandOrganization(session.user.id, data.brandId);
 
 		const [row] = await db
 			.select({ userId: member.userId })
 			.from(member)
-			.where(and(eq(member.id, data.memberId), eq(member.organizationId, data.brandId)))
+			.where(and(eq(member.id, data.memberId), eq(member.organizationId, org.id)))
 			.limit(1);
 		if (row?.userId === session.user.id) {
 			throw new Error("You cannot remove yourself from the team");
 		}
 
 		await auth.api.removeMember({
-			body: { memberIdOrEmail: data.memberId, organizationId: data.brandId },
+			body: { memberIdOrEmail: data.memberId, organizationId: org.id },
 			headers: getRequestHeaders(),
 		});
 

@@ -17,6 +17,7 @@ import {
 	IconTimeline,
 	IconTool,
 	IconUsers,
+	IconCreditCard,
 } from "@tabler/icons-react";
 
 import {
@@ -134,6 +135,9 @@ export function AppSidebar({
 					},
 					...(context.clientConfig?.features.teamInvites
 						? [{ title: "Team", url: "/settings/members", icon: IconUsers }]
+						: []),
+					...(context.clientConfig?.features.billing
+						? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard }]
 						: []),
 				],
 			});

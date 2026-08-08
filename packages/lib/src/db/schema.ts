@@ -1,4 +1,17 @@
-import { pgEnum, pgTable, uuid, text, timestamp, boolean, json, index, integer, smallint } from "drizzle-orm/pg-core";
+import {
+	boolean,
+	index,
+	integer,
+	json,
+	jsonb,
+	numeric,
+	pgEnum,
+	pgTable,
+	smallint,
+	text,
+	timestamp,
+	uuid,
+} from "drizzle-orm/pg-core";
 // `organization` is referenced by the brands FK below; the re-export makes it
 // (and the rest of the auth schema) visible to `import * as schema` consumers.
 import { organization } from "./schema-auth";
@@ -12,6 +25,16 @@ export * from "./schema-auth";
 // ============================================================================
 
 export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
+
+/**
+ * Per-prompt Claude tracking assignment (cloud plans). NULL = not
+ * assigned. Assigned prompts run Claude once daily — "web" uses Anthropic
+ * native web search (capped), "base" runs the bare model. Counted against the
+ * org's Claude pool (plan included + purchased add-on). Unused outside cloud:
+ * self-hosted deployments track Claude by putting it in SCRAPE_TARGETS instead.
+ */
+export const claudeModeEnum = pgEnum("claude_mode", ["base", "web"]);
+export type ClaudeMode = (typeof claudeModeEnum.enumValues)[number];
 
 export const brands = pgTable(
 	"brands",
@@ -53,6 +76,7 @@ export const prompts = pgTable(
 			.notNull(),
 		value: text("value").notNull(),
 		enabled: boolean("enabled").default(true).notNull(),
+		claudeMode: claudeModeEnum("claude_mode"),
 		tags: text("tags").array().notNull().default([]),
 		systemTags: text("system_tags").array().notNull().default([]),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -225,6 +249,62 @@ export const SYSTEM_TAGS = {
 } as const;
 
 export type SystemTag = (typeof SYSTEM_TAGS)[keyof typeof SYSTEM_TAGS];
+
+/**
+ * Cloud billing/entitlement state we own per organization (as opposed to the
+ * better-auth-managed `subscription` table). One optional row per org:
+ * - entitlementOverrides: sparse custom-plan overrides (see
+ *   entitlementOverridesSchema in @workspace/config/entitlements) — the
+ *   config-only lever for custom plans
+ * - claudeAddonQuantity: purchased extra-Claude-prompts quantity, synced from
+ *   Stripe subscription items by the billing webhook
+ * Absent row = no overrides, no add-on. Unused outside cloud.
+ */
+export const organizationSettings = pgTable("organization_settings", {
+	organizationId: text("organization_id")
+		.primaryKey()
+		.notNull()
+		.references(() => organization.id),
+	entitlementOverrides: jsonb("entitlement_overrides"),
+	claudeAddonQuantity: integer("claude_addon_quantity").notNull().default(0),
+	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+}).enableRLS();
+
+export type OrganizationSettings = typeof organizationSettings.$inferSelect;
+
+/**
+ * Billing-grade usage attribution: one row per provider call the
+ * worker makes, so every run is attributable to an org with an estimated
+ * cost. Written in every mode (self-hosted operators get the same spend
+ * visibility); estimated costs come from the tunable table in
+ * src/usage/cost.ts and are validated against provider invoices, not treated
+ * as ground truth.
+ */
+export const usageEvents = pgTable(
+	"usage_events",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		organizationId: text("organization_id").notNull(),
+		brandId: text("brand_id").notNull(),
+		promptId: uuid("prompt_id"),
+		eventType: text("event_type").notNull(),
+		provider: text("provider"),
+		model: text("model"),
+		webSearchEnabled: boolean("web_search_enabled").notNull().default(false),
+		units: integer("units").notNull().default(1),
+		estimatedCostUsd: numeric("estimated_cost_usd", { precision: 12, scale: 6 }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	},
+	(table) => ({
+		orgCreatedIdx: index("usage_events_org_created_idx").on(table.organizationId, table.createdAt),
+	}),
+).enableRLS();
+
+export type UsageEvent = typeof usageEvents.$inferSelect;
 
 // Encrypted overrides for credential environment variables, keyed by the env-var
 // name they stand in for. Separate table, strictest access.

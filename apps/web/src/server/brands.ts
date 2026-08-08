@@ -3,20 +3,28 @@
  * Replaces apps/web/src/app/api/brands/* API routes.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireAuthSession, requireOrgAccess, listUserOrganizations } from "@/lib/auth/helpers";
-import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
-import { getDeployment } from "@/lib/config/server";
-import { db } from "@workspace/lib/db/db";
-import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from "@workspace/lib/db/schema";
-import { provisionAdditionalLocalOrg } from "@workspace/lib/db/provisioning";
-import { eq, and, count, sql, inArray } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
-import { validateWebsiteUrl } from "@/lib/brand-website";
-import { normalizeBrandUpdate } from "@/lib/brand-settings";
-import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
+import { db } from "@workspace/lib/db/db";
+import { findUniqueBrandId, slugify } from "@workspace/lib/db/provisioning";
+import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
+import { assertCanCreateBrand, assertEnabledModelsAllowed, getOrgEntitlements } from "@workspace/lib/entitlements";
 import type { ModelConfig } from "@workspace/lib/providers";
+import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
+import { defaultPlatformPicks } from "@workspace/lib/run-policy";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
+import { z } from "zod";
+import { listUserOrganizations, requireAuthSession, requireBrandAccess, requireOrgAccess } from "@/lib/auth/helpers";
+import { evaluateRequireCanCreateBrands, resolveBrandOrganization } from "@/lib/auth/policies";
+import { normalizeBrandUpdate } from "@/lib/brand-settings";
+import { validateWebsiteUrl } from "@/lib/brand-website";
+import { getDeployment } from "@/lib/config/server";
+import { cleanAndValidateDomain } from "@/lib/domain-categories";
+
+const BRAND_ORG_ERRORS = {
+	"no-organization": "No organization for the current user",
+	forbidden: "Forbidden: No access to this organization",
+	ambiguous: "Choose a workspace for this brand",
+} as const;
 
 /**
  * Deployment-configured models this brand actually runs, after applying
@@ -46,6 +54,44 @@ function computeEffectiveModels(brand: Brand): {
 		// lists than crash the brand fetch.
 		return { effectiveModels: [], effectiveModelConfigs: [] };
 	}
+}
+
+/**
+ * Cloud brands start with their plan's default platform picks written
+ * explicitly, so the run policy, the model filter, and the LLMs settings page
+ * all agree from the first run. Outside cloud (or when nothing is pickable
+ * yet, e.g. an unsubscribed org via the admin API) brands keep the null
+ * "follow deployment configuration" semantics.
+ *
+ * Note: the defaults written here are a snapshot at creation time. The
+ * run policy's `resolvePromptRunPlan` also applies `defaultPlatformPicks` as a
+ * fallback when `brand.enabledModels` is null — so a brand that had picks
+ * written explicitly follows the creation-time snapshot, while one created
+ * via the API without picks always resolves fresh defaults. Both converge for
+ * the same plan; the dual path is intentional defense-in-depth.
+ */
+async function initialEnabledModels(organizationId: string): Promise<string[] | null> {
+	if (getDeployment().mode !== "cloud") return null;
+	const entitlements = await getOrgEntitlements(organizationId);
+	if (entitlements.unlimited) return null;
+	const picks = defaultPlatformPicks(entitlements, parseScrapeTargets(process.env.SCRAPE_TARGETS));
+	return picks.length > 0 ? picks : null;
+}
+
+/**
+ * Picks supplied at creation time go through the same checks as a
+ * post-creation edit: the loud configured-target validation plus plan
+ * enforcement. Without picks, creation falls back to the plan defaults.
+ */
+async function resolveCreateEnabledModels(
+	organizationId: string,
+	requested: string[] | undefined,
+): Promise<string[] | null> {
+	if (!requested || requested.length === 0) return initialEnabledModels(organizationId);
+	const models = [...new Set(requested)];
+	selectTargetsForBrand(parseScrapeTargets(process.env.SCRAPE_TARGETS), models);
+	await assertEnabledModelsAllowed(organizationId, models);
+	return models;
 }
 
 function getDefaultBrandDomains(): string[] {
@@ -130,7 +176,7 @@ export const getBrand = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const brand = await getBrandWithPromptsFromDb(data.brandId);
 		if (!brand) {
@@ -149,11 +195,16 @@ export const createBrandFn = createServerFn({ method: "POST" })
 			brandId: z.string(),
 			brandName: z.string(),
 			website: z.string(),
+			/** Platform picks from the onboarding wizard; omitted → plan defaults. */
+			enabledModels: z.array(z.string().min(1)).max(50).optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
+		// This legacy path fills an empty org's first brand (brandId here IS the
+		// org id), so the brand count gate applies to that org.
+		await assertCanCreateBrand(data.brandId);
 
 		const urlValidation = validateWebsiteUrl(data.website);
 		if (!urlValidation.isValid) {
@@ -161,6 +212,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 		}
 
 		const defaultDomains = getDefaultBrandDomains();
+		const enabledModels = await resolveCreateEnabledModels(data.brandId, data.enabledModels);
 
 		const result = await db
 			.insert(brands)
@@ -172,6 +224,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 				name: data.brandName,
 				website: urlValidation.formattedUrl,
 				enabled: true,
+				...(enabledModels && { enabledModels }),
 				...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
 			})
 			.onConflictDoNothing()
@@ -191,16 +244,17 @@ export const createBrandFn = createServerFn({ method: "POST" })
 	});
 
 /**
- * Create a new organization + admin membership + brand in one shot for the
- * current user. Used by the local-mode multi-brand "create new brand" flow on
- * the brand switcher. Gated by the canCreateBrands deployment feature so
- * whitelabel (orgs come from Auth0) and demo (read-only) reject it.
+ * Attach a new brand to the current user's existing organization, with a
+ * fresh id decoupled from the org id. Used by the multi-brand "create new
+ * brand" flow on the brand switcher. Gated by the canCreateBrands deployment
+ * feature so whitelabel (orgs come from Auth0) and demo (read-only) reject it.
  */
-export const createBrandWithOrgFn = createServerFn({ method: "POST" })
+export const createBrandInOrgFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandName: z.string().min(1).max(100),
 			website: z.string().min(1),
+			organizationId: z.string().optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -221,23 +275,37 @@ export const createBrandWithOrgFn = createServerFn({ method: "POST" })
 			throw new Error("Brand name must be a non-empty string");
 		}
 
-		const { orgId } = await provisionAdditionalLocalOrg({
-			userId: session.user.id,
-			name: trimmedName,
-		});
+		// Which workspace owns the brand is only ambiguous when the caller belongs
+		// to more than one — a cloud user who accepted a team invite, or a local
+		// install from when creating a brand minted an org for it. /app/new asks
+		// in that case; picking for them would be a coin flip that decides who
+		// can see the brand and, later, who gets billed for it.
+		const orgs = await listUserOrganizations(session.user.id);
+		const choice = resolveBrandOrganization(
+			orgs.map((o) => o.id),
+			data.organizationId,
+		);
+		if (!choice.ok) {
+			throw new Error(BRAND_ORG_ERRORS[choice.reason]);
+		}
+		const orgId = choice.organizationId;
+		await assertCanCreateBrand(orgId);
 
+		const brandId = await findUniqueBrandId(slugify(trimmedName));
 		const defaultDomains = getDefaultBrandDomains();
+		const enabledModels = await initialEnabledModels(orgId);
 
 		await db.insert(brands).values({
-			id: orgId,
+			id: brandId,
 			organizationId: orgId,
 			name: trimmedName,
 			website: urlValidation.formattedUrl,
 			enabled: true,
+			...(enabledModels && { enabledModels }),
 			...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
 		});
 
-		return { brandId: orgId };
+		return { brandId };
 	});
 
 /**
@@ -255,7 +323,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const normalized = normalizeBrandUpdate({
 			name: data.name,
@@ -288,7 +356,7 @@ export const getCompetitors = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		return db.query.competitors.findMany({
 			where: eq(competitors.brandId, data.brandId),
@@ -313,7 +381,7 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		// Validate and clean domains
 		const cleanedCompetitors = data.competitors.map((c) => {
@@ -361,7 +429,7 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
@@ -397,7 +465,7 @@ export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const existing = await db.query.competitors.findFirst({
 			where: and(eq(competitors.id, data.competitorId), eq(competitors.brandId, data.brandId)),
@@ -431,7 +499,7 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);

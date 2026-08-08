@@ -19,13 +19,11 @@ import {
 	evaluateAuthedRouteGuard,
 	evaluateBrandRouteGuard,
 	evaluateDeploymentPolicy,
-	evaluateOrgScope,
 	evaluateReadOnly,
 	evaluateRequireAdmin,
 	evaluateRequireCanCreateBrands,
-	evaluateRequireOrgAccess,
-	evaluateSignupAllowed,
 	type RequestInfo,
+	resolveBrandOrganization,
 } from "@/lib/auth/policies";
 import { createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
 
@@ -405,46 +403,28 @@ describe("evaluateRequireAdmin", () => {
 	});
 });
 
-describe("evaluateRequireOrgAccess", () => {
-	it("denies when user has no org access", () => {
-		expect(evaluateRequireOrgAccess(false)).toBe("deny");
-	});
-
-	it("allows when user has org access", () => {
-		expect(evaluateRequireOrgAccess(true)).toBe("allow");
-	});
-});
-
-// Brand/prompt/run/citation org scoping (issue #339). A brand's
-// organization_id is the tenancy boundary; membership is the access mechanism.
-describe("evaluateOrgScope", () => {
+describe("resolveBrandOrganization", () => {
 	const ORG_A = "org-a";
 	const ORG_B = "org-b";
 
-	it("allows a member to access their own org's resource", () => {
-		expect(evaluateOrgScope([ORG_A], ORG_A)).toBe("allow");
+	it("uses the sole membership when no org is requested", () => {
+		expect(resolveBrandOrganization([ORG_A], undefined)).toEqual({ ok: true, organizationId: ORG_A });
 	});
 
-	it("denies a member of org A from accessing org B's resource", () => {
-		expect(evaluateOrgScope([ORG_A], ORG_B)).toBe("deny");
+	it("refuses to pick when the user belongs to several orgs", () => {
+		expect(resolveBrandOrganization([ORG_A, ORG_B], undefined)).toEqual({ ok: false, reason: "ambiguous" });
 	});
 
-	it("allows access for any org the user belongs to (multi-org member)", () => {
-		expect(evaluateOrgScope([ORG_A, ORG_B], ORG_B)).toBe("allow");
+	it("honors an explicit choice among several orgs", () => {
+		expect(resolveBrandOrganization([ORG_A, ORG_B], ORG_B)).toEqual({ ok: true, organizationId: ORG_B });
 	});
 
-	it("denies a resource in an org the multi-org user does not belong to", () => {
-		expect(evaluateOrgScope([ORG_A, ORG_B], "org-c")).toBe("deny");
+	it("rejects an org the user does not belong to", () => {
+		expect(resolveBrandOrganization([ORG_A], ORG_B)).toEqual({ ok: false, reason: "forbidden" });
 	});
 
-	it("denies when the user has no memberships", () => {
-		expect(evaluateOrgScope([], ORG_A)).toBe("deny");
-	});
-
-	it("does not treat the brand id as an org membership by itself", () => {
-		// Pre-#339 access leaned on brand.id == org.id; scoping must be driven
-		// by actual membership, not by the resource naming itself.
-		expect(evaluateOrgScope([], "org-a")).toBe("deny");
+	it("reports no membership before considering the request", () => {
+		expect(resolveBrandOrganization([], ORG_A)).toEqual({ ok: false, reason: "no-organization" });
 	});
 });
 
@@ -557,58 +537,6 @@ describe("evaluateApiKeyAuth", () => {
 });
 
 // ============================================================================
-// 4b. Signup Allowlist (cloud invite-only gate)
-// ============================================================================
-
-describe("evaluateSignupAllowed", () => {
-	it("denies everyone when the allowlist is empty (fails closed)", () => {
-		expect(evaluateSignupAllowed("anyone@example.com", [])).toBe("deny");
-	});
-
-	it("allows an exact email match", () => {
-		expect(evaluateSignupAllowed("alice@partner.com", ["alice@partner.com"])).toBe("allow");
-	});
-
-	it("denies an address that is not listed", () => {
-		expect(evaluateSignupAllowed("bob@partner.com", ["alice@partner.com"])).toBe("deny");
-	});
-
-	it("allows any address at an allowed domain", () => {
-		expect(evaluateSignupAllowed("anyone@elmohq.com", ["@elmohq.com"])).toBe("allow");
-		expect(evaluateSignupAllowed("someone.else@elmohq.com", ["@elmohq.com"])).toBe("allow");
-	});
-
-	it("denies an address at a domain that is not listed", () => {
-		expect(evaluateSignupAllowed("anyone@gmail.com", ["@elmohq.com"])).toBe("deny");
-	});
-
-	it("is case-insensitive on both the email and the entries", () => {
-		expect(evaluateSignupAllowed("Alice@Elmohq.com", ["@ELMOHQ.COM"])).toBe("allow");
-		expect(evaluateSignupAllowed("BOB@Partner.com", ["bob@partner.com"])).toBe("allow");
-	});
-
-	it("does not let a domain entry match a lookalike domain", () => {
-		expect(evaluateSignupAllowed("x@evil-elmohq.com", ["@elmohq.com"])).toBe("deny");
-		expect(evaluateSignupAllowed("x@elmohq.com.evil.com", ["@elmohq.com"])).toBe("deny");
-	});
-
-	it("opens signup to everyone when '*' is present", () => {
-		expect(evaluateSignupAllowed("anyone@anywhere.com", ["*"])).toBe("allow");
-		expect(evaluateSignupAllowed("anyone@anywhere.com", ["@elmohq.com", "*"])).toBe("allow");
-	});
-
-	it("ignores blank and whitespace-only entries", () => {
-		expect(evaluateSignupAllowed("a@b.com", ["", "  ", "a@b.com"])).toBe("allow");
-		expect(evaluateSignupAllowed("a@b.com", ["", "  "])).toBe("deny");
-	});
-
-	it("denies a malformed email with no domain unless listed exactly", () => {
-		expect(evaluateSignupAllowed("not-an-email", ["@elmohq.com"])).toBe("deny");
-		expect(evaluateSignupAllowed("not-an-email", ["not-an-email"])).toBe("allow");
-	});
-});
-
-// ============================================================================
 // 5. Cross-cutting: Full scenario tests
 //    These simulate a user journey through multiple policy layers.
 // ============================================================================
@@ -671,7 +599,6 @@ describe("full access-control scenarios", () => {
 
 			// Auth: passes
 			expect(evaluateRequireAdmin(true)).toBe("allow");
-			expect(evaluateRequireOrgAccess(true)).toBe("allow");
 
 			// Route guards: all pass
 			expect(evaluateAuthedRouteGuard(session)).toBe("allow");
@@ -687,8 +614,6 @@ describe("full access-control scenarios", () => {
 			expect(evaluateAdminRouteGuard(false)).toBe("not-found");
 
 			// Org access depends on membership
-			expect(evaluateRequireOrgAccess(true)).toBe("allow");
-			expect(evaluateRequireOrgAccess(false)).toBe("deny");
 			expect(evaluateBrandRouteGuard(true)).toBe("allow");
 			expect(evaluateBrandRouteGuard(false)).toBe("not-found");
 		});

@@ -66,7 +66,7 @@ function generateChartData(days: number) {
 
 const defaultClientConfig: ClientConfig = {
 	mode: "local",
-	features: { readOnly: false, showOptimizeButton: false, supportsMultiOrg: true, canCreateBrands: true },
+	features: { readOnly: false, showOptimizeButton: false, canCreateBrands: true },
 	branding: { name: "Elmo", chartColors: CHART_COLORS },
 	analytics: {},
 };

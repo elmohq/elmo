@@ -6,6 +6,11 @@
  */
 let _delayMs = 0;
 let _shouldThrow: string | null = null;
+let _platformState: {
+	available: { model: string; provider: string; version?: string; webSearch: boolean }[];
+	platformPicks: number;
+	defaultSelected: string[];
+} | null = null;
 
 export function setMockCreateBrandDelay(ms: number) {
 	_delayMs = ms;
@@ -15,9 +20,21 @@ export function setMockCreateBrandError(message: string | null) {
 	_shouldThrow = message;
 }
 
+export function setMockOnboardingPlatformState(state: typeof _platformState) {
+	_platformState = state;
+}
+
+export const getOnboardingPlatformStateFn = async (_args: { data: unknown }) => _platformState;
+
 export const getBrands = async () => [];
 
 export const getBrand = async (_args: { data: unknown }) => null;
+
+/** Stub re-exported by server-platform-picks.ts */
+export const getModelPickerStateFn = async (_args: { data: unknown }) => null;
+
+/** Stub re-exported by server-platform-picks.ts */
+export const updateEnabledModelsFn = async (_args: { data: unknown }) => ({ id: "", enabledModels: null });
 
 export const createBrandFn = async (_args: { data: unknown }) => {
 	if (_delayMs > 0) await new Promise((r) => setTimeout(r, _delayMs));

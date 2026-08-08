@@ -4,6 +4,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
+import { assertCanAddPrompts } from "@workspace/lib/entitlements";
 import { prompts, brands } from "@workspace/lib/db/schema";
 import { eq, count, desc } from "drizzle-orm";
 import { z } from "zod";
@@ -70,6 +71,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 					}
 
 					const brand = brandInfo[0];
+					await assertCanAddPrompts(brand.organizationId, 1);
 					const userTags = tags ? sanitizeUserTags(tags) : [];
 					const systemTags = computeSystemTags(value, brand.name, brand.website);
 

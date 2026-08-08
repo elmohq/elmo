@@ -1,28 +1,45 @@
 /**
  * /app/$brand/settings/llms - LLM configuration page
  *
- * Lists the AI models this brand is tracked against, data-driven from the
- * deployment's `SCRAPE_TARGETS` + `brand.enabledModels`. Each card renders
- * from `brand.effectiveModelConfigs` rather than a hardcoded model list so
- * any deployment-configured model shows up automatically.
+ * Choose which AI platforms this brand tracks, data-driven from the
+ * deployment's `SCRAPE_TARGETS` + `brand.enabledModels`. In cloud mode the
+ * choices are constrained by the plan (menu + pick count) and the page also
+ * hosts the per-prompt Claude tracking assignment against the org's Claude
+ * pool. The server functions hold the real limits; this page only renders
+ * them.
  */
-import { createFileRoute } from "@tanstack/react-router";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
-import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
+
+import { IconInfoCircle, IconLoader2 } from "@tabler/icons-react";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { Alert, AlertDescription } from "@workspace/ui/components/alert";
+import { Badge } from "@workspace/ui/components/badge";
+import { Button } from "@workspace/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { IconCircleCheck, IconCircleX, IconInfoCircle } from "@tabler/icons-react";
-import { Skeleton } from "@workspace/ui/components/skeleton";
-import { useBrand } from "@/hooks/use-brands";
+import { useState } from "react";
 import { iconForModel } from "@/components/filter-bar";
+import { PlatformPicker } from "@/components/platform-picker";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { getModelPickerStateFn, type ModelPickerState, updateEnabledModelsFn } from "@/server/platform-picks";
+import { type ClaudeAssignmentsState, getClaudeAssignmentsFn, setPromptClaudeModeFn } from "@/server/claude-tracking";
+import type { ClaudeMode } from "@workspace/lib/db/schema";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
+	loader: async ({ params }): Promise<{ picker: ModelPickerState; claude: ClaudeAssignmentsState }> => {
+		const [picker, claude] = await Promise.all([
+			getModelPickerStateFn({ data: { brandId: params.brand } }),
+			getClaudeAssignmentsFn({ data: { brandId: params.brand } }),
+		]);
+		return { picker, claude };
+	},
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
 				{ title: buildTitle("LLMs", { appName, brandName }) },
-				{ name: "description", content: "View tracked AI models and configuration." },
+				{ name: "description", content: "Choose which AI models this brand is tracked against." },
 			],
 		};
 	},
@@ -30,11 +47,10 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
 });
 
 function LlmsSettingsPage() {
-	const { brand, isLoading } = useBrand();
-	const configs = brand?.effectiveModelConfigs ?? [];
+	const { picker, claude } = Route.useLoaderData();
 
 	return (
-		<div className="space-y-6 max-w-6xl">
+		<div className="space-y-8 max-w-6xl">
 			<div>
 				<h1 className="text-3xl font-bold">LLMs</h1>
 				<p className="text-muted-foreground">
@@ -43,80 +59,170 @@ function LlmsSettingsPage() {
 				</p>
 			</div>
 
-			{isLoading && !brand ? (
-				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-					{[0, 1, 2].map((i) => (
-						<Card key={i} className="h-full">
-							<CardHeader className="py-2 border-b">
-								<Skeleton className="h-6 w-6 rounded" />
-							</CardHeader>
-							<CardContent className="pt-2 space-y-2">
-								<Skeleton className="h-4 w-full" />
-								<Skeleton className="h-4 w-3/4" />
-								<Skeleton className="h-4 w-2/3" />
-							</CardContent>
-						</Card>
-					))}
-				</div>
-			) : configs.length === 0 ? (
-				<Card>
-					<CardContent className="pt-6 text-sm text-muted-foreground">
-						No models are configured for this brand. Set <code className="font-mono text-xs">SCRAPE_TARGETS</code> at
-						the deployment level, or adjust this brand&apos;s <code className="font-mono text-xs">enabledModels</code>.
-					</CardContent>
-				</Card>
-			) : (
-				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-					{configs.map((config) => (
-						<Card key={config.model} className="h-full">
-							<CardHeader className="py-2 border-b">{iconForModel(config.model, "h-6 w-6")}</CardHeader>
-							<CardContent className="pt-2">
-								<div className="divide-y text-sm">
-									<ConfigRow label="Model" tooltip="Which AI model this card covers.">
-										<span className="font-mono text-xs text-foreground">{config.model}</span>
-									</ConfigRow>
-									<ConfigRow
-										label="Provider"
-										tooltip="How this deployment reaches the model — direct API, a scraping proxy, etc."
-									>
-										<span className="font-mono text-xs text-foreground">{config.provider}</span>
-									</ConfigRow>
-									<ConfigRow label="Version" tooltip="Exact upstream model version requested from the provider.">
-										<span className="font-mono text-xs text-foreground">{config.version ?? "—"}</span>
-									</ConfigRow>
-									<ConfigRow label="Web search" tooltip="Is web search used to answer prompts?">
-										{config.webSearch ? (
-											<IconCircleCheck className="h-4 w-4 text-emerald-600" />
-										) : (
-											<IconCircleX className="h-4 w-4 text-muted-foreground" />
-										)}
-										<span className="sr-only">{config.webSearch ? "Enabled" : "Disabled"}</span>
-									</ConfigRow>
-								</div>
-							</CardContent>
-						</Card>
-					))}
-				</div>
-			)}
+			<ModelPicker picker={picker} />
+			{claude.enabled && <ClaudeAssignments claude={claude} />}
 		</div>
 	);
 }
 
-function ConfigRow({ label, tooltip, children }: { label: string; tooltip?: string; children: React.ReactNode }) {
+function ModelPicker({ picker }: { picker: ModelPickerState }) {
+	const { brand: brandId } = Route.useParams();
+	const router = useRouter();
+	// null stored picks = "everything the deployment configures" (non-cloud).
+	const [selected, setSelected] = useState<Set<string>>(
+		new Set(picker.enabledModels ?? picker.available.map((m) => m.model)),
+	);
+	const [saving, setSaving] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	const stored = new Set(picker.enabledModels ?? picker.available.map((m) => m.model));
+	const changed = selected.size !== stored.size || [...selected].some((m) => !stored.has(m));
+	const limit = picker.planLimits?.platformPicks ?? null;
+	const overLimit = limit !== null && selected.size > limit;
+
+	const save = async () => {
+		setSaving(true);
+		setError(null);
+		try {
+			await updateEnabledModelsFn({ data: { brandId, models: [...selected] } });
+			router.invalidate();
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Could not save platform picks");
+		} finally {
+			setSaving(false);
+		}
+	};
+
 	return (
-		<div className="flex items-center justify-between py-2">
-			<div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-				<span>{label}</span>
-				{tooltip && (
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
-						</TooltipTrigger>
-						<TooltipContent className="max-w-xs text-xs font-normal">{tooltip}</TooltipContent>
-					</Tooltip>
+		<Card>
+			<CardHeader>
+				<CardTitle className="flex items-center justify-between">
+					Tracked platforms
+					{limit !== null && (
+						<Badge variant={overLimit ? "destructive" : "secondary"}>
+							{selected.size} / {limit} picks
+						</Badge>
+					)}
+				</CardTitle>
+				<CardDescription>
+					{limit !== null
+						? `Your plan tracks up to ${limit} platform${limit === 1 ? "" : "s"} for this brand. Changes apply from the next sampling cycle.`
+						: "Which configured targets this brand runs. Changes apply from the next scheduled run."}
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-4">
+				{error && (
+					<Alert variant="destructive">
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
 				)}
-			</div>
-			<div className="flex items-center gap-2">{children}</div>
-		</div>
+				{picker.available.length === 0 ? (
+					<p className="text-sm text-muted-foreground">
+						No models are configured on this deployment. Set <code className="font-mono text-xs">SCRAPE_TARGETS</code>.
+					</p>
+				) : (
+					<PlatformPicker
+						options={picker.available}
+						selected={selected}
+						onSelectedChange={setSelected}
+						limit={limit}
+						disabled={saving}
+					/>
+				)}
+				<div className="flex items-center gap-3">
+					<Button onClick={save} disabled={!changed || overLimit || selected.size === 0 || saving}>
+						{saving ? <IconLoader2 className="h-4 w-4 animate-spin" /> : "Save platforms"}
+					</Button>
+					{selected.size === 0 && <span className="text-sm text-muted-foreground">Pick at least one platform.</span>}
+				</div>
+			</CardContent>
+		</Card>
+	);
+}
+
+function ClaudeAssignments({ claude }: { claude: ClaudeAssignmentsState }) {
+	const router = useRouter();
+	const [busyPromptId, setBusyPromptId] = useState<string | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const remaining = claude.pool.total - claude.pool.assigned;
+
+	const setMode = async (promptId: string, mode: ClaudeMode | null) => {
+		setBusyPromptId(promptId);
+		setError(null);
+		try {
+			await setPromptClaudeModeFn({ data: { promptId, mode } });
+			router.invalidate();
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Could not update Claude tracking");
+		} finally {
+			setBusyPromptId(null);
+		}
+	};
+
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle className="flex items-center justify-between">
+					<span className="flex items-center gap-2">
+						{iconForModel("claude", "h-5 w-5")}
+						Claude tracking
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<IconInfoCircle className="h-4 w-4 cursor-help text-muted-foreground" />
+							</TooltipTrigger>
+							<TooltipContent className="max-w-xs text-xs">
+								Assigned prompts run Claude once daily — web-grounded (Anthropic native web search) or base-model. The
+								pool is shared across your whole workspace; buy extra prompts on the Billing page.
+							</TooltipContent>
+						</Tooltip>
+					</span>
+					<Badge variant={remaining <= 0 ? "destructive" : "secondary"}>
+						{claude.pool.assigned} / {claude.pool.total} assigned
+					</Badge>
+				</CardTitle>
+				<CardDescription>Choose which prompts get daily Claude tracking, and how Claude answers.</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-3">
+				{error && (
+					<Alert variant="destructive">
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+				)}
+				{claude.prompts.length === 0 ? (
+					<p className="text-sm text-muted-foreground">No enabled prompts yet — add prompts first.</p>
+				) : (
+					<div className="divide-y">
+						{claude.prompts.map((prompt) => (
+							<div key={prompt.id} className="flex items-center justify-between gap-4 py-2">
+								<span className="min-w-0 flex-1 truncate text-sm" title={prompt.value}>
+									{prompt.value}
+								</span>
+								{busyPromptId === prompt.id ? (
+									<IconLoader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+								) : (
+									<Select
+										value={prompt.claudeMode ?? "off"}
+										onValueChange={(value) => setMode(prompt.id, value === "off" ? null : (value as ClaudeMode))}
+									>
+										<SelectTrigger className="w-40" size="sm">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="off">Off</SelectItem>
+											<SelectItem value="web" disabled={prompt.claudeMode === null && remaining <= 0}>
+												Web-grounded
+											</SelectItem>
+											<SelectItem value="base" disabled={prompt.claudeMode === null && remaining <= 0}>
+												Base model
+											</SelectItem>
+										</SelectContent>
+									</Select>
+								)}
+							</div>
+						))}
+					</div>
+				)}
+			</CardContent>
+		</Card>
 	);
 }
