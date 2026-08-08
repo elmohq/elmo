@@ -30,6 +30,12 @@ export const getBrands = async () => [];
 
 export const getBrand = async (_args: { data: unknown }) => null;
 
+/** Stub re-exported by server-platform-picks.ts */
+export const getModelPickerStateFn = async (_args: { data: unknown }) => null;
+
+/** Stub re-exported by server-platform-picks.ts */
+export const updateEnabledModelsFn = async (_args: { data: unknown }) => ({ id: "", enabledModels: null });
+
 export const createBrandFn = async (_args: { data: unknown }) => {
 	if (_delayMs > 0) await new Promise((r) => setTimeout(r, _delayMs));
 	if (_shouldThrow) throw new Error(_shouldThrow);

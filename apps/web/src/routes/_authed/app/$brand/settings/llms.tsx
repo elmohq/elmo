@@ -21,7 +21,7 @@ import { useState } from "react";
 import { iconForModel } from "@/components/filter-bar";
 import { PlatformPicker, usePlatformToggle } from "@/components/platform-picker";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
-import { getModelPickerStateFn, type ModelPickerState, updateEnabledModelsFn } from "@/server/brands";
+import { getModelPickerStateFn, type ModelPickerState, updateEnabledModelsFn } from "@/server/platform-picks";
 import { type ClaudeAssignmentsState, getClaudeAssignmentsFn, setPromptClaudeModeFn } from "@/server/prompts";
 import type { ClaudeMode } from "@workspace/lib/db/schema";
 

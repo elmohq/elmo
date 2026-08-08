@@ -8,7 +8,8 @@ import FullPageCard from "@/components/full-page-card";
 import { PlatformPicker, usePlatformToggle } from "@/components/platform-picker";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
-import { createBrandFn, type OnboardingPlatformState } from "@/server/brands";
+import { createBrandFn } from "@/server/brands";
+import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
 
 interface BrandOnboardingProps {
 	brandId: string;
