@@ -10,8 +10,8 @@ import { getAppName } from "@/lib/route-head";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getDeployment } from "@/lib/config/server";
-import { getOnboardingPlatformStateFn } from "@/server/brands";
-import type { OnboardingPlatformState } from "@/server/brands";
+import { getOnboardingPlatformStateFn } from "@/server/platform-picks";
+import type { OnboardingPlatformState } from "@/server/platform-picks";
 import {
 	requireAuthSession,
 	isAdmin,
