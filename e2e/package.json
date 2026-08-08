@@ -5,15 +5,21 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "test:e2e": "playwright test --project=fixtures",
+    "check-types": "tsc --noEmit",
+    "test:e2e": "playwright test --project=local",
+    "test:e2e:cloud": "playwright test --project=cloud",
+    "test:e2e:whitelabel": "playwright test --project=whitelabel",
+    "test:e2e:demo": "playwright test --project=demo",
     "test:api": "mkdir -p test-results && cd bruno && bru run -r --env local --reporter-junit ../test-results/api-junit.xml --reporter-json ../test-results/api-report.json",
     "seed": "tsx seed.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "@types/node": "^26.1.2",
     "@types/pg": "^8.20.3",
     "@usebruno/cli": "4.0.0",
     "pg": "^8.22.0",
-    "tsx": "^4.23.1"
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
   }
 }

@@ -28,19 +28,22 @@ interface RouterContext {
 }
 
 // Client-side cache for config data — avoids HTTP round-trips on every SPA navigation.
-// Server-side (SSR) always fetches fresh (cachedRootData is reset per request).
+// The server deliberately doesn't cache: `hasUsers` (and with it `canRegister`)
+// flips the first time someone signs up, and a module-scope cache in a
+// long-lived server process would keep serving the pre-signup answer — leaving
+// /auth/register reachable on a bootstrapped instance until the next restart.
 let cachedRootData: {
 	clientConfig: PublicClientConfig;
 	envValidation: { mode: DeploymentMode; missing: MissingEnvVar[]; isValid: boolean };
-} | null = typeof window === "undefined" ? null : null;
+} | null = null;
 
 export const Route = createRootRouteWithContext<RouterContext>()({
 	notFoundComponent: NotFound,
 	beforeLoad: async () => {
 		if (cachedRootData) return cachedRootData;
 		const [clientConfig, envValidation] = await Promise.all([getClientConfig(), getEnvValidationStateFn()]);
-		cachedRootData = { clientConfig, envValidation };
-		return cachedRootData;
+		if (typeof window !== "undefined") cachedRootData = { clientConfig, envValidation };
+		return { clientConfig, envValidation };
 	},
 	head: ({ match }) => {
 		const branding = match.context?.clientConfig?.branding;
