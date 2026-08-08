@@ -138,7 +138,7 @@ const CLOUD_PLATFORM_STATE = {
 export const SetupPlatformStep: StoryObj = {
 	render: () => {
 		setMockOnboardingPlatformState(CLOUD_PLATFORM_STATE);
-		return <BrandOnboarding brandId="mock-brand-id" brandName="Acme" />;
+		return <BrandOnboarding brandId="mock-brand-id" brandName="Acme" platformState={CLOUD_PLATFORM_STATE} />;
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
@@ -162,12 +162,13 @@ export const SetupPlatformStep: StoryObj = {
  */
 export const SetupSinglePlatformPlan: StoryObj = {
 	render: () => {
-		setMockOnboardingPlatformState({
+		const state = {
 			available: [{ model: "chatgpt", provider: "openai", webSearch: true }],
 			platformPicks: 1,
 			defaultSelected: ["chatgpt"],
-		});
-		return <BrandOnboarding brandId="mock-brand-id" brandName="Acme" />;
+		};
+		setMockOnboardingPlatformState(state);
+		return <BrandOnboarding brandId="mock-brand-id" brandName="Acme" platformState={state} />;
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
