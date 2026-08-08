@@ -30,6 +30,14 @@ interface RouterContext {
 	};
 }
 
+const openGraphLocales = {
+	en: "en_US",
+	es: "es_ES",
+	ja: "ja_JP",
+	"zh-CN": "zh_CN",
+	"zh-TW": "zh_TW",
+} as const;
+
 // Client-side cache for config data — avoids HTTP round-trips on every SPA navigation.
 // Server-side (SSR) always fetches fresh (cachedRootData is reset per request).
 let cachedRootData: {
@@ -96,7 +104,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 				{ name: "theme-color", content: themeColor },
 				{ name: "apple-mobile-web-app-title", content: appName },
 				{ property: "og:site_name", content: appName },
-				{ property: "og:locale", content: locale === "zh-CN" ? "zh_CN" : "en_US" },
+				{ property: "og:locale", content: openGraphLocales[locale] },
 				{ property: "og:title", content: title },
 				{ property: "og:description", content: description },
 				{ property: "og:image", content: ogImage },

@@ -31,7 +31,10 @@ export const Route = createFileRoute("/_authed/settings")({
 
 const localeNames: Record<Locale, () => string> = {
 	en: m.settings_language_english,
+	es: m.settings_language_spanish,
+	ja: m.settings_language_japanese,
 	"zh-CN": m.settings_language_chinese,
+	"zh-TW": m.settings_language_traditional_chinese,
 };
 
 function LanguageSelect({
@@ -57,7 +60,10 @@ function LanguageSelect({
 				<SelectContent>
 					{includeAuto && <SelectItem value="auto">{m.settings_language_auto()}</SelectItem>}
 					<SelectItem value="en">{m.settings_language_english()}</SelectItem>
+					<SelectItem value="es">{m.settings_language_spanish()}</SelectItem>
+					<SelectItem value="ja">{m.settings_language_japanese()}</SelectItem>
 					<SelectItem value="zh-CN">{m.settings_language_chinese()}</SelectItem>
+					<SelectItem value="zh-TW">{m.settings_language_traditional_chinese()}</SelectItem>
 				</SelectContent>
 			</Select>
 		</div>

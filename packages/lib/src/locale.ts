@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const supportedLocales = ["en", "zh-CN"] as const;
+export const supportedLocales = ["en", "es", "ja", "zh-CN", "zh-TW"] as const;
 export const localeSchema = z.enum(supportedLocales);
 export const localePreferenceSchema = z.union([z.literal("auto"), localeSchema]);
 
@@ -32,7 +32,10 @@ export function matchAcceptLanguage(header: string | null | undefined): Locale |
 		.sort((a, b) => b.quality - a.quality || a.index - b.index);
 
 	for (const { tag } of candidates) {
-		if (tag === "zh-cn" || tag.startsWith("zh-hans") || tag === "zh") return "zh-CN";
+		if (tag === "zh-tw" || tag === "zh-hk" || tag === "zh-mo" || tag.startsWith("zh-hant")) return "zh-TW";
+		if (tag === "zh-cn" || tag === "zh-sg" || tag.startsWith("zh-hans") || tag === "zh") return "zh-CN";
+		if (tag === "ja" || tag.startsWith("ja-")) return "ja";
+		if (tag === "es" || tag.startsWith("es-")) return "es";
 		if (tag === "en" || tag.startsWith("en-")) return "en";
 	}
 

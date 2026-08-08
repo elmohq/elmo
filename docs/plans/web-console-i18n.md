@@ -2,7 +2,7 @@
 
 > 状态：已实施并完成本地浏览器验收
 > 编写日期：2026-08-08  
-> 首批 Locale：`en`、`zh-CN`
+> 当前 Locale：`en`、`es`、`ja`、`zh-CN`、`zh-TW`
 
 ## 1. 决策摘要
 
@@ -13,13 +13,13 @@ Web 控制台将采用 Paraglide 建立 i18n 基础设施，并通过服务端�
 1. 系统默认语言：管理员设置，对当前部署生效。
 2. 用户显示语言：用户设置，跨品牌、浏览器和设备生效。
 
-首版保持现有 URL 不变，不引入 `/en` 或 `/zh-CN` 路径前缀。服务端根据认证 Session、用户偏好、浏览器 `Accept-Language` 和系统默认值解析当前请求的 Locale；客户端从 SSR 输出的 `<html lang>` 读取当前 Locale。用户修改语言后，由 Server Function 写入数据库并刷新当前文档，以保证 SSR 内容、Hydration、页面标题和无障碍属性使用同一种语言。
+保持现有 URL 不变，不引入 Locale 路径前缀。服务端根据认证 Session、用户偏好、浏览器 `Accept-Language` 和系统默认值解析当前请求的 Locale；客户端从 SSR 输出的 `<html lang>` 读取当前 Locale。用户修改语言后，由 Server Function 写入数据库并刷新当前文档，以保证 SSR 内容、Hydration、页面标题和无障碍属性使用同一种语言。
 
 ## 2. 目标与非目标
 
 ### 2.1 目标
 
-- 为 `apps/web` 的固定界面文案提供 `en` 和 `zh-CN` 显示。
+- 为 `apps/web` 的固定界面文案提供英语、西班牙语、日语、简体中文和繁体中文显示。
 - 提供全局“系统设置 / 语言与地区”页面。
 - 支持系统默认语言和用户显示语言的服务端持久化。
 - 保证首次 SSR、客户端 Hydration、SPA 导航和页面 Metadata 的 Locale 一致。
@@ -66,7 +66,7 @@ Web 控制台将采用 Paraglide 建立 i18n 基础设施，并通过服务端�
 ### 4.1 类型
 
 ```ts
-export const supportedLocales = ["en", "zh-CN"] as const;
+export const supportedLocales = ["en", "es", "ja", "zh-CN", "zh-TW"] as const;
 
 export type Locale = (typeof supportedLocales)[number];
 export type LocalePreference = "auto" | Locale;
@@ -80,7 +80,7 @@ export type LocalePreference = "auto" | Locale;
 
 认证用户：
 
-1. 用户显式选择的 `en` 或 `zh-CN`。
+1. 用户显式选择的任一受支持 Locale。
 2. 用户选择 `auto` 时，将 `Accept-Language` 匹配到受支持 Locale。
 3. 系统默认语言。
 4. 代码内最终回退 `en`。
@@ -135,7 +135,7 @@ Locale 在应用边界使用共享 Zod Schema 校验。数据库中不存在 `sy
 新增设置服务模块，建议暴露：
 
 - `getLocaleSettingsFn`：返回当前用户偏好、系统默认值和支持的 Locale。
-- `updateMyLocalePreferenceFn`：认证用户更新自己的 `auto | en | zh-CN`。
+- `updateMyLocalePreferenceFn`：认证用户更新自己的 `auto` 或任一受支持 Locale。
 - `updateSystemDefaultLocaleFn`：仅管理员更新系统默认值。
 - `resolveRequestLocale`：供 SSR Locale 中间件使用，不作为公共 API 暴露。
 
@@ -177,7 +177,10 @@ Locale 在应用边界使用共享 Zod Schema 校验。数据库中不存在 `sy
 apps/web/
   messages/
     en.json
+    es.json
+    ja.json
     zh-CN.json
+    zh-TW.json
   project.inlang/
     settings.json
   src/
@@ -228,7 +231,7 @@ Sentry fetch wrapper
 
 - `<html lang={locale}>`
 - `<html dir={getTextDirection(locale)}>`
-- `og:locale`，例如 `en_US`、`zh_CN`
+- `og:locale`，例如 `en_US`、`es_ES`、`ja_JP`、`zh_CN`、`zh_TW`
 - 默认页面标题、描述、Twitter 和 Open Graph 文案
 
 各业务 Route 的 `head` 使用请求上下文中的消息函数生成页面标题和描述。不能在模块加载时把翻译结果缓存为常量。
@@ -251,7 +254,10 @@ Sentry fetch wrapper
 - 显示语言：
   - 跟随浏览器（`auto`）
   - English（`en`）
+  - Español（`es`）
+  - 日本語（`ja`）
   - 简体中文（`zh-CN`）
+  - 繁体中文（`zh-TW`）
 - 显示当前解析结果，例如“当前显示：简体中文”。
 - 说明该设置对当前账号和所有品牌生效。
 - 保存期间禁用控件，失败时显示本地化错误，不提前刷新页面。
@@ -409,7 +415,7 @@ AI 生成正文、Prompt 内容、引用页面标题和品牌数据保持原始�
 
 ### 11.2 SSR/集成测试
 
-- 同时发起 `en` 与 `zh-CN` 请求时不串语言。
+- 同时发起不同受支持 Locale 的请求时不串语言。
 - SSR HTML、`lang`、`dir`、标题和 Hydration 一致。
 - 用户更新后下一次文档请求立即使用新语言。
 - System Default 更新只影响符合回退条件的请求。
@@ -423,18 +429,18 @@ AI 生成正文、Prompt 内容、引用页面标题和品牌数据保持原始�
 - 管理员更新系统默认值，普通用户不能更新。
 - Demo 显示只读设置且不同访客不会互相覆盖。
 - 切换前保留当前 Path、Search 和 Hash。
-- 中英文下登录、Dashboard、Prompt、Citations 和设置主流程可用。
+- 五种语言下登录、Dashboard、Prompt、Citations 和设置主流程可用。
 
 ### 11.4 视觉与无障碍检查
 
-- Sidebar、Table、Dialog、Tooltip 和移动端布局没有中文截断。
-- 图表 Tooltip 和轴标签在两种 Locale 下可读。
+- Sidebar、Table、Dialog、Tooltip 和移动端布局没有本地化文案截断。
+- 图表 Tooltip 和轴标签在五种 Locale 下可读。
 - 屏幕阅读器文本、Button Name、Form Label 和错误 Alert 均已翻译。
 - 语言选择器可以使用键盘操作，并用每种语言的自称显示选项。
 
 ## 12. 验收标准
 
-- `en` 和 `zh-CN` 均可完整显示 Web 控制台固定 UI。
+- `en`、`es`、`ja`、`zh-CN` 和 `zh-TW` 均可完整显示 Web 控制台固定 UI。
 - 用户偏好和系统默认值只保存在服务端数据库，不新增 Locale Cookie。
 - 用户显式设置跨品牌、刷新和设备保持。
 - `auto` 严格按既定优先级解析。
@@ -450,7 +456,7 @@ AI 生成正文、Prompt 内容、引用页面标题和品牌数据保持原始�
 
 - 数据库变更只新增表，保持向后兼容。
 - 在英文消息和 SSR 基础设施完成后再逐域迁移，语言入口最后启用，避免公开半翻译状态。
-- 缺少中文消息时开发和 CI 应报告；生产环境以英文为安全回退。
+- 缺少目标语言消息时开发和 CI 应报告；生产环境以英文为安全回退。
 - 回滚 UI 时可以隐藏 `/settings` 入口并将 Resolver 固定回 `en`，已保存的偏好数据无需删除。
 - 回滚不得删除设置表或用户偏好数据，后续重新启用时可继续使用。
 - 数据库 Migration 的实际执行必须由用户单独明确授权。
@@ -504,20 +510,20 @@ AI 生成正文、Prompt 内容、引用页面标题和品牌数据保持原始�
 
 已按本规划完成以下内容：
 
-- 接入 Paraglide，建立 `en` 与 `zh-CN` 消息目录、请求级服务端 Locale Strategy、客户端 Document Strategy 以及动态 `lang`、`dir` 和 Metadata。
-- 新增 `user_preferences` 与 `system_settings` Schema 和 `0012_locale_settings.sql` Migration；Migration 仅生成并 Review，尚未执行。
+- 接入 Paraglide，建立五种语言的消息目录、请求级服务端 Locale Strategy、客户端 Document Strategy 以及动态 `lang`、`dir` 和 Metadata。
+- 新增 `user_preferences` 与 `system_settings` Schema 和 `0012_locale_settings.sql` Migration，并在获得授权后应用到隔离测试数据库。
 - 实现“用户显式偏好 → Accept-Language → 系统默认值 → en”的解析链路，并提供用户设置和管理员系统默认设置的服务端写入。
 - 新增全局 `/settings` 页面和导航入口；Demo 模式保持只读，保存后刷新当前文档以重新完成 SSR。
 - 完成认证、Shell、Dashboard、Visibility、Share of Voice、Query Fan-Out、Citations、Opportunities、Prompt、品牌设置、Admin、Reports、Export 与 Print 固定界面文案迁移。
 - 为 Breadcrumb、Dialog、Sheet、Sidebar 和 TagsInput 提供可注入 Labels，`packages/ui` 不依赖 Web 翻译运行时。
 - 将用户可见日期、数字、百分比、分页和图表 Tooltip 接入当前 Locale 的 `Intl` 格式化；生成业务日期键所需的 `en-CA` 保持不变。
-- 两个语言目录各包含 809 个同名消息键；品牌名、用户 Prompt、引用标题和 AI 生成正文按非目标保持原文。
+- 五个语言目录各包含 812 个同名消息键；品牌名、用户 Prompt、引用标题和 AI 生成正文按非目标保持原文。
 
 已完成的本地验证：
 
 - Paraglide 消息生成成功。
 - Web TypeScript 检查成功。
-- Locale Resolver 定向测试 5 项全部通过。
+- Locale Resolver 定向测试 7 项全部通过。
 - Web 客户端与 SSR 生产构建成功。
 - 可见 JSX 文本、文案属性、固定 Locale 格式化和语言目录键集合完成静态审计。
 
@@ -530,6 +536,7 @@ AI 生成正文、Prompt 内容、引用页面标题和品牌数据保持原始�
 - `auto` 模式通过 UI 写入数据库并按浏览器语言解析为中文。
 - 管理员通过系统设置将默认 Locale 保存为 `zh-CN`，数据库记录了 `updated_by`；匿名 `fr-FR` 请求回退为中文，匿名 `en-US` 请求仍优先显示英文。
 - 中文文档元数据实测为 `lang="zh-CN"`、`dir="ltr"`、`og:locale="zh_CN"`，页面描述和标题使用中文消息。
+- 西班牙语、日语和繁体中文通过匿名 SSR 请求验收，区域语言分别解析为 `es`、`ja`、`zh-TW`，并输出对应的本地化标题和 `og:locale`。
 - 管理后台图表日期按中文 Locale 显示，浏览器控制台无错误；中文系统设置页完成全页视觉检查，无明显截断或布局错位。
 - 浏览器验收发现全局设置页曾生成 `/app/undefined` 品牌链接；已修正为仅在存在品牌上下文时渲染品牌导航，并复验不存在无效链接。
 
