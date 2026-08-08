@@ -165,20 +165,6 @@ export const CLAUDE_ADDON_LOOKUP_KEYS: Record<BillingInterval, string> = {
 	annual: "elmo_cloud_claude_extra_annual",
 };
 
-/**
- * Plan display phrases derived from PlanDefinition so marketing and billing UI
- * stay in sync with the catalog. Every plan has a single-platform label when
- * platformMenu has exactly one entry, and a multi-platform label otherwise.
- */
-function planPlatformLabel(plan: PlanDefinition): string {
-	if (plan.platformMenu.length <= 1) return "ChatGPT only";
-	return `Choose ${plan.platformPicks} platforms`;
-}
-
-function planRunFrequencyLabel(plan: PlanDefinition): string {
-	return `${plan.standardRunsPerDay}×/day`;
-}
-
 export const CLOUD_SIGNUP_URL = "https://app.elmohq.com/auth/register";
 
 /** Lowest self-serve monthly price among all plans. */

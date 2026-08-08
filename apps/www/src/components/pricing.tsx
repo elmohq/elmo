@@ -2,7 +2,13 @@ import { Check, ArrowRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { WaitlistForm } from "./waitlist-form";
 import { ContactForm } from "./contact-form";
-import { CLOUD_ENTRY_PRICE_USD, CLOUD_SIGNUP_URL, PLAN_KEYS, PLANS } from "@workspace/config/plans";
+import {
+	CLOUD_ENTRY_PRICE_USD,
+	CLOUD_SIGNUP_URL,
+	MAX_STANDARD_RUNS_PER_DAY,
+	PLAN_KEYS,
+	PLANS,
+} from "@workspace/config/plans";
 
 interface Plan {
 	id: string;
@@ -186,7 +192,7 @@ function CloudPlans() {
 					<p className="mt-1 text-xs text-zinc-500">Contract billing</p>
 					<ul className="mt-4 space-y-1.5 text-xs text-zinc-700">
 						<li>Custom brand & prompt limits</li>
-						<li>Up to 7×/day sampling</li>
+						<li>Up to {MAX_STANDARD_RUNS_PER_DAY}×/day sampling</li>
 						<li>GPT-5 Search, web-search API</li>
 						<li>SSO</li>
 					</ul>
