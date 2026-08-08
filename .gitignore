@@ -87,3 +87,4 @@ apps/web/storybook-static/
 .claude/settings.local.json
 .claude/worktrees/
 .readonlydb
+.pnpm-store/
