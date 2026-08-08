@@ -186,8 +186,15 @@ async function runMaintenanceCheck(): Promise<void> {
 	if (decisions.toExpedite.length > 0) {
 		const jobIds = decisions.toExpedite.map((d) => d.jobId);
 		try {
+			// Bind each id as its own uuid param: drizzle flattens a JS array
+			// into a single text param, which `ANY(...)` / `IN (...)` can't
+			// compare against a uuid column.
+			const inList = sql.join(
+				jobIds.map((id) => sql`${id}::uuid`),
+				sql`, `,
+			);
 			await db.execute(
-				sql`UPDATE pgboss.job SET start_after = now() WHERE id = ANY(${jobIds}) AND state = 'created'`,
+				sql`UPDATE pgboss.job SET start_after = now() WHERE id IN (${inList}) AND state = 'created'`,
 			);
 			console.log(`[schedule-maintenance] Expedited ${jobIds.length} future jobs to run now`);
 		} catch (error) {
