@@ -91,3 +91,4 @@ apps/web/storybook-static/
 # Derived marketplace domain lists (full domain list, not the bloom filter binary)
 /apps/web/scripts/marketplace-domains.txt
 /apps/web/scripts/marketplace-spotcheck.txt
+.pnpm-store

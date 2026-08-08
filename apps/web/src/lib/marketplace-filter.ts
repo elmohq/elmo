@@ -9,9 +9,10 @@
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { createRequire } from "node:module";
+import type { BloomFilter as BloomFilterType } from "bloom-filters";
 
 const require = createRequire(import.meta.url);
-const { BloomFilter } = require("bloom-filters");
+const { BloomFilter: BloomFilterCtor } = require("bloom-filters");
 
 // The path the file will live at after `vite build` (static assets get copied
 // into `.output/public/data/` by the Vite static plugin).  Also fall back to
@@ -21,20 +22,20 @@ const { BloomFilter } = require("bloom-filters");
 const PROD_PATH = resolve(import.meta.dirname, "..", ".output", "public", "data", "marketplace-bloom.json");
 const DEV_PATH = resolve(import.meta.dirname, "..", "public", "data", "marketplace-bloom.json");
 
-function loadBloomFilter(): BloomFilter {
+function loadBloomFilter(): BloomFilterType {
 	const path = existsSync(PROD_PATH) ? PROD_PATH : DEV_PATH;
 	if (!existsSync(path)) {
 		console.warn(`[marketplace-filter] bloom filter not found at ${path}; all domains pass through unmarked`);
 		// Return a filter that always returns false — safe no-op.
-		const empty = new BloomFilter(1, 1);
+		const empty = new BloomFilterCtor(1, 1);
 		return empty;
 	}
 	const raw = readFileSync(path, "utf-8");
 	const json = JSON.parse(raw);
-	return BloomFilter.fromJSON(json);
+	return BloomFilterCtor.fromJSON(json);
 }
 
-const filter: BloomFilter = loadBloomFilter();
+const filter: BloomFilterType = loadBloomFilter();
 
 /**
  * Check whether a domain appears in the pay-to-win marketplace list.
