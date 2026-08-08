@@ -5,7 +5,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS, type ClaudeMode } from "@workspace/lib/db/schema";
 import {
 	assertCanAddPrompts,
 	assertCanAssignClaude,
@@ -894,7 +894,7 @@ export type ClaudeAssignmentsState = {
 	enabled: boolean;
 	pool: { assigned: number; total: number };
 	/** This brand's enabled prompts with their current assignment. */
-	prompts: { id: string; value: string; claudeMode: "base" | "web" | null }[];
+	prompts: { id: string; value: string; claudeMode: ClaudeMode | null }[];
 };
 
 export const getClaudeAssignmentsFn = createServerFn({ method: "GET" })

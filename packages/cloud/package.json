@@ -10,7 +10,9 @@
 		"./billing": "./src/billing/index.ts"
 	},
 	"scripts": {
-		"test": "vitest run"
+		"test": "vitest run",
+		"bootstrap:stripe": "tsx scripts/bootstrap-stripe.ts",
+		"verify:stripe-lifecycle": "tsx scripts/verify-stripe-lifecycle.ts"
 	},
 	"dependencies": {
 		"@better-auth/stripe": "^1.6.25",

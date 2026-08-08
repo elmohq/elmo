@@ -16,7 +16,7 @@ import {
 	getOrgBillingState,
 } from "@workspace/lib/entitlements";
 import { z } from "zod";
-import { listUserOrganizations, requireAuthSession, requireBrandOrganization } from "@/lib/auth/helpers";
+import { isOrgAdminRole, listUserOrganizations, requireAuthSession, requireBrandOrganization } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 
 export type BillingState = {
@@ -37,12 +37,14 @@ export type BillingState = {
 	usage: { brands: number; enabledPrompts: number; claudeAssigned: number };
 };
 
-export type PaywallState = {
-	needsPlan: boolean;
-	organizationId?: string;
-	organizationName?: string;
-	isOrgAdmin?: boolean;
-};
+export type PaywallState =
+	| { needsPlan: false }
+	| {
+			needsPlan: true;
+			organizationId: string;
+			organizationName: string;
+			isOrgAdmin: boolean;
+	  };
 
 export const getBillingStateFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
@@ -83,32 +85,22 @@ export const getBillingStateFn = createServerFn({ method: "GET" })
 
 /**
  * The paywall decision for a signed-in user. Outside cloud (or with any
- * entitled org) nothing is required. `brandId` scopes the check to a specific
- * workspace when the user is inside one.
+ * entitled org) nothing is required. Checks all orgs the user belongs to:
+ * if every org has "none" standing, the user needs a plan.
  */
 export const getPaywallStateFn = createServerFn({ method: "GET" })
-	.validator(z.object({ brandId: z.string().optional() }).optional())
-	.handler(async ({ data }): Promise<PaywallState> => {
+	.handler(async (): Promise<PaywallState> => {
 		const deployment = getDeployment();
 		if (!deployment.features.billing) return { needsPlan: false };
 
 		const session = await requireAuthSession();
-
-		if (data?.brandId) {
-			const org = await requireBrandOrganization(session.user.id, data.brandId);
-			const state = await getOrgBillingState(org.id);
-			return {
-				needsPlan: state.entitlements.standing === "none",
-				organizationId: org.id,
-				organizationName: org.name,
-				isOrgAdmin: org.role === "admin" || org.role === "owner",
-			};
-		}
-
 		const orgs = await listUserOrganizations(session.user.id);
 		if (orgs.length === 0) return { needsPlan: false };
-		// Oldest membership first = the user's own workspace; any entitled org
-		// (e.g. a team they joined) keeps the app usable.
+
+		// Any entitled org (e.g. a team they joined) keeps the app usable.
+		// resolve sequentially because listUserOrganizations is already scoped;
+		// a bulk entitlements map exists (getOrgEntitlementsMap) if this
+		// becomes a hotspot.
 		for (const org of orgs) {
 			const state = await getOrgBillingState(org.id);
 			if (state.entitlements.standing !== "none") return { needsPlan: false };
@@ -130,7 +122,7 @@ export const setClaudeAddonQuantityFn = createServerFn({ method: "POST" })
 
 		const session = await requireAuthSession();
 		const org = await requireBrandOrganization(session.user.id, data.brandId);
-		if (org.role !== "admin" && org.role !== "owner") {
+		if (!isOrgAdminRole(org.role)) {
 			throw new Error("Only workspace admins can change billing");
 		}
 

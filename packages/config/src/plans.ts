@@ -8,7 +8,7 @@
  *
  * Stripe prices are referenced by lookup key (stripePlanLookupKey /
  * CLAUDE_ADDON_LOOKUP_KEYS) rather than per-environment price-ID env vars;
- * scripts/stripe/bootstrap.ts provisions any Stripe account (test or live)
+ * packages/cloud/scripts/bootstrap-stripe.ts provisions any Stripe account (test or live)
  * with these exact keys.
  */
 
@@ -49,6 +49,9 @@ export const PAST_DUE_GRACE_DAYS = 7;
 
 /** Extra Claude prompts add-on: $5/prompt/month, Pro and Business only. */
 export const CLAUDE_ADDON_MONTHLY_USD = 5;
+
+/** Annual = 10× monthly (two months free). */
+export const CLAUDE_ADDON_ANNUAL_USD = CLAUDE_ADDON_MONTHLY_USD * 10;
 
 export interface PlanDefinition {
 	key: PlanKey;
@@ -151,7 +154,7 @@ export function planDisplayName(planKey: PlanKey | "custom" | null): string {
 /**
  * Stripe price lookup key for a plan/interval. The @better-auth/stripe plugin
  * resolves these to price IDs at checkout time, so the same code works against
- * any Stripe account bootstrapped with scripts/stripe/bootstrap.ts.
+ * any Stripe account bootstrapped with packages/cloud/scripts/bootstrap-stripe.ts.
  */
 export function stripePlanLookupKey(plan: PlanKey, interval: BillingInterval): string {
 	return `elmo_cloud_${plan}_${interval}`;
@@ -161,3 +164,22 @@ export const CLAUDE_ADDON_LOOKUP_KEYS: Record<BillingInterval, string> = {
 	monthly: "elmo_cloud_claude_extra_monthly",
 	annual: "elmo_cloud_claude_extra_annual",
 };
+
+/**
+ * Plan display phrases derived from PlanDefinition so marketing and billing UI
+ * stay in sync with the catalog. Every plan has a single-platform label when
+ * platformMenu has exactly one entry, and a multi-platform label otherwise.
+ */
+function planPlatformLabel(plan: PlanDefinition): string {
+	if (plan.platformMenu.length <= 1) return "ChatGPT only";
+	return `Choose ${plan.platformPicks} platforms`;
+}
+
+function planRunFrequencyLabel(plan: PlanDefinition): string {
+	return `${plan.standardRunsPerDay}×/day`;
+}
+
+export const CLOUD_SIGNUP_URL = "https://app.elmohq.com/auth/register";
+
+/** Lowest self-serve monthly price among all plans. */
+export const CLOUD_ENTRY_PRICE_USD = Math.min(...PLAN_KEYS.map((key) => PLANS[key].monthlyPriceUsd));

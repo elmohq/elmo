@@ -39,3 +39,10 @@ WHERE "member"."id" = ranked_members."id"
 --> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "member_organization_id_user_id_uidx"
 	ON "member" USING btree ("organization_id", "user_id");
+--> statement-breakpoint
+-- Reset timeouts to defaults so later migrations in the same run are not
+-- constrained by these bounded values (drizzle-kit applies pending migrations
+-- over a single connection).
+SET lock_timeout = DEFAULT;
+--> statement-breakpoint
+SET statement_timeout = DEFAULT;

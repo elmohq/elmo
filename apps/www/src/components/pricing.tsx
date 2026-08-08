@@ -2,7 +2,7 @@ import { Check, ArrowRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { WaitlistForm } from "./waitlist-form";
 import { ContactForm } from "./contact-form";
-import { CLOUD_ENTRY_PRICE_USD, CLOUD_SIGNUP_URL, PUBLIC_CLOUD_PLANS } from "@/lib/cloud-plans";
+import { CLOUD_ENTRY_PRICE_USD, CLOUD_SIGNUP_URL, PLAN_KEYS, PLANS } from "@workspace/config/plans";
 
 interface Plan {
 	id: string;
@@ -154,8 +154,10 @@ function CloudPlans() {
 			</p>
 
 			<div className="mt-8 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-2 lg:grid-cols-5">
-				{PUBLIC_CLOUD_PLANS.map((plan) => (
-					<div key={plan.id} className="flex flex-col bg-white p-5">
+				{PLAN_KEYS.map((key) => {
+					const plan = PLANS[key];
+					return (
+					<div key={key} className="flex flex-col bg-white p-5">
 						<h4 className="text-lg font-semibold tracking-tight text-zinc-950">{plan.name}</h4>
 						<div className="mt-2 flex items-baseline gap-1">
 							<span className="text-2xl font-semibold tracking-tight text-zinc-950 tabular-nums">
@@ -170,13 +172,14 @@ function CloudPlans() {
 							</li>
 							<li>{plan.maxPrompts} tracked prompts</li>
 							<li>
-								{plan.platformPicks === 1 ? "ChatGPT only" : `Choose ${plan.platformPicks} platforms`} ·{" "}
+								{plan.platformMenu.length === 1 ? "ChatGPT only" : `Choose ${plan.platformPicks} platforms`} ·{" "}
 								{plan.standardRunsPerDay}×/day
 							</li>
 							<li>{plan.claudeIncluded > 0 ? `${plan.claudeIncluded} Claude prompts` : "—"}</li>
 						</ul>
 					</div>
-				))}
+					);
+				})}
 				<div className="flex flex-col bg-white p-5">
 					<h4 className="text-lg font-semibold tracking-tight text-zinc-950">Custom</h4>
 					<div className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Let&apos;s talk</div>

@@ -6,7 +6,8 @@
 	"scripts": {
 		"test": "vitest run",
 		"compare:onboarding": "tsx scripts/compare-onboarding.ts",
-		"generate:auth-schema": "bash scripts/generate-auth-schema.sh"
+		"generate:auth-schema": "bash scripts/generate-auth-schema.sh",
+		"verify:membership-dedupe": "tsx scripts/verify-membership-dedupe.ts"
 	},
 	"exports": {
 		"./db/db": "./src/db/db.ts",

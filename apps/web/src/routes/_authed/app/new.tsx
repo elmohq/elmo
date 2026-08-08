@@ -17,7 +17,6 @@ import FullPageCard from "@/components/full-page-card";
 import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
 import { trackEvent } from "@/lib/posthog";
 import { createBrandInOrgFn } from "@/server/brands";
-import { getPaywallStateFn } from "@/server/billing";
 import { getDeployment } from "@/lib/config/server";
 
 const getNewBrandOptions = createServerFn({ method: "GET" }).handler(
@@ -35,10 +34,6 @@ export const Route = createFileRoute("/_authed/app/new")({
 		const { canCreateBrands, organizations } = await getNewBrandOptions();
 		if (!canCreateBrands) {
 			throw redirect({ to: "/app" });
-		}
-		const paywall = await getPaywallStateFn();
-		if (paywall.needsPlan) {
-			throw redirect({ to: "/choose-plan" });
 		}
 		return { organizations };
 	},

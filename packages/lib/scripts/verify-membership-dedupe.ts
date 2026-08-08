@@ -5,10 +5,17 @@
  * the right row and the new unique index then holds.
  *
  * This is deliberately narrow — it guards the one migration that mutates
- * existing auth data, not a whole-database rehearsal. Run against a disposable
- * database already migrated to head:
+ * existing auth data, not a whole-database rehearsal. Unlike the previous
+ * version (which carried a hand-copied transcript of the migration), this
+ * script reads the actual migration SQL from the migrations directory, splits
+ * on --> statement-breakpoint, and executes the real statements. A change to
+ * the migration is automatically exercised on the next run.
+ *
+ * Usage:
  *   DATABASE_URL=postgres://... pnpm -C packages/lib exec tsx scripts/verify-membership-dedupe.ts
  */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { Client } from "pg";
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -24,21 +31,19 @@ if (!/localhost|127\.0\.0\.1/.test(DATABASE_URL) && process.env.ALLOW_REMOTE_DB 
 const ORG = "dedupe-verify-org";
 const USER = "dedupe-verify-user";
 
-// Mirrors the dedupe statement in migrations/0014_membership_uniqueness.sql.
-// Kept in sync by this test failing loudly if the ranking ever changes.
-const DEDUPE_SQL = `
-	WITH ranked_members AS (
-		SELECT id, row_number() OVER (
-			PARTITION BY organization_id, user_id
-			ORDER BY
-				CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'member' THEN 2 ELSE 3 END,
-				created_at ASC, id ASC
-		) AS duplicate_rank
-		FROM member
-	)
-	DELETE FROM member USING ranked_members
-	WHERE member.id = ranked_members.id AND ranked_members.duplicate_rank > 1;
-`;
+/**
+ * Read the real migration SQL and split on --> statement-breakpoint.
+ * The file lives in the same package as this script.
+ */
+function readMigrationStatements(): string[] {
+	const path = resolve(__dirname, "../src/db/migrations/0014_membership_uniqueness.sql");
+	const contents = readFileSync(path, "utf-8");
+	// The first statement is typically SET lock_timeout; keep all of them.
+	return contents
+		.split("--> statement-breakpoint")
+		.map((s) => s.trim())
+		.filter(Boolean);
+}
 
 function assert(condition: boolean, message: string): void {
 	if (!condition) {
@@ -49,6 +54,9 @@ function assert(condition: boolean, message: string): void {
 }
 
 async function main(): Promise<void> {
+	const statements = readMigrationStatements();
+	console.log(`Read ${statements.length} statement(s) from 0014_membership_uniqueness.sql`);
+
 	const client = new Client({ connectionString: DATABASE_URL });
 	await client.connect();
 	try {
@@ -76,10 +84,11 @@ async function main(): Promise<void> {
 			[ORG, USER],
 		);
 
-		await client.query(DEDUPE_SQL);
-		await client.query(
-			'CREATE UNIQUE INDEX "member_organization_id_user_id_uidx" ON member USING btree (organization_id, user_id)',
-		);
+		// Run each statement from the migration in order. The dedupe CTE comes
+		// after the SET timeout calls — execute everything.
+		for (const stmt of statements) {
+			await client.query(stmt);
+		}
 
 		const { rows } = await client.query("SELECT id FROM member WHERE organization_id = $1 AND user_id = $2", [
 			ORG,

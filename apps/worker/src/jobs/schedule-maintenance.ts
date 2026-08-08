@@ -184,21 +184,15 @@ async function runMaintenanceCheck(): Promise<void> {
 
 	// Expedite existing future jobs to run now by updating start_after
 	if (decisions.toExpedite.length > 0) {
-		let expeditedCount = 0;
-		for (const { jobId } of decisions.toExpedite) {
-			try {
-				await db.execute(sql`
-					UPDATE pgboss.job
-					SET start_after = now()
-					WHERE id = ${jobId}
-					  AND state = 'created'
-				`);
-				expeditedCount++;
-			} catch (error) {
-				console.error(`[schedule-maintenance] Failed to expedite job ${jobId}:`, error);
-			}
+		const jobIds = decisions.toExpedite.map((d) => d.jobId);
+		try {
+			await db.execute(
+				sql`UPDATE pgboss.job SET start_after = now() WHERE id = ANY(${jobIds}) AND state = 'created'`,
+			);
+			console.log(`[schedule-maintenance] Expedited ${jobIds.length} future jobs to run now`);
+		} catch (error) {
+			console.error(`[schedule-maintenance] Failed to expedite jobs:`, error);
 		}
-		console.log(`[schedule-maintenance] Expedited ${expeditedCount} future jobs to run now`);
 	}
 
 	// Schedule new jobs for prompts with no pending job

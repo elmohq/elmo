@@ -34,6 +34,7 @@ export const reportStatusEnum = pgEnum("report_status", ["pending", "processing"
  * self-hosted deployments track Claude by putting it in SCRAPE_TARGETS instead.
  */
 export const claudeModeEnum = pgEnum("claude_mode", ["base", "web"]);
+export type ClaudeMode = (typeof claudeModeEnum.enumValues)[number];
 
 export const brands = pgTable(
 	"brands",

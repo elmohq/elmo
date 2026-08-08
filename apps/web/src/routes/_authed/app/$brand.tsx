@@ -9,6 +9,9 @@ import { createFileRoute, Outlet, notFound, redirect } from "@tanstack/react-rou
 import { getAppName } from "@/lib/route-head";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { getDeployment } from "@/lib/config/server";
+import { getOnboardingPlatformStateFn } from "@/server/brands";
+import type { OnboardingPlatformState } from "@/server/brands";
 import {
 	requireAuthSession,
 	isAdmin,
@@ -167,6 +170,7 @@ export const Route = createFileRoute("/_authed/app/$brand")({
 		isAdmin: boolean;
 		hasReportAccess: boolean;
 		needsOnboarding: boolean;
+		onboardingPlatformState: OnboardingPlatformState | null;
 	}> => {
 		const result = await getBrandData({ data: { brandId: params.brand } });
 
@@ -178,12 +182,18 @@ export const Route = createFileRoute("/_authed/app/$brand")({
 			throw redirect({ to: "/choose-plan" });
 		}
 
+		const onboardingPlatformState =
+			result.brand === null && result.hasAccess
+				? await getOnboardingPlatformStateFn({ data: { organizationId: params.brand } })
+				: null;
+
 		return {
 			brand: result.brand,
 			brandName: result.brandName,
 			isAdmin: result.isAdmin,
 			hasReportAccess: result.hasReportAccess,
 			needsOnboarding: result.hasAccess && !result.brand,
+			onboardingPlatformState,
 		};
 	},
 	head: ({ match, loaderData }) => {
@@ -206,12 +216,19 @@ export const Route = createFileRoute("/_authed/app/$brand")({
 });
 
 function BrandLayout() {
-	const { brand, brandName, isAdmin, hasReportAccess, needsOnboarding } = Route.useLoaderData();
+	const { brand, brandName, isAdmin, hasReportAccess, needsOnboarding, onboardingPlatformState } =
+		Route.useLoaderData();
 	const { brand: brandId } = Route.useParams();
 
 	// Brand exists in auth but not in DB - show onboarding
 	if (needsOnboarding) {
-		return <BrandOnboarding brandId={brandId} brandName={brandName || brandId} />;
+		return (
+			<BrandOnboarding
+				brandId={brandId}
+				brandName={brandName || brandId}
+				platformState={onboardingPlatformState}
+			/>
+		);
 	}
 
 	return (

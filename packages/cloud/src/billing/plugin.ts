@@ -14,7 +14,7 @@
  */
 
 import { stripe } from "@better-auth/stripe";
-import { PLAN_KEYS, PLANS, stripePlanLookupKey } from "@workspace/config/plans";
+import { PLAN_KEYS, stripePlanLookupKey } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import { member } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -31,7 +31,6 @@ export function buildStripePlans() {
 		name: key,
 		lookupKey: stripePlanLookupKey(key, "monthly"),
 		annualDiscountLookupKey: stripePlanLookupKey(key, "annual"),
-		limits: { ...PLANS[key] } as unknown as Record<string, unknown>,
 	}));
 }
 

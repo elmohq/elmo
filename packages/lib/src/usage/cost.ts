@@ -6,6 +6,10 @@
  * anomaly spotting — tune them against real provider invoices (that
  * comparison is the point of collecting usage_events, not something these
  * numbers replace). Missing provider → null cost, event still recorded.
+ *
+ * NOTE: These numbers live in the public repository. They are coarse
+ * placeholders for internal attribution — if they ever approach public
+ * list prices, move them to config/env so they remain internal.
  */
 
 const PROVIDER_COST_ESTIMATES_USD: Record<string, number> = {

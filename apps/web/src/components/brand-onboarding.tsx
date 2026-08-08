@@ -3,47 +3,33 @@ import { getModelMeta } from "@workspace/lib/providers/models";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
-import { PlatformPicker } from "@/components/platform-picker";
+import { PlatformPicker, usePlatformToggle } from "@/components/platform-picker";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
-import { createBrandFn, getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/brands";
+import { createBrandFn, type OnboardingPlatformState } from "@/server/brands";
 
 interface BrandOnboardingProps {
 	brandId: string;
 	brandName: string;
+	platformState: OnboardingPlatformState | null;
 }
 
-export default function BrandOnboarding({ brandId, brandName }: BrandOnboardingProps) {
+export default function BrandOnboarding({
+	brandId,
+	brandName,
+	platformState,
+}: BrandOnboardingProps) {
 	const [step, setStep] = useState<"website" | "platforms">("website");
 	const [website, setWebsite] = useState("");
-	// undefined = still resolving; null = no platform step (non-cloud or unlimited).
-	const [platformState, setPlatformState] = useState<OnboardingPlatformState | undefined>(undefined);
-	const [selected, setSelected] = useState<Set<string>>(new Set());
+	const [selected, setSelected] = useState<Set<string>>(
+		platformState ? new Set(platformState.defaultSelected) : new Set(),
+	);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
 	const navigate = useNavigate();
 	const router = useRouter();
-
-	useEffect(() => {
-		let cancelled = false;
-		// In this flow the brand id doubles as the organization id (see createBrandFn).
-		getOnboardingPlatformStateFn({ data: { organizationId: brandId } })
-			.then((state) => {
-				if (cancelled) return;
-				setPlatformState(state);
-				if (state) setSelected(new Set(state.defaultSelected));
-			})
-			.catch(() => {
-				// Skip the step rather than block onboarding; creation falls back
-				// to the plan-default picks server-side.
-				if (!cancelled) setPlatformState(null);
-			});
-		return () => {
-			cancelled = true;
-		};
-	}, [brandId]);
 
 	const createBrand = async (enabledModels: string[] | null) => {
 		setIsLoading(true);
@@ -85,12 +71,7 @@ export default function BrandOnboarding({ brandId, brandName }: BrandOnboardingP
 		await createBrand(null);
 	};
 
-	const toggle = (model: string, checked: boolean) => {
-		const next = new Set(selected);
-		if (checked) next.add(model);
-		else next.delete(model);
-		setSelected(next);
-	};
+	const toggle = usePlatformToggle(selected, setSelected);
 
 	if (step === "platforms" && platformState) {
 		const limit = platformState.platformPicks;
@@ -161,7 +142,7 @@ export default function BrandOnboarding({ brandId, brandName }: BrandOnboardingP
 
 				{error && <p className="text-sm text-destructive">{error}</p>}
 
-				<Button type="submit" className="w-full" disabled={isLoading || platformState === undefined}>
+				<Button type="submit" className="w-full" disabled={isLoading}>
 					{isLoading ? "Setting up..." : platformState ? "Continue" : "Complete Setup"}
 				</Button>
 			</form>

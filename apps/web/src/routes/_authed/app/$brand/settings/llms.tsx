@@ -19,10 +19,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useState } from "react";
 import { iconForModel } from "@/components/filter-bar";
-import { PlatformPicker } from "@/components/platform-picker";
+import { PlatformPicker, usePlatformToggle } from "@/components/platform-picker";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { getModelPickerStateFn, type ModelPickerState, updateEnabledModelsFn } from "@/server/brands";
 import { type ClaudeAssignmentsState, getClaudeAssignmentsFn, setPromptClaudeModeFn } from "@/server/prompts";
+import type { ClaudeMode } from "@workspace/lib/db/schema";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
 	loader: async ({ params }): Promise<{ picker: ModelPickerState; claude: ClaudeAssignmentsState }> => {
@@ -79,12 +80,7 @@ function ModelPicker({ picker }: { picker: ModelPickerState }) {
 	const limit = picker.planLimits?.platformPicks ?? null;
 	const overLimit = limit !== null && selected.size > limit;
 
-	const toggle = (model: string, checked: boolean) => {
-		const next = new Set(selected);
-		if (checked) next.add(model);
-		else next.delete(model);
-		setSelected(next);
-	};
+	const toggle = usePlatformToggle(selected, setSelected);
 
 	const save = async () => {
 		setSaving(true);
@@ -152,7 +148,7 @@ function ClaudeAssignments({ claude }: { claude: ClaudeAssignmentsState }) {
 	const [error, setError] = useState<string | null>(null);
 	const remaining = claude.pool.total - claude.pool.assigned;
 
-	const setMode = async (promptId: string, mode: "base" | "web" | null) => {
+	const setMode = async (promptId: string, mode: ClaudeMode | null) => {
 		setBusyPromptId(promptId);
 		setError(null);
 		try {
@@ -208,7 +204,7 @@ function ClaudeAssignments({ claude }: { claude: ClaudeAssignmentsState }) {
 								) : (
 									<Select
 										value={prompt.claudeMode ?? "off"}
-										onValueChange={(value) => setMode(prompt.id, value === "off" ? null : (value as "base" | "web"))}
+										onValueChange={(value) => setMode(prompt.id, value === "off" ? null : (value as ClaudeMode))}
 									>
 										<SelectTrigger className="w-40" size="sm">
 											<SelectValue />

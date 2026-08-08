@@ -22,6 +22,7 @@ import type { ModelConfig } from "@workspace/config/scrape-targets";
 import type { DeploymentMode } from "@workspace/config/types";
 import { RUNS_PER_PROMPT } from "../constants";
 import { selectTargetsForBrand } from "../providers/runner";
+import type { ClaudeMode } from "../db/schema";
 
 export const CLAUDE_MODEL_NAME = "claude";
 
@@ -46,7 +47,7 @@ export interface ResolveRunPlanInput {
 	mode: DeploymentMode;
 	scrapeTargets: ModelConfig[];
 	brand: { enabledModels: string[] | null; delayOverrideHours: number | null };
-	prompt: { claudeMode: "base" | "web" | null };
+	prompt: { claudeMode: ClaudeMode | null };
 	entitlements: Entitlements;
 	defaultDelayHours: number;
 	/**

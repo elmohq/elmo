@@ -12,6 +12,23 @@ export type PlatformOption = {
 	webSearch: boolean;
 };
 
+/**
+ * Shared toggle handler for sets — the pattern every PlatformPicker caller
+ * re-implements identically. Use this hook instead of writing a local toggle
+ * function.
+ */
+export function usePlatformToggle(
+	selected: Set<string>,
+	setSelected: (next: Set<string>) => void,
+): (model: string, checked: boolean) => void {
+	return (model: string, checked: boolean) => {
+		const next = new Set(selected);
+		if (checked) next.add(model);
+		else next.delete(model);
+		setSelected(next);
+	};
+}
+
 interface PlatformPickerProps {
 	options: PlatformOption[];
 	selected: Set<string>;

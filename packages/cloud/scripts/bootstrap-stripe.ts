@@ -14,6 +14,7 @@
  */
 
 import {
+	CLAUDE_ADDON_ANNUAL_USD,
 	CLAUDE_ADDON_LOOKUP_KEYS,
 	CLAUDE_ADDON_MONTHLY_USD,
 	PLANS,
@@ -60,7 +61,7 @@ function desiredCatalog(): DesiredPrice[] {
 		lookupKey: CLAUDE_ADDON_LOOKUP_KEYS.annual,
 		productName: "Elmo Cloud Extra Claude Prompts",
 		productKey: "claude-addon",
-		unitAmountUsd: CLAUDE_ADDON_MONTHLY_USD * 10,
+		unitAmountUsd: CLAUDE_ADDON_ANNUAL_USD,
 		interval: "year",
 	});
 	return prices;

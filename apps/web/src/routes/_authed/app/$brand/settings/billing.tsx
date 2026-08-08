@@ -9,7 +9,6 @@
  */
 import { IconExternalLink, IconLoader2 } from "@tabler/icons-react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
 import { CLAUDE_ADDON_MONTHLY_USD, PLANS, planDisplayName } from "@workspace/config/plans";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
@@ -20,18 +19,12 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Progress } from "@workspace/ui/components/progress";
 import { useState } from "react";
-import { getDeployment } from "@/lib/config/server";
-import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { isOrgAdminRole } from "@/lib/auth/helpers";
 import { type BillingState, getBillingStateFn, setClaudeAddonQuantityFn } from "@/server/billing";
 
-const getBillingEnabled = createServerFn({ method: "GET" }).handler(async () => {
-	return { billing: getDeployment().features.billing };
-});
-
 export const Route = createFileRoute("/_authed/app/$brand/settings/billing")({
-	loader: async ({ params }): Promise<BillingState> => {
-		const { billing } = await getBillingEnabled();
-		if (!billing) {
+	loader: async ({ params, context }): Promise<BillingState> => {
+		if (!context.clientConfig?.features.billing) {
 			throw redirect({ to: "/app/$brand", params: { brand: params.brand } });
 		}
 		return getBillingStateFn({ data: { brandId: params.brand } });
@@ -58,7 +51,7 @@ function BillingSettingsPage() {
 	const state = Route.useLoaderData();
 	const { brand: brandId } = Route.useParams();
 	const router = useRouter();
-	const isAdmin = state.organization.role === "admin" || state.organization.role === "owner";
+	const isAdmin = isOrgAdminRole(state.organization.role);
 	const { entitlements } = state;
 	const [busy, setBusy] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);

@@ -154,15 +154,20 @@ async function getLastRunsByTargetKey(promptId: string, maxIntervalHours: number
 }
 
 /**
- * Runaway protection: how many runs the org has recorded in the
+ * Runaway protection: how many provider attempts the org has recorded in the
  * last 24h, compared against its plan-derived ceiling before spending more.
+ *
+ * Counts usage_events rather than prompt_runs because a retry storm (the
+ * v0.2.15 pathology that this guard was written for) writes no prompt_runs
+ * rows but burns spend — counting attempts is the stronger meaning for a
+ * pathology ceiling. usage_events also has the org_id denormalized and an
+ * index on (organization_id, created_at), so this scan is cheap.
  */
 async function isOrgOverDailyCeiling(organizationId: string, ceiling: number): Promise<boolean> {
 	const [row] = await db
 		.select({ value: sql<number>`COUNT(*)` })
-		.from(promptRuns)
-		.innerJoin(brands, eq(promptRuns.brandId, brands.id))
-		.where(and(eq(brands.organizationId, organizationId), gt(promptRuns.createdAt, sql`now() - interval '24 hours'`)));
+		.from(usageEvents)
+		.where(and(eq(usageEvents.organizationId, organizationId), gt(usageEvents.createdAt, sql`now() - interval '24 hours'`)));
 	return Number(row?.value ?? 0) >= ceiling;
 }
 

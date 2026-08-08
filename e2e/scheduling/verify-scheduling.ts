@@ -6,9 +6,8 @@
  * and asserts the run policy's externally observable behavior:
  *
  *   local scenario (worker booted with DEPLOYMENT_MODE=local, stub target):
- *     - legacy volume: one firing records exactly RUNS_PER_PROMPT (5) runs
+ *     - legacy volume: one firing records exactly 5 runs (RUNS_PER_PROMPT)
  *     - dueness metering: an immediate duplicate fire records nothing new
- *       (the maintenance-expedite oversampling fix)
  *     - the chain stays scheduled
  *
  *   cloud scenario (DEPLOYMENT_MODE=cloud, menu models on the stub provider):
@@ -24,8 +23,10 @@
  */
 import pg from "pg";
 import { PgBoss } from "pg-boss";
+import { RUNS_PER_PROMPT } from "@workspace/lib/constants";
+import { DATABASE_URL as FIXTURES_DATABASE_URL } from "../fixtures.js";
 
-const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://elmo:elmo@127.0.0.1:5432/elmo";
+const DATABASE_URL = process.env.DATABASE_URL ?? FIXTURES_DATABASE_URL;
 const scenario = process.argv[2];
 
 const client = new pg.Client({ connectionString: DATABASE_URL });
@@ -34,16 +35,16 @@ const boss = new PgBoss(DATABASE_URL);
 boss.on("error", () => {});
 await boss.start();
 
-async function sendJob(promptId) {
+async function sendJob(promptId: string) {
   await boss.send("process-prompt", { promptId }, { retryLimit: 0, expireInSeconds: 900 });
 }
 
-async function runCount(promptId) {
+async function runCount(promptId: string): Promise<number> {
   const { rows } = await client.query("SELECT COUNT(*)::int AS n FROM prompt_runs WHERE prompt_id = $1", [promptId]);
   return rows[0].n;
 }
 
-async function waitFor(fn, timeoutMs, label) {
+async function waitFor<T>(fn: () => Promise<T>, timeoutMs: number, label: string): Promise<T> {
   const start = Date.now();
   for (;;) {
     const value = await fn();
@@ -53,7 +54,7 @@ async function waitFor(fn, timeoutMs, label) {
   }
 }
 
-function assert(cond, message) {
+function assert(cond: boolean, message: string): void {
   if (!cond) {
     console.error(`✗ ${message}`);
     process.exitCode = 1;
@@ -71,7 +72,7 @@ if (scenario === "local") {
     await waitFor(async () => (await runCount(prompt.id)) > 0, 120000, "first runs");
     await new Promise((r) => setTimeout(r, 5000));
     const count = await runCount(prompt.id);
-    assert(count === 5, `legacy volume: exactly RUNS_PER_PROMPT (5) runs recorded (got ${count})`);
+    assert(count === RUNS_PER_PROMPT, `legacy volume: exactly ${RUNS_PER_PROMPT} runs recorded (got ${count})`);
     const { rows } = await client.query(
       "SELECT DISTINCT model, version FROM prompt_runs WHERE prompt_id = $1", [prompt.id]);
     assert(rows.length === 1 && rows[0].model === "stub" && rows[0].version === "stub", "runs carry the stub target");
@@ -79,7 +80,7 @@ if (scenario === "local") {
     await sendJob(prompt.id);
     await new Promise((r) => setTimeout(r, 8000));
     const after = await runCount(prompt.id);
-    assert(after === 5, `dueness metering: an immediate re-fire adds no runs (got ${after})`);
+    assert(after === RUNS_PER_PROMPT, `dueness metering: an immediate re-fire adds no runs (got ${after})`);
 
     const { rows: pending } = await client.query(
       "SELECT COUNT(*)::int AS n FROM pgboss.job WHERE name='process-prompt' AND state='created' AND data->>'promptId' = $1",
@@ -101,8 +102,6 @@ if (scenario === "local") {
 
   await client.query(
     "INSERT INTO organization (id, name, slug, created_at) VALUES ('cloudorg-1', 'Cloud Verify', 'cloud-verify', NOW())");
-  // Seeding the subscription row directly is faithful to production state:
-  // the row is exactly what the Stripe webhook maintains.
   await client.query(
     `INSERT INTO subscription (id, plan, reference_id, status, period_start, period_end)
      VALUES ('sub-verify-1', 'pro', 'cloudorg-1', 'active', NOW() - interval '1 day', NOW() + interval '29 days')`);
@@ -118,7 +117,7 @@ if (scenario === "local") {
   const { rows: runs } = await client.query(
     "SELECT model, web_search_enabled, COUNT(*)::int AS n FROM prompt_runs WHERE prompt_id = $1 GROUP BY 1,2 ORDER BY 1,2",
     [prompt.id]);
-  const shape = runs.map((r) => `${r.model}:${r.web_search_enabled ? "web" : "base"}=${r.n}`).join(",");
+  const shape = runs.map((r: { model: string; web_search_enabled: boolean; n: number }) => `${r.model}:${r.web_search_enabled ? "web" : "base"}=${r.n}`).join(",");
   assert(
     shape === "chatgpt:base=1,claude:web=1,perplexity:base=1",
     `cloud volume: picked platforms + claude web, replication 1 (got ${shape})`,
@@ -133,8 +132,7 @@ if (scenario === "local") {
   await new Promise((r) => setTimeout(r, 8000));
   assert((await runCount(prompt.id)) === 3, "cloud dueness: re-fire adds nothing");
 
-  // Cancel → due targets stop running. (A pre-cancel singleton future job may
-  // still drain once; it parks on firing.)
+  // Cancel → due targets stop running.
   await client.query("UPDATE subscription SET status = 'canceled' WHERE id = 'sub-verify-1'");
   await client.query("UPDATE prompt_runs SET created_at = created_at - interval '2 days' WHERE prompt_id = $1", [prompt.id]);
   await sendJob(prompt.id);

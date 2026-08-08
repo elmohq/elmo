@@ -127,11 +127,11 @@ export async function findUniqueBrandId(baseSlug: string): Promise<string> {
  * org id itself is a random uuid (decoupled from any brand) but the slug
  * still needs to be unique and human-readable.
  */
-async function findUniqueOrgSlug(baseSlug: string): Promise<string> {
+async function findUniqueOrgSlug(baseSlug: string, conn: DbConnection = db): Promise<string> {
 	let candidate = baseSlug;
 	let suffix = 2;
 	for (;;) {
-		const [conflict] = await db
+		const [conflict] = await conn
 			.select({ id: organization.id })
 			.from(organization)
 			.where(eq(organization.slug, candidate))
@@ -165,16 +165,7 @@ export async function ensureOrganization(
 	if (existing) return;
 
 	const baseSlug = slugify(input.name);
-	let slug = baseSlug;
-	for (let suffix = 2; ; suffix++) {
-		const [conflict] = await conn
-			.select({ id: organization.id })
-			.from(organization)
-			.where(eq(organization.slug, slug))
-			.limit(1);
-		if (!conflict) break;
-		slug = `${baseSlug}-${suffix}`;
-	}
+	const slug = await findUniqueOrgSlug(baseSlug, conn);
 
 	// Target the id explicitly: the early-return above already handles "org
 	// exists", so this only guards a concurrent insert of the same id (no-op).

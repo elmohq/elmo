@@ -72,6 +72,15 @@ async function initialEnabledModels(organizationId: string): Promise<string[] | 
 }
 
 /**
+ * Picks supplied at creation time or during update go through the same
+ * checks: loud configured-target validation plus plan enforcement.
+ */
+async function validateEnabledModels(organizationId: string, models: string[]): Promise<void> {
+	selectTargetsForBrand(parseScrapeTargets(process.env.SCRAPE_TARGETS), models);
+	await assertEnabledModelsAllowed(organizationId, models);
+}
+
+/**
  * Picks supplied at creation time go through the same checks as a
  * post-creation edit: the loud configured-target validation plus plan
  * enforcement. Without picks, creation falls back to the plan defaults.
@@ -82,8 +91,7 @@ async function resolveCreateEnabledModels(
 ): Promise<string[] | null> {
 	if (!requested || requested.length === 0) return initialEnabledModels(organizationId);
 	const models = [...new Set(requested)];
-	selectTargetsForBrand(parseScrapeTargets(process.env.SCRAPE_TARGETS), models);
-	await assertEnabledModelsAllowed(organizationId, models);
+	await validateEnabledModels(organizationId, models);
 	return models;
 }
 
@@ -634,13 +642,9 @@ export const updateEnabledModelsFn = createServerFn({ method: "POST" })
 		if (!brand) throw new Error("Brand not found");
 
 		const models = data.models === null ? null : [...new Set(data.models)];
-		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 
 		if (models !== null) {
-			// Loud validation against the configured targets (same rule the worker
-			// applies), so a typo can't silently stop tracking.
-			selectTargetsForBrand(configs, models);
-			await assertEnabledModelsAllowed(brand.organizationId, models);
+			await validateEnabledModels(brand.organizationId, models);
 		} else {
 			const entitlements = await getOrgEntitlements(brand.organizationId);
 			if (!entitlements.unlimited) {

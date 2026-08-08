@@ -111,7 +111,7 @@ function ChoosePlanPage() {
 	}
 
 	const subscribe = async (plan: PlanKey) => {
-		if (!("organizationId" in paywall) || !paywall.organizationId) return;
+		if (!paywall.needsPlan) return;
 		setSubscribing(plan);
 		setError(null);
 		const origin = window.location.origin;
@@ -130,7 +130,7 @@ function ChoosePlanPage() {
 		}
 	};
 
-	const isAdmin = !("isOrgAdmin" in paywall) || paywall.isOrgAdmin !== false;
+	const isAdmin = !paywall.needsPlan || paywall.isOrgAdmin !== false;
 
 	return (
 		<div className="mx-auto max-w-6xl space-y-8 p-8">
@@ -138,11 +138,11 @@ function ChoosePlanPage() {
 				<h1 className="text-3xl font-bold">Choose your plan</h1>
 				<p className="text-muted-foreground">
 					Start tracking how AI answer engines talk about your brand. No trial — try the{" "}
-					<a className="underline" href="https://demo.elmohq.com" target="_blank" rel="noreferrer">
+					<a className="underline" href="https://demo.elmohq.com" target="_blank" rel="noopener noreferrer">
 						live demo
 					</a>{" "}
 					or{" "}
-					<a className="underline" href="https://docs.elmohq.com" target="_blank" rel="noreferrer">
+					<a className="underline" href="https://docs.elmohq.com" target="_blank" rel="noopener noreferrer">
 						self-host for free
 					</a>
 					.

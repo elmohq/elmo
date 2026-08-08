@@ -8,6 +8,7 @@
  */
 
 import { dueToleranceMs, type PromptRunPlan, targetKey } from "./policy";
+import type { ClaudeMode } from "../db/schema";
 
 /** Floor on how often maintenance may drag a prompt's next job forward. */
 export const EXPEDITE_MIN_INTERVAL_MS = 60 * 60 * 1000;
@@ -91,7 +92,7 @@ export function computeMaintenanceDecisions(promptStates: MaintenancePromptState
  * tiebreak) so a new prompt can never displace an old one's tracking.
  */
 export function computePoolPositions(
-	prompts: { id: string; createdAt: Date; claudeMode: "base" | "web" | null }[],
+	prompts: { id: string; createdAt: Date; claudeMode: ClaudeMode | null }[],
 	limits: { maxPrompts: number | null; claudePool: number },
 ): { withinPromptPool: Set<string>; withinClaudePool: Set<string> } {
 	const ordered = [...prompts].sort(

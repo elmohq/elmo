@@ -12,7 +12,7 @@ import { db } from "@workspace/lib/db/db";
 import { invitation, member, organization, user } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess, requireBrandOrganization } from "@/lib/auth/helpers";
+import { isOrgAdminRole, requireAuthSession, requireBrandAccess, requireBrandOrganization } from "@/lib/auth/helpers";
 import { auth } from "@/lib/auth/server";
 import { getDeployment } from "@/lib/config/server";
 
@@ -78,7 +78,7 @@ export const updateOrganizationFn = createServerFn({ method: "POST" })
 		const org = await requireBrandOrganization(session.user.id, data.brandId);
 
 		// Org rename is an admin action.
-		if (org.role !== "admin") throw new Error("Only admins can rename the workspace");
+		if (!isOrgAdminRole(org.role)) throw new Error("Only admins can rename the workspace");
 
 		await db.update(organization).set({ name: data.name.trim() }).where(eq(organization.id, org.id));
 		return { success: true };
