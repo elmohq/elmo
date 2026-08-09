@@ -14,6 +14,7 @@
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
+import { premiumPairings } from "@workspace/config/plans";
 import { and, count, eq, sql } from "drizzle-orm";
 import { db } from "../db/db";
 import { brands, prompts } from "../db/schema";
@@ -121,9 +122,9 @@ export function decideEnabledModels(entitlements: Entitlements, requestedModels:
 }
 
 /**
- * Tracking a prompt on a premium model spends a slot from the org's pool, and a
- * prompt tracked on two premium models spends two — the pool is over
- * prompt/model pairs, so `adding` counts pairs rather than prompts.
+ * Tracking a prompt on a premium model spends one pairing from the org's pool,
+ * and a prompt tracked on two premium models spends two — so `adding` counts
+ * pairings rather than prompts.
  */
 export function decidePremiumAssign(
 	entitlements: Entitlements,
@@ -143,7 +144,7 @@ export function decidePremiumAssign(
 		const remaining = Math.max(0, entitlements.premiumPool - currentAssignedEnabled);
 		return deny(
 			"premium-pool-exhausted",
-			`Your plan covers ${entitlements.premiumPool} premium prompt${entitlements.premiumPool === 1 ? "" : "s"} (${remaining} remaining). Buy more on the billing page or unassign others.`,
+			`Your plan covers ${premiumPairings(entitlements.premiumPool)} (${remaining} remaining). Buy more on the billing page or unassign others.`,
 		);
 	}
 	return ALLOWED;
@@ -195,7 +196,7 @@ export async function countOrgEnabledPrompts(organizationId: string): Promise<nu
 }
 
 /**
- * Premium slots the org has spent: one per prompt/model pair on enabled prompts,
+ * Premium pairings the org has spent: one per prompt/model pair on enabled prompts,
  * so a prompt tracked on two premium models counts twice. Picking the same model
  * ungrounded is a platform pick and never counts here.
  */

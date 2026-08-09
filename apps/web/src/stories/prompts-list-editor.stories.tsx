@@ -223,6 +223,6 @@ export const NoPremiumColumn: StoryObj = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(canvas.queryByRole("button", { name: /premium models:/i })).toBeNull();
-		await expect(canvas.queryByText(/premium tracking:/i)).toBeNull();
+		await expect(canvas.queryByText(/pairings in use/i)).toBeNull();
 	},
 };

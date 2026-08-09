@@ -128,7 +128,7 @@ export const setPremiumAddonQuantityFn = createServerFn({ method: "POST" })
 
 		const state = await getOrgBillingState(org.id);
 		if (!isPremiumAddonAvailable(state.entitlements.planKey)) {
-			throw new Error("Extra premium prompts are available on the Pro and Business plans");
+			throw new Error("Extra premium pairings are available on the Pro and Business plans");
 		}
 		if (!state.subscription?.stripeSubscriptionId) {
 			throw new Error("No active subscription to attach the add-on to");
@@ -140,7 +140,7 @@ export const setPremiumAddonQuantityFn = createServerFn({ method: "POST" })
 		const assigned = await countOrgAssignedPremiumSlots(org.id);
 		if (assigned > included + data.quantity) {
 			throw new Error(
-				`${assigned} premium slots are in use; unassign ${assigned - included - data.quantity} before reducing the add-on`,
+				`${assigned} premium pairings are in use; unassign ${assigned - included - data.quantity} before reducing the add-on`,
 			);
 		}
 

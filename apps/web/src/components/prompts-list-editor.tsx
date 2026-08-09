@@ -11,7 +11,7 @@
 
 import { IconInfoCircle } from "@tabler/icons-react";
 import { getModelMeta } from "@workspace/config/models";
-import { PREMIUM_MODELS, PREMIUM_RUNS_PER_DAY, premiumSlotsUsed } from "@workspace/config/plans";
+import { PREMIUM_MODELS, PREMIUM_RUNS_PER_DAY, premiumModelLabel, premiumSlotsUsed } from "@workspace/config/plans";
 import { describeSkipped, parseBulkPrompts } from "@workspace/lib/bulk-prompts";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
@@ -36,7 +36,7 @@ export interface EditablePrompt {
 	systemTags: string[];
 	/**
 	 * Premium models this prompt is tracked on, grounded — one of the workspace's
-	 * premium slots each, so two models cost two slots.
+	 * premium pairings each, so two models cost two pairings.
 	 */
 	premiumModels: string[];
 }
@@ -83,7 +83,7 @@ function PremiumModelsField({
 	onChange: (models: string[]) => void;
 	showLabel?: boolean;
 }) {
-	const summary = selected.length === 0 ? "None" : selected.map((model) => getModelMeta(model).label).join(", ");
+	const summary = selected.length === 0 ? "None" : selected.map(premiumModelLabel).join(", ");
 
 	return (
 		<Popover>
@@ -121,7 +121,7 @@ function PremiumModelsField({
 						>
 							<Checkbox checked={checked} disabled={atCapacity && !checked} className="pointer-events-none" />
 							<ModelIcon iconId={getModelMeta(model).iconId} className="size-4" />
-							<span className="flex-1">{getModelMeta(model).label}</span>
+							<span className="flex-1">{premiumModelLabel(model)}</span>
 							<span className="font-mono text-[10px] text-muted-foreground tabular-nums">
 								{PREMIUM_RUNS_PER_DAY}×/day
 							</span>
@@ -130,7 +130,7 @@ function PremiumModelsField({
 				})}
 				{atCapacity && (
 					<p className="px-2 pt-1 text-xs text-muted-foreground">
-						No premium slots left. Untick one, or buy more on the billing page.
+						No premium pairings left. Untick one, or buy more on the billing page.
 					</p>
 				)}
 			</PopoverContent>
@@ -287,11 +287,11 @@ export function PromptsListEditor({
 
 			{premium && (
 				<p className="text-sm text-muted-foreground">
-					Premium tracking:{" "}
+					Premium:{" "}
 					<span className="font-medium text-foreground">
 						{premiumUsed} of {premium.total}
 					</span>{" "}
-					in use across this workspace — one for each model a prompt is tracked on.
+					pairings in use across this workspace — one for each model a prompt is tracked on.
 					{premiumAtCapacity && " Unassign one to free it up, or buy more on the billing page."}
 				</p>
 			)}
@@ -352,8 +352,9 @@ export function PromptsListEditor({
 							<TooltipContent>
 								<p className="max-w-xs">
 									Also track this prompt on a model called directly with its own web search on, for a grounded answer
-									with citations — {PREMIUM_RUNS_PER_DAY}× a day, spending one of the workspace&apos;s premium slots per
-									model. This is on top of the platforms the brand tracks, which run on every prompt either way.
+									with citations — {PREMIUM_RUNS_PER_DAY}× a day. Each model you pick here spends one of the
+									workspace&apos;s premium pairings. This is on top of the platforms the brand tracks, which run on
+									every prompt either way.
 								</p>
 							</TooltipContent>
 						</Tooltip>

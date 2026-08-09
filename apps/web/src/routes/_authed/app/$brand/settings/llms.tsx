@@ -282,13 +282,13 @@ function PremiumApiPool({ premium }: { premium: PremiumPool }) {
 							</TooltipTrigger>
 							<TooltipContent className="max-w-xs text-xs">
 								Not a pick and not an upgrade of one: your picks run on every prompt regardless, and a premium model is
-								added to the prompts you choose. Each prompt/model pair spends a slot, because a grounded call costs far
-								more than an ungrounded one.
+								added to the prompts you choose. Each prompt/model pairing spends one from the pool, because a grounded
+								call costs far more than an ungrounded one.
 							</TooltipContent>
 						</Tooltip>
 					</span>
 					<Badge variant={remaining === 0 ? "destructive" : "secondary"}>
-						{premium.assigned} / {premium.total} in use
+						{premium.assigned} / {premium.total} pairings
 					</Badge>
 				</CardTitle>
 				<CardDescription>{copy.description}</CardDescription>
@@ -309,8 +309,8 @@ function PremiumApiPool({ premium }: { premium: PremiumPool }) {
 				<Progress value={percent} />
 				<p className="text-sm text-muted-foreground">
 					{remaining > 0
-						? `${remaining} of ${premium.total} still available, shared across every brand in this workspace. A prompt spends one for each model you track it on.`
-						: `All ${premium.total} are in use. Free one up or buy more to add another.`}
+						? `${remaining} of ${premium.total} pairings still available, shared across every brand in this workspace. A prompt spends one for each model you track it on.`
+						: `All ${premium.total} pairings are in use. Free one up or buy more to add another.`}
 				</p>
 
 				<div className="flex flex-wrap gap-2">

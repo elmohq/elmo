@@ -313,7 +313,7 @@ export const NoTargetsConfigured: Story = {
 };
 
 /** The grounded Claude allowance with room left, and where to spend or grow it. */
-export const ClaudeWebSearchWithRoom: Story = {
+export const PremiumPoolWithRoom: Story = {
 	render: () => {
 		loader(standardPicker(), { available: true, assigned: 6, total: 20 });
 		return <LlmsSettingsPage />;
@@ -321,8 +321,8 @@ export const ClaudeWebSearchWithRoom: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText(CARD_TITLES.premium)).toBeVisible();
-		await expect(await canvas.findByText("6 / 20 in use")).toBeVisible();
-		await expect(await canvas.findByText(/14 of 20 still available/i)).toBeVisible();
+		await expect(await canvas.findByText("6 / 20 pairings")).toBeVisible();
+		await expect(await canvas.findByText(/14 of 20 pairings still available/i)).toBeVisible();
 		// Assignment happens in the prompts editor, not here.
 		await expect(await canvas.findByRole("button", { name: /choose prompts/i })).toBeVisible();
 		await expect(await canvas.findByRole("button", { name: /change how many/i })).toBeVisible();
@@ -338,8 +338,8 @@ export const PremiumPoolExhausted: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText("20 / 20 in use")).toBeVisible();
-		await expect(await canvas.findByText(/all 20 are in use/i)).toBeVisible();
+		await expect(await canvas.findByText("20 / 20 pairings")).toBeVisible();
+		await expect(await canvas.findByText(/all 20 pairings are in use/i)).toBeVisible();
 	},
 };
 
