@@ -16,7 +16,7 @@ import { IconArrowUpRight, IconExternalLink, IconInfoCircle } from "@tabler/icon
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { PROVIDERS_DOCS_URL } from "@workspace/config/constants";
 import { getModelMeta } from "@workspace/config/models";
-import { PREMIUM_MODELS, PREMIUM_RUNS_PER_DAY } from "@workspace/config/plans";
+import { PREMIUM_MODELS, PREMIUM_RUNS_PER_DAY, premiumModelLabel } from "@workspace/config/plans";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
@@ -77,8 +77,10 @@ function LlmsSettingsPage() {
 }
 
 /**
- * One card per group, with the pick budget and the save bar shared across them —
- * the plan's pick count covers every platform, not each group separately.
+ * The pickable tiers, in one card divided by tier. They answer different
+ * questions about a brand — a scraped surface shows what a visitor sees, an API
+ * call what the model already believes — but they spend a single pick budget, and
+ * as separate cards they read as separate allowances.
  */
 function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 	const { brand: brandId } = Route.useParams();
@@ -137,24 +139,28 @@ function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 				</div>
 			)}
 
-			{groups.map((group) => (
-				<Card key={group.id}>
-					<CardHeader>
-						<CardTitle>{group.title}</CardTitle>
-						<CardDescription>{group.description}</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<PlatformPicker
-							options={group.options}
-							selected={selected}
-							onSelectedChange={setSelected}
-							limit={limit}
-							costBasis={picker.costBasis}
-							disabled={saving}
-						/>
-					</CardContent>
-				</Card>
-			))}
+			{/* One card, divided: the tiers answer different questions but spend the
+			    same budget, and separate cards read as separate allowances. */}
+			<Card className="gap-0 py-0">
+				{groups.map((group, index) => (
+					<div key={group.id} className={index > 0 ? "border-t" : undefined}>
+						<CardHeader className="pt-6">
+							<CardTitle>{group.title}</CardTitle>
+							<CardDescription>{group.description}</CardDescription>
+						</CardHeader>
+						<CardContent className="pb-6">
+							<PlatformPicker
+								options={group.options}
+								selected={selected}
+								onSelectedChange={setSelected}
+								limit={limit}
+								costBasis={picker.costBasis}
+								disabled={saving}
+							/>
+						</CardContent>
+					</div>
+				))}
+			</Card>
 
 			{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} brandId={brandId} />}
 
@@ -292,7 +298,7 @@ function PremiumApiPool({ premium }: { premium: PremiumPool }) {
 					{PREMIUM_MODELS.map((model) => (
 						<div key={model} className="flex items-center gap-3 rounded-md border p-3">
 							<ModelIcon iconId={getModelMeta(model).iconId} className="size-5" />
-							<span className="flex-1 text-sm font-medium">{getModelMeta(model).label} with web search</span>
+							<span className="flex-1 text-sm font-medium">{premiumModelLabel(model)}</span>
 							<span className="font-mono text-[10px] text-muted-foreground tabular-nums">
 								{PREMIUM_RUNS_PER_DAY}×/day
 							</span>

@@ -97,6 +97,11 @@ const PREMIUM_LABELS: Record<string, string> = {
 	grok: "Grok (web)",
 };
 
+/** What to call a premium model, wherever the grounded variant is shown. */
+export function premiumModelLabel(model: string): string {
+	return PREMIUM_LABELS[model] ?? getModelMeta(model).label;
+}
+
 /**
  * The premium models in a requested list, deduped and in catalog order. Anything
  * not sellable as premium is dropped rather than rejected: the list names paid
@@ -366,7 +371,7 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 					id: "premium",
 					label: PLATFORM_TIER_LABELS.premium,
 					runsPerDay: PREMIUM_RUNS_PER_DAY,
-					models: PREMIUM_MODELS.map((model) => ({ model, label: PREMIUM_LABELS[model] })),
+					models: PREMIUM_MODELS.map((model) => ({ model, label: premiumModelLabel(model) })),
 					includedSlots: plan.premiumIncluded,
 					addonAvailable: plan.premiumAddonAvailable,
 					summary: premiumSummary(plan),
