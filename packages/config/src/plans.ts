@@ -30,13 +30,6 @@ export interface CloudPlatform {
 	 */
 	access?: ProviderAccessKind;
 	/**
-	 * Costs enough per call that even an ungrounded pick samples at the premium
-	 * rate rather than the plan's standard rate. Claude's API runs several times
-	 * an OpenRouter call, so four samples a day of it is not something a plan
-	 * absorbs the way it absorbs a scrape.
-	 */
-	premiumRate?: boolean;
-	/**
 	 * Also sold grounded: the model called directly with its own web search on,
 	 * paid for out of the org's premium pool rather than the pick budget. A
 	 * grounded call costs roughly ten times an ungrounded one, which is why it is
@@ -74,7 +67,7 @@ export const CLOUD_PLATFORMS: Record<string, CloudPlatform> = {
 	deepseek: { access: "api" },
 	grok: { premium: true },
 	mistral: { access: "api" },
-	claude: { access: "api", premiumRate: true, premium: true },
+	claude: { access: "api", premium: true },
 };
 
 /** The platforms a plan's picks may come from — everything sold as a pick. */
@@ -91,9 +84,18 @@ export const STANDARD_PLATFORM_MENU: readonly string[] = Object.entries(CLOUD_PL
  * four times a day can still be worth one grounded call, which is exactly what
  * the pool is for.
  */
-export const PREMIUM_MODELS: readonly string[] = Object.entries(CLOUD_PLATFORMS)
-	.filter(([, platform]) => platform.premium)
-	.map(([model]) => model);
+export const PREMIUM_MODELS: readonly string[] = ["claude", "chatgpt", "grok"];
+
+/**
+ * What a premium model is called where it is sold, which is not what it is called
+ * as a pick: the premium tier sells the grounded variant, and "ChatGPT" and
+ * "GPT-5 Search" are different products to a customer comparing them.
+ */
+const PREMIUM_LABELS: Record<string, string> = {
+	claude: "Claude Sonnet 5 (web)",
+	chatgpt: "GPT-5 Search",
+	grok: "Grok (web)",
+};
 
 /**
  * The premium models in a requested list, deduped and in catalog order. Anything
@@ -131,14 +133,6 @@ export const PREMIUM_ADDON_MONTHLY_USD = 5;
 
 /** Annual = 10× monthly (two months free). */
 export const PREMIUM_ADDON_ANNUAL_USD = PREMIUM_ADDON_MONTHLY_USD * 10;
-
-/**
- * How often a platform samples when picked, which is the plan's rate unless the
- * platform is dear enough per call to be metered like a premium one.
- */
-export function platformRunsPerDay(model: string, standardRunsPerDay: number): number {
-	return CLOUD_PLATFORMS[model]?.premiumRate ? PREMIUM_RUNS_PER_DAY : standardRunsPerDay;
-}
 
 export interface PlanDefinition {
 	key: PlanKey;
@@ -271,22 +265,20 @@ export type PlanPlatformGroupId = "scraped" | "api" | "premium";
 export const PLATFORM_TIER_LABELS: Record<PlanPlatformGroupId, string> = {
 	scraped: "Scraped Engines",
 	api: "LLM APIs",
-	premium: "Premium",
+	premium: "Premium LLM APIs",
 };
 
 export interface PlanPlatformMember {
 	model: string;
-	/** This platform's own rate, which may differ from its group's. */
-	runsPerDay: number;
+	/** What to call it in this tier; the premium tier names the grounded variant. */
+	label: string;
 }
 
 export interface PlanPlatformGroup {
 	id: PlanPlatformGroupId;
 	/** How this group is reached, for a pricing card's sub-heading. */
 	label: string;
-	/** One-line qualifier — whether these answers are web-grounded. */
-	note: string;
-	/** The rate this group's platforms run at unless a member says otherwise. */
+	/** The rate every platform in this group runs at. */
 	runsPerDay: number;
 	models: PlanPlatformMember[];
 }
@@ -340,28 +332,19 @@ export interface PlanPlatformBreakdown {
  * the group, so the group's rate is a default rather than a promise.
  */
 export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdown {
-	const member = (model: string): PlanPlatformMember => ({
-		model,
-		runsPerDay: platformRunsPerDay(model, plan.standardRunsPerDay),
-	});
-	const inTier = (access: ProviderAccessKind) =>
-		plan.platformMenu.filter((model) => CLOUD_PLATFORMS[model]?.access === access).map(member);
+	const inTier = (access: ProviderAccessKind): PlanPlatformMember[] =>
+		plan.platformMenu
+			.filter((model) => CLOUD_PLATFORMS[model]?.access === access)
+			.map((model) => ({ model, label: getModelMeta(model).label }));
 
 	const groups: PlanPlatformGroup[] = [
 		{
 			id: "scraped",
 			label: PLATFORM_TIER_LABELS.scraped,
-			note: "As a visitor sees them",
 			runsPerDay: plan.standardRunsPerDay,
 			models: inTier("scraped"),
 		},
-		{
-			id: "api",
-			label: PLATFORM_TIER_LABELS.api,
-			note: "No web search",
-			runsPerDay: plan.standardRunsPerDay,
-			models: inTier("api"),
-		},
+		{ id: "api", label: PLATFORM_TIER_LABELS.api, runsPerDay: plan.standardRunsPerDay, models: inTier("api") },
 	];
 
 	const pickGroups = groups.filter((group) => group.models.length > 0);
@@ -382,9 +365,8 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 			? {
 					id: "premium",
 					label: PLATFORM_TIER_LABELS.premium,
-					note: "Chosen per prompt, on top of your picks",
 					runsPerDay: PREMIUM_RUNS_PER_DAY,
-					models: PREMIUM_MODELS.map((model) => ({ model, runsPerDay: PREMIUM_RUNS_PER_DAY })),
+					models: PREMIUM_MODELS.map((model) => ({ model, label: PREMIUM_LABELS[model] })),
 					includedSlots: plan.premiumIncluded,
 					addonAvailable: plan.premiumAddonAvailable,
 					summary: premiumSummary(plan),
@@ -393,13 +375,20 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 	};
 }
 
-/** How the premium tier is sold on a plan, as one sentence. */
+/**
+ * What the premium allowance buys, in one sentence. It is spent on pairings of a
+ * prompt with a model, so the count is neither prompts nor models — 20 buys one
+ * prompt on twenty models, twenty prompts on one, or anything between. The price
+ * of more is left to whatever sits alongside this, so the two don't say it twice.
+ */
 function premiumSummary(plan: PlanDefinition): string {
-	const grounded = "Grounded and cited.";
-	const each = `$${PREMIUM_ADDON_MONTHLY_USD}/prompt/mo`;
-	if (plan.premiumIncluded === 0) return `${grounded} Available at ${each}.`;
-	const included = `${plan.premiumIncluded} prompt${plan.premiumIncluded === 1 ? "" : "s"} included`;
-	return plan.premiumAddonAvailable ? `${grounded} ${included}, then ${each}.` : `${grounded} ${included}.`;
+	if (plan.premiumIncluded === 0) return "Grounded and cited. Available as an add-on.";
+	return `Grounded and cited. ${premiumPairings(plan.premiumIncluded)} included, each answered daily.`;
+}
+
+/** The premium allowance's unit, named the same way wherever it is counted. */
+export function premiumPairings(count: number): string {
+	return `${count} prompt/model pairing${count === 1 ? "" : "s"}`;
 }
 
 export interface SubscriptionCostLine {
@@ -435,7 +424,7 @@ export function summarizeSubscriptionCost(input: {
 	if (quantity > 0) {
 		const each = annual ? PREMIUM_ADDON_ANNUAL_USD : PREMIUM_ADDON_MONTHLY_USD;
 		lines.push({
-			label: `${quantity} extra premium prompt${quantity === 1 ? "" : "s"}`,
+			label: `${quantity} extra premium pairing${quantity === 1 ? "" : "s"}`,
 			amountUsd: quantity * each,
 		});
 	}

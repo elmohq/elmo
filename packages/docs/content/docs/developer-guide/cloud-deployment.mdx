@@ -72,9 +72,9 @@ Some models are configured twice on purpose, and the two entries are sold differ
   pick always resolves the ungrounded target, never the grounded one, so a brand cannot spend the
   premium pool by choosing a platform.
 - **Grounded** (`...:online` on an API provider) is the premium tier, counted against the org's pool
-  of prompt/model slots (`prompts.premium_models`) — plan included plus purchased add-on. A grounded
-  call is roughly ten times an ungrounded one, which is why it is metered per prompt rather than per
-  brand. Customers assign it in the prompts editor; the LLM settings page only reports the totals.
+  of prompt/model pairings (`prompts.premium_models`) — plan included plus purchased add-on. A
+  grounded call is roughly ten times an ungrounded one, which is why it is metered per pairing rather
+  than per brand. Customers assign it in the prompts editor; the LLM settings page reports the totals.
 
 The two tiers are independent, not two rungs of one ladder. A brand's picks run on **every** one of
 its prompts; a premium model is chosen on **individual** prompts and runs in addition to them. One
@@ -91,10 +91,9 @@ and a grounded target — nothing in the schema, the guards or the run policy na
 `isGroundedApiTarget` decides. Web search alone doesn't say it: every scraped target is `:online`
 too, because a consumer surface always searches. It is the combination that costs.
 
-Claude also samples **once daily on every plan** when picked ungrounded, not at the plan's standard
-rate: its API is billed per call at several times an OpenRouter one, so at Pro's 4×/day a single
-Claude pick would cost more than the rest of the plan. That is the `premiumRate` flag in
-`CLOUD_PLATFORMS`, and `resolvePromptRunPlan` gives such a pick its own interval.
+Every pick samples at the plan's rate, whether it is scraped or an API call — a model is not premium,
+a grounded call is. Only the grounded targets depart, at `PREMIUM_RUNS_PER_DAY`, which a custom plan
+can raise through the `premiumRunsPerDay` override.
 
 Qwen, DeepSeek and Mistral carry no `:online` variant at all: they have no native search tool, so
 OpenRouter would fall back to Exa, whose results are not a surface a consumer would ever see. They

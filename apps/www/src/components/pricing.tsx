@@ -160,11 +160,7 @@ export function Pricing() {
  */
 /** The catalog's tier, as the shared renderer wants it. */
 function tierRows(group: PlanPlatformGroup): PlatformTierRow[] {
-	return group.models.map(({ model, runsPerDay }) => ({
-		iconId: getModelMeta(model).iconId,
-		label: getModelMeta(model).label,
-		runsPerDay,
-	}));
+	return group.models.map(({ model, label }) => ({ iconId: getModelMeta(model).iconId, label }));
 }
 
 function CloudPlans() {
@@ -198,9 +194,7 @@ function CloudPlans() {
 							<p className="mt-1 text-xs text-zinc-500 tabular-nums">${plan.annualPriceUsd}/yr</p>
 
 							<ul className="mt-4 space-y-1.5 text-xs text-zinc-700">
-								<li>
-									{plan.maxBrands} brand{plan.maxBrands === 1 ? "" : "s"}
-								</li>
+								<li></li>
 								<li>{plan.maxPrompts} tracked prompts</li>
 							</ul>
 

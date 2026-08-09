@@ -9,6 +9,7 @@ import {
 	PREMIUM_MODELS,
 	PREMIUM_RUNS_PER_DAY,
 	planPlatformBreakdown,
+	premiumPairings,
 	premiumSlotsUsed,
 	STANDARD_PLATFORM_MENU,
 	selectPremiumModels,
@@ -62,13 +63,12 @@ describe("planPlatformBreakdown", () => {
 		expect(api?.models.map((m) => m.model)).toContain("mistral");
 	});
 
-	it("marks a costlier platform's own rate while the group keeps the plan's", () => {
-		const api = groupsById("pro").get("api");
-		expect(api?.runsPerDay).toBe(PLANS.pro.standardRunsPerDay);
-		// Claude's API runs several times an OpenRouter call, so it alone departs.
-		const rates = new Map(api?.models.map((m) => [m.model, m.runsPerDay]));
-		expect(rates.get("mistral")).toBe(PLANS.pro.standardRunsPerDay);
-		expect(rates.get("claude")).toBe(PREMIUM_RUNS_PER_DAY);
+	it("samples every pick at the plan's rate, grounded calls at the premium one", () => {
+		// Ungrounded Claude is an ordinary API pick; only the grounded call is
+		// premium, and only the premium tier departs from the plan's rate.
+		expect(groupsById("pro").get("api")?.runsPerDay).toBe(PLANS.pro.standardRunsPerDay);
+		expect(groupsById("pro").get("scraped")?.runsPerDay).toBe(PLANS.pro.standardRunsPerDay);
+		expect(planPlatformBreakdown(PLANS.pro).premium?.runsPerDay).toBe(PREMIUM_RUNS_PER_DAY);
 	});
 
 	it("separates scraped searches from model APIs", () => {
@@ -78,10 +78,10 @@ describe("planPlatformBreakdown", () => {
 		expect(groups.get("api")?.models.map((m) => m.model)).not.toContain("perplexity");
 	});
 
-	it("says whether each tier's answers are web-grounded", () => {
+	it("names every platform it lists", () => {
 		for (const key of PLAN_KEYS) {
 			for (const group of planPlatformBreakdown(PLANS[key]).pickGroups) {
-				expect(group.note, `${key}/${group.id}`).toBeTruthy();
+				for (const member of group.models) expect(member.label, `${key}/${member.model}`).toBeTruthy();
 			}
 		}
 	});
@@ -113,9 +113,19 @@ describe("planPlatformBreakdown", () => {
 		// of it being a budget rather than a Claude allowance.
 		const premium = planPlatformBreakdown(PLANS.pro).premium;
 		expect(premium?.models.map((m) => m.model)).toEqual([...PREMIUM_MODELS]);
-		// It renders as a tier like the others, so it needs their shape.
 		expect(premium?.label).toBeTruthy();
-		expect(premium?.note).toBeTruthy();
+	});
+
+	it("names a premium model by the grounded product, not the pick", () => {
+		// "ChatGPT" and "GPT-5 Search" are different things to a customer, and the
+		// same model id backs both.
+		const premium = planPlatformBreakdown(PLANS.pro).premium;
+		const labels = new Map(premium?.models.map((m) => [m.model, m.label]));
+		expect(labels.get("chatgpt")).toBe("GPT-5 Search");
+		expect(labels.get("claude")).toMatch(/\(web\)$/);
+		// The same model is listed plainly where it is sold as a pick.
+		const api = groupsById("pro").get("api");
+		expect(api?.models.find((m) => m.model === "claude")?.label).toBe("Claude");
 	});
 
 	it("sells the whole premium tier to any plan that has a pool", () => {
@@ -168,7 +178,7 @@ describe("summarizeSubscriptionCost", () => {
 	it("adds the add-on to the plan at the monthly rate", () => {
 		const cost = summarizeSubscriptionCost({ plan: "pro", interval: "monthly", addonQuantity: 4 });
 		expect(cost.totalUsd).toBe(PLANS.pro.monthlyPriceUsd + 4 * PREMIUM_ADDON_MONTHLY_USD);
-		expect(cost.lines.map((l) => l.label)).toEqual(["Pro plan", "4 extra premium prompts"]);
+		expect(cost.lines.map((l) => l.label)).toEqual(["Pro plan", "4 extra premium pairings"]);
 	});
 
 	it("quotes annual billing annually, including the add-on's annual rate", () => {
@@ -192,9 +202,9 @@ describe("summarizeSubscriptionCost", () => {
 		);
 	});
 
-	it("names one prompt in the singular", () => {
+	it("names one pairing in the singular", () => {
 		const [, addon] = summarizeSubscriptionCost({ plan: "pro", interval: "monthly", addonQuantity: 1 }).lines;
-		expect(addon.label).toBe("1 extra premium prompt");
+		expect(addon.label).toBe("1 extra premium pairing");
 	});
 });
 
@@ -208,19 +218,29 @@ describe("plan copy the surfaces share", () => {
 		expect(planPlatformBreakdown(PLANS.business).pickHeading).toBe(planPlatformBreakdown(PLANS.pro).pickHeading);
 	});
 
-	it("says what the premium allowance includes and what more costs", () => {
+	it("counts the allowance in prompt/model pairings, not prompts", () => {
+		// 20 buys one prompt on twenty models, twenty prompts on one, or anything
+		// between — calling them prompts made the second reading impossible.
 		const pro = planPlatformBreakdown(PLANS.pro).premium;
-		expect(pro?.summary).toBe(`Grounded and cited. ${PLANS.pro.premiumIncluded} prompts included, then $5/prompt/mo.`);
+		expect(pro?.summary).toBe(
+			`Grounded and cited. ${premiumPairings(PLANS.pro.premiumIncluded)} included, each answered daily.`,
+		);
+		expect(pro?.summary).toContain("pairings");
+	});
+
+	it("leaves the price of more to whatever sits alongside it", () => {
+		// The plan card already prints the per-pairing price directly below.
+		expect(planPlatformBreakdown(PLANS.pro).premium?.summary).not.toContain("$");
 	});
 
 	it("offers the add-on alone when a plan includes none", () => {
-		// No such plan today, but the sentence must not read "0 prompts included".
+		// No such plan today, but the sentence must not read "0 pairings included".
 		const summary = planPlatformBreakdown({ ...PLANS.basic, premiumAddonAvailable: true }).premium?.summary;
-		expect(summary).toBe("Grounded and cited. Available at $5/prompt/mo.");
+		expect(summary).toBe("Grounded and cited. Available as an add-on.");
 	});
 
-	it("does not offer more when the plan cannot buy any", () => {
-		const summary = planPlatformBreakdown({ ...PLANS.pro, premiumAddonAvailable: false }).premium?.summary;
-		expect(summary).toBe(`Grounded and cited. ${PLANS.pro.premiumIncluded} prompts included.`);
+	it("names one pairing in the singular", () => {
+		expect(premiumPairings(1)).toBe("1 prompt/model pairing");
+		expect(premiumPairings(2)).toBe("2 prompt/model pairings");
 	});
 });

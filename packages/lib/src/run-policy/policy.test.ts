@@ -206,15 +206,18 @@ describe("resolvePromptRunPlan: cloud", () => {
 		expect(plan.rescheduleHours).toBe(48);
 	});
 
-	it("an override between the standard and claude floors slows only standard", () => {
-		// 12h is slower than pro's 6h standard floor but faster than claude's 24h.
+	it("an override slows every pick alike, grounded calls keeping their own floor", () => {
+		// 12h is slower than pro's 6h standard floor; the premium tier is metered
+		// separately and stays daily.
 		const plan = resolvePromptRunPlan(
 			cloudInput({
 				brand: { enabledModels: ["chatgpt", "claude"], delayOverrideHours: 12 },
+				prompt: { premiumModels: ["claude"] },
 			}),
 		);
-		expect(plan.targets.find((t) => t.config.model === "chatgpt")?.intervalHours).toBe(12);
-		expect(plan.targets.find((t) => t.config.model === "claude")?.intervalHours).toBe(24);
+		const picks = plan.targets.filter((t) => !t.config.webSearch || t.config.provider === "brightdata");
+		for (const target of picks) expect(target.intervalHours).toBe(12);
+		expect(plan.targets.find((t) => t.config.model === "claude" && t.config.webSearch)?.intervalHours).toBe(24);
 	});
 
 	it("starter runs its single pick once daily", () => {
@@ -238,16 +241,15 @@ describe("resolvePromptRunPlan: cloud", () => {
 		expect(plan.targets.map((t) => t.config.model)).toEqual(["chatgpt"]);
 	});
 
-	it("picking claude runs the ungrounded target once daily, whatever the plan rate", () => {
-		// Pro samples standard platforms 4x/day; Claude is API-metered per call,
-		// so it stays daily instead of following that rate.
+	it("picking claude runs the ungrounded target at the plan's own rate", () => {
+		// Without web search Claude is an ordinary LLM API pick — it is the grounded
+		// call that is premium, not the model.
 		const plan = resolvePromptRunPlan(
 			cloudInput({ brand: { enabledModels: ["chatgpt", "claude"], delayOverrideHours: null } }),
 		);
 		const claude = plan.targets.find((t) => t.config.model === "claude");
-		expect(claude).toMatchObject({ intervalHours: 24, replication: 1 });
+		expect(claude?.intervalHours).toBe(6);
 		expect(claude?.config.webSearch).toBe(false);
-		// The faster standard target still drives the chain.
 		expect(plan.rescheduleHours).toBe(6);
 	});
 
@@ -284,11 +286,11 @@ describe("resolvePromptRunPlan: cloud", () => {
 				prompt: { premiumModels: ["claude"] },
 			}),
 		);
+		// The same model twice: the pick at the plan's rate, the grounded call daily.
 		const claudeTargets = plan.targets.filter((t) => t.config.model === "claude");
 		expect(claudeTargets.map((t) => t.config.webSearch)).toEqual([false, true]);
-		for (const target of claudeTargets) {
-			expect(target).toMatchObject({ intervalHours: 24, replication: 1 });
-		}
+		expect(claudeTargets[0]).toMatchObject({ intervalHours: 6 });
+		expect(claudeTargets[1]).toMatchObject({ intervalHours: 24, replication: 1 });
 	});
 
 	it("spends a slot per model, so two premium models add two grounded targets", () => {
@@ -418,7 +420,7 @@ describe("resolvePromptRunPlan: cloud", () => {
 		expect(slower.targets[0].intervalHours).toBe(4);
 	});
 
-	it("a custom premiumRunsPerDay speeds up the metered platforms", () => {
+	it("a custom premiumRunsPerDay speeds up the grounded calls only", () => {
 		const custom = resolveEntitlements({
 			mode: "cloud",
 			subscription: { status: "active", plan: "pro", periodEnd: new Date("2026-09-01") },
@@ -427,9 +429,14 @@ describe("resolvePromptRunPlan: cloud", () => {
 			now: NOW,
 		});
 		const plan = resolvePromptRunPlan(
-			cloudInput({ entitlements: custom, brand: { enabledModels: ["chatgpt", "claude"], delayOverrideHours: null } }),
+			cloudInput({
+				entitlements: custom,
+				brand: { enabledModels: ["chatgpt", "claude"], delayOverrideHours: null },
+				prompt: { premiumModels: ["claude"] },
+			}),
 		);
-		expect(plan.targets.find((t) => t.config.model === "claude")?.intervalHours).toBe(12);
+		expect(plan.targets.find((t) => t.config.model === "claude" && t.config.webSearch)?.intervalHours).toBe(12);
+		expect(plan.targets.find((t) => t.config.model === "claude" && !t.config.webSearch)?.intervalHours).toBe(6);
 	});
 });
 

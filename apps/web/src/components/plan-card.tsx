@@ -23,21 +23,12 @@ import type { ReactNode } from "react";
 
 /** What the plan covers regardless of platform. */
 function planQuotas(plan: PlanDefinition): string[] {
-	return [
-		`${plan.maxBrands} brand${plan.maxBrands === 1 ? "" : "s"}`,
-		`${plan.maxPrompts} tracked prompts`,
-		"API access",
-		"Unlimited seats",
-	];
+	return [`${plan.maxPrompts} tracked prompts`, "API access", "Unlimited seats"];
 }
 
 /** The catalog's tier, as the shared renderer wants it. */
 function tierRows(group: PlanPlatformGroup): PlatformTierRow[] {
-	return group.models.map(({ model, runsPerDay }) => ({
-		iconId: getModelMeta(model).iconId,
-		label: getModelMeta(model).label,
-		runsPerDay,
-	}));
+	return group.models.map(({ model, label }) => ({ iconId: getModelMeta(model).iconId, label }));
 }
 
 /**
@@ -104,7 +95,7 @@ export function PlanCard({ plan, priceUsd, priceSuffix, active, highlighted, act
 					{plan.premiumAddonAvailable && (
 						<li className="flex items-start gap-2 text-muted-foreground">
 							<IconPlus className="mt-0.5 h-4 w-4 shrink-0" />
-							More premium prompts at ${PREMIUM_ADDON_MONTHLY_USD}/prompt/mo
+							More pairings at ${PREMIUM_ADDON_MONTHLY_USD}/mo each
 						</li>
 					)}
 				</ul>

@@ -9,6 +9,7 @@
  */
 import { IconExternalLink, IconLoader2 } from "@tabler/icons-react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import type { Entitlements } from "@workspace/config/entitlements";
 import {
 	PLAN_KEYS,
 	PLANS,
@@ -24,7 +25,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@work
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Progress } from "@workspace/ui/components/progress";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { PlanCard } from "@/components/plan-card";
 import { isOrgAdminRole } from "@/lib/auth/roles";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
@@ -98,6 +99,9 @@ function BillingSettingsPage() {
 		router.invalidate();
 	};
 
+	// Only an admin with a live subscription can switch, so only they see the grid.
+	const showPlanGrid = isAdmin && state.subscription !== null;
+
 	// Wide enough for the four plan cards, which the paywall gives the same room.
 	return (
 		<div className="max-w-6xl space-y-6">
@@ -146,31 +150,22 @@ function BillingSettingsPage() {
 				</Alert>
 			)}
 
-			<CurrentPlanCard
-				state={state}
-				isAdmin={isAdmin}
-				busy={busy}
-				onOpenPortal={openPortal}
-				onChoosePlan={() => router.navigate({ to: "/choose-plan" })}
-			/>
-
-			{state.premiumAddonAvailable && (
-				<PremiumAddonCard
-					brandId={brandId}
-					quantity={state.premiumAddonQuantity}
+			<Section
+				title="Plans"
+				description={
+					showPlanGrid
+						? "Switching takes effect immediately; Stripe prorates the difference."
+						: "What your workspace is on, and what it costs."
+				}
+			>
+				<CurrentPlanCard
+					state={state}
 					isAdmin={isAdmin}
-					hasSubscription={state.subscription !== null}
+					busy={busy}
+					onOpenPortal={openPortal}
+					onChoosePlan={() => router.navigate({ to: "/choose-plan" })}
 				/>
-			)}
-
-			{isAdmin && state.subscription && (
-				<div className="space-y-3">
-					<div>
-						<h2 className="text-lg font-semibold">Plans</h2>
-						<p className="text-sm text-muted-foreground">
-							Switching takes effect immediately; Stripe prorates the difference.
-						</p>
-					</div>
+				{showPlanGrid && (
 					<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 						{PLAN_KEYS.map((key) => {
 							const plan = PLANS[key];
@@ -203,7 +198,34 @@ function BillingSettingsPage() {
 							);
 						})}
 					</div>
-				</div>
+				)}
+				<p className="text-sm text-muted-foreground">
+					Need more brands, any other models, higher numbers of samples, SSO, white label, or custom limits?{" "}
+					<a className="underline" href="mailto:hello@elmohq.com?subject=Elmo%20Cloud%20custom%20plan">
+						Talk to us about a custom plan
+					</a>
+					.
+				</p>
+			</Section>
+
+			{state.premiumAddonAvailable && (
+				<Section
+					title="Extra premium"
+					description={`Beyond what your plan includes, at $${PREMIUM_ADDON_MONTHLY_USD} per pairing per month.`}
+				>
+					<PremiumAddonCard
+						brandId={brandId}
+						quantity={state.premiumAddonQuantity}
+						isAdmin={isAdmin}
+						hasSubscription={state.subscription !== null}
+					/>
+				</Section>
+			)}
+
+			{showMeters(entitlements) && (
+				<Section title="Usage" description="What your workspace is using against its plan.">
+					<UsageCard state={state} />
+				</Section>
 			)}
 		</div>
 	);
@@ -240,10 +262,6 @@ function CurrentPlanCard({
 					addonQuantity: state.premiumAddonQuantity,
 				})
 			: null;
-
-	// Metered plans only. An unlimited or unsubscribed workspace has nothing to
-	// measure against, and empty meters would be the widest thing on the page.
-	const meters = !entitlements.unlimited && entitlements.planKey !== null;
 
 	return (
 		<Card>
@@ -311,39 +329,57 @@ function CurrentPlanCard({
 				</div>
 			</CardHeader>
 
-			{/* Usage belongs to the plan, so it sits under it. As its own card it
-			    repeated the same story one card later, both of them half empty. */}
-			{(meters || !isAdmin) && (
-				<CardContent className="space-y-4 border-t pt-6">
-					{meters && (
-						<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-							{/* One brand is the rule on every self-serve plan, so a meter would
-							    sit permanently full and say nothing — unless a downgrade left the
-							    workspace over it, which is exactly when it needs saying. */}
-							{showBrandsMeter(entitlements.maxBrands, state.usage.brands) && (
-								<UsageMeter label="Brands" used={state.usage.brands} limit={entitlements.maxBrands} />
-							)}
-							<UsageMeter label="Tracked prompts" used={state.usage.enabledPrompts} limit={entitlements.maxPrompts} />
-							{entitlements.premiumPool > 0 && (
-								<UsageMeter
-									label={
-										state.premiumAddonQuantity > 0
-											? `Premium prompts (${state.premiumAddonQuantity} purchased)`
-											: "Premium prompts"
-									}
-									used={state.usage.premiumAssigned}
-									limit={entitlements.premiumPool}
-								/>
-							)}
-						</div>
-					)}
-					{!isAdmin && (
-						<p className="text-sm text-muted-foreground">
-							Only workspace admins can change the plan or billing details.
-						</p>
-					)}
+			{!isAdmin && (
+				<CardContent className="border-t pt-6">
+					<p className="text-sm text-muted-foreground">Only workspace admins can change the plan or billing details.</p>
 				</CardContent>
 			)}
+		</Card>
+	);
+}
+
+/** A page section: what it is, why it is here, then the cards. */
+function Section({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+	return (
+		<section className="space-y-3">
+			<div>
+				<h2 className="text-lg font-semibold">{title}</h2>
+				<p className="text-sm text-muted-foreground">{description}</p>
+			</div>
+			{children}
+		</section>
+	);
+}
+
+/** Metered plans only: an unlimited or unsubscribed workspace has nothing to measure. */
+function showMeters(entitlements: Entitlements): boolean {
+	return !entitlements.unlimited && entitlements.planKey !== null;
+}
+
+function UsageCard({ state }: { state: BillingState }) {
+	const { entitlements } = state;
+	return (
+		<Card>
+			<CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+				{/* One brand is the rule on every self-serve plan, so a meter would sit
+				    permanently full and say nothing — unless a downgrade left the
+				    workspace over it, which is exactly when it needs saying. */}
+				{showBrandsMeter(entitlements.maxBrands, state.usage.brands) && (
+					<UsageMeter label="Brands" used={state.usage.brands} limit={entitlements.maxBrands} />
+				)}
+				<UsageMeter label="Tracked prompts" used={state.usage.enabledPrompts} limit={entitlements.maxPrompts} />
+				{entitlements.premiumPool > 0 && (
+					<UsageMeter
+						label={
+							state.premiumAddonQuantity > 0
+								? `Premium pairings (${state.premiumAddonQuantity} purchased)`
+								: "Premium pairings"
+						}
+						used={state.usage.premiumAssigned}
+						limit={entitlements.premiumPool}
+					/>
+				)}
+			</CardContent>
 		</Card>
 	);
 }
@@ -409,12 +445,6 @@ function PremiumAddonCard({
 
 	return (
 		<Card>
-			<CardHeader>
-				<CardTitle>Extra premium prompts</CardTitle>
-				<CardDescription>
-					Expand your premium tracking pool for ${PREMIUM_ADDON_MONTHLY_USD}/prompt/month.
-				</CardDescription>
-			</CardHeader>
 			<CardContent className="space-y-3">
 				{error && (
 					<Alert variant="destructive">
@@ -423,7 +453,7 @@ function PremiumAddonCard({
 				)}
 				<div className="flex items-end gap-3">
 					<div className="space-y-1">
-						<Label htmlFor="premium-addon-quantity">Purchased prompts</Label>
+						<Label htmlFor="premium-addon-quantity">Purchased pairings</Label>
 						<Input
 							id="premium-addon-quantity"
 							type="number"

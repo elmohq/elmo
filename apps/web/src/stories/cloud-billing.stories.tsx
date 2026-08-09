@@ -117,9 +117,9 @@ export const ProPlan: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		// The total is stated rather than left for the customer to add up:
-		// Pro at $299 plus 5 extra premium prompts at $5.
+		// Pro at $299 plus 5 extra premium pairings at $5.
 		await expect(await canvas.findByText("$324")).toBeVisible();
-		await expect(await canvas.findByText("5 extra premium prompts")).toBeVisible();
+		await expect(await canvas.findByText("5 extra premium pairings")).toBeVisible();
 		// Pro tracks 150 prompts and includes 20 premium slots, so 5 purchased makes 25.
 		await expect(await canvas.findByText("84 / 150")).toBeVisible();
 		await expect(await canvas.findByText("12 / 25")).toBeVisible();
@@ -253,7 +253,7 @@ export const AddOnReductionRefused: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		const quantity = await canvas.findByLabelText("Purchased prompts");
+		const quantity = await canvas.findByLabelText("Purchased pairings");
 		await userEvent.clear(quantity);
 		await userEvent.type(quantity, "3");
 		await userEvent.click(await canvas.findByRole("button", { name: "Update" }));

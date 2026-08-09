@@ -7,7 +7,13 @@
  * packages/config/src/plans.ts and the cards follow.
  */
 import type { Meta, StoryObj } from "@storybook/react";
-import { PLAN_KEYS, PLANS, PREMIUM_RUNS_PER_DAY, planPlatformBreakdown } from "@workspace/config/plans";
+import {
+	PLAN_KEYS,
+	PLANS,
+	PLATFORM_TIER_LABELS,
+	PREMIUM_RUNS_PER_DAY,
+	planPlatformBreakdown,
+} from "@workspace/config/plans";
 import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import { Route } from "@/routes/_authed/choose-plan";
@@ -74,13 +80,12 @@ export const SamplingQuotedPerPlatformGroup: Story = {
 		await expect((await canvas.findAllByText("Choose any 4 platforms")).length).toBeGreaterThan(0);
 		await expect((await canvas.findAllByText("Scraped Engines")).length).toBeGreaterThan(0);
 		await expect((await canvas.findAllByText("LLM APIs")).length).toBeGreaterThan(0);
-		// The API tier says it is ungrounded, which is what separates it from the
-		// premium one below.
-		await expect((await canvas.findAllByText("No web search")).length).toBeGreaterThan(0);
-
-		// The tier keeps the plan rate; only Claude departs from it.
+		// Picks run at the plan's rate; only the premium tier departs from it.
 		await expect((await canvas.findAllByText(`${PLANS.pro.standardRunsPerDay}×/day`)).length).toBeGreaterThan(0);
 		await expect((await canvas.findAllByText(`${PREMIUM_RUNS_PER_DAY}×/day`)).length).toBeGreaterThan(0);
+
+		// The premium tier names the grounded product, not the pick.
+		await expect((await canvas.findAllByText("GPT-5 Search")).length).toBeGreaterThan(0);
 
 		// Grounded Claude is metered where it is sold, and absent where it is not.
 		// The sentence comes from the catalog, so this page and the marketing table
@@ -90,7 +95,7 @@ export const SamplingQuotedPerPlatformGroup: Story = {
 		).toBeVisible();
 		await expect(canvas.queryByText(/not included on this plan/i)).toBeNull();
 		// Pro and Business sell it; Starter and Basic do not.
-		await expect(await canvas.findAllByText("Premium")).toHaveLength(2);
+		await expect(await canvas.findAllByText(PLATFORM_TIER_LABELS.premium)).toHaveLength(2);
 
 		// Starter has one scraped platform and no API tier.
 		await expect(await canvas.findByText("ChatGPT only")).toBeVisible();

@@ -18,7 +18,6 @@
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
-import { CLOUD_PLATFORMS } from "@workspace/config/plans";
 import type { ModelConfig } from "@workspace/config/scrape-targets";
 import type { DeploymentMode } from "@workspace/config/types";
 import { RUNS_PER_PROMPT } from "../constants";
@@ -111,14 +110,7 @@ export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan 
 		// the expensive call.
 		const config = input.scrapeTargets.find((t) => t.model === model && !isGroundedApiTarget(t));
 		if (!config) continue; // picked platform not configured on this instance
-		// Sampling follows the platform, not the plan, when the platform is dear
-		// enough per call to be metered like a premium one.
-		const metered = CLOUD_PLATFORMS[model]?.premiumRate === true;
-		targets.push({
-			config,
-			intervalHours: metered ? premiumInterval : standardInterval,
-			replication: metered ? 1 : replication,
-		});
+		targets.push({ config, intervalHours: standardInterval, replication });
 	}
 
 	// The premium tier: each prompt/model pair the org has spent a slot on runs
