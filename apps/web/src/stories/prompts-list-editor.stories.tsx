@@ -137,7 +137,7 @@ async function openPremium(canvasElement: HTMLElement, says: RegExp) {
 export const PremiumColumn: StoryObj = {
 	render: () => (
 		<Harness
-			premium={{ total: 20, assignedElsewhere: 4 }}
+			premium={{ total: 20, assignedElsewhere: 4, brandId: "mock-brand-id" }}
 			initial={[
 				...entries(["best crm for small business"], { premiumModels: ["claude"] }),
 				...entries(["cheapest project management tool"]),
@@ -164,7 +164,7 @@ export const PremiumColumn: StoryObj = {
 export const PremiumSpendsASlotPerModel: StoryObj = {
 	render: () => (
 		<Harness
-			premium={{ total: 20, assignedElsewhere: 0 }}
+			premium={{ total: 20, assignedElsewhere: 0, brandId: "mock-brand-id" }}
 			initial={entries(["best crm for small business"], { premiumModels: ["claude"] })}
 		/>
 	),
@@ -185,7 +185,7 @@ export const PremiumSpendsASlotPerModel: StoryObj = {
 export const PremiumAtCapacity: StoryObj = {
 	render: () => (
 		<Harness
-			premium={{ total: 5, assignedElsewhere: 4 }}
+			premium={{ total: 5, assignedElsewhere: 4, brandId: "mock-brand-id" }}
 			initial={[
 				...entries(["best crm for small business"], { premiumModels: ["claude"] }),
 				...entries(["cheapest project management tool"]),
@@ -196,6 +196,9 @@ export const PremiumAtCapacity: StoryObj = {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText("5 of 5")).toBeVisible();
 		await expect(await canvas.findByText(/unassign one to free it up/i)).toBeVisible();
+		// Buying more is a link to billing rather than an instruction to go find it.
+		// The router mock renders Link as a button, hence the role.
+		await expect((await canvas.findAllByRole("button", { name: /buy more/i })).length).toBeGreaterThan(0);
 
 		// The model already spending a slot can be given back; the rest cannot be added.
 		await openPremium(canvasElement, /premium models: claude/i);
@@ -208,7 +211,7 @@ export const PremiumAtCapacity: StoryObj = {
 export const PremiumIgnoresDisabledPrompts: StoryObj = {
 	render: () => (
 		<Harness
-			premium={{ total: 20, assignedElsewhere: 0 }}
+			premium={{ total: 20, assignedElsewhere: 0, brandId: "mock-brand-id" }}
 			initial={entries(["most durable trail runners"], { enabled: false })}
 		/>
 	),

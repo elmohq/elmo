@@ -10,6 +10,7 @@
  */
 
 import { IconInfoCircle } from "@tabler/icons-react";
+import { Link } from "@tanstack/react-router";
 import { getModelMeta } from "@workspace/config/models";
 import { PREMIUM_MODELS, PREMIUM_RUNS_PER_DAY, premiumModelLabel, premiumSlotsUsed } from "@workspace/config/plans";
 import { describeSkipped, parseBulkPrompts } from "@workspace/lib/bulk-prompts";
@@ -25,7 +26,7 @@ import { Textarea } from "@workspace/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { Inbox, ListPlus, Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
 export interface EditablePrompt {
 	id?: string;
@@ -50,6 +51,8 @@ export interface EditablePrompt {
 export interface PremiumAllowance {
 	total: number;
 	assignedElsewhere: number;
+	/** Where buying more happens, so the two places that say so can link there. */
+	brandId: string;
 }
 
 export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePrompt {
@@ -64,6 +67,15 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 	};
 }
 
+/** Both places that offer more pairings send you to the same page. */
+function BillingLink({ brandId, children }: { brandId: string; children: ReactNode }) {
+	return (
+		<Link to="/app/$brand/settings/billing" params={{ brand: brandId }} className="underline">
+			{children}
+		</Link>
+	);
+}
+
 /**
  * Which premium models a prompt is tracked on. A popover rather than a checkbox
  * per model because the table has one narrow column for this and the list grows
@@ -73,13 +85,15 @@ function PremiumModelsField({
 	selected,
 	promptEnabled,
 	atCapacity,
+	brandId,
 	onChange,
 	showLabel,
 }: {
 	selected: string[];
 	promptEnabled: boolean;
-	/** The workspace has no slots left, so only unticking is allowed. */
+	/** The workspace has no pairings left, so only unticking is allowed. */
 	atCapacity: boolean;
+	brandId: string;
 	onChange: (models: string[]) => void;
 	showLabel?: boolean;
 }) {
@@ -130,7 +144,7 @@ function PremiumModelsField({
 				})}
 				{atCapacity && (
 					<p className="px-2 pt-1 text-xs text-muted-foreground">
-						No premium pairings left. Untick one, or buy more on the billing page.
+						No premium pairings left. Untick one, or <BillingLink brandId={brandId}>buy more</BillingLink>.
 					</p>
 				)}
 			</PopoverContent>
@@ -292,7 +306,12 @@ export function PromptsListEditor({
 						{premiumUsed} of {premium.total}
 					</span>{" "}
 					pairings in use across this workspace — one for each model a prompt is tracked on.
-					{premiumAtCapacity && " Unassign one to free it up, or buy more on the billing page."}
+					{premiumAtCapacity && (
+						<>
+							{" "}
+							Unassign one to free it up, or <BillingLink brandId={premium.brandId}>buy more</BillingLink>.
+						</>
+					)}
 				</p>
 			)}
 
@@ -414,6 +433,7 @@ export function PromptsListEditor({
 										selected={prompt.premiumModels}
 										promptEnabled={prompt.enabled}
 										atCapacity={premiumAtCapacity}
+										brandId={premium.brandId}
 										onChange={(premiumModels) => update(index, { premiumModels })}
 										showLabel
 									/>
@@ -452,6 +472,7 @@ export function PromptsListEditor({
 											selected={prompt.premiumModels}
 											promptEnabled={prompt.enabled}
 											atCapacity={premiumAtCapacity}
+											brandId={premium.brandId}
 											onChange={(premiumModels) => update(index, { premiumModels })}
 										/>
 									</div>

@@ -65,7 +65,11 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/prompts")({
 		return {
 			prompts: brandPrompts,
 			premium: premiumPool.available
-				? { total: premiumPool.total, assignedElsewhere: Math.max(0, premiumPool.assigned - spentHere) }
+				? {
+						total: premiumPool.total,
+						assignedElsewhere: Math.max(0, premiumPool.assigned - spentHere),
+						brandId: params.brand,
+					}
 				: undefined,
 		};
 	},
