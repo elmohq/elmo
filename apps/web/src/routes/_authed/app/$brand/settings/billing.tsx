@@ -361,12 +361,7 @@ function UsageCard({ state }: { state: BillingState }) {
 	return (
 		<Card>
 			<CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				{/* One brand is the rule on every self-serve plan, so a meter would sit
-				    permanently full and say nothing — unless a downgrade left the
-				    workspace over it, which is exactly when it needs saying. */}
-				{showBrandsMeter(entitlements.maxBrands, state.usage.brands) && (
-					<UsageMeter label="Brands" used={state.usage.brands} limit={entitlements.maxBrands} />
-				)}
+				<UsageMeter label="Brands" used={state.usage.brands} limit={entitlements.maxBrands} />
 				<UsageMeter label="Tracked prompts" used={state.usage.enabledPrompts} limit={entitlements.maxPrompts} />
 				{entitlements.premiumPool > 0 && (
 					<UsageMeter
@@ -388,11 +383,6 @@ function UsageCard({ state }: { state: BillingState }) {
 function humanizeStatus(status: string): string {
 	const words = status.replace(/_/g, " ");
 	return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
-function showBrandsMeter(limit: number | null, used: number): boolean {
-	if (limit === null) return false;
-	return limit > 1 || used > limit;
 }
 
 function UsageMeter({ label, used, limit }: { label: string; used: number; limit: number | null }) {

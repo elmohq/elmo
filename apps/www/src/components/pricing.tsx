@@ -194,7 +194,9 @@ function CloudPlans() {
 							<p className="mt-1 text-xs text-zinc-500 tabular-nums">${plan.annualPriceUsd}/yr</p>
 
 							<ul className="mt-4 space-y-1.5 text-xs text-zinc-700">
-								<li></li>
+								<li>
+									{plan.maxBrands} brand{plan.maxBrands === 1 ? "" : "s"}
+								</li>
 								<li>{plan.maxPrompts} tracked prompts</li>
 							</ul>
 

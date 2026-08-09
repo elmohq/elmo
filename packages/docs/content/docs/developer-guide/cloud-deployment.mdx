@@ -149,11 +149,7 @@ invoices).
 
 ## Custom plans
 
-Custom plans are configuration, not code. `maxBrands` is the most common override: every self-serve
-plan tracks exactly one brand, so an agency or a multi-brand company needs an agreement rather than a
-bigger tier.
-
-Insert (or update) a row in `organization_settings`:
+Custom plans are configuration, not code. Insert (or update) a row in `organization_settings`:
 
 ```sql
 INSERT INTO organization_settings (organization_id, entitlement_overrides)

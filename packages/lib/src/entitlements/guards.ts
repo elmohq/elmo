@@ -14,7 +14,7 @@
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
-import { premiumPairings } from "@workspace/config/plans";
+import { MAX_SELF_SERVE_BRANDS, premiumPairings } from "@workspace/config/plans";
 import { and, count, eq, sql } from "drizzle-orm";
 import { db } from "../db/db";
 import { brands, prompts } from "../db/schema";
@@ -70,13 +70,15 @@ export function decideBrandCreate(entitlements: Entitlements, currentBrandCount:
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
 	if (entitlements.maxBrands !== null && currentBrandCount >= entitlements.maxBrands) {
-		// No self-serve plan sells a second brand, so "upgrade" would send a
-		// customer looking for a tier that does not exist.
+		// Only point at an upgrade when one actually sells more brands; at the top
+		// of the ladder that would send a customer looking for a tier that does
+		// not exist.
+		const included = `Your plan includes ${entitlements.maxBrands} brand${entitlements.maxBrands === 1 ? "" : "s"}.`;
 		return deny(
 			"brand-limit",
-			entitlements.maxBrands === 1
-				? "Your plan tracks one brand. Talk to us about a custom plan to track more."
-				: `Your plan includes ${entitlements.maxBrands} brands. Talk to us about a custom plan to track more.`,
+			entitlements.maxBrands < MAX_SELF_SERVE_BRANDS
+				? `${included} Upgrade to add more.`
+				: `${included} Talk to us about a custom plan to track more.`,
 		);
 	}
 	return ALLOWED;

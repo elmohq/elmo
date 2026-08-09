@@ -123,8 +123,8 @@ export const ProPlan: Story = {
 		// Pro tracks 150 prompts and includes 20 premium slots, so 5 purchased makes 25.
 		await expect(await canvas.findByText("84 / 150")).toBeVisible();
 		await expect(await canvas.findByText("12 / 25")).toBeVisible();
-		// One brand is the rule, so a meter reading 1 / 1 would only take up room.
-		await expect(canvas.queryByText("Brands")).toBeNull();
+		// Pro includes two brands, so the meter has something to say.
+		await expect(await canvas.findByText("1 / 2")).toBeVisible();
 	},
 };
 

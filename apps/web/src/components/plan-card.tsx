@@ -23,7 +23,12 @@ import type { ReactNode } from "react";
 
 /** What the plan covers regardless of platform. */
 function planQuotas(plan: PlanDefinition): string[] {
-	return [`${plan.maxPrompts} tracked prompts`, "API access", "Unlimited seats"];
+	return [
+		`${plan.maxBrands} brand${plan.maxBrands === 1 ? "" : "s"}`,
+		`${plan.maxPrompts} tracked prompts`,
+		"API access",
+		"Unlimited seats",
+	];
 }
 
 /** The catalog's tier, as the shared renderer wants it. */

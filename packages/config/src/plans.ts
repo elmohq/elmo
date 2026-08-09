@@ -145,12 +145,7 @@ export interface PlanDefinition {
 	monthlyPriceUsd: number;
 	/** Annual = 10× monthly (two months free). */
 	annualPriceUsd: number;
-	/**
-	 * Brands per organization. Every self-serve plan tracks one: a second brand
-	 * is a different job to be done, not more of the same one, and pricing it as
-	 * a tier step made the ladder about seats-for-agencies rather than depth of
-	 * tracking. Agencies and multi-brand companies get a custom plan.
-	 */
+	/** Brands per organization. Every limit below is org-wide, not per brand. */
 	maxBrands: number;
 	/** Organization-wide pool of enabled (tracked) prompts. */
 	maxPrompts: number;
@@ -202,7 +197,7 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
 		name: "Pro",
 		monthlyPriceUsd: 299,
 		annualPriceUsd: 2990,
-		maxBrands: 1,
+		maxBrands: 2,
 		maxPrompts: 150,
 		platformMenu: STANDARD_PLATFORM_MENU,
 		platformPicks: 4,
@@ -215,7 +210,7 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
 		name: "Business",
 		monthlyPriceUsd: 649,
 		annualPriceUsd: 6490,
-		maxBrands: 1,
+		maxBrands: 5,
 		maxPrompts: 350,
 		platformMenu: STANDARD_PLATFORM_MENU,
 		platformPicks: 4,
@@ -224,6 +219,10 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
 		premiumAddonAvailable: true,
 	},
 };
+
+/** The most brands any self-serve plan sells, so a guard can tell a customer
+ *  whether upgrading would help or whether they need a custom agreement. */
+export const MAX_SELF_SERVE_BRANDS = Math.max(...Object.values(PLANS).map((plan) => plan.maxBrands));
 
 export const PLAN_KEYS = Object.keys(PLANS) as PlanKey[];
 

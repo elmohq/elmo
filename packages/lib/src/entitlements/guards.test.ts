@@ -52,15 +52,17 @@ describe("no active plan blocks all additions", () => {
 });
 
 describe("decideBrandCreate", () => {
-	it("gives a self-serve plan its one brand and stops there", () => {
-		expect(decideBrandCreate(PRO, 0).allowed).toBe(true);
-		expect(decideBrandCreate(PRO, 1)).toMatchObject({ allowed: false, code: "brand-limit" });
+	it("allows under the plan limit and denies at it", () => {
+		expect(decideBrandCreate(PRO, 1).allowed).toBe(true);
+		expect(decideBrandCreate(PRO, 2)).toMatchObject({ allowed: false, code: "brand-limit" });
 	});
 
-	it("does not send a customer looking for a tier that sells a second brand", () => {
-		// Every self-serve plan tracks one; more is a custom agreement.
-		expect(decideBrandCreate(PRO, 1).message).toMatch(/custom plan/i);
-		expect(decideBrandCreate(PRO, 1).message).not.toMatch(/upgrade/i);
+	it("points at an upgrade only while one sells more brands", () => {
+		// Pro has Business above it; Business is the top of the ladder, so there
+		// is nothing to upgrade to and the answer is a custom agreement.
+		expect(decideBrandCreate(PRO, 2).message).toMatch(/upgrade/i);
+		expect(decideBrandCreate(planEntitlements("business"), 5).message).toMatch(/custom plan/i);
+		expect(decideBrandCreate(planEntitlements("business"), 5).message).not.toMatch(/upgrade/i);
 	});
 
 	it("lets a custom plan raise the limit", () => {
