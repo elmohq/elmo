@@ -377,13 +377,40 @@ export const SelfHostedShowsCostEstimates: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		// Stated on the row rather than hidden behind a hover, and per platform
-		// rather than as one blanket figure: BrightData at $0.01/run over 40
-		// prompts x 1/day x 5 calls x 30 days is $60, while Claude's API is $0.015.
-		await expect(
-			(await canvas.findAllByText(/≈\$0\.010\/run · \$60\.00\/mo here · BrightData/)).length,
-		).toBeGreaterThan(0);
-		await expect(await canvas.findByText(/≈\$0\.015\/run · \$90\.00\/mo here/)).toBeVisible();
+		// A row states its unit price and vendor, stated rather than hidden behind
+		// a hover. The monthly figure is the page's, not the row's.
+		await expect((await canvas.findAllByText(/≈\$0\.010\/run · BrightData/)).length).toBeGreaterThan(0);
+		await expect(canvas.queryByText(/\/mo here/)).toBeNull();
+
+		// Every configured platform is on, so the total is the whole bill: 40
+		// prompts x 1/day x 5 calls x 30 days against each platform's unit price.
+		await expect(await canvas.findByText(/≈\$\d[\d,]*\/mo/)).toBeVisible();
+	},
+};
+
+/** Unticking a platform quotes the bill it would leave behind, before saving. */
+export const SelfHostedTotalFollowsTheSelection: Story = {
+	render: () => {
+		loader({
+			available: optionsByModel(true, { excludePremium: false }),
+			enabledModels: null,
+			planLimits: null,
+			upgradeOptions: [],
+			costBasis: { enabledPrompts: 40, runsPerDay: 1, replication: 5 },
+			unconfiguredPlatforms: [],
+		});
+		return <LlmsSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		// BrightData at $0.01/run over 40 prompts x 1/day x 5 calls x 30 days is $60,
+		// so dropping Copilot should quote a smaller bill than the page total.
+		await userEvent.click(await canvas.findByRole("checkbox", { name: /copilot/i }));
+		const bar = await canvas.findByText(/platforms selected · ≈\$[\d,.]+\/mo, down from \$[\d,.]+/);
+		await expect(bar).toBeVisible();
+
+		const [next, saved] = (bar.textContent ?? "").match(/\$([\d,.]+)/g) ?? [];
+		await expect(Number(next?.replace(/[$,]/g, ""))).toBeLessThan(Number(saved?.replace(/[$,]/g, "")));
 	},
 };
 

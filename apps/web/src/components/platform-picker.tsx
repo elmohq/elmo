@@ -21,13 +21,14 @@ export type PlatformOption = {
 };
 
 /**
- * Self-hosted only: what this brand's tracking costs to run, so a row can show
- * the monthly figure that actually decides whether to switch a platform on.
+ * Self-hosted only: what this brand's tracking costs to run, so the page can
+ * total it. A per-row monthly figure was the wrong grain — the decision is what
+ * the whole selection costs, not what one platform contributes to it.
  */
 export type CostBasis = { enabledPrompts: number; runsPerDay: number; replication: number };
 
 /** Cents below a dollar, whole dollars above — the precision each range needs. */
-function formatUsd(amount: number): string {
+export function formatUsd(amount: number): string {
 	if (amount === 0) return "$0";
 	if (amount < 0.01) return `$${amount.toFixed(4)}`;
 	if (amount < 1) return `$${amount.toFixed(3)}`;
@@ -36,29 +37,38 @@ function formatUsd(amount: number): string {
 }
 
 /**
- * The operator's line under a platform: what it costs them to run and who
- * serves it. Renders nothing for a customer, who is sent neither.
+ * The operator's line under a platform: the unit price and who serves it. The
+ * monthly figure belongs to the page, which can total the whole selection —
+ * per row it invited adding up twelve numbers to answer one question.
  */
-export function PlatformOperatorDetail({
-	option,
-	costBasis = null,
-}: {
-	option: PlatformOption;
-	costBasis?: CostBasis | null;
-}) {
+export function PlatformOperatorDetail({ option }: { option: PlatformOption }) {
 	if (option.providerName == null && option.costPerRunUsd == null) return null;
-
-	const monthlyUsd = costBasis
-		? projectMonthlyTargetCostUsd({ costPerRunUsd: option.costPerRunUsd ?? null, ...costBasis })
-		: null;
 
 	const parts = [
 		option.costPerRunUsd != null ? `≈${formatUsd(option.costPerRunUsd)}/run` : null,
-		monthlyUsd !== null ? `${formatUsd(monthlyUsd)}/mo here` : null,
 		option.providerName ?? null,
 	].filter(Boolean);
 
 	return <span className="block font-mono text-[10px] text-muted-foreground tabular-nums">{parts.join(" · ")}</span>;
+}
+
+/**
+ * What a selection costs to run for a month, at this brand's prompt count and
+ * cadence. Platforms with no price estimate contribute nothing, so a figure is a
+ * floor rather than a guess.
+ */
+export function projectSelectionCostUsd(
+	options: PlatformOption[],
+	selected: ReadonlySet<string>,
+	costBasis: CostBasis,
+): number {
+	return options
+		.filter((option) => selected.has(option.model))
+		.reduce(
+			(total, option) =>
+				total + (projectMonthlyTargetCostUsd({ costPerRunUsd: option.costPerRunUsd ?? null, ...costBasis }) ?? 0),
+			0,
+		);
 }
 
 interface PlatformPickerProps {
@@ -68,8 +78,6 @@ interface PlatformPickerProps {
 	onSelectedChange: (next: Set<string>) => void;
 	/** Unchecked options disable once this many are selected; null = no limit. */
 	limit: number | null;
-	/** Omit outside self-hosted, where the viewer doesn't pay the providers. */
-	costBasis?: CostBasis | null;
 	disabled?: boolean;
 	className?: string;
 }
@@ -79,7 +87,6 @@ export function PlatformPicker({
 	selected,
 	onSelectedChange,
 	limit,
-	costBasis = null,
 	disabled = false,
 	className,
 }: PlatformPickerProps) {
@@ -117,7 +124,7 @@ export function PlatformPicker({
 						    long provider string can't squeeze the platform it describes. */}
 						<span className="min-w-0 flex-1">
 							<span className="block truncate text-sm font-medium">{getModelMeta(option.model).label}</span>
-							<PlatformOperatorDetail option={option} costBasis={costBasis} />
+							<PlatformOperatorDetail option={option} />
 						</span>
 					</label>
 				);

@@ -25,7 +25,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@work
 import { Progress } from "@workspace/ui/components/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useState } from "react";
-import { PlatformOperatorDetail, PlatformPicker } from "@/components/platform-picker";
+import { formatUsd, PlatformOperatorDetail, PlatformPicker, projectSelectionCostUsd } from "@/components/platform-picker";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { groupPlatformOptions, platformGroupCopy, platformGroupId } from "@/lib/platform-groups";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
@@ -94,6 +94,13 @@ function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 
 	const groups = groupPlatformOptions(picker.available);
 	const limit = picker.planLimits?.platformPicks ?? null;
+	const costBasis = picker.costBasis;
+	const spend = costBasis
+		? {
+				saved: projectSelectionCostUsd(picker.available, stored, costBasis),
+				next: projectSelectionCostUsd(picker.available, selected, costBasis),
+			}
+		: null;
 	const overLimit = limit !== null && selected.size > limit;
 	const isDirty = selected.size !== stored.size || [...selected].some((m) => !stored.has(m));
 
@@ -127,6 +134,20 @@ function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 
 	return (
 		<div className="space-y-4">
+			{/* Self-hosted only: the operator pays these bills, and the figure that
+			    decides a pick is what the whole selection costs, not one row of it. */}
+			{spend && costBasis && (
+				<div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/30 px-4 py-3">
+					<p className="text-sm text-muted-foreground">
+						Estimated provider spend for this brand: {costBasis.enabledPrompts} tracked prompt
+						{costBasis.enabledPrompts === 1 ? "" : "s"} sampled {costBasis.runsPerDay}×/day across the platforms below.
+					</p>
+					<Badge variant="secondary" className="font-mono tabular-nums">
+						≈{formatUsd(spend.saved)}/mo
+					</Badge>
+				</div>
+			)}
+
 			{limit !== null && (
 				<div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-4 py-3">
 					<p className="text-sm text-muted-foreground">
@@ -154,7 +175,6 @@ function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 								selected={selected}
 								onSelectedChange={setSelected}
 								limit={limit}
-								costBasis={picker.costBasis}
 								disabled={saving}
 							/>
 						</CardContent>
@@ -180,7 +200,7 @@ function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 			<UnsavedChangesBar
 				isDirty={isDirty && selected.size > 0 && !overLimit}
 				isSaving={saving}
-				summary={`${selected.size} platform${selected.size === 1 ? "" : "s"} selected`}
+				summary={summarizeSelection(selected.size, spend)}
 				error={error}
 				onSave={save}
 				onDiscard={() => {
@@ -190,6 +210,14 @@ function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 			/>
 		</div>
 	);
+}
+
+/** What the bar says: how many platforms, and where saving leaves the bill. */
+function summarizeSelection(count: number, spend: { saved: number; next: number } | null): string {
+	const platforms = `${count} platform${count === 1 ? "" : "s"} selected`;
+	if (!spend) return platforms;
+	const direction = spend.next > spend.saved ? "up from" : spend.next < spend.saved ? "down from" : "unchanged from";
+	return `${platforms} · ≈${formatUsd(spend.next)}/mo, ${direction} ${formatUsd(spend.saved)}`;
 }
 
 /**
@@ -248,7 +276,7 @@ function SinglePlatformSummary({ picker }: { picker: ModelPickerState }) {
 				<div className="flex items-center gap-3 rounded-md border p-3">
 					<ModelIcon iconId={getModelMeta(option.model).iconId} className="size-5" />
 					<span className="flex-1 text-sm font-medium">{getModelMeta(option.model).label}</span>
-					<PlatformOperatorDetail option={option} costBasis={picker.costBasis} />
+					<PlatformOperatorDetail option={option} />
 				</div>
 				<p className="text-sm text-muted-foreground">Your plan tracks one platform for this brand.</p>
 
