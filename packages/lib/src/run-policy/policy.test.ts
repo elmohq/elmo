@@ -21,7 +21,7 @@ import {
 const NOW = new Date("2026-08-05T12:00:00Z");
 
 const SELF_HOSTED_TARGETS = parseScrapeTargets(
-	"chatgpt:brightdata:online,perplexity:brightdata:online,claude:anthropic-api:claude-sonnet-4-6:online",
+	"chatgpt:brightdata:online,perplexity:brightdata:online,claude:anthropic-api:claude-sonnet-5:online",
 );
 
 const CLOUD_TARGETS = parseScrapeTargets(
@@ -36,8 +36,8 @@ const CLOUD_TARGETS = parseScrapeTargets(
 		"deepseek:openrouter:deepseek/deepseek-v3.2",
 		"grok:openrouter:x-ai/grok-4.5",
 		"mistral:openrouter:mistralai/mistral-medium-3.1",
-		"claude:anthropic-api:claude-sonnet-4-6",
-		"claude:anthropic-api:claude-sonnet-4-6:online",
+		"claude:anthropic-api:claude-sonnet-5",
+		"claude:anthropic-api:claude-sonnet-5:online",
 	].join(","),
 );
 
@@ -151,7 +151,7 @@ describe("defaultPlatformPicks", () => {
 
 	it("offers no Claude pick when the instance only configures the grounded target", () => {
 		// Grounded Claude belongs to the per-prompt pool, never to platform picks.
-		const groundedOnly = parseScrapeTargets("chatgpt:brightdata:online,claude:anthropic-api:claude-sonnet-4-6:online");
+		const groundedOnly = parseScrapeTargets("chatgpt:brightdata:online,claude:anthropic-api:claude-sonnet-5:online");
 		const custom = cloudEntitlements("business", { overrides: { platformPicks: 20 } });
 		expect(defaultPlatformPicks(custom, groundedOnly)).toEqual(["chatgpt"]);
 	});
@@ -295,7 +295,7 @@ describe("resolvePromptRunPlan: cloud", () => {
 
 	it("spends a slot per model, so two premium models add two grounded targets", () => {
 		const targets = parseScrapeTargets(
-			"chatgpt:brightdata:online,claude:anthropic-api:claude-sonnet-4-6,claude:anthropic-api:claude-sonnet-4-6:online,grok:openrouter:x-ai/grok-4.5:online",
+			"chatgpt:brightdata:online,claude:anthropic-api:claude-sonnet-5,claude:anthropic-api:claude-sonnet-5:online,grok:openrouter:x-ai/grok-4.5:online",
 		);
 		const plan = resolvePromptRunPlan(
 			cloudInput({
@@ -334,7 +334,7 @@ describe("resolvePromptRunPlan: cloud", () => {
 	});
 
 	it("never resolves a pick to the grounded target, even without an ungrounded one", () => {
-		const groundedOnly = parseScrapeTargets("chatgpt:brightdata:online,claude:anthropic-api:claude-sonnet-4-6:online");
+		const groundedOnly = parseScrapeTargets("chatgpt:brightdata:online,claude:anthropic-api:claude-sonnet-5:online");
 		const plan = resolvePromptRunPlan(
 			cloudInput({
 				scrapeTargets: groundedOnly,

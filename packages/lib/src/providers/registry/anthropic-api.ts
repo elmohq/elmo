@@ -18,7 +18,7 @@ import type {
 	StructuredResearchResult,
 } from "../types";
 
-const DEFAULT_RESEARCH_MODEL = "claude-sonnet-4-6";
+const DEFAULT_RESEARCH_MODEL = "claude-sonnet-5";
 
 function getAnthropicLanguageModel(model: string) {
 	const apiKey = getCredential("ANTHROPIC_API_KEY");

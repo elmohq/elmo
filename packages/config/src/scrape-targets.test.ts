@@ -31,10 +31,10 @@ describe("formatScrapeTarget", () => {
 			formatScrapeTarget({
 				model: "claude",
 				provider: "openrouter",
-				version: "anthropic/claude-sonnet-4.6",
+				version: "anthropic/claude-sonnet-5",
 				webSearch: true,
 			}),
-		).toBe("claude:openrouter:anthropic/claude-sonnet-4.6:online");
+		).toBe("claude:openrouter:anthropic/claude-sonnet-5:online");
 	});
 });
 
@@ -43,7 +43,7 @@ describe("round-trip", () => {
 		const configs: ModelConfig[] = [
 			{ model: "chatgpt", provider: "olostep", version: undefined, webSearch: true },
 			{ model: "chatgpt", provider: "brightdata", version: undefined, webSearch: false },
-			{ model: "claude", provider: "anthropic-api", version: "claude-sonnet-4-6", webSearch: true },
+			{ model: "claude", provider: "anthropic-api", version: "claude-sonnet-5", webSearch: true },
 			{ model: "chatgpt", provider: "openai-api", version: "gpt-5-mini", webSearch: false },
 			{ model: "chatgpt", provider: "openrouter", version: "openai/gpt-5-mini:free", webSearch: true },
 			{ model: "google-ai-mode", provider: "dataforseo", version: undefined, webSearch: true },
@@ -55,7 +55,7 @@ describe("round-trip", () => {
 
 	it("format(parse(s)) returns s", () => {
 		const value =
-			"chatgpt:olostep:online,claude:openrouter:anthropic/claude-sonnet-4.6,mistral:mistral-api:mistral-medium-latest:online,chatgpt:brightdata";
+			"chatgpt:olostep:online,claude:openrouter:anthropic/claude-sonnet-5,mistral:mistral-api:mistral-medium-latest:online,chatgpt:brightdata";
 		expect(parseScrapeTargets(value).map(formatScrapeTarget).join(",")).toBe(value);
 	});
 });

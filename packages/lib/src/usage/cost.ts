@@ -19,11 +19,14 @@ const PROVIDER_COST_ESTIMATES_USD: Record<string, number> = {
 	cloro: 0.01,
 	dataforseo: 0.005,
 	"openai-api": 0.01,
-	"anthropic-api": 0.015,
+	"anthropic-api": 0.01,
 	"mistral-api": 0.005,
 	openrouter: 0.005,
 	stub: 0,
 };
+
+// The Anthropic figure tracks Sonnet 5 ($2/$10 per Mtok) at a typical answer
+// length; Sonnet 4.6 before it was half again as much.
 
 /** Anthropic bills native web search per use (plus tokens); max_uses is 1. */
 const ANTHROPIC_WEB_SEARCH_SURCHARGE_USD = 0.01;

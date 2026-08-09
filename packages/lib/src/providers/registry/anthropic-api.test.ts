@@ -14,7 +14,7 @@ import { anthropicApi } from "./anthropic-api";
 const CAP = API_PROVIDER_MAX_OUTPUT_TOKENS["anthropic-api"];
 
 beforeEach(() => {
-	anthropicClient.create.mockResolvedValue({ content: [], model: "claude-sonnet-4-6" });
+	anthropicClient.create.mockResolvedValue({ content: [], model: "claude-sonnet-5" });
 });
 
 afterEach(() => {
@@ -28,7 +28,7 @@ function sentArgs(): Record<string, any> {
 
 describe("anthropic-api run", () => {
 	it("caps output tokens and bounds web-search uses when webSearch is on", async () => {
-		await anthropicApi.run("claude", "prompt", { webSearch: true, version: "claude-sonnet-4-6" });
+		await anthropicApi.run("claude", "prompt", { webSearch: true, version: "claude-sonnet-5" });
 
 		const args = sentArgs();
 		expect(args.max_tokens).toBe(CAP);
@@ -38,7 +38,7 @@ describe("anthropic-api run", () => {
 	});
 
 	it("caps output tokens and sends no web_search tool when webSearch is off", async () => {
-		await anthropicApi.run("claude", "prompt", { webSearch: false, version: "claude-sonnet-4-6" });
+		await anthropicApi.run("claude", "prompt", { webSearch: false, version: "claude-sonnet-5" });
 
 		const args = sentArgs();
 		expect(args.max_tokens).toBe(CAP);
@@ -49,11 +49,11 @@ describe("anthropic-api run", () => {
 		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		anthropicClient.create.mockResolvedValue({
 			content: [],
-			model: "claude-sonnet-4-6",
+			model: "claude-sonnet-5",
 			stop_reason: "max_tokens",
 		});
 
-		await anthropicApi.run("claude", "prompt", { webSearch: false, version: "claude-sonnet-4-6" });
+		await anthropicApi.run("claude", "prompt", { webSearch: false, version: "claude-sonnet-5" });
 
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining("hit the output cap"));
 	});

@@ -9,8 +9,8 @@ const CLOUD_TARGETS = parseScrapeTargets(
 	[
 		"chatgpt:brightdata:online",
 		"perplexity:brightdata:online",
-		"claude:anthropic-api:claude-sonnet-4-6",
-		"claude:anthropic-api:claude-sonnet-4-6:online",
+		"claude:anthropic-api:claude-sonnet-5",
+		"claude:anthropic-api:claude-sonnet-5:online",
 	].join(","),
 );
 

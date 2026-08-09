@@ -39,8 +39,8 @@ const CLOUD_TARGETS = parseScrapeTargets(
 		"deepseek:openrouter:deepseek/deepseek-v3.2",
 		"grok:openrouter:x-ai/grok-4.5",
 		"mistral:openrouter:mistralai/mistral-medium-3.1",
-		"claude:anthropic-api:claude-sonnet-4-6",
-		"claude:anthropic-api:claude-sonnet-4-6:online",
+		"claude:anthropic-api:claude-sonnet-5",
+		"claude:anthropic-api:claude-sonnet-5:online",
 	].join(","),
 );
 
