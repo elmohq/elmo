@@ -21,14 +21,14 @@ function escapeHtml(value: string): string {
 		.replace(/'/g, "&#39;");
 }
 
-function wrapHtml(heading: string, sentence: string, url: string): string {
+function wrapHtml(heading: string, sentence: string, url: string, cta = "Continue"): string {
 	return `
 		<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
 			<h1 style="font-size: 20px;">${heading}</h1>
 			<p>${sentence}</p>
 			<p>
 				<a href="${url}" style="display: inline-block; padding: 10px 20px; background-color: #111827; color: #ffffff; text-decoration: none; border-radius: 6px;">
-					Continue
+					${cta}
 				</a>
 			</p>
 			<p style="color: #6b7280; font-size: 13px;">
@@ -72,5 +72,50 @@ export function invitationEmail(input: { inviterName: string; orgName: string; u
 			url,
 		),
 		text: `${inviterName} invited you to join ${orgName} on Elmo. Accept the invitation here: ${url}`,
+	};
+}
+
+export function paymentFailedEmail(input: { orgName: string; graceDays: number; url: string }): EmailContent {
+	const { orgName, graceDays, url } = input;
+	const safeOrgName = escapeHtml(orgName);
+	return {
+		subject: `Payment failed for ${orgName} on Elmo`,
+		html: wrapHtml(
+			"Payment failed",
+			`We couldn't renew the subscription for the ${safeOrgName} workspace. Tracking continues while Stripe retries, but it pauses after ${graceDays} days unless a payment succeeds — update your card in the billing portal to avoid an interruption.`,
+			url,
+			"Update payment method",
+		),
+		text: `We couldn't renew the subscription for the ${orgName} workspace. Update your card within ${graceDays} days to keep tracking running: ${url}`,
+	};
+}
+
+export function paymentRecoveredEmail(input: { orgName: string; url: string }): EmailContent {
+	const { orgName, url } = input;
+	const safeOrgName = escapeHtml(orgName);
+	return {
+		subject: `Payment received for ${orgName} on Elmo`,
+		html: wrapHtml(
+			"You're all set",
+			`Payment for the ${safeOrgName} workspace went through and the subscription is active again. No further action is needed.`,
+			url,
+			"View billing",
+		),
+		text: `Payment for the ${orgName} workspace went through and the subscription is active again. No further action is needed. View billing: ${url}`,
+	};
+}
+
+export function subscriptionEndedEmail(input: { orgName: string; url: string }): EmailContent {
+	const { orgName, url } = input;
+	const safeOrgName = escapeHtml(orgName);
+	return {
+		subject: `Your Elmo subscription for ${orgName} has ended`,
+		html: wrapHtml(
+			"Subscription ended",
+			`The subscription for the ${safeOrgName} workspace has ended, so prompt tracking is stopped. Your existing data stays viewable, and choosing a plan restarts tracking.`,
+			url,
+			"View billing",
+		),
+		text: `The subscription for the ${orgName} workspace has ended, so prompt tracking is stopped. Your existing data stays viewable, and choosing a plan restarts tracking. View billing: ${url}`,
 	};
 }

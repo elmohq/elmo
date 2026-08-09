@@ -37,9 +37,36 @@ export interface StructuredResearchResult<T> {
 	modelVersion?: string;
 }
 
+/**
+ * How a provider reaches the model, which is what a customer is really choosing
+ * between:
+ *  - "scraped": the consumer product is driven and its rendered answer read
+ *    back, so results include the surrounding surface (ads, shopping modules,
+ *    the citation list a real user sees).
+ *  - "api": the model is called directly, so results are the model's own answer
+ *    with no consumer chrome, and web grounding only happens when the model has
+ *    a search tool and it is switched on.
+ */
+export type ProviderAccess = "scraped" | "api";
+
 export interface Provider {
 	id: string;
 	name: string;
+	/** How this provider reaches models, for targets that don't refine it. */
+	access: ProviderAccess;
+	/**
+	 * Per-target refinement, for a provider that offers both paths. DataForSEO
+	 * scrapes a surface by default but routes to its LLM Responses API when a
+	 * target pins a model version, so the same provider is either depending on
+	 * the target.
+	 */
+	accessFor?(config: ModelConfig): ProviderAccess;
+	/**
+	 * Section of the provider setup guide covering this provider, so the app can
+	 * point an operator at how to configure it. Omitted for providers with no
+	 * public setup docs (the stub used by tests).
+	 */
+	docsAnchor?: string;
 	isConfigured(): boolean;
 	run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
 	/** Validate a target config. Returns an error message if invalid, null if valid.

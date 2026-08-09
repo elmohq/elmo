@@ -4,21 +4,23 @@
  * Editor to add/edit/remove prompts.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
+import { premiumSlotsUsed } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import { prompts } from "@workspace/lib/db/schema";
-import { desc, eq } from "drizzle-orm";
-import { PromptsEditor } from "@/components/prompts-editor";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { desc, eq } from "drizzle-orm";
+import { z } from "zod";
+import { PromptsEditor } from "@/components/prompts-editor";
+import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { getPremiumPoolFn } from "@/server/premium-tracking";
 
 const getPromptsForEditing = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		// Fetch all prompts (including disabled) for editing
 		const brandPrompts = await db
@@ -52,8 +54,20 @@ function PromptsSettingsSkeleton() {
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/prompts")({
 	loader: async ({ params }) => {
-		const brandPrompts = await getPromptsForEditing({ data: { brandId: params.brand } });
-		return { prompts: brandPrompts };
+		const [brandPrompts, premiumPool] = await Promise.all([
+			getPromptsForEditing({ data: { brandId: params.brand } }),
+			getPremiumPoolFn({ data: { brandId: params.brand } }),
+		]);
+
+		// The pool is org-wide but the editor only sees this brand, so hand it the
+		// share spent by the org's other brands and let it count this list live.
+		const spentHere = premiumSlotsUsed(brandPrompts);
+		return {
+			prompts: brandPrompts,
+			premium: premiumPool.available
+				? { total: premiumPool.total, assignedElsewhere: Math.max(0, premiumPool.assigned - spentHere) }
+				: undefined,
+		};
 	},
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
@@ -70,7 +84,7 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/prompts")({
 });
 
 function PromptsSettingsPage() {
-	const { prompts: brandPrompts } = Route.useLoaderData();
+	const { prompts: brandPrompts, premium } = Route.useLoaderData();
 	const { brand: brandId } = Route.useParams();
 
 	return (
@@ -79,6 +93,7 @@ function PromptsSettingsPage() {
 			brandId={brandId}
 			pageTitle="Prompts"
 			pageDescription="Add, edit, or remove your brand tracking keywords and prompts"
+			premium={premium}
 		/>
 	);
 }

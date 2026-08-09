@@ -6,9 +6,9 @@
  */
 import type { Meta } from "@storybook/react";
 import { CachedPromptChart, type CachedPromptChartProps } from "@/components/cached-prompt-chart";
-import { setMockChartDataContext, type ProcessedChartData } from "./_mocks/chart-data-context";
-import { setMockClientConfig, type ClientConfig } from "./_mocks/config-client";
-import { setMockRouteContext, MockRouteContextProvider } from "./_mocks/tanstack-router";
+import { type ProcessedChartData, setMockChartDataContext } from "./_mocks/chart-data-context";
+import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
+import { MockRouteContextProvider, setMockRouteContext } from "./_mocks/tanstack-router";
 import { setMockBrand } from "./_mocks/use-brands";
 
 // ---------------------------------------------------------------------------
@@ -22,7 +22,6 @@ const defaultClientConfig: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: false,
-		supportsMultiOrg: true,
 		canCreateBrands: true,
 	},
 	branding: {

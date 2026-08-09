@@ -1,8 +1,8 @@
 import { bdclient } from "@brightdata/sdk";
-import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
-import { extractCitationsFromBrightdata, extractTextFromBrightdata, type Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
+import { type Citation, extractCitationsFromBrightdata, extractTextFromBrightdata } from "../../text-extraction";
+import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 
 // Google AI Overview isn't a Web Scraper dataset — it's the AI summary block on
 // a normal Google results page, fetched through BrightData's SERP API instead of
@@ -143,6 +143,8 @@ function extractWebQueries(record: Record<string, any>): string[] {
 export const brightdata: Provider = {
 	id: "brightdata",
 	name: "BrightData",
+	access: "scraped",
+	docsAnchor: "brightdata",
 
 	isConfigured() {
 		return !!getCredential("BRIGHTDATA_API_TOKEN");
@@ -271,7 +273,7 @@ async function pollUntilReady(snapshotId: string): Promise<void> {
 			throw new Error(`BrightData snapshot ${snapshotId} ${status}`);
 		}
 
-		const delay = Math.min(BASE_DELAY * Math.pow(2, Math.floor(attempt / 5)), MAX_DELAY);
+		const delay = Math.min(BASE_DELAY * 2 ** Math.floor(attempt / 5), MAX_DELAY);
 		await new Promise((resolve) => setTimeout(resolve, delay));
 	}
 

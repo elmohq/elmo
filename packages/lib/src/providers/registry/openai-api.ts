@@ -1,7 +1,7 @@
-import { openai, createOpenAI } from "@ai-sdk/openai";
+import { createOpenAI, openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
-import { extractTextFromOpenAI, extractCitationsFromOpenAI } from "../../text-extraction";
 import { getCredential } from "../../secrets";
+import { extractCitationsFromOpenAI, extractTextFromOpenAI } from "../../text-extraction";
 import {
 	API_PROVIDER_MAX_OUTPUT_TOKENS,
 	OPENAI_WEB_SEARCH_CONTEXT_SIZE,
@@ -12,8 +12,8 @@ import {
 } from "../config";
 import type {
 	Provider,
-	ScrapeResult,
 	ProviderOptions,
+	ScrapeResult,
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
@@ -85,6 +85,8 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 export const openaiApi: Provider = {
 	id: "openai-api",
 	name: "OpenAI API",
+	access: "api",
+	docsAnchor: "direct-model-apis",
 
 	isConfigured() {
 		return !!getCredential("OPENAI_API_KEY");

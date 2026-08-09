@@ -2,7 +2,12 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
-import { type EditablePrompt, newPromptEntry, PromptsListEditor } from "@/components/prompts-list-editor";
+import {
+	type EditablePrompt,
+	newPromptEntry,
+	type PremiumAllowance,
+	PromptsListEditor,
+} from "@/components/prompts-list-editor";
 
 const meta = {
 	title: "Components/PromptsListEditor",
@@ -11,12 +16,20 @@ const meta = {
 export default meta;
 
 /** The table layout is `hidden md:grid` — widen the canvas past 768px to see it. */
-function Harness({ initial, showSystemTags = true }: { initial: EditablePrompt[]; showSystemTags?: boolean }) {
+function Harness({
+	initial,
+	showSystemTags = true,
+	premium,
+}: {
+	initial: EditablePrompt[];
+	showSystemTags?: boolean;
+	premium?: PremiumAllowance;
+}) {
 	const [prompts, setPrompts] = useState(initial);
 
 	return (
 		<div className="p-8">
-			<PromptsListEditor prompts={prompts} onChange={setPrompts} showSystemTags={showSystemTags} />
+			<PromptsListEditor prompts={prompts} onChange={setPrompts} showSystemTags={showSystemTags} premium={premium} />
 		</div>
 	);
 }
@@ -88,3 +101,128 @@ export const AddMultipleOverCapacity: StoryObj = {
 
 /** At the cap: both toolbar buttons are hidden and the limit message shows. */
 export const AtCapacity = () => <Harness showSystemTags={false} initial={filler(MAX_PROMPTS)} />;
+
+// ---------------------------------------------------------------------------
+// Web-grounded Claude assignment (cloud plans)
+// ---------------------------------------------------------------------------
+
+/**
+ * The stacked mobile block and the desktop grid both render, so every row has
+ * two of these. Queries go through the state rather than an index so they don't
+ * depend on which layout the canvas width happens to show.
+ */
+/**
+ * Each row opens a popover naming the premium models, so the assertions below
+ * work through it the way a customer would rather than reaching for a checkbox
+ * the table no longer shows.
+ */
+// The mobile block and the desktop grid both render (one is just hidden), so a
+// row has two triggers. Selecting by what the trigger says avoids depending on
+// which layout comes first in the DOM.
+const premiumTrigger = async (canvasElement: HTMLElement, says: RegExp) =>
+	(await within(canvasElement).findAllByRole("button", { name: says }))[0];
+
+/** The popover renders in a portal, so its contents are not inside the canvas. */
+const premiumOption = (model: RegExp) => within(document.body).findByRole("button", { name: model });
+
+async function openPremium(canvasElement: HTMLElement, says: RegExp) {
+	await userEvent.click(await premiumTrigger(canvasElement, says));
+}
+
+/**
+ * The premium column, which only appears when the workspace has an allowance.
+ * The pool is org-wide, so the count includes prompts belonging to the org's
+ * other brands — which this editor cannot show but which still spend it.
+ */
+export const PremiumColumn: StoryObj = {
+	render: () => (
+		<Harness
+			premium={{ total: 20, assignedElsewhere: 4 }}
+			initial={[
+				...entries(["best crm for small business"], { premiumModels: ["claude"] }),
+				...entries(["cheapest project management tool"]),
+				...entries(["alternatives to salesforce"]),
+			]}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		// 4 elsewhere + 1 spent here.
+		await expect(await canvas.findByText("5 of 20")).toBeVisible();
+
+		await openPremium(canvasElement, /premium models: none/i);
+		await userEvent.click(await premiumOption(/^Claude/));
+		await expect(await canvas.findByText("6 of 20")).toBeVisible();
+	},
+};
+
+/**
+ * The pool is spent per prompt/model pair, so tracking one prompt on a second
+ * model costs a second slot — that is what makes it a premium budget rather
+ * than a per-prompt flag.
+ */
+export const PremiumSpendsASlotPerModel: StoryObj = {
+	render: () => (
+		<Harness
+			premium={{ total: 20, assignedElsewhere: 0 }}
+			initial={entries(["best crm for small business"], { premiumModels: ["claude"] })}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText("1 of 20")).toBeVisible();
+
+		await openPremium(canvasElement, /premium models: claude/i);
+		await userEvent.click(await premiumOption(/^Grok/));
+		await expect(await canvas.findByText("2 of 20")).toBeVisible();
+	},
+};
+
+/**
+ * A full allowance leaves spent pairs switchable but blocks new ones before a
+ * save, rather than letting the server reject it.
+ */
+export const PremiumAtCapacity: StoryObj = {
+	render: () => (
+		<Harness
+			premium={{ total: 5, assignedElsewhere: 4 }}
+			initial={[
+				...entries(["best crm for small business"], { premiumModels: ["claude"] }),
+				...entries(["cheapest project management tool"]),
+			]}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText("5 of 5")).toBeVisible();
+		await expect(await canvas.findByText(/unassign one to free it up/i)).toBeVisible();
+
+		// The model already spending a slot can be given back; the rest cannot be added.
+		await openPremium(canvasElement, /premium models: claude/i);
+		await expect(await premiumOption(/^Claude/)).toBeEnabled();
+		await expect(await premiumOption(/^Grok/)).toBeDisabled();
+	},
+};
+
+/** A disabled prompt runs nothing, so it cannot hold an allowance either. */
+export const PremiumIgnoresDisabledPrompts: StoryObj = {
+	render: () => (
+		<Harness
+			premium={{ total: 20, assignedElsewhere: 0 }}
+			initial={entries(["most durable trail runners"], { enabled: false })}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		await expect(await premiumTrigger(canvasElement, /premium models: none/i)).toBeDisabled();
+	},
+};
+
+/** Without an allowance the column is absent — self-hosted, or a plan with none. */
+export const NoPremiumColumn: StoryObj = {
+	render: () => <Harness initial={entries(["best crm for small business"])} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.queryByRole("button", { name: /premium models:/i })).toBeNull();
+		await expect(canvas.queryByText(/premium tracking:/i)).toBeNull();
+	},
+};

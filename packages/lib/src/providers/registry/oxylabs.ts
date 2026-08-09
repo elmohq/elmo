@@ -1,6 +1,6 @@
-import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
-import { extractTextFromOxylabs, extractCitationsFromOxylabs, type Citation } from "../../text-extraction";
 import { getCredential } from "../../secrets";
+import { type Citation, extractCitationsFromOxylabs, extractTextFromOxylabs } from "../../text-extraction";
+import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 
 // Oxylabs Web Scraper API sources for AI surfaces.
 // ChatGPT and Perplexity use `prompt`; the Google surfaces use `query` and
@@ -43,7 +43,7 @@ function requestHeaders(): Record<string, string> {
 }
 
 function pollDelay(attempt: number): number {
-	return Math.min(OXYLABS_POLL_BASE_DELAY_MS * Math.pow(2, Math.floor(attempt / 5)), OXYLABS_POLL_MAX_DELAY_MS);
+	return Math.min(OXYLABS_POLL_BASE_DELAY_MS * 2 ** Math.floor(attempt / 5), OXYLABS_POLL_MAX_DELAY_MS);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -160,6 +160,8 @@ function extractWebQueries(content: Record<string, any>): string[] {
 export const oxylabs: Provider = {
 	id: "oxylabs",
 	name: "Oxylabs",
+	access: "scraped",
+	docsAnchor: "oxylabs",
 
 	isConfigured() {
 		return !!getCredential("OXYLABS_USERNAME") && !!getCredential("OXYLABS_PASSWORD");

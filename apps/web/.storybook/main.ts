@@ -47,7 +47,17 @@ const config: StorybookConfig = {
 					{ find: /^@\/lib\/config\/client(\.ts)?$/, replacement: path.resolve(mocksDir, "config-client.ts") },
 					{ find: /^@\/server\/onboarding(\.ts)?$/, replacement: path.resolve(mocksDir, "server-onboarding.ts") },
 					{ find: /^@\/server\/brands(\.ts)?$/, replacement: path.resolve(mocksDir, "server-brands.ts") },
+					{
+						find: /^@\/server\/platform-picks(\.ts)?$/,
+						replacement: path.resolve(mocksDir, "server-platform-picks.ts"),
+					},
 					{ find: /^@\/server\/prompts(\.ts)?$/, replacement: path.resolve(mocksDir, "server-prompts.ts") },
+					{ find: /^@\/server\/billing(\.ts)?$/, replacement: path.resolve(mocksDir, "server-billing.ts") },
+					{
+						find: /^@\/server\/premium-tracking(\.ts)?$/,
+						replacement: path.resolve(mocksDir, "server-premium-tracking.ts"),
+					},
+					{ find: /^@workspace\/lib\/auth\/client$/, replacement: path.resolve(mocksDir, "auth-client.ts") },
 					{ find: /^@\/server\/citations(\.ts)?$/, replacement: path.resolve(mocksDir, "server-citations.ts") },
 					{ find: /^@\/server\/dashboard(\.ts)?$/, replacement: path.resolve(mocksDir, "server-dashboard.ts") },
 					{ find: /^@\/server\/analysis(\.ts)?$/, replacement: path.resolve(mocksDir, "server-analysis.ts") },

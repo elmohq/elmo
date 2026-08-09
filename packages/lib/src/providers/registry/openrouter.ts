@@ -1,15 +1,15 @@
 import { z } from "zod";
+import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
+import { getCredential } from "../../secrets";
+import type { Citation } from "../../text-extraction";
+import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
 import type {
 	Provider,
-	ScrapeResult,
 	ProviderOptions,
+	ScrapeResult,
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
-import type { Citation } from "../../text-extraction";
-import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
-import { getCredential } from "../../secrets";
-import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
@@ -74,6 +74,8 @@ function extractCitationsFromOpenRouterResponse(data: any): Citation[] {
 export const openrouter: Provider = {
 	id: "openrouter",
 	name: "OpenRouter",
+	access: "api",
+	docsAnchor: "direct-model-apis",
 
 	isConfigured() {
 		return !!getCredential("OPENROUTER_API_KEY");

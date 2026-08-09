@@ -13,7 +13,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
+import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import {
 	cancelAnalyzeBrand,
 	enqueueAnalyzeBrand,
@@ -30,9 +30,9 @@ import { saveWizardOnboarding, wizardOnboardingInputSchema } from "@/server/onbo
  * gets a 504 even though the work succeeds). The worker processes the job; the
  * client polls `getAnalyzeBrandStatusFn` (by brand) for the result.
  *
- * Scoped to the brand (== org): the caller must have access to the brand both
- * to start an analysis and to read it back, so a job's output never leaks
- * outside the org that requested it.
+ * Scoped to the brand's owning org: the caller must have access to the brand
+ * both to start an analysis and to read it back, so a job's output never
+ * leaks outside the org that requested it.
  */
 export const startAnalyzeBrandFn = createServerFn({ method: "POST" })
 	.validator(
@@ -44,7 +44,7 @@ export const startAnalyzeBrandFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 		await enqueueAnalyzeBrand(data);
 		return { ok: true };
 	});
@@ -60,7 +60,7 @@ export const getAnalyzeBrandStatusFn = createServerFn({ method: "POST" })
 	.validator(z.object({ brandId: z.string().min(1) }))
 	.handler(async ({ data }): Promise<AnalyzeBrandStatus> => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 		return getAnalyzeBrandStatus(data.brandId);
 	});
 
@@ -69,7 +69,7 @@ export const cancelAnalyzeBrandFn = createServerFn({ method: "POST" })
 	.validator(z.object({ brandId: z.string().min(1) }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 		await cancelAnalyzeBrand(data.brandId);
 		return { ok: true };
 	});
@@ -82,6 +82,6 @@ export const updateOnboardedBrandFn = createServerFn({ method: "POST" })
 	.validator(wizardOnboardingInputSchema)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 		return saveWizardOnboarding(data);
 	});

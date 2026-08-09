@@ -10,11 +10,15 @@
  */
 
 import { IconInfoCircle } from "@tabler/icons-react";
+import { getModelMeta } from "@workspace/config/models";
+import { PREMIUM_MODELS, PREMIUM_RUNS_PER_DAY, premiumSlotsUsed } from "@workspace/config/plans";
 import { describeSkipped, parseBulkPrompts } from "@workspace/lib/bulk-prompts";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
+import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Input } from "@workspace/ui/components/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Switch } from "@workspace/ui/components/switch";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Textarea } from "@workspace/ui/components/textarea";
@@ -30,6 +34,22 @@ export interface EditablePrompt {
 	enabled: boolean;
 	tags: string[];
 	systemTags: string[];
+	/**
+	 * Premium models this prompt is tracked on, grounded — one of the workspace's
+	 * premium slots each, so two models cost two slots.
+	 */
+	premiumModels: string[];
+}
+
+/**
+ * The workspace's premium allowance, as this brand's editor sees it.
+ * `assignedElsewhere` covers the org's other brands, which the editor cannot see
+ * but which still spend the pool — so the live count stays honest while rows are
+ * changed here.
+ */
+export interface PremiumAllowance {
+	total: number;
+	assignedElsewhere: number;
 }
 
 export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePrompt {
@@ -39,8 +59,83 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 		enabled: partial?.enabled ?? true,
 		tags: partial?.tags ?? [],
 		systemTags: partial?.systemTags ?? [],
+		premiumModels: partial?.premiumModels ?? [],
 		...(partial?.id ? { id: partial.id } : {}),
 	};
+}
+
+/**
+ * Which premium models a prompt is tracked on. A popover rather than a checkbox
+ * per model because the table has one narrow column for this and the list grows
+ * as more models ship a usable web-search tool.
+ */
+function PremiumModelsField({
+	selected,
+	promptEnabled,
+	atCapacity,
+	onChange,
+	showLabel,
+}: {
+	selected: string[];
+	promptEnabled: boolean;
+	/** The workspace has no slots left, so only unticking is allowed. */
+	atCapacity: boolean;
+	onChange: (models: string[]) => void;
+	showLabel?: boolean;
+}) {
+	const summary = selected.length === 0 ? "None" : selected.map((model) => getModelMeta(model).label).join(", ");
+
+	return (
+		<Popover>
+			<PopoverTrigger asChild>
+				<Button
+					type="button"
+					variant="outline"
+					size="sm"
+					disabled={!promptEnabled}
+					className="h-8 w-full justify-center gap-1 px-2"
+					aria-label={`Premium models: ${summary}`}
+				>
+					{selected.length === 0 ? (
+						<span className="text-muted-foreground">{showLabel ? "Premium: none" : "—"}</span>
+					) : (
+						<>
+							{selected.map((model) => (
+								<ModelIcon key={model} iconId={getModelMeta(model).iconId} className="size-3.5" />
+							))}
+							{showLabel && <span className="ml-1 text-xs">{summary}</span>}
+						</>
+					)}
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent align="end" className="w-64 space-y-1 p-2">
+				{PREMIUM_MODELS.map((model) => {
+					const checked = selected.includes(model);
+					return (
+						<button
+							type="button"
+							key={model}
+							disabled={atCapacity && !checked}
+							onClick={() => onChange(checked ? selected.filter((m) => m !== model) : [...selected, model])}
+							className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							<Checkbox checked={checked} disabled={atCapacity && !checked} className="pointer-events-none" />
+							<ModelIcon iconId={getModelMeta(model).iconId} className="size-4" />
+							<span className="flex-1">{getModelMeta(model).label}</span>
+							<span className="font-mono text-[10px] text-muted-foreground tabular-nums">
+								{PREMIUM_RUNS_PER_DAY}×/day
+							</span>
+						</button>
+					);
+				})}
+				{atCapacity && (
+					<p className="px-2 pt-1 text-xs text-muted-foreground">
+						No premium slots left. Untick one, or buy more on the billing page.
+					</p>
+				)}
+			</PopoverContent>
+		</Popover>
+	);
 }
 
 interface PromptsListEditorProps {
@@ -51,9 +146,17 @@ interface PromptsListEditorProps {
 	/** `_key`s of rows edited since the last save, flagged with an accent rail
 	 *  so a change is findable in a list of up to {@link MAX_PROMPTS} rows. */
 	changedKeys?: ReadonlySet<string>;
+	/** Omit to hide the premium column — self-hosted, or a plan with no pool. */
+	premium?: PremiumAllowance;
 }
 
-export function PromptsListEditor({ prompts, onChange, showSystemTags = true, changedKeys }: PromptsListEditorProps) {
+export function PromptsListEditor({
+	prompts,
+	onChange,
+	showSystemTags = true,
+	changedKeys,
+	premium,
+}: PromptsListEditorProps) {
 	const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 
 	const allTagOptions = useMemo(() => {
@@ -131,11 +234,23 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true, ch
 
 	const validCount = prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
 
-	// Desktop layout only — column order is [select] [text] [system?] [tags] [switch].
-	// Mobile renders a stacked per-prompt block instead (no selection, no bulk).
+	// Live pool usage: other brands' assignments plus whatever is ticked here,
+	// so the cap applies before a save rather than being rejected by the server.
+	const premiumUsed = premium ? premium.assignedElsewhere + premiumSlotsUsed(prompts) : 0;
+	const premiumAtCapacity = premium ? premiumUsed >= premium.total : false;
+
+	// Desktop layout only — column order is
+	// [select] [text] [system?] [tags] [premium?] [switch]. Mobile renders a
+	// stacked per-prompt block instead (no selection, no bulk). Spelled out per
+	// combination rather than joined at runtime: Tailwind only sees class names
+	// that appear literally in the source.
 	const gridCols = showSystemTags
-		? "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_2.75rem]"
-		: "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]";
+		? premium
+			? "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem]"
+			: "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_2.75rem]"
+		: premium
+			? "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]"
+			: "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]";
 
 	return (
 		<div className="space-y-4">
@@ -168,6 +283,17 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true, ch
 						</Button>
 					</div>
 				</div>
+			)}
+
+			{premium && (
+				<p className="text-sm text-muted-foreground">
+					Premium tracking:{" "}
+					<span className="font-medium text-foreground">
+						{premiumUsed} of {premium.total}
+					</span>{" "}
+					in use across this workspace — one for each model a prompt is tracked on.
+					{premiumAtCapacity && " Unassign one to free it up, or buy more on the billing page."}
+				</p>
 			)}
 
 			<div className={`hidden md:grid ${gridCols} gap-2 text-sm font-medium text-muted-foreground border-b pb-2`}>
@@ -216,6 +342,23 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true, ch
 						</TooltipContent>
 					</Tooltip>
 				</div>
+				{premium && (
+					<div className="flex items-center justify-center gap-1">
+						Premium
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+							</TooltipTrigger>
+							<TooltipContent>
+								<p className="max-w-xs">
+									Also track this prompt on a model called directly with its own web search on, for a grounded answer
+									with citations — {PREMIUM_RUNS_PER_DAY}× a day, spending one of the workspace&apos;s premium slots per
+									model. This is on top of the platforms the brand tracks, which run on every prompt either way.
+								</p>
+							</TooltipContent>
+						</Tooltip>
+					</div>
+				)}
 				<div className="flex justify-center">
 					<span className="sr-only">Enabled</span>
 				</div>
@@ -265,6 +408,15 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true, ch
 									searchPlaceholder="Search or create tag..."
 									normalizeValue={(raw) => raw.toLowerCase().trim()}
 								/>
+								{premium && (
+									<PremiumModelsField
+										selected={prompt.premiumModels}
+										promptEnabled={prompt.enabled}
+										atCapacity={premiumAtCapacity}
+										onChange={(premiumModels) => update(index, { premiumModels })}
+										showLabel
+									/>
+								)}
 							</div>
 
 							{/* Desktop (md+): single-line grid */}
@@ -293,6 +445,16 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true, ch
 									searchPlaceholder="Search or create tag..."
 									normalizeValue={(raw) => raw.toLowerCase().trim()}
 								/>
+								{premium && (
+									<div className="flex justify-center pt-1">
+										<PremiumModelsField
+											selected={prompt.premiumModels}
+											promptEnabled={prompt.enabled}
+											atCapacity={premiumAtCapacity}
+											onChange={(premiumModels) => update(index, { premiumModels })}
+										/>
+									</div>
+								)}
 								<div className="flex justify-center pt-2">
 									<Switch
 										checked={prompt.enabled}

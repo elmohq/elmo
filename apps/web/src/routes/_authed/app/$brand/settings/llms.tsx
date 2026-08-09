@@ -1,28 +1,52 @@
 /**
  * /app/$brand/settings/llms - LLM configuration page
  *
- * Lists the AI models this brand is tracked against, data-driven from the
- * deployment's `SCRAPE_TARGETS` + `brand.enabledModels`. Each card renders
- * from `brand.effectiveModelConfigs` rather than a hardcoded model list so
- * any deployment-configured model shows up automatically.
+ * Which platforms a brand is tracked against, grouped by what each group tells
+ * you: a scraped engine shows what a visitor sees, an ungrounded API call shows
+ * what a model already believes, and a grounded one shows what it finds and
+ * cites. Grounded calls cost roughly ten times an ungrounded one, so in cloud
+ * they are metered per prompt instead of picked per brand.
+ *
+ * Picks are buffered and saved together from the bar at the bottom, matching the
+ * prompts editor. The server functions hold the real limits; this page only
+ * renders them.
  */
-import { createFileRoute } from "@tanstack/react-router";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
-import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
+
+import { IconArrowUpRight, IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { PROVIDERS_DOCS_URL } from "@workspace/config/constants";
+import { getModelMeta } from "@workspace/config/models";
+import { PREMIUM_MODELS, PREMIUM_RUNS_PER_DAY } from "@workspace/config/plans";
+import { ModelIcon } from "@workspace/ui/brand/model-icon";
+import { Alert, AlertDescription } from "@workspace/ui/components/alert";
+import { Badge } from "@workspace/ui/components/badge";
+import { Button } from "@workspace/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Progress } from "@workspace/ui/components/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { IconCircleCheck, IconCircleX, IconInfoCircle } from "@tabler/icons-react";
-import { Skeleton } from "@workspace/ui/components/skeleton";
-import { useBrand } from "@/hooks/use-brands";
-import { iconForModel } from "@/components/filter-bar";
+import { useState } from "react";
+import { PlatformOperatorDetail, PlatformPicker } from "@/components/platform-picker";
+import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
+import { groupPlatformOptions, platformGroupCopy, platformGroupId } from "@/lib/platform-groups";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { getModelPickerStateFn, type ModelPickerState, updateEnabledModelsFn } from "@/server/platform-picks";
+import { getPremiumPoolFn, type PremiumPool } from "@/server/premium-tracking";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
+	loader: async ({ params }): Promise<{ picker: ModelPickerState; premium: PremiumPool }> => {
+		const [picker, premium] = await Promise.all([
+			getModelPickerStateFn({ data: { brandId: params.brand } }),
+			getPremiumPoolFn({ data: { brandId: params.brand } }),
+		]);
+		return { picker, premium };
+	},
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
 				{ title: buildTitle("LLMs", { appName, brandName }) },
-				{ name: "description", content: "View tracked AI models and configuration." },
+				{ name: "description", content: "Choose which AI models this brand is tracked against." },
 			],
 		};
 	},
@@ -30,11 +54,11 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
 });
 
 function LlmsSettingsPage() {
-	const { brand, isLoading } = useBrand();
-	const configs = brand?.effectiveModelConfigs ?? [];
+	const { picker, premium } = Route.useLoaderData();
+	const singlePlatform = picker.planLimits?.platformPicks === 1 && picker.available.length === 1;
 
 	return (
-		<div className="space-y-6 max-w-6xl">
+		<div className="max-w-6xl space-y-8">
 			<div>
 				<h1 className="text-3xl font-bold">LLMs</h1>
 				<p className="text-muted-foreground">
@@ -43,80 +67,343 @@ function LlmsSettingsPage() {
 				</p>
 			</div>
 
-			{isLoading && !brand ? (
-				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-					{[0, 1, 2].map((i) => (
-						<Card key={i} className="h-full">
-							<CardHeader className="py-2 border-b">
-								<Skeleton className="h-6 w-6 rounded" />
-							</CardHeader>
-							<CardContent className="pt-2 space-y-2">
-								<Skeleton className="h-4 w-full" />
-								<Skeleton className="h-4 w-3/4" />
-								<Skeleton className="h-4 w-2/3" />
-							</CardContent>
-						</Card>
-					))}
-				</div>
-			) : configs.length === 0 ? (
-				<Card>
-					<CardContent className="pt-6 text-sm text-muted-foreground">
-						No models are configured for this brand. Set <code className="font-mono text-xs">SCRAPE_TARGETS</code> at
-						the deployment level, or adjust this brand&apos;s <code className="font-mono text-xs">enabledModels</code>.
-					</CardContent>
-				</Card>
-			) : (
-				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-					{configs.map((config) => (
-						<Card key={config.model} className="h-full">
-							<CardHeader className="py-2 border-b">{iconForModel(config.model, "h-6 w-6")}</CardHeader>
-							<CardContent className="pt-2">
-								<div className="divide-y text-sm">
-									<ConfigRow label="Model" tooltip="Which AI model this card covers.">
-										<span className="font-mono text-xs text-foreground">{config.model}</span>
-									</ConfigRow>
-									<ConfigRow
-										label="Provider"
-										tooltip="How this deployment reaches the model — direct API, a scraping proxy, etc."
-									>
-										<span className="font-mono text-xs text-foreground">{config.provider}</span>
-									</ConfigRow>
-									<ConfigRow label="Version" tooltip="Exact upstream model version requested from the provider.">
-										<span className="font-mono text-xs text-foreground">{config.version ?? "—"}</span>
-									</ConfigRow>
-									<ConfigRow label="Web search" tooltip="Is web search used to answer prompts?">
-										{config.webSearch ? (
-											<IconCircleCheck className="h-4 w-4 text-emerald-600" />
-										) : (
-											<IconCircleX className="h-4 w-4 text-muted-foreground" />
-										)}
-										<span className="sr-only">{config.webSearch ? "Enabled" : "Disabled"}</span>
-									</ConfigRow>
-								</div>
-							</CardContent>
-						</Card>
-					))}
-				</div>
-			)}
+			{/* A one-platform plan has nothing to choose, so it reports instead. */}
+			{singlePlatform ? <SinglePlatformSummary picker={picker} /> : <PlatformGroups picker={picker} />}
+
+			{premium.available && <PremiumApiPool premium={premium} />}
+			{picker.unconfiguredPlatforms.length > 0 && <AddPlatformsCard platforms={picker.unconfiguredPlatforms} />}
 		</div>
 	);
 }
 
-function ConfigRow({ label, tooltip, children }: { label: string; tooltip?: string; children: React.ReactNode }) {
+/**
+ * One card per group, with the pick budget and the save bar shared across them —
+ * the plan's pick count covers every platform, not each group separately.
+ */
+function PlatformGroups({ picker }: { picker: ModelPickerState }) {
+	const { brand: brandId } = Route.useParams();
+	const router = useRouter();
+
+	// null stored picks = "everything the deployment configures" (non-cloud).
+	const stored = new Set(picker.enabledModels ?? picker.available.map((m) => m.model));
+	const [selected, setSelected] = useState<Set<string>>(stored);
+	const [saving, setSaving] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	const groups = groupPlatformOptions(picker.available);
+	const limit = picker.planLimits?.platformPicks ?? null;
+	const overLimit = limit !== null && selected.size > limit;
+	const isDirty = selected.size !== stored.size || [...selected].some((m) => !stored.has(m));
+
+	const save = async () => {
+		setSaving(true);
+		setError(null);
+		try {
+			await updateEnabledModelsFn({ data: { brandId, models: [...selected] } });
+			await router.invalidate();
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Could not save platform picks");
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	if (picker.available.length === 0) {
+		return (
+			<Card>
+				<CardHeader>
+					<CardTitle>Tracked platforms</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<p className="text-sm text-muted-foreground">
+						No models are configured on this deployment. Set <code className="font-mono text-xs">SCRAPE_TARGETS</code>.
+					</p>
+				</CardContent>
+			</Card>
+		);
+	}
+
 	return (
-		<div className="flex items-center justify-between py-2">
-			<div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-				<span>{label}</span>
-				{tooltip && (
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
-						</TooltipTrigger>
-						<TooltipContent className="max-w-xs text-xs font-normal">{tooltip}</TooltipContent>
-					</Tooltip>
-				)}
-			</div>
-			<div className="flex items-center gap-2">{children}</div>
+		<div className="space-y-4">
+			{limit !== null && (
+				<div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-4 py-3">
+					<p className="text-sm text-muted-foreground">
+						Your plan tracks up to {limit} platform{limit === 1 ? "" : "s"} for this brand, in any combination below.
+						Changes apply from the next sampling cycle.
+					</p>
+					<Badge variant={overLimit ? "destructive" : "secondary"}>
+						{selected.size} / {limit} picks
+					</Badge>
+				</div>
+			)}
+
+			{groups.map((group) => (
+				<Card key={group.id}>
+					<CardHeader>
+						<CardTitle>{group.title}</CardTitle>
+						<CardDescription>{group.description}</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<PlatformPicker
+							options={group.options}
+							selected={selected}
+							onSelectedChange={setSelected}
+							limit={limit}
+							costBasis={picker.costBasis}
+							disabled={saving}
+						/>
+					</CardContent>
+				</Card>
+			))}
+
+			{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} brandId={brandId} />}
+
+			{selected.size === 0 && (
+				<Alert variant="destructive">
+					<AlertDescription>Pick at least one platform — a brand with none is not tracked.</AlertDescription>
+				</Alert>
+			)}
+			{overLimit && (
+				<Alert variant="destructive">
+					<AlertDescription>
+						That is {selected.size - (limit ?? 0)} more than your plan allows. Clear some, or upgrade.
+					</AlertDescription>
+				</Alert>
+			)}
+
+			<UnsavedChangesBar
+				isDirty={isDirty && selected.size > 0 && !overLimit}
+				isSaving={saving}
+				summary={`${selected.size} platform${selected.size === 1 ? "" : "s"} selected`}
+				error={error}
+				onSave={save}
+				onDiscard={() => {
+					setSelected(stored);
+					setError(null);
+				}}
+			/>
 		</div>
+	);
+}
+
+/**
+ * What a higher plan would add, in the same tiers as the cards above. A single
+ * wrapped sentence of platform names was unreadable once a plan was missing more
+ * than a couple, so each name is its own chip and each tier its own row.
+ */
+function UpgradePanel({ options, brandId }: { options: ModelPickerState["upgradeOptions"]; brandId: string }) {
+	return (
+		<div className="space-y-3 rounded-md border border-dashed p-4">
+			<p className="text-sm font-medium">Upgrade to track more platforms</p>
+			<div className="space-y-2.5">
+				{groupPlatformOptions(options).map((group) => (
+					<div key={group.id} className="space-y-1.5">
+						<p className="text-xs text-muted-foreground">{group.title}</p>
+						<div className="flex flex-wrap gap-1.5">
+							{group.options.map((option) => (
+								<span
+									key={option.model}
+									className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs text-muted-foreground"
+								>
+									<ModelIcon iconId={getModelMeta(option.model).iconId} className="size-3.5" />
+									{getModelMeta(option.model).label}
+								</span>
+							))}
+						</div>
+					</div>
+				))}
+			</div>
+			<Button asChild size="sm" variant="outline">
+				<Link to="/app/$brand/settings/billing" params={{ brand: brandId }}>
+					Compare plans
+					<IconArrowUpRight className="h-4 w-4" />
+				</Link>
+			</Button>
+		</div>
+	);
+}
+
+/**
+ * A plan with a single platform has nothing to choose, so it states what is
+ * tracked and what an upgrade would add.
+ */
+function SinglePlatformSummary({ picker }: { picker: ModelPickerState }) {
+	const { brand: brandId } = Route.useParams();
+	const option = picker.available[0];
+	const copy = platformGroupCopy(platformGroupId(option));
+
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle>{copy.title}</CardTitle>
+				<CardDescription>{copy.description}</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-4">
+				<div className="flex items-center gap-3 rounded-md border p-3">
+					<ModelIcon iconId={getModelMeta(option.model).iconId} className="size-5" />
+					<span className="flex-1 text-sm font-medium">{getModelMeta(option.model).label}</span>
+					<PlatformOperatorDetail option={option} costBasis={picker.costBasis} />
+				</div>
+				<p className="text-sm text-muted-foreground">Your plan tracks one platform for this brand.</p>
+
+				{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} brandId={brandId} />}
+			</CardContent>
+		</Card>
+	);
+}
+
+/**
+ * The premium group in cloud: a grounded call is an allowance rather than a pick,
+ * so this card reports the pool and points at the two places that change it —
+ * billing for how many slots, the prompts editor for which prompts and models
+ * spend them.
+ */
+function PremiumApiPool({ premium }: { premium: PremiumPool }) {
+	const { brand: brandId } = Route.useParams();
+	const copy = platformGroupCopy("premium");
+	const remaining = Math.max(0, premium.total - premium.assigned);
+	const percent = premium.total > 0 ? Math.min(100, (premium.assigned / premium.total) * 100) : 0;
+
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle className="flex items-center justify-between gap-3">
+					<span className="flex items-center gap-2">
+						{copy.title}
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<IconInfoCircle className="h-4 w-4 cursor-help text-muted-foreground" />
+							</TooltipTrigger>
+							<TooltipContent className="max-w-xs text-xs">
+								Not a pick and not an upgrade of one: your picks run on every prompt regardless, and a premium model is
+								added to the prompts you choose. Each prompt/model pair spends a slot, because a grounded call costs far
+								more than an ungrounded one.
+							</TooltipContent>
+						</Tooltip>
+					</span>
+					<Badge variant={remaining === 0 ? "destructive" : "secondary"}>
+						{premium.assigned} / {premium.total} in use
+					</Badge>
+				</CardTitle>
+				<CardDescription>{copy.description}</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-4">
+				<div className="space-y-2">
+					{PREMIUM_MODELS.map((model) => (
+						<div key={model} className="flex items-center gap-3 rounded-md border p-3">
+							<ModelIcon iconId={getModelMeta(model).iconId} className="size-5" />
+							<span className="flex-1 text-sm font-medium">{getModelMeta(model).label} with web search</span>
+							<span className="font-mono text-[10px] text-muted-foreground tabular-nums">
+								{PREMIUM_RUNS_PER_DAY}×/day
+							</span>
+						</div>
+					))}
+				</div>
+
+				<Progress value={percent} />
+				<p className="text-sm text-muted-foreground">
+					{remaining > 0
+						? `${remaining} of ${premium.total} still available, shared across every brand in this workspace. A prompt spends one for each model you track it on.`
+						: `All ${premium.total} are in use. Free one up or buy more to add another.`}
+				</p>
+
+				<div className="flex flex-wrap gap-2">
+					<Button asChild variant="outline" size="sm">
+						<Link to="/app/$brand/settings/prompts" params={{ brand: brandId }}>
+							Choose prompts
+						</Link>
+					</Button>
+					<Button asChild variant="ghost" size="sm">
+						<Link to="/app/$brand/settings/billing" params={{ brand: brandId }}>
+							Change how many
+							<IconArrowUpRight className="h-4 w-4" />
+						</Link>
+					</Button>
+				</div>
+			</CardContent>
+		</Card>
+	);
+}
+
+/**
+ * Self-hosted only: what else Elmo can track, and which provider account each
+ * one needs. Every suggestion comes from a combination the provider status
+ * workflow exercises, so none of them is aspirational.
+ *
+ * Scrapers and direct APIs are separate columns because they are not
+ * interchangeable — Perplexity through BrightData returns the surface a visitor
+ * sees, while Perplexity through OpenRouter returns the model's own answer. A
+ * single list of provider names hid that choice.
+ */
+const PROVIDER_COLUMNS = [
+	{ access: "scraped", header: "Scrapers" },
+	{ access: "api", header: "Direct APIs" },
+] as const;
+
+const PROVIDER_GRID = "grid grid-cols-[minmax(7rem,1fr)_1.5fr_1fr] gap-x-4";
+
+function AddPlatformsCard({ platforms }: { platforms: ModelPickerState["unconfiguredPlatforms"] }) {
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle>Track more platforms</CardTitle>
+				<CardDescription>
+					Add these to <code className="font-mono text-xs">SCRAPE_TARGETS</code> to start tracking them. One account is
+					enough, but which kind you pick changes the data: a scraper reads the product a visitor uses, an API asks the
+					model directly.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-3">
+				<div className={`${PROVIDER_GRID} gap-y-2 border-b pb-2 text-xs font-medium text-muted-foreground`}>
+					<span>Platform</span>
+					{PROVIDER_COLUMNS.map((column) => (
+						<span key={column.access}>{column.header}</span>
+					))}
+				</div>
+				<div className="divide-y">
+					{platforms.map((platform) => (
+						<div key={platform.model} className={`${PROVIDER_GRID} items-start gap-y-1 py-2`}>
+							<span className="flex items-center gap-2 text-sm font-medium">
+								<ModelIcon iconId={getModelMeta(platform.model).iconId} className="size-4 shrink-0" />
+								<span className="truncate">{getModelMeta(platform.model).label}</span>
+							</span>
+							{PROVIDER_COLUMNS.map((column) => (
+								<ProviderLinks
+									key={column.access}
+									providers={platform.providers.filter((provider) => provider.access === column.access)}
+								/>
+							))}
+						</div>
+					))}
+				</div>
+				<Button asChild variant="outline" size="sm">
+					<a href={PROVIDERS_DOCS_URL} target="_blank" rel="noopener noreferrer">
+						Provider setup guide
+						<IconExternalLink className="h-4 w-4" />
+					</a>
+				</Button>
+			</CardContent>
+		</Card>
+	);
+}
+
+/** A cell's providers, or a dash when a platform can't be reached that way. */
+function ProviderLinks({ providers }: { providers: ModelPickerState["unconfiguredPlatforms"][number]["providers"] }) {
+	if (providers.length === 0) return <span className="text-sm text-muted-foreground">—</span>;
+
+	return (
+		<span className="flex flex-wrap gap-x-2 gap-y-1">
+			{providers.map((provider) => (
+				<a
+					key={provider.id}
+					href={provider.docsUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="text-sm text-muted-foreground underline decoration-dotted hover:text-foreground"
+				>
+					{provider.name}
+				</a>
+			))}
+		</span>
 	);
 }

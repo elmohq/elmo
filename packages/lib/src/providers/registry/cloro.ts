@@ -1,7 +1,7 @@
-import type { Provider, ScrapeResult, ModelConfig } from "../types";
-import { extractTextFromCloro, extractCitationsFromCloro, cloroAnswer, type Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
+import { type Citation, cloroAnswer, extractCitationsFromCloro, extractTextFromCloro } from "../../text-extraction";
+import type { ModelConfig, Provider, ScrapeResult } from "../types";
 
 // Cloro monitors live AI answer engines. Each Elmo model maps to a Cloro task
 // type: the chatbots (ChatGPT, Perplexity, Copilot, Gemini) and Google AI Mode
@@ -49,7 +49,7 @@ function requestHeaders(): Record<string, string> {
 }
 
 function pollDelay(attempt: number): number {
-	return Math.min(CLORO_POLL_BASE_DELAY_MS * Math.pow(2, Math.floor(attempt / 5)), CLORO_POLL_MAX_DELAY_MS);
+	return Math.min(CLORO_POLL_BASE_DELAY_MS * 2 ** Math.floor(attempt / 5), CLORO_POLL_MAX_DELAY_MS);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -142,6 +142,8 @@ function extractWebQueries(answer: Record<string, any>): string[] {
 export const cloro: Provider = {
 	id: "cloro",
 	name: "Cloro",
+	access: "scraped",
+	docsAnchor: "cloro",
 
 	isConfigured() {
 		return !!getCredential("CLORO_API_KEY");

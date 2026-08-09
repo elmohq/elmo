@@ -1,0 +1,197 @@
+---
+title: Cloud Deployment
+description: Operating Elmo Cloud — Stripe billing, plan entitlements, and the scheduling policy.
+---
+
+`DEPLOYMENT_MODE=cloud` runs the managed, multi-tenant SaaS offering: self-serve signup, one umbrella
+organization per customer holding all their brands, Stripe subscription billing, and plan-enforced
+limits. Local, demo, and whitelabel deployments are unaffected by everything on this page — outside
+cloud mode, entitlements resolve to unlimited and none of the billing code paths execute.
+
+## Required environment
+
+On top of the shared variables (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `SCRAPE_TARGETS`,
+`DEPLOYMENT_MODE`), cloud requires:
+
+| Variable | Purpose |
+| --- | --- |
+| `APP_URL` | Public base URL (auth, email links, Stripe redirects) |
+| `STRIPE_SECRET_KEY` | Stripe API key (`sk_live_...` / `sk_test_...`) |
+| `STRIPE_WEBHOOK_SECRET` | Signing secret for the billing webhook |
+| `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | Transactional email |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in |
+| `CLOUD_SIGNUP_ALLOWLIST` | Signup gate — empty denies everyone, `*` opens signup |
+
+## Stripe setup
+
+The plan catalog lives in `packages/config/src/plans.ts` — prices, limits, sampling rates, and the
+premium pool per plan. The application references Stripe prices by **lookup key**, never by price id,
+so one bootstrap command provisions any Stripe account (test or live) to match the catalog:
+
+```bash
+STRIPE_SECRET_KEY=sk_test_... pnpm -C packages/cloud exec tsx scripts/bootstrap-stripe.ts
+```
+
+Re-run it after editing the catalog; it only creates what's missing (Stripe prices are immutable, so
+amount changes create a new price and move the lookup key). Then configure a webhook endpoint in the
+Stripe dashboard:
+
+- URL: `<APP_URL>/api/auth/stripe/webhook`
+- Events: `checkout.session.completed`, `customer.subscription.created`,
+  `customer.subscription.updated`, `customer.subscription.deleted`
+
+The webhook-maintained `subscription` table is the single source of truth for billing state; both
+the web app and the worker read it on every decision, so plan changes, payment failures, and
+cancellations apply without restarts. A payment failure keeps tracking alive for a 7-day grace
+window, then pauses tracking (data stays readable) until Stripe recovers the payment.
+
+The webhook also emails the org's admins on payment failure, recovery, and subscription end. These
+notices go through the same `RESEND_API_KEY` / `RESEND_FROM_EMAIL` configuration as the auth
+emails — no additional setup.
+
+Enable Stripe Tax and Smart Retries in the Stripe dashboard. Before launch, walk the full lifecycle
+against a test-clock customer with `packages/cloud/scripts/verify-stripe-lifecycle.ts` (see its
+header for usage).
+
+## SCRAPE_TARGETS for cloud
+
+The instance-level `SCRAPE_TARGETS` defines the menu customers pick from. Configure **one target per
+standard platform** (the run policy uses the first match per model), plus a grounded target for each
+model sold in the premium tier:
+
+```
+chatgpt:brightdata:online,google-ai-mode:brightdata:online,google-ai-overview:brightdata:online,copilot:brightdata:online,perplexity:brightdata:online,gemini:brightdata:online,qwen:openrouter:qwen/qwen3-235b-a22b,deepseek:openrouter:deepseek/deepseek-v3.2,mistral:openrouter:mistralai/mistral-medium-3.1,claude:anthropic-api:claude-sonnet-4-6,chatgpt:openai-api:gpt-5-mini:online,grok:openrouter:x-ai/grok-4.5:online,claude:anthropic-api:claude-sonnet-4-6:online
+```
+
+Platforms are offered to customers only when they appear in both the plan menu
+(`STANDARD_PLATFORM_MENU`) and `SCRAPE_TARGETS`.
+
+Some models are configured twice on purpose, and the two entries are sold differently:
+
+- **Ungrounded** (`claude:anthropic-api:...`) is an ordinary platform pick on every standard plan. A
+  pick always resolves the ungrounded target, never the grounded one, so a brand cannot spend the
+  premium pool by choosing a platform.
+- **Grounded** (`...:online` on an API provider) is the premium tier, counted against the org's pool
+  of prompt/model slots (`prompts.premium_models`) — plan included plus purchased add-on. A grounded
+  call is roughly ten times an ungrounded one, which is why it is metered per prompt rather than per
+  brand. Customers assign it in the prompts editor; the LLM settings page only reports the totals.
+
+The two tiers are independent, not two rungs of one ladder. A brand's picks run on **every** one of
+its prompts; a premium model is chosen on **individual** prompts and runs in addition to them. One
+prompt might carry Claude and Grok while the next carries only Grok and a third carries none, and all
+three still run the brand's four picks. A premium model need not be picked, and picking a model does
+not discount its premium slot — `resolvePromptRunPlan` builds the two sets from different inputs
+(`brand.enabledModels` and `prompt.premiumModels`) and simply concatenates them.
+
+Which models are sellable that way is a `premium` flag in `CLOUD_PLATFORMS`, not a model id threaded
+through the code: today Claude, Grok and ChatGPT (GPT-5 Search). Adding another means adding the flag
+and a grounded target — nothing in the schema, the guards or the run policy names a model.
+
+"Grounded" means **a direct API call with the model's own web search on**, which is what
+`isGroundedApiTarget` decides. Web search alone doesn't say it: every scraped target is `:online`
+too, because a consumer surface always searches. It is the combination that costs.
+
+Claude also samples **once daily on every plan** when picked ungrounded, not at the plan's standard
+rate: its API is billed per call at several times an OpenRouter one, so at Pro's 4×/day a single
+Claude pick would cost more than the rest of the plan. That is the `premiumRate` flag in
+`CLOUD_PLATFORMS`, and `resolvePromptRunPlan` gives such a pick its own interval.
+
+Qwen, DeepSeek and Mistral carry no `:online` variant at all: they have no native search tool, so
+OpenRouter would fall back to Exa, whose results are not a surface a consumer would ever see. They
+report mentions but no citations, since a run with no web search returns no source annotations — as
+does any ungrounded pick.
+
+Grok is sold **only** as a premium target, grounded — it is the one model on this list with no
+ungrounded entry in the cloud menu. Its own answers run about **$0.004 per call** against a plan
+design point near **$0.004 per run**, because OpenRouter prices Grok's output at several times a
+scrape and Elmo pays for output tokens, not queries. One of four picks devoted to it, sampled four
+times a day, would cost more than the scraped surface it displaced. Metered once daily out of the
+paid pool, it prices the same way grounded Claude does.
+
+The customer-facing version of this distinction is how the LLM settings page is laid out: three cards
+— **Scraped Engines**, **LLM APIs** and **Premium** — each explaining in its own
+description what that group tells you about a brand, with the pick budget and one save bar shared
+across them. Providers declare which they are; DataForSEO declares both and picks per target, since
+pinning a model version routes to LLM Responses instead of the scraper.
+
+The third card behaves differently per mode. In cloud it reports the premium pool rather than offering
+checkboxes, because grounded calls are metered per prompt/model pair. Self-hosted has no pool, so a
+grounded target there is an ordinary pick.
+
+Those tooltips also carry a per-run cost estimate and a monthly projection for the brand — but only
+in `local` mode, where the operator pays the providers. Cloud and whitelabel omit it: the person
+looking pays a plan price rather than the bills, and the per-provider numbers behind it are internal
+attribution estimates (`packages/lib/src/usage/cost.ts`), not quotes.
+
+Local mode also lists the platforms this instance has **not** configured, with the providers that can
+serve each and a link into that provider's section of the setup guide. The suggestions come from
+`providersByModel()`, derived from `STATUS_TARGETS`, so every one is a combination the scheduled
+provider workflow exercises. A test asserts the reverse too: every model in `KNOWN_MODELS` has a
+status target, so a platform can't ship on the menu without something watching whether it still
+works.
+
+## How plan limits are enforced
+
+Three layers, all resolving through `getOrgEntitlements(orgId)`:
+
+1. **Write time** — brand count, the org-wide tracked-prompt pool, platform picks, and premium
+   assignments are checked in the web server functions and `/api/v1` before any insert.
+2. **Schedule time** — every `process-prompt` firing re-resolves the org's entitlements and runs
+   only targets that are due at their plan cadence (standard platforms at the plan's samples/day,
+   premium targets once daily), metered against actual `prompt_runs` history. Canceled or paused orgs stop
+   running; `schedule-maintenance` revives tracking within minutes of reactivation. A per-org daily
+   run ceiling derived from plan limits caps runaway spend.
+3. **Downgrades** — nothing is deleted. Resources beyond the new limits simply stop running,
+   oldest-first wins, and the billing page shows the overage.
+
+Every provider call is recorded in `usage_events` with the org, brand, prompt, target, and a rough
+cost estimate (tune the per-provider numbers in `packages/lib/src/usage/cost.ts` against real
+invoices).
+
+## Custom plans
+
+Custom plans are configuration, not code. `maxBrands` is the most common override: every self-serve
+plan tracks exactly one brand, so an agency or a multi-brand company needs an agreement rather than a
+bigger tier.
+
+Insert (or update) a row in `organization_settings`:
+
+```sql
+INSERT INTO organization_settings (organization_id, entitlement_overrides)
+VALUES ('<org-id>', '{
+  "planOverride": "custom",
+  "maxBrands": 10,
+  "maxPrompts": 1000,
+  "platformPicks": 6,
+  "extraPlatforms": ["kimi"],
+  "standardRunsPerDay": 7,
+  "premiumPoolIncluded": 100
+}')
+ON CONFLICT (organization_id) DO UPDATE SET entitlement_overrides = EXCLUDED.entitlement_overrides;
+```
+
+Every field is optional and overrides the org's plan (or the Business plan when `planOverride:
+"custom"` marks an org billed outside self-serve — such an org is fully entitled without any Stripe
+subscription). The shape is validated by `entitlementOverridesSchema` in
+`packages/config/src/entitlements.ts`; malformed JSON falls back to plain plan limits, never to
+unlimited. `extraPlatforms` entries must also exist in `SCRAPE_TARGETS` to actually run.
+
+## Notes for self-hosted upgrades
+
+The cloud build-out ships in the same migrations every deployment runs. Plan limits do not: outside
+cloud, entitlements resolve to unlimited before any query, so every write-time guard and the
+worker's run policy short-circuit and behavior is unchanged. `subscription`,
+`organization_settings` and `prompts.premium_models` sit empty or unused.
+
+Two deliberate improvements come along for the ride: the LLMs settings page edits
+`brands.enabledModels` directly, and a prompt re-fired early (e.g. by the self-healing scheduler
+after a provider outage) re-runs only the targets that are actually stale instead of re-sampling
+every model.
+
+Two things do change for every install. `usage_events` is written in all modes — one row per
+provider call, success or failure — because it is the per-run attribution and provider failure-rate
+record, not a billing-only table. It has no retention job, so it grows with run volume. And
+migration 0014 deletes duplicate `member` rows before adding the unique index it should always have
+had; whitelabel installs are the ones likely to have any, since the Auth0 sync could race itself.
+It keeps the most-privileged, then oldest, row per (organization, user) and is verified against a
+seeded database in CI.

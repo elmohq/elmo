@@ -1,14 +1,14 @@
 import { z } from "zod";
+import { getCredential } from "../../secrets";
+import type { Citation } from "../../text-extraction";
+import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
 import type {
 	Provider,
-	ScrapeResult,
 	ProviderOptions,
+	ScrapeResult,
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
-import type { Citation } from "../../text-extraction";
-import { getCredential } from "../../secrets";
-import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
 
 const MISTRAL_BASE_URL = "https://api.mistral.ai";
 const DEFAULT_MODEL = "mistral-medium-latest";
@@ -83,6 +83,8 @@ function parseConversationsResponse(data: any): { textContent: string; citations
 export const mistralApi: Provider = {
 	id: "mistral-api",
 	name: "Mistral API",
+	access: "api",
+	docsAnchor: "direct-model-apis",
 
 	isConfigured() {
 		return !!getCredential("MISTRAL_API_KEY");

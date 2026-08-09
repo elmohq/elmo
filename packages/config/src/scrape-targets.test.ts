@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatScrapeTarget, type ModelConfig, parseScrapeTargets } from "./scrape-targets";
+import {
+	formatScrapeTarget,
+	type ModelConfig,
+	parseScrapeTargets,
+	providersByModel,
+	STATUS_TARGETS,
+} from "./scrape-targets";
 
 describe("formatScrapeTarget", () => {
 	it("formats model:provider", () => {
@@ -51,5 +57,21 @@ describe("round-trip", () => {
 		const value =
 			"chatgpt:olostep:online,claude:openrouter:anthropic/claude-sonnet-4.6,mistral:mistral-api:mistral-medium-latest:online,chatgpt:brightdata";
 		expect(parseScrapeTargets(value).map(formatScrapeTarget).join(",")).toBe(value);
+	});
+});
+
+describe("providersByModel", () => {
+	it("lists every provider STATUS_TARGETS exercises for a model, deduped and sorted", () => {
+		const map = providersByModel();
+		// ChatGPT is the most widely served surface, via scrapers and APIs alike.
+		const chatgpt = map.get("chatgpt") ?? [];
+		expect(chatgpt).toContain("brightdata");
+		expect(chatgpt).toContain("openai-api");
+		expect(chatgpt).toEqual([...new Set(chatgpt)].sort());
+	});
+
+	it("covers every model STATUS_TARGETS names, and nothing else", () => {
+		const fromTargets = new Set(parseScrapeTargets(STATUS_TARGETS.join(",")).map((t) => t.model));
+		expect(new Set(providersByModel().keys())).toEqual(fromTargets);
 	});
 });

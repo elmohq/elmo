@@ -1,6 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
+import Anthropic from "@anthropic-ai/sdk";
 import { generateText, Output } from "ai";
+import { getCredential } from "../../secrets";
+import type { Citation } from "../../text-extraction";
 import { extractTextFromAnthropic } from "../../text-extraction";
 import {
 	ANTHROPIC_WEB_SEARCH_MAX_USES,
@@ -10,13 +12,11 @@ import {
 } from "../config";
 import type {
 	Provider,
-	ScrapeResult,
 	ProviderOptions,
+	ScrapeResult,
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
-import type { Citation } from "../../text-extraction";
-import { getCredential } from "../../secrets";
 
 const DEFAULT_RESEARCH_MODEL = "claude-sonnet-4-6";
 
@@ -151,6 +151,8 @@ function extractAnthropicCitations(content: Anthropic.Messages.ContentBlock[]): 
 export const anthropicApi: Provider = {
 	id: "anthropic-api",
 	name: "Anthropic API",
+	access: "api",
+	docsAnchor: "direct-model-apis",
 
 	isConfigured() {
 		return !!getCredential("ANTHROPIC_API_KEY");
