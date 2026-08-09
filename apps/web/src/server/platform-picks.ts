@@ -5,7 +5,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { providersByModel } from "@workspace/config/scrape-targets";
-import { getDefaultDelayHours, RUNS_PER_PROMPT } from "@workspace/lib/constants";
+import { getDefaultDelayHours, getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
 import { decideEnabledModels, EntitlementError, getOrgEntitlements } from "@workspace/lib/entitlements";
@@ -150,7 +150,7 @@ async function selfHostedCostBasis(brand: {
 	return {
 		enabledPrompts: row?.value ?? 0,
 		runsPerDay: 24 / Math.max(1, delayHours),
-		replication: RUNS_PER_PROMPT,
+		replication: getRunsPerPrompt(),
 	};
 }
 

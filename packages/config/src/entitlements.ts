@@ -90,7 +90,7 @@ export interface Entitlements {
 	platformMenu: string[] | null;
 	platformPicks: number | null;
 	standardRunsPerDay: number | null;
-	/** Runs per firing for standard targets. Null = deployment default (RUNS_PER_PROMPT). */
+	/** Runs per firing for standard targets. Null = the deployment default. */
 	replication: number | null;
 	/**
 	 * Premium slots: plan included (or override) + purchased add-on. One slot

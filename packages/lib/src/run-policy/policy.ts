@@ -14,13 +14,13 @@
  *    (a maintenance expedite re-runs only what is due).
  *
  * Non-cloud modes resolve exactly today's behavior: every brand-selected
- * target at the brand cadence with RUNS_PER_PROMPT replication.
+ * target at the brand cadence, replicated RUNS_PER_PROMPT times.
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
 import type { ModelConfig } from "@workspace/config/scrape-targets";
 import type { DeploymentMode } from "@workspace/config/types";
-import { RUNS_PER_PROMPT } from "../constants";
+import { getRunsPerPrompt } from "../constants";
 import { isGroundedApiTarget } from "../providers";
 import { selectTargetsForBrand } from "../providers/runner";
 
@@ -65,7 +65,7 @@ export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan 
 		const targets = selectTargetsForBrand(input.scrapeTargets, input.brand.enabledModels).map((config) => ({
 			config,
 			intervalHours: interval,
-			replication: RUNS_PER_PROMPT,
+			replication: getRunsPerPrompt(),
 		}));
 		return { targets, rescheduleHours: targets.length > 0 ? interval : null };
 	}

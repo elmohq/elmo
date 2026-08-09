@@ -6,7 +6,7 @@ import {
 } from "@workspace/config/entitlements";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { describe, expect, it } from "vitest";
-import { RUNS_PER_PROMPT } from "../constants";
+import { RUNS_PER_PROMPT_FALLBACK } from "../constants";
 import {
 	dailyRunCeiling,
 	defaultPlatformPicks,
@@ -65,12 +65,12 @@ function localInput(overrides?: Partial<ResolveRunPlanInput>): ResolveRunPlanInp
 }
 
 describe("resolvePromptRunPlan: non-cloud legacy equivalence", () => {
-	it("runs every configured target at the brand cadence with RUNS_PER_PROMPT replication", () => {
+	it("runs every configured target at the brand cadence, replicated the deployment default", () => {
 		const plan = resolvePromptRunPlan(localInput());
 		expect(plan.targets.map((t) => t.config)).toEqual(SELF_HOSTED_TARGETS);
 		for (const target of plan.targets) {
 			expect(target.intervalHours).toBe(24);
-			expect(target.replication).toBe(RUNS_PER_PROMPT);
+			expect(target.replication).toBe(RUNS_PER_PROMPT_FALLBACK);
 		}
 		expect(plan.rescheduleHours).toBe(24);
 	});
@@ -112,7 +112,7 @@ describe("resolvePromptRunPlan: non-cloud legacy equivalence", () => {
 		const claudeTargets = plan.targets.filter((t) => t.config.model === "claude");
 		expect(claudeTargets).toHaveLength(1);
 		expect(claudeTargets[0].intervalHours).toBe(24);
-		expect(claudeTargets[0].replication).toBe(RUNS_PER_PROMPT);
+		expect(claudeTargets[0].replication).toBe(RUNS_PER_PROMPT_FALLBACK);
 	});
 });
 

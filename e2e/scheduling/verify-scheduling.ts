@@ -23,7 +23,9 @@
  */
 import pg from "pg";
 import { PgBoss } from "pg-boss";
-import { RUNS_PER_PROMPT } from "@workspace/lib/constants";
+import { getRunsPerPrompt } from "@workspace/lib/constants";
+
+const RUNS_PER_PROMPT = getRunsPerPrompt();
 import { DATABASE_URL as FIXTURES_DATABASE_URL } from "../fixtures.js";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? FIXTURES_DATABASE_URL;
