@@ -2,32 +2,24 @@ import { describe, expect, it } from "vitest";
 import { extractWebQueries } from "./brightdata";
 
 describe("extractWebQueries", () => {
-	it("reports nothing when the answer never triggered a search", () => {
-		// Taken from a real BrightData response: ChatGPT answered "test 1" from
-		// the model alone, and the payload still carried a query — and sources —
-		// belonging to some other search entirely.
+	it("reports the queries a run expanded the prompt into", () => {
 		expect(
 			extractWebQueries({
-				web_search_triggered: false,
-				citations: [],
-				web_search_query: ["OpenAI GPT-5.6 Luna"],
-			}),
-		).toEqual([]);
-	});
-
-	it("reports the queries when a search did run", () => {
-		expect(
-			extractWebQueries({
-				web_search_triggered: true,
 				web_search_query: ["best running shoes", "running shoe reviews"],
 			}),
 		).toEqual(["best running shoes", "running shoe reviews"]);
 	});
 
-	it("still reads queries from a payload that omits the flag", () => {
-		// Only ChatGPT reports the trigger; the other scraped surfaces always
-		// search, so an absent flag must not be read as "didn't".
-		expect(extractWebQueries({ web_search_query: ["running shoes"] })).toEqual(["running shoes"]);
+	it("keeps queries on a run that reports web_search_triggered false", () => {
+		// Real ChatGPT runs mostly carry `false` here while still reporting a query
+		// derived from the prompt, so the flag cannot be used to discard them —
+		// doing so drops the bulk of genuine fan-out data.
+		expect(
+			extractWebQueries({
+				web_search_triggered: false,
+				web_search_query: ["test 1 meaning"],
+			}),
+		).toEqual(["test 1 meaning"]);
 	});
 
 	it("reads ChatGPT's nested query shape", () => {
@@ -38,5 +30,9 @@ describe("extractWebQueries", () => {
 
 	it("drops blanks and non-strings rather than recording them as searches", () => {
 		expect(extractWebQueries({ web_search_query: ["ok", "", "   ", null, 7] })).toEqual(["ok"]);
+	});
+
+	it("reports nothing when the payload carries no query fields", () => {
+		expect(extractWebQueries({ answer_text: "hello" })).toEqual([]);
 	});
 });

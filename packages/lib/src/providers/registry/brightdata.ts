@@ -124,17 +124,22 @@ function extractSources(record: Record<string, any>): Citation[] {
 	return citations;
 }
 
-/** Exported for tests: this is the rule, and the payload it guards against is real. */
+/**
+ * Exported for tests.
+ *
+ * Do not gate this on `web_search_triggered`. It looks like the right signal
+ * and isn't: across real ChatGPT runs, most carry `false` while still
+ * reporting a query plainly derived from the prompt ("test 1" → "test 1
+ * meaning"), so trusting it discards the bulk of genuine fan-out data.
+ *
+ * BrightData does occasionally attach another session's search metadata to a
+ * correct answer — a run for "test 1" came back with
+ * `web_search_query: ["OpenAI GPT-5.6 Luna"]` and matching sources. Nothing in
+ * the payload separates that from a real query, and "unrelated to the prompt"
+ * would throw away exactly the fan-out this feature exists to surface, so it
+ * is recorded as reported and left to the read layer.
+ */
 export function extractWebQueries(record: Record<string, any>): string[] {
-	// BrightData reports whether the answer actually triggered a search, and the
-	// query fields are not cleared when it didn't: a prompt of "test 1" that
-	// ChatGPT answered from the model alone came back with
-	// `web_search_triggered: false`, no citations, and
-	// `web_search_query: ["OpenAI GPT-5.6 Luna"]` — a query from somewhere else
-	// entirely. Believe the flag over the residue, or the fan-out page reports
-	// searches that never ran.
-	if (record.web_search_triggered === false) return [];
-
 	// web_search_query is a direct array of strings
 	if (Array.isArray(record.web_search_query)) {
 		return record.web_search_query.filter((q: any) => typeof q === "string" && q.trim());
@@ -236,26 +241,19 @@ export const brightdata: Provider = {
 			const { answer_html, response_raw, answer_section_html, ...trimmed } = record;
 			const rawOutput = Array.isArray(payload) ? [trimmed] : trimmed;
 
-			// An answer the model produced without searching has no queries to
-			// report — not even the "we searched but can't say what for" marker.
-			// `web_search_triggered` is ChatGPT-only; the other scraped surfaces
-			// always search, so only an explicit `false` counts as "didn't".
-			const searched = record.web_search_triggered !== false;
-
 			return {
 				rawOutput,
 				textContent: answer,
-				// Only mark web queries as "unavailable" when a search actually ran
+				// Only mark web queries as "unavailable" when web search was enabled
 				// and citations exist but no query strings were exposed.
 				// When web search is disabled, webQueries is always empty.
-				webQueries:
-					options?.webSearch && searched
-						? webQueries.length > 0
-							? webQueries
-							: citations.length > 0
-								? [WEB_QUERIES_UNAVAILABLE]
-								: []
-						: [],
+				webQueries: options?.webSearch
+					? webQueries.length > 0
+						? webQueries
+						: citations.length > 0
+							? [WEB_QUERIES_UNAVAILABLE]
+							: []
+					: [],
 				citations,
 				modelVersion: record?.model ?? undefined,
 			};
