@@ -18,7 +18,8 @@ import { authClient } from "@workspace/lib/auth/client";
 import { useAuth } from "@/hooks/use-auth";
 import { resetPostHog } from "@/lib/posthog";
 
-export function NavUser() {
+/** `canSwitchBrand` is false on gate pages, where /app just redirects back. */
+export function NavUser({ canSwitchBrand = true }: { canSwitchBrand?: boolean } = {}) {
 	const { user } = useAuth();
 	const { isMobile, setOpenMobile } = useSidebar();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
@@ -74,12 +75,14 @@ export function NavUser() {
 						</DropdownMenuLabel>
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
-							<DropdownMenuItem asChild className="cursor-pointer">
-								<Link to="/app" onClick={() => setOpenMobile(false)}>
-									<IconStatusChange />
-									Switch Brand
-								</Link>
-							</DropdownMenuItem>
+							{canSwitchBrand && (
+								<DropdownMenuItem asChild className="cursor-pointer">
+									<Link to="/app" onClick={() => setOpenMobile(false)}>
+										<IconStatusChange />
+										Switch Brand
+									</Link>
+								</DropdownMenuItem>
+							)}
 							{clientConfig?.branding.parentUrl && clientConfig?.branding.parentName && (
 								<DropdownMenuItem asChild className="cursor-pointer">
 									<a href={clientConfig.branding.parentUrl} target="_blank" rel="noreferrer">

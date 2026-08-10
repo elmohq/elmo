@@ -11,15 +11,18 @@
 
 import { IconLoader2 } from "@tabler/icons-react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { PLAN_KEYS, PLANS, type PlanKey } from "@workspace/config/plans";
+import type { PlanKey } from "@workspace/config/plans";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
+import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
 import { Switch } from "@workspace/ui/components/switch";
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { PlanCard } from "@/components/plan-card";
+import { AppSidebar } from "@/components/app-sidebar";
+import { PlanComparison } from "@/components/plan-comparison";
+import { SiteHeader } from "@/components/site-header";
 import { buildTitle, getAppName } from "@/lib/route-head";
 import { getPaywallStateFn, type PaywallRequired, type PaywallState } from "@/server/billing";
 
@@ -58,11 +61,26 @@ function ChoosePlanPage() {
 	const paywall = Route.useLoaderData();
 	const { status, org } = Route.useSearch();
 
-	if (status === "success") return <ActivatingWorkspace organizationId={org} />;
 	// The loader redirects an entitled org away unless it is returning from
-	// checkout, which the branch above already handled.
-	if (!paywall.needsPlan) return null;
-	return <PlanPicker paywall={paywall} />;
+	// checkout, which the first branch handles.
+	const body =
+		status === "success" ? <ActivatingWorkspace organizationId={org} /> : paywall.needsPlan ? (
+			<PlanPicker paywall={paywall} />
+		) : null;
+
+	// The app's own shell, minus everywhere it could take you: a customer who
+	// cannot get past this page still needs to see whose product it is, which
+	// account they are signed into, and how to sign out of it — most of all the
+	// non-admin who is told to go ask someone else.
+	return (
+		<SidebarProvider>
+			<AppSidebar scope="account" />
+			<SidebarInset className="md:border md:border-border/60 md:rounded-xl overflow-hidden">
+				<SiteHeader title="Choose a plan" />
+				<div className="flex flex-1 flex-col">{body}</div>
+			</SidebarInset>
+		</SidebarProvider>
+	);
 }
 
 /** Post-checkout: wait for the Stripe webhook to record the subscription. */
@@ -150,25 +168,23 @@ function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
 				</Alert>
 			)}
 
-			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-				{PLAN_KEYS.map((key) => {
-					const plan = PLANS[key];
-					return (
-						<PlanCard
-							key={key}
-							plan={plan}
-							priceUsd={annual ? plan.annualPriceUsd : plan.monthlyPriceUsd}
-							priceSuffix={annual ? "/year" : "/month"}
-							highlighted={key === "pro"}
-							action={
-								<Button className="w-full" disabled={!isAdmin || subscribing !== null} onClick={() => subscribe(key)}>
-									{subscribing === key ? <IconLoader2 className="h-4 w-4 animate-spin" /> : `Subscribe to ${plan.name}`}
-								</Button>
-							}
-						/>
-					);
-				})}
-			</div>
+			<PlanComparison
+				annual={annual}
+				highlightPlan="pro"
+				renderAction={(plan) => (
+					<Button
+						className="w-full"
+						size="sm"
+						// The column header carries the plan name; a screen reader
+						// reaching the button on its own would hear four of "Subscribe".
+						aria-label={`Subscribe to ${plan.name}`}
+						disabled={!isAdmin || subscribing !== null}
+						onClick={() => subscribe(plan.key)}
+					>
+						{subscribing === plan.key ? <IconLoader2 className="h-4 w-4 animate-spin" /> : "Subscribe"}
+					</Button>
+				)}
+			/>
 
 			<p className="text-center text-sm text-muted-foreground">
 				Need more brands, any other models, higher numbers of samples, SSO, white label, or custom limits?{" "}

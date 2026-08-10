@@ -7,13 +7,7 @@
  * packages/config/src/plans.ts and the cards follow.
  */
 import type { Meta, StoryObj } from "@storybook/react";
-import {
-	PLAN_KEYS,
-	PLANS,
-	PLATFORM_TIER_LABELS,
-	PREMIUM_RUNS_PER_DAY,
-	planPlatformBreakdown,
-} from "@workspace/config/plans";
+import { PLAN_KEYS, PLANS, PLATFORM_TIER_LABELS, PREMIUM_RUNS_PER_DAY } from "@workspace/config/plans";
 import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import { Route } from "@/routes/_authed/choose-plan";
@@ -68,37 +62,51 @@ export const MonthlyPricing: Story = {
 };
 
 /**
- * The rate a plan quotes covers its scraped surfaces; Claude runs once a day on
- * every plan because it is billed per API call. Quoting one number for both
- * would overstate Claude fourfold on Pro.
+ * Every plan states each fact once, in a row the plans differ across — so the
+ * three tiers, and the rates that separate them, are named a single time rather
+ * than reprinted on all four cards.
  */
-export const SamplingQuotedPerPlatformGroup: Story = {
+export const ComparesPlansAcrossSharedRows: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		// Three tiers, with Claude's API inside the pick budget rather than beside
-		// it — the thing the old single-rate card got wrong.
-		await expect((await canvas.findAllByText("Choose any 4 platforms")).length).toBeGreaterThan(0);
-		await expect((await canvas.findAllByText("Scraped Engines")).length).toBeGreaterThan(0);
-		await expect((await canvas.findAllByText("LLM APIs")).length).toBeGreaterThan(0);
-		// Picks run at the plan's rate; only the premium tier departs from it.
-		await expect((await canvas.findAllByText(`${PLANS.pro.standardRunsPerDay}×/day`)).length).toBeGreaterThan(0);
+
+		// One heading per tier for the whole table, not one per plan.
+		for (const label of [PLATFORM_TIER_LABELS.scraped, PLATFORM_TIER_LABELS.api, PLATFORM_TIER_LABELS.premium]) {
+			await expect(await canvas.findByText(label)).toBeVisible();
+		}
+
+		// Picks run at the plan's rate — one cell per plan, since the plans differ
+		// on it — while the premium tier states its own rate once, beside the tier
+		// it belongs to. That split is what a single quoted number used to lose.
+		await expect((await canvas.findAllByText(`${PLANS.pro.standardRunsPerDay}×/day`)).length).toBeGreaterThan(1);
 		await expect((await canvas.findAllByText(`${PREMIUM_RUNS_PER_DAY}×/day`)).length).toBeGreaterThan(0);
 
 		// The premium tier names the grounded product, not the pick.
-		await expect((await canvas.findAllByText("GPT-5 Search")).length).toBeGreaterThan(0);
+		await expect(await canvas.findByText("GPT-5 Search")).toBeVisible();
 
-		// Grounded Claude is metered where it is sold, and absent where it is not.
-		// The sentence comes from the catalog, so this page and the marketing table
-		// cannot word the same plan differently.
-		await expect(
-			await canvas.findByText(planPlatformBreakdown(PLANS.pro).premium?.summary ?? "missing summary"),
-		).toBeVisible();
-		await expect(canvas.queryByText(/not included on this plan/i)).toBeNull();
-		// Pro and Business sell it; Starter and Basic do not.
-		await expect(await canvas.findAllByText(PLATFORM_TIER_LABELS.premium)).toHaveLength(2);
+		// Limits read off the catalog rather than being restated in prose.
+		await expect(await canvas.findByText("Tracked prompts")).toBeVisible();
+		await expect(await canvas.findByText(String(PLANS.business.maxPrompts))).toBeVisible();
+	},
+};
 
-		// Starter has one scraped platform and no API tier.
-		await expect(await canvas.findByText("ChatGPT only")).toBeVisible();
+/**
+ * A plan that doesn't sell something says so in the same row that another plan
+ * fills in, so the gap between two plans is readable across rather than by
+ * holding one card in your head while you scroll to the next.
+ */
+export const ShowsWhatEachPlanOmits: Story = {
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		// Premium is sold on two of the four plans, so its rows carry two ticks
+		// and two dashes apiece.
+		const included = await canvas.findAllByLabelText("Included");
+		const excluded = await canvas.findAllByLabelText("Not included");
+		await expect(included.length).toBeGreaterThan(0);
+		await expect(excluded.length).toBeGreaterThan(0);
+		// Starter sells one scraped platform, so the API and premium tiers are
+		// dashes down its whole column.
+		await expect(await canvas.findByText(`${PLANS.pro.premiumIncluded} prompt/model pairings`)).toBeVisible();
 	},
 };
 
@@ -108,8 +116,8 @@ export const AnnualPricing: Story = {
 		const canvas = within(canvasElement);
 		await userEvent.click(await canvas.findByRole("switch", { name: /annual billing/i }));
 		await expect(await canvas.findByText(`$${PLANS.business.annualPriceUsd.toLocaleString()}`)).toBeVisible();
-		// Every card switches interval together, not just the one being read.
-		await expect(await canvas.findAllByText("/year")).toHaveLength(PLAN_KEYS.length);
+		// Every column switches interval together, not just the one being read.
+		await expect(await canvas.findAllByText("/yr")).toHaveLength(PLAN_KEYS.length);
 	},
 };
 

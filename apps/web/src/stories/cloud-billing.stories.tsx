@@ -262,9 +262,8 @@ export const AddOnReductionRefused: Story = {
 };
 
 /**
- * Plans are compared here rather than reduced to a row of "Switch to X" buttons,
- * which said nothing about what switching would get you. The active plan is
- * marked and its button is inert.
+ * Every plan a switch could reach, with what it would get you stated row by
+ * row. The plan already in force is marked and offers no button to press.
  */
 export const ComparesPlansWithCurrentMarked: Story = {
 	render: () => renderWith(),

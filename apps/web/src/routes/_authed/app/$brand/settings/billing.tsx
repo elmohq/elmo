@@ -10,13 +10,7 @@
 import { IconExternalLink, IconLoader2 } from "@tabler/icons-react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import type { Entitlements } from "@workspace/config/entitlements";
-import {
-	PLAN_KEYS,
-	PLANS,
-	PREMIUM_ADDON_MONTHLY_USD,
-	planDisplayName,
-	summarizeSubscriptionCost,
-} from "@workspace/config/plans";
+import { PREMIUM_ADDON_MONTHLY_USD, planDisplayName, summarizeSubscriptionCost } from "@workspace/config/plans";
 import { isOrgAdminRole } from "@workspace/config/roles";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
@@ -27,7 +21,7 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Progress } from "@workspace/ui/components/progress";
 import { type ReactNode, useState } from "react";
-import { PlanCard } from "@/components/plan-card";
+import { PlanComparison } from "@/components/plan-comparison";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { type BillingState, getBillingStateFn, setPremiumAddonQuantityFn } from "@/server/billing";
 
@@ -166,38 +160,26 @@ function BillingSettingsPage() {
 					onChoosePlan={() => router.navigate({ to: "/choose-plan" })}
 				/>
 				{showPlanGrid && (
-					<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-						{PLAN_KEYS.map((key) => {
-							const plan = PLANS[key];
-							const annual = state.subscription?.billingInterval === "year";
-							const current = entitlements.planKey === key;
-							return (
-								<PlanCard
-									key={key}
-									plan={plan}
-									priceUsd={annual ? plan.annualPriceUsd : plan.monthlyPriceUsd}
-									priceSuffix={annual ? "/year" : "/month"}
-									active={current}
-									action={
-										current ? undefined : (
-											<Button
-												className="w-full"
-												variant="secondary"
-												disabled={busy !== null}
-												onClick={() => changePlan(key)}
-											>
-												{busy === `plan-${key}` ? (
-													<IconLoader2 className="h-4 w-4 animate-spin" />
-												) : (
-													`Switch to ${plan.name}`
-												)}
-											</Button>
-										)
-									}
-								/>
-							);
-						})}
-					</div>
+					<PlanComparison
+						annual={state.subscription?.billingInterval === "year"}
+						activePlan={entitlements.planKey}
+						renderAction={(plan) =>
+							entitlements.planKey === plan.key ? undefined : (
+								<Button
+									className="w-full"
+									size="sm"
+									variant="secondary"
+									// The column header carries the plan name; on its own the
+									// button would just be one of four reading "Switch".
+									aria-label={`Switch to ${plan.name}`}
+									disabled={busy !== null}
+									onClick={() => changePlan(plan.key)}
+								>
+									{busy === `plan-${plan.key}` ? <IconLoader2 className="h-4 w-4 animate-spin" /> : "Switch"}
+								</Button>
+							)
+						}
+					/>
 				)}
 				<p className="text-sm text-muted-foreground">
 					Need more brands, any other models, higher numbers of samples, SSO, white label, or custom limits?{" "}
