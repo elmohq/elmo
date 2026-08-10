@@ -1,5 +1,20 @@
 # @workspace/web
 
+## 0.2.19
+
+### Patch Changes
+
+- eaa54ce: Fixed the logo briefly rendering in a fallback font before swapping on the first page load.
+- Updated dependencies [dac89d4]
+  - @workspace/lib@0.2.19
+  - @workspace/cloud@0.2.19
+  - @workspace/whitelabel@0.2.19
+  - @workspace/deployment@0.2.19
+  - @workspace/api-spec@0.2.19
+  - @workspace/config@0.2.19
+  - @workspace/og@0.2.19
+  - @workspace/ui@0.2.19
+
 ## 0.2.18
 
 ### Patch Changes

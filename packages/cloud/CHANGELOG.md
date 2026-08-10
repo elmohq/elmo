@@ -1,5 +1,13 @@
 # @workspace/cloud
 
+## 0.2.19
+
+### Patch Changes
+
+- Updated dependencies [dac89d4]
+  - @workspace/lib@0.2.19
+  - @workspace/config@0.2.19
+
 ## 0.2.18
 
 ### Patch Changes

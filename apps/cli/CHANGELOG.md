@@ -1,5 +1,11 @@
 # @elmohq/cli
 
+## 0.2.19
+
+### Patch Changes
+
+- dffaae8: New deployments now run Postgres 18. Existing deployments are unaffected and keep the Postgres version they were created with.
+
 ## 0.2.18
 
 ### Patch Changes
