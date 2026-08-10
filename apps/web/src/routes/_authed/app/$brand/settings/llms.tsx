@@ -12,7 +12,7 @@
  * renders them.
  */
 
-import { IconArrowUpRight, IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
+import { IconArrowUpRight, IconExternalLink } from "@tabler/icons-react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { PROVIDERS_DOCS_URL } from "@workspace/config/constants";
 import { getModelMeta } from "@workspace/config/models";
@@ -22,8 +22,7 @@ import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Progress } from "@workspace/ui/components/progress";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { cn } from "@workspace/ui/lib/utils";
 import { useState } from "react";
 import { formatUsd, PlatformOperatorDetail, PlatformPicker, projectSelectionCostUsd } from "@/components/platform-picker";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
@@ -86,7 +85,8 @@ function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 	const { brand: brandId } = Route.useParams();
 	const router = useRouter();
 
-	// null stored picks = "everything the deployment configures" (non-cloud).
+	// The server resolves what the brand is actually tracked on, so null only
+	// reaches here unmetered, where it means "everything configured".
 	const stored = new Set(picker.enabledModels ?? picker.available.map((m) => m.model));
 	const [selected, setSelected] = useState<Set<string>>(stored);
 	const [saving, setSaving] = useState(false);
@@ -164,12 +164,15 @@ function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 			    same budget, and separate cards read as separate allowances. */}
 			<Card className="gap-0 py-0">
 				{groups.map((group, index) => (
-					<div key={group.id} className={index > 0 ? "border-t" : undefined}>
-						<CardHeader className="pt-6">
+					// Same vertical rhythm a Card gives its own header and content, so
+					// every tier sits the same distance from its description as the
+					// premium card below does.
+					<div key={group.id} className={cn("flex flex-col gap-6 py-6", index > 0 && "border-t")}>
+						<CardHeader>
 							<CardTitle>{group.title}</CardTitle>
 							<CardDescription>{group.description}</CardDescription>
 						</CardHeader>
-						<CardContent className="pb-6">
+						<CardContent>
 							<PlatformPicker
 								options={group.options}
 								selected={selected}
@@ -296,25 +299,12 @@ function PremiumApiPool({ premium }: { premium: PremiumPool }) {
 	const { brand: brandId } = Route.useParams();
 	const copy = platformGroupCopy("premium");
 	const remaining = Math.max(0, premium.total - premium.assigned);
-	const percent = premium.total > 0 ? Math.min(100, (premium.assigned / premium.total) * 100) : 0;
 
 	return (
 		<Card>
 			<CardHeader>
 				<CardTitle className="flex items-center justify-between gap-3">
-					<span className="flex items-center gap-2">
-						{copy.title}
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<IconInfoCircle className="h-4 w-4 cursor-help text-muted-foreground" />
-							</TooltipTrigger>
-							<TooltipContent className="max-w-xs text-xs">
-								Not a pick and not an upgrade of one: your picks run on every prompt regardless, and a premium model is
-								added to the prompts you choose. Each prompt/model pairing spends one from the pool, because a grounded
-								call costs far more than an ungrounded one.
-							</TooltipContent>
-						</Tooltip>
-					</span>
+					<span>{copy.title}</span>
 					<Badge variant={remaining === 0 ? "destructive" : "secondary"}>
 						{premium.assigned} / {premium.total} pairings
 					</Badge>
@@ -334,7 +324,6 @@ function PremiumApiPool({ premium }: { premium: PremiumPool }) {
 					))}
 				</div>
 
-				<Progress value={percent} />
 				<p className="text-sm text-muted-foreground">
 					{remaining > 0
 						? `${remaining} of ${premium.total} pairings still available, shared across every brand in this workspace. A prompt spends one for each model you track it on.`

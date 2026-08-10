@@ -40,7 +40,7 @@ function CitationsPage() {
 	const days = getDaysFromLookback(filters.lookback);
 
 	const { brand } = useBrand(brandId);
-	const availableModels = getAvailableModels(brand?.effectiveModels ?? []);
+	const trackedTargets = brand?.trackedTargets ?? [];
 
 	// Get citation data with tag and model filter
 	const modelParam = filters.model === ALL_MODELS_VALUE ? undefined : filters.model;
@@ -82,7 +82,7 @@ function CitationsPage() {
 			<FilteredListShell
 				filters={filters}
 				availableTags={citationData?.availableTags || []}
-				availableModels={availableModels}
+				trackedTargets={trackedTargets}
 				showModelSelector
 				isLoading={showFullSkeleton}
 				loadingState={

@@ -629,11 +629,12 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		.select({
 			promptId: promptRuns.promptId,
 			model: promptRuns.model,
+			provider: promptRuns.provider,
 			webSearchEnabled: promptRuns.webSearchEnabled,
 			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
 		})
 		.from(promptRuns)
-		.groupBy(promptRuns.promptId, promptRuns.model, promptRuns.webSearchEnabled);
+		.groupBy(promptRuns.promptId, promptRuns.model, promptRuns.provider, promptRuns.webSearchEnabled);
 
 	const lastRunsByPrompt = new Map<string, Map<string, Date>>();
 	for (const run of lastRunsQuery) {
@@ -642,7 +643,13 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 			byKey = new Map();
 			lastRunsByPrompt.set(run.promptId, byKey);
 		}
-		byKey.set(targetKey({ model: run.model, webSearch: run.webSearchEnabled }), new Date(run.lastRunAt));
+		// provider is nullable on the column; a row without one predates target
+		// keying and can't be matched to a target anyway.
+		if (!run.provider) continue;
+		byKey.set(
+			targetKey({ model: run.model, provider: run.provider, webSearch: run.webSearchEnabled }),
+			new Date(run.lastRunAt),
+		);
 	}
 
 	const [recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([

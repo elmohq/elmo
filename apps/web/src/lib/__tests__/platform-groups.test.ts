@@ -51,8 +51,11 @@ describe("groupPlatformOptions", () => {
 			option({ model: "claude" }),
 			option({ model: "claude-web", webSearch: true }),
 		])) {
+			// Both are rendered as the card's heading and sub-heading, so a group
+			// missing either would render a blank line. How long the copy runs is a
+			// product decision, not a contract.
 			expect(group.title).toBeTruthy();
-			expect(group.description.length).toBeGreaterThan(40);
+			expect(group.description.trim()).toBeTruthy();
 		}
 	});
 });

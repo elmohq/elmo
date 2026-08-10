@@ -9,7 +9,7 @@ import { findUniqueBrandId, slugify } from "@workspace/lib/db/provisioning";
 import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { assertCanCreateBrand, assertEnabledModelsAllowed, getOrgEntitlements } from "@workspace/lib/entitlements";
 import type { ModelConfig } from "@workspace/lib/providers";
-import { isGroundedApiTarget, parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
+import { isGroundedApiTarget, parseScrapeTargets, resolveProviderAccess, selectTargetsForBrand } from "@workspace/lib/providers";
 import { defaultPlatformPicks, resolveBrandPicks } from "@workspace/lib/run-policy";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -19,6 +19,7 @@ import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { getDeployment } from "@/lib/config/server";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { type TrackedTarget, targetFilterValue } from "@/lib/model-filter";
 
 const BRAND_ORG_ERRORS = {
 	"no-organization": "No organization for the current user",
@@ -27,42 +28,61 @@ const BRAND_ORG_ERRORS = {
 } as const;
 
 /**
- * Deployment-configured models this brand actually runs, after applying
- * the brand's `enabledModels` override. The filter bar + LLMs info page +
- * any other UI that shows "which models is this brand tracking?" should
- * read from here instead of hardcoding a list — different deployments can
- * configure any arbitrary set of models via `SCRAPE_TARGETS`.
+ * What this brand's results can be broken down by: the standard platforms it
+ * picks, plus the grounded variants its prompts are tracked on.
  *
- * `effectiveModels` is the flat id list that most callers want; the full
- * `ModelConfig[]` (with provider, version, webSearch) is kept on the same
- * object for pages that render per-model metadata (e.g. settings/llms).
+ * A model can appear twice — scraped and grounded are different answers to
+ * different questions — so these are targets rather than model ids. Anything
+ * asking "which models is this brand tracking?" reads from here; deployments
+ * configure arbitrary sets via `SCRAPE_TARGETS`, so nothing hardcodes a list.
  */
-async function computeEffectiveModels(brand: Brand): Promise<{
-	effectiveModels: string[];
-	effectiveModelConfigs: ModelConfig[];
-}> {
+async function computeTrackedTargets(brand: Brand, brandPrompts: { premiumModels: string[] }[]): Promise<TrackedTarget[]> {
 	try {
 		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 		const entitlements = await getOrgEntitlements(brand.organizationId);
+
 		// A metered brand runs what its plan resolves, which for a brand that
 		// never chose is the plan defaults — not every configured target. Reading
 		// the raw column here is what listed ten platforms against a prompt the
 		// worker only ran four of.
-		const effective = entitlements.unlimited
-			? selectTargetsForBrand(configs, brand.enabledModels)
-			: resolveBrandPicks(entitlements, brand, configs).flatMap((model) => {
-					const config = configs.find((t) => t.model === model && !isGroundedApiTarget(t));
-					return config ? [config] : [];
-				});
-		return {
-			effectiveModels: effective.map((c) => c.model),
-			effectiveModelConfigs: effective,
-		};
+		const standard = entitlements.unlimited
+			? selectTargetsForBrand(configs, brand.enabledModels).filter((config) => !isGroundedApiTarget(config))
+			: resolveBrandPicks(entitlements, brand, configs).flatMap((model) =>
+					configs.filter((t) => t.model === model && !isGroundedApiTarget(t)).slice(0, 1),
+				);
+
+		// Grounded targets are assigned per prompt, so the brand's set is the union
+		// across its prompts — plus, unmetered, whatever SCRAPE_TARGETS configures,
+		// since there is no pool deciding it.
+		const groundedModels = entitlements.unlimited
+			? configs.filter((t) => isGroundedApiTarget(t)).map((t) => t.model)
+			: brandPrompts.flatMap((prompt) => prompt.premiumModels);
+		const grounded = [...new Set(groundedModels)].filter((model) =>
+			configs.some((t) => t.model === model && isGroundedApiTarget(t)),
+		);
+
+		return [
+			...standard.map((config) => ({
+				value: targetFilterValue(config.model, false),
+				model: config.model,
+				premium: false,
+				// Scraped surface or bare API call — the same split the LLM settings
+				// page groups by, resolved from the target rather than guessed from
+				// the model id (a model can be reached either way).
+				tier: resolveProviderAccess(config) === "scraped" ? ("scraped" as const) : ("api" as const),
+			})),
+			...grounded.map((model) => ({
+				value: targetFilterValue(model, true),
+				model,
+				premium: true,
+				tier: "premium" as const,
+			})),
+		];
 	} catch {
 		// A misconfigured SCRAPE_TARGETS would already be surfacing via
-		// `validateScrapeTargets` at boot; here we'd rather degrade to empty
-		// lists than crash the brand fetch.
-		return { effectiveModels: [], effectiveModelConfigs: [] };
+		// `validateScrapeTargets` at boot; here we'd rather degrade to an empty
+		// list than crash the brand fetch.
+		return [];
 	}
 }
 
@@ -121,7 +141,7 @@ function getDefaultBrandDomains(): string[] {
 
 async function getBrandWithPromptsFromDb(
 	brandId: string,
-): Promise<(BrandWithPrompts & { effectiveModels: string[]; effectiveModelConfigs: ModelConfig[] }) | undefined> {
+): Promise<(BrandWithPrompts & { trackedTargets: TrackedTarget[] }) | undefined> {
 	try {
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, brandId),
@@ -139,7 +159,7 @@ async function getBrandWithPromptsFromDb(
 			...brand,
 			prompts: brandPrompts,
 			competitors: brandCompetitors,
-			...(await computeEffectiveModels(brand)),
+			trackedTargets: await computeTrackedTargets(brand, brandPrompts),
 		};
 	} catch (error) {
 		console.error("Error fetching brand with prompts:", error);
@@ -174,8 +194,7 @@ export const getBrands = createServerFn({ method: "GET" }).handler(async () => {
 	const brandsData = await Promise.all(scopedBrands.map((brand) => getBrandWithPromptsFromDb(brand.id)));
 
 	return brandsData.filter(
-		(brand): brand is BrandWithPrompts & { effectiveModels: string[]; effectiveModelConfigs: ModelConfig[] } =>
-			brand !== undefined,
+		(brand): brand is BrandWithPrompts & { trackedTargets: TrackedTarget[] } => brand !== undefined,
 	);
 });
 

@@ -122,7 +122,7 @@ function TeamSettingsPage() {
 			<div className="space-y-3">
 				<h2 className="text-lg font-semibold">Workspace</h2>
 				<form onSubmit={handleSaveWorkspace} className="flex flex-wrap items-end gap-3">
-					<div className="space-y-2">
+					<div className="flex flex-col gap-2">
 						<Label htmlFor="workspace-name">Name</Label>
 						<Input
 							id="workspace-name"
@@ -139,7 +139,7 @@ function TeamSettingsPage() {
 			</div>
 
 			<form onSubmit={handleInvite} className="flex flex-wrap items-end gap-3">
-				<div className="space-y-2">
+				<div className="flex flex-col gap-2">
 					<Label htmlFor="invite-email">Email</Label>
 					<Input
 						id="invite-email"
@@ -151,7 +151,7 @@ function TeamSettingsPage() {
 						className="w-64"
 					/>
 				</div>
-				<div className="space-y-2">
+				<div className="flex flex-col gap-2">
 					<Label htmlFor="invite-role">Role</Label>
 					<Select value={inviteRole} onValueChange={(value) => setInviteRole(value as "member" | "admin")}>
 						<SelectTrigger id="invite-role" className="w-32">

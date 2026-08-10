@@ -24,11 +24,10 @@ export interface PlatformGroup {
 }
 
 const GROUP_DESCRIPTIONS: Record<PlanPlatformGroupId, string> = {
-	scraped:
-		"Driven the way a person would, then read back from the answer they render. You see what a real visitor sees — the sources cited, and any shopping or search modules alongside the answer.",
-	api: "Called directly, with no web search. These show how a model describes your brand from what it already knows, which is what it will say when nobody hands it a source. They cite nothing.",
+	scraped: "Driven the way a person would, then read back from the answer they render. You see what a real visitor sees.",
+	api: "Called directly, with no web search.",
 	premium:
-		"Called directly with the model's own web-search tool switched on, so the answer is grounded in live sources and cites them. Chosen per prompt in the prompts editor and added to the picks above, which keep running on every prompt either way. A grounded call costs roughly ten times an ungrounded one, so each prompt/model pairing spends one from the pool.",
+		"Called directly with the model's own web-search tool switched on, so the answer is grounded in live sources and cites them.",
 };
 
 /** Which group an option belongs to. The one place that rule is decided. */

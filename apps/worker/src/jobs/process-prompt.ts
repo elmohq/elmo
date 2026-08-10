@@ -132,22 +132,24 @@ async function resolvePlanForPrompt(
 	return { plan, entitlements };
 }
 
-/** Last successful run per target (model + webSearch) inside the dueness window. */
+/** Last successful run per target inside the dueness window. */
 async function getLastRunsByTargetKey(promptId: string, maxIntervalHours: number): Promise<Map<string, Date>> {
 	const windowStart = new Date(Date.now() - lastRunQueryWindowMs(maxIntervalHours));
 	const rows = await db
 		.select({
 			model: promptRuns.model,
+			provider: promptRuns.provider,
 			webSearchEnabled: promptRuns.webSearchEnabled,
 			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
 		})
 		.from(promptRuns)
 		.where(and(eq(promptRuns.promptId, promptId), gt(promptRuns.createdAt, windowStart)))
-		.groupBy(promptRuns.model, promptRuns.webSearchEnabled);
+		.groupBy(promptRuns.model, promptRuns.provider, promptRuns.webSearchEnabled);
 
 	const map = new Map<string, Date>();
 	for (const row of rows) {
-		map.set(targetKey({ model: row.model, webSearch: row.webSearchEnabled }), new Date(row.lastRunAt));
+		if (!row.provider) continue;
+		map.set(targetKey({ model: row.model, provider: row.provider, webSearch: row.webSearchEnabled }), new Date(row.lastRunAt));
 	}
 	return map;
 }

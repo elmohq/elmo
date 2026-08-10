@@ -164,12 +164,16 @@ export function defaultPlatformPicks(entitlements: Entitlements, scrapeTargets: 
 }
 
 /**
- * Key for per-target run history. A model's grounded and ungrounded targets are
- * the same model with different web_search_enabled, so the flag is part of the
- * identity — otherwise a premium run would satisfy the pick's cadence.
+ * Key for per-target run history.
+ *
+ * The provider is part of the identity, not just the model and its web-search
+ * flag: a brand can track ChatGPT scraped off the consumer product *and*
+ * grounded through an API, and both are `chatgpt` with web search on. Keyed on
+ * model alone the two shared a cadence slot, so the scraped target's four runs
+ * a day kept the premium one looking fresh and it never came due.
  */
-export function targetKey(config: Pick<ModelConfig, "model" | "webSearch">): string {
-	return `${config.model}::${config.webSearch ? "web" : "base"}`;
+export function targetKey(config: Pick<ModelConfig, "model" | "provider" | "webSearch">): string {
+	return `${config.model}::${config.provider}::${config.webSearch ? "web" : "base"}`;
 }
 
 /**

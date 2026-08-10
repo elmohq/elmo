@@ -15,6 +15,7 @@ import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
+import { platformGroupCopy } from "@/lib/platform-groups";
 import { Route } from "@/routes/_authed/app/$brand/settings/llms";
 import type { ModelPickerState, PlatformOption } from "@/server/platform-picks";
 import type { PremiumPool } from "@/server/premium-tracking";
@@ -188,8 +189,10 @@ export const GroupDescriptionsAreVisible: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText(/what a real visitor sees/i)).toBeVisible();
-		await expect(await canvas.findByText(/from what it already knows/i)).toBeVisible();
+		// Read from the catalog rather than pinning the wording, so editing the
+		// copy is a copy change and not a test failure.
+		await expect(await canvas.findByText(platformGroupCopy("scraped").description)).toBeVisible();
+		await expect(await canvas.findByText(platformGroupCopy("api").description)).toBeVisible();
 	},
 };
 
