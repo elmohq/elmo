@@ -9,14 +9,22 @@
  * Where the plan meters platforms, a second step asks which ones to track:
  * this is the flow every cloud brand goes through, so accepting the defaults
  * silently would mean a brand's first cycle runs on platforms nobody chose.
+ *
+ * A workspace that has spent its plan's brands is told so here, before anything
+ * is filled in — the write guard would otherwise reject the finished form, and
+ * a limit is not something to discover at the end of a wizard.
  */
 
-import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate, useRouter } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { db } from "@workspace/lib/db/db";
+import { brands } from "@workspace/lib/db/schema";
+import { checkBrandCreate, type EntitlementDenialCode } from "@workspace/lib/entitlements";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
+import { inArray } from "drizzle-orm";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
@@ -27,18 +35,56 @@ import { trackEvent } from "@/lib/posthog";
 import { createBrandInOrgFn } from "@/server/brands";
 import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
 
+type NewBrandOrganization = {
+	id: string;
+	name: string;
+	/** Why this workspace can't take another brand; null when it can. */
+	blocked: { code: EntitlementDenialCode; message: string } | null;
+	/** A brand to hang the (brand-scoped) billing link on; null when the org has none. */
+	billingBrandId: string | null;
+};
+
+/** The oldest brand of each org, which is as good a billing entry point as any. */
+async function billingBrandByOrg(orgIds: string[]): Promise<Map<string, string>> {
+	if (orgIds.length === 0) return new Map();
+	const rows = await db
+		.select({ id: brands.id, organizationId: brands.organizationId })
+		.from(brands)
+		.where(inArray(brands.organizationId, orgIds))
+		.orderBy(brands.createdAt);
+	const byOrg = new Map<string, string>();
+	for (const row of rows) if (!byOrg.has(row.organizationId)) byOrg.set(row.organizationId, row.id);
+	return byOrg;
+}
+
 const getNewBrandOptions = createServerFn({ method: "GET" }).handler(
-	async (): Promise<{ canCreateBrands: boolean; organizations: { id: string; name: string }[] }> => {
+	async (): Promise<{ canCreateBrands: boolean; organizations: NewBrandOrganization[] }> => {
 		if (!getDeployment().features.canCreateBrands) {
 			return { canCreateBrands: false, organizations: [] };
 		}
 		const session = await requireAuthSession();
-		return { canCreateBrands: true, organizations: await listUserOrganizations(session.user.id) };
+		const orgs = await listUserOrganizations(session.user.id);
+		const decisions = await checkBrandCreate(orgs.map((org) => org.id));
+		const blocked = orgs.filter((org) => decisions.get(org.id)?.allowed === false);
+		const billingBrands = await billingBrandByOrg(blocked.map((org) => org.id));
+
+		return {
+			canCreateBrands: true,
+			organizations: orgs.map((org) => {
+				const decision = decisions.get(org.id);
+				return {
+					id: org.id,
+					name: org.name,
+					blocked: decision && !decision.allowed ? { code: decision.code, message: decision.message } : null,
+					billingBrandId: billingBrands.get(org.id) ?? null,
+				};
+			}),
+		};
 	},
 );
 
 export const Route = createFileRoute("/_authed/app/new")({
-	loader: async (): Promise<{ organizations: { id: string; name: string }[] }> => {
+	loader: async (): Promise<{ organizations: NewBrandOrganization[] }> => {
 		const { canCreateBrands, organizations } = await getNewBrandOptions();
 		if (!canCreateBrands) {
 			throw redirect({ to: "/app" });
@@ -48,6 +94,35 @@ export const Route = createFileRoute("/_authed/app/new")({
 	component: NewBrandPage,
 });
 
+interface WorkspaceSelectProps {
+	organizations: NewBrandOrganization[];
+	value: string;
+	onChange: (organizationId: string) => void;
+	disabled?: boolean;
+}
+
+/** One workspace is the norm; only ask when the answer isn't already decided. */
+function WorkspaceSelect({ organizations, value, onChange, disabled }: WorkspaceSelectProps) {
+	if (organizations.length <= 1) return null;
+	return (
+		<div className="space-y-2">
+			<Label htmlFor="organization">Workspace</Label>
+			<Select value={value} onValueChange={onChange} disabled={disabled}>
+				<SelectTrigger id="organization" className="w-full">
+					<SelectValue />
+				</SelectTrigger>
+				<SelectContent>
+					{organizations.map((org) => (
+						<SelectItem key={org.id} value={org.id}>
+							{org.name}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+		</div>
+	);
+}
+
 function NewBrandPage() {
 	const { organizations } = Route.useLoaderData();
 	const [step, setStep] = useState<"details" | "platforms">("details");
@@ -56,9 +131,14 @@ function NewBrandPage() {
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
-	const [organizationId, setOrganizationId] = useState(organizations[0]?.id ?? "");
+	// Start on a workspace that can actually take a brand, so a user who belongs
+	// to a full one and an empty one isn't shown a wall they can walk around.
+	const [organizationId, setOrganizationId] = useState(
+		(organizations.find((org) => !org.blocked) ?? organizations[0])?.id ?? "",
+	);
 	const navigate = useNavigate();
 	const router = useRouter();
+	const activeOrg = organizations.find((org) => org.id === organizationId);
 
 	const createBrand = async (brandName: string, website: string, enabledModels: string[] | null) => {
 		setIsLoading(true);
@@ -115,6 +195,32 @@ function NewBrandPage() {
 		}
 	};
 
+	if (activeOrg?.blocked) {
+		const { code, message } = activeOrg.blocked;
+		return (
+			<FullPageCard
+				title={code === "no-active-plan" ? "This workspace has no plan" : "You've used every brand on your plan"}
+				subtitle={message}
+				showBackButton
+			>
+				<div className="space-y-4">
+					<WorkspaceSelect organizations={organizations} value={organizationId} onChange={setOrganizationId} />
+					<Button asChild className="w-full">
+						{activeOrg.billingBrandId ? (
+							<Link to="/app/$brand/settings/billing" params={{ brand: activeOrg.billingBrandId }}>
+								Go to billing
+							</Link>
+						) : (
+							<Link to="/choose-plan" search={{ org: activeOrg.id }}>
+								Choose a plan
+							</Link>
+						)}
+					</Button>
+				</div>
+			</FullPageCard>
+		);
+	}
+
 	if (step === "platforms" && platformState) {
 		return (
 			<FullPageCard title={`Create ${details.brandName}`} subtitle="Choose which AI platforms to track">
@@ -161,24 +267,12 @@ function NewBrandPage() {
 					/>
 				</div>
 
-				{/* One workspace is the norm; only ask when the answer isn't already decided. */}
-				{organizations.length > 1 && (
-					<div className="space-y-2">
-						<Label htmlFor="organization">Workspace</Label>
-						<Select value={organizationId} onValueChange={setOrganizationId} disabled={isLoading}>
-							<SelectTrigger id="organization" className="w-full">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								{organizations.map((org) => (
-									<SelectItem key={org.id} value={org.id}>
-										{org.name}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
-				)}
+				<WorkspaceSelect
+					organizations={organizations}
+					value={organizationId}
+					onChange={setOrganizationId}
+					disabled={isLoading}
+				/>
 
 				{error && <p className="text-sm text-destructive">{error}</p>}
 

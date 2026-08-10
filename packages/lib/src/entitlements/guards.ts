@@ -15,10 +15,10 @@
 
 import type { Entitlements } from "@workspace/config/entitlements";
 import { MAX_SELF_SERVE_BRANDS, premiumPairings } from "@workspace/config/plans";
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db/db";
 import { brands, prompts } from "../db/schema";
-import { getOrgEntitlements } from "./service";
+import { getOrgEntitlements, getOrgEntitlementsMap } from "./service";
 
 export type EntitlementDenialCode =
 	| "no-active-plan"
@@ -188,9 +188,18 @@ export function assertAllowed(decision: EntitlementDecision): void {
 // Usage counts (cloud-only paths; every assert below skips them when unlimited)
 // ---------------------------------------------------------------------------
 
+export async function countBrandsByOrg(orgIds: string[]): Promise<Map<string, number>> {
+	if (orgIds.length === 0) return new Map();
+	const rows = await db
+		.select({ organizationId: brands.organizationId, value: count() })
+		.from(brands)
+		.where(inArray(brands.organizationId, orgIds))
+		.groupBy(brands.organizationId);
+	return new Map(rows.map((row) => [row.organizationId, row.value]));
+}
+
 export async function countOrgBrands(organizationId: string): Promise<number> {
-	const [row] = await db.select({ value: count() }).from(brands).where(eq(brands.organizationId, organizationId));
-	return row?.value ?? 0;
+	return (await countBrandsByOrg([organizationId])).get(organizationId) ?? 0;
 }
 
 export async function countOrgEnabledPrompts(organizationId: string): Promise<number> {
@@ -238,6 +247,25 @@ export async function assertCanCreateBrand(organizationId: string): Promise<void
 	await withEntitlements(organizationId, async (entitlements) => [
 		decideBrandCreate(entitlements, await countOrgBrands(organizationId)),
 	]);
+}
+
+/**
+ * The same verdict assertCanCreateBrand raises, returned instead of thrown, for
+ * any number of orgs at once. UI that offers brand creation asks this first so a
+ * customer meets the limit before filling in a form, rather than as an error on
+ * the last step of one.
+ */
+export async function checkBrandCreate(orgIds: string[]): Promise<Map<string, EntitlementDecision>> {
+	const entitlementsByOrg = await getOrgEntitlementsMap(orgIds);
+	const limited = orgIds.filter((orgId) => !entitlementsByOrg.get(orgId)?.unlimited);
+	const counts = await countBrandsByOrg(limited);
+	const decisions = new Map<string, EntitlementDecision>();
+	for (const orgId of orgIds) {
+		const entitlements = entitlementsByOrg.get(orgId);
+		// getOrgEntitlementsMap answers for every requested id; the fallback narrows.
+		decisions.set(orgId, entitlements ? decideBrandCreate(entitlements, counts.get(orgId) ?? 0) : ALLOWED);
+	}
+	return decisions;
 }
 
 /** Guard creating `adding` new enabled prompts (or re-enabling that many). */
