@@ -171,6 +171,14 @@ export function defaultPlatformPicks(entitlements: Entitlements, scrapeTargets: 
  * grounded through an API, and both are `chatgpt` with web search on. Keyed on
  * model alone the two shared a cadence slot, so the scraped target's four runs
  * a day kept the premium one looking fresh and it never came due.
+ *
+ * Changing this shape costs no reprocessing, because keys are never stored:
+ * both sides compute one from (model, provider, web_search_enabled), and
+ * prompt_runs has recorded all three since the run was written. A deploy
+ * therefore matches existing history rather than treating every target as
+ * never-run. The one case that does re-fire once is an operator pointing a
+ * model at a different provider — which is a different data source, so
+ * restarting its cadence is the right answer.
  */
 export function targetKey(config: Pick<ModelConfig, "model" | "provider" | "webSearch">): string {
 	return `${config.model}::${config.provider}::${config.webSearch ? "web" : "base"}`;
