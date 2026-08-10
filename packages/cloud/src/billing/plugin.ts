@@ -45,6 +45,24 @@ export async function isOrgBillingAdmin(userId: string, organizationId: string):
 	return isOrgAdminRole(row?.role);
 }
 
+/**
+ * Extra Checkout Session settings for every plan purchase.
+ *
+ * `allow_promotion_codes` is what puts the "Add promotion code" field on
+ * Stripe's checkout page; without it a customer holding a launch or partner
+ * code has nowhere to type it. The codes themselves are created in the Stripe
+ * dashboard, per campaign — nothing here needs to know they exist.
+ *
+ * Only initial checkout goes through a Session. A customer already on a plan
+ * switches through the subscription API, which takes no promotion code, so a
+ * discount for an existing subscriber is applied to their subscription in
+ * Stripe rather than typed in here.
+ *
+ * Stripe rejects `allow_promotion_codes` alongside a pre-applied `discounts`
+ * array, so this must stay the only discount mechanism on the session.
+ */
+const CHECKOUT_SESSION_PARAMS = { allow_promotion_codes: true } as const;
+
 export function createStripeBillingPlugin() {
 	return stripe({
 		stripeClient: getStripeClient(),
@@ -58,6 +76,7 @@ export function createStripeBillingPlugin() {
 			plans: buildStripePlans,
 			requireEmailVerification: true,
 			authorizeReference: async ({ user, referenceId }) => isOrgBillingAdmin(user.id, referenceId),
+			getCheckoutSessionParams: () => ({ params: CHECKOUT_SESSION_PARAMS }),
 			// Fires on every subscription webhook update — the point where
 			// add-on quantity changes (from this app, the customer portal, or
 			// the Stripe dashboard) converge into organization_settings, and

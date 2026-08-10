@@ -53,6 +53,23 @@ Enable Stripe Tax and Smart Retries in the Stripe dashboard. Before launch, walk
 against a test-clock customer with `packages/cloud/scripts/verify-stripe-lifecycle.ts` (see its
 header for usage).
 
+### Coupons
+
+Checkout offers an "Add promotion code" field, so a launch or partner code needs no code change —
+create the coupon and its promotion code in the Stripe dashboard (Product catalog → Coupons) and
+hand out the code. Restrict it there to the plans, durations, or first-time customers it should
+apply to; the app never sees the code and does not validate it.
+
+Two limits worth knowing:
+
+- Only **first** checkout takes a code. A customer already on a plan switches through Stripe's
+  subscription API, which has no promotion-code step, so discounting an existing subscriber means
+  applying the coupon to their subscription in the dashboard.
+- To let customers redeem codes themselves later, turn on promotion codes in the Customer Portal
+  settings too — it is a separate dashboard toggle from the one on Checkout.
+
+To verify, create a test-mode promotion code and subscribe once through the app.
+
 ## SCRAPE_TARGETS for cloud
 
 The instance-level `SCRAPE_TARGETS` defines the menu customers pick from. Configure **one target per
