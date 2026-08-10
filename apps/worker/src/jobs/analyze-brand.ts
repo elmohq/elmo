@@ -1,5 +1,9 @@
-import type { Job } from "pg-boss";
+import { randomUUID } from "node:crypto";
+import { hostname } from "node:os";
 import { analyzeBrand, type OnboardingSuggestion } from "@workspace/lib/onboarding";
+import { DEFAULT_PROVIDER_ATTEMPTS_PER_UNIT } from "@workspace/lib/scheduler";
+import type { Job } from "pg-boss";
+import { runReservedStructuredResearch } from "../scheduler/reserved-structured";
 
 export interface AnalyzeBrandData {
 	/** Brand id (== org id) the analysis belongs to; the web app reads results back by brand. */
@@ -8,6 +12,8 @@ export interface AnalyzeBrandData {
 	brandName?: string;
 	maxCompetitors?: number;
 	maxPrompts?: number;
+	requestId?: string;
+	generationDeadlineAt?: string;
 }
 
 /**
@@ -29,5 +35,33 @@ export async function analyzeBrandJob(jobs: Job<AnalyzeBrandData>[]): Promise<On
 	}
 
 	const { website, brandName, maxCompetitors, maxPrompts } = job.data;
-	return analyzeBrand({ website, brandName, maxCompetitors, maxPrompts });
+	const generationId = job.data.requestId ?? job.id;
+	const workerId = `${hostname()}:${process.pid}:analyze-brand:${job.id}:${randomUUID()}`;
+	return analyzeBrand({
+		website,
+		brandName,
+		maxCompetitors,
+		maxPrompts,
+		structuredResearchRunner: (prompt, schema) =>
+			runReservedStructuredResearch(
+				{
+					ownerType: "analyze-brand",
+					ownerId: job.data.brandId,
+					workKey: `analysis:${generationId}`,
+					workerId,
+					ownerMaxCalls: DEFAULT_PROVIDER_ATTEMPTS_PER_UNIT,
+					budgetScope: "work",
+					exclusiveOwner: true,
+					requestMetadata: {
+						brandId: job.data.brandId,
+						website,
+						brandName: brandName ?? null,
+						generationId,
+					},
+					signal: job.signal,
+				},
+				prompt,
+				schema,
+			),
+	});
 }

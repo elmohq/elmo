@@ -1,7 +1,8 @@
-import { db } from "@workspace/lib/db/db";
-import { prompts, brands } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { REPORT_GENERATION_DEADLINE_MS, REPORT_QUEUE, REPORT_QUEUE_OPTIONS } from "@workspace/lib/scheduler";
+import { db } from "@workspace/lib/db/db";
+import { brands, promptSchedules, prompts } from "@workspace/lib/db/schema";
+import { eq, sql } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
 
 /**
@@ -38,7 +39,7 @@ export async function getPromptCadenceHours(promptId: string): Promise<number> {
 		}
 
 		// Use override if set, otherwise use default
-		if (brand.delayOverrideHours !== null) {
+		if (brand.delayOverrideHours !== null && brand.delayOverrideHours > 0) {
 			console.log(`Using custom cadence for brand ${brand.name}: ${brand.delayOverrideHours}h`);
 			return brand.delayOverrideHours;
 		}
@@ -51,9 +52,7 @@ export async function getPromptCadenceHours(promptId: string): Promise<number> {
 }
 
 /**
- * Creates a scheduled job for a prompt to run after a delay.
- * Uses interval-based scheduling with startAfter instead of cron patterns.
- * The job will self-reschedule after completion via the worker.
+ * Creates durable scheduling intent for a prompt.
  */
 type SchedulerOptions = {
 	sendImmediate?: boolean;
@@ -61,53 +60,25 @@ type SchedulerOptions = {
 
 export async function createPromptJobScheduler(promptId: string, options: SchedulerOptions = {}): Promise<boolean> {
 	try {
-		const boss = await getBoss();
 		const cadenceHours = await getPromptCadenceHours(promptId);
 		const sendImmediate = options.sendImmediate ?? true;
+		const now = new Date();
+		const nextRunAt = sendImmediate ? now : new Date(now.getTime() + hoursToMs(cadenceHours));
 
-		// Remove any old cron-based schedule (migration cleanup)
-		try {
-			await boss.unschedule("process-prompt", promptId);
-		} catch {
-			// Ignore errors - schedule may not exist
-		}
+		await db
+			.insert(promptSchedules)
+			.values({ promptId, nextRunAt, updatedAt: now })
+			.onConflictDoUpdate({
+				target: promptSchedules.promptId,
+				set: { nextRunAt, updatedAt: now },
+			});
 
-		if (sendImmediate) {
-			// Send an immediate job
-			await boss.send(
-				"process-prompt",
-				{ promptId, cadenceHours },
-				{
-					singletonKey: `prompt-${promptId}`,
-					singletonSeconds: 60 * 60, // 1 hour - prevent duplicate jobs
-					retryLimit: 3,
-					retryDelay: 60,
-					retryBackoff: true,
-					expireInSeconds: 60 * 15, // 15 minute timeout
-				},
-			);
-		} else {
-			// Schedule the next run based on cadence
-			const startAfterSeconds = cadenceHours * 60 * 60;
-			await boss.send(
-				"process-prompt",
-				{ promptId, cadenceHours },
-				{
-					singletonKey: `prompt-${promptId}`,
-					singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period
-					startAfter: startAfterSeconds,
-					retryLimit: 3,
-					retryDelay: 60,
-					retryBackoff: true,
-					expireInSeconds: 60 * 15,
-				},
-			);
-		}
-
-		console.log(`Created job for prompt ${promptId} with ${cadenceHours}h cadence`);
+		console.log(
+			`Created schedule for prompt ${promptId} ${sendImmediate ? "to run immediately" : `in ${cadenceHours}h`}`,
+		);
 		return true;
 	} catch (error) {
-		console.error(`Failed to create job for prompt ${promptId}:`, error);
+		console.error(`Failed to create schedule for prompt ${promptId}:`, error);
 		return false;
 	}
 }
@@ -117,18 +88,7 @@ export async function createPromptJobScheduler(promptId: string, options: Schedu
  */
 export async function removePromptJobScheduler(promptId: string): Promise<boolean> {
 	try {
-		const boss = await getBoss();
-
-		// Remove old cron-based schedule if exists
-		try {
-			await boss.unschedule("process-prompt", promptId);
-		} catch {
-			// Ignore - may not exist
-		}
-
-		// Cancel any pending jobs for this prompt
-		// Note: pg-boss doesn't have a direct way to cancel by data,
-		// but the singletonKey prevents duplicates
+		await db.delete(promptSchedules).where(eq(promptSchedules.promptId, promptId));
 		console.log(`Removed schedule for prompt ${promptId}`);
 		return true;
 	} catch (error) {
@@ -177,29 +137,31 @@ export async function recreatePromptJobScheduler(promptId: string, options: Sche
 }
 
 /**
- * Sends an immediate job to process a prompt (outside of the schedule).
- * Useful for manual retries from the admin UI.
+ * Requests one manual prompt run. Keeping the oldest pending request makes
+ * repeated clicks converge on one execution while preserving a request that a
+ * worker has already observed.
  */
 export async function sendImmediatePromptJob(promptId: string): Promise<boolean> {
 	try {
-		const boss = await getBoss();
 		const cadenceHours = await getPromptCadenceHours(promptId);
+		const requestedAt = new Date();
+		const nextRunAt = new Date(requestedAt.getTime() + hoursToMs(cadenceHours));
 
-		await boss.send(
-			"process-prompt",
-			{ promptId, cadenceHours },
-			{
-				retryLimit: 3,
-				retryDelay: 60,
-				retryBackoff: true,
-				expireInSeconds: 60 * 15,
-			},
-		);
+		await db
+			.insert(promptSchedules)
+			.values({ promptId, nextRunAt, runRequestedAt: requestedAt, updatedAt: requestedAt })
+			.onConflictDoUpdate({
+				target: promptSchedules.promptId,
+				set: {
+					runRequestedAt: sql`COALESCE(${promptSchedules.runRequestedAt}, ${requestedAt})`,
+					updatedAt: requestedAt,
+				},
+			});
 
-		console.log(`Sent immediate job for prompt ${promptId}`);
+		console.log(`Requested immediate run for prompt ${promptId}`);
 		return true;
 	} catch (error) {
-		console.error(`Failed to send immediate job for prompt ${promptId}:`, error);
+		console.error(`Failed to request immediate run for prompt ${promptId}:`, error);
 		return false;
 	}
 }
@@ -210,22 +172,18 @@ export async function sendImmediatePromptJob(promptId: string): Promise<boolean>
  */
 export async function scheduleNextPromptRun(promptId: string, cadenceHours: number): Promise<boolean> {
 	try {
-		const boss = await getBoss();
-		const startAfterSeconds = cadenceHours * 60 * 60;
+		const now = new Date();
+		const nextRunAt = new Date(now.getTime() + hoursToMs(cadenceHours));
+		const [updatedSchedule] = await db
+			.update(promptSchedules)
+			.set({ nextRunAt, updatedAt: now })
+			.where(eq(promptSchedules.promptId, promptId))
+			.returning({ promptId: promptSchedules.promptId });
 
-		await boss.send(
-			"process-prompt",
-			{ promptId, cadenceHours },
-			{
-				singletonKey: `prompt-${promptId}`,
-				singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period
-				startAfter: startAfterSeconds,
-				retryLimit: 3,
-				retryDelay: 60,
-				retryBackoff: true,
-				expireInSeconds: 60 * 15,
-			},
-		);
+		if (!updatedSchedule) {
+			console.warn(`Could not schedule next run for prompt ${promptId}: schedule does not exist`);
+			return false;
+		}
 
 		console.log(`Scheduled next run for prompt ${promptId} in ${cadenceHours}h`);
 		return true;
@@ -248,14 +206,15 @@ export async function sendReportJob(
 		const boss = await getBoss();
 
 		await boss.send(
-			"generate-report",
-			{ reportId, brandName, brandWebsite, manualPrompts },
+			REPORT_QUEUE,
 			{
-				retryLimit: 3,
-				retryDelay: 60,
-				retryBackoff: true,
-				expireInSeconds: 60 * 60, // 1 hour timeout for reports
+				reportId,
+				brandName,
+				brandWebsite,
+				manualPrompts,
+				generationDeadlineAt: new Date(Date.now() + REPORT_GENERATION_DEADLINE_MS).toISOString(),
 			},
+			{ ...REPORT_QUEUE_OPTIONS, id: reportId },
 		);
 
 		console.log(`Sent report job for report ${reportId}`);

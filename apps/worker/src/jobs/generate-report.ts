@@ -1,8 +1,8 @@
-import type { Job } from "pg-boss";
-import { processReportJob, type ReportJobData } from "../report-worker";
 import { db } from "@workspace/lib/db/db";
 import { reports } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
+import type { Job, JobWithMetadata } from "pg-boss";
+import { processReportJob, type ReportJobData } from "../report-worker";
 
 export interface GenerateReportData extends ReportJobData {}
 
@@ -13,7 +13,17 @@ export interface GenerateReportData extends ReportJobData {}
 export async function generateReportJob(jobs: Job<GenerateReportData>[]): Promise<void> {
 	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
+		const metadata = job as JobWithMetadata<GenerateReportData>;
 		const { reportId, brandName, brandWebsite, manualPrompts } = job.data;
+		const [claimed] = await db
+			.update(reports)
+			.set({ status: "processing", updatedAt: new Date() })
+			.where(and(eq(reports.id, reportId), inArray(reports.status, ["pending", "processing"])))
+			.returning({ id: reports.id });
+		if (!claimed) {
+			console.warn(`Skipping report ${reportId}: it is already terminal`);
+			continue;
+		}
 
 		console.log(`Generating report ${reportId} for ${brandName}`);
 
@@ -37,10 +47,15 @@ export async function generateReportJob(jobs: Job<GenerateReportData>[]): Promis
 				brandWebsite,
 				manualPrompts,
 			},
+			workerId: `${hostname()}:${process.pid}:report:${job.id}:${randomUUID()}`,
 			log,
 			updateProgress,
+			signal: job.signal,
+			finalAttempt: metadata.retryCount >= metadata.retryLimit,
 		});
 
 		console.log(`Report ${reportId} completed successfully`);
 	}
 }
+import { randomUUID } from "node:crypto";
+import { hostname } from "node:os";

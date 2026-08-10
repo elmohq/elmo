@@ -12,13 +12,16 @@
  * has to round-trip). The columns used here (`name`, `data`, `state`,
  * `output`, `created_on`) are stable across the pinned pg-boss v12 line.
  */
-import { sql } from "drizzle-orm";
+
+import { randomUUID } from "node:crypto";
 import { db } from "@workspace/lib/db/db";
 import { cleanOnboardingUrl, type OnboardingSuggestion } from "@workspace/lib/onboarding";
+import { ANALYZE_BRAND_GENERATION_DEADLINE_MS, ANALYZE_BRAND_QUEUE } from "@workspace/lib/scheduler";
+import { sql } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
 import { extractDomain } from "@/lib/domain-categories";
 
-const ANALYZE_BRAND_QUEUE = "analyze-brand";
+const LEGACY_ANALYZE_BRAND_QUEUE = "analyze-brand";
 
 /**
  * Shown to the user when a job ends in a failed/cancelled state. The real
@@ -38,10 +41,12 @@ export interface AnalyzeBrandInput {
 	brandId: string;
 	website: string;
 	brandName?: string;
+	requestId?: string;
 }
 
 interface JobRow {
 	id: string;
+	name: string;
 	state: string;
 	data: { website?: string } | null;
 	output: unknown;
@@ -50,9 +55,10 @@ interface JobRow {
 /** The most recent analyze-brand job for a brand, regardless of state. */
 async function latestJobForBrand(brandId: string): Promise<JobRow | undefined> {
 	const result = await db.execute(sql`
-		SELECT id, state, data, output
+		SELECT id, name, state, data, output
 		FROM pgboss.job
-		WHERE name = ${ANALYZE_BRAND_QUEUE} AND data->>'brandId' = ${brandId}
+		WHERE name IN (${ANALYZE_BRAND_QUEUE}, ${LEGACY_ANALYZE_BRAND_QUEUE})
+		  AND data->>'brandId' = ${brandId}
 		ORDER BY created_on DESC
 		LIMIT 1
 	`);
@@ -81,21 +87,38 @@ function analysisKey(website: string): string {
  * because that would be a no-op here: `singleton_key` only enforces uniqueness
  * under a non-standard queue policy (short/singleton/stately) or with a
  * `singletonSeconds` window, and this queue uses the default `standard` policy
- * with no window. The check-then-send isn't atomic, but the analyze button is a
- * deliberate, low-frequency action (and disabled while running), so the worst
- * case — two near-simultaneous clicks racing past the check — is rare and
- * merely costs a duplicate run.
+ * with no window. A transaction-scoped advisory lock serializes same-page
+ * checks, while the durable provider reservation independently fences active
+ * generations if different pages are requested for one brand.
  */
 export async function enqueueAnalyzeBrand(input: AnalyzeBrandInput): Promise<void> {
 	const boss = await getBoss();
 	const key = analysisKey(input.website);
 
-	const latest = await latestJobForBrand(input.brandId);
-	if (latest && IN_FLIGHT_STATES.has(latest.state) && analysisKey(latest.data?.website ?? "") === key) {
-		return;
-	}
+	await db.transaction(async (tx) => {
+		await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`analyze-brand:${input.brandId}:${key}`}))`);
+		const result = await tx.execute(sql`
+			SELECT id, name, state, data, output
+			FROM pgboss.job
+			WHERE name IN (${ANALYZE_BRAND_QUEUE}, ${LEGACY_ANALYZE_BRAND_QUEUE})
+			  AND data->>'brandId' = ${input.brandId}
+			  AND state IN ('created', 'active', 'retry')
+			ORDER BY created_on DESC
+		`);
+		const inFlight = result.rows as unknown as JobRow[];
+		if (inFlight.some((job) => analysisKey(job.data?.website ?? "") === key)) {
+			return;
+		}
 
-	await boss.send(ANALYZE_BRAND_QUEUE, input);
+		// The database lock serializes same-page enqueue attempts. pg-boss uses a
+		// separate connection, but its committed insert is visible before this
+		// transaction releases the lock to the next caller.
+		await boss.send(ANALYZE_BRAND_QUEUE, {
+			...input,
+			requestId: randomUUID(),
+			generationDeadlineAt: new Date(Date.now() + ANALYZE_BRAND_GENERATION_DEADLINE_MS).toISOString(),
+		});
+	});
 }
 
 /** Poll the status/result of the latest brand-analysis job for a brand. */
@@ -131,10 +154,11 @@ export async function cancelAnalyzeBrand(brandId: string): Promise<void> {
 	if (!job || !IN_FLIGHT_STATES.has(job.state)) {
 		return;
 	}
-	const boss = await getBoss();
-	try {
-		await boss.cancel(ANALYZE_BRAND_QUEUE, job.id);
-	} catch {
-		// Job may have completed between the read and the cancel — nothing to do.
-	}
+	// Never cancel an active paid call: pg-boss changes only the database state
+	// and does not abort the handler, which would hide live spend from dedupe.
+	await db.execute(sql`
+		UPDATE pgboss.job
+		SET state = 'cancelled', completed_on = now()
+		WHERE id = ${job.id} AND name = ${job.name} AND state IN ('created', 'retry')
+	`);
 }

@@ -1,10 +1,44 @@
-import { db } from "@workspace/lib/db/db";
-import { reports, type Brand, brands } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { createHash } from "node:crypto";
 import { RUNS_PER_PROMPT } from "@workspace/lib/constants";
-import { getProvider, parseScrapeTargets, type ModelConfig } from "@workspace/lib/providers";
+import { db } from "@workspace/lib/db/db";
+import { reports, type ReportProviderPlanSnapshot } from "@workspace/lib/db/schema";
 import { analyzeBrand } from "@workspace/lib/onboarding";
-import { isPromptBranded, computeSystemTags } from "@workspace/lib/tag-utils";
+import { normalizeStoredProviderPayload, validateProviderResult } from "@workspace/lib/provider-payload";
+import {
+	errorHasAcceptedTask,
+	getProvider,
+	isProviderDefinitivelyRejected,
+	isProviderFatalError,
+	type ModelConfig,
+	ProviderFatalError,
+	ProviderRunRejectedError,
+	ProviderTaskFailedError,
+	ProviderTaskPendingError,
+	parseScrapeTargets,
+} from "@workspace/lib/providers";
+import {
+	getProviderMaxConcurrency,
+	getReportMaxProviderCalls,
+	DEFAULT_PROVIDER_ATTEMPTS_PER_UNIT,
+	providerCircuitKey,
+	providerTaskResumeBackoffMs,
+} from "@workspace/lib/scheduler";
+import { computeSystemTags, isPromptBranded } from "@workspace/lib/tag-utils";
+import { eq, sql } from "drizzle-orm";
+import { runReservedStructuredResearch } from "./scheduler/reserved-structured";
+import { ProviderAdmissionDeferredError, providerAdmissionRetryAt } from "./scheduler/admission";
+import {
+	beginProviderCallReservation,
+	checkpointProviderReservationResult,
+	checkpointProviderReservationTask,
+	markProviderFailure,
+	markProviderSuccess,
+	recordProviderReservationError,
+	releaseProviderCallReservation,
+	reserveProviderCall,
+	type StoredProviderPayload,
+	type StoredProviderResult,
+} from "./scheduler/store";
 
 interface CompetitorResult {
 	name: string;
@@ -22,8 +56,159 @@ interface PromptData {
 // Report constants
 const TARGET_PROMPTS_COUNT = 70;
 const CANDIDATE_PROMPTS_COUNT = Math.ceil(TARGET_PROMPTS_COUNT * 1.2);
-const MIN_BRAND_MENTIONS = 14;
-const MAX_BRAND_MENTIONS = 28;
+
+async function waitForReportWork(ms: number, signal?: AbortSignal): Promise<void> {
+	if (signal?.aborted) throw signal.reason;
+	await new Promise<void>((resolve, reject) => {
+		const cleanup = () => signal?.removeEventListener("abort", abort);
+		const timeout = setTimeout(() => {
+			cleanup();
+			resolve();
+		}, ms);
+		const abort = () => {
+			clearTimeout(timeout);
+			cleanup();
+			reject(signal?.reason ?? new Error("Report generation aborted"));
+		};
+		signal?.addEventListener("abort", abort, { once: true });
+	});
+}
+
+async function checkpointReportTask(reservationId: string, workerId: string, taskId: string): Promise<void> {
+	const delays = [1000, 2000, 5000, 10_000];
+	for (let attempt = 0; ; attempt++) {
+		try {
+			await checkpointProviderReservationTask(reservationId, workerId, taskId);
+			return;
+		} catch (error) {
+			if (error instanceof Error && error.message.startsWith("Lost provider reservation")) throw error;
+			const delay = delays[attempt];
+			if (delay === undefined) throw error;
+			await waitForReportWork(delay);
+		}
+	}
+}
+
+async function checkpointReportResult(
+	reservationId: string,
+	workerId: string,
+	result: StoredProviderPayload,
+	signal?: AbortSignal,
+): Promise<void> {
+	const delays = [1000, 2000, 5000, 10_000, 30_000];
+	for (let attempt = 0; ; attempt++) {
+		try {
+			await checkpointProviderReservationResult(reservationId, workerId, result);
+			return;
+		} catch (error) {
+			if (error instanceof Error && error.message.startsWith("Lost provider reservation")) throw error;
+			const delay = delays[attempt];
+			if (delay === undefined) throw error;
+			await waitForReportWork(delay, signal);
+		}
+	}
+}
+
+interface ReportProviderReservation {
+	id: string;
+	attemptCount: number;
+	externalTaskId?: string;
+	cached?: StoredProviderPayload;
+	cachedReleased?: boolean;
+}
+
+async function acquireReportProvider(input: {
+	provider: string;
+	circuitKey: string;
+	reportId: string;
+	workKey: string;
+	requestFingerprint: string;
+	requestMetadata: unknown;
+	workerId: string;
+	ownerMaxCalls: number;
+	maxAttempts: number;
+	signal?: AbortSignal;
+}): Promise<ReportProviderReservation> {
+	input.signal?.throwIfAborted();
+	const providerMaxConcurrency = getProviderMaxConcurrency();
+	const attempt = await reserveProviderCall({
+		provider: input.provider,
+		circuitKey: input.circuitKey,
+		ownerType: "report",
+		ownerId: input.reportId,
+		workKey: input.workKey,
+		requestFingerprint: input.requestFingerprint,
+		requestMetadata: input.requestMetadata,
+		workerId: input.workerId,
+		providerMaxConcurrency,
+		maxAttempts: input.maxAttempts,
+		ownerMaxCalls: input.ownerMaxCalls,
+	});
+	if (attempt.state === "reserved" || attempt.state === "resumed") {
+		return {
+			id: attempt.id,
+			attemptCount: attempt.attemptCount,
+			externalTaskId: attempt.externalTaskId ?? undefined,
+		};
+	}
+	if (attempt.state === "cached") {
+		return {
+			id: attempt.id,
+			attemptCount: attempt.attemptCount,
+			cached: attempt.result as StoredProviderPayload,
+			cachedReleased: attempt.released,
+		};
+	}
+	if (attempt.state === "capacity") {
+		throw new ProviderAdmissionDeferredError(
+			`Provider ${input.provider} is at fleet capacity`,
+			providerAdmissionRetryAt({ providerMaxConcurrency }),
+		);
+	}
+	if (attempt.state === "circuit") {
+		throw new ProviderAdmissionDeferredError(
+			`Provider route ${input.circuitKey} circuit is open`,
+			providerAdmissionRetryAt({ reopenAt: attempt.reopenAt }),
+		);
+	}
+	if (attempt.state === "busy") {
+		throw new ProviderAdmissionDeferredError(
+			`Report provider unit ${input.workKey} is leased by another worker`,
+			providerAdmissionRetryAt({ retryAt: attempt.retryAt }),
+		);
+	}
+	if (attempt.state === "budget") {
+		throw new ProviderFatalError(`Report exhausted its hard provider-call budget of ${attempt.limit}`);
+	}
+	if (attempt.state === "ambiguous") {
+		throw new ProviderFatalError(
+			`Report provider unit ${input.workKey} lost its worker after submission without a durable result or task id`,
+		);
+	}
+	if (attempt.state === "terminal") {
+		throw new ProviderFatalError(
+			`Report provider unit ${input.workKey} exhausted its safe attempts (${attempt.reason ?? "no reason recorded"})`,
+		);
+	}
+	if (attempt.state === "conflict") {
+		throw new ProviderFatalError(`Report provider unit ${input.workKey} changed after it was materialized`);
+	}
+	throw new ProviderFatalError(`Report provider unit ${input.workKey} returned an unknown admission state`);
+}
+
+function fingerprintProviderRequest(config: ModelConfig, promptValue: string): string {
+	return createHash("sha256")
+		.update(
+			JSON.stringify({
+				provider: config.provider,
+				model: config.model,
+				version: config.version ?? null,
+				webSearch: config.webSearch,
+				promptValue,
+			}),
+		)
+		.digest("hex");
+}
 
 // Whitelabel deployments preserve the legacy asymmetric per-candidate sample
 // counts used before SCRAPE_TARGETS drove dispatch. Any model outside this map
@@ -50,17 +235,108 @@ function getReportRunsForModel(model: string): number {
 	return RUNS_PER_PROMPT;
 }
 
+type ReportProviderPlan = ReportProviderPlanSnapshot;
+type ReportTargetPlan = ReportProviderPlan["targets"][number];
+
+function parseReportProviderPlan(value: unknown): ReportProviderPlan {
+	if (!value || typeof value !== "object") throw new ProviderFatalError("Report provider plan is missing or invalid");
+	const plan = value as Partial<ReportProviderPlan>;
+	if (
+		plan.version !== 1 ||
+		!Number.isSafeInteger(plan.candidatePromptCount) ||
+		(plan.candidatePromptCount ?? -1) < 0 ||
+		!Number.isSafeInteger(plan.plannedProviderCalls) ||
+		(plan.plannedProviderCalls ?? 0) < 1 ||
+		!Number.isSafeInteger(plan.maxProviderCalls) ||
+		(plan.maxProviderCalls ?? -1) < 0 ||
+		!Number.isSafeInteger(plan.maxAttemptsPerUnit) ||
+		(plan.maxAttemptsPerUnit ?? 0) < 1 ||
+		!Array.isArray(plan.targets)
+	) {
+		throw new ProviderFatalError("Report provider plan failed validation");
+	}
+	for (const target of plan.targets) {
+		if (
+			!target ||
+			typeof target.key !== "string" ||
+			!Number.isSafeInteger(target.runs) ||
+			target.runs < 1 ||
+			!target.config ||
+			typeof target.config.model !== "string" ||
+			typeof target.config.provider !== "string" ||
+			typeof target.config.webSearch !== "boolean" ||
+			(target.config.version !== undefined && typeof target.config.version !== "string")
+		) {
+			throw new ProviderFatalError("Report provider target plan failed validation");
+		}
+	}
+	const parsed = plan as ReportProviderPlan;
+	if (parsed.plannedProviderCalls > parsed.maxProviderCalls) {
+		throw new ProviderFatalError("Stored report plan exceeds its durable provider-call budget");
+	}
+	return parsed;
+}
+
+async function getOrCreateReportProviderPlan(reportId: string, manualPromptCount: number): Promise<ReportProviderPlan> {
+	return db.transaction(async (tx) => {
+		const rows = await tx.execute(sql`
+			SELECT provider_plan
+			FROM reports
+			WHERE id = ${reportId}
+			FOR UPDATE
+		`);
+		const row = rows.rows[0] as { provider_plan: unknown | null } | undefined;
+		if (!row) throw new ProviderFatalError(`Report ${reportId} does not exist`);
+		if (row.provider_plan !== null) return parseReportProviderPlan(row.provider_plan);
+
+		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+		const targets = configs.map((config, index) => ({
+			key: `${index}:${fingerprintProviderRequest(config, "report-plan-route")}`,
+			config,
+			runs: getReportRunsForModel(config.model),
+		}));
+		const candidatePromptCount = manualPromptCount > 0 ? manualPromptCount : CANDIDATE_PROMPTS_COUNT;
+		const callsPerPrompt = targets.reduce((sum, target) => sum + target.runs, 0);
+		const plannedProviderCalls = 1 + candidatePromptCount * callsPerPrompt;
+		const maxProviderCalls = getReportMaxProviderCalls();
+		if (plannedProviderCalls > maxProviderCalls) {
+			throw new ProviderFatalError(
+				`Report plans ${plannedProviderCalls} provider calls, exceeding REPORT_MAX_PROVIDER_CALLS=${maxProviderCalls}`,
+			);
+		}
+		const plan: ReportProviderPlan = {
+			version: 1,
+			candidatePromptCount,
+			targets,
+			plannedProviderCalls,
+			maxProviderCalls,
+			maxAttemptsPerUnit: DEFAULT_PROVIDER_ATTEMPTS_PER_UNIT,
+		};
+		await tx.execute(sql`
+			UPDATE reports
+			SET provider_plan = ${JSON.stringify(plan)}::json,
+			    provider_call_budget = ${maxProviderCalls}, updated_at = now()
+			WHERE id = ${reportId} AND provider_plan IS NULL
+		`);
+		return plan;
+	});
+}
+
 export interface ReportJobData {
 	reportId: string;
 	brandName: string;
 	brandWebsite: string;
 	manualPrompts?: string[];
+	generationDeadlineAt?: string;
 }
 
 export interface ReportJobContext {
 	data: ReportJobData;
+	workerId: string;
 	log: (message: string) => void;
 	updateProgress: (progress: number) => void | Promise<void>;
+	signal?: AbortSignal;
+	finalAttempt?: boolean;
 }
 
 interface PromptRunResult {
@@ -215,18 +491,177 @@ function analyzeMentions(
 // tracking frequency).
 async function runPrompt(
 	promptValue: string,
+	workPrefix: string,
 	brandName: string,
 	brandWebsite: string,
 	competitors: CompetitorResult[],
-	scrapeConfigs: ModelConfig[],
+	targetPlans: ReportTargetPlan[],
+	providerPlan: ReportProviderPlan,
 	job: ReportJobContext,
 ): Promise<PromptRunResult> {
-	const runOne = async (config: ModelConfig) => {
+	const runOne = async (target: ReportTargetPlan, runIndex: number) => {
+		const config = target.config;
 		const providerImpl = getProvider(config.provider);
-		const result = await providerImpl.run(config.model, promptValue, {
-			webSearch: config.webSearch,
+		const circuitKey = providerCircuitKey({
+			provider: config.provider,
+			model: config.model,
 			version: config.version,
+			webSearch: config.webSearch,
 		});
+		const reservation = await acquireReportProvider({
+			provider: config.provider,
+			circuitKey,
+			reportId: job.data.reportId,
+			workKey: `${workPrefix}:target:${target.key}:run:${runIndex}`,
+			requestFingerprint: fingerprintProviderRequest(config, promptValue),
+			requestMetadata: {
+				prompt: promptValue,
+				model: config.model,
+				provider: config.provider,
+				version: config.version ?? null,
+				webSearch: config.webSearch,
+				targetKey: target.key,
+			},
+			workerId: job.workerId,
+			ownerMaxCalls: providerPlan.maxProviderCalls,
+			maxAttempts: providerPlan.maxAttemptsPerUnit,
+			signal: job.signal,
+		});
+		const reservationId = reservation.id;
+		let externalTaskId = reservation.externalTaskId;
+		let result: StoredProviderResult;
+		if (reservation.cached) {
+			try {
+				result = normalizeStoredProviderPayload(config.provider, reservation.cached);
+			} catch (error) {
+				await recordProviderReservationError(reservationId, job.workerId, error);
+				const circuit = await markProviderFailure({ circuitKey, runId: reservationId, kind: "transient", error });
+				if (reservation.cachedReleased) {
+					throw new ProviderFatalError("Released report response failed durable validation", { cause: error });
+				}
+				await releaseProviderCallReservation(reservationId, job.workerId, "invalid cached provider response", {
+					retryAllowed: true,
+				});
+				throw new ProviderAdmissionDeferredError(
+					"Stored report response failed validation",
+					providerAdmissionRetryAt({ reopenAt: circuit.reopenAt }),
+					{ cause: error },
+				);
+			}
+			if (!reservation.cachedReleased) {
+				await markProviderSuccess(circuitKey, reservationId);
+				await releaseProviderCallReservation(reservationId, job.workerId, "result checkpoint recovered");
+			}
+		} else {
+			job.signal?.throwIfAborted();
+			await beginProviderCallReservation(reservationId, job.workerId);
+			let rawResponseCheckpointed = false;
+			try {
+				result = validateProviderResult(
+					await providerImpl.run(config.model, promptValue, {
+						webSearch: config.webSearch,
+						version: config.version,
+						idempotencyKey: reservationId,
+						externalTaskId,
+						checkpointExternalTask: async (taskId) => {
+							await checkpointReportTask(reservationId, job.workerId, taskId);
+							externalTaskId = taskId;
+						},
+						checkpointRawResponse: async (response) => {
+							await checkpointReportResult(
+								reservationId,
+								job.workerId,
+								{ rawResponseOnly: true, ...response },
+								job.signal,
+							);
+							rawResponseCheckpointed = true;
+						},
+					}),
+				);
+			} catch (error) {
+				await recordProviderReservationError(reservationId, job.workerId, error);
+				if (error instanceof ProviderTaskPendingError && externalTaskId) {
+					throw new ProviderAdmissionDeferredError(
+						"Accepted report task is still pending",
+						providerAdmissionRetryAt({
+							retryAt: new Date(
+								Date.now() + Math.max(error.retryAfterMs, providerTaskResumeBackoffMs(reservation.attemptCount)),
+							),
+						}),
+						{ cause: error },
+					);
+				}
+				if (error instanceof ProviderRunRejectedError) {
+					await releaseProviderCallReservation(reservationId, job.workerId, "provider rejected request");
+					throw new ProviderFatalError(error.message, { cause: error });
+				}
+
+				const kind = isProviderFatalError(error) ? "fatal" : "transient";
+				const circuit = await markProviderFailure({ circuitKey, runId: reservationId, kind, error });
+				if (rawResponseCheckpointed || error instanceof ProviderTaskFailedError) {
+					await releaseProviderCallReservation(
+						reservationId,
+						job.workerId,
+						"provider task settled without usable output",
+						{
+							retryAllowed: true,
+						},
+					);
+					throw new ProviderAdmissionDeferredError(
+						"Provider attempt settled and will be retried within the report budget",
+						providerAdmissionRetryAt({ reopenAt: circuit.reopenAt }),
+						{ cause: error },
+					);
+				}
+				if (externalTaskId) {
+					throw new ProviderAdmissionDeferredError(
+						"Accepted report task will be resumed from its durable provider id",
+						providerAdmissionRetryAt({
+							retryAt: new Date(Date.now() + providerTaskResumeBackoffMs(reservation.attemptCount)),
+						}),
+						{ cause: error },
+					);
+				}
+				if (errorHasAcceptedTask(error)) throw error;
+
+				if (isProviderDefinitivelyRejected(error)) {
+					if (kind === "fatal") {
+						await releaseProviderCallReservation(
+							reservationId,
+							job.workerId,
+							"provider definitively rejected credentials or billing",
+						);
+						throw error instanceof ProviderFatalError
+							? error
+							: new ProviderFatalError(error instanceof Error ? error.message : String(error), { cause: error });
+					}
+					await releaseProviderCallReservation(reservationId, job.workerId, "provider response error", {
+						retryAllowed: true,
+					});
+					throw new ProviderAdmissionDeferredError(
+						"Provider rejected report work and a bounded retry was recorded",
+						providerAdmissionRetryAt({ reopenAt: circuit.reopenAt }),
+						{ cause: error },
+					);
+				}
+				throw error;
+			}
+
+			try {
+				await checkpointReportResult(reservationId, job.workerId, result, job.signal);
+				await markProviderSuccess(circuitKey, reservationId);
+				await releaseProviderCallReservation(reservationId, job.workerId, "completed");
+			} catch (error) {
+				throw new ProviderAdmissionDeferredError(
+					"Report result finalization will resume from its durable checkpoint",
+					providerAdmissionRetryAt({ retryAt: new Date(Date.now() + 60_000) }),
+					{
+						cause: error,
+					},
+				);
+			}
+		}
+
 		const { brandMentioned, competitorsMentioned } = analyzeMentions(
 			result.textContent,
 			brandName,
@@ -245,12 +680,13 @@ async function runPrompt(
 		};
 	};
 
-	const runPromises = scrapeConfigs.flatMap((config) => {
-		const count = getReportRunsForModel(config.model);
-		return Array.from({ length: count }, () => runOne(config));
-	});
-
-	const runResults = await Promise.all(runPromises);
+	const runResults: Awaited<ReturnType<typeof runOne>>[] = [];
+	for (const target of targetPlans) {
+		for (let runIndex = 0; runIndex < target.runs; runIndex++) {
+			job.signal?.throwIfAborted();
+			runResults.push(await runOne(target, runIndex));
+		}
+	}
 
 	job.log(`Completed ${runResults.length} runs for prompt: "${promptValue}"`);
 
@@ -266,19 +702,17 @@ export async function processReportJob(job: ReportJobContext) {
 
 	job.log(`Processing report ID: ${reportId} for brand: ${brandName}`);
 
-	const scrapeConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-
 	// Determine if we're using manual prompts
-	const useManualPrompts = manualPrompts && manualPrompts.length > 0;
+	const useManualPrompts = Boolean(manualPrompts && manualPrompts.length > 0);
 	if (useManualPrompts) {
-		job.log(`Using ${manualPrompts.length} manual prompts - skipping auto-generation`);
+		job.log(`Using ${manualPrompts?.length ?? 0} manual prompts - skipping auto-generation`);
 	}
 
 	try {
-		// Update report status to processing
-		await db.update(reports).set({ status: "processing", updatedAt: new Date() }).where(eq(reports.id, reportId));
-
-		job.log(`Report ${reportId} marked as processing`);
+		const providerPlan = await getOrCreateReportProviderPlan(reportId, manualPrompts?.length ?? 0);
+		job.log(`Provider-call budget: ${providerPlan.plannedProviderCalls}/${providerPlan.maxProviderCalls}`);
+		job.signal?.throwIfAborted();
+		job.log(`Report ${reportId} claimed for processing`);
 		job.updateProgress(5);
 
 		// Step 1: Analyze brand — competitors + candidate prompts in one shared
@@ -286,10 +720,26 @@ export async function processReportJob(job: ReportJobContext) {
 		// agnostic with native web search wired in). Manual-prompt path skips
 		// the prompt generation but still needs competitors.
 		job.log(`Analyzing brand: ${brandWebsite}`);
+		job.signal?.throwIfAborted();
 		const suggestion = await analyzeBrand({
 			website: brandWebsite,
 			brandName,
-			maxPrompts: useManualPrompts ? 0 : CANDIDATE_PROMPTS_COUNT,
+			maxPrompts: useManualPrompts ? 0 : providerPlan.candidatePromptCount,
+			structuredResearchRunner: (prompt, schema) =>
+				runReservedStructuredResearch(
+					{
+						ownerType: "report",
+						ownerId: reportId,
+						workKey: "brand-analysis",
+						workerId: job.workerId,
+						ownerMaxCalls: providerPlan.maxProviderCalls,
+						maxAttempts: providerPlan.maxAttemptsPerUnit,
+						requestMetadata: { reportId, brandName, brandWebsite },
+						signal: job.signal,
+					},
+					prompt,
+					schema,
+				),
 		});
 		// The report renderer's CompetitorResult expects a single primary domain;
 		// analyzeBrand returns the full list now. Take the first as the canonical
@@ -301,7 +751,7 @@ export async function processReportJob(job: ReportJobContext) {
 
 		// Step 2: Build candidate prompt list — manual override or analyzeBrand output
 		const candidatePrompts: { prompt: string; brandedPrompt: boolean }[] = useManualPrompts
-			? manualPrompts.map((prompt) => ({
+			? (manualPrompts ?? []).map((prompt) => ({
 					prompt: prompt.toLowerCase().trim(),
 					brandedPrompt: isPromptBranded(prompt, brandName, brandWebsite),
 				}))
@@ -309,6 +759,9 @@ export async function processReportJob(job: ReportJobContext) {
 					prompt: p.prompt,
 					brandedPrompt: isPromptBranded(p.prompt, brandName, brandWebsite),
 				}));
+		if (candidatePrompts.length > providerPlan.candidatePromptCount) {
+			throw new ProviderFatalError("Report candidate set exceeds its immutable provider plan");
+		}
 
 		if (candidatePrompts.length === 0) {
 			job.log(`No candidate prompts available, report cannot continue`);
@@ -340,42 +793,32 @@ export async function processReportJob(job: ReportJobContext) {
 		const totalCandidates = candidatePrompts.length;
 		let completedCandidates = 0;
 
-		// Run candidates in batches
-		const batchSize = 20;
-		for (let i = 0; i < candidatePrompts.length; i += batchSize) {
-			const batch = candidatePrompts.slice(i, i + batchSize);
-			const batchPromises = batch.map(async (candidate) => {
-				try {
-					const result = await runPrompt(candidate.prompt, brandName, brandWebsite, competitors, scrapeConfigs, job);
-					completedCandidates++;
-					const progress = 40 + (completedCandidates / totalCandidates) * 30; // 40-70% for testing
-					job.updateProgress(progress);
-					return {
-						promptValue: result.promptValue,
-						brandedPrompt: candidate.brandedPrompt,
-						runs: result.runs,
-					};
-				} catch (error) {
-					job.log(
-						`Error testing candidate "${candidate.prompt}": ${error instanceof Error ? error.message : "Unknown error"}`,
-					);
-					completedCandidates++;
-					const progress = 40 + (completedCandidates / totalCandidates) * 30;
-					job.updateProgress(progress);
-					return {
-						promptValue: candidate.prompt,
-						brandedPrompt: candidate.brandedPrompt,
-						runs: [],
-					};
-				}
+		for (let i = 0; i < candidatePrompts.length; i++) {
+			job.signal?.throwIfAborted();
+			const candidate = candidatePrompts[i];
+			if (!candidate) continue;
+			const result = await runPrompt(
+				candidate.prompt,
+				`candidate:${i}`,
+				brandName,
+				brandWebsite,
+				competitors,
+				providerPlan.targets,
+				providerPlan,
+				job,
+			);
+			completedCandidates++;
+			const progress = 40 + (completedCandidates / totalCandidates) * 30;
+			job.updateProgress(progress);
+			candidateResults.push({
+				promptValue: result.promptValue,
+				brandedPrompt: candidate.brandedPrompt,
+				runs: result.runs,
 			});
 
-			const batchResults = await Promise.all(batchPromises);
-			candidateResults.push(...batchResults);
-
 			// Small delay between batches
-			if (i + batchSize < candidatePrompts.length) {
-				await new Promise((resolve) => setTimeout(resolve, 1000));
+			if (i + 1 < candidatePrompts.length) {
+				await waitForReportWork(1000, job.signal);
 			}
 		}
 
@@ -445,8 +888,12 @@ export async function processReportJob(job: ReportJobContext) {
 	} catch (error) {
 		job.log(`Error processing report ${reportId}: ${error instanceof Error ? error.message : "Unknown error"}`);
 
-		// Update report status to failed
-		await db.update(reports).set({ status: "failed", updatedAt: new Date() }).where(eq(reports.id, reportId));
+		const terminal = error instanceof ProviderFatalError && !errorHasAcceptedTask(error);
+		if (terminal || (job.finalAttempt && !(error instanceof ProviderAdmissionDeferredError))) {
+			await db.update(reports).set({ status: "failed", updatedAt: new Date() }).where(eq(reports.id, reportId));
+		} else {
+			job.log("Leaving durable report state in processing for a safe retry");
+		}
 
 		throw error;
 	}
