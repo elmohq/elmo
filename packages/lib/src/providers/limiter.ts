@@ -84,7 +84,7 @@ function gateFor(providerId: string): ProviderGate {
  * paying for more concurrency can raise it; the ceiling that matters is the
  * provider's, not ours.
  */
-function getProviderMaxConcurrency(): number {
+export function getProviderMaxConcurrency(): number {
 	const raw = typeof process !== "undefined" ? process.env.PROVIDER_MAX_CONCURRENCY : undefined;
 	if (!raw) return DEFAULT_MAX_CONCURRENCY;
 	const parsed = Number(raw);

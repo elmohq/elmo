@@ -27,7 +27,7 @@ export { STATUS_TARGETS } from "@workspace/config/scrape-targets";
 export { selectTargetsForBrand } from "./runner";
 // ProviderFatalError stays internal to this package: it's how a provider
 // implementation tells the limiter "stop calling me", not something callers raise.
-export { ProviderUnavailableError } from "./limiter";
+export { ProviderUnavailableError, getProviderMaxConcurrency } from "./limiter";
 
 const providerMap: Record<string, Provider> = {
 	olostep,

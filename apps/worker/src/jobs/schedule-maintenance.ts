@@ -7,7 +7,7 @@ import { parseScrapeTargets } from "@workspace/lib/providers";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
-import { PROMPT_JOB_OPTIONS } from "./process-prompt";
+import { promptJobOptions } from "./process-prompt";
 
 export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
@@ -212,7 +212,7 @@ async function runMaintenanceCheck(): Promise<void> {
 						{
 							singletonKey: `prompt-${promptId}`,
 							singletonSeconds: 60 * 60, // 1 hour - prevent duplicates
-							...PROMPT_JOB_OPTIONS,
+							...promptJobOptions(modelNames.length),
 						},
 					),
 				),

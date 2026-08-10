@@ -11,10 +11,11 @@ import {
 	type Competitor,
 } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { RUNS_PER_PROMPT, getDefaultDelayHours } from "@workspace/lib/constants";
+import { RUNS_PER_PROMPT, getDefaultDelayHours, getPromptJobConcurrency } from "@workspace/lib/constants";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	getProvider,
+	getProviderMaxConcurrency,
 	parseScrapeTargets,
 	selectTargetsForBrand,
 	ProviderUnavailableError,
@@ -33,7 +34,18 @@ export interface ProcessPromptData {
 }
 
 /**
- * Queue options for every process-prompt job, wherever it's scheduled from.
+ * Longest a single healthy provider call is expected to take. Providers cut
+ * their own runs off around here (Cloro's generation budget, Oxylabs' job
+ * timeout, Olostep's `waitTillDone`), so a run slower than this is a run that
+ * is going to fail rather than one worth sizing the expiry around.
+ */
+const MAX_HEALTHY_RUN_SECONDS = 10 * 60;
+
+/** Never expire a prompt job sooner than this, however small the fan-out. */
+const MIN_PROMPT_JOB_EXPIRY_SECONDS = 30 * 60;
+
+/**
+ * Queue options for a process-prompt job, wherever it's scheduled from.
  *
  * `retryLimit: 0` is the important one: by the time this job can fail it has
  * already submitted paid requests to the providers, and most of them bill for
@@ -43,13 +55,23 @@ export interface ProcessPromptData {
  * Recovery instead goes through the handler's own backoff reschedule, or
  * through schedule-maintenance for a job that died before reaching it.
  *
- * The expiry has to cover a full fan-out queued behind the provider concurrency
- * gate, since a job that expires mid-flight abandons requests already paid for.
+ * The expiry is derived rather than fixed because a job's wall-clock time is
+ * set by how long its runs wait for a slot: every prompt job in flight competes
+ * for the same per-provider gate, so the fan-out drains in
+ * `jobs x runs / gate` waves. A fixed expiry silently becomes too short as soon
+ * as either concurrency setting is raised. Expiring early doesn't abandon the
+ * requests — pg-boss can't cancel a promise, so the runs finish and record —
+ * but it marks the cycle failed and lets maintenance queue a second one over
+ * the top of it, which is paid work run twice.
  */
-export const PROMPT_JOB_OPTIONS = {
-	retryLimit: 0,
-	expireInSeconds: 60 * 45,
-} as const;
+export function promptJobOptions(targetCount: number): { retryLimit: number; expireInSeconds: number } {
+	const runsInFlight = getPromptJobConcurrency() * RUNS_PER_PROMPT * Math.max(targetCount, 1);
+	const waves = Math.ceil(runsInFlight / getProviderMaxConcurrency());
+	return {
+		retryLimit: 0,
+		expireInSeconds: Math.max(MIN_PROMPT_JOB_EXPIRY_SECONDS, waves * MAX_HEALTHY_RUN_SECONDS),
+	};
+}
 
 interface PromptContext {
 	prompt: typeof prompts.$inferSelect;
@@ -64,7 +86,12 @@ interface PromptContext {
  * the shorter backoff from failureBackoffHours, and `consecutiveFailures` rides
  * along on the job so the next failure can lengthen it again.
  */
-async function scheduleNextRun(promptId: string, cadenceHours: number, consecutiveFailures: number): Promise<void> {
+async function scheduleNextRun(
+	promptId: string,
+	cadenceHours: number,
+	consecutiveFailures: number,
+	targetCount: number,
+): Promise<void> {
 	const delayHours = failureBackoffHours(consecutiveFailures, cadenceHours);
 	const startAfterSeconds = Math.round(delayHours * 60 * 60);
 
@@ -76,7 +103,7 @@ async function scheduleNextRun(promptId: string, cadenceHours: number, consecuti
 				singletonKey: `prompt-${promptId}`,
 				singletonSeconds: startAfterSeconds, // Prevent duplicates until the next attempt is due
 				startAfter: startAfterSeconds,
-				...PROMPT_JOB_OPTIONS,
+				...promptJobOptions(targetCount),
 			},
 		);
 		const reason = consecutiveFailures > 0 ? ` (backing off after ${consecutiveFailures} failed cycle(s))` : "";
@@ -353,7 +380,7 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 		if (!prompt.enabled || !brand.enabled) {
 			console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
 			// Still reschedule - the prompt might be enabled later
-			await scheduleNextRun(promptId, cadenceHours, 0);
+			await scheduleNextRun(promptId, cadenceHours, 0, scrapeConfigs.length);
 			continue;
 		}
 
@@ -409,6 +436,6 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 		// failing, so the next attempt backs off instead of running on cadence.
 		// Anything that produced a run clears the streak.
 		const failedCycles = runPromises.length > 0 && successCount === 0 ? consecutiveFailures + 1 : 0;
-		await scheduleNextRun(promptId, cadenceHours, failedCycles);
+		await scheduleNextRun(promptId, cadenceHours, failedCycles, selectedConfigs.length);
 	}
 }
