@@ -264,4 +264,113 @@ describe("cloro provider", () => {
 			'Cloro task submission failed (401: {"error":"Invalid or missing API key"})',
 		);
 	});
+
+	// A submitted task is billed once it completes, so waiting out a queue is
+	// cheaper than abandoning it — and abandoning it would only add a
+	// replacement submission to the queue that caused the wait.
+	it("waits out a queue longer than the generation budget instead of abandoning a paid task", async () => {
+		vi.useFakeTimers();
+		let polls = 0;
+		const fetchMock = vi.fn().mockImplementation((url: string) => {
+			if (!url.includes("/task/")) {
+				return Promise.resolve(jsonResponse({ success: true, task: { id: "task-q", status: "QUEUED" } }));
+			}
+			polls++;
+			return Promise.resolve(
+				polls < 90
+					? jsonResponse({ task: { id: "task-q", status: "QUEUED" } })
+					: jsonResponse({ task: { id: "task-q", status: "COMPLETED" }, response: CHATGPT_RESPONSE }),
+			);
+		});
+		vi.stubGlobal("fetch", fetchMock);
+
+		const startedAt = Date.now();
+		const promise = cloro.run("chatgpt", "What is a well-reviewed speaker?");
+		await vi.runAllTimersAsync();
+		const result = await promise;
+
+		expect(Date.now() - startedAt).toBeGreaterThan(10 * 60 * 1000);
+		expect(result.textContent).toContain("Sonos Era 300");
+	});
+
+	it("gives up on a running task at the generation budget rather than the ceiling", async () => {
+		vi.useFakeTimers();
+		const running = () => Promise.resolve(jsonResponse({ task: { id: "task-r", status: "PROCESSING" } }));
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn()
+				.mockImplementationOnce(() =>
+					Promise.resolve(jsonResponse({ success: true, task: { id: "task-r", status: "PROCESSING" } })),
+				)
+				.mockImplementation(running),
+		);
+
+		const promise = cloro.run("chatgpt", "What is a well-reviewed speaker?");
+		const settled: Promise<Error> = promise.then(
+			() => {
+				throw new Error("expected the run to reject");
+			},
+			(e: unknown) => e as Error,
+		);
+		await vi.runAllTimersAsync();
+		const error = await settled;
+
+		expect(error.message).toMatch(/in status PROCESSING/);
+		const seconds = Number(error.message.match(/timed out after (\d+)s/)?.[1]);
+		expect(seconds).toBeGreaterThanOrEqual(600);
+		expect(seconds).toBeLessThan(60 * 60);
+	});
+
+	it("bounds a task that never leaves the queue at the ceiling", async () => {
+		vi.useFakeTimers();
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn()
+				.mockImplementation((url: string) =>
+					Promise.resolve(
+						url.includes("/task/")
+							? jsonResponse({ task: { id: "task-stuck", status: "QUEUED" } })
+							: jsonResponse({ success: true, task: { id: "task-stuck", status: "QUEUED" } }),
+					),
+				),
+		);
+
+		const promise = cloro.run("chatgpt", "What is a well-reviewed speaker?");
+		const settled: Promise<Error> = promise.then(
+			() => {
+				throw new Error("expected the run to reject");
+			},
+			(e: unknown) => e as Error,
+		);
+		await vi.runAllTimersAsync();
+		const error = await settled;
+
+		expect(error.message).toMatch(/in status QUEUED/);
+		expect(Number(error.message.match(/timed out after (\d+)s/)?.[1])).toBeGreaterThanOrEqual(60 * 60);
+	});
+
+	it("returns an answer that lands on the poll the deadline falls on", async () => {
+		vi.useFakeTimers();
+		const startedAt = Date.now();
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockImplementation((url: string) => {
+				if (!url.includes("/task/")) {
+					return Promise.resolve(jsonResponse({ success: true, task: { id: "task-late", status: "PROCESSING" } }));
+				}
+				return Promise.resolve(
+					Date.now() - startedAt < 10 * 60 * 1000
+						? jsonResponse({ task: { id: "task-late", status: "PROCESSING" } })
+						: jsonResponse({ task: { id: "task-late", status: "COMPLETED" }, response: CHATGPT_RESPONSE }),
+				);
+			}),
+		);
+
+		const promise = cloro.run("chatgpt", "What is a well-reviewed speaker?");
+		await vi.runAllTimersAsync();
+
+		await expect(promise).resolves.toMatchObject({ textContent: expect.stringContaining("Sonos Era 300") });
+	});
 });

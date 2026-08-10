@@ -7,6 +7,7 @@
  * the scheduler — exhaustively unit-testable.
  */
 
+import { shouldExpediteJob } from "../expedite";
 import { dueToleranceMs, type PromptRunPlan, targetKey, targetOverdueStatus } from "./policy";
 
 /** Floor on how often maintenance may drag a prompt's next job forward. */
@@ -21,7 +22,14 @@ export interface MaintenancePromptState {
 	plan: PromptRunPlan;
 	/** Last successful run per targetKey (failed runs write no row). */
 	lastRunAtByKey: Map<string, Date>;
-	pendingJob: { jobId: string; state: "created" | "active" | "retry" } | null;
+	pendingJob: {
+		jobId: string;
+		state: "created" | "active" | "retry";
+		/** When the job was queued — the only record a failed cycle leaves. */
+		createdAt: Date;
+		/** Failure streak it carries, so a deliberate backoff is distinguishable. */
+		consecutiveFailures: number;
+	} | null;
 }
 
 export interface MaintenanceDecisions {
@@ -72,16 +80,20 @@ export function computeMaintenanceDecisions(promptStates: MaintenancePromptState
 		const minIntervalMs = Math.min(...state.plan.targets.map((t) => t.intervalHours)) * 3600 * 1000;
 
 		if (state.pendingJob) {
-			// A future job exists — drag it forward, but only if the prompt hasn't
-			// run recently. A target that never records a run would otherwise keep
-			// the prompt perpetually "overdue" and re-fire it every tick; dueness
-			// metering in process-prompt bounds the damage, but the throttle keeps
-			// the churn down too.
+			// A future job exists — drag it forward only if the prompt has genuinely
+			// stalled. `runFrequencyMs` is the chain's own tick (its fastest target),
+			// which is the interval the pending job was scheduled against.
 			const runTimes = [...state.lastRunAtByKey.values()].map((d) => d.getTime());
 			const mostRecentRunMs = runTimes.length > 0 ? Math.max(...runTimes) : null;
-			if (mostRecentRunMs !== null && nowMs - mostRecentRunMs < Math.min(minIntervalMs, EXPEDITE_MIN_INTERVAL_MS)) {
-				continue;
-			}
+			const expedite = shouldExpediteJob({
+				jobConsecutiveFailures: state.pendingJob.consecutiveFailures,
+				jobCreatedAt: state.pendingJob.createdAt,
+				lastRunAt: mostRecentRunMs === null ? null : new Date(mostRecentRunMs),
+				runFrequencyMs: minIntervalMs,
+				now: nowMs,
+				minIntervalMs: EXPEDITE_MIN_INTERVAL_MS,
+			});
+			if (!expedite) continue;
 			decisions.toExpedite.push({ promptId: state.promptId, jobId: state.pendingJob.jobId });
 		} else {
 			decisions.toSchedule.push({

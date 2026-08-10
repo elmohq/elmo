@@ -16,6 +16,7 @@ import {
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
+import { PROMPT_JOB_OPTIONS } from "./process-prompt";
 
 export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
@@ -221,10 +222,7 @@ async function runMaintenanceCheck(): Promise<void> {
 						{
 							singletonKey: `prompt-${promptId}`,
 							singletonSeconds: 60 * 60, // 1 hour - prevent duplicates
-							retryLimit: 3,
-							retryDelay: 60,
-							retryBackoff: true,
-							expireInSeconds: 60 * 15,
+							...PROMPT_JOB_OPTIONS,
 						},
 					),
 				),
@@ -275,11 +273,16 @@ function reportOverduePrompts(overduePrompts: number): void {
 interface PendingJobInfo {
 	jobId: string;
 	state: "created" | "active" | "retry";
+	/** When the job was queued — the only record of an attempt a failed run leaves. */
+	createdAt: Date;
+	/** Failure streak the job carries, so a deliberate backoff is distinguishable. */
+	consecutiveFailures: number;
 }
 
 async function getPendingJobMap(): Promise<Map<string, PendingJobInfo>> {
 	const result = await db.execute(sql`
-		SELECT id, data->>'promptId' as prompt_id, state
+		SELECT id, data->>'promptId' as prompt_id, state, created_on,
+		       COALESCE((data->>'consecutiveFailures')::int, 0) as consecutive_failures
 		FROM pgboss.job
 		WHERE name = 'process-prompt'
 		  AND state IN ('created', 'active', 'retry')
@@ -293,11 +296,20 @@ async function getPendingJobMap(): Promise<Map<string, PendingJobInfo>> {
 	`);
 
 	const map = new Map<string, PendingJobInfo>();
-	for (const row of result.rows as { id: string; prompt_id: string; state: string }[]) {
+	type PendingJobRow = {
+		id: string;
+		prompt_id: string;
+		state: string;
+		created_on: string | Date;
+		consecutive_failures: number | string | null;
+	};
+	for (const row of result.rows as PendingJobRow[]) {
 		if (row.prompt_id && !map.has(row.prompt_id)) {
 			map.set(row.prompt_id, {
 				jobId: row.id,
 				state: row.state as "created" | "active" | "retry",
+				createdAt: new Date(row.created_on),
+				consecutiveFailures: Number(row.consecutive_failures ?? 0),
 			});
 		}
 	}

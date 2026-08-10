@@ -9,6 +9,9 @@ import { type PromptRunPlan, targetKey } from "./policy";
 
 const NOW = new Date("2026-08-05T12:00:00Z");
 const HOUR = 3600 * 1000;
+// Older than the expedite floor, so a fixture is only held back by the
+// conditions a test is actually exercising.
+const OLD_JOB = new Date(NOW.getTime() - 3 * HOUR);
 
 const CHATGPT = { model: "chatgpt", provider: "brightdata", webSearch: true };
 const PERPLEXITY = { model: "perplexity", provider: "brightdata", webSearch: true };
@@ -56,7 +59,7 @@ describe("computeMaintenanceDecisions", () => {
 				state({
 					promptId: "p1",
 					lastRunAtByKey: new Map([[targetKey(CHATGPT), new Date(NOW.getTime() - 30 * HOUR)]]),
-					pendingJob: { jobId: "job-1", state: "created" },
+					pendingJob: { jobId: "job-1", state: "created", createdAt: OLD_JOB, consecutiveFailures: 0 },
 				}),
 			],
 			NOW,
@@ -76,7 +79,7 @@ describe("computeMaintenanceDecisions", () => {
 					promptId: "p1",
 					promptCreatedAt: new Date(NOW.getTime() - 5 * 60 * 1000),
 					lastRunAtByKey: new Map(),
-					pendingJob: { jobId: "job-1", state: "created" },
+					pendingJob: { jobId: "job-1", state: "created", createdAt: OLD_JOB, consecutiveFailures: 0 },
 				}),
 			],
 			NOW,
@@ -95,7 +98,7 @@ describe("computeMaintenanceDecisions", () => {
 						// perplexity never records a run (broken provider); chatgpt ran 30m ago
 						[targetKey(CHATGPT), new Date(NOW.getTime() - 0.5 * HOUR)],
 					]),
-					pendingJob: { jobId: "job-1", state: "created" },
+					pendingJob: { jobId: "job-1", state: "created", createdAt: OLD_JOB, consecutiveFailures: 0 },
 				}),
 			],
 			NOW,
@@ -110,7 +113,7 @@ describe("computeMaintenanceDecisions", () => {
 					promptId: "p1",
 					plan: plan(24, [CHATGPT, PERPLEXITY]),
 					lastRunAtByKey: new Map([[targetKey(CHATGPT), new Date(NOW.getTime() - 2 * HOUR)]]),
-					pendingJob: { jobId: "job-1", state: "created" },
+					pendingJob: { jobId: "job-1", state: "created", createdAt: OLD_JOB, consecutiveFailures: 0 },
 				}),
 			],
 			NOW,
@@ -119,10 +122,44 @@ describe("computeMaintenanceDecisions", () => {
 		expect(decisions.toExpedite).toEqual([{ promptId: "p1", jobId: "job-1" }]);
 	});
 
+	it("leaves a job carrying a failure streak alone", () => {
+		// The previous cycle chose that delay deliberately. Dragging it forward
+		// doesn't heal anything — the runs are failing, not missing — and a failing
+		// prompt never stops looking overdue, so it would do it on every pass.
+		const decisions = computeMaintenanceDecisions(
+			[
+				state({
+					promptId: "p1",
+					lastRunAtByKey: new Map(),
+					pendingJob: { jobId: "job-1", state: "created", createdAt: OLD_JOB, consecutiveFailures: 2 },
+				}),
+			],
+			NOW,
+		);
+		expect(decisions.toExpedite).toEqual([]);
+		expect(decisions.toSchedule).toEqual([]);
+	});
+
+	it("still expedites a stalled job that carries no streak", () => {
+		// The same state without a streak is the case expediting exists for: a job
+		// left behind by a crashed worker rather than one waiting out a backoff.
+		const decisions = computeMaintenanceDecisions(
+			[
+				state({
+					promptId: "p1",
+					lastRunAtByKey: new Map(),
+					pendingJob: { jobId: "job-1", state: "created", createdAt: OLD_JOB, consecutiveFailures: 0 },
+				}),
+			],
+			NOW,
+		);
+		expect(decisions.toExpedite).toEqual([{ promptId: "p1", jobId: "job-1" }]);
+	});
+
 	it("leaves active and retry jobs alone", () => {
 		for (const jobState of ["active", "retry"] as const) {
 			const decisions = computeMaintenanceDecisions(
-				[state({ promptId: "p1", pendingJob: { jobId: "job-1", state: jobState } })],
+				[state({ promptId: "p1", pendingJob: { jobId: "job-1", state: jobState, createdAt: OLD_JOB, consecutiveFailures: 0 } })],
 				NOW,
 			);
 			expect(decisions.toSchedule).toEqual([]);

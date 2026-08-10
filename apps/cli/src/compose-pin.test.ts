@@ -44,6 +44,8 @@ describe("repinImages", () => {
 		expect(out).not.toContain(":latest");
 	});
 
+	// A Postgres major bump needs a dump/restore, so an upgrade must never roll
+	// the tag underneath a running deployment.
 	it("leaves third-party images untouched", () => {
 		const out = repinImages(LEGACY_COMPOSE, "0.2.13");
 		expect(out).toContain("postgres:16-alpine");

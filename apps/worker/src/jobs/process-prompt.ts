@@ -14,6 +14,7 @@ import {
 } from "@workspace/lib/db/schema";
 import { type Entitlements, getOrgEntitlements } from "@workspace/lib/entitlements";
 import { getProvider, type ModelConfig, type Provider, parseScrapeTargets } from "@workspace/lib/providers";
+import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	dailyRunCeiling,
 	lastRunQueryWindowMs,
@@ -33,7 +34,31 @@ export interface ProcessPromptData {
 	promptId: string;
 	/** Legacy field from pre-policy job payloads; cadence is now resolved fresh each firing. */
 	cadenceHours?: number;
+	/** Cycles in a row where every run failed, carried forward to size the backoff. */
+	consecutiveFailures?: number;
 }
+
+/**
+ * Queue options for a process-prompt job, wherever it's scheduled from.
+ *
+ * The expiry has to outlast the whole fan-out. A cycle submits every one of its
+ * runs at once and each is bounded by the provider's own task ceiling, so the
+ * job runs for about as long as its slowest run — which, behind a provider
+ * queue deep enough to matter, is that ceiling. The previous 15 minutes was
+ * shorter than a single backed-up wave takes to drain, so healthy cycles were
+ * being expired and retried: pg-boss can't cancel a promise, so the original
+ * runs still finished and recorded, and the retry paid for all of them again.
+ *
+ * `retryLimit: 0` for the same reason from the other side. By the time this job
+ * can fail it has already submitted paid requests, and a queue-level retry
+ * re-submits the whole fan-out including the runs that succeeded. Recovery goes
+ * through the handler's own backoff reschedule instead, or through
+ * schedule-maintenance for a job that died before reaching it.
+ */
+export const PROMPT_JOB_OPTIONS = {
+	retryLimit: 0,
+	expireInSeconds: 90 * 60,
+} as const;
 
 interface PromptContext {
 	prompt: typeof prompts.$inferSelect;
@@ -42,26 +67,29 @@ interface PromptContext {
 }
 
 /**
- * Schedule the next run for a prompt after the specified cadence.
+ * Schedule the next run for a prompt.
+ *
+ * Normally that's one cadence away; after a cycle where every run failed it's
+ * the shorter backoff from failureBackoffHours, and `consecutiveFailures` rides
+ * along on the job so the next failure can lengthen it again.
  */
-async function scheduleNextRun(promptId: string, cadenceHours: number): Promise<void> {
-	const startAfterSeconds = cadenceHours * 60 * 60;
+async function scheduleNextRun(promptId: string, cadenceHours: number, consecutiveFailures: number): Promise<void> {
+	const delayHours = failureBackoffHours(consecutiveFailures, cadenceHours);
+	const startAfterSeconds = Math.round(delayHours * 60 * 60);
 
 	try {
 		await boss.send(
 			"process-prompt",
-			{ promptId },
+			{ promptId, consecutiveFailures },
 			{
 				singletonKey: `prompt-${promptId}`,
-				singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period
+				singletonSeconds: startAfterSeconds, // Prevent duplicates until the next attempt is due
 				startAfter: startAfterSeconds,
-				retryLimit: 3,
-				retryDelay: 60,
-				retryBackoff: true,
-				expireInSeconds: 60 * 15,
+				...PROMPT_JOB_OPTIONS,
 			},
 		);
-		console.log(`Scheduled next run for prompt ${promptId} in ${cadenceHours}h`);
+		const reason = consecutiveFailures > 0 ? ` (backing off after ${consecutiveFailures} failed cycle(s))` : "";
+		console.log(`Scheduled next run for prompt ${promptId} in ${delayHours}h${reason}`);
 	} catch (error) {
 		console.error(`Failed to schedule next run for prompt ${promptId}:`, error);
 		// Don't throw - we don't want to fail the job just because rescheduling failed
@@ -360,8 +388,8 @@ async function runModelIteration({
 			config,
 		});
 	} catch (error) {
-		// A single run's failure doesn't fail the job (only an all-runs failure
-		// does), so report it here to keep per-provider failure rates visible.
+		// A single run's failure doesn't fail the job, so report it here to keep
+		// per-provider failure rates visible.
 		Sentry.withScope((scope) => {
 			scope.setTag("queue", "process-prompt");
 			scope.setTag("provider", config.provider);
@@ -386,7 +414,11 @@ async function runModelIteration({
  * schedule-maintenance revives it once the run plan produces targets again.
  * Throwing fails the job so pg-boss retries.
  */
-async function processPrompt(promptId: string, scrapeConfigs: ModelConfig[]): Promise<void> {
+async function processPrompt(
+	promptId: string,
+	scrapeConfigs: ModelConfig[],
+	consecutiveFailures: number,
+): Promise<void> {
 	console.log(`Processing prompt ${promptId}`);
 
 	const context = await getPromptContext(promptId);
@@ -401,7 +433,7 @@ async function processPrompt(promptId: string, scrapeConfigs: ModelConfig[]): Pr
 	if (!prompt.enabled || !brand.enabled) {
 		console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
 		// Still reschedule at the brand cadence - the prompt might be enabled later
-		await scheduleNextRun(promptId, brand.delayOverrideHours ?? getDefaultDelayHours());
+		await scheduleNextRun(promptId, brand.delayOverrideHours ?? getDefaultDelayHours(), 0);
 		return;
 	}
 
@@ -423,7 +455,7 @@ async function processPrompt(promptId: string, scrapeConfigs: ModelConfig[]): Pr
 		// Fired early (expedite, duplicate send): everything is fresh. Keep the
 		// chain alive without spending anything.
 		console.log(`Prompt ${promptId}: no targets due yet, rescheduling in ${plan.rescheduleHours}h`);
-		await scheduleNextRun(promptId, plan.rescheduleHours);
+		await scheduleNextRun(promptId, plan.rescheduleHours, 0);
 		return;
 	}
 
@@ -436,7 +468,7 @@ async function processPrompt(promptId: string, scrapeConfigs: ModelConfig[]): Pr
 			scope.setFingerprint(["org-daily-ceiling", brand.organizationId]);
 			Sentry.captureMessage(`Org ${brand.organizationId} hit its daily run ceiling (${ceiling})`, "warning");
 		});
-		await scheduleNextRun(promptId, plan.rescheduleHours);
+		await scheduleNextRun(promptId, plan.rescheduleHours, 0);
 		return;
 	}
 
@@ -471,10 +503,6 @@ async function processPrompt(promptId: string, scrapeConfigs: ModelConfig[]): Pr
 		// Log failures but don't throw if some succeeded
 		console.error(`Prompt ${promptId} had ${failures.length}/${runPromises.length} failed runs: ${errorMessages}`);
 
-		// If ALL runs failed, throw to trigger retry
-		if (failures.length === runPromises.length) {
-			throw new Error(`All runs failed for prompt ${promptId}: ${errorMessages}`);
-		}
 	}
 
 	const successCount = runPromises.length - failures.length;
@@ -489,19 +517,26 @@ async function processPrompt(promptId: string, scrapeConfigs: ModelConfig[]): Pr
 		failed_runs: failures.length,
 	});
 
-	await scheduleNextRun(promptId, plan.rescheduleHours);
+	// A cycle where nothing came back means the targets themselves are failing,
+	// so the next attempt backs off instead of running on cadence. Anything that
+	// produced a run clears the streak. The cap is the chain's own tick
+	// (rescheduleHours, its fastest target), so a prompt that stays broken costs
+	// what a healthy one costs rather than more.
+	const failedCycles = runPromises.length > 0 && successCount === 0 ? consecutiveFailures + 1 : 0;
+	await scheduleNextRun(promptId, plan.rescheduleHours, failedCycles);
 }
 
 /**
  * Process a prompt - runs AI models and saves results.
  * This is a pg-boss job handler, called when a scheduled job fires.
- * After successful completion, schedules the next run.
+ * After a cycle it schedules the next run: on cadence when anything came back,
+ * on a backoff when nothing did.
  */
 export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<void> {
 	const scrapeConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 
 	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
-		await processPrompt(job.data.promptId, scrapeConfigs);
+		await processPrompt(job.data.promptId, scrapeConfigs, job.data.consecutiveFailures ?? 0);
 	}
 }
