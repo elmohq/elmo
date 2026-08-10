@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/node";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { shouldExpediteJob } from "@workspace/lib/expedite";
 import { isPromptOverdue } from "@workspace/lib/overdue";
 import { parseScrapeTargets } from "@workspace/lib/providers";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -139,14 +140,16 @@ async function runMaintenanceCheck(): Promise<void> {
 		if (!isOverdue) continue;
 
 		if (pendingJob && pendingJob.state === "created") {
-			// Throttle: if the prompt ran within the window it isn't really stalled,
-			// so don't drag its next job forward again. A never-recording target
-			// would otherwise keep it perpetually "overdue" and re-fire it every tick.
 			const lastRunTimes = Object.values(lastRuns).map((d) => new Date(d).getTime());
 			const mostRecentRunMs = lastRunTimes.length > 0 ? Math.max(...lastRunTimes) : null;
-			if (mostRecentRunMs !== null && now - mostRecentRunMs < Math.min(runFrequencyMs, EXPEDITE_MIN_INTERVAL_MS)) {
-				continue;
-			}
+			const shouldExpedite = shouldExpediteJob({
+				jobCreatedAt: pendingJob.createdAt,
+				lastRunAt: mostRecentRunMs === null ? null : new Date(mostRecentRunMs),
+				runFrequencyMs,
+				now,
+				minIntervalMs: EXPEDITE_MIN_INTERVAL_MS,
+			});
+			if (!shouldExpedite) continue;
 			// There's a future job scheduled - expedite it to run now
 			jobsToExpedite.push(pendingJob.jobId);
 		} else {
@@ -271,11 +274,13 @@ function reportOverduePrompts(input: {
 interface PendingJobInfo {
 	jobId: string;
 	state: "created" | "active" | "retry";
+	/** When the job was queued — the only record of an attempt a failed run leaves. */
+	createdAt: Date;
 }
 
 async function getPendingJobMap(): Promise<Map<string, PendingJobInfo>> {
 	const result = await db.execute(sql`
-		SELECT id, data->>'promptId' as prompt_id, state
+		SELECT id, data->>'promptId' as prompt_id, state, created_on
 		FROM pgboss.job
 		WHERE name = 'process-prompt'
 		  AND state IN ('created', 'active', 'retry')
@@ -289,11 +294,12 @@ async function getPendingJobMap(): Promise<Map<string, PendingJobInfo>> {
 	`);
 
 	const map = new Map<string, PendingJobInfo>();
-	for (const row of result.rows as { id: string; prompt_id: string; state: string }[]) {
+	for (const row of result.rows as { id: string; prompt_id: string; state: string; created_on: string | Date }[]) {
 		if (row.prompt_id && !map.has(row.prompt_id)) {
 			map.set(row.prompt_id, {
 				jobId: row.id,
 				state: row.state as "created" | "active" | "retry",
+				createdAt: new Date(row.created_on),
 			});
 		}
 	}

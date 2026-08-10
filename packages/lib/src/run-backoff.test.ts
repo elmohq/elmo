@@ -13,9 +13,20 @@ describe("failureBackoffHours", () => {
 		expect(delays).toEqual([...delays].sort((a, b) => a - b));
 	});
 
-	it("holds at the longest backoff instead of growing without bound", () => {
-		const longest = FAILURE_BACKOFF_HOURS[FAILURE_BACKOFF_HOURS.length - 1];
-		expect(failureBackoffHours(FAILURE_BACKOFF_HOURS.length + 50, 24)).toBe(longest);
+	it("settles at the cadence once the ramp is exhausted", () => {
+		// A permanently broken provider must not cost more than a working one.
+		expect(failureBackoffHours(FAILURE_BACKOFF_HOURS.length + 1, 24)).toBe(24);
+		expect(failureBackoffHours(FAILURE_BACKOFF_HOURS.length + 500, 24)).toBe(24);
+	});
+
+	it("ramps up to the cadence without ever exceeding it", () => {
+		let previous = 0;
+		for (let failures = 1; failures <= FAILURE_BACKOFF_HOURS.length + 2; failures++) {
+			const delay = failureBackoffHours(failures, 24);
+			expect(delay).toBeGreaterThanOrEqual(previous);
+			expect(delay).toBeLessThanOrEqual(24);
+			previous = delay;
+		}
 	});
 
 	it("never retries more slowly than the prompt's own cadence", () => {

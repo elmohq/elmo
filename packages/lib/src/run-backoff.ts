@@ -19,9 +19,14 @@ export const FAILURE_BACKOFF_HOURS = [0.25, 0.5, 1, 2, 4, 8];
  * just finished, so the first failure gets FAILURE_BACKOFF_HOURS[0]. A value of
  * 0 (or less) means the last cycle produced something and the prompt goes back
  * on its cadence.
+ *
+ * Once the ramp is exhausted the wait settles at the cadence rather than at the
+ * last step, so a provider that stays broken costs exactly what a provider that
+ * stays healthy costs. Anything shorter would mean an outage is billed at a
+ * higher rate than normal operation, which is the wrong way round.
  */
 export function failureBackoffHours(consecutiveFailures: number, cadenceHours: number): number {
 	if (consecutiveFailures <= 0) return cadenceHours;
-	const index = Math.min(consecutiveFailures, FAILURE_BACKOFF_HOURS.length) - 1;
-	return Math.min(FAILURE_BACKOFF_HOURS[index], cadenceHours);
+	if (consecutiveFailures > FAILURE_BACKOFF_HOURS.length) return cadenceHours;
+	return Math.min(FAILURE_BACKOFF_HOURS[consecutiveFailures - 1], cadenceHours);
 }
