@@ -1368,13 +1368,18 @@ function buildComposeYaml(options: {
 function buildPostgresService(): string {
 	return [
 		"postgres:",
-		"  image: postgres:16-alpine",
+		"  image: postgres:18-alpine",
 		"  environment:",
 		"    POSTGRES_USER: postgres",
 		"    POSTGRES_PASSWORD: postgres",
 		"    POSTGRES_DB: elmo",
 		"  volumes:",
-		"    - postgres_data:/var/lib/postgresql/data",
+		// From 18 on, the official image puts PGDATA in a version-specific
+		// subdirectory (/var/lib/postgresql/18/docker) and declares its VOLUME one
+		// level up, so the mount has to be the parent. Against the old .../data
+		// path an 18 image raises no error — it writes a new, empty cluster to an
+		// anonymous volume that is discarded when the container is recreated.
+		"    - postgres_data:/var/lib/postgresql",
 		"  ports:",
 		'    - "5432:5432"',
 		"  healthcheck:",
