@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/node";
 import type { Job, PgBoss } from "pg-boss";
 import { getDeployment } from "@workspace/deployment";
+import { getPromptJobConcurrency } from "@workspace/lib/constants";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 import { processPromptJob, type ProcessPromptData } from "./jobs/process-prompt";
 import { generateReportJob, type GenerateReportData } from "./jobs/generate-report";
@@ -30,12 +31,13 @@ function withSentry<T, R>(queueName: string, handler: (jobs: Job<T>[]) => Promis
  * Register all job handlers with pg-boss.
  */
 export async function registerHandlers(boss: PgBoss): Promise<void> {
+	const promptJobConcurrency = getPromptJobConcurrency();
 	await boss.work<ProcessPromptData>(
 		"process-prompt",
-		{ localConcurrency: 10 },
+		{ localConcurrency: promptJobConcurrency },
 		withSentry("process-prompt", processPromptJob),
 	);
-	console.log("Registered handler: process-prompt");
+	console.log(`Registered handler: process-prompt (concurrency ${promptJobConcurrency})`);
 
 	if (getDeployment().features.reportGeneration) {
 		await boss.work<GenerateReportData>(

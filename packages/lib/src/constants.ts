@@ -20,6 +20,30 @@ export function getDefaultDelayHours(): number {
 	return parsed;
 }
 
+// Prompt jobs the worker runs at once. Each one fans out to
+// RUNS_PER_PROMPT × targets provider calls, so this multiplies straight into
+// how much paid work is offered at once; the per-provider gate bounds what
+// actually reaches a provider, and extra job slots beyond that only queue.
+export const DEFAULT_PROMPT_JOB_CONCURRENCY = 2;
+
+/**
+ * How many prompt jobs the worker processes concurrently. Reads
+ * PROMPT_JOB_CONCURRENCY; falls back to DEFAULT_PROMPT_JOB_CONCURRENCY when
+ * unset, non-numeric, or <= 0.
+ *
+ * Two is ample for the default 24h cadence — even at the 100-prompt ceiling
+ * that's a prompt every fifteen minutes — and keeps a single tenant from
+ * offering more work than a small provider plan can absorb. Deployments running
+ * many brands against providers with headroom can raise it.
+ */
+export function getPromptJobConcurrency(): number {
+	const raw = typeof process !== "undefined" ? process.env.PROMPT_JOB_CONCURRENCY : undefined;
+	if (!raw) return DEFAULT_PROMPT_JOB_CONCURRENCY;
+	const parsed = Number(raw);
+	if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_PROMPT_JOB_CONCURRENCY;
+	return Math.floor(parsed);
+}
+
 // Maximum limits for brand resources
 export const MAX_COMPETITORS = 100;
 export const MAX_PROMPTS = 100;
