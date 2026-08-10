@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { parseRenderedVersion, refreshHeaderVersion, repinImages } from "./compose-pin.js";
+import {
+	POSTGRES_MAJOR,
+	parsePostgresMajor,
+	parseRenderedVersion,
+	refreshHeaderVersion,
+	repinImages,
+} from "./compose-pin.js";
 
 const LEGACY_COMPOSE = `name: elmo
 
@@ -44,9 +50,45 @@ describe("repinImages", () => {
 		expect(out).not.toContain(":latest");
 	});
 
+	// A Postgres major bump needs a dump/restore, so an upgrade must never roll
+	// the tag underneath a running deployment.
 	it("leaves third-party images untouched", () => {
 		const out = repinImages(LEGACY_COMPOSE, "0.2.13");
 		expect(out).toContain("postgres:16-alpine");
+	});
+});
+
+describe("parsePostgresMajor", () => {
+	it("reads the pinned major from a managed-postgres deployment", () => {
+		expect(parsePostgresMajor(LEGACY_COMPOSE)).toBe(16);
+	});
+
+	it("returns null when the deployment uses an external database", () => {
+		const external = `name: elmo
+
+services:
+  web:
+    image: elmohq/elmo-web:0.2.13
+`;
+		expect(parsePostgresMajor(external)).toBeNull();
+	});
+
+	it("does not mistake the connection string for an image tag", () => {
+		const withUrl = `services:
+  db-migrate:
+    image: elmohq/elmo-db-migrate:0.2.13
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/elmo
+`;
+		expect(parsePostgresMajor(withUrl)).toBeNull();
+	});
+
+	it("sees no drift in a freshly rendered deployment", () => {
+		const current = `services:
+  postgres:
+    image: postgres:${POSTGRES_MAJOR}-alpine
+`;
+		expect(parsePostgresMajor(current)).toBe(POSTGRES_MAJOR);
 	});
 });
 

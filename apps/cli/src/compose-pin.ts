@@ -2,6 +2,17 @@
 // the generated compose / env files. Kept side-effect-free (no fs) so the
 // upgrade re-pin path stays unit-testable; index.ts wraps these with file I/O.
 
+// The Postgres major that `elmo init` renders. Bumping this only affects new
+// deployments — see `repinImages` for why existing ones stay where they are.
+export const POSTGRES_MAJOR = 18;
+
+// From 18 on, the official image puts PGDATA in a version-specific subdirectory
+// (/var/lib/postgresql/<major>/docker) and declares its VOLUME one level up, so
+// the mount has to be the parent. Mounting the old .../data path against an 18
+// image leaves the real cluster in an anonymous volume and no error is raised:
+// the deployment comes up with an empty database that disappears on recreate.
+export const POSTGRES_DATA_DIR = "/var/lib/postgresql";
+
 export function renderedByHeader(version: string): string {
 	return [
 		`# Rendered by elmo ${version} on ${new Date().toISOString()}`,
@@ -30,7 +41,17 @@ export function refreshHeaderVersion(contents: string, version: string): string 
 }
 
 // Re-pins `elmohq/elmo-*:<tag>` image tags to `version`, leaving third-party
-// images (e.g. postgres) untouched.
+// images untouched. Postgres especially: a major bump needs the cluster dumped
+// and restored, so rolling the tag here would break the deployment rather than
+// upgrade it. `elmo upgrade` reports the drift instead and lets the operator
+// drive it.
 export function repinImages(contents: string, version: string): string {
 	return contents.replace(/(image:\s*elmohq\/elmo-[a-z-]+):\S+/g, `$1:${version}`);
+}
+
+// The Postgres major a rendered compose file pins, or null when it manages no
+// Postgres container (external-database deployments).
+export function parsePostgresMajor(contents: string): number | null {
+	const match = contents.match(/^\s*image:\s*postgres:(\d+)/m);
+	return match ? Number(match[1]) : null;
 }
