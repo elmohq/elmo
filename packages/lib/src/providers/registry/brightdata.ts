@@ -236,19 +236,26 @@ export const brightdata: Provider = {
 			const { answer_html, response_raw, answer_section_html, ...trimmed } = record;
 			const rawOutput = Array.isArray(payload) ? [trimmed] : trimmed;
 
+			// An answer the model produced without searching has no queries to
+			// report — not even the "we searched but can't say what for" marker.
+			// `web_search_triggered` is ChatGPT-only; the other scraped surfaces
+			// always search, so only an explicit `false` counts as "didn't".
+			const searched = record.web_search_triggered !== false;
+
 			return {
 				rawOutput,
 				textContent: answer,
-				// Only mark web queries as "unavailable" when web search was enabled
+				// Only mark web queries as "unavailable" when a search actually ran
 				// and citations exist but no query strings were exposed.
 				// When web search is disabled, webQueries is always empty.
-				webQueries: options?.webSearch
-					? webQueries.length > 0
-						? webQueries
-						: citations.length > 0
-							? [WEB_QUERIES_UNAVAILABLE]
-							: []
-					: [],
+				webQueries:
+					options?.webSearch && searched
+						? webQueries.length > 0
+							? webQueries
+							: citations.length > 0
+								? [WEB_QUERIES_UNAVAILABLE]
+								: []
+						: [],
 				citations,
 				modelVersion: record?.model ?? undefined,
 			};
