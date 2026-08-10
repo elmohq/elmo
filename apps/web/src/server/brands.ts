@@ -7,9 +7,20 @@ import { getDefaultDelayHours, MAX_COMPETITORS } from "@workspace/lib/constants"
 import { db } from "@workspace/lib/db/db";
 import { findUniqueBrandId, slugify } from "@workspace/lib/db/provisioning";
 import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
-import { assertCanCreateBrand, assertEnabledModelsAllowed, getOrgEntitlements } from "@workspace/lib/entitlements";
+import {
+	assertCanCreateBrand,
+	assertEnabledModelsAllowed,
+	type Entitlements,
+	getOrgEntitlements,
+	getOrgEntitlementsMap,
+} from "@workspace/lib/entitlements";
 import type { ModelConfig } from "@workspace/lib/providers";
-import { isGroundedApiTarget, parseScrapeTargets, resolveProviderAccess, selectTargetsForBrand } from "@workspace/lib/providers";
+import {
+	isGroundedApiTarget,
+	parseScrapeTargets,
+	resolveProviderAccess,
+	selectTargetsForBrand,
+} from "@workspace/lib/providers";
 import { defaultPlatformPicks, resolvePromptRunPlan } from "@workspace/lib/run-policy";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -36,10 +47,13 @@ const BRAND_ORG_ERRORS = {
  * asking "which models is this brand tracking?" reads from here; deployments
  * configure arbitrary sets via `SCRAPE_TARGETS`, so nothing hardcodes a list.
  */
-async function computeTrackedTargets(brand: Brand, brandPrompts: { premiumModels: string[] }[]): Promise<TrackedTarget[]> {
+function computeTrackedTargets(
+	brand: Brand,
+	brandPrompts: { premiumModels: string[] }[],
+	entitlements: Entitlements,
+): TrackedTarget[] {
 	try {
 		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-		const entitlements = await getOrgEntitlements(brand.organizationId);
 
 		// Ask the run policy rather than re-deriving it: it already decides which
 		// targets a brand runs, how often, and how many times per firing, and a
@@ -63,7 +77,11 @@ async function computeTrackedTargets(brand: Brand, brandPrompts: { premiumModels
 				// Scraped surface, bare API call, or grounded one — the same split the
 				// LLM settings page groups by, resolved from the target rather than
 				// guessed from the model id (a model can be reached either way).
-				tier: premium ? ("premium" as const) : resolveProviderAccess(target.config) === "scraped" ? ("scraped" as const) : ("api" as const),
+				tier: premium
+					? ("premium" as const)
+					: resolveProviderAccess(target.config) === "scraped"
+						? ("scraped" as const)
+						: ("api" as const),
 				intervalHours: target.intervalHours,
 				replication: target.replication,
 			};
@@ -129,8 +147,14 @@ function getDefaultBrandDomains(): string[] {
 // Helper functions (migrated from apps/web/src/lib/metadata.ts)
 // ============================================================================
 
+/**
+ * Entitlements come in from the caller rather than being loaded here: the
+ * brand-list path fans this out per brand, and resolving them inside would put
+ * two subscription queries on every brand a whitelabel org owns.
+ */
 async function getBrandWithPromptsFromDb(
 	brandId: string,
+	entitlements?: Entitlements,
 ): Promise<(BrandWithPrompts & { trackedTargets: TrackedTarget[] }) | undefined> {
 	try {
 		const brand = await db.query.brands.findFirst({
@@ -138,18 +162,17 @@ async function getBrandWithPromptsFromDb(
 		});
 		if (!brand) return undefined;
 
-		const brandPrompts = await db.query.prompts.findMany({
-			where: eq(prompts.brandId, brandId),
-		});
-		const brandCompetitors = await db.query.competitors.findMany({
-			where: eq(competitors.brandId, brandId),
-		});
+		const [brandPrompts, brandCompetitors, resolved] = await Promise.all([
+			db.query.prompts.findMany({ where: eq(prompts.brandId, brandId) }),
+			db.query.competitors.findMany({ where: eq(competitors.brandId, brandId) }),
+			entitlements ?? getOrgEntitlements(brand.organizationId),
+		]);
 
 		return {
 			...brand,
 			prompts: brandPrompts,
 			competitors: brandCompetitors,
-			trackedTargets: await computeTrackedTargets(brand, brandPrompts),
+			trackedTargets: computeTrackedTargets(brand, brandPrompts, resolved),
 		};
 	} catch (error) {
 		console.error("Error fetching brand with prompts:", error);
@@ -181,7 +204,12 @@ export const getBrands = createServerFn({ method: "GET" }).handler(async () => {
 		where: inArray(brands.organizationId, orgIds),
 	});
 
-	const brandsData = await Promise.all(scopedBrands.map((brand) => getBrandWithPromptsFromDb(brand.id)));
+	// Every brand needs its org's entitlements to say what it tracks; resolve
+	// them for all the orgs at once rather than per brand.
+	const entitlementsByOrg = await getOrgEntitlementsMap(orgIds);
+	const brandsData = await Promise.all(
+		scopedBrands.map((brand) => getBrandWithPromptsFromDb(brand.id, entitlementsByOrg.get(brand.organizationId))),
+	);
 
 	return brandsData.filter(
 		(brand): brand is BrandWithPrompts & { trackedTargets: TrackedTarget[] } => brand !== undefined,
