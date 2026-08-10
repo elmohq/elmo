@@ -23,6 +23,8 @@ import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess, requireOrgAccess } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
+import { expeditePromptRuns } from "@/lib/expedite-prompts";
+import { addedPlatforms } from "@/lib/run-config-changes";
 
 export type PlatformOption = {
 	model: string;
@@ -288,5 +290,21 @@ export const updateEnabledModelsFn = createServerFn({ method: "POST" })
 			.where(eq(brands.id, data.brandId))
 			.returning({ id: brands.id, enabledModels: brands.enabledModels });
 		if (!updated) throw new Error("Brand not found");
+
+		// A newly picked platform is due immediately, but the prompts' next jobs
+		// are a whole cadence away — which is how long a new pick used to sit dark.
+		const added = addedPlatforms(
+			brand.enabledModels,
+			models,
+			configs.map((config) => config.model),
+		);
+		if (added.length > 0) {
+			const enabled = await db
+				.select({ id: prompts.id })
+				.from(prompts)
+				.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true)));
+			await expeditePromptRuns(enabled.map((prompt) => prompt.id));
+		}
+
 		return updated;
 	});

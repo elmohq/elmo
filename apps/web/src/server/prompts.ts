@@ -17,6 +17,7 @@ import { generateDateRange } from "@/lib/chart-utils";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@/lib/citation-rollup";
 import { extractDomain } from "@/lib/domain-categories";
 import { classifyUrl } from "@/lib/domain-categories.server";
+import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 import {
@@ -29,6 +30,7 @@ import {
 	getPromptWebQueriesForMapping,
 	getPromptWebQueryCounts,
 } from "@/lib/postgres-read";
+import { promptsGainingPremium } from "@/lib/run-config-changes";
 // Server Functions
 // ============================================================================
 
@@ -583,6 +585,11 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 				console.error("Failed to create job schedulers for new prompts:", err),
 			);
 		}
+
+		// A grounded target added to a prompt that already runs has no history of
+		// its own, so it is due immediately — but the prompt's next job is a whole
+		// cadence away, and the customer has just paid for the slot.
+		await expeditePromptRuns(promptsGainingPremium(existingById, saved));
 
 		return saved;
 	});

@@ -1,11 +1,10 @@
 import { useNavigate, useRouter } from "@tanstack/react-router";
-import { getModelMeta } from "@workspace/config/models";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
-import { PlatformPicker } from "@/components/platform-picker";
+import { PlatformSelectionStep } from "@/components/platform-selection-step";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
 import { createBrandFn } from "@/server/brands";
@@ -17,11 +16,7 @@ interface BrandOnboardingProps {
 	platformState: OnboardingPlatformState;
 }
 
-export default function BrandOnboarding({
-	brandId,
-	brandName,
-	platformState,
-}: BrandOnboardingProps) {
+export default function BrandOnboarding({ brandId, brandName, platformState }: BrandOnboardingProps) {
 	const [step, setStep] = useState<"website" | "platforms">("website");
 	const [website, setWebsite] = useState("");
 	const [selected, setSelected] = useState<Set<string>>(
@@ -73,50 +68,18 @@ export default function BrandOnboarding({
 	};
 
 	if (step === "platforms" && platformState) {
-		const limit = platformState.platformPicks;
-		const locked = platformState.available.length === 1;
-		const onlyOption = platformState.available[0];
-
 		return (
 			<FullPageCard title={`Setup ${brandName}`} subtitle="Choose which AI platforms to track">
-				<div className="space-y-4">
-					<p className="text-sm text-muted-foreground">
-						{locked && onlyOption
-							? `Your plan includes ${getModelMeta(onlyOption.model).label} tracking. You can change platforms anytime in settings.`
-							: `Your plan tracks up to ${limit} platform${limit === 1 ? "" : "s"} for this brand. You can change these anytime in settings.`}
-					</p>
-
-					<PlatformPicker
-						options={platformState.available}
-						selected={selected}
-						onSelectedChange={setSelected}
-						limit={limit}
-						disabled={isLoading || locked}
-						className="sm:grid-cols-1 lg:grid-cols-1"
-					/>
-
-					{!locked && (
-						<p className="text-xs text-muted-foreground">
-							{selected.size === 0 ? "Pick at least one platform." : `${selected.size} of ${limit} selected`}
-						</p>
-					)}
-
-					{error && <p className="text-sm text-destructive">{error}</p>}
-
-					<div className="flex gap-2">
-						<Button type="button" variant="outline" onClick={() => setStep("website")} disabled={isLoading}>
-							Back
-						</Button>
-						<Button
-							type="button"
-							className="flex-1"
-							onClick={() => createBrand([...selected])}
-							disabled={isLoading || selected.size === 0}
-						>
-							{isLoading ? "Setting up..." : "Complete Setup"}
-						</Button>
-					</div>
-				</div>
+				<PlatformSelectionStep
+					state={platformState}
+					selected={selected}
+					onSelectedChange={setSelected}
+					disabled={isLoading}
+					error={error}
+					onBack={() => setStep("website")}
+					onSubmit={() => createBrand([...selected])}
+					submitLabel={isLoading ? "Setting up..." : "Complete Setup"}
+				/>
 			</FullPageCard>
 		);
 	}
