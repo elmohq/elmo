@@ -160,40 +160,6 @@ async function resolvePlanForPrompt(
 	return { plan, entitlements };
 }
 
-/**
- * Delete the prompt's queued job when it has nothing left to run.
- *
- * A prompt keeps itself going by queueing its own next run at the end of every
- * run. When the plan produces no targets — the subscription lapsed, or the
- * brand has no platforms selected — this run queues nothing, and the prompt
- * stops until schedule-maintenance starts it again.
- *
- * The job queued by the previous run is still in the queue though, waiting for
- * a start time hours away. schedule-maintenance reads a recently queued job as
- * a sign the prompt is running normally, so it leaves that job alone. When the
- * subscription comes back, the prompt therefore waits out those hours before
- * its first real run instead of starting on the next pass.
- *
- * Deleting the job removes that misleading sign, and frees the pg-boss
- * singleton slot the replacement job needs.
- *
- * Only rows in `created` state — `active` is the run happening right now.
- */
-async function clearQueuedJob(promptId: string): Promise<void> {
-	try {
-		await db.execute(sql`
-			DELETE FROM pgboss.job
-			WHERE name = 'process-prompt'
-			  AND state = 'created'
-			  AND data->>'promptId' = ${promptId}
-		`);
-	} catch (error) {
-		// Never fail the run over this. schedule-maintenance still starts the
-		// prompt again, just no sooner than the queued job would have.
-		console.error(`Failed to clear queued job for prompt ${promptId}:`, error);
-	}
-}
-
 /** Last successful run per target inside the dueness window. */
 async function getLastRunsByTargetKey(promptId: string, maxIntervalHours: number): Promise<Map<string, Date>> {
 	const windowStart = new Date(Date.now() - lastRunQueryWindowMs(maxIntervalHours));
@@ -477,7 +443,6 @@ async function processPrompt(
 		// next run — and schedule-maintenance starts it again within one pass of
 		// the plan producing targets (resubscribe, upgrade, new picks).
 		console.log(`Prompt ${promptId} has no runnable targets (org ${brand.organizationId}); stopping until entitled`);
-		await clearQueuedJob(promptId);
 		return;
 	}
 

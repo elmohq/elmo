@@ -25,8 +25,6 @@ export interface MaintenancePromptState {
 	pendingJob: {
 		jobId: string;
 		state: "created" | "active" | "retry";
-		/** When the job was queued — the only record a failed cycle leaves. */
-		createdAt: Date;
 		/** Failure streak it carries, so a deliberate backoff is distinguishable. */
 		consecutiveFailures: number;
 	} | null;
@@ -87,7 +85,6 @@ export function computeMaintenanceDecisions(promptStates: MaintenancePromptState
 			const mostRecentRunMs = runTimes.length > 0 ? Math.max(...runTimes) : null;
 			const expedite = shouldExpediteJob({
 				jobConsecutiveFailures: state.pendingJob.consecutiveFailures,
-				jobCreatedAt: state.pendingJob.createdAt,
 				lastRunAt: mostRecentRunMs === null ? null : new Date(mostRecentRunMs),
 				runFrequencyMs: minIntervalMs,
 				now: nowMs,

@@ -9,9 +9,6 @@ import { type PromptRunPlan, targetKey } from "./policy";
 
 const NOW = new Date("2026-08-05T12:00:00Z");
 const HOUR = 3600 * 1000;
-// Older than the expedite floor, so a fixture is only held back by the
-// conditions a test is actually exercising.
-const OLD_JOB = new Date(NOW.getTime() - 3 * HOUR);
 
 const CHATGPT = { model: "chatgpt", provider: "brightdata", webSearch: true };
 const PERPLEXITY = { model: "perplexity", provider: "brightdata", webSearch: true };
@@ -59,7 +56,7 @@ describe("computeMaintenanceDecisions", () => {
 				state({
 					promptId: "p1",
 					lastRunAtByKey: new Map([[targetKey(CHATGPT), new Date(NOW.getTime() - 30 * HOUR)]]),
-					pendingJob: { jobId: "job-1", state: "created", createdAt: OLD_JOB, consecutiveFailures: 0 },
+					pendingJob: { jobId: "job-1", state: "created", consecutiveFailures: 0 },
 				}),
 			],
 			NOW,
@@ -79,7 +76,7 @@ describe("computeMaintenanceDecisions", () => {
 					promptId: "p1",
 					promptCreatedAt: new Date(NOW.getTime() - 5 * 60 * 1000),
 					lastRunAtByKey: new Map(),
-					pendingJob: { jobId: "job-1", state: "created", createdAt: OLD_JOB, consecutiveFailures: 0 },
+					pendingJob: { jobId: "job-1", state: "created", consecutiveFailures: 0 },
 				}),
 			],
 			NOW,
@@ -98,7 +95,7 @@ describe("computeMaintenanceDecisions", () => {
 						// perplexity never records a run (broken provider); chatgpt ran 30m ago
 						[targetKey(CHATGPT), new Date(NOW.getTime() - 0.5 * HOUR)],
 					]),
-					pendingJob: { jobId: "job-1", state: "created", createdAt: OLD_JOB, consecutiveFailures: 0 },
+					pendingJob: { jobId: "job-1", state: "created", consecutiveFailures: 0 },
 				}),
 			],
 			NOW,
@@ -113,7 +110,7 @@ describe("computeMaintenanceDecisions", () => {
 					promptId: "p1",
 					plan: plan(24, [CHATGPT, PERPLEXITY]),
 					lastRunAtByKey: new Map([[targetKey(CHATGPT), new Date(NOW.getTime() - 2 * HOUR)]]),
-					pendingJob: { jobId: "job-1", state: "created", createdAt: OLD_JOB, consecutiveFailures: 0 },
+					pendingJob: { jobId: "job-1", state: "created", consecutiveFailures: 0 },
 				}),
 			],
 			NOW,
@@ -131,7 +128,7 @@ describe("computeMaintenanceDecisions", () => {
 				state({
 					promptId: "p1",
 					lastRunAtByKey: new Map(),
-					pendingJob: { jobId: "job-1", state: "created", createdAt: OLD_JOB, consecutiveFailures: 2 },
+					pendingJob: { jobId: "job-1", state: "created", consecutiveFailures: 2 },
 				}),
 			],
 			NOW,
@@ -148,7 +145,7 @@ describe("computeMaintenanceDecisions", () => {
 				state({
 					promptId: "p1",
 					lastRunAtByKey: new Map(),
-					pendingJob: { jobId: "job-1", state: "created", createdAt: OLD_JOB, consecutiveFailures: 0 },
+					pendingJob: { jobId: "job-1", state: "created", consecutiveFailures: 0 },
 				}),
 			],
 			NOW,
@@ -159,7 +156,7 @@ describe("computeMaintenanceDecisions", () => {
 	it("leaves active and retry jobs alone", () => {
 		for (const jobState of ["active", "retry"] as const) {
 			const decisions = computeMaintenanceDecisions(
-				[state({ promptId: "p1", pendingJob: { jobId: "job-1", state: jobState, createdAt: OLD_JOB, consecutiveFailures: 0 } })],
+				[state({ promptId: "p1", pendingJob: { jobId: "job-1", state: jobState, consecutiveFailures: 0 } })],
 				NOW,
 			);
 			expect(decisions.toSchedule).toEqual([]);

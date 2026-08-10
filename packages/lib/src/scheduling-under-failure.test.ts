@@ -75,7 +75,6 @@ function simulate({
 			overdue &&
 			shouldExpediteJob({
 				jobConsecutiveFailures: pending.consecutiveFailures,
-				jobCreatedAt: new Date(pending.createdAt),
 				lastRunAt: lastRunAt === null ? null : new Date(lastRunAt),
 				runFrequencyMs,
 				now,
@@ -172,7 +171,6 @@ describe("expediting still does its job", () => {
 		expect(
 			shouldExpediteJob({
 				jobConsecutiveFailures: 0,
-				jobCreatedAt: new Date(now - 3 * HOUR),
 				lastRunAt: new Date(now - 30 * HOUR),
 				runFrequencyMs: 24 * HOUR,
 				now,
@@ -185,7 +183,6 @@ describe("expediting still does its job", () => {
 		expect(
 			shouldExpediteJob({
 				jobConsecutiveFailures: 1,
-				jobCreatedAt: new Date(now - 3 * HOUR),
 				lastRunAt: new Date(now - 30 * HOUR),
 				runFrequencyMs: 24 * HOUR,
 				now,
