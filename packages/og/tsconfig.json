@@ -12,8 +12,8 @@
 		"moduleResolution": "bundler",
 		"resolveJsonModule": true,
 		"isolatedModules": true,
-		"incremental": true,
-		"jsx": "react-jsx"
+		"jsx": "react-jsx",
+		"incremental": true
 	},
 	"include": ["src/**/*.ts", "src/**/*.tsx"],
 	"exclude": ["node_modules"]
