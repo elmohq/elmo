@@ -1,7 +1,8 @@
-import { db } from "@workspace/lib/db/db";
-import { prompts, brands } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { db } from "@workspace/lib/db/db";
+import { brands, prompts } from "@workspace/lib/db/schema";
+import { PROMPT_QUEUE, promptJobSendOptions } from "@workspace/lib/prompt-jobs";
+import { eq } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
 
 /**
@@ -72,37 +73,17 @@ export async function createPromptJobScheduler(promptId: string, options: Schedu
 			// Ignore errors - schedule may not exist
 		}
 
-		if (sendImmediate) {
-			// Send an immediate job
-			await boss.send(
-				"process-prompt",
-				{ promptId, cadenceHours },
-				{
-					singletonKey: `prompt-${promptId}`,
-					singletonSeconds: 60 * 60, // 1 hour - prevent duplicate jobs
-					retryLimit: 3,
-					retryDelay: 60,
-					retryBackoff: true,
-					expireInSeconds: 60 * 15, // 15 minute timeout
-				},
-			);
-		} else {
-			// Schedule the next run based on cadence
-			const startAfterSeconds = cadenceHours * 60 * 60;
-			await boss.send(
-				"process-prompt",
-				{ promptId, cadenceHours },
-				{
-					singletonKey: `prompt-${promptId}`,
-					singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period
-					startAfter: startAfterSeconds,
-					retryLimit: 3,
-					retryDelay: 60,
-					retryBackoff: true,
-					expireInSeconds: 60 * 15,
-				},
-			);
-		}
+		await boss.send(
+			PROMPT_QUEUE,
+			{ promptId, cadenceHours },
+			{
+				...promptJobSendOptions(promptId, sendImmediate ? undefined : cadenceHours * 60 * 60),
+				retryLimit: 3,
+				retryDelay: 60,
+				retryBackoff: true,
+				expireInSeconds: 60 * 15, // 15 minute timeout
+			},
+		);
 
 		console.log(`Created job for prompt ${promptId} with ${cadenceHours}h cadence`);
 		return true;
@@ -214,12 +195,10 @@ export async function scheduleNextPromptRun(promptId: string, cadenceHours: numb
 		const startAfterSeconds = cadenceHours * 60 * 60;
 
 		await boss.send(
-			"process-prompt",
+			PROMPT_QUEUE,
 			{ promptId, cadenceHours },
 			{
-				singletonKey: `prompt-${promptId}`,
-				singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period
-				startAfter: startAfterSeconds,
+				...promptJobSendOptions(promptId, startAfterSeconds),
 				retryLimit: 3,
 				retryDelay: 60,
 				retryBackoff: true,
