@@ -57,4 +57,44 @@ describe("anthropic-api run", () => {
 
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining("hit the output cap"));
 	});
+
+	it("checkpoints the exact JSON-safe raw response before returning", async () => {
+		anthropicClient.create.mockResolvedValue({
+			content: [{ type: "text", text: "answer" }],
+			model: "claude-sonnet-4-6",
+		});
+		const checkpointRawResponse = vi.fn();
+
+		const result = await anthropicApi.run("claude", "prompt", {
+			version: "claude-sonnet-4-6",
+			checkpointRawResponse,
+		});
+
+		expect(checkpointRawResponse).toHaveBeenCalledWith({
+			rawOutput: result.rawOutput,
+			modelVersion: result.modelVersion,
+		});
+	});
+
+	it("does not classify a provider tool failure as a successful raw response", async () => {
+		anthropicClient.create.mockResolvedValue({
+			content: [
+				{
+					type: "web_search_tool_result",
+					content: { type: "web_search_tool_result_error", error_code: "max_uses_exceeded" },
+				},
+			],
+			model: "claude-sonnet-4-6",
+		});
+		const checkpointRawResponse = vi.fn();
+
+		await expect(
+			anthropicApi.run("claude", "prompt", {
+				webSearch: true,
+				version: "claude-sonnet-4-6",
+				checkpointRawResponse,
+			}),
+		).rejects.toThrow("Anthropic web search failed: max_uses_exceeded");
+		expect(checkpointRawResponse).not.toHaveBeenCalled();
+	});
 });

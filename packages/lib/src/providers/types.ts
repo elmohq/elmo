@@ -15,14 +15,28 @@ export interface ScrapeResult {
 	modelVersion?: string;
 }
 
+export interface RawProviderResponse {
+	rawOutput: unknown;
+	modelVersion?: string;
+}
+
 export interface ProviderOptions {
 	webSearch?: boolean;
 	version?: string;
+	/** Stable scheduler-owned key for providers that support idempotent submission. */
+	idempotencyKey?: string;
+	/** Resume an already-accepted provider task instead of submitting new work. */
+	externalTaskId?: string;
+	/** Persist the provider's task id before polling it. */
+	checkpointExternalTask?: (taskId: string) => Promise<void>;
+	/** Persist a successful paid response before any fallible normalization. */
+	checkpointRawResponse?: (payload: RawProviderResponse) => Promise<void>;
 }
 
 export interface StructuredResearchOptions<T> {
 	prompt: string;
 	schema: z.ZodType<T>;
+	signal?: AbortSignal;
 	/**
 	 * Whether the model may use its web-search tool. Defaults to true (the
 	 * onboarding research path). Set false for a single completion over context
@@ -42,6 +56,8 @@ export interface Provider {
 	name: string;
 	isConfigured(): boolean;
 	run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
+	/** Pinned route identity used by durable structured-research reservations. */
+	structuredResearchModel?: string;
 	/** Validate a target config. Returns an error message if invalid, null if valid.
 	 *  Omit for providers that accept any model (runtime validation only). */
 	validateTarget?(config: ModelConfig): string | null;

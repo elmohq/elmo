@@ -1,4 +1,10 @@
-import type { Provider, ScrapeResult, StructuredResearchOptions, StructuredResearchResult } from "../types";
+import type {
+	Provider,
+	ProviderOptions,
+	ScrapeResult,
+	StructuredResearchOptions,
+	StructuredResearchResult,
+} from "../types";
 
 /**
  * A no-network provider that returns a fixed, schema-valid research result.
@@ -28,15 +34,18 @@ const CANNED_RESEARCH = {
 export const stub: Provider = {
 	id: "stub",
 	name: "Stub (no network)",
+	structuredResearchModel: "stub",
 
 	isConfigured() {
 		return true;
 	},
 
-	async run(): Promise<ScrapeResult> {
+	async run(_model: string, _prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		// The stub exists for the structured-research path; the scrape path is
 		// never pointed at it in practice, so return an empty-but-valid result.
-		return { textContent: "", rawOutput: {}, webQueries: [], citations: [], modelVersion: "stub" };
+		const rawOutput = {};
+		await options?.checkpointRawResponse?.({ rawOutput, modelVersion: "stub" });
+		return { textContent: "", rawOutput, webQueries: [], citations: [], modelVersion: "stub" };
 	},
 
 	async runStructuredResearch<T>({ schema }: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {

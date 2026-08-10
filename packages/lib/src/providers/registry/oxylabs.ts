@@ -1,6 +1,14 @@
-import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
-import { extractTextFromOxylabs, extractCitationsFromOxylabs, type Citation } from "../../text-extraction";
 import { getCredential } from "../../secrets";
+import { type Citation, extractCitationsFromOxylabs, extractTextFromOxylabs } from "../../text-extraction";
+import {
+	ProviderFatalError,
+	providerHttpResponseError,
+	ProviderResponseError,
+	ProviderRunRejectedError,
+	ProviderTaskFailedError,
+	ProviderTaskPendingError,
+} from "../errors";
+import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 
 // Oxylabs Web Scraper API sources for AI surfaces.
 // ChatGPT and Perplexity use `prompt`; the Google surfaces use `query` and
@@ -16,9 +24,11 @@ const OXYLABS_SOURCES: Record<string, { source: string; field: "prompt" | "query
 // AI answers can outlive the Realtime API's connection TTL. Use single-job
 // Push-Pull for every source; ChatGPT and Perplexity do not support batch jobs.
 const OXYLABS_JOBS_URL = "https://data.oxylabs.io/v1/queries";
-const OXYLABS_JOB_TIMEOUT_MS = 10 * 60 * 1000;
+const OXYLABS_POLL_WINDOW_MS = 30_000;
 const OXYLABS_POLL_BASE_DELAY_MS = 2000;
 const OXYLABS_POLL_MAX_DELAY_MS = 10_000;
+const OXYLABS_RESUME_DELAY_MS = 30_000;
+const OXYLABS_HTTP_TIMEOUT_MS = 30_000;
 
 interface OxylabsJob {
 	id?: string;
@@ -43,7 +53,7 @@ function requestHeaders(): Record<string, string> {
 }
 
 function pollDelay(attempt: number): number {
-	return Math.min(OXYLABS_POLL_BASE_DELAY_MS * Math.pow(2, Math.floor(attempt / 5)), OXYLABS_POLL_MAX_DELAY_MS);
+	return Math.min(OXYLABS_POLL_BASE_DELAY_MS * 2 ** Math.floor(attempt / 5), OXYLABS_POLL_MAX_DELAY_MS);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -52,6 +62,10 @@ function sleep(ms: number): Promise<void> {
 
 function isTransientStatus(status: number): boolean {
 	return status === 408 || status === 429 || status >= 500;
+}
+
+function isFatalStatus(status: number): boolean {
+	return status === 401 || status === 402 || status === 403;
 }
 
 async function responseError(res: Response): Promise<string> {
@@ -69,10 +83,12 @@ async function submitJob(body: Record<string, any>): Promise<OxylabsJob> {
 		method: "POST",
 		headers: requestHeaders(),
 		body: JSON.stringify(body),
+		signal: AbortSignal.timeout(OXYLABS_HTTP_TIMEOUT_MS),
 	});
 
 	if (!res.ok) {
-		throw new Error(`Oxylabs job submission failed (${await responseError(res)})`);
+		const message = `Oxylabs job submission failed (${await responseError(res)})`;
+		throw providerHttpResponseError(message, res.status);
 	}
 
 	const job = (await res.json()) as OxylabsJob;
@@ -80,18 +96,36 @@ async function submitJob(body: Record<string, any>): Promise<OxylabsJob> {
 	return job;
 }
 
-async function getJob(jobId: string): Promise<OxylabsJob | null> {
+async function getJob(jobId: string): Promise<OxylabsJob | "pending" | null> {
 	try {
 		const res = await fetch(`${OXYLABS_JOBS_URL}/${jobId}`, {
 			headers: requestHeaders(),
+			signal: AbortSignal.timeout(OXYLABS_HTTP_TIMEOUT_MS),
 		});
-		if (res.status === 204 || isTransientStatus(res.status)) return null;
+		if (res.status === 204) return "pending";
+		if (res.status === 404 || res.status === 410) {
+			throw new ProviderTaskFailedError(`Oxylabs job ${jobId} no longer exists`);
+		}
+		if (isTransientStatus(res.status)) {
+			throw new ProviderResponseError(`Oxylabs job status request failed (${await responseError(res)})`, {
+				taskAccepted: true,
+			});
+		}
 		if (!res.ok) {
-			throw new Error(`Oxylabs job status request failed (${await responseError(res)})`);
+			const message = `Oxylabs job status request failed (${await responseError(res)})`;
+			throw isFatalStatus(res.status)
+				? new ProviderFatalError(message, { taskAccepted: true })
+				: new ProviderResponseError(message, { taskAccepted: true });
 		}
 		return (await res.json()) as OxylabsJob;
 	} catch (error) {
-		if (error instanceof Error && error.message.startsWith("Oxylabs job status request failed")) throw error;
+		if (
+			error instanceof ProviderFatalError ||
+			error instanceof ProviderResponseError ||
+			error instanceof ProviderTaskFailedError
+		) {
+			throw error;
+		}
 		return null;
 	}
 }
@@ -99,45 +133,74 @@ async function getJob(jobId: string): Promise<OxylabsJob | null> {
 async function waitForJob(initialJob: OxylabsJob, deadline: number): Promise<void> {
 	let job = initialJob;
 	let attempt = 0;
+	let sawStatusResponse = false;
 
 	while (Date.now() < deadline) {
 		const status = job.status?.toLowerCase();
 		if (status === "done") return;
 		if (status === "faulted") {
-			throw new Error(`Oxylabs job ${job.id} faulted${faultDetails(job)}`);
+			throw new ProviderTaskFailedError(`Oxylabs job ${job.id} faulted${faultDetails(job)}`);
 		}
 
 		await sleep(Math.min(pollDelay(attempt++), deadline - Date.now()));
-		job = (await getJob(job.id!)) ?? job;
+		const polled = await getJob(job.id!);
+		if (polled !== null) sawStatusResponse = true;
+		if (polled !== "pending" && polled !== null) job = polled;
 	}
 
-	throw new Error(`Oxylabs job ${initialJob.id} timed out after ${OXYLABS_JOB_TIMEOUT_MS / 1000}s`);
+	if (!sawStatusResponse) throw new Error(`Oxylabs job ${initialJob.id} status was unavailable for 30 seconds`);
+	throw new ProviderTaskPendingError(
+		`Oxylabs job ${initialJob.id} is still ${initialJob.status ?? "pending"}`,
+		OXYLABS_RESUME_DELAY_MS,
+	);
 }
 
 async function fetchResults(jobId: string, deadline: number): Promise<OxylabsPayload> {
 	let attempt = 0;
+	let sawStatusResponse = false;
 	while (Date.now() < deadline) {
 		try {
 			const res = await fetch(`${OXYLABS_JOBS_URL}/${jobId}/results`, {
 				headers: requestHeaders(),
+				signal: AbortSignal.timeout(OXYLABS_HTTP_TIMEOUT_MS),
 			});
 			if (res.ok) return (await res.json()) as OxylabsPayload;
-			if (res.status !== 204 && !isTransientStatus(res.status)) {
-				throw new Error(`Oxylabs results request failed (${await responseError(res)})`);
+			if (res.status === 204) sawStatusResponse = true;
+			if (res.status === 404 || res.status === 410) {
+				throw new ProviderTaskFailedError(`Oxylabs results for job ${jobId} no longer exist`);
+			}
+			if (isTransientStatus(res.status)) {
+				throw new ProviderResponseError(`Oxylabs results request failed (${await responseError(res)})`, {
+					taskAccepted: true,
+				});
+			}
+			if (res.status !== 204) {
+				const message = `Oxylabs results request failed (${await responseError(res)})`;
+				throw isFatalStatus(res.status)
+					? new ProviderFatalError(message, { taskAccepted: true })
+					: new ProviderResponseError(message, { taskAccepted: true });
 			}
 		} catch (error) {
-			if (error instanceof Error && error.message.startsWith("Oxylabs results request failed")) throw error;
+			if (
+				error instanceof ProviderFatalError ||
+				error instanceof ProviderResponseError ||
+				error instanceof ProviderTaskFailedError
+			) {
+				throw error;
+			}
 		}
 
 		await sleep(Math.min(pollDelay(attempt++), deadline - Date.now()));
 	}
 
-	throw new Error(`Oxylabs results for job ${jobId} were not ready before the job timeout`);
+	if (!sawStatusResponse) throw new Error(`Oxylabs results for job ${jobId} were unavailable for 30 seconds`);
+	throw new ProviderTaskPendingError(`Oxylabs results for job ${jobId} are not ready`, OXYLABS_RESUME_DELAY_MS);
 }
 
-async function runAsyncQuery(body: Record<string, any>): Promise<OxylabsPayload> {
-	const deadline = Date.now() + OXYLABS_JOB_TIMEOUT_MS;
-	const job = await submitJob(body);
+async function runAsyncQuery(body: Record<string, any>, options?: ProviderOptions): Promise<OxylabsPayload> {
+	const deadline = Date.now() + OXYLABS_POLL_WINDOW_MS;
+	const job = options?.externalTaskId ? { id: options.externalTaskId, status: "pending" } : await submitJob(body);
+	if (!options?.externalTaskId) await options?.checkpointExternalTask?.(job.id!);
 	await waitForJob(job, deadline);
 	return fetchResults(job.id!, deadline);
 }
@@ -179,7 +242,7 @@ export const oxylabs: Provider = {
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const sourceConfig = OXYLABS_SOURCES[model];
 		if (!sourceConfig) {
-			throw new Error(
+			throw new ProviderRunRejectedError(
 				`Oxylabs: no source mapping for model "${model}". Supported: ${Object.keys(OXYLABS_SOURCES).join(", ")}`,
 			);
 		}
@@ -194,7 +257,8 @@ export const oxylabs: Provider = {
 		// always search, so we don't send the flag for them.
 		if (model === "chatgpt") body.search = options?.webSearch ?? false;
 
-		const payload = await runAsyncQuery(body);
+		const payload = await runAsyncQuery(body, options);
+		await options?.checkpointRawResponse?.({ rawOutput: payload });
 		const content = payload.results?.[0]?.content ?? {};
 
 		const textContent = extractTextFromOxylabs(payload);

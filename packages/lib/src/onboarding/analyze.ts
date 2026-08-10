@@ -119,6 +119,8 @@ export interface AnalyzeBrandOptions {
 	maxCompetitors?: number;
 	/** 0 disables prompt generation entirely. */
 	maxPrompts?: number;
+	/** Worker-only durability hook around the single paid structured request. */
+	structuredResearchRunner?: <T>(prompt: string, schema: z.ZodType<T>) => Promise<T>;
 }
 
 const DEFAULT_MAX_COMPETITORS = 10;
@@ -196,7 +198,7 @@ export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<Onboar
 	const start = Date.now();
 	console.log(`[onboarding] analyzeBrand start: ${options.website}`);
 	const ctx = await buildAnalysisContext(options);
-	const raw = await runStructuredResearchPrompt(ctx.prompt, ctx.schema);
+	const raw = await (options.structuredResearchRunner ?? runStructuredResearchPrompt)(ctx.prompt, ctx.schema);
 	const result = normalizeAnalysisResult(raw, ctx);
 	console.log(
 		`[onboarding] analyzeBrand done: ${ctx.analysisUrl} in ${Date.now() - start}ms (tracking="${result.website}", brand="${result.brandName}", competitors=${result.competitors.length}, prompts=${result.suggestedPrompts.length})`,

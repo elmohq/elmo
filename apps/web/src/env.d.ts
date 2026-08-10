@@ -45,6 +45,11 @@ declare global {
 			readonly DATABASE_URL: string;
 			readonly APP_URL?: string;
 			readonly SCRAPE_TARGETS?: string;
+			readonly PROMPT_RUN_CONCURRENCY?: string;
+			readonly PROVIDER_MAX_CONCURRENCY?: string;
+			readonly PROMPT_MAX_PROVIDER_CALLS?: string;
+			readonly REPORT_MAX_PROVIDER_CALLS?: string;
+			readonly CONFIRM_LEGACY_PAID_WORKERS_STOPPED?: string;
 			readonly OPENAI_API_KEY: string;
 			readonly ANTHROPIC_API_KEY: string;
 			readonly MISTRAL_API_KEY?: string;

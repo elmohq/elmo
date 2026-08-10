@@ -176,10 +176,11 @@ export function extractCitationsFromDataforseoScraper(rawOutput: any): Citation[
 
 export function extractTextFromMistral(rawOutput: any): string {
 	try {
+		const decoded = typeof rawOutput === "string" ? JSON.parse(rawOutput) : rawOutput;
 		// Conversations API (web search enabled): outputs[].content[].text chunks.
-		if (Array.isArray(rawOutput?.outputs)) {
+		if (Array.isArray(decoded?.outputs)) {
 			const texts: string[] = [];
-			for (const entry of rawOutput.outputs) {
+			for (const entry of decoded.outputs) {
 				for (const chunk of entry?.content ?? []) {
 					if (chunk?.type === "text" && typeof chunk.text === "string") texts.push(chunk.text);
 				}
@@ -187,7 +188,7 @@ export function extractTextFromMistral(rawOutput: any): string {
 			if (texts.length) return texts.join("\n");
 		}
 		// Chat Completions API (no web search): OpenAI-shaped.
-		if (rawOutput?.choices?.[0]?.message?.content) return rawOutput.choices[0].message.content;
+		if (decoded?.choices?.[0]?.message?.content) return decoded.choices[0].message.content;
 		return "No text content found in Mistral output.";
 	} catch {
 		return "Error extracting text content.";
@@ -196,10 +197,11 @@ export function extractTextFromMistral(rawOutput: any): string {
 
 export function extractTextFromOpenRouter(rawOutput: any): string {
 	try {
-		if (rawOutput?.choices?.[0]?.message?.content) return rawOutput.choices[0].message.content;
-		if (rawOutput?.output && Array.isArray(rawOutput.output)) {
+		const decoded = typeof rawOutput === "string" ? JSON.parse(rawOutput) : rawOutput;
+		if (decoded?.choices?.[0]?.message?.content) return decoded.choices[0].message.content;
+		if (decoded?.output && Array.isArray(decoded.output)) {
 			const texts: string[] = [];
-			for (const msg of rawOutput.output.filter((i: any) => i.type === "message")) {
+			for (const msg of decoded.output.filter((i: any) => i.type === "message")) {
 				for (const c of msg.content ?? []) {
 					if (c.type === "output_text" && c.text) texts.push(c.text);
 				}
@@ -214,7 +216,8 @@ export function extractTextFromOpenRouter(rawOutput: any): string {
 
 export function extractTextFromOlostep(rawOutput: any): string {
 	try {
-		const jsonStr = rawOutput?.json_content ?? rawOutput?.result?.json_content;
+		const jsonStr =
+			typeof rawOutput === "string" ? rawOutput : (rawOutput?.json_content ?? rawOutput?.result?.json_content);
 		const parsed = typeof jsonStr === "string" ? JSON.parse(jsonStr) : rawOutput;
 		if (parsed?.result?.markdown_content) return parsed.result.markdown_content;
 		if (parsed?.answer_markdown) return parsed.answer_markdown;
@@ -267,7 +270,8 @@ function extractBrightdataAiOverviewText(record: any): string | null {
 
 export function extractTextFromBrightdata(rawOutput: any): string {
 	try {
-		const record = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
+		const decoded = typeof rawOutput === "string" ? JSON.parse(rawOutput) : rawOutput;
+		const record = Array.isArray(decoded) ? decoded[0] : decoded;
 		if (!record) return "No content in BrightData output.";
 		const aiOverview = extractBrightdataAiOverviewText(record);
 		if (aiOverview) return aiOverview;
@@ -529,10 +533,11 @@ export function extractCitationsFromDataforseoLlm(rawOutput: any): Citation[] {
 
 export function extractCitationsFromMistral(rawOutput: any): Citation[] {
 	try {
+		const decoded = typeof rawOutput === "string" ? JSON.parse(rawOutput) : rawOutput;
 		const citations: Citation[] = [];
 		const seen = new Set<string>();
 		let idx = 0;
-		const outputs = Array.isArray(rawOutput?.outputs) ? rawOutput.outputs : [];
+		const outputs = Array.isArray(decoded?.outputs) ? decoded.outputs : [];
 		for (const entry of outputs) {
 			for (const chunk of entry?.content ?? []) {
 				if (chunk?.type !== "tool_reference" || typeof chunk.url !== "string") continue;
@@ -553,10 +558,11 @@ export function extractCitationsFromMistral(rawOutput: any): Citation[] {
 
 export function extractCitationsFromOpenRouter(rawOutput: any): Citation[] {
 	try {
+		const decoded = typeof rawOutput === "string" ? JSON.parse(rawOutput) : rawOutput;
 		const citations: Citation[] = [];
 		const seen = new Set<string>();
 		let idx = 0;
-		for (const ann of rawOutput?.choices?.[0]?.message?.annotations ?? []) {
+		for (const ann of decoded?.choices?.[0]?.message?.annotations ?? []) {
 			if (ann?.type !== "url_citation") continue;
 			const cite = ann.url_citation ?? ann;
 			const url = cite.url;
@@ -577,7 +583,8 @@ export function extractCitationsFromOpenRouter(rawOutput: any): Citation[] {
 
 export function extractCitationsFromOlostep(rawOutput: any): Citation[] {
 	try {
-		const jsonStr = rawOutput?.json_content ?? rawOutput?.result?.json_content;
+		const jsonStr =
+			typeof rawOutput === "string" ? rawOutput : (rawOutput?.json_content ?? rawOutput?.result?.json_content);
 		const parsed = typeof jsonStr === "string" ? JSON.parse(jsonStr) : rawOutput;
 		const citations: Citation[] = [];
 		let idx = 0;
@@ -651,7 +658,8 @@ function stripAioTitleNoise(title: string): string {
 
 export function extractCitationsFromBrightdata(rawOutput: any): Citation[] {
 	try {
-		const record = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
+		const decoded = typeof rawOutput === "string" ? JSON.parse(rawOutput) : rawOutput;
+		const record = Array.isArray(decoded) ? decoded[0] : decoded;
 		if (!record) return [];
 		const citations: Citation[] = [];
 		const seen = new Set<string>();

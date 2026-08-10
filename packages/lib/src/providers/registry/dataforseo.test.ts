@@ -59,8 +59,8 @@ vi.mock("dataforseo-client", () => ({
 	},
 }));
 
-import { dataforseo } from "./dataforseo";
 import { extractCitations, extractTextContent } from "../../text-extraction";
+import { dataforseo } from "./dataforseo";
 
 afterEach(() => {
 	vi.clearAllMocks();
@@ -137,7 +137,9 @@ describe("dataforseo provider", () => {
 					{
 						status_code: 20000,
 						status_message: "Ok.",
-						result: [{ model_name: "gpt-4.1", items: [{ type: "message", sections: [{ type: "text", text: "Hi." }] }] }],
+						result: [
+							{ model_name: "gpt-4.1", items: [{ type: "message", sections: [{ type: "text", text: "Hi." }] }] },
+						],
 					},
 				],
 			});
@@ -261,9 +263,11 @@ describe("dataforseo provider", () => {
 
 	it("fetches Google AI Overview from the organic SERP endpoint with async loading on", async () => {
 		dataforseoClient.googleOrganicLiveAdvanced.mockResolvedValueOnce(AI_OVERVIEW_OK);
+		const checkpointRawResponse = vi.fn();
 
 		const result = await dataforseo.run("google-ai-overview", "What is a well-reviewed speaker released last month?", {
 			webSearch: true,
+			checkpointRawResponse,
 		});
 
 		const [payload] = dataforseoClient.googleOrganicLiveAdvanced.mock.calls[0];
@@ -277,41 +281,38 @@ describe("dataforseo provider", () => {
 		expect(result.citations).toHaveLength(1);
 		expect(result.citations[0].domain).toBe("whathifi.com");
 		expect(result.webQueries).toEqual(["unavailable"]);
-	});
-
-	it("retries the AI Overview request when DataForSEO returns a transient server error", async () => {
-		vi.useFakeTimers();
-		dataforseoClient.googleOrganicLiveAdvanced
-			.mockResolvedValueOnce({
-				tasks: [{ status_code: 40602, status_message: "Internal SE Server Error.", result: null }],
-			})
-			.mockResolvedValueOnce(AI_OVERVIEW_OK);
-
-		const promise = dataforseo.run("google-ai-overview", "What is a well-reviewed speaker released last month?", {
-			webSearch: true,
+		expect(checkpointRawResponse).toHaveBeenCalledWith({
+			rawOutput: result.rawOutput,
+			modelVersion: result.modelVersion,
 		});
-		await vi.runAllTimersAsync();
-		const result = await promise;
-
-		expect(dataforseoClient.googleOrganicLiveAdvanced).toHaveBeenCalledTimes(2);
-		expect(result.textContent).toContain("Sonos Era 300");
-		expect(result.citations).toHaveLength(1);
 	});
 
-	it("throws after exhausting retries when every AI Overview attempt fails", async () => {
-		vi.useFakeTimers();
-		dataforseoClient.googleOrganicLiveAdvanced.mockResolvedValue({
-			tasks: [{ status_code: 40602, status_message: "Internal SE Server Error.", result: null }],
+	it("does not replay a paid AI Overview request after a task-level error", async () => {
+		dataforseoClient.googleOrganicLiveAdvanced.mockResolvedValueOnce({
+			tasks: [{ id: "accepted-task", status_code: 40602, status_message: "Task In Queue.", result: null }],
 		});
 
 		const promise = dataforseo.run("google-ai-overview", "What is a well-reviewed speaker released last month?", {
 			webSearch: true,
 		});
-		const assertion = expect(promise).rejects.toThrow("DataForSEO API Error: 40602 Internal SE Server Error.");
-		await vi.runAllTimersAsync();
-		await assertion;
+		await expect(promise).rejects.toMatchObject({
+			message: "DataForSEO API accepted task accepted-task: 40602 Task In Queue.",
+			taskAccepted: true,
+		});
 
-		expect(dataforseoClient.googleOrganicLiveAdvanced).toHaveBeenCalledTimes(3);
+		expect(dataforseoClient.googleOrganicLiveAdvanced).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not replay an AI Overview request after a transport error", async () => {
+		dataforseoClient.googleOrganicLiveAdvanced.mockRejectedValueOnce(new Error("socket closed"));
+
+		await expect(
+			dataforseo.run("google-ai-overview", "What is a well-reviewed speaker released last month?", {
+				webSearch: true,
+			}),
+		).rejects.toThrow("socket closed");
+
+		expect(dataforseoClient.googleOrganicLiveAdvanced).toHaveBeenCalledTimes(1);
 	});
 
 	it("resolves Gemini Vertex grounding-redirect citation URLs to the real source", async () => {
@@ -361,11 +362,12 @@ describe("dataforseo provider", () => {
 		expect(result.citations).toHaveLength(1);
 		expect(result.citations[0].url).toBe(realUrl);
 		expect(result.citations[0].domain).toBe("whathifi.com");
-		// The raw output is rewritten in place, so re-extraction stays consistent.
+		// Citation normalization happens after the durable raw-response checkpoint;
+		// rawOutput remains the exact provider JSON.
 		const raw = result.rawOutput as {
 			tasks: { result: { items: { sections: { annotations: { url: string }[] }[] }[] }[] }[];
 		};
 		const rawUrl = raw.tasks[0].result[0].items[0].sections[0].annotations[0].url;
-		expect(rawUrl).toBe(realUrl);
+		expect(rawUrl).toBe(redirectUrl);
 	});
 });

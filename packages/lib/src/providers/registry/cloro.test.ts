@@ -101,8 +101,53 @@ afterEach(() => {
 });
 
 describe("cloro provider", () => {
+	it("checkpoints an accepted task before polling it", async () => {
+		vi.useFakeTimers();
+		const checkpoint = vi.fn().mockResolvedValue(undefined);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ success: true, task: { id: "task-checkpoint", status: "QUEUED" } }))
+			.mockResolvedValueOnce(
+				jsonResponse({ task: { id: "task-checkpoint", status: "COMPLETED" }, response: CHATGPT_RESPONSE }),
+			);
+		vi.stubGlobal("fetch", fetchMock);
+
+		const promise = cloro.run("chatgpt", "What is a well-reviewed speaker?", {
+			idempotencyKey: "scheduler-run-1",
+			checkpointExternalTask: checkpoint,
+		});
+		await vi.runAllTimersAsync();
+		await promise;
+
+		expect(checkpoint).toHaveBeenCalledWith("task-checkpoint");
+		expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ idempotencyKey: "scheduler-run-1" });
+		expect(checkpoint.mock.invocationCallOrder[0]).toBeLessThan(fetchMock.mock.invocationCallOrder[1]);
+	});
+
+	it("resumes a checkpointed task without submitting a replacement", async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				jsonResponse({ task: { id: "task-resume", status: "COMPLETED" }, response: CHATGPT_RESPONSE }),
+			);
+		vi.stubGlobal("fetch", fetchMock);
+
+		const promise = cloro.run("chatgpt", "What is a well-reviewed speaker?", {
+			externalTaskId: "task-resume",
+		});
+		await vi.runAllTimersAsync();
+		const result = await promise;
+
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(fetchMock.mock.calls[0][0]).toBe("https://api.cloro.dev/v1/async/task/task-resume");
+		expect(fetchMock.mock.calls[0][1]).not.toHaveProperty("method", "POST");
+		expect(result.textContent).toContain("Sonos Era 300");
+	});
+
 	it("submits an async task, polls it, and returns the parsed answer", async () => {
 		vi.useFakeTimers();
+		const checkpointRawResponse = vi.fn().mockResolvedValue(undefined);
 		const fetchMock = vi
 			.fn()
 			.mockResolvedValueOnce(jsonResponse({ success: true, task: { id: "task-1", status: "QUEUED" } }))
@@ -110,7 +155,7 @@ describe("cloro provider", () => {
 			.mockResolvedValueOnce(jsonResponse({ task: { id: "task-1", status: "COMPLETED" }, response: CHATGPT_RESPONSE }));
 		vi.stubGlobal("fetch", fetchMock);
 
-		const promise = cloro.run("chatgpt", "What is a well-reviewed speaker?");
+		const promise = cloro.run("chatgpt", "What is a well-reviewed speaker?", { checkpointRawResponse });
 		await vi.runAllTimersAsync();
 		const result = await promise;
 
@@ -136,6 +181,7 @@ describe("cloro provider", () => {
 		expect(result.citations.map((c) => c.domain)).toEqual(["whathifi.com", "techradar.com"]);
 		expect(result.webQueries).toEqual(["recent speaker reviews"]);
 		expect(result.modelVersion).toBe("gpt-5-3-mini");
+		expect(checkpointRawResponse).toHaveBeenCalledWith({ rawOutput: result.rawOutput });
 	});
 
 	it("maps Google AI Overview onto the Google Search task and unwraps the overview", async () => {
@@ -220,26 +266,32 @@ describe("cloro provider", () => {
 		expect(result.citations.map((c) => c.domain)).toEqual(["cnet.com", "google.com"]);
 	});
 
-	it("keeps polling through transient and no-content status responses", async () => {
+	it("surfaces a transient status API response for circuit accounting", async () => {
 		vi.useFakeTimers();
 		const fetchMock = vi
 			.fn()
 			.mockResolvedValueOnce(jsonResponse({ success: true, task: { id: "task-2", status: "QUEUED" } }))
-			.mockResolvedValueOnce(jsonResponse({ message: "temporary error" }, 500))
-			.mockResolvedValueOnce(new Response(null, { status: 204 }))
-			.mockResolvedValueOnce(jsonResponse({ task: { id: "task-2", status: "COMPLETED" }, response: CHATGPT_RESPONSE }));
+			.mockResolvedValueOnce(jsonResponse({ message: "temporary error" }, 500));
 		vi.stubGlobal("fetch", fetchMock);
 
 		const promise = cloro.run("perplexity", "What is a well-reviewed speaker?");
+		const assertion = expect(promise).rejects.toMatchObject({ taskAccepted: true });
 		await vi.runAllTimersAsync();
-		const result = await promise;
+		await assertion;
 
-		expect(fetchMock).toHaveBeenCalledTimes(4);
+		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
 			taskType: "PERPLEXITY",
 			payload: { prompt: "What is a well-reviewed speaker?", country: "US" },
 		});
-		expect(result.textContent).toContain("Sonos Era 300");
+	});
+
+	it("terminates a resumed task that the provider no longer retains", async () => {
+		vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse({ message: "not found" }, 404)));
+
+		await expect(cloro.run("chatgpt", "prompt", { externalTaskId: "expired-task" })).rejects.toThrow(
+			"Cloro task expired-task no longer exists",
+		);
 	});
 
 	it("fails a task whose status settles on FAILED", async () => {

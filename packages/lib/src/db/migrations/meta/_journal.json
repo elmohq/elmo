@@ -85,6 +85,48 @@
 			"when": 1785181564412,
 			"tag": "0011_secrets",
 			"breakpoints": true
+		},
+		{
+			"idx": 12,
+			"version": "7",
+			"when": 1786347627235,
+			"tag": "0012_resilient_prompt_scheduler",
+			"breakpoints": true
+		},
+		{
+			"idx": 13,
+			"version": "7",
+			"when": 1786350002585,
+			"tag": "0013_provider_call_reservations",
+			"breakpoints": true
+		},
+		{
+			"idx": 14,
+			"version": "7",
+			"when": 1786351499367,
+			"tag": "0014_durable_provider_units",
+			"breakpoints": true
+		},
+		{
+			"idx": 15,
+			"version": "7",
+			"when": 1786353827267,
+			"tag": "0015_durable_scheduler_safety",
+			"breakpoints": true
+		},
+		{
+			"idx": 16,
+			"version": "7",
+			"when": 1786355429585,
+			"tag": "0016_bounded_provider_attempts",
+			"breakpoints": true
+		},
+		{
+			"idx": 17,
+			"version": "7",
+			"when": 1786355561384,
+			"tag": "0017_provider_task_deadlines",
+			"breakpoints": true
 		}
 	]
 }

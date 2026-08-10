@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { parseScrapeTargets, validateScrapeTargets } from "./config";
 import { brightdata } from "./registry/brightdata";
-import { oxylabs } from "./registry/oxylabs";
 import { cloro } from "./registry/cloro";
 import { dataforseo } from "./registry/dataforseo";
 import { olostep } from "./registry/olostep";
+import { oxylabs } from "./registry/oxylabs";
 import type { ModelConfig } from "./types";
 
 describe("parseScrapeTargets", () => {
@@ -96,6 +96,13 @@ describe("validateScrapeTargets", () => {
 			{ model: "google-ai-mode", provider: "olostep", webSearch: true },
 		];
 		expect(() => validateScrapeTargets(configs, makeGetProvider({ olostep: configuredProvider }))).not.toThrow();
+	});
+
+	it("rejects duplicate paid routes", () => {
+		const configs = parseScrapeTargets("chatgpt:olostep:online,chatgpt:olostep:online");
+		expect(() => validateScrapeTargets(configs, makeGetProvider({ olostep: configuredProvider }))).toThrow(
+			"duplicate target",
+		);
 	});
 
 	it("throws on unknown provider", () => {

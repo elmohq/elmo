@@ -3,13 +3,19 @@ import { API_PROVIDER_MAX_OUTPUT_TOKENS } from "../config";
 import { openrouter } from "./openrouter";
 
 function stubFetch(overrides: Record<string, unknown> = {}) {
-	const fetchMock = vi.fn().mockResolvedValue({
-		ok: true,
-		json: async () => ({
+	return stubRawFetch(
+		JSON.stringify({
 			model: "openai/gpt-5-mini-2025-08-07",
 			choices: [{ message: { content: "answer" } }],
 			...overrides,
 		}),
+	);
+}
+
+function stubRawFetch(rawResponse: string) {
+	const fetchMock = vi.fn().mockResolvedValue({
+		ok: true,
+		text: async () => rawResponse,
 	});
 	vi.stubGlobal("fetch", fetchMock);
 	return fetchMock;
@@ -64,5 +70,44 @@ describe("openrouter run", () => {
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining("hit the output cap"));
 		// Logged, never thrown — the partial answer still flows through.
 		expect(result.textContent).toBe("clipped");
+	});
+
+	it("checkpoints the exact raw response before extracting it", async () => {
+		const parsedResponse = {
+			model: "openai/gpt-5-mini-2025-08-07",
+			choices: [{ message: { content: "answer" } }],
+		};
+		const rawResponse = JSON.stringify(parsedResponse);
+		stubRawFetch(rawResponse);
+		const checkpointRawResponse = vi.fn();
+
+		const result = await openrouter.run("chatgpt", "prompt", {
+			webSearch: false,
+			version: "openai/gpt-5-mini",
+			checkpointRawResponse,
+		});
+
+		expect(checkpointRawResponse).toHaveBeenCalledWith({
+			rawOutput: rawResponse,
+			modelVersion: "openai/gpt-5-mini",
+		});
+		expect(result.rawOutput).toEqual(parsedResponse);
+	});
+
+	it("checkpoints malformed JSON before parsing fails", async () => {
+		stubRawFetch("not valid JSON");
+		const checkpointRawResponse = vi.fn();
+
+		await expect(
+			openrouter.run("chatgpt", "prompt", {
+				webSearch: false,
+				version: "openai/gpt-5-mini",
+				checkpointRawResponse,
+			}),
+		).rejects.toThrow(SyntaxError);
+		expect(checkpointRawResponse).toHaveBeenCalledWith({
+			rawOutput: "not valid JSON",
+			modelVersion: "openai/gpt-5-mini",
+		});
 	});
 });

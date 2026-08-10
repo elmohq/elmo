@@ -1,8 +1,14 @@
 import Olostep from "olostep";
-import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
-import type { Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
+import type { Citation } from "../../text-extraction";
+import {
+	ProviderRunRejectedError,
+	ProviderTaskFailedError,
+	ProviderTaskPendingError,
+	providerErrorStatus,
+} from "../errors";
+import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 
 const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: string) => string; credits: number }> = {
 	chatgpt: {
@@ -39,15 +45,36 @@ const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: strin
 
 let _client: Olostep | null = null;
 let _clientApiKey: string | undefined;
+const OLOSTEP_POLL_WINDOW_MS = 30_000;
+const OLOSTEP_RESUME_DELAY_MS = 30_000;
+const OLOSTEP_HTTP_TIMEOUT_MS = 30_000;
 function getClient(): Olostep {
 	// Re-key the memoized client on the credential so a refreshed overlay
 	// (DB-stored key) takes effect without a process restart.
 	const apiKey = getCredential("OLOSTEP_API_KEY");
 	if (!_client || _clientApiKey !== apiKey) {
-		_client = new Olostep({ apiKey, retry: { maxRetries: 3, initialDelayMs: 2000 } });
+		// POST retries are unsafe for paid batches: a lost response can hide an
+		// accepted batch, and replaying the request purchases it twice.
+		_client = new Olostep({
+			apiKey,
+			timeoutMs: OLOSTEP_HTTP_TIMEOUT_MS,
+			retry: { maxRetries: 0, initialDelayMs: 2000 },
+		});
 		_clientApiKey = apiKey;
 	}
 	return _client;
+}
+
+async function waitForBatch(client: Olostep, batchId: string): Promise<void> {
+	const deadline = Date.now() + OLOSTEP_POLL_WINDOW_MS;
+	while (Date.now() < deadline) {
+		const info = (await client.batches.info(batchId)) as { status?: string };
+		const status = info.status?.toLowerCase();
+		if (status === "completed") return;
+		if (status === "failed") throw new ProviderTaskFailedError(`Olostep batch ${batchId} failed`);
+		await new Promise((resolve) => setTimeout(resolve, 5000));
+	}
+	throw new ProviderTaskPendingError(`Olostep batch ${batchId} is still running`, OLOSTEP_RESUME_DELAY_MS);
 }
 
 function extractTextFromOlostep(data: any): string {
@@ -122,46 +149,62 @@ export const olostep: Provider = {
 		return null;
 	},
 
-	async run(model: string, prompt: string, _options?: ProviderOptions): Promise<ScrapeResult> {
+	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const parserConfig = OLOSTEP_PARSERS[model];
-		if (!parserConfig) throw new Error(`Olostep does not support model "${model}"`);
+		if (!parserConfig) throw new ProviderRunRejectedError(`Olostep does not support model "${model}"`);
 
 		const client = getClient();
 		const url = parserConfig.urlTemplate(prompt);
 
 		// Use batch API — the /scrapes endpoint doesn't support all parsers
-		const batch = await client.batches.create([{ url, customId: "1" }], { parser: { id: parserConfig.parserId } });
-
-		await batch.waitTillDone({ checkEveryNSecs: 5, timeoutSeconds: 1200 });
-
-		let retrieveId: string | undefined;
-		for await (const item of batch.items()) {
-			retrieveId = item.retrieve_id;
-			break; // single item batch
+		let batchId = options?.externalTaskId;
+		if (!batchId) {
+			const batch = await client.batches.create([{ url, customId: "1" }], {
+				parser: { id: parserConfig.parserId },
+			});
+			batchId = batch.id;
+			await options?.checkpointExternalTask?.(batchId);
 		}
 
-		if (!retrieveId) throw new Error("Olostep batch completed but no items returned");
+		try {
+			await waitForBatch(client, batchId);
 
-		// Use client.retrieve (GET) instead of item.retrieve (POST) — the
-		// SDK's BatchItem.retrieve uses POST which the API rejects with 403.
-		const retrieved = await client.retrieve(retrieveId, ["json" as any]);
+			let retrieveId: string | undefined;
+			for await (const item of client.batches.items(batchId, { waitForCompletion: false })) {
+				retrieveId = item.retrieve_id;
+				break; // single item batch
+			}
 
-		const jsonContent = retrieved.json_content;
-		const parsed = typeof jsonContent === "string" ? JSON.parse(jsonContent) : (jsonContent ?? retrieved);
+			if (!retrieveId) throw new ProviderTaskFailedError("Olostep batch completed but no items returned");
 
-		const webQueries = extractWebQueries(parsed);
-		const citations = extractCitationsFromOlostep(parsed);
+			// Use client.retrieve (GET) instead of item.retrieve (POST) — the
+			// SDK's BatchItem.retrieve uses POST which the API rejects with 403.
+			const retrieved = await client.retrieve(retrieveId, ["json" as any]);
 
-		return {
-			// Store the parsed content directly instead of the full retrieved
-			// wrapper (which double-encodes json_content as a string).
-			rawOutput: parsed,
-			textContent: extractTextFromOlostep(parsed),
-			// Mark as "unavailable" only when citations prove a search happened
-			// but the API didn't expose the query strings
-			webQueries: webQueries.length > 0 ? webQueries : citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
-			citations,
-			modelVersion: parsed?.model ?? undefined,
-		};
+			const rawOutput = retrieved.json_content ?? retrieved;
+			await options?.checkpointRawResponse?.({ rawOutput });
+
+			const jsonContent = rawOutput;
+			const parsed = typeof jsonContent === "string" ? JSON.parse(jsonContent) : (jsonContent ?? retrieved);
+
+			const webQueries = extractWebQueries(parsed);
+			const citations = extractCitationsFromOlostep(parsed);
+
+			return {
+				rawOutput,
+				textContent: extractTextFromOlostep(parsed),
+				// Mark as "unavailable" only when citations prove a search happened
+				// but the API didn't expose the query strings
+				webQueries: webQueries.length > 0 ? webQueries : citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
+				citations,
+				modelVersion: parsed?.model ?? undefined,
+			};
+		} catch (error) {
+			const status = providerErrorStatus(error);
+			if (status === 404 || status === 410) {
+				throw new ProviderTaskFailedError(`Olostep batch ${batchId} no longer exists`, { cause: error });
+			}
+			throw error;
+		}
 	},
 };

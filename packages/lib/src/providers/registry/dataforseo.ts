@@ -8,6 +8,7 @@ import {
 	extractTextFromDataforseoScraper,
 	extractTextFromGoogle,
 } from "../../text-extraction";
+import { ProviderResponseError, ProviderRunRejectedError } from "../errors";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 import {
 	assertPromptLength,
@@ -80,13 +81,26 @@ const SCRAPER_CALLS = {
 // gets its own runner rather than joining SERP_MODELS.
 const AI_OVERVIEW_MODEL = "google-ai-overview";
 const SUPPORTED_MODELS = new Set([...SERP_MODELS, AI_OVERVIEW_MODEL, ...Object.keys(LLM_MODELS)]);
+const ACCEPTED_TASK_STATUS_CODES = new Set([20100, 40601, 40602]);
+
+function taskResponseError(
+	task: { id?: string | null; status_code?: number | null; status_message?: string | null } | null | undefined,
+): Error {
+	if (!task) return new Error("DataForSEO API returned no task state after submission");
+	const details = `${task.status_code ?? "unknown"} ${task.status_message ?? "Unknown task status"}`;
+	if (task.status_code !== null && task.status_code !== undefined && ACCEPTED_TASK_STATUS_CODES.has(task.status_code)) {
+		return new ProviderResponseError(`DataForSEO API accepted task ${task.id ?? "without an id"}: ${details}`, {
+			taskAccepted: true,
+		});
+	}
+	// DataForSEO's live endpoints can return task state even when no result is
+	// present. Unless a status explicitly proves rejection, replacing it could
+	// purchase a second copy of work that is still running upstream.
+	return new Error(`DataForSEO API returned unresolved task state: ${details}`);
+}
 
 /** Models DataForSEO can reach by scraping a live surface rather than an API. */
-export const DATAFORSEO_SCRAPED_MODELS = new Set([
-	...SERP_MODELS,
-	AI_OVERVIEW_MODEL,
-	...Object.keys(SCRAPER_CALLS),
-]);
+export const DATAFORSEO_SCRAPED_MODELS = new Set([...SERP_MODELS, AI_OVERVIEW_MODEL, ...Object.keys(SCRAPER_CALLS)]);
 
 interface DataForSeoLlmRequest {
 	user_prompt: string;
@@ -104,7 +118,7 @@ const LLM_CALLS = {
 		api.geminiLlmResponsesLive(body.map((b) => new client.AiOptimizationGeminiLlmResponsesLiveRequestInfo(b))),
 } as const;
 
-async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
+async function runGoogleAiMode(prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 	assertPromptLength(prompt);
 	const api = createDfsSerpApi();
 	const requestInfo = new client.SerpGoogleAiModeLiveAdvancedRequestInfo({
@@ -117,21 +131,23 @@ async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
 	const response = await api.googleAiModeLiveAdvanced([requestInfo]);
 
 	if (!response?.tasks?.length) {
-		throw new Error(`DataForSEO API Error: No response or tasks.`);
+		throw taskResponseError(null);
 	}
 
 	const task = response.tasks[0];
 	if (task.status_code !== 20000 || !task.result?.length) {
-		throw new Error(`DataForSEO API Error: ${task.status_message}`);
+		throw taskResponseError(task);
 	}
 
+	const rawOutput = sanitizeForJson(response);
+	await options?.checkpointRawResponse?.({ rawOutput, modelVersion: "dataforseo" });
 	const citations = extractCitationsFromGoogle(response);
 	// Google AI Mode always searches, but DataForSEO doesn't expose the query
 	// strings anywhere in its response. Mark "unavailable" when citations
 	// prove a search, like the other providers; never echo the prompt (runs
 	// before this change did).
 	return {
-		rawOutput: sanitizeForJson(response),
+		rawOutput,
 		webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
 		textContent: extractTextFromGoogle(response),
 		citations,
@@ -139,7 +155,7 @@ async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
 	};
 }
 
-async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
+async function runGoogleAiOverview(prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 	assertPromptLength(prompt);
 	const api = createDfsSerpApi();
 	const requestInfo = new client.SerpGoogleOrganicLiveAdvancedRequestInfo({
@@ -152,34 +168,27 @@ async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
 		load_async_ai_overview: true,
 	});
 
-	// Loading the AI Overview asynchronously intermittently fails on DataForSEO's
-	// side with a task-level "Internal SE Server Error"; a couple of retries clear
-	// it, so a transient blip doesn't fail the run (matches the BrightData AI
-	// Overview runner).
-	let lastError = "No response or tasks.";
-	for (let attempt = 0; attempt < 3; attempt++) {
-		try {
-			const response = await api.googleOrganicLiveAdvanced([requestInfo]);
-			const task = response?.tasks?.[0];
-			if (task?.status_code === 20000 && task.result?.length) {
-				// The SERP response carries the AI Overview as an items[].type
-				// "ai_overview" element, which the shared Google extractors understand.
-				const citations = extractCitationsFromGoogle(response);
-				return {
-					rawOutput: sanitizeForJson(response),
-					webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
-					textContent: extractTextFromGoogle(response),
-					citations,
-					modelVersion: "dataforseo",
-				};
-			}
-			lastError = task ? `${task.status_code} ${task.status_message}` : "No response or tasks.";
-		} catch (error) {
-			lastError = error instanceof Error ? error.message : String(error);
-		}
-		if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
+	// One scheduler unit makes one paid live request. A task-level transient
+	// failure is recorded and left for the next normal cadence; retrying here
+	// would be invisible to the durable attempt ledger.
+	const response = await api.googleOrganicLiveAdvanced([requestInfo]);
+	const task = response?.tasks?.[0];
+	if (task?.status_code !== 20000 || !task.result?.length) {
+		throw taskResponseError(task);
 	}
-	throw new Error(`DataForSEO API Error: ${lastError}`);
+
+	const rawOutput = sanitizeForJson(response);
+	await options?.checkpointRawResponse?.({ rawOutput, modelVersion: "dataforseo" });
+	// The SERP response carries the AI Overview as an items[].type
+	// "ai_overview" element, which the shared Google extractors understand.
+	const citations = extractCitationsFromGoogle(response);
+	return {
+		rawOutput,
+		webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
+		textContent: extractTextFromGoogle(response),
+		citations,
+		modelVersion: "dataforseo",
+	};
 }
 
 /**
@@ -251,20 +260,24 @@ async function runLlmResponse(model: string, prompt: string, options?: ProviderO
 	const response = await LLM_CALLS[spec.call](api, [body]);
 
 	if (!response?.tasks?.length) {
-		throw new Error(`DataForSEO API Error: No response or tasks.`);
+		throw taskResponseError(null);
 	}
 
 	const task = response.tasks[0];
 	if (task.status_code !== 20000 || !task.result?.length) {
-		throw new Error(`DataForSEO API Error: ${task.status_code} ${task.status_message}`);
+		throw taskResponseError(task);
 	}
 
 	const result = task.result[0];
 	const raw = sanitizeForJson(response);
+	const modelVersion = result.model_name ?? modelName;
+	await options?.checkpointRawResponse?.({ rawOutput: raw, modelVersion });
 	// Replace Gemini's Vertex grounding-redirect citation URLs with the real
-	// source URLs before extraction (no-op for ChatGPT/Perplexity).
-	await resolveGroundingRedirects(raw);
-	const citations = extractCitationsFromDataforseoLlm(raw);
+	// source URLs on a separate extraction copy (no-op for ChatGPT/Perplexity).
+	// The durable raw output remains the exact JSON-safe provider response.
+	const extractionRaw = sanitizeForJson(raw);
+	await resolveGroundingRedirects(extractionRaw);
+	const citations = extractCitationsFromDataforseoLlm(extractionRaw);
 	// DataForSEO exposes the LLM's expanded queries as fan_out_queries. Surface
 	// them as webQueries when web search was on; otherwise fall back to the
 	// "unavailable" marker when citations prove a search occurred.
@@ -275,26 +288,32 @@ async function runLlmResponse(model: string, prompt: string, options?: ProviderO
 	return {
 		rawOutput: raw,
 		webQueries: webSearch ? (fanOut.length > 0 ? fanOut : citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : []) : [],
-		textContent: extractTextFromDataforseoLlm(raw),
+		textContent: extractTextFromDataforseoLlm(extractionRaw),
 		citations,
-		modelVersion: result.model_name ?? modelName,
+		modelVersion,
 	};
 }
 
-async function runLlmScraper(model: keyof typeof SCRAPER_CALLS, prompt: string): Promise<ScrapeResult> {
+async function runLlmScraper(
+	model: keyof typeof SCRAPER_CALLS,
+	prompt: string,
+	options?: ProviderOptions,
+): Promise<ScrapeResult> {
 	const response = await SCRAPER_CALLS[model](createDfsAiApi(), prompt);
 
 	if (!response?.tasks?.length) {
-		throw new Error(`DataForSEO API Error: No response or tasks.`);
+		throw taskResponseError(null);
 	}
 
 	const task = response.tasks[0];
 	if (task.status_code !== 20000 || !task.result?.length) {
-		throw new Error(`DataForSEO API Error: ${task.status_code} ${task.status_message}`);
+		throw taskResponseError(task);
 	}
 
 	const result = task.result[0];
 	const raw = sanitizeForJson(response);
+	const modelVersion = result.model ?? model;
+	await options?.checkpointRawResponse?.({ rawOutput: raw, modelVersion });
 	const citations = extractCitationsFromDataforseoScraper(raw);
 
 	// ChatGPT reports its expanded queries as fan_out_queries; Gemini's scraper
@@ -309,7 +328,7 @@ async function runLlmScraper(model: keyof typeof SCRAPER_CALLS, prompt: string):
 		webQueries: fanOut.length > 0 ? fanOut : citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
 		textContent: extractTextFromDataforseoScraper(raw),
 		citations,
-		modelVersion: result.model ?? model,
+		modelVersion,
 	};
 }
 
@@ -341,19 +360,21 @@ export const dataforseo: Provider = {
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		assertPromptLength(prompt);
 		if (SERP_MODELS.has(model)) {
-			return runGoogleAiMode(prompt);
+			return runGoogleAiMode(prompt, options);
 		}
 		if (model === AI_OVERVIEW_MODEL) {
-			return runGoogleAiOverview(prompt);
+			return runGoogleAiOverview(prompt, options);
 		}
 		// Prefer the scraped consumer UI. Pinning a model_name is the opt-in to the
 		// LLM Responses API, which is the only route that can honor one.
 		if (!options?.version && model in SCRAPER_CALLS) {
-			return runLlmScraper(model as keyof typeof SCRAPER_CALLS, prompt);
+			return runLlmScraper(model as keyof typeof SCRAPER_CALLS, prompt, options);
 		}
 		if (LLM_MODELS[model]) {
 			return runLlmResponse(model, prompt, options);
 		}
-		throw new Error(`DataForSEO: unsupported model "${model}". Supported: ${[...SUPPORTED_MODELS].join(", ")}`);
+		throw new ProviderRunRejectedError(
+			`DataForSEO: unsupported model "${model}". Supported: ${[...SUPPORTED_MODELS].join(", ")}`,
+		);
 	},
 };

@@ -48,8 +48,48 @@ afterEach(() => {
 });
 
 describe("oxylabs provider", () => {
+	it("checkpoints an accepted job before polling it", async () => {
+		vi.useFakeTimers();
+		const checkpoint = vi.fn().mockResolvedValue(undefined);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ id: "job-checkpoint", status: "pending" }, 202))
+			.mockResolvedValueOnce(jsonResponse({ id: "job-checkpoint", status: "done" }))
+			.mockResolvedValueOnce(jsonResponse(RESULT_PAYLOAD));
+		vi.stubGlobal("fetch", fetchMock);
+
+		const promise = oxylabs.run("chatgpt", "What is a well-reviewed speaker?", {
+			webSearch: true,
+			checkpointExternalTask: checkpoint,
+		});
+		await vi.runAllTimersAsync();
+		await promise;
+
+		expect(checkpoint).toHaveBeenCalledWith("job-checkpoint");
+		expect(checkpoint.mock.invocationCallOrder[0]).toBeLessThan(fetchMock.mock.invocationCallOrder[1]);
+	});
+
+	it("resumes a checkpointed job without submitting a replacement", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ id: "job-resume", status: "done" }))
+			.mockResolvedValueOnce(jsonResponse(RESULT_PAYLOAD));
+		vi.stubGlobal("fetch", fetchMock);
+
+		const result = await oxylabs.run("chatgpt", "What is a well-reviewed speaker?", {
+			webSearch: true,
+			externalTaskId: "job-resume",
+		});
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(fetchMock.mock.calls[0][0]).toBe("https://data.oxylabs.io/v1/queries/job-resume");
+		expect(fetchMock.mock.calls[0][1]).not.toHaveProperty("method", "POST");
+		expect(result.textContent).toContain("Sonos Era 300");
+	});
+
 	it("submits a Push-Pull job, polls it, and retrieves parsed results", async () => {
 		vi.useFakeTimers();
+		const checkpointRawResponse = vi.fn().mockResolvedValue(undefined);
 		const fetchMock = vi
 			.fn()
 			.mockResolvedValueOnce(jsonResponse({ id: "job-123", status: "pending" }, 202))
@@ -58,7 +98,10 @@ describe("oxylabs provider", () => {
 			.mockResolvedValueOnce(jsonResponse(RESULT_PAYLOAD));
 		vi.stubGlobal("fetch", fetchMock);
 
-		const promise = oxylabs.run("chatgpt", "What is a well-reviewed speaker?", { webSearch: true });
+		const promise = oxylabs.run("chatgpt", "What is a well-reviewed speaker?", {
+			webSearch: true,
+			checkpointRawResponse,
+		});
 		await vi.runAllTimersAsync();
 		const result = await promise;
 
@@ -83,6 +126,7 @@ describe("oxylabs provider", () => {
 		expect(result.citations).toHaveLength(1);
 		expect(result.webQueries).toEqual(["recent speaker reviews"]);
 		expect(result.modelVersion).toBe("gpt-5");
+		expect(checkpointRawResponse).toHaveBeenCalledWith({ rawOutput: result.rawOutput });
 	});
 
 	it("does not count Perplexity's suggested follow-ups as searches", async () => {
@@ -121,23 +165,28 @@ describe("oxylabs provider", () => {
 		expect(fetchMock.mock.calls[1][0]).toBe("https://data.oxylabs.io/v1/queries/job-google/results");
 	});
 
-	it("keeps polling through transient status and result responses", async () => {
+	it("surfaces a transient status API response for circuit accounting", async () => {
 		vi.useFakeTimers();
 		const fetchMock = vi
 			.fn()
 			.mockResolvedValueOnce(jsonResponse({ id: "job-transient", status: "pending" }, 202))
-			.mockResolvedValueOnce(jsonResponse({ message: "temporary error" }, 500))
-			.mockResolvedValueOnce(jsonResponse({ id: "job-transient", status: "done" }))
-			.mockResolvedValueOnce(new Response(null, { status: 204 }))
-			.mockResolvedValueOnce(jsonResponse(RESULT_PAYLOAD));
+			.mockResolvedValueOnce(jsonResponse({ message: "temporary error" }, 500));
 		vi.stubGlobal("fetch", fetchMock);
 
 		const promise = oxylabs.run("chatgpt", "What is a well-reviewed speaker?", { webSearch: false });
+		const assertion = expect(promise).rejects.toMatchObject({ taskAccepted: true });
 		await vi.runAllTimersAsync();
-		const result = await promise;
+		await assertion;
 
-		expect(fetchMock).toHaveBeenCalledTimes(5);
-		expect(result.textContent).toContain("Sonos Era 300");
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it("terminates a resumed job that the provider no longer retains", async () => {
+		vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse({ message: "not found" }, 404)));
+
+		await expect(oxylabs.run("chatgpt", "prompt", { webSearch: true, externalTaskId: "expired-job" })).rejects.toThrow(
+			"Oxylabs job expired-job no longer exists",
+		);
 	});
 
 	it("fails a faulted asynchronous job without requesting results", async () => {

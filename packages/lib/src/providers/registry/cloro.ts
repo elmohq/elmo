@@ -1,7 +1,15 @@
-import type { Provider, ScrapeResult, ModelConfig } from "../types";
-import { extractTextFromCloro, extractCitationsFromCloro, cloroAnswer, type Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
+import { type Citation, cloroAnswer, extractCitationsFromCloro, extractTextFromCloro } from "../../text-extraction";
+import {
+	ProviderFatalError,
+	providerHttpResponseError,
+	ProviderResponseError,
+	ProviderRunRejectedError,
+	ProviderTaskFailedError,
+	ProviderTaskPendingError,
+} from "../errors";
+import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 
 // Cloro monitors live AI answer engines. Each Elmo model maps to a Cloro task
 // type: the chatbots (ChatGPT, Perplexity, Copilot, Gemini) and Google AI Mode
@@ -24,9 +32,11 @@ const CLORO_TASKS: Record<string, CloroTaskConfig> = {
 // synchronous endpoints return when the plan's concurrent-job limit is hit — and
 // poll until the task settles rather than holding a connection open.
 const CLORO_TASK_URL = "https://api.cloro.dev/v1/async/task";
-const CLORO_TASK_TIMEOUT_MS = 10 * 60 * 1000;
+const CLORO_POLL_WINDOW_MS = 30_000;
 const CLORO_POLL_BASE_DELAY_MS = 2000;
 const CLORO_POLL_MAX_DELAY_MS = 10_000;
+const CLORO_RESUME_DELAY_MS = 30_000;
+const CLORO_HTTP_TIMEOUT_MS = 30_000;
 // Cloro localizes every answer; default to a US audience.
 const CLORO_COUNTRY = "US";
 
@@ -49,7 +59,7 @@ function requestHeaders(): Record<string, string> {
 }
 
 function pollDelay(attempt: number): number {
-	return Math.min(CLORO_POLL_BASE_DELAY_MS * Math.pow(2, Math.floor(attempt / 5)), CLORO_POLL_MAX_DELAY_MS);
+	return Math.min(CLORO_POLL_BASE_DELAY_MS * 2 ** Math.floor(attempt / 5), CLORO_POLL_MAX_DELAY_MS);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -58,6 +68,10 @@ function sleep(ms: number): Promise<void> {
 
 function isTransientStatus(status: number): boolean {
 	return status === 408 || status === 429 || status >= 500;
+}
+
+function isFatalStatus(status: number): boolean {
+	return status === 401 || status === 402 || status === 403;
 }
 
 async function responseError(res: Response): Promise<string> {
@@ -70,15 +84,17 @@ function failureDetails(task: CloroTask): string {
 	return serialized ? ` (${serialized.slice(0, 500)})` : "";
 }
 
-async function submitTask(taskType: string, payload: Record<string, any>): Promise<CloroTask> {
+async function submitTask(taskType: string, payload: Record<string, any>, idempotencyKey?: string): Promise<CloroTask> {
 	const res = await fetch(CLORO_TASK_URL, {
 		method: "POST",
 		headers: requestHeaders(),
-		body: JSON.stringify({ taskType, payload }),
+		body: JSON.stringify({ taskType, payload, ...(idempotencyKey ? { idempotencyKey } : {}) }),
+		signal: AbortSignal.timeout(CLORO_HTTP_TIMEOUT_MS),
 	});
 
 	if (!res.ok) {
-		throw new Error(`Cloro task submission failed (${await responseError(res)})`);
+		const message = `Cloro task submission failed (${await responseError(res)})`;
+		throw providerHttpResponseError(message, res.status);
 	}
 
 	const body = (await res.json()) as { task?: CloroTask };
@@ -86,39 +102,82 @@ async function submitTask(taskType: string, payload: Record<string, any>): Promi
 	return body.task;
 }
 
-async function getTask(taskId: string): Promise<CloroTaskResponse | null> {
+async function getTask(taskId: string): Promise<CloroTaskResponse | "not_found" | "pending" | null> {
 	try {
-		const res = await fetch(`${CLORO_TASK_URL}/${taskId}`, { headers: requestHeaders() });
-		if (res.status === 204 || isTransientStatus(res.status)) return null;
+		const res = await fetch(`${CLORO_TASK_URL}/${taskId}`, {
+			headers: requestHeaders(),
+			signal: AbortSignal.timeout(CLORO_HTTP_TIMEOUT_MS),
+		});
+		if (res.status === 204) return "pending";
+		if (res.status === 404 || res.status === 410) return "not_found";
+		if (isTransientStatus(res.status)) {
+			throw new ProviderResponseError(`Cloro task status request failed (${await responseError(res)})`, {
+				taskAccepted: true,
+			});
+		}
 		if (!res.ok) {
-			throw new Error(`Cloro task status request failed (${await responseError(res)})`);
+			const message = `Cloro task status request failed (${await responseError(res)})`;
+			throw isFatalStatus(res.status)
+				? new ProviderFatalError(message, { taskAccepted: true })
+				: new ProviderResponseError(message, { taskAccepted: true });
 		}
 		return (await res.json()) as CloroTaskResponse;
 	} catch (error) {
-		if (error instanceof Error && error.message.startsWith("Cloro task status request failed")) throw error;
+		if (error instanceof ProviderFatalError || error instanceof ProviderResponseError) throw error;
 		return null;
 	}
 }
 
-async function runAsyncTask(taskType: string, payload: Record<string, any>): Promise<Record<string, any>> {
-	const deadline = Date.now() + CLORO_TASK_TIMEOUT_MS;
-	const submitted = await submitTask(taskType, payload);
-	const taskId = submitted.id!;
-	let latest: CloroTaskResponse = { task: submitted };
+async function runAsyncTask(
+	taskType: string,
+	payload: Record<string, any>,
+	options?: ProviderOptions,
+): Promise<Record<string, any>> {
+	const invokedAt = Date.now();
+	const deadline = invokedAt + CLORO_POLL_WINDOW_MS;
+
+	let latest: CloroTaskResponse;
+	let taskId: string;
+	let sawStatusResponse = false;
+	if (options?.externalTaskId) {
+		taskId = options.externalTaskId;
+		const existing = await getTask(taskId);
+		if (existing === "not_found") {
+			throw new ProviderTaskFailedError(`Cloro task ${taskId} no longer exists`);
+		} else {
+			sawStatusResponse = existing !== null;
+			latest = existing === "pending" || existing === null ? { task: { id: taskId, status: "QUEUED" } } : existing;
+		}
+	} else {
+		const submitted = await submitTask(taskType, payload, options?.idempotencyKey);
+		taskId = submitted.id!;
+		await options?.checkpointExternalTask?.(taskId);
+		latest = { task: submitted };
+	}
 	let attempt = 0;
 
-	while (Date.now() < deadline) {
+	while (true) {
 		const status = latest.task?.status?.toUpperCase();
 		if (status === "COMPLETED") return latest.response ?? {};
 		if (status === "FAILED") {
-			throw new Error(`Cloro task ${taskId} failed${failureDetails(latest.task!)}`);
+			throw new ProviderTaskFailedError(`Cloro task ${taskId} failed${failureDetails(latest.task!)}`);
 		}
 
-		await sleep(Math.min(pollDelay(attempt++), deadline - Date.now()));
-		latest = (await getTask(taskId)) ?? latest;
-	}
+		const remaining = deadline - Date.now();
+		if (remaining <= 0) {
+			if (!sawStatusResponse) throw new Error(`Cloro task ${taskId} status was unavailable for 30 seconds`);
+			throw new ProviderTaskPendingError(
+				`Cloro task ${taskId} is still ${status ?? "unknown"} after ${Math.round((Date.now() - invokedAt) / 1000)}s`,
+				CLORO_RESUME_DELAY_MS,
+			);
+		}
 
-	throw new Error(`Cloro task ${taskId} timed out after ${CLORO_TASK_TIMEOUT_MS / 1000}s`);
+		await sleep(Math.min(pollDelay(attempt++), remaining));
+		const polled = await getTask(taskId);
+		if (polled === "not_found") throw new ProviderTaskFailedError(`Cloro task ${taskId} no longer exists`);
+		if (polled !== null) sawStatusResponse = true;
+		if (polled !== "pending" && polled !== null) latest = polled;
+	}
 }
 
 // Cloro exposes the model's own web-search queries under different keys per
@@ -158,16 +217,19 @@ export const cloro: Provider = {
 		return null;
 	},
 
-	async run(model: string, prompt: string): Promise<ScrapeResult> {
+	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const task = CLORO_TASKS[model];
 		if (!task) {
-			throw new Error(`Cloro: no task mapping for model "${model}". Supported: ${Object.keys(CLORO_TASKS).join(", ")}`);
+			throw new ProviderRunRejectedError(
+				`Cloro: no task mapping for model "${model}". Supported: ${Object.keys(CLORO_TASKS).join(", ")}`,
+			);
 		}
 
 		const payload: Record<string, any> = { [task.field]: prompt, country: CLORO_COUNTRY };
 		if (task.include) payload.include = task.include;
 
-		const response = await runAsyncTask(task.taskType, payload);
+		const response = await runAsyncTask(task.taskType, payload, options);
+		await options?.checkpointRawResponse?.({ rawOutput: response });
 		const answer = cloroAnswer(response) ?? {};
 
 		const textContent = extractTextFromCloro(response);

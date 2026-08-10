@@ -1,7 +1,7 @@
-import { openai, createOpenAI } from "@ai-sdk/openai";
+import { createOpenAI, openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
-import { extractTextFromOpenAI, extractCitationsFromOpenAI } from "../../text-extraction";
 import { getCredential } from "../../secrets";
+import { extractCitationsFromOpenAI, extractTextFromOpenAI } from "../../text-extraction";
 import {
 	API_PROVIDER_MAX_OUTPUT_TOKENS,
 	OPENAI_WEB_SEARCH_CONTEXT_SIZE,
@@ -12,13 +12,14 @@ import {
 } from "../config";
 import type {
 	Provider,
-	ScrapeResult,
 	ProviderOptions,
+	ScrapeResult,
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
 
 const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
+const OPENAI_CALL_TIMEOUT_MS = 10 * 60 * 1000;
 
 function getOpenAIResponsesModel(model: string) {
 	const apiKey = getCredential("OPENAI_API_KEY");
@@ -38,6 +39,8 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 		// Routed through getOpenAIResponsesModel (not the bare `openai` global,
 		// which reads process.env internally) so overlay credentials apply here.
 		model: getOpenAIResponsesModel(model),
+		maxRetries: 0,
+		abortSignal: AbortSignal.timeout(OPENAI_CALL_TIMEOUT_MS),
 		prompt,
 		maxOutputTokens: API_PROVIDER_MAX_OUTPUT_TOKENS["openai-api"],
 		toolChoice: Object.keys(tools).length > 0 ? "auto" : "none",
@@ -46,8 +49,6 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 			? { providerOptions: { openai: { maxToolCalls: OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } } }
 			: {}),
 	});
-
-	warnIfOutputCapped("openai-api", model, result.finishReason);
 
 	// The AI SDK doesn't populate result.response.body for the Responses API, so
 	// rebuild the raw output from the parsed result (text + web-search sources)
@@ -63,6 +64,8 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 			},
 		],
 	};
+	await options?.checkpointRawResponse?.({ rawOutput, modelVersion: model });
+	warnIfOutputCapped("openai-api", model, result.finishReason);
 
 	// Search queries, when the model ran web search. The SDK doesn't reliably
 	// surface the raw query, so fall back to "unavailable" (a soft signal).
@@ -85,6 +88,7 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 export const openaiApi: Provider = {
 	id: "openai-api",
 	name: "OpenAI API",
+	structuredResearchModel: DEFAULT_RESEARCH_MODEL,
 
 	isConfigured() {
 		return !!getCredential("OPENAI_API_KEY");
@@ -98,10 +102,15 @@ export const openaiApi: Provider = {
 	async runStructuredResearch<T>({
 		prompt,
 		schema,
+		signal,
 		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		const result = await generateText({
 			model: getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL),
+			maxRetries: 0,
+			abortSignal: signal
+				? AbortSignal.any([signal, AbortSignal.timeout(OPENAI_CALL_TIMEOUT_MS)])
+				: AbortSignal.timeout(OPENAI_CALL_TIMEOUT_MS),
 			...(webSearch
 				? {
 						tools: {

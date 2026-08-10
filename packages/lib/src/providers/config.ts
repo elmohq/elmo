@@ -57,7 +57,15 @@ export function validateScrapeTargets(
 		id: string,
 	) => { isConfigured(): boolean; validateTarget?(config: ModelConfig): string | null } | undefined,
 ): void {
+	const routes = new Set<string>();
 	for (const config of configs) {
+		const route = JSON.stringify([config.model, config.provider, config.version ?? null, config.webSearch]);
+		if (routes.has(route)) {
+			throw new Error(
+				`SCRAPE_TARGETS: duplicate target "${config.model}:${config.provider}${config.version ? `:${config.version}` : ""}${config.webSearch ? ":online" : ""}"`,
+			);
+		}
+		routes.add(route);
 		const provider = getProvider(config.provider);
 		if (!provider) throw new Error(`SCRAPE_TARGETS: unknown provider "${config.provider}"`);
 		if (!provider.isConfigured())

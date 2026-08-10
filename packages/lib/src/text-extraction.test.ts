@@ -4,6 +4,7 @@ import {
 	extractCitationsFromBrightdata,
 	extractCitationsFromDataforseoLlm,
 	extractCitationsFromGoogle,
+	extractCitationsFromOlostep,
 	extractCitationsFromOpenAI,
 	extractCitationsFromOxylabs,
 	extractTextContent,
@@ -11,6 +12,7 @@ import {
 	extractTextFromBrightdata,
 	extractTextFromDataforseoLlm,
 	extractTextFromGoogle,
+	extractTextFromOlostep,
 	extractTextFromOpenAI,
 	extractTextFromOxylabs,
 } from "./text-extraction";
@@ -607,6 +609,11 @@ describe("text-extraction", () => {
 	});
 
 	describe("extractTextFromBrightdata", () => {
+		it("decodes a durable raw JSON string", () => {
+			const rawOutput = JSON.stringify({ answer_text_markdown: "Checkpointed dataset answer." });
+			expect(extractTextFromBrightdata(rawOutput)).toBe("Checkpointed dataset answer.");
+		});
+
 		it("reads the SERP AI Overview from ai_overview.texts, including nested list blocks", () => {
 			const rawOutput = {
 				ai_overview: {
@@ -646,6 +653,11 @@ describe("text-extraction", () => {
 	});
 
 	describe("extractCitationsFromBrightdata", () => {
+		it("decodes citations from a durable raw JSON string", () => {
+			const rawOutput = JSON.stringify({ citations: [{ url: "https://example.com/a", title: "A" }] });
+			expect(extractCitationsFromBrightdata(rawOutput)).toHaveLength(1);
+		});
+
 		it("extracts AI Overview references by href, trims title noise, and de-dupes", () => {
 			const rawOutput = {
 				ai_overview: {
@@ -672,6 +684,63 @@ describe("text-extraction", () => {
 		it("still extracts chatbot dataset citations", () => {
 			const rawOutput = { citations: [{ url: "https://example.com/a", title: "A" }] };
 			expect(extractCitationsFromBrightdata(rawOutput)).toHaveLength(1);
+		});
+	});
+
+	describe("durable Olostep JSON strings", () => {
+		const rawOutput = JSON.stringify({
+			answer_markdown: "Checkpointed Olostep answer.",
+			sources: [{ url: "https://example.com/source", title: "Source" }],
+		});
+
+		it("extracts text", () => {
+			expect(extractTextFromOlostep(rawOutput)).toBe("Checkpointed Olostep answer.");
+		});
+
+		it("extracts citations", () => {
+			expect(extractCitationsFromOlostep(rawOutput)).toHaveLength(1);
+		});
+	});
+
+	describe("durable Mistral and OpenRouter JSON strings", () => {
+		it("extracts Mistral text and citations", () => {
+			const rawOutput = JSON.stringify({
+				outputs: [
+					{
+						content: [
+							{ type: "text", text: "Checkpointed Mistral answer." },
+							{ type: "tool_reference", url: "https://example.com/mistral", title: "Mistral source" },
+						],
+					},
+				],
+			});
+
+			expect(extractTextContent(rawOutput, "mistral-api")).toBe("Checkpointed Mistral answer.");
+			expect(extractCitations(rawOutput, "mistral-api")).toHaveLength(1);
+		});
+
+		it("extracts OpenRouter text and citations", () => {
+			const rawOutput = JSON.stringify({
+				choices: [
+					{
+						message: {
+							content: "Checkpointed OpenRouter answer.",
+							annotations: [
+								{
+									type: "url_citation",
+									url_citation: {
+										url: "https://example.com/openrouter",
+										title: "OpenRouter source",
+									},
+								},
+							],
+						},
+					},
+				],
+			});
+
+			expect(extractTextContent(rawOutput, "openrouter")).toBe("Checkpointed OpenRouter answer.");
+			expect(extractCitations(rawOutput, "openrouter")).toHaveLength(1);
 		});
 	});
 

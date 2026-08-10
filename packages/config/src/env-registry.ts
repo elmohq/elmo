@@ -161,6 +161,38 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
 	},
 	{
+		name: "PROMPT_RUN_CONCURRENCY",
+		scope: "server",
+		requiredBy: "optional",
+		description: "Maximum prompt runs processed concurrently by each worker replica (default: 6).",
+	},
+	{
+		name: "PROVIDER_MAX_CONCURRENCY",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Maximum accepted or in-flight calls to each provider across all worker replicas (default: 6; 0 stops new paid calls).",
+	},
+	{
+		name: "PROMPT_MAX_PROVIDER_CALLS",
+		scope: "server",
+		requiredBy: "optional",
+		description: "Hard maximum provider calls materialized by one recurring prompt cycle (default: 50).",
+	},
+	{
+		name: "REPORT_MAX_PROVIDER_CALLS",
+		scope: "server",
+		requiredBy: "optional",
+		description: "Hard maximum provider calls planned by one report (default: 1500; 0 disables new reports).",
+	},
+	{
+		name: "CONFIRM_LEGACY_PAID_WORKERS_STOPPED",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"One-time scheduler upgrade acknowledgement; set to 1 only after every pre-cutover worker process is stopped.",
+	},
+	{
 		name: "OLOSTEP_API_KEY",
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",

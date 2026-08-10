@@ -1,15 +1,16 @@
 import { z } from "zod";
+import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
+import { getCredential } from "../../secrets";
+import type { Citation } from "../../text-extraction";
+import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
+import { providerHttpResponseError, ProviderRunRejectedError, ProviderTaskFailedError } from "../errors";
 import type {
 	Provider,
-	ScrapeResult,
 	ProviderOptions,
+	ScrapeResult,
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
-import type { Citation } from "../../text-extraction";
-import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
-import { getCredential } from "../../secrets";
-import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
@@ -18,6 +19,12 @@ const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
 // recall + cheapest cost in our compare-onboarding runs. Other families that
 // support native search per the docs: Anthropic, Perplexity, xAI.
 const DEFAULT_RESEARCH_MODEL = "openai/gpt-5-mini";
+const OPENROUTER_TIMEOUT_MS = 2 * 60 * 1000;
+
+async function openRouterResponseError(res: Response): Promise<Error> {
+	const message = `OpenRouter API error (${res.status}): ${await res.text()}`;
+	return providerHttpResponseError(message, res.status);
+}
 
 function openrouterHeaders(): Record<string, string> {
 	return {
@@ -74,6 +81,7 @@ function extractCitationsFromOpenRouterResponse(data: any): Citation[] {
 export const openrouter: Provider = {
 	id: "openrouter",
 	name: "OpenRouter",
+	structuredResearchModel: DEFAULT_RESEARCH_MODEL,
 
 	isConfigured() {
 		return !!getCredential("OPENROUTER_API_KEY");
@@ -82,6 +90,7 @@ export const openrouter: Provider = {
 	async runStructuredResearch<T>({
 		prompt,
 		schema,
+		signal,
 		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		// Raw fetch (no AI SDK) so we can attach the OpenRouter `plugins` field
@@ -102,16 +111,24 @@ export const openrouter: Provider = {
 			method: "POST",
 			headers: openrouterHeaders(),
 			body: JSON.stringify(body),
+			signal: signal
+				? AbortSignal.any([signal, AbortSignal.timeout(OPENROUTER_TIMEOUT_MS)])
+				: AbortSignal.timeout(OPENROUTER_TIMEOUT_MS),
 		});
 		if (!res.ok) {
-			throw new Error(`OpenRouter API error (${res.status}): ${await res.text()}`);
+			throw await openRouterResponseError(res);
 		}
 		const data: any = await res.json();
 		const content = data?.choices?.[0]?.message?.content;
 		if (typeof content !== "string") {
-			throw new Error(`OpenRouter returned no JSON content (model=${DEFAULT_RESEARCH_MODEL})`);
+			throw new ProviderTaskFailedError(`OpenRouter returned no JSON content (model=${DEFAULT_RESEARCH_MODEL})`);
 		}
-		const parsed = (schema as z.ZodType).parse(JSON.parse(content));
+		let parsed: unknown;
+		try {
+			parsed = (schema as z.ZodType).parse(JSON.parse(content));
+		} catch (error) {
+			throw new ProviderTaskFailedError("OpenRouter returned invalid structured JSON", { cause: error });
+		}
 		return {
 			object: parsed as T,
 			// Report the alias we sent, not OpenRouter's resolved version
@@ -124,7 +141,7 @@ export const openrouter: Provider = {
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		let modelSlug = options?.version;
 		if (!modelSlug) {
-			throw new Error(
+			throw new ProviderRunRejectedError(
 				`OpenRouter requires a version slug in SCRAPE_TARGETS. ` +
 					`Example: ${model}:openrouter:openai/gpt-5-mini:online`,
 			);
@@ -157,13 +174,18 @@ export const openrouter: Provider = {
 				"X-Title": "Elmo AEO",
 			},
 			body: JSON.stringify(body),
+			signal: AbortSignal.timeout(OPENROUTER_TIMEOUT_MS),
 		});
 
 		if (!res.ok) {
-			throw new Error(`OpenRouter API error (${res.status}): ${await res.text()}`);
+			throw await openRouterResponseError(res);
 		}
 
-		const data: any = await res.json();
+		const rawResponse = await res.text();
+		const requestedModelVersion = modelSlug.replace(":online", "");
+		await options?.checkpointRawResponse?.({ rawOutput: rawResponse, modelVersion: requestedModelVersion });
+		const data: any = JSON.parse(rawResponse);
+		const modelVersion = data?.model ?? requestedModelVersion;
 
 		warnIfOutputCapped("openrouter", modelSlug, data?.choices?.[0]?.finish_reason);
 
@@ -177,7 +199,7 @@ export const openrouter: Provider = {
 			textContent: extractTextFromOpenRouterResponse(data),
 			webQueries,
 			citations,
-			modelVersion: data?.model ?? modelSlug.replace(":online", ""),
+			modelVersion,
 		};
 	},
 };

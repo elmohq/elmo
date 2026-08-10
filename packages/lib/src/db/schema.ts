@@ -1,4 +1,16 @@
-import { pgEnum, pgTable, uuid, text, timestamp, boolean, json, index, integer, smallint } from "drizzle-orm/pg-core";
+import {
+	boolean,
+	index,
+	integer,
+	json,
+	pgEnum,
+	pgTable,
+	smallint,
+	text,
+	timestamp,
+	uniqueIndex,
+	uuid,
+} from "drizzle-orm/pg-core";
 // `organization` is referenced by the brands FK below; the re-export makes it
 // (and the rest of the auth schema) visible to `import * as schema` consumers.
 import { organization } from "./schema-auth";
@@ -116,6 +128,272 @@ export const promptRuns = pgTable(
 	}),
 ).enableRLS();
 
+export const promptExecutionStatusEnum = pgEnum("prompt_execution_status", [
+	"pending",
+	"running",
+	"succeeded",
+	"partial",
+	"failed",
+	"abandoned",
+	"skipped",
+]);
+
+export const promptExecutionTriggerEnum = pgEnum("prompt_execution_trigger", ["scheduled", "manual"]);
+
+export const promptExecutionRunStatusEnum = pgEnum("prompt_execution_run_status", [
+	"pending",
+	"running",
+	"processing",
+	"succeeded",
+	"failed",
+	"abandoned",
+	"skipped",
+]);
+
+export const providerCircuitStateEnum = pgEnum("provider_circuit_state", ["closed", "open", "half_open"]);
+
+/**
+ * Durable recurring intent for one prompt. A leased row is only being turned
+ * into an execution; paid provider work lives in prompt_execution_runs.
+ */
+export const promptSchedules = pgTable(
+	"prompt_schedules",
+	{
+		promptId: uuid("prompt_id")
+			.references(() => prompts.id, { onDelete: "cascade" })
+			.primaryKey()
+			.notNull(),
+		nextRunAt: timestamp("next_run_at", { withTimezone: true }).notNull(),
+		runRequestedAt: timestamp("run_requested_at", { withTimezone: true }),
+		leaseOwner: text("lease_owner"),
+		leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+		lastStartedAt: timestamp("last_started_at", { withTimezone: true }),
+		lastCompletedAt: timestamp("last_completed_at", { withTimezone: true }),
+		lastExecutionStatus: promptExecutionStatusEnum("last_execution_status"),
+		consecutiveFailures: integer("consecutive_failures").default(0).notNull(),
+		admissionPausedUntil: timestamp("admission_paused_until", { withTimezone: true }),
+		pauseReason: text("pause_reason"),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => ({
+		dueIdx: index("prompt_schedules_due_idx").on(table.nextRunAt),
+		requestIdx: index("prompt_schedules_request_idx").on(table.runRequestedAt),
+		leaseIdx: index("prompt_schedules_lease_idx").on(table.leaseExpiresAt),
+	}),
+).enableRLS();
+
+/**
+ * Permanent database fence for the retired pg-boss prompt queue. New workers
+ * close it before draining legacy handlers, so mixed-version deploys cannot
+ * submit legacy and durable calls for the same prompt.
+ */
+export const workerSchedulerControl = pgTable("worker_scheduler_control", {
+	id: text("id").primaryKey().notNull(),
+	legacyPromptAdmissionOpen: boolean("legacy_prompt_admission_open").default(true).notNull(),
+	closedAt: timestamp("closed_at", { withTimezone: true }),
+	closedBy: text("closed_by"),
+	legacyPromptDrainedAt: timestamp("legacy_prompt_drained_at", { withTimezone: true }),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+}).enableRLS();
+
+/** Immutable matching inputs for every paid unit in one prompt execution. */
+export interface PromptExecutionContextSnapshot {
+	prompt: {
+		id: string;
+		value: string;
+	};
+	brand: {
+		id: string;
+		name: string;
+		website: string;
+		aliases: string[];
+		additionalDomains: string[];
+	};
+	competitors: Array<{
+		id: string;
+		name: string;
+		aliases: string[];
+		domains: string[];
+	}>;
+}
+
+/** One scheduled or operator-requested prompt cycle. */
+export const promptExecutions = pgTable(
+	"prompt_executions",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		// Deliberately retained without an FK: deleting a prompt must never erase
+		// the safety ledger for provider work that may still be running or billed.
+		promptId: uuid("prompt_id").notNull(),
+		contextPayload: json("context_payload").$type<PromptExecutionContextSnapshot>(),
+		trigger: promptExecutionTriggerEnum("trigger").notNull(),
+		scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
+		notAfter: timestamp("not_after", { withTimezone: true }).notNull(),
+		status: promptExecutionStatusEnum("status").default("pending").notNull(),
+		totalRuns: integer("total_runs").default(0).notNull(),
+		succeededRuns: integer("succeeded_runs").default(0).notNull(),
+		failedRuns: integer("failed_runs").default(0).notNull(),
+		skippedRuns: integer("skipped_runs").default(0).notNull(),
+		abandonedRuns: integer("abandoned_runs").default(0).notNull(),
+		errorSummary: text("error_summary"),
+		startedAt: timestamp("started_at", { withTimezone: true }),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => ({
+		identityIdx: uniqueIndex("prompt_executions_identity_idx").on(table.promptId, table.trigger, table.scheduledFor),
+		promptCreatedIdx: index("prompt_executions_prompt_created_idx").on(table.promptId, table.createdAt),
+		statusDeadlineIdx: index("prompt_executions_status_deadline_idx").on(table.status, table.notAfter),
+	}),
+).enableRLS();
+
+/**
+ * One paid provider call. A running row is never blindly retried: it is only
+ * made pending again when externalTaskId lets the provider resume the same task.
+ */
+export const promptExecutionRuns = pgTable(
+	"prompt_execution_runs",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		executionId: uuid("execution_id")
+			.references(() => promptExecutions.id, { onDelete: "cascade" })
+			.notNull(),
+		promptRunId: uuid("prompt_run_id").references(() => promptRuns.id, { onDelete: "set null" }),
+		targetIndex: smallint("target_index").notNull(),
+		runIndex: smallint("run_index").notNull(),
+		provider: text("provider").notNull(),
+		circuitKey: text("circuit_key").notNull(),
+		model: text("model").notNull(),
+		version: text("version"),
+		webSearchEnabled: boolean("web_search_enabled").notNull(),
+		status: promptExecutionRunStatusEnum("status").default("pending").notNull(),
+		availableAt: timestamp("available_at", { withTimezone: true }).defaultNow().notNull(),
+		workerId: text("worker_id"),
+		leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+		externalTaskId: text("external_task_id"),
+		attemptCount: integer("attempt_count").default(0).notNull(),
+		processingAttempts: integer("processing_attempts").default(0).notNull(),
+		resultPayload: json("result_payload"),
+		failureKind: text("failure_kind"),
+		errorMessage: text("error_message"),
+		startedAt: timestamp("started_at", { withTimezone: true }),
+		providerSubmittedAt: timestamp("provider_submitted_at", { withTimezone: true }),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => ({
+		identityIdx: uniqueIndex("prompt_execution_runs_identity_idx").on(
+			table.executionId,
+			table.targetIndex,
+			table.runIndex,
+		),
+		promptRunIdx: uniqueIndex("prompt_execution_runs_prompt_run_idx").on(table.promptRunId),
+		claimIdx: index("prompt_execution_runs_claim_idx").on(table.status, table.availableAt, table.createdAt),
+		providerActiveIdx: index("prompt_execution_runs_provider_active_idx").on(
+			table.provider,
+			table.status,
+			table.leaseExpiresAt,
+		),
+	}),
+).enableRLS();
+
+/** Circuit state is shared by every worker replica and survives restarts. */
+export const providerHealth = pgTable("provider_health", {
+	circuitKey: text("circuit_key").primaryKey().notNull(),
+	circuitState: providerCircuitStateEnum("circuit_state").default("closed").notNull(),
+	consecutiveFailures: integer("consecutive_failures").default(0).notNull(),
+	openedAt: timestamp("opened_at", { withTimezone: true }),
+	reopenAt: timestamp("reopen_at", { withTimezone: true }),
+	probeRunId: uuid("probe_run_id"),
+	lastFailureKind: text("last_failure_kind"),
+	lastError: text("last_error"),
+	lastFailureAt: timestamp("last_failure_at", { withTimezone: true }),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+}).enableRLS();
+
+/** Provider capacity held by paid work outside recurring prompt executions. */
+export const providerCallReservations = pgTable(
+	"provider_call_reservations",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		provider: text("provider").notNull(),
+		ownerType: text("owner_type").notNull(),
+		ownerId: text("owner_id").notNull(),
+		workKey: text("work_key"),
+		attemptNumber: integer("attempt_number").default(1).notNull(),
+		requestFingerprint: text("request_fingerprint"),
+		requestMetadata: json("request_metadata"),
+		workerId: text("worker_id").notNull(),
+		leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+		submissionStartedAt: timestamp("submission_started_at", { withTimezone: true }),
+		externalTaskId: text("external_task_id"),
+		taskDeadlineAt: timestamp("task_deadline_at", { withTimezone: true }),
+		resultPayload: json("result_payload"),
+		attemptCount: integer("attempt_count").default(0).notNull(),
+		lastError: text("last_error"),
+		quarantineUntil: timestamp("quarantine_until", { withTimezone: true }).notNull(),
+		releasedAt: timestamp("released_at", { withTimezone: true }),
+		releaseReason: text("release_reason"),
+		releasedBy: text("released_by"),
+		retryAllowed: boolean("retry_allowed").default(false).notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => ({
+		activeIdx: index("provider_call_reservations_active_idx").on(
+			table.provider,
+			table.releasedAt,
+			table.quarantineUntil,
+		),
+		ownerIdx: index("provider_call_reservations_owner_idx").on(table.ownerType, table.ownerId),
+		workIdx: uniqueIndex("provider_call_reservations_work_idx").on(
+			table.ownerType,
+			table.ownerId,
+			table.workKey,
+			table.attemptNumber,
+		),
+	}),
+).enableRLS();
+
+export interface ReportProviderPlanSnapshot {
+	version: 1;
+	candidatePromptCount: number;
+	targets: Array<{
+		key: string;
+		config: {
+			model: string;
+			provider: string;
+			version?: string;
+			webSearch: boolean;
+		};
+		runs: number;
+	}>;
+	plannedProviderCalls: number;
+	maxProviderCalls: number;
+	maxAttemptsPerUnit: number;
+}
+
 export const citations = pgTable(
 	"citations",
 	{
@@ -159,6 +437,8 @@ export const reports = pgTable(
 		brandWebsite: text("brand_website").notNull(),
 		status: reportStatusEnum().notNull().default("pending"),
 		progress: integer("progress").notNull().default(0),
+		providerPlan: json("provider_plan").$type<ReportProviderPlanSnapshot>(),
+		providerCallBudget: integer("provider_call_budget"),
 		rawOutput: json("raw_output"),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 		completedAt: timestamp("completed_at", { withTimezone: true }),

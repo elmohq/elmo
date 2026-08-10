@@ -54,4 +54,19 @@ describe("openai-api run", () => {
 
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining("hit the output cap"));
 	});
+
+	it("checkpoints the exact reconstructed raw response before returning", async () => {
+		aiMock.generateText.mockResolvedValue({ text: "answer", sources: [] });
+		const checkpointRawResponse = vi.fn();
+
+		const result = await openaiApi.run("chatgpt", "prompt", {
+			version: "gpt-5-mini",
+			checkpointRawResponse,
+		});
+
+		expect(checkpointRawResponse).toHaveBeenCalledWith({
+			rawOutput: result.rawOutput,
+			modelVersion: result.modelVersion,
+		});
+	});
 });

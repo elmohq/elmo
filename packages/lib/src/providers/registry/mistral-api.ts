@@ -1,14 +1,15 @@
 import { z } from "zod";
+import { getCredential } from "../../secrets";
+import type { Citation } from "../../text-extraction";
+import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
+import { providerHttpResponseError, ProviderTaskFailedError } from "../errors";
 import type {
 	Provider,
-	ScrapeResult,
 	ProviderOptions,
+	ScrapeResult,
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
-import type { Citation } from "../../text-extraction";
-import { getCredential } from "../../secrets";
-import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
 
 const MISTRAL_BASE_URL = "https://api.mistral.ai";
 const DEFAULT_MODEL = "mistral-medium-latest";
@@ -17,7 +18,7 @@ const DEFAULT_MODEL = "mistral-medium-latest";
 // generations ship.
 const DEFAULT_RESEARCH_MODEL = "mistral-large-latest";
 
-async function mistralPost(path: string, body: object): Promise<any> {
+async function mistralPost(path: string, body: object, signal?: AbortSignal): Promise<string> {
 	const res = await fetch(`${MISTRAL_BASE_URL}${path}`, {
 		method: "POST",
 		headers: {
@@ -25,11 +26,13 @@ async function mistralPost(path: string, body: object): Promise<any> {
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify(body),
+		signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(2 * 60 * 1000)]) : AbortSignal.timeout(2 * 60 * 1000),
 	});
 	if (!res.ok) {
-		throw new Error(`Mistral API error (${res.status}): ${await res.text()}`);
+		const message = `Mistral API error (${res.status}): ${await res.text()}`;
+		throw providerHttpResponseError(message, res.status);
 	}
-	return res.json();
+	return res.text();
 }
 
 function parseConversationsResponse(data: any): { textContent: string; citations: Citation[]; webQueries: string[] } {
@@ -83,6 +86,7 @@ function parseConversationsResponse(data: any): { textContent: string; citations
 export const mistralApi: Provider = {
 	id: "mistral-api",
 	name: "Mistral API",
+	structuredResearchModel: DEFAULT_RESEARCH_MODEL,
 
 	isConfigured() {
 		return !!getCredential("MISTRAL_API_KEY");
@@ -96,70 +100,101 @@ export const mistralApi: Provider = {
 			// token cap (completion_args.max_tokens on this endpoint) is the only budget
 			// bound. The conversations response carries no finish_reason, so unlike the
 			// chat-completions path below there's no truncation signal to log here.
-			const data = await mistralPost("/v1/conversations", {
+			const rawResponse = await mistralPost("/v1/conversations", {
 				model: version,
 				inputs: prompt,
 				tools: [{ type: "web_search" }],
 				completion_args: { max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS["mistral-api"] },
 			});
+			await options?.checkpointRawResponse?.({ rawOutput: rawResponse, modelVersion: version });
+			const data = JSON.parse(rawResponse);
+			const modelVersion = data?.model ?? version;
 			const parsed = parseConversationsResponse(data);
-			return { ...parsed, rawOutput: data, modelVersion: data?.model ?? version };
+			return { ...parsed, rawOutput: data, modelVersion };
 		}
 
-		const data = await mistralPost("/v1/chat/completions", {
+		const rawResponse = await mistralPost("/v1/chat/completions", {
 			model: version,
 			messages: [{ role: "user", content: prompt }],
 			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS["mistral-api"],
 		});
+		await options?.checkpointRawResponse?.({ rawOutput: rawResponse, modelVersion: version });
+		const data = JSON.parse(rawResponse);
+		const modelVersion = data?.model ?? version;
 		warnIfOutputCapped("mistral-api", version, data?.choices?.[0]?.finish_reason);
 		return {
 			rawOutput: data,
 			textContent: data?.choices?.[0]?.message?.content ?? "",
 			webQueries: [],
 			citations: [],
-			modelVersion: data?.model ?? version,
+			modelVersion,
 		};
 	},
 
 	async runStructuredResearch<T>({
 		prompt,
 		schema,
+		signal,
 		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		const jsonSchema = z.toJSONSchema(schema as z.ZodType);
 		if (!webSearch) {
 			// Pure completion: plain chat endpoint with server-validated json_schema.
-			const data = await mistralPost("/v1/chat/completions", {
-				model: DEFAULT_RESEARCH_MODEL,
-				messages: [{ role: "user", content: prompt }],
-				response_format: {
-					type: "json_schema",
-					json_schema: { name: "research_output", strict: true, schema: jsonSchema },
-				},
-			});
+			const data = JSON.parse(
+				await mistralPost(
+					"/v1/chat/completions",
+					{
+						model: DEFAULT_RESEARCH_MODEL,
+						messages: [{ role: "user", content: prompt }],
+						response_format: {
+							type: "json_schema",
+							json_schema: { name: "research_output", strict: true, schema: jsonSchema },
+						},
+					},
+					signal,
+				),
+			);
 			const content = data?.choices?.[0]?.message?.content ?? "";
+			let object: unknown;
+			try {
+				object = (schema as z.ZodType).parse(JSON.parse(content));
+			} catch (error) {
+				throw new ProviderTaskFailedError("Mistral returned invalid structured JSON", { cause: error });
+			}
 			return {
-				object: (schema as z.ZodType).parse(JSON.parse(content)) as T,
+				object: object as T,
 				modelVersion: data?.model ?? DEFAULT_RESEARCH_MODEL,
 			};
 		}
 		// /v1/conversations forwards completion_args.response_format through to
 		// the underlying chat completion, so we can have web_search AND
 		// server-validated json_schema output in a single call.
-		const data = await mistralPost("/v1/conversations", {
-			model: DEFAULT_RESEARCH_MODEL,
-			inputs: prompt,
-			tools: [{ type: "web_search" }],
-			completion_args: {
-				response_format: {
-					type: "json_schema",
-					json_schema: { name: "research_output", strict: true, schema: jsonSchema },
+		const data = JSON.parse(
+			await mistralPost(
+				"/v1/conversations",
+				{
+					model: DEFAULT_RESEARCH_MODEL,
+					inputs: prompt,
+					tools: [{ type: "web_search" }],
+					completion_args: {
+						response_format: {
+							type: "json_schema",
+							json_schema: { name: "research_output", strict: true, schema: jsonSchema },
+						},
+					},
 				},
-			},
-		});
+				signal,
+			),
+		);
 		const { textContent } = parseConversationsResponse(data);
+		let object: unknown;
+		try {
+			object = (schema as z.ZodType).parse(JSON.parse(textContent));
+		} catch (error) {
+			throw new ProviderTaskFailedError("Mistral returned invalid structured JSON", { cause: error });
+		}
 		return {
-			object: (schema as z.ZodType).parse(JSON.parse(textContent)) as T,
+			object: object as T,
 			modelVersion: data?.model ?? DEFAULT_RESEARCH_MODEL,
 		};
 	},

@@ -1,6 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
+import Anthropic from "@anthropic-ai/sdk";
 import { generateText, Output } from "ai";
+import { getCredential } from "../../secrets";
+import type { Citation } from "../../text-extraction";
 import { extractTextFromAnthropic } from "../../text-extraction";
 import {
 	ANTHROPIC_WEB_SEARCH_MAX_USES,
@@ -8,17 +10,17 @@ import {
 	RESEARCH_WEB_SEARCH_MAX_USES,
 	warnIfOutputCapped,
 } from "../config";
+import { ProviderTaskFailedError } from "../errors";
 import type {
 	Provider,
-	ScrapeResult,
 	ProviderOptions,
+	ScrapeResult,
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
-import type { Citation } from "../../text-extraction";
-import { getCredential } from "../../secrets";
 
 const DEFAULT_RESEARCH_MODEL = "claude-sonnet-4-6";
+const ANTHROPIC_CALL_TIMEOUT_MS = 10 * 60 * 1000;
 
 function getAnthropicLanguageModel(model: string) {
 	const apiKey = getCredential("ANTHROPIC_API_KEY");
@@ -30,7 +32,7 @@ function sanitizeForJson(obj: unknown): unknown {
 }
 
 function getClient(): Anthropic {
-	return new Anthropic({ apiKey: getCredential("ANTHROPIC_API_KEY")! });
+	return new Anthropic({ apiKey: getCredential("ANTHROPIC_API_KEY")!, maxRetries: 0 });
 }
 
 async function runAnthropic(prompt: string, model: string, options?: ProviderOptions): Promise<ScrapeResult> {
@@ -44,37 +46,22 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 		});
 	}
 
-	const makeRequest = () =>
-		client.messages.create({
+	const response = await client.messages.create(
+		{
 			model,
 			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS["anthropic-api"],
 			messages: [{ role: "user", content: prompt }],
 			...(tools.length > 0 ? { tools } : {}),
-		});
+		},
+		{ signal: AbortSignal.timeout(ANTHROPIC_CALL_TIMEOUT_MS) },
+	);
 
-	let response = await makeRequest();
-
-	// Check for web search errors like max_uses_exceeded and retry once
 	for (const block of response.content) {
 		const b = block as any;
 		if (b.type === "web_search_tool_result" && b.content?.type === "web_search_tool_result_error") {
-			console.warn(`[anthropic-api] web search error: ${b.content.error_code}, retrying in 10s...`);
-			await new Promise((r) => setTimeout(r, 10_000));
-			response = await makeRequest();
-			break;
+			throw new ProviderTaskFailedError(`Anthropic web search failed: ${b.content.error_code}`);
 		}
 	}
-
-	warnIfOutputCapped("anthropic-api", model, response.stop_reason);
-
-	const textContent = extractTextFromAnthropic(response);
-
-	const webQueries = response.content
-		.filter((block) => block.type === "server_tool_use" && (block as any).name === "web_search")
-		.map((block) => (block as any).input?.query)
-		.filter(Boolean);
-
-	const citations = extractAnthropicCitations(response.content);
 
 	// Strip full page text from web search results to reduce storage.
 	// Only url/title are used for citation extraction.
@@ -87,9 +74,22 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 			),
 		};
 	});
+	const rawOutput = sanitizeForJson({ ...response, content: trimmedContent });
+	await options?.checkpointRawResponse?.({ rawOutput, modelVersion: model });
+
+	warnIfOutputCapped("anthropic-api", model, response.stop_reason);
+
+	const textContent = extractTextFromAnthropic(response);
+
+	const webQueries = response.content
+		.filter((block) => block.type === "server_tool_use" && (block as any).name === "web_search")
+		.map((block) => (block as any).input?.query)
+		.filter(Boolean);
+
+	const citations = extractAnthropicCitations(response.content);
 
 	return {
-		rawOutput: sanitizeForJson({ ...response, content: trimmedContent }),
+		rawOutput,
 		webQueries,
 		textContent,
 		citations,
@@ -151,6 +151,7 @@ function extractAnthropicCitations(content: Anthropic.Messages.ContentBlock[]): 
 export const anthropicApi: Provider = {
 	id: "anthropic-api",
 	name: "Anthropic API",
+	structuredResearchModel: DEFAULT_RESEARCH_MODEL,
 
 	isConfigured() {
 		return !!getCredential("ANTHROPIC_API_KEY");
@@ -164,10 +165,15 @@ export const anthropicApi: Provider = {
 	async runStructuredResearch<T>({
 		prompt,
 		schema,
+		signal,
 		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		const result = await generateText({
 			model: getAnthropicLanguageModel(DEFAULT_RESEARCH_MODEL),
+			maxRetries: 0,
+			abortSignal: signal
+				? AbortSignal.any([signal, AbortSignal.timeout(ANTHROPIC_CALL_TIMEOUT_MS)])
+				: AbortSignal.timeout(ANTHROPIC_CALL_TIMEOUT_MS),
 			...(webSearch
 				? { tools: { web_search: anthropic.tools.webSearch_20250305({ maxUses: RESEARCH_WEB_SEARCH_MAX_USES }) } }
 				: {}),

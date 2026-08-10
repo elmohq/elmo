@@ -1,11 +1,11 @@
 export {
-	analyzeBrand,
 	type AnalyzeBrandOptions,
+	analyzeBrand,
 	type OnboardingCompetitor,
 	type OnboardingPrompt,
 	type OnboardingSuggestion,
 } from "./analyze";
-export { runStructuredCompletionPrompt, runStructuredResearchPrompt } from "./llm";
+export { resolveResearchProvider, runStructuredCompletionPrompt, runStructuredResearchPrompt } from "./llm";
 export {
 	cleanAndValidateDomain as cleanAndValidateOnboardingDomain,
 	cleanDomain as cleanOnboardingDomain,
