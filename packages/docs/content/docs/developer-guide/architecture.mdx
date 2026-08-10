@@ -92,3 +92,15 @@ All AI scraping flows through a single `Provider` interface in `packages/lib/src
 3. `getProvider(providerId).run(model, prompt, { webSearch, version })` dispatches to a concrete `registry/` implementation and returns a normalized `ScrapeResult` (`textContent`, `rawOutput`, `webQueries`, `citations`, `modelVersion`).
 
 User-facing setup is documented in [Providers](/docs/user-guide/providers).
+
+## Durable Worker Scheduling
+
+Recurring prompt intent and every paid provider unit are stored in PostgreSQL. A worker leases a unit, checkpoints an async provider task ID as soon as the provider accepts it, and checkpoints the raw response before provider-specific parsing. Restarts therefore resume an accepted task or reprocess stored data; they do not submit a replacement call.
+
+Provider admission is serialized in PostgreSQL and enforced per provider across the whole worker fleet. Repeated transient failures open a shared circuit with increasing cooldowns, while credential, billing, and configuration failures open it immediately. A half-open circuit admits one probe.
+
+Calls without a resumable task ID are quarantined for 24 hours if their outcome is ambiguous and are never replayed. Accepted asynchronous tasks resume by provider task ID, but an absolute 24-hour task deadline prevents a stuck provider from holding fleet capacity forever. Administrators can inspect unresolved work under **Admin → Workflows** and release it early only after independently verifying the provider-side task.
+
+Report generation snapshots an immutable provider plan before its first paid call. Deterministic unit keys, bounded attempt generations, and a lifetime reservation count let retries reuse completed work while keeping actual spend below `REPORT_MAX_PROVIDER_CALLS`. Provider capacity and circuit backpressure create future-dated successor jobs instead of occupying active pg-boss handlers.
+
+During an upgrade from the legacy paid queues, a migration installs a database admission fence. The new worker closes it and reconciles queued work into versioned reservation-aware queues, but does not infer process liveness from pg-boss job state. The first cutover remains unready until every old worker process has been stopped and an operator supplies the one-time confirmation; the completed handoff is then recorded in PostgreSQL so later restarts are automatic.

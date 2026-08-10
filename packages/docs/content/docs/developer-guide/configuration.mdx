@@ -28,6 +28,11 @@ When you run `elmo init`, the CLI generates a `.env` file in your config directo
 | `ELMO_ENCRYPTION_KEY_OLD` | Previous encryption keys, comma-separated, kept readable during a rotation | — |
 | `DISABLE_TELEMETRY` | Set to `1` to disable all telemetry. See [Telemetry](/docs/developer-guide/telemetry). | — |
 | `DEFAULT_DELAY_HOURS` | How often each enabled prompt is re-run against the AI models, in hours. | `24` |
+| `PROMPT_RUN_CONCURRENCY` | Maximum prompt runs processed concurrently by each worker replica. | `6` |
+| `PROVIDER_MAX_CONCURRENCY` | Maximum accepted or in-flight calls to each provider across all worker replicas. | `6` |
+| `PROMPT_MAX_PROVIDER_CALLS` | Hard limit on paid units materialized by one recurring prompt cycle. | `50` |
+| `REPORT_MAX_PROVIDER_CALLS` | Hard preflight limit on provider calls planned by one report, including brand analysis. | `1500` |
+| `CONFIRM_LEGACY_PAID_WORKERS_STOPPED` | One-time upgrade acknowledgement after all workers running the legacy paid queues have been stopped. | — |
 
 <Callout type="warn">
 	Back up `ELMO_ENCRYPTION_KEY` alongside your database. Credentials stored in the database are encrypted with it and nothing else — if you lose the key, or restore a database backup onto a deployment that generated a different one, those credentials cannot be recovered and have to be entered again. Elmo logs an error and falls back to the provider keys in your `.env` when a stored credential will not decrypt.
@@ -43,7 +48,13 @@ Every stored credential records which key encrypted it, so a rotation doesn't ha
 New values are encrypted under the new key while anything saved under a retired one stays readable, so nothing has to be re-entered up front. Drop `ELMO_ENCRYPTION_KEY_OLD` once every stored credential has been saved again — until then, keep it, or those credentials become unreadable and Elmo logs which key it is missing.
 
 <Callout type="warn">
-	`DEFAULT_DELAY_HOURS` only takes effect for prompts scheduled **after** you change it. Prompts that are already scheduled keep the cadence they were created with, even after a restart. To apply a new cadence to an existing prompt, disable it and then re-enable it under **Settings → Prompts** — re-enabling reschedules it at the current `DEFAULT_DELAY_HOURS`.
+	Changing `DEFAULT_DELAY_HOURS` does not move an existing prompt's current deadline. The new cadence is applied when that prompt's next execution is admitted; disable and re-enable the prompt under **Settings → Prompts** only when you need to reset its deadline immediately.
+</Callout>
+
+Concurrency and provider-budget settings reject malformed explicit values instead of falling back silently. `PROMPT_RUN_CONCURRENCY` must be positive and controls local worker capacity. `PROVIDER_MAX_CONCURRENCY` is enforced in PostgreSQL across the entire worker fleet; set it to `0` to stop admitting new paid calls while allowing accepted tasks and stored results to drain. `PROMPT_MAX_PROVIDER_CALLS` fails worker startup when `SCRAPE_TARGETS` would exceed the per-cycle ceiling. `REPORT_MAX_PROVIDER_CALLS=0` disables new reports before their first paid call, and each admitted report keeps an immutable plan plus a lifetime reservation count under that ceiling.
+
+<Callout type="warn">
+	The first upgrade from the legacy paid queues is deliberately non-rolling. Stop every worker process running the old release, then start one worker with `CONFIRM_LEGACY_PAID_WORKERS_STOPPED=1`. The worker records that handoff durably before enabling the new queues; remove the variable afterward. Never set it while an old worker process can still be executing a provider callback.
 </Callout>
 
 ### AI Provider Keys

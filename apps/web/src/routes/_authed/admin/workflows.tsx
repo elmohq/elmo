@@ -1,37 +1,48 @@
 /**
- * /admin/workflows - Monitor prompt scheduling, job execution, and worker health
+ * /admin/workflows - Monitor durable prompt scheduling, execution, and worker health
  */
-import { useEffect, useState } from "react";
+
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { getAppName } from "@/lib/route-head";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import { Skeleton } from "@workspace/ui/components/skeleton";
-import { Progress } from "@workspace/ui/components/progress";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
+	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
 } from "@workspace/ui/components/dialog";
+import { Input } from "@workspace/ui/components/input";
+import { Label } from "@workspace/ui/components/label";
+import { Progress } from "@workspace/ui/components/progress";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
+import { Textarea } from "@workspace/ui/components/textarea";
 import {
-	CheckCircle2,
-	AlertTriangle,
-	XCircle,
-	Clock,
 	Activity,
-	Server,
-	RefreshCw,
+	AlertTriangle,
+	CheckCircle2,
 	ChevronDown,
 	ChevronRight,
-	Play,
+	Clock,
 	Loader2,
+	Play,
+	RefreshCw,
+	Server,
+	XCircle,
 } from "lucide-react";
-import { getWorkflowDataFn, retryJobFn, getJobLogsFn } from "@/server/admin";
+import { useCallback, useEffect, useState } from "react";
+import { getAppName } from "@/lib/route-head";
+import {
+	abandonPromptProviderTaskFn,
+	getJobLogsFn,
+	getWorkflowDataFn,
+	releaseProviderReservationFn,
+	retryJobFn,
+} from "@/server/admin";
 
 // ============================================================================
 // Types
@@ -41,6 +52,8 @@ interface SchedulerInfo {
 	exists: boolean;
 	nextRunAt: number | null;
 	cadenceHours: number | null;
+	pausedUntil: number | null;
+	pauseReason: string | null;
 }
 
 interface LastRunByModel {
@@ -98,6 +111,41 @@ interface RecentJob {
 	finishedOn: number | null;
 }
 
+interface ProviderReservation {
+	id: string;
+	provider: string;
+	ownerType: string;
+	ownerId: string;
+	workKey: string | null;
+	attemptNumber: number;
+	requestSummary: string | null;
+	externalTaskId: string | null;
+	submissionStartedAt: number | null;
+	taskDeadlineAt: number | null;
+	leaseExpiresAt: number | null;
+	lastError: string | null;
+	brandName: string | null;
+	ownerWebsite: string | null;
+	reportStatus: string | null;
+	createdAt: number;
+	updatedAt: number;
+	confirmationPhrase: string;
+}
+
+interface UnresolvedProviderTask {
+	id: string;
+	provider: string;
+	model: string;
+	externalTaskId: string;
+	providerSubmittedAt: number | null;
+	availableAt: number;
+	errorMessage: string | null;
+	promptId: string;
+	promptValue: string;
+	brandName: string;
+	confirmationPhrase: string;
+}
+
 interface WorkflowsData {
 	summary: {
 		totalBrands: number;
@@ -109,6 +157,8 @@ interface WorkflowsData {
 	};
 	queue: QueueStats;
 	recentJobs: RecentJob[];
+	providerReservations: ProviderReservation[];
+	unresolvedProviderTasks: UnresolvedProviderTask[];
 	brands: BrandScheduleSummary[];
 }
 
@@ -169,20 +219,20 @@ function QueueStatsCard({ stats, title }: { stats: QueueStats; title: string }) 
 					<Server className="h-4 w-4" />
 					{title}
 				</CardTitle>
-				<CardDescription>pg-boss Job Queue Status</CardDescription>
+				<CardDescription>Durable scheduler execution status</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<div className="grid grid-cols-3 gap-4 text-sm">
-					<div title="Jobs waiting to be picked up by a worker">
-						<p className="text-muted-foreground">Created</p>
+					<div title="Execution units ready to be picked up by a worker">
+						<p className="text-muted-foreground">Ready</p>
 						<p className="text-xl font-semibold text-blue-600">{stats.created}</p>
 					</div>
-					<div title="Jobs currently being processed">
-						<p className="text-muted-foreground">Active</p>
+					<div title="Execution units currently leased to a worker">
+						<p className="text-muted-foreground">Running</p>
 						<p className="text-xl font-semibold text-emerald-600">{stats.active}</p>
 					</div>
-					<div title="Jobs waiting to be retried after failure">
-						<p className="text-muted-foreground">Retry</p>
+					<div title="Execution units rescheduled for later processing">
+						<p className="text-muted-foreground">Rescheduled</p>
 						<p className="text-xl font-semibold text-amber-600">{stats.retry}</p>
 					</div>
 					<div>
@@ -194,10 +244,394 @@ function QueueStatsCard({ stats, title }: { stats: QueueStats; title: string }) 
 						<p className={`text-xl font-semibold ${stats.failed > 0 ? "text-red-600" : ""}`}>{stats.failed}</p>
 					</div>
 					<div>
-						<p className="text-muted-foreground">Total Pending</p>
+						<p className="text-muted-foreground">Outstanding</p>
 						<p className="text-xl font-semibold text-violet-600">{stats.totalPending}</p>
 					</div>
 				</div>
+			</CardContent>
+		</Card>
+	);
+}
+
+function ReleaseReservationDialog({
+	reservation,
+	onReleased,
+}: {
+	reservation: ProviderReservation;
+	onReleased: () => void;
+}) {
+	const [isOpen, setIsOpen] = useState(false);
+	const [confirmationPhrase, setConfirmationPhrase] = useState("");
+	const [resolutionNote, setResolutionNote] = useState("");
+	const [isReleasing, setIsReleasing] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	const handleOpenChange = (open: boolean) => {
+		setIsOpen(open);
+		if (!open) {
+			setConfirmationPhrase("");
+			setResolutionNote("");
+			setError(null);
+		}
+	};
+
+	const handleRelease = async () => {
+		setIsReleasing(true);
+		setError(null);
+
+		try {
+			await releaseProviderReservationFn({
+				data: {
+					reservationId: reservation.id,
+					confirmationPhrase,
+					resolutionNote,
+				},
+			});
+			handleOpenChange(false);
+			onReleased();
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to release reservation");
+		} finally {
+			setIsReleasing(false);
+		}
+	};
+
+	const canRelease =
+		!isReleasing &&
+		(!reservation.leaseExpiresAt || reservation.leaseExpiresAt <= Date.now()) &&
+		confirmationPhrase === reservation.confirmationPhrase &&
+		resolutionNote.trim().length > 0;
+	const confirmationId = `reservation-confirmation-${reservation.id}`;
+	const noteId = `reservation-note-${reservation.id}`;
+
+	return (
+		<Dialog open={isOpen} onOpenChange={handleOpenChange}>
+			<DialogTrigger asChild>
+				<Button variant="destructive" size="sm" className="cursor-pointer">
+					Release
+				</Button>
+			</DialogTrigger>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle className="flex items-center gap-2">
+						<AlertTriangle className="h-5 w-5 text-destructive" />
+						Release provider reservation?
+					</DialogTitle>
+					<DialogDescription>
+						This only frees Elmo&apos;s recorded provider capacity. It does not inspect, cancel, or determine the status
+						of provider work.
+					</DialogDescription>
+				</DialogHeader>
+
+				<div className="space-y-4">
+					<div className="grid grid-cols-2 gap-3 rounded-md border bg-muted/30 p-3 text-sm">
+						<div>
+							<p className="text-muted-foreground">Provider</p>
+							<p className="font-medium">{reservation.provider}</p>
+						</div>
+						<div>
+							<p className="text-muted-foreground">Age</p>
+							<p className="font-medium">{formatDuration(Math.max(0, Date.now() - reservation.createdAt))}</p>
+						</div>
+						{reservation.leaseExpiresAt && reservation.leaseExpiresAt > Date.now() && (
+							<div className="col-span-2 rounded border border-amber-500/40 p-2 text-amber-700">
+								This reservation still has a live worker lease and cannot be released.
+							</div>
+						)}
+						<div className="col-span-2">
+							<p className="text-muted-foreground">Provider task</p>
+							<p className="break-all font-mono text-xs">{reservation.externalTaskId ?? "No task ID recorded"}</p>
+						</div>
+						<div className="col-span-2">
+							<p className="text-muted-foreground">Owner</p>
+							<p className="font-medium">
+								{reservation.brandName ?? reservation.ownerType}
+								{reservation.workKey ? ` · ${reservation.workKey}` : ""}
+							</p>
+							<p className="break-all font-mono text-xs text-muted-foreground">{reservation.ownerId}</p>
+						</div>
+						{reservation.lastError && (
+							<div className="col-span-2">
+								<p className="text-muted-foreground">Last error</p>
+								<p className="break-words text-xs text-destructive">{reservation.lastError}</p>
+							</div>
+						)}
+					</div>
+
+					<div className="space-y-2">
+						<Label htmlFor={confirmationId}>Exact confirmation phrase</Label>
+						<p className="select-all break-all rounded bg-muted px-3 py-2 font-mono text-xs">
+							{reservation.confirmationPhrase}
+						</p>
+						<Input
+							id={confirmationId}
+							value={confirmationPhrase}
+							onChange={(event) => setConfirmationPhrase(event.target.value)}
+							placeholder="Type the phrase exactly"
+							autoComplete="off"
+							spellCheck={false}
+						/>
+					</div>
+
+					<div className="space-y-2">
+						<Label htmlFor={noteId}>Resolution note</Label>
+						<Textarea
+							id={noteId}
+							value={resolutionNote}
+							onChange={(event) => setResolutionNote(event.target.value)}
+							placeholder="Record what you verified and why releasing this reservation is safe."
+							maxLength={2000}
+						/>
+					</div>
+
+					{error && <p className="text-sm text-destructive">{error}</p>}
+				</div>
+
+				<DialogFooter>
+					<Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isReleasing}>
+						Cancel
+					</Button>
+					<Button type="button" variant="destructive" onClick={handleRelease} disabled={!canRelease}>
+						{isReleasing && <Loader2 className="h-4 w-4 animate-spin" />}
+						Release reservation
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+function ProviderReservationsCard({
+	reservations,
+	onReleased,
+}: {
+	reservations: ProviderReservation[];
+	onReleased: () => void;
+}) {
+	return (
+		<Card className={reservations.length > 0 ? "border-amber-500/50" : ""}>
+			<CardHeader>
+				<CardTitle className="flex items-center gap-2">
+					<AlertTriangle
+						className={reservations.length > 0 ? "h-5 w-5 text-amber-500" : "h-5 w-5 text-muted-foreground"}
+					/>
+					Unreleased Provider Reservations
+				</CardTitle>
+				<CardDescription>
+					These rows have not been released from provider capacity tracking. Their presence does not indicate whether
+					provider work is running, complete, or failed.
+				</CardDescription>
+			</CardHeader>
+			<CardContent>
+				{reservations.length === 0 ? (
+					<p className="text-sm text-muted-foreground">No unreleased provider reservations.</p>
+				) : (
+					<div className="space-y-3">
+						<div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+							Verify the task independently with the provider before releasing it. Releasing does not cancel the
+							provider task and may allow additional paid work to start.
+						</div>
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>Provider</TableHead>
+									<TableHead>Task</TableHead>
+									<TableHead>Owner</TableHead>
+									<TableHead>Age</TableHead>
+									<TableHead className="text-right">Action</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{reservations.map((reservation) => {
+									const prompt = reservation.requestSummary;
+									return (
+										<TableRow key={reservation.id}>
+											<TableCell>
+												<Badge variant="outline">{reservation.provider}</Badge>
+											</TableCell>
+											<TableCell className="max-w-56">
+												{reservation.externalTaskId ? (
+													<p className="break-all font-mono text-xs" title={reservation.externalTaskId}>
+														{reservation.externalTaskId}
+													</p>
+												) : (
+													<span className="text-xs font-medium text-amber-700 dark:text-amber-300">Not recorded</span>
+												)}
+											</TableCell>
+											<TableCell>
+												<p className="font-medium">{reservation.brandName ?? reservation.ownerType}</p>
+												{reservation.ownerWebsite && (
+													<p className="text-xs text-muted-foreground">{reservation.ownerWebsite}</p>
+												)}
+												{prompt && (
+													<p className="max-w-96 truncate text-xs text-muted-foreground" title={prompt}>
+														{prompt}
+													</p>
+												)}
+												<div className="flex flex-wrap items-center gap-2">
+													<p className="font-mono text-xs text-muted-foreground">{reservation.ownerId}</p>
+													{reservation.workKey && <Badge variant="outline">{reservation.workKey}</Badge>}
+													<Badge variant="outline">attempt {reservation.attemptNumber}</Badge>
+													<Badge variant="secondary">
+														{reservation.submissionStartedAt ? "submitted" : "prepared"}
+													</Badge>
+													{reservation.reportStatus && <Badge variant="secondary">{reservation.reportStatus}</Badge>}
+												</div>
+												{reservation.taskDeadlineAt && (
+													<p className="text-xs text-muted-foreground">
+														Task deadline: {new Date(reservation.taskDeadlineAt).toLocaleString()}
+													</p>
+												)}
+											</TableCell>
+											<TableCell title={new Date(reservation.createdAt).toLocaleString()}>
+												{formatDuration(Math.max(0, Date.now() - reservation.createdAt))}
+											</TableCell>
+											<TableCell className="text-right">
+												<ReleaseReservationDialog reservation={reservation} onReleased={onReleased} />
+											</TableCell>
+										</TableRow>
+									);
+								})}
+							</TableBody>
+						</Table>
+					</div>
+				)}
+			</CardContent>
+		</Card>
+	);
+}
+
+function AbandonProviderTaskDialog({ task, onAbandoned }: { task: UnresolvedProviderTask; onAbandoned: () => void }) {
+	const [open, setOpen] = useState(false);
+	const [confirmation, setConfirmation] = useState("");
+	const [note, setNote] = useState("");
+	const [submitting, setSubmitting] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	const close = () => {
+		setOpen(false);
+		setConfirmation("");
+		setNote("");
+		setError(null);
+	};
+
+	const abandon = async () => {
+		setSubmitting(true);
+		setError(null);
+		try {
+			await abandonPromptProviderTaskFn({
+				data: { runId: task.id, confirmationPhrase: confirmation, resolutionNote: note },
+			});
+			close();
+			onAbandoned();
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to abandon provider task");
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
+			<DialogTrigger asChild>
+				<Button variant="destructive" size="sm">
+					Abandon
+				</Button>
+			</DialogTrigger>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>Stop resuming this provider task?</DialogTitle>
+					<DialogDescription>
+						Only do this after verifying that the provider task is terminal or cancelled. Elmo cannot make that
+						determination automatically.
+					</DialogDescription>
+				</DialogHeader>
+				<div className="space-y-4">
+					<p className="break-all rounded bg-muted p-3 font-mono text-xs">{task.confirmationPhrase}</p>
+					<Input
+						value={confirmation}
+						onChange={(event) => setConfirmation(event.target.value)}
+						placeholder="Type the phrase exactly"
+					/>
+					<Textarea
+						value={note}
+						onChange={(event) => setNote(event.target.value)}
+						placeholder="Record how the provider task was verified."
+						maxLength={2000}
+					/>
+					{error && <p className="text-sm text-destructive">{error}</p>}
+				</div>
+				<DialogFooter>
+					<Button variant="outline" onClick={close} disabled={submitting}>
+						Cancel
+					</Button>
+					<Button
+						variant="destructive"
+						onClick={abandon}
+						disabled={submitting || confirmation !== task.confirmationPhrase || note.trim().length === 0}
+					>
+						{submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+						Abandon task
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+function UnresolvedProviderTasksCard({
+	tasks,
+	onAbandoned,
+}: {
+	tasks: UnresolvedProviderTask[];
+	onAbandoned: () => void;
+}) {
+	return (
+		<Card className={tasks.length > 0 ? "border-amber-500/50" : ""}>
+			<CardHeader>
+				<CardTitle>Checkpointed Provider Tasks</CardTitle>
+				<CardDescription>
+					Accepted provider tasks waiting to resume. They continue to consume fleet capacity until provider-confirmed
+					completion or explicit operator resolution.
+				</CardDescription>
+			</CardHeader>
+			<CardContent>
+				{tasks.length === 0 ? (
+					<p className="text-sm text-muted-foreground">No checkpointed provider tasks are waiting.</p>
+				) : (
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Provider</TableHead>
+								<TableHead>Brand / prompt</TableHead>
+								<TableHead>Task</TableHead>
+								<TableHead>Next poll</TableHead>
+								<TableHead className="text-right">Action</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{tasks.map((task) => (
+								<TableRow key={task.id}>
+									<TableCell>
+										<Badge variant="outline">{task.provider}</Badge>
+										<p className="text-xs text-muted-foreground">{task.model}</p>
+									</TableCell>
+									<TableCell className="max-w-80">
+										<p className="font-medium">{task.brandName}</p>
+										<p className="truncate text-xs text-muted-foreground" title={task.promptValue}>
+											{task.promptValue}
+										</p>
+									</TableCell>
+									<TableCell className="max-w-56 break-all font-mono text-xs">{task.externalTaskId}</TableCell>
+									<TableCell>{formatFutureTime(task.availableAt)}</TableCell>
+									<TableCell className="text-right">
+										<AbandonProviderTaskDialog task={task} onAbandoned={onAbandoned} />
+									</TableCell>
+								</TableRow>
+							))}
+						</TableBody>
+					</Table>
+				)}
 			</CardContent>
 		</Card>
 	);
@@ -211,6 +645,11 @@ function SchedulerCell({ info }: { info: SchedulerInfo }) {
 	return (
 		<div className="flex flex-col gap-0.5">
 			<span className="text-xs font-medium">Next: {nextText}</span>
+			{info.pausedUntil && info.pausedUntil > Date.now() && (
+				<span className="text-amber-600 text-xs" title={info.pauseReason ?? undefined}>
+					Spend paused until {formatFutureTime(info.pausedUntil)}
+				</span>
+			)}
 		</div>
 	);
 }
@@ -244,7 +683,7 @@ function ModelStatus({ status }: { status?: LastRunByModel }) {
 function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: string; onSuccess: () => void }) {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [success, setSuccess] = useState<"queued" | "recreated" | false>(false);
+	const [success, setSuccess] = useState(false);
 
 	const handleRetry = async () => {
 		setIsLoading(true);
@@ -253,10 +692,10 @@ function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: strin
 
 		try {
 			await retryJobFn({ data: { promptId } });
-			setSuccess("queued");
+			setSuccess(true);
 			setTimeout(() => onSuccess(), 1000);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to retry");
+			setError(err instanceof Error ? err.message : "Failed to reschedule");
 		} finally {
 			setIsLoading(false);
 		}
@@ -266,7 +705,7 @@ function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: strin
 		return (
 			<Button size="sm" variant="outline" disabled className="cursor-default">
 				<CheckCircle2 className="h-3 w-3 mr-1 text-emerald-500" />
-				{success === "recreated" ? "Scheduler Reset" : "Queued"}
+				Rescheduled
 			</Button>
 		);
 	}
@@ -275,7 +714,7 @@ function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: strin
 		<div className="flex flex-col gap-1">
 			<Button size="sm" variant="outline" onClick={handleRetry} disabled={isLoading} className="cursor-pointer text-xs">
 				{isLoading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Play className="h-3 w-3 mr-1" />}
-				Retry
+				Reschedule
 			</Button>
 			{error && <span className="text-xs text-red-500">{error}</span>}
 		</div>
@@ -316,7 +755,7 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 				onRetrySuccess?.();
 			}, 1000);
 		} catch (err) {
-			setRetryError(err instanceof Error ? err.message : "Unknown error");
+			setRetryError(err instanceof Error ? err.message : "Failed to reschedule");
 		} finally {
 			setRetryLoading(false);
 		}
@@ -341,9 +780,9 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 						) : (
 							<CheckCircle2 className="h-5 w-5 text-emerald-500" />
 						)}
-						{isFailed ? "Failed Job Details" : "Completed Job Details"}
+						{isFailed ? "Failed Execution Details" : "Completed Execution Details"}
 					</DialogTitle>
-					<DialogDescription>Job ID: {job.id}</DialogDescription>
+					<DialogDescription>Execution ID: {job.id}</DialogDescription>
 				</DialogHeader>
 				<div className="space-y-4">
 					<div className="grid grid-cols-2 gap-4 text-sm">
@@ -366,7 +805,7 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 							<div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-800">{job.failedReason}</div>
 						</div>
 					)}
-					{/* Job Logs Section */}
+					{/* Execution Logs Section */}
 					<div>
 						<p className="text-muted-foreground mb-1">Execution Logs</p>
 						{logsLoading ? (
@@ -386,13 +825,13 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 							<p className="text-sm text-muted-foreground italic">No logs available</p>
 						)}
 					</div>
-					{/* Retry Button for Failed Jobs */}
+					{/* Reschedule Button for Failed Executions */}
 					{isFailed && (
 						<div className="flex items-center gap-3 pt-2 border-t">
 							{retrySuccess ? (
 								<div className="flex items-center gap-2 text-emerald-600">
 									<CheckCircle2 className="h-4 w-4" />
-									<span>Job queued for retry</span>
+									<span>Prompt rescheduled</span>
 								</div>
 							) : (
 								<>
@@ -402,7 +841,7 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 										) : (
 											<Play className="h-4 w-4 mr-2" />
 										)}
-										Retry This Job
+										Reschedule Prompt
 									</Button>
 									{retryError && <span className="text-sm text-red-600">{retryError}</span>}
 								</>
@@ -498,8 +937,8 @@ function BrandRow({
 												{model}
 											</TableHead>
 										))}
-										<TableHead className="text-center">Prod Scheduler</TableHead>
-										<TableHead className="text-center">Last Job</TableHead>
+										<TableHead className="text-center">Durable Scheduler</TableHead>
+										<TableHead className="text-center">Last Execution</TableHead>
 										<TableHead className="text-center">Actions</TableHead>
 									</TableRow>
 								</TableHeader>
@@ -541,17 +980,17 @@ function BrandRow({
 																</Badge>
 																{prompt.jobStatus === "active" && (
 																	<Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
-																		Active
+																		Running
 																	</Badge>
 																)}
 																{prompt.jobStatus === "created" && (
 																	<Badge variant="secondary" className="bg-blue-100 text-blue-700">
-																		Queued
+																		Ready
 																	</Badge>
 																)}
 																{prompt.jobStatus === "retry" && (
 																	<Badge variant="secondary" className="bg-amber-100 text-amber-700">
-																		Retry
+																		Rescheduled
 																	</Badge>
 																)}
 															</div>
@@ -574,10 +1013,10 @@ function BrandRow({
 															<span className="text-xs text-muted-foreground">Processing...</span>
 														)}
 														{prompt.jobStatus === "created" && (
-															<span className="text-xs text-muted-foreground">In queue</span>
+															<span className="text-xs text-muted-foreground">Ready to run</span>
 														)}
 														{prompt.jobStatus === "retry" && (
-															<span className="text-xs text-muted-foreground">Retrying soon</span>
+															<span className="text-xs text-muted-foreground">Scheduled to resume</span>
 														)}
 													</TableCell>
 												</TableRow>
@@ -603,7 +1042,7 @@ export const Route = createFileRoute("/_authed/admin/workflows")({
 		return {
 			meta: [
 				{ title: `Workflows · ${appName}` },
-				{ name: "description", content: "Monitor prompt scheduling and job execution." },
+				{ name: "description", content: "Monitor durable prompt scheduling and execution." },
 			],
 		};
 	},
@@ -617,25 +1056,25 @@ function WorkflowsPage() {
 	const [expandedBrands, setExpandedBrands] = useState<Set<string>>(new Set());
 	const [isRefreshing, setIsRefreshing] = useState(false);
 
-	const fetchData = async (showRefreshing = false) => {
+	const fetchData = useCallback(async (showRefreshing = false) => {
 		if (showRefreshing) setIsRefreshing(true);
 
 		try {
 			const result = await getWorkflowDataFn();
-			setData(result as any);
+			setData(result as WorkflowsData);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "An error occurred");
 		} finally {
 			setLoading(false);
 			setIsRefreshing(false);
 		}
-	};
+	}, []);
 
 	useEffect(() => {
 		fetchData();
 		const interval = setInterval(() => fetchData(), 30000);
 		return () => clearInterval(interval);
-	}, []);
+	}, [fetchData]);
 
 	const toggleBrand = (brandId: string) => {
 		setExpandedBrands((prev) => {
@@ -715,7 +1154,7 @@ function WorkflowsPage() {
 			<div className="flex items-center justify-between">
 				<div className="space-y-2">
 					<h1 className="text-3xl font-bold tracking-tight">Workflows</h1>
-					<p className="text-muted-foreground">Monitor prompt scheduling, job execution, and worker health</p>
+					<p className="text-muted-foreground">Monitor durable prompt scheduling, execution, and worker health</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<Button variant="outline" onClick={() => fetchData(true)} disabled={isRefreshing} className="cursor-pointer">
@@ -807,7 +1246,11 @@ function WorkflowsPage() {
 			</div>
 
 			{/* Queue Stats */}
-			<QueueStatsCard stats={data.queue} title="Prompt Queue" />
+			<QueueStatsCard stats={data.queue} title="Durable Prompt Scheduler" />
+
+			<ProviderReservationsCard reservations={data.providerReservations} onReleased={() => fetchData(true)} />
+
+			<UnresolvedProviderTasksCard tasks={data.unresolvedProviderTasks} onAbandoned={() => fetchData(true)} />
 
 			{/* Brands Table */}
 			<Card>

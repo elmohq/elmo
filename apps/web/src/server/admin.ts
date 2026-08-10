@@ -3,18 +3,17 @@
  * Replaces apps/web/src/app/api/admin/* API routes.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireAuthSession, isAdmin } from "@/lib/auth/helpers";
-import { db } from "@workspace/lib/db/db";
-import { brands, prompts, promptRuns } from "@workspace/lib/db/schema";
-import { eq, sql, desc } from "drizzle-orm";
-import { getAdminRunsOverTime, getAdminBrandRunStats, getAdminActiveBrandsOverTime } from "@/lib/postgres-read";
-import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { db } from "@workspace/lib/db/db";
+import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getModelOverdueStatus } from "@workspace/lib/overdue";
-import { sendImmediatePromptJob } from "@/lib/job-scheduler";
-import { Client } from "pg";
 import { parseScrapeTargets } from "@workspace/lib/providers";
+import { desc, eq, sql } from "drizzle-orm";
+import { z } from "zod";
+import { isAdmin, requireAuthSession } from "@/lib/auth/helpers";
+import { sendImmediatePromptJob } from "@/lib/job-scheduler";
+import { getAdminActiveBrandsOverTime, getAdminBrandRunStats, getAdminRunsOverTime } from "@/lib/postgres-read";
 
 // ============================================================================
 // Admin guard helper
@@ -24,24 +23,6 @@ async function requireAdmin() {
 	const session = await requireAuthSession();
 	if (!isAdmin(session)) throw new Error("Unauthorized: Admin access required");
 	return session;
-}
-
-// ============================================================================
-// Postgres client helper for pg-boss queries
-// ============================================================================
-
-async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
-	const connectionString = process.env.DATABASE_URL;
-	if (!connectionString) {
-		throw new Error("DATABASE_URL is required");
-	}
-	const client = new Client({ connectionString });
-	await client.connect();
-	try {
-		return await fn(client);
-	} finally {
-		await client.end();
-	}
 }
 
 // ============================================================================
@@ -168,7 +149,7 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			delayOverrideHours: z.number().nullable(),
+			delayOverrideHours: z.number().positive().nullable(),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -214,312 +195,299 @@ export const adminAnalyzeBrandFn = createServerFn({ method: "POST" })
 // Admin Workflows - Data Fetching
 // ============================================================================
 
-function parseJobData(data: unknown): { promptId?: string } {
-	if (!data) return {};
-	try {
-		const parsed = typeof data === "string" ? JSON.parse(data) : data;
-		if (typeof parsed === "object" && parsed !== null) {
-			return {
-				promptId:
-					typeof (parsed as Record<string, unknown>).promptId === "string"
-						? ((parsed as Record<string, unknown>).promptId as string)
-						: undefined,
-			};
-		}
-	} catch {
-		// ignore parse failures
-	}
-	return {};
-}
-
 async function getQueueStats() {
-	return withPgClient(async (client) => {
-		const tableCheck = await client.query(
-			`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'pgboss' AND table_name = 'job')`,
-		);
+	const result = await db.execute(sql`
+		SELECT
+			COUNT(*) FILTER (
+				WHERE status IN ('pending', 'processing')
+				  AND worker_id IS NULL
+				  AND available_at <= now()
+			)::int AS created,
+			COUNT(*) FILTER (
+				WHERE status IN ('running', 'processing')
+				  AND worker_id IS NOT NULL
+			)::int AS active,
+			COUNT(*) FILTER (
+				WHERE status IN ('pending', 'processing')
+				  AND worker_id IS NULL
+				  AND available_at > now()
+			)::int AS retry,
+			COUNT(*) FILTER (WHERE status IN ('succeeded', 'skipped'))::int AS completed,
+			COUNT(*) FILTER (WHERE status IN ('failed', 'abandoned'))::int AS failed
+		FROM prompt_execution_runs
+	`);
+	const row = result.rows[0] as
+		| { created: number; active: number; retry: number; completed: number; failed: number }
+		| undefined;
+	const stats = {
+		created: Number(row?.created ?? 0),
+		active: Number(row?.active ?? 0),
+		retry: Number(row?.retry ?? 0),
+		completed: Number(row?.completed ?? 0),
+		failed: Number(row?.failed ?? 0),
+	};
 
-		if (!tableCheck.rows[0]?.exists) {
-			return {
-				name: "process-prompt",
-				created: 0,
-				active: 0,
-				retry: 0,
-				completed: 0,
-				failed: 0,
-				totalPending: 0,
-			};
-		}
-
-		const result = await client.query(`
-			SELECT
-				COUNT(*) FILTER (WHERE state = 'created') AS created,
-				COUNT(*) FILTER (WHERE state = 'active') AS active,
-				COUNT(*) FILTER (WHERE state = 'retry') AS retry
-			FROM pgboss.job
-			WHERE name = 'process-prompt'
-		`);
-
-		const archiveCheck = await client.query(
-			`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'pgboss' AND table_name = 'archive')`,
-		);
-
-		let completed = 0;
-		let failed = 0;
-		if (archiveCheck.rows[0]?.exists) {
-			const archiveResult = await client.query(`
-				SELECT
-					COUNT(*) FILTER (WHERE state = 'completed') AS completed,
-					COUNT(*) FILTER (WHERE state = 'failed') AS failed
-				FROM pgboss.archive
-				WHERE name = 'process-prompt'
-			`);
-			completed = Number(archiveResult.rows[0]?.completed || 0);
-			failed = Number(archiveResult.rows[0]?.failed || 0);
-		}
-
-		const stats = {
-			created: Number(result.rows[0]?.created || 0),
-			active: Number(result.rows[0]?.active || 0),
-			retry: Number(result.rows[0]?.retry || 0),
-			completed,
-			failed,
-		};
-
-		return {
-			name: "process-prompt",
-			...stats,
-			totalPending: stats.created + stats.active + stats.retry,
-		};
-	});
+	return {
+		name: "durable-prompt-runs",
+		...stats,
+		totalPending: stats.created + stats.active + stats.retry,
+	};
 }
 
 async function getRecentJobs(limit = 50) {
-	const jobs = await withPgClient(async (client) => {
-		const [jobCheck, archiveCheck] = await Promise.all([
-			client.query(
-				`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'pgboss' AND table_name = 'job')`,
-			),
-			client.query(
-				`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'pgboss' AND table_name = 'archive')`,
-			),
-		]);
+	const result = await db.execute(sql`
+		WITH recent AS (
+			SELECT id, prompt_id, status, error_summary, created_at, started_at, completed_at
+			FROM prompt_executions
+			WHERE status NOT IN ('pending', 'running')
+			ORDER BY completed_at DESC NULLS LAST, created_at DESC
+			LIMIT ${limit}
+		)
+		SELECT recent.*,
+		       COALESCE(SUM(r.attempt_count + r.processing_attempts), 0)::int AS attempts_made
+		FROM recent
+		LEFT JOIN prompt_execution_runs r ON r.execution_id = recent.id
+		GROUP BY recent.id, recent.prompt_id, recent.status, recent.error_summary,
+		         recent.created_at, recent.started_at, recent.completed_at
+		ORDER BY recent.completed_at DESC NULLS LAST, recent.created_at DESC
+	`);
 
-		const rows: any[] = [];
-
-		if (jobCheck.rows[0]?.exists) {
-			const result = await client.query(
-				`SELECT id, name, data, state, output, retry_count, created_on, started_on, completed_on
-				 FROM pgboss.job
-				 WHERE name = 'process-prompt'
-				   AND state IN ('completed', 'failed')
-				 ORDER BY completed_on DESC NULLS LAST
-				 LIMIT $1`,
-				[limit],
-			);
-			rows.push(...result.rows);
-		}
-
-		if (archiveCheck.rows[0]?.exists) {
-			const result = await client.query(
-				`SELECT id, name, data, state, output, retry_count, created_on, started_on, completed_on
-				 FROM pgboss.archive
-				 WHERE name = 'process-prompt'
-				 ORDER BY completed_on DESC NULLS LAST
-				 LIMIT $1`,
-				[limit],
-			);
-			rows.push(...result.rows);
-		}
-
-		return rows;
-	});
-
-	const deduped = new Map<string, (typeof jobs)[number]>();
-	for (const row of jobs) {
-		if (!deduped.has(row.id)) {
-			deduped.set(row.id, row);
-		}
-	}
-
-	const sorted = Array.from(deduped.values()).sort((a, b) => {
-		const aTime = a.completed_on ? new Date(a.completed_on).getTime() : 0;
-		const bTime = b.completed_on ? new Date(b.completed_on).getTime() : 0;
-		return bTime - aTime;
-	});
-
-	return sorted.slice(0, limit).map((row) => {
-		const data = parseJobData(row.data);
-		let failedReason: string | null = null;
-
-		if (row.state === "failed" && row.output) {
-			try {
-				const output = typeof row.output === "string" ? JSON.parse(row.output) : row.output;
-				failedReason = output?.message || output?.error || "Unknown error";
-			} catch {
-				failedReason = "Unknown error";
-			}
-		}
+	return result.rows.map((rawRow) => {
+		const row = rawRow as {
+			id: string;
+			prompt_id: string;
+			status: string;
+			error_summary: string | null;
+			attempts_made: number;
+			created_at: Date | string;
+			started_at: Date | string | null;
+			completed_at: Date | string | null;
+		};
+		const failed = row.status === "partial" || row.status === "failed" || row.status === "abandoned";
 
 		return {
 			id: row.id,
-			name: row.name,
-			data,
-			status: row.state === "completed" ? ("completed" as const) : ("failed" as const),
-			failedReason,
-			attemptsMade: row.retry_count || 0,
-			timestamp: row.created_on ? new Date(row.created_on).getTime() : 0,
-			processedOn: row.started_on ? new Date(row.started_on).getTime() : null,
-			finishedOn: row.completed_on ? new Date(row.completed_on).getTime() : null,
+			name: "prompt-execution",
+			data: { promptId: row.prompt_id },
+			status: failed ? ("failed" as const) : ("completed" as const),
+			failedReason: failed ? (row.error_summary ?? `Execution ended with status ${row.status}`) : null,
+			attemptsMade: Number(row.attempts_made ?? 0),
+			timestamp: new Date(row.created_at).getTime(),
+			processedOn: row.started_at ? new Date(row.started_at).getTime() : null,
+			finishedOn: row.completed_at ? new Date(row.completed_at).getTime() : null,
 		};
 	});
 }
 
-function getNextRunFromCron(cron: string, now: Date): number | null {
-	const hourlyMatch = cron.match(/^0 \*\/(\d+) \* \* \*$/);
-	if (hourlyMatch) {
-		const interval = Number(hourlyMatch[1]);
-		if (!Number.isFinite(interval) || interval <= 0) return null;
-
-		const nowMs = now.getTime();
-		const nowUtc = new Date(nowMs);
-		const year = nowUtc.getUTCFullYear();
-		const month = nowUtc.getUTCMonth();
-		const day = nowUtc.getUTCDate();
-		const hour = nowUtc.getUTCHours();
-		const minute = nowUtc.getUTCMinutes();
-		const second = nowUtc.getUTCSeconds();
-		const ms = nowUtc.getUTCMilliseconds();
-
-		let nextHour = hour;
-		if (minute > 0 || second > 0 || ms > 0) {
-			nextHour += 1;
-		}
-
-		for (let i = 0; i <= 48; i += 1) {
-			const h = nextHour + i;
-			if (h % interval === 0) {
-				const dayOffset = Math.floor(h / 24);
-				const hourOfDay = h % 24;
-				const baseMidnight = Date.UTC(year, month, day, 0, 0, 0, 0);
-				const candidateMs = baseMidnight + dayOffset * 24 * 60 * 60 * 1000 + hourOfDay * 60 * 60 * 1000;
-				if (candidateMs > nowMs) {
-					return candidateMs;
-				}
-			}
-		}
-
-		return null;
-	}
-
-	const dailyMatch = cron.match(/^0 0 (?:\*\/(\d+)|\*) \* \*$/);
-	if (dailyMatch) {
-		const dayInterval = dailyMatch[1] ? Number(dailyMatch[1]) : 1;
-		if (!Number.isFinite(dayInterval) || dayInterval <= 0) return null;
-
-		const nowMs = now.getTime();
-		const nowUtc = new Date(nowMs);
-
-		for (let i = 0; i <= 31; i += 1) {
-			const candidate = new Date(
-				Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate() + i, 0, 0, 0, 0),
-			);
-			const dayOfMonth = candidate.getUTCDate();
-			const matches = dayInterval === 1 || (dayOfMonth - 1) % dayInterval === 0;
-			if (matches && candidate.getTime() > nowMs) {
-				return candidate.getTime();
-			}
-		}
-
-		return null;
-	}
-
-	return null;
-}
-
 async function getScheduleMap() {
-	const schedules = await withPgClient(async (client) => {
-		const tableCheck = await client.query(
-			`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'pgboss' AND table_name = 'schedule')`,
-		);
-
-		if (!tableCheck.rows[0]?.exists) return [];
-
-		const result = await client.query(`
-			SELECT name, key, data, cron
-			FROM pgboss.schedule
-			WHERE name = 'process-prompt'
-		`);
-		return result.rows;
-	});
-
-	const map = new Map<string, { promptId: string; cadenceHours: number | null; nextRunAt: number | null }>();
-	const now = new Date();
-
-	for (const row of schedules) {
-		const promptId = row.key;
-		if (promptId) {
-			let cadenceHours: number | null = null;
-			let nextRunAt: number | null = null;
-			if (row.cron) {
-				const hourlyMatch = row.cron.match(/^0 \*\/(\d+) \* \* \*$/);
-				if (hourlyMatch) {
-					cadenceHours = Number(hourlyMatch[1]);
-				} else {
-					const dailyMatch = row.cron.match(/^0 0 (?:\*\/(\d+)|\*) \* \*$/);
-					if (dailyMatch) {
-						cadenceHours = dailyMatch[1] ? Number(dailyMatch[1]) * 24 : 24;
-					}
-				}
-				nextRunAt = getNextRunFromCron(row.cron, now);
-			}
-			map.set(promptId, { promptId, cadenceHours, nextRunAt });
+	const defaultDelayHours = getDefaultDelayHours();
+	const result = await db.execute(sql`
+		SELECT ps.prompt_id,
+		       LEAST(ps.next_run_at, COALESCE(ps.run_requested_at, ps.next_run_at)) AS next_run_at,
+		       COALESCE(b.delay_override_hours, ${defaultDelayHours}) AS cadence_hours,
+		       ps.admission_paused_until, ps.pause_reason
+		FROM prompt_schedules ps
+		JOIN prompts p ON p.id = ps.prompt_id
+		JOIN brands b ON b.id = p.brand_id
+	`);
+	const map = new Map<
+		string,
+		{
+			promptId: string;
+			cadenceHours: number | null;
+			nextRunAt: number | null;
+			pausedUntil: number | null;
+			pauseReason: string | null;
 		}
+	>();
+
+	for (const rawRow of result.rows) {
+		const row = rawRow as {
+			prompt_id: string;
+			next_run_at: Date | string;
+			cadence_hours: number | string;
+			admission_paused_until: Date | string | null;
+			pause_reason: string | null;
+		};
+		map.set(row.prompt_id, {
+			promptId: row.prompt_id,
+			cadenceHours: Number(row.cadence_hours),
+			nextRunAt: new Date(row.next_run_at).getTime(),
+			pausedUntil: row.admission_paused_until ? new Date(row.admission_paused_until).getTime() : null,
+			pauseReason: row.pause_reason,
+		});
 	}
 
 	return map;
 }
 
 async function getActiveJobMap() {
-	const jobs = await withPgClient(async (client) => {
-		const tableCheck = await client.query(
-			`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'pgboss' AND table_name = 'job')`,
-		);
-
-		if (!tableCheck.rows[0]?.exists) return [];
-
-		const result = await client.query(`
-			SELECT id, data, state, created_on, started_on
-			FROM pgboss.job
-			WHERE name = 'process-prompt'
-			  AND state IN ('created', 'active', 'retry')
-			ORDER BY
-				CASE state
-					WHEN 'active' THEN 1
-					WHEN 'retry' THEN 2
-					WHEN 'created' THEN 3
-					ELSE 4
-				END,
-				started_on DESC NULLS LAST,
-				created_on DESC NULLS LAST
-		`);
-		return result.rows;
-	});
-
+	const result = await db.execute(sql`
+		SELECT e.id, e.prompt_id,
+		       CASE
+		         WHEN COUNT(*) FILTER (
+		           WHERE r.status IN ('running', 'processing') AND r.worker_id IS NOT NULL
+		         ) > 0 THEN 'active'
+		         WHEN COUNT(*) FILTER (
+		           WHERE r.status IN ('pending', 'processing')
+		             AND r.worker_id IS NULL
+		             AND r.available_at > now()
+		         ) > 0 THEN 'retry'
+		         ELSE 'created'
+		       END AS state,
+		       e.created_at
+		FROM prompt_executions e
+		LEFT JOIN prompt_execution_runs r ON r.execution_id = e.id
+		WHERE e.status IN ('pending', 'running')
+		GROUP BY e.id, e.prompt_id, e.created_at
+		ORDER BY e.created_at DESC
+	`);
 	const map = new Map<string, { promptId: string; state: "created" | "active" | "retry" }>();
 
-	for (const row of jobs) {
-		const data = parseJobData(row.data);
-		if (data.promptId) {
-			if (!map.has(data.promptId)) {
-				map.set(data.promptId, {
-					promptId: data.promptId,
-					state: row.state as "created" | "active" | "retry",
-				});
-			}
+	for (const rawRow of result.rows) {
+		const row = rawRow as { prompt_id: string; state: "created" | "active" | "retry" };
+		if (!map.has(row.prompt_id)) {
+			map.set(row.prompt_id, {
+				promptId: row.prompt_id,
+				state: row.state,
+			});
 		}
 	}
 
 	return map;
+}
+
+function getReleaseReservationConfirmationPhrase(reservationId: string): string {
+	return `RELEASE PROVIDER RESERVATION ${reservationId}`;
+}
+
+function getAbandonProviderTaskConfirmationPhrase(runId: string): string {
+	return `ABANDON PROVIDER TASK ${runId}`;
+}
+
+async function getUnreleasedProviderReservations() {
+	const result = await db.execute(sql`
+		SELECT reservation.id,
+		       reservation.provider,
+		       reservation.owner_type,
+		       reservation.owner_id,
+		       reservation.work_key,
+		       reservation.attempt_number,
+		       reservation.request_metadata,
+		       reservation.submission_started_at,
+		       reservation.external_task_id,
+		       reservation.task_deadline_at,
+		       reservation.lease_expires_at,
+		       reservation.last_error,
+		       reservation.created_at,
+		       reservation.updated_at,
+		       COALESCE(report.brand_name, analysis_brand.name) AS owner_name,
+		       analysis_brand.website AS owner_website,
+		       report.status AS report_status
+		FROM provider_call_reservations reservation
+		LEFT JOIN reports report
+		  ON reservation.owner_type = 'report' AND report.id::text = reservation.owner_id
+		LEFT JOIN brands analysis_brand
+		  ON reservation.owner_type = 'analyze-brand' AND analysis_brand.id = reservation.owner_id
+		WHERE reservation.released_at IS NULL
+		ORDER BY reservation.created_at ASC
+	`);
+
+	return result.rows.map((rawRow) => {
+		const row = rawRow as {
+			id: string;
+			provider: string;
+			owner_type: string;
+			owner_id: string;
+			work_key: string | null;
+			attempt_number: number;
+			request_metadata: unknown | null;
+			submission_started_at: Date | string | null;
+			external_task_id: string | null;
+			task_deadline_at: Date | string | null;
+			lease_expires_at: Date | string | null;
+			last_error: string | null;
+			created_at: Date | string;
+			updated_at: Date | string;
+			owner_name: string | null;
+			owner_website: string | null;
+			report_status: string | null;
+		};
+
+		return {
+			id: row.id,
+			provider: row.provider,
+			ownerType: row.owner_type,
+			ownerId: row.owner_id,
+			workKey: row.work_key,
+			attemptNumber: row.attempt_number,
+			requestSummary:
+				row.request_metadata &&
+				typeof row.request_metadata === "object" &&
+				"prompt" in row.request_metadata &&
+				typeof row.request_metadata.prompt === "string"
+					? row.request_metadata.prompt
+					: null,
+			externalTaskId: row.external_task_id,
+			submissionStartedAt: row.submission_started_at ? new Date(row.submission_started_at).getTime() : null,
+			taskDeadlineAt: row.task_deadline_at ? new Date(row.task_deadline_at).getTime() : null,
+			leaseExpiresAt: row.lease_expires_at ? new Date(row.lease_expires_at).getTime() : null,
+			lastError: row.last_error,
+			brandName: row.owner_name,
+			ownerWebsite: row.owner_website,
+			reportStatus: row.report_status,
+			createdAt: new Date(row.created_at).getTime(),
+			updatedAt: new Date(row.updated_at).getTime(),
+			confirmationPhrase: getReleaseReservationConfirmationPhrase(row.id),
+		};
+	});
+}
+
+async function getUnresolvedPromptProviderTasks() {
+	const result = await db.execute(sql`
+		SELECT run.id, run.provider, run.circuit_key, run.model, run.external_task_id,
+		       run.provider_submitted_at, run.available_at, run.error_message,
+		       execution.prompt_id,
+		       COALESCE(prompt.value, execution.context_payload->'prompt'->>'value', '[deleted prompt]') AS prompt_value,
+		       COALESCE(brand.name, execution.context_payload->'brand'->>'name', '[deleted brand]') AS brand_name
+		FROM prompt_execution_runs run
+		JOIN prompt_executions execution ON execution.id = run.execution_id
+		LEFT JOIN prompts prompt ON prompt.id = execution.prompt_id
+		LEFT JOIN brands brand ON brand.id = prompt.brand_id
+		WHERE run.status = 'pending'
+		  AND run.external_task_id IS NOT NULL
+		  AND (run.worker_id IS NULL OR run.lease_expires_at <= now())
+		ORDER BY run.provider_submitted_at ASC NULLS FIRST
+	`);
+
+	return result.rows.map((rawRow) => {
+		const row = rawRow as {
+			id: string;
+			provider: string;
+			circuit_key: string;
+			model: string;
+			external_task_id: string;
+			provider_submitted_at: Date | string | null;
+			available_at: Date | string;
+			error_message: string | null;
+			prompt_id: string;
+			prompt_value: string;
+			brand_name: string;
+		};
+		return {
+			id: row.id,
+			provider: row.provider,
+			model: row.model,
+			externalTaskId: row.external_task_id,
+			providerSubmittedAt: row.provider_submitted_at ? new Date(row.provider_submitted_at).getTime() : null,
+			availableAt: new Date(row.available_at).getTime(),
+			errorMessage: row.error_message,
+			promptId: row.prompt_id,
+			promptValue: row.prompt_value,
+			brandName: row.brand_name,
+			confirmationPhrase: getAbandonProviderTaskConfirmationPhrase(row.id),
+		};
+	});
 }
 
 /**
@@ -556,12 +524,15 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		lastRunsMap[run.promptId][run.model] = run.lastRunAt;
 	}
 
-	const [recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([
-		getRecentJobs(5000),
-		getScheduleMap(),
-		getActiveJobMap(),
-		getQueueStats(),
-	]);
+	const [recentJobs, scheduleMap, activeJobMap, queueStats, providerReservations, unresolvedProviderTasks] =
+		await Promise.all([
+			getRecentJobs(5000),
+			getScheduleMap(),
+			getActiveJobMap(),
+			getQueueStats(),
+			getUnreleasedProviderReservations(),
+			getUnresolvedPromptProviderTasks(),
+		]);
 
 	const failuresByPrompt = new Map<string, number>();
 	for (const job of recentJobs) {
@@ -572,7 +543,13 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 
 	const now = Date.now();
 	const defaultDelayHours = getDefaultDelayHours();
-	const defaultSchedulerInfo = { exists: false, nextRunAt: null as number | null, cadenceHours: null as number | null };
+	const defaultSchedulerInfo = {
+		exists: false,
+		nextRunAt: null as number | null,
+		cadenceHours: null as number | null,
+		pausedUntil: null as number | null,
+		pauseReason: null as string | null,
+	};
 
 	const brandSummaries = allBrands.map((brand) => {
 		const brandPrompts = promptsByBrand[brand.id] || [];
@@ -609,11 +586,17 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 
 			const scheduleInfo = scheduleMap.get(prompt.id);
 			const schedulerInfo = scheduleInfo
-				? { exists: true, nextRunAt: scheduleInfo.nextRunAt, cadenceHours: scheduleInfo.cadenceHours }
+				? {
+						exists: true,
+						nextRunAt: scheduleInfo.nextRunAt,
+						cadenceHours: scheduleInfo.cadenceHours,
+						pausedUntil: scheduleInfo.pausedUntil,
+						pauseReason: scheduleInfo.pauseReason,
+					}
 				: defaultSchedulerInfo;
 
 			const activeJob = activeJobMap.get(prompt.id);
-			if (prompt.enabled && activeJob) scheduledCount++;
+			if (prompt.enabled && scheduleInfo) scheduledCount++;
 
 			if (prompt.enabled) {
 				if (anyOverdue) {
@@ -672,16 +655,112 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		},
 		queue: queueStats,
 		recentJobs: recentJobs.sort((a, b) => b.timestamp - a.timestamp),
+		providerReservations,
+		unresolvedProviderTasks,
 		brands: brandSummaries,
 	};
 });
 
 // ============================================================================
-// Admin Workflows - Retry Job
+// Admin Workflows - Release Provider Reservation
 // ============================================================================
 
 /**
- * Retry a prompt job (send immediate job for a prompt).
+ * Release provider capacity after an administrator has independently resolved
+ * an ambiguous report call. This does not inspect or cancel provider work.
+ */
+export const releaseProviderReservationFn = createServerFn({ method: "POST" })
+	.validator(
+		z.object({
+			reservationId: z.string().uuid(),
+			confirmationPhrase: z.string().max(100),
+			resolutionNote: z.string().trim().min(1, "A resolution note is required").max(2000),
+		}),
+	)
+	.handler(async ({ data }) => {
+		const session = await requireAdmin();
+		const expectedPhrase = getReleaseReservationConfirmationPhrase(data.reservationId);
+		if (data.confirmationPhrase !== expectedPhrase) {
+			throw new Error("Confirmation phrase does not exactly match");
+		}
+
+		const result = await db.execute(sql`
+			UPDATE provider_call_reservations
+			SET released_at = now(),
+			    release_reason = ${data.resolutionNote},
+			    released_by = ${session.user.id},
+			    updated_at = now()
+			WHERE id = ${data.reservationId}
+			  AND released_at IS NULL
+			  AND (lease_expires_at IS NULL OR lease_expires_at <= now())
+			RETURNING id, released_at
+		`);
+
+		const released = result.rows[0] as { id: string; released_at: Date | string } | undefined;
+		if (!released) {
+			throw new Error("Reservation is active, already released, or no longer exists");
+		}
+
+		return {
+			success: true,
+			reservationId: released.id,
+			releasedAt: new Date(released.released_at).getTime(),
+		};
+	});
+
+/**
+ * Stop resuming a checkpointed provider task only after an operator has
+ * independently verified that the external task is terminal or cancelled.
+ */
+export const abandonPromptProviderTaskFn = createServerFn({ method: "POST" })
+	.validator(
+		z.object({
+			runId: z.string().uuid(),
+			confirmationPhrase: z.string().max(100),
+			resolutionNote: z.string().trim().min(1, "A resolution note is required").max(2000),
+		}),
+	)
+	.handler(async ({ data }) => {
+		const session = await requireAdmin();
+		if (data.confirmationPhrase !== getAbandonProviderTaskConfirmationPhrase(data.runId)) {
+			throw new Error("Confirmation phrase does not exactly match");
+		}
+
+		const abandoned = await db.transaction(async (tx) => {
+			const result = await tx.execute(sql`
+				UPDATE prompt_execution_runs
+				SET status = 'abandoned', completed_at = now(), worker_id = NULL,
+				    lease_expires_at = NULL, failure_kind = 'operator_resolved',
+				    error_message = ${`Operator ${session.user.id}: ${data.resolutionNote}`}, updated_at = now()
+				WHERE id = ${data.runId}
+				  AND status = 'pending'
+				  AND external_task_id IS NOT NULL
+				  AND (worker_id IS NULL OR lease_expires_at <= now())
+				RETURNING id, circuit_key
+			`);
+			const row = result.rows[0] as { id: string; circuit_key: string } | undefined;
+			if (!row) return null;
+
+			await tx.execute(sql`
+				UPDATE provider_health
+				SET circuit_state = 'open', reopen_at = now() + interval '24 hours',
+				    probe_run_id = NULL, last_failure_kind = 'operator_resolved',
+				    last_error = ${data.resolutionNote}, last_failure_at = now(), updated_at = now()
+				WHERE circuit_key = ${row.circuit_key} AND probe_run_id = ${row.id}
+			`);
+			return row;
+		});
+
+		if (!abandoned) throw new Error("Provider task is active, terminal, or no longer resumable");
+		return { success: true, runId: abandoned.id };
+	});
+
+// ============================================================================
+// Admin Workflows - Reschedule Prompt
+// ============================================================================
+
+/**
+ * Request another durable execution for a prompt.
  */
 export const retryJobFn = createServerFn({ method: "POST" })
 	.validator(
@@ -706,81 +785,126 @@ export const retryJobFn = createServerFn({ method: "POST" })
 		if (!prompt.enabled) throw new Error("Prompt is disabled");
 
 		const success = await sendImmediatePromptJob(targetPromptId);
-		if (!success) throw new Error("Failed to send job");
+		if (!success) throw new Error("Failed to reschedule prompt");
 
-		return { success: true, message: `Triggered immediate job for prompt ${targetPromptId}` };
+		return { success: true, message: `Requested a new execution for prompt ${targetPromptId}` };
 	});
 
 // ============================================================================
-// Admin Workflows - Job Logs
+// Admin Workflows - Execution Logs
 // ============================================================================
 
 /**
- * Get logs for a specific job.
+ * Get the durable execution record and all of its execution units.
  */
 export const getJobLogsFn = createServerFn({ method: "GET" })
 	.validator(z.object({ jobId: z.string() }))
 	.handler(async ({ data }) => {
 		await requireAdmin();
 
-		const job = await withPgClient(async (client) => {
-			const schemaCheck = await client.query(
-				`SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'pgboss')`,
-			);
+		const [executionResult, runsResult] = await Promise.all([
+			db.execute(sql`
+				SELECT id, prompt_id, trigger, scheduled_for, not_after, status,
+				       total_runs, succeeded_runs, failed_runs, skipped_runs, abandoned_runs,
+				       error_summary, started_at, completed_at, created_at, updated_at
+				FROM prompt_executions
+				WHERE id = ${data.jobId}
+			`),
+			db.execute(sql`
+				SELECT id, prompt_run_id, target_index, run_index, provider, model, version,
+				       web_search_enabled, status, available_at, worker_id, lease_expires_at,
+				       external_task_id, attempt_count, processing_attempts, failure_kind,
+				       error_message, started_at, provider_submitted_at, completed_at, created_at, updated_at
+				FROM prompt_execution_runs
+				WHERE execution_id = ${data.jobId}
+				ORDER BY target_index, run_index
+			`),
+		]);
 
-			if (!schemaCheck.rows[0]?.exists) return null;
+		const execution = executionResult.rows[0] as
+			| {
+					id: string;
+					prompt_id: string;
+					trigger: string;
+					scheduled_for: Date | string;
+					not_after: Date | string;
+					status: string;
+					total_runs: number;
+					succeeded_runs: number;
+					failed_runs: number;
+					skipped_runs: number;
+					abandoned_runs: number;
+					error_summary: string | null;
+					started_at: Date | string | null;
+					completed_at: Date | string | null;
+					created_at: Date | string;
+					updated_at: Date | string;
+			  }
+			| undefined;
 
-			let result = await client.query(
-				`SELECT id, name, data, state, output, retry_count, created_on, started_on, completed_on
-				 FROM pgboss.job
-				 WHERE id = $1`,
-				[data.jobId],
-			);
+		if (!execution) throw new Error("Execution not found");
 
-			if (result.rows.length === 0) {
-				result = await client.query(
-					`SELECT id, name, data, state, output, retry_count, created_on, started_on, completed_on
-					 FROM pgboss.archive
-					 WHERE id = $1`,
-					[data.jobId],
-				);
-			}
+		const iso = (value: Date | string) => new Date(value).toISOString();
+		const logs: string[] = [
+			`Execution ID: ${execution.id}`,
+			`Prompt ID: ${execution.prompt_id}`,
+			`Trigger: ${execution.trigger}`,
+			`Status: ${execution.status}`,
+			`Scheduled for: ${iso(execution.scheduled_for)}`,
+			`Execution window ends: ${iso(execution.not_after)}`,
+			`Created: ${iso(execution.created_at)}`,
+		];
 
-			return result.rows[0] || null;
-		});
+		if (execution.started_at) logs.push(`Started: ${iso(execution.started_at)}`);
+		if (execution.completed_at) logs.push(`Completed: ${iso(execution.completed_at)}`);
+		logs.push(
+			`Units: ${execution.total_runs} total, ${execution.succeeded_runs} succeeded, ` +
+				`${execution.failed_runs} failed, ${execution.skipped_runs} skipped, ` +
+				`${execution.abandoned_runs} abandoned`,
+		);
+		if (execution.error_summary) logs.push(`Execution error: ${execution.error_summary}`);
 
-		if (!job) throw new Error("Job not found");
+		for (const rawRun of runsResult.rows) {
+			const run = rawRun as {
+				id: string;
+				prompt_run_id: string | null;
+				target_index: number;
+				run_index: number;
+				provider: string;
+				model: string;
+				version: string | null;
+				web_search_enabled: boolean;
+				status: string;
+				available_at: Date | string;
+				worker_id: string | null;
+				lease_expires_at: Date | string | null;
+				external_task_id: string | null;
+				attempt_count: number;
+				processing_attempts: number;
+				failure_kind: string | null;
+				error_message: string | null;
+				started_at: Date | string | null;
+				provider_submitted_at: Date | string | null;
+				completed_at: Date | string | null;
+				created_at: Date | string;
+				updated_at: Date | string;
+			};
 
-		const logs: string[] = [];
-		logs.push(`Job ID: ${job.id}`);
-		logs.push(`Name: ${job.name}`);
-		logs.push(`State: ${job.state}`);
-		logs.push(`Retry count: ${job.retry_count || 0}`);
-
-		if (job.created_on) logs.push(`Created: ${new Date(job.created_on).toISOString()}`);
-		if (job.started_on) logs.push(`Started: ${new Date(job.started_on).toISOString()}`);
-		if (job.completed_on) logs.push(`Completed: ${new Date(job.completed_on).toISOString()}`);
-
-		if (job.data) {
-			try {
-				const d = typeof job.data === "string" ? JSON.parse(job.data) : job.data;
-				logs.push(`Data: ${JSON.stringify(d, null, 2)}`);
-			} catch {
-				logs.push(`Data: ${String(job.data)}`);
-			}
-		}
-
-		if (job.output) {
-			try {
-				const output = typeof job.output === "string" ? JSON.parse(job.output) : job.output;
-				logs.push(
-					job.state === "failed"
-						? `Error: ${JSON.stringify(output, null, 2)}`
-						: `Output: ${JSON.stringify(output, null, 2)}`,
-				);
-			} catch {
-				logs.push(`Output: ${String(job.output)}`);
-			}
+			logs.push("");
+			logs.push(`Unit ${run.target_index + 1}.${run.run_index} (${run.id}): ${run.model} via ${run.provider}`);
+			logs.push(`Status: ${run.status}`);
+			logs.push(`Version: ${run.version ?? "default"}; web search: ${run.web_search_enabled ? "enabled" : "disabled"}`);
+			logs.push(`Provider attempts: ${run.attempt_count}; processing attempts: ${run.processing_attempts}`);
+			logs.push(`Available: ${iso(run.available_at)}`);
+			if (run.started_at) logs.push(`Started: ${iso(run.started_at)}`);
+			if (run.provider_submitted_at) logs.push(`Provider submitted: ${iso(run.provider_submitted_at)}`);
+			if (run.completed_at) logs.push(`Completed: ${iso(run.completed_at)}`);
+			if (run.worker_id) logs.push(`Worker: ${run.worker_id}`);
+			if (run.lease_expires_at) logs.push(`Lease expires: ${iso(run.lease_expires_at)}`);
+			if (run.external_task_id) logs.push(`External task: ${run.external_task_id}`);
+			if (run.prompt_run_id) logs.push(`Saved prompt run: ${run.prompt_run_id}`);
+			if (run.failure_kind) logs.push(`Failure kind: ${run.failure_kind}`);
+			if (run.error_message) logs.push(`Error: ${run.error_message}`);
 		}
 
 		return { jobId: data.jobId, logs, count: logs.length };
