@@ -44,17 +44,34 @@ interface PlanComparisonProps {
 	activePlan?: PlanKey | "custom" | null;
 	/** Called out as the recommended plan; ignored once one is active. */
 	highlightPlan?: PlanKey;
+	/**
+	 * Where the cards sit. Centred suits a page that is only about choosing —
+	 * the paywall — while a settings page is left-aligned throughout and centred
+	 * cards read as belonging to something else.
+	 */
+	align?: "center" | "start";
 	/** Subscribe, switch, or nothing at all for a read-only viewer. */
 	renderAction?: (plan: PlanDefinition) => ReactNode;
 }
 
-export function PlanComparison({ annual, activePlan, highlightPlan, renderAction }: PlanComparisonProps) {
+export function PlanComparison({
+	annual,
+	activePlan,
+	highlightPlan,
+	align = "center",
+	renderAction,
+}: PlanComparisonProps) {
 	return (
 		<div className="space-y-8">
 			{/* Free of the table's columns, since every section below names the
 			    plans itself — so the cards can centre on the page and stack on a
 			    narrow one instead of inheriting the table's minimum width. */}
-			<div className="mx-auto grid max-w-3xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
+			<div
+				className={cn(
+					"grid gap-3 sm:grid-cols-2 lg:grid-cols-4",
+					align === "center" ? "mx-auto max-w-3xl" : "max-w-4xl",
+				)}
+			>
 				{PLAN_KEYS.map((key) => (
 					<PlanHeaderCard
 						key={key}

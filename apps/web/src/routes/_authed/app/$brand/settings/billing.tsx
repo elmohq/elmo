@@ -152,19 +152,35 @@ function BillingSettingsPage() {
 						: "What your workspace is on, and what it costs."
 				}
 			>
-				<CurrentPlanCard
+				<SubscriptionSummary
 					state={state}
 					isAdmin={isAdmin}
 					busy={busy}
 					onOpenPortal={openPortal}
 					onChoosePlan={() => router.navigate({ to: "/choose-plan" })}
+					showPlanGrid={showPlanGrid}
 				/>
 				{showPlanGrid && (
 					<PlanComparison
 						annual={state.subscription?.billingInterval === "year"}
 						activePlan={entitlements.planKey}
+						align="start"
 						renderAction={(plan) =>
-							entitlements.planKey === plan.key ? undefined : (
+							entitlements.planKey === plan.key ? (
+								// The card already says this is the current plan, so the slot
+								// carries the only thing left to do with it rather than sitting
+								// empty and leaving "Manage billing" to a second card that
+								// repeated the name and price.
+								<Button
+									className="w-full"
+									size="sm"
+									variant="outline"
+									disabled={!isAdmin || busy !== null}
+									onClick={openPortal}
+								>
+									{busy === "portal" ? <IconLoader2 className="h-4 w-4 animate-spin" /> : "Manage"}
+								</Button>
+							) : (
 								<Button
 									className="w-full"
 									size="sm"
@@ -172,7 +188,7 @@ function BillingSettingsPage() {
 									// The column header carries the plan name; on its own the
 									// button would just be one of four reading "Switch".
 									aria-label={`Switch to ${plan.name}`}
-									disabled={busy !== null}
+									disabled={!isAdmin || busy !== null}
 									onClick={() => changePlan(plan.key)}
 								>
 									{busy === `plan-${plan.key}` ? <IconLoader2 className="h-4 w-4 animate-spin" /> : "Switch"}
@@ -214,22 +230,28 @@ function BillingSettingsPage() {
 }
 
 /**
- * What the workspace is on and what it costs, which the old header buried: the
- * plan name sat beside a row of switch buttons and the total appeared nowhere, so
- * a customer with an add-on had to add it up themselves.
+ * The state of the subscription in one line, plus what it bills.
+ *
+ * Deliberately thin: when the plan grid is showing, it already names the plan,
+ * its price and which one is current, so repeating all that in a card above it
+ * left two blocks saying the same thing. What is left is what the grid cannot
+ * say — whether the subscription is healthy, when it renews, and how an add-on
+ * adds up — and the grid's own current-plan card carries the way in to Stripe.
  */
-function CurrentPlanCard({
+function SubscriptionSummary({
 	state,
 	isAdmin,
 	busy,
 	onOpenPortal,
 	onChoosePlan,
+	showPlanGrid,
 }: {
 	state: BillingState;
 	isAdmin: boolean;
 	busy: string | null;
 	onOpenPortal: () => void;
 	onChoosePlan: () => void;
+	showPlanGrid: boolean;
 }) {
 	const { entitlements, subscription } = state;
 	const annual = subscription?.billingInterval === "year";
@@ -246,77 +268,65 @@ function CurrentPlanCard({
 			: null;
 
 	return (
-		<Card>
-			<CardHeader className="gap-0">
-				<div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
-					<div className="space-y-1">
-						<CardDescription>Current plan</CardDescription>
-						<CardTitle className="flex flex-wrap items-center gap-2 text-2xl">
-							{planDisplayName(entitlements.planKey)}
-							{subscription && (
-								<Badge variant={entitlements.standing === "active" ? "secondary" : "destructive"}>
-									{humanizeStatus(subscription.status)}
-								</Badge>
-							)}
-						</CardTitle>
-						{subscription ? (
-							<p className="text-sm text-muted-foreground">
-								{annual ? "Annual" : "Monthly"} billing · renews {formatDate(subscription.periodEnd)}
-							</p>
-						) : (
-							<p className="text-sm text-muted-foreground">
-								{entitlements.planKey === "custom"
-									? "Custom agreement billed outside self-serve."
-									: "No subscription on file."}
-							</p>
-						)}
-					</div>
+		<div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2">
+			<div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+				{/* The grid repeats the plan name on every card, so naming it again is
+				    only worth the room when the grid isn't there. */}
+				{!showPlanGrid && <span className="text-base font-semibold">{planDisplayName(entitlements.planKey)}</span>}
+				{subscription && (
+					<Badge variant={entitlements.standing === "active" ? "secondary" : "destructive"}>
+						{humanizeStatus(subscription.status)}
+					</Badge>
+				)}
+				<span className="text-muted-foreground">
+					{subscription
+						? `${annual ? "Annual" : "Monthly"} billing · renews ${formatDate(subscription.periodEnd)}`
+						: entitlements.planKey === "custom"
+							? "Custom agreement billed outside self-serve."
+							: "No subscription on file."}
+				</span>
+			</div>
 
-					{/* What it costs and what to do about it, set against the plan name so
-					    neither has to stretch across the whole card. */}
-					<div className="flex flex-col gap-3 sm:min-w-56 sm:items-end sm:text-right">
-						{cost && (
-							<div className="space-y-1.5 self-stretch">
-								<div>
-									<span className="text-3xl font-bold tabular-nums">${cost.totalUsd.toLocaleString()}</span>
-									<span className="text-muted-foreground">{annual ? "/year" : "/month"}</span>
-								</div>
-								{cost.lines.length > 1 && (
-									<ul className="space-y-0.5 text-sm text-muted-foreground">
-										{cost.lines.map((line) => (
-											<li key={line.label} className="flex justify-between gap-6">
-												<span className="truncate">{line.label}</span>
-												<span className="tabular-nums">${line.amountUsd.toLocaleString()}</span>
-											</li>
-										))}
-									</ul>
-								)}
-							</div>
+			<div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+				{cost && (
+					<>
+						{/* The plan price is on its card; what is worth stating here is the
+						    total, which an add-on makes different from it. */}
+						{cost.lines.length > 1 && (
+							<span className="text-muted-foreground">
+								{cost.lines.map((line) => `${line.label} $${line.amountUsd.toLocaleString()}`).join(" · ")}
+							</span>
 						)}
+						<span>
+							<span className="text-xl font-bold tabular-nums">${cost.totalUsd.toLocaleString()}</span>
+							<span className="text-muted-foreground">{annual ? "/year" : "/month"}</span>
+						</span>
+					</>
+				)}
 
-						{isAdmin &&
-							(subscription ? (
-								<Button variant="outline" onClick={onOpenPortal} disabled={busy !== null}>
-									{busy === "portal" ? (
-										<IconLoader2 className="h-4 w-4 animate-spin" />
-									) : (
-										<IconExternalLink className="h-4 w-4" />
-									)}
-									Manage billing
-								</Button>
+				{/* Without the grid there is no current-plan card to hang these off. */}
+				{isAdmin &&
+					!showPlanGrid &&
+					(subscription ? (
+						<Button variant="outline" size="sm" onClick={onOpenPortal} disabled={busy !== null}>
+							{busy === "portal" ? (
+								<IconLoader2 className="h-4 w-4 animate-spin" />
 							) : (
-								entitlements.planKey !== "custom" && <Button onClick={onChoosePlan}>Choose a plan</Button>
-							))}
-					</div>
-				</div>
-			</CardHeader>
+								<IconExternalLink className="h-4 w-4" />
+							)}
+							Manage billing
+						</Button>
+					) : (
+						entitlements.planKey !== "custom" && (
+							<Button size="sm" onClick={onChoosePlan}>
+								Choose a plan
+							</Button>
+						)
+					))}
 
-			{!isAdmin && (
-				<CardContent className="border-t pt-6">
-					<p className="text-sm text-muted-foreground">Only workspace admins can change the plan or billing details.</p>
-				</CardContent>
-			)}
-		</Card>
+				{!isAdmin && <span className="text-muted-foreground">Only workspace admins can change the plan.</span>}
+			</div>
+		</div>
 	);
 }
 

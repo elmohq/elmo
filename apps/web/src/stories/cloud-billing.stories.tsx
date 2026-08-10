@@ -119,7 +119,8 @@ export const ProPlan: Story = {
 		// The total is stated rather than left for the customer to add up:
 		// Pro at $299 plus 5 extra premium pairings at $5.
 		await expect(await canvas.findByText("$324")).toBeVisible();
-		await expect(await canvas.findByText("5 extra premium pairings")).toBeVisible();
+		// The breakdown is one line beside the total, so match within it.
+		await expect(await canvas.findByText(/5 extra premium pairings/)).toBeVisible();
 		// Pro tracks 150 prompts and includes 20 premium slots, so 5 purchased makes 25.
 		await expect(await canvas.findByText("84 / 150")).toBeVisible();
 		await expect(await canvas.findByText("12 / 25")).toBeVisible();
@@ -236,7 +237,8 @@ export const OpeningBillingPortal: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await userEvent.click(await canvas.findByRole("button", { name: /manage billing/i }));
+		// The current plan's card carries the way in to Stripe.
+		await userEvent.click(await canvas.findByRole("button", { name: /^manage$/i }));
 		// Every other action disables while one is in flight.
 		await expect(await canvas.findByRole("button", { name: /switch to starter/i })).toBeDisabled();
 	},
