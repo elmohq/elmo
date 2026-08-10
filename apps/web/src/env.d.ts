@@ -45,8 +45,6 @@ declare global {
 			readonly DATABASE_URL: string;
 			readonly APP_URL?: string;
 			readonly SCRAPE_TARGETS?: string;
-			readonly PROVIDER_MAX_CONCURRENCY?: string;
-			readonly PROMPT_JOB_CONCURRENCY?: string;
 			readonly OPENAI_API_KEY: string;
 			readonly ANTHROPIC_API_KEY: string;
 			readonly MISTRAL_API_KEY?: string;

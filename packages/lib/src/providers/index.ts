@@ -1,5 +1,4 @@
 import type { Provider } from "./types";
-import { withProviderSlot } from "./limiter";
 import { olostep } from "./registry/olostep";
 import { brightdata } from "./registry/brightdata";
 import { oxylabs } from "./registry/oxylabs";
@@ -25,9 +24,6 @@ export type { ModelMeta } from "./models";
 export { parseScrapeTargets, validateScrapeTargets } from "./config";
 export { STATUS_TARGETS } from "@workspace/config/scrape-targets";
 export { selectTargetsForBrand } from "./runner";
-// ProviderFatalError stays internal to this package: it's how a provider
-// implementation tells the limiter "stop calling me", not something callers raise.
-export { ProviderUnavailableError, getProviderMaxConcurrency } from "./limiter";
 
 const providerMap: Record<string, Provider> = {
 	olostep,
@@ -42,21 +38,10 @@ const providerMap: Record<string, Provider> = {
 	stub,
 };
 
-// Gating happens here rather than at the call sites so nothing can reach a
-// provider's paid `run` without passing the concurrency gate and breaker —
-// forgetting to wrap one caller is how the cap silently stops holding.
-const gatedProviders = new Map<string, Provider>();
-
 export function getProvider(id: string): Provider {
 	const p = providerMap[id];
 	if (!p) throw new Error(`Unknown provider: "${id}"`);
-
-	let gated = gatedProviders.get(id);
-	if (!gated) {
-		gated = { ...p, run: (model, prompt, options) => withProviderSlot(id, () => p.run(model, prompt, options)) };
-		gatedProviders.set(id, gated);
-	}
-	return gated;
+	return p;
 }
 
 export function getAvailableProviders(): Provider[] {

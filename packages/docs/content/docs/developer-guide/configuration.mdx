@@ -28,8 +28,6 @@ When you run `elmo init`, the CLI generates a `.env` file in your config directo
 | `ELMO_ENCRYPTION_KEY_OLD` | Previous encryption keys, comma-separated, kept readable during a rotation | — |
 | `DISABLE_TELEMETRY` | Set to `1` to disable all telemetry. See [Telemetry](/docs/developer-guide/telemetry). | — |
 | `DEFAULT_DELAY_HOURS` | How often each enabled prompt is re-run against the AI models, in hours. | `24` |
-| `PROVIDER_MAX_CONCURRENCY` | Requests Elmo will have in flight against a single scraping provider at once. See [Spend controls](#spend-controls). | `6` |
-| `PROMPT_JOB_CONCURRENCY` | Prompts the worker processes at once. Each one fans out to several requests per model. | `2` |
 
 <Callout type="warn">
 	Back up `ELMO_ENCRYPTION_KEY` alongside your database. Credentials stored in the database are encrypted with it and nothing else — if you lose the key, or restore a database backup onto a deployment that generated a different one, those credentials cannot be recovered and have to be entered again. Elmo logs an error and falls back to the provider keys in your `.env` when a stored credential will not decrypt.
@@ -47,18 +45,6 @@ New values are encrypted under the new key while anything saved under a retired 
 <Callout type="warn">
 	`DEFAULT_DELAY_HOURS` only takes effect for prompts scheduled **after** you change it. Prompts that are already scheduled keep the cadence they were created with, even after a restart. To apply a new cadence to an existing prompt, disable it and then re-enable it under **Settings → Prompts** — re-enabling reschedules it at the current `DEFAULT_DELAY_HOURS`.
 </Callout>
-
-### Spend controls
-
-Every tracked run is a paid request, so Elmo bounds how much it can spend on your behalf. Three limits work together, and the defaults suit the entry-level plans most providers sell.
-
-`PROVIDER_MAX_CONCURRENCY` caps the requests in flight against any one provider. Requests over the cap wait their turn inside Elmo, which costs nothing. This matters most for providers with an asynchronous task API: they accept everything you send and queue the surplus rather than rejecting it, so without a cap you can submit far more work than your plan can run — and pay for all of it, whether or not the answers arrive in time to be stored.
-
-`PROMPT_JOB_CONCURRENCY` caps how many prompts are processed at once. Each prompt fans out to five runs per configured model, so this multiplies straight into the request rate.
-
-Neither needs raising to keep up with the default 24-hour cadence, even at the 100-prompt-per-brand ceiling. Raise them only if you're tracking many brands *and* your provider plan has the concurrency to match.
-
-Elmo also pauses a provider that keeps failing, rather than re-sending the same work: five consecutive failures pause it for five minutes, and a rejected key or an exhausted credit balance pauses it for thirty. Prompts whose runs all failed are retried on a backoff — 15 minutes, then 30, then an hour, up to the cadence — instead of on the ordinary schedule. Both are visible in the worker logs.
 
 ### AI Provider Keys
 

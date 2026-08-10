@@ -11,14 +11,12 @@ import {
 	type Competitor,
 } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { RUNS_PER_PROMPT, getDefaultDelayHours, getPromptJobConcurrency } from "@workspace/lib/constants";
+import { RUNS_PER_PROMPT, getDefaultDelayHours } from "@workspace/lib/constants";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	getProvider,
-	getProviderMaxConcurrency,
 	parseScrapeTargets,
 	selectTargetsForBrand,
-	ProviderUnavailableError,
 	type ModelConfig,
 	type Provider,
 } from "@workspace/lib/providers";
@@ -34,44 +32,26 @@ export interface ProcessPromptData {
 }
 
 /**
- * Longest a single healthy provider call is expected to take. Providers cut
- * their own runs off around here (Cloro's generation budget, Oxylabs' job
- * timeout, Olostep's `waitTillDone`), so a run slower than this is a run that
- * is going to fail rather than one worth sizing the expiry around.
- */
-const MAX_HEALTHY_RUN_SECONDS = 10 * 60;
-
-/** Never expire a prompt job sooner than this, however small the fan-out. */
-const MIN_PROMPT_JOB_EXPIRY_SECONDS = 30 * 60;
-
-/**
  * Queue options for a process-prompt job, wherever it's scheduled from.
  *
- * `retryLimit: 0` is the important one: by the time this job can fail it has
- * already submitted paid requests to the providers, and most of them bill for
- * work the caller gave up on. A queue-level retry re-submits the whole fan-out —
- * including the runs that succeeded — so a provider having a bad day was
- * costing four times the intended spend before anything else amplified it.
- * Recovery instead goes through the handler's own backoff reschedule, or
- * through schedule-maintenance for a job that died before reaching it.
+ * The expiry has to outlast the whole fan-out. A cycle submits every one of its
+ * runs at once and each is bounded by the provider's own task ceiling, so the
+ * job runs for about as long as its slowest run — which, behind a provider
+ * queue deep enough to matter, is that ceiling. The previous 15 minutes was
+ * shorter than a single backed-up wave takes to drain, so healthy cycles were
+ * being expired and retried: pg-boss can't cancel a promise, so the original
+ * runs still finished and recorded, and the retry paid for all of them again.
  *
- * The expiry is derived rather than fixed because a job's wall-clock time is
- * set by how long its runs wait for a slot: every prompt job in flight competes
- * for the same per-provider gate, so the fan-out drains in
- * `jobs x runs / gate` waves. A fixed expiry silently becomes too short as soon
- * as either concurrency setting is raised. Expiring early doesn't abandon the
- * requests — pg-boss can't cancel a promise, so the runs finish and record —
- * but it marks the cycle failed and lets maintenance queue a second one over
- * the top of it, which is paid work run twice.
+ * `retryLimit: 0` for the same reason from the other side. By the time this job
+ * can fail it has already submitted paid requests, and a queue-level retry
+ * re-submits the whole fan-out including the runs that succeeded. Recovery goes
+ * through the handler's own backoff reschedule instead, or through
+ * schedule-maintenance for a job that died before reaching it.
  */
-export function promptJobOptions(targetCount: number): { retryLimit: number; expireInSeconds: number } {
-	const runsInFlight = getPromptJobConcurrency() * RUNS_PER_PROMPT * Math.max(targetCount, 1);
-	const waves = Math.ceil(runsInFlight / getProviderMaxConcurrency());
-	return {
-		retryLimit: 0,
-		expireInSeconds: Math.max(MIN_PROMPT_JOB_EXPIRY_SECONDS, waves * MAX_HEALTHY_RUN_SECONDS),
-	};
-}
+export const PROMPT_JOB_OPTIONS = {
+	retryLimit: 0,
+	expireInSeconds: 90 * 60,
+} as const;
 
 interface PromptContext {
 	prompt: typeof prompts.$inferSelect;
@@ -86,12 +66,7 @@ interface PromptContext {
  * the shorter backoff from failureBackoffHours, and `consecutiveFailures` rides
  * along on the job so the next failure can lengthen it again.
  */
-async function scheduleNextRun(
-	promptId: string,
-	cadenceHours: number,
-	consecutiveFailures: number,
-	targetCount: number,
-): Promise<void> {
+async function scheduleNextRun(promptId: string, cadenceHours: number, consecutiveFailures: number): Promise<void> {
 	const delayHours = failureBackoffHours(consecutiveFailures, cadenceHours);
 	const startAfterSeconds = Math.round(delayHours * 60 * 60);
 
@@ -103,7 +78,7 @@ async function scheduleNextRun(
 				singletonKey: `prompt-${promptId}`,
 				singletonSeconds: startAfterSeconds, // Prevent duplicates until the next attempt is due
 				startAfter: startAfterSeconds,
-				...promptJobOptions(targetCount),
+				...PROMPT_JOB_OPTIONS,
 			},
 		);
 		const reason = consecutiveFailures > 0 ? ` (backing off after ${consecutiveFailures} failed cycle(s))` : "";
@@ -315,39 +290,16 @@ async function runModelIteration({
 		await saveCitations(promptRunId, promptId, brand.id, config.model, extractedCitations, createdAt);
 	} catch (error) {
 		// A single run's failure doesn't fail the job, so report it here to keep
-		// per-provider failure rates visible — except when the run never left the
-		// building. A paused provider is this system applying its own back
-		// pressure, and the failure that caused the pause was already reported;
-		// re-reporting every run it turns away just buries that one.
-		if (!(error instanceof ProviderUnavailableError)) {
-			Sentry.withScope((scope) => {
-				scope.setTag("queue", "process-prompt");
-				scope.setTag("provider", config.provider);
-				scope.setTag("model", config.model);
-				scope.setContext("run", { promptId, brandId: brand.id, runIndex });
-				Sentry.captureException(error);
-			});
-		}
+		// per-provider failure rates visible.
+		Sentry.withScope((scope) => {
+			scope.setTag("queue", "process-prompt");
+			scope.setTag("provider", config.provider);
+			scope.setTag("model", config.model);
+			scope.setContext("run", { promptId, brandId: brand.id, runIndex });
+			Sentry.captureException(error);
+		});
 		throw error;
 	}
-}
-
-/**
- * Collapse a fan-out's failures into one line per distinct message.
- *
- * When a provider is down every run fails the same way, and listing all of them
- * verbatim buries the rest of the log in kilobyte-long repeats of one sentence.
- */
-function summarizeFailures(failures: PromiseRejectedResult[]): string {
-	const counts = new Map<string, number>();
-	for (const { reason } of failures) {
-		const message = reason instanceof Error ? reason.message : String(reason);
-		counts.set(message, (counts.get(message) ?? 0) + 1);
-	}
-	return [...counts]
-		.sort(([, a], [, b]) => b - a)
-		.map(([message, count]) => (count > 1 ? `${message} (×${count})` : message))
-		.join("; ");
 }
 
 /**
@@ -380,7 +332,7 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 		if (!prompt.enabled || !brand.enabled) {
 			console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
 			// Still reschedule - the prompt might be enabled later
-			await scheduleNextRun(promptId, cadenceHours, 0, scrapeConfigs.length);
+			await scheduleNextRun(promptId, cadenceHours, 0);
 			continue;
 		}
 
@@ -415,9 +367,10 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 		const failures = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
 
 		if (failures.length > 0) {
-			console.error(
-				`Prompt ${promptId} had ${failures.length}/${runPromises.length} failed runs: ${summarizeFailures(failures)}`,
-			);
+			const errorMessages = failures
+				.map((f, i) => `Run ${i + 1}: ${f.reason instanceof Error ? f.reason.message : String(f.reason)}`)
+				.join("; ");
+			console.error(`Prompt ${promptId} had ${failures.length}/${runPromises.length} failed runs: ${errorMessages}`);
 		}
 
 		const successCount = runPromises.length - failures.length;
@@ -436,6 +389,6 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 		// failing, so the next attempt backs off instead of running on cadence.
 		// Anything that produced a run clears the streak.
 		const failedCycles = runPromises.length > 0 && successCount === 0 ? consecutiveFailures + 1 : 0;
-		await scheduleNextRun(promptId, cadenceHours, failedCycles, selectedConfigs.length);
+		await scheduleNextRun(promptId, cadenceHours, failedCycles);
 	}
 }

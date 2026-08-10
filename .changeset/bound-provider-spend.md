@@ -1,7 +1,6 @@
 ---
 "@workspace/worker": patch
 "@workspace/lib": patch
-"@workspace/config": patch
 ---
 
-Cap how much paid provider work Elmo can have in flight, and back off instead of retrying when a provider starts failing, so an outage can't run up a bill far larger than the configured cadence implies.
+Waiting out a busy scraping provider's queue no longer abandons requests it has already charged for, and a prompt whose runs all fail now backs off instead of being retried immediately.

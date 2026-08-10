@@ -161,18 +161,6 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
 	},
 	{
-		name: "PROVIDER_MAX_CONCURRENCY",
-		scope: "server",
-		requiredBy: "optional",
-		description: "In-flight requests allowed per scraping provider before the rest wait their turn. Default 6.",
-	},
-	{
-		name: "PROMPT_JOB_CONCURRENCY",
-		scope: "server",
-		requiredBy: "optional",
-		description: "Prompt jobs the worker processes at once. Default 2.",
-	},
-	{
 		name: "OLOSTEP_API_KEY",
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",

@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ProviderFatalError } from "../limiter";
 import { cloro } from "./cloro";
 
 // A completed ChatGPT task `response`: the answer text plus the two source
@@ -266,25 +265,6 @@ describe("cloro provider", () => {
 		);
 	});
 
-	it("marks a rejected key and an exhausted balance fatal so the provider gets paused", async () => {
-		for (const [status, body] of [
-			[401, { error: "Invalid or missing API key" }],
-			[402, { success: false, error: { code: "PAYMENT_REQUIRED" } }],
-			[403, { success: false, error: { code: "INSUFFICIENT_CREDITS" } }],
-		] as const) {
-			vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse(body, status)));
-			await expect(cloro.run("chatgpt", "What is a well-reviewed speaker?")).rejects.toThrow(ProviderFatalError);
-		}
-	});
-
-	it("leaves a transient submission failure retryable", async () => {
-		vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse({ message: "temporary error" }, 503)));
-
-		const error = await cloro.run("chatgpt", "What is a well-reviewed speaker?").catch((e: unknown) => e);
-		expect(error).toBeInstanceOf(Error);
-		expect(error).not.toBeInstanceOf(ProviderFatalError);
-	});
-
 	// A submitted task is billed once it completes, so waiting out a queue is
 	// cheaper than abandoning it — and abandoning it would only add a
 	// replacement submission to the queue that caused the wait.
@@ -334,7 +314,7 @@ describe("cloro provider", () => {
 		expect(error.message).toMatch(/in status PROCESSING/);
 		const seconds = Number(error.message.match(/timed out after (\d+)s/)?.[1]);
 		expect(seconds).toBeGreaterThanOrEqual(600);
-		expect(seconds).toBeLessThan(20 * 60);
+		expect(seconds).toBeLessThan(60 * 60);
 	});
 
 	it("bounds a task that never leaves the queue at the ceiling", async () => {
@@ -358,7 +338,7 @@ describe("cloro provider", () => {
 		const error = await settled;
 
 		expect(error.message).toMatch(/in status QUEUED/);
-		expect(Number(error.message.match(/timed out after (\d+)s/)?.[1])).toBeGreaterThanOrEqual(20 * 60);
+		expect(Number(error.message.match(/timed out after (\d+)s/)?.[1])).toBeGreaterThanOrEqual(60 * 60);
 	});
 
 	it("returns an answer that lands on the poll the deadline falls on", async () => {
