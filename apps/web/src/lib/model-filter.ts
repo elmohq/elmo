@@ -33,6 +33,25 @@ export interface TrackedTarget {
 	premium: boolean;
 	/** Which tier it is sold in, so the dropdown can group the way settings/llms does. */
 	tier: PlanPlatformGroupId;
+	/** Hours between samples of this target. */
+	intervalHours: number;
+	/** Provider calls per sample. */
+	replication: number;
+}
+
+/** How often a target runs, as a rate: "4×/day", or "every 3 days" once past one. */
+export function describeCadence(intervalHours: number): string {
+	if (intervalHours <= 0) return "—";
+	if (intervalHours >= 48) return `every ${Math.round(intervalHours / 24)} days`;
+	if (intervalHours > 24) return "every other day";
+	const perDay = 24 / intervalHours;
+	return `${Number.isInteger(perDay) ? perDay : perDay.toFixed(1)}×/day`;
+}
+
+/** One line per target: what it is, how often it runs, and how many calls each time. */
+export function describeTargetSchedule(target: TrackedTarget): string {
+	const runs = describeCadence(target.intervalHours);
+	return `${labelForModelFilter(target.value)} — ${runs}${target.replication > 1 ? ` ×${target.replication}` : ""}`;
 }
 
 /**

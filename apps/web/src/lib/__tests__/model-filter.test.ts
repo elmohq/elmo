@@ -13,6 +13,8 @@ const target = (model: string, premium = false): TrackedTarget => ({
 	model,
 	premium,
 	tier: premium ? "premium" : "scraped",
+	intervalHours: premium ? 24 : 6,
+	replication: 1,
 });
 
 describe("getAvailableModels", () => {

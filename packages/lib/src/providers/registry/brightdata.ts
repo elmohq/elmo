@@ -124,7 +124,17 @@ function extractSources(record: Record<string, any>): Citation[] {
 	return citations;
 }
 
-function extractWebQueries(record: Record<string, any>): string[] {
+/** Exported for tests: this is the rule, and the payload it guards against is real. */
+export function extractWebQueries(record: Record<string, any>): string[] {
+	// BrightData reports whether the answer actually triggered a search, and the
+	// query fields are not cleared when it didn't: a prompt of "test 1" that
+	// ChatGPT answered from the model alone came back with
+	// `web_search_triggered: false`, no citations, and
+	// `web_search_query: ["OpenAI GPT-5.6 Luna"]` — a query from somewhere else
+	// entirely. Believe the flag over the residue, or the fan-out page reports
+	// searches that never ran.
+	if (record.web_search_triggered === false) return [];
+
 	// web_search_query is a direct array of strings
 	if (Array.isArray(record.web_search_query)) {
 		return record.web_search_query.filter((q: any) => typeof q === "string" && q.trim());

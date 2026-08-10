@@ -3,14 +3,14 @@
  * Replaces apps/web/src/app/api/brands/* API routes.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { MAX_COMPETITORS } from "@workspace/lib/constants";
+import { getDefaultDelayHours, MAX_COMPETITORS } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { findUniqueBrandId, slugify } from "@workspace/lib/db/provisioning";
 import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { assertCanCreateBrand, assertEnabledModelsAllowed, getOrgEntitlements } from "@workspace/lib/entitlements";
 import type { ModelConfig } from "@workspace/lib/providers";
 import { isGroundedApiTarget, parseScrapeTargets, resolveProviderAccess, selectTargetsForBrand } from "@workspace/lib/providers";
-import { defaultPlatformPicks, resolveBrandPicks } from "@workspace/lib/run-policy";
+import { defaultPlatformPicks, resolvePromptRunPlan } from "@workspace/lib/run-policy";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { listUserOrganizations, requireAuthSession, requireBrandAccess, requireOrgAccess } from "@/lib/auth/helpers";
@@ -41,43 +41,33 @@ async function computeTrackedTargets(brand: Brand, brandPrompts: { premiumModels
 		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 		const entitlements = await getOrgEntitlements(brand.organizationId);
 
-		// A metered brand runs what its plan resolves, which for a brand that
-		// never chose is the plan defaults — not every configured target. Reading
-		// the raw column here is what listed ten platforms against a prompt the
-		// worker only ran four of.
-		const standard = entitlements.unlimited
-			? selectTargetsForBrand(configs, brand.enabledModels).filter((config) => !isGroundedApiTarget(config))
-			: resolveBrandPicks(entitlements, brand, configs).flatMap((model) =>
-					configs.filter((t) => t.model === model && !isGroundedApiTarget(t)).slice(0, 1),
-				);
+		// Ask the run policy rather than re-deriving it: it already decides which
+		// targets a brand runs, how often, and how many times per firing, and a
+		// second copy of that arithmetic here is how the page and the worker
+		// started disagreeing in the first place. Grounded targets are assigned
+		// per prompt, so the brand's set is the union across its prompts.
+		const plan = resolvePromptRunPlan({
+			scrapeTargets: configs,
+			brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
+			prompt: { premiumModels: [...new Set(brandPrompts.flatMap((prompt) => prompt.premiumModels))] },
+			entitlements,
+			defaultDelayHours: getDefaultDelayHours(),
+		});
 
-		// Grounded targets are assigned per prompt, so the brand's set is the union
-		// across its prompts — plus, unmetered, whatever SCRAPE_TARGETS configures,
-		// since there is no pool deciding it.
-		const groundedModels = entitlements.unlimited
-			? configs.filter((t) => isGroundedApiTarget(t)).map((t) => t.model)
-			: brandPrompts.flatMap((prompt) => prompt.premiumModels);
-		const grounded = [...new Set(groundedModels)].filter((model) =>
-			configs.some((t) => t.model === model && isGroundedApiTarget(t)),
-		);
-
-		return [
-			...standard.map((config) => ({
-				value: targetFilterValue(config.model, false),
-				model: config.model,
-				premium: false,
-				// Scraped surface or bare API call — the same split the LLM settings
-				// page groups by, resolved from the target rather than guessed from
-				// the model id (a model can be reached either way).
-				tier: resolveProviderAccess(config) === "scraped" ? ("scraped" as const) : ("api" as const),
-			})),
-			...grounded.map((model) => ({
-				value: targetFilterValue(model, true),
-				model,
-				premium: true,
-				tier: "premium" as const,
-			})),
-		];
+		return plan.targets.map((target) => {
+			const premium = isGroundedApiTarget(target.config);
+			return {
+				value: targetFilterValue(target.config.model, premium),
+				model: target.config.model,
+				premium,
+				// Scraped surface, bare API call, or grounded one — the same split the
+				// LLM settings page groups by, resolved from the target rather than
+				// guessed from the model id (a model can be reached either way).
+				tier: premium ? ("premium" as const) : resolveProviderAccess(target.config) === "scraped" ? ("scraped" as const) : ("api" as const),
+				intervalHours: target.intervalHours,
+				replication: target.replication,
+			};
+		});
 	} catch {
 		// A misconfigured SCRAPE_TARGETS would already be surfacing via
 		// `validateScrapeTargets` at boot; here we'd rather degrade to an empty
