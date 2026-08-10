@@ -30,7 +30,7 @@ let lastOverdueAlertMs = 0;
  * Maintenance job that ensures all enabled prompts have scheduled jobs.
  * This is a self-healing mechanism that catches any prompts that fell through
  * the cracks (e.g., due to worker crashes, failed jobs, etc.) — and, since the
- * run policy landed, also the mechanism that revives chains parked while an
+ * run policy landed, also what starts a prompt again after it stopped while an
  * org was unentitled (canceled → resubscribed) or a brand had no platform
  * picks. The decision logic itself is pure (computeMaintenanceDecisions);
  * this job only gathers state and executes the decisions.

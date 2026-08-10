@@ -57,8 +57,8 @@ export function computeMaintenanceDecisions(promptStates: MaintenancePromptState
 	const decisions: MaintenanceDecisions = { toSchedule: [], toExpedite: [], alertOverdueCount: 0 };
 
 	for (const state of promptStates) {
-		// No targets (unentitled org, no picks, outside the pool): the chain is
-		// intentionally parked. Not overdue, nothing to revive, no alert noise.
+		// No targets (unentitled org, no picks, outside the pool): the prompt is
+		// meant to be stopped. Not overdue, nothing to start, no alert noise.
 		if (state.plan.targets.length === 0 || state.plan.rescheduleHours === null) continue;
 
 		if (isPromptOverdue(state, nowMs, OVERDUE_ALERT_GRACE_MS)) {
@@ -81,7 +81,7 @@ export function computeMaintenanceDecisions(promptStates: MaintenancePromptState
 
 		if (state.pendingJob) {
 			// A future job exists — drag it forward only if the prompt has genuinely
-			// stalled. `runFrequencyMs` is the chain's own tick (its fastest target),
+			// stalled. `runFrequencyMs` is how often the prompt runs (its fastest target),
 			// which is the interval the pending job was scheduled against.
 			const runTimes = [...state.lastRunAtByKey.values()].map((d) => d.getTime());
 			const mostRecentRunMs = runTimes.length > 0 ? Math.max(...runTimes) : null;

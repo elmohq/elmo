@@ -52,7 +52,7 @@ describe("resolveBrandPromptRunPlans", () => {
 		expect([...plans.keys()]).toEqual(["p1", "p2", "p3"]);
 	});
 
-	it("parks prompts pushed out of the tracked-prompt pool by a downgrade, oldest first", () => {
+	it("stops prompts pushed out of the tracked-prompt pool by a downgrade, oldest first", () => {
 		const prompts = orgPrompts(3);
 		const plans = resolveBrandPromptRunPlans(
 			input({
@@ -64,7 +64,7 @@ describe("resolveBrandPromptRunPlans", () => {
 
 		expect(plans.get("p1")?.targets).toHaveLength(1);
 		expect(plans.get("p2")?.targets).toHaveLength(1);
-		// Newest loses: no targets and no reschedule, so the chain parks.
+		// Newest loses: no targets and no next run queued, so the prompt stops.
 		expect(plans.get("p3")?.targets).toEqual([]);
 		expect(plans.get("p3")?.rescheduleHours).toBeNull();
 	});

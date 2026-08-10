@@ -33,10 +33,11 @@ export interface TargetPlan {
 export interface PromptRunPlan {
 	targets: TargetPlan[];
 	/**
-	 * Hours until the chain's next firing (min target interval). Null = stop
-	 * rescheduling — nothing to run (unentitled org, no platform picks, or the
-	 * prompt is outside its pool). schedule-maintenance revives the chain
-	 * within one tick of the plan producing targets again.
+	 * Hours until the prompt next runs (min target interval). Null means queue
+	 * nothing: there is nothing to run, because the org is unentitled, the brand
+	 * picked no platforms, or the prompt is outside its plan's pool.
+	 * schedule-maintenance starts the prompt again within one pass of the plan
+	 * producing targets.
 	 */
 	rescheduleHours: number | null;
 }

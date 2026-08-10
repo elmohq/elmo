@@ -176,7 +176,7 @@ describe("computeMaintenanceDecisions", () => {
 		expect(decisions.toSchedule).toHaveLength(1);
 	});
 
-	it("parked chains (no targets) are ignored entirely — no revival, no alerts", () => {
+	it("a stopped prompt (no targets) is ignored entirely — not started, not alerted", () => {
 		const decisions = computeMaintenanceDecisions(
 			[
 				state({

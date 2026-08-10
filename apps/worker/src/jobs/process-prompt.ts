@@ -160,6 +160,40 @@ async function resolvePlanForPrompt(
 	return { plan, entitlements };
 }
 
+/**
+ * Delete the prompt's queued job when it has nothing left to run.
+ *
+ * A prompt keeps itself going by queueing its own next run at the end of every
+ * run. When the plan produces no targets — the subscription lapsed, or the
+ * brand has no platforms selected — this run queues nothing, and the prompt
+ * stops until schedule-maintenance starts it again.
+ *
+ * The job queued by the previous run is still in the queue though, waiting for
+ * a start time hours away. schedule-maintenance reads a recently queued job as
+ * a sign the prompt is running normally, so it leaves that job alone. When the
+ * subscription comes back, the prompt therefore waits out those hours before
+ * its first real run instead of starting on the next pass.
+ *
+ * Deleting the job removes that misleading sign, and frees the pg-boss
+ * singleton slot the replacement job needs.
+ *
+ * Only rows in `created` state — `active` is the run happening right now.
+ */
+async function clearQueuedJob(promptId: string): Promise<void> {
+	try {
+		await db.execute(sql`
+			DELETE FROM pgboss.job
+			WHERE name = 'process-prompt'
+			  AND state = 'created'
+			  AND data->>'promptId' = ${promptId}
+		`);
+	} catch (error) {
+		// Never fail the run over this. schedule-maintenance still starts the
+		// prompt again, just no sooner than the queued job would have.
+		console.error(`Failed to clear queued job for prompt ${promptId}:`, error);
+	}
+}
+
 /** Last successful run per target inside the dueness window. */
 async function getLastRunsByTargetKey(promptId: string, maxIntervalHours: number): Promise<Map<string, Date>> {
 	const windowStart = new Date(Date.now() - lastRunQueryWindowMs(maxIntervalHours));
@@ -409,10 +443,9 @@ async function runModelIteration({
 }
 
 /**
- * One prompt's firing: resolve what should run now, run it, and schedule the
- * next link in the chain. Returning without rescheduling parks the chain —
- * schedule-maintenance revives it once the run plan produces targets again.
- * Throwing fails the job so pg-boss retries.
+ * One run of a prompt: work out what is due now, run it, and queue the next
+ * run. Returning without queueing one stops the prompt until
+ * schedule-maintenance starts it again, once the plan produces targets.
  */
 async function processPrompt(
 	promptId: string,
@@ -423,7 +456,7 @@ async function processPrompt(
 
 	const context = await getPromptContext(promptId);
 	if (!context) {
-		// The prompt was deleted: complete the job and let the chain end.
+		// The prompt was deleted: complete the job and queue nothing further.
 		console.log(`Prompt ${promptId} not found, skipping (no reschedule)`);
 		return;
 	}
@@ -440,10 +473,11 @@ async function processPrompt(
 	const { plan, entitlements } = await resolvePlanForPrompt(context, scrapeConfigs);
 	if (plan.targets.length === 0 || plan.rescheduleHours === null) {
 		// Nothing to run and nothing to wait for: unentitled org, no platform
-		// picks, or outside the plan pool. The chain parks here — no
-		// reschedule — and schedule-maintenance revives it within one tick of
-		// the plan producing targets again (resubscribe, upgrade, new picks).
-		console.log(`Prompt ${promptId} has no runnable targets (org ${brand.organizationId}); parking chain`);
+		// picks, or outside the plan pool. The prompt stops here — it queues no
+		// next run — and schedule-maintenance starts it again within one pass of
+		// the plan producing targets (resubscribe, upgrade, new picks).
+		console.log(`Prompt ${promptId} has no runnable targets (org ${brand.organizationId}); stopping until entitled`);
+		await clearQueuedJob(promptId);
 		return;
 	}
 
@@ -453,7 +487,7 @@ async function processPrompt(
 
 	if (dueTargets.length === 0) {
 		// Fired early (expedite, duplicate send): everything is fresh. Keep the
-		// chain alive without spending anything.
+		// prompt going without spending anything.
 		console.log(`Prompt ${promptId}: no targets due yet, rescheduling in ${plan.rescheduleHours}h`);
 		await scheduleNextRun(promptId, plan.rescheduleHours, 0);
 		return;
@@ -519,7 +553,7 @@ async function processPrompt(
 
 	// A cycle where nothing came back means the targets themselves are failing,
 	// so the next attempt backs off instead of running on cadence. Anything that
-	// produced a run clears the streak. The cap is the chain's own tick
+	// produced a run clears the streak. The cap is how often the prompt runs
 	// (rescheduleHours, its fastest target), so a prompt that stays broken costs
 	// what a healthy one costs rather than more.
 	const failedCycles = runPromises.length > 0 && successCount === 0 ? consecutiveFailures + 1 : 0;

@@ -86,7 +86,7 @@ describe("resolvePromptRunPlan: non-cloud legacy equivalence", () => {
 		expect(plan.targets.map((t) => t.config.model)).toEqual(["chatgpt"]);
 	});
 
-	it("empty enabledModels runs nothing and parks the chain", () => {
+	it("empty enabledModels runs nothing and queues no next run", () => {
 		const plan = resolvePromptRunPlan(localInput({ brand: { enabledModels: [], delayOverrideHours: null } }));
 		expect(plan.targets).toEqual([]);
 		expect(plan.rescheduleHours).toBeNull();
@@ -354,7 +354,7 @@ describe("resolvePromptRunPlan: cloud", () => {
 		expect(plan.targets.map((t) => t.config.model)).toEqual(["chatgpt"]);
 	});
 
-	it("an unentitled org runs nothing and parks the chain", () => {
+	it("an unentitled org runs nothing and queues no next run", () => {
 		const plan = resolvePromptRunPlan(cloudInput({ entitlements: NO_PLAN_ENTITLEMENTS }));
 		expect(plan.targets).toEqual([]);
 		expect(plan.rescheduleHours).toBeNull();
