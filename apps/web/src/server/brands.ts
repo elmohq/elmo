@@ -302,6 +302,8 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 			brandName: z.string().min(1).max(100),
 			website: z.string().min(1),
 			organizationId: z.string().optional(),
+			/** Platform picks from the creation wizard; omitted → plan defaults. */
+			enabledModels: z.array(z.string().min(1)).max(50).optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -340,7 +342,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 
 		const brandId = await findUniqueBrandId(slugify(trimmedName));
 		const defaultDomains = getDefaultBrandDomains();
-		const enabledModels = await initialEnabledModels(orgId);
+		const enabledModels = await resolveCreateEnabledModels(orgId, data.enabledModels);
 
 		await db.insert(brands).values({
 			id: brandId,
