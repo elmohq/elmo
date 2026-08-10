@@ -7,6 +7,8 @@ export {
 	assertCanCreateBrand,
 	assertEnabledModelsAllowed,
 	assertPromptSaveAllowed,
+	checkBrandCreate,
+	countBrandsByOrg,
 	countOrgAssignedPremiumSlots,
 	countOrgBrands,
 	countOrgEnabledPrompts,
