@@ -143,6 +143,7 @@ async function runMaintenanceCheck(): Promise<void> {
 			const lastRunTimes = Object.values(lastRuns).map((d) => new Date(d).getTime());
 			const mostRecentRunMs = lastRunTimes.length > 0 ? Math.max(...lastRunTimes) : null;
 			const shouldExpedite = shouldExpediteJob({
+				jobConsecutiveFailures: pendingJob.consecutiveFailures,
 				jobCreatedAt: pendingJob.createdAt,
 				lastRunAt: mostRecentRunMs === null ? null : new Date(mostRecentRunMs),
 				runFrequencyMs,
@@ -276,11 +277,14 @@ interface PendingJobInfo {
 	state: "created" | "active" | "retry";
 	/** When the job was queued — the only record of an attempt a failed run leaves. */
 	createdAt: Date;
+	/** Failure streak the job carries, so a deliberate backoff is distinguishable. */
+	consecutiveFailures: number;
 }
 
 async function getPendingJobMap(): Promise<Map<string, PendingJobInfo>> {
 	const result = await db.execute(sql`
-		SELECT id, data->>'promptId' as prompt_id, state, created_on
+		SELECT id, data->>'promptId' as prompt_id, state, created_on,
+		       COALESCE((data->>'consecutiveFailures')::int, 0) as consecutive_failures
 		FROM pgboss.job
 		WHERE name = 'process-prompt'
 		  AND state IN ('created', 'active', 'retry')
@@ -294,12 +298,20 @@ async function getPendingJobMap(): Promise<Map<string, PendingJobInfo>> {
 	`);
 
 	const map = new Map<string, PendingJobInfo>();
-	for (const row of result.rows as { id: string; prompt_id: string; state: string; created_on: string | Date }[]) {
+	type PendingJobRow = {
+		id: string;
+		prompt_id: string;
+		state: string;
+		created_on: string | Date;
+		consecutive_failures: number | string | null;
+	};
+	for (const row of result.rows as PendingJobRow[]) {
 		if (row.prompt_id && !map.has(row.prompt_id)) {
 			map.set(row.prompt_id, {
 				jobId: row.id,
 				state: row.state as "created" | "active" | "retry",
 				createdAt: new Date(row.created_on),
+				consecutiveFailures: Number(row.consecutive_failures ?? 0),
 			});
 		}
 	}
