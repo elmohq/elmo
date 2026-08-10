@@ -13,6 +13,7 @@
 		"./env-registry": "./src/env-registry.ts",
 		"./models": "./src/models.ts",
 		"./plans": "./src/plans.ts",
+		"./roles": "./src/roles.ts",
 		"./scrape-targets": "./src/scrape-targets.ts",
 		"./types": "./src/types.ts"
 	},

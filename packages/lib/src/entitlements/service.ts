@@ -97,55 +97,28 @@ export interface OrgBillingState {
 	settings: SettingsRow | null;
 }
 
-export async function getOrgBillingState(
-	orgId: string,
-	options?: { mode?: DeploymentMode; now?: Date },
-): Promise<OrgBillingState> {
-	const mode = options?.mode ?? getDeploymentModeFromEnv(process.env);
-	if (mode !== "cloud") {
-		return { entitlements: UNLIMITED_ENTITLEMENTS, subscription: null, settings: null };
-	}
-	const now = options?.now ?? new Date();
-
-	const [subscriptionRows, settingsRows] = await Promise.all([
-		db
-			.select()
-			.from(subscription)
-			.where(inArray(subscription.referenceId, [orgId])),
-		db
-			.select()
-			.from(organizationSettings)
-			.where(inArray(organizationSettings.organizationId, [orgId])),
-	]);
-
-	const subscriptionRow = selectRelevantSubscription(subscriptionRows);
-	const settingsRow = settingsRows[0] ?? null;
-	return {
-		entitlements: toEntitlements(mode, subscriptionRow, settingsRow, now),
-		subscription: subscriptionRow,
-		settings: settingsRow,
-	};
-}
-
-export async function getOrgEntitlements(
-	orgId: string,
-	options?: { mode?: DeploymentMode; now?: Date },
-): Promise<Entitlements> {
-	return (await getOrgBillingState(orgId, options)).entitlements;
-}
+const UNLIMITED_STATE: OrgBillingState = {
+	entitlements: UNLIMITED_ENTITLEMENTS,
+	subscription: null,
+	settings: null,
+};
 
 /**
- * Batch variant for the worker's maintenance sweep: resolve every org in two
- * queries instead of 2N. Every requested org gets an entry.
+ * Billing state for any number of orgs in two queries. Every requested org gets
+ * an entry, so callers never have to distinguish "no row" from "not asked for".
+ *
+ * The single-org accessors below all funnel through here rather than issuing
+ * their own one-row variants of the same two queries — one query shape, one
+ * place that decides which subscription row wins.
  */
-export async function getOrgEntitlementsMap(
+export async function getOrgBillingStates(
 	orgIds: string[],
 	options?: { mode?: DeploymentMode; now?: Date },
-): Promise<Map<string, Entitlements>> {
+): Promise<Map<string, OrgBillingState>> {
 	const mode = options?.mode ?? getDeploymentModeFromEnv(process.env);
-	const result = new Map<string, Entitlements>();
+	const result = new Map<string, OrgBillingState>();
 	if (mode !== "cloud") {
-		for (const orgId of orgIds) result.set(orgId, UNLIMITED_ENTITLEMENTS);
+		for (const orgId of orgIds) result.set(orgId, UNLIMITED_STATE);
 		return result;
 	}
 	if (orgIds.length === 0) return result;
@@ -166,7 +139,38 @@ export async function getOrgEntitlementsMap(
 
 	for (const orgId of orgIds) {
 		const subscriptionRow = selectRelevantSubscription(subscriptionsByOrg.get(orgId) ?? []);
-		result.set(orgId, toEntitlements(mode, subscriptionRow, settingsByOrg.get(orgId) ?? null, now));
+		const settingsRow = settingsByOrg.get(orgId) ?? null;
+		result.set(orgId, {
+			entitlements: toEntitlements(mode, subscriptionRow, settingsRow, now),
+			subscription: subscriptionRow,
+			settings: settingsRow,
+		});
 	}
 	return result;
+}
+
+export async function getOrgBillingState(
+	orgId: string,
+	options?: { mode?: DeploymentMode; now?: Date },
+): Promise<OrgBillingState> {
+	const states = await getOrgBillingStates([orgId], options);
+	// getOrgBillingStates always populates every requested id; the fallback is a
+	// type narrowing, not a case that happens.
+	return states.get(orgId) ?? UNLIMITED_STATE;
+}
+
+export async function getOrgEntitlements(
+	orgId: string,
+	options?: { mode?: DeploymentMode; now?: Date },
+): Promise<Entitlements> {
+	return (await getOrgBillingState(orgId, options)).entitlements;
+}
+
+/** Entitlements only, for callers (the worker sweep, the paywall) with no use for the rows. */
+export async function getOrgEntitlementsMap(
+	orgIds: string[],
+	options?: { mode?: DeploymentMode; now?: Date },
+): Promise<Map<string, Entitlements>> {
+	const states = await getOrgBillingStates(orgIds, options);
+	return new Map([...states].map(([orgId, state]) => [orgId, state.entitlements]));
 }

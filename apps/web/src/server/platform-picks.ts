@@ -8,7 +8,7 @@ import { providersByModel } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours, getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
-import { decideEnabledModels, EntitlementError, getOrgEntitlements } from "@workspace/lib/entitlements";
+import { assertAllowed, decideEnabledModels, getOrgEntitlements } from "@workspace/lib/entitlements";
 import type { ModelConfig, ProviderAccess } from "@workspace/lib/providers";
 import {
 	describeProvider,
@@ -262,23 +262,20 @@ export const updateEnabledModelsFn = createServerFn({ method: "POST" })
 		const models = data.models === null ? null : [...new Set(data.models)];
 		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 
-		// Load entitlements once; use the pure decideEnabledModels (which
-		// doesn't query the DB) instead of assertEnabledModelsAllowed (which
-		// does) to avoid loading entitlements twice on the null-models path.
+		// Both branches below need the entitlements, so load them once and decide
+		// in-process rather than going through assertEnabledModelsAllowed, which
+		// would load them again.
 		const entitlements = await getOrgEntitlements(brand.organizationId);
 
-		if (models !== null) {
-			// Loud validation against the configured targets (same rule the worker
-			// applies), so a typo can't silently stop tracking.
-			selectTargetsForBrand(configs, models);
-			if (!entitlements.unlimited) {
-				const decision = decideEnabledModels(entitlements, models);
-				if (!decision.allowed) throw new EntitlementError(decision.code, decision.message);
-			}
-		} else {
+		if (models === null) {
 			if (!entitlements.unlimited) {
 				throw new Error("Choose which platforms to track — your plan defines how many.");
 			}
+		} else {
+			// Loud validation against the configured targets (same rule the worker
+			// applies), so a typo can't silently stop tracking.
+			selectTargetsForBrand(configs, models);
+			if (!entitlements.unlimited) assertAllowed(decideEnabledModels(entitlements, models));
 		}
 
 		const [updated] = await db

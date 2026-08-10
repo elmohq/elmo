@@ -29,88 +29,67 @@ import BrandOnboarding from "@/components/brand-onboarding";
 import { getOrgBillingState } from "@workspace/lib/entitlements";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
 
+interface BrandRouteData {
+	brand: BrandWithPrompts | null;
+	brandName: string | null;
+	isAdmin: boolean;
+	hasReportAccess: boolean;
+	hasAccess: boolean;
+	/** The org that must be subscribed before this brand renders; null when nothing is owed. */
+	unpaidOrganizationId: string | null;
+}
+
+/** No access, and nothing else worth saying about it. */
+const DENIED: BrandRouteData = {
+	brand: null,
+	brandName: null,
+	isAdmin: false,
+	hasReportAccess: false,
+	hasAccess: false,
+	unpaidOrganizationId: null,
+};
+
 const getBrandData = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
-	.handler(
-		async ({
-			data,
-		}): Promise<{
-			brand: BrandWithPrompts | null;
-			brandName: string | null;
-			isAdmin: boolean;
-			hasReportAccess: boolean;
-			hasAccess: boolean;
-			needsPlan: boolean;
-		}> => {
-			const session = await requireAuthSession();
+	.handler(async ({ data }): Promise<BrandRouteData> => {
+		const session = await requireAuthSession();
 
-			const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
+		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
 
-			if (brand) {
-				const hasAccess = await checkOrgAccess(session.user.id, brand.organizationId);
-				if (!hasAccess) {
-					return {
-						brand: null,
-						brandName: null,
-						isAdmin: false,
-						hasReportAccess: false,
-						hasAccess: false,
-						needsPlan: false,
-					};
-				}
-
-				const brandPrompts = await db.query.prompts.findMany({
-					where: eq(prompts.brandId, data.brandId),
-				});
-				const brandCompetitors = await db.query.competitors.findMany({
-					where: eq(competitors.brandId, data.brandId),
-				});
-
-				// Paywall signal (cloud only): outside cloud this resolves without
-				// touching the database.
-				const { entitlements } = await getOrgBillingState(brand.organizationId);
-
-				return {
-					brand: {
-						...brand,
-						prompts: brandPrompts,
-						competitors: brandCompetitors,
-					},
-					brandName: brand.name,
-					isAdmin: isAdmin(session),
-					hasReportAccess: hasReportAccess(session),
-					hasAccess: true,
-					needsPlan: entitlements.standing === "none",
-				};
-			}
-
-			// No brand row: legacy onboarding path where the URL param is an org id
-			// (brand.id === org.id). Whitelabel empty-org onboarding depends on this.
-			const hasAccess = await checkOrgAccess(session.user.id, data.brandId);
-			if (!hasAccess) {
-				return {
-					brand: null,
-					brandName: null,
-					isAdmin: false,
-					hasReportAccess: false,
-					hasAccess: false,
-					needsPlan: false,
-				};
-			}
-
+		// No brand row: legacy onboarding path where the URL param is an org id
+		// (brand.id === org.id). Whitelabel empty-org onboarding depends on this.
+		if (!brand) {
+			if (!(await checkOrgAccess(session.user.id, data.brandId))) return DENIED;
 			const orgs = await listUserOrganizations(session.user.id);
-			const orgMeta = orgs.find((o) => o.id === data.brandId);
-
 			return {
 				brand: null,
-				brandName: orgMeta?.name || data.brandId,
+				brandName: orgs.find((o) => o.id === data.brandId)?.name || data.brandId,
 				isAdmin: isAdmin(session),
 				hasReportAccess: hasReportAccess(session),
 				hasAccess: true,
-				needsPlan: false,
+				unpaidOrganizationId: null,
 			};
-		},
-	);
+		}
+
+		if (!(await checkOrgAccess(session.user.id, brand.organizationId))) return DENIED;
+
+		const [brandPrompts, brandCompetitors, { entitlements }] = await Promise.all([
+			db.query.prompts.findMany({ where: eq(prompts.brandId, data.brandId) }),
+			db.query.competitors.findMany({ where: eq(competitors.brandId, data.brandId) }),
+			// Paywall signal (cloud only): outside cloud this resolves without
+			// touching the database.
+			getOrgBillingState(brand.organizationId),
+		]);
+
+		return {
+			brand: { ...brand, prompts: brandPrompts, competitors: brandCompetitors },
+			brandName: brand.name,
+			isAdmin: isAdmin(session),
+			hasReportAccess: hasReportAccess(session),
+			hasAccess: true,
+			unpaidOrganizationId: entitlements.standing === "none" ? brand.organizationId : null,
+		};
+	});
 
 function BrandLayoutSkeleton() {
 	return (
@@ -176,8 +155,11 @@ export const Route = createFileRoute("/_authed/app/$brand")({
 			throw notFound();
 		}
 
-		if (result.needsPlan) {
-			throw redirect({ to: "/choose-plan" });
+		// Scoped to this brand's workspace, and says which one — the /app gate only
+		// knows whether the user has *any* entitled org, which is a different
+		// question and would send a mixed-membership user to the wrong checkout.
+		if (result.unpaidOrganizationId) {
+			throw redirect({ to: "/choose-plan", search: { org: result.unpaidOrganizationId } });
 		}
 
 		// Access was established above, so a missing brand row means the URL param

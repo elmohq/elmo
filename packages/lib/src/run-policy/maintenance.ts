@@ -7,7 +7,7 @@
  * the scheduler — exhaustively unit-testable.
  */
 
-import { dueToleranceMs, type PromptRunPlan, targetKey } from "./policy";
+import { dueToleranceMs, type PromptRunPlan, targetKey, targetOverdueStatus } from "./policy";
 
 /** Floor on how often maintenance may drag a prompt's next job forward. */
 export const EXPEDITE_MIN_INTERVAL_MS = 60 * 60 * 1000;
@@ -32,14 +32,16 @@ export interface MaintenanceDecisions {
 }
 
 function isPromptOverdue(state: MaintenancePromptState, now: number, graceMs: number): boolean {
-	return state.plan.targets.some((target) => {
-		const lastRunAt = state.lastRunAtByKey.get(targetKey(target.config));
-		if (!lastRunAt) {
-			return now - state.promptCreatedAt.getTime() > graceMs;
-		}
-		const intervalMs = target.intervalHours * 3600 * 1000;
-		return now - lastRunAt.getTime() > intervalMs + graceMs;
-	});
+	return state.plan.targets.some(
+		(target) =>
+			targetOverdueStatus({
+				intervalHours: target.intervalHours,
+				lastRunAt: state.lastRunAtByKey.get(targetKey(target.config)),
+				promptCreatedAt: state.promptCreatedAt,
+				now,
+				graceMs,
+			}).isOverdue,
+	);
 }
 
 export function computeMaintenanceDecisions(promptStates: MaintenancePromptState[], now: Date): MaintenanceDecisions {

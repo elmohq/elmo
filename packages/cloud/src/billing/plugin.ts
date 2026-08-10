@@ -15,6 +15,7 @@
 
 import { stripe } from "@better-auth/stripe";
 import { PLAN_KEYS, stripePlanLookupKey } from "@workspace/config/plans";
+import { isOrgAdminRole } from "@workspace/config/roles";
 import { db } from "@workspace/lib/db/db";
 import { member } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -34,18 +35,14 @@ export function buildStripePlans() {
 	}));
 }
 
-/**
- * Managing the org's subscription (upgrade, cancel, restore, portal) is an
- * org-admin action. Our provisioning writes role "admin"; better-auth's own
- * org creation would write "owner" — accept either, deny plain members.
- */
+/** Managing the org's subscription (upgrade, cancel, restore, portal) is an org-admin action. */
 export async function isOrgBillingAdmin(userId: string, organizationId: string): Promise<boolean> {
 	const [row] = await db
 		.select({ role: member.role })
 		.from(member)
 		.where(and(eq(member.userId, userId), eq(member.organizationId, organizationId)))
 		.limit(1);
-	return row?.role === "admin" || row?.role === "owner";
+	return isOrgAdminRole(row?.role);
 }
 
 export function createStripeBillingPlugin() {

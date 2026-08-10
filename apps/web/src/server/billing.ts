@@ -9,6 +9,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { setPremiumAddonQuantity } from "@workspace/cloud/billing";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { isPremiumAddonAvailable } from "@workspace/config/plans";
+import { isOrgAdminRole } from "@workspace/config/roles";
 import {
 	countOrgAssignedPremiumSlots,
 	countOrgBrands,
@@ -18,7 +19,6 @@ import {
 } from "@workspace/lib/entitlements";
 import { z } from "zod";
 import { listUserOrganizations, requireAuthSession, requireBrandOrganization } from "@/lib/auth/helpers";
-import { isOrgAdminRole } from "@/lib/auth/roles";
 import { getDeployment } from "@/lib/config/server";
 
 export type BillingState = {
@@ -41,6 +41,7 @@ export type BillingState = {
 
 export type PaywallRequired = {
 	needsPlan: true;
+	/** The org that needs the plan — always carried, so checkout can't target the wrong one. */
 	organizationId: string;
 	organizationName: string;
 	isOrgAdmin: boolean;
@@ -86,33 +87,50 @@ export const getBillingStateFn = createServerFn({ method: "GET" })
 	});
 
 /**
- * The paywall decision for a signed-in user. Outside cloud (or with any
- * entitled org) nothing is required. Checks all orgs the user belongs to:
- * if every org has "none" standing, the user needs a plan.
+ * The paywall decision, and the org it is about.
+ *
+ * Two questions, one answer shape, because the callers ask different ones:
+ *  - with `organizationId` (a brand's owning org): is *this* workspace paid up?
+ *  - without: does this user have anywhere at all to go? Any entitled org keeps
+ *    the app usable; only a user whose every org is unsubscribed is stopped, and
+ *    they are pointed at their own workspace.
+ *
+ * The org always comes back with the verdict. A paywall that says "pay" without
+ * saying "for what" is how a member of a paid team and an unpaid one ends up at
+ * checkout for the wrong workspace.
  */
-export const getPaywallStateFn = createServerFn({ method: "GET" }).handler(async (): Promise<PaywallState> => {
-	const deployment = getDeployment();
-	if (!deployment.features.billing) return { needsPlan: false };
+export const getPaywallStateFn = createServerFn({ method: "GET" })
+	.validator(z.object({ organizationId: z.string().optional() }).optional())
+	.handler(async ({ data }): Promise<PaywallState> => {
+		const deployment = getDeployment();
+		if (!deployment.features.billing) return { needsPlan: false };
 
-	const session = await requireAuthSession();
-	const orgs = await listUserOrganizations(session.user.id);
-	if (orgs.length === 0) return { needsPlan: false };
+		const session = await requireAuthSession();
+		const orgs = await listUserOrganizations(session.user.id);
+		if (orgs.length === 0) return { needsPlan: false };
 
-	// Any entitled org (e.g. a team they joined) keeps the app usable.
-	const entitlementsByOrg = await getOrgEntitlementsMap(orgs.map((org) => org.id));
-	if (orgs.some((org) => entitlementsByOrg.get(org.id)?.standing !== "none")) {
-		return { needsPlan: false };
-	}
+		const requested = data?.organizationId;
+		// An org the caller doesn't belong to isn't theirs to be paywalled on;
+		// whatever they were reaching for will 404 on its own access check.
+		const scoped = requested ? orgs.find((org) => org.id === requested) : undefined;
+		if (requested && !scoped) return { needsPlan: false };
 
-	// listUserOrganizations is oldest-first, so this is the user's own workspace.
-	const own = orgs[0];
-	return {
-		needsPlan: true,
-		organizationId: own.id,
-		organizationName: own.name,
-		isOrgAdmin: isOrgAdminRole(own.role),
-	};
-});
+		const entitlementsByOrg = await getOrgEntitlementsMap(orgs.map((org) => org.id));
+		const needsPlan = (org: { id: string }) => entitlementsByOrg.get(org.id)?.standing === "none";
+
+		// listUserOrganizations is oldest-first, so orgs[0] is the user's own workspace.
+		const subject = scoped ?? orgs[0];
+		if (scoped ? !needsPlan(scoped) : !orgs.every(needsPlan)) {
+			return { needsPlan: false };
+		}
+
+		return {
+			needsPlan: true,
+			organizationId: subject.id,
+			organizationName: subject.name,
+			isOrgAdmin: isOrgAdminRole(subject.role),
+		};
+	});
 
 export const setPremiumAddonQuantityFn = createServerFn({ method: "POST" })
 	.validator(z.object({ brandId: z.string(), quantity: z.number().int().min(0).max(1000) }))

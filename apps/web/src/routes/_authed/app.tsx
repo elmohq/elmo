@@ -1,19 +1,22 @@
 /**
  * /app layout route
  *
- * Checks the paywall (cloud only) before rendering any /app child route.
- * Every page under /app inherits this gate — no per-route sprinkling needed.
- * The /choose-plan route lives outside this layout so unentitled users can
- * still reach it.
+ * The user-level half of the paywall (cloud only): a user whose every workspace
+ * is unsubscribed has nowhere under /app to go, so they are sent to pick a plan
+ * for their own workspace. The per-workspace half lives in $brand.tsx, which is
+ * the first route that knows which workspace is being looked at — this one
+ * can't answer that and doesn't try.
+ *
+ * /choose-plan lives outside this layout so an unentitled user can still reach it.
  */
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { getPaywallStateFn } from "@/server/billing";
 
 export const Route = createFileRoute("/_authed/app")({
 	beforeLoad: async () => {
-		const paywall = await getPaywallStateFn();
+		const paywall = await getPaywallStateFn({ data: {} });
 		if (paywall.needsPlan) {
-			throw redirect({ to: "/choose-plan" });
+			throw redirect({ to: "/choose-plan", search: { org: paywall.organizationId } });
 		}
 	},
 	component: () => <Outlet />,

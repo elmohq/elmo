@@ -7,22 +7,15 @@ import { premiumSlotsUsed, selectPremiumModels } from "@workspace/config/plans";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { assertCanAddPrompts, assertCanAssignPremium } from "@workspace/lib/entitlements";
+import { assertPromptSaveAllowed, type PromptSaveDelta } from "@workspace/lib/entitlements";
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import { generateDateRange } from "@/lib/chart-utils";
-import {
-	CITATION_PAGE_TYPES,
-	emptyCategoryCounts,
-	emptyPageTypeCounts,
-	extractDomain,
-	isGoogleSurfaceUrl,
-	normalizeUrl,
-	resolvePageType,
-} from "@/lib/domain-categories";
+import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@/lib/citation-rollup";
+import { extractDomain } from "@/lib/domain-categories";
 import { classifyUrl } from "@/lib/domain-categories.server";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
@@ -257,12 +250,12 @@ function computePromptCitationStats(input: {
 	competitors: { id: string; name: string }[];
 	competitorDomains: Set<string>;
 }) {
-	const { urlStats, brandDomains, competitorDomains } = input;
+	const { urlStats } = input;
 	if (urlStats.length === 0) return undefined;
 
 	// Google AI Mode module: Shopping products (brand vs competitor) + search
 	// queries. Built from the raw URL rows (it picks out the Google surfaces);
-	// those same surfaces are excluded from the source mix below.
+	// the rollup below drops those same surfaces from the source mix.
 	const googleModule = buildGoogleModule(
 		urlStats.map((u) => ({
 			prompt_id: input.promptId,
@@ -276,78 +269,12 @@ function computePromptCitationStats(input: {
 		() => input.promptValue,
 	);
 
-	const urlCounts = new Map<
-		string,
-		{ count: number; title?: string; domain: string; positionSum: number; positionCount: number }
-	>();
-	for (const { url, domain, title, count: cnt, avg_position } of urlStats) {
-		if (isGoogleSurfaceUrl(url)) continue;
-		const normalized = normalizeUrl(url);
-		const c = Number(cnt);
-		const positionSum = avg_position != null ? Number(avg_position) * c : 0;
-		const positionCount = avg_position != null ? c : 0;
-		const existing = urlCounts.get(normalized);
-		if (existing) {
-			existing.count += c;
-			existing.positionSum += positionSum;
-			existing.positionCount += positionCount;
-			if (!existing.title && title) existing.title = title;
-		} else {
-			urlCounts.set(normalized, { count: c, title: title || undefined, domain, positionSum, positionCount });
-		}
-	}
-
-	const specificUrls = Array.from(urlCounts.entries())
-		.map(([url, { count: cnt, title, domain, positionSum, positionCount }]) => {
-			const category = classifyUrl(domain, url, title, brandDomains, competitorDomains);
-			return {
-				url,
-				title,
-				domain,
-				count: cnt,
-				category,
-				pageType: resolvePageType(url, title, category),
-				avgPosition: positionCount > 0 ? Math.round((positionSum / positionCount) * 10) / 10 : null,
-			};
-		})
-		.sort((a, b) => b.count - a.count);
-
-	// Domain distribution rebuilt from URL-level data, each domain taking its
-	// category from its top-cited URL (matches the brand-wide view).
-	const domainAgg = new Map<
-		string,
-		{ count: number; category: (typeof specificUrls)[number]["category"]; topCount: number; exampleTitle?: string }
-	>();
-	for (const u of specificUrls) {
-		const cur = domainAgg.get(u.domain);
-		if (cur) {
-			cur.count += u.count;
-			if (u.count > cur.topCount) {
-				cur.topCount = u.count;
-				cur.category = u.category;
-				cur.exampleTitle = u.title;
-			}
-		} else {
-			domainAgg.set(u.domain, { count: u.count, category: u.category, topCount: u.count, exampleTitle: u.title });
-		}
-	}
-	const domainDistribution = Array.from(domainAgg.entries())
-		.map(([domain, v]) => ({ domain, count: v.count, category: v.category, exampleTitle: v.exampleTitle }))
-		.sort((a, b) => b.count - a.count);
-
-	const categoryCounts = emptyCategoryCounts();
-	const pageTypeCounts = emptyPageTypeCounts();
-	for (const u of specificUrls) {
-		categoryCounts[u.category] += u.count;
-		pageTypeCounts[u.pageType] += u.count;
-	}
-	const totalCitations = domainDistribution.reduce((s, d) => s + d.count, 0);
+	const specificUrls = rollUpCitationUrls(urlStats, (domain, url, title) =>
+		classifyUrl(domain, url, title, input.brandDomains, input.competitorDomains),
+	);
+	const domainDistribution = rollUpCitationDomains(specificUrls);
+	const { categoryCounts, totalCitations, pageTypeDistribution } = tallyCitations(specificUrls);
 	if (totalCitations === 0) return undefined;
-
-	const pageTypeDistribution = CITATION_PAGE_TYPES.map((pageType) => ({
-		pageType,
-		count: pageTypeCounts[pageType],
-	})).filter((d) => d.count > 0);
 
 	return {
 		totalCitations,
@@ -605,17 +532,15 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		// net premium slots it spends — one per prompt/model pair, so a prompt
 		// gaining a second premium model spends a second slot. Only a net increase
 		// is guarded; going down never needs permission.
-		let netEnabled = 0;
-		let netPremiumSlots = 0;
+		const delta: PromptSaveDelta = { prompts: 0, premiumPairings: 0 };
 		for (const p of data.prompts) {
 			const before = p.id ? existingById.get(p.id) : undefined;
 			if (p.id && !before) continue;
 			const after = { enabled: p.enabled, premiumModels: selectPremiumModels(p.premiumModels) };
-			netEnabled += (p.enabled ? 1 : 0) - (before?.enabled ? 1 : 0);
-			netPremiumSlots += premiumSlotsUsed([after]) - premiumSlotsUsed(before ? [before] : []);
+			delta.prompts += (p.enabled ? 1 : 0) - (before?.enabled ? 1 : 0);
+			delta.premiumPairings += premiumSlotsUsed([after]) - premiumSlotsUsed(before ? [before] : []);
 		}
-		await assertCanAddPrompts(brand.organizationId, netEnabled);
-		await assertCanAssignPremium(brand.organizationId, netPremiumSlots);
+		await assertPromptSaveAllowed(brand.organizationId, delta);
 
 		const saved = await db.transaction(async (tx) => {
 			const toUpdate = data.prompts.filter((p) => p.id);

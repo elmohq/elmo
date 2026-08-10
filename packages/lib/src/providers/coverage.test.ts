@@ -56,7 +56,8 @@ describe("provider coverage", () => {
  * disagrees with the route the provider takes is worse than no label.
  */
 describe("how a target is reached", () => {
-	const dfs = (model: string, version?: string) => resolveProviderAccess({ provider: "dataforseo", model, version });
+	const dfs = (model: string, version?: string) =>
+		resolveProviderAccess({ provider: "dataforseo", model, version, webSearch: false });
 
 	it("reads Google's surfaces by scraping them, whatever the target says", () => {
 		expect(dfs("google-ai-overview")).toBe("scraped");
@@ -75,8 +76,8 @@ describe("how a target is reached", () => {
 	});
 
 	it("takes a single-route provider at its word", () => {
-		expect(resolveProviderAccess({ provider: "brightdata", model: "chatgpt" })).toBe("scraped");
-		expect(resolveProviderAccess({ provider: "anthropic-api", model: "claude" })).toBe("api");
+		expect(resolveProviderAccess({ provider: "brightdata", model: "chatgpt", webSearch: false })).toBe("scraped");
+		expect(resolveProviderAccess({ provider: "anthropic-api", model: "claude", webSearch: false })).toBe("api");
 	});
 });
 

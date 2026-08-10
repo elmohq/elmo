@@ -25,16 +25,24 @@ import { getPaywallStateFn, type PaywallRequired, type PaywallState } from "@/se
 
 const searchSchema = z.object({
 	status: z.enum(["success"]).optional(),
+	/**
+	 * Which workspace is being subscribed. Carried by whichever gate redirected
+	 * here so checkout bills the workspace the user was actually blocked on,
+	 * not whichever of their memberships happens to be oldest.
+	 */
+	org: z.string().optional(),
 });
 
 export const Route = createFileRoute("/_authed/choose-plan")({
 	validateSearch: searchSchema,
-	loaderDeps: ({ search }) => ({ status: search.status }),
+	loaderDeps: ({ search }) => ({ status: search.status, org: search.org }),
 	// The explicit return type breaks the type-inference cycle created by this
 	// loader and the app loaders redirecting into each other's typed routes.
 	loader: async ({ deps }): Promise<PaywallState> => {
-		const paywall = await getPaywallStateFn();
-		// Already entitled (or not a cloud deployment): nothing to choose.
+		const paywall = await getPaywallStateFn({ data: { organizationId: deps.org } });
+		// Already entitled (or not a cloud deployment): nothing to choose. Asking
+		// about the same org the gate asked about is what keeps this from bouncing
+		// the user back and forth with a gate that disagrees.
 		if (!paywall.needsPlan && deps.status !== "success") {
 			throw redirect({ to: "/app" });
 		}
@@ -48,9 +56,9 @@ export const Route = createFileRoute("/_authed/choose-plan")({
 
 function ChoosePlanPage() {
 	const paywall = Route.useLoaderData();
-	const { status } = Route.useSearch();
+	const { status, org } = Route.useSearch();
 
-	if (status === "success") return <ActivatingWorkspace />;
+	if (status === "success") return <ActivatingWorkspace organizationId={org} />;
 	// The loader redirects an entitled org away unless it is returning from
 	// checkout, which the branch above already handled.
 	if (!paywall.needsPlan) return null;
@@ -58,14 +66,16 @@ function ChoosePlanPage() {
 }
 
 /** Post-checkout: wait for the Stripe webhook to record the subscription. */
-function ActivatingWorkspace() {
+function ActivatingWorkspace({ organizationId }: { organizationId?: string }) {
 	const navigate = useNavigate();
 
 	useEffect(() => {
 		let cancelled = false;
 		const poll = async () => {
 			for (let i = 0; i < 30 && !cancelled; i++) {
-				const state = await getPaywallStateFn();
+				// Poll the org that was just paid for: another unsubscribed workspace
+				// would otherwise keep the user-level check saying "still needs a plan".
+				const state = await getPaywallStateFn({ data: { organizationId } });
 				if (!state.needsPlan) {
 					navigate({ to: "/app" });
 					return;
@@ -77,7 +87,7 @@ function ActivatingWorkspace() {
 		return () => {
 			cancelled = true;
 		};
-	}, [navigate]);
+	}, [navigate, organizationId]);
 
 	return (
 		<div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
@@ -103,8 +113,8 @@ function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
 			annual,
 			referenceId: paywall.organizationId,
 			customerType: "organization",
-			successUrl: `${origin}/choose-plan?status=success`,
-			cancelUrl: `${origin}/choose-plan`,
+			successUrl: `${origin}/choose-plan?status=success&org=${encodeURIComponent(paywall.organizationId)}`,
+			cancelUrl: `${origin}/choose-plan?org=${encodeURIComponent(paywall.organizationId)}`,
 			disableRedirect: false,
 		});
 		if (upgradeError) {

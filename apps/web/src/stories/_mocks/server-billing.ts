@@ -1,7 +1,7 @@
 /**
  * Mock for @/server/billing used in Storybook stories. The real module reaches
  * Stripe and the entitlements tables; stories drive the shapes its callers
- * render and the one write path (the extra-Claude-prompts add-on).
+ * render and the one write path (the extra premium pairings add-on).
  */
 
 let _addonError: string | null = null;
@@ -18,7 +18,7 @@ export function setMockAddonDelay(ms: number) {
 
 export const getBillingStateFn = async (_args?: { data: unknown }) => undefined;
 
-export const getPaywallStateFn = async () => ({ needsPlan: false });
+export const getPaywallStateFn = async (_args?: { data?: { organizationId?: string } }) => ({ needsPlan: false });
 
 export const setPremiumAddonQuantityFn = async (args: { data: { quantity: number } }) => {
 	if (_addonDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, _addonDelayMs));

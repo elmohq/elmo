@@ -1,16 +1,16 @@
 import { Link } from "@tanstack/react-router";
-import { getModelMeta } from "@workspace/config/models";
 import {
 	CLOUD_ENTRY_PRICE_USD,
 	CLOUD_SIGNUP_URL,
 	MAX_STANDARD_RUNS_PER_DAY,
 	PLAN_KEYS,
 	PLANS,
-	type PlanPlatformGroup,
+	type PlanPlatformGroupId,
 	PREMIUM_ADDON_MONTHLY_USD,
 	planPlatformBreakdown,
+	platformTierMembers,
 } from "@workspace/config/plans";
-import { PlatformTier, type PlatformTierRow } from "@workspace/ui/brand/platform-tier";
+import { PlatformTier } from "@workspace/ui/brand/platform-tier";
 import { ArrowRight, Check } from "lucide-react";
 import { ContactForm } from "./contact-form";
 import { WaitlistForm } from "./waitlist-form";
@@ -154,13 +154,12 @@ export function Pricing() {
 }
 
 /**
- * The platforms a tier covers, named. Logos alone were ambiguous — Google AI
- * Mode, AI Overviews and Gemini all carry the same mark — and a name a reader has
- * to hover for is not on the page.
+ * A tier's platforms as a sentence fragment, read from the catalog so the prose
+ * can't fall behind the tables above it when a platform is added.
  */
-/** The catalog's tier, as the shared renderer wants it. */
-function tierRows(group: PlanPlatformGroup): PlatformTierRow[] {
-	return group.models.map(({ model, label }) => ({ iconId: getModelMeta(model).iconId, label }));
+function namePlatforms(tier: PlanPlatformGroupId, type: "conjunction" | "disjunction" = "conjunction"): string {
+	const names = platformTierMembers(tier).map((member) => member.label);
+	return new Intl.ListFormat("en", { style: "long", type }).format(names);
 }
 
 function CloudPlans() {
@@ -205,7 +204,12 @@ function CloudPlans() {
 							<div className="mt-4 space-y-2.5 border-t border-zinc-100 pt-4">
 								<p className="text-xs font-medium text-zinc-900">{breakdown.pickHeading}</p>
 								{breakdown.pickGroups.map((group) => (
-									<PlatformTier key={group.id} {...group} models={tierRows(group)} />
+									<PlatformTier
+										key={group.id}
+										label={group.label}
+										runsPerDay={group.runsPerDay}
+										models={group.models}
+									/>
 								))}
 							</div>
 
@@ -214,7 +218,11 @@ function CloudPlans() {
 							    plans that don't sell it, rather than advertising an absence. */}
 							{breakdown.premium && (
 								<div className="mt-4 border-t border-zinc-100 pt-4">
-									<PlatformTier {...breakdown.premium} models={tierRows(breakdown.premium)} />
+									<PlatformTier
+										label={breakdown.premium.label}
+										runsPerDay={breakdown.premium.runsPerDay}
+										models={breakdown.premium.models}
+									/>
 									<p className="mt-1 text-[11px] leading-snug text-zinc-500">{breakdown.premium.summary}</p>
 								</div>
 							)}
@@ -238,19 +246,18 @@ function CloudPlans() {
 				<div className="bg-white p-5">
 					<p className="font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-500">/ SCRAPED SURFACES</p>
 					<p className="mt-2 text-sm text-zinc-700">
-						ChatGPT, Google AI Mode and AI Overviews, Copilot, Perplexity and Gemini are read the way a visitor sees
-						them, so you get the answer <em>and</em> the sources it cited — including the shopping and search modules
-						alongside it. Sampled at your plan&apos;s rate.
+						{namePlatforms("scraped")} are read the way a visitor sees them, so you get the answer <em>and</em> the
+						sources it cited — including the shopping and search modules alongside it. Sampled at your plan&apos;s rate.
 					</p>
 				</div>
 				<div className="bg-white p-5">
 					<p className="font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-500">/ MODEL APIS</p>
 					<p className="mt-2 text-sm text-zinc-700">
-						Claude, Mistral, DeepSeek and Qwen are called directly, which shows how each model describes your brand from
-						what it already knows — nothing is searched, so nothing is cited. Claude costs the most per call, so it
-						samples once a day rather than at your plan&apos;s rate. On Pro and Business you can also track a prompt on
-						a premium model with its own web search switched on — Claude, Grok or GPT-5 — for grounded, cited answers,
-						at ${PREMIUM_ADDON_MONTHLY_USD}/prompt/mo beyond what your plan includes.
+						{namePlatforms("api")} are called directly, which shows how each model describes your brand from what it
+						already knows — nothing is searched, so nothing is cited. On Pro and Business you can also track a prompt on
+						a premium model with its own web search switched on — {namePlatforms("premium", "disjunction")} — for
+						grounded, cited answers, at ${PREMIUM_ADDON_MONTHLY_USD} per pairing per month beyond what your plan
+						includes.
 					</p>
 				</div>
 			</div>

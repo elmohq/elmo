@@ -26,14 +26,6 @@ export * from "./schema-auth";
 
 export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
 
-/**
- * Per-prompt Claude tracking assignment (cloud plans). NULL = not
- * assigned. Assigned prompts run Claude once daily — "web" uses Anthropic
- * native web search (capped), "base" runs the bare model. Counted against the
- * org's Claude pool (plan included + purchased add-on). Unused outside cloud:
- * self-hosted deployments track Claude by putting it in SCRAPE_TARGETS instead.
- */
-
 export const brands = pgTable(
 	"brands",
 	{

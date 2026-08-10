@@ -13,6 +13,7 @@
 import { DEFAULT_APP_URL } from "@workspace/config/constants";
 import { getEnv } from "@workspace/config/env";
 import { PAST_DUE_GRACE_DAYS } from "@workspace/config/plans";
+import { ORG_ADMIN_ROLES } from "@workspace/config/roles";
 import { db } from "@workspace/lib/db/db";
 import { brands, member, organization, user } from "@workspace/lib/db/schema";
 import { and, asc, eq, inArray } from "drizzle-orm";
@@ -43,13 +44,13 @@ export function dunningNoticeForStatusChange(previousStatus: string | undefined,
 	return null;
 }
 
-/** Billing email goes to the same roles isOrgBillingAdmin accepts. */
+/** Billing email goes to whoever could act on it — the same roles that may manage the plan. */
 async function billingRecipients(organizationId: string): Promise<string[]> {
 	const rows = await db
 		.select({ email: user.email })
 		.from(member)
 		.innerJoin(user, eq(member.userId, user.id))
-		.where(and(eq(member.organizationId, organizationId), inArray(member.role, ["admin", "owner"])));
+		.where(and(eq(member.organizationId, organizationId), inArray(member.role, [...ORG_ADMIN_ROLES])));
 	return [...new Set(rows.map((row) => row.email))];
 }
 

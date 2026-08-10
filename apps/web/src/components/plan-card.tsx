@@ -8,14 +8,8 @@
  * one; everything else is read from the catalog.
  */
 import { IconCheck, IconPlus } from "@tabler/icons-react";
-import { getModelMeta } from "@workspace/config/models";
-import {
-	type PlanDefinition,
-	type PlanPlatformGroup,
-	PREMIUM_ADDON_MONTHLY_USD,
-	planPlatformBreakdown,
-} from "@workspace/config/plans";
-import { PlatformTier, type PlatformTierRow } from "@workspace/ui/brand/platform-tier";
+import { type PlanDefinition, PREMIUM_ADDON_MONTHLY_USD, planPlatformBreakdown } from "@workspace/config/plans";
+import { PlatformTier } from "@workspace/ui/brand/platform-tier";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { cn } from "@workspace/ui/lib/utils";
@@ -31,11 +25,6 @@ function planQuotas(plan: PlanDefinition): string[] {
 	];
 }
 
-/** The catalog's tier, as the shared renderer wants it. */
-function tierRows(group: PlanPlatformGroup): PlatformTierRow[] {
-	return group.models.map(({ model, label }) => ({ iconId: getModelMeta(model).iconId, label }));
-}
-
 /**
  * A plan's platforms, in the three tiers it sells. The first two spend the pick
  * budget and run on every prompt; the premium tier is chosen per prompt and adds
@@ -49,12 +38,16 @@ function PlanPlatforms({ plan }: { plan: PlanDefinition }) {
 			<p className="text-xs font-medium">{breakdown.pickHeading}</p>
 
 			{breakdown.pickGroups.map((group) => (
-				<PlatformTier key={group.id} {...group} models={tierRows(group)} />
+				<PlatformTier key={group.id} label={group.label} runsPerDay={group.runsPerDay} models={group.models} />
 			))}
 
 			{breakdown.premium && (
 				<div className="space-y-1 border-t pt-3">
-					<PlatformTier {...breakdown.premium} models={tierRows(breakdown.premium)} />
+					<PlatformTier
+						label={breakdown.premium.label}
+						runsPerDay={breakdown.premium.runsPerDay}
+						models={breakdown.premium.models}
+					/>
 					<p className="text-[11px] leading-snug text-muted-foreground">{breakdown.premium.summary}</p>
 				</div>
 			)}

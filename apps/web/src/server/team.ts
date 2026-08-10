@@ -8,12 +8,12 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
+import { isOrgAdminRole } from "@workspace/config/roles";
 import { db } from "@workspace/lib/db/db";
 import { invitation, member, organization, user } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess, requireBrandOrganization } from "@/lib/auth/helpers";
-import { isOrgAdminRole } from "@/lib/auth/roles";
 import { auth } from "@/lib/auth/server";
 import { getDeployment } from "@/lib/config/server";
 

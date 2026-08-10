@@ -175,7 +175,12 @@ export function decideCadenceOverride(
 	);
 }
 
-function assertAllowed(decision: EntitlementDecision): void {
+/**
+ * Turn a decision into the thrown form. Exported so a caller that already holds
+ * entitlements can use the pure decide* functions directly and still raise the
+ * same error every other write path raises.
+ */
+export function assertAllowed(decision: EntitlementDecision): void {
 	if (!decision.allowed) throw new EntitlementError(decision.code, decision.message);
 }
 
@@ -215,40 +220,76 @@ export async function countOrgAssignedPremiumSlots(organizationId: string): Prom
 // Asserts wired into write paths
 // ---------------------------------------------------------------------------
 
+/**
+ * Load the org's entitlements once, then run `decide` against them. Unlimited
+ * entitlements return before `decide` runs, so the usage counts a decision needs
+ * are never queried outside cloud.
+ */
 async function withEntitlements(
 	organizationId: string,
-	decide: (entitlements: Entitlements) => EntitlementDecision | Promise<EntitlementDecision>,
+	decide: (entitlements: Entitlements) => EntitlementDecision[] | Promise<EntitlementDecision[]>,
 ): Promise<void> {
 	const entitlements = await getOrgEntitlements(organizationId);
 	if (entitlements.unlimited) return;
-	assertAllowed(await decide(entitlements));
+	for (const decision of await decide(entitlements)) assertAllowed(decision);
 }
 
 export async function assertCanCreateBrand(organizationId: string): Promise<void> {
-	await withEntitlements(organizationId, async (entitlements) =>
+	await withEntitlements(organizationId, async (entitlements) => [
 		decideBrandCreate(entitlements, await countOrgBrands(organizationId)),
-	);
+	]);
 }
 
 /** Guard creating `adding` new enabled prompts (or re-enabling that many). */
 export async function assertCanAddPrompts(organizationId: string, adding: number): Promise<void> {
 	if (adding <= 0) return;
-	await withEntitlements(organizationId, async (entitlements) =>
+	await withEntitlements(organizationId, async (entitlements) => [
 		decidePromptAdd(entitlements, await countOrgEnabledPrompts(organizationId), adding),
-	);
+	]);
 }
 
 export async function assertEnabledModelsAllowed(organizationId: string, requestedModels: string[]): Promise<void> {
-	await withEntitlements(organizationId, (entitlements) => decideEnabledModels(entitlements, requestedModels));
+	await withEntitlements(organizationId, (entitlements) => [decideEnabledModels(entitlements, requestedModels)]);
 }
 
 export async function assertCanAssignPremium(organizationId: string, adding: number): Promise<void> {
 	if (adding <= 0) return;
-	await withEntitlements(organizationId, async (entitlements) =>
+	await withEntitlements(organizationId, async (entitlements) => [
 		decidePremiumAssign(entitlements, await countOrgAssignedPremiumSlots(organizationId), adding),
-	);
+	]);
 }
 
 export async function assertCadenceAllowed(organizationId: string, requestedDelayHours: number | null): Promise<void> {
-	await withEntitlements(organizationId, (entitlements) => decideCadenceOverride(entitlements, requestedDelayHours));
+	await withEntitlements(organizationId, (entitlements) => [decideCadenceOverride(entitlements, requestedDelayHours)]);
+}
+
+/**
+ * What a prompts save adds to the org's pools: enabled prompts and premium
+ * prompt/model pairings. Both are net figures — a save that disables as many
+ * prompts as it enables adds nothing and needs no permission.
+ */
+export interface PromptSaveDelta {
+	prompts: number;
+	premiumPairings: number;
+}
+
+/**
+ * Guard a whole prompts save against both pools it can spend. One entitlement
+ * load and one parallel round of counts, rather than the two of each that
+ * calling the single-limit asserts back to back would cost — and the two limits
+ * are decided against the same snapshot, so a save can't pass one against a
+ * plan the other was denied under.
+ */
+export async function assertPromptSaveAllowed(organizationId: string, delta: PromptSaveDelta): Promise<void> {
+	if (delta.prompts <= 0 && delta.premiumPairings <= 0) return;
+	await withEntitlements(organizationId, async (entitlements) => {
+		const [enabledPrompts, assignedPremium] = await Promise.all([
+			delta.prompts > 0 ? countOrgEnabledPrompts(organizationId) : 0,
+			delta.premiumPairings > 0 ? countOrgAssignedPremiumSlots(organizationId) : 0,
+		]);
+		return [
+			decidePromptAdd(entitlements, enabledPrompts, delta.prompts),
+			decidePremiumAssign(entitlements, assignedPremium, delta.premiumPairings),
+		];
+	});
 }

@@ -9,11 +9,18 @@ import {
 	decideBrandCreate,
 	decideCadenceOverride,
 	decideEnabledModels,
+	type EntitlementDecision,
 	decidePremiumAssign,
 	decidePromptAdd,
 } from "./guards";
 
 const NOW = new Date("2026-08-05T12:00:00Z");
+
+/** Assert the denial and hand back what it told the customer, in one step. */
+function denialMessage(decision: EntitlementDecision): string {
+	if (decision.allowed) throw new Error("expected a denial, got an allow");
+	return decision.message;
+}
 
 function planEntitlements(plan: string): Entitlements {
 	return resolveEntitlements({
@@ -60,9 +67,9 @@ describe("decideBrandCreate", () => {
 	it("points at an upgrade only while one sells more brands", () => {
 		// Pro has Business above it; Business is the top of the ladder, so there
 		// is nothing to upgrade to and the answer is a custom agreement.
-		expect(decideBrandCreate(PRO, 2).message).toMatch(/upgrade/i);
-		expect(decideBrandCreate(planEntitlements("business"), 5).message).toMatch(/custom plan/i);
-		expect(decideBrandCreate(planEntitlements("business"), 5).message).not.toMatch(/upgrade/i);
+		expect(denialMessage(decideBrandCreate(PRO, 2))).toMatch(/upgrade/i);
+		expect(denialMessage(decideBrandCreate(planEntitlements("business"), 5))).toMatch(/custom plan/i);
+		expect(denialMessage(decideBrandCreate(planEntitlements("business"), 5))).not.toMatch(/upgrade/i);
 	});
 
 	it("lets a custom plan raise the limit", () => {

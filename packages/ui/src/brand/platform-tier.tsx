@@ -8,7 +8,8 @@
  * remembered twice.
  *
  * Takes resolved rows rather than model ids so this package stays free of the
- * plan catalog; the caller already knows how to name a model.
+ * plan catalog. The catalog resolves them (`PlanPlatformMember`), which is why
+ * neither caller needs an adapter.
  */
 import { ModelIcon } from "./model-icon";
 

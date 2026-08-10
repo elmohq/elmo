@@ -16,6 +16,7 @@ import {
 	resolvePromptRunPlan,
 	selectDueTargets,
 	targetKey,
+	targetOverdueStatus,
 } from "./policy";
 
 const NOW = new Date("2026-08-05T12:00:00Z");
@@ -485,6 +486,56 @@ describe("dueness metering", () => {
 			[targetKey(fresh.config), new Date(NOW.getTime() - 1 * 3600 * 1000)], // healthy, fresh
 		]);
 		expect(selectDueTargets([plan, fresh], lastRuns, NOW).map((t) => t.config.model)).toEqual(["chatgpt"]);
+	});
+});
+
+describe("targetOverdueStatus", () => {
+	const promptCreatedAt = new Date(NOW.getTime() - 30 * 24 * 3600 * 1000);
+	const status = (over: Partial<Parameters<typeof targetOverdueStatus>[0]>) =>
+		targetOverdueStatus({
+			intervalHours: 6,
+			lastRunAt: null,
+			promptCreatedAt,
+			now: NOW.getTime(),
+			...over,
+		});
+
+	it("never-run targets on a long-established prompt are overdue, with no measurable lateness", () => {
+		expect(status({ lastRunAt: null })).toEqual({ isOverdue: true, overdueByMs: null });
+	});
+
+	it("a freshly created prompt is not overdue inside its grace window", () => {
+		expect(
+			status({ lastRunAt: null, promptCreatedAt: new Date(NOW.getTime() - 60_000), graceMs: 30 * 60 * 1000 }),
+		).toEqual({ isOverdue: false, overdueByMs: null });
+	});
+
+	it("a run inside the interval is on schedule", () => {
+		expect(status({ lastRunAt: new Date(NOW.getTime() - 3600 * 1000) })).toEqual({
+			isOverdue: false,
+			overdueByMs: null,
+		});
+	});
+
+	it("exactly one interval late is still on schedule — overdue means past it", () => {
+		expect(status({ lastRunAt: new Date(NOW.getTime() - 6 * 3600 * 1000) }).isOverdue).toBe(false);
+	});
+
+	it("reports how far past the interval a stale run is", () => {
+		const lastRunAt = new Date(NOW.getTime() - 8 * 3600 * 1000);
+		expect(status({ lastRunAt })).toEqual({ isOverdue: true, overdueByMs: 2 * 3600 * 1000 });
+	});
+
+	it("grace pushes the threshold out without changing the reported lateness", () => {
+		const lastRunAt = new Date(NOW.getTime() - 6.25 * 3600 * 1000);
+		expect(status({ lastRunAt, graceMs: 30 * 60 * 1000 }).isOverdue).toBe(false);
+		expect(status({ lastRunAt }).overdueByMs).toBe(0.25 * 3600 * 1000);
+	});
+
+	it("follows the target's own interval, so a slow target is judged slowly", () => {
+		const lastRunAt = new Date(NOW.getTime() - 12 * 3600 * 1000);
+		expect(status({ lastRunAt, intervalHours: 6 }).isOverdue).toBe(true);
+		expect(status({ lastRunAt, intervalHours: 24 }).isOverdue).toBe(false);
 	});
 });
 

@@ -276,6 +276,25 @@ export interface PlanPlatformMember {
 	model: string;
 	/** What to call it in this tier; the premium tier names the grounded variant. */
 	label: string;
+	/** Which logo stands for it. Resolved here so the shared tier renderer stays free of the catalog. */
+	iconId: string;
+}
+
+/**
+ * Everything sold in a tier, across all plans — for prose that names the
+ * platforms rather than tabulating them. Derived rather than written out so a
+ * new entry in CLOUD_PLATFORMS can't leave a paragraph quietly out of date.
+ */
+export function platformTierMembers(tier: PlanPlatformGroupId): PlanPlatformMember[] {
+	const models =
+		tier === "premium"
+			? PREMIUM_MODELS
+			: STANDARD_PLATFORM_MENU.filter((model) => CLOUD_PLATFORMS[model]?.access === tier);
+	return models.map((model) => ({
+		model,
+		label: tier === "premium" ? premiumModelLabel(model) : getModelMeta(model).label,
+		iconId: getModelMeta(model).iconId,
+	}));
 }
 
 export interface PlanPlatformGroup {
@@ -339,7 +358,7 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 	const inTier = (access: ProviderAccessKind): PlanPlatformMember[] =>
 		plan.platformMenu
 			.filter((model) => CLOUD_PLATFORMS[model]?.access === access)
-			.map((model) => ({ model, label: getModelMeta(model).label }));
+			.map((model) => ({ model, label: getModelMeta(model).label, iconId: getModelMeta(model).iconId }));
 
 	const groups: PlanPlatformGroup[] = [
 		{
@@ -370,7 +389,11 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 					id: "premium",
 					label: PLATFORM_TIER_LABELS.premium,
 					runsPerDay: PREMIUM_RUNS_PER_DAY,
-					models: PREMIUM_MODELS.map((model) => ({ model, label: premiumModelLabel(model) })),
+					models: PREMIUM_MODELS.map((model) => ({
+						model,
+						label: premiumModelLabel(model),
+						iconId: getModelMeta(model).iconId,
+					})),
 					includedSlots: plan.premiumIncluded,
 					addonAvailable: plan.premiumAddonAvailable,
 					summary: premiumSummary(plan),

@@ -152,6 +152,17 @@ function PremiumModelsField({
 	);
 }
 
+/**
+ * Every column layout the table can take, spelled out rather than assembled at
+ * runtime: Tailwind only generates class names that appear literally in source.
+ */
+const GRID_COLS: Record<string, string> = {
+	"system-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_2.75rem]",
+	"system-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
+	"plain-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
+	"plain-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
+};
+
 interface PromptsListEditorProps {
 	prompts: EditablePrompt[];
 	onChange: (next: EditablePrompt[]) => void;
@@ -255,16 +266,8 @@ export function PromptsListEditor({
 
 	// Desktop layout only — column order is
 	// [select] [text] [system?] [tags] [premium?] [switch]. Mobile renders a
-	// stacked per-prompt block instead (no selection, no bulk). Spelled out per
-	// combination rather than joined at runtime: Tailwind only sees class names
-	// that appear literally in the source.
-	const gridCols = showSystemTags
-		? premium
-			? "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem]"
-			: "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_2.75rem]"
-		: premium
-			? "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]"
-			: "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]";
+	// stacked per-prompt block instead (no selection, no bulk).
+	const gridCols = GRID_COLS[`${showSystemTags ? "system" : "plain"}-${premium ? "premium" : "basic"}`];
 
 	return (
 		<div className="space-y-4">

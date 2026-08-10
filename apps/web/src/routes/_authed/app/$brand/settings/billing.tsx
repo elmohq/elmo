@@ -17,6 +17,7 @@ import {
 	planDisplayName,
 	summarizeSubscriptionCost,
 } from "@workspace/config/plans";
+import { isOrgAdminRole } from "@workspace/config/roles";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
@@ -27,7 +28,6 @@ import { Label } from "@workspace/ui/components/label";
 import { Progress } from "@workspace/ui/components/progress";
 import { type ReactNode, useState } from "react";
 import { PlanCard } from "@/components/plan-card";
-import { isOrgAdminRole } from "@/lib/auth/roles";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { type BillingState, getBillingStateFn, setPremiumAddonQuantityFn } from "@/server/billing";
 

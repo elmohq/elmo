@@ -59,6 +59,11 @@ export interface ResolveRunPlanInput {
 	withinPromptPool?: boolean;
 }
 
+/** Hours between runs for a daily rate, guarding the zero a paused plan carries. */
+function intervalForRate(runsPerDay: number): number {
+	return 24 / Math.max(1, runsPerDay);
+}
+
 export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan {
 	if (input.mode !== "cloud") {
 		const interval = input.brand.delayOverrideHours ?? input.defaultDelayHours;
@@ -96,13 +101,12 @@ export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan 
 	// A cadence override may only slow sampling below the plan rate. The write
 	// path enforces the same floor, but a stored override can be faster than
 	// the plan after a downgrade — clamp it here so it never speeds anything up.
+	// The brand's one override governs both rates: it is the customer saying
+	// "sample me less often", which is not a statement about a particular tier.
 	const overrideHours = input.brand.delayOverrideHours;
-	const planStandardInterval = 24 / Math.max(1, entitlements.standardRunsPerDay ?? 1);
-	const standardInterval = Math.max(overrideHours ?? planStandardInterval, planStandardInterval);
-	const premiumInterval = Math.max(
-		overrideHours ?? 24 / Math.max(1, entitlements.premiumRunsPerDay),
-		24 / Math.max(1, entitlements.premiumRunsPerDay),
-	);
+	const slowerOf = (planInterval: number) => Math.max(overrideHours ?? planInterval, planInterval);
+	const standardInterval = slowerOf(intervalForRate(entitlements.standardRunsPerDay ?? 1));
+	const premiumInterval = slowerOf(intervalForRate(entitlements.premiumRunsPerDay));
 	const replication = entitlements.replication ?? 1;
 	for (const model of picks.slice(0, entitlements.platformPicks ?? picks.length)) {
 		// A pick always means the ungrounded target: the grounded one is sold from
@@ -164,6 +168,41 @@ export function isTargetDue(plan: TargetPlan, lastRunAt: Date | undefined, now: 
 	if (!lastRunAt) return true;
 	const intervalMs = plan.intervalHours * 3600 * 1000;
 	return now.getTime() - lastRunAt.getTime() >= intervalMs - dueToleranceMs(plan.intervalHours);
+}
+
+export interface TargetOverdueStatus {
+	isOverdue: boolean;
+	/** How far past cadence the last run is, in ms; null when never run or on schedule. */
+	overdueByMs: number | null;
+}
+
+/**
+ * Whether a target has missed its cadence — the single definition of "overdue",
+ * shared by the maintenance sweep, the Sentry alert, and the admin dashboard.
+ *
+ * Distinct from `isTargetDue`, which asks whether to run now (and so leans
+ * early, with jitter tolerance). This asks whether something is wrong, and so
+ * leans late: a target is overdue only once it is a whole interval past its last
+ * run, plus whatever grace the caller wants. A target that has never run is
+ * overdue once the prompt itself is past the grace window — failed runs record
+ * no row, so a target broken on one provider shows up even while its siblings
+ * stay fresh.
+ */
+export function targetOverdueStatus(input: {
+	intervalHours: number;
+	lastRunAt: Date | null | undefined;
+	promptCreatedAt: Date;
+	now: number;
+	graceMs?: number;
+}): TargetOverdueStatus {
+	const graceMs = input.graceMs ?? 0;
+	if (!input.lastRunAt) {
+		return { isOverdue: input.now - input.promptCreatedAt.getTime() > graceMs, overdueByMs: null };
+	}
+	const intervalMs = input.intervalHours * 3600 * 1000;
+	const sinceRun = input.now - input.lastRunAt.getTime();
+	if (sinceRun > intervalMs + graceMs) return { isOverdue: true, overdueByMs: sinceRun - intervalMs };
+	return { isOverdue: false, overdueByMs: null };
 }
 
 export function selectDueTargets(targets: TargetPlan[], lastRunAtByKey: Map<string, Date>, now: Date): TargetPlan[] {

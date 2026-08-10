@@ -1,10 +1,12 @@
 export type { Entitlements } from "@workspace/config/entitlements";
 export {
+	assertAllowed,
 	assertCadenceAllowed,
 	assertCanAddPrompts,
 	assertCanAssignPremium,
 	assertCanCreateBrand,
 	assertEnabledModelsAllowed,
+	assertPromptSaveAllowed,
 	countOrgAssignedPremiumSlots,
 	countOrgBrands,
 	countOrgEnabledPrompts,
@@ -16,10 +18,12 @@ export {
 	type EntitlementDecision,
 	type EntitlementDenialCode,
 	EntitlementError,
+	type PromptSaveDelta,
 } from "./guards";
 export {
 	getBrandOrganizationId,
 	getOrgBillingState,
+	getOrgBillingStates,
 	getOrgEntitlements,
 	getOrgEntitlementsMap,
 	type OrgBillingState,

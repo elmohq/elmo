@@ -18,7 +18,6 @@
 		"./auth/client": "./src/auth/client.ts",
 		"./auth/permissions": "./src/auth/permissions.ts",
 		"./constants": "./src/constants.ts",
-		"./overdue": "./src/overdue.ts",
 		"./text-extraction": "./src/text-extraction.ts",
 		"./onboarding": "./src/onboarding/index.ts",
 		"./tag-utils": "./src/tag-utils.ts",

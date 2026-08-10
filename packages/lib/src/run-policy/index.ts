@@ -20,6 +20,8 @@ export {
 	type ResolveRunPlanInput,
 	resolvePromptRunPlan,
 	selectDueTargets,
+	type TargetOverdueStatus,
+	targetOverdueStatus,
 	type TargetPlan,
 	targetKey,
 } from "./policy";
