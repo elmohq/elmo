@@ -7,4 +7,4 @@
 "@workspace/www": patch
 ---
 
-Added Elmo Cloud plans: self-serve Stripe checkout, plan-based tracking limits, a premium pool of grounded models, and a billing page with usage and add-ons.
+Adds behind-the-scenes support for Elmo Cloud.
