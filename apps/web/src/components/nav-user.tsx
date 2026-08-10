@@ -31,6 +31,11 @@ export function NavUser({ canSwitchBrand = true }: { canSwitchBrand?: boolean } 
 
 	const isNameEmailSame = user.name?.trim().toLowerCase() === user.email?.trim().toLowerCase();
 
+	const branding = clientConfig?.branding;
+	const parentDashboard =
+		branding?.parentUrl && branding?.parentName ? { url: branding.parentUrl, name: branding.parentName } : null;
+	const hasDestinations = canSwitchBrand || parentDashboard !== null;
+
 	return (
 		<SidebarMenu>
 			<SidebarMenuItem>
@@ -74,25 +79,33 @@ export function NavUser({ canSwitchBrand = true }: { canSwitchBrand?: boolean } 
 							</div>
 						</DropdownMenuLabel>
 						<DropdownMenuSeparator />
-						<DropdownMenuGroup>
-							{canSwitchBrand && (
-								<DropdownMenuItem asChild className="cursor-pointer">
-									<Link to="/app" onClick={() => setOpenMobile(false)}>
-										<IconStatusChange />
-										Switch Brand
-									</Link>
-								</DropdownMenuItem>
-							)}
-							{clientConfig?.branding.parentUrl && clientConfig?.branding.parentName && (
-								<DropdownMenuItem asChild className="cursor-pointer">
-									<a href={clientConfig.branding.parentUrl} target="_blank" rel="noreferrer">
-										<IconExternalLink />
-										{clientConfig.branding.parentName} Dashboard
-									</a>
-								</DropdownMenuItem>
-							)}
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
+						{/* The group and the rule under it come and go together: a
+						    deployment with no parent dashboard, on a page that cannot
+						    switch brand, would otherwise draw two rules with nothing
+						    between them. */}
+						{hasDestinations && (
+							<>
+								<DropdownMenuGroup>
+									{canSwitchBrand && (
+										<DropdownMenuItem asChild className="cursor-pointer">
+											<Link to="/app" onClick={() => setOpenMobile(false)}>
+												<IconStatusChange />
+												Switch Brand
+											</Link>
+										</DropdownMenuItem>
+									)}
+									{parentDashboard && (
+										<DropdownMenuItem asChild className="cursor-pointer">
+											<a href={parentDashboard.url} target="_blank" rel="noreferrer">
+												<IconExternalLink />
+												{parentDashboard.name} Dashboard
+											</a>
+										</DropdownMenuItem>
+									)}
+								</DropdownMenuGroup>
+								<DropdownMenuSeparator />
+							</>
+						)}
 						<DropdownMenuItem
 							className="cursor-pointer"
 							onClick={() => {
