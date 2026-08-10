@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS } from "../config";
 import { openrouter } from "./openrouter";
 
@@ -16,6 +17,7 @@ function stubRawFetch(rawResponse: string) {
 	const fetchMock = vi.fn().mockResolvedValue({
 		ok: true,
 		text: async () => rawResponse,
+		json: async () => JSON.parse(rawResponse),
 	});
 	vi.stubGlobal("fetch", fetchMock);
 	return fetchMock;
@@ -32,6 +34,36 @@ afterEach(() => {
 });
 
 describe("openrouter run", () => {
+	it("caps output tokens for structured research", async () => {
+		const fetchMock = stubRawFetch(
+			JSON.stringify({ choices: [{ message: { content: JSON.stringify({ answer: "ok" }) } }] }),
+		);
+		const checkpointResult = vi.fn().mockResolvedValue(undefined);
+
+		const result = await openrouter.runStructuredResearch?.({
+			prompt: "prompt",
+			schema: z.object({ answer: z.string() }),
+			webSearch: false,
+			checkpointResult,
+		});
+
+		expect(sentBody(fetchMock).max_tokens).toBe(API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter);
+		expect(checkpointResult).toHaveBeenCalledWith(result);
+	});
+
+	it("does not return structured work before its checkpoint succeeds", async () => {
+		stubRawFetch(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ answer: "ok" }) } }] }));
+		const checkpointError = new Error("checkpoint unavailable");
+
+		await expect(
+			openrouter.runStructuredResearch?.({
+				prompt: "prompt",
+				schema: z.object({ answer: z.string() }),
+				checkpointResult: vi.fn().mockRejectedValue(checkpointError),
+			}),
+		).rejects.toBe(checkpointError);
+	});
+
 	it("caps output tokens and requests web search via the :online alias", async () => {
 		const fetchMock = stubFetch();
 

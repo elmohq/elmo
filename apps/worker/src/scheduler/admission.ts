@@ -22,6 +22,6 @@ export function providerAdmissionRetryAt(input: {
 	const now = input.now ?? new Date();
 	if (input.reopenAt && input.reopenAt > now) return new Date(input.reopenAt.getTime() + 1000);
 	if (input.retryAt && input.retryAt > now) return new Date(input.retryAt.getTime() + 1000);
-	const delayMs = input.providerMaxConcurrency === 0 ? 60 * 60 * 1000 : 30 * 1000;
+	const delayMs = input.providerMaxConcurrency === 0 ? 60 * 60 * 1000 : 5 * 60 * 1000;
 	return new Date(now.getTime() + delayMs);
 }

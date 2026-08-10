@@ -1,21 +1,21 @@
 import { getDefaultDelayHours } from "@workspace/lib/constants";
-import { REPORT_GENERATION_DEADLINE_MS, REPORT_QUEUE, REPORT_QUEUE_OPTIONS } from "@workspace/lib/scheduler";
 import { db } from "@workspace/lib/db/db";
 import { brands, promptSchedules, prompts } from "@workspace/lib/db/schema";
+import { REPORT_GENERATION_DEADLINE_MS, REPORT_QUEUE, REPORT_QUEUE_OPTIONS } from "@workspace/lib/scheduler";
 import { eq, sql } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
 
 /**
  * Convert cadence hours to milliseconds.
  */
-export function hoursToMs(hours: number): number {
+function hoursToMs(hours: number): number {
 	return hours * 60 * 60 * 1000;
 }
 
 /**
  * Gets the cadence (delay between runs) for a prompt based on its brand's delay override or the default
  */
-export async function getPromptCadenceHours(promptId: string): Promise<number> {
+async function getPromptCadenceHours(promptId: string): Promise<number> {
 	const defaultDelayHours = getDefaultDelayHours();
 	try {
 		// Get the prompt to find its brand
@@ -83,13 +83,14 @@ export async function createPromptJobScheduler(promptId: string, options: Schedu
 	}
 }
 
-/**
- * Removes any scheduled jobs for a prompt.
- */
+/** Stop an in-progress schedule claim without discarding durable safety pauses. */
 export async function removePromptJobScheduler(promptId: string): Promise<boolean> {
 	try {
-		await db.delete(promptSchedules).where(eq(promptSchedules.promptId, promptId));
-		console.log(`Removed schedule for prompt ${promptId}`);
+		await db
+			.update(promptSchedules)
+			.set({ leaseOwner: null, leaseExpiresAt: null, updatedAt: new Date() })
+			.where(eq(promptSchedules.promptId, promptId));
+		console.log(`Deactivated schedule for prompt ${promptId}`);
 		return true;
 	} catch (error) {
 		console.error(`Failed to remove job scheduler for prompt ${promptId}:`, error);
@@ -108,32 +109,6 @@ export async function createMultiplePromptJobSchedulers(
 	const results = await Promise.allSettled(promptIds.map((promptId) => createPromptJobScheduler(promptId, options)));
 
 	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
-}
-
-/**
- * Removes schedules for multiple prompts.
- * Returns an array of results indicating success/failure for each prompt.
- */
-export async function removeMultiplePromptJobSchedulers(promptIds: string[]): Promise<boolean[]> {
-	const results = await Promise.allSettled(promptIds.map((promptId) => removePromptJobScheduler(promptId)));
-
-	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
-}
-
-/**
- * Recreates a schedule for a prompt (removes and creates).
- * Useful when cadence has changed or job needs to be reset.
- */
-export async function recreatePromptJobScheduler(promptId: string, options: SchedulerOptions = {}): Promise<boolean> {
-	try {
-		// Remove existing schedule if any (ignore errors if it doesn't exist)
-		await removePromptJobScheduler(promptId);
-		// Create new schedule
-		return await createPromptJobScheduler(promptId, options);
-	} catch (error) {
-		console.error(`Failed to recreate job scheduler for prompt ${promptId}:`, error);
-		return false;
-	}
 }
 
 /**
@@ -162,33 +137,6 @@ export async function sendImmediatePromptJob(promptId: string): Promise<boolean>
 		return true;
 	} catch (error) {
 		console.error(`Failed to request immediate run for prompt ${promptId}:`, error);
-		return false;
-	}
-}
-
-/**
- * Schedules the next run for a prompt after a delay.
- * Called by the worker after successful job completion.
- */
-export async function scheduleNextPromptRun(promptId: string, cadenceHours: number): Promise<boolean> {
-	try {
-		const now = new Date();
-		const nextRunAt = new Date(now.getTime() + hoursToMs(cadenceHours));
-		const [updatedSchedule] = await db
-			.update(promptSchedules)
-			.set({ nextRunAt, updatedAt: now })
-			.where(eq(promptSchedules.promptId, promptId))
-			.returning({ promptId: promptSchedules.promptId });
-
-		if (!updatedSchedule) {
-			console.warn(`Could not schedule next run for prompt ${promptId}: schedule does not exist`);
-			return false;
-		}
-
-		console.log(`Scheduled next run for prompt ${promptId} in ${cadenceHours}h`);
-		return true;
-	} catch (error) {
-		console.error(`Failed to schedule next run for prompt ${promptId}:`, error);
 		return false;
 	}
 }

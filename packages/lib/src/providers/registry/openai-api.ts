@@ -103,11 +103,13 @@ export const openaiApi: Provider = {
 		prompt,
 		schema,
 		signal,
+		checkpointResult,
 		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		const result = await generateText({
 			model: getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL),
 			maxRetries: 0,
+			maxOutputTokens: API_PROVIDER_MAX_OUTPUT_TOKENS["openai-api"],
 			abortSignal: signal
 				? AbortSignal.any([signal, AbortSignal.timeout(OPENAI_CALL_TIMEOUT_MS)])
 				: AbortSignal.timeout(OPENAI_CALL_TIMEOUT_MS),
@@ -122,9 +124,11 @@ export const openaiApi: Provider = {
 			output: Output.object({ schema }),
 			prompt,
 		});
-		return {
+		const structuredResult = {
 			object: result.output as T,
 			modelVersion: DEFAULT_RESEARCH_MODEL,
 		};
+		await checkpointResult?.(structuredResult);
+		return structuredResult;
 	},
 };

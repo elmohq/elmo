@@ -166,11 +166,13 @@ export const anthropicApi: Provider = {
 		prompt,
 		schema,
 		signal,
+		checkpointResult,
 		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		const result = await generateText({
 			model: getAnthropicLanguageModel(DEFAULT_RESEARCH_MODEL),
 			maxRetries: 0,
+			maxOutputTokens: API_PROVIDER_MAX_OUTPUT_TOKENS["anthropic-api"],
 			abortSignal: signal
 				? AbortSignal.any([signal, AbortSignal.timeout(ANTHROPIC_CALL_TIMEOUT_MS)])
 				: AbortSignal.timeout(ANTHROPIC_CALL_TIMEOUT_MS),
@@ -180,9 +182,11 @@ export const anthropicApi: Provider = {
 			output: Output.object({ schema }),
 			prompt,
 		});
-		return {
+		const structuredResult = {
 			object: result.output as T,
 			modelVersion: DEFAULT_RESEARCH_MODEL,
 		};
+		await checkpointResult?.(structuredResult);
+		return structuredResult;
 	},
 };

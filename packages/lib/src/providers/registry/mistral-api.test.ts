@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS } from "../config";
 import { mistralApi } from "./mistral-api";
 
@@ -28,6 +29,51 @@ afterEach(() => {
 });
 
 describe("mistral-api run", () => {
+	it("caps structured output tokens on the non-web path", async () => {
+		const fetchMock = stubFetch({ choices: [{ message: { content: JSON.stringify({ answer: "ok" }) } }] });
+		const checkpointResult = vi.fn().mockResolvedValue(undefined);
+
+		const result = await mistralApi.runStructuredResearch?.({
+			prompt: "prompt",
+			schema: z.object({ answer: z.string() }),
+			webSearch: false,
+			checkpointResult,
+		});
+
+		expect(calledUrl(fetchMock)).toContain("/v1/chat/completions");
+		expect(sentBody(fetchMock).max_tokens).toBe(CAP);
+		expect(checkpointResult).toHaveBeenCalledWith(result);
+	});
+
+	it("does not return structured work before its checkpoint succeeds", async () => {
+		stubFetch({ outputs: [{ type: "message", content: JSON.stringify({ answer: "ok" }) }] });
+		const checkpointError = new Error("checkpoint unavailable");
+
+		await expect(
+			mistralApi.runStructuredResearch?.({
+				prompt: "prompt",
+				schema: z.object({ answer: z.string() }),
+				checkpointResult: vi.fn().mockRejectedValue(checkpointError),
+			}),
+		).rejects.toBe(checkpointError);
+	});
+
+	it("caps structured output tokens on the web-search path", async () => {
+		const fetchMock = stubFetch({ outputs: [{ type: "message", content: JSON.stringify({ answer: "ok" }) }] });
+		const checkpointResult = vi.fn().mockResolvedValue(undefined);
+
+		const result = await mistralApi.runStructuredResearch?.({
+			prompt: "prompt",
+			schema: z.object({ answer: z.string() }),
+			webSearch: true,
+			checkpointResult,
+		});
+
+		expect(calledUrl(fetchMock)).toContain("/v1/conversations");
+		expect((sentBody(fetchMock).completion_args as Record<string, unknown>).max_tokens).toBe(CAP);
+		expect(checkpointResult).toHaveBeenCalledWith(result);
+	});
+
 	it("caps output tokens and keeps the web_search tool on the web path", async () => {
 		const fetchMock = stubFetch({ model: "mistral-medium-latest", outputs: [] });
 

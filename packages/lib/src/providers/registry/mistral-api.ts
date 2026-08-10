@@ -2,7 +2,7 @@ import { z } from "zod";
 import { getCredential } from "../../secrets";
 import type { Citation } from "../../text-extraction";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
-import { providerHttpResponseError, ProviderTaskFailedError } from "../errors";
+import { ProviderTaskFailedError, providerHttpResponseError } from "../errors";
 import type {
 	Provider,
 	ProviderOptions,
@@ -135,6 +135,7 @@ export const mistralApi: Provider = {
 		prompt,
 		schema,
 		signal,
+		checkpointResult,
 		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		const jsonSchema = z.toJSONSchema(schema as z.ZodType);
@@ -146,6 +147,7 @@ export const mistralApi: Provider = {
 					{
 						model: DEFAULT_RESEARCH_MODEL,
 						messages: [{ role: "user", content: prompt }],
+						max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS["mistral-api"],
 						response_format: {
 							type: "json_schema",
 							json_schema: { name: "research_output", strict: true, schema: jsonSchema },
@@ -161,10 +163,12 @@ export const mistralApi: Provider = {
 			} catch (error) {
 				throw new ProviderTaskFailedError("Mistral returned invalid structured JSON", { cause: error });
 			}
-			return {
+			const structuredResult = {
 				object: object as T,
 				modelVersion: data?.model ?? DEFAULT_RESEARCH_MODEL,
 			};
+			await checkpointResult?.(structuredResult);
+			return structuredResult;
 		}
 		// /v1/conversations forwards completion_args.response_format through to
 		// the underlying chat completion, so we can have web_search AND
@@ -177,6 +181,7 @@ export const mistralApi: Provider = {
 					inputs: prompt,
 					tools: [{ type: "web_search" }],
 					completion_args: {
+						max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS["mistral-api"],
 						response_format: {
 							type: "json_schema",
 							json_schema: { name: "research_output", strict: true, schema: jsonSchema },
@@ -193,9 +198,11 @@ export const mistralApi: Provider = {
 		} catch (error) {
 			throw new ProviderTaskFailedError("Mistral returned invalid structured JSON", { cause: error });
 		}
-		return {
+		const structuredResult = {
 			object: object as T,
 			modelVersion: data?.model ?? DEFAULT_RESEARCH_MODEL,
 		};
+		await checkpointResult?.(structuredResult);
+		return structuredResult;
 	},
 };

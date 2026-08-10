@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS, OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } from "../config";
 
 const aiMock = vi.hoisted(() => ({ generateText: vi.fn() }));
@@ -26,6 +27,34 @@ function sentArgs(): Record<string, any> {
 }
 
 describe("openai-api run", () => {
+	it("caps output tokens for structured research", async () => {
+		aiMock.generateText.mockResolvedValue({ output: { answer: "ok" } });
+		const checkpointResult = vi.fn().mockResolvedValue(undefined);
+		const result = await openaiApi.runStructuredResearch?.({
+			prompt: "prompt",
+			schema: z.object({ answer: z.string() }),
+			webSearch: false,
+			checkpointResult,
+		});
+
+		expect(sentArgs().maxOutputTokens).toBe(CAP);
+		expect(sentArgs().maxRetries).toBe(0);
+		expect(checkpointResult).toHaveBeenCalledWith(result);
+	});
+
+	it("does not return structured work before its checkpoint succeeds", async () => {
+		aiMock.generateText.mockResolvedValue({ output: { answer: "ok" } });
+		const checkpointError = new Error("checkpoint unavailable");
+
+		await expect(
+			openaiApi.runStructuredResearch?.({
+				prompt: "prompt",
+				schema: z.object({ answer: z.string() }),
+				checkpointResult: vi.fn().mockRejectedValue(checkpointError),
+			}),
+		).rejects.toBe(checkpointError);
+	});
+
 	it("caps output tokens and bounds web-search tool calls when webSearch is on", async () => {
 		await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
 

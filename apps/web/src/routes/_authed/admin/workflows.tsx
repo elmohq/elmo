@@ -36,13 +36,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { getAppName } from "@/lib/route-head";
-import {
-	abandonPromptProviderTaskFn,
-	getJobLogsFn,
-	getWorkflowDataFn,
-	releaseProviderReservationFn,
-	retryJobFn,
-} from "@/server/admin";
+import { getJobLogsFn, getWorkflowDataFn, releaseProviderReservationFn, retryJobFn } from "@/server/admin";
 
 // ============================================================================
 // Types
@@ -105,7 +99,6 @@ interface RecentJob {
 	data: { promptId?: string };
 	status: "completed" | "failed";
 	failedReason: string | null;
-	attemptsMade: number;
 	timestamp: number;
 	processedOn: number | null;
 	finishedOn: number | null;
@@ -114,10 +107,10 @@ interface RecentJob {
 interface ProviderReservation {
 	id: string;
 	provider: string;
+	model: string | null;
 	ownerType: string;
 	ownerId: string;
-	workKey: string | null;
-	attemptNumber: number;
+	workKey: string;
 	requestSummary: string | null;
 	externalTaskId: string | null;
 	submissionStartedAt: number | null;
@@ -128,21 +121,6 @@ interface ProviderReservation {
 	ownerWebsite: string | null;
 	reportStatus: string | null;
 	createdAt: number;
-	updatedAt: number;
-	confirmationPhrase: string;
-}
-
-interface UnresolvedProviderTask {
-	id: string;
-	provider: string;
-	model: string;
-	externalTaskId: string;
-	providerSubmittedAt: number | null;
-	availableAt: number;
-	errorMessage: string | null;
-	promptId: string;
-	promptValue: string;
-	brandName: string;
 	confirmationPhrase: string;
 }
 
@@ -158,7 +136,6 @@ interface WorkflowsData {
 	queue: QueueStats;
 	recentJobs: RecentJob[];
 	providerReservations: ProviderReservation[];
-	unresolvedProviderTasks: UnresolvedProviderTask[];
 	brands: BrandScheduleSummary[];
 }
 
@@ -415,16 +392,16 @@ function ProviderReservationsCard({
 					<AlertTriangle
 						className={reservations.length > 0 ? "h-5 w-5 text-amber-500" : "h-5 w-5 text-muted-foreground"}
 					/>
-					Unreleased Provider Reservations
+					Outstanding Paid Provider Work
 				</CardTitle>
 				<CardDescription>
-					These rows have not been released from provider capacity tracking. Their presence does not indicate whether
-					provider work is running, complete, or failed.
+					Every worker-managed provider call remains here until it has a durable result or a recorded terminal
+					resolution.
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
 				{reservations.length === 0 ? (
-					<p className="text-sm text-muted-foreground">No unreleased provider reservations.</p>
+					<p className="text-sm text-muted-foreground">No paid provider work is outstanding.</p>
 				) : (
 					<div className="space-y-3">
 						<div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
@@ -448,6 +425,7 @@ function ProviderReservationsCard({
 										<TableRow key={reservation.id}>
 											<TableCell>
 												<Badge variant="outline">{reservation.provider}</Badge>
+												{reservation.model && <p className="text-xs text-muted-foreground">{reservation.model}</p>}
 											</TableCell>
 											<TableCell className="max-w-56">
 												{reservation.externalTaskId ? (
@@ -471,9 +449,12 @@ function ProviderReservationsCard({
 												<div className="flex flex-wrap items-center gap-2">
 													<p className="font-mono text-xs text-muted-foreground">{reservation.ownerId}</p>
 													{reservation.workKey && <Badge variant="outline">{reservation.workKey}</Badge>}
-													<Badge variant="outline">attempt {reservation.attemptNumber}</Badge>
 													<Badge variant="secondary">
-														{reservation.submissionStartedAt ? "submitted" : "prepared"}
+														{reservation.externalTaskId
+															? "accepted"
+															: reservation.submissionStartedAt
+																? "submitted"
+																: "prepared"}
 													</Badge>
 													{reservation.reportStatus && <Badge variant="secondary">{reservation.reportStatus}</Badge>}
 												</div>
@@ -495,142 +476,6 @@ function ProviderReservationsCard({
 							</TableBody>
 						</Table>
 					</div>
-				)}
-			</CardContent>
-		</Card>
-	);
-}
-
-function AbandonProviderTaskDialog({ task, onAbandoned }: { task: UnresolvedProviderTask; onAbandoned: () => void }) {
-	const [open, setOpen] = useState(false);
-	const [confirmation, setConfirmation] = useState("");
-	const [note, setNote] = useState("");
-	const [submitting, setSubmitting] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-
-	const close = () => {
-		setOpen(false);
-		setConfirmation("");
-		setNote("");
-		setError(null);
-	};
-
-	const abandon = async () => {
-		setSubmitting(true);
-		setError(null);
-		try {
-			await abandonPromptProviderTaskFn({
-				data: { runId: task.id, confirmationPhrase: confirmation, resolutionNote: note },
-			});
-			close();
-			onAbandoned();
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to abandon provider task");
-		} finally {
-			setSubmitting(false);
-		}
-	};
-
-	return (
-		<Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
-			<DialogTrigger asChild>
-				<Button variant="destructive" size="sm">
-					Abandon
-				</Button>
-			</DialogTrigger>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Stop resuming this provider task?</DialogTitle>
-					<DialogDescription>
-						Only do this after verifying that the provider task is terminal or cancelled. Elmo cannot make that
-						determination automatically.
-					</DialogDescription>
-				</DialogHeader>
-				<div className="space-y-4">
-					<p className="break-all rounded bg-muted p-3 font-mono text-xs">{task.confirmationPhrase}</p>
-					<Input
-						value={confirmation}
-						onChange={(event) => setConfirmation(event.target.value)}
-						placeholder="Type the phrase exactly"
-					/>
-					<Textarea
-						value={note}
-						onChange={(event) => setNote(event.target.value)}
-						placeholder="Record how the provider task was verified."
-						maxLength={2000}
-					/>
-					{error && <p className="text-sm text-destructive">{error}</p>}
-				</div>
-				<DialogFooter>
-					<Button variant="outline" onClick={close} disabled={submitting}>
-						Cancel
-					</Button>
-					<Button
-						variant="destructive"
-						onClick={abandon}
-						disabled={submitting || confirmation !== task.confirmationPhrase || note.trim().length === 0}
-					>
-						{submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-						Abandon task
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
-	);
-}
-
-function UnresolvedProviderTasksCard({
-	tasks,
-	onAbandoned,
-}: {
-	tasks: UnresolvedProviderTask[];
-	onAbandoned: () => void;
-}) {
-	return (
-		<Card className={tasks.length > 0 ? "border-amber-500/50" : ""}>
-			<CardHeader>
-				<CardTitle>Checkpointed Provider Tasks</CardTitle>
-				<CardDescription>
-					Accepted provider tasks waiting to resume. They continue to consume fleet capacity until provider-confirmed
-					completion or explicit operator resolution.
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				{tasks.length === 0 ? (
-					<p className="text-sm text-muted-foreground">No checkpointed provider tasks are waiting.</p>
-				) : (
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Provider</TableHead>
-								<TableHead>Brand / prompt</TableHead>
-								<TableHead>Task</TableHead>
-								<TableHead>Next poll</TableHead>
-								<TableHead className="text-right">Action</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{tasks.map((task) => (
-								<TableRow key={task.id}>
-									<TableCell>
-										<Badge variant="outline">{task.provider}</Badge>
-										<p className="text-xs text-muted-foreground">{task.model}</p>
-									</TableCell>
-									<TableCell className="max-w-80">
-										<p className="font-medium">{task.brandName}</p>
-										<p className="truncate text-xs text-muted-foreground" title={task.promptValue}>
-											{task.promptValue}
-										</p>
-									</TableCell>
-									<TableCell className="max-w-56 break-all font-mono text-xs">{task.externalTaskId}</TableCell>
-									<TableCell>{formatFutureTime(task.availableAt)}</TableCell>
-									<TableCell className="text-right">
-										<AbandonProviderTaskDialog task={task} onAbandoned={onAbandoned} />
-									</TableCell>
-								</TableRow>
-							))}
-						</TableBody>
-					</Table>
 				)}
 			</CardContent>
 		</Card>
@@ -1249,8 +1094,6 @@ function WorkflowsPage() {
 			<QueueStatsCard stats={data.queue} title="Durable Prompt Scheduler" />
 
 			<ProviderReservationsCard reservations={data.providerReservations} onReleased={() => fetchData(true)} />
-
-			<UnresolvedProviderTasksCard tasks={data.unresolvedProviderTasks} onAbandoned={() => fetchData(true)} />
 
 			{/* Brands Table */}
 			<Card>

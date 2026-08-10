@@ -6,4 +6,4 @@
 "@workspace/docs": patch
 ---
 
-Made AI provider work restart-safe with durable checkpoints, fleet-wide limits, and operator recovery controls.
+Made worker-managed AI provider work restart-safe with durable checkpoints, fleet-wide limits, and operator recovery controls.

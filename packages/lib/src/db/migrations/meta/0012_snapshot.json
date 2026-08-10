@@ -1,5 +1,5 @@
 {
-	"id": "d4dfe87c-78cc-4382-990f-2bc00587739c",
+	"id": "04c9464c-4afc-4c2c-88db-bd4649ba087d",
 	"prevId": "ad5207d7-2144-41ac-bd10-a7bcb37ed535",
 	"version": "7",
 	"dialect": "postgresql",
@@ -544,31 +544,12 @@
 					"primaryKey": false,
 					"notNull": false
 				},
-				"external_task_id": {
-					"name": "external_task_id",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": false
-				},
-				"attempt_count": {
-					"name": "attempt_count",
+				"local_attempts": {
+					"name": "local_attempts",
 					"type": "integer",
 					"primaryKey": false,
 					"notNull": true,
 					"default": 0
-				},
-				"processing_attempts": {
-					"name": "processing_attempts",
-					"type": "integer",
-					"primaryKey": false,
-					"notNull": true,
-					"default": 0
-				},
-				"result_payload": {
-					"name": "result_payload",
-					"type": "json",
-					"primaryKey": false,
-					"notNull": false
 				},
 				"failure_kind": {
 					"name": "failure_kind",
@@ -584,12 +565,6 @@
 				},
 				"started_at": {
 					"name": "started_at",
-					"type": "timestamp with time zone",
-					"primaryKey": false,
-					"notNull": false
-				},
-				"provider_submitted_at": {
-					"name": "provider_submitted_at",
 					"type": "timestamp with time zone",
 					"primaryKey": false,
 					"notNull": false
@@ -684,33 +659,6 @@
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
-				},
-				"prompt_execution_runs_provider_active_idx": {
-					"name": "prompt_execution_runs_provider_active_idx",
-					"columns": [
-						{
-							"expression": "provider",
-							"isExpression": false,
-							"asc": true,
-							"nulls": "last"
-						},
-						{
-							"expression": "status",
-							"isExpression": false,
-							"asc": true,
-							"nulls": "last"
-						},
-						{
-							"expression": "lease_expires_at",
-							"isExpression": false,
-							"asc": true,
-							"nulls": "last"
-						}
-					],
-					"isUnique": false,
-					"concurrently": false,
-					"method": "btree",
-					"with": {}
 				}
 			},
 			"foreignKeys": {
@@ -756,6 +704,12 @@
 					"primaryKey": false,
 					"notNull": true
 				},
+				"context_payload": {
+					"name": "context_payload",
+					"type": "json",
+					"primaryKey": false,
+					"notNull": false
+				},
 				"trigger": {
 					"name": "trigger",
 					"type": "prompt_execution_trigger",
@@ -781,7 +735,7 @@
 					"typeSchema": "public",
 					"primaryKey": false,
 					"notNull": true,
-					"default": "'pending'"
+					"default": "'running'"
 				},
 				"total_runs": {
 					"name": "total_runs",
@@ -806,13 +760,6 @@
 				},
 				"skipped_runs": {
 					"name": "skipped_runs",
-					"type": "integer",
-					"primaryKey": false,
-					"notNull": true,
-					"default": 0
-				},
-				"abandoned_runs": {
-					"name": "abandoned_runs",
 					"type": "integer",
 					"primaryKey": false,
 					"notNull": true,
@@ -922,17 +869,7 @@
 					"with": {}
 				}
 			},
-			"foreignKeys": {
-				"prompt_executions_prompt_id_prompts_id_fk": {
-					"name": "prompt_executions_prompt_id_prompts_id_fk",
-					"tableFrom": "prompt_executions",
-					"tableTo": "prompts",
-					"columnsFrom": ["prompt_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "no action"
-				}
-			},
+			"foreignKeys": {},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
 			"policies": {},
@@ -1202,31 +1139,24 @@
 					"primaryKey": false,
 					"notNull": false
 				},
-				"last_started_at": {
-					"name": "last_started_at",
-					"type": "timestamp with time zone",
-					"primaryKey": false,
-					"notNull": false
-				},
-				"last_completed_at": {
-					"name": "last_completed_at",
-					"type": "timestamp with time zone",
-					"primaryKey": false,
-					"notNull": false
-				},
-				"last_execution_status": {
-					"name": "last_execution_status",
-					"type": "prompt_execution_status",
-					"typeSchema": "public",
-					"primaryKey": false,
-					"notNull": false
-				},
 				"consecutive_failures": {
 					"name": "consecutive_failures",
 					"type": "integer",
 					"primaryKey": false,
 					"notNull": true,
 					"default": 0
+				},
+				"admission_paused_until": {
+					"name": "admission_paused_until",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"pause_reason": {
+					"name": "pause_reason",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
 				},
 				"created_at": {
 					"name": "created_at",
@@ -1421,12 +1351,252 @@
 			"checkConstraints": {},
 			"isRLSEnabled": true
 		},
+		"public.provider_call_reservations": {
+			"name": "provider_call_reservations",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "uuid",
+					"primaryKey": true,
+					"notNull": true,
+					"default": "gen_random_uuid()"
+				},
+				"provider": {
+					"name": "provider",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"circuit_key": {
+					"name": "circuit_key",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"owner_type": {
+					"name": "owner_type",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"owner_id": {
+					"name": "owner_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"work_key": {
+					"name": "work_key",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"request_fingerprint": {
+					"name": "request_fingerprint",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"request_metadata": {
+					"name": "request_metadata",
+					"type": "json",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"worker_id": {
+					"name": "worker_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"lease_expires_at": {
+					"name": "lease_expires_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"submission_started_at": {
+					"name": "submission_started_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"external_task_id": {
+					"name": "external_task_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"task_deadline_at": {
+					"name": "task_deadline_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"result_payload": {
+					"name": "result_payload",
+					"type": "json",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"attempt_count": {
+					"name": "attempt_count",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 0
+				},
+				"last_error": {
+					"name": "last_error",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"released_at": {
+					"name": "released_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"release_reason": {
+					"name": "release_reason",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"released_by": {
+					"name": "released_by",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"provider_call_reservations_active_idx": {
+					"name": "provider_call_reservations_active_idx",
+					"columns": [
+						{
+							"expression": "provider",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "released_at",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "lease_expires_at",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"provider_call_reservations_deadline_idx": {
+					"name": "provider_call_reservations_deadline_idx",
+					"columns": [
+						{
+							"expression": "released_at",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "task_deadline_at",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"provider_call_reservations_owner_idx": {
+					"name": "provider_call_reservations_owner_idx",
+					"columns": [
+						{
+							"expression": "owner_type",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "owner_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"provider_call_reservations_work_idx": {
+					"name": "provider_call_reservations_work_idx",
+					"columns": [
+						{
+							"expression": "owner_type",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "owner_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "work_key",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": true,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": true
+		},
 		"public.provider_health": {
 			"name": "provider_health",
 			"schema": "",
 			"columns": {
-				"provider": {
-					"name": "provider",
+				"circuit_key": {
+					"name": "circuit_key",
 					"type": "text",
 					"primaryKey": true,
 					"notNull": true
@@ -1536,6 +1706,12 @@
 					"notNull": true,
 					"default": 0
 				},
+				"provider_plan": {
+					"name": "provider_plan",
+					"type": "json",
+					"primaryKey": false,
+					"notNull": false
+				},
 				"raw_output": {
 					"name": "raw_output",
 					"type": "json",
@@ -1616,6 +1792,37 @@
 					"primaryKey": false,
 					"notNull": true,
 					"default": "now()"
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": true
+		},
+		"public.worker_scheduler_control": {
+			"name": "worker_scheduler_control",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"admission_closed_at": {
+					"name": "admission_closed_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"cutover_completed_at": {
+					"name": "cutover_completed_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
 				}
 			},
 			"indexes": {},
@@ -2373,12 +2580,12 @@
 		"public.prompt_execution_run_status": {
 			"name": "prompt_execution_run_status",
 			"schema": "public",
-			"values": ["pending", "running", "processing", "succeeded", "failed", "abandoned", "skipped"]
+			"values": ["pending", "running", "processing", "succeeded", "failed", "skipped"]
 		},
 		"public.prompt_execution_status": {
 			"name": "prompt_execution_status",
 			"schema": "public",
-			"values": ["pending", "running", "succeeded", "partial", "failed", "abandoned", "skipped"]
+			"values": ["running", "succeeded", "partial", "failed", "skipped"]
 		},
 		"public.prompt_execution_trigger": {
 			"name": "prompt_execution_trigger",

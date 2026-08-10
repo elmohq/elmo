@@ -8,33 +8,17 @@ import {
 	providerCallReservations,
 	providerHealth,
 } from "@workspace/lib/db/schema";
-import type {
-	StoredProviderPayload,
-	StoredProviderResult,
-	StoredRawProviderResponse,
-} from "@workspace/lib/provider-payload";
 import { decideExistingProviderReservation } from "@workspace/lib/provider-reservation";
 import type { ModelConfig } from "@workspace/lib/providers";
 import {
-	DEFAULT_PROVIDER_ATTEMPTS_PER_UNIT,
 	nextPromptRunAt,
+	PROVIDER_FAILURE_THRESHOLD,
 	PROVIDER_FATAL_COOLDOWN_MS,
-	providerCircuitKey,
 	transientProviderCooldownMs,
 } from "@workspace/lib/scheduler";
-import { eq, sql } from "drizzle-orm";
+import { eq, type SQL, sql } from "drizzle-orm";
 
-export type ExecutionRunFailureKind =
-	| "provider_transient"
-	| "provider_fatal"
-	| "provider_task_failed"
-	| "provider_ambiguous"
-	| "provider_rejected"
-	| "internal_before_provider"
-	| "internal_after_provider"
-	| "worker_lost_unknown"
-	| "execution_window_expired"
-	| "prompt_disabled";
+export type ExecutionRunFailureKind = "provider_fatal" | "execution_window_expired" | "prompt_disabled";
 
 export interface ScheduleClaim {
 	promptId: string;
@@ -49,22 +33,18 @@ export interface ExecutionRunClaim {
 	executionId: string;
 	promptId: string;
 	provider: string;
-	circuitKey: string;
 	model: string;
 	version: string | null;
 	webSearchEnabled: boolean;
+	targetIndex: number;
 	runIndex: number;
-	externalTaskId: string | null;
-	attemptCount: number;
 	phase: "provider" | "processing";
-	startedAt: Date;
 	context: PromptExecutionContextSnapshot;
 }
 
 export type {
 	StoredProviderPayload,
 	StoredProviderResult,
-	StoredRawProviderResponse,
 } from "@workspace/lib/provider-payload";
 
 export interface MaterializedExecution {
@@ -74,16 +54,22 @@ export interface MaterializedExecution {
 }
 
 export type ProviderReservationAttempt<TResult = unknown> =
-	| { state: "reserved"; id: string; externalTaskId: null; attemptNumber: number; attemptCount: number }
-	| { state: "resumed"; id: string; externalTaskId: string; attemptNumber: number; attemptCount: number }
-	| { state: "cached"; id: string; result: TResult; released: boolean; attemptNumber: number; attemptCount: number }
+	| { state: "ready"; id: string; externalTaskId: string | null; attemptCount: number }
+	| { state: "cached"; id: string; result: TResult; released: boolean; attemptCount: number }
 	| { state: "capacity" }
 	| { state: "budget"; limit: number }
 	| { state: "circuit"; reopenAt: Date | null }
 	| { state: "busy"; id: string; retryAt: Date }
 	| { state: "ambiguous"; id: string }
 	| { state: "terminal"; id: string; reason: string | null }
-	| { state: "conflict"; id: string; requestMetadata?: unknown };
+	| { state: "conflict"; id: string };
+
+export interface ProviderReservationIdentity {
+	provider: string;
+	circuitKey: string;
+	requestFingerprint: string;
+	requestMetadata: unknown;
+}
 
 interface ProviderHealthRow {
 	circuitState: "closed" | "open" | "half_open";
@@ -93,12 +79,14 @@ interface ProviderHealthRow {
 	probeRunId: string | null;
 }
 
+type SchedulerTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+class LostProviderReservationError extends Error {}
+
 const SCHEDULE_LEASE_MS = 60_000;
 const RUN_LEASE_MS = 45 * 60 * 1000;
-const AMBIGUOUS_CALL_QUARANTINE_MS = 24 * 60 * 60 * 1000;
 const RESERVATION_LEASE_MS = 15 * 60 * 1000;
 const PROVIDER_TASK_DEADLINE_MS = 24 * 60 * 60 * 1000;
-const PROCESSING_RETRY_LIMIT = 5;
 
 function asDate(value: string | Date): Date {
 	return value instanceof Date ? value : new Date(value);
@@ -108,33 +96,40 @@ function errorText(error: unknown): string {
 	return (error instanceof Error ? error.message : String(error)).slice(0, 4000);
 }
 
-/** Ensure desired schedule rows exist and remove intent for disabled prompts. */
+/** One definition of a provider slot in the sole paid-work ledger. */
+function activeProviderCallCount(provider: string | SQL, now: Date, excludedReservationId?: string): SQL {
+	const exclusion = excludedReservationId ? sql`AND reservation.id <> ${excludedReservationId}` : sql``;
+	return sql`(
+		SELECT COUNT(*) FROM provider_call_reservations reservation
+		 WHERE reservation.provider = ${provider}
+		   AND reservation.released_at IS NULL
+		   AND reservation.result_payload IS NULL
+		   ${exclusion}
+		   AND (
+		     reservation.lease_expires_at > ${now}
+		     OR reservation.external_task_id IS NOT NULL
+		     OR reservation.submission_started_at + interval '24 hours' > ${now}
+		   )
+	)`;
+}
+
+/** Ensure every enabled prompt has durable scheduling intent. */
 export async function reconcilePromptSchedules(now = new Date()): Promise<void> {
 	const defaultCadenceHours = getDefaultDelayHours();
-	await db.transaction(async (tx) => {
-		await tx.execute(sql`
-			INSERT INTO prompt_schedules (prompt_id, next_run_at, created_at, updated_at)
-			SELECT p.id,
-			       ${now} + make_interval(hours => CASE
-			         WHEN b.delay_override_hours > 0 THEN b.delay_override_hours
-			         ELSE ${defaultCadenceHours}
-			       END),
-			       ${now}, ${now}
-			FROM prompts p
-			JOIN brands b ON b.id = p.brand_id
-			WHERE p.enabled = true
-			  AND b.enabled = true
-			ON CONFLICT (prompt_id) DO NOTHING
-		`);
-
-		await tx.execute(sql`
-			DELETE FROM prompt_schedules ps
-			USING prompts p, brands b
-			WHERE ps.prompt_id = p.id
-			  AND b.id = p.brand_id
-			  AND (p.enabled = false OR b.enabled = false)
-		`);
-	});
+	await db.execute(sql`
+		INSERT INTO prompt_schedules (prompt_id, next_run_at, created_at, updated_at)
+		SELECT p.id,
+		       ${now} + make_interval(hours => CASE
+		         WHEN b.delay_override_hours > 0 THEN b.delay_override_hours
+		         ELSE ${defaultCadenceHours}
+		       END),
+		       ${now}, ${now}
+		FROM prompts p
+		JOIN brands b ON b.id = p.brand_id
+		WHERE p.enabled = true
+		  AND b.enabled = true
+		ON CONFLICT (prompt_id) DO NOTHING
+	`);
 }
 
 /** Lease one due recurring/manual intent. No paid work exists at this point. */
@@ -154,9 +149,9 @@ export async function claimDueSchedule(workerId: string, now = new Date()): Prom
 			  AND (ps.admission_paused_until IS NULL OR ps.admission_paused_until <= ${now})
 			  AND NOT EXISTS (
 				SELECT 1
-				FROM prompt_executions pe
-				WHERE pe.prompt_id = ps.prompt_id
-				  AND pe.status IN ('pending', 'running')
+					FROM prompt_executions pe
+					WHERE pe.prompt_id = ps.prompt_id
+					  AND pe.status = 'running'
 			  )
 			ORDER BY LEAST(ps.next_run_at, COALESCE(ps.run_requested_at, ps.next_run_at))
 			FOR UPDATE OF ps SKIP LOCKED
@@ -197,14 +192,6 @@ export async function claimDueSchedule(workerId: string, now = new Date()): Prom
 		cadenceHours: Number(row.cadence_hours),
 		enabledModels: row.enabled_models,
 	};
-}
-
-export async function releaseScheduleClaim(promptId: string, workerId: string): Promise<void> {
-	await db.execute(sql`
-		UPDATE prompt_schedules
-		SET lease_owner = NULL, lease_expires_at = NULL, updated_at = now()
-		WHERE prompt_id = ${promptId} AND lease_owner = ${workerId}
-	`);
 }
 
 /** Pause poison scheduling intent without dropping a pending manual request. */
@@ -316,24 +303,18 @@ export async function materializeScheduleClaim(input: {
 			})),
 		};
 
-		const [execution] = await tx
-			.insert(promptExecutions)
-			.values({
-				id: executionId,
-				promptId: claim.promptId,
-				contextPayload: context,
-				trigger,
-				scheduledFor,
-				notAfter: nextRunAt,
-				status: targets.length === 0 ? "skipped" : "pending",
-				totalRuns: targets.length * runsPerTarget,
-				startedAt: admittedAt,
-				completedAt: targets.length === 0 ? admittedAt : null,
-			})
-			.onConflictDoNothing()
-			.returning({ id: promptExecutions.id });
-
-		if (!execution) return null;
+		await tx.insert(promptExecutions).values({
+			id: executionId,
+			promptId: claim.promptId,
+			contextPayload: context,
+			trigger,
+			scheduledFor,
+			notAfter: nextRunAt,
+			status: targets.length === 0 ? "skipped" : "running",
+			totalRuns: targets.length * runsPerTarget,
+			startedAt: admittedAt,
+			completedAt: targets.length === 0 ? admittedAt : null,
+		});
 
 		const runRows = targets.flatMap((target, targetIndex) =>
 			Array.from({ length: runsPerTarget }, (_, runIndex) => ({
@@ -341,18 +322,14 @@ export async function materializeScheduleClaim(input: {
 				targetIndex,
 				runIndex: runIndex + 1,
 				provider: target.provider,
-				circuitKey: providerCircuitKey({
-					provider: target.provider,
-					model: target.model,
-					version: target.version,
-					webSearch: target.webSearch,
-				}),
 				model: target.model,
 				version: target.version,
 				webSearchEnabled: target.webSearch,
 			})),
 		);
-		if (runRows.length > 0) await tx.insert(promptExecutionRuns).values(runRows);
+		if (runRows.length > 0) {
+			await tx.insert(promptExecutionRuns).values(runRows);
+		}
 
 		await tx.execute(sql`
 			UPDATE prompt_schedules
@@ -363,12 +340,6 @@ export async function materializeScheduleClaim(input: {
 			    END,
 			    lease_owner = NULL,
 			    lease_expires_at = NULL,
-			    last_started_at = ${admittedAt},
-			    last_completed_at = CASE WHEN ${runRows.length === 0} THEN ${admittedAt} ELSE last_completed_at END,
-			    last_execution_status = CASE
-			      WHEN ${runRows.length === 0} THEN 'skipped'::prompt_execution_status
-			      ELSE last_execution_status
-			    END,
 			    updated_at = ${admittedAt}
 			WHERE prompt_id = ${claim.promptId} AND lease_owner = ${workerId}
 		`);
@@ -377,172 +348,156 @@ export async function materializeScheduleClaim(input: {
 	});
 }
 
-/**
- * Claim stored-result processing first, then resumable tasks, then new paid
- * work. The advisory lock makes the provider capacity check fleet-wide.
- */
-export async function claimExecutionRun(input: {
-	workerId: string;
-	providerMaxConcurrency: number;
-	now?: Date;
-}): Promise<ExecutionRunClaim | null> {
+/** Lease one business run. Provider admission happens later in the single reservation ledger. */
+export async function claimExecutionRun(input: { workerId: string; now?: Date }): Promise<ExecutionRunClaim | null> {
 	const now = input.now ?? new Date();
 	const leaseExpiresAt = new Date(now.getTime() + RUN_LEASE_MS);
-
-	return db.transaction(async (tx) => {
-		await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('elmo_prompt_run_admission'))`);
-
-		const processing = await tx.execute(sql`
-			SELECT r.id
+	const result = await db.execute(sql`
+		WITH candidate AS MATERIALIZED (
+			SELECT r.id, r.status
 			FROM prompt_execution_runs r
 			JOIN prompt_executions e ON e.id = r.execution_id
-			WHERE r.status = 'processing'
-			  AND (r.lease_expires_at IS NULL OR r.lease_expires_at <= ${now})
+			WHERE r.status IN ('pending', 'processing')
 			  AND r.available_at <= ${now}
-			ORDER BY e.scheduled_for, r.target_index, r.run_index
-			FOR UPDATE OF r SKIP LOCKED
-			LIMIT 1
-		`);
-		const processingId = (processing.rows[0] as { id: string } | undefined)?.id;
-		if (processingId) {
-			const result = await tx.execute(sql`
-				UPDATE prompt_execution_runs r
-				SET worker_id = ${input.workerId}, lease_expires_at = ${leaseExpiresAt},
-				    processing_attempts = processing_attempts + 1, updated_at = ${now}
-				FROM prompt_executions e
-				WHERE r.id = ${processingId} AND e.id = r.execution_id
-					RETURNING r.id, r.execution_id, e.prompt_id, r.provider, r.circuit_key, r.model, r.version,
-				          r.web_search_enabled, r.run_index, r.external_task_id, r.attempt_count,
-					          COALESCE(r.started_at, ${now}) AS started_at, e.context_payload
-			`);
-			return mapRunClaim(result.rows[0], "processing");
-		}
-
-		const resumable = await tx.execute(sql`
-			SELECT r.id
-			FROM prompt_execution_runs r
-			JOIN prompt_executions e ON e.id = r.execution_id
-			WHERE r.status = 'pending'
-			  AND r.external_task_id IS NOT NULL
 			  AND (r.worker_id IS NULL OR r.lease_expires_at <= ${now})
-			  AND r.available_at <= ${now}
-			  AND COALESCE(r.provider_submitted_at, r.started_at, r.created_at) + interval '24 hours' > ${now}
-			ORDER BY e.scheduled_for, r.target_index, r.run_index
-			FOR UPDATE OF r SKIP LOCKED
-			LIMIT 1
-		`);
-		const resumableRow = resumable.rows[0] as { id: string } | undefined;
-		if (resumableRow) {
-			return claimProviderRun(tx, resumableRow.id, input.workerId, now, leaseExpiresAt);
-		}
-
-		const candidate = await tx.execute(sql`
-			SELECT r.id, r.provider, r.circuit_key, COALESCE(h.circuit_state, 'closed') AS circuit_state
-			FROM prompt_execution_runs r
-			JOIN prompt_executions e ON e.id = r.execution_id
-			JOIN prompts p ON p.id = e.prompt_id
-			JOIN brands b ON b.id = p.brand_id
-			LEFT JOIN provider_health h ON h.circuit_key = r.circuit_key
-			WHERE r.status = 'pending'
-			  AND r.external_task_id IS NULL
-			  AND (r.worker_id IS NULL OR r.lease_expires_at <= ${now})
-			  AND r.available_at <= ${now}
-			  AND e.not_after > ${now}
-			  AND p.enabled = true
-			  AND b.enabled = true
 			  AND (
-			    h.circuit_key IS NULL
-			    OR h.circuit_state = 'closed'
-			    OR (h.circuit_state = 'open' AND h.reopen_at IS NOT NULL AND h.reopen_at <= ${now})
+			    r.status = 'processing'
+			    OR EXISTS (
+			      SELECT 1
+			      FROM provider_call_reservations reservation
+			      WHERE reservation.owner_type = 'prompt-run'
+			        AND reservation.owner_id = r.id::text
+			        AND reservation.work_key = 'provider'
+			        AND reservation.submission_started_at IS NOT NULL
+			    )
+			    OR (
+			      e.not_after > ${now}
+			      AND EXISTS (
+			        SELECT 1
+			        FROM prompts p
+			        JOIN brands b ON b.id = p.brand_id
+			        WHERE p.id = e.prompt_id AND p.enabled = true AND b.enabled = true
+			      )
+			    )
 			  )
-			  AND (
-			    (SELECT COUNT(*)
-			    FROM prompt_execution_runs active
-			    WHERE active.provider = r.provider
-			      AND (
-			        active.status = 'running'
-			        OR (active.status = 'pending' AND active.worker_id IS NOT NULL)
-			        OR (active.status = 'pending' AND active.external_task_id IS NOT NULL)
-			        OR (
-			          active.status = 'pending'
-			          AND active.failure_kind IN ('worker_lost_unknown', 'provider_ambiguous')
-			        )
-			      )) + (SELECT COUNT(*)
-			        FROM provider_call_reservations reservation
-				        WHERE reservation.provider = r.provider
-				          AND reservation.released_at IS NULL
-				          AND (
-				            reservation.lease_expires_at > ${now}
-				            OR reservation.external_task_id IS NOT NULL
-				            OR (reservation.submission_started_at IS NOT NULL AND reservation.quarantine_until > ${now})
-				          ))
-			  ) < ${input.providerMaxConcurrency}
-			ORDER BY e.scheduled_for, r.target_index, r.run_index
+			ORDER BY CASE
+			           WHEN r.status = 'processing' THEN 0
+			           WHEN EXISTS (
+			             SELECT 1 FROM provider_call_reservations reservation
+			             WHERE reservation.owner_type = 'prompt-run'
+			               AND reservation.owner_id = r.id::text
+			               AND reservation.work_key = 'provider'
+			               AND reservation.submission_started_at IS NOT NULL
+			           ) THEN 1
+			           ELSE 2
+			         END,
+			         e.scheduled_for, r.target_index, r.run_index
 			FOR UPDATE OF r SKIP LOCKED
 			LIMIT 1
-		`);
-
-		const row = candidate.rows[0] as
-			| { id: string; provider: string; circuit_key: string; circuit_state: "closed" | "open" }
-			| undefined;
-		if (!row) return null;
-
-		if (row.circuit_state === "open") {
-			await tx
-				.update(providerHealth)
-				.set({ circuitState: "half_open", probeRunId: row.id, updatedAt: now })
-				.where(eq(providerHealth.circuitKey, row.circuit_key));
-		}
-
-		return claimProviderRun(tx, row.id, input.workerId, now, leaseExpiresAt);
-	});
+		), claimed AS (
+			UPDATE prompt_execution_runs r
+			SET worker_id = ${input.workerId},
+			    lease_expires_at = ${leaseExpiresAt},
+			    started_at = COALESCE(started_at, ${now}),
+			    updated_at = ${now}
+			FROM candidate, prompt_executions e
+			WHERE r.id = candidate.id AND e.id = r.execution_id
+			RETURNING r.id, r.execution_id, e.prompt_id, r.provider, r.model, r.version,
+			          r.web_search_enabled, r.target_index, r.run_index,
+			          e.context_payload, candidate.status AS previous_status
+		)
+		SELECT * FROM claimed
+	`);
+	const row = result.rows[0] as ({ previous_status: "pending" | "processing" } & Record<string, unknown>) | undefined;
+	return mapRunClaim(row, row?.previous_status === "processing" ? "processing" : "provider");
 }
 
-async function claimProviderRun(
-	tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-	runId: string,
-	workerId: string,
-	now: Date,
-	leaseExpiresAt: Date,
-): Promise<ExecutionRunClaim | null> {
-	const result = await tx.execute(sql`
-		UPDATE prompt_execution_runs r
-		SET worker_id = ${workerId}, lease_expires_at = ${leaseExpiresAt},
-		    attempt_count = attempt_count + 1, started_at = COALESCE(started_at, ${now}), updated_at = ${now}
-		FROM prompt_executions e
-		WHERE r.id = ${runId} AND e.id = r.execution_id AND r.status = 'pending'
-		  AND (r.worker_id IS NULL OR r.lease_expires_at <= ${now})
-		RETURNING r.id, r.execution_id, e.prompt_id, r.provider, r.circuit_key, r.model, r.version,
-			          r.web_search_enabled, r.run_index, r.external_task_id, r.attempt_count,
-			          COALESCE(r.started_at, ${now}) AS started_at, e.context_payload
+/** Validate current product intent before the reservation may cross its paid boundary. */
+export async function beginExecutionRun(runId: string, workerId: string): Promise<boolean> {
+	const result = await db.execute(sql`
+		WITH candidate AS MATERIALIZED (
+			SELECT r.id, e.not_after,
+			       (
+			         e.not_after > now() AND EXISTS (
+			         SELECT 1
+			         FROM prompts p
+			         JOIN brands b ON b.id = p.brand_id
+			         WHERE p.id = e.prompt_id AND p.enabled = true AND b.enabled = true
+			         )
+			       ) OR EXISTS (
+			         SELECT 1
+			         FROM provider_call_reservations reservation
+			         WHERE reservation.owner_type = 'prompt-run'
+			           AND reservation.owner_id = r.id::text
+			           AND reservation.work_key = 'provider'
+			           AND reservation.submission_started_at IS NOT NULL
+			       ) AS may_submit
+			FROM prompt_execution_runs r
+			JOIN prompt_executions e ON e.id = r.execution_id
+			WHERE r.id = ${runId} AND r.status = 'pending' AND r.worker_id = ${workerId}
+			  AND r.lease_expires_at > now()
+			FOR UPDATE OF r
+		), updated AS (
+			UPDATE prompt_execution_runs r
+			SET status = CASE
+			      WHEN candidate.may_submit THEN 'running'::prompt_execution_run_status
+			      ELSE 'skipped'::prompt_execution_run_status
+			    END,
+			    failure_kind = CASE
+			      WHEN candidate.may_submit THEN r.failure_kind
+			      WHEN candidate.not_after <= now() THEN 'execution_window_expired'
+			      ELSE 'prompt_disabled'
+			    END,
+			    error_message = CASE
+			      WHEN candidate.may_submit THEN r.error_message
+			      WHEN candidate.not_after <= now() THEN 'Execution window ended before provider submission'
+			      ELSE 'Prompt or brand was deleted or disabled before provider submission'
+			    END,
+			    worker_id = CASE WHEN candidate.may_submit THEN r.worker_id ELSE NULL END,
+			    lease_expires_at = CASE WHEN candidate.may_submit THEN r.lease_expires_at ELSE NULL END,
+			    completed_at = CASE WHEN candidate.may_submit THEN r.completed_at ELSE now() END,
+			    updated_at = now()
+			FROM candidate
+			WHERE r.id = candidate.id
+			RETURNING r.status
+		), released AS (
+			UPDATE provider_call_reservations reservation
+			SET released_at = now(),
+			    release_reason = 'prompt run cancelled before provider submission',
+			    released_by = 'scheduler',
+			    lease_expires_at = NULL,
+			    updated_at = now()
+			FROM updated
+			WHERE updated.status = 'skipped'
+			  AND reservation.owner_type = 'prompt-run'
+			  AND reservation.owner_id = ${runId}::text
+			  AND reservation.work_key = 'provider'
+			  AND reservation.released_at IS NULL
+			  AND reservation.submission_started_at IS NULL
+			  AND (reservation.lease_expires_at IS NULL OR reservation.lease_expires_at <= now())
+			RETURNING reservation.id, reservation.circuit_key
+		), cleared_probes AS (
+			UPDATE provider_health health
+			SET circuit_state = 'open', reopen_at = now(), probe_run_id = NULL, updated_at = now()
+			FROM released
+			WHERE health.circuit_state = 'half_open' AND health.probe_run_id = released.id
+			RETURNING health.circuit_key
+		)
+		SELECT status,
+		       (SELECT COUNT(*) FROM released) AS released_count,
+		       (SELECT COUNT(*) FROM cleared_probes) AS cleared_probe_count
+		FROM updated
 	`);
-	if (result.rows.length > 0) {
-		await tx.execute(sql`
-			UPDATE prompt_executions
-			SET status = 'running', started_at = COALESCE(started_at, ${now}), updated_at = ${now}
-			WHERE id = ${(result.rows[0] as { execution_id: string }).execution_id}
-		`);
-	}
-	return mapRunClaim(result.rows[0], "provider");
-}
-
-/** Cross the paid-work boundary only after all local preparation has succeeded. */
-export async function beginProviderSubmission(runId: string, workerId: string): Promise<void> {
-	const updated = await db.execute(sql`
-		UPDATE prompt_execution_runs
-		SET status = 'running', updated_at = now()
-		WHERE id = ${runId} AND status = 'pending' AND worker_id = ${workerId}
-		  AND lease_expires_at > now()
-		RETURNING id
-	`);
-	if (updated.rows.length === 0) throw new Error(`Lost lease before provider submission for run ${runId}`);
+	const status = (result.rows[0] as { status: "running" | "skipped" } | undefined)?.status;
+	if (!status) throw new Error(`Lost lease before executing prompt run ${runId}`);
+	return status === "running";
 }
 
 export async function releasePreparedRun(runId: string, workerId: string, now = new Date()): Promise<void> {
 	await db.execute(sql`
 		UPDATE prompt_execution_runs
 		SET worker_id = NULL, lease_expires_at = NULL, available_at = ${now}, updated_at = ${now}
-		WHERE id = ${runId} AND status = 'pending' AND worker_id = ${workerId}
+		WHERE id = ${runId} AND status IN ('pending', 'processing') AND worker_id = ${workerId}
 	`);
 }
 
@@ -553,14 +508,11 @@ function mapRunClaim(row: unknown, phase: "provider" | "processing"): ExecutionR
 		execution_id: string;
 		prompt_id: string;
 		provider: string;
-		circuit_key: string;
 		model: string;
 		version: string | null;
 		web_search_enabled: boolean;
+		target_index: number;
 		run_index: number;
-		external_task_id: string | null;
-		attempt_count: number;
-		started_at: Date | string;
 		context_payload: PromptExecutionContextSnapshot;
 	};
 	if (!value.context_payload) throw new Error(`Execution context snapshot is missing for run ${value.id}`);
@@ -569,146 +521,41 @@ function mapRunClaim(row: unknown, phase: "provider" | "processing"): ExecutionR
 		executionId: value.execution_id,
 		promptId: value.prompt_id,
 		provider: value.provider,
-		circuitKey: value.circuit_key,
 		model: value.model,
 		version: value.version,
 		webSearchEnabled: value.web_search_enabled,
+		targetIndex: value.target_index,
 		runIndex: value.run_index,
-		externalTaskId: value.external_task_id,
-		attemptCount: value.attempt_count,
 		phase,
-		startedAt: asDate(value.started_at),
 		context: value.context_payload,
 	};
 }
 
-export async function checkpointExternalTask(runId: string, workerId: string, taskId: string): Promise<void> {
-	const result = await db.execute(sql`
-		UPDATE prompt_execution_runs
-		SET external_task_id = COALESCE(external_task_id, ${taskId}),
-		    provider_submitted_at = COALESCE(provider_submitted_at, now()), updated_at = now()
-		WHERE id = ${runId} AND status = 'running' AND worker_id = ${workerId}
-		RETURNING external_task_id
-	`);
-	if (result.rows.length === 0) throw new Error(`Lost lease while checkpointing provider task for run ${runId}`);
-	const stored = (result.rows[0] as { external_task_id: string }).external_task_id;
-	if (stored !== taskId) throw new Error(`Provider task mismatch for run ${runId}`);
-}
-
-export async function checkpointProviderResult(
-	runId: string,
-	workerId: string,
-	result: StoredProviderResult,
-): Promise<void> {
+/** The normalized provider result is cached in the reservation; only local persistence remains. */
+export async function markExecutionRunProcessing(runId: string, workerId: string): Promise<void> {
 	const updated = await db.execute(sql`
 		UPDATE prompt_execution_runs
-		SET status = 'processing', result_payload = ${JSON.stringify(result)}::json,
-		    worker_id = NULL, lease_expires_at = NULL, failure_kind = NULL,
+		SET status = 'processing', failure_kind = NULL,
 		    error_message = NULL, updated_at = now()
-		WHERE id = ${runId} AND status IN ('running', 'processing') AND worker_id = ${workerId}
-		RETURNING id
-	`);
-	if (updated.rows.length === 0) throw new Error(`Lost lease while checkpointing provider result for run ${runId}`);
-}
-
-/** Persist the paid response before any fallible provider-specific parsing. */
-export async function checkpointProviderRawResponse(
-	runId: string,
-	workerId: string,
-	response: { rawOutput: unknown; modelVersion?: string },
-): Promise<void> {
-	const payload: StoredRawProviderResponse = { rawResponseOnly: true, ...response };
-	const updated = await db.execute(sql`
-		UPDATE prompt_execution_runs
-		SET status = 'processing', result_payload = ${JSON.stringify(payload)}::json,
-		    failure_kind = NULL, error_message = NULL, updated_at = now()
 		WHERE id = ${runId} AND status = 'running' AND worker_id = ${workerId}
 		RETURNING id
 	`);
-	if (updated.rows.length === 0)
-		throw new Error(`Lost lease while checkpointing raw provider response for run ${runId}`);
+	if (updated.rows.length === 0) throw new Error(`Lost lease while preparing stored result for run ${runId}`);
 }
 
-export async function releaseRawResponseForProcessing(runId: string, workerId: string): Promise<void> {
+export async function deferExecutionRun(runId: string, workerId: string, retryAt: Date, error: unknown): Promise<void> {
 	const updated = await db.execute(sql`
 		UPDATE prompt_execution_runs
-		SET worker_id = NULL, lease_expires_at = NULL, available_at = now(), updated_at = now()
-		WHERE id = ${runId} AND status = 'processing' AND worker_id = ${workerId}
-		RETURNING id
-	`);
-	if (updated.rows.length === 0) throw new Error(`Lost lease while releasing raw provider response for run ${runId}`);
-}
-
-/** Record one provider-payload failure without counting every local replay. */
-export async function recordRawResponseValidationFailure(
-	runId: string,
-	workerId: string,
-	error: unknown,
-): Promise<boolean> {
-	const updated = await db.execute(sql`
-		UPDATE prompt_execution_runs
-		SET failure_kind = 'provider_transient', error_message = ${errorText(error)}, updated_at = now()
-		WHERE id = ${runId} AND status = 'processing' AND worker_id = ${workerId}
-		  AND failure_kind IS NULL
-		RETURNING id
-	`);
-	return updated.rows.length > 0;
-}
-
-export async function deferProviderTask(
-	runId: string,
-	workerId: string,
-	retryAfterMs: number,
-	message: string,
-): Promise<void> {
-	const availableAt = new Date(Date.now() + Math.max(1000, retryAfterMs));
-	await db.transaction(async (tx) => {
-		const [deferred] = await tx
-			.update(promptExecutionRuns)
-			.set({
-				status: "pending",
-				availableAt,
-				workerId: null,
-				leaseExpiresAt: null,
-				errorMessage: message.slice(0, 4000),
-				updatedAt: new Date(),
-			})
-			.where(sql`${promptExecutionRuns.id} = ${runId}
-				AND ${promptExecutionRuns.status} = 'running'
-				AND ${promptExecutionRuns.workerId} = ${workerId}
-				AND ${promptExecutionRuns.externalTaskId} IS NOT NULL`)
-			.returning({ id: promptExecutionRuns.id });
-		if (!deferred) throw new Error(`Lost lease while deferring provider task for run ${runId}`);
-	});
-}
-
-/**
- * A request may have reached a synchronous provider even though no response or
- * resumable task id reached us. Keep the execution and one provider slot
- * occupied for a conservative safety window instead of purchasing a replacement.
- */
-export async function quarantineAmbiguousProviderCall(runId: string, workerId: string, error: unknown): Promise<void> {
-	const quarantineUntil = new Date(Date.now() + AMBIGUOUS_CALL_QUARANTINE_MS);
-	const updated = await db.execute(sql`
-		UPDATE prompt_execution_runs
-		SET status = 'pending', available_at = ${quarantineUntil},
-		    failure_kind = 'provider_ambiguous', error_message = ${errorText(error)},
+		SET status = CASE
+		      WHEN status = 'running' THEN 'pending'::prompt_execution_run_status
+		      ELSE status
+		    END,
+		    available_at = ${retryAt}, error_message = ${errorText(error)},
 		    worker_id = NULL, lease_expires_at = NULL, updated_at = now()
-		WHERE id = ${runId} AND status = 'running' AND worker_id = ${workerId}
-		  AND external_task_id IS NULL
+		WHERE id = ${runId} AND status IN ('pending', 'running', 'processing') AND worker_id = ${workerId}
 		RETURNING id
 	`);
-	if (updated.rows.length === 0) throw new Error(`Lost lease while quarantining provider call for run ${runId}`);
-}
-
-/** A half-open probe that never reached the provider must not wedge the circuit. */
-export async function releaseProviderProbe(circuitKey: string, runId: string, retryAfterMs = 30_000): Promise<void> {
-	await db.execute(sql`
-		UPDATE provider_health
-		SET circuit_state = 'open', reopen_at = ${new Date(Date.now() + retryAfterMs)},
-		    probe_run_id = NULL, updated_at = now()
-		WHERE circuit_key = ${circuitKey} AND circuit_state = 'half_open' AND probe_run_id = ${runId}
-	`);
+	if (updated.rows.length === 0) throw new Error(`Lost lease while deferring prompt run ${runId}`);
 }
 
 export async function failExecutionRun(input: {
@@ -716,7 +563,7 @@ export async function failExecutionRun(input: {
 	workerId: string;
 	kind: ExecutionRunFailureKind;
 	error: unknown;
-	status?: "failed" | "abandoned" | "skipped";
+	status?: "failed" | "skipped";
 }): Promise<void> {
 	const status = input.status ?? "failed";
 	await db.execute(sql`
@@ -729,272 +576,285 @@ export async function failExecutionRun(input: {
 	`);
 }
 
-export async function heartbeatExecutionRun(runId: string, workerId: string, now = new Date()): Promise<void> {
-	const leaseExpiresAt = new Date(now.getTime() + RUN_LEASE_MS);
+/** Back off local failures without completing the execution or admitting fresh paid work. */
+export async function deferExecutionRunAfterLocalError(runId: string, workerId: string, error: unknown): Promise<void> {
+	const now = new Date();
 	const updated = await db.execute(sql`
 		UPDATE prompt_execution_runs
-		SET lease_expires_at = ${leaseExpiresAt}, updated_at = ${now}
-		WHERE id = ${runId} AND worker_id = ${workerId}
-		  AND status IN ('pending', 'running', 'processing')
+		SET status = CASE
+		      WHEN status = 'running' THEN 'pending'::prompt_execution_run_status
+		      ELSE status
+		    END,
+		    local_attempts = local_attempts + 1,
+		    worker_id = NULL,
+		    lease_expires_at = NULL,
+		    available_at = ${now} + make_interval(
+		      secs => LEAST(3600, (5 * power(2, LEAST(local_attempts, 10)))::int)
+		    ),
+		    error_message = ${errorText(error)},
+		    updated_at = ${now}
+		WHERE id = ${runId} AND status IN ('pending', 'running', 'processing') AND worker_id = ${workerId}
 		RETURNING id
 	`);
-	if (updated.rows.length === 0) throw new Error(`Lost lease while heartbeating run ${runId}`);
+	if (updated.rows.length === 0) throw new Error(`Lost lease while deferring local failure for run ${runId}`);
 }
 
-export async function getStoredProviderResult(runId: string, workerId: string): Promise<StoredProviderPayload> {
-	const result = await db.execute(sql`
-		SELECT result_payload
-		FROM prompt_execution_runs
-		WHERE id = ${runId} AND status = 'processing' AND worker_id = ${workerId}
-	`);
-	const payload = (result.rows[0] as { result_payload: StoredProviderPayload | null } | undefined)?.result_payload;
-	if (!payload) throw new Error(`Stored provider result is missing for run ${runId}`);
-	return payload;
-}
-
-export async function processingAttemptCount(runId: string): Promise<number> {
-	const result = await db.execute(sql`
-		SELECT processing_attempts FROM prompt_execution_runs WHERE id = ${runId}
-	`);
-	return Number((result.rows[0] as { processing_attempts: number } | undefined)?.processing_attempts ?? 0);
-}
-
-export function hasExhaustedProcessingRetries(attempts: number): boolean {
-	return attempts >= PROCESSING_RETRY_LIMIT;
-}
-
-export async function retryStoredResult(runId: string, workerId: string, error: unknown): Promise<void> {
-	const attempts = await processingAttemptCount(runId);
-	if (hasExhaustedProcessingRetries(attempts)) {
-		await failExecutionRun({
-			runId,
-			workerId,
-			kind: "internal_after_provider",
-			error,
-		});
-		return;
-	}
-	const delayMs = Math.min(2 ** Math.max(0, attempts - 1) * 5000, 5 * 60 * 1000);
-	await db.execute(sql`
-		UPDATE prompt_execution_runs
-		SET worker_id = NULL, lease_expires_at = NULL,
-		    available_at = ${new Date(Date.now() + delayMs)}, error_message = ${errorText(error)}, updated_at = now()
-		WHERE id = ${runId} AND status = 'processing' AND worker_id = ${workerId}
-	`);
-}
-
-export async function markProviderSuccess(circuitKey: string, runId: string): Promise<void> {
-	const now = new Date();
-	await db.execute(sql`
+function providerSuccessStatement(circuitKey: string, runId: string, now: Date): SQL {
+	return sql`
 		INSERT INTO provider_health (circuit_key, circuit_state, consecutive_failures, updated_at)
 		VALUES (${circuitKey}, 'closed', 0, ${now})
 		ON CONFLICT (circuit_key) DO UPDATE
-		SET circuit_state = CASE
-		      WHEN provider_health.circuit_state = 'closed' THEN 'closed'::provider_circuit_state
-		      WHEN provider_health.circuit_state = 'half_open' AND provider_health.probe_run_id = ${runId}
-		        THEN 'closed'::provider_circuit_state
-		      ELSE provider_health.circuit_state
-		    END,
-		    consecutive_failures = CASE
-		      WHEN provider_health.circuit_state = 'closed'
-		        OR (provider_health.circuit_state = 'half_open' AND provider_health.probe_run_id = ${runId})
-		      THEN 0 ELSE provider_health.consecutive_failures END,
-		    opened_at = CASE
-		      WHEN provider_health.circuit_state = 'closed'
-		        OR (provider_health.circuit_state = 'half_open' AND provider_health.probe_run_id = ${runId})
-		      THEN NULL ELSE provider_health.opened_at END,
-		    reopen_at = CASE
-		      WHEN provider_health.circuit_state = 'closed'
-		        OR (provider_health.circuit_state = 'half_open' AND provider_health.probe_run_id = ${runId})
-		      THEN NULL ELSE provider_health.reopen_at END,
-		    probe_run_id = CASE
-		      WHEN provider_health.circuit_state = 'closed'
-		        OR (provider_health.circuit_state = 'half_open' AND provider_health.probe_run_id = ${runId})
-		      THEN NULL ELSE provider_health.probe_run_id END,
+		SET circuit_state = 'closed',
+		    consecutive_failures = 0,
+		    opened_at = NULL,
+		    reopen_at = NULL,
+		    probe_run_id = NULL,
 		    updated_at = ${now}
-	`);
+		WHERE provider_health.circuit_state = 'closed'
+		   OR (provider_health.circuit_state = 'half_open' AND provider_health.probe_run_id = ${runId})
+	`;
 }
 
-export async function markProviderFailure(input: {
+interface ProviderFailureInput {
 	circuitKey: string;
 	runId: string;
 	kind: "transient" | "fatal";
 	error: unknown;
-}): Promise<{ state: "closed" | "open" | "half_open"; reopenAt: Date | null }> {
-	const now = new Date();
-	return db.transaction(async (tx) => {
-		await tx.insert(providerHealth).values({ circuitKey: input.circuitKey }).onConflictDoNothing();
-		const [health] = await tx
-			.select()
-			.from(providerHealth)
-			.where(eq(providerHealth.circuitKey, input.circuitKey))
-			.for("update");
-		const current = health as ProviderHealthRow;
+}
 
-		if (current.circuitState === "open") {
-			return { state: current.circuitState, reopenAt: current.reopenAt };
-		}
+async function updateProviderFailure(tx: SchedulerTransaction, input: ProviderFailureInput, now: Date): Promise<void> {
+	await tx.insert(providerHealth).values({ circuitKey: input.circuitKey }).onConflictDoNothing();
+	const [health] = await tx
+		.select()
+		.from(providerHealth)
+		.where(eq(providerHealth.circuitKey, input.circuitKey))
+		.for("update");
+	const current = health as ProviderHealthRow;
 
-		const failures = current.consecutiveFailures + 1;
-		const cooldownMs =
-			input.kind === "fatal"
-				? PROVIDER_FATAL_COOLDOWN_MS
-				: current.circuitState === "half_open"
-					? (transientProviderCooldownMs(Math.max(failures, 5)) ?? 5 * 60 * 1000)
-					: transientProviderCooldownMs(failures);
-		const shouldOpen = cooldownMs !== null;
-		const reopenAt = shouldOpen ? new Date(now.getTime() + cooldownMs) : null;
-
+	if (current.circuitState === "open") {
+		if (input.kind !== "fatal") return;
+		const fatalReopenAt = new Date(now.getTime() + PROVIDER_FATAL_COOLDOWN_MS);
+		const reopenAt = current.reopenAt ? new Date(Math.max(current.reopenAt.getTime(), fatalReopenAt.getTime())) : null;
 		await tx
 			.update(providerHealth)
 			.set({
-				circuitState: shouldOpen ? "open" : "closed",
-				consecutiveFailures: failures,
-				openedAt: shouldOpen ? now : null,
+				consecutiveFailures: current.consecutiveFailures + 1,
+				openedAt: current.openedAt ?? now,
 				reopenAt,
 				probeRunId: null,
-				lastFailureKind: input.kind,
+				lastFailureKind: "fatal",
 				lastError: errorText(input.error),
 				lastFailureAt: now,
 				updatedAt: now,
 			})
 			.where(eq(providerHealth.circuitKey, input.circuitKey));
+		return;
+	}
 
-		return { state: shouldOpen ? "open" : "closed", reopenAt };
-	});
+	const failures = current.consecutiveFailures + 1;
+	const cooldownMs =
+		input.kind === "fatal"
+			? PROVIDER_FATAL_COOLDOWN_MS
+			: current.circuitState === "half_open"
+				? (transientProviderCooldownMs(Math.max(failures, 5)) ?? 5 * 60 * 1000)
+				: transientProviderCooldownMs(failures);
+	const shouldOpen = cooldownMs !== null;
+	const reopenAt = shouldOpen ? new Date(now.getTime() + cooldownMs) : null;
+
+	await tx
+		.update(providerHealth)
+		.set({
+			circuitState: shouldOpen ? "open" : "closed",
+			consecutiveFailures: failures,
+			openedAt: shouldOpen ? now : null,
+			reopenAt,
+			probeRunId: null,
+			lastFailureKind: input.kind,
+			lastError: errorText(input.error),
+			lastFailureAt: now,
+			updatedAt: now,
+		})
+		.where(eq(providerHealth.circuitKey, input.circuitKey));
 }
 
-/** Reserve one fleet-wide provider slot for paid work outside prompt tracking. */
+async function openProviderCircuitAfterTaskDeadline(
+	tx: SchedulerTransaction,
+	circuitKey: string,
+	now: Date,
+): Promise<void> {
+	await tx.execute(sql`
+		INSERT INTO provider_health (
+			circuit_key, circuit_state, consecutive_failures, opened_at, reopen_at,
+			last_failure_kind, last_error, last_failure_at, updated_at
+		)
+		VALUES (
+			${circuitKey}, 'open', ${PROVIDER_FAILURE_THRESHOLD}, ${now}, ${now} + interval '5 minutes',
+			'transient', 'Accepted provider task exceeded its 24-hour deadline', ${now}, ${now}
+		)
+		ON CONFLICT (circuit_key) DO UPDATE
+		SET circuit_state = 'open',
+		    consecutive_failures = GREATEST(
+		      provider_health.consecutive_failures + 1,
+		      ${PROVIDER_FAILURE_THRESHOLD}
+		    ),
+		    opened_at = COALESCE(provider_health.opened_at, ${now}),
+		    reopen_at = GREATEST(
+		      COALESCE(provider_health.reopen_at, ${now} + interval '5 minutes'),
+		      ${now} + interval '5 minutes'
+		    ),
+		    probe_run_id = NULL,
+		    last_failure_kind = 'transient',
+		    last_error = 'Accepted provider task exceeded its 24-hour deadline',
+		    last_failure_at = ${now},
+		    updated_at = ${now}
+	`);
+}
+
+/** Read immutable request identity before resolving a provider route on restart. */
+export async function getProviderCallReservationIdentity(input: {
+	ownerType: string;
+	ownerId: string;
+	workKey: string;
+}): Promise<ProviderReservationIdentity | null> {
+	const result = await db.execute(sql`
+		SELECT provider, circuit_key, request_fingerprint, request_metadata
+		FROM provider_call_reservations
+		WHERE owner_type = ${input.ownerType}
+		  AND owner_id = ${input.ownerId}
+		  AND work_key = ${input.workKey}
+	`);
+	const row = result.rows[0] as
+		| {
+				provider: string;
+				circuit_key: string;
+				request_fingerprint: string;
+				request_metadata: unknown;
+		  }
+		| undefined;
+	if (!row) return null;
+	return {
+		provider: row.provider,
+		circuitKey: row.circuit_key,
+		requestFingerprint: row.request_fingerprint,
+		requestMetadata: row.request_metadata,
+	};
+}
+
+/** Reserve one fleet-wide provider slot for any paid work. */
 export async function reserveProviderCall(input: {
 	provider: string;
 	circuitKey: string;
 	ownerType: string;
 	ownerId: string;
-	workKey?: string;
-	requestFingerprint?: string;
-	requestMetadata?: unknown;
+	workKey: string;
+	requestFingerprint: string;
+	requestMetadata: unknown;
 	workerId: string;
 	providerMaxConcurrency: number;
-	maxAttempts?: number;
 	ownerMaxCalls?: number;
-	budgetScope?: "owner" | "work";
 	exclusiveOwner?: boolean;
 	now?: Date;
 }): Promise<ProviderReservationAttempt> {
 	const now = input.now ?? new Date();
 	const id = randomUUID();
 	const leaseExpiresAt = new Date(now.getTime() + RESERVATION_LEASE_MS);
-	const maxAttempts = input.maxAttempts ?? DEFAULT_PROVIDER_ATTEMPTS_PER_UNIT;
-	if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1) throw new Error("maxAttempts must be a positive integer");
 	if (input.ownerMaxCalls !== undefined && (!Number.isSafeInteger(input.ownerMaxCalls) || input.ownerMaxCalls < 0)) {
 		throw new Error("ownerMaxCalls must be a non-negative integer");
 	}
 	return db.transaction(async (tx) => {
-		await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('elmo_prompt_run_admission'))`);
+		await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('elmo_provider_admission'))`);
 
-		let attemptNumber = 1;
-		let preparedReservation: { id: string; attemptNumber: number; attemptCount: number } | undefined;
-		if (input.workKey) {
-			const existingResult = await tx.execute(sql`
-				SELECT id, provider, request_fingerprint, request_metadata, worker_id, lease_expires_at,
+		let preparedReservation: { id: string; attemptCount: number } | undefined;
+		const existingResult = await tx.execute(sql`
+				SELECT id, provider, circuit_key, request_fingerprint, worker_id, lease_expires_at,
 				       submission_started_at, external_task_id, task_deadline_at, result_payload, released_at, release_reason,
-				       retry_allowed, attempt_number, attempt_count
+				       attempt_count
 				FROM provider_call_reservations
 				WHERE owner_type = ${input.ownerType}
 				  AND owner_id = ${input.ownerId}
 				  AND work_key = ${input.workKey}
-				ORDER BY attempt_number DESC
-				LIMIT 1
 				FOR UPDATE
 			`);
-			const existing = existingResult.rows[0] as
-				| {
-						id: string;
-						provider: string;
-						request_fingerprint: string | null;
-						request_metadata: unknown | null;
-						worker_id: string;
-						lease_expires_at: Date | string | null;
-						submission_started_at: Date | string | null;
-						external_task_id: string | null;
-						task_deadline_at: Date | string | null;
-						result_payload: unknown | null;
-						released_at: Date | string | null;
-						release_reason: string | null;
-						retry_allowed: boolean;
-						attempt_number: number;
-						attempt_count: number;
-				  }
-				| undefined;
+		const existing = existingResult.rows[0] as
+			| {
+					id: string;
+					provider: string;
+					circuit_key: string;
+					request_fingerprint: string;
+					worker_id: string;
+					lease_expires_at: Date | string | null;
+					submission_started_at: Date | string | null;
+					external_task_id: string | null;
+					task_deadline_at: Date | string | null;
+					result_payload: unknown | null;
+					released_at: Date | string | null;
+					release_reason: string | null;
+					attempt_count: number;
+			  }
+			| undefined;
 
-			if (existing) {
-				const decision = decideExistingProviderReservation({
-					existing: {
-						id: existing.id,
-						provider: existing.provider,
-						requestFingerprint: existing.request_fingerprint,
-						workerId: existing.worker_id,
-						leaseExpiresAt: existing.lease_expires_at ? asDate(existing.lease_expires_at) : null,
-						submissionStartedAt: existing.submission_started_at ? asDate(existing.submission_started_at) : null,
-						externalTaskId: existing.external_task_id,
-						taskDeadlineAt: existing.task_deadline_at ? asDate(existing.task_deadline_at) : null,
-						result: existing.result_payload,
-						releasedAt: existing.released_at ? asDate(existing.released_at) : null,
-						releaseReason: existing.release_reason,
-						retryAllowed: existing.retry_allowed,
-					},
-					provider: input.provider,
-					requestFingerprint: input.requestFingerprint,
-					workerId: input.workerId,
-					now,
-				});
+		if (existing) {
+			if (existing.circuit_key !== input.circuitKey) {
+				return { state: "conflict", id: existing.id };
+			}
+			const decision = decideExistingProviderReservation({
+				existing: {
+					id: existing.id,
+					provider: existing.provider,
+					requestFingerprint: existing.request_fingerprint,
+					leaseExpiresAt: existing.lease_expires_at ? asDate(existing.lease_expires_at) : null,
+					submissionStartedAt: existing.submission_started_at ? asDate(existing.submission_started_at) : null,
+					externalTaskId: existing.external_task_id,
+					taskDeadlineAt: existing.task_deadline_at ? asDate(existing.task_deadline_at) : null,
+					result: existing.result_payload,
+					releasedAt: existing.released_at ? asDate(existing.released_at) : null,
+					releaseReason: existing.release_reason,
+				},
+				provider: input.provider,
+				requestFingerprint: input.requestFingerprint,
+				now,
+			});
 
-				if (decision.state === "cached") {
+			if (decision.state === "cached") {
+				if (!decision.released) {
 					await tx.execute(sql`
 						UPDATE provider_call_reservations
 						SET worker_id = ${input.workerId}, lease_expires_at = ${leaseExpiresAt}, updated_at = ${now}
 						WHERE id = ${existing.id}
 					`);
-					return { ...decision, attemptNumber: existing.attempt_number, attemptCount: existing.attempt_count };
 				}
-				if (decision.state === "prepared") {
-					preparedReservation = {
-						id: existing.id,
-						attemptNumber: existing.attempt_number,
-						attemptCount: existing.attempt_count + 1,
-					};
-					attemptNumber = existing.attempt_number;
-				} else if (decision.state === "expired") {
-					await tx.execute(sql`
+				return { ...decision, attemptCount: existing.attempt_count };
+			}
+			if (decision.state === "prepared") {
+				preparedReservation = {
+					id: existing.id,
+					attemptCount: existing.attempt_count + 1,
+				};
+			} else if (decision.state === "expired") {
+				await openProviderCircuitAfterTaskDeadline(tx, input.circuitKey, now);
+				await tx.execute(sql`
 						UPDATE provider_call_reservations
 						SET released_at = ${now}, release_reason = 'provider task deadline exceeded',
-						    released_by = 'scheduler', retry_allowed = false,
+						    released_by = 'scheduler',
 						    lease_expires_at = NULL, updated_at = ${now}
 						WHERE id = ${existing.id} AND released_at IS NULL
 					`);
-					return { state: "terminal", id: existing.id, reason: "provider task deadline exceeded" };
-				} else if (decision.state === "resume") {
-					await tx.execute(sql`
+				return { state: "terminal", id: existing.id, reason: "provider task deadline exceeded" };
+			} else if (decision.state === "resume") {
+				await tx.execute(sql`
 						UPDATE provider_call_reservations
 						SET worker_id = ${input.workerId}, lease_expires_at = ${leaseExpiresAt},
-						    quarantine_until = GREATEST(quarantine_until, ${new Date(now.getTime() + AMBIGUOUS_CALL_QUARANTINE_MS)}),
 						    attempt_count = attempt_count + 1, updated_at = ${now}
 						WHERE id = ${existing.id} AND released_at IS NULL
 					`);
-					return {
-						state: "resumed",
-						id: decision.id,
-						externalTaskId: decision.externalTaskId,
-						attemptNumber: existing.attempt_number,
-						attemptCount: existing.attempt_count + 1,
-					};
-				} else if (decision.state === "terminal" && existing.retry_allowed && existing.attempt_number < maxAttempts) {
-					attemptNumber = existing.attempt_number + 1;
-				} else if (decision.state === "conflict") {
-					return { ...decision, requestMetadata: existing.request_metadata ?? undefined };
-				} else {
-					return decision;
-				}
+				return {
+					state: "ready",
+					id: decision.id,
+					externalTaskId: decision.externalTaskId,
+					attemptCount: existing.attempt_count + 1,
+				};
+			} else {
+				return decision;
 			}
 		}
 
@@ -1003,17 +863,24 @@ export async function reserveProviderCall(input: {
 				SELECT id,
 				       GREATEST(
 				         COALESCE(lease_expires_at, ${now}),
-				         CASE WHEN submission_started_at IS NOT NULL THEN quarantine_until ELSE ${now} END
+				         CASE
+				           WHEN external_task_id IS NOT NULL
+				             THEN COALESCE(task_deadline_at, submission_started_at + interval '24 hours')
+				           WHEN submission_started_at IS NOT NULL
+				             THEN submission_started_at + interval '24 hours'
+				           ELSE ${now}
+				         END
 				       ) AS retry_at
 				FROM provider_call_reservations
 				WHERE owner_type = ${input.ownerType}
 				  AND owner_id = ${input.ownerId}
 				  AND work_key IS DISTINCT FROM ${input.workKey}
 				  AND released_at IS NULL
+				  AND result_payload IS NULL
 				  AND (
 				    lease_expires_at > ${now}
 				    OR external_task_id IS NOT NULL
-				    OR (submission_started_at IS NOT NULL AND quarantine_until > ${now})
+				    OR submission_started_at + interval '24 hours' > ${now}
 				  )
 				ORDER BY retry_at DESC
 				LIMIT 1
@@ -1023,16 +890,8 @@ export async function reserveProviderCall(input: {
 			if (conflict) return { state: "busy", id: conflict.id, retryAt: asDate(conflict.retry_at) };
 		}
 
-		if (input.ownerMaxCalls !== undefined && !preparedReservation) {
-			const usedResult =
-				input.budgetScope === "work"
-					? await tx.execute(sql`
-						SELECT COUNT(*)::int AS used
-						FROM provider_call_reservations
-						WHERE owner_type = ${input.ownerType} AND owner_id = ${input.ownerId}
-						  AND work_key = ${input.workKey}
-					`)
-					: await tx.execute(sql`
+		if (!preparedReservation && input.ownerMaxCalls !== undefined) {
+			const usedResult = await tx.execute(sql`
 						SELECT COUNT(*)::int AS used
 						FROM provider_call_reservations
 						WHERE owner_type = ${input.ownerType} AND owner_id = ${input.ownerId}
@@ -1041,7 +900,12 @@ export async function reserveProviderCall(input: {
 			if (used >= input.ownerMaxCalls) return { state: "budget", limit: input.ownerMaxCalls };
 		}
 
-		const [health] = await tx.select().from(providerHealth).where(eq(providerHealth.circuitKey, input.circuitKey));
+		await tx.insert(providerHealth).values({ circuitKey: input.circuitKey }).onConflictDoNothing();
+		const [health] = await tx
+			.select()
+			.from(providerHealth)
+			.where(eq(providerHealth.circuitKey, input.circuitKey))
+			.for("update");
 		if (
 			health?.circuitState === "half_open" &&
 			(!preparedReservation || health.probeRunId !== preparedReservation.id)
@@ -1054,26 +918,7 @@ export async function reserveProviderCall(input: {
 
 		const admissionId = preparedReservation?.id ?? id;
 		const countResult = await tx.execute(sql`
-			SELECT (
-			  (SELECT COUNT(*) FROM prompt_execution_runs r
-			   WHERE r.provider = ${input.provider}
-			     AND (
-			       r.status = 'running'
-			       OR (r.status = 'pending' AND r.worker_id IS NOT NULL)
-			       OR (r.status = 'pending' AND r.external_task_id IS NOT NULL)
-			       OR (r.status = 'pending' AND r.failure_kind IN ('worker_lost_unknown', 'provider_ambiguous'))
-			     ))
-			  +
-			  (SELECT COUNT(*) FROM provider_call_reservations reservation
-			   WHERE reservation.provider = ${input.provider}
-			     AND reservation.id <> ${admissionId}
-			     AND reservation.released_at IS NULL
-			     AND (
-			       reservation.lease_expires_at > ${now}
-			       OR reservation.external_task_id IS NOT NULL
-			       OR (reservation.submission_started_at IS NOT NULL AND reservation.quarantine_until > ${now})
-			     ))
-			)::int AS active
+			SELECT ${activeProviderCallCount(input.provider, now, admissionId)}::int AS active
 		`);
 		const active = Number((countResult.rows[0] as { active: number } | undefined)?.active ?? 0);
 		if (active >= input.providerMaxConcurrency) return { state: "capacity" };
@@ -1093,10 +938,9 @@ export async function reserveProviderCall(input: {
 				WHERE id = ${preparedReservation.id} AND released_at IS NULL AND submission_started_at IS NULL
 			`);
 			return {
-				state: "reserved",
+				state: "ready",
 				id: preparedReservation.id,
 				externalTaskId: null,
-				attemptNumber: preparedReservation.attemptNumber,
 				attemptCount: preparedReservation.attemptCount,
 			};
 		}
@@ -1104,18 +948,17 @@ export async function reserveProviderCall(input: {
 		await tx.insert(providerCallReservations).values({
 			id,
 			provider: input.provider,
+			circuitKey: input.circuitKey,
 			ownerType: input.ownerType,
 			ownerId: input.ownerId,
 			workKey: input.workKey,
-			attemptNumber,
 			requestFingerprint: input.requestFingerprint,
 			requestMetadata: input.requestMetadata,
 			workerId: input.workerId,
 			leaseExpiresAt,
 			attemptCount: 1,
-			quarantineUntil: now,
 		});
-		return { state: "reserved", id, externalTaskId: null, attemptNumber, attemptCount: 1 };
+		return { state: "ready", id, externalTaskId: null, attemptCount: 1 };
 	});
 }
 
@@ -1125,10 +968,10 @@ export async function beginProviderCallReservation(id: string, workerId: string)
 	const updated = await db.execute(sql`
 		UPDATE provider_call_reservations
 		SET submission_started_at = COALESCE(submission_started_at, ${now}),
-		    quarantine_until = GREATEST(quarantine_until, ${new Date(now.getTime() + AMBIGUOUS_CALL_QUARANTINE_MS)}),
 		    lease_expires_at = ${new Date(now.getTime() + RESERVATION_LEASE_MS)}, updated_at = ${now}
 		WHERE id = ${id} AND worker_id = ${workerId} AND released_at IS NULL
 		  AND lease_expires_at > ${now}
+		  AND (submission_started_at IS NULL OR external_task_id IS NOT NULL)
 		RETURNING id
 	`);
 	if (updated.rows.length === 0) throw new Error(`Lost provider reservation ${id} before submission`);
@@ -1139,8 +982,7 @@ export async function checkpointProviderReservationTask(id: string, workerId: st
 		UPDATE provider_call_reservations
 		SET external_task_id = COALESCE(external_task_id, ${taskId}),
 		    task_deadline_at = COALESCE(task_deadline_at, ${new Date(Date.now() + PROVIDER_TASK_DEADLINE_MS)}),
-		    lease_expires_at = now() + interval '15 minutes',
-		    quarantine_until = GREATEST(quarantine_until, now() + interval '24 hours'), updated_at = now()
+		    lease_expires_at = now() + interval '15 minutes', updated_at = now()
 		WHERE id = ${id} AND worker_id = ${workerId} AND released_at IS NULL
 		RETURNING external_task_id
 	`);
@@ -1149,15 +991,88 @@ export async function checkpointProviderReservationTask(id: string, workerId: st
 	if (stored !== taskId) throw new Error(`Provider reservation task mismatch for ${id}`);
 }
 
-export async function heartbeatProviderCallReservation(id: string, workerId: string): Promise<void> {
+/** Yield an accepted task so a future job can resume the same provider ID. */
+export async function deferProviderCallReservation(id: string, workerId: string, error: unknown): Promise<void> {
 	const updated = await db.execute(sql`
 		UPDATE provider_call_reservations
-		SET lease_expires_at = now() + interval '15 minutes',
-		    quarantine_until = GREATEST(quarantine_until, now() + interval '24 hours'), updated_at = now()
+		SET lease_expires_at = NULL, last_error = ${errorText(error)}, updated_at = now()
 		WHERE id = ${id} AND worker_id = ${workerId} AND released_at IS NULL
+		  AND external_task_id IS NOT NULL AND result_payload IS NULL
 		RETURNING id
 	`);
-	if (updated.rows.length === 0) throw new Error(`Lost provider reservation ${id}`);
+	if (updated.rows.length === 0) throw new Error(`Lost provider reservation ${id} while deferring its accepted task`);
+}
+
+/** Atomically yield a resumable provider task and record its transport failure. */
+export async function deferFailedProviderTaskReservation(input: {
+	id: string;
+	workerId: string;
+	circuitKey: string;
+	kind: "transient" | "fatal";
+	error: unknown;
+}): Promise<void> {
+	const lastError = errorText(input.error);
+	return retryDurableReservationTransition(() =>
+		db.transaction(async (tx) => {
+			const currentResult = await tx.execute(sql`
+				SELECT worker_id, circuit_key, lease_expires_at, external_task_id,
+				       result_payload, released_at, last_error
+				FROM provider_call_reservations
+				WHERE id = ${input.id}
+				FOR UPDATE
+			`);
+			const current = currentResult.rows[0] as
+				| {
+						worker_id: string;
+						circuit_key: string;
+						lease_expires_at: Date | string | null;
+						external_task_id: string | null;
+						result_payload: unknown | null;
+						released_at: Date | string | null;
+						last_error: string | null;
+				  }
+				| undefined;
+			if (
+				!current ||
+				current.circuit_key !== input.circuitKey ||
+				current.released_at !== null ||
+				current.external_task_id === null ||
+				current.result_payload !== null
+			) {
+				throw new LostProviderReservationError(`Lost provider reservation ${input.id} while deferring its task`);
+			}
+			if (current.lease_expires_at === null && current.last_error === lastError) {
+				return;
+			}
+			if (current.worker_id !== input.workerId) {
+				throw new LostProviderReservationError(`Lost provider reservation ${input.id} while deferring its task`);
+			}
+
+			const now = new Date();
+			await tx.execute(sql`
+				UPDATE provider_call_reservations
+				SET lease_expires_at = NULL, last_error = ${lastError}, updated_at = ${now}
+				WHERE id = ${input.id} AND worker_id = ${input.workerId} AND released_at IS NULL
+			`);
+			await updateProviderFailure(tx, { ...input, runId: input.id }, now);
+		}),
+	);
+}
+
+/** Give back local preparation before any provider submission. */
+export async function yieldPreparedProviderCallReservation(
+	id: string,
+	workerId: string,
+	reason: string,
+): Promise<void> {
+	const updated = await db.execute(sql`
+		UPDATE provider_call_reservations
+		SET lease_expires_at = NULL, last_error = ${reason.slice(0, 4000)}, updated_at = now()
+		WHERE id = ${id} AND worker_id = ${workerId} AND released_at IS NULL
+		  AND submission_started_at IS NULL AND result_payload IS NULL
+		RETURNING id
+	`);
+	if (updated.rows.length === 0) throw new Error(`Lost prepared provider reservation ${id} while yielding it`);
 }
 
 export async function checkpointProviderReservationResult(
@@ -1175,33 +1090,209 @@ export async function checkpointProviderReservationResult(
 	if (updated.rows.length === 0) throw new Error(`Lost provider reservation ${id} while checkpointing result`);
 }
 
-export async function recordProviderReservationError(id: string, workerId: string, error: unknown): Promise<void> {
-	await db.execute(sql`
-		UPDATE provider_call_reservations
-		SET last_error = ${errorText(error)}, updated_at = now()
-		WHERE id = ${id} AND worker_id = ${workerId} AND released_at IS NULL
-	`);
+async function retryDurableReservationTransition<T>(operation: () => Promise<T>): Promise<T> {
+	const delays = [1000, 2000, 5000, 10_000, 30_000];
+	for (let attempt = 0; ; attempt++) {
+		try {
+			return await operation();
+		} catch (error) {
+			if (error instanceof LostProviderReservationError) throw error;
+			const delay = delays[attempt];
+			if (delay === undefined) throw error;
+			await new Promise((resolve) => setTimeout(resolve, delay));
+		}
+	}
 }
 
-export async function releaseProviderCallReservation(
-	id: string,
-	workerId: string,
-	reason = "completed",
-	options: { retryAllowed?: boolean } = {},
-): Promise<void> {
-	const updated = await db.execute(sql`
-		UPDATE provider_call_reservations
-		SET released_at = now(), release_reason = ${reason}, released_by = ${workerId},
-		    retry_allowed = ${options.retryAllowed ?? false}, lease_expires_at = NULL, updated_at = now()
-		WHERE id = ${id} AND worker_id = ${workerId} AND released_at IS NULL
-		RETURNING id
-	`);
-	if (updated.rows.length > 0) return;
-	const current = await db.execute(sql`
-		SELECT released_at FROM provider_call_reservations WHERE id = ${id}
-	`);
-	if ((current.rows[0] as { released_at: Date | string | null } | undefined)?.released_at) return;
-	throw new Error(`Lost provider reservation ${id} while releasing it`);
+/** Atomically retain a paid result, release its slot, and close its circuit probe. */
+export async function completeProviderCallReservation(input: {
+	id: string;
+	workerId: string;
+	circuitKey: string;
+	result: unknown;
+}): Promise<void> {
+	await retryDurableReservationTransition(() =>
+		db.transaction(async (tx) => {
+			const now = new Date();
+			const completed = await tx.execute(sql`
+					UPDATE provider_call_reservations
+					SET result_payload = CASE
+					      WHEN released_at IS NULL THEN ${JSON.stringify(input.result)}::json
+					      ELSE result_payload
+					    END,
+					    released_at = COALESCE(released_at, ${now}),
+					    release_reason = 'completed',
+					    released_by = COALESCE(released_by, ${input.workerId}),
+					    lease_expires_at = NULL,
+					    updated_at = ${now}
+					WHERE id = ${input.id}
+					  AND circuit_key = ${input.circuitKey}
+					  AND (
+					    (released_at IS NULL AND worker_id = ${input.workerId})
+					    OR (
+					      released_at IS NOT NULL AND release_reason = 'completed'
+					      AND released_by = ${input.workerId}
+					    )
+					  )
+					RETURNING id
+				`);
+			if (completed.rows.length === 0) {
+				throw new LostProviderReservationError(`Lost provider reservation ${input.id} while completing it`);
+			}
+			await tx.execute(providerSuccessStatement(input.circuitKey, input.id, now));
+		}),
+	);
+}
+
+/** Atomically record a known-settled failure, release its slot, and update route health. */
+export async function settleProviderCallFailure(input: {
+	id: string;
+	workerId: string;
+	circuitKey: string;
+	kind: "transient" | "fatal" | "local";
+	error: unknown;
+	reason: string;
+}): Promise<void> {
+	const lastError = errorText(input.error);
+	return retryDurableReservationTransition(() =>
+		db.transaction(async (tx) => {
+			const currentResult = await tx.execute(sql`
+				SELECT worker_id, circuit_key, released_at, release_reason, released_by, last_error
+				FROM provider_call_reservations
+				WHERE id = ${input.id}
+				FOR UPDATE
+			`);
+			const current = currentResult.rows[0] as
+				| {
+						worker_id: string;
+						circuit_key: string;
+						released_at: Date | string | null;
+						release_reason: string | null;
+						released_by: string | null;
+						last_error: string | null;
+				  }
+				| undefined;
+			if (!current || current.circuit_key !== input.circuitKey) {
+				throw new LostProviderReservationError(`Lost provider reservation ${input.id} while settling failure`);
+			}
+			if (current.released_at !== null) {
+				if (
+					current.release_reason === input.reason &&
+					current.released_by === input.workerId &&
+					current.last_error === lastError
+				) {
+					return;
+				}
+				throw new LostProviderReservationError(`Provider reservation ${input.id} was settled differently`);
+			}
+			if (current.worker_id !== input.workerId) {
+				throw new LostProviderReservationError(`Lost provider reservation ${input.id} while settling failure`);
+			}
+
+			const now = new Date();
+			await tx.execute(sql`
+				UPDATE provider_call_reservations
+				SET last_error = ${lastError}, released_at = ${now}, release_reason = ${input.reason},
+				    released_by = ${input.workerId},
+				    lease_expires_at = NULL, updated_at = ${now}
+				WHERE id = ${input.id} AND worker_id = ${input.workerId} AND released_at IS NULL
+			`);
+			if (input.kind === "local") {
+				await tx.execute(sql`
+					UPDATE provider_health
+					SET circuit_state = 'open', reopen_at = ${new Date(now.getTime() + 30_000)},
+					    probe_run_id = NULL, updated_at = ${now}
+					WHERE circuit_key = ${input.circuitKey}
+						  AND circuit_state = 'half_open' AND probe_run_id = ${input.id}
+					`);
+				return;
+			}
+			await updateProviderFailure(
+				tx,
+				{
+					circuitKey: input.circuitKey,
+					runId: input.id,
+					kind: input.kind,
+					error: input.error,
+				},
+				now,
+			);
+		}),
+	);
+}
+
+/**
+ * Atomically quarantine a submission whose acceptance is unknown and record
+ * the route failure. The reservation stays unreleased so its logical unit can
+ * never be purchased again and continues to hold capacity for the safety
+ * window derived from submission_started_at.
+ */
+export async function quarantineProviderCallReservation(input: {
+	id: string;
+	workerId: string;
+	circuitKey: string;
+	kind: "transient" | "fatal";
+	error: unknown;
+}): Promise<void> {
+	const lastError = errorText(input.error);
+	return retryDurableReservationTransition(() =>
+		db.transaction(async (tx) => {
+			const currentResult = await tx.execute(sql`
+				SELECT worker_id, circuit_key, lease_expires_at, submission_started_at,
+				       external_task_id, result_payload, released_at, last_error
+				FROM provider_call_reservations
+				WHERE id = ${input.id}
+				FOR UPDATE
+			`);
+			const current = currentResult.rows[0] as
+				| {
+						worker_id: string;
+						circuit_key: string;
+						lease_expires_at: Date | string | null;
+						submission_started_at: Date | string | null;
+						external_task_id: string | null;
+						result_payload: unknown | null;
+						released_at: Date | string | null;
+						last_error: string | null;
+				  }
+				| undefined;
+			if (
+				!current ||
+				current.circuit_key !== input.circuitKey ||
+				current.released_at !== null ||
+				current.submission_started_at === null ||
+				current.external_task_id !== null ||
+				current.result_payload !== null
+			) {
+				throw new LostProviderReservationError(`Lost provider reservation ${input.id} while quarantining it`);
+			}
+			// An acknowledgement can be lost after COMMIT. Recognize the durable
+			// transition so retrying this helper does not count the same failure twice.
+			if (current.lease_expires_at === null && current.last_error === lastError) {
+				return;
+			}
+			if (current.worker_id !== input.workerId) {
+				throw new LostProviderReservationError(`Lost provider reservation ${input.id} while quarantining it`);
+			}
+
+			const now = new Date();
+			await tx.execute(sql`
+				UPDATE provider_call_reservations
+				SET last_error = ${lastError}, lease_expires_at = NULL, updated_at = ${now}
+				WHERE id = ${input.id} AND worker_id = ${input.workerId} AND released_at IS NULL
+			`);
+			await updateProviderFailure(
+				tx,
+				{
+					circuitKey: input.circuitKey,
+					runId: input.id,
+					kind: input.kind,
+					error: input.error,
+				},
+				now,
+			);
+		}),
+	);
 }
 
 /** Recover only transitions that cannot purchase the same work twice. */
@@ -1209,220 +1300,241 @@ export async function recoverExpiredWork(now = new Date()): Promise<void> {
 	await db.transaction(async (tx) => {
 		await tx.execute(sql`
 			UPDATE prompt_execution_runs
-			SET worker_id = NULL, lease_expires_at = NULL, available_at = ${now}, updated_at = ${now}
-			WHERE status = 'pending' AND worker_id IS NOT NULL AND lease_expires_at <= ${now}
+			SET status = CASE
+			      WHEN status = 'running' THEN 'pending'::prompt_execution_run_status
+			      ELSE status
+			    END,
+			    available_at = CASE
+			      WHEN status IN ('pending', 'running') THEN ${now}
+			      ELSE available_at
+			    END,
+			    worker_id = NULL,
+			    lease_expires_at = NULL,
+			    updated_at = ${now}
+			WHERE lease_expires_at <= ${now}
+			  AND status IN ('pending', 'running', 'processing')
 		`);
 		await tx.execute(sql`
-			UPDATE prompt_execution_runs
-			SET worker_id = NULL, lease_expires_at = NULL, updated_at = ${now}
-			WHERE status = 'processing' AND lease_expires_at <= ${now}
+			UPDATE provider_call_reservations
+			SET released_at = ${now}, release_reason = 'legacy cutover quarantine expired',
+			    released_by = 'scheduler', lease_expires_at = NULL, updated_at = ${now}
+			WHERE provider = 'legacy-unknown' AND circuit_key = 'legacy-unknown'
+			  AND owner_type = 'analyze-brand' AND work_key = 'legacy-cutover'
+			  AND released_at IS NULL AND submission_started_at + interval '24 hours' <= ${now}
 		`);
-		await tx.execute(sql`
-			UPDATE prompt_execution_runs
-			SET status = 'pending', available_at = ${now}, worker_id = NULL,
-			    lease_expires_at = NULL, updated_at = ${now}
-			WHERE status = 'running' AND lease_expires_at <= ${now}
-			  AND external_task_id IS NOT NULL
+		const expiredRoutes = await tx.execute(sql`
+			SELECT DISTINCT reservation.circuit_key
+			FROM provider_call_reservations reservation
+			WHERE reservation.released_at IS NULL AND reservation.external_task_id IS NOT NULL
+			  AND reservation.result_payload IS NULL
+			  AND reservation.task_deadline_at IS NOT NULL AND reservation.task_deadline_at <= ${now}
+			  AND (reservation.lease_expires_at IS NULL OR reservation.lease_expires_at <= ${now})
+			ORDER BY reservation.circuit_key
 		`);
+		for (const route of expiredRoutes.rows as Array<{ circuit_key: string }>) {
+			await openProviderCircuitAfterTaskDeadline(tx, route.circuit_key, now);
+		}
 		await tx.execute(sql`
+			WITH skipped AS (
 			UPDATE prompt_execution_runs r
-			SET status = 'abandoned', failure_kind = 'provider_task_failed',
-			    error_message = 'Accepted provider task exceeded the execution deadline',
+			SET status = 'skipped',
+			    failure_kind = CASE
+			      WHEN e.not_after <= ${now} THEN 'execution_window_expired'
+			      ELSE 'prompt_disabled'
+			    END,
+			    error_message = CASE
+			      WHEN e.not_after <= ${now} THEN 'Execution window ended before this run could be admitted'
+			      ELSE 'Prompt or brand was deleted or disabled before provider submission'
+			    END,
 			    worker_id = NULL, lease_expires_at = NULL, completed_at = ${now}, updated_at = ${now}
 			FROM prompt_executions e
-			WHERE e.id = r.execution_id
-			  AND r.status = 'pending' AND r.external_task_id IS NOT NULL
-			  AND (r.worker_id IS NULL OR r.lease_expires_at <= ${now})
-			  AND COALESCE(r.provider_submitted_at, r.started_at, r.created_at) + interval '24 hours' <= ${now}
-		`);
-		await tx.execute(sql`
-			UPDATE prompt_execution_runs
-			SET status = 'pending',
-			    available_at = ${new Date(now.getTime() + AMBIGUOUS_CALL_QUARANTINE_MS)},
-			    failure_kind = 'worker_lost_unknown',
-			    error_message = 'Worker lease expired without a durable provider task id; not replaying ambiguous paid work',
-			    worker_id = NULL, lease_expires_at = NULL, updated_at = ${now}
-			WHERE status = 'running' AND lease_expires_at <= ${now}
-			  AND external_task_id IS NULL
-		`);
-		await tx.execute(sql`
-			UPDATE prompt_execution_runs r
-			SET status = 'abandoned', completed_at = ${now}, updated_at = ${now}
-			FROM prompt_executions e
-			WHERE e.id = r.execution_id AND r.available_at <= ${now}
-			  AND r.status = 'pending'
-			  AND r.failure_kind IN ('worker_lost_unknown', 'provider_ambiguous')
-		`);
-		await tx.execute(sql`
-			UPDATE prompt_execution_runs r
-			SET status = 'skipped', failure_kind = 'execution_window_expired',
-			    error_message = 'Execution window ended before this run could be admitted',
-			    worker_id = NULL, lease_expires_at = NULL, completed_at = ${now}, updated_at = ${now}
-			FROM prompt_executions e
-			WHERE e.id = r.execution_id AND e.not_after <= ${now}
-			  AND r.status = 'pending' AND r.external_task_id IS NULL
+			WHERE e.id = r.execution_id AND r.status = 'pending'
 			  AND r.worker_id IS NULL
-			  AND (r.failure_kind IS NULL OR r.failure_kind NOT IN ('worker_lost_unknown', 'provider_ambiguous'))
-		`);
-		await tx.execute(sql`
-			UPDATE prompt_execution_runs r
-			SET status = 'skipped', failure_kind = 'prompt_disabled',
-			    error_message = 'Prompt or brand was deleted or disabled before provider submission',
-			    completed_at = ${now}, updated_at = ${now}
-			FROM prompt_executions e
-			WHERE e.id = r.execution_id AND r.status = 'pending' AND r.external_task_id IS NULL
-			  AND r.worker_id IS NULL
-			  AND (r.failure_kind IS NULL OR r.failure_kind NOT IN ('worker_lost_unknown', 'provider_ambiguous'))
 			  AND NOT EXISTS (
 			    SELECT 1
-			    FROM prompts p
-			    JOIN brands b ON b.id = p.brand_id
-			    WHERE p.id = e.prompt_id AND p.enabled = true AND b.enabled = true
+			    FROM provider_call_reservations reservation
+			    WHERE reservation.owner_type = 'prompt-run'
+			      AND reservation.owner_id = r.id::text
+			      AND reservation.work_key = 'provider'
+			      AND reservation.submission_started_at IS NOT NULL
 			  )
+			  AND NOT EXISTS (
+			    SELECT 1
+			    FROM provider_call_reservations reservation
+			    WHERE reservation.owner_type = 'prompt-run'
+			      AND reservation.owner_id = r.id::text
+			      AND reservation.work_key = 'provider'
+			      AND reservation.released_at IS NULL
+			      AND reservation.lease_expires_at > ${now}
+			  )
+			  AND (
+			    e.not_after <= ${now}
+			    OR NOT EXISTS (
+			      SELECT 1
+			      FROM prompts p
+			      JOIN brands b ON b.id = p.brand_id
+			      WHERE p.id = e.prompt_id AND p.enabled = true AND b.enabled = true
+			    )
+			  )
+			RETURNING r.id
+			)
+			SELECT COUNT(*) AS skipped_count FROM skipped
+		`);
+		await tx.execute(sql`
+			WITH released AS (
+				UPDATE provider_call_reservations reservation
+				SET released_at = ${now},
+				    release_reason = 'prompt run ended before provider submission',
+				    released_by = 'scheduler',
+				    lease_expires_at = NULL,
+				    updated_at = ${now}
+				FROM prompt_execution_runs owner
+				WHERE reservation.owner_type = 'prompt-run'
+				  AND reservation.owner_id = owner.id::text
+				  AND reservation.work_key = 'provider'
+				  AND reservation.released_at IS NULL
+				  AND reservation.submission_started_at IS NULL
+				  AND reservation.result_payload IS NULL
+				  AND (reservation.lease_expires_at IS NULL OR reservation.lease_expires_at <= ${now})
+				  AND owner.status IN ('succeeded', 'failed', 'skipped')
+				RETURNING reservation.id, reservation.circuit_key
+			), cleared_probes AS (
+				UPDATE provider_health health
+				SET circuit_state = 'open', reopen_at = ${now}, probe_run_id = NULL, updated_at = ${now}
+				FROM released
+				WHERE health.circuit_state = 'half_open' AND health.probe_run_id = released.id
+				RETURNING health.circuit_key
+			)
+			SELECT (SELECT COUNT(*) FROM released) AS released_count,
+			       (SELECT COUNT(*) FROM cleared_probes) AS cleared_probe_count
 		`);
 		await tx.execute(sql`
 			UPDATE provider_call_reservations
 			SET released_at = ${now}, release_reason = 'provider task deadline exceeded',
-			    released_by = 'scheduler', retry_allowed = false,
+			    released_by = 'scheduler',
 			    lease_expires_at = NULL, updated_at = ${now}
-			WHERE released_at IS NULL AND external_task_id IS NOT NULL
-			  AND task_deadline_at IS NOT NULL AND task_deadline_at <= ${now}
-		`);
+				WHERE released_at IS NULL AND external_task_id IS NOT NULL
+				  AND result_payload IS NULL
+				  AND task_deadline_at IS NOT NULL AND task_deadline_at <= ${now}
+				  AND (lease_expires_at IS NULL OR lease_expires_at <= ${now})
+			`);
 		await tx.execute(sql`
 			UPDATE provider_health h
 			SET circuit_state = 'closed', consecutive_failures = 0, opened_at = NULL,
 			    reopen_at = NULL, probe_run_id = NULL, updated_at = ${now}
-			FROM prompt_execution_runs r
-			WHERE h.circuit_state = 'half_open' AND r.id = h.probe_run_id
-			  AND (
-			    r.status = 'succeeded'
-			    OR (
-			      r.status = 'processing'
-			      AND COALESCE(r.result_payload->>'rawResponseOnly', 'false') <> 'true'
-			    )
-			  )
-		`);
-		await tx.execute(sql`
-			UPDATE provider_health h
-			SET circuit_state = 'closed', consecutive_failures = 0, opened_at = NULL,
-			    reopen_at = NULL, probe_run_id = NULL, updated_at = ${now}
-			FROM provider_call_reservations reservation
-			WHERE h.circuit_state = 'half_open' AND reservation.id = h.probe_run_id
-			  AND reservation.result_payload IS NOT NULL
-			  AND COALESCE(reservation.result_payload->>'rawResponseOnly', 'false') <> 'true'
+			FROM (
+			  SELECT reservation.id
+			  FROM provider_call_reservations reservation
+			  WHERE reservation.result_payload IS NOT NULL
+			    AND COALESCE(reservation.result_payload->>'rawResponseOnly', 'false') <> 'true'
+			) successful
+			WHERE h.circuit_state = 'half_open' AND successful.id = h.probe_run_id
 		`);
 		await tx.execute(sql`
 			UPDATE provider_health h
 			SET circuit_state = 'open', reopen_at = ${now}, probe_run_id = NULL, updated_at = ${now}
 			WHERE h.circuit_state = 'half_open'
 			  AND NOT EXISTS (
-			    SELECT 1 FROM prompt_execution_runs r
-			    WHERE r.id = h.probe_run_id
-			      AND (
-			        (r.status = 'pending' AND r.external_task_id IS NOT NULL)
-			        OR (r.status IN ('pending', 'running') AND r.worker_id IS NOT NULL AND r.lease_expires_at > ${now})
-			      )
-			  )
-			  AND NOT EXISTS (
 			    SELECT 1 FROM provider_call_reservations reservation
 			    WHERE reservation.id = h.probe_run_id AND reservation.released_at IS NULL
 			      AND (
-			        reservation.lease_expires_at > ${now}
-			        OR reservation.external_task_id IS NOT NULL
-			        OR (reservation.submission_started_at IS NOT NULL AND reservation.quarantine_until > ${now})
+			        (
+			          COALESCE(reservation.result_payload->>'rawResponseOnly', 'false') = 'true'
+			          AND reservation.lease_expires_at > ${now}
+			        )
+			        OR (
+			          reservation.result_payload IS NULL
+			          AND (
+			            reservation.lease_expires_at > ${now}
+			            OR reservation.external_task_id IS NOT NULL
+			            OR reservation.submission_started_at + interval '24 hours' > ${now}
+			          )
+			        )
 			      )
 			  )
 		`);
 	});
-	await finalizeReadyExecutions(now);
+	await finalizeReadyExecutions(null, now);
 }
 
 export async function releaseResumableWork(workerId: string, now = new Date()): Promise<void> {
 	await db.execute(sql`
 		UPDATE prompt_execution_runs
-		SET worker_id = NULL, lease_expires_at = NULL, available_at = ${now}, updated_at = ${now}
-		WHERE worker_id = ${workerId} AND status = 'pending'
-	`);
-	await db.execute(sql`
-		UPDATE prompt_execution_runs
-		SET status = 'pending', available_at = ${now}, worker_id = NULL,
-		    lease_expires_at = NULL, updated_at = ${now}
-		WHERE worker_id = ${workerId} AND status = 'running' AND external_task_id IS NOT NULL
-	`);
-	await db.execute(sql`
-		UPDATE prompt_execution_runs
-		SET worker_id = NULL, lease_expires_at = NULL, updated_at = ${now}
-		WHERE worker_id = ${workerId} AND status = 'processing'
+		SET status = CASE
+		      WHEN status = 'running' THEN 'pending'::prompt_execution_run_status
+		      ELSE status
+		    END,
+		    available_at = CASE
+		      WHEN status IN ('pending', 'running') THEN ${now}
+		      ELSE available_at
+		    END,
+		    worker_id = NULL,
+		    lease_expires_at = NULL,
+		    updated_at = ${now}
+			WHERE worker_id = ${workerId}
+			  AND status IN ('pending', 'running', 'processing')
 	`);
 }
 
-export async function finalizeReadyExecutions(now = new Date()): Promise<void> {
-	await db.transaction(async (tx) => {
-		const completed = await tx.execute(sql`
-			WITH aggregate AS (
+export async function finalizeReadyExecutions(executionId: string | null = null, now = new Date()): Promise<void> {
+	await db.execute(sql`
+		WITH aggregate AS (
 				SELECT e.id,
 				       COUNT(r.id)::int AS total,
 				       COUNT(*) FILTER (WHERE r.status = 'succeeded')::int AS succeeded,
 				       COUNT(*) FILTER (WHERE r.status = 'failed')::int AS failed,
 				       COUNT(*) FILTER (WHERE r.status = 'skipped')::int AS skipped,
-				       COUNT(*) FILTER (WHERE r.status = 'abandoned')::int AS abandoned,
 				       LEFT(STRING_AGG(DISTINCT r.error_message, '; ') FILTER (WHERE r.error_message IS NOT NULL), 4000)
 				         AS errors
 				FROM prompt_executions e
 				LEFT JOIN prompt_execution_runs r ON r.execution_id = e.id
-				WHERE e.status IN ('pending', 'running')
+				WHERE e.status = 'running'
+				  AND (${executionId}::uuid IS NULL OR e.id = ${executionId})
 				GROUP BY e.id
 				HAVING COUNT(*) FILTER (WHERE r.status IN ('pending', 'running', 'processing')) = 0
-			), finalized AS (
+		), finalized AS (
 				UPDATE prompt_executions e
 				SET status = CASE
 				      WHEN a.total = 0 OR a.skipped = a.total THEN 'skipped'::prompt_execution_status
 				      WHEN a.succeeded = a.total THEN 'succeeded'::prompt_execution_status
 				      WHEN a.succeeded > 0 THEN 'partial'::prompt_execution_status
-				      WHEN a.abandoned > 0 AND a.failed = 0 THEN 'abandoned'::prompt_execution_status
 				      ELSE 'failed'::prompt_execution_status
 				    END,
 				    total_runs = a.total, succeeded_runs = a.succeeded, failed_runs = a.failed,
-				    skipped_runs = a.skipped, abandoned_runs = a.abandoned,
-				    error_summary = a.errors, completed_at = ${now}, updated_at = ${now}
-				    , context_payload = CASE
+				    skipped_runs = a.skipped,
+				    error_summary = a.errors, completed_at = ${now}, updated_at = ${now},
+				    context_payload = CASE
 				        WHEN EXISTS (SELECT 1 FROM prompts p WHERE p.id = e.prompt_id) THEN e.context_payload
 				        ELSE NULL
 				      END
 				FROM aggregate a
-				WHERE e.id = a.id AND e.status IN ('pending', 'running')
+				WHERE e.id = a.id AND e.status = 'running'
 				RETURNING e.prompt_id, e.status
-			)
-			SELECT prompt_id, status FROM finalized
-		`);
-
-		for (const row of completed.rows as Array<{ prompt_id: string; status: string }>) {
-			const failed = row.status === "failed" || row.status === "abandoned";
-			const cleared = row.status === "succeeded" || row.status === "partial";
-			await tx.execute(sql`
-				UPDATE prompt_schedules
-				SET last_completed_at = ${now},
-				    last_execution_status = ${row.status}::prompt_execution_status,
-				    consecutive_failures = CASE
-				      WHEN ${failed} THEN consecutive_failures + 1
-				      WHEN ${cleared} THEN 0
-				      ELSE consecutive_failures
-				    END,
-				    admission_paused_until = CASE
-				      WHEN ${failed} THEN ${now} + make_interval(
-				        hours => LEAST(168, 24 * power(2, LEAST(consecutive_failures, 3)))::int
-				      )
-				      WHEN ${cleared} THEN NULL
-				      ELSE admission_paused_until
-				    END,
-				    pause_reason = CASE
-				      WHEN ${failed} THEN 'Execution produced no persisted result; automatic spend backoff is active'
-				      WHEN ${cleared} THEN NULL
-				      ELSE pause_reason
-				    END,
-				    updated_at = ${now}
-				WHERE prompt_id = ${row.prompt_id}
-			`);
-		}
-	});
+		), schedules AS (
+			UPDATE prompt_schedules schedule
+			SET consecutive_failures = CASE
+			      WHEN finalized.status = 'failed' THEN schedule.consecutive_failures + 1
+			      WHEN finalized.status IN ('succeeded', 'partial') THEN 0
+			      ELSE schedule.consecutive_failures
+			    END,
+			    admission_paused_until = CASE
+			      WHEN finalized.status = 'failed' THEN ${now} + make_interval(
+			        hours => LEAST(168, 24 * power(2, LEAST(schedule.consecutive_failures, 3)))::int
+			      )
+			      WHEN finalized.status IN ('succeeded', 'partial') THEN NULL
+			      ELSE schedule.admission_paused_until
+			    END,
+			    pause_reason = CASE
+			      WHEN finalized.status = 'failed'
+			        THEN 'Execution produced no persisted result; automatic spend backoff is active'
+			      WHEN finalized.status IN ('succeeded', 'partial') THEN NULL
+			      ELSE schedule.pause_reason
+			    END,
+			    updated_at = ${now}
+			FROM finalized
+			WHERE schedule.prompt_id = finalized.prompt_id
+			RETURNING schedule.prompt_id
+		)
+		SELECT COUNT(*) FROM schedules
+	`);
 }

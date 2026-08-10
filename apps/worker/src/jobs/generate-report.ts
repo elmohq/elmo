@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { hostname } from "node:os";
 import { db } from "@workspace/lib/db/db";
 import { reports } from "@workspace/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
@@ -57,5 +59,3 @@ export async function generateReportJob(jobs: Job<GenerateReportData>[]): Promis
 		console.log(`Report ${reportId} completed successfully`);
 	}
 }
-import { randomUUID } from "node:crypto";
-import { hostname } from "node:os";

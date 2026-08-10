@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { ANTHROPIC_WEB_SEARCH_MAX_USES, API_PROVIDER_MAX_OUTPUT_TOKENS } from "../config";
 
 const anthropicClient = vi.hoisted(() => ({ create: vi.fn() }));
+const aiMock = vi.hoisted(() => ({ generateText: vi.fn() }));
+
+vi.mock("ai", () => ({
+	generateText: aiMock.generateText,
+	Output: { object: vi.fn() },
+}));
 
 vi.mock("@anthropic-ai/sdk", () => ({
 	default: class {
@@ -15,6 +22,7 @@ const CAP = API_PROVIDER_MAX_OUTPUT_TOKENS["anthropic-api"];
 
 beforeEach(() => {
 	anthropicClient.create.mockResolvedValue({ content: [], model: "claude-sonnet-4-6" });
+	aiMock.generateText.mockResolvedValue({ output: { answer: "ok" } });
 });
 
 afterEach(() => {
@@ -27,6 +35,32 @@ function sentArgs(): Record<string, any> {
 }
 
 describe("anthropic-api run", () => {
+	it("caps output tokens for structured research", async () => {
+		const checkpointResult = vi.fn().mockResolvedValue(undefined);
+		const result = await anthropicApi.runStructuredResearch?.({
+			prompt: "prompt",
+			schema: z.object({ answer: z.string() }),
+			webSearch: false,
+			checkpointResult,
+		});
+
+		expect(aiMock.generateText.mock.calls[0][0].maxOutputTokens).toBe(CAP);
+		expect(aiMock.generateText.mock.calls[0][0].maxRetries).toBe(0);
+		expect(checkpointResult).toHaveBeenCalledWith(result);
+	});
+
+	it("does not return structured work before its checkpoint succeeds", async () => {
+		const checkpointError = new Error("checkpoint unavailable");
+
+		await expect(
+			anthropicApi.runStructuredResearch?.({
+				prompt: "prompt",
+				schema: z.object({ answer: z.string() }),
+				checkpointResult: vi.fn().mockRejectedValue(checkpointError),
+			}),
+		).rejects.toBe(checkpointError);
+	});
+
 	it("caps output tokens and bounds web-search uses when webSearch is on", async () => {
 		await anthropicApi.run("claude", "prompt", { webSearch: true, version: "claude-sonnet-4-6" });
 

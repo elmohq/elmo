@@ -37,6 +37,8 @@ export interface StructuredResearchOptions<T> {
 	prompt: string;
 	schema: z.ZodType<T>;
 	signal?: AbortSignal;
+	/** Persist a successful paid response before the adapter returns to fallible caller code. */
+	checkpointResult?: (result: StructuredResearchResult<T>) => Promise<void>;
 	/**
 	 * Whether the model may use its web-search tool. Defaults to true (the
 	 * onboarding research path). Set false for a single completion over context

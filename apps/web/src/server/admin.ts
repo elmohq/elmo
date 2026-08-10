@@ -204,7 +204,7 @@ async function getQueueStats() {
 				  AND available_at <= now()
 			)::int AS created,
 			COUNT(*) FILTER (
-				WHERE status IN ('running', 'processing')
+				WHERE status IN ('pending', 'running', 'processing')
 				  AND worker_id IS NOT NULL
 			)::int AS active,
 			COUNT(*) FILTER (
@@ -213,7 +213,7 @@ async function getQueueStats() {
 				  AND available_at > now()
 			)::int AS retry,
 			COUNT(*) FILTER (WHERE status IN ('succeeded', 'skipped'))::int AS completed,
-			COUNT(*) FILTER (WHERE status IN ('failed', 'abandoned'))::int AS failed
+			COUNT(*) FILTER (WHERE status = 'failed')::int AS failed
 		FROM prompt_execution_runs
 	`);
 	const row = result.rows[0] as
@@ -236,20 +236,11 @@ async function getQueueStats() {
 
 async function getRecentJobs(limit = 50) {
 	const result = await db.execute(sql`
-		WITH recent AS (
-			SELECT id, prompt_id, status, error_summary, created_at, started_at, completed_at
-			FROM prompt_executions
-			WHERE status NOT IN ('pending', 'running')
-			ORDER BY completed_at DESC NULLS LAST, created_at DESC
-			LIMIT ${limit}
-		)
-		SELECT recent.*,
-		       COALESCE(SUM(r.attempt_count + r.processing_attempts), 0)::int AS attempts_made
-		FROM recent
-		LEFT JOIN prompt_execution_runs r ON r.execution_id = recent.id
-		GROUP BY recent.id, recent.prompt_id, recent.status, recent.error_summary,
-		         recent.created_at, recent.started_at, recent.completed_at
-		ORDER BY recent.completed_at DESC NULLS LAST, recent.created_at DESC
+		SELECT id, prompt_id, status, error_summary, created_at, started_at, completed_at
+		FROM prompt_executions
+		WHERE status <> 'running'
+		ORDER BY completed_at DESC NULLS LAST, created_at DESC
+		LIMIT ${limit}
 	`);
 
 	return result.rows.map((rawRow) => {
@@ -258,12 +249,11 @@ async function getRecentJobs(limit = 50) {
 			prompt_id: string;
 			status: string;
 			error_summary: string | null;
-			attempts_made: number;
 			created_at: Date | string;
 			started_at: Date | string | null;
 			completed_at: Date | string | null;
 		};
-		const failed = row.status === "partial" || row.status === "failed" || row.status === "abandoned";
+		const failed = row.status === "partial" || row.status === "failed";
 
 		return {
 			id: row.id,
@@ -271,7 +261,6 @@ async function getRecentJobs(limit = 50) {
 			data: { promptId: row.prompt_id },
 			status: failed ? ("failed" as const) : ("completed" as const),
 			failedReason: failed ? (row.error_summary ?? `Execution ended with status ${row.status}`) : null,
-			attemptsMade: Number(row.attempts_made ?? 0),
 			timestamp: new Date(row.created_at).getTime(),
 			processedOn: row.started_at ? new Date(row.started_at).getTime() : null,
 			finishedOn: row.completed_at ? new Date(row.completed_at).getTime() : null,
@@ -326,7 +315,7 @@ async function getActiveJobMap() {
 		SELECT e.id, e.prompt_id,
 		       CASE
 		         WHEN COUNT(*) FILTER (
-		           WHERE r.status IN ('running', 'processing') AND r.worker_id IS NOT NULL
+		           WHERE r.status IN ('pending', 'running', 'processing') AND r.worker_id IS NOT NULL
 		         ) > 0 THEN 'active'
 		         WHEN COUNT(*) FILTER (
 		           WHERE r.status IN ('pending', 'processing')
@@ -338,7 +327,7 @@ async function getActiveJobMap() {
 		       e.created_at
 		FROM prompt_executions e
 		LEFT JOIN prompt_execution_runs r ON r.execution_id = e.id
-		WHERE e.status IN ('pending', 'running')
+		WHERE e.status = 'running'
 		GROUP BY e.id, e.prompt_id, e.created_at
 		ORDER BY e.created_at DESC
 	`);
@@ -361,10 +350,6 @@ function getReleaseReservationConfirmationPhrase(reservationId: string): string 
 	return `RELEASE PROVIDER RESERVATION ${reservationId}`;
 }
 
-function getAbandonProviderTaskConfirmationPhrase(runId: string): string {
-	return `ABANDON PROVIDER TASK ${runId}`;
-}
-
 async function getUnreleasedProviderReservations() {
 	const result = await db.execute(sql`
 		SELECT reservation.id,
@@ -372,23 +357,40 @@ async function getUnreleasedProviderReservations() {
 		       reservation.owner_type,
 		       reservation.owner_id,
 		       reservation.work_key,
-		       reservation.attempt_number,
-		       reservation.request_metadata,
 		       reservation.submission_started_at,
 		       reservation.external_task_id,
 		       reservation.task_deadline_at,
 		       reservation.lease_expires_at,
 		       reservation.last_error,
 		       reservation.created_at,
-		       reservation.updated_at,
-		       COALESCE(report.brand_name, analysis_brand.name) AS owner_name,
-		       analysis_brand.website AS owner_website,
+		       COALESCE(
+		         report.brand_name,
+		         analysis_brand.name,
+		         prompt_brand.name,
+		         prompt_execution.context_payload->'brand'->>'name'
+		       ) AS owner_name,
+		       COALESCE(
+		         analysis_brand.website,
+		         prompt_brand.website,
+		         prompt_execution.context_payload->'brand'->>'website'
+		       ) AS owner_website,
+		       COALESCE(
+		         reservation.request_metadata->>'prompt',
+		         prompt.value,
+		         prompt_execution.context_payload->'prompt'->>'value'
+		       ) AS prompt_value,
+		       COALESCE(reservation.request_metadata->>'model', prompt_run.model) AS model,
 		       report.status AS report_status
 		FROM provider_call_reservations reservation
 		LEFT JOIN reports report
 		  ON reservation.owner_type = 'report' AND report.id::text = reservation.owner_id
 		LEFT JOIN brands analysis_brand
 		  ON reservation.owner_type = 'analyze-brand' AND analysis_brand.id = reservation.owner_id
+		LEFT JOIN prompt_execution_runs prompt_run
+		  ON reservation.owner_type = 'prompt-run' AND prompt_run.id::text = reservation.owner_id
+		LEFT JOIN prompt_executions prompt_execution ON prompt_execution.id = prompt_run.execution_id
+		LEFT JOIN prompts prompt ON prompt.id = prompt_execution.prompt_id
+		LEFT JOIN brands prompt_brand ON prompt_brand.id = prompt.brand_id
 		WHERE reservation.released_at IS NULL
 		ORDER BY reservation.created_at ASC
 	`);
@@ -399,35 +401,28 @@ async function getUnreleasedProviderReservations() {
 			provider: string;
 			owner_type: string;
 			owner_id: string;
-			work_key: string | null;
-			attempt_number: number;
-			request_metadata: unknown | null;
+			work_key: string;
 			submission_started_at: Date | string | null;
 			external_task_id: string | null;
 			task_deadline_at: Date | string | null;
 			lease_expires_at: Date | string | null;
 			last_error: string | null;
 			created_at: Date | string;
-			updated_at: Date | string;
 			owner_name: string | null;
 			owner_website: string | null;
+			prompt_value: string | null;
+			model: string | null;
 			report_status: string | null;
 		};
 
 		return {
 			id: row.id,
 			provider: row.provider,
+			model: row.model,
 			ownerType: row.owner_type,
 			ownerId: row.owner_id,
 			workKey: row.work_key,
-			attemptNumber: row.attempt_number,
-			requestSummary:
-				row.request_metadata &&
-				typeof row.request_metadata === "object" &&
-				"prompt" in row.request_metadata &&
-				typeof row.request_metadata.prompt === "string"
-					? row.request_metadata.prompt
-					: null,
+			requestSummary: row.prompt_value,
 			externalTaskId: row.external_task_id,
 			submissionStartedAt: row.submission_started_at ? new Date(row.submission_started_at).getTime() : null,
 			taskDeadlineAt: row.task_deadline_at ? new Date(row.task_deadline_at).getTime() : null,
@@ -437,55 +432,7 @@ async function getUnreleasedProviderReservations() {
 			ownerWebsite: row.owner_website,
 			reportStatus: row.report_status,
 			createdAt: new Date(row.created_at).getTime(),
-			updatedAt: new Date(row.updated_at).getTime(),
 			confirmationPhrase: getReleaseReservationConfirmationPhrase(row.id),
-		};
-	});
-}
-
-async function getUnresolvedPromptProviderTasks() {
-	const result = await db.execute(sql`
-		SELECT run.id, run.provider, run.circuit_key, run.model, run.external_task_id,
-		       run.provider_submitted_at, run.available_at, run.error_message,
-		       execution.prompt_id,
-		       COALESCE(prompt.value, execution.context_payload->'prompt'->>'value', '[deleted prompt]') AS prompt_value,
-		       COALESCE(brand.name, execution.context_payload->'brand'->>'name', '[deleted brand]') AS brand_name
-		FROM prompt_execution_runs run
-		JOIN prompt_executions execution ON execution.id = run.execution_id
-		LEFT JOIN prompts prompt ON prompt.id = execution.prompt_id
-		LEFT JOIN brands brand ON brand.id = prompt.brand_id
-		WHERE run.status = 'pending'
-		  AND run.external_task_id IS NOT NULL
-		  AND (run.worker_id IS NULL OR run.lease_expires_at <= now())
-		ORDER BY run.provider_submitted_at ASC NULLS FIRST
-	`);
-
-	return result.rows.map((rawRow) => {
-		const row = rawRow as {
-			id: string;
-			provider: string;
-			circuit_key: string;
-			model: string;
-			external_task_id: string;
-			provider_submitted_at: Date | string | null;
-			available_at: Date | string;
-			error_message: string | null;
-			prompt_id: string;
-			prompt_value: string;
-			brand_name: string;
-		};
-		return {
-			id: row.id,
-			provider: row.provider,
-			model: row.model,
-			externalTaskId: row.external_task_id,
-			providerSubmittedAt: row.provider_submitted_at ? new Date(row.provider_submitted_at).getTime() : null,
-			availableAt: new Date(row.available_at).getTime(),
-			errorMessage: row.error_message,
-			promptId: row.prompt_id,
-			promptValue: row.prompt_value,
-			brandName: row.brand_name,
-			confirmationPhrase: getAbandonProviderTaskConfirmationPhrase(row.id),
 		};
 	});
 }
@@ -524,15 +471,13 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		lastRunsMap[run.promptId][run.model] = run.lastRunAt;
 	}
 
-	const [recentJobs, scheduleMap, activeJobMap, queueStats, providerReservations, unresolvedProviderTasks] =
-		await Promise.all([
-			getRecentJobs(5000),
-			getScheduleMap(),
-			getActiveJobMap(),
-			getQueueStats(),
-			getUnreleasedProviderReservations(),
-			getUnresolvedPromptProviderTasks(),
-		]);
+	const [recentJobs, scheduleMap, activeJobMap, queueStats, providerReservations] = await Promise.all([
+		getRecentJobs(5000),
+		getScheduleMap(),
+		getActiveJobMap(),
+		getQueueStats(),
+		getUnreleasedProviderReservations(),
+	]);
 
 	const failuresByPrompt = new Map<string, number>();
 	for (const job of recentJobs) {
@@ -656,7 +601,6 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		queue: queueStats,
 		recentJobs: recentJobs.sort((a, b) => b.timestamp - a.timestamp),
 		providerReservations,
-		unresolvedProviderTasks,
 		brands: brandSummaries,
 	};
 });
@@ -667,7 +611,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 
 /**
  * Release provider capacity after an administrator has independently resolved
- * an ambiguous report call. This does not inspect or cancel provider work.
+ * an ambiguous paid call. This does not inspect or cancel provider work.
  */
 export const releaseProviderReservationFn = createServerFn({ method: "POST" })
 	.validator(
@@ -684,19 +628,33 @@ export const releaseProviderReservationFn = createServerFn({ method: "POST" })
 			throw new Error("Confirmation phrase does not exactly match");
 		}
 
-		const result = await db.execute(sql`
-			UPDATE provider_call_reservations
-			SET released_at = now(),
-			    release_reason = ${data.resolutionNote},
-			    released_by = ${session.user.id},
-			    updated_at = now()
-			WHERE id = ${data.reservationId}
-			  AND released_at IS NULL
-			  AND (lease_expires_at IS NULL OR lease_expires_at <= now())
-			RETURNING id, released_at
-		`);
+		const released = await db.transaction(async (tx) => {
+			const result = await tx.execute(sql`
+				UPDATE provider_call_reservations
+				SET released_at = now(),
+				    release_reason = ${data.resolutionNote},
+				    released_by = ${session.user.id},
+				    updated_at = now()
+				WHERE id = ${data.reservationId}
+				  AND released_at IS NULL
+				  AND (lease_expires_at IS NULL OR lease_expires_at <= now())
+				RETURNING id, circuit_key, released_at
+			`);
+			const row = result.rows[0] as { id: string; circuit_key: string; released_at: Date | string } | undefined;
+			if (!row) return null;
 
-		const released = result.rows[0] as { id: string; released_at: Date | string } | undefined;
+			await tx.execute(sql`
+				UPDATE provider_health
+				SET circuit_state = 'open', reopen_at = now() + interval '5 minutes',
+				    probe_run_id = NULL, last_failure_kind = 'operator_resolved',
+				    last_error = ${data.resolutionNote}, last_failure_at = now(), updated_at = now()
+				WHERE circuit_key = ${row.circuit_key}
+				  AND circuit_state = 'half_open'
+				  AND probe_run_id = ${row.id}
+			`);
+			return row;
+		});
+
 		if (!released) {
 			throw new Error("Reservation is active, already released, or no longer exists");
 		}
@@ -706,53 +664,6 @@ export const releaseProviderReservationFn = createServerFn({ method: "POST" })
 			reservationId: released.id,
 			releasedAt: new Date(released.released_at).getTime(),
 		};
-	});
-
-/**
- * Stop resuming a checkpointed provider task only after an operator has
- * independently verified that the external task is terminal or cancelled.
- */
-export const abandonPromptProviderTaskFn = createServerFn({ method: "POST" })
-	.validator(
-		z.object({
-			runId: z.string().uuid(),
-			confirmationPhrase: z.string().max(100),
-			resolutionNote: z.string().trim().min(1, "A resolution note is required").max(2000),
-		}),
-	)
-	.handler(async ({ data }) => {
-		const session = await requireAdmin();
-		if (data.confirmationPhrase !== getAbandonProviderTaskConfirmationPhrase(data.runId)) {
-			throw new Error("Confirmation phrase does not exactly match");
-		}
-
-		const abandoned = await db.transaction(async (tx) => {
-			const result = await tx.execute(sql`
-				UPDATE prompt_execution_runs
-				SET status = 'abandoned', completed_at = now(), worker_id = NULL,
-				    lease_expires_at = NULL, failure_kind = 'operator_resolved',
-				    error_message = ${`Operator ${session.user.id}: ${data.resolutionNote}`}, updated_at = now()
-				WHERE id = ${data.runId}
-				  AND status = 'pending'
-				  AND external_task_id IS NOT NULL
-				  AND (worker_id IS NULL OR lease_expires_at <= now())
-				RETURNING id, circuit_key
-			`);
-			const row = result.rows[0] as { id: string; circuit_key: string } | undefined;
-			if (!row) return null;
-
-			await tx.execute(sql`
-				UPDATE provider_health
-				SET circuit_state = 'open', reopen_at = now() + interval '24 hours',
-				    probe_run_id = NULL, last_failure_kind = 'operator_resolved',
-				    last_error = ${data.resolutionNote}, last_failure_at = now(), updated_at = now()
-				WHERE circuit_key = ${row.circuit_key} AND probe_run_id = ${row.id}
-			`);
-			return row;
-		});
-
-		if (!abandoned) throw new Error("Provider task is active, terminal, or no longer resumable");
-		return { success: true, runId: abandoned.id };
 	});
 
 // ============================================================================
@@ -805,19 +716,31 @@ export const getJobLogsFn = createServerFn({ method: "GET" })
 		const [executionResult, runsResult] = await Promise.all([
 			db.execute(sql`
 				SELECT id, prompt_id, trigger, scheduled_for, not_after, status,
-				       total_runs, succeeded_runs, failed_runs, skipped_runs, abandoned_runs,
+				       total_runs, succeeded_runs, failed_runs, skipped_runs,
 				       error_summary, started_at, completed_at, created_at, updated_at
 				FROM prompt_executions
 				WHERE id = ${data.jobId}
 			`),
 			db.execute(sql`
-				SELECT id, prompt_run_id, target_index, run_index, provider, model, version,
-				       web_search_enabled, status, available_at, worker_id, lease_expires_at,
-				       external_task_id, attempt_count, processing_attempts, failure_kind,
-				       error_message, started_at, provider_submitted_at, completed_at, created_at, updated_at
-				FROM prompt_execution_runs
-				WHERE execution_id = ${data.jobId}
-				ORDER BY target_index, run_index
+				SELECT run.id, run.prompt_run_id, run.target_index, run.run_index, run.provider,
+				       run.model, run.version, run.web_search_enabled, run.status, run.available_at,
+				       run.worker_id, run.lease_expires_at, run.local_attempts, run.failure_kind,
+				       run.error_message, run.started_at, run.completed_at, run.created_at, run.updated_at,
+				       reservation.id AS reservation_id,
+				       reservation.external_task_id,
+				       reservation.attempt_count,
+				       reservation.submission_started_at AS provider_submitted_at,
+				       reservation.task_deadline_at,
+				       reservation.released_at,
+				       reservation.release_reason,
+				       reservation.last_error AS provider_error
+				FROM prompt_execution_runs run
+				LEFT JOIN provider_call_reservations reservation
+				  ON reservation.owner_type = 'prompt-run'
+				 AND reservation.owner_id = run.id::text
+				 AND reservation.work_key = 'provider'
+				WHERE run.execution_id = ${data.jobId}
+				ORDER BY run.target_index, run.run_index
 			`),
 		]);
 
@@ -833,7 +756,6 @@ export const getJobLogsFn = createServerFn({ method: "GET" })
 					succeeded_runs: number;
 					failed_runs: number;
 					skipped_runs: number;
-					abandoned_runs: number;
 					error_summary: string | null;
 					started_at: Date | string | null;
 					completed_at: Date | string | null;
@@ -859,8 +781,7 @@ export const getJobLogsFn = createServerFn({ method: "GET" })
 		if (execution.completed_at) logs.push(`Completed: ${iso(execution.completed_at)}`);
 		logs.push(
 			`Units: ${execution.total_runs} total, ${execution.succeeded_runs} succeeded, ` +
-				`${execution.failed_runs} failed, ${execution.skipped_runs} skipped, ` +
-				`${execution.abandoned_runs} abandoned`,
+				`${execution.failed_runs} failed, ${execution.skipped_runs} skipped`,
 		);
 		if (execution.error_summary) logs.push(`Execution error: ${execution.error_summary}`);
 
@@ -878,13 +799,18 @@ export const getJobLogsFn = createServerFn({ method: "GET" })
 				available_at: Date | string;
 				worker_id: string | null;
 				lease_expires_at: Date | string | null;
+				reservation_id: string | null;
 				external_task_id: string | null;
-				attempt_count: number;
-				processing_attempts: number;
+				attempt_count: number | null;
+				local_attempts: number;
 				failure_kind: string | null;
 				error_message: string | null;
 				started_at: Date | string | null;
 				provider_submitted_at: Date | string | null;
+				task_deadline_at: Date | string | null;
+				released_at: Date | string | null;
+				release_reason: string | null;
+				provider_error: string | null;
 				completed_at: Date | string | null;
 				created_at: Date | string;
 				updated_at: Date | string;
@@ -894,10 +820,15 @@ export const getJobLogsFn = createServerFn({ method: "GET" })
 			logs.push(`Unit ${run.target_index + 1}.${run.run_index} (${run.id}): ${run.model} via ${run.provider}`);
 			logs.push(`Status: ${run.status}`);
 			logs.push(`Version: ${run.version ?? "default"}; web search: ${run.web_search_enabled ? "enabled" : "disabled"}`);
-			logs.push(`Provider attempts: ${run.attempt_count}; processing attempts: ${run.processing_attempts}`);
+			logs.push(`Reservation claims: ${run.attempt_count ?? 0}; local retries: ${run.local_attempts}`);
 			logs.push(`Available: ${iso(run.available_at)}`);
 			if (run.started_at) logs.push(`Started: ${iso(run.started_at)}`);
+			if (run.reservation_id) logs.push(`Provider reservation: ${run.reservation_id}`);
 			if (run.provider_submitted_at) logs.push(`Provider submitted: ${iso(run.provider_submitted_at)}`);
+			if (run.task_deadline_at) logs.push(`Provider task deadline: ${iso(run.task_deadline_at)}`);
+			if (run.released_at) {
+				logs.push(`Provider reservation released: ${iso(run.released_at)} (${run.release_reason ?? "no reason"})`);
+			}
 			if (run.completed_at) logs.push(`Completed: ${iso(run.completed_at)}`);
 			if (run.worker_id) logs.push(`Worker: ${run.worker_id}`);
 			if (run.lease_expires_at) logs.push(`Lease expires: ${iso(run.lease_expires_at)}`);
@@ -905,6 +836,7 @@ export const getJobLogsFn = createServerFn({ method: "GET" })
 			if (run.prompt_run_id) logs.push(`Saved prompt run: ${run.prompt_run_id}`);
 			if (run.failure_kind) logs.push(`Failure kind: ${run.failure_kind}`);
 			if (run.error_message) logs.push(`Error: ${run.error_message}`);
+			if (run.provider_error) logs.push(`Provider reservation error: ${run.provider_error}`);
 		}
 
 		return { jobId: data.jobId, logs, count: logs.length };

@@ -1,58 +1,31 @@
+import { createHash } from "node:crypto";
 import * as Sentry from "@sentry/node";
 import { db } from "@workspace/lib/db/db";
 import {
-	brands,
 	citations,
 	type PromptExecutionContextSnapshot,
 	promptExecutionRuns,
 	promptRuns,
 	prompts,
+	providerCallReservations,
 } from "@workspace/lib/db/schema";
-import { normalizeStoredProviderPayload, validateProviderResult } from "@workspace/lib/provider-payload";
-import {
-	errorHasAcceptedTask,
-	getProvider,
-	isProviderDefinitivelyRejected,
-	isProviderFatalError,
-	ProviderRunRejectedError,
-	ProviderTaskFailedError,
-	ProviderTaskPendingError,
-} from "@workspace/lib/providers";
-import { providerTaskResumeBackoffMs } from "@workspace/lib/scheduler";
+import { ProviderFatalError } from "@workspace/lib/providers";
 import type { Citation } from "@workspace/lib/text-extraction";
 import { and, eq } from "drizzle-orm";
+import { ProviderAdmissionDeferredError } from "./admission";
+import { runReservedProviderCall } from "./reserved-provider";
 import {
-	beginProviderSubmission,
-	checkpointExternalTask,
-	checkpointProviderRawResponse,
-	checkpointProviderResult,
-	deferProviderTask,
+	beginExecutionRun,
+	deferExecutionRun,
+	deferExecutionRunAfterLocalError,
 	type ExecutionRunClaim,
 	failExecutionRun,
 	finalizeReadyExecutions,
-	getStoredProviderResult,
-	heartbeatExecutionRun,
-	markProviderFailure,
-	markProviderSuccess,
-	quarantineAmbiguousProviderCall,
-	recordRawResponseValidationFailure,
-	releaseProviderProbe,
-	releaseRawResponseForProcessing,
-	retryStoredResult,
+	markExecutionRunProcessing,
 	type StoredProviderResult,
 } from "./store";
 
 type PromptContext = PromptExecutionContextSnapshot;
-
-async function isPromptEnabled(promptId: string): Promise<boolean> {
-	const [row] = await db
-		.select({ id: prompts.id })
-		.from(prompts)
-		.innerJoin(brands, eq(brands.id, prompts.brandId))
-		.where(and(eq(prompts.id, promptId), eq(prompts.enabled, true), eq(brands.enabled, true)))
-		.limit(1);
-	return !!row;
-}
 
 async function promptExists(promptId: string): Promise<boolean> {
 	const row = await db.query.prompts.findFirst({
@@ -111,228 +84,18 @@ function reportRunError(claim: ExecutionRunClaim, error: unknown, kind: string):
 	});
 }
 
-async function checkpointAcceptedTask(claim: ExecutionRunClaim, workerId: string, taskId: string): Promise<void> {
-	const delays = [1000, 2000, 5000, 10_000];
-	for (let attempt = 0; ; attempt++) {
-		try {
-			await checkpointExternalTask(claim.id, workerId, taskId);
-			return;
-		} catch (error) {
-			reportRunError(claim, error, "task_checkpoint_failed");
-			if (error instanceof Error && error.message.startsWith("Lost lease")) throw error;
-			const delay = delays[attempt];
-			if (delay === undefined) throw error;
-			await new Promise((resolve) => setTimeout(resolve, delay));
-		}
-	}
-}
-
-async function checkpointRawResponse(
-	claim: ExecutionRunClaim,
-	workerId: string,
-	response: { rawOutput: unknown; modelVersion?: string },
-): Promise<void> {
-	const delays = [1000, 2000, 5000, 10_000, 30_000];
-	for (let attempt = 0; ; attempt++) {
-		try {
-			await checkpointProviderRawResponse(claim.id, workerId, response);
-			return;
-		} catch (error) {
-			reportRunError(claim, error, "raw_response_checkpoint_failed");
-			if (error instanceof Error && error.message.startsWith("Lost lease")) throw error;
-			const delay = delays[attempt];
-			if (delay === undefined) throw error;
-			await new Promise((resolve) => setTimeout(resolve, delay));
-		}
-	}
-}
-
-async function executeProviderCall(claim: ExecutionRunClaim, workerId: string): Promise<void> {
-	const context = claim.context;
-	if (!claim.externalTaskId) {
-		let enabled: boolean;
-		try {
-			enabled = await isPromptEnabled(claim.promptId);
-		} catch (error) {
-			await releaseProviderProbe(claim.circuitKey, claim.id);
-			await failExecutionRun({
-				runId: claim.id,
-				workerId,
-				kind: "internal_before_provider",
-				error,
-			});
-			reportRunError(claim, error, "internal_before_provider");
-			return;
-		}
-		if (!enabled) {
-			await releaseProviderProbe(claim.circuitKey, claim.id);
-			await failExecutionRun({
-				runId: claim.id,
-				workerId,
-				kind: "prompt_disabled",
-				error: new Error("Prompt or brand was deleted or disabled before provider submission"),
-				status: "skipped",
-			});
-			return;
-		}
-	}
-
-	let provider: ReturnType<typeof getProvider>;
-	try {
-		provider = getProvider(claim.provider);
-	} catch (error) {
-		await releaseProviderProbe(claim.circuitKey, claim.id);
-		await failExecutionRun({
-			runId: claim.id,
-			workerId,
-			kind: "internal_before_provider",
-			error,
-		});
-		reportRunError(claim, error, "internal_before_provider");
-		return;
-	}
-
-	await beginProviderSubmission(claim.id, workerId);
-	let externalTaskId = claim.externalTaskId;
-	let rawResponseCheckpointed = false;
-	let result: StoredProviderResult;
-	try {
-		result = validateProviderResult(
-			await provider.run(claim.model, context.prompt.value, {
+function fingerprintProviderRequest(claim: ExecutionRunClaim): string {
+	return createHash("sha256")
+		.update(
+			JSON.stringify({
+				provider: claim.provider,
+				model: claim.model,
+				version: claim.version,
 				webSearch: claim.webSearchEnabled,
-				version: claim.version ?? undefined,
-				externalTaskId: claim.externalTaskId ?? undefined,
-				idempotencyKey: claim.id,
-				checkpointExternalTask: async (taskId) => {
-					await checkpointAcceptedTask(claim, workerId, taskId);
-					externalTaskId = taskId;
-				},
-				checkpointRawResponse: async (response) => {
-					await checkpointRawResponse(claim, workerId, response);
-					rawResponseCheckpointed = true;
-				},
+				prompt: claim.context.prompt.value,
 			}),
-		);
-	} catch (error) {
-		if (rawResponseCheckpointed) {
-			const firstFailure = await recordRawResponseValidationFailure(claim.id, workerId, error);
-			if (firstFailure) {
-				const circuit = await markProviderFailure({
-					circuitKey: claim.circuitKey,
-					runId: claim.id,
-					kind: "transient",
-					error,
-				});
-				if (circuit.state === "open") {
-					console.error(
-						`[scheduler] Provider route ${claim.circuitKey} circuit opened until ${circuit.reopenAt?.toISOString() ?? "manual reset"}`,
-					);
-				}
-			}
-			await releaseRawResponseForProcessing(claim.id, workerId);
-			reportRunError(claim, error, "provider_normalization_failed");
-			return;
-		}
-
-		if (error instanceof ProviderTaskPendingError) {
-			await deferProviderTask(
-				claim.id,
-				workerId,
-				Math.max(error.retryAfterMs, providerTaskResumeBackoffMs(claim.attemptCount)),
-				error.message,
-			);
-			return;
-		}
-
-		if (error instanceof ProviderRunRejectedError) {
-			await releaseProviderProbe(claim.circuitKey, claim.id);
-			await failExecutionRun({
-				runId: claim.id,
-				workerId,
-				kind: "provider_rejected",
-				error,
-			});
-			reportRunError(claim, error, "provider_rejected");
-			return;
-		}
-
-		if (error instanceof ProviderTaskFailedError) {
-			const circuit = await markProviderFailure({
-				circuitKey: claim.circuitKey,
-				runId: claim.id,
-				kind: "transient",
-				error,
-			});
-			await failExecutionRun({
-				runId: claim.id,
-				workerId,
-				kind: "provider_task_failed",
-				error,
-			});
-			reportRunError(claim, error, "provider_task_failed");
-			if (circuit.state === "open") {
-				console.error(
-					`[scheduler] Provider ${claim.provider} circuit opened until ${circuit.reopenAt?.toISOString() ?? "manual reset"}`,
-				);
-			}
-			return;
-		}
-
-		const kind = isProviderFatalError(error) ? "fatal" : "transient";
-		const circuit = await markProviderFailure({
-			circuitKey: claim.circuitKey,
-			runId: claim.id,
-			kind,
-			error,
-		});
-		if (errorHasAcceptedTask(error) && !externalTaskId) {
-			await quarantineAmbiguousProviderCall(claim.id, workerId, error);
-		} else if (externalTaskId) {
-			await deferProviderTask(
-				claim.id,
-				workerId,
-				providerTaskResumeBackoffMs(claim.attemptCount),
-				error instanceof Error ? error.message : String(error),
-			);
-		} else if (kind === "fatal") {
-			await failExecutionRun({ runId: claim.id, workerId, kind: "provider_fatal", error });
-		} else if (isProviderDefinitivelyRejected(error)) {
-			await failExecutionRun({ runId: claim.id, workerId, kind: "provider_transient", error });
-		} else {
-			await quarantineAmbiguousProviderCall(claim.id, workerId, error);
-		}
-		reportRunError(claim, error, kind === "fatal" ? "provider_fatal" : "provider_transient");
-		if (circuit.state === "open") {
-			console.error(
-				`[scheduler] Provider ${claim.provider} circuit opened until ${circuit.reopenAt?.toISOString() ?? "manual reset"}`,
-			);
-		}
-		return;
-	}
-
-	const checkpointDelaysMs = [1000, 2000, 5000, 10_000, 30_000];
-	let checkpointed = false;
-	for (let attempt = 0; attempt <= checkpointDelaysMs.length; attempt++) {
-		try {
-			await checkpointProviderResult(claim.id, workerId, result);
-			checkpointed = true;
-			break;
-		} catch (error) {
-			reportRunError(claim, error, "result_checkpoint_failed");
-			if (error instanceof Error && error.message.startsWith("Lost lease")) break;
-			const delay = checkpointDelaysMs[attempt];
-			if (delay === undefined) break;
-			await new Promise((resolve) => setTimeout(resolve, delay));
-		}
-	}
-	if (!checkpointed) return;
-
-	try {
-		await markProviderSuccess(claim.circuitKey, claim.id);
-	} catch (error) {
-		// The paid result is already durable; recovery can safely close a stale probe.
-		reportRunError(claim, error, "provider_health_checkpoint_failed");
-	}
+		)
+		.digest("hex");
 }
 
 async function persistStoredResult(
@@ -344,6 +107,7 @@ async function persistStoredResult(
 	const safeTextContent = typeof result.textContent === "string" ? result.textContent : "";
 	const { brandMentioned, competitorsMentioned } = analyzeMentions(safeTextContent, context.brand, context.competitors);
 	const recordedVersion = result.modelVersion ?? claim.version ?? claim.provider;
+	const completedAt = new Date();
 
 	await db.transaction(async (tx) => {
 		const [locked] = await tx
@@ -396,83 +160,121 @@ async function persistStoredResult(
 			.set({
 				status: "succeeded",
 				promptRunId: savedRun.id,
-				resultPayload: null,
+				failureKind: null,
+				errorMessage: null,
 				workerId: null,
 				leaseExpiresAt: null,
-				completedAt: new Date(),
-				updatedAt: new Date(),
+				completedAt,
+				updatedAt: completedAt,
 			})
 			.where(eq(promptExecutionRuns.id, claim.id));
+
+		await tx
+			.update(providerCallReservations)
+			.set({ resultPayload: null, updatedAt: completedAt })
+			.where(
+				and(
+					eq(providerCallReservations.ownerType, "prompt-run"),
+					eq(providerCallReservations.ownerId, claim.id),
+					eq(providerCallReservations.workKey, "provider"),
+					eq(providerCallReservations.releaseReason, "completed"),
+				),
+			);
 	});
 }
 
-async function processStoredResult(claim: ExecutionRunClaim, workerId: string): Promise<void> {
-	let exists: boolean;
+async function deferAfterLocalError(claim: ExecutionRunClaim, workerId: string, error: unknown): Promise<void> {
+	try {
+		await deferExecutionRunAfterLocalError(claim.id, workerId, error);
+	} catch (deferError) {
+		reportRunError(claim, deferError, "local_retry_checkpoint_failed");
+	}
+}
+
+async function executeProviderUnit(claim: ExecutionRunClaim, workerId: string): Promise<void> {
+	if (claim.phase === "provider") {
+		try {
+			if (!(await beginExecutionRun(claim.id, workerId))) return;
+		} catch (error) {
+			await deferAfterLocalError(claim, workerId, error);
+			reportRunError(claim, error, "local_begin_transition_failed");
+			return;
+		}
+	}
+
 	let result: StoredProviderResult;
 	try {
-		const [promptPresent, payload] = await Promise.all([
-			promptExists(claim.promptId),
-			getStoredProviderResult(claim.id, workerId),
-		]);
-		exists = promptPresent;
-		result = normalizeStoredProviderPayload(claim.provider, payload);
+		result = await runReservedProviderCall({
+			ownerType: "prompt-run",
+			ownerId: claim.id,
+			workKey: "provider",
+			requestFingerprint: fingerprintProviderRequest(claim),
+			requestMetadata: {
+				executionId: claim.executionId,
+				promptId: claim.promptId,
+				targetIndex: claim.targetIndex,
+				runIndex: claim.runIndex,
+			},
+			workerId: `${workerId}:prompt-run:${claim.id}`,
+			config: {
+				provider: claim.provider,
+				model: claim.model,
+				version: claim.version ?? undefined,
+				webSearch: claim.webSearchEnabled,
+			},
+			prompt: claim.context.prompt.value,
+		});
 	} catch (error) {
-		try {
-			const firstFailure = await recordRawResponseValidationFailure(claim.id, workerId, error);
-			if (firstFailure) {
-				await markProviderFailure({
-					circuitKey: claim.circuitKey,
-					runId: claim.id,
-					kind: "transient",
-					error,
-				});
-			}
-		} catch (healthError) {
-			reportRunError(claim, healthError, "provider_health_checkpoint_failed");
+		if (error instanceof ProviderAdmissionDeferredError) {
+			await deferExecutionRun(claim.id, workerId, error.retryAt, error);
+			return;
 		}
-		await retryStoredResult(claim.id, workerId, error);
-		reportRunError(claim, error, "provider_payload_invalid");
+		if (error instanceof ProviderFatalError) {
+			await failExecutionRun({ runId: claim.id, workerId, kind: "provider_fatal", error });
+			reportRunError(claim, error, "provider_fatal");
+			return;
+		}
+
+		// The generic ledger may already hold a paid result when a local database
+		// transition fails. Retrying the business row is always spend-safe because
+		// the next claim must consult that same reservation.
+		await deferAfterLocalError(claim, workerId, error);
+		reportRunError(claim, error, "provider_ledger_transition_failed");
 		return;
 	}
 
+	if (claim.phase === "provider") {
+		try {
+			await markExecutionRunProcessing(claim.id, workerId);
+		} catch (error) {
+			await deferAfterLocalError(claim, workerId, error);
+			reportRunError(claim, error, "local_processing_transition_failed");
+			return;
+		}
+	}
+
 	try {
-		if (!exists) {
+		if (!(await promptExists(claim.promptId))) {
 			await failExecutionRun({
 				runId: claim.id,
 				workerId,
 				kind: "prompt_disabled",
-				error: new Error("Prompt was deleted after provider work completed; result retained in execution ledger"),
+				error: new Error("Prompt was deleted after provider work completed; result retained in provider ledger"),
 				status: "skipped",
 			});
 			return;
 		}
 		await persistStoredResult(claim, workerId, claim.context, result);
 	} catch (error) {
-		await retryStoredResult(claim.id, workerId, error);
+		await deferAfterLocalError(claim, workerId, error);
 		reportRunError(claim, error, "internal_after_provider");
 	}
 }
 
 export async function executeClaimedRun(claim: ExecutionRunClaim, workerId: string): Promise<void> {
-	const heartbeatStartedAt = Date.now();
-	const heartbeat = setInterval(() => {
-		if (Date.now() - heartbeatStartedAt >= 30 * 60 * 1000) {
-			clearInterval(heartbeat);
-			return;
-		}
-		void heartbeatExecutionRun(claim.id, workerId).catch((error) =>
-			reportRunError(claim, error, "lease_heartbeat_failed"),
-		);
-	}, 60_000);
-	heartbeat.unref();
 	try {
-		if (claim.phase === "processing") {
-			await processStoredResult(claim, workerId);
-		} else {
-			await executeProviderCall(claim, workerId);
-		}
+		await executeProviderUnit(claim, workerId);
 	} finally {
-		clearInterval(heartbeat);
-		await finalizeReadyExecutions();
+		await finalizeReadyExecutions(claim.executionId);
 	}
 }

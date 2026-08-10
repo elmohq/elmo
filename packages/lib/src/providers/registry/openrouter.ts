@@ -3,7 +3,7 @@ import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
 import type { Citation } from "../../text-extraction";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
-import { providerHttpResponseError, ProviderRunRejectedError, ProviderTaskFailedError } from "../errors";
+import { ProviderRunRejectedError, ProviderTaskFailedError, providerHttpResponseError } from "../errors";
 import type {
 	Provider,
 	ProviderOptions,
@@ -91,6 +91,7 @@ export const openrouter: Provider = {
 		prompt,
 		schema,
 		signal,
+		checkpointResult,
 		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		// Raw fetch (no AI SDK) so we can attach the OpenRouter `plugins` field
@@ -99,6 +100,7 @@ export const openrouter: Provider = {
 		const body: Record<string, unknown> = {
 			model: DEFAULT_RESEARCH_MODEL,
 			messages: [{ role: "user", content: prompt }],
+			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter,
 			response_format: {
 				type: "json_schema",
 				json_schema: { name: "research_output", strict: true, schema: jsonSchema },
@@ -129,13 +131,15 @@ export const openrouter: Provider = {
 		} catch (error) {
 			throw new ProviderTaskFailedError("OpenRouter returned invalid structured JSON", { cause: error });
 		}
-		return {
+		const structuredResult = {
 			object: parsed as T,
 			// Report the alias we sent, not OpenRouter's resolved version
 			// (e.g. "openai/gpt-5-mini" vs "openai/gpt-5-mini-2025-08-07") —
 			// matches what openai-api and anthropic-api do.
 			modelVersion: DEFAULT_RESEARCH_MODEL,
 		};
+		await checkpointResult?.(structuredResult);
+		return structuredResult;
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {

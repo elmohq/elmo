@@ -1,8 +1,7 @@
 export interface ExistingProviderReservation<TResult = unknown> {
 	id: string;
 	provider: string;
-	requestFingerprint: string | null;
-	workerId: string;
+	requestFingerprint: string;
 	leaseExpiresAt: Date | null;
 	submissionStartedAt: Date | null;
 	externalTaskId: string | null;
@@ -10,7 +9,6 @@ export interface ExistingProviderReservation<TResult = unknown> {
 	result: TResult | null;
 	releasedAt: Date | null;
 	releaseReason: string | null;
-	retryAllowed: boolean;
 }
 
 export type ExistingProviderReservationDecision<TResult = unknown> =
@@ -27,25 +25,24 @@ export type ExistingProviderReservationDecision<TResult = unknown> =
 export function decideExistingProviderReservation<TResult>(input: {
 	existing: ExistingProviderReservation<TResult>;
 	provider: string;
-	requestFingerprint?: string;
-	workerId: string;
+	requestFingerprint: string;
 	now: Date;
 }): ExistingProviderReservationDecision<TResult> {
 	const { existing } = input;
-	if (
-		existing.provider !== input.provider ||
-		(existing.requestFingerprint !== null && existing.requestFingerprint !== input.requestFingerprint)
-	) {
+	if (existing.provider !== input.provider || existing.requestFingerprint !== input.requestFingerprint) {
 		return { state: "conflict", id: existing.id };
 	}
-	if (existing.result !== null && !(existing.releasedAt !== null && existing.retryAllowed)) {
+	// A lease is a claim token, not a process identity. Even the same process
+	// must not reclaim live work: one worker process can execute many jobs at
+	// once, and allowing re-entry here can submit the same paid request twice.
+	if (existing.releasedAt === null && existing.leaseExpiresAt && existing.leaseExpiresAt > input.now) {
+		return { state: "busy", id: existing.id, retryAt: existing.leaseExpiresAt };
+	}
+	if (existing.result !== null) {
 		return { state: "cached", id: existing.id, result: existing.result, released: existing.releasedAt !== null };
 	}
 	if (existing.releasedAt !== null) {
 		return { state: "terminal", id: existing.id, reason: existing.releaseReason };
-	}
-	if (existing.leaseExpiresAt && existing.leaseExpiresAt > input.now && existing.workerId !== input.workerId) {
-		return { state: "busy", id: existing.id, retryAt: existing.leaseExpiresAt };
 	}
 	if (existing.externalTaskId) {
 		if (existing.taskDeadlineAt && existing.taskDeadlineAt <= input.now) {

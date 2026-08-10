@@ -2,27 +2,27 @@ import { createHash } from "node:crypto";
 import { resolveResearchProvider } from "@workspace/lib/onboarding";
 import {
 	errorHasAcceptedTask,
+	getProvider,
 	isProviderDefinitivelyRejected,
 	isProviderFatalError,
 	ProviderFatalError,
 	ProviderTaskFailedError,
 } from "@workspace/lib/providers";
-import type { StructuredResearchOptions } from "@workspace/lib/providers/types";
-import {
-	DEFAULT_PROVIDER_ATTEMPTS_PER_UNIT,
-	getProviderMaxConcurrency,
-	providerCircuitKey,
-} from "@workspace/lib/scheduler";
+import type { StructuredResearchOptions, StructuredResearchResult } from "@workspace/lib/providers/types";
+import { getProviderMaxConcurrency, providerCircuitKey } from "@workspace/lib/scheduler";
 import { structuredSchemaFingerprint } from "@workspace/lib/structured-schema";
 import { ProviderAdmissionDeferredError, providerAdmissionRetryAt } from "./admission";
+import { providerLeaseToken, retryProviderCheckpoint } from "./reserved-provider";
 import {
 	beginProviderCallReservation,
 	checkpointProviderReservationResult,
-	markProviderFailure,
-	markProviderSuccess,
-	recordProviderReservationError,
-	releaseProviderCallReservation,
+	completeProviderCallReservation,
+	getProviderCallReservationIdentity,
+	type ProviderReservationIdentity,
+	quarantineProviderCallReservation,
 	reserveProviderCall,
+	settleProviderCallFailure,
+	yieldPreparedProviderCallReservation,
 } from "./store";
 
 interface ReservedStructuredResearchInput {
@@ -30,9 +30,7 @@ interface ReservedStructuredResearchInput {
 	ownerId: string;
 	workKey: string;
 	workerId: string;
-	ownerMaxCalls: number;
-	budgetScope?: "owner" | "work";
-	maxAttempts?: number;
+	ownerMaxCalls?: number;
 	exclusiveOwner?: boolean;
 	requestMetadata?: Record<string, unknown>;
 	signal?: AbortSignal;
@@ -52,102 +50,140 @@ interface StructuredReservationMetadata extends Record<string, unknown> {
 	schemaFingerprint: string;
 }
 
+interface StructuredReservationRoute {
+	provider: string;
+	model: string;
+	circuitKey: string;
+	requestFingerprint: string;
+	requestMetadata: StructuredReservationMetadata;
+	prompt: string;
+}
+
 function hash(value: unknown): string {
 	return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
-function isCompatibleStoredRequest(
-	value: unknown,
-	expected: Omit<StructuredReservationMetadata, "prompt">,
-): value is StructuredReservationMetadata {
+function isStoredStructuredRequest(value: unknown, schemaFingerprint: string): value is StructuredReservationMetadata {
 	if (!value || typeof value !== "object") return false;
 	const metadata = value as Partial<StructuredReservationMetadata>;
 	return (
 		typeof metadata.prompt === "string" &&
-		metadata.kind === expected.kind &&
-		metadata.provider === expected.provider &&
-		metadata.model === expected.model &&
-		metadata.webSearch === expected.webSearch &&
-		metadata.schemaFingerprint === expected.schemaFingerprint
+		metadata.kind === "structured-research" &&
+		typeof metadata.provider === "string" &&
+		typeof metadata.model === "string" &&
+		metadata.webSearch === true &&
+		metadata.schemaFingerprint === schemaFingerprint
 	);
+}
+
+function routeFromStoredIdentity(
+	identity: ProviderReservationIdentity,
+	schemaFingerprint: string,
+): StructuredReservationRoute {
+	if (!isStoredStructuredRequest(identity.requestMetadata, schemaFingerprint)) {
+		throw new ProviderFatalError("The stored structured request has an incompatible output contract");
+	}
+	const metadata = identity.requestMetadata;
+	if (identity.provider !== metadata.provider) {
+		throw new ProviderFatalError("The stored structured request has an invalid provider route");
+	}
+	return {
+		provider: metadata.provider,
+		model: metadata.model,
+		circuitKey: identity.circuitKey,
+		requestFingerprint: identity.requestFingerprint,
+		requestMetadata: metadata,
+		prompt: metadata.prompt,
+	};
+}
+
+function routeForNewRequest(
+	input: ReservedStructuredResearchInput,
+	prompt: string,
+	schemaFingerprint: string,
+): StructuredReservationRoute {
+	const provider = resolveResearchProvider();
+	if (!provider.runStructuredResearch || !provider.structuredResearchModel) {
+		throw new ProviderFatalError(`Provider ${provider.id} does not expose a durable structured-research route`);
+	}
+	const model = provider.structuredResearchModel;
+	const requestMetadata: StructuredReservationMetadata = {
+		...input.requestMetadata,
+		kind: "structured-research",
+		provider: provider.id,
+		model,
+		webSearch: true,
+		schemaFingerprint,
+		prompt,
+	};
+	return {
+		provider: provider.id,
+		model,
+		circuitKey: providerCircuitKey({ provider: provider.id, model, webSearch: true }),
+		requestFingerprint: hash(requestMetadata),
+		requestMetadata,
+		prompt,
+	};
 }
 
 /**
  * Run one paid structured request behind fleet-wide admission. Each logical
- * generation can make only a bounded number of proven-safe attempts; ambiguous
- * calls are never replaced.
+ * unit gets one durable reservation; failures and ambiguous calls are never
+ * replaced automatically.
  */
 export async function runReservedStructuredResearch<T>(
 	input: ReservedStructuredResearchInput,
 	prompt: string,
 	schema: StructuredResearchOptions<T>["schema"],
 ): Promise<T> {
-	const provider = resolveResearchProvider();
-	if (!provider.runStructuredResearch || !provider.structuredResearchModel) {
-		throw new ProviderFatalError(`Provider ${provider.id} does not expose a durable structured-research route`);
-	}
-	const model = provider.structuredResearchModel;
-	const circuitKey = providerCircuitKey({ provider: provider.id, model, webSearch: true });
 	const schemaFingerprint = structuredSchemaFingerprint(schema);
-	const routeMetadata = {
-		kind: "structured-research" as const,
-		provider: provider.id,
-		model,
-		webSearch: true as const,
-		schemaFingerprint,
-	};
+	const leaseToken = providerLeaseToken(input.workerId);
+	const providerMaxConcurrency = getProviderMaxConcurrency();
 
 	input.signal?.throwIfAborted();
-	let effectivePrompt = prompt;
+	let identity = await getProviderCallReservationIdentity(input);
+	let route: StructuredReservationRoute;
 	let reservation: Awaited<ReturnType<typeof reserveProviderCall>>;
 	for (let lookup = 0; ; lookup++) {
-		const requestMetadata: StructuredReservationMetadata = {
-			...input.requestMetadata,
-			...routeMetadata,
-			prompt: effectivePrompt,
-		};
+		route = identity
+			? routeFromStoredIdentity(identity, schemaFingerprint)
+			: routeForNewRequest(input, prompt, schemaFingerprint);
 		reservation = await reserveProviderCall({
-			provider: provider.id,
-			circuitKey,
+			provider: route.provider,
+			circuitKey: route.circuitKey,
 			ownerType: input.ownerType,
 			ownerId: input.ownerId,
 			workKey: input.workKey,
-			requestFingerprint: hash(requestMetadata),
-			requestMetadata,
-			workerId: input.workerId,
-			providerMaxConcurrency: getProviderMaxConcurrency(),
-			maxAttempts: input.maxAttempts ?? DEFAULT_PROVIDER_ATTEMPTS_PER_UNIT,
+			requestFingerprint: route.requestFingerprint,
+			requestMetadata: route.requestMetadata,
+			workerId: leaseToken,
+			providerMaxConcurrency,
 			ownerMaxCalls: input.ownerMaxCalls,
-			budgetScope: input.budgetScope,
 			exclusiveOwner: input.exclusiveOwner,
 		});
-		if (
-			reservation.state === "conflict" &&
-			lookup === 0 &&
-			isCompatibleStoredRequest(reservation.requestMetadata, routeMetadata)
-		) {
-			effectivePrompt = reservation.requestMetadata.prompt;
+		if (reservation.state === "conflict" && !identity && lookup === 0) {
+			identity = await getProviderCallReservationIdentity(input);
+			if (!identity) break;
 			continue;
 		}
 		break;
 	}
 
-	const providerMaxConcurrency = getProviderMaxConcurrency();
 	if (reservation.state === "capacity") {
 		throw new ProviderAdmissionDeferredError(
-			`Provider ${provider.id} is at fleet capacity`,
+			`Provider ${route.provider} is at fleet capacity`,
 			providerAdmissionRetryAt({ providerMaxConcurrency }),
 		);
 	}
 	if (reservation.state === "circuit") {
 		throw new ProviderAdmissionDeferredError(
-			`Provider route ${circuitKey} circuit is open`,
+			`Provider route ${route.circuitKey} circuit is open`,
 			providerAdmissionRetryAt({ reopenAt: reservation.reopenAt }),
 		);
 	}
 	if (reservation.state === "busy") {
 		throw new ProviderAdmissionDeferredError(
-			"A prior structured request still owns this durable generation",
+			"A prior structured request still owns this durable unit",
 			providerAdmissionRetryAt({ retryAt: reservation.retryAt }),
 		);
 	}
@@ -158,11 +194,9 @@ export async function runReservedStructuredResearch<T>(
 		throw new ProviderFatalError("A prior structured request may have been accepted; refusing to purchase it again");
 	}
 	if (reservation.state === "terminal") {
-		throw new ProviderFatalError(
-			`The structured request exhausted its safe attempts (${reservation.reason ?? "no reason recorded"})`,
-		);
+		throw new ProviderFatalError(`The structured request is terminal (${reservation.reason ?? "no reason recorded"})`);
 	}
-	if (reservation.state === "conflict" || reservation.state === "resumed") {
+	if (reservation.state === "conflict" || (reservation.state === "ready" && reservation.externalTaskId)) {
 		throw new ProviderFatalError("The structured request does not match its durable reservation");
 	}
 
@@ -175,84 +209,190 @@ export async function runReservedStructuredResearch<T>(
 				...(typeof value?.modelVersion === "string" ? { modelVersion: value.modelVersion } : {}),
 			};
 		} catch (error) {
-			await recordProviderReservationError(reservation.id, input.workerId, error);
-			const circuit = await markProviderFailure({ circuitKey, runId: reservation.id, kind: "transient", error });
 			if (reservation.released) {
 				throw new ProviderFatalError("Released structured result failed its durable schema", { cause: error });
 			}
-			await releaseProviderCallReservation(reservation.id, input.workerId, "invalid structured result", {
-				retryAllowed: true,
+			await settleProviderCallFailure({
+				id: reservation.id,
+				workerId: leaseToken,
+				circuitKey: route.circuitKey,
+				kind: "transient",
+				error,
+				reason: "invalid structured result",
 			});
-			throw new ProviderAdmissionDeferredError(
-				"Stored structured result failed validation",
-				providerAdmissionRetryAt({ reopenAt: circuit.reopenAt }),
-				{ cause: error },
-			);
+			throw new ProviderFatalError("Stored structured result failed validation; refusing to purchase it again", {
+				cause: error,
+			});
 		}
 		if (!reservation.released) {
-			await markProviderSuccess(circuitKey, reservation.id);
-			await releaseProviderCallReservation(reservation.id, input.workerId, "result checkpoint recovered");
+			await completeProviderCallReservation({
+				id: reservation.id,
+				workerId: leaseToken,
+				circuitKey: route.circuitKey,
+				result: cached,
+			});
 		}
 		return cached.object;
 	}
 
 	if (input.signal?.aborted) {
-		await releaseProviderCallReservation(reservation.id, input.workerId, "cancelled before provider submission", {
-			retryAllowed: true,
-		});
+		await yieldPreparedProviderCallReservation(reservation.id, leaseToken, "cancelled before provider submission");
 		input.signal.throwIfAborted();
 	}
-	await beginProviderCallReservation(reservation.id, input.workerId);
 
-	let result: CachedStructuredResult<T>;
-	let providerReturned = false;
+	let provider: ReturnType<typeof getProvider>;
 	try {
-		const providerResult = await provider.runStructuredResearch({
-			prompt: effectivePrompt,
+		provider = getProvider(route.provider);
+	} catch (error) {
+		await yieldPreparedProviderCallReservation(
+			reservation.id,
+			leaseToken,
+			"stored structured provider route is unavailable",
+		);
+		throw new ProviderAdmissionDeferredError(
+			`Stored structured provider ${route.provider} is unavailable`,
+			providerAdmissionRetryAt({ providerMaxConcurrency: 0 }),
+			{ cause: error },
+		);
+	}
+	if (!provider.runStructuredResearch || provider.structuredResearchModel !== route.model) {
+		const error = new Error(`Provider ${route.provider} no longer exposes structured model ${route.model}`);
+		await yieldPreparedProviderCallReservation(
+			reservation.id,
+			leaseToken,
+			"stored structured provider route is unavailable",
+		);
+		throw new ProviderAdmissionDeferredError(error.message, providerAdmissionRetryAt({ providerMaxConcurrency: 0 }), {
+			cause: error,
+		});
+	}
+	let configured = false;
+	try {
+		configured = provider.isConfigured();
+	} catch {
+		// Credential lookup can fail transiently without crossing the paid boundary.
+	}
+	if (!configured) {
+		await yieldPreparedProviderCallReservation(
+			reservation.id,
+			leaseToken,
+			"stored structured provider credentials are unavailable",
+		);
+		throw new ProviderAdmissionDeferredError(
+			`Provider ${route.provider} credentials are unavailable`,
+			providerAdmissionRetryAt({ providerMaxConcurrency: 0 }),
+		);
+	}
+	await beginProviderCallReservation(reservation.id, leaseToken);
+
+	const completeCheckpointedResult = async (checkpointed: CachedStructuredResult<T>): Promise<T> => {
+		let result: CachedStructuredResult<T>;
+		try {
+			result = {
+				object: schema.parse(checkpointed.object),
+				...(checkpointed.modelVersion ? { modelVersion: checkpointed.modelVersion } : {}),
+			};
+		} catch (error) {
+			await settleProviderCallFailure({
+				id: reservation.id,
+				workerId: leaseToken,
+				circuitKey: route.circuitKey,
+				kind: "transient",
+				error,
+				reason: "structured provider response failed validation",
+			});
+			throw new ProviderFatalError("A paid structured response failed validation; refusing to purchase a replacement", {
+				cause: error,
+			});
+		}
+		await completeProviderCallReservation({
+			id: reservation.id,
+			workerId: leaseToken,
+			circuitKey: route.circuitKey,
+			result,
+		});
+		return result.object;
+	};
+
+	let checkpointedResult: CachedStructuredResult<T> | null = null;
+	let checkpointFailed = false;
+	let providerResult: StructuredResearchResult<T>;
+	try {
+		providerResult = await provider.runStructuredResearch({
+			prompt: route.prompt,
 			schema,
 			signal: input.signal,
+			checkpointResult: async (value) => {
+				const durableResult: CachedStructuredResult<T> = {
+					object: value.object,
+					...(value.modelVersion ? { modelVersion: value.modelVersion } : {}),
+				};
+				try {
+					await retryProviderCheckpoint(() =>
+						checkpointProviderReservationResult(reservation.id, leaseToken, durableResult),
+					);
+				} catch (error) {
+					checkpointFailed = true;
+					throw error;
+				}
+				checkpointedResult = durableResult;
+			},
 		});
-		providerReturned = true;
-		result = {
-			object: schema.parse(providerResult.object),
-			...(providerResult.modelVersion ? { modelVersion: providerResult.modelVersion } : {}),
-		};
 	} catch (error) {
-		await recordProviderReservationError(reservation.id, input.workerId, error);
+		if (checkpointFailed) throw error;
+		if (checkpointedResult) return completeCheckpointedResult(checkpointedResult);
 		const kind = isProviderFatalError(error) ? "fatal" : "transient";
-		const circuit = await markProviderFailure({ circuitKey, runId: reservation.id, kind, error });
-		const knownSettled =
-			providerReturned || error instanceof ProviderTaskFailedError || isProviderDefinitivelyRejected(error);
-		if (knownSettled && !errorHasAcceptedTask(error)) {
-			if (kind === "fatal") {
-				await releaseProviderCallReservation(
-					reservation.id,
-					input.workerId,
-					"provider definitively rejected credentials or billing",
-				);
-				throw error instanceof ProviderFatalError
-					? error
-					: new ProviderFatalError(error instanceof Error ? error.message : String(error), { cause: error });
-			}
-			await releaseProviderCallReservation(
-				reservation.id,
-				input.workerId,
-				"provider definitively rejected or settled",
-				{
-					retryAllowed: true,
-				},
-			);
-			throw new ProviderAdmissionDeferredError(
-				"Structured provider attempt ended safely and will be retried within budget",
-				providerAdmissionRetryAt({ reopenAt: circuit.reopenAt }),
-				{ cause: error },
-			);
+		if (error instanceof ProviderTaskFailedError) {
+			await settleProviderCallFailure({
+				id: reservation.id,
+				workerId: leaseToken,
+				circuitKey: route.circuitKey,
+				kind,
+				error,
+				reason: "structured provider work settled without usable output",
+			});
+			throw new ProviderFatalError("Structured provider work settled without usable output", { cause: error });
 		}
-		throw error;
+		if (isProviderDefinitivelyRejected(error) && !errorHasAcceptedTask(error)) {
+			await settleProviderCallFailure({
+				id: reservation.id,
+				workerId: leaseToken,
+				circuitKey: route.circuitKey,
+				kind,
+				error,
+				reason:
+					kind === "fatal"
+						? "provider definitively rejected credentials or billing"
+						: "provider definitively rejected request",
+			});
+			throw error instanceof ProviderFatalError
+				? error
+				: new ProviderFatalError(error instanceof Error ? error.message : String(error), { cause: error });
+		}
+		await quarantineProviderCallReservation({
+			id: reservation.id,
+			workerId: leaseToken,
+			circuitKey: route.circuitKey,
+			kind,
+			error,
+		});
+		throw new ProviderFatalError(
+			"Structured provider submission may have been accepted; refusing to retry this logical unit",
+			{ cause: error },
+		);
 	}
 
-	await checkpointProviderReservationResult(reservation.id, input.workerId, result);
-	await markProviderSuccess(circuitKey, reservation.id);
-	await releaseProviderCallReservation(reservation.id, input.workerId, "completed");
-	return result.object;
+	// Every scheduler-aware adapter checkpoints before returning. Keep the
+	// fallback for custom providers so a future adapter omission stays safe.
+	if (!checkpointedResult) {
+		checkpointedResult = {
+			object: providerResult.object,
+			...(providerResult.modelVersion ? { modelVersion: providerResult.modelVersion } : {}),
+		};
+		await retryProviderCheckpoint(() =>
+			checkpointProviderReservationResult(reservation.id, leaseToken, checkpointedResult),
+		);
+	}
+
+	return completeCheckpointedResult(checkpointedResult);
 }

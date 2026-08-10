@@ -29,7 +29,7 @@ When you run `elmo init`, the CLI generates a `.env` file in your config directo
 | `DISABLE_TELEMETRY` | Set to `1` to disable all telemetry. See [Telemetry](/docs/developer-guide/telemetry). | — |
 | `DEFAULT_DELAY_HOURS` | How often each enabled prompt is re-run against the AI models, in hours. | `24` |
 | `PROMPT_RUN_CONCURRENCY` | Maximum prompt runs processed concurrently by each worker replica. | `6` |
-| `PROVIDER_MAX_CONCURRENCY` | Maximum accepted or in-flight calls to each provider across all worker replicas. | `6` |
+| `PROVIDER_MAX_CONCURRENCY` | Maximum worker-managed accepted or in-flight calls to each provider across all worker replicas. | `6` |
 | `PROMPT_MAX_PROVIDER_CALLS` | Hard limit on paid units materialized by one recurring prompt cycle. | `50` |
 | `REPORT_MAX_PROVIDER_CALLS` | Hard preflight limit on provider calls planned by one report, including brand analysis. | `1500` |
 | `CONFIRM_LEGACY_PAID_WORKERS_STOPPED` | One-time upgrade acknowledgement after all workers running the legacy paid queues have been stopped. | — |
@@ -51,10 +51,12 @@ New values are encrypted under the new key while anything saved under a retired 
 	Changing `DEFAULT_DELAY_HOURS` does not move an existing prompt's current deadline. The new cadence is applied when that prompt's next execution is admitted; disable and re-enable the prompt under **Settings → Prompts** only when you need to reset its deadline immediately.
 </Callout>
 
-Concurrency and provider-budget settings reject malformed explicit values instead of falling back silently. `PROMPT_RUN_CONCURRENCY` must be positive and controls local worker capacity. `PROVIDER_MAX_CONCURRENCY` is enforced in PostgreSQL across the entire worker fleet; set it to `0` to stop admitting new paid calls while allowing accepted tasks and stored results to drain. `PROMPT_MAX_PROVIDER_CALLS` fails worker startup when `SCRAPE_TARGETS` would exceed the per-cycle ceiling. `REPORT_MAX_PROVIDER_CALLS=0` disables new reports before their first paid call, and each admitted report keeps an immutable plan plus a lifetime reservation count under that ceiling.
+Concurrency and provider-budget settings reject malformed explicit values instead of falling back silently. `PROMPT_RUN_CONCURRENCY` must be positive and controls local worker capacity. `PROVIDER_MAX_CONCURRENCY` is enforced in PostgreSQL across the entire worker fleet; set it to `0` to stop admitting new worker-managed paid calls while allowing accepted tasks and stored results to drain. Direct analysis calls made by admin or API endpoints are outside this scheduler and kill switch. `PROMPT_MAX_PROVIDER_CALLS` fails worker startup when `SCRAPE_TARGETS` would exceed the per-cycle ceiling. `REPORT_MAX_PROVIDER_CALLS=0` disables new reports before their first paid call, and each admitted report keeps an immutable plan plus one reservation per planned unit under that ceiling.
+
+These are submission limits, not exact currency limits: request input and provider-managed metered tools may have variable cost. Configure spending alerts or hard limits in each provider account as the outermost safeguard.
 
 <Callout type="warn">
-	The first upgrade from the legacy paid queues is deliberately non-rolling. Stop every worker process running the old release, then start one worker with `CONFIRM_LEGACY_PAID_WORKERS_STOPPED=1`. The worker records that handoff durably before enabling the new queues; remove the variable afterward. Never set it while an old worker process can still be executing a provider callback.
+	The first upgrade from the legacy paid queues is deliberately non-rolling. Start one new worker without confirmation; it closes legacy admission and exits. Let already-active legacy provider callbacks settle, then stop every worker process running the old release. Start one new worker with `CONFIRM_LEGACY_PAID_WORKERS_STOPPED=1` to record the durable handoff, and remove the variable afterward. Never confirm while an old provider callback may still be running.
 </Callout>
 
 ### AI Provider Keys

@@ -48,7 +48,12 @@ export const stub: Provider = {
 		return { textContent: "", rawOutput, webQueries: [], citations: [], modelVersion: "stub" };
 	},
 
-	async runStructuredResearch<T>({ schema }: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
-		return { object: schema.parse(CANNED_RESEARCH), modelVersion: "stub" };
+	async runStructuredResearch<T>({
+		schema,
+		checkpointResult,
+	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
+		const result = { object: schema.parse(CANNED_RESEARCH), modelVersion: "stub" };
+		await checkpointResult?.(result);
+		return result;
 	},
 };

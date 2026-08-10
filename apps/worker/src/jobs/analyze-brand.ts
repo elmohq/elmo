@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
 import { analyzeBrand, type OnboardingSuggestion } from "@workspace/lib/onboarding";
-import { DEFAULT_PROVIDER_ATTEMPTS_PER_UNIT } from "@workspace/lib/scheduler";
 import type { Job } from "pg-boss";
 import { runReservedStructuredResearch } from "../scheduler/reserved-structured";
 
@@ -49,8 +48,6 @@ export async function analyzeBrandJob(jobs: Job<AnalyzeBrandData>[]): Promise<On
 					ownerId: job.data.brandId,
 					workKey: `analysis:${generationId}`,
 					workerId,
-					ownerMaxCalls: DEFAULT_PROVIDER_ATTEMPTS_PER_UNIT,
-					budgetScope: "work",
 					exclusiveOwner: true,
 					requestMetadata: {
 						brandId: job.data.brandId,

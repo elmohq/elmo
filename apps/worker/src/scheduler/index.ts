@@ -2,12 +2,8 @@ import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
 import * as Sentry from "@sentry/node";
 import { RUNS_PER_PROMPT } from "@workspace/lib/constants";
-import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
-import {
-	getPromptMaxProviderCalls,
-	getPromptRunConcurrency,
-	getProviderMaxConcurrency,
-} from "@workspace/lib/scheduler";
+import { type ModelConfig, selectTargetsForBrand } from "@workspace/lib/providers";
+import { getPromptRunConcurrency } from "@workspace/lib/scheduler";
 import { executeClaimedRun } from "./executor";
 import {
 	claimDueSchedule,
@@ -36,8 +32,8 @@ function reportSchedulerError(error: unknown, operation: string): void {
 export class DurablePromptScheduler {
 	readonly workerId = `${hostname()}:${process.pid}:${randomUUID()}`;
 	readonly localConcurrency = getPromptRunConcurrency();
-	readonly providerMaxConcurrency = getProviderMaxConcurrency();
-	readonly promptMaxProviderCalls = getPromptMaxProviderCalls();
+
+	constructor(private readonly scrapeTargets: ModelConfig[]) {}
 
 	private running = false;
 	private loopPromise: Promise<void> | null = null;
@@ -52,10 +48,7 @@ export class DurablePromptScheduler {
 		this.nextReconcileAt = Date.now() + RECONCILE_INTERVAL_MS;
 		this.running = true;
 		this.loopPromise = this.runLoop();
-		console.log(
-			`[scheduler] Started durable prompt scheduler (local concurrency ${this.localConcurrency}, ` +
-				`provider concurrency ${this.providerMaxConcurrency})`,
-		);
+		console.log(`[scheduler] Started durable prompt scheduler (local concurrency ${this.localConcurrency})`);
 	}
 
 	async stop(timeoutMs = 30_000): Promise<void> {
@@ -75,7 +68,7 @@ export class DurablePromptScheduler {
 
 		await releaseResumableWork(this.workerId);
 		this.loopPromise = null;
-		console.log(`[scheduler] Stopped durable prompt scheduler (${this.active.size} ambiguous call(s) left leased)`);
+		console.log(`[scheduler] Stopped durable prompt scheduler (${this.active.size} local run(s) still active)`);
 	}
 
 	private async runLoop(): Promise<void> {
@@ -91,10 +84,7 @@ export class DurablePromptScheduler {
 				const materialized = await this.materializeOneDueSchedule();
 				let claimed = false;
 				while (this.running && this.active.size < this.localConcurrency) {
-					const run = await claimExecutionRun({
-						workerId: this.workerId,
-						providerMaxConcurrency: this.providerMaxConcurrency,
-					});
+					const run = await claimExecutionRun({ workerId: this.workerId });
 					if (!run) break;
 					if (!this.running) {
 						await releasePreparedRun(run.id, this.workerId);
@@ -120,14 +110,7 @@ export class DurablePromptScheduler {
 		if (!claim) return false;
 
 		try {
-			const targets = selectTargetsForBrand(parseScrapeTargets(process.env.SCRAPE_TARGETS), claim.enabledModels);
-			const plannedCalls = targets.length * RUNS_PER_PROMPT;
-			if (plannedCalls > this.promptMaxProviderCalls) {
-				throw new Error(
-					`Prompt ${claim.promptId} plans ${plannedCalls} provider calls, exceeding ` +
-						`PROMPT_MAX_PROVIDER_CALLS=${this.promptMaxProviderCalls}`,
-				);
-			}
+			const targets = selectTargetsForBrand(this.scrapeTargets, claim.enabledModels);
 			const execution = await materializeScheduleClaim({
 				claim,
 				workerId: this.workerId,

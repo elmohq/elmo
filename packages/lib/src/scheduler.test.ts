@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-	executionFailureBackoffMs,
 	getPromptMaxProviderCalls,
 	getPromptRunConcurrency,
 	getProviderMaxConcurrency,
@@ -80,16 +79,6 @@ describe("failure isolation", () => {
 		expect(providerCircuitKey({ provider: "cloro", model: "chatgpt", webSearch: true })).not.toBe(
 			providerCircuitKey({ provider: "cloro", model: "perplexity", webSearch: true }),
 		);
-	});
-
-	it("escalates code-side execution backoff to one week", () => {
-		expect([1, 2, 3, 4, 10].map(executionFailureBackoffMs)).toEqual([
-			24 * HOUR_MS,
-			48 * HOUR_MS,
-			96 * HOUR_MS,
-			168 * HOUR_MS,
-			168 * HOUR_MS,
-		]);
 	});
 });
 
