@@ -11,15 +11,7 @@ import { Command } from "commander";
 import { parse as parseDotenv } from "dotenv";
 import pc from "picocolors";
 import semver from "semver";
-import {
-	POSTGRES_DATA_DIR,
-	POSTGRES_MAJOR,
-	parsePostgresMajor,
-	parseRenderedVersion,
-	refreshHeaderVersion,
-	renderedByHeader,
-	repinImages,
-} from "./compose-pin.js";
+import { parseRenderedVersion, refreshHeaderVersion, renderedByHeader, repinImages } from "./compose-pin.js";
 import { MIGRATIONS, type MigrationContext, planMigrations, runMigrations } from "./migrations/index.js";
 import { submitNewsletterSignup, trackCliEvent } from "./telemetry.js";
 
@@ -59,7 +51,6 @@ const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
 const DEFAULT_APP_PORT = 1515;
 const LOCAL_DATABASE_URL = "postgres://postgres:postgres@postgres:5432/elmo";
 const TELEMETRY_DOC_URL = "https://elmohq.com/docs/developer-guide/telemetry";
-const POSTGRES_UPGRADE_DOC_URL = "https://www.elmohq.com/docs/developer-guide/configuration#upgrading-postgres";
 
 // ── Banner ───────────────────────────────────────────────────────────────────
 
@@ -1163,8 +1154,6 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 		}
 	}
 
-	await reportPostgresDrift(composePath);
-
 	const confirm = options.yes ? true : await p.confirm({ message: "Proceed with upgrade?", initialValue: true });
 	assertNotCancelled(confirm);
 	if (!confirm) {
@@ -1261,26 +1250,6 @@ async function composeUsesBuild(composePath: string): Promise<boolean> {
 	} catch {
 		return false;
 	}
-}
-
-// Deployments created before POSTGRES_MAJOR keep the Postgres container they
-// were rendered with, because moving a major needs the cluster dumped and
-// restored. Say so out loud — the tempting fix (hand-editing the tag) starts an
-// empty database rather than failing, so operators need the real steps.
-async function reportPostgresDrift(composePath: string): Promise<void> {
-	let installed: number | null = null;
-	try {
-		installed = parsePostgresMajor(await fs.readFile(composePath, "utf8"));
-	} catch {
-		return;
-	}
-	if (installed === null || installed >= POSTGRES_MAJOR) {
-		return;
-	}
-
-	log.warn(`Postgres stays on ${installed} — new deployments ship ${POSTGRES_MAJOR}. Your data is untouched.`);
-	log.info(`Editing the image tag by hand will silently start an empty database. To move to ${POSTGRES_MAJOR}:`);
-	console.log(`  ${pc.bold(POSTGRES_UPGRADE_DOC_URL)}`);
 }
 
 // Rewrites `elmohq/elmo-*:<tag>` image tags in place, preserving any manual
@@ -1399,13 +1368,18 @@ function buildComposeYaml(options: {
 function buildPostgresService(): string {
 	return [
 		"postgres:",
-		`  image: postgres:${POSTGRES_MAJOR}-alpine`,
+		"  image: postgres:18-alpine",
 		"  environment:",
 		"    POSTGRES_USER: postgres",
 		"    POSTGRES_PASSWORD: postgres",
 		"    POSTGRES_DB: elmo",
 		"  volumes:",
-		`    - postgres_data:${POSTGRES_DATA_DIR}`,
+		// From 18 on, the official image puts PGDATA in a version-specific
+		// subdirectory (/var/lib/postgresql/18/docker) and declares its VOLUME one
+		// level up, so the mount has to be the parent. Against the old .../data
+		// path an 18 image raises no error — it writes a new, empty cluster to an
+		// anonymous volume that is discarded when the container is recreated.
+		"    - postgres_data:/var/lib/postgresql",
 		"  ports:",
 		'    - "5432:5432"',
 		"  healthcheck:",
