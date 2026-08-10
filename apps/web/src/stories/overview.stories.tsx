@@ -4,17 +4,18 @@
  * can be viewed without auth or a database.
  */
 import type { Meta, StoryObj } from "@storybook/react";
-import type { ComponentType, ReactNode } from "react";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
+import type { ComponentType, ReactNode } from "react";
 import { Route } from "@/routes/_authed/app/$brand/index";
 
 // The route file exports only `Route` (route files must, for code-splitting).
 // Render its component via the route options — the mock exposes `options`.
 const DashboardPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
-import { setMockBrand } from "./_mocks/use-brands";
-import { setMockRouteContext } from "./_mocks/tanstack-router";
-import { setMockDashboardSummary } from "./_mocks/server-dashboard";
+
 import { setMockShareOfVoice } from "./_mocks/server-analysis";
+import { setMockDashboardSummary } from "./_mocks/server-dashboard";
+import { setMockRouteContext } from "./_mocks/tanstack-router";
+import { setMockBrand } from "./_mocks/use-brands";
 import { mockDashboardSummary, mockShareOfVoice } from "./analytics-fixtures";
 
 const onboardedBrand = {

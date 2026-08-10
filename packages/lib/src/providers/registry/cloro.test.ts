@@ -307,7 +307,12 @@ describe("cloro provider", () => {
 		);
 
 		const promise = cloro.run("chatgpt", "What is a well-reviewed speaker?");
-		const settled = promise.catch((e: unknown) => e as Error);
+		const settled: Promise<Error> = promise.then(
+			() => {
+				throw new Error("expected the run to reject");
+			},
+			(e: unknown) => e as Error,
+		);
 		await vi.runAllTimersAsync();
 		const error = await settled;
 
@@ -333,7 +338,12 @@ describe("cloro provider", () => {
 		);
 
 		const promise = cloro.run("chatgpt", "What is a well-reviewed speaker?");
-		const settled = promise.catch((e: unknown) => e as Error);
+		const settled: Promise<Error> = promise.then(
+			() => {
+				throw new Error("expected the run to reject");
+			},
+			(e: unknown) => e as Error,
+		);
 		await vi.runAllTimersAsync();
 		const error = await settled;
 

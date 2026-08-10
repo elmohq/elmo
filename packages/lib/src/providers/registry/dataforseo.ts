@@ -8,7 +8,7 @@ import {
 	extractTextFromDataforseoScraper,
 	extractTextFromGoogle,
 } from "../../text-extraction";
-import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
+import type { ModelConfig, Provider, ProviderAccess, ProviderOptions, ScrapeResult } from "../types";
 import {
 	assertPromptLength,
 	createDfsAiApi,
@@ -81,12 +81,17 @@ const SCRAPER_CALLS = {
 const AI_OVERVIEW_MODEL = "google-ai-overview";
 const SUPPORTED_MODELS = new Set([...SERP_MODELS, AI_OVERVIEW_MODEL, ...Object.keys(LLM_MODELS)]);
 
-/** Models DataForSEO can reach by scraping a live surface rather than an API. */
-export const DATAFORSEO_SCRAPED_MODELS = new Set([
-	...SERP_MODELS,
-	AI_OVERVIEW_MODEL,
-	...Object.keys(SCRAPER_CALLS),
-]);
+/**
+ * Which route a target takes, mirroring `run()`'s dispatch below: the Google
+ * surfaces are always scraped, the LLM Scraper serves the rest until a target
+ * pins a model version, which only the LLM Responses API can honor. Read by the
+ * settings page, so it has to agree with `run()` — a target labelled "Scraped"
+ * that actually asks the model directly describes the wrong thing entirely.
+ */
+function dataforseoAccess({ model, version }: ModelConfig): ProviderAccess {
+	if (SERP_MODELS.has(model) || model === AI_OVERVIEW_MODEL) return "scraped";
+	return !version && model in SCRAPER_CALLS ? "scraped" : "api";
+}
 
 interface DataForSeoLlmRequest {
 	user_prompt: string;
@@ -316,6 +321,10 @@ async function runLlmScraper(model: keyof typeof SCRAPER_CALLS, prompt: string):
 export const dataforseo: Provider = {
 	id: "dataforseo",
 	name: "DataForSEO",
+	access: "scraped",
+	// A pinned version routes to LLM Responses; without one the surface is scraped.
+	accessFor: dataforseoAccess,
+	docsAnchor: "dataforseo",
 
 	isConfigured: isDataforseoConfigured,
 

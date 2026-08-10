@@ -28,6 +28,7 @@ When you run `elmo init`, the CLI generates a `.env` file in your config directo
 | `ELMO_ENCRYPTION_KEY_OLD` | Previous encryption keys, comma-separated, kept readable during a rotation | — |
 | `DISABLE_TELEMETRY` | Set to `1` to disable all telemetry. See [Telemetry](/docs/developer-guide/telemetry). | — |
 | `DEFAULT_DELAY_HOURS` | How often each enabled prompt is re-run against the AI models, in hours. | `24` |
+| `RUNS_PER_PROMPT` | How many times each run samples every tracked platform. Answers vary between identical calls, so several samples make a mention rate a measurement rather than an anecdote — but each one is a provider call you pay for. | `5` |
 
 <Callout type="warn">
 	Back up `ELMO_ENCRYPTION_KEY` alongside your database. Credentials stored in the database are encrypted with it and nothing else — if you lose the key, or restore a database backup onto a deployment that generated a different one, those credentials cannot be recovered and have to be entered again. Elmo logs an error and falls back to the provider keys in your `.env` when a stored credential will not decrypt.
@@ -41,6 +42,14 @@ Every stored credential records which key encrypted it, so a rotation doesn't ha
 2. Put a freshly generated key in `ELMO_ENCRYPTION_KEY` (`openssl rand -base64 32`), and restart.
 
 New values are encrypted under the new key while anything saved under a retired one stays readable, so nothing has to be re-entered up front. Drop `ELMO_ENCRYPTION_KEY_OLD` once every stored credential has been saved again — until then, keep it, or those credentials become unreadable and Elmo logs which key it is missing.
+
+<Callout type="info">
+	`RUNS_PER_PROMPT` multiplies provider spend one-for-one: at the default, one firing of one prompt
+	against four platforms is twenty provider calls. Lowering it to `1` cuts the bill by five and makes
+	each result a single sample, so day-to-day movement gets noisier. It applies from the next firing —
+	no rescheduling needed. A value below `1`, fractional, or unparseable is ignored in favour of the
+	default, so a typo cannot silently stop tracking or inflate the bill.
+</Callout>
 
 <Callout type="warn">
 	`DEFAULT_DELAY_HOURS` only takes effect for prompts scheduled **after** you change it. Prompts that are already scheduled keep the cadence they were created with, even after a restart. To apply a new cadence to an existing prompt, disable it and then re-enable it under **Settings → Prompts** — re-enabling reschedules it at the current `DEFAULT_DELAY_HOURS`.

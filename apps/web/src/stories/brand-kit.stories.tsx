@@ -9,7 +9,7 @@
  */
 import type { Meta } from "@storybook/react";
 import { Logo } from "@/components/logo";
-import { setMockClientConfig, type ClientConfig } from "./_mocks/config-client";
+import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
 import { setMockRouteContext } from "./_mocks/tanstack-router";
 
 const BRAND_COLOR = "#2563eb";
@@ -32,7 +32,6 @@ const elmoConfig: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: false,
-		supportsMultiOrg: true,
 		canCreateBrands: true,
 	},
 	branding: {
@@ -47,7 +46,6 @@ const whitelabelConfig: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: true,
-		supportsMultiOrg: true,
 		canCreateBrands: false,
 	},
 	branding: {

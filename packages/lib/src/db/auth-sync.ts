@@ -9,8 +9,23 @@
  * cross-package type mismatches from different drizzle-orm resolutions.
  */
 import { db } from "./db";
-import { eq, and, ne, inArray } from "drizzle-orm";
+import { eq, and, ne, inArray, sql } from "drizzle-orm";
 import { organization, member, user, account } from "./schema";
+
+type AuthSyncTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Serialize a single user's membership reconciliation. The whitelabel Auth0
+ * sync runs both on sign-in and on a 15-minute worker schedule, so two runs
+ * for the same user can otherwise interleave: both read "membership absent"
+ * and both insert. A per-user transaction-scoped advisory lock makes the
+ * read-modify-write atomic; the unique index added in migration 0014 is the
+ * backstop if a write ever races the lock anyway. Keyed per user, so distinct
+ * users never contend.
+ */
+async function lockUserMemberships(tx: AuthSyncTransaction, userId: string): Promise<void> {
+	await tx.execute(sql`select pg_advisory_xact_lock(hashtext('elmo-user-memberships'), hashtext(${userId}))`);
+}
 
 async function uniqueSlug(baseSlug: string, excludeOrgId: string): Promise<string> {
 	let candidate = baseSlug;
@@ -51,20 +66,26 @@ export async function upsertOrganization(org: { id: string; name: string; slug?:
 }
 
 export async function ensureMembership(userId: string, orgId: string, role = "member"): Promise<void> {
-	const existing = await db
-		.select({ id: member.id })
-		.from(member)
-		.where(and(eq(member.userId, userId), eq(member.organizationId, orgId)))
-		.limit(1);
+	await db.transaction(async (tx) => {
+		await lockUserMemberships(tx, userId);
+		const existing = await tx
+			.select({ id: member.id })
+			.from(member)
+			.where(and(eq(member.userId, userId), eq(member.organizationId, orgId)))
+			.limit(1);
 
-	if (existing.length > 0) return;
+		if (existing.length > 0) return;
 
-	await db.insert(member).values({
-		id: crypto.randomUUID(),
-		organizationId: orgId,
-		userId,
-		role,
-		createdAt: new Date(),
+		await tx
+			.insert(member)
+			.values({
+				id: crypto.randomUUID(),
+				organizationId: orgId,
+				userId,
+				role,
+				createdAt: new Date(),
+			})
+			.onConflictDoNothing();
 	});
 }
 
@@ -82,6 +103,7 @@ export async function syncMemberships(userId: string, orgIds: string[]): Promise
 	const removed: string[] = [];
 
 	await db.transaction(async (tx) => {
+		await lockUserMemberships(tx, userId);
 		const existing = await tx
 			.select({ id: member.id, organizationId: member.organizationId })
 			.from(member)
@@ -92,14 +114,18 @@ export async function syncMemberships(userId: string, orgIds: string[]): Promise
 
 		for (const orgId of orgIds) {
 			if (!existingOrgIds.has(orgId)) {
-				await tx.insert(member).values({
-					id: crypto.randomUUID(),
-					organizationId: orgId,
-					userId,
-					role: "member",
-					createdAt: new Date(),
-				});
-				added.push(orgId);
+				const inserted = await tx
+					.insert(member)
+					.values({
+						id: crypto.randomUUID(),
+						organizationId: orgId,
+						userId,
+						role: "member",
+						createdAt: new Date(),
+					})
+					.onConflictDoNothing()
+					.returning({ organizationId: member.organizationId });
+				if (inserted.length > 0) added.push(orgId);
 			}
 		}
 

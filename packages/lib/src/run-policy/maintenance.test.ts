@@ -1,0 +1,274 @@
+import { describe, expect, it } from "vitest";
+import {
+	computeMaintenanceDecisions,
+	computePoolPositions,
+	lastRunQueryWindowMs,
+	type MaintenancePromptState,
+} from "./maintenance";
+import { type PromptRunPlan, targetKey } from "./policy";
+
+const NOW = new Date("2026-08-05T12:00:00Z");
+const HOUR = 3600 * 1000;
+
+const CHATGPT = { model: "chatgpt", provider: "brightdata", webSearch: true };
+const PERPLEXITY = { model: "perplexity", provider: "brightdata", webSearch: true };
+
+function plan(intervalHours = 24, models = [CHATGPT]): PromptRunPlan {
+	return {
+		targets: models.map((config) => ({ config, intervalHours, replication: 5 })),
+		rescheduleHours: intervalHours,
+	};
+}
+
+function state(partial: Partial<MaintenancePromptState> & { promptId: string }): MaintenancePromptState {
+	return {
+		promptCreatedAt: new Date(NOW.getTime() - 10 * 24 * HOUR),
+		plan: plan(),
+		lastRunAtByKey: new Map(),
+		pendingJob: null,
+		...partial,
+	};
+}
+
+describe("computeMaintenanceDecisions", () => {
+	it("schedules a fresh job for an overdue prompt with no pending job", () => {
+		const decisions = computeMaintenanceDecisions(
+			[state({ promptId: "p1", lastRunAtByKey: new Map([[targetKey(CHATGPT), new Date(NOW.getTime() - 30 * HOUR)]]) })],
+			NOW,
+		);
+		expect(decisions.toSchedule).toEqual([{ promptId: "p1", cadenceHours: 24 }]);
+		expect(decisions.toExpedite).toEqual([]);
+	});
+
+	it("a prompt on schedule needs nothing", () => {
+		const decisions = computeMaintenanceDecisions(
+			[state({ promptId: "p1", lastRunAtByKey: new Map([[targetKey(CHATGPT), new Date(NOW.getTime() - 2 * HOUR)]]) })],
+			NOW,
+		);
+		expect(decisions.toSchedule).toEqual([]);
+		expect(decisions.toExpedite).toEqual([]);
+		expect(decisions.alertOverdueCount).toBe(0);
+	});
+
+	it("expedites an existing future job when overdue", () => {
+		const decisions = computeMaintenanceDecisions(
+			[
+				state({
+					promptId: "p1",
+					lastRunAtByKey: new Map([[targetKey(CHATGPT), new Date(NOW.getTime() - 30 * HOUR)]]),
+					pendingJob: { jobId: "job-1", state: "created", consecutiveFailures: 0 },
+				}),
+			],
+			NOW,
+		);
+		expect(decisions.toExpedite).toEqual([{ promptId: "p1", jobId: "job-1" }]);
+		expect(decisions.toSchedule).toEqual([]);
+	});
+
+	it("revives a revived prompt (no runs, has pending future job) by expediting, not re-scheduling", () => {
+		// A resubscribed org's prompt: its history fell outside the maintenance
+		// query window (empty lastRunAtByKey) and a self-rescheduled future job
+		// is still queued. An immediate re-send would be deduped by pg-boss's
+		// singleton, so the correct action is to expedite the existing job.
+		const decisions = computeMaintenanceDecisions(
+			[
+				state({
+					promptId: "p1",
+					promptCreatedAt: new Date(NOW.getTime() - 5 * 60 * 1000),
+					lastRunAtByKey: new Map(),
+					pendingJob: { jobId: "job-1", state: "created", consecutiveFailures: 0 },
+				}),
+			],
+			NOW,
+		);
+		expect(decisions.toExpedite).toEqual([{ promptId: "p1", jobId: "job-1" }]);
+		expect(decisions.toSchedule).toEqual([]);
+	});
+
+	it("throttles expedites when the prompt ran recently on another target", () => {
+		const decisions = computeMaintenanceDecisions(
+			[
+				state({
+					promptId: "p1",
+					plan: plan(24, [CHATGPT, PERPLEXITY]),
+					lastRunAtByKey: new Map([
+						// perplexity never records a run (broken provider); chatgpt ran 30m ago
+						[targetKey(CHATGPT), new Date(NOW.getTime() - 0.5 * HOUR)],
+					]),
+					pendingJob: { jobId: "job-1", state: "created", consecutiveFailures: 0 },
+				}),
+			],
+			NOW,
+		);
+		expect(decisions.toExpedite).toEqual([]);
+	});
+
+	it("does not throttle a genuinely stale prompt", () => {
+		const decisions = computeMaintenanceDecisions(
+			[
+				state({
+					promptId: "p1",
+					plan: plan(24, [CHATGPT, PERPLEXITY]),
+					lastRunAtByKey: new Map([[targetKey(CHATGPT), new Date(NOW.getTime() - 2 * HOUR)]]),
+					pendingJob: { jobId: "job-1", state: "created", consecutiveFailures: 0 },
+				}),
+			],
+			NOW,
+		);
+		// chatgpt ran 2h ago (past the 1h expedite floor); perplexity has never run → expedite
+		expect(decisions.toExpedite).toEqual([{ promptId: "p1", jobId: "job-1" }]);
+	});
+
+	it("leaves a job carrying a failure streak alone", () => {
+		// The previous cycle chose that delay deliberately. Dragging it forward
+		// doesn't heal anything — the runs are failing, not missing — and a failing
+		// prompt never stops looking overdue, so it would do it on every pass.
+		const decisions = computeMaintenanceDecisions(
+			[
+				state({
+					promptId: "p1",
+					lastRunAtByKey: new Map(),
+					pendingJob: { jobId: "job-1", state: "created", consecutiveFailures: 2 },
+				}),
+			],
+			NOW,
+		);
+		expect(decisions.toExpedite).toEqual([]);
+		expect(decisions.toSchedule).toEqual([]);
+	});
+
+	it("still expedites a stalled job that carries no streak", () => {
+		// The same state without a streak is the case expediting exists for: a job
+		// left behind by a crashed worker rather than one waiting out a backoff.
+		const decisions = computeMaintenanceDecisions(
+			[
+				state({
+					promptId: "p1",
+					lastRunAtByKey: new Map(),
+					pendingJob: { jobId: "job-1", state: "created", consecutiveFailures: 0 },
+				}),
+			],
+			NOW,
+		);
+		expect(decisions.toExpedite).toEqual([{ promptId: "p1", jobId: "job-1" }]);
+	});
+
+	it("leaves active and retry jobs alone", () => {
+		for (const jobState of ["active", "retry"] as const) {
+			const decisions = computeMaintenanceDecisions(
+				[state({ promptId: "p1", pendingJob: { jobId: "job-1", state: jobState, consecutiveFailures: 0 } })],
+				NOW,
+			);
+			expect(decisions.toSchedule).toEqual([]);
+			expect(decisions.toExpedite).toEqual([]);
+		}
+	});
+
+	it("a freshly created prompt with no runs is not alert-overdue but is scheduled", () => {
+		const decisions = computeMaintenanceDecisions(
+			[state({ promptId: "p1", promptCreatedAt: new Date(NOW.getTime() - 5 * 60 * 1000) })],
+			NOW,
+		);
+		expect(decisions.alertOverdueCount).toBe(0);
+		expect(decisions.toSchedule).toHaveLength(1);
+	});
+
+	it("a stopped prompt (no targets) is ignored entirely — not started, not alerted", () => {
+		const decisions = computeMaintenanceDecisions(
+			[
+				state({
+					promptId: "p1",
+					plan: { targets: [], rescheduleHours: null },
+					lastRunAtByKey: new Map(),
+				}),
+			],
+			NOW,
+		);
+		expect(decisions).toEqual({ toSchedule: [], toExpedite: [], alertOverdueCount: 0 });
+	});
+
+	it("uses per-target intervals: a 6h target overdue at 7h while a 24h target is fresh", () => {
+		const mixed: PromptRunPlan = {
+			targets: [
+				{ config: CHATGPT, intervalHours: 6, replication: 1 },
+				{ config: { model: "claude", provider: "anthropic-api", webSearch: true }, intervalHours: 24, replication: 1 },
+			],
+			rescheduleHours: 6,
+		};
+		const decisions = computeMaintenanceDecisions(
+			[
+				state({
+					promptId: "p1",
+					plan: mixed,
+					lastRunAtByKey: new Map([
+						[targetKey(CHATGPT), new Date(NOW.getTime() - 7 * HOUR)],
+						[targetKey({ model: "claude", provider: "anthropic-api", webSearch: true }), new Date(NOW.getTime() - 2 * HOUR)],
+					]),
+				}),
+			],
+			NOW,
+		);
+		expect(decisions.toSchedule).toEqual([{ promptId: "p1", cadenceHours: 6 }]);
+		expect(decisions.alertOverdueCount).toBe(1);
+	});
+});
+
+describe("computePoolPositions", () => {
+	const prompts = [
+		{ id: "a", createdAt: new Date("2026-01-01"), premiumModels: ["claude"] },
+		{ id: "b", createdAt: new Date("2026-02-01"), premiumModels: [] },
+		{ id: "c", createdAt: new Date("2026-03-01"), premiumModels: ["claude", "grok"] },
+		{ id: "d", createdAt: new Date("2026-04-01"), premiumModels: ["grok"] },
+	];
+
+	it("oldest prompts win the pool after a downgrade", () => {
+		const { withinPromptPool } = computePoolPositions(prompts, { maxPrompts: 2, premiumPool: 10 });
+		expect([...withinPromptPool].sort()).toEqual(["a", "b"]);
+	});
+
+	it("spends one premium slot per model, oldest prompt first", () => {
+		const { premiumByPrompt } = computePoolPositions(prompts, { maxPrompts: 4, premiumPool: 10 });
+		expect(premiumByPrompt.get("a")).toEqual(["claude"]);
+		expect(premiumByPrompt.get("c")).toEqual(["claude", "grok"]);
+		expect(premiumByPrompt.get("d")).toEqual(["grok"]);
+		expect(premiumByPrompt.has("b")).toBe(false);
+	});
+
+	it("keeps the models a part-spent pool still covers rather than stranding a slot", () => {
+		// "a" takes the first slot; "c" asks for two and gets its first.
+		const { premiumByPrompt } = computePoolPositions(prompts, { maxPrompts: 4, premiumPool: 2 });
+		expect(premiumByPrompt.get("a")).toEqual(["claude"]);
+		expect(premiumByPrompt.get("c")).toEqual(["claude"]);
+		expect(premiumByPrompt.has("d")).toBe(false);
+	});
+
+	it("gives premium slots only to prompts that are tracked at all", () => {
+		const { premiumByPrompt } = computePoolPositions(prompts, { maxPrompts: 1, premiumPool: 10 });
+		expect([...premiumByPrompt.keys()]).toEqual(["a"]);
+	});
+
+	it("null maxPrompts means everything is in the pool", () => {
+		const { withinPromptPool, premiumByPrompt } = computePoolPositions(prompts, {
+			maxPrompts: null,
+			premiumPool: 10,
+		});
+		expect(withinPromptPool.size).toBe(4);
+		expect([...premiumByPrompt.keys()].sort()).toEqual(["a", "c", "d"]);
+	});
+
+	it("creation-time ties break by id so the ordering is total", () => {
+		const tied = [
+			{ id: "z", createdAt: new Date("2026-01-01"), premiumModels: [] },
+			{ id: "y", createdAt: new Date("2026-01-01"), premiumModels: [] },
+		];
+		const { withinPromptPool } = computePoolPositions(tied, { maxPrompts: 1, premiumPool: 0 });
+		expect([...withinPromptPool]).toEqual(["y"]);
+	});
+});
+
+describe("lastRunQueryWindowMs", () => {
+	it("covers twice the slowest cadence plus grace", () => {
+		expect(lastRunQueryWindowMs(24)).toBeGreaterThan(48 * HOUR);
+		expect(lastRunQueryWindowMs(24)).toBeLessThan(50 * HOUR);
+	});
+});

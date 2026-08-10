@@ -7,12 +7,14 @@
 
 import { type SQL, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
+import { getAllProviders } from "@workspace/lib/providers";
 import {
 	UNAVAILABLE_SENTINEL,
 	type FanoutBreakdownRow,
 	type FanoutModelTotalRow,
 	type FanoutPromptTotalRow,
 } from "@/lib/fanout-analysis";
+import { parseModelFilter } from "@/lib/model-filter";
 
 const db = drizzle(process.env.DATABASE_URL!);
 
@@ -150,9 +152,53 @@ function promptIdFilter(enabledPromptIds?: string[]): SQL {
 	return sql`AND prompt_id IN (${uuidList(enabledPromptIds)})`;
 }
 
-function modelFilter(model?: string): SQL {
-	if (!model) return sql``;
-	return sql`AND model = ${model}`;
+/**
+ * Provider ids that reach a model by calling it directly. Combined with
+ * `web_search_enabled`, this is what separates a grounded API answer from the
+ * same model scraped off its consumer product — `prompt_runs` records the
+ * provider, and both rows carry `model = 'chatgpt'` with web search on.
+ *
+ * Caveat: a provider that picks its route per target (DataForSEO scrapes by
+ * default and calls the API when a target pins a version) is classified by its
+ * default here, since the row doesn't record which route ran.
+ */
+const API_PROVIDER_IDS = getAllProviders()
+	.filter((provider) => provider.access === "api")
+	.map((provider) => provider.id);
+
+/**
+ * Narrow to one target. A bare model id means the standard platform; the
+ * `::premium` variant means the grounded API call sold from the premium pool.
+ *
+ * The provider list is bound one parameter per id rather than as an array:
+ * drizzle flattens a JS array into a single text parameter, which `ANY(...)`
+ * then can't compare element-wise.
+ */
+function modelFilter(model?: string, opts?: { alias?: string; source?: "prompt_runs" | "citations" }): SQL {
+	const target = model ? parseModelFilter(model) : null;
+	if (!target) return sql``;
+	const prefix = opts?.alias ? sql.raw(`${opts.alias}.`) : sql``;
+	// No API providers configured means nothing can be grounded, so the premium
+	// side matches nothing and the standard side matches everything.
+	if (API_PROVIDER_IDS.length === 0) {
+		return target.premium ? sql`AND FALSE` : sql`AND ${prefix}model = ${target.model}`;
+	}
+	const providers = sql.join(
+		API_PROVIDER_IDS.map((id) => sql`${id}`),
+		sql`, `,
+	);
+	// A citation records which model cited it but not how that model was
+	// reached, so the grounded test has to go through the run it came from.
+	const grounded =
+		opts?.source === "citations"
+			? sql`EXISTS (
+					SELECT 1 FROM prompt_runs AS mf_run
+					WHERE mf_run.id = ${prefix}prompt_run_id
+						AND mf_run.web_search_enabled
+						AND mf_run.provider IN (${providers})
+				)`
+			: sql`(${prefix}web_search_enabled AND ${prefix}provider IN (${providers}))`;
+	return sql`AND ${prefix}model = ${target.model} AND ${target.premium ? grounded : sql`NOT ${grounded}`}`;
 }
 
 function webSearchFilter(webSearchEnabled?: boolean): SQL {
@@ -393,7 +439,7 @@ export async function getCitationsTotalCount(
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
 			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			${promptIdFilter(enabledPromptIds)}
-			${modelFilter(model)}
+			${modelFilter(model, { source: "citations" })}
 	`);
 	return Number(rows[0]?.total ?? 0);
 }
@@ -619,7 +665,7 @@ export async function getCitationDomainStats(
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
 			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			${promptIdFilter(enabledPromptIds)}
-			${modelFilter(model)}
+			${modelFilter(model, { source: "citations" })}
 		GROUP BY domain
 		ORDER BY count DESC
 	`);
@@ -651,7 +697,7 @@ export async function getCitationUrlStats(
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
 			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			${promptIdFilter(enabledPromptIds)}
-			${modelFilter(model)}
+			${modelFilter(model, { source: "citations" })}
 		GROUP BY url, domain
 		ORDER BY count DESC
 	`);
@@ -753,7 +799,7 @@ export async function getDailyCitationStats(
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
 			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			${promptIdFilter(enabledPromptIds)}
-			${modelFilter(model)}
+			${modelFilter(model, { source: "citations" })}
 		GROUP BY date, domain
 		ORDER BY date
 	`);
@@ -791,7 +837,7 @@ export async function getPerPromptDailyCitationStats(
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
 			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			${promptIdFilter(enabledPromptIds)}
-			${modelFilter(model)}
+			${modelFilter(model, { source: "citations" })}
 		GROUP BY prompt_id, date, domain
 		ORDER BY prompt_id, date
 	`);
@@ -983,7 +1029,7 @@ export async function getPerPromptCitationPages(
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
-			${modelFilter(model)}
+			${modelFilter(model, { source: "citations" })}
 		GROUP BY prompt_id, url, domain
 		ORDER BY prompt_id, count DESC
 	`);
@@ -1022,7 +1068,7 @@ export async function getPerPromptDailyCitationPages(
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
-			${modelFilter(model)}
+			${modelFilter(model, { source: "citations" })}
 		GROUP BY prompt_id, date, url, domain
 		ORDER BY prompt_id, date
 	`);
@@ -1274,7 +1320,7 @@ export async function getFanoutBreakdown(
 			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
 			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
-			${model ? sql`AND pr.model = ${model}` : sql``}
+			${modelFilter(model, { alias: "pr" })}
 		GROUP BY pr.prompt_id, pr.model, fq.query
 	`);
 }
@@ -1310,7 +1356,7 @@ export async function getFanoutModelTotals(
 			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
 			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
-			${model ? sql`AND pr.model = ${model}` : sql``}
+			${modelFilter(model, { alias: "pr" })}
 		GROUP BY pr.model
 		ORDER BY total_queries DESC
 	`);
@@ -1343,7 +1389,7 @@ export async function getFanoutPromptTotals(
 			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
 			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
-			${model ? sql`AND pr.model = ${model}` : sql``}
+			${modelFilter(model, { alias: "pr" })}
 		GROUP BY pr.prompt_id
 	`);
 }

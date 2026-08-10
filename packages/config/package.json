@@ -4,14 +4,22 @@
 	"private": true,
 	"license": "MIT",
 	"scripts": {
+		"check-types": "tsc --noEmit",
 		"test": "vitest run"
 	},
 	"exports": {
-		"./types": "./src/types.ts",
 		"./constants": "./src/constants.ts",
+		"./entitlements": "./src/entitlements.ts",
 		"./env": "./src/env.ts",
 		"./env-registry": "./src/env-registry.ts",
-		"./scrape-targets": "./src/scrape-targets.ts"
+		"./models": "./src/models.ts",
+		"./plans": "./src/plans.ts",
+		"./roles": "./src/roles.ts",
+		"./scrape-targets": "./src/scrape-targets.ts",
+		"./types": "./src/types.ts"
+	},
+	"dependencies": {
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
 		"@types/node": "^26.1.2",

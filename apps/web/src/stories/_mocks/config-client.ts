@@ -10,8 +10,12 @@ export type DeploymentMode = "whitelabel" | "local" | "demo" | "cloud";
 export interface FeaturesConfig {
 	readOnly: boolean;
 	showOptimizeButton: boolean;
-	supportsMultiOrg: boolean;
 	canCreateBrands: boolean;
+	/** Cloud only: gates the Billing nav item and the billing/paywall routes. */
+	billing?: boolean;
+	teamInvites?: boolean;
+	reportGeneration?: boolean;
+	selfServeSignup?: boolean;
 }
 
 export interface BrandingConfig {
@@ -51,7 +55,6 @@ let _config: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: false,
-		supportsMultiOrg: false,
 		canCreateBrands: false,
 	},
 	branding: {

@@ -85,3 +85,9 @@ jobs:
 
       - name: Re-apply migrations against seeded data
         run: pnpm -C packages/lib exec drizzle-kit migrate
+
+      # 3. Prove migration 0014's destructive dedupe (the one migration that
+      #    mutates existing auth data) keeps the correct member row and that
+      #    the unique index then holds — against the real seeded database.
+      - name: Verify membership dedupe
+        run: pnpm -C packages/lib exec tsx scripts/verify-membership-dedupe.ts

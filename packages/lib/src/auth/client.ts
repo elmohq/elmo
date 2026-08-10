@@ -7,6 +7,7 @@
 import { createAuthClient } from "better-auth/react";
 import { organizationClient, adminClient } from "better-auth/client/plugins";
 import { ssoClient } from "@better-auth/sso/client";
+import { stripeClient } from "@better-auth/stripe/client";
 import { ac, adminRole, userRole } from "./permissions";
 
 export const authClient = createAuthClient({
@@ -22,6 +23,9 @@ export const authClient = createAuthClient({
 			},
 		}),
 		ssoClient(),
+		// The subscription endpoints exist only in cloud mode (the server plugin
+		// is injected there); no cloud UI calls these methods elsewhere.
+		stripeClient({ subscription: true }),
 	],
 });
 

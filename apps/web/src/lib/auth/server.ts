@@ -8,10 +8,9 @@
  * All server functions, middleware, and route handlers import from here.
  */
 import { getCloudAuthOptions } from "@workspace/cloud/auth-hooks";
-import { createAuth, type CreateAuthOptions } from "@workspace/lib/auth/server";
-import { getWhitelabelAuthOptions } from "@workspace/whitelabel/auth-hooks";
+import { type CreateAuthOptions, createAuth } from "@workspace/lib/auth/server";
 import { countUsers, provisionLocalOrg } from "@workspace/lib/db/provisioning";
-import { evaluateSignupAllowed, getSignupAllowlist } from "./policies";
+import { getWhitelabelAuthOptions } from "@workspace/whitelabel/auth-hooks";
 
 /**
  * Local mode hooks: enforce "exactly one user, with an admin org created
@@ -51,35 +50,10 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 			return { disableSignUp: true };
 		case "cloud": {
 			// Full cloud auth stack (email verification, Google OAuth, Resend
-			// transactional email, team invitations, disposable-domain blocking).
-			// The invite-only signup allowlist is layered onto the cloud package's
-			// user.create.before hook so both gates run on every signup path
-			// (email/password, OAuth first-login, direct POST /api/auth/sign-up/email),
-			// unlike the UI's canRegister flag. Set CLOUD_SIGNUP_ALLOWLIST to admit
-			// people ("@elmohq.com,alice@x.com"); empty denies everyone (fails
-			// closed); "*" opens it up at launch. Sign-in is unaffected — create
-			// hooks don't fire for existing users. Each user provisions their own
-			// org via the create-brand flow (canCreateBrands), so no after hook.
-			const cloudOptions = getCloudAuthOptions();
-			const rejectDisposableEmail = cloudOptions.databaseHooks?.user?.create?.before;
-			return {
-				...cloudOptions,
-				databaseHooks: {
-					...cloudOptions.databaseHooks,
-					user: {
-						...cloudOptions.databaseHooks?.user,
-						create: {
-							...cloudOptions.databaseHooks?.user?.create,
-							before: async (user, context) => {
-								if (evaluateSignupAllowed(user.email, getSignupAllowlist()) === "deny") {
-									throw new Error("Sign-ups are invite-only right now.");
-								}
-								await rejectDisposableEmail?.(user, context);
-							},
-						},
-					},
-				},
-			};
+			// transactional email, team invitations, disposable-domain blocking,
+			// invite-only allowlist, and umbrella-org provisioning). The cloud
+			// package owns the entire hook chain — this case is a single call.
+			return getCloudAuthOptions();
 		}
 		default:
 			return getLocalAuthOptions();

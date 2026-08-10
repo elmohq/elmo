@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { shouldExpediteJob } from "./expedite";
-import { isPromptOverdue } from "./overdue";
 import { failureBackoffHours } from "./run-backoff";
+import { targetOverdueStatus } from "./run-policy";
 
 /**
  * How much a prompt costs when its provider stops working.
@@ -21,7 +21,6 @@ import { failureBackoffHours } from "./run-backoff";
 const HOUR = 60 * 60 * 1000;
 const TICK_MS = 5 * 60 * 1000; // schedule-maintenance runs every 5 minutes
 const EXPEDITE_MIN_INTERVAL_MS = HOUR;
-const MODEL = "chatgpt";
 
 interface PendingJob {
 	createdAt: number;
@@ -66,18 +65,16 @@ function simulate({
 		}
 
 		// 2. schedule-maintenance considers dragging the next job forward.
-		const overdue = isPromptOverdue({
-			models: [MODEL],
-			lastRunByModel: lastRunAt === null ? {} : { [MODEL]: new Date(lastRunAt) },
+		const overdue = targetOverdueStatus({
+			intervalHours: runFrequencyMs / HOUR,
+			lastRunAt: lastRunAt === null ? null : new Date(lastRunAt),
 			promptCreatedAt,
-			runFrequencyMs,
 			now,
-		});
+		}).isOverdue;
 		if (
 			overdue &&
 			shouldExpediteJob({
 				jobConsecutiveFailures: pending.consecutiveFailures,
-				jobCreatedAt: new Date(pending.createdAt),
 				lastRunAt: lastRunAt === null ? null : new Date(lastRunAt),
 				runFrequencyMs,
 				now,
@@ -174,7 +171,6 @@ describe("expediting still does its job", () => {
 		expect(
 			shouldExpediteJob({
 				jobConsecutiveFailures: 0,
-				jobCreatedAt: new Date(now - 3 * HOUR),
 				lastRunAt: new Date(now - 30 * HOUR),
 				runFrequencyMs: 24 * HOUR,
 				now,
@@ -187,7 +183,6 @@ describe("expediting still does its job", () => {
 		expect(
 			shouldExpediteJob({
 				jobConsecutiveFailures: 1,
-				jobCreatedAt: new Date(now - 3 * HOUR),
 				lastRunAt: new Date(now - 30 * HOUR),
 				runFrequencyMs: 24 * HOUR,
 				now,

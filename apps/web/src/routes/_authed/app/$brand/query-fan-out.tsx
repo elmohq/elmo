@@ -70,7 +70,7 @@ function QueryFanoutPage() {
 		});
 
 	const { brand } = useBrand(brandId);
-	const availableModels = getAvailableModels(brand?.effectiveModels ?? []);
+	const trackedTargets = brand?.trackedTargets ?? [];
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 
 	const { promptsSummary } = usePromptsSummary(brandId, { lookback, model: modelParam });
@@ -147,7 +147,7 @@ function QueryFanoutPage() {
 			<FilterSection>
 				<FilterBar
 					availableTags={availableTags}
-					availableModels={availableModels}
+					trackedTargets={trackedTargets}
 					showSearch={false}
 					showModelSelector
 				/>

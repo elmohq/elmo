@@ -435,8 +435,8 @@ const DATAFORSEO_TARGETS = [
 ] as const;
 
 const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
-const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-sonnet-4.6";
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5";
+const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-sonnet-5";
 const DEFAULT_MISTRAL_MODEL = "mistral-medium-latest";
 
 async function configureProvidersInteractive(env: EnvMap): Promise<"recommended" | "custom"> {
@@ -490,7 +490,10 @@ async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 			{ value: "brightdata" as const, label: "BrightData — pay-as-you-go, cheaper but slower (~$0.45/mo per prompt)" },
 			{ value: "oxylabs" as const, label: "Oxylabs — cheapest per run, no Gemini/Copilot ($49/mo min)" },
 			{ value: "olostep" as const, label: "Olostep — premium, built for high volume (~$2.25/mo per prompt)" },
-			{ value: "dataforseo" as const, label: "DataForSEO — pay-as-you-go, scrapers + direct APIs (~$1.20/mo per prompt)" },
+			{
+				value: "dataforseo" as const,
+				label: "DataForSEO — pay-as-you-go, scrapers + direct APIs (~$1.20/mo per prompt)",
+			},
 		],
 		initialValue: "cloro" as const,
 	});

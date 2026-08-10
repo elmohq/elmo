@@ -57,8 +57,8 @@ function AcceptInvitationPage() {
 		setAcceptError(null);
 		setAccepting(true);
 		try {
-			const { orgId } = await acceptInvitationFn({ data: { invitationId } });
-			navigate({ to: "/app/$brand", params: { brand: orgId } });
+			await acceptInvitationFn({ data: { invitationId } });
+			navigate({ to: "/app" });
 		} catch (err) {
 			setAcceptError(err instanceof Error ? err.message : "Failed to accept the invitation");
 			setAccepting(false);

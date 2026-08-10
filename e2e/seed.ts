@@ -161,7 +161,7 @@ async function seed() {
         id: RUN_IDS[1],
         promptId: PROMPT_IDS.branded1,
         model: "claude",
-        version: "claude-sonnet-4-6",
+        version: "claude-sonnet-5",
         webSearchEnabled: false,
         rawOutput: {
           response:
@@ -242,7 +242,7 @@ async function seed() {
         id: RUN_IDS[5],
         promptId: PROMPT_IDS.branded2,
         model: "claude",
-        version: "claude-sonnet-4-6",
+        version: "claude-sonnet-5",
         webSearchEnabled: false,
         rawOutput: {
           response:
@@ -283,7 +283,7 @@ async function seed() {
         id: RUN_IDS[7],
         promptId: PROMPT_IDS.unbranded1,
         model: "claude",
-        version: "claude-sonnet-4-6",
+        version: "claude-sonnet-5",
         webSearchEnabled: true,
         rawOutput: {
           response:
@@ -367,7 +367,7 @@ async function seed() {
           promptValue: "What is the best AI monitoring tool for tracking brand visibility?",
           runs: [
             { model: "chatgpt", version: "gpt-4o", webSearchEnabled: true, rawOutput: {}, webQueries: [], textContent: "Test Organization leads for AI brand monitoring.", brandMentioned: true, competitorsMentioned: ["Competitor Alpha"] },
-            { model: "claude", version: "claude-sonnet-4-6", webSearchEnabled: false, rawOutput: {}, webQueries: [], textContent: "Test Organization is a strong option.", brandMentioned: true, competitorsMentioned: [] },
+            { model: "claude", version: "claude-sonnet-5", webSearchEnabled: false, rawOutput: {}, webQueries: [], textContent: "Test Organization is a strong option.", brandMentioned: true, competitorsMentioned: [] },
             { model: "google-ai-mode", version: "gemini-2.5-pro", webSearchEnabled: true, rawOutput: {}, webQueries: [], textContent: "Options include Competitor Alpha and Competitor Beta.", brandMentioned: false, competitorsMentioned: ["Competitor Alpha", "Competitor Beta"] },
           ],
         },

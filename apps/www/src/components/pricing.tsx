@@ -1,7 +1,19 @@
-import { Check, ArrowRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { WaitlistForm } from "./waitlist-form";
+import {
+	CLOUD_ENTRY_PRICE_USD,
+	CLOUD_SIGNUP_URL,
+	MAX_STANDARD_RUNS_PER_DAY,
+	PLAN_KEYS,
+	PLANS,
+	type PlanPlatformGroupId,
+	PREMIUM_ADDON_MONTHLY_USD,
+	planPlatformBreakdown,
+	platformTierMembers,
+} from "@workspace/config/plans";
+import { PlatformTier } from "@workspace/ui/brand/platform-tier";
+import { ArrowRight, Check } from "lucide-react";
 import { ContactForm } from "./contact-form";
+import { WaitlistForm } from "./waitlist-form";
 
 interface Plan {
 	id: string;
@@ -11,7 +23,11 @@ interface Plan {
 	price: string;
 	priceLabel: string;
 	features: string[];
-	cta: { type: "link"; text: string; href: string } | { type: "waitlist" } | { type: "contact" };
+	cta:
+		| { type: "link"; text: string; href: string }
+		| { type: "external"; text: string; href: string }
+		| { type: "waitlist" }
+		| { type: "contact" };
 }
 
 const plans: Plan[] = [
@@ -37,17 +53,17 @@ const plans: Plan[] = [
 		tag: "02",
 		name: "Cloud",
 		desc: "Managed hosting, no maintenance.",
-		price: "Coming Soon",
-		priceLabel: "",
+		price: `From $${CLOUD_ENTRY_PRICE_USD}`,
+		priceLabel: "/ mo",
 		features: [
-			"Everything in Self-Hosted",
-			"Managed hosting",
-			"Automatic updates",
-			"Priority support",
-			"Daily backups",
-			"Usage analytics",
+			"Managed hosting, automatic updates",
+			"Track ChatGPT, Google, Perplexity & more",
+			"Scraped surfaces sampled up to 4× daily",
+			"Premium grounded models on Pro & Business",
+			"API access on every plan",
+			"Unlimited seats",
 		],
-		cta: { type: "waitlist" },
+		cta: { type: "external", text: "View plans & sign up", href: CLOUD_SIGNUP_URL },
 	},
 	{
 		id: "white-label",
@@ -115,13 +131,146 @@ export function Pricing() {
 										<ArrowRight className="size-3.5" />
 									</Link>
 								)}
+								{plan.cta.type === "external" && (
+									<a
+										href={plan.cta.href}
+										className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
+									>
+										{plan.cta.text}
+										<ArrowRight className="size-3.5" />
+									</a>
+								)}
 								{plan.cta.type === "waitlist" && <WaitlistForm source="pricing" />}
 								{plan.cta.type === "contact" && <ContactForm source="pricing" />}
 							</div>
 						</div>
 					))}
 				</div>
+
+				<CloudPlans />
 			</div>
 		</section>
+	);
+}
+
+/**
+ * A tier's platforms as a sentence fragment, read from the catalog so the prose
+ * can't fall behind the tables above it when a platform is added.
+ */
+function namePlatforms(tier: PlanPlatformGroupId, type: "conjunction" | "disjunction" = "conjunction"): string {
+	const names = platformTierMembers(tier).map((member) => member.label);
+	return new Intl.ListFormat("en", { style: "long", type }).format(names);
+}
+
+function CloudPlans() {
+	return (
+		<div className="mt-16">
+			<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ CLOUD PLANS</p>
+			<h3 className="mt-3 max-w-[32ch] text-2xl font-semibold tracking-tight text-zinc-950 md:text-3xl">
+				Self-serve cloud, billed monthly or annually.
+			</h3>
+			<p className="mt-2 max-w-[52ch] text-sm text-zinc-600">
+				Annual billing saves two months. No trial — evaluate with the{" "}
+				<a href="https://demo.elmohq.com" className="text-blue-600 underline">
+					live demo
+				</a>{" "}
+				or self-host for free.
+			</p>
+
+			<div className="mt-8 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-2 lg:grid-cols-5">
+				{PLAN_KEYS.map((key) => {
+					const plan = PLANS[key];
+					const breakdown = planPlatformBreakdown(plan);
+					return (
+						<div key={key} className="flex flex-col bg-white p-5">
+							<h4 className="text-lg font-semibold tracking-tight text-zinc-950">{plan.name}</h4>
+							<div className="mt-2 flex items-baseline gap-1">
+								<span className="text-2xl font-semibold tracking-tight text-zinc-950 tabular-nums">
+									${plan.monthlyPriceUsd}
+								</span>
+								<span className="font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-500">/ mo</span>
+							</div>
+							<p className="mt-1 text-xs text-zinc-500 tabular-nums">${plan.annualPriceUsd}/yr</p>
+
+							<ul className="mt-4 space-y-1.5 text-xs text-zinc-700">
+								<li>
+									{plan.maxBrands} brand{plan.maxBrands === 1 ? "" : "s"}
+								</li>
+								<li>{plan.maxPrompts} tracked prompts</li>
+							</ul>
+
+							{/* The pick tiers all spend the same budget, so they sit together
+							    under what the plan lets you choose. */}
+							<div className="mt-4 space-y-2.5 border-t border-zinc-100 pt-4">
+								<p className="text-xs font-medium text-zinc-900">{breakdown.pickHeading}</p>
+								{breakdown.pickGroups.map((group) => (
+									<PlatformTier
+										key={group.id}
+										label={group.label}
+										runsPerDay={group.runsPerDay}
+										models={group.models}
+									/>
+								))}
+							</div>
+
+							{/* Chosen per prompt and added to the picks above, not swapped for
+							    one of them, and paid out of a metered pool. Omitted entirely on
+							    plans that don't sell it, rather than advertising an absence. */}
+							{breakdown.premium && (
+								<div className="mt-4 border-t border-zinc-100 pt-4">
+									<PlatformTier
+										label={breakdown.premium.label}
+										runsPerDay={breakdown.premium.runsPerDay}
+										models={breakdown.premium.models}
+									/>
+									<p className="mt-1 text-[11px] leading-snug text-zinc-500">{breakdown.premium.summary}</p>
+								</div>
+							)}
+						</div>
+					);
+				})}
+				<div className="flex flex-col bg-white p-5">
+					<h4 className="text-lg font-semibold tracking-tight text-zinc-950">Custom</h4>
+					<div className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Let&apos;s talk</div>
+					<p className="mt-1 text-xs text-zinc-500">Contract billing</p>
+					<ul className="mt-4 space-y-1.5 text-xs text-zinc-700">
+						<li>Multiple brands, custom prompt limits</li>
+						<li>Up to {MAX_STANDARD_RUNS_PER_DAY}×/day sampling</li>
+						<li>Any other models, white label</li>
+						<li>SSO</li>
+					</ul>
+				</div>
+			</div>
+
+			<div className="mt-6 grid gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-2">
+				<div className="bg-white p-5">
+					<p className="font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-500">/ SCRAPED SURFACES</p>
+					<p className="mt-2 text-sm text-zinc-700">
+						{namePlatforms("scraped")} are read the way a visitor sees them, so you get the answer <em>and</em> the
+						sources it cited — including the shopping and search modules alongside it. Sampled at your plan&apos;s rate.
+					</p>
+				</div>
+				<div className="bg-white p-5">
+					<p className="font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-500">/ MODEL APIS</p>
+					<p className="mt-2 text-sm text-zinc-700">
+						{namePlatforms("api")} are called directly, which shows how each model describes your brand from what it
+						already knows — nothing is searched, so nothing is cited. On Pro and Business you can also track a prompt on
+						a premium model with its own web search switched on — {namePlatforms("premium", "disjunction")} — for
+						grounded, cited answers, at ${PREMIUM_ADDON_MONTHLY_USD} per pairing per month beyond what your plan
+						includes.
+					</p>
+				</div>
+			</div>
+
+			<div className="mt-6 flex flex-wrap gap-3">
+				<a
+					href={CLOUD_SIGNUP_URL}
+					className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-blue-600 px-4 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
+				>
+					Sign up
+					<ArrowRight className="size-3.5" />
+				</a>
+			</div>
+		</div>
 	);
 }

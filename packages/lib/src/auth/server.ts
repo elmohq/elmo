@@ -7,7 +7,7 @@
  */
 
 import { type SSOOptions, sso } from "@better-auth/sso";
-import { type BetterAuthOptions, betterAuth } from "better-auth";
+import { type BetterAuthOptions, type BetterAuthPlugin, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, customSession, organization } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
@@ -40,6 +40,13 @@ export interface CreateAuthOptions {
 	socialProviders?: BetterAuthOptions["socialProviders"];
 	/** Options for the organization plugin (e.g. sendInvitationEmail in cloud). */
 	organizationOptions?: Parameters<typeof organization>[0];
+	/**
+	 * Deployment-specific plugins appended to the shared set (e.g. cloud's
+	 * Stripe billing plugin). Any plugin that adds schema must also be added to
+	 * the schema-generation helper (scripts/generate-auth-schema.sh) so
+	 * schema-auth.ts keeps its tables.
+	 */
+	extraPlugins?: BetterAuthPlugin[];
 }
 
 export function createAuth(options?: CreateAuthOptions) {
@@ -113,6 +120,10 @@ export function createAuth(options?: CreateAuthOptions) {
 				},
 			}),
 			sso(options?.sso),
+			...(options?.extraPlugins ?? []),
+			// Replaces the /get-session endpoint, so this runs on every session
+			// read — including cookie-cache hits, which otherwise touch no
+			// database. Keep it free of queries.
 			customSession(async ({ user, session }) => {
 				const u = user as Record<string, unknown>;
 				return {
