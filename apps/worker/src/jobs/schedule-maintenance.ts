@@ -7,6 +7,7 @@ import { parseScrapeTargets } from "@workspace/lib/providers";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
+import { PROMPT_JOB_OPTIONS } from "./process-prompt";
 
 export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
@@ -21,13 +22,22 @@ const OVERDUE_ALERT_THROTTLE_MS = 30 * 60 * 1000;
 let lastOverdueAlertMs = 0;
 
 /**
- * Minimum time since a prompt's last run before maintenance will expedite its
- * next job again. Without it, a target that never records a run (e.g. a
- * consistently-failing provider) keeps every prompt perpetually "overdue", so
- * maintenance re-fires it every tick — turning one broken provider into a
- * fleet-wide run/cost storm. Mirrors the 1h throttle on the job-creation path.
+ * Minimum time since a prompt was last attempted before maintenance will queue
+ * it again, on either path.
+ *
+ * Measured against the last attempt rather than the last recorded run, because
+ * a failed run records nothing: a prompt whose provider is down looks like it
+ * has never run no matter how many times it has been tried, which is exactly
+ * when re-firing it every tick turns one broken provider into a fleet-wide run
+ * and cost storm.
+ *
+ * The singleton key on the send below does bound the create path on its own —
+ * one job per prompt per fixed hourly slot — but only that path, and only for
+ * as long as the previous job is still in pg-boss's table rather than its
+ * archive. Something this expensive to get wrong shouldn't rest on the shape of
+ * a queue's uniqueness index, and the expedite path has no equivalent at all.
  */
-const EXPEDITE_MIN_INTERVAL_MS = 60 * 60 * 1000;
+const ATTEMPT_MIN_INTERVAL_MS = 60 * 60 * 1000;
 
 /**
  * Maintenance job that ensures all enabled prompts have scheduled jobs.
@@ -101,6 +111,7 @@ async function runMaintenanceCheck(): Promise<void> {
 
 	// Get all pending jobs with their state info
 	const pendingJobMap = await getPendingJobMap();
+	const lastAttemptMap = await getLastAttemptMap();
 
 	const now = Date.now();
 	const promptsToSchedule: { promptId: string; cadenceHours: number }[] = [];
@@ -137,15 +148,17 @@ async function runMaintenanceCheck(): Promise<void> {
 
 		if (!isOverdue) continue;
 
+		// Throttle both paths: a prompt tried within the window isn't stalled,
+		// whether or not that attempt managed to record anything. The queue is
+		// the source of truth for "tried" and recorded runs for "worked" — keep
+		// both, since pg-boss eventually drops old jobs.
+		const lastRunTimes = Object.values(lastRuns).map((d) => new Date(d).getTime());
+		const lastActivityMs = Math.max(lastAttemptMap.get(prompt.id) ?? Number.NEGATIVE_INFINITY, ...lastRunTimes);
+		if (Number.isFinite(lastActivityMs) && now - lastActivityMs < Math.min(runFrequencyMs, ATTEMPT_MIN_INTERVAL_MS)) {
+			continue;
+		}
+
 		if (pendingJob && pendingJob.state === "created") {
-			// Throttle: if the prompt ran within the window it isn't really stalled,
-			// so don't drag its next job forward again. A never-recording target
-			// would otherwise keep it perpetually "overdue" and re-fire it every tick.
-			const lastRunTimes = Object.values(lastRuns).map((d) => new Date(d).getTime());
-			const mostRecentRunMs = lastRunTimes.length > 0 ? Math.max(...lastRunTimes) : null;
-			if (mostRecentRunMs !== null && now - mostRecentRunMs < Math.min(runFrequencyMs, EXPEDITE_MIN_INTERVAL_MS)) {
-				continue;
-			}
 			// There's a future job scheduled - expedite it to run now
 			jobsToExpedite.push(pendingJob.jobId);
 		} else {
@@ -186,6 +199,7 @@ async function runMaintenanceCheck(): Promise<void> {
 	if (promptsToSchedule.length > 0) {
 		const BATCH_SIZE = 50;
 		let successCount = 0;
+		let throttledCount = 0;
 		let failCount = 0;
 
 		for (let i = 0; i < promptsToSchedule.length; i += BATCH_SIZE) {
@@ -198,27 +212,34 @@ async function runMaintenanceCheck(): Promise<void> {
 						{
 							singletonKey: `prompt-${promptId}`,
 							singletonSeconds: 60 * 60, // 1 hour - prevent duplicates
-							retryLimit: 3,
-							retryDelay: 60,
-							retryBackoff: true,
-							expireInSeconds: 60 * 15,
+							...PROMPT_JOB_OPTIONS,
 						},
 					),
 				),
 			);
 
 			for (const result of results) {
-				if (result.status === "fulfilled") {
-					successCount++;
-				} else {
+				if (result.status === "rejected") {
 					failCount++;
 					console.error("[schedule-maintenance] Failed to schedule job:", result.reason);
+				} else if (result.value === null) {
+					// pg-boss resolves to null when the singleton key suppresses the
+					// send. Counting that as scheduled reports work that never
+					// happened, which is misleading in exactly the situation this
+					// log gets read in.
+					throttledCount++;
+				} else {
+					successCount++;
 				}
 			}
 		}
 
+		const notes = [
+			throttledCount > 0 ? `${throttledCount} already queued` : null,
+			failCount > 0 ? `${failCount} failed` : null,
+		].filter(Boolean);
 		console.log(
-			`[schedule-maintenance] Scheduled ${successCount} new jobs${failCount > 0 ? ` (${failCount} failed)` : ""}`,
+			`[schedule-maintenance] Scheduled ${successCount} new jobs${notes.length > 0 ? ` (${notes.join(", ")})` : ""}`,
 		);
 	}
 }
@@ -298,6 +319,41 @@ async function getPendingJobMap(): Promise<Map<string, PendingJobInfo>> {
 				state: row.state as "created" | "active" | "retry",
 			});
 		}
+	}
+
+	return map;
+}
+
+/**
+ * When each prompt was last queued or run, in epoch ms, from the job table.
+ *
+ * Runs are only recorded when they succeed, so this is the only record that a
+ * prompt whose provider is failing was tried at all — see
+ * ATTEMPT_MIN_INTERVAL_MS. Jobs in any state count, including one created but
+ * not yet due, so a prompt already waiting on its next cycle isn't queued twice.
+ * Archived jobs are gone from this table, which is why the caller still falls
+ * back to recorded runs.
+ *
+ * Only the throttle window is read: an older attempt can't block anything, and
+ * leaving it out keeps this off the full job history every five minutes.
+ */
+async function getLastAttemptMap(): Promise<Map<string, number>> {
+	const windowSeconds = ATTEMPT_MIN_INTERVAL_MS / 1000;
+	const result = await db.execute(sql`
+		SELECT data->>'promptId' AS prompt_id,
+		       MAX(COALESCE(completed_on, started_on, created_on)) AS last_attempt
+		FROM pgboss.job
+		WHERE name = 'process-prompt'
+		  AND data->>'promptId' IS NOT NULL
+		  AND COALESCE(completed_on, started_on, created_on) > now() - make_interval(secs => ${windowSeconds})
+		GROUP BY 1
+	`);
+
+	const map = new Map<string, number>();
+	for (const row of result.rows as { prompt_id: string; last_attempt: string | Date | null }[]) {
+		if (!row.prompt_id || !row.last_attempt) continue;
+		const at = new Date(row.last_attempt).getTime();
+		if (Number.isFinite(at)) map.set(row.prompt_id, at);
 	}
 
 	return map;
