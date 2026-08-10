@@ -9,8 +9,8 @@ import { findUniqueBrandId, slugify } from "@workspace/lib/db/provisioning";
 import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { assertCanCreateBrand, assertEnabledModelsAllowed, getOrgEntitlements } from "@workspace/lib/entitlements";
 import type { ModelConfig } from "@workspace/lib/providers";
-import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
-import { defaultPlatformPicks } from "@workspace/lib/run-policy";
+import { isGroundedApiTarget, parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
+import { defaultPlatformPicks, resolveBrandPicks } from "@workspace/lib/run-policy";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { listUserOrganizations, requireAuthSession, requireBrandAccess, requireOrgAccess } from "@/lib/auth/helpers";
@@ -37,13 +37,23 @@ const BRAND_ORG_ERRORS = {
  * `ModelConfig[]` (with provider, version, webSearch) is kept on the same
  * object for pages that render per-model metadata (e.g. settings/llms).
  */
-function computeEffectiveModels(brand: Brand): {
+async function computeEffectiveModels(brand: Brand): Promise<{
 	effectiveModels: string[];
 	effectiveModelConfigs: ModelConfig[];
-} {
+}> {
 	try {
 		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-		const effective = selectTargetsForBrand(configs, brand.enabledModels);
+		const entitlements = await getOrgEntitlements(brand.organizationId);
+		// A metered brand runs what its plan resolves, which for a brand that
+		// never chose is the plan defaults — not every configured target. Reading
+		// the raw column here is what listed ten platforms against a prompt the
+		// worker only ran four of.
+		const effective = entitlements.unlimited
+			? selectTargetsForBrand(configs, brand.enabledModels)
+			: resolveBrandPicks(entitlements, brand, configs).flatMap((model) => {
+					const config = configs.find((t) => t.model === model && !isGroundedApiTarget(t));
+					return config ? [config] : [];
+				});
 		return {
 			effectiveModels: effective.map((c) => c.model),
 			effectiveModelConfigs: effective,
@@ -129,7 +139,7 @@ async function getBrandWithPromptsFromDb(
 			...brand,
 			prompts: brandPrompts,
 			competitors: brandCompetitors,
-			...computeEffectiveModels(brand),
+			...(await computeEffectiveModels(brand)),
 		};
 	} catch (error) {
 		console.error("Error fetching brand with prompts:", error);

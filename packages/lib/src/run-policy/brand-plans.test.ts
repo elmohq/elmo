@@ -35,7 +35,6 @@ function orgPrompts(count: number, premiumModels: string[] = []) {
 
 function input(overrides: Partial<ResolveBrandPromptRunPlansInput>): ResolveBrandPromptRunPlansInput {
 	return {
-		mode: "cloud",
 		scrapeTargets: CLOUD_TARGETS,
 		defaultDelayHours: 24,
 		entitlements: cloudEntitlements("pro"),
@@ -134,7 +133,6 @@ describe("resolveBrandPromptRunPlans", () => {
 		const prompts = orgPrompts(3);
 		const plans = resolveBrandPromptRunPlans(
 			input({
-				mode: "local",
 				entitlements: UNLIMITED_ENTITLEMENTS,
 				// Non-cloud callers read nothing extra and pass no org prompts.
 				orgPrompts: [],

@@ -18,6 +18,7 @@ export {
 	isTargetDue,
 	type PromptRunPlan,
 	type ResolveRunPlanInput,
+	resolveBrandPicks,
 	resolvePromptRunPlan,
 	selectDueTargets,
 	type TargetOverdueStatus,

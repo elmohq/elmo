@@ -10,12 +10,10 @@
 
 import type { Entitlements } from "@workspace/config/entitlements";
 import type { ModelConfig } from "@workspace/config/scrape-targets";
-import type { DeploymentMode } from "@workspace/config/types";
 import { computePoolPositions } from "./maintenance";
 import { type PromptRunPlan, resolvePromptRunPlan } from "./policy";
 
 export interface ResolveBrandPromptRunPlansInput {
-	mode: DeploymentMode;
 	scrapeTargets: ModelConfig[];
 	defaultDelayHours: number;
 	entitlements: Entitlements;
@@ -42,7 +40,6 @@ export function resolveBrandPromptRunPlans(input: ResolveBrandPromptRunPlansInpu
 		plans.set(
 			prompt.id,
 			resolvePromptRunPlan({
-				mode: input.mode,
 				scrapeTargets: input.scrapeTargets,
 				brand: input.brand,
 				// Trimmed to what the pool covers, so the policy runs what the org has

@@ -17,7 +17,7 @@ import {
 	resolveProviderAccess,
 	selectTargetsForBrand,
 } from "@workspace/lib/providers";
-import { defaultPlatformPicks } from "@workspace/lib/run-policy";
+import { defaultPlatformPicks, resolveBrandPicks } from "@workspace/lib/run-policy";
 import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -203,7 +203,11 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 		const available = pickable.filter((option) => menu.has(option.model));
 		return {
 			available,
-			enabledModels: brand.enabledModels,
+			// What the brand is actually tracked on, resolved the same way the run
+			// policy resolves it. Reporting the raw column and letting the page read
+			// null as "everything configured" is what showed a Pro brand 10 of 4
+			// platforms selected.
+			enabledModels: resolveBrandPicks(entitlements, brand, configs),
 			planLimits: {
 				platformPicks: entitlements.platformPicks ?? available.length,
 				platformMenu: entitlements.platformMenu ?? [],

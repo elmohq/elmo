@@ -550,7 +550,6 @@ function resolveRunPlansForBrands(input: {
 	brands: Brand[];
 	promptsByBrand: Record<string, Prompt[]>;
 	entitlementsByOrg: Map<string, Entitlements>;
-	mode: DeploymentMode;
 	scrapeTargets: ModelConfig[];
 	defaultDelayHours: number;
 }): Map<string, PromptRunPlan> {
@@ -568,7 +567,6 @@ function resolveRunPlansForBrands(input: {
 		if (brandPrompts.length === 0 || !entitlements) continue;
 		try {
 			for (const [promptId, plan] of resolveBrandPromptRunPlans({
-				mode: input.mode,
 				scrapeTargets: input.scrapeTargets,
 				defaultDelayHours: input.defaultDelayHours,
 				entitlements,
@@ -663,7 +661,6 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		brands: allBrands,
 		promptsByBrand,
 		entitlementsByOrg,
-		mode: getDeployment().mode,
 		scrapeTargets: parseScrapeTargets(process.env.SCRAPE_TARGETS),
 		defaultDelayHours: getDefaultDelayHours(),
 	});

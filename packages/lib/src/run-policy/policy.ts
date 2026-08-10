@@ -42,7 +42,6 @@ export interface PromptRunPlan {
 }
 
 export interface ResolveRunPlanInput {
-	mode: DeploymentMode;
 	scrapeTargets: ModelConfig[];
 	brand: { enabledModels: string[] | null; delayOverrideHours: number | null };
 	/**
@@ -54,7 +53,7 @@ export interface ResolveRunPlanInput {
 	defaultDelayHours: number;
 	/**
 	 * Whether this prompt is inside the org's tracked-prompt pool (oldest
-	 * enabled prompts win after a downgrade). Non-cloud callers omit it.
+	 * enabled prompts win after a downgrade). Unmetered callers omit it.
 	 */
 	withinPromptPool?: boolean;
 }
@@ -65,7 +64,16 @@ function intervalForRate(runsPerDay: number): number {
 }
 
 export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan {
-	if (input.mode !== "cloud") {
+	const { entitlements } = input;
+
+	// Unmetered deployments run every target the brand selects, at the brand
+	// cadence. Read off the entitlements rather than a separately-passed
+	// deployment mode: the two came from different places (one from
+	// @workspace/deployment, one from the environment the entitlement query
+	// read), and a worker whose mode said "not cloud" while the org's
+	// entitlements said otherwise would quietly run a paying customer on every
+	// configured platform instead of the four they bought.
+	if (entitlements.unlimited) {
 		const interval = input.brand.delayOverrideHours ?? input.defaultDelayHours;
 		const targets = selectTargetsForBrand(input.scrapeTargets, input.brand.enabledModels).map((config) => ({
 			config,
@@ -75,28 +83,13 @@ export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan 
 		return { targets, rescheduleHours: targets.length > 0 ? interval : null };
 	}
 
-	const { entitlements } = input;
-	if (entitlements.unlimited) {
-		// Defensive: cloud mode always resolves limited entitlements.
-		throw new Error("cloud run policy requires resolved (non-unlimited) entitlements");
-	}
 	if (!entitlements.trackingActive || input.withinPromptPool === false) {
 		return { targets: [], rescheduleHours: null };
 	}
 
 	const targets: TargetPlan[] = [];
 
-	// Standard platforms: the brand's picks, clamped to the plan menu, one
-	// target per model (first SCRAPE_TARGETS match wins — the cloud operator
-	// configures one implementation per menu model).
-	const menuSet = new Set(entitlements.platformMenu ?? []);
-	const picks =
-		input.brand.enabledModels !== null
-			? input.brand.enabledModels.filter((model) => menuSet.has(model))
-			: // No explicit picks yet (e.g. brand created via the API before the
-				// platform step): apply the defaults so a paying org is never
-				// silently untracked.
-				defaultPlatformPicks(entitlements, input.scrapeTargets);
+	const picks = resolveBrandPicks(entitlements, input.brand, input.scrapeTargets);
 
 	// A cadence override may only slow sampling below the plan rate. The write
 	// path enforces the same floor, but a stored override can be faster than
@@ -108,7 +101,7 @@ export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan 
 	const standardInterval = slowerOf(intervalForRate(entitlements.standardRunsPerDay ?? 1));
 	const premiumInterval = slowerOf(intervalForRate(entitlements.premiumRunsPerDay));
 	const replication = entitlements.replication ?? 1;
-	for (const model of picks.slice(0, entitlements.platformPicks ?? picks.length)) {
+	for (const model of picks) {
 		// A pick always means the ungrounded target: the grounded one is sold from
 		// the premium pool below, so picking a premium model must not quietly buy
 		// the expensive call.
@@ -129,6 +122,30 @@ export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan 
 
 	if (targets.length === 0) return { targets, rescheduleHours: null };
 	return { targets, rescheduleHours: Math.min(...targets.map((t) => t.intervalHours)) };
+}
+
+/**
+ * Which standard platforms a metered brand is tracked on: its own picks,
+ * clamped to what the plan sells and to how many it may run at once — or the
+ * plan's defaults when it has never chosen.
+ *
+ * The single answer to "what is this brand tracked on", because three surfaces
+ * asked it independently and a brand with no stored picks got a different
+ * answer from each: the run policy applied the plan defaults while the LLM
+ * settings page and the prompts view both read null as "every configured
+ * target", showing ten platforms to a brand running four.
+ */
+export function resolveBrandPicks(
+	entitlements: Entitlements,
+	brand: { enabledModels: string[] | null },
+	scrapeTargets: ModelConfig[],
+): string[] {
+	const menu = new Set(entitlements.platformMenu ?? []);
+	const picks =
+		brand.enabledModels !== null
+			? brand.enabledModels.filter((model) => menu.has(model))
+			: defaultPlatformPicks(entitlements, scrapeTargets);
+	return picks.slice(0, entitlements.platformPicks ?? picks.length);
 }
 
 /**

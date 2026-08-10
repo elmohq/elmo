@@ -94,7 +94,6 @@ async function runMaintenanceCheck(): Promise<void> {
 		promptsByBrand.set(prompt.brandId, brandList);
 	}
 
-	const mode = getDeployment().mode;
 	const scrapeTargets = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 	const defaultDelayHours = getDefaultDelayHours();
 
@@ -110,7 +109,6 @@ async function runMaintenanceCheck(): Promise<void> {
 		if (!entitlements) continue;
 		try {
 			const plans = resolveBrandPromptRunPlans({
-				mode,
 				scrapeTargets,
 				defaultDelayHours,
 				entitlements,

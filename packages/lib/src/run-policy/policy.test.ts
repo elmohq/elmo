@@ -55,7 +55,6 @@ function cloudEntitlements(plan: string, extra?: Partial<Parameters<typeof resol
 
 function localInput(overrides?: Partial<ResolveRunPlanInput>): ResolveRunPlanInput {
 	return {
-		mode: "local",
 		scrapeTargets: SELF_HOSTED_TARGETS,
 		brand: { enabledModels: null, delayOverrideHours: null },
 		prompt: { premiumModels: [] },
@@ -99,9 +98,20 @@ describe("resolvePromptRunPlan: non-cloud legacy equivalence", () => {
 		).toThrow(/nope/);
 	});
 
-	it("whitelabel and demo behave identically to local", () => {
-		for (const mode of ["whitelabel", "demo"] as const) {
-			const plan = resolvePromptRunPlan(localInput({ mode }));
+	it("every unmetered deployment mode resolves the same plan", () => {
+		// The policy reads "unmetered" off the entitlements rather than off a
+		// separately-passed mode, so local, whitelabel and demo reach it by the
+		// same route — resolveEntitlements returns UNLIMITED for all three.
+		for (const mode of ["local", "whitelabel", "demo"] as const) {
+			const entitlements = resolveEntitlements({
+				mode,
+				subscription: null,
+				premiumAddonQuantity: 0,
+				overrides: null,
+				now: NOW,
+			});
+			expect(entitlements.unlimited).toBe(true);
+			const plan = resolvePromptRunPlan(localInput({ entitlements }));
 			expect(plan.targets).toHaveLength(SELF_HOSTED_TARGETS.length);
 			expect(plan.rescheduleHours).toBe(24);
 		}
@@ -170,7 +180,6 @@ describe("defaultPlatformPicks", () => {
 describe("resolvePromptRunPlan: cloud", () => {
 	function cloudInput(overrides?: Partial<ResolveRunPlanInput>): ResolveRunPlanInput {
 		return {
-			mode: "cloud",
 			scrapeTargets: CLOUD_TARGETS,
 			brand: { enabledModels: ["chatgpt", "perplexity"], delayOverrideHours: null },
 			prompt: { premiumModels: [] },

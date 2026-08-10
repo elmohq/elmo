@@ -12,7 +12,13 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
 import { getModelMeta } from "@workspace/config/models";
-import { PREMIUM_MODELS, PREMIUM_RUNS_PER_DAY, premiumModelLabel, premiumSlotsUsed } from "@workspace/config/plans";
+import {
+	PREMIUM_MODELS,
+	PREMIUM_RUNS_PER_DAY,
+	premiumModelLabel,
+	premiumSlotsUsed,
+	selectPremiumModels,
+} from "@workspace/config/plans";
 import { describeSkipped, parseBulkPrompts } from "@workspace/lib/bulk-prompts";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
@@ -130,7 +136,10 @@ function PremiumModelsField({
 							type="button"
 							key={model}
 							disabled={atCapacity && !checked}
-							onClick={() => onChange(checked ? selected.filter((m) => m !== model) : [...selected, model])}
+							// Normalized through the catalog on every toggle, because that is
+							// what the server stores — appending in click order instead would
+							// reshuffle the row the moment a save came back.
+							onClick={() => onChange(selectPremiumModels(checked ? selected.filter((m) => m !== model) : [...selected, model]))}
 							className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							<Checkbox checked={checked} disabled={atCapacity && !checked} className="pointer-events-none" />

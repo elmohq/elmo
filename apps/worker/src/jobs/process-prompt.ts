@@ -121,7 +121,6 @@ async function resolvePlanForPrompt(
 				.where(and(eq(brands.organizationId, brand.organizationId), eq(prompts.enabled, true)));
 
 	const plans = resolveBrandPromptRunPlans({
-		mode: getDeployment().mode,
 		scrapeTargets,
 		defaultDelayHours: getDefaultDelayHours(),
 		entitlements,
