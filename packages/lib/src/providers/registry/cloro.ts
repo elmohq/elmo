@@ -2,6 +2,7 @@ import type { Provider, ScrapeResult, ModelConfig } from "../types";
 import { extractTextFromCloro, extractCitationsFromCloro, cloroAnswer, type Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
+import { ProviderFatalError } from "../limiter";
 
 // Cloro monitors live AI answer engines. Each Elmo model maps to a Cloro task
 // type: the chatbots (ChatGPT, Perplexity, Copilot, Gemini) and Google AI Mode
@@ -20,15 +21,37 @@ const CLORO_TASKS: Record<string, CloroTaskConfig> = {
 };
 
 // Answers can take minutes to generate, so submit through Cloro's async task
-// queue — which also meters concurrency for us, avoiding the 429s the
-// synchronous endpoints return when the plan's concurrent-job limit is hit — and
-// poll until the task settles rather than holding a connection open.
+// queue and poll until the task settles rather than holding a connection open.
+// The queue absorbs whatever is submitted past the plan's concurrent-job limit
+// instead of returning the 429s the synchronous endpoints do — which makes it
+// forgiving to submit to and expensive to over-submit to, since everything
+// accepted is eventually run and billed. Bounding what goes in is the caller's
+// job, and belongs to the concurrency gate in ../limiter.
 const CLORO_TASK_URL = "https://api.cloro.dev/v1/async/task";
-const CLORO_TASK_TIMEOUT_MS = 10 * 60 * 1000;
+
+/**
+ * How long a task gets once Cloro has actually started it.
+ *
+ * Time spent QUEUED is deliberately excluded. A submitted task is billed when it
+ * completes whether or not anyone is still waiting for the answer, so giving up
+ * on one that hasn't started yet pays full price for nothing — and, because the
+ * caller then submits a replacement, makes the queue it was waiting behind
+ * longer. Waiting for the answer already paid for is both cheaper and the only
+ * behaviour that lets a backlog drain. The concurrency gate in ../limiter is
+ * what keeps the queue short enough that this rarely matters.
+ */
+const CLORO_GENERATION_TIMEOUT_MS = 10 * 60 * 1000;
+
+/** Absolute ceiling per task, so an unbounded queue can't pin a worker forever. */
+const CLORO_TOTAL_TIMEOUT_MS = 20 * 60 * 1000;
+
 const CLORO_POLL_BASE_DELAY_MS = 2000;
 const CLORO_POLL_MAX_DELAY_MS = 10_000;
 // Cloro localizes every answer; default to a US audience.
 const CLORO_COUNTRY = "US";
+
+/** Statuses meaning "accepted, not started" — see CLORO_GENERATION_TIMEOUT_MS. */
+const CLORO_QUEUED_STATUSES = new Set(["QUEUED", "PENDING", "CREATED", "SCHEDULED"]);
 
 interface CloroTask {
 	id?: string;
@@ -60,6 +83,16 @@ function isTransientStatus(status: number): boolean {
 	return status === 408 || status === 429 || status >= 500;
 }
 
+/**
+ * Rejections that retrying can only make worse: an exhausted credit balance or a
+ * key Cloro won't accept. Raised as ProviderFatalError so the breaker pauses the
+ * provider on the first one instead of replaying the whole fan-out against an
+ * account that has nothing left to spend.
+ */
+function isFatalStatus(status: number): boolean {
+	return status === 401 || status === 402 || status === 403;
+}
+
 async function responseError(res: Response): Promise<string> {
 	return `${res.status}: ${(await res.text()).slice(0, 500)}`.trim();
 }
@@ -78,7 +111,8 @@ async function submitTask(taskType: string, payload: Record<string, any>): Promi
 	});
 
 	if (!res.ok) {
-		throw new Error(`Cloro task submission failed (${await responseError(res)})`);
+		const message = `Cloro task submission failed (${await responseError(res)})`;
+		throw isFatalStatus(res.status) ? new ProviderFatalError(message) : new Error(message);
 	}
 
 	const body = (await res.json()) as { task?: CloroTask };
@@ -101,24 +135,41 @@ async function getTask(taskId: string): Promise<CloroTaskResponse | null> {
 }
 
 async function runAsyncTask(taskType: string, payload: Record<string, any>): Promise<Record<string, any>> {
-	const deadline = Date.now() + CLORO_TASK_TIMEOUT_MS;
 	const submitted = await submitTask(taskType, payload);
 	const taskId = submitted.id!;
+	const startedAt = Date.now();
+	const hardDeadline = startedAt + CLORO_TOTAL_TIMEOUT_MS;
+	let generationDeadline: number | null = null;
 	let latest: CloroTaskResponse = { task: submitted };
 	let attempt = 0;
 
-	while (Date.now() < deadline) {
+	while (true) {
+		// Settled states are checked before the deadlines, so an answer that
+		// arrives on the last poll is returned rather than thrown away.
 		const status = latest.task?.status?.toUpperCase();
 		if (status === "COMPLETED") return latest.response ?? {};
 		if (status === "FAILED") {
 			throw new Error(`Cloro task ${taskId} failed${failureDetails(latest.task!)}`);
 		}
 
-		await sleep(Math.min(pollDelay(attempt++), deadline - Date.now()));
+		// An unreported status is treated as running: better to hold a task to
+		// the generation budget than to let a status endpoint that answers
+		// nothing keep it alive for the full ceiling.
+		if (generationDeadline === null && !(status && CLORO_QUEUED_STATUSES.has(status))) {
+			generationDeadline = Date.now() + CLORO_GENERATION_TIMEOUT_MS;
+		}
+
+		const remaining = Math.min(generationDeadline ?? hardDeadline, hardDeadline) - Date.now();
+		if (remaining <= 0) {
+			throw new Error(
+				`Cloro task ${taskId} timed out after ${Math.round((Date.now() - startedAt) / 1000)}s ` +
+					`in status ${status ?? "unknown"} (the task may still complete, and is billed if it does)`,
+			);
+		}
+
+		await sleep(Math.min(pollDelay(attempt++), remaining));
 		latest = (await getTask(taskId)) ?? latest;
 	}
-
-	throw new Error(`Cloro task ${taskId} timed out after ${CLORO_TASK_TIMEOUT_MS / 1000}s`);
 }
 
 // Cloro exposes the model's own web-search queries under different keys per
