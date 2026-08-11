@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { Navbar } from "@/components/navbar";
@@ -216,10 +217,13 @@ function VisionPage() {
 						</p>
 						<div className="mt-8 flex flex-wrap justify-center gap-3">
 							<Button asChild size="sm">
-								<Link to="/docs">
-									Get Started
+								<a href={CLOUD_SIGNUP_URL}>
+									Start with Cloud
 									<ArrowRight className="size-3.5" />
-								</Link>
+								</a>
+							</Button>
+							<Button asChild variant="outline" size="sm">
+								<Link to="/docs">Self-host free</Link>
 							</Button>
 							<Button asChild variant="outline" size="sm">
 								<a href="https://github.com/elmohq/elmo" target="_blank" rel="noopener noreferrer">

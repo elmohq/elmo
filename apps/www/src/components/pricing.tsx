@@ -18,6 +18,8 @@ interface Plan {
 	desc: string;
 	price: string;
 	priceLabel: string;
+	/** Draws the eye to the option we want picked; exactly one plan sets it. */
+	featured?: boolean;
 	features: string[];
 	cta:
 		| { type: "link"; text: string; href: string }
@@ -28,8 +30,26 @@ interface Plan {
 
 const plans: Plan[] = [
 	{
-		id: "self-hosted",
+		id: "cloud",
 		tag: "01",
+		name: "Cloud",
+		desc: "We host it, update it, and keep it running.",
+		price: `From $${CLOUD_ENTRY_PRICE_USD}`,
+		priceLabel: "/ mo",
+		featured: true,
+		features: [
+			"Managed hosting, automatic updates",
+			"Track ChatGPT, Google, Perplexity & more",
+			"Scraped surfaces sampled up to 4× daily",
+			"Premium grounded models on Pro & Business",
+			"API access on every plan",
+			"Unlimited seats",
+		],
+		cta: { type: "external", text: "Start with Cloud", href: CLOUD_SIGNUP_URL },
+	},
+	{
+		id: "self-hosted",
+		tag: "02",
 		name: "Self-Hosted",
 		desc: "Run on your own infra with full access.",
 		price: "$0",
@@ -42,24 +62,7 @@ const plans: Plan[] = [
 			"Full source code access",
 			"Community support",
 		],
-		cta: { type: "link", text: "Get started", href: "/docs" },
-	},
-	{
-		id: "cloud",
-		tag: "02",
-		name: "Cloud",
-		desc: "Managed hosting, no maintenance.",
-		price: `From $${CLOUD_ENTRY_PRICE_USD}`,
-		priceLabel: "/ mo",
-		features: [
-			"Managed hosting, automatic updates",
-			"Track ChatGPT, Google, Perplexity & more",
-			"Scraped surfaces sampled up to 4× daily",
-			"Premium grounded models on Pro & Business",
-			"API access on every plan",
-			"Unlimited seats",
-		],
-		cta: { type: "external", text: "View plans & sign up", href: CLOUD_SIGNUP_URL },
+		cta: { type: "link", text: "Self-host free", href: "/docs" },
 	},
 	{
 		id: "white-label",
@@ -80,6 +83,24 @@ const plans: Plan[] = [
 	},
 ];
 
+/** Only the featured plan gets a filled button, so the row has one obvious next step. */
+function cardCtaClass(featured?: boolean): string {
+	const base =
+		"inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium leading-none";
+	return featured
+		? `${base} bg-blue-600 text-white ring-1 ring-blue-600 hover:bg-blue-700`
+		: `${base} bg-white text-zinc-900 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300`;
+}
+
+/** The same two treatments, reached through the buttons the embedded forms render. */
+function formButtonClass(featured?: boolean): string {
+	const base =
+		"[&_button]:!h-8 [&_button]:w-full [&_button]:rounded-md [&_button]:!px-3 [&_button]:!py-0 [&_button]:!text-sm [&_button]:font-medium [&_button]:!leading-none [&_button]:ring-1";
+	return featured
+		? `${base} [&_button]:bg-blue-600 [&_button]:text-white [&_button]:ring-blue-600 [&_button]:hover:bg-blue-700`
+		: `${base} [&_button]:bg-white [&_button]:text-zinc-900 [&_button]:ring-zinc-200 [&_button]:hover:bg-zinc-50 [&_button]:hover:ring-zinc-300`;
+}
+
 export function Pricing() {
 	return (
 		<section id="pricing" className="border-b border-zinc-200 bg-white">
@@ -87,17 +108,27 @@ export function Pricing() {
 				<div>
 					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ PRICING</p>
 					<h2 className="mt-4 max-w-[28ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-						Self-host it, run it in our cloud, or white-label it for your customers.
+						Run it in our cloud, self-host it, or white-label it for your customers.
 					</h2>
 				</div>
 
 				<div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 md:grid-cols-3">
 					{plans.map((plan) => (
-						<div key={plan.id} className="flex flex-col justify-between bg-white p-6 lg:p-8">
+						<div
+							key={plan.id}
+							className={`flex flex-col justify-between p-6 lg:p-8 ${plan.featured ? "bg-blue-50/50" : "bg-white"}`}
+						>
 							<div>
-								<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
-									{plan.tag}
-								</span>
+								<div className="flex items-center gap-2">
+									<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
+										{plan.tag}
+									</span>
+									{plan.featured && (
+										<span className="rounded-full bg-blue-600 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.15em] text-white">
+											Recommended
+										</span>
+									)}
+								</div>
 								<h3 className="mt-5 text-2xl font-semibold tracking-tight text-zinc-950">{plan.name}</h3>
 								<p className="mt-2 max-w-[36ch] text-pretty text-sm text-zinc-600">{plan.desc}</p>
 								<div className="mt-6 flex items-baseline gap-2 border-y border-zinc-200 py-4">
@@ -117,21 +148,15 @@ export function Pricing() {
 									))}
 								</ul>
 							</div>
-							<div className="mt-8 [&_button]:!h-8 [&_button]:w-full [&_button]:rounded-md [&_button]:bg-blue-600 [&_button]:!px-3 [&_button]:!py-0 [&_button]:!text-sm [&_button]:font-medium [&_button]:!leading-none [&_button]:text-white [&_button]:ring-1 [&_button]:ring-blue-600 [&_button]:hover:bg-blue-700">
+							<div className={`mt-8 ${formButtonClass(plan.featured)}`}>
 								{plan.cta.type === "link" && (
-									<Link
-										to={plan.cta.href}
-										className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
-									>
+									<Link to={plan.cta.href} className={cardCtaClass(plan.featured)}>
 										{plan.cta.text}
 										<ArrowRight className="size-3.5" />
 									</Link>
 								)}
 								{plan.cta.type === "external" && (
-									<a
-										href={plan.cta.href}
-										className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
-									>
+									<a href={plan.cta.href} className={cardCtaClass(plan.featured)}>
 										{plan.cta.text}
 										<ArrowRight className="size-3.5" />
 									</a>

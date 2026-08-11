@@ -1,71 +1,9 @@
-import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, ArrowRight } from "lucide-react";
+import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
+import { ArrowUpRight } from "lucide-react";
 import MuxPlayer from "@mux/mux-player-react";
 import { CustomerLogosInline } from "./customer-logos";
 import { QuickstartBlock } from "./quickstart-block";
-import { externalRel } from "@/lib/external-link";
-
-function PrimaryCTA({
-	to,
-	href,
-	external,
-	children,
-	className = "",
-}: {
-	to?: string;
-	href?: string;
-	external?: boolean;
-	children: React.ReactNode;
-	className?: string;
-}) {
-	const cls = `inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700 ${className}`;
-	if (to) {
-		return (
-			<Link to={to} className={cls}>
-				{children}
-			</Link>
-		);
-	}
-	if (href) {
-		return (
-			<a href={href} className={cls} {...(external ? { target: "_blank", rel: externalRel(href) } : {})}>
-				{children}
-			</a>
-		);
-	}
-	return null;
-}
-
-function GhostCTA({
-	to,
-	href,
-	external,
-	children,
-	className = "",
-}: {
-	to?: string;
-	href?: string;
-	external?: boolean;
-	children: React.ReactNode;
-	className?: string;
-}) {
-	const cls = `inline-flex h-8 items-center gap-1.5 rounded-md bg-white px-3 text-sm font-medium leading-none text-zinc-900 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300 ${className}`;
-	if (to) {
-		return (
-			<Link to={to} className={cls}>
-				{children}
-			</Link>
-		);
-	}
-	if (href) {
-		return (
-			<a href={href} className={cls} {...(external ? { target: "_blank", rel: externalRel(href) } : {})}>
-				{children}
-			</a>
-		);
-	}
-	return null;
-}
+import { CloudSignupCTA, QuietCTA, SelfHostCTA } from "./cta-buttons";
 
 // Cast a brand-blue glow under Mux Player's default center play button so it
 // echoes the wrapper's outer blue shadow. Drop-shadow follows the circle's
@@ -129,18 +67,17 @@ export function Hero() {
 						</h1>
 						<p className="mt-6 max-w-[58ch] text-pretty text-base text-zinc-600 md:text-lg">
 							Track your brand's visibility across any AI model. Monitor mentions, analyze citations, and benchmark
-							competitors. Open source and self-hosted, so your data stays yours and you'll never get locked in.
+							competitors. Run it in our cloud or host it yourself — it's open source either way, so your data stays
+							yours and you'll never get locked in.
 						</p>
 						<div className="mt-8 flex flex-wrap items-center gap-2">
-							<PrimaryCTA to="/docs">
-								Get Started
-								<ArrowRight className="size-3.5" />
-							</PrimaryCTA>
-							<GhostCTA href="https://demo.elmohq.com" external>
-								Live demo
-								<ArrowUpRight className="size-3.5" />
-							</GhostCTA>
+							<CloudSignupCTA />
+							<SelfHostCTA />
+							<QuietCTA href="https://demo.elmohq.com">Live demo</QuietCTA>
 						</div>
+						<p className="mt-3 text-sm text-zinc-500">
+							Managed cloud from ${CLOUD_ENTRY_PRICE_USD}/mo. Self-hosting is free forever.
+						</p>
 						<CustomerLogosInline />
 					</div>
 					<aside className="flex flex-col gap-4 lg:col-span-5">

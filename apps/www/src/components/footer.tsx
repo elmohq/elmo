@@ -12,6 +12,7 @@ const cols = [
 		links: [
 			{ label: "Features", href: "/features" },
 			{ label: "Pricing", href: "/pricing" },
+			{ label: "Off-Site AEO", href: "/off-site-aeo" },
 			{ label: "Changelog", href: "/changelog" },
 			{ label: "Roadmap", href: "/roadmap" },
 		],
