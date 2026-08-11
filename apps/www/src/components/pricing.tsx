@@ -2,13 +2,9 @@ import { Link } from "@tanstack/react-router";
 import {
 	CLOUD_ENTRY_PRICE_USD,
 	CLOUD_SIGNUP_URL,
-	MAX_STANDARD_RUNS_PER_DAY,
 	PLAN_KEYS,
 	PLANS,
-	type PlanPlatformGroupId,
-	PREMIUM_ADDON_MONTHLY_USD,
 	planPlatformBreakdown,
-	platformTierMembers,
 } from "@workspace/config/plans";
 import { PlatformTier } from "@workspace/ui/brand/platform-tier";
 import { ArrowRight, Check } from "lucide-react";
@@ -153,15 +149,6 @@ export function Pricing() {
 	);
 }
 
-/**
- * A tier's platforms as a sentence fragment, read from the catalog so the prose
- * can't fall behind the tables above it when a platform is added.
- */
-function namePlatforms(tier: PlanPlatformGroupId, type: "conjunction" | "disjunction" = "conjunction"): string {
-	const names = platformTierMembers(tier).map((member) => member.label);
-	return new Intl.ListFormat("en", { style: "long", type }).format(names);
-}
-
 function CloudPlans() {
 	return (
 		<div className="mt-16">
@@ -234,31 +221,13 @@ function CloudPlans() {
 					<div className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Let&apos;s talk</div>
 					<p className="mt-1 text-xs text-zinc-500">Contract billing</p>
 					<ul className="mt-4 space-y-1.5 text-xs text-zinc-700">
-						<li>Multiple brands, custom prompt limits</li>
-						<li>Up to {MAX_STANDARD_RUNS_PER_DAY}×/day sampling</li>
-						<li>Any other models, white label</li>
+						<li>Multiple brands</li>
+						<li>Custom prompt limits</li>
+						<li>Higher daily sampling rates</li>
+						<li>Any models</li>
+						<li>White label</li>
 						<li>SSO</li>
 					</ul>
-				</div>
-			</div>
-
-			<div className="mt-6 grid gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-2">
-				<div className="bg-white p-5">
-					<p className="font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-500">/ SCRAPED SURFACES</p>
-					<p className="mt-2 text-sm text-zinc-700">
-						{namePlatforms("scraped")} are read the way a visitor sees them, so you get the answer <em>and</em> the
-						sources it cited — including the shopping and search modules alongside it. Sampled at your plan&apos;s rate.
-					</p>
-				</div>
-				<div className="bg-white p-5">
-					<p className="font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-500">/ MODEL APIS</p>
-					<p className="mt-2 text-sm text-zinc-700">
-						{namePlatforms("api")} are called directly, which shows how each model describes your brand from what it
-						already knows — nothing is searched, so nothing is cited. On Pro and Business you can also track a prompt on
-						a premium model with its own web search switched on — {namePlatforms("premium", "disjunction")} — for
-						grounded, cited answers, at ${PREMIUM_ADDON_MONTHLY_USD} per pairing per month beyond what your plan
-						includes.
-					</p>
 				</div>
 			</div>
 
