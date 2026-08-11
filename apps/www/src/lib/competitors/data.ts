@@ -2665,9 +2665,9 @@ export const competitors: Competitor[] = [
 		name: "xSeek",
 		domain: "xseek.io",
 		url: "https://xseek.io/",
-		tagline: "AI visibility tracking across six AI engines",
+		tagline: "AI visibility tracking across seven AI engines",
 		description:
-			"xSeek tracks brand perception across ChatGPT, Google AI Overview, Perplexity, Gemini, Claude, and Grok. Offers a free diagnostic and tiered paid plans (Starter, Growth, Scale) with a 6-month minimum commitment, targeting marketing teams without technical SEO expertise.",
+			"xSeek tracks brand perception across ChatGPT, Google AI Overview, Perplexity, Gemini, Claude, Grok, and Copilot, with the same engine coverage on every tier. Offers a free diagnostic and tiered paid plans (Starter, Growth, Scale) billed monthly, targeting marketing teams without technical SEO expertise.",
 		category: "tracking",
 		ahrefsDR: 33,
 		ahrefsTraffic: 45,
@@ -2681,9 +2681,9 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			contentGeneration: true,
 		},
-		pricing: { hasFree: true, hasEnterprise: true },
+		pricing: { hasFree: false, startingPrice: "$249.99/mo", hasEnterprise: true },
 		highlights: [
-			"Covers six AI engines including Grok",
+			"Covers seven AI engines including Grok and Copilot",
 			"Free diagnostic tool with no signup required",
 			"Three-step workflow: assess perception, prioritize actions, create content",
 		],
