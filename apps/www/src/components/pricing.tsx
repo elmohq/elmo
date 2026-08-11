@@ -156,13 +156,7 @@ function CloudPlans() {
 			<h3 className="mt-3 max-w-[32ch] text-2xl font-semibold tracking-tight text-zinc-950 md:text-3xl">
 				Self-serve cloud, billed monthly or annually.
 			</h3>
-			<p className="mt-2 max-w-[52ch] text-sm text-zinc-600">
-				Annual billing saves two months. No trial — evaluate with the{" "}
-				<a href="https://demo.elmohq.com" className="text-blue-600 underline">
-					live demo
-				</a>{" "}
-				or self-host for free.
-			</p>
+			<p className="mt-2 max-w-[52ch] text-sm text-zinc-600">Annual billing saves two months.</p>
 
 			<div className="mt-8 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-2 lg:grid-cols-5">
 				{PLAN_KEYS.map((key) => {
