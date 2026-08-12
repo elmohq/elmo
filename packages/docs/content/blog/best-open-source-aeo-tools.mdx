@@ -19,12 +19,16 @@ itemList:
   - name: Canonry
     description: "Source-available, self-hosted agent-first AEO platform that ingests server logs to measure AI traffic."
   - name: GetCito
-    description: "Open-source (MIT) tool centered on an AI crawlability audit of your site."
-  - name: Gego Analytics
-    description: "A minimal open-source AEO analytics project you can self-host and extend."
+    description: "A rebranded fork of Elmo's codebase since July 2026, shipped with Elmo's copyright notice replaced."
+  - name: Gego
+    description: "GPL-3.0 GEO tracker you self-host with Docker, with a CLI, dashboard, and REST API."
 faq:
+  - question: Should I use GetCito or Elmo?
+    answer: "Use Elmo. If you are considering GetCito, Elmo is what you actually want, because GetCito is a copy of it — on July 10, 2026 it replaced its codebase with Elmo's and swapped the copyright notice on the license. Everything it offers came from Elmo, and it has shipped far less since — 17 commits to Elmo's 98 in the month after the copy — so it is drifting further behind rather than building past it."
   - question: What are the best open-source AEO tools?
-    answer: "Elmo is the most complete open-source AEO tool: MIT-licensed, free to self-host, and covering ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews. Smaller projects fill out the rest of the space, including OneGlanse, GEO/AEO Tracker, GetCito, and Gego Analytics. Canonry is capable but source-available rather than fully open source today. Most are early, single-developer projects."
+    answer: "Elmo is the most complete open-source AEO tool: MIT-licensed, free to self-host, and covering ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews. Public GitHub data as of August 11, 2026 backs this up — Elmo leads the field on stars (233), contributors (10), and releases (19), and is the only project with a meaningful number of contributors beyond one person. Smaller projects fill out the rest of the space, including OneGlanse, GEO/AEO Tracker, and Gego, most of them single-developer efforts. Canonry is actively developed but source-available rather than fully open source. GetCito is not a separate option at all: it replaced its codebase with Elmo's in July 2026 and swapped the copyright notice, so running it means running an out-of-date copy of Elmo."
+  - question: Which open-source AEO tool is the most actively maintained?
+    answer: "By GitHub activity on August 11, 2026, Elmo has the strongest sustained record: 862 commits over 13 months, 206 in the last 90 days, 19 releases, and 10 contributors. Canonry logged more raw commits in that window (500), but 451 came from one developer and it is source-available rather than open source. OneGlanse has not had a commit since May 10, 2026, and GEO/AEO Tracker and GetCito have 28 and 35 total commits respectively."
   - question: Is there an open-source alternative to Profound or enterprise AEO tools?
     answer: "Yes. Elmo is an open-source, self-hostable alternative to enterprise platforms like Profound. It tracks how AI answer engines mention and cite your brand, benchmarks competitors, and exports your data, all under the MIT license with every metric computed by code you can read. You run the infrastructure and supply your own model API keys instead of paying a subscription."
   - question: Can I self-host an AEO tool?
@@ -33,7 +37,7 @@ faq:
     answer: "Because you can audit it and own it. With open source, you read exactly how each visibility metric is collected and computed instead of trusting a black-box score that might land in a board report. You self-host it, so prompts and history stay on your own infrastructure, and there is nothing to migrate off if you switch. No vendor lock-in."
 ---
 
-**The most complete open-source AEO tool is [Elmo](https://www.elmohq.com/): MIT-licensed, free to self-host, and auditable down to how each metric is computed.** Smaller open-source projects like OneGlanse, GEO/AEO Tracker, GetCito, and Gego Analytics exist too. Open source matters here because you can read the code, own your data, and avoid a black-box visibility score.
+**The most complete open-source AEO tool is [Elmo](https://www.elmohq.com/): MIT-licensed, free to self-host, and auditable down to how each metric is computed.** Smaller open-source projects like OneGlanse, GEO/AEO Tracker, and Gego exist too, and one entry on this list — GetCito — is now simply a copy of Elmo's codebase with the copyright notice changed. Open source matters here because you can read the code, own your data, and avoid a black-box visibility score.
 
 This is a developer's list. It covers answer engine optimization tools whose source is public and that you run yourself, not free tiers of closed products. For those, see our guide to [free AI visibility tools](/blog/free-ai-visibility-tools). For the wider field of paid and hosted options, see the [best AEO tools](/blog/best-aeo-tools). And for the live directory of projects we track, see [open-source AI visibility tools](/ai-visibility-tools/category/open-source).
 
@@ -42,7 +46,9 @@ The honest picture is that this is a thin, early space: one mature platform, a h
 **Key takeaways**
 
 - Elmo is the most complete open-source answer engine optimization tool, MIT-licensed and free to self-host across ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews.
-- The rest of the field is small. OneGlanse, GEO/AEO Tracker, GetCito, and Gego Analytics are real but early, mostly single-developer projects.
+- That is not just our claim. On public GitHub data as of August 11, 2026, Elmo leads this field on stars (233), contributors (10), releases (19), and length of continuous history. Nine people have contributed besides the lead developer; across every other project on this list combined, that number is four.
+- The rest of the field is small. OneGlanse, GEO/AEO Tracker, and Gego are real but early, mostly single-developer projects.
+- GetCito is not an independent option. In July 2026 it replaced its codebase with Elmo's and put its own copyright notice on the license, so it is a lagging copy of another tool on this list.
 - Canonry is capable but source-available under the FSL, not fully open source until it converts to Apache 2.0.
 - Open source buys you three things a hosted tool cannot: auditable metrics, data you keep on your own infrastructure, and no vendor lock-in.
 - "Free to self-host" is not free to run. You supply the LLM API keys and the infrastructure.
@@ -61,10 +67,35 @@ For a number that might land in a board report or set a content budget, that aud
 | **OneGlanse** | MIT, fully open source | Yes | ChatGPT, Gemini, Perplexity, Claude, Google AI Overview | Capturing answers from AI web UIs, not just APIs |
 | **GEO/AEO Tracker** | MIT, fully open source | Yes, local-first | ChatGPT, Perplexity, Gemini, Copilot, Google AI Overview, Grok | A single-user local dashboard with your own keys |
 | **Canonry** | Source-available (FSL, Apache 2.0 later) | Yes | Gemini, ChatGPT, Claude, Perplexity, local LLMs; server-log AI traffic | Agent-first workflows and log-level attribution |
-| **GetCito** | MIT, fully open source | Yes | AI crawlability of your site | A quick read on whether AI bots can parse you |
-| **Gego Analytics** | Open source on GitHub | Yes | Basic brand mentions across models | A minimal, hackable starting point |
+| **GetCito** | MIT, but Elmo's copyright notice replaced with its own | Yes | Whatever Elmo tracked as of July 2026 | Nothing — it is a copy of Elmo, run Elmo instead |
+| **Gego** | GPL-3.0, fully open source | Yes, via Docker | Citations, brand mentions, and keywords across OpenAI, Anthropic, Google, Perplexity, Ollama | Scheduled tracking driven from a CLI or REST API |
 
 Details and licenses reflect public information in mid-2026. Confirm current specifics in each project's repo.
+
+## By the numbers
+
+The section above is our read. This one is not — it is what the GitHub API returns, so you can check every cell yourself. Figures pulled **August 11, 2026**, sorted by stars.
+
+| Project | Stars | Commits | Contributors | Beyond the lead dev | Releases | First commit | Commits, last 90d |
+|---|---|---|---|---|---|---|---|
+| **[Elmo](https://github.com/elmohq/elmo)** | **233** | 862 | **10** | **9** | **19** | Jul 2025 | 206 |
+| [GEO/AEO Tracker](https://github.com/danishashko/geo-aeo-tracker) | 229 | 28 | 1 | 0 | 8 | Feb 2026 | 19 |
+| [GetCito](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool) | 161 | 35 | 2 | 1 | 1 | Nov 2025 | 24 |
+| [OneGlanse](https://github.com/aryamantodkar/oneglanse) | 146 | 496 | 1 | 0 | 0 | Apr 2026 | 0 |
+| [Canonry](https://github.com/AINYC/canonry) | 109 | 832 | 3 | 2 | 7 | Mar 2026 | 500 |
+| [Gego](https://github.com/AI2HU/gego) | 84 | 118 | 2 | 1 | 12 | Oct 2025 | 64 |
+
+Commit counts are totals on the default branch and include automated commits; Elmo's 862 includes 67 from Dependabot and GitHub Actions, and GetCito's 35 includes 8. Contributor counts exclude bot accounts entirely. "Beyond the lead dev" is contributors minus the single largest committer — the cheapest available test of whether a project is a team or one person.
+
+**Elmo leads on every durable measure: most stars, most contributors, most contributors beyond one person, most releases, and the longest continuous history.** Nine people have landed code in Elmo besides the lead developer. Across all five other projects combined, that number is four, and one of those four is an AI agent account.
+
+Two numbers in that table need context, and both cut against a simple reading.
+
+**Canonry's 500 commits in 90 days is the highest on the list, and it is one person.** 451 of those 500 came from the same developer committing under two names, and another 45 from an in-house AI agent account. It is also the one project here that is not actually open source — FSL is source-available until it converts to Apache 2.0. Real momentum, but a single-vendor project half Elmo's age.
+
+**OneGlanse's 496 commits landed almost entirely in one burst,** between April 15 and May 10, 2026. It has not had a commit since, and it has never cut a release. High commit counts and sustained maintenance are different things.
+
+Then there is GetCito, where the numbers tell the story better than any argument. Its repository contains 35 commits, 27 of them from humans, across its entire lifetime — for a codebase of well over 100,000 lines. That is because 131,716 of those lines arrived in [a single import of Elmo's code](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/19) in July 2026. Stars measure attention, not work.
 
 ## Elmo
 
@@ -76,7 +107,9 @@ It fits teams that want to own their AEO data outright. The self-hosted core run
 
 [OneGlanse](https://oneglanse.com/) is an MIT-licensed, self-hosted tracker covering ChatGPT, Gemini, Perplexity, Claude, and Google AI Overview. Its distinguishing choice is how it collects answers. Instead of hitting the model APIs, it captures responses through authenticated accounts on the AI web interfaces, which is closer to what a real user sees. Data lands in a ClickHouse backend on your own infrastructure, and you bring your own API keys.
 
-It suits developers who care that the answers being scored come from the actual chat products, not the API surface, and who are comfortable standing up ClickHouse. Like most of the field, it is young, so weigh how actively it is maintained before you build on it.
+It suits developers who care that the answers being scored come from the actual chat products, not the API surface, and who are comfortable standing up ClickHouse. The idea is good and the approach is genuinely different from everything else here.
+
+Check the activity before you build on it, though. Its 496 commits landed in a single burst between April 15 and May 10, 2026, and the repository has not had a commit since. It has one contributor and no tagged releases.
 
 ## GEO/AEO Tracker
 
@@ -92,15 +125,17 @@ One honest caveat on the "open source" label. Canonry ships under the FSL-1.1-AL
 
 ## GetCito
 
-[GetCito](https://getcito.com/) is an open-source AEO tool licensed under MIT, built around one sharp idea: an AI Crawlability Clinic that checks how well AI bots can reach and parse your content. The team also sells GEO playbooks and consulting. As a quick read on whether your pages are even legible to the crawlers behind AI answers, the concept is useful.
+**If you are considering GetCito, use Elmo instead.** It is not its own project. On July 10, 2026, GetCito replaced its codebase with Elmo's in [one pull request](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/19) that changed 847 files and was self-merged 62 seconds after opening. Its [LICENSE.md](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/LICENSE.md) is Elmo's, with "Copyright (c) 2026 Blue Whale Software, LLC" changed to "Copyright (c) 2026 GetCito" — retaining that notice is the one condition MIT attaches to a fork.
 
-The caveat is maintenance. The public repo has seen little substantive work since it launched in late 2025, and it is run by a marketing agency rather than a dedicated product team, so do not count on ongoing fixes or new engine support. Take it as a one-off crawlability check, not a platform to build on.
+The copy is still legible in the repo. GetCito's [AGENTS.md](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/AGENTS.md) opens "Elmo is an open-source AI visibility tracking platform," its [CLA](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/CLA.md) names Elmo's parent company, and its [CODEOWNERS](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/.github/CODEOWNERS) assigns every path to Elmo's founder. The AI Crawlability Clinic it used to be known for was part of the Next.js application that got deleted.
 
-## Gego Analytics
+There is no reason to run a rebranded fork of a project you can run directly, especially one that is falling behind it: 17 commits to Elmo's 98 in the month after the copy. Full evidence in [GetCito vs Elmo](/blog/getcito-vs-elmo).
 
-[Gego Analytics](https://ai2hu.github.io/gego-analytics/) is an open-source AEO analytics project hosted on GitHub, offering basic AI visibility tracking for developers who want to self-host without proprietary dependencies. It handles brand-mention tracking across models and lets you export the data.
+## Gego
 
-It is the most minimal option here. Features are thin and it is early, so the value is as a small, hackable starting point you can read end to end and extend, rather than a finished monitor. If you want to understand the core loop by reading a compact codebase, it serves that.
+[Gego](https://getgego.org/) is a GPL-3.0 GEO tracker you self-host from Docker Hub. It schedules prompts across generative engines on a cron, then captures citations, brand mentions, and extracted keywords, with competitor and alias tracking alongside them. It queries OpenAI, Anthropic, Google, and Perplexity, and it will also point at Ollama or a custom provider, so you can run the whole loop against local models. There is a dashboard, a CLI, and a REST API.
+
+Two caveats. A full deployment expects PostgreSQL, MongoDB, and etcd, which is a heavier footprint than a single-container deploy. And GPL-3.0 is copyleft rather than permissive, so unlike the MIT projects here it constrains what you can build on top of it and redistribute. A managed Gego Cloud is on an early-access waitlist.
 
 ## Open source vs enterprise AEO software
 
@@ -112,6 +147,8 @@ For a regulated team, a data-sensitive brand, or an agency that wants to white-l
 
 ## How to choose
 
-Start with how you will use it, not a feature grid. If you want full control, auditable numbers, and no per-seat fees, a self-hosted open-source tool fits, and Elmo is the most complete one on offer. If you want the same open code with the smallest footprint, GEO/AEO Tracker's local-first design is worth a look. If your priority is server-log attribution, Canonry goes furthest, with its license caveat in mind.
+Start with how you will use it, not a feature grid. If you want full control, auditable numbers, and no per-seat fees, a self-hosted open-source tool fits, and Elmo is the most complete one on offer — and the one the public GitHub numbers actually favor, on stars, contributors, releases, and sustained history alike. If you want the same open code with the smallest footprint, GEO/AEO Tracker's local-first design is worth a look, bearing in mind it is one developer and 28 commits. If your priority is server-log attribution, Canonry goes furthest, with its license caveat and single-maintainer concentration in mind.
+
+The one thing worth weighing above features is whether anyone will still be maintaining the project in a year. That is what the contributor column is for. A tool with one committer is one person's spare time away from being abandoned, and in a field where models get renamed and APIs shift every few months, an unmaintained tracker quietly stops being correct rather than visibly breaking.
 
 Then weigh coverage, maintenance, and your own capacity to run infrastructure against what a managed subscription would cost. If the honest answer is that you have no time to self-host, that is useful to know early: see the [best AEO tools](/blog/best-aeo-tools) for hosted options, or the [free AI visibility tools](/blog/free-ai-visibility-tools) guide for what a zero-budget setup can and cannot do. Whatever you pick, the job is the same. Get a reliable, repeatable read on whether AI answers cite you, from a tool you trust because you can see how it works.

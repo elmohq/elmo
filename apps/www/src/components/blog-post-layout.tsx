@@ -28,7 +28,7 @@ function isElmoHref(href: string): boolean {
 
 // Outbound hosts we intentionally pass SEO equity to (dofollow), e.g. partners
 // we've agreed to link to. An explicit allowlist keeps the default nofollow.
-const DOFOLLOW_HOSTS = ["semrush.com", "seranking.com"];
+const DOFOLLOW_HOSTS = ["semrush.com", "seranking.com", "xseek.io", "evatype.com"];
 
 function isDofollowHref(href: string): boolean {
 	try {
