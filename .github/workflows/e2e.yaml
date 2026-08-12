@@ -74,7 +74,11 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Install Playwright browsers
-        run: pnpm -C apps/web exec playwright install chromium --with-deps
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 1
+          max_attempts: 3
+          command: pnpm -C apps/web exec playwright install chromium --with-deps
 
       - name: Build elmo CLI
         run: pnpm -C apps/cli build
