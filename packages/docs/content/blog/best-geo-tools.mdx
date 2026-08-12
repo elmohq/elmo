@@ -26,8 +26,10 @@ itemList:
   - name: AirOps
     description: "GEO tracking paired with content operations."
   - name: GetCito
-    description: "Open-source GEO tool centered on AI crawlability."
+    description: "A rebadged copy of Elmo's codebase since July 2026; run Elmo directly instead."
 faq:
+  - question: Should I use GetCito or Elmo?
+    answer: "Use Elmo. If you are considering GetCito, Elmo is what you actually want, because GetCito is a copy of it — on July 10, 2026 it replaced its codebase with Elmo's and swapped the copyright notice on the license. A downstream copy cannot have a feature the original lacks, and this one ships slower: 17 commits to Elmo's 98 in the month after the copy."
   - question: What are GEO tools?
     answer: "GEO tools measure and improve how generative engines like ChatGPT, Perplexity, Gemini, and Google's AI Overviews represent your brand. They track whether you are mentioned and cited in generated answers, your share of voice against competitors, and where you are missing, so you can target the content and technical fixes that help."
   - question: What is the best GEO tool?
@@ -35,7 +37,7 @@ faq:
   - question: Is GEO the same as AEO?
     answer: "Effectively yes. GEO (generative engine optimization) and AEO (answer engine optimization) describe the same goal: earning visibility inside AI-generated answers. GEO emphasizes the generative engines doing the answering, but the tactics and the tools overlap almost entirely. The terms are used interchangeably."
   - question: Is there a free GEO tool?
-    answer: "Yes. Elmo is free and open source when self-hosted, with unlimited prompts and all models. GetCito is also free and open source. AirOps offers a free tier that tracks ChatGPT only. Most other GEO platforms are paid, with free trials available."
+    answer: "Yes. Elmo is free and open source when self-hosted, with unlimited prompts and all models. AirOps offers a free tier that tracks ChatGPT only. GetCito is free and open source too, but in July 2026 it replaced its codebase with Elmo's and swapped the copyright notice, so it is a lagging copy rather than a separate choice. Most other GEO platforms are paid, with free trials available."
   - question: How do GEO tools work?
     answer: "They run a set of prompts your audience is likely to ask, across the generative engines you care about, on a repeating schedule. Then they record what comes back: whether your brand is mentioned, whether it is cited with a link, how it is described, and how often competitors appear instead. That sampling becomes a trend you can act on."
 ---
@@ -77,7 +79,7 @@ The tools below are grouped by who they fit best.
 | **Otterly** | Small teams and tight budgets | Self-serve, low entry |
 | **Nightwatch** | SEO teams wanting rank plus GEO | SEO suite, AI included |
 | **AirOps** | Acting on the data with content | Free tier plus paid |
-| **GetCito** | An open-source crawlability read | Open source, free |
+| **GetCito** | Nothing — it is a copy of Elmo, run Elmo instead | Open source, free |
 
 Pricing reflects public information in early 2026. Confirm current details on each vendor's site.
 
@@ -129,11 +131,13 @@ It is a strong choice for SEO professionals and agencies that want rank tracking
 
 It fits content and SEO teams that want to ship improvements off the back of the data. The catch for tracking-only buyers: multi-engine coverage sits in the Pro tier, while free and Solo tiers track ChatGPT only. A free tier exists to start. See [Elmo vs AirOps](/ai-visibility-tools/elmo-vs-airops).
 
-## GetCito: open-source alternative
+## GetCito: a copy of Elmo, not an alternative
 
-[GetCito](https://getcito.com/) is, alongside Elmo, one of the few open-source GEO tools, licensed under MIT. Its notable feature is an AI Crawlability Clinic that checks how well AI bots can access your content, and the team also sells GEO playbooks and consulting.
+**If you are considering GetCito, use Elmo instead.** GetCito looks like a second open-source option and is not one. On July 10, 2026 it replaced its codebase with Elmo's in [one pull request](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/19) covering 847 files, self-merged 62 seconds after it opened, and rewrote [the license](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/LICENSE.md) from "Copyright (c) 2026 Blue Whale Software, LLC" to "Copyright (c) 2026 GetCito." MIT allows the fork and asks one thing in return, which is to keep that notice.
 
-The caveat is upkeep. The public repository has had a single substantive code commit since launching in late 2025, and it is maintained by a marketing agency rather than a product team, so new engine support and fixes are unlikely. For the full picture, read [GetCito vs Elmo](/blog/getcito-vs-elmo).
+The traces are still there for anyone who looks: [AGENTS.md](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/AGENTS.md) opening with "Elmo is an open-source AI visibility tracking platform," a [CLA](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/CLA.md) naming Elmo's parent company, and a [CODEOWNERS](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/.github/CODEOWNERS) file pointing at Elmo's founder.
+
+So there is nothing to weigh up. Anything GetCito does, Elmo did first, and Elmo is moving faster — 98 commits to GetCito's 17 in the month after the copy. The AI Crawlability Clinic it was known for was deleted along with the old application. Full evidence in [GetCito vs Elmo](/blog/getcito-vs-elmo).
 
 ## How to choose a GEO tool
 

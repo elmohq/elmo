@@ -34,14 +34,16 @@ itemList:
   - name: HubSpot AEO Grader
     description: "Free AI search grader inside HubSpot's marketing suite."
   - name: GetCito
-    description: "Open-source AEO tool focused on AI crawlability."
+    description: "A rebadged copy of Elmo's codebase since July 2026; run Elmo directly instead."
 faq:
+  - question: Should I use GetCito or Elmo?
+    answer: "Use Elmo. If you are considering GetCito, Elmo is what you actually want, because GetCito is a copy of it — on July 10, 2026 it replaced its codebase with Elmo's and swapped the copyright notice on the license. A downstream copy cannot have a feature the original lacks, and this one ships slower: 17 commits to Elmo's 98 in the month after the copy."
   - question: What is an AEO tool?
     answer: "An AEO tool tracks whether and how often AI answer engines like ChatGPT, Perplexity, and Google's AI Overviews mention or cite your brand, and benchmarks you against competitors. Many also help you fix gaps by flagging the prompts where you are missing and the content or technical changes that would help."
   - question: What is the best AEO tool?
     answer: "There is no single best AEO tool; it depends on your stage and budget. Profound leads at the enterprise end. Peec AI, Otterly, and Scrunch are strong self-serve picks. Elmo is the best fit if you want an open-source tool you fully control. If you already pay for an SEO suite, Ahrefs Brand Radar or Semrush's AI Toolkit add tracking to it. Match the engine coverage and price to how you plan to use it."
   - question: Is there a free AEO tool?
-    answer: "Yes. Elmo is free and open source when you self-host it, and AirOps has a free tier that tracks ChatGPT only. GetCito is also free and open source, and HubSpot's AEO Grader is a free one-off audit rather than a continuous tracker. Most other AEO tools are paid, though several offer free trials."
+    answer: "Yes. Elmo is free and open source when you self-host it, and AirOps has a free tier that tracks ChatGPT only. HubSpot's AEO Grader is a free one-off audit rather than a continuous tracker. GetCito is also free and open source, but it is running a copy of Elmo's codebase that it rebadged in July 2026, so you are better off using Elmo directly. Most other AEO tools are paid, though several offer free trials."
   - question: What is the difference between AEO tools and SEO tools?
     answer: "SEO tools track where your pages rank in a list of links. AEO tools track whether AI answer engines mention or cite your brand in the answer itself, where there is often no ranked list at all. Some SEO suites, like Ahrefs, now include an AEO module so you can see both in one place."
   - question: Do I need a separate AEO tool if I already have an SEO tool?
@@ -59,7 +61,7 @@ If you want the broader category that includes tools beyond pure answer engine o
 - AEO tools give you answer engine visibility by measuring mentions, citations, and share of voice across AI answer engines, and the better ones point you toward the fixes.
 - They differ most on engine coverage, prompt volume, competitor benchmarking, and whether they help you act on the data or just report it.
 - Elmo is open-source and self-hosted, Profound targets enterprise, and Peec AI, Otterly, and Scrunch are self-serve.
-- Two free, open-source options exist (Elmo and GetCito), though they differ sharply on how actively they are maintained.
+- Elmo is the free, open-source option. GetCito appears to be a second one but is not: in July 2026 it replaced its codebase with Elmo's and put its own copyright notice on the license.
 - AI products and prices move fast, so confirm current details with each vendor before you buy.
 
 ## What to look for in an AEO tool
@@ -88,7 +90,7 @@ Before the list, here is what actually separates these tools in practice.
 | **Ahrefs Brand Radar** | Existing Ahrefs users | AEO module in an SEO suite | Add-on to Ahrefs |
 | **Semrush AI Toolkit** | Existing Semrush users | AI Visibility Toolkit in an SEO suite | Add-on to Semrush |
 | **HubSpot AEO Grader** | A quick, free AEO audit | One-off content and schema grade | Free |
-| **GetCito** | A quick crawlability read | Open-source crawlability checks | Open source, free |
+| **GetCito** | Nothing — run Elmo instead | A copy of Elmo's codebase, rebadged in July 2026 | Open source, free |
 
 Pricing reflects public information as of mid-2026. Always confirm on the vendor's site.
 
@@ -166,9 +168,11 @@ Be clear on what it is not: a grader is a point-in-time check, not continuous mu
 
 ## GetCito
 
-[GetCito](https://getcito.com/) is one of the few open-source AEO tools besides Elmo, licensed under MIT. Its standout idea is an AI Crawlability Clinic that checks how well AI bots can reach and parse your content, and the team also sells GEO playbooks and consulting. If you want a quick read on crawlability, the concept is useful.
+**If you are considering GetCito, use Elmo instead.** GetCito is on this list only to explain why. It is no longer its own product. On July 10, 2026 it replaced its entire codebase with Elmo's in [a single pull request](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/19) — 847 files, self-merged 62 seconds after opening — and changed [the license file](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/LICENSE.md) from "Copyright (c) 2026 Blue Whale Software, LLC" to "Copyright (c) 2026 GetCito." MIT permits the fork; retaining that notice is the one thing it asks in return.
 
-The honest caveat is maintenance. The public repo has had a single substantive code commit since it launched in late 2025, and it is run by a marketing agency rather than a dedicated product team, so do not expect ongoing fixes or new engine support. Our [GetCito vs Elmo](/blog/getcito-vs-elmo) post covers this in detail.
+They did not scrub the rest. GetCito's [AGENTS.md](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/AGENTS.md) still begins "Elmo is an open-source AI visibility tracking platform," its [CLA](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/CLA.md) still names Elmo's parent company, and its [CODEOWNERS](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/.github/CODEOWNERS) still assigns every file to Elmo's founder.
+
+The practical consequence is simple: GetCito cannot offer a feature Elmo does not already have, and it ships slower — 17 commits to Elmo's 98 in the month after the copy. The AI Crawlability Clinic it was previously known for belonged to the old application and was deleted. Evidence and links in [GetCito vs Elmo](/blog/getcito-vs-elmo).
 
 ## How to choose an AEO tool
 

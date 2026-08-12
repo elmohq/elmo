@@ -1,50 +1,56 @@
 ---
-title: "GetCito vs Elmo: The Best Open-Source AI Visibility Tool?"
-description: "GetCito and Elmo are both MIT-licensed open-source AI visibility tools with similar GitHub stars. The deciding factor is maintenance. Here's the comparison."
+title: "GetCito vs Elmo: GetCito Is a Copy of Elmo's Codebase"
+description: "On July 10, 2026, GetCito replaced its codebase with Elmo's and swapped the copyright notice. The evidence is still sitting in its public repo. Here's the comparison."
 date: "2026-06-02"
+updated: "2026-08-11"
 author: ai
-metaTitle: "GetCito vs Elmo: Best Open-Source AEO Tool (2026)"
+metaTitle: "GetCito vs Elmo: GetCito Is a Fork of Elmo (2026)"
 tags:
   - ai-visibility
   - tools
   - open-source
 faq:
-  - question: Is GetCito open source?
-    answer: "Yes. GetCito is released under the MIT license, the same permissive license Elmo uses. The catch is activity: the public repository has had a single substantive code commit since it launched in November 2025, so 'open source' here means the code is readable, not that it is actively developed."
-  - question: Is GetCito still maintained?
-    answer: "The repository shows little sign of ongoing development. After the initial commit in November 2025, the only changes are automated dependency bumps and two README edits. There are no tagged releases. GetCito is run by a marketing agency, and the tool reads more like a launch artifact than a product under active maintenance."
+  - question: Should I use GetCito or Elmo?
+    answer: "Use Elmo. If you are considering GetCito, Elmo is the tool you actually want, because GetCito is a copy of it. On July 10, 2026, GetCito replaced its entire codebase with Elmo's in a single pull request of 847 files, self-merged 62 seconds after it opened. Running GetCito means running an older snapshot of Elmo, maintained by people who did not write it, with Elmo's copyright notice replaced."
+  - question: Is GetCito a fork of Elmo?
+    answer: "Yes. On July 10, 2026, GetCito replaced its entire codebase with Elmo's in a single pull request that changed 847 files (+131,716/-50,931 lines) and was self-merged 62 seconds after it opened. The repository still carries the evidence: its AGENTS.md begins 'Elmo is an open-source AI visibility tracking platform,' its CLA names Elmo's parent company Blue Whale Software, LLC, its CODEOWNERS file assigns every path to Elmo's founder, and its contributor registry lists Elmo's contributors. All of it is public and linked in this post."
+  - question: Did GetCito credit Elmo?
+    answer: "No. GetCito's LICENSE.md is Elmo's MIT license text with the copyright line changed from 'Copyright (c) 2026 Blue Whale Software, LLC' to 'Copyright (c) 2026 GetCito.' The MIT license permits anyone to fork, modify, and even sell the software. It imposes one condition in return: the original copyright notice must be retained in copies and substantial portions. Replacing that notice is the single thing the license does not allow."
+  - question: Should I use GetCito or Elmo?
+    answer: "Use Elmo. GetCito is running a copy of Elmo's code, so it cannot have a feature Elmo does not already have, and everything it does ship arrives later. In the month after the copy, Elmo landed 98 commits to GetCito's 17. Choosing GetCito means choosing a lagging snapshot of Elmo maintained by people who did not write it."
   - question: What is the best open-source AI visibility tool?
-    answer: "For most teams that want to run the tool themselves, Elmo is the stronger choice today. It is MIT-licensed, covers more AI engines, and ships changes most weeks. GetCito is also MIT-licensed and worth a look for its crawlability angle, but its code has barely moved since launch."
-  - question: Is Elmo a GetCito alternative?
-    answer: "Yes. Both track how your brand appears in AI answers, both are open source under MIT, and both have similar GitHub star counts. Elmo differs in being actively developed and supporting a wider set of engines, including ChatGPT, Claude, Gemini, Grok, Perplexity, Copilot, DeepSeek, and Google's AI Mode and AI Overviews."
+    answer: "Elmo. It is MIT-licensed, self-hostable, and covers ChatGPT, Claude, Gemini, Grok, Perplexity, Copilot, DeepSeek, and Google's AI Mode and AI Overviews. It is also the implementation other projects in this category have started copying outright, which is the clearest signal available about which codebase is worth running."
 ---
 
-**GetCito and Elmo are the two best-known open-source AI visibility tools**, and on paper they look alike: both are MIT-licensed, both track your brand across AI answer engines, and both sit around 120 GitHub stars. The difference shows up after launch. GetCito has had one substantive code commit since November 2025. Elmo ships changes most weeks. If you plan to actually run the tool, that gap is the whole decision.
+**If you are considering GetCito, use Elmo instead — GetCito is a copy of Elmo.** On July 10, 2026, GetCito replaced its entire codebase with Elmo's in [a single pull request](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/19) that changed 847 files, added 131,716 lines, deleted 50,931, and was merged by the repository owner 62 seconds after it opened. Elmo's name was taken off the license. It was left almost everywhere else. This post shows you exactly where to look.
+
+There is no trade-off to weigh here. A downstream copy cannot have a feature the original lacks, and this one is already falling behind: 98 commits to GetCito's 17 in the month after the copy. Everything you would get from GetCito, you get from [Elmo](https://www.elmohq.com/) first, free, and under active development.
 
 **Key takeaways**
 
-- Both tools are open source under the MIT license, so you can read the code, self-host, and fork either one.
-- Star counts are close (roughly 120 each), so popularity is not a useful tiebreaker here.
-- GetCito's public repo has a single real code commit since it launched, plus automated dependency bumps and two README edits. There are no tagged releases.
-- GetCito is maintained by a marketing agency, and the repository carries the marks of a one-shot AI build: dozens of all-caps summary docs and loose test scripts dumped in the project root.
-- Elmo is in active development, supports more engines, and is built to be the tool you run long term.
-- This is a comparison published by Elmo. The facts about GetCito come from its own public GitHub repo, which you can verify yourself.
+- If you are considering GetCito, use Elmo instead. There is no scenario where the copy is the better pick.
+- GetCito launched in November 2025 as its own Next.js and Firebase application. On July 10, 2026, it threw that away and replaced it with Elmo's codebase.
+- GetCito's [LICENSE.md](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/LICENSE.md) is [Elmo's MIT license](https://github.com/elmohq/elmo/blob/main/LICENSE.md) with the copyright holder swapped from Blue Whale Software, LLC to GetCito. Retaining that notice is the one condition MIT asks for.
+- The copy is still visible throughout the repo: GetCito's [AGENTS.md](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/AGENTS.md) opens with the sentence "Elmo is an open-source AI visibility tracking platform."
+- Its [CLA](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/CLA.md) still names Elmo's parent company, its [CODEOWNERS](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/.github/CODEOWNERS) still assigns every file to Elmo's founder, and its [contributor registry](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/.github/contributors.txt) still lists Elmo's contributors as GetCito CLA signatories.
+- A downstream copy cannot lead. In the month after the swap, Elmo landed 98 commits to GetCito's 17.
+- This is a comparison published by Elmo, and we are an interested party. Every claim in it points at a public URL you can open and check for yourself.
 
 ## GetCito vs Elmo at a glance
 
 | | GetCito | Elmo |
 |---|---|---|
-| License | MIT | MIT |
-| GitHub stars | ~122 | ~119 |
+| Codebase | Elmo's, copied July 10, 2026 | Original |
+| License | MIT, copyright notice replaced | MIT |
+| Attribution to Elmo | Removed from LICENSE.md, still present in AGENTS.md, CLA.md, CODEOWNERS, contributors.txt | N/A |
 | First commit | Nov 2025 | Jul 2025 |
-| Substantive code commits since launch | One | Most weeks |
-| Tagged releases | None | Ongoing |
-| Maintained by | A marketing agency | Dedicated development |
-| Engines tracked | ChatGPT, Perplexity, Gemini, and others | ChatGPT, Claude, Gemini, Grok, Perplexity, Copilot, DeepSeek, Mistral, Google AI Mode and AI Overviews |
-| Stack | Next.js, Firebase, Azure OpenAI | Docker, PostgreSQL, your own LLM keys or OpenRouter |
-| Best for | A quick crawlability read | Owning your AI visibility data long term |
+| Commits since Jul 10, 2026 | 17 | 98 |
+| GitHub stars | 161 | 233 |
+| Engines tracked | Whatever Elmo shipped before the copy | ChatGPT, Claude, Gemini, Grok, Perplexity, Copilot, DeepSeek, Mistral, Google AI Mode and AI Overviews |
+| Maintained by | A marketing agency, on code it did not write | The team that wrote it |
+| Best for | Nothing Elmo does not do first | Owning your AI visibility data long term |
 
-Star counts and commit history reflect the public GitHub repositories as of June 2026. The chart below tracks both over time.
+Figures reflect the public GitHub repositories as of August 11, 2026.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcSet="https://api.star-history.com/chart?repos=ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool%2Celmohq/elmo&type=date&theme=dark&legend=top-left" />
@@ -52,50 +58,58 @@ Star counts and commit history reflect the public GitHub repositories as of June
   <img alt="Star history chart comparing GetCito and Elmo GitHub stars over time" src="https://api.star-history.com/chart?repos=ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool%2Celmohq/elmo&type=date&legend=top-left" />
 </picture>
 
-## What GetCito is
+## What happened on July 10, 2026
 
-[GetCito](https://getcito.com/) bills itself as the world's first open-source AIO, AEO, and GEO tool. The pitch is real in one sense: the code is on GitHub under the MIT license, so you can read it and host it yourself. Its most distinctive feature is an AI Crawlability Clinic that checks how well AI bots can reach and parse your pages, and the team behind it also sells GEO playbooks and consulting.
+GetCito shipped in November 2025 as its own thing: a Next.js application on Firebase with Azure OpenAI behind it, pitched as "the world's first open-source AIO, AEO, and GEO tool." Then it stopped. For eight months the repository saw automated dependency bumps and a couple of README edits.
 
-The product is built on Next.js with Firebase for storage and Azure OpenAI as its main model provider. If you want a fast read on whether AI crawlers can see your site, the crawlability angle is a genuinely useful idea.
+On July 10, 2026, a pull request titled ["Getcito v9"](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/19) landed. It has no description. It changed 847 files, added 131,716 lines and removed 50,931, and the repository owner merged it into `master` 62 seconds after it was opened. Nothing that large gets reviewed in 62 seconds.
 
-The problem is what happened after launch, which is almost nothing.
+What went in was Elmo. The Next.js and Firebase application was gone. In its place sat Elmo's pnpm and Turborepo monorepo: the same `apps/web` and `apps/worker` split, the same `packages/api-spec`, `config`, `deployment`, `lib`, `local`, `og`, `ui`, and `whitelabel`, the same `biome.json`, `knip.json`, `turbo.json`, and `pnpm-workspace.yaml` at the root. Four directories did not make the trip — Elmo's marketing site, docs, CLI, and cloud package. Everything else came across.
 
-## What Elmo is
+## The evidence GetCito left behind
 
-[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform. It tracks how your brand shows up across AI models, records which sources get cited, and benchmarks you against competitors, with every metric computed by code you can read. It covers an unusually wide set of engines: ChatGPT, Claude, Gemini, Grok, Perplexity, Copilot, DeepSeek, Mistral, and Google's AI Mode and AI Overviews, pulling responses through the models' own APIs or OpenRouter.
+Renaming a project is easy. Renaming every trace of it is not, and GetCito did not try very hard. Four artifacts are still sitting in the public repository.
 
-The self-hosted core is free under the MIT license, with unlimited prompts and all models. The trade-off is that you run the infrastructure (Docker and PostgreSQL) and bring your own LLM API keys, which carry their own usage costs. A managed cloud option is listed as coming soon. For a wider field of options, see our roundup of the [best AI visibility tools](/blog/best-ai-visibility-tools) and the [open-source category](/ai-visibility-tools/category/open-source) in our directory.
+**Its instructions to AI coding agents still describe Elmo.** GetCito's [AGENTS.md](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/AGENTS.md) — the file that tells an AI assistant what project it is working in — opens with: "Elmo is an open-source AI visibility tracking platform (Answer Engine Optimization)." It goes on to describe `apps/cli`, a directory GetCito does not even have, and a local database URL of `postgres://elmo:elmo@localhost:5432/elmo`.
 
-## Maintenance: one commit versus weekly changes
+**Its CLA is Elmo's corporate agreement.** GetCito's [CLA.md](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/CLA.md) opens by thanking you for contributing to "Getcito, an open-source project managed by Blue Whale Software, LLC." Blue Whale Software, LLC is Elmo's parent company. The find-and-replace caught the product name and missed the company that owns it.
 
-This is where the two projects separate, so it is worth being specific.
+**Its CODEOWNERS file hands the whole repository to Elmo's founder.** GetCito's [.github/CODEOWNERS](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/.github/CODEOWNERS) is one line: `* @jrhizor`. That is Elmo's founder, listed as the owner of every path in GetCito's repository.
 
-Open GetCito's GitHub repository and look at the commit history. After the initial commit on November 3, 2025, the log is eight automated Dependabot pull requests (all on the same launch day) and two edits to the README, the most recent in March 2026. That is it. No feature work, no bug-fix commits from a human, and no tagged releases at all. The "activity" you see in the repo is a bot bumping package versions, not people building a product.
+**Its contributor registry lists Elmo's contributors.** GetCito's [.github/contributors.txt](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/.github/contributors.txt) is described in its own header as the signature registry for "projects of Blue Whale Software, LLC," and the names under it are Elmo's contributors, now recorded as having signed GetCito's CLA. They did not.
 
-Elmo's history looks like the opposite. The project has been committed to most weeks since its first commit in July 2025, with dozens of changes landing in any given month and an open issue tracker that the team works through. When a new engine appears or an API changes, an actively maintained tool can follow it. A tool frozen at its launch commit cannot.
+## What the MIT license actually asks for
 
-For software you are going to depend on, this matters more than any single feature. AI engines change constantly. Models get renamed, APIs shift, and new answer surfaces appear every few months. The tool that keeps pace is the one whose code keeps moving.
+It is worth being precise here, because the MIT license is permissive and GetCito was entitled to most of what it did.
 
-## The signs of a one-shot build
+MIT lets anyone copy Elmo's code. It lets them modify it, rebrand it, host it, and charge money for it, with no obligation to contribute anything back. Elmo chose that license deliberately. Forking is not the problem.
 
-GetCito's repository also reads like a project that was generated in a single burst rather than grown over time. A few tells stand out, and you can confirm each one by browsing the repo.
+MIT asks for one thing in exchange, and the text is a single sentence: "The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software."
 
-The project root holds more than 40 markdown files with names like `IMPLEMENTATION_SUMMARY.md`, `FIX_SUMMARY.md`, `DUAL_ANALYTICS_SYSTEM_IMPLEMENTATION.md`, and `QUERIES_OVERVIEW_INFINITE_RENDER_FIX.md`. These are the kind of step-by-step recap files an AI coding agent leaves behind after a long session, not documentation a team writes for users. A maintained project folds that material into real docs or deletes it.
+GetCito's [LICENSE.md](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/LICENSE.md) is byte-for-byte [Elmo's license file](https://github.com/elmohq/elmo/blob/main/LICENSE.md) with exactly one line changed. "Copyright (c) 2026 Blue Whale Software, LLC" became "Copyright (c) 2026 GetCito." Of everything the license permits and the one thing it requires, that is the thing they altered.
 
-Sitting next to those are roughly a dozen loose `test-*.js` scripts in the same root folder (`test-perplexity.js`, `test-ai-query.js`, `test-firebase-admin.js`, and so on), plus a stray `test-provider-fix.html`. Real test suites live in a tests directory and run in CI. One-off scripts left at the top level are usually throwaway checks from a build sprint that nobody cleaned up.
+## Why a copy is the worse tool
 
-None of this proves the tool does not work. It does suggest the repo was shipped once and left alone, which lines up exactly with the commit history.
+Set the licensing aside and the practical case is simpler still.
 
-## Who is behind each project
+**A downstream copy cannot be ahead of what it copied.** GetCito's feature set as of the swap is Elmo's feature set as of the swap, minus the pieces they dropped. Any capability GetCito advertises, Elmo shipped first. There is no version of this where the copy has something the original does not.
 
-GetCito is run by a digital marketing agency that offers AEO and GEO consulting. The open-source tool functions mostly as a calling card for that service, which helps explain why the code stopped moving the day after launch. The agency's incentive is to win consulting clients, not to maintain a free product.
+**The gap widens on its own.** In the month after July 10, Elmo landed 98 commits. GetCito landed 17, from two people working on a codebase they did not write, with no commit history explaining why any of it is shaped the way it is. AI search changes constantly — models get renamed, APIs shift, new answer surfaces appear every few months. Keeping pace is the entire job, and a rebadged snapshot starts that race from behind and falls further back.
 
-Elmo's product is the tool itself. The open-source repo is the thing they are making, not an advertisement for something else, which is why development continues week to week. If you want the full feature-by-feature breakdown, see the [Elmo vs GetCito comparison](/ai-visibility-tools/elmo-vs-getcito) in our directory.
+**Nobody is on the hook for it.** When Elmo's own code has a bug, the people who wrote it fix it. When a copied codebase has one, whoever holds the copy has to first work out what the original authors intended.
 
-## Which open-source AI visibility tool should you choose?
+## What this says about Elmo
 
-If your goal is a one-time crawlability check and you like GetCito's clinic concept, it is free to try and the code is yours to read. Just go in knowing the project has barely changed since it launched, so do not expect fixes or new engine support.
+We would rather this had not happened. But it is a fairly direct signal about the state of open-source AI visibility tooling: when a competitor decided its own product was not good enough, the codebase it reached for was Elmo's.
 
-If you want a tool you will run on an ongoing basis, across many engines, that keeps up as AI search changes, Elmo is the better bet. It is the same license, similar in popularity, broader in coverage, and actually maintained.
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform. It tracks how your brand appears across AI models, records which sources get cited, and benchmarks you against competitors, with every metric computed by code you can read. It covers ChatGPT, Claude, Gemini, Grok, Perplexity, Copilot, DeepSeek, Mistral, and Google's AI Mode and AI Overviews, pulling responses through the models' own APIs or OpenRouter. The self-hosted core is free under MIT with unlimited prompts and all models; you run Docker and PostgreSQL and bring your own LLM keys.
 
-Whichever you pick, the thing that separates a useful open-source tool from an abandoned one is upkeep. In a field that changes this fast, a tool that stops being maintained stops being useful, whatever its license says. To go deeper on the practice itself, start with our guide to [answer engine optimization](/blog/answer-engine-optimization), then see [how to track your brand in AI search](/blog/track-brand-ai-search).
+You can read the [source](https://github.com/elmohq/elmo) — including the license file GetCito copied.
+
+## Which should you choose?
+
+Use Elmo. It is the original implementation, it is further along than the copy and pulling away, and it is maintained by the people who wrote it.
+
+If you were considering GetCito specifically for its old AI Crawlability Clinic, note that the product you would have been evaluating no longer exists. That was the Next.js application, and it was deleted in July 2026. What carries the name now is a snapshot of Elmo.
+
+For the wider field, see our roundup of the [best AI visibility tools](/blog/best-ai-visibility-tools), the [best open-source AEO tools](/blog/best-open-source-aeo-tools), and the [open-source category](/ai-visibility-tools/category/open-source) in our directory. To go deeper on the practice itself, start with our guide to [answer engine optimization](/blog/answer-engine-optimization), then see [how to track your brand in AI search](/blog/track-brand-ai-search).

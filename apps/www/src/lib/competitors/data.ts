@@ -1315,9 +1315,9 @@ export const competitors: Competitor[] = [
 		name: "GetCito",
 		domain: "getcito.com",
 		url: "https://getcito.com/",
-		tagline: "Open-source (MIT) AEO tool with AI Crawlability Clinic",
+		tagline: "A copy of Elmo's codebase — if you are considering GetCito, use Elmo instead",
 		description:
-			"GetCito is one of the few open-source AEO tools, licensed under MIT. Their AI Crawlability Clinic evaluates how well AI bots can access and understand your content. They also offer GEO playbooks and consulting services for agencies.",
+			"If you are considering GetCito, use Elmo instead: GetCito is a copy of Elmo. It launched in November 2025 as its own Next.js and Firebase application, then on July 10, 2026 replaced that codebase wholesale — 847 files, +131,716/-50,931 lines, self-merged 62 seconds after the pull request opened — with Elmo's. The copy is still visible in the repository: its AGENTS.md opens \"Elmo is an open-source AI visibility tracking platform,\" its CLA names Elmo's parent company Blue Whale Software, LLC, its CODEOWNERS file assigns every path to Elmo's founder, and its contributor registry lists Elmo's contributors. Its LICENSE.md is Elmo's MIT text with the copyright holder swapped to GetCito — the one condition the MIT license imposes on a derivative work is that the original copyright notice be retained. Because it is downstream, GetCito cannot have a feature Elmo lacks, and it ships slower: 17 commits to Elmo's 98 in the month after the copy.",
 		category: "open-source",
 		ahrefsDR: 27,
 		ahrefsTraffic: 34,
@@ -1333,7 +1333,13 @@ export const competitors: Competitor[] = [
 			whiteLabelAgency: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
-		highlights: ["Open source (MIT license)", "AI Crawlability Clinic", "GEO playbooks for agencies"],
+		highlights: [
+			"If you are considering GetCito, use Elmo instead — GetCito is a copy of it",
+			"Codebase replaced with a copy of Elmo's on July 10, 2026",
+			"Attribution to Elmo removed from LICENSE.md but left intact in AGENTS.md, CLA.md, and CODEOWNERS",
+			"Every feature it has is downstream of Elmo, on a lag",
+		],
+		notes: "Fork of Elmo with the copyright notice replaced. See the getcito-vs-elmo post for the evidence.",
 	},
 	{
 		slug: "meridian",
@@ -1478,22 +1484,30 @@ export const competitors: Competitor[] = [
 	{
 		slug: "petra-labs",
 		name: "Petra Labs",
-		domain: "petralabs.ai",
-		url: "https://www.petralabs.ai/",
-		tagline: "AI visibility monitoring platform",
+		domain: "petralabs.com",
+		url: "https://www.petralabs.com/",
+		tagline: "Enterprise AEO with an embedded team and revenue attribution",
 		description:
-			"Petra Labs offers an AI visibility monitoring platform that tracks how brands appear in AI-powered search engines. Their platform provides visibility scoring and brand mention tracking across major AI platforms.",
+			"Petra Labs pairs AEO software with an embedded team that runs strategy and execution for enterprise brands. It sources query demand from a proprietary panel, tracks brand presence, sentiment, and competitive threat broken out by customer persona and product line, and builds marketing mix and multi-touch attribution models linking AI search activity to pipeline and closed revenue. Founded in 2025 and raised a $5.2M seed round led by Work-Bench in July 2026.",
 		category: "tracking",
-		ahrefsDR: 7,
+		ahrefsDR: 18,
 		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
 			visibilityScore: true,
+			competitorBenchmarking: true,
 			brandMentionTracking: true,
+			promptVolumeEstimates: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
 		},
-		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: ["AI visibility monitoring platform"],
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"$5.2M seed led by Work-Bench, with Afore and Pathlight",
+			"Proprietary panel data for real user query demand",
+			"Custom MMM and multi-touch attribution to pipeline and revenue",
+		],
 	},
 	{
 		slug: "searchify",
@@ -1855,26 +1869,180 @@ export const competitors: Competitor[] = [
 		highlights: ["Citation builder tool", "Auto-publish content for AI citations"],
 	},
 	{
-		slug: "gego-analytics",
-		name: "Gego Analytics",
-		domain: "ai2hu.github.io",
-		url: "https://ai2hu.github.io/gego-analytics/",
-		tagline: "Open-source AEO analytics tool",
+		slug: "gego",
+		name: "Gego",
+		domain: "getgego.org",
+		url: "https://getgego.org/",
+		tagline: "GPL-3.0 self-hosted GEO tracker with CLI and dashboard",
 		description:
-			"Gego Analytics is an open-source AEO analytics tool hosted on GitHub. It provides basic AI visibility tracking capabilities for developers who want to self-host their own AEO monitoring without proprietary dependencies.",
+			"Gego schedules prompts across generative engines on a cron and captures citations, brand mentions, and extracted keywords. It self-hosts via Docker and queries OpenAI, Anthropic, Google, Perplexity, Ollama, and custom providers, exposing a dashboard, a CLI, and a REST API. A managed cloud version is on an early-access waitlist.",
 		category: "open-source",
-		ahrefsDR: 0,
+		ahrefsDR: 2,
 		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
 			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
 			brandMentionTracking: true,
+			keywordResearch: true,
 			dataExportApi: true,
 			openSource: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: false },
-		highlights: ["Open-source on GitHub", "Self-hostable AEO analytics"],
+		highlights: [
+			"GPL-3.0, self-hosted from Docker Hub",
+			"Runs against local models via Ollama and custom providers",
+			"Dashboard, CLI, and REST API",
+		],
+	},
+	{
+		slug: "lettertrace",
+		name: "Lettertrace",
+		domain: "lettertrace.com",
+		url: "https://lettertrace.com/",
+		tagline: "MIT-licensed, bring-your-own-key AI visibility monitor",
+		description:
+			"Lettertrace measures how often Claude, ChatGPT, and Gemini mention a brand, reporting visibility, share of voice, prominence, and sentiment per topic and per model over time. It is MIT licensed and self-hosted: you supply your own provider keys and the data stays in your own Supabase instance. A single topic is expanded into prompt variations automatically, and runs can be scheduled daily or weekly from the CLI.",
+		category: "open-source",
+		ahrefsDR: 0,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			keywordResearch: true,
+			dataExportApi: true,
+			openSource: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: false },
+		highlights: [
+			"MIT licensed, free end-to-end, self-hosted in your own Supabase",
+			"Bring your own Anthropic, OpenAI, and Google keys — no usage markup",
+			"Generates prompt variations automatically from one topic",
+		],
+	},
+	{
+		slug: "fixaeo",
+		name: "FixAEO",
+		domain: "fixaeo.com",
+		url: "https://fixaeo.com/",
+		tagline: "Nine-engine AEO checker with agent analytics and evidence-linked fixes",
+		description:
+			"FixAEO tracks brand visibility across nine AI engines and attaches the exact answers and cited URLs behind every finding. Its Agent Analytics reports which AI crawlers reach a site and which pages they read, and recommendations are ranked by impact and effort. It also offers a rank-tracking API, an MCP server for querying the data from Claude or Cursor, and a public leaderboard whose scoring methodology is published.",
+		category: "tracking",
+		ahrefsDR: 7,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			crawlerAnalytics: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			emailAlerts: true,
+			dataExportApi: true,
+		},
+		pricing: { hasFree: true, startingPrice: "$29/mo", hasEnterprise: true },
+		highlights: [
+			"Nine engines, adding Grok and DeepSeek on the enterprise plan",
+			"Agent Analytics with server-side AI crawler tracking",
+			"Public leaderboard with inspectable scoring methodology",
+		],
+	},
+	{
+		slug: "aeotrack",
+		name: "AEO Track",
+		domain: "aeotrack.io",
+		url: "https://www.aeotrack.io/",
+		tagline: "AEO and GEO tracker with a free-forever plan and schema tooling",
+		description:
+			"AEO Track scores how often ChatGPT, Gemini, Claude, Perplexity, and Grok cite a site for tracked keywords, and separately measures presence in AI topic overviews. It bundles a content optimizer that rewrites pages for citation, a FAQ JSON-LD generator, AI bot detection for GPTBot and ClaudeBot, and SERP monitoring for AI Overviews and featured snippets. Integrations cover GitHub, GitLab, WordPress, Slack, Teams, Zapier, and webhooks.",
+		category: "tracking",
+		ahrefsDR: 0,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			crawlerAnalytics: true,
+			actionRecommendations: true,
+			siteAudits: true,
+			keywordResearch: true,
+			emailAlerts: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: true },
+		highlights: [
+			"Free-forever plan with 10 visibility checks per day",
+			"Content optimizer plus FAQ JSON-LD schema generator",
+			"Separate AEO citation-rate and GEO overview-presence scores",
+		],
+	},
+	{
+		slug: "semantica",
+		name: "Semantica AI",
+		domain: "ai-semantica.com",
+		url: "https://ai-semantica.com/",
+		tagline: "AI visibility tracking that also covers Russian answer engines",
+		description:
+			"Semantica AI monitors brand and website mentions across ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, Google AI Mode, and AI Overviews, and is one of the few trackers that also covers Yandex AI, Alice, and GigaChat. It runs scheduled scans rather than one-off chat checks, compares competitors and cited sources, and ships an MCP server listed in Anthropic's connector directory. The interface and published case studies span English, Russian, and Spanish.",
+		category: "tracking",
+		ahrefsDR: 24,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			multiLanguage: true,
+			siteAudits: true,
+			dataExportApi: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: false },
+		highlights: [
+			"Tracks Yandex AI, Alice, and GigaChat alongside Western engines",
+			"MCP server listed in Anthropic's connector directory",
+			"English, Russian, and Spanish interface and case studies",
+		],
+	},
+	{
+		slug: "airix",
+		name: "AIRIX",
+		domain: "airix.app",
+		url: "https://www.airix.app/",
+		tagline: "Weekly 16-engine visibility scans with Monday briefs",
+		description:
+			"AIRIX runs weekly automated scans across 16 AI engines — including ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, and several open-weight models — and reports a 0-100 visibility score with a per-platform breakdown of where a business appears and which competitor is named instead. Monday briefs summarize week-over-week movement, scans are run against a chosen location, and Growth subscribers get generated llms.txt files. A visibility checker and a ChatGPT ads tracker are free without signup.",
+		category: "tracking",
+		ahrefsDR: 22,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			geographicTracking: true,
+			actionRecommendations: true,
+			emailAlerts: true,
+		},
+		pricing: { hasFree: true, startingPrice: "$39.99/mo", hasEnterprise: false },
+		highlights: [
+			"16 AI engines scanned weekly, including open-weight models",
+			"Free visibility checker and ChatGPT ads tracker, no signup",
+			"MCP integrations for ChatGPT, Claude Desktop, Claude Code, and Cursor",
+		],
 	},
 	{
 		slug: "microsoft-ads",
@@ -3048,6 +3216,7 @@ const aeoPopularityRanking: string[] = [
 
 	// --- Tier C: Niche / emerging AEO tools with some traction ---
 	"wellows", // DR 62 / 6K traffic, published citation research; no disclosed funding/customers
+	"petra-labs", // $5.2M seed (Work-Bench) + press, but services-heavy and no public product traction yet
 	"superlines", // 9-platform GEO tracker, customers incl. Supabase/Publicis, Google for AI Startups
 	"bluefish-ai", // Enterprise AI-commerce (Fortune 500 focus), named in best-AEO-2026 lists
 	"babylovegrowth", // DR 76, autopilot content + backlink network for AI citations
@@ -3067,6 +3236,8 @@ const aeoPopularityRanking: string[] = [
 	"rebel-growth", // Growth-focused AEO tracking + consulting
 	"aeo-engine", // E-commerce focused AEO with schema optimization
 	"aiclicks", // Done-for-you action plans with AI agents
+	"semantica", // Rare Yandex/Alice/GigaChat coverage, MCP in Anthropic directory, named case studies
+	"fixaeo", // Deepest feature set of its cohort (9 engines, agent analytics, API + MCP) but DR 7, no external validation
 	"searchable", // AI search visibility monitoring
 	"llm-pulse", // LLM monitoring with prompt suggestions + Looker Studio
 	"ai-peekaboo", // White-label GEO competitive intelligence for agencies
@@ -3075,16 +3246,19 @@ const aeoPopularityRanking: string[] = [
 	"checkthat", // No-cold-start tracking, lead gen for GrowthX
 	"parse", // 219K brands database, peer visibility
 	"amionai", // Weekly action plans + The Index leaderboards
+	"airix", // 16-engine weekly scans + free checker; SMB-oriented, no disclosed traction
 	"limy", // B2A revenue tracking
 	"bear-ai", // Blog Agent for AI-optimized content
 	"getmint", // 150K+ partner media distribution network
 	"wildcard", // YC-backed e-commerce AI visibility
 	"showupinai", // IndexNow integration for faster AI indexing
 	"omnia", // AI visibility tracking, multi-language/region
+	"aeotrack", // Complete product with a free tier, but DR 0 and no disclosed funding or customers
 	"lorelight", // Shutting down — public postmortem
-	"getcito", // Open-source (MIT) citation tracker, Crawlability Clinic
+	"getcito", // Ranked on name recognition only — since Jul 2026 it is a rebadged copy of Elmo's codebase
 	"geo-aeo-tracker", // Open-source self-hosted AEO dashboard, 80 GitHub stars
 	"canonry", // Open-source self-hosted AEO platform, server-log ingestion + MCP, 52 stars
+	"gego", // GPL-3.0 self-hosted GEO tracker, Docker + CLI + REST API, Ollama support
 	"meridian", // AI search tracking with geographic targeting
 	"peasy", // Server-side, cookie-free AI traffic analytics
 	"flip-aeo", // AEO tracking + optimization
@@ -3108,8 +3282,8 @@ const aeoPopularityRanking: string[] = [
 	"radarkit",
 	"seozast",
 	"brandscan", // Romania-only GEO tracker, complete product but DR 0 / minimal traction
+	"lettertrace", // MIT self-hosted BYO-key tracker; DR 0 and brand new, no traction yet
 	"anvil",
-	"petra-labs",
 	"searchify",
 	"datagum",
 	"ecom-ai",
@@ -3126,7 +3300,6 @@ const aeoPopularityRanking: string[] = [
 	"mentionstack",
 	"searchone",
 	"rankgpt",
-	"gego-analytics",
 	"aeospy", // Cross-engine prompt query tool, narrow scope vs full tracker
 	"ferventers", // AI SEO agency + tracking platform hybrid
 	"xseek", // Six-engine AEO tracker
