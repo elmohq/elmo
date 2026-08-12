@@ -23,7 +23,7 @@ import { ColHead } from "@/components/col-head";
 import { ShareOfVoiceDonut } from "@/components/share-of-voice-donut";
 import { TrendChart } from "@/components/trend-chart";
 
-export const Route = createFileRoute("/_authed/app/$brand/share-of-voice")({
+export const Route = createFileRoute("/_authed/app/$org/$brand/share-of-voice")({
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);

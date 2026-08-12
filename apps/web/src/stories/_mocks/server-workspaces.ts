@@ -1,0 +1,36 @@
+/**
+ * Mock for @/server/workspaces used in Storybook stories. The real module reads
+ * the organization/member tables; stories only need the shell to know which
+ * workspace it is in and what it holds.
+ */
+
+export type WorkspaceBrand = { id: string; name: string; onboarded: boolean };
+export type Workspace = { id: string; slug: string; name: string; role: string };
+export type WorkspaceWithBrands = Workspace & { brands: WorkspaceBrand[] };
+
+let _workspaces: WorkspaceWithBrands[] = [
+	{
+		id: "org-1",
+		slug: "acme",
+		name: "Acme",
+		role: "admin",
+		brands: [
+			{ id: "brand-1", name: "Acme", onboarded: true },
+			{ id: "brand-2", name: "Acme Labs", onboarded: true },
+		],
+	},
+];
+
+export function setMockWorkspaces(workspaces: WorkspaceWithBrands[]) {
+	_workspaces = workspaces;
+}
+
+export const listWorkspacesFn = async () => _workspaces;
+export const resolveWorkspaceFn = async () => ({ found: true, workspace: _workspaces[0] });
+export const getWorkspaceSettingsFn = async () => ({
+	workspace: _workspaces[0],
+	brandCount: _workspaces[0].brands.length,
+	memberCount: 2,
+	canRename: true,
+});
+export const renameWorkspaceFn = async () => ({ success: true });

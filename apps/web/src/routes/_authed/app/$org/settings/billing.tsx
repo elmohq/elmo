@@ -1,6 +1,10 @@
 /**
- * /app/$brand/settings/billing — plan, usage meters, and the extra-premium-
+ * /app/$org/settings/billing — plan, usage meters, and the extra-premium-
  * prompts add-on (cloud only).
+ *
+ * The subscription is the workspace's: every brand inside it draws on the same
+ * plan, so this sits beside the workspace's other settings rather than inside
+ * whichever brand the user happened to be looking at.
  *
  * Card changes, invoices, plan switches, and cancellation go through the
  * Stripe Customer Portal / Checkout via better-auth — no card data or payment
@@ -22,22 +26,22 @@ import { Label } from "@workspace/ui/components/label";
 import { Progress } from "@workspace/ui/components/progress";
 import { type ReactNode, useState } from "react";
 import { PlanComparison } from "@/components/plan-comparison";
-import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { buildTitle, getAppName } from "@/lib/route-head";
 import { type BillingState, getBillingStateFn, setPremiumAddonQuantityFn } from "@/server/billing";
 
-export const Route = createFileRoute("/_authed/app/$brand/settings/billing")({
+export const Route = createFileRoute("/_authed/app/$org/settings/billing")({
 	loader: async ({ params, context }): Promise<BillingState> => {
 		if (!context.clientConfig?.features.billing) {
-			throw redirect({ to: "/app/$brand", params: { brand: params.brand } });
+			throw redirect({ to: "/app/$org", params: { org: params.org } });
 		}
-		return getBillingStateFn({ data: { brandId: params.brand } });
+		return getBillingStateFn({ data: { org: params.org } });
 	},
-	head: ({ matches, match }) => {
+	head: ({ match, loaderData }) => {
 		const appName = getAppName(match);
-		const brandName = getBrandName(matches);
+		const workspaceName = (loaderData as BillingState | undefined)?.organization.name;
 		return {
 			meta: [
-				{ title: buildTitle("Billing", { appName, brandName }) },
+				{ title: buildTitle("Billing", { appName, brandName: workspaceName }) },
 				{ name: "description", content: "Manage your plan, usage, and billing." },
 			],
 		};
@@ -52,7 +56,7 @@ function formatDate(iso: string | null): string {
 
 function BillingSettingsPage() {
 	const state = Route.useLoaderData();
-	const { brand: brandId } = Route.useParams();
+	const { org } = Route.useParams();
 	const router = useRouter();
 	const isAdmin = isOrgAdminRole(state.organization.role);
 	const { entitlements } = state;
@@ -212,7 +216,7 @@ function BillingSettingsPage() {
 					description={`Beyond what your plan includes, at $${PREMIUM_ADDON_MONTHLY_USD} per pairing per month.`}
 				>
 					<PremiumAddonCard
-						brandId={brandId}
+						org={org}
 						quantity={state.premiumAddonQuantity}
 						isAdmin={isAdmin}
 						hasSubscription={state.subscription !== null}
@@ -393,12 +397,12 @@ function UsageMeter({ label, used, limit }: { label: string; used: number; limit
 }
 
 function PremiumAddonCard({
-	brandId,
+	org,
 	quantity,
 	isAdmin,
 	hasSubscription,
 }: {
-	brandId: string;
+	org: string;
 	quantity: number;
 	isAdmin: boolean;
 	hasSubscription: boolean;
@@ -416,7 +420,7 @@ function PremiumAddonCard({
 		setSaving(true);
 		setError(null);
 		try {
-			await setPremiumAddonQuantityFn({ data: { brandId, quantity: parsed } });
+			await setPremiumAddonQuantityFn({ data: { org, quantity: parsed } });
 			router.invalidate();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Could not update the add-on");

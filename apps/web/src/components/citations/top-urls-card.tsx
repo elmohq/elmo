@@ -1,5 +1,6 @@
 import { IconExternalLink, IconInfoCircle, IconSearch } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
+import { useOrgSlug } from "@/hooks/use-workspaces";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Input } from "@workspace/ui/components/input";
@@ -35,6 +36,7 @@ export function TopUrlsCard({
 	brandShare: number;
 	brandIsCited: boolean;
 }) {
+	const org = useOrgSlug();
 	const [urlSearch, setUrlSearch] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string>("all");
 	const [selectedPageType, setSelectedPageType] = useState<string>("all");
@@ -78,7 +80,11 @@ export function TopUrlsCard({
 									<p>
 										<strong>Competitor</strong> domains are only those in your{" "}
 										{brandId ? (
-											<Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">
+											<Link
+												to="/app/$org/$brand/settings/competitors"
+												params={{ org, brand: brandId }}
+												className="underline"
+											>
 												tracked competitors list
 											</Link>
 										) : (

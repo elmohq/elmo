@@ -54,6 +54,7 @@ const config: StorybookConfig = {
 					{ find: /^@\/server\/prompts(\.ts)?$/, replacement: path.resolve(mocksDir, "server-prompts.ts") },
 					{ find: /^@\/server\/billing(\.ts)?$/, replacement: path.resolve(mocksDir, "server-billing.ts") },
 					{ find: /^@\/server\/team(\.ts)?$/, replacement: path.resolve(mocksDir, "server-team.ts") },
+					{ find: /^@\/server\/workspaces(\.ts)?$/, replacement: path.resolve(mocksDir, "server-workspaces.ts") },
 					{
 						find: /^@\/server\/premium-tracking(\.ts)?$/,
 						replacement: path.resolve(mocksDir, "server-premium-tracking.ts"),

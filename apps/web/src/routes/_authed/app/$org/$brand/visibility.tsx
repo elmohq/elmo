@@ -10,7 +10,7 @@ import { PromptsDisplay } from "@/components/prompts-display";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import { coercePromptOrder, DEFAULT_PROMPT_ORDER, type PromptOrder } from "@/lib/prompt-order";
 
-export const Route = createFileRoute("/_authed/app/$brand/visibility")({
+export const Route = createFileRoute("/_authed/app/$org/$brand/visibility")({
 	// The prompts list's sort order (#60) is this route's own search key, on top
 	// of the brand-wide filter keys validated by the `$brand` layout route. The
 	// default order is omitted so default state keeps a clean URL.
@@ -32,12 +32,12 @@ export const Route = createFileRoute("/_authed/app/$brand/visibility")({
 });
 
 function VisibilityPage() {
-	const { brand: brandId } = Route.useParams();
+	const { org, brand: brandId } = Route.useParams();
 
 	const infoContent = (
 		<>
 			Track how different LLMs respond to prompts related to your brand, products, and{" "}
-			<Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">
+			<Link to="/app/$org/$brand/settings/competitors" params={{ org, brand: brandId }} className="underline">
 				competitors
 			</Link>
 			.
@@ -49,7 +49,7 @@ function VisibilityPage() {
 			pageTitle="Visibility"
 			pageDescription="See how LLMs are evaluating prompts related to your brand."
 			pageInfoContent={infoContent}
-			editLink={`/app/${brandId}/settings/prompts`}
+			editLink={`/app/${org}/${brandId}/settings/prompts`}
 		/>
 	);
 }

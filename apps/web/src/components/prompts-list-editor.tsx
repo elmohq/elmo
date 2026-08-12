@@ -11,6 +11,7 @@
 
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
+import { useOrgSlug } from "@/hooks/use-workspaces";
 import { getModelMeta } from "@workspace/config/models";
 import {
 	PREMIUM_MODELS,
@@ -57,8 +58,6 @@ export interface EditablePrompt {
 export interface PremiumAllowance {
 	total: number;
 	assignedElsewhere: number;
-	/** Where buying more happens, so the two places that say so can link there. */
-	brandId: string;
 }
 
 export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePrompt {
@@ -74,9 +73,10 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 }
 
 /** Both places that offer more pairings send you to the same page. */
-function BillingLink({ brandId, children }: { brandId: string; children: ReactNode }) {
+function BillingLink({ children }: { children: ReactNode }) {
+	const org = useOrgSlug();
 	return (
-		<Link to="/app/$brand/settings/billing" params={{ brand: brandId }} className="underline">
+		<Link to="/app/$org/settings/billing" params={{ org }} className="underline">
 			{children}
 		</Link>
 	);
@@ -91,7 +91,6 @@ function PremiumModelsField({
 	selected,
 	promptEnabled,
 	atCapacity,
-	brandId,
 	onChange,
 	showLabel,
 }: {
@@ -99,7 +98,6 @@ function PremiumModelsField({
 	promptEnabled: boolean;
 	/** The workspace has no pairings left, so only unticking is allowed. */
 	atCapacity: boolean;
-	brandId: string;
 	onChange: (models: string[]) => void;
 	showLabel?: boolean;
 }) {
@@ -153,7 +151,7 @@ function PremiumModelsField({
 				})}
 				{atCapacity && (
 					<p className="px-2 pt-1 text-xs text-muted-foreground">
-						No premium pairings left. Untick one, or <BillingLink brandId={brandId}>buy more</BillingLink>.
+						No premium pairings left. Untick one, or <BillingLink>buy more</BillingLink>.
 					</p>
 				)}
 			</PopoverContent>
@@ -321,7 +319,7 @@ export function PromptsListEditor({
 					{premiumAtCapacity && (
 						<>
 							{" "}
-							Unassign one to free it up, or <BillingLink brandId={premium.brandId}>buy more</BillingLink>.
+							Unassign one to free it up, or <BillingLink>buy more</BillingLink>.
 						</>
 					)}
 				</p>
@@ -445,7 +443,6 @@ export function PromptsListEditor({
 										selected={prompt.premiumModels}
 										promptEnabled={prompt.enabled}
 										atCapacity={premiumAtCapacity}
-										brandId={premium.brandId}
 										onChange={(premiumModels) => update(index, { premiumModels })}
 										showLabel
 									/>
@@ -484,7 +481,6 @@ export function PromptsListEditor({
 											selected={prompt.premiumModels}
 											promptEnabled={prompt.enabled}
 											atCapacity={premiumAtCapacity}
-											brandId={premium.brandId}
 											onChange={(premiumModels) => update(index, { premiumModels })}
 										/>
 									</div>

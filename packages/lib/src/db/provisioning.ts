@@ -95,16 +95,16 @@ export function slugify(name: string): string {
 }
 
 /**
- * Slugs that would collide with sibling routes under `/app/$brand`. A
- * user-named brand that slugifies to one of these gets a numeric suffix
- * instead so the URL stays unambiguous.
+ * Slugs that would collide with a sibling route under `/app/$org`, where brand
+ * ids live. A user-named brand that slugifies to one of these gets a numeric
+ * suffix instead so the URL stays unambiguous.
  */
-const RESERVED_ORG_SLUGS = new Set(["new"]);
+const RESERVED_ORG_SLUGS = new Set(["new", "settings"]);
 
 /**
  * Find a brand id that doesn't collide with an existing brand row or a
  * reserved route slug, appending -2, -3, … on collision. Brand ids are
- * globally unique — they appear directly in `/app/$brand` URLs — and, unlike
+ * globally unique — they appear directly in `/app/$org/$brand` URLs — and, unlike
  * the legacy org-per-brand convention, are independent of any organization id.
  */
 export async function findUniqueBrandId(baseSlug: string): Promise<string> {

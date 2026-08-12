@@ -31,7 +31,7 @@ import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { getModelPickerStateFn, type ModelPickerState, updateEnabledModelsFn } from "@/server/platform-picks";
 import { getPremiumPoolFn, type PremiumPool } from "@/server/premium-tracking";
 
-export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
+export const Route = createFileRoute("/_authed/app/$org/$brand/settings/llms")({
 	loader: async ({ params }): Promise<{ picker: ModelPickerState; premium: PremiumPool }> => {
 		const [picker, premium] = await Promise.all([
 			getModelPickerStateFn({ data: { brandId: params.brand } }),
@@ -82,7 +82,7 @@ function LlmsSettingsPage() {
  * as separate cards they read as separate allowances.
  */
 function PlatformGroups({ picker }: { picker: ModelPickerState }) {
-	const { brand: brandId } = Route.useParams();
+	const { org, brand: brandId } = Route.useParams();
 	const router = useRouter();
 
 	// The server resolves what the brand is actually tracked on, so null only
@@ -185,7 +185,7 @@ function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 				))}
 			</Card>
 
-			{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} brandId={brandId} />}
+			{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} org={org} />}
 
 			{selected.size === 0 && (
 				<Alert variant="destructive">
@@ -228,7 +228,7 @@ function summarizeSelection(count: number, spend: { saved: number; next: number 
  * wrapped sentence of platform names was unreadable once a plan was missing more
  * than a couple, so each name is its own chip and each tier its own row.
  */
-function UpgradePanel({ options, brandId }: { options: ModelPickerState["upgradeOptions"]; brandId: string }) {
+function UpgradePanel({ options, org }: { options: ModelPickerState["upgradeOptions"]; org: string }) {
 	return (
 		<div className="space-y-3 rounded-md border border-dashed p-4">
 			<p className="text-sm font-medium">Upgrade to track more platforms</p>
@@ -251,7 +251,7 @@ function UpgradePanel({ options, brandId }: { options: ModelPickerState["upgrade
 				))}
 			</div>
 			<Button asChild size="sm" variant="outline">
-				<Link to="/app/$brand/settings/billing" params={{ brand: brandId }}>
+				<Link to="/app/$org/settings/billing" params={{ org }}>
 					Compare plans
 					<IconArrowUpRight className="h-4 w-4" />
 				</Link>
@@ -265,7 +265,7 @@ function UpgradePanel({ options, brandId }: { options: ModelPickerState["upgrade
  * tracked and what an upgrade would add.
  */
 function SinglePlatformSummary({ picker }: { picker: ModelPickerState }) {
-	const { brand: brandId } = Route.useParams();
+	const { org } = Route.useParams();
 	const option = picker.available[0];
 	const copy = platformGroupCopy(platformGroupId(option));
 
@@ -283,7 +283,7 @@ function SinglePlatformSummary({ picker }: { picker: ModelPickerState }) {
 				</div>
 				<p className="text-sm text-muted-foreground">Your plan tracks one platform for this brand.</p>
 
-				{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} brandId={brandId} />}
+				{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} org={org} />}
 			</CardContent>
 		</Card>
 	);
@@ -296,7 +296,7 @@ function SinglePlatformSummary({ picker }: { picker: ModelPickerState }) {
  * spend them.
  */
 function PremiumApiPool({ premium }: { premium: PremiumPool }) {
-	const { brand: brandId } = Route.useParams();
+	const { org, brand: brandId } = Route.useParams();
 	const copy = platformGroupCopy("premium");
 	const remaining = Math.max(0, premium.total - premium.assigned);
 
@@ -332,12 +332,12 @@ function PremiumApiPool({ premium }: { premium: PremiumPool }) {
 
 				<div className="flex flex-wrap gap-2">
 					<Button asChild variant="outline" size="sm">
-						<Link to="/app/$brand/settings/prompts" params={{ brand: brandId }}>
+						<Link to="/app/$org/$brand/settings/prompts" params={{ org, brand: brandId }}>
 							Choose prompts
 						</Link>
 					</Button>
 					<Button asChild variant="ghost" size="sm">
-						<Link to="/app/$brand/settings/billing" params={{ brand: brandId }}>
+						<Link to="/app/$org/settings/billing" params={{ org }}>
 							Change how many
 							<IconArrowUpRight className="h-4 w-4" />
 						</Link>

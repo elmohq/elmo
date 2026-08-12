@@ -12,8 +12,11 @@ import { Link, useLocation, useParams } from "@tanstack/react-router";
 
 export interface NavItem {
 	title: string;
+	/** Relative to the brand by default; see `workspace` and `absolute`. */
 	url: string;
 	icon?: Icon;
+	/** Relative to the workspace (`/app/$org`) instead of the brand. */
+	workspace?: boolean;
 	absolute?: boolean;
 }
 
@@ -23,23 +26,26 @@ export interface NavGroup {
 }
 
 export function NavMain({ groups }: { groups: NavGroup[] }) {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const brandId = params.brand;
+	const params = useParams({ strict: false }) as { org?: string; brand?: string };
 	const { setOpenMobile } = useSidebar();
-	const location = useLocation();
-	const pathname = location.pathname;
+	const { pathname } = useLocation();
 
-	const getHref = (url: string, absolute?: boolean) => {
-		return absolute ? url : `/app/${brandId}${url}`;
+	const getHref = (item: NavItem) => {
+		if (item.absolute) return item.url;
+		// "/" means the section's own root, which is the prefix with nothing added.
+		const suffix = item.url === "/" ? "" : item.url;
+		if (item.workspace) return `/app/${params.org}${suffix}`;
+		return `/app/${params.org}/${params.brand}${suffix}`;
 	};
 
-	const isActive = (url: string, absolute?: boolean) => {
-		const href = getHref(url, absolute);
-		if (href === `/app/${brandId}` || href === `/app/${brandId}/`) {
-			return pathname === `/app/${brandId}` || pathname === `/app/${brandId}/`;
-		}
-		return pathname.startsWith(href);
-	};
+	// Exactly one entry lights up: the longest href the path is inside. Prefix
+	// matching alone would light Overview on every brand page, and the
+	// workspace's General entry on Team and Billing, since each is a prefix of
+	// the others.
+	const activeHref = groups
+		.flatMap((group) => group.items.map(getHref))
+		.filter((href) => pathname === href || pathname.startsWith(`${href}/`))
+		.reduce<string | null>((longest, href) => (longest && longest.length >= href.length ? longest : href), null);
 
 	return (
 		<>
@@ -47,16 +53,19 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
 				<SidebarGroup key={group.label}>
 					<SidebarGroupLabel>{group.label}</SidebarGroupLabel>
 					<SidebarMenu>
-						{group.items.map((item) => (
-							<SidebarMenuItem key={item.title}>
-								<SidebarMenuButton asChild tooltip={item.title} isActive={isActive(item.url, item.absolute)}>
-									<Link to={getHref(item.url, item.absolute)} onClick={() => setOpenMobile(false)}>
-										{item.icon && <item.icon />}
-										<span>{item.title}</span>
-									</Link>
-								</SidebarMenuButton>
-							</SidebarMenuItem>
-						))}
+						{group.items.map((item) => {
+							const href = getHref(item);
+							return (
+								<SidebarMenuItem key={item.title}>
+									<SidebarMenuButton asChild tooltip={item.title} isActive={href === activeHref}>
+										<Link to={href} onClick={() => setOpenMobile(false)}>
+											{item.icon && <item.icon />}
+											<span>{item.title}</span>
+										</Link>
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+							);
+						})}
 					</SidebarMenu>
 				</SidebarGroup>
 			))}

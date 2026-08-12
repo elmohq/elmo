@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 
-export const Route = createFileRoute("/_authed/app/$brand/$")({
+export const Route = createFileRoute("/_authed/app/$org/$brand/$")({
 	component: BrandSubpathNotFound,
 });
 
 function BrandSubpathNotFound() {
-	const { brand: brandId } = Route.useParams();
+	const { org, brand: brandId } = Route.useParams();
 
 	return (
 		<div className="space-y-0">
@@ -17,7 +17,7 @@ function BrandSubpathNotFound() {
 
 			<div className="pt-2">
 				<Button asChild variant="outline">
-					<Link to="/app/$brand" params={{ brand: brandId }}>
+					<Link to="/app/$org/$brand" params={{ org, brand: brandId }}>
 						Go Back
 					</Link>
 				</Button>

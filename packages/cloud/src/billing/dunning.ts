@@ -15,8 +15,8 @@ import { getEnv } from "@workspace/config/env";
 import { PAST_DUE_GRACE_DAYS } from "@workspace/config/plans";
 import { ORG_ADMIN_ROLES } from "@workspace/config/roles";
 import { db } from "@workspace/lib/db/db";
-import { brands, member, organization, user } from "@workspace/lib/db/schema";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { member, organization, user } from "@workspace/lib/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { sendEmail } from "../email";
 import {
 	type EmailContent,
@@ -55,21 +55,20 @@ async function billingRecipients(organizationId: string): Promise<string[]> {
 }
 
 /**
- * The billing settings page of the org's oldest brand. Emails need a stable
- * link — Stripe portal sessions expire minutes after creation — and this
- * page's "Manage billing" button opens a fresh Customer Portal session.
+ * The workspace's billing settings page. Emails need a stable link — Stripe
+ * portal sessions expire minutes after creation — and this page's "Manage
+ * billing" button opens a fresh Customer Portal session.
  */
 async function billingSettingsUrl(organizationId: string): Promise<string> {
 	// Same total accessor createCloudDeployment uses, so a missing APP_URL
 	// surfaces on the env-validation page instead of emailing "undefined/app/…".
 	const appUrl = getEnv("APP_URL", DEFAULT_APP_URL).replace(/\/+$/, "");
-	const [brand] = await db
-		.select({ id: brands.id })
-		.from(brands)
-		.where(eq(brands.organizationId, organizationId))
-		.orderBy(asc(brands.createdAt))
+	const [org] = await db
+		.select({ slug: organization.slug })
+		.from(organization)
+		.where(eq(organization.id, organizationId))
 		.limit(1);
-	return brand ? `${appUrl}/app/${brand.id}/settings/billing` : appUrl;
+	return org ? `${appUrl}/app/${org.slug}/settings/billing` : appUrl;
 }
 
 export async function sendDunningNotice(organizationId: string, notice: DunningNotice): Promise<void> {

@@ -7,32 +7,33 @@
 import { test, expect } from "@playwright/test";
 
 const BRAND_ID = "default";
+const ORG_SLUG = "default";
 
 test.describe("Overview Page", () => {
-  test("home page lands on the brand switcher and the default brand is reachable", async ({ page }) => {
+  test("home page lands on the workspace and the default brand is reachable", async ({ page }) => {
     await page.goto("/");
-    // Local mode supports multiple brands, so / -> /app shows the switcher
-    // rather than auto-redirecting through to a brand.
-    await page.waitForURL(/\/app(?:\/)?$/, { timeout: 30_000 });
-    const brandLink = page.locator(`a[href="/app/${BRAND_ID}"]`).first();
+    // One workspace, so /app steps aside to it; local mode supports multiple
+    // brands, so the workspace lists them rather than entering one.
+    await page.waitForURL(new RegExp(`/app/${ORG_SLUG}(?:/)?$`), { timeout: 30_000 });
+    const brandLink = page.locator(`a[href="/app/${ORG_SLUG}/${BRAND_ID}"]`).first();
     await expect(brandLink).toBeVisible({ timeout: 15_000 });
     await brandLink.click();
-    await page.waitForURL(new RegExp(`/app/${BRAND_ID}$`));
-    expect(page.url()).toContain(`/app/${BRAND_ID}`);
+    await page.waitForURL(new RegExp(`/app/${ORG_SLUG}/${BRAND_ID}$`));
+    expect(page.url()).toContain(`/app/${ORG_SLUG}/${BRAND_ID}`);
   });
 
   test("dashboard page loads and shows sidebar", async ({ page }) => {
-    await page.goto(`/app/${BRAND_ID}`);
+    await page.goto(`/app/${ORG_SLUG}/${BRAND_ID}`);
 
     // Sidebar should be present with navigation links — wait for route loader to complete
     // (streaming SSR may initially show a skeleton before loaders finish)
-    await expect(page.locator(`a[href="/app/${BRAND_ID}"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator(`a[href="/app/${BRAND_ID}/visibility"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator(`a[href="/app/${BRAND_ID}/citations"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(`a[href="/app/${ORG_SLUG}/${BRAND_ID}"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(`a[href="/app/${ORG_SLUG}/${BRAND_ID}/visibility"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(`a[href="/app/${ORG_SLUG}/${BRAND_ID}/citations"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
   });
 
   test("dashboard shows brand content (not onboarding wizard)", async ({ page }) => {
-    await page.goto(`/app/${BRAND_ID}`);
+    await page.goto(`/app/${ORG_SLUG}/${BRAND_ID}`);
 
     // The page should have the main content area
     const mainContent = page.locator("main, [class*='SidebarInset'], [class*='flex-1']").first();
@@ -40,10 +41,10 @@ test.describe("Overview Page", () => {
   });
 
   test("sidebar navigation links work", async ({ page }) => {
-    await page.goto(`/app/${BRAND_ID}`);
+    await page.goto(`/app/${ORG_SLUG}/${BRAND_ID}`);
 
     // Wait for sidebar to be fully rendered before clicking
-    const visibilityLink = page.locator(`a[href="/app/${BRAND_ID}/visibility"][data-sidebar="menu-button"]`);
+    const visibilityLink = page.locator(`a[href="/app/${ORG_SLUG}/${BRAND_ID}/visibility"][data-sidebar="menu-button"]`);
     await expect(visibilityLink).toBeVisible({ timeout: 15_000 });
 
     // Click Visibility link in sidebar
@@ -52,24 +53,24 @@ test.describe("Overview Page", () => {
     expect(page.url()).toContain("/visibility");
 
     // Click Citations link in sidebar
-    const citationsLink = page.locator(`a[href="/app/${BRAND_ID}/citations"][data-sidebar="menu-button"]`);
+    const citationsLink = page.locator(`a[href="/app/${ORG_SLUG}/${BRAND_ID}/citations"][data-sidebar="menu-button"]`);
     await expect(citationsLink).toBeVisible({ timeout: 15_000 });
     await citationsLink.click();
     await page.waitForURL(/\/citations/);
     expect(page.url()).toContain("/citations");
 
     // Click Overview link in sidebar to go back
-    const overviewLink = page.locator(`a[href="/app/${BRAND_ID}"][data-sidebar="menu-button"]`);
+    const overviewLink = page.locator(`a[href="/app/${ORG_SLUG}/${BRAND_ID}"][data-sidebar="menu-button"]`);
     await expect(overviewLink).toBeVisible({ timeout: 15_000 });
     await overviewLink.click();
-    await page.waitForURL(new RegExp(`/app/${BRAND_ID}$`));
+    await page.waitForURL(new RegExp(`/app/${ORG_SLUG}/${BRAND_ID}$`));
   });
 
   test("admin section is accessible in local mode", async ({ page }) => {
-    await page.goto(`/app/${BRAND_ID}`);
+    await page.goto(`/app/${ORG_SLUG}/${BRAND_ID}`);
 
     // Wait for route loader to complete (sidebar renders after loader finishes)
-    await expect(page.locator(`a[href="/app/${BRAND_ID}"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(`a[href="/app/${ORG_SLUG}/${BRAND_ID}"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
 
     // In local mode, admin access is granted by default
     const adminLink = page.locator('a[href*="/admin"]').first();
@@ -81,7 +82,7 @@ test.describe("Overview Page", () => {
   });
 
   test("settings pages are accessible", async ({ page }) => {
-    await page.goto(`/app/${BRAND_ID}/settings/brand`);
+    await page.goto(`/app/${ORG_SLUG}/${BRAND_ID}/settings/brand`);
     // Should show brand settings page
     await expect(page.getByText(/brand/i).first()).toBeVisible({ timeout: 15_000 });
   });

@@ -8,12 +8,11 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
-import { isOrgAdminRole } from "@workspace/config/roles";
 import { db } from "@workspace/lib/db/db";
-import { invitation, member, organization, user } from "@workspace/lib/db/schema";
+import { invitation, member, user } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess, requireBrandOrganization } from "@/lib/auth/helpers";
+import { requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 import { auth } from "@/lib/auth/server";
 import { getDeployment } from "@/lib/config/server";
 
@@ -31,14 +30,14 @@ export type TeamData = {
 };
 
 export const listTeamFn = createServerFn({ method: "GET" })
-	.validator(z.object({ brandId: z.string() }))
+	.validator(z.object({ org: z.string() }))
 	// The explicit return type breaks the type-inference cycle between this
 	// fn and route loaders that both consume it and redirect to typed routes
 	// (same pattern as getBrandSwitcherData in routes/_authed/app/index.tsx).
 	.handler(async ({ data }): Promise<TeamData> => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		const org = await requireBrandOrganization(session.user.id, data.brandId);
+		const org = await requireOrganization(session.user.id, data.org);
 
 		const members = await db
 			.select({
@@ -71,24 +70,10 @@ export const listTeamFn = createServerFn({ method: "GET" })
 		};
 	});
 
-export const updateOrganizationFn = createServerFn({ method: "POST" })
-	.validator(z.object({ brandId: z.string(), name: z.string().min(1).max(100) }))
-	.handler(async ({ data }) => {
-		requireTeamInvites();
-		const session = await requireAuthSession();
-		const org = await requireBrandOrganization(session.user.id, data.brandId);
-
-		// Org rename is an admin action.
-		if (!isOrgAdminRole(org.role)) throw new Error("Only admins can rename the workspace");
-
-		await db.update(organization).set({ name: data.name.trim() }).where(eq(organization.id, org.id));
-		return { success: true };
-	});
-
 export const inviteTeamMemberFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
-			brandId: z.string(),
+			org: z.string(),
 			email: z.string().email(),
 			role: z.enum(["member", "admin"]),
 		}),
@@ -96,7 +81,7 @@ export const inviteTeamMemberFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		const org = await requireBrandOrganization(session.user.id, data.brandId);
+		const org = await requireOrganization(session.user.id, data.org);
 
 		await auth.api.createInvitation({
 			body: { email: data.email, role: data.role, organizationId: org.id },
@@ -107,11 +92,11 @@ export const inviteTeamMemberFn = createServerFn({ method: "POST" })
 	});
 
 export const cancelInvitationFn = createServerFn({ method: "POST" })
-	.validator(z.object({ brandId: z.string(), invitationId: z.string() }))
+	.validator(z.object({ org: z.string(), invitationId: z.string() }))
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireOrganization(session.user.id, data.org);
 
 		await auth.api.cancelInvitation({
 			body: { invitationId: data.invitationId },
@@ -122,11 +107,11 @@ export const cancelInvitationFn = createServerFn({ method: "POST" })
 	});
 
 export const removeTeamMemberFn = createServerFn({ method: "POST" })
-	.validator(z.object({ brandId: z.string(), memberId: z.string() }))
+	.validator(z.object({ org: z.string(), memberId: z.string() }))
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		const org = await requireBrandOrganization(session.user.id, data.brandId);
+		const org = await requireOrganization(session.user.id, data.org);
 
 		const [row] = await db
 			.select({ userId: member.userId })

@@ -11,7 +11,8 @@ import {
 	BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb";
 import { useBrand } from "@/hooks/use-brands";
-import { Link } from "@tanstack/react-router";
+import { useWorkspaces } from "@/hooks/use-workspaces";
+import { Link, useParams } from "@tanstack/react-router";
 
 /** Map of page segments to display names */
 const PAGE_NAMES: Record<string, string> = {
@@ -24,6 +25,8 @@ const PAGE_NAMES: Record<string, string> = {
 	brand: "Brand",
 	competitors: "Competitors",
 	llms: "LLMs",
+	members: "Team",
+	billing: "Billing",
 	workflows: "Workflows",
 	tools: "Tools",
 };
@@ -102,20 +105,22 @@ function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 
 function BrandBreadcrumbs({
 	pathname,
+	org,
 	brandId,
 	brandName,
 }: {
 	pathname: string;
+	org: string | undefined;
 	brandId: string | undefined;
 	brandName: string;
 }) {
-	// Extract the page segment from the path (e.g., /app/foo/prompts -> prompts)
+	// Extract the page segment from the path (e.g., /app/acme/foo/prompts -> prompts)
 	const pathSegments = pathname.split("/");
-	const brandIndex = pathSegments.findIndex((segment) => segment === "app");
-	const pageSegment = brandIndex >= 0 && pathSegments[brandIndex + 2] ? pathSegments[brandIndex + 2] : "";
-	const subSegment = brandIndex >= 0 && pathSegments[brandIndex + 3] ? pathSegments[brandIndex + 3] : "";
+	const appIndex = pathSegments.findIndex((segment) => segment === "app");
+	const pageSegment = appIndex >= 0 && pathSegments[appIndex + 3] ? pathSegments[appIndex + 3] : "";
+	const subSegment = appIndex >= 0 && pathSegments[appIndex + 4] ? pathSegments[appIndex + 4] : "";
 
-	// Check if we're on a specific prompt detail page (e.g., /app/foo/prompts/uuid)
+	// Check if we're on a specific prompt detail page (e.g., /app/acme/foo/prompts/uuid)
 	const isPromptDetailPage =
 		pageSegment === "prompts" &&
 		subSegment &&
@@ -125,7 +130,7 @@ function BrandBreadcrumbs({
 	// Check if we're on an edit page
 	const isEditPage = pathname.endsWith("/edit");
 
-	// Settings sub-pages: /app/brandId/settings/brand, /app/brandId/settings/competitors, etc.
+	// Settings sub-pages: /app/$org/$brand/settings/brand, .../settings/competitors, etc.
 	const isSettingsSubPage = pageSegment === "settings" && subSegment;
 
 	// Determine page name
@@ -135,8 +140,8 @@ function BrandBreadcrumbs({
 		<>
 			<BreadcrumbItem className="hidden md:block">
 				<BreadcrumbLink asChild>
-					{brandId ? (
-						<Link to="/app/$brand" params={{ brand: brandId }}>
+					{org && brandId ? (
+						<Link to="/app/$org/$brand" params={{ org, brand: brandId }}>
 							{brandName}
 						</Link>
 					) : (
@@ -149,8 +154,8 @@ function BrandBreadcrumbs({
 				<>
 					<BreadcrumbItem className="hidden md:block">
 						<BreadcrumbLink asChild>
-							{brandId ? (
-								<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
+							{org && brandId ? (
+								<Link to="/app/$org/$brand/visibility" params={{ org, brand: brandId }}>
 									Visibility
 								</Link>
 							) : (
@@ -194,6 +199,36 @@ function BrandBreadcrumbs({
 	);
 }
 
+/** Settings that belong to the workspace: /app/$org/settings[/sub]. */
+function WorkspaceSettingsBreadcrumbs({ pathname, org }: { pathname: string; org: string }) {
+	const segments = pathname.split("/").filter(Boolean);
+	const sub = segments[3];
+
+	if (!sub) {
+		return (
+			<BreadcrumbItem>
+				<BreadcrumbPage>Settings</BreadcrumbPage>
+			</BreadcrumbItem>
+		);
+	}
+
+	return (
+		<>
+			<BreadcrumbItem className="hidden md:block">
+				<BreadcrumbLink asChild>
+					<Link to="/app/$org/settings" params={{ org }}>
+						Settings
+					</Link>
+				</BreadcrumbLink>
+			</BreadcrumbItem>
+			<BreadcrumbSeparator className="hidden md:block" />
+			<BreadcrumbItem>
+				<BreadcrumbPage>{getPageDisplayName(sub)}</BreadcrumbPage>
+			</BreadcrumbItem>
+		</>
+	);
+}
+
 /**
  * `title` names a page that sits outside the brand and admin trees, where there
  * is no trail to derive — the breadcrumb becomes that one label.
@@ -201,6 +236,9 @@ function BrandBreadcrumbs({
 export function SiteHeader({ title }: { title?: string } = {}) {
 	const { brandId, brand } = useBrand();
 	const { pathname } = useLocation();
+	const params = useParams({ strict: false }) as { org?: string; brand?: string };
+	const { workspaces } = useWorkspaces();
+	const workspace = workspaces.find((w) => w.slug === params.org || w.id === params.org);
 
 	const isAdminPage = pathname.startsWith("/admin") || pathname.startsWith("/reports");
 
@@ -211,14 +249,35 @@ export function SiteHeader({ title }: { title?: string } = {}) {
 				<Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
 				<Breadcrumb>
 					<BreadcrumbList>
+						{/* The workspace leads every trail inside it, so the answer to
+						    "whose data is this" is on screen without opening anything. */}
+						{params.org && !isAdminPage && (
+							<>
+								<BreadcrumbItem className="hidden md:block">
+									<BreadcrumbLink asChild>
+										<Link to="/app/$org" params={{ org: params.org }}>
+											{workspace?.name ?? params.org}
+										</Link>
+									</BreadcrumbLink>
+								</BreadcrumbItem>
+								<BreadcrumbSeparator className="hidden md:block" />
+							</>
+						)}
 						{title ? (
 							<BreadcrumbItem>
 								<BreadcrumbPage>{title}</BreadcrumbPage>
 							</BreadcrumbItem>
 						) : isAdminPage ? (
 							<AdminBreadcrumbs pathname={pathname} />
+						) : params.org && !params.brand ? (
+							<WorkspaceSettingsBreadcrumbs pathname={pathname} org={params.org} />
 						) : (
-							<BrandBreadcrumbs pathname={pathname} brandId={brandId} brandName={brand?.name || "Dashboard"} />
+							<BrandBreadcrumbs
+								pathname={pathname}
+								org={params.org}
+								brandId={brandId}
+								brandName={brand?.name || "Dashboard"}
+							/>
 						)}
 					</BreadcrumbList>
 				</Breadcrumb>

@@ -7,10 +7,11 @@
 import { test, expect } from "@playwright/test";
 
 const BRAND_ID = "default";
+const ORG_SLUG = "default";
 
 test.describe("Visibility Page", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/app/${BRAND_ID}/visibility`);
+    await page.goto(`/app/${ORG_SLUG}/${BRAND_ID}/visibility`);
     // Wait for SSR streaming + hydration — heading appears once route loaders finish
     await expect(page.getByRole("heading", { name: "Visibility" })).toBeVisible({ timeout: 30_000 });
   });
@@ -37,9 +38,9 @@ test.describe("Visibility Page", () => {
 
   test("page is accessible via sidebar navigation", async ({ page }) => {
     // Navigate via sidebar from overview (use href for stability)
-    await page.goto(`/app/${BRAND_ID}`);
+    await page.goto(`/app/${ORG_SLUG}/${BRAND_ID}`);
     // Wait for sidebar to fully render after route loader completes
-    const visLink = page.locator(`a[href="/app/${BRAND_ID}/visibility"][data-sidebar="menu-button"]`);
+    const visLink = page.locator(`a[href="/app/${ORG_SLUG}/${BRAND_ID}/visibility"][data-sidebar="menu-button"]`);
     await expect(visLink).toBeVisible({ timeout: 15_000 });
     await visLink.click();
     await page.waitForURL(/\/visibility/);

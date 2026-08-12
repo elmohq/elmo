@@ -52,7 +52,7 @@ function PromptsSettingsSkeleton() {
 	);
 }
 
-export const Route = createFileRoute("/_authed/app/$brand/settings/prompts")({
+export const Route = createFileRoute("/_authed/app/$org/$brand/settings/prompts")({
 	loader: async ({ params }) => {
 		const [brandPrompts, premiumPool] = await Promise.all([
 			getPromptsForEditing({ data: { brandId: params.brand } }),
@@ -68,7 +68,6 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/prompts")({
 				? {
 						total: premiumPool.total,
 						assignedElsewhere: Math.max(0, premiumPool.assigned - spentHere),
-						brandId: params.brand,
 					}
 				: undefined,
 		};

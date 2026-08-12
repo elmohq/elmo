@@ -1,34 +1,28 @@
 /**
- * /app - Brand switcher page
+ * /app - Workspace picker
  *
- * Lists every brand the user's organization(s) own. Most modes have exactly
- * one org, but whitelabel users can belong to several Auth0-synced orgs, so
- * this is a brand list scoped across all of the user's orgs, not a 1:1 org
- * list.
+ * Every workspace the user belongs to, each with its brands. Most deployments
+ * give a user exactly one, so this page steps aside for them; whitelabel users
+ * can belong to several Auth0-synced workspaces, and a cloud user picks up more
+ * by accepting team invitations.
  */
 
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
+import { createServerFn } from "@tanstack/react-start";
 import FullPageCard from "@/components/full-page-card";
-import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
+import { requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
-import { db } from "@workspace/lib/db/db";
-import { brands } from "@workspace/lib/db/schema";
-import { inArray } from "drizzle-orm";
+import { listWorkspacesFn, type WorkspaceWithBrands } from "@/server/workspaces";
 
-const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
-	async (): Promise<{
-		brands: { id: string; name: string }[];
-		unprovisionedOrgs: { id: string; name: string }[];
-		canCreateBrands: boolean;
-	}> => {
-		const session = await requireAuthSession();
+const getWorkspacePickerData = createServerFn({ method: "GET" }).handler(
+	async (): Promise<{ workspaces: WorkspaceWithBrands[]; canCreateBrands: boolean }> => {
 		const deployment = getDeployment();
 
 		if (deployment.mode === "whitelabel") {
+			const session = await requireAuthSession();
 			// Keep /app usable during Auth0 Management API incidents; background sync will reconcile memberships later.
 			try {
 				await syncAuth0UserById(session.user.id);
@@ -37,36 +31,14 @@ const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 			}
 		}
 
-		const orgs = await listUserOrganizations(session.user.id);
-		const orgIds = orgs.map((o) => o.id);
-
-		const scopedBrands =
-			orgIds.length === 0
-				? []
-				: await db
-						.select({ id: brands.id, name: brands.name, organizationId: brands.organizationId })
-						.from(brands)
-						.where(inArray(brands.organizationId, orgIds));
-
-		// An org with no brand row yet is only reachable through the legacy
-		// `/app/$orgId` onboarding wizard. Modes that can create brands from the
-		// UI use that flow instead, so surfacing the org there would offer two
-		// paths to the same thing.
-		const canCreateBrands = deployment.features.canCreateBrands;
-		const provisioned = new Set(scopedBrands.map((b) => b.organizationId));
-
-		return {
-			brands: scopedBrands.map((brand) => ({ id: brand.id, name: brand.name })),
-			unprovisionedOrgs: canCreateBrands ? [] : orgs.filter((o) => !provisioned.has(o.id)),
-			canCreateBrands,
-		};
+		return { workspaces: await listWorkspacesFn(), canCreateBrands: deployment.features.canCreateBrands };
 	},
 );
 
-function OrgSwitcherSkeleton() {
+function WorkspacePickerSkeleton() {
 	return (
 		<FullPageCard title="" subtitle="">
-			<div className="flex flex-col space-y-3 min-w-[200px]">
+			<div className="flex min-w-[200px] flex-col space-y-3">
 				<Skeleton className="h-10 w-full" />
 				<Skeleton className="h-10 w-full" />
 				<Skeleton className="h-10 w-full" />
@@ -76,48 +48,68 @@ function OrgSwitcherSkeleton() {
 }
 
 export const Route = createFileRoute("/_authed/app/")({
-	pendingComponent: OrgSwitcherSkeleton,
-	loader: async (): Promise<{
-		brands: { id: string; name: string }[];
-		unprovisionedOrgs: { id: string; name: string }[];
-		canCreateBrands: boolean;
-	}> => {
-		return getBrandSwitcherData();
+	pendingComponent: WorkspacePickerSkeleton,
+	loader: async (): Promise<{ workspaces: WorkspaceWithBrands[]; canCreateBrands: boolean }> => {
+		const data = await getWorkspacePickerData();
+
+		// One workspace is no choice at all — and it is the common case, so the
+		// picker would be a page users click through on the way to their work.
+		if (data.workspaces.length === 1) {
+			throw redirect({ to: "/app/$org", params: { org: data.workspaces[0].slug } });
+		}
+
+		return data;
 	},
-	component: BrandSwitcherPage,
+	component: WorkspacePickerPage,
 });
 
-function BrandSwitcherPage() {
-	const { brands: brandList, unprovisionedOrgs, canCreateBrands } = Route.useLoaderData();
+function WorkspacePickerPage() {
+	const { workspaces, canCreateBrands } = Route.useLoaderData();
+
+	if (workspaces.length === 0) {
+		return (
+			<FullPageCard title="No workspaces" subtitle="Your account isn't a member of a workspace yet.">
+				<p className="text-center text-muted-foreground">Ask an admin to invite you, then reload this page.</p>
+			</FullPageCard>
+		);
+	}
 
 	return (
-		<FullPageCard title="Brand Switcher" subtitle="Select a brand to get started">
-			<div className="flex flex-col space-y-3 min-w-[200px]">
-				{brandList.length > 0 || unprovisionedOrgs.length > 0 ? (
-					<>
-						{brandList.map((brand) => (
-							<Button key={brand.id} asChild variant="secondary">
-								<Link to="/app/$brand" params={{ brand: brand.id }}>
-									{brand.name}
-								</Link>
-							</Button>
-						))}
-						{unprovisionedOrgs.map((org) => (
-							<Button key={org.id} asChild variant="outline">
-								<Link to="/app/$brand" params={{ brand: org.id }}>
-									Set up {org.name}
-								</Link>
-							</Button>
-						))}
-					</>
-				) : (
-					<p className="text-muted-foreground text-center">No brands available</p>
-				)}
-				{canCreateBrands && (
-					<Button asChild variant="outline">
-						<Link to="/app/new">+ Create new brand</Link>
-					</Button>
-				)}
+		<FullPageCard title="Your workspaces" subtitle="Pick a workspace, then a brand inside it">
+			<div className="flex min-w-[280px] flex-col gap-6">
+				{workspaces.map((workspace) => (
+					<div key={workspace.id} className="space-y-2">
+						<div className="flex items-baseline justify-between gap-3">
+							<Link to="/app/$org" params={{ org: workspace.slug }} className="font-medium hover:underline">
+								{workspace.name}
+							</Link>
+							<span className="text-xs text-muted-foreground">/app/{workspace.slug}</span>
+						</div>
+						<div className="flex flex-col space-y-2">
+							{workspace.brands.map((brand) => (
+								<Button key={brand.id} asChild variant="secondary">
+									<Link to="/app/$org/$brand" params={{ org: workspace.slug, brand: brand.id }}>
+										{brand.name}
+									</Link>
+								</Button>
+							))}
+							{workspace.brands.length === 0 && (
+								<Button asChild variant="outline">
+									<Link to="/app/$org" params={{ org: workspace.slug }}>
+										{canCreateBrands ? `Add a brand to ${workspace.name}` : `Set up ${workspace.name}`}
+									</Link>
+								</Button>
+							)}
+							{canCreateBrands && workspace.brands.length > 0 && (
+								<Button asChild variant="outline">
+									<Link to="/app/$org/new" params={{ org: workspace.slug }}>
+										+ New brand
+									</Link>
+								</Button>
+							)}
+						</div>
+					</div>
+				))}
 			</div>
 		</FullPageCard>
 	);

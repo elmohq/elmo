@@ -28,6 +28,7 @@ import { getDaysFromLookback } from "@/lib/chart-utils";
 import { getModelDisplayName } from "@/lib/utils";
 import { promptKeywords } from "@/lib/fanout-analysis";
 import { useBrand } from "@/hooks/use-brands";
+import { useOrgSlug } from "@/hooks/use-workspaces";
 import { usePromptStats } from "@/hooks/use-prompt-stats";
 import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
@@ -59,7 +60,7 @@ const TABS: { key: TabKey; label: string }[] = [
 	{ key: "responses", label: "LLM Responses" },
 ];
 
-export const Route = createFileRoute("/_authed/app/$brand/prompts/$promptId")({
+export const Route = createFileRoute("/_authed/app/$org/$brand/prompts/$promptId")({
 	// `tab` is part of the route's search schema so links can target a specific
 	// tab (e.g. View Details → web-queries). Absent means the default tab.
 	validateSearch: (search: Record<string, unknown>): { tab?: TabKey } => ({
@@ -79,7 +80,7 @@ export const Route = createFileRoute("/_authed/app/$brand/prompts/$promptId")({
 });
 
 function PromptHistoryPage() {
-	const { brand: brandId, promptId } = Route.useParams();
+	const { org, brand: brandId, promptId } = Route.useParams();
 
 	const lookback = useLookbackPeriod();
 	const days = getDaysFromLookback(lookback);
@@ -269,8 +270,8 @@ function PromptHistoryPage() {
 						<span className="text-border">|</span>
 
 						<Link
-							to="/app/$brand/settings/prompts"
-							params={{ brand: brandId }}
+							to="/app/$org/$brand/settings/prompts"
+							params={{ org, brand: brandId }}
 							className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 decoration-muted-foreground/40 hover:decoration-foreground/40"
 						>
 							Edit prompts
@@ -385,6 +386,8 @@ function MentionsTab({
 	brandName?: string;
 	brandId: string;
 }) {
+	const org = useOrgSlug();
+
 	if (isLoading) return <TabLoadingSkeleton lines={5} />;
 
 	if (mentionStats.length === 0) {
@@ -411,7 +414,7 @@ function MentionsTab({
 						<TooltipContent className="max-w-xs text-sm font-normal">
 							<p>
 								Only competitors from your{" "}
-								<Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">
+								<Link to="/app/$org/$brand/settings/competitors" params={{ org, brand: brandId }} className="underline">
 									tracked competitors list
 								</Link>{" "}
 								are shown here.

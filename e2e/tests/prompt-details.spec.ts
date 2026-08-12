@@ -7,13 +7,14 @@
 import { test, expect } from "@playwright/test";
 
 const BRAND_ID = "default";
+const ORG_SLUG = "default";
 // This matches PROMPT_IDS.branded1 from seed.ts
 const PROMPT_ID = "00000000-0000-0000-0000-000000000001";
 const PROMPT_TEXT = "What is the best AI monitoring tool";
 
 test.describe("Prompt Details Page", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/app/${BRAND_ID}/prompts/${PROMPT_ID}`);
+    await page.goto(`/app/${ORG_SLUG}/${BRAND_ID}/prompts/${PROMPT_ID}`);
     // Wait for the prompt text to appear (route loader + client data fetch)
     await expect(page.getByText(PROMPT_TEXT)).toBeVisible({ timeout: 30_000 });
   });

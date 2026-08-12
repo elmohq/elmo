@@ -66,6 +66,8 @@ interface PromptScheduleStatus {
 interface BrandScheduleSummary {
 	brandId: string;
 	brandName: string;
+	/** Which workspace owns it, so the link lands on the canonical brand URL. */
+	organizationSlug: string;
 	website: string;
 	enabled: boolean;
 	totalPrompts: number;
@@ -455,8 +457,8 @@ function BrandRow({
 						)}
 						<div>
 							<Link
-								to="/app/$brand"
-								params={{ brand: brand.brandId }}
+								to="/app/$org/$brand"
+								params={{ org: brand.organizationSlug, brand: brand.brandId }}
 								className="font-medium text-primary hover:underline"
 								onClick={(e) => e.stopPropagation()}
 							>

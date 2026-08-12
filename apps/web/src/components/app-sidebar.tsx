@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link, useRouteContext } from "@tanstack/react-router";
+import { Link, useParams, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import {
 	IconDashboard,
@@ -18,6 +18,7 @@ import {
 	IconTool,
 	IconUsers,
 	IconCreditCard,
+	IconBuildingSkyscraper,
 } from "@tabler/icons-react";
 
 import {
@@ -35,16 +36,21 @@ import { NavUser } from "@/components/nav-user";
 import { NavAppInfo } from "@/components/nav-app-info";
 import { DemoModePill } from "@/components/demo-mode-pill";
 import { Logo } from "@/components/logo";
+import { WorkspaceSwitcher } from "@/components/workspace-switcher";
+import { useWorkspaces } from "@/hooks/use-workspaces";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 
 /**
  * How much of the app the shell around this page can reach:
- *  - "brand":   a brand's own pages, plus admin for those who have it
- *  - "admin":   the admin section only (there is no brand in scope)
- *  - "account": nothing — the page is a gate the user has to clear first, so the
- *               only things worth offering are who they are and how to leave
+ *  - "brand":     a brand's own pages, its workspace's settings, plus admin for
+ *                 those who have it
+ *  - "workspace": the workspace's own pages — its settings and a way back into
+ *                 each of its brands (there is no brand in scope)
+ *  - "admin":     the admin section only
+ *  - "account":   nothing — the page is a gate the user has to clear first, so
+ *                 the only things worth offering are who they are and how to leave
  */
-export type SidebarScope = "brand" | "admin" | "account";
+export type SidebarScope = "brand" | "workspace" | "admin" | "account";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	isAdmin?: boolean;
@@ -52,6 +58,8 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	scope?: SidebarScope;
 	/** Brand data from route loader — avoids a separate client-side fetch */
 	brand?: BrandWithPrompts | null;
+	/** From the route loader too, so the shell names the workspace on first paint. */
+	workspaceName?: string;
 }
 
 export function AppSidebar({
@@ -59,18 +67,38 @@ export function AppSidebar({
 	hasReportAccess = false,
 	scope = "brand",
 	brand,
+	workspaceName,
 	...props
 }: AppSidebarProps) {
 	const { setOpenMobile } = useSidebar();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const params = useParams({ strict: false }) as { org?: string };
+	const { workspaces } = useWorkspaces();
+	const workspace = workspaces.find((w) => w.slug === params.org || w.id === params.org);
+	const currentWorkspaceName = workspaceName ?? workspace?.name;
 	// Reports are disabled entirely in cloud; hide the nav entry there.
 	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
 
 	// A gate page offers no destinations: every link would either 404 or bounce
 	// the user straight back to the gate.
 	const showAdminSection = scope !== "account" && (isAdmin || (hasReportAccess && reportsEnabled));
+	const inWorkspace = scope === "brand" || scope === "workspace";
 
 	const groups: NavGroup[] = [];
+
+	// Without a brand in scope, the brands themselves are the way back into the
+	// dashboard the user came from.
+	if (scope === "workspace" && workspace) {
+		groups.push({
+			label: "Brands",
+			items: workspace.brands.map((b) => ({
+				title: b.name,
+				url: `/app/${workspace.slug}/${b.id}`,
+				icon: IconDashboard,
+				absolute: true,
+			})),
+		});
+	}
 
 	// Dashboard section - only show if we have a brand context
 	if (scope === "brand") {
@@ -121,7 +149,7 @@ export function AppSidebar({
 		// Settings section - only show if onboarded
 		if (brand?.onboarded) {
 			groups.push({
-				label: "Settings",
+				label: "Brand settings",
 				items: [
 					{
 						title: "Brand",
@@ -143,15 +171,27 @@ export function AppSidebar({
 						url: "/settings/llms",
 						icon: IconCpu,
 					},
-					...(context.clientConfig?.features.teamInvites
-						? [{ title: "Team", url: "/settings/members", icon: IconUsers }]
-						: []),
-					...(context.clientConfig?.features.billing
-						? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard }]
-						: []),
 				],
 			});
 		}
+	}
+
+	// Workspace section — what the brand belongs to rather than what it is, so
+	// its entries live apart from the brand's own and are labelled with the
+	// workspace's name.
+	if (inWorkspace) {
+		groups.push({
+			label: currentWorkspaceName ? `Workspace · ${currentWorkspaceName}` : "Workspace",
+			items: [
+				{ title: "General", url: "/settings", icon: IconBuildingSkyscraper, workspace: true },
+				...(context.clientConfig?.features.teamInvites
+					? [{ title: "Team", url: "/settings/members", icon: IconUsers, workspace: true }]
+					: []),
+				...(context.clientConfig?.features.billing
+					? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard, workspace: true }]
+					: []),
+			],
+		});
 	}
 
 	// Admin section
@@ -211,7 +251,7 @@ export function AppSidebar({
 						{scope === "account" ? (
 							<div className="flex items-center gap-2 p-2">{brandmark}</div>
 						) : (
-							<SidebarMenuButton size="lg" asChild>
+							<SidebarMenuButton asChild>
 								<Link to="/app" onClick={() => setOpenMobile(false)}>
 									{brandmark}
 								</Link>
@@ -219,12 +259,13 @@ export function AppSidebar({
 						)}
 					</SidebarMenuItem>
 				</SidebarMenu>
+				{inWorkspace && <WorkspaceSwitcher workspaceName={currentWorkspaceName} brandName={brand?.name} />}
 			</SidebarHeader>
 			<SidebarContent>
 				<NavMain groups={groups} />
 			</SidebarContent>
 			<SidebarFooter>
-				<NavUser canSwitchBrand={scope !== "account"} />
+				<NavUser />
 				<NavAppInfo />
 			</SidebarFooter>
 		</Sidebar>
