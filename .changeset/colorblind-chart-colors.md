@@ -5,4 +5,4 @@
 "@workspace/web": patch
 ---
 
-Chart colors are now colorblind-friendly, and each line on a visibility chart carries its own marker shape so series stay tellable apart.
+Charts are now colorblind-friendly, with a distinct marker shape per line.
