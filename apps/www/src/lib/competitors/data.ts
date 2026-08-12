@@ -3284,6 +3284,201 @@ export const competitors: Competitor[] = [
 			"API access on every plan, including free at 100 requests a day",
 		],
 	},
+	{
+		slug: "atomic-agi",
+		name: "Atomic AGI",
+		domain: "atomicagi.com",
+		url: "https://www.atomicagi.com/",
+		tagline: "Combined AI search and Google analytics with vertical agents on top",
+		description:
+			"Atomic tracks prompts across ChatGPT, Claude, Perplexity, Gemini, Grok, AI Mode, and AI Overviews alongside conventional SEO analytics, so AI-search and Google performance sit in one place. It layers agents and workflows over that data — grounded in a self-updating company knowledge base — for opportunity triage, technical audits, and content refreshes, and exposes the whole thing over MCP so it can be driven from Claude, Cursor, Codex, or Slack. Free, $40, and $100 per-project tiers are self-serve; a managed tier adds done-for-you service and log analysis.",
+		category: "tracking",
+		ahrefsDR: 0,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			crawlerAnalytics: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			dataExportApi: true,
+			whiteLabelAgency: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: true, startingPrice: "$40/mo", hasEnterprise: true },
+		highlights: [
+			"Names MIT, Samsung, Salesforce, Publicis Groupe, Trustpilot, and Slite as customers",
+			"MCP server plus Slack, Cursor, and Codex integrations, so queries run outside the dashboard",
+			"AI-search tracking and conventional SEO analytics in one product rather than a bolt-on",
+		],
+	},
+	{
+		slug: "friction-ai",
+		name: "friction AI",
+		domain: "frictionai.co",
+		url: "https://www.frictionai.co/",
+		tagline: "Recommendation tracking on purchase-intent prompts, with A/B experiments",
+		description:
+			"friction AI runs prompts daily against ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews and reports visibility, sentiment, share of voice, purchase intent, and recognition, distinguishing being mentioned from being recommended. An Entity Recognition layer attributes a visibility gap to foundation knowledge, training data, or web search, which determines the fix. It also runs controlled A/B prompt experiments with reported statistical significance, and tracks ChatGPT shopping prompts on the higher tiers.",
+		category: "tracking",
+		ahrefsDR: 0,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			geographicTracking: true,
+			shoppingTracking: true,
+			multiLanguage: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			dataExportApi: true,
+		},
+		pricing: { hasFree: false, startingPrice: "$69/mo", hasEnterprise: true },
+		highlights: [
+			"Controlled A/B prompt experiments reported with statistical significance",
+			"Entity Recognition layer attributes a gap to foundation, training data, or web search",
+			"Separates being recommended from being mentioned, scored on purchase-intent prompts",
+		],
+	},
+	{
+		slug: "getmentioned",
+		name: "GetMentioned",
+		domain: "getmentioned.co",
+		url: "https://www.getmentioned.co/",
+		tagline: "Topic-level AI visibility tracking with a brand perception module",
+		description:
+			"GetMentioned runs fixed prompts daily across ChatGPT, Perplexity, and Gemini in the markets and languages a brand operates in, then aggregates them into Topics rather than reporting per-prompt noise. Its Perception module extracts the attributes AI consistently associates with a brand — positioning, strengths, pricing framing — broken out per model, and a My Domain view shows which of the brand's own pages get cited and which competitor URLs win the citations it misses. Every metric drills back to the stored full answer that produced it.",
+		category: "tracking",
+		ahrefsDR: 0,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			geographicTracking: true,
+			multiLanguage: true,
+			contentGapAnalysis: true,
+			emailAlerts: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: false, startingPrice: "€89/mo", hasEnterprise: true },
+		highlights: [
+			"Perception module reports attribute-level descriptors per model, not just a sentiment number",
+			"Every number drills down to the stored raw answer behind it",
+			"Prompts aggregate into Topics that map to product lines and segments",
+		],
+	},
+	{
+		slug: "prominara",
+		name: "Prominara",
+		domain: "prominara.com",
+		url: "https://prominara.com/",
+		tagline: "Audit, generate, and validate loop with published measurement caveats",
+		description:
+			"Prominara scores a site against 40+ signals, generates the fixes it recommends — llms.txt, JSON-LD, answer-format rewrites — then re-runs the same prompts across five answer surfaces to report what moved. When AI cites a competitor it traces the citation to the specific source, whether a Reddit thread, G2 review, or press mention, and hands back a playbook for that source. Its methodology page states plainly that no vendor controls generative answers, that its visibility score is a diagnostic rather than a ranking probability, and that post-fix citations are reported against a baseline.",
+		category: "tracking",
+		ahrefsDR: 0,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			whiteLabelAgency: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, startingPrice: "$29/mo", hasEnterprise: false },
+		highlights: [
+			"Publishes what it cannot do — no placement guarantees, score is a diagnostic, movement reported against a baseline",
+			"Generates llms.txt, schema, and rewrites rather than only listing findings",
+			"Traces each competitor citation to its source and returns a per-source playbook",
+		],
+	},
+	{
+		slug: "geovector",
+		name: "GeoVector",
+		domain: "geovector.ai",
+		url: "https://www.geovector.ai/",
+		tagline: "Six-engine tracking wired into Search Console, Google Ads, and Analytics",
+		description:
+			"GeoVector monitors visibility, prompts, citations, sentiment, and a user-journey funnel weekly across six engines — ChatGPT, Gemini, Claude, Google AI Overview, Google AI Mode, and Perplexity — then connects to Google Search Console, Google Ads, and Analytics so visibility can be read against sessions, conversions, and paid efficiency. Every brand starts with a report covering a visibility scorecard, competitive ranking, citation deep-dive, and a prioritized six-week roadmap. Plans are credit-based, one credit per prompt tracked, from a free 25-prompt tier up to a white-labeled agency tier.",
+		category: "tracking",
+		ahrefsDR: 0,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			whiteLabelAgency: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: true, startingPrice: "$199/mo", hasEnterprise: true },
+		highlights: [
+			"Covers Google AI Overview and AI Mode as separate engines alongside four others",
+			"Search Console, Google Ads, and Analytics integrations tie visibility to sessions and conversions",
+			"Day-one brand and industry report with a prioritized six-week roadmap",
+		],
+	},
+	{
+		slug: "workduo",
+		name: "WorkDuo",
+		domain: "workduo.ai",
+		url: "https://www.workduo.ai/",
+		tagline: "Product-level AI recommendation tracking for commerce brands",
+		description:
+			"WorkDuo tracks which specific products AI engines recommend and how they position them against alternatives, rather than reporting brand mentions alone. Coverage spans ChatGPT, Google AI Overviews, AI Mode, Gemini, Perplexity, and DeepSeek, with models chosen per plan and tracking split by region and language. Pricing is per project from $29/month, and the enterprise tier adds a white-labeled client portal, API access, and unlimited projects.",
+		category: "ecommerce",
+		ahrefsDR: 0,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			geographicTracking: true,
+			shoppingTracking: true,
+			multiLanguage: true,
+			emailAlerts: true,
+			dataExportApi: true,
+			biConnectors: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: false, startingPrice: "$29/mo", hasEnterprise: true },
+		highlights: [
+			"Tracks product-level recommendations, not just whether the brand is named",
+			"Per-project pricing with the model set and regions chosen per plan",
+			"Looker and Google Analytics integrations, plus a white-labeled client portal on enterprise",
+		],
+	},
 ];
 
 export function getCompetitorBySlug(slug: string): Competitor | undefined {
@@ -3339,6 +3534,7 @@ const aeoPopularityRanking: string[] = [
 	"rankability", // AI Search Analyzer with NLP/entity focus, agency-oriented
 	"gauge", // End-to-end tracking + analysis + content platform
 	"passionfruit", // Stanford/CMU founders, unified SEO+GEO+AEO + managed service
+	"atomic-agi", // Named enterprise logos (MIT, Samsung, Salesforce, Publicis), unified AI-search + SEO analytics, MCP
 
 	// --- Tier C: Niche / emerging AEO tools with some traction ---
 	"wellows", // DR 62 / 6K traffic, published citation research; no disclosed funding/customers
@@ -3347,6 +3543,8 @@ const aeoPopularityRanking: string[] = [
 	"bluefish-ai", // Enterprise AI-commerce (Fortune 500 focus), named in best-AEO-2026 lists
 	"babylovegrowth", // DR 76, autopilot content + backlink network for AI citations
 	"topify", // 200+ brands incl. Zoom/TCL/Midea, full GEO feature set
+	"getmentioned", // Claims 150+ brands, seven-module product, topic-level aggregation
+	"friction-ai", // A/B prompt experiments and entity-recognition diagnosis; customer quotes are small agencies only
 	"omniseo", // WebFX-backed, enterprise customers (Darktrace, Fujifilm, Caterpillar)
 	"trakkr", // 8-model tracker, weekly ROI-scored actions + GA revenue attribution
 	"indexly", // Unified Google + AI tracker, broad feature set
@@ -3354,6 +3552,7 @@ const aeoPopularityRanking: string[] = [
 	"siftly", // Y Combinator-backed GEO platform with A/B testing
 	"airefs", // Hybrid tracker + done-for-you agency service
 	"geneo", // AI visibility platform with optimization recommendations
+	"geovector", // Six engines incl. AI Overview and AI Mode separately, GSC/Ads/GA integrations; no disclosed customers
 	"gushwork", // $9M raised, AI agents for end-to-end SEO workflows
 	"quattr", // GIGA AI agent, unified SEO + AEO + GEO
 	"rank-ai", // AI content creation + rank tracking
@@ -3391,11 +3590,13 @@ const aeoPopularityRanking: string[] = [
 	"flip-aeo", // AEO tracking + optimization
 	"llmclicks", // Search-Console-for-AI positioning — GSC integration + 120-point audit
 	"foglift", // Free no-signup technical audit + 5-engine monitoring, CLI/API/MCP; DR 18 but only ~100 sites analyzed
+	"prominara", // Complete audit/generate/validate loop and a candid methodology page, but no disclosed customers
 	"meikai", // Enterprise AEO with luxury/finance clients (Chanel, Hennessy, AXA)
 	"citatra", // Multi-platform tracker with one-click content publishing + GA4
 	"lumen", // AEO tracker with ChatGPT Shopping + crawler analytics
 	"oneglanse", // MIT-licensed self-hosted tracker capturing AI web UIs
 	"estran", // Ecommerce AEO with ACP/UCP protocol support
+	"workduo", // Product-level commerce recommendation tracking, bilingual, agency portal; no disclosed customers
 	"sitesignal", // Hallucination detection niche, Looker Studio + white-label
 	"visiblie", // MCP server integration + agentic workflows, SOC2
 	"airanklab", // Unified SEO/GEO/AEO with WordPress auto-publish
