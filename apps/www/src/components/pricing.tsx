@@ -4,10 +4,7 @@ import {
 	CLOUD_SIGNUP_URL,
 	PLAN_KEYS,
 	PLANS,
-	type PlanPlatformGroupId,
-	PREMIUM_ADDON_MONTHLY_USD,
 	planPlatformBreakdown,
-	platformTierMembers,
 } from "@workspace/config/plans";
 import { PlatformTier } from "@workspace/ui/brand/platform-tier";
 import { ArrowRight, Check } from "lucide-react";
@@ -104,7 +101,7 @@ function formButtonClass(featured?: boolean): string {
 		: `${base} [&_button]:bg-white [&_button]:text-zinc-900 [&_button]:ring-zinc-200 [&_button]:hover:bg-zinc-50 [&_button]:hover:ring-zinc-300`;
 }
 
-export function Pricing({ showPlatformNotes = true }: { showPlatformNotes?: boolean }) {
+export function Pricing() {
 	return (
 		<section id="pricing" className="border-b border-zinc-200 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
@@ -171,22 +168,13 @@ export function Pricing({ showPlatformNotes = true }: { showPlatformNotes?: bool
 					))}
 				</div>
 
-				<CloudPlans showPlatformNotes={showPlatformNotes} />
+				<CloudPlans />
 			</div>
 		</section>
 	);
 }
 
-/**
- * A tier's platforms as a sentence fragment, read from the catalog so the prose
- * can't fall behind the tables above it when a platform is added.
- */
-function namePlatforms(tier: PlanPlatformGroupId, type: "conjunction" | "disjunction" = "conjunction"): string {
-	const names = platformTierMembers(tier).map((member) => member.label);
-	return new Intl.ListFormat("en", { style: "long", type }).format(names);
-}
-
-function CloudPlans({ showPlatformNotes }: { showPlatformNotes: boolean }) {
+function CloudPlans() {
 	return (
 		<div className="mt-16">
 			<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ CLOUD PLANS</p>
@@ -261,28 +249,6 @@ function CloudPlans({ showPlatformNotes }: { showPlatformNotes: boolean }) {
 					</ul>
 				</div>
 			</div>
-
-			{showPlatformNotes && (
-				<div className="mt-6 grid gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-2">
-					<div className="bg-white p-5">
-						<p className="font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-500">/ SCRAPED SURFACES</p>
-						<p className="mt-2 text-sm text-zinc-700">
-							{namePlatforms("scraped")} are read the way a visitor sees them, so you get the answer <em>and</em> the
-							sources it cited — including the shopping and search modules alongside it. Sampled at your plan&apos;s rate.
-						</p>
-					</div>
-					<div className="bg-white p-5">
-						<p className="font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-500">/ MODEL APIS</p>
-						<p className="mt-2 text-sm text-zinc-700">
-							{namePlatforms("api")} are called directly, which shows how each model describes your brand from what it
-							already knows — nothing is searched, so nothing is cited. On Pro and Business you can also track a prompt on
-							a premium model with its own web search switched on — {namePlatforms("premium", "disjunction")} — for
-							grounded, cited answers, at ${PREMIUM_ADDON_MONTHLY_USD} per pairing per month beyond what your plan
-							includes.
-						</p>
-					</div>
-				</div>
-			)}
 
 			<div className="mt-6 flex flex-wrap gap-3">
 				<a

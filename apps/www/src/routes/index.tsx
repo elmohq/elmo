@@ -40,7 +40,7 @@ function HomePage() {
 				<Features />
 				<TradeSitesTestimonial />
 				<Community />
-				<Pricing showPlatformNotes={false} />
+				<Pricing />
 				<Faq items={HOME_FAQS} eyebrow="/ FAQ" />
 				<CTA />
 			</main>
