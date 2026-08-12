@@ -3158,6 +3158,42 @@ export const competitors: Competitor[] = [
 			"Built-in agent with a 67-tool MCP adapter and GSC, GA4, and Google Business Profile integrations",
 		],
 	},
+	{
+		slug: "lanesra",
+		name: "Lanesra AI",
+		domain: "lanesra.ai",
+		url: "https://lanesra.ai/",
+		tagline: "AI answer tracking aimed at Web3 protocols, chains, and exchanges",
+		description:
+			"Lanesra tracks brand visibility, position inside the answer, and sentiment across ChatGPT, Gemini, Claude, Perplexity, Grok, DeepSeek, Copilot, AI Overviews, and AI Mode, rerunning every prompt daily per model, language, and market. Alongside the major US models it covers the GCC sovereign models Jais, ALLaM, Fanar, and Falcon-H1, measuring Arabic answers natively rather than through translation, and it separates brand mentions from source citations down to individual URLs. Data leaves the platform through CSV export, a Looker Studio connector, a REST API, and an MCP server.",
+		category: "tracking",
+		ahrefsDR: 0,
+		status: "beta",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			promptVolumeEstimates: true,
+			sentimentAnalysis: true,
+			geographicTracking: true,
+			multiLanguage: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			dataExportApi: true,
+			biConnectors: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: false, startingPrice: "€50/mo", hasEnterprise: true },
+		highlights: [
+			"Tracks GCC sovereign models (Jais, ALLaM, Fanar, Falcon-H1) with Arabic measured natively",
+			"Agent Experience audits check whether an agent can extract a site's facts, llms.txt, and MCP surfaces",
+			"Access opens one industry at a time, starting with Web3 protocols, chains, wallets, and exchanges",
+		],
+	},
 ];
 
 export function getCompetitorBySlug(slug: string): Competitor | undefined {
@@ -3283,6 +3319,7 @@ const aeoPopularityRanking: string[] = [
 	"seozast",
 	"brandscan", // Romania-only GEO tracker, complete product but DR 0 / minimal traction
 	"lettertrace", // MIT self-hosted BYO-key tracker; DR 0 and brand new, no traction yet
+	"lanesra", // Full feature set and sovereign-model coverage, but pre-launch (signup "coming soon"), DR 0, no disclosed customers
 	"anvil",
 	"searchify",
 	"datagum",
