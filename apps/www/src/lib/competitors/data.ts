@@ -3194,6 +3194,96 @@ export const competitors: Competitor[] = [
 			"Access opens one industry at a time, starting with Web3 protocols, chains, wallets, and exchanges",
 		],
 	},
+	{
+		slug: "foglift",
+		name: "Foglift",
+		domain: "foglift.io",
+		url: "https://foglift.io/",
+		tagline: "Technical AI-readiness audits paired with five-engine visibility monitoring",
+		description:
+			"Foglift opens with a free 30-second technical audit — no signup — that scores a site across SEO, AI readiness, performance, security, and accessibility, then returns severity-ranked issues and an action plan ordered by impact. Its visibility side runs prompts against ChatGPT, Perplexity, Google AI Overview, Claude, and Gemini on a daily to hourly cadence depending on plan, suggesting prompts from an auto-detected industry. A separate tracker package records AI-engine referrals with the landing page per visit, and server and edge adapters log recognized AI-crawler requests.",
+		category: "tracking",
+		ahrefsDR: 18,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			crawlerAnalytics: true,
+			actionRecommendations: true,
+			siteAudits: true,
+			keywordResearch: true,
+			dataExportApi: true,
+		},
+		pricing: { hasFree: true, startingPrice: "$49/mo", hasEnterprise: true },
+		highlights: [
+			"Free technical audit across five dimensions with no signup or credit card",
+			"CLI, a public REST API that needs no auth for basic scans, and an MCP server for Claude Code, Cursor, and Windsurf",
+			"Tracker uses a hostname-bound public workspace ID, so no secret API key ships to the browser",
+		],
+	},
+	{
+		slug: "genwolf",
+		name: "Genwolf",
+		domain: "genwolf.ai",
+		url: "https://www.genwolf.ai/",
+		tagline: "Daily prompt tracking across ChatGPT, Gemini, and Perplexity",
+		description:
+			"Genwolf runs a prompt set daily against ChatGPT, Gemini, and Perplexity and reports mentions, citations, sentiment, and the source domains behind each answer, keeping full answer history so runs can be compared over time. Its core evaluation engine is MIT licensed and self-hostable, while the hosted app is the paid product. Pricing is per prompt — $30/month covers ten, with per-prompt rates that drop as the count grows — and prompts can be added or removed at any time.",
+		category: "tracking",
+		ahrefsDR: 0.9,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			keywordResearch: true,
+			openSource: true,
+		},
+		pricing: { hasFree: false, startingPrice: "$30/mo", hasEnterprise: false },
+		highlights: [
+			"MIT-licensed core evaluation engine, self-hostable, with the hosted app sold separately",
+			"Per-prompt pricing with volume tiers instead of fixed plans",
+			"Stores full answers per run, so past responses can be compared directly",
+		],
+	},
+	{
+		slug: "opensight",
+		name: "OpenSight",
+		domain: "opensight.dev",
+		url: "https://www.opensight.dev/",
+		tagline: "MIT-licensed AI visibility tracker with a free hosted tier",
+		description:
+			"OpenSight tracks brand visibility across ChatGPT, Perplexity, and Google AI Overviews, with competitor intelligence, visibility trends by engine, alerts on visibility changes, and a content scorer that rates any URL for AI-engine optimization and returns recommendations. The project is MIT licensed and self-hosting is free and unlimited; the hosted tiers exist for teams that would rather not run it. API access is included on every plan, including the free one.",
+		category: "open-source",
+		ahrefsDR: 0,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			emailAlerts: true,
+			dataExportApi: true,
+			openSource: true,
+		},
+		pricing: { hasFree: true, startingPrice: "$49/mo", hasEnterprise: false },
+		highlights: [
+			"MIT licensed with unlimited self-hosting; hosted plans are the paid convenience",
+			"Free hosted tier covers 25 prompts a month against ChatGPT and 2 competitors",
+			"API access on every plan, including free at 100 requests a day",
+		],
+	},
 ];
 
 export function getCompetitorBySlug(slug: string): Competitor | undefined {
@@ -3295,10 +3385,12 @@ const aeoPopularityRanking: string[] = [
 	"geo-aeo-tracker", // Open-source self-hosted AEO dashboard, 80 GitHub stars
 	"canonry", // Open-source self-hosted AEO platform, server-log ingestion + MCP, 52 stars
 	"gego", // GPL-3.0 self-hosted GEO tracker, Docker + CLI + REST API, Ollama support
+	"opensight", // MIT self-hosted tracker (36 stars) with a free hosted tier and API on every plan
 	"meridian", // AI search tracking with geographic targeting
 	"peasy", // Server-side, cookie-free AI traffic analytics
 	"flip-aeo", // AEO tracking + optimization
 	"llmclicks", // Search-Console-for-AI positioning — GSC integration + 120-point audit
+	"foglift", // Free no-signup technical audit + 5-engine monitoring, CLI/API/MCP; DR 18 but only ~100 sites analyzed
 	"meikai", // Enterprise AEO with luxury/finance clients (Chanel, Hennessy, AXA)
 	"citatra", // Multi-platform tracker with one-click content publishing + GA4
 	"lumen", // AEO tracker with ChatGPT Shopping + crawler analytics
@@ -3319,6 +3411,7 @@ const aeoPopularityRanking: string[] = [
 	"seozast",
 	"brandscan", // Romania-only GEO tracker, complete product but DR 0 / minimal traction
 	"lettertrace", // MIT self-hosted BYO-key tracker; DR 0 and brand new, no traction yet
+	"genwolf", // Live 3-engine tracker with MIT core engine, but 13 stars and DR under 1
 	"lanesra", // Full feature set and sovereign-model coverage, but pre-launch (signup "coming soon"), DR 0, no disclosed customers
 	"anvil",
 	"searchify",
