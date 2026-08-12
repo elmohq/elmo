@@ -4399,6 +4399,315 @@ export const competitors: Competitor[] = [
 			"elelem Score is its own citation-readiness metric",
 		],
 	},
+	{
+		slug: "hall",
+		name: "Hall",
+		domain: "usehall.com",
+		url: "https://usehall.com/",
+		tagline: "AI brand visibility tracker, acquired by Tracksuit",
+		description:
+			"Hall tracked how brands appeared in AI conversations, measuring sentiment, share of voice, and positioning. It was acquired by brand-tracking company Tracksuit in July 2026, on the stated reasoning that a mention score means little without knowing what real people think, so LLM brand health should sit alongside human brand health rather than in a separate tool. Existing users can still log in; new signups go to a waitlist.",
+		category: "tracking",
+		ahrefsDR: 47,
+		status: "acquired",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Acquired by Tracksuit in July 2026; new signups are waitlisted",
+			"Merging LLM brand health with human brand-tracking survey data",
+			"Its own postmortem argues an AI mention score is meaningless in isolation",
+		],
+		notes: "Acquired by Tracksuit, announced 21 July 2026",
+	},
+	{
+		slug: "siteline",
+		name: "Siteline",
+		domain: "siteline.ai",
+		url: "https://siteline.ai/",
+		tagline: "Agent traffic analytics — where bots get stuck, and what to fix",
+		description:
+			"Siteline, previously GPTrends, measures how AI agents, bots, and crawlers move through a site: visit counts by provider, which content they prefer, where they get stuck, and human visits arriving from AI. A log explorer sits alongside visibility tracking and citation counts, plus an agent readiness check and a continuously updated directory of AI agents, bots, and crawlers. It was voted #1 Product of the Day on Product Hunt and has a free tier.",
+		category: "tracking",
+		ahrefsDR: 39,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			brandMentionTracking: true,
+			crawlerAnalytics: true,
+			actionRecommendations: true,
+			siteAudits: true,
+			dataExportApi: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: false },
+		highlights: [
+			"Log explorer for raw agent and crawler behaviour, not just aggregate counts",
+			"Publishes a maintained public directory of AI agents, bots, and crawlers",
+			"Rebranded from GPTrends; voted #1 Product of the Day on Product Hunt",
+		],
+	},
+	{
+		slug: "geo-metrics",
+		name: "GEO Metrics",
+		domain: "trygeometrics.com",
+		url: "https://www.trygeometrics.com/",
+		tagline: "Nine-engine Share of Model tracking with hallucination correction",
+		description:
+			"GEO Metrics, formerly LLMO Metrics, measures how ChatGPT, Gemini, Perplexity, Copilot, Grok, and four more engines answer a category, reporting Share of Model against competitors and flagging hallucinations to fix. It claims 3,000+ users, runs an MCP server and an affiliate program, and has a dedicated agency track alongside free resources.",
+		category: "tracking",
+		ahrefsDR: 32,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+			dataExportApi: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: true },
+		highlights: [
+			"Nine tracked engines, one of the broader coverage claims in the category",
+			"Treats hallucination detection and correction as a headline use case",
+			"Claims 3,000+ users; MCP server and agency program",
+		],
+	},
+	{
+		slug: "geoptie",
+		name: "Geoptie",
+		domain: "geoptie.com",
+		url: "https://geoptie.com/",
+		tagline: "GEO tool suite in eleven languages, including a cannibalization checker",
+		description:
+			"Geoptie bundles separate tools rather than one dashboard: a GEO audit, content checker, keyword finder, rank tracker, GEO checklist, cannibalization checker, and backlink finder, reporting visibility score, detection rate, top-3 visibility, and average position against named competitors. The interface ships in eleven languages including French, German, Korean, Malay, Portuguese, Russian, and Turkish.",
+		category: "tracking",
+		ahrefsDR: 39,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			multiLanguage: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Eleven-language interface, unusually broad for the category",
+			"Includes a content cannibalization checker and backlink finder",
+			"Sold as discrete tools rather than a single dashboard",
+		],
+	},
+	{
+		slug: "genrank",
+		name: "Genrank",
+		domain: "genrank.io",
+		url: "https://genrank.io/",
+		tagline: "Conversational-funnel visibility with advertising and social monitoring",
+		description:
+			"Genrank frames AI mentions as only half the conversational funnel — the other half being whether positioning matches user intent well enough to convert — and reports both. Alongside content optimization it monitors brand sentiment across the wider internet and reports advertising insights showing which ads appear for which prompts and which competitors are paying for them.",
+		category: "tracking",
+		ahrefsDR: 34,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			socialMediaTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Reports which competitors are buying ads against which prompts",
+			"Social sentiment monitoring bundled with answer tracking",
+			"Frames mentions as half the funnel, positioning as the other half",
+		],
+	},
+	{
+		slug: "highlighted",
+		name: "Highlighted.ai",
+		domain: "highlighted.ai",
+		url: "https://highlighted.ai/",
+		tagline: "AI Overview and ChatGPT tracking sold to SEO agencies",
+		description:
+			"Highlighted tracks how often a brand appears in ChatGPT and Google AI Overviews for prompts the user enters, charts visibility over time, and overlays competitor tracking on the same graph. It is sold primarily to SEO companies and agencies, with white-label reports and a 30-day risk-free period.",
+		category: "tracking",
+		ahrefsDR: 32,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: false },
+		highlights: [
+			"Competitor visibility overlaid on the same chart as your own",
+			"White-label reports aimed at SEO agencies reselling to clients",
+			"Narrow by design — AI Overviews and ChatGPT rather than broad engine coverage",
+		],
+	},
+	{
+		slug: "geostar",
+		name: "Geostar",
+		domain: "geostar.ai",
+		url: "https://www.geostar.ai/",
+		tagline: "Managed GEO agency for Shopify and DTC brands",
+		description:
+			"Geostar is a managed service rather than software: it runs catalog optimization, content, schema, citations, and monthly reporting for Shopify and DTC brands, with playbooks split by vertical — apparel, beauty, health and supplements, home, pet, food and beverage. It runs Geostar University and a certified agency directory, and publishes research on AI writing patterns and their detection.",
+		category: "ecommerce",
+		ahrefsDR: 31,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			shoppingTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			whiteLabelAgency: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Delivered as a managed retainer, not a self-serve dashboard",
+			"Vertical playbooks for apparel, beauty, supplements, pet, and food brands",
+			"Runs a certification program and directory for partner agencies",
+		],
+	},
+	{
+		slug: "keytomic",
+		name: "Keytomic",
+		domain: "keytomic.com",
+		url: "https://keytomic.com/",
+		tagline: "Agent-run SEO and AI visibility automation at a single low price",
+		description:
+			"Keytomic runs SEO and AI visibility work through agents rather than dashboards, covering backlink audits, technical audits, indexing status, topic calendars, a knowledge base, image generation, and a Reddit agent for high-intent threads. Its pitch is consolidation — replacing a roughly $2,500 stack of separate tools with one $99 platform. It claims 300+ users at a 4.5 rating.",
+		category: "tracking",
+		ahrefsDR: 22,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			brandMentionTracking: true,
+			socialMediaTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			whiteLabelAgency: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, startingPrice: "$99/mo", hasEnterprise: true },
+		highlights: [
+			"Sold as a stack replacement — one $99 platform against a ~$2,500 toolkit",
+			"Reddit agent for finding high-intent threads to participate in",
+			"Bundles image generation and indexing status alongside AI visibility",
+		],
+	},
+	{
+		slug: "llmconsole",
+		name: "LLMConsole",
+		domain: "llmconsole.com",
+		url: "https://llmconsole.com/",
+		tagline: "Flat-rate brand-versus-competitor ranking across the major model providers",
+		description:
+			"LLMConsole answers one question: how likely each LLM is to recommend a brand or product versus competitors for a given audience. A no-signup analysis runs from a URL, and a single $29/month plan covers 5 projects and 50 monitored prompts across OpenAI, Anthropic, Google, and Perplexity. Ongoing monitoring and improvement suggestions are listed as coming soon.",
+		category: "tracking",
+		ahrefsDR: 14,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+		},
+		pricing: { hasFree: true, startingPrice: "$29/mo", hasEnterprise: false },
+		highlights: [
+			"Single flat $29/month plan with no tier ladder",
+			"Runs an analysis from a URL with no signup or card",
+			"Monitoring and suggestions still marked coming soon",
+		],
+	},
+	{
+		slug: "knwn",
+		name: "KNWN",
+		domain: "knwn.app",
+		url: "https://knwn.app/",
+		tagline: "MCP server and ChatGPT app studio with a visibility product attached",
+		description:
+			"KNWN's main business is building custom MCP servers and ChatGPT apps so customers can find, compare, quote, book, or buy inside ChatGPT, with client-owned code running in the client's own infrastructure and no required retainer. KNWN Visibility is a separate, smaller product tracking how AI presents a brand. The studio work, not the tracker, is what the site leads with.",
+		category: "api-developer",
+		ahrefsDR: 25,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			brandMentionTracking: true,
+			dataExportApi: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Primarily a build shop for MCP servers and ChatGPT apps",
+			"Client keeps the code and runs it in their own infrastructure",
+			"Visibility tracking is a secondary product line",
+		],
+	},
+	{
+		slug: "jarts",
+		name: "Jarts",
+		domain: "jarts.io",
+		url: "https://jarts.io/",
+		tagline: "Persona-based visibility tracker, acquired and shut down",
+		description:
+			"Jarts tracked brand visibility across ChatGPT, Gemini, and Perplexity with an unusual persona model — the same category measured through distinct buyer personas such as a beginner athlete or trend-seeking athleisure buyer — alongside source insights that classified each cited domain by type. It was acquired and the service ended on 4 May 2026; the German operating entity is in liquidation.",
+		category: "tracking",
+		ahrefsDR: 5,
+		status: "acquired",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: false },
+		highlights: [
+			"Measured the same category separately through distinct buyer personas",
+			"Classified each cited source by type — comparison, video, review, peer",
+			"Acquired and wound down; service ended 4 May 2026",
+		],
+		notes: "Service ended 4 May 2026 after acquisition; Jarts UG in liquidation",
+	},
 ];
 
 export function getCompetitorBySlug(slug: string): Competitor | undefined {
@@ -4451,12 +4760,14 @@ const aeoPopularityRanking: string[] = [
 	"goodie", // Funded; Amazon Rufus tracking + AEO thought leadership
 	"knowatoa", // Multi-LLM tracking, BISCUIT framework, BI connectors
 	"llmrefs", // Citation specialist; lists eBay/HubSpot/NVIDIA users
+	"hall", // Acquired by Tracksuit Jul 2026; strong product and DR 47 but no longer independently sold
 	"aiseotracker", // Dedicated AEO tracker, claims 249K brands, Page Inspector
 	"gracker", // Cybersecurity/B2B-SaaS vertical with documented customer case studies
 	"aiso", // Clients incl. H&M, Uber, Wise, Dentsu, IHG; official Claude connector; publishes own conversation research
 	"brandrank", // Recommendation Share metric + defensive misinformation monitoring, whitepapers/webinars, DR 44
 	"finseo", // Query fan-outs + bot traffic + API/MCP, claims 500+ teams, EN/DE
 	"erlin", // Unified AI+SEO+GA/GSC with Reddit/YouTube citation tracking and task workflows
+	"geo-metrics", // Nine engines, Share of Model, claims 3,000+ users, MCP + agency program
 	"cognizo", // Full platform incl. prompt volumes, AI traffic analytics, ChatGPT Ads, agency marketplace
 	"rankability", // AI Search Analyzer with NLP/entity focus, agency-oriented
 	"analyze", // AI search console with governance/risk-term monitoring, DR 41
@@ -4469,20 +4780,25 @@ const aeoPopularityRanking: string[] = [
 
 	// --- Tier C: Niche / emerging AEO tools with some traction ---
 	"wellows", // DR 62 / 6K traffic, published citation research; no disclosed funding/customers
+	"geoptie", // Broad tool suite in 11 languages, DR 39; no disclosed customers
 	"petra-labs", // $5.2M seed (Work-Bench) + press, but services-heavy and no public product traction yet
 	"superlines", // 9-platform GEO tracker, customers incl. Supabase/Publicis, Google for AI Startups
 	"emberos", // Five-module agentic platform, Share-of-Prompt/TAVI metrics; no disclosed customers
 	"bluefish-ai", // Enterprise AI-commerce (Fortune 500 focus), named in best-AEO-2026 lists
 	"babylovegrowth", // DR 76, autopilot content + backlink network for AI citations
+	"genrank", // Ad-spend visibility per prompt plus social sentiment; no disclosed traction
 	"topify", // 200+ brands incl. Zoom/TCL/Midea, full GEO feature set
+	"geostar", // Managed Shopify/DTC GEO agency with certification program, not software
 	"getmentioned", // Claims 150+ brands, seven-module product, topic-level aggregation
 	"friction-ai", // A/B prompt experiments and entity-recognition diagnosis; customer quotes are small agencies only
 	"omniseo", // WebFX-backed, enterprise customers (Darktrace, Fujifilm, Caterpillar)
 	"trakkr", // 8-model tracker, weekly ROI-scored actions + GA revenue attribution
 	"doppler", // Search-Console model reporting impressions/clicks/CTR; narrower than a full tracker
+	"siteline", // Agent-traffic analytics with log explorer and public bot directory; #1 on Product Hunt
 	"aeo-vision", // Six engines with Reddit citation breakdown and sponsored-placement tracking, from $9/mo
 	"attensira", // Deliberately narrow 10-20 prompt sets with prioritized fixes; YC-backed startups cited
 	"indexly", // Unified Google + AI tracker, broad feature set
+	"highlighted", // Narrow AI Overviews + ChatGPT tracker sold white-label to SEO agencies
 	"ai-rank-checker", // Seven engines incl. Meta AI, pay-as-you-go credits, claims 700+ companies
 	"rankshift", // 850+ brands, BI connectors (Looker/BigQuery/Power BI)
 	"brandpeek", // 15-model coverage, AI fact sheet generator, free plan; no disclosed customers
@@ -4495,6 +4811,7 @@ const aeoPopularityRanking: string[] = [
 	"amadora", // Agency-first GEO service tooling with citation gap analysis; DR 9
 	"geovector", // Six engines incl. AI Overview and AI Mode separately, GSC/Ads/GA integrations; no disclosed customers
 	"gushwork", // $9M raised, AI agents for end-to-end SEO workflows
+	"keytomic", // Agent-run SEO+AEO automation at $99, claims 300+ users
 	"quattr", // GIGA AI agent, unified SEO + AEO + GEO
 	"essio", // Agency-delivered, link-building emphasis; DR 8
 	"rank-ai", // AI content creation + rank tracking
@@ -4515,6 +4832,7 @@ const aeoPopularityRanking: string[] = [
 	// --- Tier D: Early / small AEO tools ---
 	"checkthat", // No-cold-start tracking, lead gen for GrowthX
 	"parse", // 219K brands database, peer visibility
+	"llmconsole", // Single $29 plan, minimal feature set, monitoring still coming soon
 	"amionai", // Weekly action plans + The Index leaderboards
 	"brandbeacon", // Solid monitoring but thin feature set — brand-description analysis still coming soon
 	"airix", // 16-engine weekly scans + free checker; SMB-oriented, no disclosed traction
@@ -4529,6 +4847,7 @@ const aeoPopularityRanking: string[] = [
 	"asky", // MCP server + bundled GEO specialist, but DR 0.8 on a freshly moved domain
 	"aeotrack", // Complete product with a free tier, but DR 0 and no disclosed funding or customers
 	"lorelight", // Shutting down — public postmortem
+	"jarts", // Acquired and shut down May 2026 — persona-based tracking, entity in liquidation
 	"getcito", // Ranked on name recognition only — since Jul 2026 it is a rebranded fork of Elmo's codebase
 	"geo-aeo-tracker", // Open-source self-hosted AEO dashboard, 80 GitHub stars
 	"canonry", // Open-source self-hosted AEO platform, server-log ingestion + MCP, 52 stars
@@ -4548,6 +4867,7 @@ const aeoPopularityRanking: string[] = [
 	"workduo", // Product-level commerce recommendation tracking, bilingual, agency portal; no disclosed customers
 	"sitesignal", // Hallucination detection niche, Looker Studio + white-label
 	"visiblie", // MCP server integration + agentic workflows, SOC2
+	"knwn", // MCP/ChatGPT app studio first; visibility tracking is secondary
 	"airanklab", // Unified SEO/GEO/AEO with WordPress auto-publish
 	"cairrot", // Affordable agency-focused AEO with Looker/Databox
 	"rankprompt", // 6-platform tracker, hyper-local (500+ cities) + 50+ languages
