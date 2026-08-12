@@ -4350,32 +4350,6 @@ export const competitors: Competitor[] = [
 		],
 	},
 	{
-		slug: "five-blocks-aiq",
-		name: "Five Blocks AIQ",
-		domain: "fiveblocks.com",
-		url: "https://www.fiveblocks.com/",
-		tagline: "AI perception tracking from a digital reputation management firm",
-		description:
-			"AIQ is the AI platform of Five Blocks, a New York digital reputation management firm whose core work is reputation crisis management, entity optimization, and Wikipedia strategy. AIQ reports what AI models say about a brand and the narratives behind it, sitting alongside their IMPACT, WikiAlerts, and GeoSearch tools. The AI product is one part of a services business rather than a standalone self-serve tracker.",
-		category: "other",
-		ahrefsDR: 35,
-		status: "active",
-		features: {
-			multiLlmTracking: true,
-			visibilityScore: true,
-			brandMentionTracking: true,
-			sentimentAnalysis: true,
-			competitorBenchmarking: true,
-			actionRecommendations: true,
-		},
-		pricing: { hasFree: false, hasEnterprise: true },
-		highlights: [
-			"Comes from a reputation management firm — Wikipedia and entity strategy are the core practice",
-			"Bundled with WikiAlerts and GeoSearch rather than sold as a standalone tracker",
-			"Aimed at corporate and executive reputation rather than marketing visibility",
-		],
-	},
-	{
 		slug: "elelem",
 		name: "elelem",
 		domain: "elelem.ai",
@@ -6200,7 +6174,6 @@ const aeoPopularityRanking: string[] = [
 	"gumshoe", // AI search visibility intelligence
 	"rankbee", // Ex-Amazon Global Head of SEO founder, consultancy-led, DR 17
 	"xlr8-ai", // Claims 30+ enterprise clients and $10M pipeline; agency+software hybrid, DR 17
-	"five-blocks-aiq", // AI product of a reputation-management services firm, not a standalone tracker
 	"rebel-growth", // Growth-focused AEO tracking + consulting
 	"aeo-engine", // E-commerce focused AEO with schema optimization
 	"aiclicks", // Done-for-you action plans with AI agents
