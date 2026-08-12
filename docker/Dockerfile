@@ -92,7 +92,12 @@ WORKDIR /app
 
 COPY --from=builder /deploy/lib ./
 
-CMD ["npx", "drizzle-kit", "migrate"]
+# drizzle-kit and tsx are devDependencies, so a --prod deploy would drop them.
+# npx would paper over that by pulling an unpinned copy off the registry at run
+# time, inside a container holding DATABASE_URL — fail the build instead.
+RUN test -x ./node_modules/.bin/drizzle-kit
+
+CMD ["./node_modules/.bin/drizzle-kit", "migrate"]
 
 # Worker stage
 FROM base AS worker
@@ -110,5 +115,7 @@ COPY --from=builder --chown=worker:nodejs /deploy/worker ./
 
 USER worker
 
+RUN test -x ./node_modules/.bin/tsx
+
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["npx", "tsx", "src/index.ts"]
+CMD ["./node_modules/.bin/tsx", "src/index.ts"]
