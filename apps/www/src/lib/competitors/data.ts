@@ -5105,6 +5105,351 @@ export const competitors: Competitor[] = [
 			"Small single-purpose tool rather than a platform",
 		],
 	},
+	{
+		slug: "rankscale",
+		name: "Rankscale",
+		domain: "rankscale.ai",
+		url: "https://rankscale.ai/",
+		tagline: "Seventeen engines and 94 technical checkpoints with no per-engine upsell",
+		description:
+			"Rankscale tracks rankings across 17+ engines — Google AI Overviews and AI Mode, ChatGPT, Perplexity, Gemini, Claude, Copilot, DeepSeek and more — in one plan rather than charging per engine, covering 240+ countries and all languages. It monitors both chat interfaces and raw models, does intent-based prompt research, and runs 94 automatic technical checkpoints on the structural and authority signals engines use to verify and cite content. It publishes case studies, a partner program, and recurring live sessions.",
+		category: "tracking",
+		ahrefsDR: 63,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			geographicTracking: true,
+			multiLanguage: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			dataExportApi: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"All 17+ engines in one plan, explicitly with no per-engine upsell",
+			"94 automated technical checkpoints on citation and authority signals",
+			"Separates chat-interface results from raw model responses",
+		],
+	},
+	{
+		slug: "relixir",
+		name: "Relixir",
+		domain: "relixir.ai",
+		url: "https://www.relixir.ai/",
+		tagline: "Autonomous GEO agent that monitors, writes, and deploys",
+		description:
+			"Relixir sells Rex, framed as an autonomous GEO employee rather than a dashboard: it monitors visibility across ChatGPT, Perplexity, Claude, and Google AI Overviews, then generates and deploys GEO-optimized content to close the gaps, running citation optimization and content ops on a continuous loop. It connects into the rest of the marketing stack and reports 400+ fast-growing B2B teams as users.",
+		category: "tracking",
+		ahrefsDR: 45,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Deploys the content it generates rather than handing back a task list",
+			"Sold as an autonomous employee, hireable alongside other agents",
+			"Claims 400+ B2B teams",
+		],
+	},
+	{
+		slug: "qwairy",
+		name: "Qwairy",
+		domain: "qwairy.co",
+		url: "https://www.qwairy.co/",
+		tagline: "French GEO platform that distinguishes API from UI results per engine",
+		description:
+			"Qwairy tracks ten engines and labels each by how it is queried — ChatGPT, Perplexity, Gemini, and Grok via both API and UI, AI Overview and AI Mode via UI, Claude, Mistral, and DeepSeek via API — which matters because API answers and what users actually see diverge. The platform runs cockpit, monitor, analyze, act, optimize, measure, and explore stages, with API reference, MCP documentation, playbooks, and an agency track. It is French, GDPR aligned, and hosts data in the EU.",
+		category: "tracking",
+		ahrefsDR: 43,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			geographicTracking: true,
+			multiLanguage: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			dataExportApi: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: true },
+		highlights: [
+			"Labels every engine as API or UI sourced, since the two disagree",
+			"EU data hosting and GDPR alignment, built in France",
+			"Documented API and MCP server alongside the dashboard",
+		],
+	},
+	{
+		slug: "promptrush",
+		name: "PromptRush",
+		domain: "promptrush.ai",
+		url: "https://www.promptrush.ai/",
+		tagline: "Five-surface visibility tracking with a 5.0 G2 rating",
+		description:
+			"PromptRush monitors brand mentions across ChatGPT, Gemini, Perplexity, Google AI Overviews, and AI Mode, with region selection on the free visibility report. It holds a 5.0 rating on G2, reports 100+ brands, and names customers including Renderforest, EasyDMARC, CloudTalk, Powtoon, Aikido, 10Web, and Fliki.",
+		category: "tracking",
+		ahrefsDR: 36,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			geographicTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: true },
+		highlights: [
+			"5.0 rating on G2 with named SaaS customers",
+			"Free visibility report with country selection, no card",
+			"Covers Google AI Overviews and AI Mode as separate surfaces",
+		],
+	},
+	{
+		slug: "riff-analytics",
+		name: "Riff Analytics",
+		domain: "riffanalytics.ai",
+		url: "https://www.riffanalytics.ai/",
+		tagline: "Seven-engine tracking framed around answer share and citation gaps",
+		description:
+			"Riff Analytics tracks brand visibility across ChatGPT, Google AI Mode, Perplexity, Claude, Grok, DeepSeek, and Llama, reporting answer share and identifying top-cited sources so citation gaps can be closed. It scans a site for AI readiness — what engines see when they crawl the content — and returns a free report in about five minutes, with a seven-day trial.",
+		category: "tracking",
+		ahrefsDR: 37,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: false },
+		highlights: [
+			"Tracks Llama and DeepSeek alongside the mainstream five",
+			"Free report in about five minutes before any signup",
+			"AI readiness scan reports what crawlers actually see",
+		],
+	},
+	{
+		slug: "ranklens",
+		name: "RankLens",
+		domain: "ranklens.seovendor.co",
+		url: "https://ranklens.seovendor.co/",
+		tagline: "Public sector leaderboards of AI brand visibility, from SEO Vendor",
+		description:
+			"RankLens, built by white-label agency SEO Vendor, is structured as public research rather than a subscription dashboard: sector leaderboards across retailing, technology, health care, energy, financials and more let anyone compare brand discovery, average rank, and a Visibility Index. Full AI visibility reports are published for named large companies including Dell, Johnson & Johnson, Fannie Mae, and Valero.",
+		category: "tracking",
+		ahrefsDR: 53,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: true },
+		highlights: [
+			"Publishes open sector leaderboards rather than gating everything behind login",
+			"Pre-built visibility reports for named Fortune 500 companies",
+			"Comes from SEO Vendor, a white-label agency platform",
+		],
+	},
+	{
+		slug: "rivalsee",
+		name: "RivalSee",
+		domain: "rivalsee.com",
+		url: "https://www.rivalsee.com/",
+		tagline: "Persona-driven prompts instead of keyword lists, plus an API sister product",
+		description:
+			"RivalSee generates dynamic customer personas that ask questions the way real segments would, rather than tracking a generic keyword list, and reports brand mentions, citations, and competitor share of voice across ChatGPT, Perplexity, Claude, and Google AI. It serves both businesses and agencies, and ships an API-first sister product, BotSee.io, aimed at giving Claude Code and other agents access to visibility data.",
+		category: "tracking",
+		ahrefsDR: 23,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+			dataExportApi: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Auto-generated personas drive the prompt set instead of keywords",
+			"Sister product BotSee.io exposes the same data API-first to coding agents",
+			"Returns the specific content moves, not just the gap",
+		],
+	},
+	{
+		slug: "rank-plus-plus",
+		name: "Rank++",
+		domain: "rankplusplus.com",
+		url: "https://rankplusplus.com/",
+		tagline: "Nine AEO tools aimed at indie hackers and solo founders",
+		description:
+			"Rank++ bundles nine AEO tools — visibility audits, schema builders, content optimization and more — explicitly for indie hackers, founders, and solopreneurs rather than marketing teams. Several tools are free to use standalone, and paid access starts with a 14-day trial.",
+		category: "tracking",
+		ahrefsDR: 22,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			brandMentionTracking: true,
+			competitorBenchmarking: true,
+			actionRecommendations: true,
+			siteAudits: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: false },
+		highlights: [
+			"Targeted at solo founders rather than teams or agencies",
+			"Several tools including schema builders usable free",
+			"Nine discrete tools rather than one dashboard",
+		],
+	},
+	{
+		slug: "quno",
+		name: "Quno",
+		domain: "quno.ai",
+		url: "https://www.quno.ai/",
+		tagline: "Brand intelligence engine tracking ten-plus models",
+		description:
+			"Quno tracks how frequently a brand appears across ten or more AI models, analyzes what those responses actually say, and lets users manage custom prompt sets to control exactly what is measured over time. Reporting covers a brand visibility score, competitive benchmarking on the prompts that matter, and qualitative analysis of how the brand is described.",
+		category: "tracking",
+		ahrefsDR: 27,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: true },
+		highlights: [
+			"Tracks more than ten models",
+			"Free entry tier with custom prompt management",
+			"Qualitative response analysis alongside the frequency score",
+		],
+	},
+	{
+		slug: "rankbee",
+		name: "RankBee",
+		domain: "rankbee.ai",
+		url: "https://rankbee.ai/",
+		tagline: "GAIO consultancy and toolkit founded by Amazon's former global head of SEO",
+		description:
+			"RankBee combines a toolkit, audits, and consulting under what it calls GAIO — generative AI optimization — helping brands measure and influence how engines discover and recommend them. Its founder was previously Global Head of SEO at Amazon, and it reports a pilot achieving a tenfold improvement in ChatGPT visibility in 14 days. Alongside enterprise work it runs a political campaigns practice.",
+		category: "tracking",
+		ahrefsDR: 17,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Founded by Amazon's former Global Head of SEO",
+			"Runs a dedicated political campaigns practice",
+			"Strategy and execution sold together with the toolkit",
+		],
+	},
+	{
+		slug: "seen-by-ai",
+		name: "Seen-By.AI",
+		domain: "seen-by.ai",
+		url: "https://seen-by.ai/",
+		tagline: "UK visibility checker priced per report from £4.99",
+		description:
+			"Seen-By.AI tests whether a website appears in ChatGPT, Claude, Gemini, and Perplexity for questions the user supplies, returning instant recommendations. It is UK-focused with worked public examples — including an analysis of Tesco's visibility on queries like best online supermarkets UK — and sells one-off premium reports from £4.99 after a free scan, with separate guidance tracks for PR and marketing teams.",
+		category: "tracking",
+		ahrefsDR: 1,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			siteAudits: true,
+		},
+		pricing: { hasFree: true, startingPrice: "£4.99 one-off", hasEnterprise: false },
+		highlights: [
+			"Priced per report from £4.99 rather than by subscription",
+			"UK-focused with published worked examples on real retailers",
+			"Free scan before any payment",
+		],
+	},
+	{
+		slug: "promptsignal",
+		name: "PromptSignal",
+		domain: "promptsignal.ai",
+		url: "https://www.promptsignal.ai/",
+		tagline: "Early-access brand monitoring with curated prompt suggestions",
+		description:
+			"PromptSignal monitors how leading models mention, rank, and describe a brand so teams can measure visibility, track competitors, and adjust positioning. Prompts come from curated suggestions tailored to the business rather than requiring a list up front. The product is in early access — signups join a waitlist and the site offers a call with the founders.",
+		category: "tracking",
+		ahrefsDR: 5,
+		status: "beta",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			keywordResearch: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: false },
+		highlights: [
+			"Still early access — new signups join a waitlist",
+			"Curated prompt suggestions rather than user-supplied lists",
+			"Direct founder access offered as part of onboarding",
+		],
+	},
 ];
 
 export function getCompetitorBySlug(slug: string): Competitor | undefined {
@@ -5145,6 +5490,7 @@ const aeoPopularityRanking: string[] = [
 	"brandlight", // Named #1 AEO platform by an analyst ranking, Fortune 500 customers, SOC 2 Type 2, AI-ads module
 	"writesonic", // 120M AI conversation dataset, major brand, combined tracking + content
 	"athenahq", // Repeatedly named in best-AEO-tools-2026 lists, prompt-level insights
+	"rankscale", // 17+ engines in one plan, 240+ countries, 94 technical checks, DR 63 with case studies + partners
 	"se-ranking", // Large established platform with dedicated AI Overviews + ChatGPT trackers
 
 	// --- Tier B: Known / growing AEO tools ---
@@ -5156,6 +5502,7 @@ const aeoPopularityRanking: string[] = [
 	"promptwatch", // UI-scraping prompt monitor, 630M citations, WSJ/Axios
 	"goodie", // Funded; Amazon Rufus tracking + AEO thought leadership
 	"knowatoa", // Multi-LLM tracking, BISCUIT framework, BI connectors
+	"promptrush", // 5.0 on G2 with named SaaS customers, 100+ brands
 	"llmrefs", // Citation specialist; lists eBay/HubSpot/NVIDIA users
 	"hall", // Acquired by Tracksuit Jul 2026; strong product and DR 47 but no longer independently sold
 	"aiseotracker", // Dedicated AEO tracker, claims 249K brands, Page Inspector
@@ -5163,9 +5510,12 @@ const aeoPopularityRanking: string[] = [
 	"aiso", // Clients incl. H&M, Uber, Wise, Dentsu, IHG; official Claude connector; publishes own conversation research
 	"brandrank", // Recommendation Share metric + defensive misinformation monitoring, whitepapers/webinars, DR 44
 	"finseo", // Query fan-outs + bot traffic + API/MCP, claims 500+ teams, EN/DE
+	"relixir", // Autonomous agent that deploys content, claims 400+ B2B teams, DR 45
+	"qwairy", // Ten engines split API vs UI, EU hosting, documented API + MCP; French market leader
 	"erlin", // Unified AI+SEO+GA/GSC with Reddit/YouTube citation tracking and task workflows
 	"geo-metrics", // Nine engines, Share of Model, claims 3,000+ users, MCP + agency program
 	"minddex", // French-market leader — Rossel Advertising reference tech, named Carglass/Ionos work
+	"riff-analytics", // Seven engines incl. Llama, citation gaps + AI readiness scan, DR 37
 	"cognizo", // Full platform incl. prompt volumes, AI traffic analytics, ChatGPT Ads, agency marketplace
 	"rankability", // AI Search Analyzer with NLP/entity focus, agency-oriented
 	"analyze", // AI search console with governance/risk-term monitoring, DR 41
@@ -5178,6 +5528,7 @@ const aeoPopularityRanking: string[] = [
 
 	// --- Tier C: Niche / emerging AEO tools with some traction ---
 	"wellows", // DR 62 / 6K traffic, published citation research; no disclosed funding/customers
+	"ranklens", // Public sector leaderboards and Fortune 500 reports; agency-built research play
 	"geoptie", // Broad tool suite in 11 languages, DR 39; no disclosed customers
 	"petra-labs", // $5.2M seed (Work-Bench) + press, but services-heavy and no public product traction yet
 	"superlines", // 9-platform GEO tracker, customers incl. Supabase/Publicis, Google for AI Startups
@@ -5192,6 +5543,7 @@ const aeoPopularityRanking: string[] = [
 	"friction-ai", // A/B prompt experiments and entity-recognition diagnosis; customer quotes are small agencies only
 	"omniseo", // WebFX-backed, enterprise customers (Darktrace, Fujifilm, Caterpillar)
 	"trakkr", // 8-model tracker, weekly ROI-scored actions + GA revenue attribution
+	"rivalsee", // Persona-generated prompts + API-first sister product for coding agents
 	"open-forge", // Bootstrapped, named customers with attributed traffic numbers, 10k newsletter
 	"doppler", // Search-Console model reporting impressions/clicks/CTR; narrower than a full tracker
 	"siteline", // Agent-traffic analytics with log explorer and public bot directory; #1 on Product Hunt
@@ -5209,6 +5561,7 @@ const aeoPopularityRanking: string[] = [
 	"airefs", // Hybrid tracker + done-for-you agency service
 	"chosenly", // B2B GEO split by team with misinformation correction; deal-level outcomes but DR 13
 	"geneo", // AI visibility platform with optimization recommendations
+	"quno", // Ten-plus models with qualitative response analysis; no disclosed customers
 	"nimt", // Agent that produces the fixes, Slack app, query fan-out; no disclosed traction
 	"first-answer", // Seven engines with free analysis; no disclosed traction
 	"amadora", // Agency-first GEO service tooling with citation gap analysis; DR 9
@@ -5219,10 +5572,12 @@ const aeoPopularityRanking: string[] = [
 	"maxeo", // Claims 200+ brands and an investor, but thin public detail
 	"essio", // Agency-delivered, link-building emphasis; DR 8
 	"rank-ai", // AI content creation + rank tracking
+	"rank-plus-plus", // Nine tools for solo founders; free tier, narrow scope
 	"engenius", // Page-level GEO optimizer with a light monitor attached
 	"chatrank", // Vertical AEO (dental/medical/local) with agency program; one named customer
 	"promptmonitor", // 200+ countries, AI bot analytics (acquired)
 	"gumshoe", // AI search visibility intelligence
+	"rankbee", // Ex-Amazon Global Head of SEO founder, consultancy-led, DR 17
 	"five-blocks-aiq", // AI product of a reputation-management services firm, not a standalone tracker
 	"rebel-growth", // Growth-focused AEO tracking + consulting
 	"aeo-engine", // E-commerce focused AEO with schema optimization
@@ -5241,6 +5596,7 @@ const aeoPopularityRanking: string[] = [
 	"obsero", // Platform + consultancy; DR 3.3, no disclosed customers
 	"brandbeacon", // Solid monitoring but thin feature set — brand-description analysis still coming soon
 	"airix", // 16-engine weekly scans + free checker; SMB-oriented, no disclosed traction
+	"promptsignal", // Still early access behind a waitlist, DR 5
 	"llmtel", // 13+ chatbot checks with before/after scoring; DR 6
 	"vercite", // Rebrand of AI Brand Tracking; Nordic clients, no disclosed scale
 	"limy", // B2A revenue tracking
@@ -5253,6 +5609,7 @@ const aeoPopularityRanking: string[] = [
 	"mentionrank", // Public prompt database + free-forever tier; DR 4.7
 	"asky", // MCP server + bundled GEO specialist, but DR 0.8 on a freshly moved domain
 	"aeotrack", // Complete product with a free tier, but DR 0 and no disclosed funding or customers
+	"seen-by-ai", // Pay-per-report UK checker from £4.99; narrow scope, DR 1
 	"llmwatcher", // Polish-language tracker with full response history; DR 2.4
 	"lorelight", // Shutting down — public postmortem
 	"jarts", // Acquired and shut down May 2026 — persona-based tracking, entity in liquidation
