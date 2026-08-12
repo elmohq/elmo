@@ -10,6 +10,7 @@
 import type { Meta } from "@storybook/react";
 import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import { expect, userEvent, within } from "storybook/test";
 import { BaseChart } from "@/components/base-chart";
 import type { ChartDataPoint } from "@/lib/chart-utils";
 import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
@@ -208,6 +209,68 @@ export const DeepPaletteSlots = () => {
 			/>
 		</Frame>
 	);
+};
+
+/**
+ * A single unfiltered chart, used to assert the legend's three ways in actually
+ * work: pointer, keyboard, and click-to-pin. The pin is what carries a
+ * touchscreen, where there's no hover to fall back on.
+ */
+export const LegendInteraction = () => {
+	setup();
+	const competitors = makeCompetitors(3);
+	const data = makeData([brand.id, ...competitors.map((c) => c.id)], 30);
+	return (
+		<Frame>
+			<div className="max-w-xl rounded-lg border bg-card p-3">
+				<BaseChart data={data} lookback="1m" brand={brand} competitors={competitors} chartHeight="220px" />
+			</div>
+		</Frame>
+	);
+};
+
+LegendInteraction.play = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+	const canvas = within(canvasElement);
+	const acme = await canvas.findByRole("button", { name: /Acme Corp/ });
+	const alpha = await canvas.findByRole("button", { name: /Competitor 01/ });
+	const beta = await canvas.findByRole("button", { name: /Competitor 02/ });
+
+	// Nothing is singled out until asked.
+	await expect(acme).toHaveAttribute("aria-pressed", "false");
+
+	// Keyboard: every entry is reachable by tabbing, and focus alone isolates it.
+	// The legend lives outside Recharts precisely so these nodes survive a state
+	// change; when it didn't, every hover wiped focus and tabbing went nowhere.
+	await userEvent.hover(alpha);
+	await expect(document.contains(alpha)).toBe(true);
+
+	acme.focus();
+	await expect(acme).toHaveFocus();
+	await userEvent.tab();
+	await expect(alpha).toHaveFocus();
+	await userEvent.tab();
+	await expect(beta).toHaveFocus();
+	await userEvent.tab({ shift: true });
+	await expect(alpha).toHaveFocus();
+
+	// Pointer: moving between two entries keeps exactly one of them dimmed-out
+	// rather than flashing back to "all series equal" while crossing the gap.
+	await userEvent.hover(alpha);
+	await expect(beta).toHaveStyle({ opacity: "0.4" });
+	await userEvent.hover(beta);
+	await expect(alpha).toHaveStyle({ opacity: "0.4" });
+	await expect(beta).toHaveStyle({ opacity: "1" });
+
+	// Click pins, and the pin outlives the pointer leaving the legend.
+	await userEvent.click(alpha);
+	await expect(alpha).toHaveAttribute("aria-pressed", "true");
+	await userEvent.unhover(alpha);
+	await expect(alpha).toHaveAttribute("aria-pressed", "true");
+	await expect(beta).toHaveStyle({ opacity: "0.4" });
+
+	// Clicking the pinned entry again releases it.
+	await userEvent.click(alpha);
+	await expect(alpha).toHaveAttribute("aria-pressed", "false");
 };
 
 /** Every colour in the palette, under each vision type. */
