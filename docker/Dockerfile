@@ -60,6 +60,12 @@ RUN pnpm --filter @workspace/web build
 RUN pnpm --filter @workspace/worker deploy --legacy /deploy/worker
 RUN pnpm --filter @workspace/lib deploy --legacy /deploy/lib
 
+# The runtime stages below invoke these two by path, but both are
+# devDependencies — a --prod deploy would drop them and the break would only
+# surface once a user started the container.
+RUN test -x /deploy/lib/node_modules/.bin/drizzle-kit
+RUN test -x /deploy/worker/node_modules/.bin/tsx
+
 # Runner stage for web app (Nitro)
 FROM base AS web
 WORKDIR /app
@@ -92,11 +98,6 @@ WORKDIR /app
 
 COPY --from=builder /deploy/lib ./
 
-# drizzle-kit and tsx are devDependencies, so a --prod deploy would drop them.
-# npx would paper over that by pulling an unpinned copy off the registry at run
-# time, inside a container holding DATABASE_URL — fail the build instead.
-RUN test -x ./node_modules/.bin/drizzle-kit
-
 CMD ["./node_modules/.bin/drizzle-kit", "migrate"]
 
 # Worker stage
@@ -114,8 +115,6 @@ RUN chmod +x /entrypoint.sh
 COPY --from=builder --chown=worker:nodejs /deploy/worker ./
 
 USER worker
-
-RUN test -x ./node_modules/.bin/tsx
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["./node_modules/.bin/tsx", "src/index.ts"]
