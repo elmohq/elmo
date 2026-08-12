@@ -1,10 +1,10 @@
 /**
  * Stories for reviewing the chart palette itself rather than any one chart.
  *
- * Each view is rendered four times — once as-is, then through Machado-Oliveira-
- * Fernandes colour-vision filters at full severity — because the whole point of
- * the palette is what it looks like to someone who isn't seeing all of it.
- * The previous palette sits beside the current one so the two are comparable.
+ * Each view is rendered once as-is, then through Machado-Oliveira-Fernandes
+ * colour-vision filters at full severity, then in grayscale — because the whole
+ * point of the palette is what it looks like to someone who isn't seeing all of
+ * it. The shipped palette, a candidate, and the previous one sit side by side.
  */
 import type { Meta } from "@storybook/react";
 import { DEFAULT_CHART_COLORS, ELMO_CHART_COLORS } from "@workspace/config/constants";
@@ -25,16 +25,17 @@ const CVD_MATRICES = {
 	tritanopia: "1.255528 -0.076749 -0.178779 0 0 -0.078411 0.930809 0.147602 0 0 0.004733 0.691367 0.303900 0 0",
 } as const;
 
-type VisionType = "normal" | keyof typeof CVD_MATRICES;
+type VisionType = "normal" | "grayscale" | keyof typeof CVD_MATRICES;
 
-const VISION_TYPES: VisionType[] = ["normal", "deuteranopia", "protanopia", "tritanopia"];
+const VISION_TYPES: VisionType[] = ["normal", "deuteranopia", "protanopia", "tritanopia", "grayscale"];
 
-/** Population frequencies, so the columns carry some sense of what's at stake. */
+/** Population frequencies, so the rows carry some sense of what's at stake. */
 const VISION_LABELS: Record<VisionType, string> = {
 	normal: "Normal vision",
 	deuteranopia: "Deuteranopia (~6% of men)",
 	protanopia: "Protanopia (~2% of men)",
 	tritanopia: "Tritanopia (rare)",
+	grayscale: "Grayscale — the black & white test",
 };
 
 function CvdFilterDefs() {
@@ -52,8 +53,14 @@ function CvdFilterDefs() {
 	);
 }
 
+/**
+ * Grayscale isn't a kind of colour blindness — it's the shortcut test. If the
+ * series are still tellable apart with hue removed entirely, they survive any
+ * colour vision, because what's left is lightness.
+ */
 function Vision({ type, children }: { type: VisionType; children: React.ReactNode }) {
-	return <div style={type === "normal" ? undefined : { filter: `url(#cvd-${type})` }}>{children}</div>;
+	const filter = type === "normal" ? undefined : type === "grayscale" ? "grayscale(1)" : `url(#cvd-${type})`;
+	return <div style={filter ? { filter } : undefined}>{children}</div>;
 }
 
 // ---------------------------------------------------------------------------
@@ -90,6 +97,21 @@ function makeData(ids: string[], days: number): ChartDataPoint[] {
 	});
 }
 
+/**
+ * Candidate palette, not shipped — Okabe-Ito's hues with the brand blue in slot
+ * one. It spans a much wider lightness range than the current palette, which is
+ * the "get it right in black and white" rule: once hue collapses under
+ * dichromacy, lightness is what's left to tell series apart. The trade is that
+ * its lighter hues drop below 3:1 on a white card.
+ */
+const SPREAD_CANDIDATE = ["#2563eb", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"];
+
+const PALETTES: Array<{ label: string; colors: string[]; muted?: boolean }> = [
+	{ label: "Current (shipped)", colors: ELMO_CHART_COLORS },
+	{ label: "Candidate — wider lightness range", colors: SPREAD_CANDIDATE },
+	{ label: "Previous", colors: DEFAULT_CHART_COLORS, muted: true },
+];
+
 const clientConfig: ClientConfig = {
 	mode: "local",
 	features: { readOnly: false, showOptimizeButton: false, canCreateBrands: true },
@@ -105,6 +127,8 @@ function setup() {
 // ---------------------------------------------------------------------------
 // Layout
 // ---------------------------------------------------------------------------
+
+const GRID = "grid grid-cols-[10rem_repeat(3,1fr)] gap-4";
 
 function Frame({ children }: { children: React.ReactNode }) {
 	return (
@@ -130,23 +154,26 @@ function Comparison({
 	return (
 		<section className="space-y-3">
 			<h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</h3>
-			<div className="grid grid-cols-[10rem_1fr_1fr] gap-4">
+			<div className={GRID}>
 				<div />
-				<div className="text-xs font-medium text-center">Current</div>
-				<div className="text-xs font-medium text-center text-muted-foreground">Previous</div>
+				{PALETTES.map((p) => (
+					<div key={p.label} className={`text-xs font-medium text-center ${p.muted ? "text-muted-foreground" : ""}`}>
+						{p.label}
+					</div>
+				))}
 			</div>
 			{VISION_TYPES.map((vision) => (
 				<Vision key={vision} type={vision}>
-					<div className="grid grid-cols-[10rem_1fr_1fr] gap-4 items-center">
+					<div className={`${GRID} items-center`}>
 						<div className="text-xs text-muted-foreground">{VISION_LABELS[vision]}</div>
-						{[ELMO_CHART_COLORS, DEFAULT_CHART_COLORS].map((palette, i) => (
-							<div key={i === 0 ? "current" : "previous"} className="rounded-lg border bg-card p-3">
+						{PALETTES.map((p) => (
+							<div key={p.label} className="rounded-lg border bg-card p-3">
 								<BaseChart
 									data={data}
 									lookback="1m"
 									brand={brand}
 									competitors={competitors}
-									chartColors={palette}
+									chartColors={p.colors}
 									chartType={chartType}
 									chartHeight="170px"
 								/>
@@ -231,8 +258,9 @@ export const AllColors = () => {
 	setup();
 	return (
 		<Frame>
-			<Swatches palette={ELMO_CHART_COLORS} label={`Current — ${ELMO_CHART_COLORS.length} colors`} />
-			<Swatches palette={DEFAULT_CHART_COLORS} label={`Previous — ${DEFAULT_CHART_COLORS.length} colors`} />
+			{PALETTES.map((p) => (
+				<Swatches key={p.label} palette={p.colors} label={`${p.label} — ${p.colors.length} colors`} />
+			))}
 		</Frame>
 	);
 };
