@@ -3194,38 +3194,6 @@ export const competitors: Competitor[] = [
 			"Access opens one industry at a time, starting with Web3 protocols, chains, wallets, and exchanges",
 		],
 	},
-	{
-		slug: "ellmo",
-		name: "eLLMo AI",
-		domain: "tryellmo.ai",
-		url: "https://www.tryellmo.ai/",
-		tagline: "AI answer monitoring paired with synthetic buyer testing for DTC brands",
-		description:
-			"eLLMo sells two products. AI Search monitors where a brand appears in ChatGPT, Claude, Gemini, Perplexity, and Copilot answers, flags high-intent queries where competitors are recommended and the brand is absent, ranks those gaps by estimated search volume, and deploys schema and structured content signals to close them. Simulation runs panels of synthetic buyers calibrated on the OCEAN personality model against a live landing page or product page and returns ranked conversion blockers with first-person quotes. It also structures product feeds for the agentic commerce protocols UCP, ACP, MCP, and A2A. Pricing is not published; plans are scoped in a demo around SKU volume, persona depth, and how much of the AI-visibility work is included.",
-		category: "ecommerce",
-		ahrefsDR: 0.7,
-		status: "active",
-		features: {
-			multiLlmTracking: true,
-			visibilityScore: true,
-			citationAnalytics: true,
-			competitorBenchmarking: true,
-			brandMentionTracking: true,
-			promptVolumeEstimates: true,
-			shoppingTracking: true,
-			actionRecommendations: true,
-			contentGapAnalysis: true,
-			siteAudits: true,
-			keywordResearch: true,
-		},
-		pricing: { hasFree: false, hasEnterprise: true },
-		highlights: [
-			"Synthetic buyer panels calibrated on the OCEAN personality model, run against a live product page",
-			"Structures product catalogs for the UCP, ACP, MCP, and A2A agentic commerce protocols",
-			"Ties AI mention and recommendation rates to downstream traffic and revenue attribution",
-		],
-		notes: "Unrelated to Elmo despite the near-identical name — the comparison page reads as elmo-vs-ellmo",
-	},
 ];
 
 export function getCompetitorBySlug(slug: string): Competitor | undefined {
@@ -3373,7 +3341,6 @@ const aeoPopularityRanking: string[] = [
 	"ferventers", // AI SEO agency + tracking platform hybrid
 	"xseek", // Six-engine AEO tracker
 	"vismore", // AEO tracker with content distribution actions
-	"ellmo", // AI Search is the second product line behind buyer simulation; demo-only, no public pricing or product access
 	"scope", // Agent experience platform — adjacent to AEO, not pure citation tracking
 ];
 
