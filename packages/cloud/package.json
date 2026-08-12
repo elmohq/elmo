@@ -19,7 +19,7 @@
 		"@better-auth/stripe": "^1.6.25",
 		"@workspace/config": "workspace:*",
 		"@workspace/lib": "workspace:*",
-		"better-auth": "^1.6.25",
+		"better-auth": "^1.6.26",
 		"disposable-email-domains": "^1.0.62",
 		"drizzle-orm": "^0.45.2",
 		"resend": "^6.17.2",
