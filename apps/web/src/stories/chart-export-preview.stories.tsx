@@ -1,9 +1,8 @@
 import type { Meta } from "@storybook/react";
+import { ELMO_CHART_COLORS } from "@workspace/config/constants";
 import { ChartExportPreview, type ChartExportPreviewProps } from "@/components/chart-export-preview";
 import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
 import { MockRouteContextProvider, setMockRouteContext } from "./_mocks/tanstack-router";
-
-const CHART_COLORS = ["#2563eb", "#efb118", "#3ca951", "#ff725c", "#a463f2", "#ff8ab7", "#38b2ac", "#9c6b4e"];
 
 const mockBrand = {
 	id: "brand-1",
@@ -67,7 +66,7 @@ function generateChartData(days: number) {
 const defaultClientConfig: ClientConfig = {
 	mode: "local",
 	features: { readOnly: false, showOptimizeButton: false, canCreateBrands: true },
-	branding: { name: "Elmo", chartColors: CHART_COLORS },
+	branding: { name: "Elmo", chartColors: ELMO_CHART_COLORS },
 	analytics: {},
 };
 
@@ -100,7 +99,7 @@ export default {
 export const ElmoDefault = () => {
 	setupMocks();
 	const data = generateChartData(30);
-	const branding = { isWhitelabel: false, chartColors: CHART_COLORS };
+	const branding = { isWhitelabel: false, chartColors: ELMO_CHART_COLORS };
 
 	return (
 		<MockRouteContextProvider value={{ clientConfig: defaultClientConfig }}>
@@ -154,7 +153,7 @@ export const Whitelabel = () => {
 		icon: "https://api.dicebear.com/9.x/shapes/svg?seed=brand",
 		parentUrl: "https://agency.example.com",
 		isWhitelabel: true,
-		chartColors: CHART_COLORS,
+		chartColors: ELMO_CHART_COLORS,
 	};
 
 	return (

@@ -1,27 +1,45 @@
-import * as React from "react";
-import { Line, LineChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
+import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import { Badge } from "@workspace/ui/components/badge";
 import {
-	ChartConfig,
+	type ChartConfig,
 	ChartContainer,
 	ChartLegend,
 	ChartLegendContent,
 	ChartTooltip,
 	ChartTooltipContent,
 } from "@workspace/ui/components/chart";
-import { Badge } from "@workspace/ui/components/badge";
-import { useRouteContext } from "@tanstack/react-router";
-import type { ClientConfig } from "@workspace/config/types";
+import type * as React from "react";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import {
-	LookbackPeriod,
-	ChartDataPoint,
-	filterAndCompleteChartData,
+	type ChartDataPoint,
 	extendLinesToChartEdges,
-	isExtendedDataPoint,
-	getBadgeVariant,
+	filterAndCompleteChartData,
 	getBadgeClassName,
+	getBadgeVariant,
+	getSeriesMarkerPath,
+	isExtendedDataPoint,
+	type LookbackPeriod,
 	selectCompetitorsToDisplay,
 } from "@/lib/chart-utils";
-import type { Brand, Competitor } from "@workspace/lib/db/schema";
+
+/** Legend swatches mirror the marker drawn on the line, so shape reads as identity
+ *  the same way in both places. Cached so the legend isn't remounted every render. */
+const markerIconCache = new Map<string, React.ComponentType>();
+function makeMarkerIcon(seriesIndex: number, color: string | undefined): React.ComponentType {
+	const cacheKey = `${seriesIndex}:${color}`;
+	const cached = markerIconCache.get(cacheKey);
+	if (cached) return cached;
+
+	const Icon = () => (
+		<svg viewBox="-6 -6 12 12" aria-hidden="true">
+			<path d={getSeriesMarkerPath(seriesIndex, 4.5)} fill={color} />
+		</svg>
+	);
+	markerIconCache.set(cacheKey, Icon);
+	return Icon;
+}
 
 interface BaseChartProps {
 	data: ChartDataPoint[];
@@ -66,6 +84,17 @@ export function BaseChart({
 
 	// Create dynamic chart config based on brand and ALL competitors (for consistent colors)
 	const chartColors = chartColorsProp ?? context.clientConfig?.branding.chartColors ?? [];
+
+	// Series index drives both the color and the marker shape, so an entity keeps
+	// the same pairing on every chart it appears on.
+	const seriesIndex: Record<string, number> = { [brand.id]: 0 };
+	sortedAllCompetitors.forEach((competitor, index) => {
+		seriesIndex[competitor.id] = index + 1;
+	});
+
+	// Bars carry no marker, so a shaped legend swatch would point at nothing.
+	const showMarkers = chartType === "line";
+
 	const chartConfig: ChartConfig = {
 		visitors: {
 			label: "Visibility",
@@ -73,6 +102,7 @@ export function BaseChart({
 		[brand.id]: {
 			label: brand.name,
 			color: chartColors[0], // Brand gets first color
+			icon: showMarkers ? makeMarkerIcon(0, chartColors[0]) : undefined,
 		},
 	};
 
@@ -82,6 +112,7 @@ export function BaseChart({
 		chartConfig[competitor.id] = {
 			label: competitor.name,
 			color: chartColors[colorIndex],
+			icon: showMarkers ? makeMarkerIcon(index + 1, chartColors[colorIndex]) : undefined,
 		};
 	});
 
@@ -287,10 +318,12 @@ export function BaseChart({
 												const indicatorColor = chartConfig[item.dataKey as string]?.color;
 												return (
 													<div key={item.dataKey} className="flex w-full items-center gap-2">
-														<div
-															className="shrink-0 rounded-[2px] h-2.5 w-2.5"
-															style={{ backgroundColor: indicatorColor }}
-														/>
+														<svg viewBox="-6 -6 12 12" aria-hidden="true" className="shrink-0 h-2.5 w-2.5">
+															<path
+																d={getSeriesMarkerPath(seriesIndex[item.dataKey as string] ?? 0, 5)}
+																fill={indicatorColor}
+															/>
+														</svg>
 														<div className="flex flex-1 justify-between gap-4 leading-none items-center">
 															<span className="text-muted-foreground">
 																{chartConfig[item.dataKey as string]?.label || item.dataKey}
@@ -338,14 +371,11 @@ export function BaseChart({
 										return <g key={`dot-empty-${key}-${cx}`} />;
 									}
 									return (
-										<circle
+										<path
 											key={`dot-${key}-${cx}`}
-											cx={cx}
-											cy={cy}
-											r={2}
+											d={getSeriesMarkerPath(seriesIndex[key] ?? 0, 3)}
+											transform={`translate(${cx}, ${cy})`}
 											fill={`var(--color-${key})`}
-											stroke={`var(--color-${key})`}
-											strokeWidth={2}
 										/>
 									);
 								}}
@@ -356,14 +386,13 @@ export function BaseChart({
 										return <g key={`activedot-empty-${key}-${cx}`} />;
 									}
 									return (
-										<circle
+										<path
 											key={`activedot-${key}-${cx}`}
-											cx={cx}
-											cy={cy}
-											r={4}
+											d={getSeriesMarkerPath(seriesIndex[key] ?? 0, 5)}
+											transform={`translate(${cx}, ${cy})`}
 											fill={`var(--color-${key})`}
-											stroke={`var(--color-${key})`}
-											strokeWidth={2}
+											stroke="var(--card)"
+											strokeWidth={1.5}
 										/>
 									);
 								}}

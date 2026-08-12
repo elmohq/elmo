@@ -5,6 +5,8 @@
  * Stories call `setMockClientConfig()` before rendering to control values.
  */
 
+import { ELMO_CHART_COLORS } from "@workspace/config/constants";
+
 export type DeploymentMode = "whitelabel" | "local" | "demo" | "cloud";
 
 export interface FeaturesConfig {
@@ -44,8 +46,6 @@ export interface ClientConfig {
 	hasUsers: boolean;
 }
 
-const DEFAULT_CHART_COLORS = ["#2563eb", "#efb118", "#3ca951", "#ff725c", "#a463f2", "#ff8ab7", "#38b2ac", "#9c6b4e"];
-
 // ---------------------------------------------------------------------------
 // Module-level config that stories can mutate
 // ---------------------------------------------------------------------------
@@ -59,7 +59,7 @@ let _config: ClientConfig = {
 	},
 	branding: {
 		name: "Elmo",
-		chartColors: DEFAULT_CHART_COLORS,
+		chartColors: ELMO_CHART_COLORS,
 	},
 	analytics: {},
 	defaultDelayHours: 24,

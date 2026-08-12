@@ -6,7 +6,7 @@
  *
  * Auth is fully handled by better-auth — this only provides static config.
  */
-import { DEFAULT_APP_ICON, DEFAULT_APP_NAME, DEFAULT_APP_URL, DEFAULT_CHART_COLORS } from "@workspace/config/constants";
+import { DEFAULT_APP_ICON, DEFAULT_APP_NAME, DEFAULT_APP_URL, ELMO_CHART_COLORS } from "@workspace/config/constants";
 import { getEnv } from "@workspace/config/env";
 import type { Deployment } from "@workspace/config/types";
 
@@ -30,7 +30,7 @@ export function createLocalDeployment(env: Record<string, string | undefined> = 
 			url: getEnv("APP_URL", DEFAULT_APP_URL, env),
 			parentName: env.APP_PARENT_NAME,
 			parentUrl: env.APP_PARENT_URL,
-			chartColors: DEFAULT_CHART_COLORS,
+			chartColors: ELMO_CHART_COLORS,
 		},
 	};
 }

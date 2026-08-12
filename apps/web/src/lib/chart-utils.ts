@@ -1,6 +1,6 @@
-import type { PerPromptVisibilityPoint, PerPromptDailyCitationStats } from "@/lib/postgres-read";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
-import { type CitationCategory, CITATION_CATEGORIES } from "@/lib/domain-categories";
+import { CITATION_CATEGORIES, type CitationCategory } from "@/lib/domain-categories";
+import type { PerPromptDailyCitationStats, PerPromptVisibilityPoint } from "@/lib/postgres-read";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
@@ -280,7 +280,7 @@ export interface ChartDataPoint {
 	[key: string]: number | string | boolean | null; // Dynamic keys for brand/competitor IDs and _extended_ flags
 }
 
-import type { PromptRun, Brand, Competitor } from "@workspace/lib/db/schema";
+import type { Brand, Competitor, PromptRun } from "@workspace/lib/db/schema";
 
 /**
  * Calculate visibility percentages for brand vs competitors from prompt runs
@@ -443,6 +443,40 @@ export function selectCompetitorsToDisplay(
  */
 export function getBrandColor(whitelabelColors: string[]): string {
 	return whitelabelColors[0];
+}
+
+/**
+ * Marker shapes give each series a second identity channel alongside its color,
+ * so series stay tellable apart under color-vision deficiency (and in greyscale
+ * print). Five shapes against the palette's eight-color hue tiers means two
+ * series that share a hue family always land on different shapes.
+ */
+const SERIES_MARKER_COUNT = 5;
+
+/** SVG path for a series marker centred on the origin, sized to roughly equal area. */
+export function getSeriesMarkerPath(seriesIndex: number, radius: number): string {
+	const r = radius;
+	switch (seriesIndex % SERIES_MARKER_COUNT) {
+		case 1: {
+			const s = r * 0.9;
+			return `M${-s},${-s}H${s}V${s}H${-s}Z`;
+		}
+		case 2: {
+			const w = r * 1.15;
+			return `M0,${-w} L${w},${r * 0.85} L${-w},${r * 0.85} Z`;
+		}
+		case 3: {
+			const d = r * 1.3;
+			return `M0,${-d} L${d},0 L0,${d} L${-d},0 Z`;
+		}
+		case 4: {
+			const a = r * 1.2;
+			const b = r * 0.45;
+			return `M${-a},${-b}H${-b}V${-a}H${b}V${-b}H${a}V${b}H${b}V${a}H${-b}V${b}H${-a}Z`;
+		}
+		default:
+			return `M${-r},0a${r},${r} 0 1,0 ${r * 2},0a${r},${r} 0 1,0 ${-r * 2},0`;
+	}
 }
 
 export function filterAndCompleteChartData(chartData: ChartDataPoint[], lookback: LookbackPeriod): ChartDataPoint[] {
