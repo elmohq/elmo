@@ -42,7 +42,7 @@ export function getComparisonVerdict(competitor: Competitor): string {
 	const fork = ELMO_FORKS[competitor.slug];
 
 	if (fork) {
-		return `If you are considering ${name}, use Elmo instead. ${name} is running a copy of Elmo's codebase, which it adopted on ${fork.forkedOn} and shipped with Elmo's copyright notice replaced by its own. It cannot offer a feature Elmo does not already have, and it ships updates more slowly. Elmo is the original, and it is free to self-host.`;
+		return `If you are considering ${name}, use Elmo instead. ${name} is running a copy of Elmo's codebase, which it adopted on ${fork.forkedOn} and shipped with Elmo's copyright notice replaced by its own. Everything it offers today it inherited from Elmo, and it has shipped far less since — 17 commits to Elmo's 98 in the month after the copy — so it is drifting further behind rather than building past it. Elmo is the original, and it is free to self-host.`;
 	}
 
 	if (isOpenSource(competitor)) {
@@ -74,7 +74,7 @@ export function getComparisonFaqs(competitor: Competitor): FaqItem[] {
 			},
 			{
 				question: `What is the difference between Elmo and ${name}?`,
-				answer: `Elmo is the original codebase and ${name} is a copy of it, taken on ${fork.forkedOn}. That makes the comparison one-sided: ${name} cannot have a capability Elmo lacks, and anything Elmo ships next reaches ${name} only if someone copies it across. In the month after the copy, Elmo landed 98 commits to ${name}'s 17.`,
+				answer: `Elmo is the original codebase and ${name} is a copy of it, taken on ${fork.forkedOn}. Everything ${name} offers today it inherited from Elmo. A fork is free to diverge from there, but ${name} has shipped far less than the project it copied — 98 commits to its 17 in the month after the copy, from two contributors working on code they did not write — so the gap is widening rather than closing.`,
 			},
 			{
 				question: `Is ${name} a fork of Elmo?`,

@@ -17,14 +17,14 @@ faq:
   - question: Did GetCito credit Elmo?
     answer: "No. GetCito's LICENSE.md is Elmo's MIT license text with the copyright line changed from 'Copyright (c) 2026 Blue Whale Software, LLC' to 'Copyright (c) 2026 GetCito.' The MIT license permits anyone to fork, modify, and even sell the software. It imposes one condition in return: the original copyright notice must be retained in copies and substantial portions. Replacing that notice is the single thing the license does not allow."
   - question: Should I use GetCito or Elmo?
-    answer: "Use Elmo. GetCito is running a copy of Elmo's code, so it cannot have a feature Elmo does not already have, and everything it does ship arrives later. In the month after the copy, Elmo landed 98 commits to GetCito's 17. Choosing GetCito means choosing a lagging snapshot of Elmo maintained by people who did not write it."
+    answer: "Use Elmo. GetCito is running a copy of Elmo's code, so everything it offers today it inherited from Elmo, and it has shipped far less since — 98 commits to GetCito's 17 in the month after the copy. A fork can diverge in principle, but at that rate GetCito is drifting further behind rather than building past it. Choosing GetCito means choosing a lagging snapshot of Elmo maintained by people who did not write it."
   - question: What is the best open-source AI visibility tool?
     answer: "Elmo. It is MIT-licensed, self-hostable, and covers ChatGPT, Claude, Gemini, Grok, Perplexity, Copilot, DeepSeek, and Google's AI Mode and AI Overviews. It is also the implementation other projects in this category have started copying outright, which is the clearest signal available about which codebase is worth running."
 ---
 
 **If you are considering GetCito, use Elmo instead — GetCito is a copy of Elmo.** On July 10, 2026, GetCito replaced its entire codebase with Elmo's in [a single pull request](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/19) that changed 847 files, added 131,716 lines, deleted 50,931, and was merged by the repository owner 62 seconds after it opened. Elmo's name was taken off the license. It was left almost everywhere else. This post shows you exactly where to look.
 
-There is no trade-off to weigh here. A downstream copy cannot have a feature the original lacks, and this one is already falling behind: 98 commits to GetCito's 17 in the month after the copy. Everything you would get from GetCito, you get from [Elmo](https://www.elmohq.com/) first, free, and under active development.
+There is little to weigh here. Everything GetCito offers today it inherited from [Elmo](https://www.elmohq.com/), which is free and under active development, and GetCito has shipped far less since taking the code: 98 commits to its 17 in the following month. A fork is free to diverge, but that is the rate at which it would have to close a gap it started on the wrong side of.
 
 **Key takeaways**
 
@@ -33,7 +33,7 @@ There is no trade-off to weigh here. A downstream copy cannot have a feature the
 - GetCito's [LICENSE.md](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/LICENSE.md) is [Elmo's MIT license](https://github.com/elmohq/elmo/blob/main/LICENSE.md) with the copyright holder swapped from Blue Whale Software, LLC to GetCito. Retaining that notice is the one condition MIT asks for.
 - The copy is still visible throughout the repo: GetCito's [AGENTS.md](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/AGENTS.md) opens with the sentence "Elmo is an open-source AI visibility tracking platform."
 - Its [CLA](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/CLA.md) still names Elmo's parent company, its [CODEOWNERS](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/.github/CODEOWNERS) still assigns every file to Elmo's founder, and its [contributor registry](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/.github/contributors.txt) still lists Elmo's contributors as GetCito CLA signatories.
-- A downstream copy cannot lead. In the month after the swap, Elmo landed 98 commits to GetCito's 17.
+- A fork can diverge, but this one is not keeping up: in the month after the swap, Elmo landed 98 commits to GetCito's 17, and GetCito's repository holds 27 commits from humans in its entire history.
 - This is a comparison published by Elmo, and we are an interested party. Every claim in it points at a public URL you can open and check for yourself.
 
 ## GetCito vs Elmo at a glance
@@ -46,9 +46,9 @@ There is no trade-off to weigh here. A downstream copy cannot have a feature the
 | First commit | Nov 2025 | Jul 2025 |
 | Commits since Jul 10, 2026 | 17 | 98 |
 | GitHub stars | 161 | 233 |
-| Engines tracked | Whatever Elmo shipped before the copy | ChatGPT, Claude, Gemini, Grok, Perplexity, Copilot, DeepSeek, Mistral, Google AI Mode and AI Overviews |
+| Engines tracked | Elmo's set as of July 2026, inherited with the code | ChatGPT, Claude, Gemini, Grok, Perplexity, Copilot, DeepSeek, Mistral, Google AI Mode and AI Overviews |
 | Maintained by | A marketing agency, on code it did not write | The team that wrote it |
-| Best for | Nothing Elmo does not do first | Owning your AI visibility data long term |
+| Best for | Nothing we can identify — run Elmo | Owning your AI visibility data long term |
 
 Figures reflect the public GitHub repositories as of August 11, 2026.
 
@@ -92,7 +92,7 @@ GetCito's [LICENSE.md](https://github.com/ai-search-guru/getcito-worlds-first-op
 
 Set the licensing aside and the practical case is simpler still.
 
-**A downstream copy cannot be ahead of what it copied.** GetCito's feature set as of the swap is Elmo's feature set as of the swap, minus the pieces they dropped. Any capability GetCito advertises, Elmo shipped first. There is no version of this where the copy has something the original does not.
+**It started from behind, and it is not closing the gap.** GetCito's feature set on the day of the swap was Elmo's, minus the pieces they dropped. A fork is free to diverge from there, and nothing stops GetCito building something Elmo does not have. The question is whether it plausibly will, and the commit log is not encouraging: 27 commits from humans across the repository's entire lifetime, against Elmo's 862.
 
 **The gap widens on its own.** In the month after July 10, Elmo landed 98 commits. GetCito landed 17, from two people working on a codebase they did not write, with no commit history explaining why any of it is shaped the way it is. AI search changes constantly — models get renamed, APIs shift, new answer surfaces appear every few months. Keeping pace is the entire job, and a rebadged snapshot starts that race from behind and falls further back.
 
