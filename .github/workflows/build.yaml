@@ -83,8 +83,12 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
+      # Bounded because the browsers are cached and the system-dependency check
+      # is local: past a couple of minutes this step is stuck on the network,
+      # and failing here says so instead of eating the job's whole budget.
       - name: Install Playwright browsers
-        run: pnpm -C apps/web exec playwright install chromium --with-deps
+        timeout-minutes: 6
+        run: .github/scripts/install-playwright-browsers.sh
 
       - name: Storybook tests
         run: pnpm -C apps/web test:storybook
