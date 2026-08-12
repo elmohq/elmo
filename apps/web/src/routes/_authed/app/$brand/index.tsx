@@ -23,30 +23,14 @@ import { useBrand } from "@/hooks/use-brands";
 import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
 import { TrendChart } from "@/components/trend-chart";
+import { VisibilityByModel } from "@/components/visibility-by-model";
+import { getVisibilityBgColor, getVisibilityBorderColor, getVisibilityTextColor } from "@/lib/chart-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import type { ClientConfig } from "@workspace/config/types";
 import { setPersonProperties } from "@/lib/posthog";
-
-function getVisibilityBgColor(value: number): string {
-	if (value > 75) return "bg-emerald-50 dark:bg-emerald-950/30";
-	if (value > 45) return "bg-amber-50 dark:bg-amber-950/30";
-	return "bg-rose-50 dark:bg-rose-950/30";
-}
-
-function getVisibilityTextColor(value: number): string {
-	if (value > 75) return "text-emerald-700 dark:text-emerald-400";
-	if (value > 45) return "text-amber-700 dark:text-amber-400";
-	return "text-rose-700 dark:text-rose-400";
-}
-
-function getVisibilityBorderColor(value: number): string {
-	if (value > 75) return "border-emerald-200 dark:border-emerald-800";
-	if (value > 45) return "border-amber-200 dark:border-amber-800";
-	return "border-rose-200 dark:border-rose-800";
-}
 
 /** Most recent non-null value in a daily series — matches the right end of the trend line. */
 function lastValue<T>(series: T[], key: keyof T): number | null {
@@ -407,6 +391,27 @@ function DashboardPage() {
 								)}
 							</CardContent>
 						</Card>
+
+						{/* A brand tracked on one platform already has that answer in the
+						    hero number, so the split only earns its space past that. */}
+						{trackedTargets.length > 1 && (
+							<Card className="shadow-none lg:col-span-4 flex flex-col gap-3 py-4">
+								<CardHeader className="border-b border-dotted pb-2!">
+									<CardTitleWithTooltip
+										title="Visibility by Model"
+										tooltip="The same visibility score as above, measured separately on each platform you track — how often that platform's answers mention your brand. Each platform is smoothed on its own, so one sampled a few times a week is read the same way as one sampled hourly."
+									/>
+								</CardHeader>
+								<CardContent>
+									<VisibilityByModel
+										brandId={brandId}
+										targets={trackedTargets}
+										byTarget={dashboardSummary?.visibilityByTarget ?? []}
+										loading={isLoading}
+									/>
+								</CardContent>
+							</Card>
+						)}
 					</div>
 				</section>
 

@@ -12,14 +12,18 @@ import {
 	generateDateRange,
 	applyPerPromptLVCF,
 	applyPerPromptCitationLVCF,
+	mergeTargetVisibility,
+	summarizeVisibilityByTarget,
 	type LookbackPeriod,
+	type TargetVisibility,
 } from "@/lib/chart-utils";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import {
 	getDashboardSummary,
-	getPerPromptVisibilityTimeSeries,
+	getPerTargetVisibilityTimeSeries,
 	getPerPromptDailyCitationStats,
 } from "@/lib/postgres-read";
+import { targetFilterValue } from "@/lib/model-filter";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import {
 	type CitationCategory,
@@ -45,6 +49,8 @@ export interface DashboardSummaryResponse {
 	nonBrandedVisibility: number;
 	brandedVisibility: number;
 	visibilityTimeSeries: VisibilityTimeSeriesPoint[];
+	/** Same score as `visibilityTimeSeries`, split by the target that produced the runs. */
+	visibilityByTarget: TargetVisibility[];
 	citationTimeSeries: CitationTimeSeriesPoint[];
 	lastUpdatedAt: string | null;
 }
@@ -113,9 +119,9 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			.filter((p) => getEffectiveBrandedStatus(p.systemTags || [], p.tags || []).isBranded)
 			.map((p) => p.id);
 
-		const [summaryResult, perPromptVisibility, perPromptCitations] = await Promise.all([
+		const [summaryResult, perTargetVisibility, perPromptCitations] = await Promise.all([
 			getDashboardSummary(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),
-			getPerPromptVisibilityTimeSeries(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),
+			getPerTargetVisibilityTimeSeries(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),
 			getPerPromptDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),
 		]);
 
@@ -128,7 +134,14 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		// smoothing and the emitted series cover exactly this date domain.
 		const dateRange = generateDateRange(new Date(fromDateStr), new Date(toDateStr));
 
+		const targetVisibilityRows = perTargetVisibility.map((row) => ({
+			...row,
+			target: targetFilterValue(row.model, row.grounded),
+		}));
+		const visibilityByTarget = summarizeVisibilityByTarget(targetVisibilityRows, dateRange, brandedPromptIds);
+
 		// Process visibility via per-prompt LVCF smoothing
+		const perPromptVisibility = mergeTargetVisibility(targetVisibilityRows);
 		const {
 			dailyVisibilityMap,
 			totalBrandedRuns,
@@ -178,6 +191,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			nonBrandedVisibility,
 			brandedVisibility,
 			visibilityTimeSeries,
+			visibilityByTarget,
 			citationTimeSeries,
 			lastUpdatedAt,
 		};

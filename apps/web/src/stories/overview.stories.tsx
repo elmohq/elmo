@@ -26,6 +26,20 @@ const onboardedBrand = {
 	enabled: true,
 	prompts: [{ id: "p1", value: "best crm", enabled: true }],
 	effectiveModels: ["gpt-4o", "claude-3-5-sonnet", "gemini-1.5-pro"],
+	trackedTargets: [
+		{ value: "chatgpt", model: "chatgpt", premium: false, tier: "scraped", intervalHours: 6, replication: 1 },
+		{
+			value: "google-ai-overview",
+			model: "google-ai-overview",
+			premium: false,
+			tier: "scraped",
+			intervalHours: 24,
+			replication: 1,
+		},
+		{ value: "perplexity", model: "perplexity", premium: false, tier: "scraped", intervalHours: 24, replication: 1 },
+		{ value: "gemini", model: "gemini", premium: false, tier: "scraped", intervalHours: 24, replication: 1 },
+		{ value: "chatgpt::premium", model: "chatgpt", premium: true, tier: "premium", intervalHours: 72, replication: 1 },
+	],
 	earliestDataDate: "2026-05-05",
 	delayOverrideHours: 24,
 };

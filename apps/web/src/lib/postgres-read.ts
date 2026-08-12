@@ -167,37 +167,42 @@ const API_PROVIDER_IDS = getAllProviders()
 	.map((provider) => provider.id);
 
 /**
- * Narrow to one target. A bare model id means the standard platform; the
- * `::premium` variant means the grounded API call sold from the premium pool.
+ * Whether a row is the grounded API call rather than the model scraped off its
+ * consumer product. Shared so that narrowing to a target and grouping by target
+ * can't drift apart on what counts as grounded.
  *
  * The provider list is bound one parameter per id rather than as an array:
  * drizzle flattens a JS array into a single text parameter, which `ANY(...)`
  * then can't compare element-wise.
  */
-function modelFilter(model?: string, opts?: { alias?: string; source?: "prompt_runs" | "citations" }): SQL {
-	const target = model ? parseModelFilter(model) : null;
-	if (!target) return sql``;
-	const prefix = opts?.alias ? sql.raw(`${opts.alias}.`) : sql``;
-	// No API providers configured means nothing can be grounded, so the premium
-	// side matches nothing and the standard side matches everything.
-	if (API_PROVIDER_IDS.length === 0) {
-		return target.premium ? sql`AND FALSE` : sql`AND ${prefix}model = ${target.model}`;
-	}
+function groundedExpr(prefix: SQL, source: "prompt_runs" | "citations" = "prompt_runs"): SQL {
+	// No API providers configured means nothing can be grounded.
+	if (API_PROVIDER_IDS.length === 0) return sql`FALSE`;
 	const providers = sql.join(
 		API_PROVIDER_IDS.map((id) => sql`${id}`),
 		sql`, `,
 	);
 	// A citation records which model cited it but not how that model was
 	// reached, so the grounded test has to go through the run it came from.
-	const grounded =
-		opts?.source === "citations"
-			? sql`EXISTS (
-					SELECT 1 FROM prompt_runs AS mf_run
-					WHERE mf_run.id = ${prefix}prompt_run_id
-						AND mf_run.web_search_enabled
-						AND mf_run.provider IN (${providers})
-				)`
-			: sql`(${prefix}web_search_enabled AND ${prefix}provider IN (${providers}))`;
+	return source === "citations"
+		? sql`EXISTS (
+				SELECT 1 FROM prompt_runs AS mf_run
+				WHERE mf_run.id = ${prefix}prompt_run_id
+					AND mf_run.web_search_enabled
+					AND mf_run.provider IN (${providers})
+			)`
+		: sql`(${prefix}web_search_enabled AND ${prefix}provider IN (${providers}))`;
+}
+
+/**
+ * Narrow to one target. A bare model id means the standard platform; the
+ * `::premium` variant means the grounded API call sold from the premium pool.
+ */
+function modelFilter(model?: string, opts?: { alias?: string; source?: "prompt_runs" | "citations" }): SQL {
+	const target = model ? parseModelFilter(model) : null;
+	if (!target) return sql``;
+	const prefix = opts?.alias ? sql.raw(`${opts.alias}.`) : sql``;
+	const grounded = groundedExpr(prefix, opts?.source);
 	return sql`AND ${prefix}model = ${target.model} AND ${target.premium ? grounded : sql`NOT ${grounded}`}`;
 }
 
@@ -243,19 +248,33 @@ export interface PerPromptVisibilityPoint {
 	brand_mentioned_count: number;
 }
 
-export async function getPerPromptVisibilityTimeSeries(
+/** A prompt-day split by which target produced the runs. */
+export interface PerTargetVisibilityPoint extends PerPromptVisibilityPoint {
+	model: string;
+	/** The model reached by a grounded API call rather than scraped — see `groundedExpr`. */
+	grounded: boolean;
+}
+
+/**
+ * Daily visibility per prompt, split by target so one pass over the runs serves
+ * both the blended trend and the per-model breakdown beside it. Callers that
+ * only want the blend sum the targets back together.
+ */
+export async function getPerTargetVisibilityTimeSeries(
 	brandId: string,
 	fromDate: string | null,
 	toDate: string | null,
 	timezone: string,
 	enabledPromptIds?: string[],
 	model?: string,
-): Promise<PerPromptVisibilityPoint[]> {
+): Promise<PerTargetVisibilityPoint[]> {
 	if (!enabledPromptIds?.length) return [];
-	const rows = await queryPg<PerPromptVisibilityPoint>(sql`
+	const rows = await queryPg<PerTargetVisibilityPoint>(sql`
 		SELECT
 			prompt_id,
 			(created_at AT TIME ZONE ${timezone})::date AS date,
+			model,
+			${groundedExpr(sql``)} AS grounded,
 			count(*)::int AS total_runs,
 			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
 		FROM prompt_runs
@@ -263,7 +282,7 @@ export async function getPerPromptVisibilityTimeSeries(
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
 			${modelFilter(model)}
-		GROUP BY prompt_id, date
+		GROUP BY prompt_id, date, model, grounded
 		ORDER BY prompt_id, date
 	`);
 	return rows;
@@ -288,7 +307,7 @@ export interface VisibilityDailyAggregate {
 }
 
 /**
- * Single-query replacement for `getPerPromptVisibilityTimeSeries` + JS
+ * Single-query replacement for `getPerTargetVisibilityTimeSeries` + JS
  * `applyPerPromptLVCF`.
  *
  * Builds a (prompt × date) grid in-database, left-joins raw daily observations,
