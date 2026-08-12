@@ -59,7 +59,7 @@ function SeriesLegend({
 						key={item.dataKey}
 						type="button"
 						aria-pressed={pinned === item.dataKey}
-						className="flex items-center gap-1.5 rounded-sm text-muted-foreground text-xs transition-opacity focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+						className="flex items-center gap-1.5 rounded-sm text-muted-foreground text-xs focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
 						style={{ opacity: active && !isActive ? 0.4 : 1 }}
 						onMouseEnter={() => onHover(item.dataKey)}
 						onFocus={() => onHover(item.dataKey)}
