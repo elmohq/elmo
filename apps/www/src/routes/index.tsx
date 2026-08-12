@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Navbar } from "@/components/navbar";
 import { Hero } from "@/components/hero";
-import { Testimonial } from "@/components/testimonial";
+import { SpeakeasyTestimonial, TradeSitesTestimonial } from "@/components/testimonial";
 import { Features } from "@/components/features";
 import { Stats } from "@/components/stats";
 import { Community } from "@/components/community";
@@ -37,8 +37,9 @@ function HomePage() {
 			<main>
 				<Hero />
 				<Stats />
+				<SpeakeasyTestimonial />
 				<Features />
-				<Testimonial />
+				<TradeSitesTestimonial />
 				<Community />
 				<Pricing />
 				<OffSiteAeoPromo />
