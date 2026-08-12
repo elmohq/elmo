@@ -3,4 +3,4 @@
 "@workspace/config": patch
 ---
 
-Your brand's line now stands out on visibility charts, a legend entry can be hovered or clicked to isolate its series, and the default chart colors are ordered to keep the first few further apart for colorblind readers.
+Improve visibility chart accessibility for colorblind users. Your brand's lines are emphasized and you can click on an entry in the legend to isolate a competitor's line in the graph.
