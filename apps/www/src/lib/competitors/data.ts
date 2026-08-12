@@ -4708,6 +4708,403 @@ export const competitors: Competitor[] = [
 		],
 		notes: "Service ended 4 May 2026 after acquisition; Jarts UG in liquidation",
 	},
+	{
+		slug: "minddex",
+		name: "Minddex",
+		domain: "minddex.ai",
+		url: "https://minddex.ai/",
+		tagline: "French-market GEO platform with a query fan-out tool and GEO academy",
+		description:
+			"Minddex measures and works on visibility in AI-generated answers for the French market, with the interface and academy in French and English. Rossel Advertising selected it as its reference GEO technology in Europe, and its published work includes named client engagements with Carglass and Ionos. It ships a fan-out query tool and an orchestrator alongside the tracking product.",
+		category: "tracking",
+		ahrefsDR: 33,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			multiLanguage: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Selected by Rossel Advertising as its European reference GEO technology",
+			"French-first product with a French-language GEO academy",
+			"Named client work including Carglass and Ionos",
+		],
+	},
+	{
+		slug: "mentions",
+		name: "Mentions",
+		domain: "mentions.so",
+		url: "https://mentions.so/",
+		tagline: "Eight-model tracking including Llama, with crawler analytics",
+		description:
+			"Mentions tracks brand presence across ChatGPT, Perplexity, Claude, Grok, Gemini, DeepSeek, AI Overview, and Llama, comparing visibility per model and reporting what each one actually says about a brand. It adds sentiment analysis, real-time competitor comparison, and a crawler view, with an agent that handles repetitive follow-up work.",
+		category: "tracking",
+		ahrefsDR: 34,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			crawlerAnalytics: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Tracks Llama alongside the usual seven engines",
+			"Per-model view of what each assistant says, not just whether it mentions you",
+			"Crawler analytics bundled with answer tracking",
+		],
+	},
+	{
+		slug: "open-forge",
+		name: "Open Forge",
+		domain: "openforge.ai",
+		url: "https://www.openforge.ai/",
+		tagline: "Bootstrapped AEO platform sold on attributed traffic gains",
+		description:
+			"Open Forge tracks visibility for a brand and its competitors, turns it into plain-English next steps, and includes the tools to ship the fixes. It states plainly that it is backed by customers rather than venture capital, and leans on named marketing leaders with specific numbers — one director reports a 243% increase in ChatGPT-attributable direct traffic in the first month, growing to 468% at three months. It also runs an AEO newsletter with a claimed 10,000+ readers.",
+		category: "tracking",
+		ahrefsDR: 25,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Explicitly bootstrapped — states it is backed by customers, not venture capital",
+			"Named customers give attributed traffic figures rather than generic praise",
+			"Runs a 10,000+ reader AEO newsletter as its top-of-funnel",
+		],
+	},
+	{
+		slug: "opttab",
+		name: "Opttab",
+		domain: "opttab.com",
+		url: "https://opttab.com/",
+		tagline: "Broad AI visibility suite spanning bot pages, commerce, and AI ads",
+		description:
+			"Opttab covers visibility, prompt volume and prompt generation, GEO/AEO work, agent-experience bot pages, a content studio, agent analytics, AI commerce, and AI ads in one platform, with integrations into the rest of a marketing stack for automated actions. It publishes industry AI visibility indexes and offers an instant free visibility report before signup.",
+		category: "tracking",
+		ahrefsDR: 11,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			promptVolumeEstimates: true,
+			crawlerAnalytics: true,
+			shoppingTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			whiteLabelAgency: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: true },
+		highlights: [
+			"Serves dedicated bot pages for agent experience as a product feature",
+			"Publishes per-industry AI visibility indexes",
+			"Spans organic visibility, AI commerce, and AI ads in one platform",
+		],
+	},
+	{
+		slug: "nimt",
+		name: "Nimt",
+		domain: "nimt.ai",
+		url: "https://www.nimt.ai/",
+		tagline: "Tracking plus an agent that audits pages and produces the fixes",
+		description:
+			"Nimt reports AI visibility, share of voice, ranking, an AI brand strength score, sentiment, citations, a source tracker, domain comparisons, and query fan-out, then hands the gaps to an agent that audits pages and produces what is needed to close them. It installs into Slack as @Nimt and starts with $45 in free credits, targeting in-house teams and agencies.",
+		category: "tracking",
+		ahrefsDR: 21,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			whiteLabelAgency: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: true },
+		highlights: [
+			"Slack app so tracking and fixes run where the team already works",
+			"Reports query fan-out and an AI brand strength score alongside visibility",
+			"Starts with $45 in credits rather than a fixed free tier",
+		],
+	},
+	{
+		slug: "llm-seo-monitor",
+		name: "LLM SEO Monitor",
+		domain: "llmseomonitor.com",
+		url: "https://llmseomonitor.com/",
+		tagline: "Keyword-style rank tracking for ChatGPT, Claude, and Gemini",
+		description:
+			"LLM SEO Monitor tracks what ChatGPT, Claude, and Google Gemini recommend for a set of keywords and reports movement over time, framed as ranking rather than visibility scoring. It is part of the Findable toolkit, holds a 5.0 rating on Product Hunt, and runs an academy plus a dedicated agency track.",
+		category: "tracking",
+		ahrefsDR: 20,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			keywordResearch: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: false },
+		highlights: [
+			"Keyword-and-ranking model rather than prompt-and-visibility scoring",
+			"Part of the Findable toolkit; 5.0 rating on Product Hunt",
+			"Sign-in with Google and an academy aimed at agencies",
+		],
+	},
+	{
+		slug: "maxeo",
+		name: "Maxeo",
+		domain: "maxeo.ai",
+		url: "https://maxeo.ai/",
+		tagline: "AI visibility and brand reputation tracking, claiming 200+ brands",
+		description:
+			"Maxeo measures where a brand appears across ChatGPT, Perplexity, and Google AI and how models understand its context, authority, and relevance, framing AI visibility as a managed capability rather than an occasional check. It offers a free report before signup and reports being used by more than 200 brands.",
+		category: "tracking",
+		ahrefsDR: 16,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Free brand report before signup",
+			"Claims 200+ brands and names an investor backing",
+			"Frames authority and context modelling rather than mention counting",
+		],
+	},
+	{
+		slug: "local-glyph",
+		name: "Local Glyph",
+		domain: "localglyph.com",
+		url: "https://localglyph.com/",
+		tagline: "Local SEO platform with AI visibility as one module",
+		description:
+			"Local Glyph is a local SEO platform first: Google Maps grid rank tracking, local SERP tracking, citation checks across 40+ directories, and Search Console, Analytics, and Business Profile in one dashboard. Its AI Visibility module tracks Google AI Overview, ChatGPT, and Perplexity on a schedule or on demand. It is in beta, credit-based, and reports 70+ SEO agencies using it.",
+		category: "seo-traditional",
+		ahrefsDR: 21,
+		status: "beta",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			geographicTracking: true,
+			keywordResearch: true,
+			dataExportApi: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: false },
+		highlights: [
+			"Local SEO first — Maps grid tracking and directory citations are the core",
+			"AI visibility scans run on a schedule or only when needed, priced in credits",
+			"In beta; reports 70+ SEO agencies using it",
+		],
+	},
+	{
+		slug: "obsero",
+		name: "Obsero",
+		domain: "obsero.ai",
+		url: "https://obsero.ai/",
+		tagline: "AI search intelligence platform paired with a GEO consultancy",
+		description:
+			"Obsero reports how a brand appears across ChatGPT, Gemini, Google AI Overviews, and Claude, with data-led actions for visibility, reputation, and influence. The platform is sold alongside a consulting arm whose team works with customers on both visibility and sentiment, and there is a 14-day free trial.",
+		category: "tracking",
+		ahrefsDR: 3.3,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Platform and consultancy sold together rather than software alone",
+			"Works sentiment as an explicit objective alongside visibility",
+			"14-day free trial of the full platform",
+		],
+	},
+	{
+		slug: "llmtel",
+		name: "LLMtel",
+		domain: "llmtel.com",
+		url: "https://www.llmtel.com/",
+		tagline: "One-click checks across 13+ chatbots with a before-and-after score",
+		description:
+			"LLMtel asks 13 or more AI chatbots what they know about a brand, campaign, or keyword and returns a report of which tools mention it and how well that matches the intended positioning. Its workflow is built around proving campaign impact: follow the step-by-step fixes — add a Wikipedia page, adjust meta tags, improve site structure — then re-run the check for a before-and-after score. Separate tracks exist for brand managers, agencies, PR, startups, and enterprise.",
+		category: "tracking",
+		ahrefsDR: 6,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			siteAudits: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: true },
+		highlights: [
+			"Queries 13+ chatbots in one check rather than a fixed engine set",
+			"Built around before-and-after scoring to evidence a campaign",
+			"Free check from an email address, no card",
+		],
+	},
+	{
+		slug: "mentionrank",
+		name: "MentionRank",
+		domain: "mentionrank.io",
+		url: "https://www.mentionrank.io/",
+		tagline: "Searchable database of real prompts with a free-forever tier",
+		description:
+			"MentionRank tracks how often ChatGPT, Claude, Gemini, DeepSeek, and Perplexity mention a brand and scores it, but its distinguishing piece is a Prompt Explorer holding thousands of real prompts that can be searched and filtered by category to see which brands get named for each. There is a free-forever plan covering five tracked models.",
+		category: "tracking",
+		ahrefsDR: 4.7,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			keywordResearch: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: false },
+		highlights: [
+			"Searchable public database of real prompts and who gets recommended for them",
+			"Free-forever plan with five models tracked",
+			"Daily updates on a spotlighted prompt",
+		],
+	},
+	{
+		slug: "llmwatcher",
+		name: "LLMwatcher",
+		domain: "llmwatcher.com",
+		url: "https://llmwatcher.com/",
+		tagline: "Polish-language AI search monitoring covering AI Mode and AI Overview",
+		description:
+			"LLMwatcher is a Polish-language platform tracking positions, mentions, and trends across Google AI Mode and AI Overview, ChatGPT, Perplexity, and Gemini. It shows full AI responses with cited sources and history, compares rankings against competitors per platform, and generates optimized content clusters from the gaps. A free analysis runs from a URL in about a minute with no signup.",
+		category: "tracking",
+		ahrefsDR: 2.4,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			multiLanguage: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: false },
+		highlights: [
+			"Polish-language product with its own AI SEO academy",
+			"Stores full AI responses with cited sources and history",
+			"Free preview analysis in about a minute without registration",
+		],
+	},
+	{
+		slug: "llmeo",
+		name: "LLMEO",
+		domain: "llmeo.app",
+		url: "https://llmeo.app/",
+		tagline: "Four-model brand monitoring with unlimited competitor tracking",
+		description:
+			"LLMEO tracks a brand across ChatGPT, Claude, Gemini, and Perplexity in real time with unlimited competitor tracking on all plans and a two-minute setup. It is positioned around B2B social signals and runs a 30-day free trial with no card required.",
+		category: "tracking",
+		ahrefsDR: 1.4,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: false },
+		highlights: [
+			"Unlimited competitor tracking rather than a per-plan cap",
+			"30-day free trial without a card",
+			"Deliberately narrow — four models, real-time monitoring",
+		],
+	},
+	{
+		slug: "mentiondesk",
+		name: "MentionDesk",
+		domain: "mentiondesk.com",
+		url: "https://mentiondesk.com/",
+		tagline: "AEO tool covering Mistral alongside the mainstream engines",
+		description:
+			"MentionDesk tracks brand mentions, rankings, and reach across ChatGPT, Google AI Overviews, Claude, Mistral, and other LLM platforms, positioned as an answer engine optimization tool for getting a brand named in AI answers. Mistral coverage is unusual among comparable trackers.",
+		category: "tracking",
+		ahrefsDR: 0.4,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			brandMentionTracking: true,
+			competitorBenchmarking: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: false },
+		highlights: [
+			"Tracks Mistral, which most comparable tools skip",
+			"Reports reach alongside mentions and rankings",
+			"Small single-purpose tool rather than a platform",
+		],
+	},
 ];
 
 export function getCompetitorBySlug(slug: string): Competitor | undefined {
@@ -4768,6 +5165,7 @@ const aeoPopularityRanking: string[] = [
 	"finseo", // Query fan-outs + bot traffic + API/MCP, claims 500+ teams, EN/DE
 	"erlin", // Unified AI+SEO+GA/GSC with Reddit/YouTube citation tracking and task workflows
 	"geo-metrics", // Nine engines, Share of Model, claims 3,000+ users, MCP + agency program
+	"minddex", // French-market leader — Rossel Advertising reference tech, named Carglass/Ionos work
 	"cognizo", // Full platform incl. prompt volumes, AI traffic analytics, ChatGPT Ads, agency marketplace
 	"rankability", // AI Search Analyzer with NLP/entity focus, agency-oriented
 	"analyze", // AI search console with governance/risk-term monitoring, DR 41
@@ -4787,32 +5185,38 @@ const aeoPopularityRanking: string[] = [
 	"bluefish-ai", // Enterprise AI-commerce (Fortune 500 focus), named in best-AEO-2026 lists
 	"babylovegrowth", // DR 76, autopilot content + backlink network for AI citations
 	"genrank", // Ad-spend visibility per prompt plus social sentiment; no disclosed traction
+	"mentions", // Eight models incl. Llama, crawler analytics, DR 34
 	"topify", // 200+ brands incl. Zoom/TCL/Midea, full GEO feature set
 	"geostar", // Managed Shopify/DTC GEO agency with certification program, not software
 	"getmentioned", // Claims 150+ brands, seven-module product, topic-level aggregation
 	"friction-ai", // A/B prompt experiments and entity-recognition diagnosis; customer quotes are small agencies only
 	"omniseo", // WebFX-backed, enterprise customers (Darktrace, Fujifilm, Caterpillar)
 	"trakkr", // 8-model tracker, weekly ROI-scored actions + GA revenue attribution
+	"open-forge", // Bootstrapped, named customers with attributed traffic numbers, 10k newsletter
 	"doppler", // Search-Console model reporting impressions/clicks/CTR; narrower than a full tracker
 	"siteline", // Agent-traffic analytics with log explorer and public bot directory; #1 on Product Hunt
 	"aeo-vision", // Six engines with Reddit citation breakdown and sponsored-placement tracking, from $9/mo
 	"attensira", // Deliberately narrow 10-20 prompt sets with prioritized fixes; YC-backed startups cited
 	"indexly", // Unified Google + AI tracker, broad feature set
+	"llm-seo-monitor", // Keyword-ranking model, part of the Findable toolkit, 5.0 on Product Hunt
 	"highlighted", // Narrow AI Overviews + ChatGPT tracker sold white-label to SEO agencies
 	"ai-rank-checker", // Seven engines incl. Meta AI, pay-as-you-go credits, claims 700+ companies
 	"rankshift", // 850+ brands, BI connectors (Looker/BigQuery/Power BI)
+	"opttab", // Very broad suite (bot pages, commerce, ads) but DR 11 and no disclosed customers
 	"brandpeek", // 15-model coverage, AI fact sheet generator, free plan; no disclosed customers
 	"siftly", // Y Combinator-backed GEO platform with A/B testing
 	"cuemarc", // PR/comms-focused LLM listening incl. executives; sector reputation reports, DR 14
 	"airefs", // Hybrid tracker + done-for-you agency service
 	"chosenly", // B2B GEO split by team with misinformation correction; deal-level outcomes but DR 13
 	"geneo", // AI visibility platform with optimization recommendations
+	"nimt", // Agent that produces the fixes, Slack app, query fan-out; no disclosed traction
 	"first-answer", // Seven engines with free analysis; no disclosed traction
 	"amadora", // Agency-first GEO service tooling with citation gap analysis; DR 9
 	"geovector", // Six engines incl. AI Overview and AI Mode separately, GSC/Ads/GA integrations; no disclosed customers
 	"gushwork", // $9M raised, AI agents for end-to-end SEO workflows
 	"keytomic", // Agent-run SEO+AEO automation at $99, claims 300+ users
 	"quattr", // GIGA AI agent, unified SEO + AEO + GEO
+	"maxeo", // Claims 200+ brands and an investor, but thin public detail
 	"essio", // Agency-delivered, link-building emphasis; DR 8
 	"rank-ai", // AI content creation + rank tracking
 	"engenius", // Page-level GEO optimizer with a light monitor attached
@@ -4834,8 +5238,10 @@ const aeoPopularityRanking: string[] = [
 	"parse", // 219K brands database, peer visibility
 	"llmconsole", // Single $29 plan, minimal feature set, monitoring still coming soon
 	"amionai", // Weekly action plans + The Index leaderboards
+	"obsero", // Platform + consultancy; DR 3.3, no disclosed customers
 	"brandbeacon", // Solid monitoring but thin feature set — brand-description analysis still coming soon
 	"airix", // 16-engine weekly scans + free checker; SMB-oriented, no disclosed traction
+	"llmtel", // 13+ chatbot checks with before/after scoring; DR 6
 	"vercite", // Rebrand of AI Brand Tracking; Nordic clients, no disclosed scale
 	"limy", // B2A revenue tracking
 	"bear-ai", // Blog Agent for AI-optimized content
@@ -4844,8 +5250,10 @@ const aeoPopularityRanking: string[] = [
 	"wildcard", // YC-backed e-commerce AI visibility
 	"showupinai", // IndexNow integration for faster AI indexing
 	"omnia", // AI visibility tracking, multi-language/region
+	"mentionrank", // Public prompt database + free-forever tier; DR 4.7
 	"asky", // MCP server + bundled GEO specialist, but DR 0.8 on a freshly moved domain
 	"aeotrack", // Complete product with a free tier, but DR 0 and no disclosed funding or customers
+	"llmwatcher", // Polish-language tracker with full response history; DR 2.4
 	"lorelight", // Shutting down — public postmortem
 	"jarts", // Acquired and shut down May 2026 — persona-based tracking, entity in liquidation
 	"getcito", // Ranked on name recognition only — since Jul 2026 it is a rebranded fork of Elmo's codebase
@@ -4854,8 +5262,10 @@ const aeoPopularityRanking: string[] = [
 	"gego", // GPL-3.0 self-hosted GEO tracker, Docker + CLI + REST API, Ollama support
 	"opensight", // MIT self-hosted tracker (36 stars) with a free hosted tier and API on every plan
 	"meridian", // AI search tracking with geographic targeting
+	"local-glyph", // Local SEO platform first; AI visibility is one module. Beta, 70+ agencies
 	"peasy", // Server-side, cookie-free AI traffic analytics
 	"flip-aeo", // AEO tracking + optimization
+	"llmeo", // Four models, unlimited competitors, 30-day trial; DR 1.4
 	"llmclicks", // Search-Console-for-AI positioning — GSC integration + 120-point audit
 	"foglift", // Free no-signup technical audit + 5-engine monitoring, CLI/API/MCP; DR 18 but only ~100 sites analyzed
 	"prominara", // Complete audit/generate/validate loop and a candid methodology page, but no disclosed customers
@@ -4872,6 +5282,7 @@ const aeoPopularityRanking: string[] = [
 	"cairrot", // Affordable agency-focused AEO with Looker/Databox
 	"rankprompt", // 6-platform tracker, hyper-local (500+ cities) + 50+ languages
 	"aeotool", // Page audit tool with Chrome extension, 6-category scoring
+	"mentiondesk", // Mistral coverage is the only differentiator; DR 0.4, minimal public detail
 	"aisearchiq", // One-off $15 reports plus bot-traffic dashboard; narrow vs a full tracker, DR 0.1
 
 	// --- Tier F: Very new or minimal traction ---
