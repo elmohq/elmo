@@ -3508,6 +3508,275 @@ export const competitors: Competitor[] = [
 			"Pitch, earned coverage, and AI citation tracked in one workflow inside Muck Rack",
 		],
 	},
+	{
+		slug: "aiso",
+		name: "Aiso",
+		domain: "getaiso.com",
+		url: "https://www.getaiso.com/",
+		tagline: "AI visibility built on captured multi-turn conversations rather than guessed prompts",
+		description:
+			"Aiso builds its prompt set from real AI conversations it collects rather than from prompts a marketer invents, on the argument that most of what users say in a session comes after the opening question — it puts the median at 59%. A Conversation Explorer surfaces those questions, visibility reporting marks whether a brand was recommended, merely mentioned, or absent against each competitor, and source tracing shows what shaped the answer. It ships as an official Claude connector.",
+		category: "tracking",
+		ahrefsDR: 40,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+			dataExportApi: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Prompts come from captured real conversations, not marketer-written guesses",
+			"Lists H&M, Uber, Wise, Dentsu, BigCommerce, and IHG as clients",
+			"Distinguishes recommended from merely mentioned, per competitor",
+		],
+	},
+	{
+		slug: "allmo",
+		name: "ALLMO",
+		domain: "allmo.ai",
+		url: "https://allmo.ai/",
+		tagline: "Visibility, citation intelligence, and AI crawler indexing in one platform",
+		description:
+			"ALLMO reports the share of AI answers mentioning a brand across models, prompts, and regions, tracks every page cited and why those sources win, and benchmarks competitors appearing alongside or instead of the brand. It also covers Query Fan-Out — how an assistant expands one question into related queries — and an indexing module that tracks AI index status and pushes crawler discovery. An Actions module generates AI-optimized content against the gaps found.",
+		category: "tracking",
+		ahrefsDR: 33,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			crawlerAnalytics: true,
+			geographicTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: true },
+		highlights: [
+			"Query Fan-Out reporting on how assistants expand a question into related queries",
+			"Tracks AI index status and accelerates crawler discovery, not just answers",
+			"Rated 4.8/5 on OMR Reviews",
+		],
+	},
+	{
+		slug: "analyze",
+		name: "Analyze",
+		domain: "tryanalyze.ai",
+		url: "https://www.tryanalyze.ai/",
+		tagline: "AI search console covering discovery, monitoring, content, and reputation risk",
+		description:
+			"Analyze organizes AI search work into four views: where a brand appears across answer engines and which sources models rely on, rankings and visibility share by topic or competitor, content fixes for pages invisible to both AI and search, and a governance view that monitors risk terms and reputational drift. Reporting covers brand ranking per engine and the top cited domains behind each answer.",
+		category: "tracking",
+		ahrefsDR: 41,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Governance view monitors risk terms and negative narrative drift",
+			"Positions against the category's own hype — argues the panic is profitable for vendors",
+			"Per-engine breakdown of where the brand is cited and where it is absent",
+		],
+	},
+	{
+		slug: "aeo-vision",
+		name: "AEO Vision",
+		domain: "aeovision.ai",
+		url: "https://aeovision.ai/",
+		tagline: "Six-engine tracking with Reddit citation and sponsored-placement reporting",
+		description:
+			"AEO Vision tracks prompts across ChatGPT, Perplexity, Gemini, Claude, Google AI Mode, and AI Overviews, auto-generating a prompt set and discovering competitors from a domain rather than requiring manual setup. Beyond mentions and sentiment it reports which Reddit threads AI platforms cite when answering a brand's prompts, broken out by subreddit, and tracks sponsored placements appearing in AI answers. Plans start at $9/month with separate agency pricing.",
+		category: "tracking",
+		ahrefsDR: 38,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			socialMediaTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+			whiteLabelAgency: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, startingPrice: "$9/mo", hasEnterprise: true },
+		highlights: [
+			"Reddit Insights reports which threads and subreddits AI cites for a brand's prompts",
+			"Tracks sponsored placements inside AI answers alongside organic mentions",
+			"Auto-generates prompts and discovers competitors from just a domain",
+		],
+	},
+	{
+		slug: "ai-rank-checker",
+		name: "AI Rank Checker",
+		domain: "airankchecker.net",
+		url: "https://airankchecker.net/",
+		tagline: "Seven-engine rank tracking with pay-as-you-go credits",
+		description:
+			"AI Rank Checker tracks how a business, brand, or keyword ranks across ChatGPT, Gemini, Claude, Perplexity, Copilot, Grok, and Meta AI, with separate dashboards per brand for agencies and multi-product teams. Reports export to PDF or CSV with ranking history, competitors, and keywords included. Alongside subscriptions it offers a Pay & Go wallet model where credits are topped up and spent as used.",
+		category: "tracking",
+		ahrefsDR: 36,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			keywordResearch: true,
+			dataExportApi: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: false },
+		highlights: [
+			"Pay & Go wallet credits as an alternative to a monthly subscription",
+			"Covers seven engines including Meta AI and Grok",
+			"Separate per-brand dashboards for agencies running multiple domains",
+		],
+	},
+	{
+		slug: "amadora",
+		name: "Amadora",
+		domain: "amadora.ai",
+		url: "https://amadora.ai/",
+		tagline: "GEO tooling packaged as a billable agency service line",
+		description:
+			"Amadora is built around agencies selling GEO as a retainer: one dashboard covers every client brand, citation gap analysis shows which sources AI engines trust and where competitors are cited but the client is not, and audits convert into client-ready action plans with concrete instructions such as which sources to get listed on. Visibility is sliced by country and language for multi-geo clients.",
+		category: "tracking",
+		ahrefsDR: 9,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			geographicTracking: true,
+			multiLanguage: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Framed around making GEO a billable, provable agency service rather than a dashboard",
+			"Citation gap analysis names the specific sources to go earn placement on",
+			"Multi-client dashboard with per-country and per-language slicing",
+		],
+	},
+	{
+		slug: "vercite",
+		name: "Vercite",
+		domain: "vercite.io",
+		url: "https://vercite.io/",
+		tagline: "AI visibility monitoring with citation-source discovery, formerly AI Brand Tracking",
+		description:
+			"Vercite tracks brand visibility across ChatGPT, Gemini, Perplexity, and Google AI Overviews and AI Mode, monitors the exact prompts customers ask, and identifies which websites and platforms those engines source from so a brand can go get listed there. Setup takes a brand and domain — competitors and queries are suggested automatically, with language and country set per market and no tags or code required.",
+		category: "tracking",
+		ahrefsDR: 9,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			geographicTracking: true,
+			multiLanguage: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: false },
+		highlights: [
+			"Rebranded from AI Brand Tracking; the old aibrandtracking.com now redirects here",
+			"Citation discovery is framed as a placement to-do list, not just a source report",
+			"Competitors and tracked queries are auto-suggested from the domain",
+		],
+	},
+	{
+		slug: "asky",
+		name: "Asky",
+		domain: "askylabs.com",
+		url: "https://askylabs.com/",
+		tagline: "GEO platform with an MCP server, sold alongside expert guidance",
+		description:
+			"Asky runs daily structured prompt sets across ChatGPT, Perplexity, Claude, and other answer engines, reporting mention rate, citation quality, sentiment, and answer share, then recommending what to fix. It ships an MCP server so the data is reachable by agents as well as people, and pairs the platform with access to a GEO specialist.",
+		category: "tracking",
+		ahrefsDR: 0.8,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+			dataExportApi: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: true },
+		highlights: [
+			"MCP server so agents can query the visibility data directly",
+			"Platform bundled with a named GEO specialist rather than sold purely self-serve",
+			"Moved from getasky.com to askylabs.com",
+		],
+	},
+	{
+		slug: "aisearchiq",
+		name: "AIsearchIQ",
+		domain: "aisearchiq.com",
+		url: "https://www.aisearchiq.com/",
+		tagline: "One-off paid audit plus an AI bot traffic dashboard",
+		description:
+			"AIsearchIQ runs a free ten-second audit of how AI engines read a site, then sells a $15 advanced report with a ten-section analysis, priority scoring, and competitor comparison. Its separate AI Traffic Dashboard logs AI bot visits by bot identity — GPTBot, Perplexity, Claude and others — along with silent citations and AI click-through rates. Pricing is one-off reports rather than a subscription, with enterprise plans for high volume.",
+		category: "tracking",
+		ahrefsDR: 0.1,
+		status: "active",
+		features: {
+			crawlerAnalytics: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			actionRecommendations: true,
+			siteAudits: true,
+		},
+		pricing: { hasFree: true, startingPrice: "$15 one-off", hasEnterprise: true },
+		highlights: [
+			"Sells one-off reports rather than a subscription",
+			"Bot-level traffic dashboard identifying GPTBot, Perplexity, and Claude crawlers",
+			"Free ten-second audit with no signup",
+		],
+	},
 ];
 
 export function getCompetitorBySlug(slug: string): Competitor | undefined {
@@ -3561,7 +3830,10 @@ const aeoPopularityRanking: string[] = [
 	"llmrefs", // Citation specialist; lists eBay/HubSpot/NVIDIA users
 	"aiseotracker", // Dedicated AEO tracker, claims 249K brands, Page Inspector
 	"gracker", // Cybersecurity/B2B-SaaS vertical with documented customer case studies
+	"aiso", // Clients incl. H&M, Uber, Wise, Dentsu, IHG; official Claude connector; publishes own conversation research
 	"rankability", // AI Search Analyzer with NLP/entity focus, agency-oriented
+	"analyze", // AI search console with governance/risk-term monitoring, DR 41
+	"allmo", // Query Fan-Out + crawler indexing + citation intelligence, 4.8/5 OMR Reviews
 	"gauge", // End-to-end tracking + analysis + content platform
 	"passionfruit", // Stanford/CMU founders, unified SEO+GEO+AEO + managed service
 	"atomic-agi", // Named enterprise logos (MIT, Samsung, Salesforce, Publicis), unified AI-search + SEO analytics, MCP
@@ -3577,11 +3849,14 @@ const aeoPopularityRanking: string[] = [
 	"friction-ai", // A/B prompt experiments and entity-recognition diagnosis; customer quotes are small agencies only
 	"omniseo", // WebFX-backed, enterprise customers (Darktrace, Fujifilm, Caterpillar)
 	"trakkr", // 8-model tracker, weekly ROI-scored actions + GA revenue attribution
+	"aeo-vision", // Six engines with Reddit citation breakdown and sponsored-placement tracking, from $9/mo
 	"indexly", // Unified Google + AI tracker, broad feature set
+	"ai-rank-checker", // Seven engines incl. Meta AI, pay-as-you-go credits, claims 700+ companies
 	"rankshift", // 850+ brands, BI connectors (Looker/BigQuery/Power BI)
 	"siftly", // Y Combinator-backed GEO platform with A/B testing
 	"airefs", // Hybrid tracker + done-for-you agency service
 	"geneo", // AI visibility platform with optimization recommendations
+	"amadora", // Agency-first GEO service tooling with citation gap analysis; DR 9
 	"geovector", // Six engines incl. AI Overview and AI Mode separately, GSC/Ads/GA integrations; no disclosed customers
 	"gushwork", // $9M raised, AI agents for end-to-end SEO workflows
 	"quattr", // GIGA AI agent, unified SEO + AEO + GEO
@@ -3602,12 +3877,14 @@ const aeoPopularityRanking: string[] = [
 	"parse", // 219K brands database, peer visibility
 	"amionai", // Weekly action plans + The Index leaderboards
 	"airix", // 16-engine weekly scans + free checker; SMB-oriented, no disclosed traction
+	"vercite", // Rebrand of AI Brand Tracking; Nordic clients, no disclosed scale
 	"limy", // B2A revenue tracking
 	"bear-ai", // Blog Agent for AI-optimized content
 	"getmint", // 150K+ partner media distribution network
 	"wildcard", // YC-backed e-commerce AI visibility
 	"showupinai", // IndexNow integration for faster AI indexing
 	"omnia", // AI visibility tracking, multi-language/region
+	"asky", // MCP server + bundled GEO specialist, but DR 0.8 on a freshly moved domain
 	"aeotrack", // Complete product with a free tier, but DR 0 and no disclosed funding or customers
 	"lorelight", // Shutting down — public postmortem
 	"getcito", // Ranked on name recognition only — since Jul 2026 it is a rebranded fork of Elmo's codebase
@@ -3633,6 +3910,7 @@ const aeoPopularityRanking: string[] = [
 	"cairrot", // Affordable agency-focused AEO with Looker/Databox
 	"rankprompt", // 6-platform tracker, hyper-local (500+ cities) + 50+ languages
 	"aeotool", // Page audit tool with Chrome extension, 6-category scoring
+	"aisearchiq", // One-off $15 reports plus bot-traffic dashboard; narrow vs a full tracker, DR 0.1
 
 	// --- Tier F: Very new or minimal traction ---
 	"orchly", // Unified SEO+AEO with autonomous agents
