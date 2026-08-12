@@ -3479,6 +3479,35 @@ export const competitors: Competitor[] = [
 			"Looker and Google Analytics integrations, plus a white-labeled client portal on enterprise",
 		],
 	},
+	{
+		slug: "generative-pulse",
+		name: "Generative Pulse",
+		domain: "generativepulse.ai",
+		url: "https://generativepulse.ai/",
+		tagline: "GEO built around earned media, tracing AI citations to individual journalists",
+		description:
+			"Generative Pulse is Muck Rack's GEO product, aimed at PR and communications teams rather than SEO teams. It reports a visibility score across ChatGPT, Claude, and Gemini for up to ten companies at once, tracks sentiment and narrative risk, and — unlike domain-level citation tools — identifies the individual journalists and outlets whose coverage AI systems cite. Because it sits inside Muck Rack, pitching, earned coverage, and AI visibility are tracked in one workflow, so a pitch can be followed through to coverage to an AI citation. It ships with Muck Rack Premier and pricing is not published.",
+		category: "tracking",
+		ahrefsDR: 0,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+			dataExportApi: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Attributes AI citations to named journalists and outlets, not just source domains",
+			"Prompt set drawn from AI systems prompted over 25 million times since July 2025",
+			"Pitch, earned coverage, and AI citation tracked in one workflow inside Muck Rack",
+		],
+	},
 ];
 
 export function getCompetitorBySlug(slug: string): Competitor | undefined {
@@ -3524,6 +3553,7 @@ const aeoPopularityRanking: string[] = [
 	"nightwatch", // Established rank tracker (190K locations) with AI search tracking
 	"frase", // Agentic SEO/GEO platform, 80+ AI tools
 	"amplitude", // Product analytics giant adding AEO features
+	"generative-pulse", // Muck Rack's GEO product — own site and 25M-prompt research program, distinct journalist-level citation data
 	"local-falcon", // Early entrant (SAIV metric); local-SEO-primary with AEO
 	"promptwatch", // UI-scraping prompt monitor, 630M citations, WSJ/Axios
 	"goodie", // Funded; Amazon Rufus tracking + AEO thought leadership
