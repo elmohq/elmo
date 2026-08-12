@@ -6,6 +6,10 @@
 // still has whatever category it earned, and the classifier stays free of the
 // bloom filter dependency.
 //
+// Server-only for the same reason that file is: the filter and the library that
+// reads it are together ~800KB, which has no business in a browser bundle when
+// the client only ever needs the resulting boolean.
+//
 // The membership set is a bloom filter so shipping the app doesn't also ship a
 // republishable copy of the marketplaces' inventory, and it's imported rather
 // than read from disk so a deployment can't misplace the asset and silently

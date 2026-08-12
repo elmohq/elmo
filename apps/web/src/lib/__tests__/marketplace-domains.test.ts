@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isMarketplaceDomain } from "@/lib/marketplace-domains";
+import { isMarketplaceDomain } from "@/lib/marketplace-domains.server";
 
 describe("isMarketplaceDomain", () => {
 	it("flags domains listed on the link marketplaces", () => {
