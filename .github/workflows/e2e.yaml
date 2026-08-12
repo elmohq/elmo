@@ -73,12 +73,13 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
-      # Bounded because the browsers are cached and the system-dependency check
-      # is local: past a couple of minutes this step is stuck on the network,
-      # and failing here says so instead of eating the job's whole budget.
+      # Bounded because `--with-deps` runs `apt-get update`, and apt applies no
+      # transfer timeout of its own: a mirror that accepts the connection and
+      # then stops sending hangs here until the runner kills the whole job. A
+      # healthy install, browsers and packages both, is under a minute.
       - name: Install Playwright browsers
-        timeout-minutes: 6
-        run: .github/scripts/install-playwright-browsers.sh
+        timeout-minutes: 5
+        run: pnpm -C apps/web exec playwright install chromium --with-deps
 
       - name: Build elmo CLI
         run: pnpm -C apps/cli build
