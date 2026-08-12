@@ -25,7 +25,7 @@ export function isOpenSource(competitor: Competitor): boolean {
 /**
  * GetCito replaced its codebase with a copy of Elmo's on this date. The generic
  * open-source copy below frames the two as peers you might pick between, which
- * is the wrong answer for a rebadged copy, so it gets its own wording.
+ * is the wrong answer for a rebranded fork, so it gets its own wording.
  */
 const GETCITO_FORK_DATE = "July 10, 2026";
 
@@ -81,7 +81,7 @@ export function getComparisonFaqs(competitor: Competitor): FaqItem[] {
 			},
 			{
 				question: `Is Elmo a free, open-source alternative to ${name}?`,
-				answer: `Elmo is not an alternative to ${name} so much as the thing ${name} is a copy of. It is free to self-host under MIT, with unlimited prompts and every model, covering ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews. There is no reason to run a rebadged snapshot when the upstream project is free and moving faster.`,
+				answer: `Elmo is not an alternative to ${name} so much as the thing ${name} is a copy of. It is free to self-host under MIT, with unlimited prompts and every model, covering ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews. There is no reason to run a rebranded fork when the upstream project is free and moving faster.`,
 			},
 		];
 	}

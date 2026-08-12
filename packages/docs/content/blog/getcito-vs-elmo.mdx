@@ -11,13 +11,11 @@ tags:
   - open-source
 faq:
   - question: Should I use GetCito or Elmo?
-    answer: "Use Elmo. If you are considering GetCito, Elmo is the tool you actually want, because GetCito is a copy of it. On July 10, 2026, GetCito replaced its entire codebase with Elmo's in a single pull request of 847 files, self-merged 62 seconds after it opened. Running GetCito means running an older snapshot of Elmo, maintained by people who did not write it, with Elmo's copyright notice replaced."
+    answer: "Use Elmo. If you are considering GetCito, Elmo is the tool you actually want, because GetCito is a copy of it. On July 10, 2026, GetCito replaced its entire codebase with Elmo's in a single pull request of 847 files, self-merged 62 seconds after it opened, and shipped it with Elmo's copyright notice replaced. Everything it offers today it inherited from Elmo, and it has shipped far less since — 98 commits to GetCito's 17 in the month after. A fork can diverge in principle, but at that rate GetCito is drifting further behind rather than building past it."
   - question: Is GetCito a fork of Elmo?
     answer: "Yes. On July 10, 2026, GetCito replaced its entire codebase with Elmo's in a single pull request that changed 847 files (+131,716/-50,931 lines) and was self-merged 62 seconds after it opened. The repository still carries the evidence: its AGENTS.md begins 'Elmo is an open-source AI visibility tracking platform,' its CLA names Elmo's parent company Blue Whale Software, LLC, its CODEOWNERS file assigns every path to Elmo's founder, and its contributor registry lists Elmo's contributors. All of it is public and linked in this post."
   - question: Did GetCito credit Elmo?
     answer: "No. GetCito's LICENSE.md is Elmo's MIT license text with the copyright line changed from 'Copyright (c) 2026 Blue Whale Software, LLC' to 'Copyright (c) 2026 GetCito.' The MIT license permits anyone to fork, modify, and even sell the software. It imposes one condition in return: the original copyright notice must be retained in copies and substantial portions. Replacing that notice is the single thing the license does not allow."
-  - question: Should I use GetCito or Elmo?
-    answer: "Use Elmo. GetCito is running a copy of Elmo's code, so everything it offers today it inherited from Elmo, and it has shipped far less since — 98 commits to GetCito's 17 in the month after the copy. A fork can diverge in principle, but at that rate GetCito is drifting further behind rather than building past it. Choosing GetCito means choosing a lagging snapshot of Elmo maintained by people who did not write it."
   - question: What is the best open-source AI visibility tool?
     answer: "Elmo. It is MIT-licensed, self-hostable, and covers ChatGPT, Claude, Gemini, Grok, Perplexity, Copilot, DeepSeek, and Google's AI Mode and AI Overviews. It is also the implementation other projects in this category have started copying outright, which is the clearest signal available about which codebase is worth running."
 ---
@@ -94,7 +92,7 @@ Set the licensing aside and the practical case is simpler still.
 
 **It started from behind, and it is not closing the gap.** GetCito's feature set on the day of the swap was Elmo's, minus the pieces they dropped. A fork is free to diverge from there, and nothing stops GetCito building something Elmo does not have. The question is whether it plausibly will, and the commit log is not encouraging: 27 commits from humans across the repository's entire lifetime, against Elmo's 862.
 
-**The gap widens on its own.** In the month after July 10, Elmo landed 98 commits. GetCito landed 17, from two people working on a codebase they did not write, with no commit history explaining why any of it is shaped the way it is. AI search changes constantly — models get renamed, APIs shift, new answer surfaces appear every few months. Keeping pace is the entire job, and a rebadged snapshot starts that race from behind and falls further back.
+**The gap widens on its own.** In the month after July 10, Elmo landed 98 commits. GetCito landed 17, from two people working on a codebase they did not write, with no commit history explaining why any of it is shaped the way it is. AI search changes constantly — models get renamed, APIs shift, new answer surfaces appear every few months. Keeping pace is the entire job, and a rebranded fork starts that race from behind and falls further back.
 
 **Nobody is on the hook for it.** When Elmo's own code has a bug, the people who wrote it fix it. When a copied codebase has one, whoever holds the copy has to first work out what the original authors intended.
 

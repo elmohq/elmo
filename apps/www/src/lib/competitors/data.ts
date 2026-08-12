@@ -3255,7 +3255,7 @@ const aeoPopularityRanking: string[] = [
 	"omnia", // AI visibility tracking, multi-language/region
 	"aeotrack", // Complete product with a free tier, but DR 0 and no disclosed funding or customers
 	"lorelight", // Shutting down — public postmortem
-	"getcito", // Ranked on name recognition only — since Jul 2026 it is a rebadged copy of Elmo's codebase
+	"getcito", // Ranked on name recognition only — since Jul 2026 it is a rebranded fork of Elmo's codebase
 	"geo-aeo-tracker", // Open-source self-hosted AEO dashboard, 80 GitHub stars
 	"canonry", // Open-source self-hosted AEO platform, server-log ingestion + MCP, 52 stars
 	"gego", // GPL-3.0 self-hosted GEO tracker, Docker + CLI + REST API, Ollama support
