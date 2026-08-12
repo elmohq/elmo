@@ -22,6 +22,8 @@ const BRAND_STROKE_WIDTH = 3;
 const COMPETITOR_STROKE_WIDTH = 2;
 /** How far the other series recede while one is singled out. */
 const DIMMED_OPACITY = 0.25;
+/** Ring thickness on the hollow competitor dots. */
+const DOT_RING_WIDTH = 1.5;
 
 /** Legend that doubles as a way to pick a series out of the chart, since colour
  *  alone can't separate four lines for a colourblind reader.
@@ -146,6 +148,19 @@ export function BaseChart({
 	const dataKeys = [...sortedSelectedCompetitors.map((c) => c.id), brand.id];
 
 	const strokeWidthFor = (key: string) => (key === brand.id ? BRAND_STROKE_WIDTH : COMPETITOR_STROKE_WIDTH);
+	/** Solid dot for the brand, hollow for competitors — a second, quiet cue for
+	 *  which line is yours. Radii are picked so both read the same diameter; only
+	 *  the centre differs. */
+	const dotProps = (key: string, size: number) =>
+		key === brand.id
+			? { r: size, fill: `var(--color-${key})`, opacity: opacityFor(key) }
+			: {
+					r: size - DOT_RING_WIDTH / 2,
+					fill: "var(--card)",
+					stroke: `var(--color-${key})`,
+					strokeWidth: DOT_RING_WIDTH,
+					opacity: opacityFor(key),
+				};
 	const opacityFor = (key: string) => (activeSeries && activeSeries !== key ? DIMMED_OPACITY : 1);
 
 	// Build custom legend payload to only show brand + selected competitors (not duplicates from dashed/solid lines)
@@ -405,19 +420,7 @@ export function BaseChart({
 										if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
 											return <g key={`dot-empty-${key}-${cx}`} />;
 										}
-										return (
-											<circle
-												key={`dot-${key}-${cx}`}
-												cx={cx}
-												cy={cy}
-												r={2}
-												fill={`var(--color-${key})`}
-												fillOpacity={opacityFor(key)}
-												stroke={`var(--color-${key})`}
-												strokeOpacity={opacityFor(key)}
-												strokeWidth={strokeWidthFor(key)}
-											/>
-										);
+										return <circle key={`dot-${key}-${cx}`} cx={cx} cy={cy} {...dotProps(key, 3)} />;
 									}}
 									activeDot={({ cx, cy, payload, value }: any) => {
 										// Don't render active dot for extended points or null values
@@ -425,17 +428,7 @@ export function BaseChart({
 										if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
 											return <g key={`activedot-empty-${key}-${cx}`} />;
 										}
-										return (
-											<circle
-												key={`activedot-${key}-${cx}`}
-												cx={cx}
-												cy={cy}
-												r={4}
-												fill={`var(--color-${key})`}
-												stroke={`var(--color-${key})`}
-												strokeWidth={strokeWidthFor(key)}
-											/>
-										);
+										return <circle key={`activedot-${key}-${cx}`} cx={cx} cy={cy} {...dotProps(key, 5)} />;
 									}}
 									connectNulls={true}
 									isAnimationActive={isAnimationActive}
