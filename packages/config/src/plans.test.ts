@@ -222,21 +222,28 @@ describe("plan copy the surfaces share", () => {
 		// 20 buys one prompt on twenty models, twenty prompts on one, or anything
 		// between — calling them prompts made the second reading impossible.
 		const pro = planPlatformBreakdown(PLANS.pro).premium;
-		expect(pro?.summary).toBe(
-			`Grounded and cited. ${premiumPairings(PLANS.pro.premiumIncluded)} included, each answered daily.`,
-		);
+		expect(pro?.summary).toContain(`${premiumPairings(PLANS.pro.premiumIncluded)} included, each answered daily.`);
 		expect(pro?.summary).toContain("pairings");
 	});
 
-	it("leaves the price of more to whatever sits alongside it", () => {
-		// The plan card already prints the per-pairing price directly below.
-		expect(planPlatformBreakdown(PLANS.pro).premium?.summary).not.toContain("$");
+	it("quotes what an extra pairing costs on every plan that sells one", () => {
+		// The plan grid says this nowhere else, so an unpriced add-on reads as free.
+		for (const key of PLAN_KEYS) {
+			const premium = planPlatformBreakdown(PLANS[key]).premium;
+			if (!premium?.addonAvailable) continue;
+			expect(premium.summary).toContain(`$${PREMIUM_ADDON_MONTHLY_USD}/mo`);
+		}
+	});
+
+	it("keeps the price out of a plan whose allowance cannot be topped up", () => {
+		const summary = planPlatformBreakdown({ ...PLANS.pro, premiumAddonAvailable: false }).premium?.summary;
+		expect(summary).not.toContain("$");
 	});
 
 	it("offers the add-on alone when a plan includes none", () => {
 		// No such plan today, but the sentence must not read "0 pairings included".
 		const summary = planPlatformBreakdown({ ...PLANS.basic, premiumAddonAvailable: true }).premium?.summary;
-		expect(summary).toBe("Grounded and cited. Available as an add-on.");
+		expect(summary).toBe(`Grounded and cited. Available as an add-on at $${PREMIUM_ADDON_MONTHLY_USD}/mo per pairing.`);
 	});
 
 	it("names one pairing in the singular", () => {

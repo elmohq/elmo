@@ -405,12 +405,20 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 /**
  * What the premium allowance buys, in one sentence. It is spent on pairings of a
  * prompt with a model, so the count is neither prompts nor models — 20 buys one
- * prompt on twenty models, twenty prompts on one, or anything between. The price
- * of more is left to whatever sits alongside this, so the two don't say it twice.
+ * prompt on twenty models, twenty prompts on one, or anything between. This
+ * sentence is the only place the plan grid quotes the add-on, so it carries the
+ * price whenever the plan sells one.
  */
 function premiumSummary(plan: PlanDefinition): string {
-	if (plan.premiumIncluded === 0) return "Grounded and cited. Available as an add-on.";
-	return `Grounded and cited. ${premiumPairings(plan.premiumIncluded)} included, each answered daily.`;
+	// Only called for a plan that sells the tier at all, so including none means
+	// the add-on is the whole offer.
+	if (plan.premiumIncluded === 0) {
+		return `Grounded and cited. Available as an add-on at $${PREMIUM_ADDON_MONTHLY_USD}/mo per pairing.`;
+	}
+	const included = `Grounded and cited. ${premiumPairings(plan.premiumIncluded)} included, each answered daily.`;
+	return plan.premiumAddonAvailable
+		? `${included} $${PREMIUM_ADDON_MONTHLY_USD}/mo for each extra pairing.`
+		: included;
 }
 
 /** The premium allowance's unit, named the same way wherever it is counted. */
