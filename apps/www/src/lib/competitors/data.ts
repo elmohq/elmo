@@ -5895,6 +5895,167 @@ export const competitors: Competitor[] = [
 			"Positioned on lead acquisition rather than visibility reporting",
 		],
 	},
+	{
+		slug: "revere",
+		name: "Revere",
+		domain: "revere-ai.com",
+		url: "https://revere-ai.com/",
+		tagline: "Brand intelligence built on the gap between mentioned and recommended",
+		description:
+			"Revere argues AI is an intermediary you market to rather than optimize for, and measures how leading models perceive, rank, and represent a brand. Its brand audit reports separate visibility, sentiment, and a brand pillar average, with per-competitor visibility bars alongside. It is organized by industry and sold through demos rather than self-serve signup.",
+		category: "tracking",
+		ahrefsDR: 24,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Separates a brand pillar score from raw visibility and sentiment",
+			"Frames AI as an intermediary to market to, not a channel to optimize",
+			"Demo-led with industry-specific positioning",
+		],
+	},
+	{
+		slug: "algomizer",
+		name: "Algomizer",
+		domain: "algomizer.com",
+		url: "https://algomizer.com/",
+		tagline: "Audit-led GEO and AEO optimization services",
+		description:
+			"Algomizer sells AI search optimization as a service rather than a subscription dashboard: the entry point is a free audit or a booked call, and the site is organized around projects and pricing for engagement work. The stated aim is improving how ChatGPT and other AI platforms represent a brand, its products, and its services.",
+		category: "tracking",
+		ahrefsDR: 33,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			siteAudits: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: true },
+		highlights: [
+			"Service engagement rather than self-serve software",
+			"Free audit is the only entry point short of a call",
+			"Publishes completed client projects rather than product screenshots",
+		],
+	},
+	{
+		slug: "appear-on-ai",
+		name: "AppearOnAI",
+		domain: "appearonai.io",
+		url: "https://appearonai.io/",
+		tagline: "Free visibility analysis with agency and enterprise tiers",
+		description:
+			"AppearOnAI analyzes how ChatGPT, Claude, and Perplexity describe a brand and returns an executive-level assessment of what to improve. Entry is a free analysis from a URL with no card required, and there are separate agency and enterprise tracks. It claims use by professionals at over 2,500 companies.",
+		category: "tracking",
+		ahrefsDR: 0.2,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: true },
+		highlights: [
+			"Free analysis from a URL with no signup or card",
+			"Claims professionals at 2,500+ companies",
+			"Separate agency and enterprise tiers despite a small footprint",
+		],
+		notes: "appearonai.com (DR 9) redirects here",
+	},
+	{
+		slug: "justblank",
+		name: "Justblank",
+		domain: "justblank.io",
+		url: "https://justblank.io/",
+		tagline: "AEO analysis over a claimed 24M-prompt corpus",
+		description:
+			"Justblank tracks and grows visibility across ChatGPT, Perplexity, Claude, and Gemini, starting from a free AEO analysis of a company name. Its headline claims are a 24M+ prompt corpus it monitors, an 87% lift in AI mentions, and a 14-day timeline, and the product covers creating, measuring, rewriting, and guiding content so a brand appears inside AI answers.",
+		category: "tracking",
+		ahrefsDR: 5,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: true },
+		highlights: [
+			"Claims a 24M+ prompt corpus behind its analysis",
+			"Free AEO analysis from just a company name",
+			"Covers rewriting and guiding content, not only measurement",
+		],
+	},
+	{
+		slug: "leverage",
+		name: "Leverage",
+		domain: "rankwithleverage.com",
+		url: "https://rankwithleverage.com/",
+		tagline: "Five-engine visibility reports with public documentation",
+		description:
+			"Leverage reports how a brand appears across ChatGPT, Gemini, Perplexity, Claude, and Google AI Overviews, pairing detailed visibility reports with optimization strategies for outranking competitors in AI results. Entry is a free visibility report or a demo request, and it publishes developer-facing documentation alongside the marketing site.",
+		category: "tracking",
+		ahrefsDR: 0.1,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: true },
+		highlights: [
+			"Free visibility report before any signup",
+			"Public documentation unusual at this size",
+			"Five engines including both Claude and Google AI Overviews",
+		],
+	},
+	{
+		slug: "auq-llmrankings",
+		name: "AUQ LLM Rank Tracker",
+		domain: "llmrankings.io",
+		url: "https://llmrankings.io/",
+		tagline: "Deliberately retro rank tracker from a SaaS SEO agency",
+		description:
+			"LLM Rank Tracker, from SaaS SEO agency AUQ.io, checks whether a brand appears in AI responses for search terms the user enters and tracks that over time, with competitor tracking added more recently. The site is styled as a deliberate 1990s pastiche — a live visitor counter, a Best Viewed In Netscape Navigator badge, and rainbow button bars — which sets it apart from every other tool in the category.",
+		category: "tracking",
+		ahrefsDR: 0.7,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			keywordResearch: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: false },
+		highlights: [
+			"Search-term-first workflow — you add the brand after the terms",
+			"Built as a side tool by SaaS SEO agency AUQ.io",
+			"Deliberate retro-web design, visitor counter included",
+		],
+	},
 ];
 
 export function getCompetitorBySlug(slug: string): Competitor | undefined {
@@ -6016,6 +6177,7 @@ const aeoPopularityRanking: string[] = [
 	"chosenly", // B2B GEO split by team with misinformation correction; deal-level outcomes but DR 13
 	"geneo", // AI visibility platform with optimization recommendations
 	"quno", // Ten-plus models with qualitative response analysis; no disclosed customers
+	"revere", // Brand-pillar scoring and mentioned-vs-recommended framing; demo-led, DR 24
 	"nimt", // Agent that produces the fixes, Slack app, query fan-out; no disclosed traction
 	"traqer", // Grow & Convert team; real-web-response methodology and anti-single-score stance
 	"first-answer", // Seven engines with free analysis; no disclosed traction
@@ -6027,6 +6189,7 @@ const aeoPopularityRanking: string[] = [
 	"maxeo", // Claims 200+ brands and an investor, but thin public detail
 	"ziptie", // Three-signal AI Success Score; also runs ziptie.dev (DR 71)
 	"essio", // Agency-delivered, link-building emphasis; DR 8
+	"algomizer", // Service engagement rather than software; DR 33 but no product access
 	"rank-ai", // AI content creation + rank tracking
 	"rank-plus-plus", // Nine tools for solo founders; free tier, narrow scope
 	"engenius", // Page-level GEO optimizer with a light monitor attached
@@ -6061,11 +6224,13 @@ const aeoPopularityRanking: string[] = [
 	"limy", // B2A revenue tracking
 	"bear-ai", // Blog Agent for AI-optimized content
 	"brantial", // Managed GEO service more than a product; DR 10, no disclosed customers
+	"justblank", // Claims 24M-prompt corpus; DR 5, no named customers
 	"getmint", // 150K+ partner media distribution network
 	"wildcard", // YC-backed e-commerce AI visibility
 	"showupinai", // IndexNow integration for faster AI indexing
 	"omnia", // AI visibility tracking, multi-language/region
 	"mentionrank", // Public prompt database + free-forever tier; DR 4.7
+	"appear-on-ai", // Claims 2,500+ companies but DR 0.2 on the live domain
 	"asky", // MCP server + bundled GEO specialist, but DR 0.8 on a freshly moved domain
 	"aeotrack", // Complete product with a free tier, but DR 0 and no disclosed funding or customers
 	"seen-by-ai", // Pay-per-report UK checker from £4.99; narrow scope, DR 1
@@ -6083,6 +6248,7 @@ const aeoPopularityRanking: string[] = [
 	"peasy", // Server-side, cookie-free AI traffic analytics
 	"flip-aeo", // AEO tracking + optimization
 	"llmeo", // Four models, unlimited competitors, 30-day trial; DR 1.4
+	"leverage", // Five engines with free report; DR 0.1, minimal public detail
 	"llmclicks", // Search-Console-for-AI positioning — GSC integration + 120-point audit
 	"foglift", // Free no-signup technical audit + 5-engine monitoring, CLI/API/MCP; DR 18 but only ~100 sites analyzed
 	"prominara", // Complete audit/generate/validate loop and a candid methodology page, but no disclosed customers
@@ -6100,6 +6266,7 @@ const aeoPopularityRanking: string[] = [
 	"rankprompt", // 6-platform tracker, hyper-local (500+ cities) + 50+ languages
 	"aeotool", // Page audit tool with Chrome extension, 6-category scoring
 	"mentiondesk", // Mistral coverage is the only differentiator; DR 0.4, minimal public detail
+	"auq-llmrankings", // Agency side project, retro-web novelty; DR 0.7
 	"aisearchiq", // One-off $15 reports plus bot-traffic dashboard; narrow vs a full tracker, DR 0.1
 
 	// --- Tier F: Very new or minimal traction ---
