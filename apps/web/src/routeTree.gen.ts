@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as AuthedAdminRouteImport } from './routes/_authed/admin'
 import { Route as AuthedAppRouteImport } from './routes/_authed/app'
+import { Route as AuthedChoosePlanRouteImport } from './routes/_authed/choose-plan'
 import { Route as AuthedReportsRouteImport } from './routes/_authed/reports'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
@@ -54,6 +55,7 @@ import { Route as AuthedAppBrandPromptsIndexRouteImport } from './routes/_authed
 import { Route as AuthedAppBrandPromptsPromptIdRouteImport } from './routes/_authed/app/$brand/prompts/$promptId'
 import { Route as AuthedAppBrandPromptsEditRouteImport } from './routes/_authed/app/$brand/prompts/edit'
 import { Route as AuthedAppBrandSettingsIndexRouteImport } from './routes/_authed/app/$brand/settings/index'
+import { Route as AuthedAppBrandSettingsBillingRouteImport } from './routes/_authed/app/$brand/settings/billing'
 import { Route as AuthedAppBrandSettingsBrandRouteImport } from './routes/_authed/app/$brand/settings/brand'
 import { Route as AuthedAppBrandSettingsCompetitorsRouteImport } from './routes/_authed/app/$brand/settings/competitors'
 import { Route as AuthedAppBrandSettingsLlmsRouteImport } from './routes/_authed/app/$brand/settings/llms'
@@ -79,6 +81,11 @@ const AuthedAdminRoute = AuthedAdminRouteImport.update({
 const AuthedAppRoute = AuthedAppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedChoosePlanRoute = AuthedChoosePlanRouteImport.update({
+  id: '/choose-plan',
+  path: '/choose-plan',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedReportsRoute = AuthedReportsRouteImport.update({
@@ -297,6 +304,12 @@ const AuthedAppBrandSettingsIndexRoute =
     path: '/settings/',
     getParentRoute: () => AuthedAppBrandRoute,
   } as any)
+const AuthedAppBrandSettingsBillingRoute =
+  AuthedAppBrandSettingsBillingRouteImport.update({
+    id: '/settings/billing',
+    path: '/settings/billing',
+    getParentRoute: () => AuthedAppBrandRoute,
+  } as any)
 const AuthedAppBrandSettingsBrandRoute =
   AuthedAppBrandSettingsBrandRouteImport.update({
     id: '/settings/brand',
@@ -344,6 +357,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AuthedAdminRouteWithChildren
   '/app': typeof AuthedAppRouteWithChildren
+  '/choose-plan': typeof AuthedChoosePlanRoute
   '/reports': typeof AuthedReportsRouteWithChildren
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -383,6 +397,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/reports/': typeof ApiV1ReportsIndexRoute
   '/app/$brand/prompts/$promptId': typeof AuthedAppBrandPromptsPromptIdRoute
   '/app/$brand/prompts/edit': typeof AuthedAppBrandPromptsEditRoute
+  '/app/$brand/settings/billing': typeof AuthedAppBrandSettingsBillingRoute
   '/app/$brand/settings/brand': typeof AuthedAppBrandSettingsBrandRoute
   '/app/$brand/settings/competitors': typeof AuthedAppBrandSettingsCompetitorsRoute
   '/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
@@ -395,6 +410,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/choose-plan': typeof AuthedChoosePlanRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
@@ -432,6 +448,7 @@ export interface FileRoutesByTo {
   '/api/v1/reports': typeof ApiV1ReportsIndexRoute
   '/app/$brand/prompts/$promptId': typeof AuthedAppBrandPromptsPromptIdRoute
   '/app/$brand/prompts/edit': typeof AuthedAppBrandPromptsEditRoute
+  '/app/$brand/settings/billing': typeof AuthedAppBrandSettingsBillingRoute
   '/app/$brand/settings/brand': typeof AuthedAppBrandSettingsBrandRoute
   '/app/$brand/settings/competitors': typeof AuthedAppBrandSettingsCompetitorsRoute
   '/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
@@ -448,6 +465,7 @@ export interface FileRoutesById {
   '/_authed': typeof AuthedRouteWithChildren
   '/_authed/admin': typeof AuthedAdminRouteWithChildren
   '/_authed/app': typeof AuthedAppRouteWithChildren
+  '/_authed/choose-plan': typeof AuthedChoosePlanRoute
   '/_authed/reports': typeof AuthedReportsRouteWithChildren
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -487,6 +505,7 @@ export interface FileRoutesById {
   '/api/v1/reports/': typeof ApiV1ReportsIndexRoute
   '/_authed/app/$brand/prompts/$promptId': typeof AuthedAppBrandPromptsPromptIdRoute
   '/_authed/app/$brand/prompts/edit': typeof AuthedAppBrandPromptsEditRoute
+  '/_authed/app/$brand/settings/billing': typeof AuthedAppBrandSettingsBillingRoute
   '/_authed/app/$brand/settings/brand': typeof AuthedAppBrandSettingsBrandRoute
   '/_authed/app/$brand/settings/competitors': typeof AuthedAppBrandSettingsCompetitorsRoute
   '/_authed/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
@@ -503,6 +522,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/app'
+    | '/choose-plan'
     | '/reports'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -542,6 +562,7 @@ export interface FileRouteTypes {
     | '/api/v1/reports/'
     | '/app/$brand/prompts/$promptId'
     | '/app/$brand/prompts/edit'
+    | '/app/$brand/settings/billing'
     | '/app/$brand/settings/brand'
     | '/app/$brand/settings/competitors'
     | '/app/$brand/settings/llms'
@@ -554,6 +575,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/choose-plan'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/logout'
@@ -591,6 +613,7 @@ export interface FileRouteTypes {
     | '/api/v1/reports'
     | '/app/$brand/prompts/$promptId'
     | '/app/$brand/prompts/edit'
+    | '/app/$brand/settings/billing'
     | '/app/$brand/settings/brand'
     | '/app/$brand/settings/competitors'
     | '/app/$brand/settings/llms'
@@ -606,6 +629,7 @@ export interface FileRouteTypes {
     | '/_authed'
     | '/_authed/admin'
     | '/_authed/app'
+    | '/_authed/choose-plan'
     | '/_authed/reports'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -645,6 +669,7 @@ export interface FileRouteTypes {
     | '/api/v1/reports/'
     | '/_authed/app/$brand/prompts/$promptId'
     | '/_authed/app/$brand/prompts/edit'
+    | '/_authed/app/$brand/settings/billing'
     | '/_authed/app/$brand/settings/brand'
     | '/_authed/app/$brand/settings/competitors'
     | '/_authed/app/$brand/settings/llms'
@@ -710,6 +735,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AuthedAppRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/choose-plan': {
+      id: '/_authed/choose-plan'
+      path: '/choose-plan'
+      fullPath: '/choose-plan'
+      preLoaderRoute: typeof AuthedChoosePlanRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/reports': {
@@ -999,6 +1031,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAppBrandSettingsIndexRouteImport
       parentRoute: typeof AuthedAppBrandRoute
     }
+    '/_authed/app/$brand/settings/billing': {
+      id: '/_authed/app/$brand/settings/billing'
+      path: '/settings/billing'
+      fullPath: '/app/$brand/settings/billing'
+      preLoaderRoute: typeof AuthedAppBrandSettingsBillingRouteImport
+      parentRoute: typeof AuthedAppBrandRoute
+    }
     '/_authed/app/$brand/settings/brand': {
       id: '/_authed/app/$brand/settings/brand'
       path: '/settings/brand'
@@ -1077,6 +1116,7 @@ interface AuthedAppBrandRouteChildren {
   AuthedAppBrandIndexRoute: typeof AuthedAppBrandIndexRoute
   AuthedAppBrandPromptsPromptIdRoute: typeof AuthedAppBrandPromptsPromptIdRoute
   AuthedAppBrandPromptsEditRoute: typeof AuthedAppBrandPromptsEditRoute
+  AuthedAppBrandSettingsBillingRoute: typeof AuthedAppBrandSettingsBillingRoute
   AuthedAppBrandSettingsBrandRoute: typeof AuthedAppBrandSettingsBrandRoute
   AuthedAppBrandSettingsCompetitorsRoute: typeof AuthedAppBrandSettingsCompetitorsRoute
   AuthedAppBrandSettingsLlmsRoute: typeof AuthedAppBrandSettingsLlmsRoute
@@ -1096,6 +1136,7 @@ const AuthedAppBrandRouteChildren: AuthedAppBrandRouteChildren = {
   AuthedAppBrandIndexRoute: AuthedAppBrandIndexRoute,
   AuthedAppBrandPromptsPromptIdRoute: AuthedAppBrandPromptsPromptIdRoute,
   AuthedAppBrandPromptsEditRoute: AuthedAppBrandPromptsEditRoute,
+  AuthedAppBrandSettingsBillingRoute: AuthedAppBrandSettingsBillingRoute,
   AuthedAppBrandSettingsBrandRoute: AuthedAppBrandSettingsBrandRoute,
   AuthedAppBrandSettingsCompetitorsRoute:
     AuthedAppBrandSettingsCompetitorsRoute,
@@ -1143,6 +1184,7 @@ const AuthedReportsRouteWithChildren = AuthedReportsRoute._addFileChildren(
 interface AuthedRouteChildren {
   AuthedAdminRoute: typeof AuthedAdminRouteWithChildren
   AuthedAppRoute: typeof AuthedAppRouteWithChildren
+  AuthedChoosePlanRoute: typeof AuthedChoosePlanRoute
   AuthedReportsRoute: typeof AuthedReportsRouteWithChildren
   AuthedAcceptInvitationInvitationIdRoute: typeof AuthedAcceptInvitationInvitationIdRoute
 }
@@ -1150,6 +1192,7 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAdminRoute: AuthedAdminRouteWithChildren,
   AuthedAppRoute: AuthedAppRouteWithChildren,
+  AuthedChoosePlanRoute: AuthedChoosePlanRoute,
   AuthedReportsRoute: AuthedReportsRouteWithChildren,
   AuthedAcceptInvitationInvitationIdRoute:
     AuthedAcceptInvitationInvitationIdRoute,

@@ -2,7 +2,7 @@
  * Mock for @tanstack/react-router used in Storybook stories.
  * Provides stubs for the router hooks and components that the app uses.
  */
-import React, { createContext, useContext, type ReactNode } from "react";
+import React, { createContext, type ReactNode, useContext } from "react";
 
 // This mock is used for Storybook bundling. It intentionally provides a broad
 // surface-area of exports to satisfy app imports without pulling in a real router.
@@ -52,7 +52,25 @@ export function createFileRoute(_path: string) {
 		useParams: () => ({ brand: "mock-brand-id" }),
 		useSearch,
 		useNavigate,
+		useLoaderData,
+		useRouteContext,
 	});
+}
+
+// ---------------------------------------------------------------------------
+// Settable loader data — for stories that render a route's component directly
+// (Route.options.component) instead of a plain presentational component. The
+// route's loader never runs in Storybook, so the story supplies its result.
+// ---------------------------------------------------------------------------
+
+let _loaderData: unknown;
+
+export function setMockLoaderData(data: unknown) {
+	_loaderData = data;
+}
+
+export function useLoaderData(opts?: { select?: (data: any) => unknown }) {
+	return opts?.select ? opts.select(_loaderData) : (_loaderData as any);
 }
 
 export function createRootRouteWithContext<TContext>() {
@@ -88,12 +106,18 @@ export function useBlocker(_opts?: unknown) {
 	};
 }
 
-// Stories render with an empty search (all filters at defaults). Honor
-// `select` so per-key subscribers (filter-bar widgets) get `undefined`
+// Stories render with an empty search (all filters at defaults) unless one sets
+// it — /choose-plan reads `?status=success` to know it came back from Stripe.
+// Honor `select` so per-key subscribers (filter-bar widgets) get `undefined`
 // instead of the whole empty object.
+let _search: Record<string, unknown> = {};
+
+export function setMockSearch(search: Record<string, unknown>) {
+	_search = search;
+}
+
 export function useSearch(opts?: { select?: (search: Record<string, unknown>) => unknown }) {
-	const search: Record<string, unknown> = {};
-	return opts?.select ? opts.select(search) : search;
+	return opts?.select ? opts.select(_search) : _search;
 }
 
 export function useMatch(_opts?: unknown) {

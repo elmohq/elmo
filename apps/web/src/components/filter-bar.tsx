@@ -1,37 +1,26 @@
-import { type ReactNode, useEffect, useRef, useState, useMemo } from "react";
 import { useSearch } from "@tanstack/react-router";
-import {
-	SiGoogle,
-	SiAnthropic,
-	SiPerplexity,
-	SiX,
-	SiGithubcopilot,
-	SiMistralai,
-	SiDeepseek,
-	SiMoonshotai,
-} from "react-icons/si";
-// OpenAI's logo was removed from Simple Icons (react-icons `si`) in 5.7.0 for
-// trademark reasons; Remix Icon still ships the blossom mark.
-import { RiOpenaiFill } from "react-icons/ri";
-import { MdSelectAll } from "react-icons/md";
-import { Sparkles } from "lucide-react";
+import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuLabel,
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
+import { Input } from "@workspace/ui/components/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
-import { ChevronDown, Search, Tag as TagIcon, Clock, X } from "lucide-react";
-import { type LookbackPeriod, getDefaultLookbackPeriod } from "@/lib/chart-utils";
+import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { MdSelectAll } from "react-icons/md";
 import { useBrand } from "@/hooks/use-brands";
-import { getModelMeta } from "@workspace/lib/providers/models";
+import { getDefaultLookbackPeriod, type LookbackPeriod } from "@/lib/chart-utils";
+
 export { ALL_MODELS_VALUE, getAvailableModels } from "@/lib/model-filter";
-import { ALL_MODELS_VALUE } from "@/lib/model-filter";
+
 // Filter state lives in the URL, validated by the `$brand` layout route's
 // search schema (see `validateBrandFilterSearch`). The widgets here keep
 // per-key `useSearch` selectors so one filter's click doesn't re-render the
@@ -39,47 +28,31 @@ import { ALL_MODELS_VALUE } from "@/lib/model-filter";
 // The router commits search updates synchronously within the interaction, so
 // no optimistic layer is needed (nuqs throttled URL writes, which is why the
 // old code wrapped every change in `useOptimistic` + `startTransition`).
-import { useFilterNavigate, splitTags, joinTags, coerceLookback } from "@/hooks/use-list-filters";
+import { coerceLookback, joinTags, splitTags, useFilterNavigate } from "@/hooks/use-list-filters";
+import {
+	ALL_MODELS_VALUE,
+	getAvailableModels,
+	groupTrackedTargets,
+	iconIdForModelFilter,
+	labelForModelFilter,
+	type TrackedTarget,
+} from "@/lib/model-filter";
 
 /** "all" is the no-filter sentinel; any other string is a concrete model id
  *  from the deployment's `SCRAPE_TARGETS`. Deployments can configure arbitrary
  *  model ids, so we don't constrain this to a literal union. */
 export type ModelFilterValue = string;
 
-/** Map a provider `iconId` (see `getModelMeta`) to the react-icons component
- *  that renders it. `generic` and any unknown id fall through to a sparkle,
- *  so a deployment that configures a new model id we haven't seen still gets
- *  a reasonable trigger glyph. */
+/** The model filter's trigger glyph. `all` is the no-filter sentinel; every
+ *  other value names one of the brand's targets, whose logo is decided by
+ *  @workspace/config/models. */
 export function iconForModel(model: string, className = "size-3.5") {
 	if (model === ALL_MODELS_VALUE) return <MdSelectAll className={className} />;
-	const { iconId } = getModelMeta(model);
-	switch (iconId) {
-		case "openai":
-			return <RiOpenaiFill className={className} />;
-		case "anthropic":
-			return <SiAnthropic className={className} />;
-		case "google":
-			return <SiGoogle className={className} />;
-		case "microsoft":
-			return <SiGithubcopilot className={className} />;
-		case "perplexity":
-			return <SiPerplexity className={className} />;
-		case "x":
-			return <SiX className={className} />;
-		case "mistral":
-			return <SiMistralai className={className} />;
-		case "deepseek":
-			return <SiDeepseek className={className} />;
-		case "moonshotai":
-			return <SiMoonshotai className={className} />;
-		default:
-			return <Sparkles className={className} />;
-	}
+	return <ModelIcon iconId={iconIdForModelFilter(model)} className={className} />;
 }
 
 export function labelForModel(model: string): string {
-	if (model === ALL_MODELS_VALUE) return "All models";
-	return getModelMeta(model).label;
+	return labelForModelFilter(model);
 }
 
 const LOOKBACK_OPTIONS: { value: LookbackPeriod; label: string }[] = [
@@ -144,7 +117,8 @@ export function FilterTriggerButton({
 // Model dropdown — subscribes to only the "model" URL key.
 // ------------------------------------------------------------------
 
-export function ModelDropdown({ availableModels }: { availableModels: string[] }) {
+export function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) {
+	const availableModels = getAvailableModels(trackedTargets);
 	const defaultModel = availableModels.includes(ALL_MODELS_VALUE)
 		? ALL_MODELS_VALUE
 		: (availableModels[0] ?? ALL_MODELS_VALUE);
@@ -161,18 +135,33 @@ export function ModelDropdown({ availableModels }: { availableModels: string[] }
 
 	if (availableModels.length <= 1) return null;
 	const isFiltered = selected !== ALL_MODELS_VALUE;
+	// Grouped the way the LLM settings page groups them: a scraped surface, a
+	// bare API call and a grounded one answer different questions, and the list
+	// is long enough that a flat run of thirteen reads as undifferentiated.
+	const groups = groupTrackedTargets(trackedTargets);
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<FilterTriggerButton icon={iconForModel(selected)} label={labelForModel(selected)} active={isFiltered} />
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="start" className="w-48">
+			<DropdownMenuContent align="start" className="w-56">
 				<DropdownMenuRadioGroup value={selected} onValueChange={handleChange}>
-					{availableModels.map((model) => (
-						<DropdownMenuRadioItem key={model} value={model} className="cursor-pointer gap-2">
-							{iconForModel(model)}
-							{labelForModel(model)}
-						</DropdownMenuRadioItem>
+					<DropdownMenuRadioItem value={ALL_MODELS_VALUE} className="cursor-pointer gap-2">
+						{iconForModel(ALL_MODELS_VALUE)}
+						{labelForModel(ALL_MODELS_VALUE)}
+					</DropdownMenuRadioItem>
+					{groups.map((group) => (
+						<DropdownMenuGroup key={group.tier}>
+							<DropdownMenuLabel className="text-muted-foreground text-xs font-medium">
+								{group.label}
+							</DropdownMenuLabel>
+							{group.values.map((value) => (
+								<DropdownMenuRadioItem key={value} value={value} className="cursor-pointer gap-2">
+									{iconForModel(value)}
+									{labelForModel(value)}
+								</DropdownMenuRadioItem>
+							))}
+						</DropdownMenuGroup>
 					))}
 				</DropdownMenuRadioGroup>
 			</DropdownMenuContent>
@@ -398,7 +387,7 @@ export function ResultCount({ count, total }: { count: number | undefined; total
 
 export function FilterBar({
 	availableTags,
-	availableModels,
+	trackedTargets,
 	showSearch,
 	showModelSelector,
 	resultCount,
@@ -406,7 +395,7 @@ export function FilterBar({
 	extraControls,
 }: {
 	availableTags: readonly string[];
-	availableModels: string[];
+	trackedTargets: TrackedTarget[];
 	showSearch: boolean;
 	showModelSelector: boolean;
 	/** Only passed by pages that filter a list; omit on pages with a single aggregate view (e.g. Citations). */
@@ -420,7 +409,7 @@ export function FilterBar({
 	return (
 		<div className="flex flex-wrap items-center justify-between gap-2">
 			<div className="flex flex-wrap items-center gap-1.5">
-				{showModelSelector && <ModelDropdown availableModels={availableModels} />}
+				{showModelSelector && <ModelDropdown trackedTargets={trackedTargets} />}
 				<TagsDropdown availableTags={availableTags} />
 				<LookbackDropdown />
 				{extraControls}

@@ -1,38 +1,39 @@
 import * as Sentry from "@sentry/node";
+import { getDeployment } from "@workspace/deployment";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
-import { isPromptOverdue } from "@workspace/lib/overdue";
+import { getOrgEntitlementsMap } from "@workspace/lib/entitlements";
 import { parseScrapeTargets } from "@workspace/lib/providers";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import {
+	computeMaintenanceDecisions,
+	lastRunQueryWindowMs,
+	type MaintenancePromptState,
+	type PromptRunPlan,
+	resolveBrandPromptRunPlans,
+	targetKey,
+} from "@workspace/lib/run-policy";
+import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
+import { PROMPT_JOB_OPTIONS } from "./process-prompt";
 
 export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
 }
 
-// A prompt counts as overdue for alerting only once it's more than this far past
-// its cadence (or, if it has never run, this long after being created) — a grace
-// window so normal jitter and freshly-created prompts don't trip it.
-const OVERDUE_ALERT_GRACE_MS = 30 * 60 * 1000;
 // Don't re-emit the Sentry error more often than this while an outage persists.
 const OVERDUE_ALERT_THROTTLE_MS = 30 * 60 * 1000;
 let lastOverdueAlertMs = 0;
 
 /**
- * Minimum time since a prompt's last run before maintenance will expedite its
- * next job again. Without it, a target that never records a run (e.g. a
- * consistently-failing provider) keeps every prompt perpetually "overdue", so
- * maintenance re-fires it every tick — turning one broken provider into a
- * fleet-wide run/cost storm. Mirrors the 1h throttle on the job-creation path.
- */
-const EXPEDITE_MIN_INTERVAL_MS = 60 * 60 * 1000;
-
-/**
  * Maintenance job that ensures all enabled prompts have scheduled jobs.
  * This is a self-healing mechanism that catches any prompts that fell through
- * the cracks (e.g., due to worker crashes, failed jobs, etc.).
+ * the cracks (e.g., due to worker crashes, failed jobs, etc.) — and, since the
+ * run policy landed, also what starts a prompt again after it stopped while an
+ * org was unentitled (canceled → resubscribed) or a brand had no platform
+ * picks. The decision logic itself is pure (computeMaintenanceDecisions);
+ * this job only gathers state and executes the decisions.
  */
 export async function scheduleMaintenanceJob(jobs: Job<ScheduleMaintenanceData>[]): Promise<void> {
 	for (const job of jobs) {
@@ -49,7 +50,6 @@ export async function scheduleMaintenanceJob(jobs: Job<ScheduleMaintenanceData>[
 }
 
 async function runMaintenanceCheck(): Promise<void> {
-	// Get all enabled brands
 	const enabledBrands = await db.query.brands.findMany({
 		where: eq(brands.enabled, true),
 	});
@@ -59,16 +59,18 @@ async function runMaintenanceCheck(): Promise<void> {
 		return;
 	}
 
-	const brandIds = enabledBrands.map((b) => b.id);
-	const defaultDelayHours = getDefaultDelayHours();
-	const brandDelayMap: Record<string, number> = {};
-	for (const brand of enabledBrands) {
-		brandDelayMap[brand.id] = brand.delayOverrideHours ?? defaultDelayHours;
-	}
+	const brandById = new Map(enabledBrands.map((b) => [b.id, b]));
+	const orgIds = [...new Set(enabledBrands.map((b) => b.organizationId))];
+	const entitlementsByOrg = await getOrgEntitlementsMap(orgIds);
 
-	// Get all enabled prompts for enabled brands
 	const enabledPrompts = await db.query.prompts.findMany({
-		where: and(eq(prompts.enabled, true), inArray(prompts.brandId, brandIds)),
+		where: and(
+			eq(prompts.enabled, true),
+			inArray(
+				prompts.brandId,
+				enabledBrands.map((b) => b.id),
+			),
+		),
 	});
 
 	if (enabledPrompts.length === 0) {
@@ -78,130 +80,149 @@ async function runMaintenanceCheck(): Promise<void> {
 
 	console.log(`[schedule-maintenance] Checking ${enabledPrompts.length} enabled prompts`);
 
-	const allModels = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-	const modelNames = allModels.map((cfg) => cfg.model);
+	// Pool positions are decided across the whole org, while run plans resolve
+	// per brand — group the prompts both ways.
+	const promptsByOrg = new Map<string, typeof enabledPrompts>();
+	const promptsByBrand = new Map<string, typeof enabledPrompts>();
+	for (const prompt of enabledPrompts) {
+		const orgId = brandById.get(prompt.brandId)?.organizationId;
+		if (!orgId) continue;
+		const orgList = promptsByOrg.get(orgId) ?? [];
+		orgList.push(prompt);
+		promptsByOrg.set(orgId, orgList);
+		const brandList = promptsByBrand.get(prompt.brandId) ?? [];
+		brandList.push(prompt);
+		promptsByBrand.set(prompt.brandId, brandList);
+	}
 
-	// Get last runs per prompt per model (matches dashboard overdue logic)
+	const scrapeTargets = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+	const defaultDelayHours = getDefaultDelayHours();
+
+	// Resolve every prompt's plan, brand by brand. A brand with a broken
+	// configuration (e.g. enabledModels referencing a model no longer in
+	// SCRAPE_TARGETS) must not take maintenance down for everyone — contain it
+	// and move on.
+	const planByPromptId = new Map<string, PromptRunPlan>();
+	for (const [brandId, brandPrompts] of promptsByBrand) {
+		const brand = brandById.get(brandId);
+		if (!brand) continue;
+		const entitlements = entitlementsByOrg.get(brand.organizationId);
+		if (!entitlements) continue;
+		try {
+			const plans = resolveBrandPromptRunPlans({
+				scrapeTargets,
+				defaultDelayHours,
+				entitlements,
+				orgPrompts: promptsByOrg.get(brand.organizationId) ?? [],
+				brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
+				prompts: brandPrompts,
+			});
+			for (const [promptId, plan] of plans) {
+				planByPromptId.set(promptId, plan);
+			}
+		} catch (error) {
+			console.error(`[schedule-maintenance] Skipping brand ${brand.id} (invalid target config):`, error);
+		}
+	}
+
+	// Last runs per (prompt, target), bounded by the slowest cadence in play so
+	// the aggregate stops scanning all of prompt_runs on every 5-minute tick.
+	const maxIntervalHours = Math.max(
+		1,
+		...[...planByPromptId.values()].flatMap((plan) => plan.targets.map((t) => t.intervalHours)),
+	);
+	const windowStart = new Date(Date.now() - lastRunQueryWindowMs(maxIntervalHours));
 	const lastRunsQuery = await db
 		.select({
 			promptId: promptRuns.promptId,
 			model: promptRuns.model,
+			provider: promptRuns.provider,
+			webSearchEnabled: promptRuns.webSearchEnabled,
 			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
 		})
 		.from(promptRuns)
-		.groupBy(promptRuns.promptId, promptRuns.model);
+		.where(gt(promptRuns.createdAt, windowStart))
+		.groupBy(promptRuns.promptId, promptRuns.model, promptRuns.provider, promptRuns.webSearchEnabled);
 
-	const lastRunsMap: Record<string, Record<string, Date>> = {};
+	const lastRunsByPrompt = new Map<string, Map<string, Date>>();
 	for (const run of lastRunsQuery) {
-		if (!lastRunsMap[run.promptId]) {
-			lastRunsMap[run.promptId] = {};
+		let byKey = lastRunsByPrompt.get(run.promptId);
+		if (!byKey) {
+			byKey = new Map();
+			lastRunsByPrompt.set(run.promptId, byKey);
 		}
-		lastRunsMap[run.promptId][run.model] = run.lastRunAt;
+		// provider is nullable on the column; a row without one predates target
+		// keying and can't be matched to a target anyway.
+		if (!run.provider) continue;
+		byKey.set(
+			targetKey({ model: run.model, provider: run.provider, webSearch: run.webSearchEnabled }),
+			new Date(run.lastRunAt),
+		);
 	}
 
-	// Get all pending jobs with their state info
 	const pendingJobMap = await getPendingJobMap();
 
-	const now = Date.now();
-	const promptsToSchedule: { promptId: string; cadenceHours: number }[] = [];
-	const jobsToExpedite: string[] = []; // Job IDs to expedite (move start_after to now)
-
-	reportOverduePrompts({
-		prompts: enabledPrompts,
-		brandDelayHours: brandDelayMap,
-		defaultDelayHours,
-		lastRunsMap,
-		modelNames,
-		now,
-	});
-
+	const promptStates: MaintenancePromptState[] = [];
 	for (const prompt of enabledPrompts) {
-		const pendingJob = pendingJobMap.get(prompt.id);
-
-		// Skip if there's an active or retry job (already being worked on)
-		if (pendingJob && (pendingJob.state === "active" || pendingJob.state === "retry")) {
-			continue;
-		}
-
-		const cadenceHours = brandDelayMap[prompt.brandId] ?? defaultDelayHours;
-		const runFrequencyMs = cadenceHours * 60 * 60 * 1000;
-		const lastRuns = lastRunsMap[prompt.id] || {};
-
-		const isOverdue = isPromptOverdue({
-			models: modelNames,
-			lastRunByModel: lastRuns,
+		const plan = planByPromptId.get(prompt.id);
+		if (!plan) continue;
+		promptStates.push({
+			promptId: prompt.id,
 			promptCreatedAt: prompt.createdAt,
-			runFrequencyMs,
-			now,
+			plan,
+			lastRunAtByKey: lastRunsByPrompt.get(prompt.id) ?? new Map(),
+			pendingJob: pendingJobMap.get(prompt.id) ?? null,
 		});
-
-		if (!isOverdue) continue;
-
-		if (pendingJob && pendingJob.state === "created") {
-			// Throttle: if the prompt ran within the window it isn't really stalled,
-			// so don't drag its next job forward again. A never-recording target
-			// would otherwise keep it perpetually "overdue" and re-fire it every tick.
-			const lastRunTimes = Object.values(lastRuns).map((d) => new Date(d).getTime());
-			const mostRecentRunMs = lastRunTimes.length > 0 ? Math.max(...lastRunTimes) : null;
-			if (mostRecentRunMs !== null && now - mostRecentRunMs < Math.min(runFrequencyMs, EXPEDITE_MIN_INTERVAL_MS)) {
-				continue;
-			}
-			// There's a future job scheduled - expedite it to run now
-			jobsToExpedite.push(pendingJob.jobId);
-		} else {
-			// No pending job at all - create a new one
-			promptsToSchedule.push({ promptId: prompt.id, cadenceHours });
-		}
 	}
 
-	if (promptsToSchedule.length === 0 && jobsToExpedite.length === 0) {
+	const decisions = computeMaintenanceDecisions(promptStates, new Date());
+
+	reportOverduePrompts(decisions.alertOverdueCount);
+
+	if (decisions.toSchedule.length === 0 && decisions.toExpedite.length === 0) {
 		console.log("[schedule-maintenance] All prompts are on schedule or have pending jobs");
 		return;
 	}
 
 	console.log(
-		`[schedule-maintenance] Found ${promptsToSchedule.length} prompts needing new jobs, ${jobsToExpedite.length} jobs to expedite`,
+		`[schedule-maintenance] Found ${decisions.toSchedule.length} prompts needing new jobs, ${decisions.toExpedite.length} jobs to expedite`,
 	);
 
 	// Expedite existing future jobs to run now by updating start_after
-	if (jobsToExpedite.length > 0) {
-		let expeditedCount = 0;
-		for (const jobId of jobsToExpedite) {
-			try {
-				await db.execute(sql`
-					UPDATE pgboss.job
-					SET start_after = now()
-					WHERE id = ${jobId}
-					  AND state = 'created'
-				`);
-				expeditedCount++;
-			} catch (error) {
-				console.error(`[schedule-maintenance] Failed to expedite job ${jobId}:`, error);
-			}
+	if (decisions.toExpedite.length > 0) {
+		const jobIds = decisions.toExpedite.map((d) => d.jobId);
+		try {
+			// Bind each id as its own uuid param: drizzle flattens a JS array
+			// into a single text param, which `ANY(...)` / `IN (...)` can't
+			// compare against a uuid column.
+			const inList = sql.join(
+				jobIds.map((id) => sql`${id}::uuid`),
+				sql`, `,
+			);
+			await db.execute(sql`UPDATE pgboss.job SET start_after = now() WHERE id IN (${inList}) AND state = 'created'`);
+			console.log(`[schedule-maintenance] Expedited ${jobIds.length} future jobs to run now`);
+		} catch (error) {
+			console.error(`[schedule-maintenance] Failed to expedite jobs:`, error);
 		}
-		console.log(`[schedule-maintenance] Expedited ${expeditedCount} future jobs to run now`);
 	}
 
 	// Schedule new jobs for prompts with no pending job
-	if (promptsToSchedule.length > 0) {
+	if (decisions.toSchedule.length > 0) {
 		const BATCH_SIZE = 50;
 		let successCount = 0;
 		let failCount = 0;
 
-		for (let i = 0; i < promptsToSchedule.length; i += BATCH_SIZE) {
-			const batch = promptsToSchedule.slice(i, i + BATCH_SIZE);
+		for (let i = 0; i < decisions.toSchedule.length; i += BATCH_SIZE) {
+			const batch = decisions.toSchedule.slice(i, i + BATCH_SIZE);
 			const results = await Promise.allSettled(
-				batch.map(({ promptId, cadenceHours }) =>
+				batch.map(({ promptId }) =>
 					boss.send(
 						"process-prompt",
-						{ promptId, cadenceHours },
+						{ promptId },
 						{
 							singletonKey: `prompt-${promptId}`,
 							singletonSeconds: 60 * 60, // 1 hour - prevent duplicates
-							retryLimit: 3,
-							retryDelay: 60,
-							retryBackoff: true,
-							expireInSeconds: 60 * 15,
+							...PROMPT_JOB_OPTIONS,
 						},
 					),
 				),
@@ -224,36 +245,15 @@ async function runMaintenanceCheck(): Promise<void> {
 }
 
 /**
- * Report to Sentry (as an error, so it pages) when enabled prompts are overdue on
- * any of their models — the same per-model definition the dashboard uses — past a
- * grace window. Throttled in-process so a sustained outage doesn't emit a new event
+ * Report to Sentry (as an error, so it pages) when enabled, entitled prompts
+ * are overdue on any of their targets past the grace window. Parked chains
+ * (unentitled orgs, no picks) never count — a canceled customer is not an
+ * outage. Throttled in-process so a sustained outage doesn't emit a new event
  * on every maintenance tick.
  */
-function reportOverduePrompts(input: {
-	prompts: { id: string; brandId: string; createdAt: Date }[];
-	brandDelayHours: Record<string, number>;
-	defaultDelayHours: number;
-	lastRunsMap: Record<string, Record<string, Date>>;
-	modelNames: string[];
-	now: number;
-}): void {
-	const { prompts: enabled, brandDelayHours, defaultDelayHours, lastRunsMap, modelNames, now } = input;
-
-	let overduePrompts = 0;
-	for (const prompt of enabled) {
-		const runFrequencyMs = (brandDelayHours[prompt.brandId] ?? defaultDelayHours) * 60 * 60 * 1000;
-		const overdue = isPromptOverdue({
-			models: modelNames,
-			lastRunByModel: lastRunsMap[prompt.id] ?? {},
-			promptCreatedAt: prompt.createdAt,
-			runFrequencyMs,
-			now,
-			graceMs: OVERDUE_ALERT_GRACE_MS,
-		});
-		if (overdue) overduePrompts++;
-	}
-
+function reportOverduePrompts(overduePrompts: number): void {
 	if (overduePrompts === 0) return;
+	const now = Date.now();
 	if (now - lastOverdueAlertMs < OVERDUE_ALERT_THROTTLE_MS) return;
 	lastOverdueAlertMs = now;
 
@@ -273,11 +273,14 @@ function reportOverduePrompts(input: {
 interface PendingJobInfo {
 	jobId: string;
 	state: "created" | "active" | "retry";
+	/** Failure streak the job carries, so a deliberate backoff is distinguishable. */
+	consecutiveFailures: number;
 }
 
 async function getPendingJobMap(): Promise<Map<string, PendingJobInfo>> {
 	const result = await db.execute(sql`
-		SELECT id, data->>'promptId' as prompt_id, state
+		SELECT id, data->>'promptId' as prompt_id, state,
+		       COALESCE((data->>'consecutiveFailures')::int, 0) as consecutive_failures
 		FROM pgboss.job
 		WHERE name = 'process-prompt'
 		  AND state IN ('created', 'active', 'retry')
@@ -291,11 +294,18 @@ async function getPendingJobMap(): Promise<Map<string, PendingJobInfo>> {
 	`);
 
 	const map = new Map<string, PendingJobInfo>();
-	for (const row of result.rows as { id: string; prompt_id: string; state: string }[]) {
+	type PendingJobRow = {
+		id: string;
+		prompt_id: string;
+		state: string;
+		consecutive_failures: number | string | null;
+	};
+	for (const row of result.rows as PendingJobRow[]) {
 		if (row.prompt_id && !map.has(row.prompt_id)) {
 			map.set(row.prompt_id, {
 				jobId: row.id,
 				state: row.state as "created" | "active" | "retry",
+				consecutiveFailures: Number(row.consecutive_failures ?? 0),
 			});
 		}
 	}

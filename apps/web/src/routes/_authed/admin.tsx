@@ -42,7 +42,7 @@ function AdminLayout() {
 
 	return (
 		<SidebarProvider>
-			<AppSidebar isAdmin={isAdmin} hasReportAccess={hasReportAccess} adminOnly />
+			<AppSidebar isAdmin={isAdmin} hasReportAccess={hasReportAccess} scope="admin" />
 			<SidebarInset className="md:border md:border-border/60 md:rounded-xl overflow-hidden">
 				<SiteHeader />
 				<div className="flex flex-1 flex-col">

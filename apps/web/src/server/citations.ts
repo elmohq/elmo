@@ -4,13 +4,14 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
+import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getCitationUrlStats, getPerPromptDailyCitationPages, getPerPromptCitationPages } from "@/lib/postgres-read";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { citationDateWindow, applyPerPromptKeyedLVCF } from "@/lib/chart-utils";
+import { type CitationDomain, rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@/lib/citation-rollup";
 import {
 	type CitationCategory,
 	type CitationPageType,
@@ -29,7 +30,6 @@ import {
 	classifyUrl as classifyUrlShared,
 } from "@/lib/domain-categories.server";
 import { buildGoogleModule, emptyGoogleModule } from "@/lib/google-module";
-import { isMarketplaceDomain } from "@/lib/marketplace-domains";
 
 /**
  * Get citation statistics for a brand
@@ -45,7 +45,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		// Window: `data.days` calendar days ending today (inclusive), plus the
 		// contiguous equal-length previous window — all UTC (server-TZ independent).
@@ -118,15 +118,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 					totalCitations: 0,
 					uniqueDomains: 0,
 					categoryCounts: emptyCategoryCounts(),
-					domainDistribution: [] as {
-						domain: string;
-						count: number;
-						category: CitationCategory;
-						exampleTitle?: string;
-						previousCount: number;
-						changePercent: number | null;
-						isMarketplace: boolean;
-					}[],
+					domainDistribution: [] as (CitationDomain & { previousCount: number; changePercent: number | null })[],
 					specificUrls: [] as {
 						url: string;
 						title?: string;
@@ -215,100 +207,35 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			}
 		}
 
-		// Categorize and normalize specific URLs with new fields
-		const urlCounts = new Map<
-			string,
-			{ count: number; title?: string; domain: string; positionSum: number; positionCount: number; promptCount: number }
-		>();
-		for (const { url, domain, title, count, avg_position, prompt_count } of urlStats) {
+		// How many prompts cited each URL. Kept beside the shared rollup rather
+		// than inside it: it is the only thing the brand-wide view needs that the
+		// per-prompt view has no meaning for.
+		const promptCountByUrl = new Map<string, number>();
+		for (const { url, prompt_count } of urlStats) {
 			if (isGoogleSurfaceUrl(url)) continue;
 			const normalizedUrl = normalizeUrl(url);
-			const c = Number(count);
-			const positionSum = avg_position != null ? Number(avg_position) * c : 0;
-			const positionCount = avg_position != null ? c : 0;
-			const existing = urlCounts.get(normalizedUrl);
-			if (existing) {
-				existing.count += c;
-				existing.positionSum += positionSum;
-				existing.positionCount += positionCount;
-				existing.promptCount = Math.max(existing.promptCount, Number(prompt_count));
-				if (!existing.title && title) existing.title = title;
-			} else {
-				urlCounts.set(normalizedUrl, {
-					count: c,
-					title: title || undefined,
-					domain,
-					positionSum,
-					positionCount,
-					promptCount: Number(prompt_count),
-				});
-			}
+			promptCountByUrl.set(normalizedUrl, Math.max(promptCountByUrl.get(normalizedUrl) ?? 0, Number(prompt_count)));
 		}
 
-		const specificUrls = Array.from(urlCounts.entries())
-			.map(([url, { count, title, domain, positionSum, positionCount, promptCount }]) => {
-				const category = classify(domain, url, title);
-				return {
-					url,
-					title,
-					domain,
-					count,
-					category,
-					pageType: resolvePageType(url, title, category),
-					avgPosition: positionCount > 0 ? Math.round((positionSum / positionCount) * 10) / 10 : null,
-					promptCount,
-					isNew: !prevUrlMap.has(url),
-				};
-			})
-			.sort((a, b) => b.count - a.count);
+		const specificUrls = rollUpCitationUrls(urlStats, classify).map((url) => ({
+			...url,
+			promptCount: promptCountByUrl.get(url.url) ?? 0,
+			isNew: !prevUrlMap.has(url.url),
+		}));
 
-		// Domain distribution rebuilt from URL-level data: count + a per-domain
-		// category taken from its top-cited URL (so a domain that's mostly review
-		// articles reads as editorial rather than other), sorted by count.
-		const domainAgg = new Map<
-			string,
-			{ count: number; category: CitationCategory; topCount: number; exampleTitle?: string }
-		>();
-		for (const u of specificUrls) {
-			const cur = domainAgg.get(u.domain);
-			if (cur) {
-				cur.count += u.count;
-				if (u.count > cur.topCount) {
-					cur.topCount = u.count;
-					cur.category = u.category;
-					cur.exampleTitle = u.title;
-				}
-			} else {
-				domainAgg.set(u.domain, { count: u.count, category: u.category, topCount: u.count, exampleTitle: u.title });
-			}
-		}
-		const domainDistribution = Array.from(domainAgg.entries())
-			.map(([domain, v]) => {
-				const previousCount = prevDomainMap.get(domain) || 0;
-				return {
-					domain,
-					count: v.count,
-					category: v.category,
-					exampleTitle: v.exampleTitle,
-					previousCount,
-					changePercent: previousCount > 0 ? Math.round(((v.count - previousCount) / previousCount) * 100) : null,
-					isMarketplace: isMarketplaceDomain(domain),
-				};
-			})
-			.sort((a, b) => b.count - a.count);
+		const domainDistribution = rollUpCitationDomains(specificUrls).map((domain) => {
+			const previousCount = prevDomainMap.get(domain.domain) || 0;
+			return {
+				...domain,
+				previousCount,
+				changePercent: previousCount > 0 ? Math.round(((domain.count - previousCount) / previousCount) * 100) : null,
+			};
+		});
 
-		// Category + page-type totals from the URL-level classification
-		const categoryCounts = emptyCategoryCounts();
-		const pageTypeCounts = emptyPageTypeCounts();
-		for (const u of specificUrls) {
-			categoryCounts[u.category] += u.count;
-			pageTypeCounts[u.pageType] += u.count;
-		}
-		const totalCitations = CITATION_CATEGORIES.reduce((s, c) => s + categoryCounts[c], 0);
-		const pageTypeDistribution = CITATION_PAGE_TYPES.map((pageType) => ({
-			pageType,
-			count: pageTypeCounts[pageType],
-		})).filter((d) => d.count > 0);
+		const { categoryCounts, totalCitations, pageTypeDistribution } = tallyCitations(specificUrls);
+
+		/** By normalized URL, for the period-over-period comparisons below. */
+		const currentUrls = new Map(specificUrls.map((url) => [url.url, url]));
 
 		// Google AI Mode module: Shopping products (brand vs competitor) + search
 		// queries, each tied to the prompts that triggered them.
@@ -375,7 +302,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		}[] = [];
 		for (const [url, prevData] of prevUrlMap.entries()) {
 			if (prevData.count < MIN_COUNT_FOR_WHATS_CHANGED) continue;
-			const current = urlCounts.get(url);
+			const current = currentUrls.get(url);
 			const currentCount = current?.count || 0;
 			const dropPercent = ((prevData.count - currentCount) / prevData.count) * 100;
 			if (dropPercent >= 50) {
@@ -397,7 +324,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			previousTitle: string;
 			category: CitationCategory;
 		}[] = [];
-		for (const [url, currentData] of urlCounts.entries()) {
+		for (const [url, currentData] of currentUrls.entries()) {
 			const prevData = prevUrlMap.get(url);
 			if (!prevData) continue;
 			if (currentData.title && prevData.title && currentData.title !== prevData.title) {

@@ -1,6 +1,6 @@
 {
   "name": "e2e",
-  "version": "0.2.18",
+  "version": "0.2.19",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -9,11 +9,15 @@
     "test:api": "mkdir -p test-results && cd bruno && bru run -r --env local --reporter-junit ../test-results/api-junit.xml --reporter-json ../test-results/api-report.json",
     "seed": "tsx seed.ts"
   },
+  "dependencies": {
+    "@workspace/lib": "workspace:*"
+  },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@types/pg": "^8.20.3",
     "@usebruno/cli": "4.0.0",
     "pg": "^8.22.0",
+    "pg-boss": "^12.26.3",
     "tsx": "^4.23.1"
   }
 }

@@ -1,8 +1,11 @@
 {
 	"name": "@workspace/og",
-	"version": "0.2.18",
+	"version": "0.2.19",
 	"private": true,
 	"license": "MIT",
+	"scripts": {
+		"check-types": "tsc --noEmit"
+	},
 	"type": "module",
 	"exports": {
 		"./render": "./src/render.ts",

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("./llm", () => ({
 	resolveResearchTarget: vi.fn(() => ({
 		provider: { id: "anthropic-api", isConfigured: () => true } as any,
-		model: "claude-sonnet-4-6",
+		model: "claude-sonnet-5",
 	})),
 	runStructuredResearchPrompt: vi.fn(),
 }));

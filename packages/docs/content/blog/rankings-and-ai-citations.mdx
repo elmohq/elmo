@@ -1,7 +1,8 @@
 ---
 title: "Does Ranking in Google's Top 10 Get You Cited by AI?"
-description: "Published estimates of the overlap between top-10 rankings and AI citations range from 12% to 76%. The spread is the finding: rank is neither necessary nor sufficient for citation."
+description: "Published estimates of the overlap between top-10 rankings and AI citations range from 12% to 93%. The spread is the finding: rank is neither necessary nor sufficient for citation."
 date: "2026-08-03"
+updated: "2026-08-07"
 author: ai
 metaTitle: "Do Google Rankings Drive AI Citations? 2026 Data"
 tags:
@@ -16,6 +17,8 @@ definedTerms:
     definition: "Query fan-out is when an AI search system expands one user query into several related sub-queries, retrieves results for each, and writes its answer from the combined set. The pages it cites may rank well for a sub-query nobody typed and not at all for the query the user did type."
   - term: Citation slot
     definition: "A citation slot is an ordered position among the sources an AI answer links. The first slot is the most visible citation in the answer; later slots are progressively less prominent, and in Google's AI Overviews they draw on progressively lower-ranking pages."
+  - term: Retrieval surface
+    definition: "A retrieval surface is a specific AI answer product with its own retrieval behaviour, such as Google's AI Overviews versus Google's AI Mode. Two surfaces owned by the same company can draw on the top 10 at very different rates, so an overlap figure is only interpretable once you know which surface it was measured on."
 howTo:
   name: "How to measure your own rank-to-citation overlap"
   description: "Establish how much of your AI citation actually comes from your top-ranking pages, so you know whether your rank data is a usable proxy for AI visibility in your category or a misleading one."
@@ -30,24 +33,30 @@ howTo:
       text: "Overlap on third-party pages tells you about the engine's retrieval habits. Overlap on your pages tells you whether your ranking assets are the ones earning your citations, which is the number that changes what you work on."
     - name: Break the result down by prompt type
       text: "Commercial comparison prompts, definitional questions, and long-tail specifics pull from different pools. A single blended overlap figure for your whole prompt set hides the segments where rank still carries you."
+    - name: Keep each surface and language separate
+      text: "AI Overviews and AI Mode have been measured at roughly 40% and 93% top-10 overlap in the same month, and identical questions asked in two languages shared only 22% of their sources. Averaging across surfaces or locales produces a number that describes none of them."
     - name: Re-measure after any major engine change
       text: "Overlap moved sharply when Google changed the model behind AI Overviews. Treat your figure as a reading with a date on it, not a constant, and re-run it rather than carrying last year's number forward."
 faq:
   - question: Does ranking #1 on Google get you cited in AI Overviews?
     answer: "Not reliably. In Ahrefs' March 2026 analysis of 863,000 keyword SERPs and 4 million AI Overview URLs, 37.9% of cited pages ranked in Google's top 10 for the same keyword, meaning roughly three in five citations went to pages that did not. BrightEdge, using its own parser, puts top-10 overlap near 17%. A top-10 rank helps and does not decide the outcome."
   - question: What percentage of AI Overview citations come from top 10 results?
-    answer: "It depends whose parser you ask and when they measured. Ahrefs reported 76.1% in July 2025 and 37.9% in March 2026; BrightEdge's figure is 16.7% across nine industries. All three agree on the direction of the conclusion even though the values differ by more than 4x: the top 10 accounts for a minority of AI Overview citations."
+    answer: "It depends whose parser you ask and when they measured. Ahrefs reported 76.1% in July 2025 and 37.9% in March 2026; BrightEdge's figure is 16.7% across nine industries; CiteLens found 40% across 500 commercial prompts in June 2026. All agree on the direction of the conclusion even though the values differ by more than 4x: the top 10 accounts for a minority of AI Overview citations."
   - question: Why do studies disagree about rank–citation overlap?
-    answer: "Mostly because they answer different questions. 'Ranks in the top 10' and 'ranks anywhere in the top 100' differ by 38 points inside BrightEdge's own dataset (16.7% versus 54.5%). Beyond that, studies differ in which citations they count, how many they sample per answer, which queries they sample, and how their parser detects a citation at all. Ahrefs explicitly flags improved parsing as part of why its own number fell."
+    answer: "Mostly because they answer different questions. 'Ranks in the top 10' and 'ranks anywhere in the top 100' differ by 38 points inside BrightEdge's own dataset (16.7% versus 54.5%). Beyond that, studies differ in which retrieval surface they measure, which language and market they sample, which citations they count, how many they sample per answer, and how their parser detects a citation at all. Ahrefs explicitly flags improved parsing as part of why its own number fell."
+  - question: Is Google's AI Mode different from AI Overviews for citations?
+    answer: "On the only published comparison, sharply. CiteLens measured 93% of AI Mode citations inside Google's top 10 in June 2026, while its own AI Overviews study the same month put the figure near 40%. The two studies also differ in market and query style, so the surface is not the only candidate explanation. Either way, treat an overlap statistic as specific to the surface it was measured on rather than to Google generally."
   - question: Do AI assistants like ChatGPT cite pages that rank on Google?
-    answer: "Much less often than Google's own AI features do. Ahrefs sent 15,000 long-tail queries to Google and Bing alongside ChatGPT, Gemini, Copilot, and Perplexity in August 2025 and found an average of 12% of assistant-cited links appeared in Google's top 10 for the same prompt. Perplexity was the outlier at 28.6%; ChatGPT's in-text citations were 8%."
+    answer: "Much less often than Google's own AI features do, though estimates vary widely. Ahrefs sent 15,000 long-tail queries to four assistants in August 2025 and found an average of 12% of assistant-cited links in Google's top 10, with ChatGPT's in-text citations at 8% and Perplexity at 28.6%. CiteLens, using 320 templated buyer queries in Turkish, reported 30% for ChatGPT and 89% for Perplexity. Query style and market plausibly explain most of that gap, and neither study settles it."
+  - question: Does the language of the query change which sources AI cites?
+    answer: "Substantially, on the one dataset that tested it. CiteLens ran identical questions in Turkish and English across 126 categories and found AI Overviews shared only 22% of their cited sources between the two. If that generalizes even loosely, an overlap figure measured in one language is weak evidence about another, and English-language benchmarks say little about non-English markets."
   - question: Does this mean SEO no longer matters for AI visibility?
     answer: "No. It means rank is a weaker proxy than it looks, not that the underlying work is wasted. Your pages still have to be crawlable, parseable, and worth retrieving, and Google's own guidance is that its AI features run on core Search ranking systems. What the data undercuts is the inference step: reading a rank report and concluding anything specific about your AI citations."
   - question: Should I stop using rank tracking to measure AI visibility?
     answer: "Stop using it as a substitute. Rank tracking cannot see the 31% of AI Overview citations that fall outside Google's top 100, and it cannot see citations to third-party pages carrying your brand. Measure citations and mentions directly on each engine, and keep rank data for what it actually reports."
 ---
 
-**"Rank in the top 10 and you'll get cited" was a reasonable summary of Google's AI Overviews in mid-2025. It is not one now.** Ahrefs measured 76.1% top-10 overlap in July 2025 and 37.9% in March 2026, and draws the comparison itself: Google is "selecting far fewer pages straight from the original SERP." The conclusion is right. The evidence is messier than the headline, and the mess is the useful part: across four published datasets, estimates of how much AI citation flows through top-ranked pages run from 12% to 76%, and most of that range comes from studies asking subtly different questions.
+**"Rank in the top 10 and you'll get cited" was a reasonable summary of Google's AI Overviews in mid-2025. It is not one now.** Ahrefs measured 76.1% top-10 overlap in July 2025 and 37.9% in March 2026, and draws the comparison itself: Google is "selecting far fewer pages straight from the original SERP." The conclusion is right. The evidence is messier than the headline, and the mess is the useful part: across five published datasets, headline estimates of how much AI citation flows through top-ranked pages run from 12% to 93%, and most of that range comes from studies asking subtly different questions.
 
 **Key takeaways**
 
@@ -55,10 +64,12 @@ faq:
 - Its [July 2025 predecessor](https://ahrefs.com/blog/search-rankings-ai-citations) found 76.1% in the top 10 — but sampled only the three most visible citations per overview, the slots its own data shows rank highest.
 - "Top 10" and "top 100" are not the same question. Inside [BrightEdge's dataset](https://www.brightedge.com/resources/weekly-ai-search-insights/rank-overlap-after-16-months-of-aio) they differ by 38 points: 16.7% versus 54.5%.
 - Off Google, the link is weaker still. Ahrefs found [12% average overlap](https://ahrefs.com/blog/ai-search-overlap/) between assistant citations and Google's top 10, with ChatGPT at 8%.
-- Vertical variation beats vendor variation. BrightEdge measured 75.3% overlap in healthcare against 22.9% in e-commerce, a wider gap than any disagreement between studies.
-- What survives every dataset: the top 10 is a minority pathway, and rank tracking cannot see the citations that matter most.
+- The surface may matter as much as the engine. CiteLens measured 93% overlap on Google's **AI Mode** in June 2026 while its own AI Overviews study that month landed near 40% — two Google products, one vendor, a 53-point gap.
+- Language is a variable almost nobody controls for. Identical questions asked in Turkish and English shared just 22% of their cited sources.
+- Vertical variation rivals vendor variation. BrightEdge measured 75.3% overlap in healthcare against 22.9% in e-commerce, a 52-point spread inside a single dataset.
+- What survives every dataset: the top 10 is a minority pathway on the surfaces most buyers use, and rank tracking cannot see the citations that matter most.
 
-## Four numbers that look like they contradict each other
+## Five studies that look like they contradict each other
 
 Set the published figures side by side and the spread is uncomfortable.
 
@@ -68,14 +79,18 @@ Set the published figures side by side and the spread is uncomfortable.
 | BrightEdge, AI Overviews | Oct 2025 | 9 industries, May 2024–Sep 2025 | 16.7% | 54.5% |
 | Ahrefs, AI Overviews | Mar 2026 | 863k SERPs, 4M overview URLs | 37.9% | 69.1% |
 | Ahrefs, AI assistants | Aug 2025 | 15k long-tail queries, 4 assistants | ~12% | — |
+| CiteLens, AI Overviews | Jun 2026 | 500 commercial prompts | ~40% | — |
+| CiteLens, 4 engines | Jul 2026 | 320 templated buyer queries, 3 sectors, Turkish market | 30–93% | — |
 
-A 4x range on what sounds like a single factual question. But two of the four gaps close as soon as you read the column headers.
+Break the engine rows apart and the range runs from 6% to 93%, on what sounds like a single factual question. But most of those gaps close as soon as you read the column headers.
 
 The first is the rank range. BrightEdge reports both 16.7% and 54.5% *from the same data*, because one figure asks whether a cited page reached the top 10 and the other asks whether it ranked at all. Quoting those as rival findings — which happens constantly — is quoting one study against itself.
 
 The second is which citations get counted. Ahrefs' 2025 study analyzed the three most visible citations per overview and reported their median Google ranks as position 2, 4, and 5 for the first, second, and third **citation slot**. That is a monotonic decline: the deeper into an overview's source list you look, the lower the pages rank. The 2026 study counted 4 million overview URLs rather than a top-three sample, which means it sampled further down exactly that curve. Ahrefs is direct about the other half of the explanation too, attributing part of the drop to better detection of citations its earlier parser missed rather than to a pure change in Google's behavior.
 
 So the honest reading of 76% → 38% is not "overlap halved in eight months." It is "a broader, better-instrumented look at the same phenomenon found a lot more low-ranking sources than the first look did."
+
+The third is the **retrieval surface**, and it is the one the 2026 data added. CiteLens ran both kinds of study within weeks of each other: [500 commercial prompts against AI Overviews](https://citelens.ai/research), where 60% of cited domains fell outside Google's top 10, and a [four-engine benchmark](https://martechseries.com/predictive-ai/ai-platforms-machine-learning/citelens-study-seo-decides-ai-citations-on-google-and-perplexity-not-chatgpt/) in which Google's AI Mode drew 93% of its citations from the top 10. Roughly 40% and 93%, one vendor, one month. The two studies differ in market and query style as well as surface, so the gap is not cleanly attributable to AI Mode alone — but it is a vendor's own pair of numbers, and no plausible split of the credit leaves the surface out. Whatever else is true, "Google's AI cites top-ranking pages X% of the time" is not a well-formed sentence until you say which Google product you mean.
 
 ## Where the studies genuinely disagree
 
@@ -103,9 +118,30 @@ Perplexity's relative closeness to conventional search results is consistent wit
 
 Ahrefs' own caveat is the important one, and it cuts against reading these figures as a scoreboard: assistants "don't rank results in the same way search engines do." They rewrite and fan out the prompt before retrieving anything, so "does this page rank for the prompt the user typed" may simply be the wrong denominator. The overlap is low partly because the comparison is unfair — and from outside the system, the fair comparison is unavailable.
 
+### The one study that disagrees, and why
+
+CiteLens's July 2026 benchmark puts the same engines far higher: Perplexity at 89% against Ahrefs' 28.6%, ChatGPT at 30% against 8%. A 60-point gap on Perplexity is not a rounding difference, and it is worth being explicit that nobody has reconciled it.
+
+| Engine | Ahrefs, Aug 2025 | CiteLens, Jul 2026 |
+|---|---|---|
+| Perplexity | 28.6% | 89% |
+| ChatGPT | 8.0% | 30% |
+| Claude | — | 53% |
+| Google AI Mode | — | 93% |
+
+Three design differences plausibly account for most of it, and all three run in the same direction. CiteLens used 320 **templated buyer queries** where Ahrefs used 15,000 long-tail ones, and long-tail is precisely where a ranked SERP is thinnest and retrieval wanders furthest. CiteLens sampled a single national market in Turkish. And its methodology note says citations were "normalized to registrable domains" with "search engines and social platforms excluded as noise" — which removes the source class that CiteLens's own AI Overviews study found dominant, with 74% of answers citing YouTube and 84% citing forums or user-generated content. Strip out the sources least likely to rank and overlap rises mechanically.
+
+That is a reading of the published summaries, not a replication. CiteLens distributed its findings by press release and offers the underlying dataset "on request" rather than publishing it, so the benchmark should carry less weight than the studies that show their working. What it does establish is that a defensible-looking method can produce 89% for Perplexity, which is a useful check on treating 28.6% as settled.
+
+### Language is the axis nobody controls for
+
+The most quietly destabilizing number in the 2026 batch has nothing to do with rank. CiteLens asked identical questions in Turkish and English across 126 categories and found AI Overviews shared **22% of their cited sources** between the two.
+
+If that holds anywhere near generally, it means roughly four in five sources change when the language does — and every headline overlap statistic in this article was measured in English, mostly on US SERPs. For a brand selling into multiple locales, an English-language benchmark is not a global read on AI visibility. It is one market's read, reported without the qualifier.
+
 ## Your category matters more than the global number
 
-The largest source of variation in any of this data is not the parser. It is the vertical.
+Surface and language are two axes that dwarf the disagreement between vendors. The third is the vertical, and it was the first one anyone measured.
 
 | Industry | AI Overview citations that rank organically | Change over 16 months |
 |---|---|---|
@@ -116,7 +152,9 @@ The largest source of variation in any of this data is not the parser. It is the
 
 BrightEdge's spread from healthcare to e-commerce is 52 points — wider than the entire disagreement between Ahrefs and BrightEdge on top-10 overlap. In a YMYL category with heavy authority filtering, rank and citation still travel together closely. In e-commerce they barely relate, and coverage there went down rather than up.
 
-Which means the practical answer to "does ranking get me cited" is that nobody can tell you from a published average. It is a measurement you take in your own category, on your own prompts.
+Stack the axes and the published averages stop meaning much. A healthcare brand reading AI Mode and an e-commerce brand reading ChatGPT are not looking at slightly different versions of the same number. The nearest published figures for them are 93% and 8%, and nothing in the data says either is wrong.
+
+Which means the practical answer to "does ranking get me cited" is that nobody can tell you from a published average. It is a measurement you take in your own category, in your own languages, on the surfaces your buyers actually use.
 
 ## What this does not prove
 
@@ -135,7 +173,8 @@ The instrumentation is straightforward, and it replaces an inference with an obs
 3. **Report the top 10 and the top 100 as separate figures.** Collapsing them is the single most common way this stat gets mangled.
 4. **Split your own domain from third-party pages.** Whether *your* citations come from *your* ranking pages is the version of the question that changes what you work on next.
 5. **Segment by prompt type.** Definitional, comparison, and long-tail commercial prompts pull from different pools and will not share an overlap figure.
-6. **Re-measure after engine changes.** Overlap moved when the model behind AI Overviews changed. Any number you carry forward for a year is a number about last year.
+6. **Keep surfaces and languages apart.** AI Overviews and AI Mode have been measured 53 points apart in the same month, and translating a prompt can turn over most of its sources. Blend them and you get an average that describes no one.
+7. **Re-measure after engine changes.** Overlap moved when the model behind AI Overviews changed. Any number you carry forward for a year is a number about last year.
 
 If your own overlap comes back high, your rank data is a decent leading indicator and you can lean on it. If it comes back at ChatGPT's 8%, you have been reading a dashboard that cannot see the thing you are trying to manage.
 
@@ -143,7 +182,7 @@ If your own overlap comes back high, your rank data is a decent leading indicato
 
 Rank tracking answered a question with a stable shape for twenty years: where do I sit in an ordered list. AI citation does not have that shape. There is no list, the retrieval query is often not the query the user typed, and a third of the sources in a Google AI Overview are pages that do not rank in the top 100 for it.
 
-The instrument did not break. It just stopped being a proxy for the thing everyone now cares about, and the four studies above are best read as four attempts to measure how far apart the two have drifted rather than as four competing facts.
+The instrument did not break. It just stopped being a proxy for the thing everyone now cares about, and the studies above are best read as successive attempts to measure how far apart the two have drifted rather than as competing facts. Each new dataset has added an axis rather than a verdict: first the rank range, then which citations get counted, then the vertical, and now the surface and the language. That is what an unsettled measurement problem looks like from the outside, and it is a reason to instrument your own case rather than wait for the field to converge on a number.
 
 [Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces, recording every mention, cited URL, and competitor named alongside you on a schedule. Because it stores the full citation set for every run and the data is yours to query directly, the overlap analysis above is a join against your own rank data rather than a vendor's average.
 

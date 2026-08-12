@@ -30,7 +30,9 @@ export function refreshHeaderVersion(contents: string, version: string): string 
 }
 
 // Re-pins `elmohq/elmo-*:<tag>` image tags to `version`, leaving third-party
-// images (e.g. postgres) untouched.
+// images untouched. Postgres especially: a major bump needs the cluster dumped
+// and restored, so rolling the tag here would break a deployment rather than
+// upgrade it.
 export function repinImages(contents: string, version: string): string {
 	return contents.replace(/(image:\s*elmohq\/elmo-[a-z-]+):\S+/g, `$1:${version}`);
 }

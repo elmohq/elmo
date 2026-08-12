@@ -3,37 +3,34 @@
  * Replaces apps/web/src/app/api/prompts/* and brands/[id]/prompts-summary API routes.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
+import { premiumSlotsUsed, selectPremiumModels } from "@workspace/config/plans";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { prompts, promptRuns, brands, competitors, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { eq, and, desc, gte, count, sql } from "drizzle-orm";
+import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import { assertPromptSaveAllowed, type PromptSaveDelta } from "@workspace/lib/entitlements";
+import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { and, count, desc, eq, gte, sql } from "drizzle-orm";
+import { z } from "zod";
+import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
+import type { LookbackPeriod } from "@/lib/chart-utils";
+import { generateDateRange } from "@/lib/chart-utils";
+import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@/lib/citation-rollup";
+import { extractDomain } from "@/lib/domain-categories";
+import { classifyUrl } from "@/lib/domain-categories.server";
+import { expeditePromptRuns } from "@/lib/expedite-prompts";
+import { buildGoogleModule } from "@/lib/google-module";
+import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 import {
-	getPromptsSummary,
-	getPromptsFirstEvaluatedAt,
+	type CitationUrlStats,
 	getPromptCitationUrlStats,
-	getPromptDailyStats,
 	getPromptCompetitorDailyStats,
+	getPromptDailyStats,
+	getPromptsFirstEvaluatedAt,
+	getPromptsSummary,
 	getPromptWebQueriesForMapping,
 	getPromptWebQueryCounts,
 } from "@/lib/postgres-read";
-import { generateDateRange } from "@/lib/chart-utils";
-import type { LookbackPeriod } from "@/lib/chart-utils";
-import { getEffectiveBrandedStatus, computeSystemTags } from "@workspace/lib/tag-utils";
-import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
-import {
-	extractDomain,
-	normalizeUrl,
-	emptyCategoryCounts,
-	emptyPageTypeCounts,
-	resolvePageType,
-	isGoogleSurfaceUrl,
-	CITATION_PAGE_TYPES,
-} from "@/lib/domain-categories";
-import { classifyUrl } from "@/lib/domain-categories.server";
-import { buildGoogleModule } from "@/lib/google-module";
-import { isMarketplaceDomain } from "@/lib/marketplace-domains";
+import { promptsGainingPremium } from "@/lib/run-config-changes";
 // Server Functions
 // ============================================================================
 
@@ -44,7 +41,7 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string(), promptId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const prompt = await db.query.prompts.findFirst({
 			where: and(eq(prompts.id, data.promptId), eq(prompts.brandId, data.brandId)),
@@ -100,7 +97,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		// Get all prompts for the brand from DB
 		const allPrompts = await db
@@ -240,6 +237,59 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 	});
 
 /**
+ * Mirrors the brand-wide citations view (server/citations.ts) at the single-
+ * prompt level: classify each citation at the URL level, pull Google AI Mode
+ * search/shopping surfaces OUT of the source mix into a dedicated Google
+ * Shopping module, and rebuild the domain distribution from the URL data.
+ * Undefined when the prompt has nothing citable.
+ */
+function computePromptCitationStats(input: {
+	urlStats: CitationUrlStats[];
+	promptId: string;
+	promptValue: string;
+	brandName: string;
+	brandDomains: Set<string>;
+	competitors: { id: string; name: string }[];
+	competitorDomains: Set<string>;
+}) {
+	const { urlStats } = input;
+	if (urlStats.length === 0) return undefined;
+
+	// Google AI Mode module: Shopping products (brand vs competitor) + search
+	// queries. Built from the raw URL rows (it picks out the Google surfaces);
+	// the rollup below drops those same surfaces from the source mix.
+	const googleModule = buildGoogleModule(
+		urlStats.map((u) => ({
+			prompt_id: input.promptId,
+			url: u.url,
+			domain: u.domain,
+			title: u.title,
+			count: u.count,
+		})),
+		input.brandName,
+		input.competitors,
+		() => input.promptValue,
+	);
+
+	const specificUrls = rollUpCitationUrls(urlStats, (domain, url, title) =>
+		classifyUrl(domain, url, title, input.brandDomains, input.competitorDomains),
+	);
+	const domainDistribution = rollUpCitationDomains(specificUrls);
+	const { categoryCounts, totalCitations, pageTypeDistribution } = tallyCitations(specificUrls);
+	if (totalCitations === 0) return undefined;
+
+	return {
+		totalCitations,
+		uniqueDomains: domainDistribution.length,
+		categoryCounts,
+		domainDistribution,
+		specificUrls,
+		pageTypeDistribution,
+		googleModule,
+	};
+}
+
+/**
  * Get stats for a single prompt (mentions, web queries, citations)
  * Replicates: apps/web/src/app/api/prompts/[promptId]/stats/route.ts
  */
@@ -260,7 +310,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			.limit(1);
 
 		if (prompt.length === 0) throw new Error("Prompt not found");
-		await requireOrgAccess(session.user.id, prompt[0].brandId);
+		await requireBrandAccess(session.user.id, prompt[0].brandId);
 
 		const fromDate = new Date();
 		fromDate.setDate(fromDate.getDate() - data.days);
@@ -319,7 +369,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			// Tally competitor mentions
 			competitorMentionsResult.forEach((row: any) => {
 				(row.competitorsMentioned || []).forEach((name: string) => {
-					if (name?.trim() && competitorCounts.hasOwnProperty(name)) {
+					if (name?.trim() && Object.hasOwn(competitorCounts, name)) {
 						competitorCounts[name] += 1;
 					}
 				});
@@ -352,11 +402,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		mentionStats.sort((a, b) => (a.count === b.count ? a.name.localeCompare(b.name) : b.count - a.count));
 
 		// ---- Citation stats ----
-		// Mirrors the brand-wide citations view (server/citations.ts) at the single-
-		// prompt level: classify each citation at the URL level, pull Google AI Mode
-		// search/shopping surfaces OUT of the source mix into a dedicated Google
-		// Shopping module, and rebuild the domain distribution from the URL data.
-		let citationStats = undefined;
 		const [brandInfo, competitorsList] = await Promise.all([
 			db
 				.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains })
@@ -376,112 +421,15 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 
 		const urlStats = await getPromptCitationUrlStats(data.promptId, fromDateStr, toDateStr, timezone);
 
-		if (urlStats.length > 0) {
-			// Google AI Mode module: Shopping products (brand vs competitor) + search
-			// queries. Built from the raw URL rows (it picks out the Google surfaces);
-			// those same surfaces are excluded from the source mix below.
-			const googleModule = buildGoogleModule(
-				urlStats.map((u) => ({
-					prompt_id: data.promptId,
-					url: u.url,
-					domain: u.domain,
-					title: u.title,
-					count: u.count,
-				})),
-				brandInfo[0]?.name ?? "",
-				competitorsList.map((c) => ({ id: c.id, name: c.name })),
-				() => prompt[0].value,
-			);
-
-			const urlCounts = new Map<
-				string,
-				{ count: number; title?: string; domain: string; positionSum: number; positionCount: number }
-			>();
-			for (const { url, domain, title, count: cnt, avg_position } of urlStats) {
-				if (isGoogleSurfaceUrl(url)) continue;
-				const normalized = normalizeUrl(url);
-				const c = Number(cnt);
-				const positionSum = avg_position != null ? Number(avg_position) * c : 0;
-				const positionCount = avg_position != null ? c : 0;
-				const existing = urlCounts.get(normalized);
-				if (existing) {
-					existing.count += c;
-					existing.positionSum += positionSum;
-					existing.positionCount += positionCount;
-					if (!existing.title && title) existing.title = title;
-				} else {
-					urlCounts.set(normalized, { count: c, title: title || undefined, domain, positionSum, positionCount });
-				}
-			}
-
-			const specificUrls = Array.from(urlCounts.entries())
-				.map(([url, { count: cnt, title, domain, positionSum, positionCount }]) => {
-					const category = classifyUrl(domain, url, title, brandDomains, competitorDomains);
-					return {
-						url,
-						title,
-						domain,
-						count: cnt,
-						category,
-						pageType: resolvePageType(url, title, category),
-						avgPosition: positionCount > 0 ? Math.round((positionSum / positionCount) * 10) / 10 : null,
-					};
-				})
-				.sort((a, b) => b.count - a.count);
-
-			// Domain distribution rebuilt from URL-level data, each domain taking its
-			// category from its top-cited URL (matches the brand-wide view).
-			const domainAgg = new Map<
-				string,
-				{ count: number; category: (typeof specificUrls)[number]["category"]; topCount: number; exampleTitle?: string }
-			>();
-			for (const u of specificUrls) {
-				const cur = domainAgg.get(u.domain);
-				if (cur) {
-					cur.count += u.count;
-					if (u.count > cur.topCount) {
-						cur.topCount = u.count;
-						cur.category = u.category;
-						cur.exampleTitle = u.title;
-					}
-				} else {
-					domainAgg.set(u.domain, { count: u.count, category: u.category, topCount: u.count, exampleTitle: u.title });
-				}
-			}
-			const domainDistribution = Array.from(domainAgg.entries())
-				.map(([domain, v]) => ({
-					domain,
-					count: v.count,
-					category: v.category,
-					exampleTitle: v.exampleTitle,
-					isMarketplace: isMarketplaceDomain(domain),
-				}))
-				.sort((a, b) => b.count - a.count);
-
-			const categoryCounts = emptyCategoryCounts();
-			const pageTypeCounts = emptyPageTypeCounts();
-			for (const u of specificUrls) {
-				categoryCounts[u.category] += u.count;
-				pageTypeCounts[u.pageType] += u.count;
-			}
-			const totalCitations = domainDistribution.reduce((s, d) => s + d.count, 0);
-			const pageTypeDistribution = CITATION_PAGE_TYPES.map((pageType) => ({
-				pageType,
-				count: pageTypeCounts[pageType],
-			})).filter((d) => d.count > 0);
-
-			if (totalCitations > 0) {
-				citationStats = {
-					totalCitations,
-					uniqueDomains: domainDistribution.length,
-					categoryCounts,
-					domainDistribution,
-					specificUrls,
-					pageTypeDistribution,
-					googleModule,
-				};
-			}
-		}
+		const citationStats = computePromptCitationStats({
+			urlStats,
+			promptId: data.promptId,
+			promptValue: prompt[0].value,
+			brandName: brandInfo[0]?.name ?? "",
+			brandDomains,
+			competitors: competitorsList.map((c) => ({ id: c.id, name: c.name })),
+			competitorDomains,
+		});
 
 		return {
 			prompt: prompt[0],
@@ -512,7 +460,7 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		if (!prompt) throw new Error("Prompt not found");
 
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, prompt.brandId);
+		await requireBrandAccess(session.user.id, prompt.brandId);
 
 		const fromDate = new Date();
 		fromDate.setDate(fromDate.getDate() - data.days);
@@ -555,6 +503,11 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						value: z.string(),
 						enabled: z.boolean().optional().default(true),
 						tags: z.array(z.string()).optional(),
+						/**
+						 * Premium models to track this prompt on, grounded — one of the org's
+						 * premium slots each.
+						 */
+						premiumModels: z.array(z.string()).optional(),
 					}),
 				)
 				.max(MAX_PROMPTS, `A brand may have at most ${MAX_PROMPTS} prompts.`),
@@ -562,16 +515,34 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, data.brandId),
 		});
 		if (!brand) throw new Error("Brand not found");
 
-		const existingIds = new Set(
-			(await db.select({ id: prompts.id }).from(prompts).where(eq(prompts.brandId, data.brandId))).map((p) => p.id),
-		);
+		const existingRows = await db
+			.select({ id: prompts.id, enabled: prompts.enabled, premiumModels: prompts.premiumModels })
+			.from(prompts)
+			.where(eq(prompts.brandId, data.brandId));
+		const existingIds = new Set(existingRows.map((p) => p.id));
+		const existingById = new Map(existingRows.map((p) => [p.id, p]));
+
+		// Plan pool accounting: the net number of prompts this save enables (new
+		// enabled rows + disabled→enabled transitions − enabled→disabled), and the
+		// net premium slots it spends — one per prompt/model pair, so a prompt
+		// gaining a second premium model spends a second slot. Only a net increase
+		// is guarded; going down never needs permission.
+		const delta: PromptSaveDelta = { prompts: 0, premiumPairings: 0 };
+		for (const p of data.prompts) {
+			const before = p.id ? existingById.get(p.id) : undefined;
+			if (p.id && !before) continue;
+			const after = { enabled: p.enabled, premiumModels: selectPremiumModels(p.premiumModels) };
+			delta.prompts += (p.enabled ? 1 : 0) - (before?.enabled ? 1 : 0);
+			delta.premiumPairings += premiumSlotsUsed([after]) - premiumSlotsUsed(before ? [before] : []);
+		}
+		await assertPromptSaveAllowed(brand.organizationId, delta);
 
 		const saved = await db.transaction(async (tx) => {
 			const toUpdate = data.prompts.filter((p) => p.id);
@@ -585,6 +556,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						enabled: p.enabled,
 						tags: p.tags || [],
 						systemTags: computeSystemTags(p.value, brand.name, brand.website),
+						premiumModels: selectPremiumModels(p.premiumModels),
 					})
 					.where(and(eq(prompts.id, p.id!), eq(prompts.brandId, data.brandId)));
 			}
@@ -597,6 +569,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						enabled: p.enabled,
 						tags: p.tags || [],
 						systemTags: computeSystemTags(p.value, brand.name, brand.website),
+						premiumModels: selectPremiumModels(p.premiumModels),
 					})),
 				);
 			}
@@ -612,6 +585,11 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 				console.error("Failed to create job schedulers for new prompts:", err),
 			);
 		}
+
+		// A grounded target added to a prompt that already runs has no history of
+		// its own, so it is due immediately — but the prompt's next job is a whole
+		// cadence away, and the customer has just paid for the slot.
+		await expeditePromptRuns(promptsGainingPremium(existingById, saved));
 
 		return saved;
 	});
@@ -633,7 +611,7 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const timezone = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 		const lookbackParam = (data.lookback || "1m") as LookbackPeriod;
@@ -822,7 +800,7 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const timezone = data.timezone || "UTC";
 		const now = new Date();

@@ -62,8 +62,9 @@ export function formatProvider(provider: string) {
 }
 
 // Surfaces the one `dataforseo` provider reaches by scraping — the two Google
-// SERP endpoints plus the LLM Scraper's ChatGPT and Gemini. Mirrors
-// DATAFORSEO_SCRAPED_MODELS in @workspace/lib.
+// SERP endpoints plus the LLM Scraper's ChatGPT and Gemini. Copied rather than
+// imported because this site does not depend on @workspace/lib; the provider
+// itself decides the same thing in `dataforseoAccess`.
 const DATAFORSEO_SCRAPED_MODELS = new Set(["google-ai-mode", "google-ai-overview", "chatgpt", "gemini"]);
 
 // The three first-party API providers collapse into one "Direct API" filter.

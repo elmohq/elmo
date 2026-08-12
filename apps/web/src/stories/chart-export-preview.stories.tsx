@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import { ChartExportPreview, type ChartExportPreviewProps } from "@/components/chart-export-preview";
-import { setMockRouteContext, MockRouteContextProvider } from "./_mocks/tanstack-router";
-import { setMockClientConfig, type ClientConfig } from "./_mocks/config-client";
+import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
+import { MockRouteContextProvider, setMockRouteContext } from "./_mocks/tanstack-router";
 
 const CHART_COLORS = ["#2563eb", "#efb118", "#3ca951", "#ff725c", "#a463f2", "#ff8ab7", "#38b2ac", "#9c6b4e"];
 
@@ -66,7 +66,7 @@ function generateChartData(days: number) {
 
 const defaultClientConfig: ClientConfig = {
 	mode: "local",
-	features: { readOnly: false, showOptimizeButton: false, supportsMultiOrg: true, canCreateBrands: true },
+	features: { readOnly: false, showOptimizeButton: false, canCreateBrands: true },
 	branding: { name: "Elmo", chartColors: CHART_COLORS },
 	analytics: {},
 };

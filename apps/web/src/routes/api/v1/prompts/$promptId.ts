@@ -9,6 +9,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
+import { assertCanAddPrompts } from "@workspace/lib/entitlements";
 import { brands, citations, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -74,6 +75,10 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 						throw new ApiError(500, "Internal Server Error", "Brand not found for prompt");
 					}
 					const brand = brandInfo[0];
+
+					if (enabled === true && !existingPrompt[0].enabled) {
+						await assertCanAddPrompts(brand.organizationId, 1);
+					}
 
 					const updateData: Partial<typeof prompts.$inferInsert> = {};
 					if (value !== undefined) {

@@ -3,18 +3,29 @@
  * Replaces apps/web/src/app/api/admin/* API routes.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireAuthSession, isAdmin } from "@/lib/auth/helpers";
-import { db } from "@workspace/lib/db/db";
-import { brands, prompts, promptRuns } from "@workspace/lib/db/schema";
-import { eq, sql, desc } from "drizzle-orm";
-import { getAdminRunsOverTime, getAdminBrandRunStats, getAdminActiveBrandsOverTime } from "@/lib/postgres-read";
-import { analyzeBrand } from "@workspace/lib/onboarding";
+import type { Entitlements } from "@workspace/config/entitlements";
+import { getModelMeta } from "@workspace/config/models";
+import type { DeploymentMode } from "@workspace/config/types";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
-import { getModelOverdueStatus } from "@workspace/lib/overdue";
-import { sendImmediatePromptJob } from "@/lib/job-scheduler";
+import { db } from "@workspace/lib/db/db";
+import { type Brand, brands, type Prompt, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { assertCadenceAllowed, getBrandOrganizationId, getOrgEntitlementsMap } from "@workspace/lib/entitlements";
+import { analyzeBrand } from "@workspace/lib/onboarding";
+import { type ModelConfig, parseScrapeTargets } from "@workspace/lib/providers";
+import {
+	type PromptRunPlan,
+	resolveBrandPromptRunPlans,
+	type TargetPlan,
+	targetKey,
+	targetOverdueStatus,
+} from "@workspace/lib/run-policy";
+import { desc, eq, sql } from "drizzle-orm";
 import { Client } from "pg";
-import { parseScrapeTargets } from "@workspace/lib/providers";
+import { z } from "zod";
+import { isAdmin, requireAuthSession } from "@/lib/auth/helpers";
+import { getDeployment } from "@/lib/config/server";
+import { sendImmediatePromptJob } from "@/lib/job-scheduler";
+import { getAdminActiveBrandsOverTime, getAdminBrandRunStats, getAdminRunsOverTime } from "@/lib/postgres-read";
 
 // ============================================================================
 // Admin guard helper
@@ -173,6 +184,7 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		await requireAdmin();
+		await assertCadenceAllowed(await getBrandOrganizationId(data.brandId), data.delayOverrideHours);
 		const result = await db
 			.update(brands)
 			.set({ delayOverrideHours: data.delayOverrideHours, updatedAt: new Date() })
@@ -522,6 +534,80 @@ async function getActiveJobMap() {
 	return map;
 }
 
+interface TargetRunStatus {
+	lastRunAt: Date | null;
+	isOverdue: boolean;
+	overdueByMs: number | null;
+}
+
+/**
+ * Every prompt's run plan, resolved the way the worker resolves it: pool
+ * positions across the whole org, run plans per brand. A brand whose
+ * configuration no longer resolves (a pick whose target left SCRAPE_TARGETS)
+ * is skipped rather than taking the whole dashboard down.
+ */
+function resolveRunPlansForBrands(input: {
+	brands: Brand[];
+	promptsByBrand: Record<string, Prompt[]>;
+	entitlementsByOrg: Map<string, Entitlements>;
+	scrapeTargets: ModelConfig[];
+	defaultDelayHours: number;
+}): Map<string, PromptRunPlan> {
+	const enabledByOrg = new Map<string, Prompt[]>();
+	for (const brand of input.brands) {
+		const enabled = (input.promptsByBrand[brand.id] ?? []).filter((p) => p.enabled);
+		if (enabled.length === 0) continue;
+		enabledByOrg.set(brand.organizationId, [...(enabledByOrg.get(brand.organizationId) ?? []), ...enabled]);
+	}
+
+	const plans = new Map<string, PromptRunPlan>();
+	for (const brand of input.brands) {
+		const brandPrompts = input.promptsByBrand[brand.id] ?? [];
+		const entitlements = input.entitlementsByOrg.get(brand.organizationId);
+		if (brandPrompts.length === 0 || !entitlements) continue;
+		try {
+			for (const [promptId, plan] of resolveBrandPromptRunPlans({
+				scrapeTargets: input.scrapeTargets,
+				defaultDelayHours: input.defaultDelayHours,
+				entitlements,
+				orgPrompts: enabledByOrg.get(brand.organizationId) ?? [],
+				brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
+				prompts: brandPrompts,
+			})) {
+				plans.set(promptId, plan);
+			}
+		} catch (error) {
+			console.error(`[admin] Skipping brand ${brand.id} run plans (invalid target config):`, error);
+		}
+	}
+	return plans;
+}
+
+/** The chain's cadence: its fastest target. Zero when nothing is planned. */
+function intervalMsOf(targets: TargetPlan[]): number {
+	if (targets.length === 0) return 0;
+	return Math.min(...targets.map((t) => t.intervalHours)) * 60 * 60 * 1000;
+}
+
+function fastestCadenceMs(cadences: number[]): number {
+	const running = cadences.filter((ms) => ms > 0);
+	return running.length > 0 ? Math.min(...running) : 0;
+}
+
+/** The union of every target the brand's prompts run, in first-seen order. */
+function targetColumnsFor(plans: (PromptRunPlan | undefined)[]): { key: string; label: string }[] {
+	const columns = new Map<string, { key: string; label: string }>();
+	for (const plan of plans) {
+		for (const target of plan?.targets ?? []) {
+			const key = targetKey(target.config);
+			if (columns.has(key)) continue;
+			const label = getModelMeta(target.config.model).label;
+			columns.set(key, { key, label: target.config.webSearch ? `${label} (web)` : label });
+		}
+	}
+	return [...columns.values()];
+}
+
 /**
  * Get full workflow data: queue stats, recent jobs, brand schedule summaries.
  */
@@ -543,17 +629,27 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		.select({
 			promptId: promptRuns.promptId,
 			model: promptRuns.model,
+			provider: promptRuns.provider,
+			webSearchEnabled: promptRuns.webSearchEnabled,
 			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
 		})
 		.from(promptRuns)
-		.groupBy(promptRuns.promptId, promptRuns.model);
+		.groupBy(promptRuns.promptId, promptRuns.model, promptRuns.provider, promptRuns.webSearchEnabled);
 
-	const lastRunsMap: Record<string, Record<string, Date>> = {};
+	const lastRunsByPrompt = new Map<string, Map<string, Date>>();
 	for (const run of lastRunsQuery) {
-		if (!lastRunsMap[run.promptId]) {
-			lastRunsMap[run.promptId] = {};
+		let byKey = lastRunsByPrompt.get(run.promptId);
+		if (!byKey) {
+			byKey = new Map();
+			lastRunsByPrompt.set(run.promptId, byKey);
 		}
-		lastRunsMap[run.promptId][run.model] = run.lastRunAt;
+		// provider is nullable on the column; a row without one predates target
+		// keying and can't be matched to a target anyway.
+		if (!run.provider) continue;
+		byKey.set(
+			targetKey({ model: run.model, provider: run.provider, webSearch: run.webSearchEnabled }),
+			new Date(run.lastRunAt),
+		);
 	}
 
 	const [recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([
@@ -563,6 +659,19 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		getQueueStats(),
 	]);
 
+	// The dashboard reports against what each prompt is actually supposed to run,
+	// so it resolves the same plans the worker does. Reading every configured
+	// SCRAPE_TARGETS model at the brand cadence instead would mark every platform
+	// a plan doesn't sell as permanently overdue.
+	const entitlementsByOrg = await getOrgEntitlementsMap([...new Set(allBrands.map((b) => b.organizationId))]);
+	const runPlans = resolveRunPlansForBrands({
+		brands: allBrands,
+		promptsByBrand,
+		entitlementsByOrg,
+		scrapeTargets: parseScrapeTargets(process.env.SCRAPE_TARGETS),
+		defaultDelayHours: getDefaultDelayHours(),
+	});
+
 	const failuresByPrompt = new Map<string, number>();
 	for (const job of recentJobs) {
 		if (job.status === "failed" && job.data?.promptId) {
@@ -571,40 +680,35 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 	}
 
 	const now = Date.now();
-	const defaultDelayHours = getDefaultDelayHours();
 	const defaultSchedulerInfo = { exists: false, nextRunAt: null as number | null, cadenceHours: null as number | null };
 
 	const brandSummaries = allBrands.map((brand) => {
 		const brandPrompts = promptsByBrand[brand.id] || [];
-		const delayHours = brand.delayOverrideHours ?? defaultDelayHours;
-		const runFrequencyMs = delayHours * 60 * 60 * 1000;
 
 		let overduePrompts = 0;
 		let onSchedulePrompts = 0;
 		let scheduledCount = 0;
 
-		const modelList = parseScrapeTargets(process.env.SCRAPE_TARGETS).map((t) => t.model);
 		const promptStatuses = brandPrompts.map((prompt) => {
-			const lastRuns = lastRunsMap[prompt.id] || {};
-			const lastRunsByModel: Record<
-				string,
-				{ lastRunAt: Date | null; isOverdue: boolean; overdueByMs: number | null }
-			> = {};
+			const lastRuns = lastRunsByPrompt.get(prompt.id) ?? new Map<string, Date>();
+			const targets = runPlans.get(prompt.id)?.targets ?? [];
+			const lastRunsByTarget: Record<string, TargetRunStatus> = {};
 
 			let anyOverdue = false;
-
-			for (const model of modelList) {
-				const lastRunAt = lastRuns[model] || null;
+			for (const target of targets) {
+				const key = targetKey(target.config);
+				const lastRunAt = lastRuns.get(key) ?? null;
+				// A disabled prompt is parked on purpose, so it is never overdue.
 				const { isOverdue, overdueByMs } = prompt.enabled
-					? getModelOverdueStatus({
+					? targetOverdueStatus({
+							intervalHours: target.intervalHours,
 							lastRunAt,
 							promptCreatedAt: prompt.createdAt,
-							runFrequencyMs,
 							now,
 						})
 					: { isOverdue: false, overdueByMs: null };
 				if (isOverdue) anyOverdue = true;
-				lastRunsByModel[model] = { lastRunAt, isOverdue, overdueByMs };
+				lastRunsByTarget[key] = { lastRunAt, isOverdue, overdueByMs };
 			}
 
 			const scheduleInfo = scheduleMap.get(prompt.id);
@@ -631,8 +735,10 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 				brandId: brand.id,
 				brandName: brand.name,
 				enabled: prompt.enabled,
-				runFrequencyMs,
-				lastRunsByModel,
+				// The chain's own cadence: its fastest target, which is what the
+				// scheduler reschedules on. Zero when the plan parks the prompt.
+				runFrequencyMs: intervalMsOf(targets),
+				lastRunsByTarget,
 				schedulerInfo,
 				recentFailures: failuresByPrompt.get(prompt.id) || 0,
 				jobStatus,
@@ -648,7 +754,11 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 			enabled: brand.enabled,
 			totalPrompts: brandPrompts.length,
 			enabledPrompts,
-			runFrequencyMs,
+			// Prompts of one brand can run different targets (premium is per
+			// prompt), so the table's columns are the union rather than whatever
+			// the first row happens to have.
+			targetColumns: targetColumnsFor(brandPrompts.map((p) => runPlans.get(p.id))),
+			runFrequencyMs: fastestCadenceMs(promptStatuses.map((p) => p.runFrequencyMs)),
 			overduePrompts,
 			onSchedulePrompts,
 			schedulerCoverage: { scheduled: scheduledCount, total: enabledPrompts },
