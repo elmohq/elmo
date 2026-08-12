@@ -64,6 +64,19 @@ const customers: Customer[] = [
 			<TradeSitesWordmark className="grayscale transition-[filter] duration-150 group-hover/ts:grayscale-0" />
 		),
 	},
+	{
+		name: "AskHotel",
+		url: "https://askhotel.ai/?ref=elmo",
+		linkClass: "group/ah flex h-5 items-center",
+		render: () => (
+			<img
+				src="/askhotel-logo.png"
+				alt=""
+				aria-hidden="true"
+				className="block h-5 w-auto grayscale transition-[filter] duration-150 group-hover/ah:grayscale-0"
+			/>
+		),
+	},
 ];
 
 export function CustomerLogosInline() {
