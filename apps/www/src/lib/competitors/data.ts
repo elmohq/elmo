@@ -3777,6 +3777,310 @@ export const competitors: Competitor[] = [
 			"Free ten-second audit with no signup",
 		],
 	},
+	{
+		slug: "brandlight",
+		name: "Brandlight",
+		domain: "brandlight.ai",
+		url: "https://www.brandlight.ai/",
+		tagline: "Enterprise AI visibility spanning content, commerce, partnerships, and AI ads",
+		description:
+			"Brandlight sells to Fortune 500 marketing organizations and splits its platform into seeing (visibility and insights, technical health) and acting (content, agentic commerce, partnerships, and a newer module for measuring and optimizing AI ads). It is SOC 2 Type 2 compliant, runs a separate agency program, publishes an AI Visibility Index, and has attribution tying AI visibility to revenue listed as coming soon.",
+		category: "tracking",
+		ahrefsDR: 53,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			shoppingTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			whiteLabelAgency: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Enterprise-only positioning with Fortune 500 customers and SOC 2 Type 2",
+			"Measures and optimizes AI ads as a distinct module",
+			"Partnerships module treats earned placement as a channel to invest in",
+		],
+	},
+	{
+		slug: "brandrank",
+		name: "BrandRank.AI",
+		domain: "brandrank.ai",
+		url: "https://www.brandrank.ai/",
+		tagline: "Recommendation Share tracking with an explicit defensive monitoring side",
+		description:
+			"BrandRank measures Recommendation Share — how often engines recommend a brand when buyers ask, question by question across ChatGPT, Gemini, Perplexity, and Copilot, benchmarked against every competitor in the category. Its offense side finds buying questions a competitor wins and maps the sources to take them; its defense side watches for engines repeating outdated claims, resurfacing old controversies, or confusing a brand's products with a rival's. It also scores existing content for AI readiness and produces the missing pages and third-party signals.",
+		category: "tracking",
+		ahrefsDR: 44,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			emailAlerts: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Flags outdated claims, revived controversies, and product mix-ups as a first-class defensive feature",
+			"Reports Recommendation Share per buying question rather than a blended visibility number",
+			"Publishes category whitepapers and runs recurring webinars",
+		],
+	},
+	{
+		slug: "cognizo",
+		name: "Cognizo",
+		domain: "cognizo.ai",
+		url: "https://www.cognizo.ai/",
+		tagline: "AEO platform with prompt volumes, AI traffic analytics, and a ChatGPT Ads module",
+		description:
+			"Cognizo covers buyer-question discovery with prompt volume estimates, mention, citation and sentiment monitoring, automated AI-optimized content creation, and analytics on how AI interacts with a site and drives human traffic. It adds a ChatGPT Ads module, an agency marketplace for hiring AEO specialists, and a done-for-you tier that runs lead generation from AI on the customer's behalf.",
+		category: "tracking",
+		ahrefsDR: 40,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			promptVolumeEstimates: true,
+			sentimentAnalysis: true,
+			crawlerAnalytics: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			whiteLabelAgency: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Prompt volume estimates for what people actually ask AI, not keyword volumes",
+			"ChatGPT Ads module alongside organic visibility",
+			"Agency marketplace for hiring vetted AEO specialists",
+		],
+	},
+	{
+		slug: "azoma",
+		name: "Azoma",
+		domain: "azoma.ai",
+		url: "https://www.azoma.ai/",
+		tagline: "Agentic commerce optimization measured in revenue rather than mentions",
+		description:
+			"Azoma targets enterprise retail and argues that generative engine optimization measures the wrong things: where GEO reports mentions, citations, and share of voice across LLM apps, Azoma reports revenue, conversion rate, and SKU-level discoverability across both LLM apps and retailer shopping agents — Amazon Rufus, Walmart Sparky, and Alexa for Shopping alongside ChatGPT, Gemini, Meta AI, and Claude. It supports the Agentic Merchant, Universal Commerce, and Agentic Commerce protocols, and sources tracked prompts from digital twin technology, public Q&A, and marketplace data.",
+		category: "ecommerce",
+		ahrefsDR: 37,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			shoppingTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Tracks retailer shopping agents — Rufus, Sparky, Alexa — not just LLM apps",
+			"Reports SKU-level discoverability, conversion, and revenue instead of share of voice",
+			"Supports the Agentic Merchant, Universal Commerce, and Agentic Commerce protocols",
+		],
+	},
+	{
+		slug: "attensira",
+		name: "Attensira",
+		domain: "attensira.com",
+		url: "https://www.attensira.com/",
+		tagline: "Deliberately small prompt sets with prioritized fixes",
+		description:
+			"Attensira tracks 10–20 prompts a brand's customers actually use rather than thousands of keywords, monitoring ChatGPT, Claude, and Google AI daily for visibility score, share of voice, and competitive position. Output is a prioritized list of which pages to rewrite, what content to create, and which sources to get mentioned on, and it generates GEO content with the entity density and schema structure engines prefer to cite.",
+		category: "tracking",
+		ahrefsDR: 35,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: false },
+		highlights: [
+			"Deliberately caps tracking at 10–20 real buyer prompts instead of bulk keyword sets",
+			"Setup from a pasted domain with no code or onboarding call",
+			"Ships content generation tuned for entity density and schema, not just findings",
+		],
+	},
+	{
+		slug: "brandpeek",
+		name: "BrandPeek",
+		domain: "brandpeek.ai",
+		url: "https://brandpeek.ai/",
+		tagline: "Fifteen-model monitoring with an AI fact sheet generator",
+		description:
+			"BrandPeek monitors mentions, rankings, sentiment, and citations across ChatGPT, Perplexity, Gemini, AI Overviews, Claude, and ten or more other models, with a module dedicated to analyzing Google AI Overview results specifically. Its AI Fact Sheet Generator produces crawler-optimized content intended to help models discover and describe a brand correctly, and content work is scored against E-E-A-T with strategies applied automatically. There is a free plan with no card required.",
+		category: "tracking",
+		ahrefsDR: 31,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: false },
+		highlights: [
+			"AI Fact Sheet Generator writes crawler-facing content for model discovery",
+			"Dedicated Google AI Overview analysis alongside general model tracking",
+			"Free plan with no credit card",
+		],
+	},
+	{
+		slug: "chosenly",
+		name: "Chosenly",
+		domain: "chosenly.com",
+		url: "https://chosenly.com/",
+		tagline: "B2B GEO organized by team, with misinformation correction",
+		description:
+			"Chosenly targets B2B vendor shortlisting in LLMs and splits its product by the team using it: PR gets what to say and where to publish, content gets what LLMs will cite, SEO gets what pages are missing, and brand and legal get tools to fix misinformation and positioning. Its published outcomes are deal-level rather than metric-level, including a customer citing a $120k client closed from a ChatGPT deep research recommendation.",
+		category: "tracking",
+		ahrefsDR: 13,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Product split by team — PR, content, SEO, and brand/legal each get a distinct view",
+			"Treats correcting brand misinformation in LLM answers as a named workflow",
+			"Publishes its own comparison research on competing GEO tools",
+		],
+	},
+	{
+		slug: "chatrank",
+		name: "ChatRank",
+		domain: "chatrank.ai",
+		url: "https://chatrank.ai/",
+		tagline: "Vertical AEO for medical, dental, and local service businesses",
+		description:
+			"ChatRank packages AI search work into a one-hour-a-week commitment and targets specific verticals — medical and dental practices, local services, consumer apps, and e-commerce — rather than selling a generic dashboard. It supports agencies managing multiple brands and publishes head-to-head comparison pages against Ahrefs, Peec, Profound, AirOps, and Semrush.",
+		category: "tracking",
+		ahrefsDR: 27,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+			whiteLabelAgency: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: false },
+		highlights: [
+			"Sold by vertical — dental, medical, local services — rather than as a horizontal tool",
+			"Scoped around a one-hour-per-week workflow",
+			"Runs a creator program and partner network alongside the product",
+		],
+	},
+	{
+		slug: "brandbeacon",
+		name: "BrandBeacon",
+		domain: "brandbeacon.ai",
+		url: "https://www.brandbeacon.ai/",
+		tagline: "AI search monitoring aimed at reliable trend data over one-off snapshots",
+		description:
+			"BrandBeacon tracks brand mentions, citations, and rankings across ChatGPT, Perplexity, and other AI platforms, aggregating thousands of AI responses so the trend line is stable rather than a single sampled answer. It reports the most cited domains and URLs in a category and benchmarks visibility against rivals, with separate framing for agencies, marketing, product, executive, and SEO users. Analysis of how AI describes a brand is listed as coming soon.",
+		category: "tracking",
+		ahrefsDR: 10,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: false },
+		highlights: [
+			"Aggregates thousands of responses per trend point to damp non-determinism",
+			"Reports most-cited domains and URLs for the whole category",
+			"Describes-your-brand analysis still listed as coming soon",
+		],
+	},
+	{
+		slug: "brantial",
+		name: "Brantial",
+		domain: "brantial.ai",
+		url: "https://brantial.ai/",
+		tagline: "GEO service with an AI Authority Index and brand score",
+		description:
+			"Brantial reads as a managed GEO practice rather than a self-serve tracker: it analyzes real user prompts at scale, restructures content and schema so models can cite it, and iterates entity signals across models without touching the customer's stack. Tracking covers how often a brand appears in AI answers, which pages get cited, and downstream referral clicks and assisted conversions, and it publishes an AI Authority Index and Brand Score.",
+		category: "tracking",
+		ahrefsDR: 10,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			siteAudits: true,
+			keywordResearch: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Delivered largely as a service — the vendor makes the content and schema changes",
+			"Publishes an AI Authority Index and per-brand score",
+			"Reports referral clicks and assisted conversions, not just inclusion rate",
+		],
+	},
 ];
 
 export function getCompetitorBySlug(slug: string): Competitor | undefined {
@@ -3814,6 +4118,7 @@ const aeoPopularityRanking: string[] = [
 	"scrunch", // $19M (Mayfield/Decibel), G2 category leader, broadest engine coverage, SOC2+HIPAA
 	"otterly-ai", // Gartner Cool Vendor 2025, 20k+ users, dedicated GEO tracker
 	"evertune", // $4M seed, NYT/WSJ/Forbes/Adweek, EverPanel consumer panel data
+	"brandlight", // Named #1 AEO platform by an analyst ranking, Fortune 500 customers, SOC 2 Type 2, AI-ads module
 	"writesonic", // 120M AI conversation dataset, major brand, combined tracking + content
 	"athenahq", // Repeatedly named in best-AEO-tools-2026 lists, prompt-level insights
 	"se-ranking", // Large established platform with dedicated AI Overviews + ChatGPT trackers
@@ -3831,10 +4136,13 @@ const aeoPopularityRanking: string[] = [
 	"aiseotracker", // Dedicated AEO tracker, claims 249K brands, Page Inspector
 	"gracker", // Cybersecurity/B2B-SaaS vertical with documented customer case studies
 	"aiso", // Clients incl. H&M, Uber, Wise, Dentsu, IHG; official Claude connector; publishes own conversation research
+	"brandrank", // Recommendation Share metric + defensive misinformation monitoring, whitepapers/webinars, DR 44
+	"cognizo", // Full platform incl. prompt volumes, AI traffic analytics, ChatGPT Ads, agency marketplace
 	"rankability", // AI Search Analyzer with NLP/entity focus, agency-oriented
 	"analyze", // AI search console with governance/risk-term monitoring, DR 41
 	"allmo", // Query Fan-Out + crawler indexing + citation intelligence, 4.8/5 OMR Reviews
 	"gauge", // End-to-end tracking + analysis + content platform
+	"azoma", // Enterprise agentic commerce — Rufus/Sparky/Alexa coverage and SKU-level revenue metrics
 	"passionfruit", // Stanford/CMU founders, unified SEO+GEO+AEO + managed service
 	"atomic-agi", // Named enterprise logos (MIT, Samsung, Salesforce, Publicis), unified AI-search + SEO analytics, MCP
 
@@ -3850,17 +4158,21 @@ const aeoPopularityRanking: string[] = [
 	"omniseo", // WebFX-backed, enterprise customers (Darktrace, Fujifilm, Caterpillar)
 	"trakkr", // 8-model tracker, weekly ROI-scored actions + GA revenue attribution
 	"aeo-vision", // Six engines with Reddit citation breakdown and sponsored-placement tracking, from $9/mo
+	"attensira", // Deliberately narrow 10-20 prompt sets with prioritized fixes; YC-backed startups cited
 	"indexly", // Unified Google + AI tracker, broad feature set
 	"ai-rank-checker", // Seven engines incl. Meta AI, pay-as-you-go credits, claims 700+ companies
 	"rankshift", // 850+ brands, BI connectors (Looker/BigQuery/Power BI)
+	"brandpeek", // 15-model coverage, AI fact sheet generator, free plan; no disclosed customers
 	"siftly", // Y Combinator-backed GEO platform with A/B testing
 	"airefs", // Hybrid tracker + done-for-you agency service
+	"chosenly", // B2B GEO split by team with misinformation correction; deal-level outcomes but DR 13
 	"geneo", // AI visibility platform with optimization recommendations
 	"amadora", // Agency-first GEO service tooling with citation gap analysis; DR 9
 	"geovector", // Six engines incl. AI Overview and AI Mode separately, GSC/Ads/GA integrations; no disclosed customers
 	"gushwork", // $9M raised, AI agents for end-to-end SEO workflows
 	"quattr", // GIGA AI agent, unified SEO + AEO + GEO
 	"rank-ai", // AI content creation + rank tracking
+	"chatrank", // Vertical AEO (dental/medical/local) with agency program; one named customer
 	"promptmonitor", // 200+ countries, AI bot analytics (acquired)
 	"gumshoe", // AI search visibility intelligence
 	"rebel-growth", // Growth-focused AEO tracking + consulting
@@ -3876,10 +4188,12 @@ const aeoPopularityRanking: string[] = [
 	"checkthat", // No-cold-start tracking, lead gen for GrowthX
 	"parse", // 219K brands database, peer visibility
 	"amionai", // Weekly action plans + The Index leaderboards
+	"brandbeacon", // Solid monitoring but thin feature set — brand-description analysis still coming soon
 	"airix", // 16-engine weekly scans + free checker; SMB-oriented, no disclosed traction
 	"vercite", // Rebrand of AI Brand Tracking; Nordic clients, no disclosed scale
 	"limy", // B2A revenue tracking
 	"bear-ai", // Blog Agent for AI-optimized content
+	"brantial", // Managed GEO service more than a product; DR 10, no disclosed customers
 	"getmint", // 150K+ partner media distribution network
 	"wildcard", // YC-backed e-commerce AI visibility
 	"showupinai", // IndexNow integration for faster AI indexing
