@@ -1483,6 +1483,11 @@ function buildWorkerService(options: {
 
 	lines.push("  env_file:", "    - path: .env", "      required: true");
 
+	// On SIGTERM the worker gives pg-boss 30s to finish in-flight jobs, then
+	// flushes telemetry. Compose's 10s default would SIGKILL it partway through
+	// an evaluation, burning the provider call that job already paid for.
+	lines.push("  stop_grace_period: 35s");
+
 	if (options.dependsOn.length > 0) {
 		lines.push("  depends_on:");
 		for (const service of options.dependsOn) {
