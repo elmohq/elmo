@@ -17,11 +17,16 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { BloomFilter } from "bloom-filters";
+// `bloom-filters` is CJS, and Node's ESM loader can't see its named exports —
+// only the app's bundler papers that over, and this script runs under plain tsx.
+import bloomFilters from "bloom-filters";
 import { EDITORIAL_DOMAINS } from "../src/lib/editorial-domains";
 
-// 0.001%. Over ~100k domains that's a mislabelled domain about once per
-// thousand full passes of the list, which is worth ~430KB of filter.
+const { BloomFilter } = bloomFilters;
+
+// 0.001%, which costs ~430KB of filter and mislabels none of the 25k domains in
+// EDITORIAL_DOMAINS. A brand only ever tests the few hundred domains it actually
+// cites, so that rate keeps a wrong "sells links" badge off the page in practice.
 const FALSE_POSITIVE_RATE = 1e-5;
 
 const OUT_PATH = resolve(import.meta.dirname, "..", "src", "lib", "marketplace-domains.gen.json");
