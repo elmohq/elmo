@@ -7,16 +7,11 @@ export { parseScrapeTargets } from "@workspace/config/scrape-targets";
 // Per-call output caps for the direct API providers: a worst-case bound on a
 // single tracked run, not a target length — sized well above any answer we
 // expect, so hitting one means something went wrong (warnIfOutputCapped logs
-// it). These are code defaults; per-target overrides are a follow-up and aren't
+// it). A cap covers reasoning and thinking tokens as well as visible output.
+// These are code defaults; per-target overrides are a follow-up and aren't
 // threaded through ProviderOptions yet.
-//
-// anthropic-api stays at 4000 to match its long-standing production cap, so
-// nothing changes for Anthropic. The others sit at 8000; note OpenAI's and
-// OpenRouter's cap also counts reasoning tokens, so on reasoning-by-default
-// targets (gpt-5, grok-4.5, gemini-2.5-flash, deepseek-v3.2) that ceiling
-// covers reasoning plus visible output.
 export const API_PROVIDER_MAX_OUTPUT_TOKENS: Record<string, number> = {
-	"anthropic-api": 4000,
+	"anthropic-api": 8000,
 	"openai-api": 8000,
 	openrouter: 8000,
 	"mistral-api": 8000,
