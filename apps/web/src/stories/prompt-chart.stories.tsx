@@ -5,7 +5,7 @@
  *     search highlight, and long prompt name edge cases
  */
 import type { Meta } from "@storybook/react";
-import { ELMO_CHART_COLORS } from "@workspace/config/constants";
+import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import { CachedPromptChart, type CachedPromptChartProps } from "@/components/cached-prompt-chart";
 import { type ProcessedChartData, setMockChartDataContext } from "./_mocks/chart-data-context";
 import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
@@ -27,7 +27,7 @@ const defaultClientConfig: ClientConfig = {
 		name: "Elmo",
 		parentName: "",
 		optimizationUrlTemplate: "",
-		chartColors: ELMO_CHART_COLORS,
+		chartColors: DEFAULT_CHART_COLORS,
 	},
 	analytics: {},
 };

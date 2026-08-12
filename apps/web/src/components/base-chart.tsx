@@ -6,11 +6,10 @@ import {
 	type ChartConfig,
 	ChartContainer,
 	ChartLegend,
-	ChartLegendContent,
 	ChartTooltip,
 	ChartTooltipContent,
 } from "@workspace/ui/components/chart";
-import type * as React from "react";
+import * as React from "react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import {
 	type ChartDataPoint,
@@ -18,27 +17,51 @@ import {
 	filterAndCompleteChartData,
 	getBadgeClassName,
 	getBadgeVariant,
-	getSeriesMarkerPath,
 	isExtendedDataPoint,
 	type LookbackPeriod,
 	selectCompetitorsToDisplay,
 } from "@/lib/chart-utils";
 
-/** Legend swatches mirror the marker drawn on the line, so shape reads as identity
- *  the same way in both places. Cached so the legend isn't remounted every render. */
-const markerIconCache = new Map<string, React.ComponentType>();
-function makeMarkerIcon(seriesIndex: number, color: string | undefined): React.ComponentType {
-	const cacheKey = `${seriesIndex}:${color}`;
-	const cached = markerIconCache.get(cacheKey);
-	if (cached) return cached;
+/** The brand's own line is the one people are looking for, so it carries more
+ *  weight than the competitors it's plotted against. */
+const BRAND_STROKE_WIDTH = 3.5;
+const COMPETITOR_STROKE_WIDTH = 2;
+/** How far the other series recede while one is singled out. */
+const DIMMED_OPACITY = 0.15;
 
-	const Icon = () => (
-		<svg viewBox="-6 -6 12 12" aria-hidden="true">
-			<path d={getSeriesMarkerPath(seriesIndex, 4.5)} fill={color} />
-		</svg>
+/** Legend that doubles as a way to pick a series out of the chart: pointing at
+ *  an entry — or tabbing to it — fades everything else. Colour alone can't
+ *  separate four lines for a colourblind reader, so this is the way out of a
+ *  tangle rather than a flourish. Buttons, not divs, so it works from the
+ *  keyboard too. */
+function HoverLegend({
+	payload,
+	hovered,
+	onHover,
+}: {
+	payload: Array<{ value: string; dataKey: string; color?: string }>;
+	hovered: string | null;
+	onHover: (key: string | null) => void;
+}) {
+	return (
+		<div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-3">
+			{payload.map((item) => (
+				<button
+					key={item.dataKey}
+					type="button"
+					className="flex items-center gap-1.5 text-muted-foreground text-xs transition-opacity"
+					style={{ opacity: hovered && hovered !== item.dataKey ? 0.4 : 1 }}
+					onMouseEnter={() => onHover(item.dataKey)}
+					onMouseLeave={() => onHover(null)}
+					onFocus={() => onHover(item.dataKey)}
+					onBlur={() => onHover(null)}
+				>
+					<div className="h-2 w-2 shrink-0 rounded-[2px]" style={{ backgroundColor: item.color }} />
+					{item.value}
+				</button>
+			))}
+		</div>
 	);
-	markerIconCache.set(cacheKey, Icon);
-	return Icon;
 }
 
 interface BaseChartProps {
@@ -72,6 +95,7 @@ export function BaseChart({
 }: BaseChartProps) {
 	const completeData = filterAndCompleteChartData(data, lookback);
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const [hoveredSeries, setHoveredSeries] = React.useState<string | null>(null);
 
 	// Sort all competitors alphabetically for consistent color assignment
 	const sortedAllCompetitors = [...competitors].sort((a, b) => a.name.localeCompare(b.name));
@@ -84,17 +108,6 @@ export function BaseChart({
 
 	// Create dynamic chart config based on brand and ALL competitors (for consistent colors)
 	const chartColors = chartColorsProp ?? context.clientConfig?.branding.chartColors ?? [];
-
-	// Series index drives both the color and the marker shape, so an entity keeps
-	// the same pairing on every chart it appears on.
-	const seriesIndex: Record<string, number> = { [brand.id]: 0 };
-	sortedAllCompetitors.forEach((competitor, index) => {
-		seriesIndex[competitor.id] = index + 1;
-	});
-
-	// Bars carry no marker, so a shaped legend swatch would point at nothing.
-	const showMarkers = chartType === "line";
-
 	const chartConfig: ChartConfig = {
 		visitors: {
 			label: "Visibility",
@@ -102,7 +115,6 @@ export function BaseChart({
 		[brand.id]: {
 			label: brand.name,
 			color: chartColors[0], // Brand gets first color
-			icon: showMarkers ? makeMarkerIcon(0, chartColors[0]) : undefined,
 		},
 	};
 
@@ -112,13 +124,15 @@ export function BaseChart({
 		chartConfig[competitor.id] = {
 			label: competitor.name,
 			color: chartColors[colorIndex],
-			icon: showMarkers ? makeMarkerIcon(index + 1, chartColors[colorIndex]) : undefined,
 		};
 	});
 
 	// Get data keys for rendering lines (only selected competitors + brand)
 	// Brand comes last so it renders on top when dots overlap
 	const dataKeys = [...sortedSelectedCompetitors.map((c) => c.id), brand.id];
+
+	const strokeWidthFor = (key: string) => (key === brand.id ? BRAND_STROKE_WIDTH : COMPETITOR_STROKE_WIDTH);
+	const opacityFor = (key: string) => (hoveredSeries && hoveredSeries !== key ? DIMMED_OPACITY : 1);
 
 	// Build custom legend payload to only show brand + selected competitors (not duplicates from dashed/solid lines)
 	const legendPayload = [
@@ -239,10 +253,17 @@ export function BaseChart({
 							}
 						/>
 						{dataKeys.map((key, index) => (
-							<Bar key={key} dataKey={key} fill={`var(--color-${key})`} minPointSize={2} radius={2} />
+							<Bar
+								key={key}
+								dataKey={key}
+								fill={`var(--color-${key})`}
+								fillOpacity={opacityFor(key)}
+								minPointSize={2}
+								radius={2}
+							/>
 						))}
 						<ChartLegend
-							content={() => <ChartLegendContent payload={legendPayload} className="flex-wrap gap-x-4 gap-y-1" />}
+							content={() => <HoverLegend payload={legendPayload} hovered={hoveredSeries} onHover={setHoveredSeries} />}
 						/>
 					</BarChart>
 				</ChartContainer>
@@ -318,12 +339,10 @@ export function BaseChart({
 												const indicatorColor = chartConfig[item.dataKey as string]?.color;
 												return (
 													<div key={item.dataKey} className="flex w-full items-center gap-2">
-														<svg viewBox="-6 -6 12 12" aria-hidden="true" className="shrink-0 h-2.5 w-2.5">
-															<path
-																d={getSeriesMarkerPath(seriesIndex[item.dataKey as string] ?? 0, 5)}
-																fill={indicatorColor}
-															/>
-														</svg>
+														<div
+															className="shrink-0 rounded-[2px] h-2.5 w-2.5"
+															style={{ backgroundColor: indicatorColor }}
+														/>
 														<div className="flex flex-1 justify-between gap-4 leading-none items-center">
 															<span className="text-muted-foreground">
 																{chartConfig[item.dataKey as string]?.label || item.dataKey}
@@ -347,7 +366,8 @@ export function BaseChart({
 								name={`${key}-dashed`}
 								type="bump"
 								stroke={`var(--color-${key})`}
-								strokeWidth={2}
+								strokeWidth={strokeWidthFor(key)}
+								strokeOpacity={opacityFor(key)}
 								strokeDasharray="4 4"
 								dot={false}
 								activeDot={false}
@@ -362,7 +382,8 @@ export function BaseChart({
 								name={key}
 								type="bump"
 								stroke={`var(--color-${key})`}
-								strokeWidth={2}
+								strokeWidth={strokeWidthFor(key)}
+								strokeOpacity={opacityFor(key)}
 								// Custom dot that only shows for real data points
 								dot={({ cx, cy, payload, value }: any) => {
 									// Don't render dot for extended points or null values
@@ -371,11 +392,16 @@ export function BaseChart({
 										return <g key={`dot-empty-${key}-${cx}`} />;
 									}
 									return (
-										<path
+										<circle
 											key={`dot-${key}-${cx}`}
-											d={getSeriesMarkerPath(seriesIndex[key] ?? 0, 3)}
-											transform={`translate(${cx}, ${cy})`}
+											cx={cx}
+											cy={cy}
+											r={key === brand.id ? 2.75 : 2}
 											fill={`var(--color-${key})`}
+											fillOpacity={opacityFor(key)}
+											stroke={`var(--color-${key})`}
+											strokeOpacity={opacityFor(key)}
+											strokeWidth={strokeWidthFor(key)}
 										/>
 									);
 								}}
@@ -386,13 +412,14 @@ export function BaseChart({
 										return <g key={`activedot-empty-${key}-${cx}`} />;
 									}
 									return (
-										<path
+										<circle
 											key={`activedot-${key}-${cx}`}
-											d={getSeriesMarkerPath(seriesIndex[key] ?? 0, 5)}
-											transform={`translate(${cx}, ${cy})`}
+											cx={cx}
+											cy={cy}
+											r={key === brand.id ? 5 : 4}
 											fill={`var(--color-${key})`}
-											stroke="var(--card)"
-											strokeWidth={1.5}
+											stroke={`var(--color-${key})`}
+											strokeWidth={strokeWidthFor(key)}
 										/>
 									);
 								}}
@@ -401,7 +428,7 @@ export function BaseChart({
 							/>,
 						])}
 						<ChartLegend
-							content={() => <ChartLegendContent payload={legendPayload} className="flex-wrap gap-x-4 gap-y-1" />}
+							content={() => <HoverLegend payload={legendPayload} hovered={hoveredSeries} onHover={setHoveredSeries} />}
 						/>
 					</LineChart>
 				</ChartContainer>

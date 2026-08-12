@@ -13,7 +13,7 @@
  * for cloud via env validation; the localhost default keeps this factory total
  * so a missing APP_URL surfaces on the env-validation page rather than throwing).
  */
-import { DEFAULT_APP_ICON, DEFAULT_APP_NAME, DEFAULT_APP_URL, ELMO_CHART_COLORS } from "@workspace/config/constants";
+import { DEFAULT_APP_ICON, DEFAULT_APP_NAME, DEFAULT_APP_URL, DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import { getEnv } from "@workspace/config/env";
 import type { Deployment } from "@workspace/config/types";
 
@@ -33,7 +33,7 @@ export function createCloudDeployment(env: Record<string, string | undefined> = 
 			name: DEFAULT_APP_NAME,
 			icon: DEFAULT_APP_ICON,
 			url: getEnv("APP_URL", DEFAULT_APP_URL, env),
-			chartColors: ELMO_CHART_COLORS,
+			chartColors: DEFAULT_CHART_COLORS,
 		},
 	};
 }

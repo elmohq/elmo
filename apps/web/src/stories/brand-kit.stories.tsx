@@ -8,7 +8,7 @@
  *  4. Color Palette — brand color, theme colors, and chart palette
  */
 import type { Meta } from "@storybook/react";
-import { ELMO_CHART_COLORS } from "@workspace/config/constants";
+import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import { Logo } from "@/components/logo";
 import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
 import { setMockRouteContext } from "./_mocks/tanstack-router";
@@ -24,7 +24,7 @@ const elmoConfig: ClientConfig = {
 	},
 	branding: {
 		name: "Elmo",
-		chartColors: ELMO_CHART_COLORS.map((c) => c),
+		chartColors: DEFAULT_CHART_COLORS.map((c) => c),
 	},
 	analytics: {},
 };
@@ -41,7 +41,7 @@ const whitelabelConfig: ClientConfig = {
 		icon: "https://api.dicebear.com/9.x/shapes/svg?seed=brand",
 		parentName: "AgencyCo",
 		parentUrl: "https://agency.example.com",
-		chartColors: ELMO_CHART_COLORS.map((c) => c),
+		chartColors: DEFAULT_CHART_COLORS.map((c) => c),
 	},
 	analytics: {},
 };
@@ -211,7 +211,7 @@ export const ElmoBrandKit = () => {
 			{/* Chart Palette */}
 			<Section title="Chart Color Palette">
 				<div className="flex flex-wrap gap-2">
-					{ELMO_CHART_COLORS.map((color, i) => (
+					{DEFAULT_CHART_COLORS.map((color, i) => (
 						<div key={color} className="flex flex-col items-center gap-1">
 							<div className="w-8 h-8 rounded border shadow-sm" style={{ backgroundColor: color }} />
 							<span className="text-[10px] text-muted-foreground font-mono">{i + 1}</span>

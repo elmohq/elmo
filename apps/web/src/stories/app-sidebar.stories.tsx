@@ -12,7 +12,7 @@
  * rather than reading the useBrand hook.
  */
 import type { Meta, StoryObj } from "@storybook/react";
-import { ELMO_CHART_COLORS } from "@workspace/config/constants";
+import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
 import { expect, within } from "storybook/test";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -56,7 +56,7 @@ const localConfig: ClientConfig = {
 		showOptimizeButton: false,
 		canCreateBrands: true,
 	},
-	branding: { name: "Elmo", chartColors: ELMO_CHART_COLORS },
+	branding: { name: "Elmo", chartColors: DEFAULT_CHART_COLORS },
 	analytics: {},
 };
 
@@ -67,7 +67,7 @@ const demoConfig: ClientConfig = {
 		showOptimizeButton: false,
 		canCreateBrands: false,
 	},
-	branding: { name: "Elmo", chartColors: ELMO_CHART_COLORS },
+	branding: { name: "Elmo", chartColors: DEFAULT_CHART_COLORS },
 	analytics: {},
 };
 
@@ -84,7 +84,7 @@ const whitelabelConfig: ClientConfig = {
 		parentName: "AgencyCo",
 		parentUrl: "https://agency.example.com",
 		optimizationUrlTemplate: "https://agency.example.com/optimize?prompt={{promptId}}",
-		chartColors: ELMO_CHART_COLORS,
+		chartColors: DEFAULT_CHART_COLORS,
 	},
 	analytics: {},
 };
@@ -108,7 +108,7 @@ const cloudConfig: ClientConfig = {
 		teamInvites: true,
 		reportGeneration: false,
 	},
-	branding: { name: "Elmo", chartColors: ELMO_CHART_COLORS },
+	branding: { name: "Elmo", chartColors: DEFAULT_CHART_COLORS },
 	analytics: {},
 };
 

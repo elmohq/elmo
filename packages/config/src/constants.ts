@@ -25,53 +25,13 @@ export const ELMO_THEME_COLOR = "#2563eb";
 export const ELMO_BACKGROUND_COLOR = "#ffffff";
 
 /**
- * Chart colors for the Elmo product (local, demo, and cloud modes).
+ * Default chart colors for the Elmo product.
  *
- * Eight hue families in a fixed order, anchored to the brand blue, each
- * expanded into three lightness tiers. Both the hues and their order are
- * chosen so that neighbouring series stay separable under protanopia and
- * deuteranopia, and every base color clears 3:1 against the light and dark
- * card surfaces alike — the palette is a single flat list serving both
- * themes, so each color has to work on white and on near-black.
- *
- * Charts pair this with a per-series marker shape, because no eight-color
- * palette can keep every pair distinct under color-vision deficiency; shape
- * carries identity where hue runs out.
- */
-export const ELMO_CHART_COLORS = [
-	// Base
-	"#2563eb",
-	"#c85b30",
-	"#008d60",
-	"#a6710f",
-	"#be5a82",
-	"#3a8c32",
-	"#766fd4",
-	"#d2504c",
-	// Dark
-	"#0036b5",
-	"#953402",
-	"#0b5e40",
-	"#734c00",
-	"#90305a",
-	"#086100",
-	"#5045a6",
-	"#a11f24",
-	// Light
-	"#4f87fd",
-	"#eb7a50",
-	"#3aac7d",
-	"#c68f3a",
-	"#e078a0",
-	"#5aab51",
-	"#938ef6",
-	"#f57069",
-];
-
-/**
- * Fallback chart colors for whitelabel deployments that don't set
- * VITE_CHART_COLORS. Kept on the original Observable + Tableau hues so
- * existing whitelabel installs render unchanged.
+ * 11 base hues (Observable + Tableau, anchored to brand blue) expanded
+ * into 55 colors across five lightness tiers: base → dark → light →
+ * muted → deep. This keeps harmony (same hue families throughout) while
+ * supporting charts with many series. Whitelabel deployments override
+ * via VITE_CHART_COLORS.
  */
 export const DEFAULT_CHART_COLORS = [
 	// Base
