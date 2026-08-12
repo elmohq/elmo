@@ -41,7 +41,7 @@ function HomePage() {
 				<Features />
 				<TradeSitesTestimonial />
 				<Community />
-				<Pricing />
+				<Pricing showPlatformNotes={false} />
 				<OffSiteAeoPromo />
 				<Faq items={HOME_FAQS} eyebrow="/ FAQ" />
 				<CTA />
