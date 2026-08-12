@@ -46,7 +46,7 @@ export const Route = createFileRoute("/_authed/app/$org/$brand/query-fan-out")({
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Query Fan-Out", { appName, brandName }) },
+				{ title: buildTitle("Query Fan-Out", { appName, subject: brandName }) },
 				{
 					name: "description",
 					content:

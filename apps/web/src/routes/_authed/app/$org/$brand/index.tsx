@@ -94,7 +94,7 @@ export const Route = createFileRoute("/_authed/app/$org/$brand/")({
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Overview", { appName, brandName }) },
+				{ title: buildTitle("Overview", { appName, subject: brandName }) },
 				{ name: "description", content: "Dashboard overview of AI visibility and citations." },
 			],
 		};

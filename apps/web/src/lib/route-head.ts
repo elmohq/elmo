@@ -45,12 +45,12 @@ export function getBrandName(matches: Array<{ loaderData?: Record<string, unknow
 
 /**
  * Build a page title following the convention:
- *   "PageName | BrandName · AppName"  (with brand context)
- *   "PageName · AppName"              (without brand context)
+ *   "PageName | Subject · AppName"  (with a brand or workspace in scope)
+ *   "PageName · AppName"            (without one)
  */
-export function buildTitle(pageName: string, opts: { appName: string; brandName?: string }): string {
-	if (opts.brandName) {
-		return `${pageName} | ${opts.brandName} · ${opts.appName}`;
+export function buildTitle(pageName: string, opts: { appName: string; subject?: string }): string {
+	if (opts.subject) {
+		return `${pageName} | ${opts.subject} · ${opts.appName}`;
 	}
 	return `${pageName} · ${opts.appName}`;
 }

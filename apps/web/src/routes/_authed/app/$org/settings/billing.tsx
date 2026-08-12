@@ -41,7 +41,7 @@ export const Route = createFileRoute("/_authed/app/$org/settings/billing")({
 		const workspaceName = (loaderData as BillingState | undefined)?.organization.name;
 		return {
 			meta: [
-				{ title: buildTitle("Billing", { appName, brandName: workspaceName }) },
+				{ title: buildTitle("Billing", { appName, subject: workspaceName }) },
 				{ name: "description", content: "Manage your plan, usage, and billing." },
 			],
 		};

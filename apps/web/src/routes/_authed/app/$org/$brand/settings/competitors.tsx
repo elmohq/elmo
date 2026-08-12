@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authed/app/$org/$brand/settings/competit
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Competitors", { appName, brandName }) },
+				{ title: buildTitle("Competitors", { appName, subject: brandName }) },
 				{ name: "description", content: "Manage your tracked competitors." },
 			],
 		};

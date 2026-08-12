@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_authed/app/$org/$brand/settings/brand")(
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Brand Settings", { appName, brandName }) },
+				{ title: buildTitle("Brand Settings", { appName, subject: brandName }) },
 				{ name: "description", content: "Manage your brand name and website." },
 			],
 		};

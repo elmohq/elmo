@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authed/app/$org/$brand/citations")({
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Citations", { appName, brandName }) },
+				{ title: buildTitle("Citations", { appName, subject: brandName }) },
 				{ name: "description", content: "See which sources LLMs cite in responses to your prompts." },
 			],
 		};

@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_authed/app/$org/settings/members")({
 		const workspaceName = (loaderData as TeamData | undefined)?.organization.name;
 		return {
 			meta: [
-				{ title: buildTitle("Team", { appName, brandName: workspaceName }) },
+				{ title: buildTitle("Team", { appName, subject: workspaceName }) },
 				{ name: "description", content: "Invite teammates and manage team members." },
 			],
 		};

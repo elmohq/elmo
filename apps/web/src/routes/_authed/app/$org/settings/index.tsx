@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authed/app/$org/settings/")({
 		const workspaceName = (loaderData as WorkspaceSettings | undefined)?.workspace.name;
 		return {
 			meta: [
-				{ title: buildTitle("Workspace", { appName, brandName: workspaceName }) },
+				{ title: buildTitle("Workspace", { appName, subject: workspaceName }) },
 				{ name: "description", content: "Workspace name, URL, and what it contains." },
 			],
 		};

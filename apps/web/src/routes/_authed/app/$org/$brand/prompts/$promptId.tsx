@@ -71,7 +71,7 @@ export const Route = createFileRoute("/_authed/app/$org/$brand/prompts/$promptId
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Prompt Details", { appName, brandName }) },
+				{ title: buildTitle("Prompt Details", { appName, subject: brandName }) },
 				{ name: "description", content: "Detailed analysis of a tracked prompt's performance." },
 			],
 		};

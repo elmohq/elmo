@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_authed/app/$org/$brand/share-of-voice")(
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Share of Voice", { appName, brandName }) },
+				{ title: buildTitle("Share of Voice", { appName, subject: brandName }) },
 				{ name: "description", content: "See how often AI engines mention you versus your competitors." },
 			],
 		};

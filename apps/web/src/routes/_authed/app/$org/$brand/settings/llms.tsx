@@ -44,7 +44,7 @@ export const Route = createFileRoute("/_authed/app/$org/$brand/settings/llms")({
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("LLMs", { appName, brandName }) },
+				{ title: buildTitle("LLMs", { appName, subject: brandName }) },
 				{ name: "description", content: "Choose which AI models this brand is tracked against." },
 			],
 		};
