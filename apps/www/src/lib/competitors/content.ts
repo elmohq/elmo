@@ -23,14 +23,11 @@ export function isOpenSource(competitor: Competitor): boolean {
 }
 
 /**
- * Competitors shipping a rebadged copy of Elmo's own codebase. The default
- * open-source copy below frames both tools as peers you might pick between,
- * which is the wrong answer for a downstream fork — there is nothing to weigh
- * up, because every feature it has came from Elmo and arrives later.
+ * GetCito replaced its codebase with a copy of Elmo's on this date. The generic
+ * open-source copy below frames the two as peers you might pick between, which
+ * is the wrong answer for a rebadged copy, so it gets its own wording.
  */
-const ELMO_FORKS: Record<string, { forkedOn: string }> = {
-	getcito: { forkedOn: "July 10, 2026" },
-};
+const GETCITO_FORK_DATE = "July 10, 2026";
 
 /**
  * A 40–60 word lead "answer block" for a comparison page, written to be lifted
@@ -39,10 +36,9 @@ const ELMO_FORKS: Record<string, { forkedOn: string }> = {
  */
 export function getComparisonVerdict(competitor: Competitor): string {
 	const name = competitor.name;
-	const fork = ELMO_FORKS[competitor.slug];
 
-	if (fork) {
-		return `If you are considering ${name}, use Elmo instead. ${name} is running a copy of Elmo's codebase, which it adopted on ${fork.forkedOn} and shipped with Elmo's copyright notice replaced by its own. Everything it offers today it inherited from Elmo, and it has shipped far less since — 17 commits to Elmo's 98 in the month after the copy — so it is drifting further behind rather than building past it. Elmo is the original, and it is free to self-host.`;
+	if (competitor.slug === "getcito") {
+		return `If you are considering ${name}, use Elmo instead. ${name} is running a copy of Elmo's codebase, which it adopted on ${GETCITO_FORK_DATE} and shipped with Elmo's copyright notice replaced by its own. Everything it offers today it inherited from Elmo, and it has shipped far less since — 17 commits to Elmo's 98 in the month after the copy — so it is drifting further behind rather than building past it. Elmo is the original, and it is free to self-host.`;
 	}
 
 	if (isOpenSource(competitor)) {
@@ -63,18 +59,17 @@ export function getComparisonFaqs(competitor: Competitor): FaqItem[] {
 	const name = competitor.name;
 	const openSource = isOpenSource(competitor);
 	const noun = CATEGORY_NOUN[competitor.category];
-	const fork = ELMO_FORKS[competitor.slug];
 	const faqs: FaqItem[] = [];
 
-	if (fork) {
+	if (competitor.slug === "getcito") {
 		return [
 			{
 				question: `Should I use ${name} or Elmo?`,
-				answer: `Use Elmo. If you are considering ${name}, Elmo is the tool you actually want, because ${name} is a copy of it. On ${fork.forkedOn}, ${name} replaced its entire codebase with Elmo's in a single pull request of 847 files, self-merged 62 seconds after it opened. Running ${name} means running an older snapshot of Elmo, maintained by people who did not write it.`,
+				answer: `Use Elmo. If you are considering ${name}, Elmo is the tool you actually want, because ${name} is a copy of it. On ${GETCITO_FORK_DATE}, ${name} replaced its entire codebase with Elmo's in a single pull request of 847 files, self-merged 62 seconds after it opened. Running ${name} means running an older snapshot of Elmo, maintained by people who did not write it.`,
 			},
 			{
 				question: `What is the difference between Elmo and ${name}?`,
-				answer: `Elmo is the original codebase and ${name} is a copy of it, taken on ${fork.forkedOn}. Everything ${name} offers today it inherited from Elmo. A fork is free to diverge from there, but ${name} has shipped far less than the project it copied — 98 commits to its 17 in the month after the copy, from two contributors working on code they did not write — so the gap is widening rather than closing.`,
+				answer: `Elmo is the original codebase and ${name} is a copy of it, taken on ${GETCITO_FORK_DATE}. Everything ${name} offers today it inherited from Elmo. A fork is free to diverge from there, but ${name} has shipped far less than the project it copied — 98 commits to its 17 in the month after the copy, from two contributors working on code they did not write — so the gap is widening rather than closing.`,
 			},
 			{
 				question: `Is ${name} a fork of Elmo?`,
