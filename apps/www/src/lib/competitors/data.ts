@@ -5457,10 +5457,10 @@ export const competitors: Competitor[] = [
 		url: "https://www.xfunnel.ai/",
 		tagline: "Answer-engine visibility with a dedicated analyst and an experimentation platform",
 		description:
-			"XFunnel treats answer engines as a sales channel, pairing measurement with tailored playbooks, content briefs writers can execute immediately, an affiliate activation kit, and an experimentation platform for iterating on what moves visibility. Every account gets a dedicated analyst working with the team rather than a self-serve dashboard. Named users include marketing leads at monday.com, HiBob, Cato Networks, and MyHeritage.",
+			"XFunnel treats answer engines as a sales channel, pairing measurement with tailored playbooks, content briefs writers can execute immediately, an affiliate activation kit, and an experimentation platform for iterating on what moves visibility. Every account gets a dedicated analyst rather than a self-serve dashboard. Its customer roster is one of the strongest in the category — monday.com, LastPass, MyFitnessPal, Lemonade, Getty Images, Cox Enterprises, Betterment, Check Point, Fireblocks, Docebo, Cato Networks, HiBob, and MyHeritage. In August 2026 it announced an agreement to be acquired by HubSpot.",
 		category: "tracking",
 		ahrefsDR: 61,
-		status: "active",
+		status: "acquired",
 		features: {
 			multiLlmTracking: true,
 			visibilityScore: true,
@@ -5475,10 +5475,11 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
-			"Named users at monday.com, HiBob, Cato Networks, and MyHeritage",
+			"Announced an agreement to be acquired by HubSpot",
+			"Enterprise roster including monday.com, LastPass, Getty Images, Betterment, and Check Point",
 			"Dedicated analyst per account plus a built-in experimentation platform",
-			"Ships affiliate outreach lists as part of the visibility playbook",
 		],
+		notes: "Acquisition by HubSpot announced as an agreement, banner live on the homepage Aug 2026",
 	},
 	{
 		slug: "waikay",
@@ -5782,7 +5783,7 @@ export const competitors: Competitor[] = [
 		url: "https://rocketblue.ai/",
 		tagline: "Monitoring, citation-winning content, and publishing on autopilot",
 		description:
-			"rocketblue, formerly Spotlight, runs the loop from finding the prompts that matter to publishing the content that wins them, with the user approving each step. It reports brand presence, average position, citation share, and per-model sentiment, and its named features include prompt volumes, source reverse engineering, fan-out queries, and citation tracking. Free tools include a readability checker, schema wizard, and a query fan-out browser extension, plus an MCP server.",
+			"rocketblue, formerly Spotlight, runs the loop from finding the prompts that matter to publishing the content that wins them, with the user approving each step. It reports brand presence, average position, citation share, and per-model sentiment, and its named features include prompt volumes, source reverse engineering, fan-out queries, and citation tracking. Free tools include a readability checker, schema wizard, and a query fan-out browser extension, plus an MCP server. Customer logos include Samsung, monday.com, Lloyds Bank, Papa John's, Delsey Paris, and Publicis Groupe.",
 		category: "tracking",
 		ahrefsDR: 11,
 		status: "active",
@@ -5804,8 +5805,8 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
+			"Enterprise logos — Samsung, monday.com, Lloyds Bank, Publicis Groupe — on a DR 11 domain",
 			"Publishes on autopilot with an approval step rather than only recommending",
-			"Source reverse engineering and fan-out queries as named features",
 			"Free query fan-out browser extension, schema wizard, and MCP server",
 		],
 		notes: "Rebranded from Spotlight; get-spotlight.com redirects here",
@@ -6094,10 +6095,10 @@ const aeoPopularityRanking: string[] = [
 	"otterly-ai", // Gartner Cool Vendor 2025, 20k+ users, dedicated GEO tracker
 	"evertune", // $4M seed, NYT/WSJ/Forbes/Adweek, EverPanel consumer panel data
 	"brandlight", // Named #1 AEO platform by an analyst ranking, Fortune 500 customers, SOC 2 Type 2, AI-ads module
+	"xfunnel", // Being acquired by HubSpot; monday.com/LastPass/Getty/Betterment/Check Point roster, DR 61
 	"writesonic", // 120M AI conversation dataset, major brand, combined tracking + content
 	"athenahq", // Repeatedly named in best-AEO-tools-2026 lists, prompt-level insights
 	"rankscale", // 17+ engines in one plan, 240+ countries, 94 technical checks, DR 63 with case studies + partners
-	"xfunnel", // Named users at monday.com/HiBob/Cato/MyHeritage, dedicated analyst + experimentation platform, DR 61
 	"waikay", // InLinks team, entity map + fact tracker, 40 countries/13 languages, DR 59
 	"se-ranking", // Large established platform with dedicated AI Overviews + ChatGPT trackers
 
@@ -6144,6 +6145,7 @@ const aeoPopularityRanking: string[] = [
 	"geoptie", // Broad tool suite in 11 languages, DR 39; no disclosed customers
 	"petra-labs", // $5.2M seed (Work-Bench) + press, but services-heavy and no public product traction yet
 	"superlines", // 9-platform GEO tracker, customers incl. Supabase/Publicis, Google for AI Startups
+	"rocketblue", // Samsung/monday.com/Lloyds/Publicis logos despite DR 11; autopilot publishing + MCP
 	"emberos", // Five-module agentic platform, Share-of-Prompt/TAVI metrics; no disclosed customers
 	"bluefish-ai", // Enterprise AI-commerce (Fortune 500 focus), named in best-AEO-2026 lists
 	"babylovegrowth", // DR 76, autopilot content + backlink network for AI citations
@@ -6214,7 +6216,6 @@ const aeoPopularityRanking: string[] = [
 	"llmconsole", // Single $29 plan, minimal feature set, monitoring still coming soon
 	"amionai", // Weekly action plans + The Index leaderboards
 	"obsero", // Platform + consultancy; DR 3.3, no disclosed customers
-	"rocketblue", // Rebranded from Spotlight; autopilot publishing, fan-out extension, MCP; DR 11
 	"brandbeacon", // Solid monitoring but thin feature set — brand-description analysis still coming soon
 	"airix", // 16-engine weekly scans + free checker; SMB-oriented, no disclosed traction
 	"promptsignal", // Still early access behind a waitlist, DR 5
