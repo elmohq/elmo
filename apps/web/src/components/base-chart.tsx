@@ -18,7 +18,7 @@ import {
 
 /** The brand's own line is the one people are looking for, so it carries more
  *  weight than the competitors it's plotted against. */
-const BRAND_STROKE_WIDTH = 2.5;
+const BRAND_STROKE_WIDTH = 3;
 const COMPETITOR_STROKE_WIDTH = 2;
 /** How far the other series recede while one is singled out. */
 const DIMMED_OPACITY = 0.25;
