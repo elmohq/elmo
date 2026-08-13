@@ -87,10 +87,12 @@ jobs:
             echo "DISCORD_WEBHOOK_URL not set; skipping Discord announcement."
             exit 0
           fi
-          release_url="https://github.com/${REPO}/releases/tag/v${VERSION}"
-          payload=$(jq -n --arg content "🚀 **Elmo v${VERSION}** is out! ${release_url}" '{content: $content}')
+          # Reuses release-notes.md from the release step above, so Discord shows
+          # the same "What's Changed" list as the GitHub release, with the link
+          # at the bottom and its embed suppressed.
+          node scripts/discord-release-payload.mjs "$VERSION" release-notes.md > discord-payload.json
           # Non-fatal: a Discord hiccup must not fail an otherwise-successful release.
-          curl -sS -X POST -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL" \
+          curl -sS -X POST -H "Content-Type: application/json" -d @discord-payload.json "$DISCORD_WEBHOOK_URL" \
             || echo "Discord announcement failed (non-fatal)."
 
   docker-build:
