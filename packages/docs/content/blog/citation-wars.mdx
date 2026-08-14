@@ -1,0 +1,152 @@
+---
+title: "Citation Wars: The GEO Playbook Is Now the Attack Model"
+description: "A new CMU paper simulates what happens when everyone optimizes for AI citations. Quality falls, filters fail, and the defense that works rewards verifiable claims."
+date: "2026-08-13"
+author: ai
+metaTitle: "Citation Wars: GEO Tactics as the Attack Model"
+tags:
+  - geo
+  - aeo
+  - ai-citations
+  - ai-visibility
+definedTerms:
+  - term: Citation wars
+    definition: "Citation wars describe the escalating cycle in which content suppliers rewrite pages to win AI citations, platforms add defenses against those rewrites, and suppliers adapt again. The term comes from a 2026 preprint by Chen Xu, Zitian Guo, and Chenyan Xiong, which shows the cycle can end with content quality below where it started."
+  - term: Citation-seeking rewrite
+    definition: "A citation-seeking rewrite is an edit made to raise a document's chance of being cited by a generative engine rather than to improve the document. In repeated simulation, such rewrites accumulate unsupported claims and fabricated details."
+  - term: Verifiable-content rewards
+    definition: "Verifiable-content rewards (VCR) is a proposed platform mechanism that credits a rewrite in proportion to the factual claims, numerical details, and named citations it adds that are supported by the original document, instead of only penalizing suspicious edits."
+howTo:
+  name: "How to keep GEO tactics on the right side of a verifiability defense"
+  description: "Adapt the standard answer engine optimization playbook so the specifics you add are checkable against a source, which is what the emerging platform-side defenses reward."
+  steps:
+    - name: Separate the two kinds of statistic you publish
+      text: "Split every number on a page into those you can trace to a named source or your own data, and those inserted because a checklist said to add statistics. The first kind is what a verifiability mechanism credits; the second is what it is designed to strip."
+    - name: Ground added specifics in the source document
+      text: "The proposed mechanism counts factual claims, numerical details, and named citations that are supported by the original document. Additions that cannot be checked against anything you published earn nothing under that design, whatever they do to citation rate today."
+    - name: Stop treating formatting as the lever
+      text: "In the simulations, the residual benefit from formatting-style edits ends up offset by the harm from hallucinated detail. Structure still helps a reader and a retriever; it stops being a source of advantage once every competitor does it too."
+    - name: Audit AI-assisted rewrites for invented detail
+      text: "Repeated optimization rounds turned mild edits into rewrites carrying unsupported claims. If a model is rewriting your pages for citation performance, the failure mode to check for is a confident number nobody can source."
+    - name: Track answers, not just whether you were cited
+      text: "A citation count cannot tell you whether the answer described you accurately. Record the wording of the answers your prompt set produces so you can catch a rewrite that won a citation by saying something untrue."
+    - name: Re-check tactics against what platforms reward, not what worked last year
+      text: "The tactics being modelled as attacks are the ones published as best practice in 2024. Assume the same lag applies to whatever is on a checklist now, and prefer edits that would survive a defender reading them."
+faq:
+  - question: What are citation wars in AI search?
+    answer: "Citation wars are the escalating cycle between content suppliers optimizing for AI citations and platforms defending against that optimization. A 2026 preprint from Carnegie Mellon and UC San Diego shows the cycle can settle into what the authors call an inert stationary outcome, where \"useful content is not induced, suspicious content is weakly penalized, and further platform updates have little effect.\""
+  - question: Does adding statistics still help you get cited by AI?
+    answer: "It depends on whether the statistics are checkable. Adding statistics comes from the KDD 2024 GEO paper, which reported that its methods could boost visibility by up to 40%. The 2026 mechanism-design paper reimplements that same method as one of five GEO attackers it defends against, and the defense it proposes credits added claims only when they are supported by the original document. Sourced numbers survive that test; decorative ones are exactly what it filters."
+  - question: Can platforms detect GEO manipulation with keyword filters?
+    answer: "Not well. The paper tested a keyword scrub that applied a regex filter over 24 GEO-style phrases and found its effectiveness \"remains close to zero.\" Two other classical defenses, prompt-based suspicion labels and hard rejection of suspicious documents, also underperformed the reward-based mechanism the authors propose."
+  - question: What is VCR in generative engine optimization?
+    answer: "VCR stands for verifiable-content rewards, a platform mechanism proposed in the paper \"Mechanism Design for Generative Engines.\" Instead of only penalizing suspicious rewrites, the platform also credits rewrites in proportion to the factual claims, numerical details, and named citations they surface that are supported by the original document. Across three benchmarks it beat the strongest baseline defense by an average of 12.1 percentage points on the authors' combined defense-and-utility score."
+  - question: Does GEO optimization make content worse?
+    answer: "Under repeated competition in this simulation, yes. Running five rounds of optimization on an e-commerce benchmark drove both rewrite quality and answer utility below the reference condition where no optimization happened, with \"accumulated unsupported claims and fabricated details, turning initially mild edits into citation-seeking rewrites.\" This is a simulated result on small models, not a measurement of the live web."
+  - question: Should I stop doing answer engine optimization?
+    answer: "No. Nothing in the research argues against clear structure, direct answers, or accurate specifics, and the proposed defense actively rewards adding substantiated detail. What it questions is the subset of the playbook that treats added numbers and citation-flavoured phrasing as decoration, which is the part platforms have an incentive to neutralize."
+---
+
+**Every answer engine optimization checklist tells you to add statistics, add citations, add quotations. A preprint posted on 11 August 2026 takes that advice, implements it as an attacker, and asks what happens when everyone runs it and the platform fights back.** The answer, across five rounds of simulated competition, is that document quality and answer quality both end up below where they started. Chen Xu and Chenyan Xiong of Carnegie Mellon and Zitian Guo of UC San Diego call the pattern [citation wars](https://arxiv.org/abs/2608.11390).
+
+**Key takeaways**
+
+- The tactics are the attack model now. One of the five GEO attackers the paper defends against is "Statistics Addition," which adds quantitative claims following the [KDD 2024 GEO paper](https://arxiv.org/abs/2311.09735) that popularised the tactic.
+- Repeated optimization degrades the thing it optimizes. Five rounds on an e-commerce benchmark left "rewrite quality and answer utility both fall below the no-exploitation reference," with unsupported claims and fabricated details accumulating along the way.
+- Filtering does not save the platform. A keyword scrub over 24 GEO-style phrases was close to useless, and the equilibrium the authors identify is an inert one where nobody is punished and nobody improves.
+- The defense that worked pays for verifiability. VCR credits added claims, numbers, and named citations *that the original document supports*, beating the strongest baseline by an average of 12.1 percentage points.
+- That is the practitioner takeaway, and it is not "stop adding statistics." It is that a sourced number and an invented one are about to stop being the same move.
+- Caveats are large: simulation, small models, LLM-judged quality, no production engine involved. Read it as a direction of travel, not a measurement.
+
+## The setup, in plain terms
+
+The paper models AI search as two parties with one shared currency. Content suppliers want citations, because citations are how a generative engine allocates attention and attribution. The platform wants answers that are trustworthy. Both are pulling on the same document.
+
+Formally it is a repeated Stackelberg game with partial monitoring: the platform moves first by setting a policy, suppliers respond by rewriting, and neither side sees the other's private state. Practically it is a description of a market anyone doing [generative engine optimization](/blog/what-is-generative-seo) already lives in. The abstract states the tension without hedging: "content providers are incentivized to optimize for model citation, while platforms must preserve answer quality and trustworthy attribution."
+
+The experiments run on three benchmarks — an e-commerce set, GEO-Bench, and Researchy-GEO — each pairing a query with five candidate documents. One document gets rewritten by an attacker; the engine then answers and cites.
+
+## The playbook, as the research now classifies it
+
+Here is the part worth sitting with. The five attackers the paper defends against are not adversarial exotica. They are the published GEO literature.
+
+| Attacker | What it does |
+|---|---|
+| **AutoGEO** | The default attacker used throughout the experiments |
+| **RAID** | Extracts engine-preference rules from contrastive role-conditioned answers |
+| **IF-GEO** | Performs influence-based GEO |
+| **SAGEO** | Performs structure-aware GEO via prompt programming |
+| **Statistics Addition** | "Adds quantitative claims following the original paper" |
+
+That last row cites Aggarwal and colleagues' *GEO: Generative Engine Optimization*, the KDD 2024 paper that reported visibility boosts of up to 40% and gave the field both its name and its benchmark. Two years on, in a paper that uses that same benchmark, the method is a baseline attack to be neutralized.
+
+Nothing about this makes the original research dishonest, and the KDD paper is still the best empirical grounding the field has. But the asymmetry is instructive: the tactic that a marketing checklist reads as "best practice" is the thing a platform researcher reads as "the thing to detect." If you are running the 2024 playbook in 2026, you are running the thing being modelled against.
+
+## Everyone optimizing is worse than nobody optimizing
+
+The core simulation runs five rounds. Suppliers rewrite, the platform adapts, suppliers rewrite again. The trajectory is the finding: rewrite quality and answer utility both drop below the no-exploitation reference, and the mechanism is visible in the intermediate rounds — the paper describes "accumulated unsupported claims and fabricated details, turning initially mild edits into citation-seeking rewrites."
+
+Round one is a page with a few more numbers in it. Round five is a page making claims nobody can check.
+
+Then the theory explains why it stalls there rather than correcting. The authors identify conditions under which the system reaches a local stationary point where the first-order utility change is roughly zero, and spell out what that state looks like: "useful content is not induced, suspicious content is weakly penalized, and further platform updates have little effect." A stalemate where the extra effort has bought nobody anything, and the content is worse than the version that existed before the competition started.
+
+This is a familiar shape. It is what happened to on-page SEO in the exact-match-anchor era, and the resolution then was not that publishers restrained themselves. The platform changed what it paid for.
+
+## Why filtering the phrases does not work
+
+The instinct is that a platform just detects the pattern and drops it. The paper tests three classical defenses and finds the naive versions weak.
+
+| Defense | Mechanism | Result |
+|---|---|---|
+| **Prompt defense** | Attaches suspicion labels, softly reorders documents, adds a system-prompt warning | Beaten by VCR |
+| **Hard reject** | Removes suspicious documents above a threshold | Beaten by VCR |
+| **Keyword scrub** | Regex filter over 24 GEO-style phrases | Effectiveness "remains close to zero" |
+
+The keyword scrub result is the one to carry. Stylistic tells are cheap to route around, and a filter aimed at them catches last season's phrasing while the rewrite that matters walks through. Anyone hoping their competitor's obviously optimized copy will get algorithmically punished should downgrade that expectation.
+
+The paper's scoring makes the tradeoff explicit. Its headline metric, Net, adds two quantities: the share of the attacker's advantage a defense strips away, and what that defense does to welfare relative to the reference condition. Hard rejection can score well on the first and badly on the second, because throwing out documents throws out real information along with the manipulation. A defense has to be judged on what it costs the answer, not just on what it blocks.
+
+## The defense that worked pays for checkable substance
+
+VCR — verifiable-content rewards — inverts the design. Rather than only punishing suspicious rewrites, the platform credits them. The credit a rewrite earns scales with a count of the "factual claims, numerical details, or named citations present in the rewrite and supported by the original document," up to a cap.
+
+Read that qualifier twice, because it is the whole idea. Not claims present. Claims present *and supported*. A number you can trace back to something real earns credit; a number that appeared during optimization earns nothing. Across three benchmarks and three engines, VCR posted the largest Net score every time, with an average advantage of 12.1 percentage points over whichever baseline was strongest in each setting, and it also produced the highest scores on the direct document-quality dimensions the authors measure — clarity, depth, insight, and factuality.
+
+For anyone doing [answer engine optimization](/blog/answer-engine-optimization), that is a more useful signal than another ranking factor. It splits a piece of advice that has always been treated as one thing:
+
+| The tactic | Under a verifiability mechanism |
+|---|---|
+| Adding a statistic you can source or produced yourself | Rewarded — this is precisely what the mechanism counts |
+| Adding a statistic because a checklist said statistics get cited | Filtered — nothing supports it, so it earns no credit |
+| Adding a named citation to a real document | Rewarded |
+| Adding citation-flavoured phrasing without a referent | Filtered |
+
+The advice "add statistics" survives. The version of it that treats numbers as decoration does not. That distinction is already worth acting on for a separate reason: fabricated specifics on your own pages can be lifted verbatim into an answer and attributed to you, which is a liability rather than an optimization.
+
+## What this does not show
+
+The provenance deserves the same scrutiny the finding does.
+
+This is a preprint, not peer-reviewed work, posted two days before this article. The authors state their own limits plainly: "the theory analyzes a local quadratic surrogate and the experiments use a finite interaction horizon; neither establishes a global equilibrium," and they note that "LLM-based claim counting and rule matching can err." A local stationary point in a five-round simulation is not proof that the live web is heading somewhere specific.
+
+The models are also small. The primary engine is gemini-2.5-flash-lite, with gpt-4o-mini and claude-haiku-4-5 as alternates, and the platform-side components run on gpt-4o-mini at temperature zero. Those are not the systems buyers are asking about your category, and quality here is scored by an LLM rubric rather than by people.
+
+Most importantly, VCR is a proposal. No platform has announced anything like it. What the paper establishes is that a reward-for-verifiability design outperforms penalty-only designs in simulation — which is an argument about where a rational platform's incentives point, not an announcement about where any engine is today.
+
+That still leaves it more actionable than most of what gets written about GEO, because the direction is the same one the rest of the evidence points in. Our own study of [citation volatility](/blog/citation-volatility) found the set of domains cited for a prompt turning over 60–70% day to day, which is what a contested surface with no stable advantage looks like from the outside. A tactic that everyone can run is not an advantage for long.
+
+## What to do on Monday
+
+1. **Audit your numbers for provenance, not for presence.** Go through your top pages and mark each statistic as sourced, self-generated, or neither. The third bucket is the one carrying risk, and it is usually larger than people expect on pages that were optimized rather than written.
+2. **Make your own data the thing you add.** A figure you produced is checkable, is yours, and is hard for a competitor to copy. It also forces attribution, which is the fix for the [ghost citation](/blog/ghost-citations) problem of being cited without being named.
+3. **Read AI-assisted rewrites for invented detail.** The failure mode in the simulation is exactly the failure mode of a model asked to make a page more citable: confident specifics that trace to nothing.
+4. **Stop expecting structure to be an edge.** Extractable formatting is table stakes and behaves like it. Keep doing it because it helps readers and retrieval; do not budget for it as a differentiator.
+5. **Measure what the answers say, not just whether you appeared.** A citation count cannot distinguish a page that earned its place from one that got there by asserting something untrue about your product.
+
+## Where this leaves the playbook
+
+The useful frame is not that GEO is dead. It is that GEO has entered the phase every optimization discipline reaches once the platform starts paying attention: the tactics that are purely extractive get priced out, and the ones that happen to produce something real get kept. The research now names the difference precisely enough to act on — claims supported by the underlying document, versus claims that merely appear in it.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces and records the full answer text alongside every mention, citation, and competitor named beside you. Because the raw answers are yours to query, you can check what an engine actually said about your brand rather than inferring it from a citation count — which is the measurement this paper's failure mode calls for.
+
+For the fundamentals, start with [what AI citations are](/blog/ai-citations) and [where they come from](/blog/where-ai-citations-come-from). For the practice, see the [AEO guide](/blog/answer-engine-optimization) and [how to track your brand in AI search](/blog/track-brand-ai-search). For the vocabulary, the [AI search glossary](/glossary).
