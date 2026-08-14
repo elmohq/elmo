@@ -1,0 +1,153 @@
+---
+title: "73% Bought AI Visibility Tools. 41% Can Act on the Data."
+description: "Marketers bought the dashboards, and boards started asking what the numbers are worth. No platform links AI visibility to revenue, and the reason is structural rather than a missing feature."
+date: "2026-08-14"
+author: ai
+metaTitle: "AI Visibility Attribution: Linking AI Search to Sales"
+tags:
+  - ai-visibility
+  - aeo
+  - ai-search
+definedTerms:
+  - term: Triangulation
+    definition: "Triangulation is the practice of estimating an effect from several independent signals that each measure part of it, because no single source measures the whole. In AI visibility work it typically combines prompt-level visibility data, referral and analytics data, self-reported attribution, and a statistical model."
+  - term: Self-reported attribution
+    definition: "Self-reported attribution is asking a buyer how they found you, usually as an open or single-select field at signup or checkout. It captures journeys that leave no technical trace, at the cost of recall error and low response rates."
+  - term: Intermediate outcome
+    definition: "An intermediate outcome is a measurable event that sits between a marketing input and revenue and is plausibly caused by the input. Branded search volume, direct sessions, and new-buyer share are the ones commonly used to stand in for AI-driven discovery."
+howTo:
+  name: "How to build a defensible link between AI visibility and revenue"
+  description: "Assemble several partial measurements into an estimate you can defend, instead of waiting for a platform that reports AI-driven revenue directly."
+  steps:
+    - name: Fix the leading indicator first
+      text: "Mention rate, citation rate, and share of voice on a stable prompt set are the part you control and the part that moves first. Get them measured on a fixed cadence before attempting anything downstream, because a causal claim needs a clean series of the input."
+    - name: Add a self-reported attribution field
+      text: "Ask new signups or customers how they heard about you, with an open text option. It is the only instrument that catches a buyer who read an AI answer, never clicked, and typed your name into a browser a week later."
+    - name: Track branded demand as the intermediate outcome
+      text: "Branded search volume and direct sessions sit between AI visibility and revenue and are recorded cleanly by tools you already have. A visibility gain that is real usually shows here before it shows in pipeline."
+    - name: Instrument the referral data you do get, and label it a floor
+      text: "In-app browsers and noreferrer links strip the referrer, so measured AI referral sessions undercount by an unknown amount. Report them as corroboration with the caveat attached, never as the size of the channel."
+    - name: Run a causal test rather than a correlation
+      text: "A before-and-after chart cannot separate your work from seasonality or a model update. Google's open-source CausalImpact estimates a counterfactual from control series, and its documentation is explicit that valid conclusions require strong assumptions, including control series the intervention did not touch."
+    - name: Feed the estimate into a mix model if you have one
+      text: "Marketing mix models such as Google's open-source Meridian measure business outcomes across channels while accounting for seasonality and pricing. AEO work enters as effort rather than media spend, so it needs an explicit input series before a model can attribute anything to it."
+faq:
+  - question: Can you attribute sales to AI visibility?
+    answer: "Not directly, and not with any tool on the market today. The decisive part of an AI-mediated journey happens inside a chat that emits no click, and a large share of the clicks that do occur arrive without a referrer. Practitioners interviewed by Digiday in August 2026 describe triangulating several proxy signals instead, using statistical models to estimate an effect rather than a platform to report one."
+  - question: Why can't AI visibility tools show revenue?
+    answer: "Because they measure a different event. A visibility platform samples answers and records whether you were named or cited; revenue is recorded in systems that only see a session or an order. Nothing joins the two when the user read the answer and did not click, which is the majority case. As Roast's John Barham put it, \"There is no one tool out there that can paint you a picture of the universe.\""
+  - question: What percentage of marketers can act on their AI visibility data?
+    answer: "41%, in Scrunch and Scribewise's 2026 AI search survey of 602 US marketing and PR professionals. The same survey found 73% had invested in monitoring tools, and that 62% of in-house marketers say leadership still measures their performance using traditional SEO metrics."
+  - question: How do you measure the ROI of AEO?
+    answer: "By chaining three levels rather than looking for one number: leading indicators you control (mention rate, citation rate, share of voice), intermediate outcomes that are cleanly recorded (branded search volume, direct sessions, new-buyer share), and a modelled estimate of the commercial effect from a causal test or a mix model. Each level is weaker evidence than the last and easier to measure than the last."
+  - question: What is triangulation in AI visibility measurement?
+    answer: "Combining several independent partial measurements — prompt-level visibility, analytics, self-reported attribution, and a statistical model — because no single one covers the whole effect. Rippling's head of growth Neel Murthy described the approach plainly: \"All these systems allow us to triangulate value.\""
+  - question: Can you use marketing mix modeling for AI search?
+    answer: "Yes, with a caveat about inputs. Google's Meridian has been open source and available to everyone since 29 January 2025 and measures outcomes including sales, website visits, and conversions across channels. Mix models are built around spend series, and AEO work is mostly labour rather than media, so it has to be encoded as an explicit input before the model can attribute anything to it."
+  - question: Does Google's CausalImpact work for AI search measurement?
+    answer: "It can, within its stated assumptions. The package fits a Bayesian structural time-series model to predict what would have happened without an intervention, following Brodersen et al. in the Annals of Applied Statistics (2015). Its documentation requires control series that the intervention did not affect, which is the hard condition in AI search, since AI answers move organic search too."
+  - question: What should you report to leadership about AI visibility?
+    answer: "Three separated numbers with their evidence quality stated: a visibility metric you measured, an intermediate outcome you observed, and a commercial effect you modelled. Blending them into one \"AI-driven revenue\" figure implies an attribution chain nobody currently has, and it will not survive the first question from finance."
+---
+
+**The tooling question is settled and the value question is not.** Scrunch and Scribewise surveyed 602 US marketing and PR professionals in mid-2026 and found 73% had invested in tools to monitor AI visibility. In the same survey, 41% could turn the data those tools produce into action. Meanwhile boards started asking the obvious follow-up, and as Digiday reported on 13 August, nobody has a clean answer.
+
+**Key takeaways**
+
+- The gap is not between measuring and not measuring. It is between measuring and being able to do anything with the measurement, and it splits the market roughly in half.
+- No platform links AI visibility to revenue, and this is structural rather than a missing feature. The decisive step happens inside a chat that emits nothing.
+- Practitioners have converged on **triangulation**: several partial signals, plus a statistical model, instead of one attributed number.
+- The two named methods in circulation are Google's open-source **CausalImpact** for causal inference and **Meridian** for mix modelling. Both are free, both need conditions AI search makes awkward.
+- Volume growth is real — ChatGPT referrals to B2B sites in Demandbase's platform data rose 303% year over year — and volume is still not attribution.
+- The reportable position: measure the leading indicator, observe the intermediate outcome, model the commercial effect, and label which is which.
+
+## What the survey actually found
+
+Scrunch's [2026 AI search survey](https://scrunch.com/guides/2026-ai-search-survey), run with Scribewise, sampled 602 US marketing and PR professionals between 19 May and 2 June 2026, reporting a ±4% margin of error at 95% confidence. Scrunch sells an AI visibility platform, so read the framing with that in mind — though the findings are considerably less flattering to the category than a vendor study usually is.
+
+| Finding | Share |
+|---|---|
+| Invested in tools to monitor AI visibility | 73% |
+| Can translate the data into action | 41% |
+| Confident they can shape AI answers | 84% |
+| Not sure their current approach is right | 51% |
+| In-house marketers whose leadership measures them on traditional SEO metrics | 62% |
+| Say metric misalignment limits strategy execution | 52% |
+| Not analysing competitive share of voice | 71% |
+| Not monitoring brand sentiment in AI responses | 70% |
+
+The 84% confident against the 51% unsure is the pair everyone quotes, and it is the least interesting one. Confidence surveys measure mood. The pair that describes the actual problem is 73% and 41%: the tools were bought, the dashboards populate, and most of the people looking at them cannot say what to do next — or what the numbers were worth.
+
+The 62% is the mechanism behind that. If leadership grades the work on rankings and sessions, an AI visibility dashboard is a side report by construction, however good it is. That is a measurement-definition problem before it is a tooling problem, and it is the gap [the IAB's guidance](/blog/iab-ai-visibility-metrics) set out to close in August 2026 by giving the category shared metric definitions.
+
+## Why no tool closes it
+
+Digiday's [reporting](https://digiday.com/marketing/cmos-are-struggling-to-link-ai-visibility-with-sales/) puts the pressure in plain terms. John Barham, managing partner at the agency Roast, says every CMO he knows "has been under excruciating pressure over the last 18 months from their boards and C-suites or investors" on this, and that "there is no one tool out there that can paint you a picture of the universe."
+
+It is worth being precise about why, because "the tools aren't there yet" implies a roadmap item.
+
+**The influential event produces no record.** A buyer asks ChatGPT which vendors to consider, reads three paragraphs, and forms a shortlist. Nothing was clicked. No system on either side logs that this happened, and the vendor named in paragraph two has no way to know it was named.
+
+**Being named and being linked come apart.** In the Semrush and Kevin Indig data behind our piece on [ghost citations](/blog/ghost-citations), 25.1% of brand appearances were mentions with no citation at all — visibility that cannot produce a referral by construction — while 61.7% were citations without a mention.
+
+**What clicks do occur are undercounted.** In-app browsers and `noreferrer` links strip the referrer, so [measured AI referral traffic is a floor](/blog/ai-referral-traffic-conversion) rather than a total, by an amount nobody has established.
+
+**The engines are answering more and passing fewer clicks.** [AI Overviews now appear on around 43% of US searches](/blog/ai-overviews-share-of-searches), and answering in place is the product working as designed, not a fixable leak.
+
+Put together: the input is sampled, the middle is invisible, and the output is recorded in a system that never saw the input. The IAB reached the same conclusion from the other direction — its Persuasion metrics are the thinnest section of the guidance, and it defers to a forthcoming attribution framework.
+
+## Volume growth is not attribution
+
+The number doing the most work in AI search conversations right now is a traffic number. Demandbase's platform data, [reported by Demand Gen Report](https://www.demandgenreport.com/industry-news/news-brief/demandbase-chatgpt-referrals-to-b2b-websites-nearly-quadrupled-in-a-year/54113/), shows monthly ChatGPT-referred visits to B2B sites rising from roughly 645,000 in June 2025 to 2.6 million in June 2026 — a 303% increase, with a sharp inflection in May 2026 when volume more than doubled. Referrals from Perplexity declined over the same period; Gemini and Claude were flat.
+
+That is a real and useful measurement of one thing: how often ChatGPT decided to hand over a click. It is not a measurement of how often ChatGPT influenced a purchase, and the two are not proportional — a fact the same reporting concedes, noting that much of the activity happens before a buyer reaches a brand's site at all.
+
+The trap is compounding two uncertain numbers. Take a conversion premium, multiply by projected referral growth, and produce a revenue case. Both inputs are moving for reasons outside your control, and the product of two estimates is not evidence. Demandbase's own CMO, Rachel Truair, frames this as the attribution question that has "plagued" marketers for years, which is the right framing: AI search did not invent the problem, it removed the click that used to paper over it.
+
+## Triangulation is the actual method
+
+Every practitioner Digiday spoke to described the same shape of answer. Alicia Yoon of Peach & Lily talks about triangulating proxy signals to estimate what AI presence is doing to inbound leads, and is blunt about the residual: "So much [conversion data] is not directly captured... There's going to be a gap." Neel Murthy at Rippling, combining visibility tools, conversion data and a bespoke mix model: "All these systems allow us to triangulate value."
+
+Four instruments are in use. None is sufficient; the combination is the method.
+
+| Instrument | What it catches | Where it fails |
+|---|---|---|
+| **Prompt-level visibility** | Whether you were named, cited, and how you were described | Stops at the answer; says nothing about what the reader did |
+| **Self-reported attribution** | Journeys with no technical trace, including read-but-never-clicked | Recall error, low response rates, free-text noise |
+| **Branded demand as intermediate outcome** | A visibility gain arriving as searches and direct sessions | Correlational; moves for many other reasons |
+| **Causal inference / mix modelling** | An effect size with uncertainty attached | Needs clean inputs and assumptions that AI search strains |
+
+The last row is where the named tools sit, and both are worth knowing about because both are free.
+
+[CausalImpact](https://google.github.io/CausalImpact/CausalImpact.html) is Google's R package for estimating the effect of an intervention on a time series, using a Bayesian structural time-series model to predict the counterfactual — what the metric would have done had you not acted — following Brodersen et al. in the *Annals of Applied Statistics* (2015). Roast uses it for exactly this problem. Its documentation states the condition that matters here: valid conclusions require strong assumptions, principally a set of control series that the intervention did not itself affect. In AI search that is the hard part, because the same engines shifting your AI visibility are also shifting the organic and branded series you would reach for as controls.
+
+[Meridian](https://blog.google/products/ads-commerce/meridian-marketing-mix-model-open-to-everyone/) is Google's open-source marketing mix model, available to everyone since 29 January 2025, measuring outcomes including sales, website visits, and conversions while accounting for seasonality, pricing, and economic factors. Rippling runs a bespoke model on it. The structural mismatch is that mix models are organised around spend, and AEO is mostly labour — content, PR, review-profile maintenance, community presence. Unless you encode that effort as an explicit input series, the model has nothing to attribute the outcome to.
+
+Neither of these produces a number you can point at and call AI-driven revenue. They produce an estimate with a confidence interval, which is a different and more defensible object.
+
+## The chain worth reporting
+
+The reason attribution conversations go badly is that they collapse three levels of evidence into one figure. Keep them apart and the reporting becomes straightforward, if less exciting.
+
+1. **Leading indicators — measured.** Mention rate, citation rate, [share of voice](/blog/ai-share-of-voice), sentiment, on a fixed prompt set at a fixed cadence. This is the part you control and the part that moves first. It is also the part that needs enough runs to be stable: our [citation volatility study](/blog/citation-volatility) found the set of cited domains turning over 60–70% day to day, so a single check is not a reading.
+2. **Intermediate outcomes — observed.** Branded search volume, direct sessions, new-buyer share, self-reported attribution mentions of AI tools. Cleanly recorded by systems you already run, and plausibly downstream of the first level.
+3. **Commercial effect — modelled.** A causal test or a mix model output, reported as an estimate with its assumptions stated.
+
+Andrew Wheeler, CEO of Skyword, describes the same escalation from the content side: "Citation alone isn't good enough. You cannot stop there... Are we building content that can earn authority? Is that authority showing up when the citation happens?"
+
+The discipline is in the labelling. A slide that says *measured*, *observed*, *modelled* next to three numbers survives scrutiny from finance. A slide that says "AI-driven revenue: $412,000" does not, and it will not survive the first question about how the figure was derived.
+
+Barham's note on the client-facing side of this is the honest ending: his teams "have had to get more comfortable explaining to clients the value of their work and their media activity when there isn't a CSV they can download from a platform." That is the actual skill the moment demands, and it is a communication skill as much as an analytics one.
+
+## What to do this quarter
+
+1. **Stabilise the leading indicator before chasing revenue.** A causal claim needs a clean series of the input, and most teams do not have one yet — [71% are not tracking competitive share of voice at all](https://scrunch.com/blog/ai-confidence-trap-key-takeaways-from-2026-ai-search-survey).
+2. **Add a self-reported attribution field** to signup or checkout, with free text. It is an afternoon of work and it is the only instrument that sees the clickless path.
+3. **Pick one intermediate outcome and commit to it.** Branded search volume is the usual choice. Chart it against your visibility series and resist reading causation into the overlay.
+4. **Run one causal test properly** rather than five badly. Choose an intervention with a real date, pick control series you can defend, and write the assumptions down before you see the result.
+5. **Renegotiate what leadership grades you on.** If 62% of in-house marketers are still measured on traditional SEO metrics, the reporting mismatch is a bigger constraint than the tooling.
+6. **State evidence quality on every number.** Measured, observed, or modelled. Once, in the report, next to the figure.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces, recording every mention, cited URL, and competitor named alongside you. Because it is self-hosted and the data is yours to query directly, joining a visibility series to your own analytics, CRM, or mix model inputs is a query rather than a vendor integration — which is the precondition for any of the triangulation above.
+
+For the fundamentals, start with [answer engine optimization](/blog/answer-engine-optimization) and [how to track your brand in AI search](/blog/track-brand-ai-search). For the metric definitions leadership is likely to encounter next, see [the IAB's AI visibility metrics](/blog/iab-ai-visibility-metrics); for the observed-data half of the picture, [Microsoft Clarity's AI citation reporting](/blog/microsoft-clarity-ai-citations). For the vocabulary, see the [AI search glossary](/glossary).
