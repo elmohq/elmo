@@ -283,6 +283,9 @@ importers:
       '@sentry/node':
         specifier: ^10.69.0
         version: 10.69.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(supports-color@7.2.0)
+      '@workspace/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@workspace/deployment':
         specifier: workspace:*
         version: link:../../packages/deployment
