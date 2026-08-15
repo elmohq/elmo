@@ -107,7 +107,6 @@ jobs:
             --disallowedTools "Bash,NotebookEdit,Task"
 
       - name: Prepare pull request details
-        id: pr
         run: |
           mkdir -p .agents
           : > .agents/pr-body.md
@@ -124,16 +123,8 @@ jobs:
             if [ "$status" = "??" ]
             then
               frontmatter description > .agents/pr-body.md
-              slug="$(basename "$path" .mdx)"
-              # Domain mirrors SITE_URL in apps/www/src/lib/seo.ts.
-              {
-                echo "is_new=true"
-                echo "path=$path"
-                echo "url=https://www.elmohq.com/blog/$slug"
-              } >> "$GITHUB_OUTPUT"
             else
               printf 'Updated "%s".\n' "$(frontmatter title)" > .agents/pr-body.md
-              echo "is_new=false" >> "$GITHUB_OUTPUT"
             fi
           fi
 
@@ -148,78 +139,6 @@ jobs:
 
       - name: Build marketing site
         run: pnpm --filter @workspace/www build
-
-      - name: Draft social copy for the new post
-        if: steps.pr.outputs.is_new == 'true'
-        continue-on-error: true
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          show_full_output: true
-          display_report: true
-          prompt: |
-            Use /copywriting.
-
-            Read the new blog post at "${{ steps.pr.outputs.path }}". Its public URL is ${{ steps.pr.outputs.url }}.
-
-            Write copy-pastable social posts promoting this article for Elmo's own accounts, and save them to .agents/social.md. Elmo is an AI visibility platform (Answer Engine Optimization) that tracks how AI answer engines like ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention, cite, and describe brands. Lead with the article's insight rather than pitching Elmo; a light brand touch is fine. Use a confident, useful, non-hype B2B voice. No clickbait, no emoji spam, and only claims the post actually supports.
-
-            Produce exactly four pieces:
-            - X/Twitter main tweet: a standalone hook, at most 270 characters, with no link. At most 2 hashtags, and only if they help.
-            - X/Twitter reply: a short follow-up that ends with the URL, at most 270 characters including the URL.
-            - LinkedIn post: roughly 90-150 words over a few short lines — a hook first line, one or two concrete takeaways, and a soft call to action. Do not put the link in the post body. At most 3 hashtags at the end.
-            - LinkedIn reply: one or two lines that point to the full article and end with the URL (to be posted as the first comment).
-
-            Write .agents/social.md with exactly this structure, putting each piece inside its own fenced code block and using no backticks inside the copy itself:
-
-            ## Social copy
-
-            Post each main item first, then add its reply underneath. On LinkedIn, post the reply as the first comment.
-
-            ### X / Twitter
-
-            **Main tweet**
-
-            ```
-            <tweet>
-            ```
-
-            **Reply (with link)**
-
-            ```
-            <reply ending with the URL>
-            ```
-
-            ### LinkedIn
-
-            **Post**
-
-            ```
-            <post>
-            ```
-
-            **Reply (with link)**
-
-            ```
-            <reply ending with the URL>
-            ```
-
-            Do not add any other commentary to the file.
-          claude_args: |
-            --model claude-opus-5
-            --max-budget-usd 1.00
-            --tools "Read,Write,Skill"
-            --allowedTools "Read,Write,Skill"
-            --disallowedTools "Bash,NotebookEdit,Task,WebSearch,WebFetch,Edit,Glob,Grep"
-
-      - name: Add the social copy to the pull request body
-        if: steps.pr.outputs.is_new == 'true'
-        run: |
-          if [ -s .agents/social.md ]
-          then
-            printf '\n---\n\n' >> .agents/pr-body.md
-            cat .agents/social.md >> .agents/pr-body.md
-          fi
 
       - name: Create pull request
         uses: peter-evans/create-pull-request@v8
