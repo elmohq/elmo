@@ -280,6 +280,34 @@ export const competitors: Competitor[] = [
 			"Enterprise: MongoDB, Figma, Zapier, Ramp, US Bank",
 			"Featured in Fortune, WSJ, NYT, TechCrunch",
 		],
+		switching: {
+			reasons: [
+				{
+					headline: "It grew into a suite",
+					detail:
+						"Profound has expanded well past visibility tracking, and people switching to us describe the result as heavy: a lot of surface area to move through to reach the handful of numbers they check each week.",
+					elmo: "Elmo does one job. Visibility, share of voice, citations, query fan-out, and the opportunities that follow from them. There is no content generation, no shopping tracker, and no crawler suite to navigate around.",
+				},
+				{
+					headline: "The day-to-day use gets tiring",
+					detail:
+						"The most common thing we hear is not about a missing feature. It is that the tool stopped being pleasant to open, and checking a weekly number turned into a chore.",
+					elmo: "Elmo is built to answer a question in a few seconds: are we showing up, who is beating us, and what changed. Every view is a direct answer, and the whole thing is fast enough that checking it daily is not a decision.",
+				},
+				{
+					headline: "Enterprise pricing for a weekly number",
+					detail:
+						"Profound sells to enterprises and prices accordingly, with no public entry tier. That is a real mismatch for teams who want to watch a few dozen prompts and are not running a procurement cycle to do it.",
+					elmo: "Self-host Elmo for free with unlimited prompts and pay only for your own infrastructure and model API keys. Managed cloud starts at $29/mo if you would rather not run it. Same data either way.",
+				},
+				{
+					headline: "You cannot check the numbers",
+					detail:
+						"Profound is closed and hosted, so the scoring is a black box. When a visibility number moves, you cannot see what moved it, and when it lands in a board deck, you are vouching for a figure you cannot audit.",
+					elmo: "Every Elmo metric is computed by code you can read, under the MIT license. Your prompts and history stay on your infrastructure, and you can export all of it at any time.",
+				},
+			],
+		},
 	},
 	{
 		slug: "dataforseo",

@@ -73,6 +73,25 @@ function AlternativesPage() {
 					}}
 				/>
 
+				{competitor.switching ? (
+					<DirectorySection title={`Why teams leave ${competitor.name}`}>
+						<p className="mb-8 max-w-3xl leading-relaxed text-zinc-600">
+							What people tell us when they move to Elmo, and what we do differently. {competitor.name} is a capable
+							product with real customers, so take this as the case for a different set of tradeoffs rather than a
+							verdict on the tool.
+						</p>
+						<div className="max-w-3xl space-y-8">
+							{competitor.switching.reasons.map((reason) => (
+								<div key={reason.headline}>
+									<h3 className="font-heading mb-2 text-lg text-zinc-950">{reason.headline}</h3>
+									<p className="leading-relaxed text-zinc-600">{reason.detail}</p>
+									<p className="mt-3 border-l-2 border-zinc-200 pl-4 leading-relaxed text-zinc-700">{reason.elmo}</p>
+								</div>
+							))}
+						</div>
+					</DirectorySection>
+				) : null}
+
 				<DirectorySection title={`Other ${competitor.name} alternatives`}>
 					<ToolGrid competitors={alternatives} />
 				</DirectorySection>
