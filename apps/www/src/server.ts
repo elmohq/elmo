@@ -56,9 +56,7 @@ export default createServerEntry({
 
 		const movedTo = PERMANENT_REDIRECTS[path.replace(/\/+$/, "") || "/"];
 		if (movedTo) {
-			return addSecurityHeaders(
-				new Response(null, { status: 308, headers: { Location: `${movedTo}${url.search}` } }),
-			);
+			return addSecurityHeaders(new Response(null, { status: 308, headers: { Location: `${movedTo}${url.search}` } }));
 		}
 
 		// An explicit .md / .mdx suffix always serves markdown, ignoring Accept.

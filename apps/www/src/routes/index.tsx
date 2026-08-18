@@ -1,16 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Navbar } from "@/components/navbar";
-import { Hero } from "@/components/hero";
-import { SpeakeasyTestimonial, TradeSitesTestimonial } from "@/components/testimonial";
-import { Features } from "@/components/features";
-import { Stats } from "@/components/stats";
 import { Community } from "@/components/community";
-import { Pricing } from "@/components/pricing";
 import { CTA } from "@/components/cta";
-import { Footer } from "@/components/footer";
 import { Faq } from "@/components/faq";
+import { Features } from "@/components/features";
+import { Footer } from "@/components/footer";
+import { Hero } from "@/components/hero";
+import { Navbar } from "@/components/navbar";
+import { Pricing } from "@/components/pricing";
+import { Stats } from "@/components/stats";
+import { SpeakeasyTestimonial, TradeSitesTestimonial } from "@/components/testimonial";
 import { HOME_FAQS } from "@/lib/faqs";
-import { SITE_NAME, ogMeta, softwareApplicationJsonLd, faqJsonLd, canonicalUrl } from "@/lib/seo";
+import { canonicalUrl, faqJsonLd, ogMeta, SITE_NAME, softwareApplicationJsonLd } from "@/lib/seo";
 
 const title = `${SITE_NAME} · Open Source AEO & AI Visibility Tracker`;
 // The shared SITE_DESCRIPTION is a terse fallback for pages without their own

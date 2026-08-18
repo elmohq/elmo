@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
-import { Faq } from "@/components/faq";
-import { ToolGrid } from "@/components/tool-list";
 import { DirectoryBackLink, DirectoryHero, DirectorySection, ElmoCta } from "@/components/directory-shell";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd, itemListJsonLd } from "@/lib/seo";
-import type { FaqItem } from "@/lib/faqs";
+import { Faq } from "@/components/faq";
+import { Footer } from "@/components/footer";
+import { Navbar } from "@/components/navbar";
+import { ToolGrid } from "@/components/tool-list";
 import { openSourceTools } from "@/lib/competitors";
+import type { FaqItem } from "@/lib/faqs";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, itemListJsonLd, ogMeta } from "@/lib/seo";
 
 const title = "Best Open-Source AEO Tools (2026) · Elmo";
 const description =
@@ -282,17 +282,13 @@ function OpenSourcePage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero
-					eyebrow="Open source"
-					title="Best open-source AEO tools (2026)"
-					lead={lead}
-				/>
+				<DirectoryHero eyebrow="Open source" title="Best open-source AEO tools (2026)" lead={lead} />
 
 				<DirectorySection title="Key takeaways">
 					<ul className="max-w-3xl list-disc space-y-3 pl-5 leading-relaxed text-zinc-600">
 						<li>
-							Elmo is the most complete open-source answer engine optimization tool, MIT-licensed and free to
-							self-host across ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews.
+							Elmo is the most complete open-source answer engine optimization tool, MIT-licensed and free to self-host
+							across ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews.
 						</li>
 						<li>
 							That is not just our claim. On public GitHub data as of {STATS_AS_OF}, Elmo leads this field on stars,
@@ -397,9 +393,9 @@ function OpenSourcePage() {
 						</p>
 						<p>
 							Then there is GetCito, where the numbers tell the story better than any argument. Its repository contains
-							35 commits, 27 of them from humans, across its entire lifetime, for a codebase of well over 100,000
-							lines. That is because 131,716 of those lines arrived in a single import of Elmo's code in July 2026.
-							Stars measure attention, not work.
+							35 commits, 27 of them from humans, across its entire lifetime, for a codebase of well over 100,000 lines.
+							That is because 131,716 of those lines arrived in a single import of Elmo's code in July 2026. Stars
+							measure attention, not work.
 						</p>
 					</div>
 				</DirectorySection>
