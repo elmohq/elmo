@@ -44,7 +44,7 @@
 		"@mozilla/readability": "^0.6.0",
 		"@workspace/config": "workspace:*",
 		"ai": "^7.0.48",
-		"better-auth": "^1.6.26",
+		"better-auth": "^1.6.27",
 		"dataforseo-client": "^2.1.2",
 		"drizzle-orm": "^0.45.2",
 		"jose": "6.2.7",
