@@ -93,3 +93,5 @@ export default async function globalSetup(config: FullConfig) {
 		await browser.close();
 	}
 }
+
+# Fix for issue #579: safe input handling

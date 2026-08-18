@@ -3,6 +3,33 @@ import type { Competitor } from "./types";
 // Raw list — use sortedCompetitors for display order
 export const competitors: Competitor[] = [
 	{
+		slug: "corank",
+		name: "Corank",
+		domain: "corank.ai",
+		url: "https://corank.ai/",
+		tagline: "AI search optimization and brand visibility monitoring platform",
+		description:
+			"Corank specializes in AI search optimization (AEO, GEO, and AI SEO), offering brand visibility auditing, strategy implementation, and ongoing tracking across major AI search engines.",
+		category: "tracking",
+		ahrefsDR: 15,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			actionRecommendations: true,
+			siteAudits: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Specialized AEO, GEO, and AI SEO optimization",
+			"Brand visibility auditing and strategy",
+			"Ongoing monitoring across major AI search engines",
+		],
+	},
+	{
 		slug: "hubspot-aeo-grader",
 		name: "HubSpot AEO Grader",
 		domain: "hubspot.com",
