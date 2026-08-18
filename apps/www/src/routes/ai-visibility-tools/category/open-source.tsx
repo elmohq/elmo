@@ -488,16 +488,28 @@ function OpenSourcePage() {
 							<h3 className="font-heading mb-3 text-lg text-zinc-950">GetCito</h3>
 							<p>
 								<strong className="font-medium text-zinc-900">If you are considering GetCito, use Elmo instead.</strong>{" "}
-								It is not its own project. On 10 July 2026, GetCito replaced its codebase with Elmo's in one pull
-								request that changed 847 files and was self-merged 62 seconds after opening. Its LICENSE.md is Elmo's,
-								with "Copyright (c) 2026 Blue Whale Software, LLC" changed to "Copyright (c) 2026 GetCito" — retaining
-								that notice is the one condition MIT attaches to a fork.
+								It is not its own project. On 10 July 2026, GetCito replaced its codebase with Elmo's in{" "}
+								<a
+									href="https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/19"
+									target="_blank"
+									rel="noopener noreferrer nofollow"
+									className="underline underline-offset-2 hover:text-zinc-950"
+								>
+									one pull request
+								</a>{" "}
+								that changed 847 files and was self-merged 62 seconds after opening. Its LICENSE.md is Elmo's, with
+								"Copyright (c) 2026 Blue Whale Software, LLC" changed to "Copyright (c) 2026 GetCito" — retaining that
+								notice is the one condition MIT attaches to a fork.
 							</p>
 							<p className="mt-4">
 								The copy is still legible in the repo. GetCito's AGENTS.md opens "Elmo is an open-source AI visibility
 								tracking platform," its CLA names Elmo's parent company, and its CODEOWNERS assigns every path to Elmo's
 								founder. There is no reason to run a rebranded fork of a project you can run directly, especially one
-								that is falling behind it: 17 commits to Elmo's 98 in the month after the copy.
+								that is falling behind it: 17 commits to Elmo's 98 in the month after the copy. Full evidence in{" "}
+								<a className="underline underline-offset-2 hover:text-zinc-950" href="/blog/getcito-vs-elmo">
+									GetCito vs Elmo
+								</a>
+								.
 							</p>
 						</div>
 
@@ -573,8 +585,17 @@ function OpenSourcePage() {
 						<p>
 							Then weigh coverage, maintenance, and your own capacity to run infrastructure against what a managed
 							subscription would cost. If the honest answer is that you have no time to self-host, that is useful to
-							know early. Whatever you pick, the job is the same: get a reliable, repeatable read on whether AI answers
-							cite you, from a tool you trust because you can see how it works.
+							know early: see the{" "}
+							<a className="underline underline-offset-2 hover:text-zinc-950" href="/blog/best-aeo-tools">
+								best AEO tools
+							</a>{" "}
+							for hosted options, or the{" "}
+							<a className="underline underline-offset-2 hover:text-zinc-950" href="/blog/free-ai-visibility-tools">
+								free AI visibility tools
+							</a>{" "}
+							guide for what a zero-budget setup can and cannot do. Whatever you pick, the job is the same: get a
+							reliable, repeatable read on whether AI answers cite you, from a tool you trust because you can see how it
+							works.
 						</p>
 					</div>
 				</DirectorySection>
