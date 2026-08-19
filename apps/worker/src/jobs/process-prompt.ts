@@ -13,6 +13,7 @@ import {
 	usageEvents,
 } from "@workspace/lib/db/schema";
 import { type Entitlements, getOrgEntitlements } from "@workspace/lib/entitlements";
+import { PROMPT_QUEUE, promptJobSendOptions } from "@workspace/lib/prompt-jobs";
 import { getProvider, type ModelConfig, type Provider, parseScrapeTargets } from "@workspace/lib/providers";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
@@ -79,12 +80,10 @@ async function scheduleNextRun(promptId: string, cadenceHours: number, consecuti
 
 	try {
 		await boss.send(
-			"process-prompt",
+			PROMPT_QUEUE,
 			{ promptId, consecutiveFailures },
 			{
-				singletonKey: `prompt-${promptId}`,
-				singletonSeconds: startAfterSeconds, // Prevent duplicates until the next attempt is due
-				startAfter: startAfterSeconds,
+				...promptJobSendOptions(promptId, startAfterSeconds),
 				...PROMPT_JOB_OPTIONS,
 			},
 		);

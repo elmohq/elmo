@@ -261,8 +261,26 @@ jobs:
           npx tsx e2e/scheduling/verify-scheduling.ts cloud
           kill "$(cat /tmp/worker.pid)" || true
 
+      - name: "Cloud mode: queue addressing + expedite on config change"
+        env:
+          DEPLOYMENT_MODE: cloud
+          SCRAPE_TARGETS: chatgpt:stub,perplexity:stub,gemini:stub,copilot:stub,claude:stub,claude:stub:online
+          STRIPE_SECRET_KEY: sk_test_ci
+          STRIPE_WEBHOOK_SECRET: whsec_ci
+          RESEND_API_KEY: re_ci
+          RESEND_FROM_EMAIL: Elmo <ci@example.com>
+          GOOGLE_CLIENT_ID: ci
+          GOOGLE_CLIENT_SECRET: ci
+        run: |
+          nohup pnpm -C apps/worker exec tsx src/index.ts > /tmp/worker-expedite.log 2>&1 &
+          echo $! > /tmp/worker.pid
+          sleep 15
+          npx tsx e2e/scheduling/verify-scheduling.ts expedite
+          kill "$(cat /tmp/worker.pid)" || true
+
       - name: Dump worker logs
         if: failure()
         run: |
           echo "=== local worker ==="; cat /tmp/worker-local.log 2>/dev/null || true
           echo "=== cloud worker ==="; cat /tmp/worker-cloud.log 2>/dev/null || true
+          echo "=== expedite worker ==="; cat /tmp/worker-expedite.log 2>/dev/null || true

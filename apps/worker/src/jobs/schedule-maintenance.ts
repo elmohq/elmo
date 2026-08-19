@@ -4,6 +4,7 @@ import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { getOrgEntitlementsMap } from "@workspace/lib/entitlements";
+import { PROMPT_QUEUE, promptJobSendOptions } from "@workspace/lib/prompt-jobs";
 import { parseScrapeTargets } from "@workspace/lib/providers";
 import {
 	computeMaintenanceDecisions,
@@ -216,15 +217,7 @@ async function runMaintenanceCheck(): Promise<void> {
 			const batch = decisions.toSchedule.slice(i, i + BATCH_SIZE);
 			const results = await Promise.allSettled(
 				batch.map(({ promptId }) =>
-					boss.send(
-						"process-prompt",
-						{ promptId },
-						{
-							singletonKey: `prompt-${promptId}`,
-							singletonSeconds: 60 * 60, // 1 hour - prevent duplicates
-							...PROMPT_JOB_OPTIONS,
-						},
-					),
+					boss.send(PROMPT_QUEUE, { promptId }, { ...promptJobSendOptions(promptId), ...PROMPT_JOB_OPTIONS }),
 				),
 			);
 

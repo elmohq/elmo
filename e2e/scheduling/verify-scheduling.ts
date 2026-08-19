@@ -17,13 +17,25 @@
  *     - canceling the subscription stops due targets from running
  *     - resubscribing revives tracking via schedule-maintenance
  *
- * Scenario is argv[2]: local | cloud. DATABASE_URL env overrides the default
- * local connection string. The worker must already be running in the matching
- * mode — see the workflow for the exact env.
+ *   expedite scenario (DEPLOYMENT_MODE=cloud, same targets as cloud):
+ *     - a finished job does not block the next send for the same prompt
+ *     - adding a premium model to a prompt runs that model now, and re-runs
+ *       nothing that is still fresh
+ *
+ * Scenario is argv[2]: local | cloud | expedite. DATABASE_URL env overrides the
+ * default local connection string. The worker must already be running in the
+ * matching mode — see the workflow for the exact env.
  */
+import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { PgBoss } from "pg-boss";
 import { getRunsPerPrompt } from "@workspace/lib/constants";
+import {
+  expeditePromptRuns,
+  IMMEDIATE_SINGLETON_SECONDS,
+  PROMPT_QUEUE,
+  promptJobSendOptions,
+} from "@workspace/lib/prompt-jobs";
 
 const RUNS_PER_PROMPT = getRunsPerPrompt();
 import { DATABASE_URL as FIXTURES_DATABASE_URL } from "../fixtures.js";
@@ -37,8 +49,52 @@ const boss = new PgBoss(DATABASE_URL);
 boss.on("error", () => {});
 await boss.start();
 
+/**
+ * Fire a prompt's cycle directly, bypassing queue dedup. The local and cloud
+ * scenarios use this to assert what the run policy does once a job reaches the
+ * worker, which is independent of how the job got queued.
+ */
 async function sendJob(promptId: string) {
-  await boss.send("process-prompt", { promptId }, { retryLimit: 0, expireInSeconds: 900 });
+  await boss.send(PROMPT_QUEUE, { promptId }, { retryLimit: 0, expireInSeconds: 900 });
+}
+
+/**
+ * Queue a prompt the way production does. The addressing matters as much as the
+ * payload: a send that collides with an existing job is dropped rather than
+ * rejected, so a caller that invents its own options can never observe that.
+ */
+async function sendPromptJob(promptId: string): Promise<string | null> {
+  return boss.send(PROMPT_QUEUE, { promptId }, { ...promptJobSendOptions(promptId), retryLimit: 0 });
+}
+
+/**
+ * Sends are deduplicated per fixed-width time slot, so a pair of sends only
+ * proves anything about each other when they share one. Step over a boundary
+ * rather than race it. The headroom covers the slowest gap either pair below
+ * can open: one worker cycle plus its polling latency.
+ */
+async function awaitSlotHeadroom(): Promise<void> {
+  const slotMs = IMMEDIATE_SINGLETON_SECONDS * 1000;
+  const remaining = slotMs - (Date.now() % slotMs);
+  if (remaining < 180_000) await new Promise((r) => setTimeout(r, remaining + 1000));
+}
+
+async function jobCount(promptId: string, state: string): Promise<number> {
+  const { rows } = await client.query(
+    "SELECT COUNT(*)::int AS n FROM pgboss.job WHERE name = $1 AND state = $2 AND data->>'promptId' = $3",
+    [PROMPT_QUEUE, state, promptId],
+  );
+  return rows[0].n;
+}
+
+async function runShape(promptId: string): Promise<string> {
+  const { rows } = await client.query(
+    "SELECT model, web_search_enabled, COUNT(*)::int AS n FROM prompt_runs WHERE prompt_id = $1 GROUP BY 1,2 ORDER BY 1,2",
+    [promptId],
+  );
+  return rows
+    .map((r: { model: string; web_search_enabled: boolean; n: number }) => `${r.model}:${r.web_search_enabled ? "web" : "base"}=${r.n}`)
+    .join(",");
 }
 
 async function runCount(promptId: string): Promise<number> {
@@ -116,10 +172,7 @@ if (scenario === "local") {
   await sendJob(prompt.id);
   await waitFor(async () => (await runCount(prompt.id)) > 0, 120000, "cloud runs");
   await new Promise((r) => setTimeout(r, 5000));
-  const { rows: runs } = await client.query(
-    "SELECT model, web_search_enabled, COUNT(*)::int AS n FROM prompt_runs WHERE prompt_id = $1 GROUP BY 1,2 ORDER BY 1,2",
-    [prompt.id]);
-  const shape = runs.map((r: { model: string; web_search_enabled: boolean; n: number }) => `${r.model}:${r.web_search_enabled ? "web" : "base"}=${r.n}`).join(",");
+  const shape = await runShape(prompt.id);
   assert(
     shape === "chatgpt:base=1,claude:web=1,perplexity:base=1",
     `cloud volume: picked platforms + one premium slot, replication 1 (got ${shape})`,
@@ -147,8 +200,76 @@ if (scenario === "local") {
   await waitFor(async () => (await runCount(prompt.id)) > 3, 120000, "revival runs");
   const revived = await runCount(prompt.id);
   assert(revived === 6, `resubscribe: maintenance revives the chain and due targets run (got ${revived})`);
+} else if (scenario === "expedite") {
+  // --- A finished job must not block the next send for the same prompt ------
+  //
+  // No prompt row behind this id, so the worker completes the job as a no-op.
+  // That is all this needs: a finished job sitting on the queue.
+  await awaitSlotHeadroom();
+  const ghostId = randomUUID();
+  const firstSend = await sendPromptJob(ghostId);
+  assert(firstSend !== null, "queue accepts a send for a prompt with nothing queued");
+  await waitFor(async () => (await jobCount(ghostId, "completed")) === 1, 60000, "the first job to finish");
+
+  const secondSend = await sendPromptJob(ghostId);
+  assert(secondSend !== null, "a finished job does not block the next send for the same prompt");
+  await client.query("DELETE FROM pgboss.job WHERE name = $1 AND data->>'promptId' = $2", [PROMPT_QUEUE, ghostId]);
+
+  // --- Adding a premium model runs that model, and only that model ----------
+  await client.query("DELETE FROM usage_events WHERE brand_id = 'expeditebrand-1'");
+  await client.query("DELETE FROM prompt_runs WHERE brand_id = 'expeditebrand-1'");
+  await client.query("DELETE FROM prompts WHERE brand_id = 'expeditebrand-1'");
+  await client.query("DELETE FROM brands WHERE id = 'expeditebrand-1'");
+  await client.query("DELETE FROM subscription WHERE reference_id = 'expediteorg-1'");
+  await client.query("DELETE FROM organization_settings WHERE organization_id = 'expediteorg-1'");
+  await client.query("DELETE FROM organization WHERE id = 'expediteorg-1'");
+
+  await client.query(
+    "INSERT INTO organization (id, name, slug, created_at) VALUES ('expediteorg-1', 'Expedite Verify', 'expedite-verify', NOW())");
+  // Starts canceled so the first cycle is a deliberate no-op — see below.
+  await client.query(
+    `INSERT INTO subscription (id, plan, reference_id, status, period_start, period_end)
+     VALUES ('sub-expedite-1', 'pro', 'expediteorg-1', 'canceled', NOW() - interval '1 day', NOW() + interval '29 days')`);
+  await client.query(
+    `INSERT INTO brands (id, organization_id, name, website, enabled, onboarded, enabled_models, created_at, updated_at)
+     VALUES ('expeditebrand-1', 'expediteorg-1', 'Expedite Verify Brand', 'https://expedite.example', true, true, '{chatgpt}', NOW(), NOW())`);
+  const { rows: [prompt] } = await client.query(
+    "INSERT INTO prompts (brand_id, value, enabled, premium_models) VALUES ('expeditebrand-1', 'scheduling e2e — expedite', true, '{}') RETURNING id");
+
+  // A cycle for an unentitled org queues nothing on its way out, which is how
+  // this reaches the state a configuration change has to recover from: a
+  // finished job on the queue and no chain behind it.
+  await awaitSlotHeadroom();
+  await sendPromptJob(prompt.id);
+  await waitFor(async () => (await jobCount(prompt.id, "completed")) === 1, 60000, "the parked cycle to finish");
+  assert(
+    (await jobCount(prompt.id, "created")) === 0 && (await runCount(prompt.id)) === 0,
+    "an unentitled cycle records no runs and leaves no queued job",
+  );
+
+  // Give the standard target fresh history so only the premium target can come
+  // due — this is what makes "only the new model runs" observable.
+  await client.query(
+    `INSERT INTO prompt_runs
+       (prompt_id, brand_id, model, provider, version, web_search_enabled, raw_output, web_queries, brand_mentioned, competitors_mentioned)
+     VALUES ($1, 'expeditebrand-1', 'chatgpt', 'stub', 'stub', false, '{}', '{}', false, '{}')`,
+    [prompt.id],
+  );
+
+  await client.query("UPDATE subscription SET status = 'active' WHERE id = 'sub-expedite-1'");
+  await client.query("UPDATE prompts SET premium_models = '{claude}' WHERE id = $1", [prompt.id]);
+
+  await expeditePromptRuns(boss, [prompt.id]);
+  await waitFor(async () => (await runCount(prompt.id)) > 1, 120000, "the expedited premium run");
+  await new Promise((r) => setTimeout(r, 5000));
+
+  const shape = await runShape(prompt.id);
+  assert(
+    shape === "chatgpt:base=1,claude:web=1",
+    `adding a premium model runs it now, and re-runs nothing else (got ${shape})`,
+  );
 } else {
-  console.error("scenario must be local or cloud");
+  console.error("scenario must be local, cloud, or expedite");
   process.exit(2);
 }
 
