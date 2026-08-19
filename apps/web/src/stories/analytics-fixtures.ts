@@ -38,6 +38,14 @@ export const mockDashboardSummary = {
 	brandedVisibility: 92,
 	lastUpdatedAt: "2026-06-04T09:12:00.000Z",
 	visibilityTimeSeries,
+	// Best-first, spanning the three colour bands, with one tracked platform that
+	// has not reported yet.
+	visibilityByTarget: [
+		{ target: "chatgpt::premium", current: 84, average: 79, runs: 260 },
+		{ target: "chatgpt", current: 71, average: 68, runs: 1240 },
+		{ target: "google-ai-overview", current: 52, average: 49, runs: 980 },
+		{ target: "perplexity", current: 28, average: 31, runs: 640 },
+	],
 	citationTimeSeries: [],
 };
 

@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
 	citationDateWindow,
+	mergeTargetVisibility,
+	summarizeVisibilityByTarget,
 	applyPerPromptKeyedLVCF,
 	getDaysFromLookback,
 	getDefaultLookbackPeriod,
@@ -127,5 +129,83 @@ describe("applyPerPromptKeyedLVCF", () => {
 		const daily = applyPerPromptKeyedLVCF(rows, range, 24, keys);
 		expect(toRoundedPercentages(daily.get("2026-06-01")!)).toEqual({ brand: 33, editorial: 67, other: 0 });
 		expect(toRoundedPercentages(daily.get("2026-06-02")!)).toEqual({ brand: 33, editorial: 67, other: 0 });
+	});
+});
+
+describe("mergeTargetVisibility", () => {
+	it("sums a prompt-day's targets back into one observation", () => {
+		expect(
+			mergeTargetVisibility([
+				{ prompt_id: "p1", date: "2026-06-01", target: "chatgpt", total_runs: 4, brand_mentioned_count: 3 },
+				{ prompt_id: "p1", date: "2026-06-01", target: "perplexity", total_runs: 2, brand_mentioned_count: 0 },
+				{ prompt_id: "p2", date: "2026-06-01", target: "chatgpt", total_runs: 1, brand_mentioned_count: 1 },
+			]),
+		).toEqual([
+			{ prompt_id: "p1", date: "2026-06-01", total_runs: 6, brand_mentioned_count: 3 },
+			{ prompt_id: "p2", date: "2026-06-01", total_runs: 1, brand_mentioned_count: 1 },
+		]);
+	});
+});
+
+describe("summarizeVisibilityByTarget", () => {
+	const range = ["2026-06-01", "2026-06-02", "2026-06-03"];
+
+	it("scores each target on its own runs, ranked best-first", () => {
+		const summaries = summarizeVisibilityByTarget(
+			[
+				{ prompt_id: "p1", date: "2026-06-03", target: "chatgpt", total_runs: 4, brand_mentioned_count: 3 },
+				{ prompt_id: "p1", date: "2026-06-03", target: "perplexity", total_runs: 4, brand_mentioned_count: 1 },
+			],
+			range,
+			[],
+		);
+		expect(summaries).toEqual([
+			{ target: "chatgpt", current: 75, average: 75, runs: 4 },
+			{ target: "perplexity", current: 25, average: 25, runs: 4 },
+		]);
+	});
+
+	it("carries a target's last run forward so a rarely sampled platform still has a current score", () => {
+		// perplexity only ran on the first day; without smoothing it would have no
+		// value on the last day of the window and drop off the breakdown.
+		const [chatgpt, perplexity] = summarizeVisibilityByTarget(
+			[
+				{ prompt_id: "p1", date: "2026-06-01", target: "perplexity", total_runs: 2, brand_mentioned_count: 1 },
+				{ prompt_id: "p1", date: "2026-06-03", target: "chatgpt", total_runs: 2, brand_mentioned_count: 2 },
+			],
+			range,
+			[],
+		);
+		expect(chatgpt).toEqual({ target: "chatgpt", current: 100, average: 100, runs: 2 });
+		expect(perplexity).toEqual({ target: "perplexity", current: 50, average: 50, runs: 2 });
+	});
+
+	it("keeps the same model's scraped and grounded targets apart", () => {
+		expect(
+			summarizeVisibilityByTarget(
+				[
+					{ prompt_id: "p1", date: "2026-06-01", target: "chatgpt", total_runs: 2, brand_mentioned_count: 0 },
+					{ prompt_id: "p1", date: "2026-06-01", target: "chatgpt::premium", total_runs: 2, brand_mentioned_count: 2 },
+				],
+				range,
+				[],
+			).map((s) => [s.target, s.current]),
+		).toEqual([
+			["chatgpt::premium", 100],
+			["chatgpt", 0],
+		]);
+	});
+
+	it("averages over actual runs while the current score reflects the latest day", () => {
+		const [summary] = summarizeVisibilityByTarget(
+			[
+				{ prompt_id: "p1", date: "2026-06-01", target: "chatgpt", total_runs: 10, brand_mentioned_count: 0 },
+				{ prompt_id: "p1", date: "2026-06-03", target: "chatgpt", total_runs: 2, brand_mentioned_count: 2 },
+			],
+			range,
+			[],
+		);
+		// Carried-forward days inflate neither total: 2 of 12 actual runs mentioned nothing extra.
+		expect(summary).toEqual({ target: "chatgpt", current: 100, average: 17, runs: 12 });
 	});
 });

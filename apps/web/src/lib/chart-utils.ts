@@ -186,6 +186,103 @@ export function applyPerPromptLVCF(
 	return { dailyVisibilityMap, totalBrandedRuns, totalBrandedMentioned, totalNonBrandedRuns, totalNonBrandedMentioned };
 }
 
+/** A prompt-day's runs on one of the brand's tracked targets. */
+export interface TargetVisibilityPoint extends PerPromptVisibilityPoint {
+	/** Matches `TrackedTarget.value` — the model id, or `<model>::premium`. */
+	target: string;
+}
+
+export interface TargetVisibility {
+	target: string;
+	/** Latest LVCF day, the same measure as the headline visibility score. */
+	current: number | null;
+	/** Share of the window's actual runs that mentioned the brand. */
+	average: number | null;
+	/** Actual (non-carried-forward) runs in the window. */
+	runs: number;
+}
+
+/** Sum the targets back together so a prompt-day is one observation again. */
+export function mergeTargetVisibility(rows: TargetVisibilityPoint[]): PerPromptVisibilityPoint[] {
+	const merged = new Map<string, PerPromptVisibilityPoint>();
+	for (const row of rows) {
+		const date = String(row.date);
+		const key = `${row.prompt_id}|${date}`;
+		const existing = merged.get(key);
+		if (existing) {
+			existing.total_runs += Number(row.total_runs);
+			existing.brand_mentioned_count += Number(row.brand_mentioned_count);
+			continue;
+		}
+		merged.set(key, {
+			prompt_id: row.prompt_id,
+			date,
+			total_runs: Number(row.total_runs),
+			brand_mentioned_count: Number(row.brand_mentioned_count),
+		});
+	}
+	return [...merged.values()];
+}
+
+/**
+ * Visibility per target, each one smoothed on its own so a platform sampled
+ * weekly is read the same way as one sampled hourly — otherwise the rare
+ * platform's number would only describe the handful of days it happened to run.
+ *
+ * Ranked best-first, like the share-of-voice leaderboard. A target with no runs
+ * in the window sorts last rather than as a zero.
+ */
+export function summarizeVisibilityByTarget(
+	rows: TargetVisibilityPoint[],
+	dateRange: string[],
+	brandedPromptIds: string[],
+): TargetVisibility[] {
+	const byTarget = new Map<string, TargetVisibilityPoint[]>();
+	for (const row of rows) {
+		const bucket = byTarget.get(row.target);
+		if (bucket) bucket.push(row);
+		else byTarget.set(row.target, [row]);
+	}
+
+	const summaries: TargetVisibility[] = [];
+	// One row per prompt-day within a target, so these go straight to the same
+	// smoothing the headline number uses.
+	for (const [target, targetRows] of byTarget) {
+		const {
+			dailyVisibilityMap,
+			totalBrandedRuns,
+			totalBrandedMentioned,
+			totalNonBrandedRuns,
+			totalNonBrandedMentioned,
+		} = applyPerPromptLVCF(targetRows, dateRange, brandedPromptIds);
+
+		let current: number | null = null;
+		for (let i = dateRange.length - 1; i >= 0 && current === null; i--) {
+			const day = dailyVisibilityMap.get(dateRange[i]);
+			if (!day) continue;
+			const total = day.branded.total + day.nonBranded.total;
+			if (total === 0) continue;
+			current = Math.round(((day.branded.mentioned + day.nonBranded.mentioned) / total) * 100);
+		}
+
+		const runs = totalBrandedRuns + totalNonBrandedRuns;
+		summaries.push({
+			target,
+			current,
+			average: runs > 0 ? Math.round(((totalBrandedMentioned + totalNonBrandedMentioned) / runs) * 100) : null,
+			runs,
+		});
+	}
+
+	return summaries.sort((a, b) => {
+		if (a.current === null || b.current === null) {
+			if (a.current === b.current) return a.target.localeCompare(b.target);
+			return a.current === null ? 1 : -1;
+		}
+		return b.current - a.current || a.target.localeCompare(b.target);
+	});
+}
+
 export type CitationCategories = Record<CitationCategory, number>;
 
 /**
@@ -273,6 +370,33 @@ export function getBadgeClassName(value: number): string {
 	if (value > 75) return "bg-emerald-600 hover:bg-emerald-600 text-white";
 	if (value > 45) return "bg-amber-500 hover:bg-amber-500 text-white";
 	return "bg-rose-500 hover:bg-rose-500 text-white";
+}
+
+// One set of thresholds for a visibility score wherever it is shown, so the
+// headline card and a bar for one model can't disagree about what counts as good.
+
+export function getVisibilityBgColor(value: number): string {
+	if (value > 75) return "bg-emerald-50 dark:bg-emerald-950/30";
+	if (value > 45) return "bg-amber-50 dark:bg-amber-950/30";
+	return "bg-rose-50 dark:bg-rose-950/30";
+}
+
+export function getVisibilityTextColor(value: number): string {
+	if (value > 75) return "text-emerald-700 dark:text-emerald-400";
+	if (value > 45) return "text-amber-700 dark:text-amber-400";
+	return "text-rose-700 dark:text-rose-400";
+}
+
+export function getVisibilityBorderColor(value: number): string {
+	if (value > 75) return "border-emerald-200 dark:border-emerald-800";
+	if (value > 45) return "border-amber-200 dark:border-amber-800";
+	return "border-rose-200 dark:border-rose-800";
+}
+
+export function getVisibilityBarColor(value: number): string {
+	if (value > 75) return "bg-emerald-500";
+	if (value > 45) return "bg-amber-500";
+	return "bg-rose-500";
 }
 
 export interface ChartDataPoint {
