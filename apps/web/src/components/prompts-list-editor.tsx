@@ -11,6 +11,7 @@
 
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
+import { newEntryKey } from "@/lib/entry-key";
 import { getModelMeta } from "@workspace/config/models";
 import {
 	PREMIUM_MODELS,
@@ -63,7 +64,7 @@ export interface PremiumAllowance {
 
 export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePrompt {
 	return {
-		_key: crypto.randomUUID(),
+		_key: newEntryKey(),
 		value: partial?.value ?? "",
 		enabled: partial?.enabled ?? true,
 		tags: partial?.tags ?? [],

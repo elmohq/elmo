@@ -16,6 +16,7 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { newEntryKey } from "@/lib/entry-key";
 
 export interface CompetitorEntry {
 	_key: string;
@@ -33,7 +34,7 @@ interface CompetitorsEditorProps {
 
 export function newCompetitorEntry(partial?: Partial<CompetitorEntry>): CompetitorEntry {
 	return {
-		_key: crypto.randomUUID(),
+		_key: newEntryKey(),
 		name: partial?.name ?? "",
 		domains: partial?.domains ?? [],
 		aliases: partial?.aliases ?? [],

@@ -15,6 +15,7 @@ import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
 import { CompetitorsEditor, type CompetitorEntry } from "@/components/competitors-editor";
+import { newEntryKey } from "@/lib/entry-key";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/competitors")({
 	head: ({ matches, match }) => {
@@ -43,7 +44,7 @@ function CompetitorsSettingsPage() {
 		if (existingCompetitors.length > 0) {
 			setCompetitors(
 				existingCompetitors.map((c) => ({
-					_key: crypto.randomUUID(),
+					_key: newEntryKey(),
 					name: c.name,
 					domains: c.domains ?? [],
 					aliases: c.aliases || [],
