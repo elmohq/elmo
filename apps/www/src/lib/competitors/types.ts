@@ -60,6 +60,15 @@ export interface Competitor {
 	};
 	highlights?: string[];
 	notes?: string;
+	/**
+	 * Why people tell us they leave this tool, and what Elmo does about it.
+	 * Hand-written and set only for the handful of tools with real "alternatives"
+	 * search demand — everything else falls back to the generated copy. Frame
+	 * `reasons` as reported user sentiment, not as claims of fact about a rival.
+	 */
+	switching?: {
+		reasons: { headline: string; detail: string; elmo: string }[];
+	};
 }
 
 export const FEATURE_CATEGORIES: Record<string, FeatureCategory> = {

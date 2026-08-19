@@ -270,7 +270,7 @@ export function getAlternativesFaqs(c: Competitor, alts: Competitor[]): FaqItem[
 		},
 		{
 			question: `Why switch from ${c.name} to Elmo?`,
-			answer: `The main reasons are ownership and transparency. With Elmo you keep your prompts and visibility history in-house, avoid vendor lock-in, and can see exactly how scores are computed. The self-hosted core is free, with a managed cloud option on the way.`,
+			answer: `The main reasons are ownership and transparency. With Elmo you keep your prompts and visibility history in-house, avoid vendor lock-in, and can see exactly how scores are computed. The self-hosted core is free and managed cloud hosting starts at $29 a month.`,
 		},
 	];
 }
