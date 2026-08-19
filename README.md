@@ -100,6 +100,9 @@ Elmo also maintains a directory of 100+ Answer Engine Optimization and Generativ
 
 ## Quick Start
 
+> [!TIP]
+> **Would rather not self-host?** Elmo Cloud runs the same open-source platform for you, with managed hosting and automatic updates, from $29/mo. [Start with Cloud →](https://www.elmohq.com/pricing)
+
 For local deployments, use Docker Compose as configured with the `@elmohq/cli` package:
 
 ```bash
