@@ -3,20 +3,16 @@
 /**
  * Build the Discord webhook payload announcing a release.
  *
- * Renders the generated release notes into the message body, with the release
- * and compare links as a footer. Discord's markdown covers most of what the
- * notes carry, so the message reads close to the GitHub release; the two
- * differences it has to paper over are the 2000-character `content` limit and
- * bare URLs, which GitHub shortens and Discord does not.
+ * Discord's markdown covers most of what the release notes carry, so the
+ * message reads close to the GitHub release. The two differences it has to
+ * paper over are the 2000-character `content` limit and bare URLs, which
+ * GitHub shortens and Discord does not.
  *
  * Usage:
- *   node scripts/discord-release-payload.mjs <version> [notes-file]
- *   node scripts/discord-release-payload.mjs 0.2.1 release-notes.md > payload.json
+ *   REPO=elmohq/elmo node scripts/discord-release-payload.mjs 0.2.1 release-notes.md
  *
- * Reads the repository slug from $REPO (GitHub Actions sets this from
- * `github.repository`), defaulting to elmohq/elmo. Prints the payload as JSON
- * on stdout; missing or empty notes degrade to the link-only announcement
- * rather than failing the release.
+ * Missing or empty notes degrade to a link-only announcement rather than
+ * failing the release.
  */
 
 import { readFileSync } from "node:fs";
@@ -30,49 +26,43 @@ const CONTENT_LIMIT = 2000;
  */
 const SUPPRESS_EMBEDS = 1 << 2;
 
-/** The header below already says what this heading says. */
+/** The announcement header already says this. */
 const NOTES_HEADING = /^##\s+What's Changed$/;
 
-/** The generator's trailing compare link, which becomes part of the footer. */
+/** The generator's trailing compare link, which the footer takes over. */
 const FULL_CHANGELOG = /^\*\*Full Changelog\*\*:\s*(\S+)$/;
 
 const version = process.argv[2];
 const notesFile = process.argv[3];
+const repo = process.env.REPO;
 
-if (!version) {
-  console.error("usage: discord-release-payload.mjs <version> [notes-file]");
+if (!version || !repo) {
+  console.error(
+    "usage: REPO=owner/name discord-release-payload.mjs <version> [notes-file]",
+  );
   process.exit(1);
 }
 
-const repo = process.env.REPO || "elmohq/elmo";
 const releaseUrl = `https://github.com/${repo}/releases/tag/v${version}`;
 const header = `🚀 **Elmo v${version}** is out!`;
 
 /**
- * Truncate to at most `max` characters without splitting a surrogate pair —
- * release notes carry emoji, and half of one is invalid UTF-8 in the payload.
- * Counts UTF-16 units where Discord counts code points, which can only
- * under-fill the budget.
+ * Cut to `max` characters without splitting a surrogate pair — release notes
+ * carry emoji, and half of one is invalid UTF-8 in the payload. Counts UTF-16
+ * units where Discord counts code points, which can only under-fill the budget.
  */
 function truncate(text, max) {
   if (text.length <= max) return text;
-  let out = "";
-  for (const char of text) {
-    if (out.length + char.length > max - 1) break;
-    out += char;
-  }
-  return `${out}…`;
+  const cut = max - 1;
+  const splitsPair = /[\uD800-\uDBFF]/.test(text[cut - 1]);
+  return `${text.slice(0, splitsPair ? cut - 1 : cut)}…`;
 }
 
 /**
- * GitHub renders a bare pull request URL as `#123`. Discord prints the whole
- * thing, which leaves every bullet trailing 40 characters of noise, so mask
- * them the same way — webhook messages are one of the contexts where Discord
- * honours `[text](url)`.
- *
- * Scoped to this repository, because `#123` in an Elmo announcement reads as an
- * Elmo pull request. A link anywhere else keeps its URL on show rather than
- * being relabelled as one of ours.
+ * GitHub renders a bare pull request URL as `#123` and Discord does not, which
+ * leaves every bullet trailing 40 characters of noise. Webhook messages honour
+ * `[text](url)`, so shorten them the same way — but only for this repository,
+ * since `#123` in an Elmo announcement reads as an Elmo pull request.
  */
 function maskPullLinks(line) {
   return line.replace(
@@ -88,9 +78,8 @@ function parseNotes(text) {
     const line = raw.trim();
     if (!line || NOTES_HEADING.test(line)) continue;
     const changelog = line.match(FULL_CHANGELOG);
-    // Every bullet here is contributor-written, so the footer only lends its
-    // label to a link back into this repository. Anything else stays in the
-    // body with its URL visible.
+    // Notes are contributor-written, so the footer only lends its label to a
+    // link back into this repository; anything else stays visible in the body.
     if (changelog?.[1].startsWith(`https://github.com/${repo}/`)) {
       compareUrl = changelog[1];
       continue;
@@ -101,10 +90,8 @@ function parseNotes(text) {
 }
 
 /**
- * Fit the bullets into `max` characters by dropping whole trailing ones, so an
- * oversized release ends on a complete entry with a count of what it left out
- * rather than mid-word. Only a single bullet longer than the whole budget falls
- * back to cutting mid-text.
+ * Drop whole trailing bullets rather than cutting mid-word, so an oversized
+ * release still ends on a complete entry and says how many it left out.
  */
 function fitBullets(bullets, max) {
   const all = bullets.join("\n");
