@@ -8,7 +8,7 @@ import { getModelMeta } from "@workspace/config/models";
 import type { DeploymentMode } from "@workspace/config/types";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { type Brand, brands, type Prompt, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { type Brand, brands, organization, type Prompt, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { assertCadenceAllowed, getBrandOrganizationId, getOrgEntitlementsMap } from "@workspace/lib/entitlements";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { type ModelConfig, parseScrapeTargets } from "@workspace/lib/providers";
@@ -35,6 +35,15 @@ async function requireAdmin() {
 	const session = await requireAuthSession();
 	if (!isAdmin(session)) throw new Error("Unauthorized: Admin access required");
 	return session;
+}
+
+/**
+ * Workspace slug by org id, so admin's brand links land on the canonical
+ * `/app/$org/$brand` instead of bouncing through a redirect.
+ */
+async function organizationSlugs(): Promise<Map<string, string>> {
+	const rows = await db.select({ id: organization.id, slug: organization.slug }).from(organization);
+	return new Map(rows.map((row) => [row.id, row.slug]));
 }
 
 // ============================================================================
@@ -69,6 +78,8 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 	sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 	const thirtyDaysAgo = new Date();
 	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+	const orgSlugs = await organizationSlugs();
 
 	const [allBrands, brandsOverTime, promptsOverTime, runsOverTimeData, brandRunStats, activeBrandsData] =
 		await Promise.all([
@@ -140,6 +151,7 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 
 			return {
 				...brand,
+				organizationSlug: orgSlugs.get(brand.organizationId) ?? brand.organizationId,
 				totalPrompts: promptCounts[0]?.total || 0,
 				activePrompts: promptCounts[0]?.active || 0,
 				promptRuns7Days: runStats?.runs_7d || 0,
@@ -616,6 +628,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 
 	const allBrands = await db.query.brands.findMany({ orderBy: desc(brands.createdAt) });
 	const allPrompts = await db.query.prompts.findMany();
+	const orgSlugs = await organizationSlugs();
 
 	const promptsByBrand: Record<string, typeof allPrompts> = {};
 	for (const prompt of allPrompts) {
@@ -750,6 +763,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		return {
 			brandId: brand.id,
 			brandName: brand.name,
+			organizationSlug: orgSlugs.get(brand.organizationId) ?? brand.organizationId,
 			website: brand.website,
 			enabled: brand.enabled,
 			totalPrompts: brandPrompts.length,

@@ -1,5 +1,5 @@
 /**
- * Stories for the cloud Billing settings page (/app/$brand/settings/billing).
+ * Stories for the cloud Billing settings page (/app/$org/settings/billing).
  *
  * Covers the states an operator can't easily reach on demand: a failed payment
  * inside the dunning window, tracking paused once that window closes, a
@@ -17,7 +17,7 @@ import { isPremiumAddonAvailable, type PlanKey } from "@workspace/config/plans";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
-import { Route } from "@/routes/_authed/app/$brand/settings/billing";
+import { Route } from "@/routes/_authed/app/$org/settings/billing";
 import type { BillingState } from "@/server/billing";
 import { resetMockAuthClient, setMockSubscriptionDelay } from "./_mocks/auth-client";
 import { setMockAddonError } from "./_mocks/server-billing";

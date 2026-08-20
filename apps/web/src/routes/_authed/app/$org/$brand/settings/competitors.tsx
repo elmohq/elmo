@@ -16,13 +16,13 @@ import { AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
 import { CompetitorsEditor, type CompetitorEntry } from "@/components/competitors-editor";
 
-export const Route = createFileRoute("/_authed/app/$brand/settings/competitors")({
+export const Route = createFileRoute("/_authed/app/$org/$brand/settings/competitors")({
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Competitors", { appName, brandName }) },
+				{ title: buildTitle("Competitors", { appName, subject: brandName }) },
 				{ name: "description", content: "Manage your tracked competitors." },
 			],
 		};

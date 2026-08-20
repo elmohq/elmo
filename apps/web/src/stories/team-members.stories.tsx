@@ -1,11 +1,11 @@
 /**
- * Stories for /app/$brand/settings/members — inviting teammates and managing
+ * Stories for /app/$org/settings/members — inviting teammates and managing
  * who has access to the workspace.
  */
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ComponentType, ReactNode } from "react";
 import { expect, within } from "storybook/test";
-import { Route } from "@/routes/_authed/app/$brand/settings/members";
+import { Route } from "@/routes/_authed/app/$org/settings/members";
 import { setMockLoaderData } from "./_mocks/tanstack-router";
 import { type TeamData, setMockTeam } from "./_mocks/server-team";
 

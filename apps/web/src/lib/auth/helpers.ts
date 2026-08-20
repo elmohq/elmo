@@ -4,7 +4,7 @@
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { db } from "@workspace/lib/db/db";
 import { brands, member, organization } from "@workspace/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { getDeployment } from "@/lib/config/server";
 import { auth } from "./server";
 
@@ -76,12 +76,9 @@ export async function requireBrandAccess(userId: string, brandId: string): Promi
  * A missing brand and a brand in someone else's org are deliberately the same
  * error: the caller has no business distinguishing them.
  */
-export async function requireBrandOrganization(
-	userId: string,
-	brandId: string,
-): Promise<{ id: string; name: string; role: string }> {
+export async function requireBrandOrganization(userId: string, brandId: string): Promise<UserOrganization> {
 	const [row] = await db
-		.select({ id: organization.id, name: organization.name, role: member.role })
+		.select({ id: organization.id, slug: organization.slug, name: organization.name, role: member.role })
 		.from(brands)
 		.innerJoin(member, and(eq(member.organizationId, brands.organizationId), eq(member.userId, userId)))
 		.innerJoin(organization, eq(organization.id, brands.organizationId))
@@ -91,16 +88,65 @@ export async function requireBrandOrganization(
 	return row;
 }
 
+export interface UserOrganization {
+	id: string;
+	slug: string;
+	name: string;
+	role: string;
+}
+
 /**
  * Oldest membership first, so a user's own workspace precedes any they were
  * invited into. `organization.id` breaks ties, which a batch Auth0 sync
  * produces by stamping every membership it creates with the same timestamp.
  */
-export async function listUserOrganizations(userId: string): Promise<{ id: string; name: string; role: string }[]> {
+export async function listUserOrganizations(userId: string): Promise<UserOrganization[]> {
 	return db
-		.select({ id: organization.id, name: organization.name, role: member.role })
+		.select({ id: organization.id, slug: organization.slug, name: organization.name, role: member.role })
 		.from(member)
 		.innerJoin(organization, eq(member.organizationId, organization.id))
 		.where(eq(member.userId, userId))
 		.orderBy(member.createdAt, organization.id);
+}
+
+/**
+ * The organization behind an `/app/$org` segment, or null when the user has no
+ * such workspace. Accepts the slug (what the URL carries) or the id, so links
+ * minted before an org was renamed — and anything built from an
+ * `organizationId` in hand — still resolve.
+ */
+export async function resolveOrganization(userId: string, slugOrId: string): Promise<UserOrganization | null> {
+	const [row] = await db
+		.select({ id: organization.id, slug: organization.slug, name: organization.name, role: member.role })
+		.from(organization)
+		.innerJoin(member, and(eq(member.organizationId, organization.id), eq(member.userId, userId)))
+		.where(or(eq(organization.slug, slugOrId), eq(organization.id, slugOrId)))
+		.limit(1);
+	return row ?? null;
+}
+
+export async function requireOrganization(userId: string, slugOrId: string): Promise<UserOrganization> {
+	const org = await resolveOrganization(userId, slugOrId);
+	if (!org) throw new Error("Forbidden: No access to this workspace");
+	return org;
+}
+
+/**
+ * Which workspace owns a brand, for callers holding only a brand id — the
+ * `/app/$brand` links that predate workspace-scoped URLs, and anywhere else a
+ * canonical `/app/$org/$brand` path has to be rebuilt. Null when the user
+ * can't reach the brand, which covers "no such brand" too.
+ */
+export async function findBrandWorkspace(
+	userId: string,
+	brandId: string,
+): Promise<{ organizationSlug: string } | null> {
+	const [row] = await db
+		.select({ organizationSlug: organization.slug })
+		.from(brands)
+		.innerJoin(member, and(eq(member.organizationId, brands.organizationId), eq(member.userId, userId)))
+		.innerJoin(organization, eq(organization.id, brands.organizationId))
+		.where(eq(brands.id, brandId))
+		.limit(1);
+	return row ?? null;
 }

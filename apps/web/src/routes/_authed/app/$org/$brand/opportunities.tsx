@@ -17,13 +17,13 @@ import { PageHeader } from "@/components/page-header";
 import { useOpportunities } from "@/hooks/use-opportunities";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 
-export const Route = createFileRoute("/_authed/app/$brand/opportunities")({
+export const Route = createFileRoute("/_authed/app/$org/$brand/opportunities")({
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Opportunities", { appName, brandName }) },
+				{ title: buildTitle("Opportunities", { appName, subject: brandName }) },
 				{ name: "description", content: "AI-generated opportunities to earn more AI citations." },
 			],
 		};

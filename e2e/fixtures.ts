@@ -21,6 +21,8 @@ export const TEST_USER = {
 } as const;
 
 export const TEST_BRAND_ID = "default";
+/** The seeded org's slug — the workspace segment of every dashboard URL. */
+export const TEST_ORG_SLUG = "default";
 export const TEST_BRAND_NAME = "Test Organization";
 export const TEST_BRAND_WEBSITE = "https://example.com";
 

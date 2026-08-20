@@ -28,6 +28,8 @@ import { getAdminStatsFn, updateDelayOverrideFn } from "@/server/admin";
 interface BrandStats {
 	id: string;
 	name: string;
+	/** Which workspace owns it, so the link lands on the canonical brand URL. */
+	organizationSlug: string;
 	website: string;
 	enabled: boolean;
 	onboarded: boolean;
@@ -598,7 +600,11 @@ function AdminDashboard() {
 										<TableRow key={brand.id}>
 											<TableCell className="font-medium">
 												<div className="space-y-1">
-													<Link to="/app/$brand" params={{ brand: brand.id }} className="hover:underline text-primary">
+													<Link
+														to="/app/$org/$brand"
+														params={{ org: brand.organizationSlug, brand: brand.id }}
+														className="hover:underline text-primary"
+													>
 														{brand.name}
 													</Link>
 													<div className="text-xs text-muted-foreground">{brand.website}</div>

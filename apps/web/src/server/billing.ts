@@ -18,7 +18,7 @@ import {
 	getOrgEntitlementsMap,
 } from "@workspace/lib/entitlements";
 import { z } from "zod";
-import { listUserOrganizations, requireAuthSession, requireBrandOrganization } from "@/lib/auth/helpers";
+import { listUserOrganizations, requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 
 export type BillingState = {
@@ -50,10 +50,10 @@ export type PaywallRequired = {
 export type PaywallState = { needsPlan: false } | PaywallRequired;
 
 export const getBillingStateFn = createServerFn({ method: "GET" })
-	.validator(z.object({ brandId: z.string() }))
+	.validator(z.object({ org: z.string() }))
 	.handler(async ({ data }): Promise<BillingState> => {
 		const session = await requireAuthSession();
-		const org = await requireBrandOrganization(session.user.id, data.brandId);
+		const org = await requireOrganization(session.user.id, data.org);
 		const deployment = getDeployment();
 
 		const state = await getOrgBillingState(org.id);
@@ -133,13 +133,13 @@ export const getPaywallStateFn = createServerFn({ method: "GET" })
 	});
 
 export const setPremiumAddonQuantityFn = createServerFn({ method: "POST" })
-	.validator(z.object({ brandId: z.string(), quantity: z.number().int().min(0).max(1000) }))
+	.validator(z.object({ org: z.string(), quantity: z.number().int().min(0).max(1000) }))
 	.handler(async ({ data }) => {
 		const deployment = getDeployment();
 		if (!deployment.features.billing) throw new Error("Billing is not enabled on this deployment");
 
 		const session = await requireAuthSession();
-		const org = await requireBrandOrganization(session.user.id, data.brandId);
+		const org = await requireOrganization(session.user.id, data.org);
 		if (!isOrgAdminRole(org.role)) {
 			throw new Error("Only workspace admins can change billing");
 		}

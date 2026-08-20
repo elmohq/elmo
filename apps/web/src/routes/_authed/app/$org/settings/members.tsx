@@ -1,9 +1,10 @@
 /**
- * /app/$brand/settings/members - Team settings page (cloud only)
+ * /app/$org/settings/members - Team settings page (cloud only)
  *
  * Invite teammates by email, list current members, and manage pending
- * invitations. The redirect in the loader is UX only — the security
- * boundary is the teamInvites guard inside every team server function.
+ * invitations. Membership is of the workspace, not of any one brand. The
+ * redirect in the loader is UX only — the security boundary is the teamInvites
+ * guard inside every team server function.
  */
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
@@ -14,29 +15,22 @@ import { Label } from "@workspace/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { useState } from "react";
 import { trackEvent } from "@/lib/posthog";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
-import {
-	cancelInvitationFn,
-	inviteTeamMemberFn,
-	listTeamFn,
-	removeTeamMemberFn,
-	updateOrganizationFn,
-	type TeamData,
-} from "@/server/team";
+import { getAppName, buildTitle } from "@/lib/route-head";
+import { cancelInvitationFn, inviteTeamMemberFn, listTeamFn, removeTeamMemberFn, type TeamData } from "@/server/team";
 
-export const Route = createFileRoute("/_authed/app/$brand/settings/members")({
+export const Route = createFileRoute("/_authed/app/$org/settings/members")({
 	loader: async ({ params, context }): Promise<TeamData> => {
 		if (!context.clientConfig?.features.teamInvites) {
-			throw redirect({ to: "/app/$brand", params: { brand: params.brand } });
+			throw redirect({ to: "/app/$org", params: { org: params.org } });
 		}
-		return listTeamFn({ data: { brandId: params.brand } });
+		return listTeamFn({ data: { org: params.org } });
 	},
-	head: ({ matches, match }) => {
+	head: ({ match, loaderData }) => {
 		const appName = getAppName(match);
-		const brandName = getBrandName(matches);
+		const workspaceName = (loaderData as TeamData | undefined)?.organization.name;
 		return {
 			meta: [
-				{ title: buildTitle("Team", { appName, brandName }) },
+				{ title: buildTitle("Team", { appName, subject: workspaceName }) },
 				{ name: "description", content: "Invite teammates and manage team members." },
 			],
 		};
@@ -45,36 +39,20 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/members")({
 });
 
 function TeamSettingsPage() {
-	const { brand: brandId } = Route.useParams();
+	const { org } = Route.useParams();
 	const { members, invitations, currentUserId, organization } = Route.useLoaderData();
 	const router = useRouter();
 	const [inviteEmail, setInviteEmail] = useState("");
 	const [inviteRole, setInviteRole] = useState<"member" | "admin">("member");
 	const [inviting, setInviting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [workspaceName, setWorkspaceName] = useState(organization.name);
-	const [savingWorkspace, setSavingWorkspace] = useState(false);
-
-	async function handleSaveWorkspace(e: React.FormEvent) {
-		e.preventDefault();
-		setError(null);
-		setSavingWorkspace(true);
-		try {
-			await updateOrganizationFn({ data: { brandId, name: workspaceName } });
-			await router.invalidate();
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to update workspace name");
-		} finally {
-			setSavingWorkspace(false);
-		}
-	}
 
 	async function handleInvite(e: React.FormEvent) {
 		e.preventDefault();
 		setError(null);
 		setInviting(true);
 		try {
-			await inviteTeamMemberFn({ data: { brandId, email: inviteEmail, role: inviteRole } });
+			await inviteTeamMemberFn({ data: { org, email: inviteEmail, role: inviteRole } });
 			trackEvent("team_member_invited", { role: inviteRole });
 			setInviteEmail("");
 			setInviteRole("member");
@@ -89,7 +67,7 @@ function TeamSettingsPage() {
 	async function handleRemove(memberId: string) {
 		setError(null);
 		try {
-			await removeTeamMemberFn({ data: { brandId, memberId } });
+			await removeTeamMemberFn({ data: { org, memberId } });
 			await router.invalidate();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to remove member");
@@ -99,7 +77,7 @@ function TeamSettingsPage() {
 	async function handleCancel(invitationId: string) {
 		setError(null);
 		try {
-			await cancelInvitationFn({ data: { brandId, invitationId } });
+			await cancelInvitationFn({ data: { org, invitationId } });
 			await router.invalidate();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to cancel invitation");
@@ -110,7 +88,9 @@ function TeamSettingsPage() {
 		<div className="space-y-6">
 			<div>
 				<h1 className="text-3xl font-bold">Team</h1>
-				<p className="text-muted-foreground">Invite teammates and manage who has access to your workspace.</p>
+				<p className="text-muted-foreground">
+					Who can reach every brand in <span className="font-medium text-foreground">{organization.name}</span>.
+				</p>
 			</div>
 
 			{error && (
@@ -118,25 +98,6 @@ function TeamSettingsPage() {
 					<AlertDescription>{error}</AlertDescription>
 				</Alert>
 			)}
-
-			<div className="space-y-3">
-				<h2 className="text-lg font-semibold">Workspace</h2>
-				<form onSubmit={handleSaveWorkspace} className="flex flex-wrap items-end gap-3">
-					<div className="flex flex-col gap-2">
-						<Label htmlFor="workspace-name">Name</Label>
-						<Input
-							id="workspace-name"
-							value={workspaceName}
-							onChange={(e) => setWorkspaceName(e.target.value)}
-							required
-							className="w-64"
-						/>
-					</div>
-					<Button type="submit" disabled={savingWorkspace}>
-						{savingWorkspace ? "Saving..." : "Save"}
-					</Button>
-				</form>
-			</div>
 
 			<form onSubmit={handleInvite} className="flex flex-wrap items-end gap-3">
 				<div className="flex flex-col gap-2">

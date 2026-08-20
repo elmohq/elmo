@@ -4,6 +4,7 @@ import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle, IconSearch, IconChevronDown } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
+import { useOrgSlug } from "@/hooks/use-workspaces";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 import { attributionDotClass } from "@/components/citations/shared";
 import type { GoogleModuleData } from "@/components/citations/types";
@@ -17,14 +18,15 @@ function PromptCountList({
 	prompts: { id: string; value: string; count: number }[];
 	brandId?: string;
 }) {
+	const org = useOrgSlug();
 	return (
 		<div className="pl-5 pb-2 space-y-0.5">
 			{prompts.map((p) =>
 				brandId ? (
 					<Link
 						key={p.id}
-						to="/app/$brand/prompts/$promptId"
-						params={{ brand: brandId, promptId: p.id }}
+						to="/app/$org/$brand/prompts/$promptId"
+						params={{ org, brand: brandId, promptId: p.id }}
 						className="flex items-center justify-between py-1 group text-xs"
 					>
 						<span className="text-muted-foreground group-hover:text-foreground group-hover:underline truncate min-w-0">

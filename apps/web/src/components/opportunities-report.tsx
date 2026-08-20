@@ -5,6 +5,7 @@
  * Your citations / Competitor citations — to explore the underlying data.
  */
 import { Link } from "@tanstack/react-router";
+import { useOrgSlug } from "@/hooks/use-workspaces";
 import { useState } from "react";
 import type { CitedPage, OpportunitiesReport as OpportunitiesReportData, ReportPrompt } from "@/server/opportunities";
 
@@ -54,9 +55,14 @@ function BulletList({ items }: { items: string[] }) {
 const ROW = "block truncate rounded px-1.5 py-1 text-xs hover:bg-muted hover:text-foreground";
 
 function PromptLink({ prompt, brandId }: { prompt: ReportPrompt; brandId: string }) {
+	const org = useOrgSlug();
 	if (!prompt.promptId) return <span className={`${ROW} text-muted-foreground`}>{prompt.text}</span>;
 	return (
-		<Link to="/app/$brand/prompts/$promptId" params={{ brand: brandId, promptId: prompt.promptId }} className={ROW}>
+		<Link
+			to="/app/$org/$brand/prompts/$promptId"
+			params={{ org, brand: brandId, promptId: prompt.promptId }}
+			className={ROW}
+		>
 			{prompt.text}
 		</Link>
 	);

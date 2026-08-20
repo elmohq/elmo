@@ -49,7 +49,7 @@ export function createFileRoute(_path: string) {
 		// Mirror the real Route shape so stories can render a route's component via
 		// Route.options.component (without the route file having to export it).
 		options: config,
-		useParams: () => ({ brand: "mock-brand-id" }),
+		useParams: () => ({ org: "mock-workspace", brand: "mock-brand-id" }),
 		useSearch,
 		useNavigate,
 		useLoaderData,
@@ -81,7 +81,7 @@ export function createRootRouteWithContext<TContext>() {
 }
 
 export function useParams(_opts?: unknown) {
-	return { brand: "mock-brand-id" };
+	return { org: "mock-workspace", brand: "mock-brand-id" };
 }
 
 export function useNavigate() {
@@ -91,7 +91,7 @@ export function useNavigate() {
 }
 
 export function useLocation() {
-	return { pathname: "/app/mock-brand-id", search: "", hash: "" };
+	return { pathname: "/app/mock-workspace/mock-brand-id", search: "", hash: "" };
 }
 
 // Stories never navigate, so the blocker is always idle.
@@ -121,7 +121,7 @@ export function useSearch(opts?: { select?: (search: Record<string, unknown>) =>
 }
 
 export function useMatch(_opts?: unknown) {
-	return { params: { brand: "mock-brand-id" } };
+	return { params: { org: "mock-workspace", brand: "mock-brand-id" } };
 }
 
 export function useRouter() {

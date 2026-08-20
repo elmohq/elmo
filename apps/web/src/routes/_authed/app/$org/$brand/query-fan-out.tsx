@@ -28,6 +28,7 @@ import { PageHeader, FilterSection } from "@/components/page-header";
 import { FilterBar, getAvailableModels, ALL_MODELS_VALUE } from "@/components/filter-bar";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { useBrand } from "@/hooks/use-brands";
+import { useOrgSlug } from "@/hooks/use-workspaces";
 import { HistoryButton } from "@/components/history-button";
 import { InfoTip, QueryWordsSection, VariationLine } from "@/components/fanout-sections";
 import { promptKeywords, type PromptFanoutStat, type TopQueryStat } from "@/lib/fanout-analysis";
@@ -36,7 +37,7 @@ import { promptKeywords, type PromptFanoutStat, type TopQueryStat } from "@/lib/
 const FANOUT_TABS = ["fanout", "top-queries", "words"] as const;
 type FanoutTab = (typeof FANOUT_TABS)[number];
 
-export const Route = createFileRoute("/_authed/app/$brand/query-fan-out")({
+export const Route = createFileRoute("/_authed/app/$org/$brand/query-fan-out")({
 	validateSearch: (search: Record<string, unknown>): { tab?: FanoutTab } => ({
 		tab: FANOUT_TABS.includes(search.tab as FanoutTab) ? (search.tab as FanoutTab) : undefined,
 	}),
@@ -45,7 +46,7 @@ export const Route = createFileRoute("/_authed/app/$brand/query-fan-out")({
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Query Fan-Out", { appName, brandName }) },
+				{ title: buildTitle("Query Fan-Out", { appName, subject: brandName }) },
 				{
 					name: "description",
 					content:
@@ -58,7 +59,7 @@ export const Route = createFileRoute("/_authed/app/$brand/query-fan-out")({
 });
 
 function QueryFanoutPage() {
-	const { brand: brandId } = Route.useParams();
+	const { org, brand: brandId } = Route.useParams();
 	const { model, lookback, tags } = useListFilters();
 	const tab = Route.useSearch({ select: (s) => s.tab ?? "fanout" });
 	const navigate = Route.useNavigate();
@@ -450,6 +451,7 @@ type TopSort = "prompts" | "runs";
 const TOP_GRID = "grid grid-cols-[1.25rem_1fr_5rem_5.5rem] items-center gap-3";
 
 function TopQueries({ data, brandId }: { data: FanoutData; brandId: string }) {
+	const org = useOrgSlug();
 	const [sort, setSort] = useState<TopSort>("prompts");
 	const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -511,8 +513,8 @@ function TopQueries({ data, brandId }: { data: FanoutData; brandId: string }) {
 										{q.promptRefs.map((p) => (
 											<div key={p.promptId} className="flex items-baseline justify-between gap-4">
 												<Link
-													to="/app/$brand/prompts/$promptId"
-													params={{ brand: brandId, promptId: p.promptId }}
+													to="/app/$org/$brand/prompts/$promptId"
+													params={{ org, brand: brandId, promptId: p.promptId }}
 													search={{ tab: "web-queries" }}
 													className="min-w-0 truncate text-sm hover:underline"
 													title={p.promptValue}

@@ -1,22 +1,14 @@
 /**
- * /app/$brand layout - Brand-specific layout with sidebar
+ * /app/$org/$brand layout - Brand-specific layout with sidebar
  *
  * Fetches brand data and provides it to child routes.
  * Shows sidebar navigation, header, and optional demo banner.
- * If brand exists in auth but not in DB, shows onboarding.
  */
 import { createFileRoute, Outlet, notFound, redirect } from "@tanstack/react-router";
 import { getAppName } from "@/lib/route-head";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
-import {
-	requireAuthSession,
-	isAdmin,
-	hasReportAccess,
-	checkOrgAccess,
-	listUserOrganizations,
-} from "@/lib/auth/helpers";
+import { requireAuthSession, isAdmin, hasReportAccess, requireOrganization } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -25,13 +17,13 @@ import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar"
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import BrandOnboarding from "@/components/brand-onboarding";
 import { getOrgBillingState } from "@workspace/lib/entitlements";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
 
 interface BrandRouteData {
 	brand: BrandWithPrompts | null;
 	brandName: string | null;
+	workspaceName: string | null;
 	isAdmin: boolean;
 	hasReportAccess: boolean;
 	hasAccess: boolean;
@@ -43,6 +35,7 @@ interface BrandRouteData {
 const DENIED: BrandRouteData = {
 	brand: null,
 	brandName: null,
+	workspaceName: null,
 	isAdmin: false,
 	hasReportAccess: false,
 	hasAccess: false,
@@ -50,28 +43,17 @@ const DENIED: BrandRouteData = {
 };
 
 const getBrandData = createServerFn({ method: "GET" })
-	.validator(z.object({ brandId: z.string() }))
+	.validator(z.object({ org: z.string(), brandId: z.string() }))
 	.handler(async ({ data }): Promise<BrandRouteData> => {
 		const session = await requireAuthSession();
+		const workspace = await requireOrganization(session.user.id, data.org);
 
 		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
 
-		// No brand row: legacy onboarding path where the URL param is an org id
-		// (brand.id === org.id). Whitelabel empty-org onboarding depends on this.
-		if (!brand) {
-			if (!(await checkOrgAccess(session.user.id, data.brandId))) return DENIED;
-			const orgs = await listUserOrganizations(session.user.id);
-			return {
-				brand: null,
-				brandName: orgs.find((o) => o.id === data.brandId)?.name || data.brandId,
-				isAdmin: isAdmin(session),
-				hasReportAccess: hasReportAccess(session),
-				hasAccess: true,
-				unpaidOrganizationId: null,
-			};
-		}
-
-		if (!(await checkOrgAccess(session.user.id, brand.organizationId))) return DENIED;
+		// Membership in the workspace is what grants access, so a brand owned by
+		// a different one is as good as absent — including to a user who happens
+		// to belong to both.
+		if (!brand || brand.organizationId !== workspace.id) return DENIED;
 
 		const [brandPrompts, brandCompetitors, { entitlements }] = await Promise.all([
 			db.query.prompts.findMany({ where: eq(prompts.brandId, data.brandId) }),
@@ -84,6 +66,7 @@ const getBrandData = createServerFn({ method: "GET" })
 		return {
 			brand: { ...brand, prompts: brandPrompts, competitors: brandCompetitors },
 			brandName: brand.name,
+			workspaceName: workspace.name,
 			isAdmin: isAdmin(session),
 			hasReportAccess: hasReportAccess(session),
 			hasAccess: true,
@@ -134,7 +117,7 @@ function BrandLayoutSkeleton() {
 	);
 }
 
-export const Route = createFileRoute("/_authed/app/$brand")({
+export const Route = createFileRoute("/_authed/app/$org/$brand")({
 	// The shared dashboard filters (model/lookback/tags/q) are validated here
 	// once so every child route inherits them in its search schema. The loader
 	// has no `loaderDeps`, so filter-only navigations never re-run it.
@@ -142,16 +125,15 @@ export const Route = createFileRoute("/_authed/app/$brand")({
 	loader: async ({
 		params,
 	}): Promise<{
-		brand: BrandWithPrompts | null;
-		brandName: string | null;
+		brand: BrandWithPrompts;
+		brandName: string;
+		workspaceName: string;
 		isAdmin: boolean;
 		hasReportAccess: boolean;
-		needsOnboarding: boolean;
-		onboardingPlatformState: OnboardingPlatformState;
 	}> => {
-		const result = await getBrandData({ data: { brandId: params.brand } });
+		const result = await getBrandData({ data: { org: params.org, brandId: params.brand } });
 
-		if (!result.hasAccess) {
+		if (!result.hasAccess || !result.brand) {
 			throw notFound();
 		}
 
@@ -162,20 +144,12 @@ export const Route = createFileRoute("/_authed/app/$brand")({
 			throw redirect({ to: "/choose-plan", search: { org: result.unpaidOrganizationId } });
 		}
 
-		// Access was established above, so a missing brand row means the URL param
-		// is an org awaiting its first brand: the onboarding wizard's territory.
-		const needsOnboarding = result.brand === null;
-		const onboardingPlatformState = needsOnboarding
-			? await getOnboardingPlatformStateFn({ data: { organizationId: params.brand } })
-			: null;
-
 		return {
 			brand: result.brand,
-			brandName: result.brandName,
+			brandName: result.brandName ?? result.brand.name,
+			workspaceName: result.workspaceName ?? params.org,
 			isAdmin: result.isAdmin,
 			hasReportAccess: result.hasReportAccess,
-			needsOnboarding,
-			onboardingPlatformState,
 		};
 	},
 	head: ({ match, loaderData }) => {
@@ -198,24 +172,11 @@ export const Route = createFileRoute("/_authed/app/$brand")({
 });
 
 function BrandLayout() {
-	const { brand, brandName, isAdmin, hasReportAccess, needsOnboarding, onboardingPlatformState } =
-		Route.useLoaderData();
-	const { brand: brandId } = Route.useParams();
-
-	// Brand exists in auth but not in DB - show onboarding
-	if (needsOnboarding) {
-		return (
-			<BrandOnboarding
-				brandId={brandId}
-				brandName={brandName || brandId}
-				platformState={onboardingPlatformState}
-			/>
-		);
-	}
+	const { brand, workspaceName, isAdmin, hasReportAccess } = Route.useLoaderData();
 
 	return (
 		<SidebarProvider>
-			<AppSidebar isAdmin={isAdmin} hasReportAccess={hasReportAccess} brand={brand} />
+			<AppSidebar isAdmin={isAdmin} hasReportAccess={hasReportAccess} brand={brand} workspaceName={workspaceName} />
 			{/* `overflow-clip` rather than `overflow-hidden`: both clip to the rounded
 			    corners, but `hidden` makes this a scroll container, which stops
 			    descendants from sticking to the viewport (the site header included). */}

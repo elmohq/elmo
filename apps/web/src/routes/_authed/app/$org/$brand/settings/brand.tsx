@@ -19,13 +19,13 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
-export const Route = createFileRoute("/_authed/app/$brand/settings/brand")({
+export const Route = createFileRoute("/_authed/app/$org/$brand/settings/brand")({
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Brand Settings", { appName, brandName }) },
+				{ title: buildTitle("Brand Settings", { appName, subject: brandName }) },
 				{ name: "description", content: "Manage your brand name and website." },
 			],
 		};

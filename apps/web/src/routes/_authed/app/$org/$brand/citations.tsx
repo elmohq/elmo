@@ -18,13 +18,13 @@ import { getDaysFromLookback } from "@/lib/chart-utils";
 import { PageHeader } from "@/components/page-header";
 import { getAvailableModels, ALL_MODELS_VALUE } from "@/components/filter-bar";
 
-export const Route = createFileRoute("/_authed/app/$brand/citations")({
+export const Route = createFileRoute("/_authed/app/$org/$brand/citations")({
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Citations", { appName, brandName }) },
+				{ title: buildTitle("Citations", { appName, subject: brandName }) },
 				{ name: "description", content: "See which sources LLMs cite in responses to your prompts." },
 			],
 		};
@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_authed/app/$brand/citations")({
 });
 
 function CitationsPage() {
-	const { brand: brandId } = Route.useParams();
+	const { org, brand: brandId } = Route.useParams();
 	const queryClient = useQueryClient();
 
 	const filters = useListFilters();
@@ -63,7 +63,7 @@ function CitationsPage() {
 			</p>
 			<p>
 				<strong>Competitor</strong> domains are only those you&apos;ve added to your{" "}
-				<Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">
+				<Link to="/app/$org/$brand/settings/competitors" params={{ org, brand: brandId }} className="underline">
 					tracked competitors list
 				</Link>
 				. Other domains appear under their detected category (Google, Social Media, Institutional, or Other).

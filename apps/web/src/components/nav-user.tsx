@@ -1,4 +1,4 @@
-import { IconSelector, IconExternalLink, IconLogout, IconStatusChange, IconUser } from "@tabler/icons-react";
+import { IconSelector, IconExternalLink, IconLogout, IconUser } from "@tabler/icons-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import {
@@ -12,16 +12,15 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
 
-import { Link, useRouteContext } from "@tanstack/react-router";
+import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { useAuth } from "@/hooks/use-auth";
 import { resetPostHog } from "@/lib/posthog";
 
-/** `canSwitchBrand` is false on gate pages, where /app just redirects back. */
-export function NavUser({ canSwitchBrand = true }: { canSwitchBrand?: boolean } = {}) {
+export function NavUser() {
 	const { user } = useAuth();
-	const { isMobile, setOpenMobile } = useSidebar();
+	const { isMobile } = useSidebar();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
 
@@ -34,7 +33,6 @@ export function NavUser({ canSwitchBrand = true }: { canSwitchBrand?: boolean } 
 	const branding = clientConfig?.branding;
 	const parentDashboard =
 		branding?.parentUrl && branding?.parentName ? { url: branding.parentUrl, name: branding.parentName } : null;
-	const hasDestinations = canSwitchBrand || parentDashboard !== null;
 
 	return (
 		<SidebarMenu>
@@ -79,29 +77,17 @@ export function NavUser({ canSwitchBrand = true }: { canSwitchBrand?: boolean } 
 							</div>
 						</DropdownMenuLabel>
 						<DropdownMenuSeparator />
-						{/* The group and the rule under it come and go together: a
-						    deployment with no parent dashboard, on a page that cannot
-						    switch brand, would otherwise draw two rules with nothing
-						    between them. */}
-						{hasDestinations && (
+						{/* Switching workspace or brand is the switcher's job, up in the
+						    header; what is left here is the way out of the product. */}
+						{parentDashboard && (
 							<>
 								<DropdownMenuGroup>
-									{canSwitchBrand && (
-										<DropdownMenuItem asChild className="cursor-pointer">
-											<Link to="/app" onClick={() => setOpenMobile(false)}>
-												<IconStatusChange />
-												Switch Brand
-											</Link>
-										</DropdownMenuItem>
-									)}
-									{parentDashboard && (
-										<DropdownMenuItem asChild className="cursor-pointer">
-											<a href={parentDashboard.url} target="_blank" rel="noreferrer">
-												<IconExternalLink />
-												{parentDashboard.name} Dashboard
-											</a>
-										</DropdownMenuItem>
-									)}
+									<DropdownMenuItem asChild className="cursor-pointer">
+										<a href={parentDashboard.url} target="_blank" rel="noreferrer">
+											<IconExternalLink />
+											{parentDashboard.name} Dashboard
+										</a>
+									</DropdownMenuItem>
 								</DropdownMenuGroup>
 								<DropdownMenuSeparator />
 							</>

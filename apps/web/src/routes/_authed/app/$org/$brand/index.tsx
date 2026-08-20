@@ -88,13 +88,13 @@ function formatRunFrequency(hours: number): string {
 	return parts.length > 0 ? `~${parts.join(" ")}` : "~1h";
 }
 
-export const Route = createFileRoute("/_authed/app/$brand/")({
+export const Route = createFileRoute("/_authed/app/$org/$brand/")({
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Overview", { appName, brandName }) },
+				{ title: buildTitle("Overview", { appName, subject: brandName }) },
 				{ name: "description", content: "Dashboard overview of AI visibility and citations." },
 			],
 		};
@@ -166,7 +166,7 @@ function HeroStat({ value, loading }: { value: number | null; loading: boolean }
 }
 
 function DashboardPage() {
-	const { brand: brandId } = Route.useParams();
+	const { org, brand: brandId } = Route.useParams();
 	const { brand, isLoading: isLoadingBrand } = useBrand();
 	// The footer reports what this brand actually runs, resolved server-side.
 	const trackedTargets = brand?.trackedTargets ?? [];
@@ -202,7 +202,7 @@ function DashboardPage() {
 								AI Visibility
 							</h2>
 							<Button asChild variant="ghost" size="sm" className="h-8">
-								<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
+								<Link to="/app/$org/$brand/visibility" params={{ org, brand: brandId }}>
 									View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
 								</Link>
 							</Button>
@@ -233,7 +233,7 @@ function DashboardPage() {
 								Share of Voice
 							</h2>
 							<Button asChild variant="ghost" size="sm" className="h-8">
-								<Link to="/app/$brand/share-of-voice" params={{ brand: brandId }}>
+								<Link to="/app/$org/$brand/share-of-voice" params={{ org, brand: brandId }}>
 									View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
 								</Link>
 							</Button>
@@ -347,7 +347,7 @@ function DashboardPage() {
 						</div>
 					)}
 					<Button asChild variant="outline" className="w-full">
-						<Link to="/app/$brand/settings/prompts" params={{ brand: brandId }}>
+						<Link to="/app/$org/$brand/settings/prompts" params={{ org, brand: brandId }}>
 							{hasEnabledPrompts ? "View Your Prompts" : hasPrompts ? "Edit Prompts" : "Set Up Prompts"}{" "}
 							<IconArrowRight className="h-4 w-4 ml-1" />
 						</Link>
@@ -373,7 +373,7 @@ function DashboardPage() {
 							AI Visibility
 						</h2>
 						<Button asChild variant="ghost" size="sm" className="h-8">
-							<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
+							<Link to="/app/$org/$brand/visibility" params={{ org, brand: brandId }}>
 								View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
 							</Link>
 						</Button>
@@ -418,7 +418,7 @@ function DashboardPage() {
 							Share of Voice
 						</h2>
 						<Button asChild variant="ghost" size="sm" className="h-8">
-							<Link to="/app/$brand/share-of-voice" params={{ brand: brandId }}>
+							<Link to="/app/$org/$brand/share-of-voice" params={{ org, brand: brandId }}>
 								View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
 							</Link>
 						</Button>
