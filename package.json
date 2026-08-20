@@ -25,6 +25,7 @@
     "test:e2e": "pnpm --filter e2e test:e2e",
     "test:e2e-local": "bash e2e/run-local.sh",
     "test:api": "pnpm --filter e2e test:api",
+    "test:scripts": "node --test 'scripts/*.test.mjs'",
     "license-check": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {
