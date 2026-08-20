@@ -2,5 +2,6 @@
   "attribution": {
     "commit": "",
     "pr": ""
-  }
+  },
+  "outputStyle": "Concise"
 }
