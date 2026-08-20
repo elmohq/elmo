@@ -88,10 +88,12 @@ jobs:
             exit 0
           fi
           # Reuses release-notes.md from the release step above, so Discord shows
-          # the same "What's Changed" list as the GitHub release, with the link
-          # at the bottom and its embed suppressed.
-          node scripts/discord-release-payload.mjs "$VERSION" release-notes.md > discord-payload.json
-          # Non-fatal: a Discord hiccup must not fail an otherwise-successful release.
+          # the same "What's Changed" list as the GitHub release, with the links
+          # at the bottom and their embeds suppressed.
+          # Non-fatal throughout: the packages are already published by this point,
+          # so nothing here may fail the release and strand the Docker jobs.
+          node scripts/discord-release-payload.mjs "$VERSION" release-notes.md > discord-payload.json \
+            || { echo "Discord payload build failed (non-fatal)."; exit 0; }
           curl -sS -X POST -H "Content-Type: application/json" -d @discord-payload.json "$DISCORD_WEBHOOK_URL" \
             || echo "Discord announcement failed (non-fatal)."
 
