@@ -61,6 +61,10 @@ jobs:
       - name: Unit tests
         run: pnpm turbo test
 
+      # scripts/ is outside the workspace, so turbo does not reach it.
+      - name: Release script tests
+        run: pnpm test:scripts
+
       - name: Build
         run: pnpm build
 
