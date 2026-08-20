@@ -69,11 +69,15 @@ function truncate(text, max) {
  * thing, which leaves every bullet trailing 40 characters of noise, so mask
  * them the same way — webhook messages are one of the contexts where Discord
  * honours `[text](url)`.
+ *
+ * Scoped to this repository, because `#123` in an Elmo announcement reads as an
+ * Elmo pull request. A link anywhere else keeps its URL on show rather than
+ * being relabelled as one of ours.
  */
 function maskPullLinks(line) {
   return line.replace(
-    /https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/pull\/(\d+)/g,
-    (url, number) => `[#${number}](${url})`,
+    /https:\/\/github\.com\/([^/\s]+\/[^/\s]+)\/pull\/(\d+)/g,
+    (url, slug, number) => (slug === repo ? `[#${number}](${url})` : url),
   );
 }
 
@@ -84,7 +88,10 @@ function parseNotes(text) {
     const line = raw.trim();
     if (!line || NOTES_HEADING.test(line)) continue;
     const changelog = line.match(FULL_CHANGELOG);
-    if (changelog) {
+    // Every bullet here is contributor-written, so the footer only lends its
+    // label to a link back into this repository. Anything else stays in the
+    // body with its URL visible.
+    if (changelog?.[1].startsWith(`https://github.com/${repo}/`)) {
       compareUrl = changelog[1];
       continue;
     }
