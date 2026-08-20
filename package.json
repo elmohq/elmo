@@ -25,14 +25,15 @@
     "test:e2e": "pnpm --filter e2e test:e2e",
     "test:e2e-local": "bash e2e/run-local.sh",
     "test:api": "pnpm --filter e2e test:api",
+    "test:scripts": "node --test 'scripts/*.test.mjs'",
     "license-check": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.6",
+    "@biomejs/biome": "2.5.8",
     "@changesets/cli": "^2.31.1",
-    "knip": "^6.31.0",
-    "tsx": "^4.23.1",
-    "turbo": "^2.10.8",
+    "knip": "^6.32.2",
+    "tsx": "^4.23.12",
+    "turbo": "^2.10.10",
     "typescript": "^7.0.2"
   }
 }

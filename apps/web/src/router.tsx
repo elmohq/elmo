@@ -10,13 +10,8 @@ export const getRouter = () => {
 
 	const router = createRouter({
 		routeTree,
-		context: {
-			...rqContext,
-			// clientConfig is provided by __root.tsx's beforeLoad
-			clientConfig: undefined!,
-			// envValidation is provided by __root.tsx's beforeLoad
-			envValidation: undefined!,
-		},
+		// clientConfig and envValidation are provided by __root.tsx's beforeLoad
+		context: rqContext,
 		defaultPreload: "intent",
 		defaultNotFoundComponent: NotFound,
 		defaultErrorComponent: DefaultErrorComponent,
