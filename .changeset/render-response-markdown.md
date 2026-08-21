@@ -3,4 +3,4 @@
 "@workspace/lib": patch
 ---
 
-Render LLM responses as proper markdown on the prompt detail page.
+Support "GitHub Flavored Markdown" on prompt detail pages. LLM responses now render tables, strikethroughs, and URL autolinks correctly.
