@@ -11,7 +11,7 @@ import { eq, and } from "drizzle-orm";
 import { getCitationUrlStats, getPerPromptDailyCitationPages, getPerPromptCitationPages } from "@/lib/postgres-read";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { citationDateWindow, applyPerPromptKeyedLVCF } from "@/lib/chart-utils";
-import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@/lib/citation-rollup";
+import { type CitationDomain, rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@/lib/citation-rollup";
 import {
 	type CitationCategory,
 	type CitationPageType,
@@ -118,14 +118,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 					totalCitations: 0,
 					uniqueDomains: 0,
 					categoryCounts: emptyCategoryCounts(),
-					domainDistribution: [] as {
-						domain: string;
-						count: number;
-						category: CitationCategory;
-						exampleTitle?: string;
-						previousCount: number;
-						changePercent: number | null;
-					}[],
+					domainDistribution: [] as (CitationDomain & { previousCount: number; changePercent: number | null })[],
 					specificUrls: [] as {
 						url: string;
 						title?: string;

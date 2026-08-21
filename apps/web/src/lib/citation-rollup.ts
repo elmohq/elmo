@@ -10,6 +10,9 @@
  *
  * Google surfaces are dropped throughout: they are pulled into their own module
  * by buildGoogleModule and would otherwise be double-counted in the source mix.
+ *
+ * Server-only, via the marketplace filter below — client code takes these shapes
+ * from `components/citations/types.ts`, not from here.
  */
 import {
 	type CitationCategory,
@@ -21,6 +24,7 @@ import {
 	normalizeUrl,
 	resolvePageType,
 } from "@/lib/domain-categories";
+import { isMarketplaceDomain } from "@/lib/marketplace-domains.server";
 
 /** The row shape both callers read out of postgres-read. */
 export interface CitationUrlRow {
@@ -47,6 +51,8 @@ export interface CitationDomain {
 	count: number;
 	category: CitationCategory;
 	exampleTitle?: string;
+	/** Listed on a pay-to-win link marketplace; orthogonal to `category`. */
+	isMarketplace: boolean;
 }
 
 export interface CitationTallies {
@@ -123,6 +129,7 @@ export function rollUpCitationDomains(urls: CitationUrl[]): CitationDomain[] {
 				count: url.count,
 				category: url.category,
 				exampleTitle: url.title,
+				isMarketplace: isMarketplaceDomain(url.domain),
 				topCount: url.count,
 			});
 			continue;
