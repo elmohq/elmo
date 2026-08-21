@@ -42,10 +42,22 @@ const { rewrite: stripMdSuffix } = rewritePath("/docs{/*path}.md", "/llms.mdx/do
 const { rewrite: stripMdxSuffix } = rewritePath("/docs{/*path}.mdx", "/llms.mdx/docs{/*path}");
 const { rewrite: toMarkdownRoute } = rewritePath("/docs{/*path}", "/llms.mdx/docs{/*path}");
 
+// Retired URLs, permanently moved. Kept here rather than deleted outright so the
+// links and ranking history the old page accumulated transfer to whatever
+// absorbed its content.
+const PERMANENT_REDIRECTS: Record<string, string> = {
+	"/blog/best-open-source-aeo-tools": "/ai-visibility-tools/category/open-source",
+};
+
 export default createServerEntry({
 	async fetch(request) {
 		const url = new URL(request.url);
 		const path = url.pathname;
+
+		const movedTo = PERMANENT_REDIRECTS[path.replace(/\/+$/, "") || "/"];
+		if (movedTo) {
+			return addSecurityHeaders(new Response(null, { status: 308, headers: { Location: `${movedTo}${url.search}` } }));
+		}
 
 		// An explicit .md / .mdx suffix always serves markdown, ignoring Accept.
 		let target = stripMdSuffix(path) || stripMdxSuffix(path);

@@ -124,12 +124,22 @@
 	content: none !important;
 }
 
+.prose {
+	--tw-prose-links: var(--primary);
+}
+
+/*
+ * Heading text is wrapped in an anchor for the copy-link affordance, so the
+ * link colour would otherwise repaint every heading. Inherit the heading
+ * colour instead and let only the hover underline mark it as clickable.
+ */
 .prose h1 a,
 .prose h2 a,
 .prose h3 a,
 .prose h4 a,
 .prose h5 a,
 .prose h6 a {
+	color: inherit;
 	text-decoration: none !important;
 }
 

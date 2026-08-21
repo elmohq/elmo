@@ -2,7 +2,12 @@ import { getMarketingOgImage } from "./og";
 
 export const SITE_URL = "https://www.elmohq.com";
 export const SITE_NAME = "Elmo";
-export const SITE_DESCRIPTION = "Open source AI visibility tracking and optimization.";
+// Fallback description for pages without their own, and the description on the
+// WebSite/Organization/SoftwareApplication entities. Spells out "answer engine
+// optimization" because answer engines expand the acronym when they search, and
+// carries no pricing so it stays true wherever it is reused.
+export const SITE_DESCRIPTION =
+	"Open source AI visibility and answer engine optimization (AEO) platform for tracking how AI answers mention and cite your brand.";
 export const SITE_LOGO_URL = `${SITE_URL}/brand/icons/elmo-icon-512.png`;
 
 export function canonicalUrl(path: string): string {
@@ -67,6 +72,11 @@ export function organizationJsonLd() {
 	return jsonLd({
 		"@type": "Organization",
 		name: SITE_NAME,
+		// "Elmo" collides with several unrelated products and a Sesame Street
+		// character, so spell out the alternate names and what we actually do —
+		// the signals search engines use to tell entities apart.
+		alternateName: ["ElmoHQ", "Elmo AEO"],
+		description: SITE_DESCRIPTION,
 		url: SITE_URL,
 		logo: SITE_LOGO_URL,
 		sameAs: [

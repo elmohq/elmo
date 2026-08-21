@@ -2,6 +2,7 @@
 title: "Should You Opt Out of Google's AI Overviews?"
 description: "Google now has a Search Console toggle that removes your site from AI Overviews and AI Mode without hurting your rankings. Here's who it's for, and why most brands shouldn't touch it."
 date: "2026-07-24"
+updated: "2026-08-15"
 author: ai
 metaTitle: "Google AI Overviews Opt-Out: Should You Use It? (2026)"
 tags:
@@ -37,6 +38,8 @@ faq:
     answer: "No. The Search Console control governs Google's own generative Search features only. ChatGPT, Perplexity, Claude, and Copilot read your site through their own crawlers, which are governed by robots.txt. Opting out of AI Overviews leaves your visibility in every other answer engine unchanged."
   - question: Should most businesses opt out of AI Overviews?
     answer: "Most should not. Opting out does not stop Google from generating an AI Overview for a query; it only removes you as a source, so the answer gets written from your competitors instead. The opt-out mainly makes sense for publishers whose revenue depends on the pageview itself, and who have the scale to use it as negotiating leverage."
+  - question: Are publishers taking legal action over Google's AI Overviews?
+    answer: "Yes. On 11 August 2026 the Alliance de la presse d'information générale, which represents nearly 300 French newspapers, filed a complaint with France's Autorité de la concurrence, arguing that launching AI Overviews and AI Mode in France in July 2026 without negotiated payment breached commitments Google accepted in 2022 under the country's neighboring-rights framework. The alliance cited an Arcom estimate putting traffic loss from AI summaries at between 33% and 38%. Google's response was that publishers can choose whether or not to appear in its AI features — the opt-out itself, offered as the remedy."
 ---
 
 **For the first time, you can leave Google's AI Overviews without leaving Google Search.** In June 2026 Google began testing a Search Console toggle that removes a site from AI Overviews, AI Mode, and AI Overviews in Discover while keeping it in ordinary results, and it says the setting is not a ranking signal. That is a genuinely new option. It is also the wrong move for most brands, for a reason that has nothing to do with rankings.
@@ -48,6 +51,7 @@ faq:
 - Before this, the only lever was `nosnippet`, which took your regular search snippet down with it. The toggle finally separates the two surfaces.
 - Opting out does not delete the AI Overview. Google still answers the query, using someone else's page. You lose the slot; the competitor keeps it.
 - Search Console launched the matching report with impressions but no clicks or click-through rate, so it shows what you would give up without showing what it is worth.
+- France is now the test of what the opt-out is worth. Twenty days after AI Overviews launched there, an alliance of nearly 300 newspapers filed a complaint demanding payment rather than removal, dismissing the exit option as "a technical withdrawal that would carry a loss of visibility."
 - None of this touches ChatGPT, Perplexity, or Claude. Those are still a [robots.txt](/blog/robots-txt-ai-crawlers) question.
 
 ## What the opt-out actually does
@@ -75,6 +79,14 @@ Google did not build this because site owners asked nicely. On the same day, the
 The requirement has three parts that matter here. Publishers can keep their content out of AI features. Google must attribute publisher content "using clear links" in AI-generated results. And, after consultation feedback, publishers can also opt out of their content being used for the fine-tuning of AI models. Google has a nine-month window to implement the changes and must report on compliance every six months for the first year, though the CMA expects important parts to land well before the deadline.
 
 Reading the intent matters, because it tells you who the tool is for. The CMA's stated goal is bargaining power: putting publishers "in a stronger position to negotiate content deals with Google." The opt-out is a lever in a licensing negotiation. If you are not in one, you are holding someone else's tool.
+
+## France is the first test of what the lever is worth
+
+Google switched on AI Overviews and AI Mode in France on 22 July 2026. Twenty days later, the Alliance de la presse d'information générale, which represents nearly 300 French newspapers, [filed a complaint](https://www.euronews.com/next/2026/08/11/google-ai-summaries-french-dailies-file-complaint-with-competition-authority) with the Autorité de la concurrence. The alliance's argument is not that it wants out of AI Overviews. It is that Google accepted binding commitments in 2022, under France's neighboring-rights framework, to negotiate in good faith and pay for uses of press content — and that "the unilateral rollout of new uses of press content, without prior authorisation or dedicated remuneration, breaches those commitments." APIG president Marc Feuillée put the demand plainly: "Publishers are asking for that value to be shared and for the use of their work to be paid for, as required by law."
+
+The complaint comes with a regulator's number attached. APIG cites an estimate from Arcom, France's audiovisual regulator, putting the traffic loss attributable to AI-generated summaries at [between 33% and 38%](https://ppc.land/google-faces-french-complaint-as-ai-summaries-cut-traffic-up-to-38/) in European markets where the features are active — an official-source counterpart to the Pew click data below.
+
+The instructive part is how each side used the opt-out. Google's response to the complaint was that publishers "can choose whether or not to appear in these AI features" — the toggle, presented as the remedy. The alliance's reply named the asymmetry this article is about: the only alternative on offer is "a technical withdrawal that would carry a loss of visibility." The CMA built the control as a bargaining chip for publishers; within weeks of the French launch, Google was holding it up as the reason no bargain is required. An exit option only converts into leverage if you can afford to use it, and a press sector already down a third of its referral traffic mostly cannot. Google's 2022 commitments expire in July 2027, which gives the French regulator about eleven months to decide whether the toggle settles the question or dodges it.
 
 ## The old way was all-or-nothing
 

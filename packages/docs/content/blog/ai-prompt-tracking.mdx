@@ -1,66 +1,194 @@
 ---
-title: AI Prompt Tracking & Monitoring
-description: "AI prompt tracking monitors how your brand appears across AI engines for the questions customers actually ask. Here's how it works and how to start."
+title: "How Often Should You Run AEO Prompt Tracking?"
+description: "AI answers change run to run, so cadence decides whether your numbers mean anything. A concrete default for how often to run AEO prompt tracking, and when to deviate."
 date: "2026-05-19"
+updated: "2026-08-18"
 author: ai
-metaTitle: "AI Prompt Tracking: Monitor Your Brand in AI Search"
+metaTitle: "How Often to Run AEO Prompt Tracking (2026 Guide)"
 tags:
   - prompt-tracking
+  - aeo
   - ai-visibility
+definedTerms:
+  - term: Prompt tracking
+    definition: "Prompt tracking is monitoring how AI answer engines respond to a fixed set of questions over time, recording whether a brand is mentioned, whether its pages are cited, and which competitors appear, across engines like ChatGPT, Perplexity, Gemini, and Google AI Overviews."
+  - term: Sampling cadence
+    definition: "Sampling cadence is how often an AI visibility tool re-runs each tracked prompt against each answer engine, such as once daily or four times a day. Because AI answers vary from run to run, cadence determines how many samples accumulate and therefore how quickly a real change becomes distinguishable from noise."
+  - term: Rolling window
+    definition: "A rolling window is a fixed-length span of recent runs, such as the last 7 or 28 days, over which AI visibility metrics are averaged. Comparing consecutive windows rather than individual days is how volatile, non-deterministic AI answer data is read without mistaking noise for trend."
+howTo:
+  name: "How to choose your AEO prompt tracking cadence"
+  description: "Set run frequency, prompt count, engine count, and review cadence so that real changes in AI visibility are distinguishable from run-to-run noise."
+  steps:
+    - name: Start at the default
+      text: "Run every tracked prompt once a day on each answer engine you monitor. That accumulates roughly 30 runs per prompt per engine each month, the floor at which per-prompt rates start to be readable."
+    - name: Decide which signal each prompt is for
+      text: "Mention and share-of-voice tracking is comfortable at daily sampling; citation-level tracking, where the cited domains churn 60–70% day to day, is where higher frequency pays."
+    - name: Raise frequency only on contested prompts
+      text: "Sample the prompts you are actively trying to move, or that competitors contest hardest, two to four times a day. Leave stable prompts at daily rather than multiplying the whole bill by four."
+    - name: Fix the human cadence separately
+      text: "Review weekly and report monthly regardless of machine cadence. Daily dashboard checks lead to reacting to single-run noise that the next window will revert."
+    - name: Read rolling windows, gated on enough runs
+      text: "Compare consecutive 7-day windows for citation metrics and 28-day windows for mention rates, and refuse to quote any per-prompt number built on fewer than about 20 runs."
+    - name: Rebalance quarterly
+      text: "Retire prompts whose results you never act on before cutting frequency below daily. Cutting scope keeps the remaining numbers sound; cutting frequency below daily quietly breaks per-prompt readability."
 faq:
-  - question: What is prompt tracking?
-    answer: "Prompt tracking is monitoring how AI engines respond to a defined set of questions, or prompts, over time, recording whether your brand is mentioned, cited, and how it's described across tools like ChatGPT, Perplexity, and Gemini."
+  - question: How often should I run AEO prompt tracking?
+    answer: "Once a day per prompt per engine, read as rolling seven-day averages. Daily sampling accumulates roughly 30 runs a month per prompt, which is the point at which per-prompt mention rates start to mean something. Increase to two to four runs a day only for citation-level tracking on volatile, contested prompts; drop below daily only if you accept reading portfolio-level trends instead of per-prompt numbers."
+  - question: How often should I check my brand in ChatGPT?
+    answer: "Automated runs: daily. Human checks: weekly. Asking ChatGPT about your brand by hand a few times proves the answers vary, but a handful of manual checks cannot measure a mention rate. Let a tracker sample on schedule, review a weekly rollup, and look mid-week only when you have shipped something you expect to move answers."
+  - question: Is daily AI visibility tracking overkill?
+    answer: "For most brands, no. It is the minimum cadence that makes per-prompt trends readable within a month: a brand mentioned in about 30% of answers needs roughly 30 runs before the measured rate is even within 16 points of the truth. What is overkill is reviewing the dashboard daily and reacting to single-day moves, most of which are noise that reverts."
   - question: How many prompts should I track?
-    answer: "Enough to cover the questions that matter to your market: typically dozens, spanning category, comparison, and problem-based queries, not thousands. Start with the prompts your buyers actually ask, then expand to competitor and adjacent topics."
-  - question: Can you monitor AI prompts automatically?
-    answer: "Yes. AI visibility tools run your prompt set across engines on a schedule and record the results automatically, charting mentions, citations, and share of voice over time so you don't have to check by hand."
+    answer: "A few dozen for most brands: 25 to 50 prompts covering buyer-intent, comparison, and category questions, growing into the low hundreds for multi-product portfolios. Prompt count multiplies cost at any run frequency, so relevance beats volume — 50 prompts sampled daily tell you more than 500 sampled monthly."
+  - question: Why do AI answers change every time I ask the same question?
+    answer: "Two reasons: language models generate answers probabilistically, and most answer engines also run a fresh web search per ask, so both the wording and the retrieved sources vary. In our 42-day study, the set of domains cited for the same prompt turned over by roughly 60–70% from one day to the next. A single answer is a sample from a distribution, not a fixed result."
+  - question: How much does daily AI prompt tracking cost?
+    answer: "Cost scales with prompts × engines × runs per day, because every run is a paid model call. Self-hosting an open-source tracker is free in license terms, but you pay the per-run API costs yourself. Managed pricing anchors the range: Elmo Cloud starts at $29/month for 50 prompts sampled daily on ChatGPT, and $99/month for four platforms sampled up to four times a day."
 ---
 
-**AI prompt tracking is monitoring how AI engines answer a fixed set of questions over time.** It records whether your brand is mentioned, whether it's cited, and how it's described across ChatGPT, Perplexity, Gemini, and Google AI Overviews. Because AI answers vary and change, tracking a consistent prompt set is the only reliable way to measure and manage your presence in AI search.
+**Run answer engine optimization (AEO) prompt tracking once a day: every tracked prompt, against every engine you monitor, read as rolling seven-day averages rather than single runs. Daily is the default because AI answers change run to run — sample less and you cannot separate real movement from noise; sample more only for citation-level tracking on volatile prompts.**
+
+That is the short answer, and the rest of this post is the reasoning, because the reasoning tells you when to deviate. "How often" is really four separate decisions people run together — how often each prompt runs, how many prompts you track, how many engines you run them against, and how often a human reads the output — and they trade off against each other under one budget. In answer engine optimization, sampling frequency is not a scheduling detail; it decides whether your numbers mean anything.
 
 **Key takeaways**
 
-- A prompt set is the list of questions you monitor across AI engines.
-- Prompt tracking records mentions, citations, sentiment, and competitor presence per prompt.
-- Run it on a schedule; a single check is a snapshot, not a trend.
-- Build your set from buyer-intent, competitor, and category questions.
-- The point isn't the dashboard; it's the gaps it reveals and the content you ship in response.
+- The default in 2026: every prompt, once a day, on each engine you monitor, reviewed weekly against rolling windows. Deviate for reasons you can name.
+- AI answers are non-deterministic. In our 42-day study, the set of domains cited for the same prompt turned over by roughly 60–70% from one day to the next. A single check is a sample of one.
+- Tracking estimates a rate, not a rank. Around 30 runs bounds a 30% mention rate to roughly ±16 points; about 120 runs tightens that to ±8. Below that, per-prompt numbers are decoration.
+- "How often" is four decisions, not one: run frequency, prompt count, engine count, and human review cadence. Only the last one is free.
+- Which brands get named moves slowly; which URLs get cited moves fast. Citation tracking needs denser sampling than share-of-voice tracking.
+- The bill is frequency × prompts × engines. Fifty prompts on four engines at four runs a day is 24,000 answers a month, every one a paid model call.
 
-If you can't see how AI engines answer the questions your buyers ask, you're flying blind in a channel that increasingly shapes purchase decisions. Prompt tracking turns that blind spot into a measurable, repeatable signal. This guide explains what a prompt set is, how tracking works, and how to build one that's actually useful.
+## What answer engine optimization (AEO) prompt tracking is
 
-## What is a prompt set and why it matters
+Prompt tracking is the measurement layer of answer engine optimization. You define the questions your buyers actually ask — "best [category] tool for small teams", "[your brand] vs [competitor]", "how do I solve [problem]" — and run them against ChatGPT, Gemini, Perplexity, and Google's AI surfaces on a schedule, recording whether your brand was mentioned, whether your pages were cited, how you were described, and which competitors appeared instead. Tools usually meter usage by [prompt volume](/glossary/prompt-volume), the number of prompts you run. The full method is covered in [how to track your brand in AI search](/blog/track-brand-ai-search); the wider playbook in our guide to [answer engine optimization](/blog/answer-engine-optimization).
 
-A prompt set is the collection of questions you monitor across AI engines: the things your customers actually type into ChatGPT or Perplexity when they're researching your category. "Best [category] tool for small teams," "[Your brand] vs [competitor]," "how do I solve [problem]": those are prompts.
+This post is about the schedule — the part most guides treat as an afterthought, and the part that determines whether the output is measurement or anecdote.
 
-The prompt set matters because it defines what you're measuring. In traditional SEO you track keywords; in AI search you track prompts, because the unit of discovery is a question answered, not a keyword ranked. A well-chosen prompt set mirrors your buyer's real research journey, so the results tell you something actionable: where you show up, where a competitor is named instead, and where AI gives a wrong or outdated answer about you.
+## Why one check tells you almost nothing
 
-The number of prompts an engine is queried with is sometimes called [prompt volume](/glossary/prompt-volume), and tools often meter usage by it. Broader coverage gives a more reliable read, but relevance beats raw volume. Fifty prompts that match real buyer questions are worth more than a thousand generic ones.
+Ask an answer engine the same question twice and you will not get the same answer. Two mechanisms guarantee it. The first is generation: large language models produce output probabilistically, so even with identical inputs the wording, the ordering, and often the set of brands named differ between runs. The second is retrieval: in 2026 every major engine grounds a large share of its answers with a live web search at ask time, and what that search returns shifts with ranking churn, fresh content, and personalization. Both the writer and its sources change between runs.
 
-## How prompt tracking works
+We measured how much. In our [42-day citation volatility study](/blog/citation-volatility), we ran 28 prompts every day on ChatGPT and Google AI Mode and recorded every cited domain. On most prompts, the set of domains cited turned over by more than half from one day to the next — roughly 60–70% on average. Google AI Mode cited about 24 domains a day and ChatGPT about 17, and for one broad prompt — "alternatives to Nike for high-performance running" — Google drew on 445 distinct domains across six weeks. Even whether an engine searches at all is unstable: ChatGPT ran a web search on only 6 of 42 days for a definitional prompt it preferred to answer from memory.
 
-Prompt tracking follows a simple loop, repeated on a schedule:
+A single check is a sample of one from a noisy distribution. "We asked ChatGPT and we're in" and "we asked and we're not" carry the same amount of information: close to none. Everything else in this post follows from that.
 
-1. Define the prompts you want to monitor.
-2. Run them across the AI engines your audience uses.
-3. Record the response for each: is your brand mentioned, is it cited with a link, how is it described, and which competitors appear.
-4. Repeat over time and chart the trend.
+## You are estimating a rate, not reading a rank
 
-The repetition is the whole point. AI answers are probabilistic and shift as models update and the web changes, so a single run is a snapshot. Tracking the same prompts on a cadence reveals movement: a new competitor entering the answer, your brand gaining citations after a content push, or sentiment drifting because a source went stale.
+Traditional rank tracking got away with sparse checks because a rank is close to deterministic: position 4 today is position 4 if you look again in an hour. AI visibility does not work that way: the honest description of your position is a rate — your brand appears in some fraction of answers for a prompt — and a rate can only be estimated from repeated runs.
 
-From the recorded results, you can derive the metrics that matter: mention rate, citation rate, [share of voice](/blog/ai-share-of-voice) against competitors, and sentiment. Those metrics turn a pile of AI answers into something you can manage. For the broader method, see [how to track your brand in AI search](/blog/track-brand-ai-search).
+The arithmetic is unforgiving at small sample sizes. Suppose your true mention rate on a prompt is 30%:
 
-## How to build a useful prompt set
+- After 1 run, you know essentially nothing. You saw a yes or a no.
+- After 7 runs — a week of daily sampling — the observed rate is compatible with anything from under 10% to over 60%.
+- After 30 runs — a month of daily sampling — you can place the rate within roughly ±16 percentage points.
+- After 120 runs — a month at four per day — within roughly ±8 points.
 
-A good prompt set is representative, not exhaustive. Build it from three angles:
+Detecting change is harder than estimating a level. Telling a 30% window from a 40% window takes on the order of 200 runs in each window at face value; with 30 runs per window, only swings of around 25 points stand out from the noise. And these are best-case figures: consecutive runs are not fully independent — same model version, same index state, sometimes cached retrieval — so real uncertainty is somewhat wider than the formula suggests. The point is not to run tracking like a clinical trial; it is to stop reading week-over-week per-prompt wiggles as findings.
 
-- Buyer-intent prompts: the questions someone asks when they're close to choosing, like "best [category] tool," "[category] software for [use case]," or "is [your brand] worth it." These are the highest-value because they shape decisions.
-- Competitor prompts: direct comparisons ("[your brand] vs [competitor]") and category roundups where you'd expect to be named. These reveal where rivals are winning the answer.
-- Category and problem prompts: broader questions about the problem you solve ("how do I [job to be done]"). These show whether you're part of the conversation at the top of the funnel.
+The escape hatch is aggregation. Individual prompts are noisy, but a portfolio is not: 25 prompts sampled daily produce 175 runs a week, enough to make an overall [share of voice](/blog/ai-share-of-voice) trend readable at the week level even while every individual prompt stays murky. This is the real trade between cadence and prompt count. For a fixed budget, more prompts at daily frequency buys a better portfolio read; fewer prompts at higher frequency buys per-prompt answers on the questions you are contesting. Decide which of those you need before you buy either.
 
-A few practical rules: phrase prompts the way real users do, not in marketing language; include the variations people actually type; and keep the set small enough to review. Start with a few dozen prompts that map to your funnel, then expand as you learn which ones move. Resist the urge to track everything, because a tight, relevant set is easier to act on.
+## Four cadence decisions, not one
 
-## From tracking to action
+"How often should I track?" bundles four decisions with different answers, different costs, and different failure modes. Conflating them is how teams end up paying for four-times-daily runs nobody reads.
 
-Tracking is only valuable if it changes what you do. Each gap a prompt set reveals is a to-do: a comparison where a competitor is cited and you aren't, a category question where AI doesn't mention you, an answer that describes your product incorrectly. Those become content and authority work, the [answer engine optimization](/blog/answer-engine-optimization) playbook applied to your specific gaps.
+| Decision | Sensible default | What justifies changing it |
+|---|---|---|
+| How often each prompt runs | Once a day, per engine | Up to 2–4×/day for citation tracking on volatile prompts; weekly only if you will read portfolio-level trends exclusively |
+| How many prompts you track | 25–50 for most brands | Category breadth and product lines push it up; every added prompt multiplies the bill at any frequency |
+| How many engines you run against | The 2–4 your buyers demonstrably use | Engines disagree on sources and on when they ground, so no engine is a proxy for another |
+| How often a human reviews | Weekly, with monthly reporting | During an active campaign, review the first full window after each shipped change — not the next morning |
 
-Doing this manually across dozens of prompts and several engines doesn't scale, which is why brands use [AI visibility software](/ai-visibility-tools) to automate the loop. [Elmo](https://www.elmohq.com/) is an open-source tool that runs your prompt sets across the major AI engines, records mentions and citations, and tracks the trend over time, so prompt tracking becomes an ongoing signal rather than a one-off audit. For the wider vocabulary, see the [AI search glossary](/glossary).
+Run frequency is the subject of the rest of this post, so briefly on the other three.
+
+**Prompt count.** A useful set is representative, not exhaustive: buyer-intent questions, head-to-head comparisons, and category questions, phrased the way people actually ask them. Twenty-five to fifty covers most brands, and each addition multiplies cost at whatever frequency you choose, so a prompt that would never change a decision is not worth its run budget.
+
+**Engine count.** The engines are different enough that tracking one tells you little about the others. In our study, Google AI Mode ran a web search on every prompt every day while ChatGPT grounded mainly commercial questions, and their cited-source mixes diverge sharply. Two to four engines, chosen by where your buyers actually are, is the defensible middle.
+
+**Human cadence.** The only free one, and it should be the slowest. The machine samples daily so that when you look weekly, the window under your glance is statistically sound. Reversing that — humans checking daily on top of sparse machine runs — produces the worst combination available: high anxiety on low data.
+
+## What moves fast and what moves slow
+
+Cadence has no single answer because the signals inside an AI answer move at different speeds.
+
+**Which brands get named moves slowly.** A model's sense of who belongs in a category comes substantially from training data and entity associations, which shift on the timescale of model updates and sustained coverage — months, not days. In our six weeks of Nike-category prompts, the day-to-day churn almost never touched the roster: Under Armour appeared in 81% of answers, Adidas in 59%, New Balance in 57%, and the split barely differed by engine (Adidas was in 57% of ChatGPT answers and 60% of Google's). Earning a place on that roster is similarly slow; see [how long it takes to get cited by AI](/blog/how-long-to-get-cited-by-ai).
+
+**Which URLs get cited moves fast.** Citations come from the live search at ask time, and that layer is where the 60–70% daily churn lives. A stable core exists — on Google AI Mode, a small set of domains earned about 56% of all citations every day — but the long tail reshuffles constantly, and on ChatGPT even the leading sources rotate: its stable core covered only about 23% of citations.
+
+| Signal | How fast it moves | Sampling it needs |
+|---|---|---|
+| Whether the engine grounds the prompt at all | Slow, but shifts in steps with product updates | Daily; watch for step changes |
+| Which brands are named (share of voice) | Slow — weeks to months | Daily is ample; read 28-day windows |
+| How your brand is described | Slow | Daily; review monthly |
+| Which domains are cited | Fast — 60–70% day-to-day churn | Daily minimum; 2–4×/day where contested |
+| Which specific URLs are cited | Fastest | 2–4×/day if URL-level detail matters to you |
+
+The practical split: if what you care about is share of voice — being named at all — daily sampling is enough, and your constraint is window length, not frequency. If what you care about is citations — which pages carry the answer, most of which [are not on your domain anyway](/blog/where-ai-citations-come-from) — you need denser sampling, because you are photographing a faster-moving subject. And the two are separate signals: engines routinely cite pages without naming the brand and name brands without citing them — the [ghost citations](/blog/ghost-citations) problem — so a cadence chosen for one can be wrong for the other.
+
+## How often to run answer engine optimization prompt tracking, by situation
+
+With the mechanics on the table, here is what we would actually run in 2026.
+
+| Situation | Recommended frequency | Why | Rough cost implication |
+|---|---|---|---|
+| Actively running an AEO campaign | Daily everywhere; 2–4×/day on the prompts you are trying to move | Before/after windows tight enough to judge each shipped change within two to four weeks | Mid to high — the multiplier applies only to the contested subset |
+| Stable monitoring | Daily, reviewed weekly | Keeps windows sound so a real drop surfaces within a week or two, without anyone watching | Low to mid — one answer per prompt per engine per day |
+| Pre-launch baseline | Daily for 3–4 weeks before changing anything | 20+ runs per prompt is the floor for a usable before-window, and baselines cannot be reconstructed | A bounded, one-time spend |
+| Competitive category with volatile answers | 2–4×/day on contested prompts, daily elsewhere | Broad recommendation prompts churn hardest; sparse samples of a churning list read as trends that are not there | Highest — this is where 4× sampling earns its cost |
+| Small budget | Daily on one engine with a trimmed prompt set; or weekly across more, read portfolio-only | A sound number for a narrow question beats noise across everything | Lowest — $29/month managed, or self-hosted plus API costs |
+
+The pattern behind the table: frequency should follow the volatility of the signal you care about and the speed at which you are actually prepared to act. The pre-launch row matters because before-windows cannot be reconstructed: if you are about to start an answer engine optimization push, start sampling three to four weeks before you ship anything. A baseline you did not record is gone.
+
+## Cost is the real constraint
+
+Every run is a paid model call. Either the API bill lands on your own keys (self-hosted) or a managed tool prices it into the subscription. Either way the bill has the same shape: **frequency × prompts × engines**, with grounding as a multiplier.
+
+The multiplication is the whole story. Fifty prompts on four engines at one run a day is 6,000 answers a month. The same set at four runs a day is 24,000. Nothing else in the setup grows that fast, which is why frequency is the one variable to set deliberately rather than default into.
+
+Grounding deserves its own line item. A grounded call — the model running its own web search and returning cited sources — costs roughly ten times an ungrounded one. That ratio is visible in how tracking products are priced: in [Elmo's cloud plans](/pricing), scraped surfaces are sampled up to four times a day from the $99-a-month tier up, while grounded model calls are metered at one run per prompt per day. The entry plan is $29 a month for 50 prompts sampled daily on ChatGPT; custom plans cap sampling at seven runs a day, which is research-grade territory — useful for studying volatility itself, not for marketing decisions. Self-hosting is free and removes the subscription but not the physics: you supply the API keys and pay per run directly. Other [AI visibility tools](/ai-visibility-tools) price the same variables differently, but all of them are selling the same multiplication.
+
+Two consequences. First, when budget forces a cut, cut scope before soundness: dropping prompts you never act on keeps the remaining numbers readable, while dropping frequency below daily quietly breaks per-prompt readability across the board. Second, the cheapest upgrade is usually not more runs but a longer unbroken stretch of the same cadence: window length buys statistical weight, and time is the one free input.
+
+## Signs you are sampling too infrequently — or too often
+
+Cadence errors show up in recognizable ways.
+
+You are sampling too infrequently if:
+
+- **You cannot say whether a change is real.** A mention rate that reads 40% one month and 25% the next sounds like a crisis; on four runs a month, it is indistinguishable from no change at all.
+- **Per-prompt charts look like square waves.** Rates snapping between 0%, 50%, and 100% are the signature of tiny denominators, not of a volatile market.
+- **You find out late.** With weekly runs, a drop produces its first contrary data point up to a week later and a readable trend a month or more after that. Teams on sparse cadences reliably discover regressions at quarterly reviews, the most expensive possible time.
+- **Meetings retell individual answers.** "Perplexity recommended us on Tuesday" is an anecdote. If anecdotes are what gets discussed, the sampling is not dense enough to produce anything else.
+
+You are sampling too often if:
+
+- **Consecutive windows agree within noise, week after week,** and nobody has acted on a difference in months. You are paying for confirmation.
+- **You react to single days.** Shipping content because Tuesday looked bad is trading against noise; in our volatility data, most single-day changes in the cited set are churn that reverses.
+- **The machine outruns the humans by an order of magnitude.** Four-times-daily sampling reviewed monthly is archive-building. That can be a legitimate choice — dense archives make later before/after analysis possible — but it should be a choice, not a default nobody revisited.
+
+Note the asymmetry: too-sparse sampling destroys the measurement, while too-dense sampling only wastes money. If you must err, err dense — but for most brands, "err daily" is the answer.
+
+## Compare rolling windows, not days
+
+The way to read volatile data without fooling yourself is boring and reliable: average over windows, compare windows to windows, and gate on sample size.
+
+- Use rolling 7-day windows for citation metrics, which move fast, and rolling 28-day windows for mention rate and share of voice, which move slowly. Compare each window to the one before it, not to the best week you ever had.
+- Gate every per-prompt number on a minimum of about 20 runs — the same floor we applied in the volatility study — and refuse to quote anything built on less. An impressive rate over six runs is a coin-flip streak.
+- Mark the dates you ship changes, and judge each one on the first full window after it, not the first morning. Citation-level effects can show inside a couple of weeks; entity-level effects — getting named rather than merely cited — move on model-update timescales, so re-measure those after two months, not two weeks.
+- Keep the raw answers. Aggregates tell you whether something changed; the underlying responses are how you find out what changed, and they cannot be regenerated later: the distribution you would resample has already moved.
+
+That last point is the quiet argument for a steady cadence over bursts. A panic audit run the week something feels wrong produces data you cannot compare to anything. A boring daily schedule, left alone for months, produces the before-window for every question you will ask later.
+
+## How to set your cadence
+
+1. **Start at the default.** Every prompt, once a day, on each engine you monitor — roughly 30 runs per prompt per engine per month.
+2. **Decide which signal each prompt is for.** Mentions and share of voice are comfortable at daily; citation-level tracking is where more frequency pays.
+3. **Raise frequency only on contested prompts.** The ones you are actively trying to move, or that churn hardest, go to 2–4 runs a day. The rest stay at daily.
+4. **Fix the human cadence separately.** Weekly review, monthly reporting, regardless of what the machine does.
+5. **Read rolling windows, gated on about 20 runs.** Seven days for citations, 28 for mention rates.
+6. **Rebalance quarterly.** Retire prompts you never act on before you cut frequency below daily; cut scope, not soundness.
+
+Cadence is what separates measurement from anecdote. Run daily, read weekly, report monthly, and deviate for reasons you can name.
+
+[Elmo](https://www.elmohq.com/) is an open-source AI visibility platform built around exactly this loop: it runs your prompt set on a schedule across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces, records every mention and citation, and computes the rolling-window metrics above. Self-host it free on your own API keys, or use the managed cloud; the [prompt wizard](/docs/user-guide/prompt-wizard) generates a starter prompt set from your website, and the [user guide](/docs/user-guide) covers the rest of the loop. For the vocabulary, see the [AI search glossary](/glossary).

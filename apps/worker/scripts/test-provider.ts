@@ -10,13 +10,8 @@
  *   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online" --output-json result.json
  */
 
-import {
-	parseScrapeTargets,
-	getProvider,
-	getModelMeta,
-	STATUS_TARGETS,
-	type ScrapeResult,
-} from "@workspace/lib/providers";
+import { getModelMeta } from "@workspace/config/models";
+import { parseScrapeTargets, getProvider, STATUS_TARGETS, type ScrapeResult } from "@workspace/lib/providers";
 import { extractTextContent, extractCitations } from "@workspace/lib/text-extraction";
 import { appendFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { escapeGitHubSummaryTableCell } from "./github-summary";

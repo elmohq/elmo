@@ -61,6 +61,10 @@ jobs:
       - name: Unit tests
         run: pnpm turbo test
 
+      # scripts/ is outside the workspace, so turbo does not reach it.
+      - name: Release script tests
+        run: pnpm test:scripts
+
       - name: Build
         run: pnpm build
 
@@ -84,7 +88,11 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Install Playwright browsers
-        run: pnpm -C apps/web exec playwright install chromium --with-deps
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 1
+          max_attempts: 3
+          command: pnpm -C apps/web exec playwright install chromium --with-deps
 
       - name: Storybook tests
         run: pnpm -C apps/web test:storybook

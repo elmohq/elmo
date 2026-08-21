@@ -17,10 +17,12 @@ import appCss from "../styles.css?url";
 // after it. Must resolve to the same emitted asset as the @font-face src.
 import titanOneFont from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
 
+// clientConfig and envValidation are optional because the router renders against
+// its base context — which has neither — until this route's beforeLoad resolves.
 interface RouterContext {
 	queryClient: QueryClient;
-	clientConfig: PublicClientConfig;
-	envValidation: {
+	clientConfig?: PublicClientConfig;
+	envValidation?: {
 		mode: DeploymentMode;
 		missing: MissingEnvVar[];
 		isValid: boolean;
@@ -158,7 +160,9 @@ function RootComponent() {
 
 	const clarityQueueScript = `window.clarity=window.clarity||function(){(window.clarity.q=window.clarity.q||[]).push(arguments)};`;
 
-	if (!envValidation.isValid) {
+	// Only swap in the missing-env page once we actually know env is invalid —
+	// envValidation is absent while a navigation's root beforeLoad is in flight.
+	if (envValidation && !envValidation.isValid) {
 		return (
 			<html lang="en">
 				<head>
