@@ -88,3 +88,43 @@ Source: [https://www.example.com/blog/the-10-best-ai-visibility-tools-in-2026-a-
 `,
 	},
 };
+
+/**
+ * Answer bodies are attacker-reachable: anyone who gets a poisoned page cited
+ * by an answer engine chooses part of this markdown. Nothing in it may become
+ * live markup, so this story pins the boundary rather than trusting that the
+ * next person to touch the renderer knows it exists.
+ *
+ * The protection is that no `rehype-raw` is configured, so raw HTML stays
+ * text, and that link hrefs keep react-markdown's stock scheme allowlist.
+ */
+export const HostileContent: Story = {
+	args: {
+		children: `Before <script>alert(document.cookie)</script> after
+
+<img src=x onerror="alert(1)">
+
+[looks harmless](javascript:alert(1)) and [so does this](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)
+
+![](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)
+`,
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		// Raw HTML renders as the text it is, not as markup.
+		await expect(canvasElement.querySelector("script")).toBeNull();
+		await expect(canvas.getByText(/<script>alert\(document\.cookie\)<\/script>/)).toBeVisible();
+		await expect(canvasElement.querySelector("img[onerror]")).toBeNull();
+
+		// Script-bearing URL schemes are stripped out of hrefs, leaving anchors
+		// with nothing to navigate to (and so not even exposed as links).
+		const hrefs = [...canvasElement.querySelectorAll("a")].map((a) => a.getAttribute("href"));
+		await expect(hrefs).toEqual(["", ""]);
+		await expect(canvas.queryAllByRole("link")).toHaveLength(0);
+
+		// Widening image sources to data URLs must not have widened it to
+		// `data:text/html`, which is a document, not an image.
+		await expect(canvasElement.querySelector("img")).toBeNull();
+	},
+};
