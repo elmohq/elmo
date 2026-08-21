@@ -116,7 +116,7 @@ async function fromReadability(url: string): Promise<string | null> {
 	return document.body?.textContent?.trim() || null;
 }
 
-/** Collapse extraction output to the first N lines, matching prior behavior. */
+/** Bound excerpts by line count without reflowing the extracted text. */
 function toExcerpt(content: string): string {
 	return content.split("\n").slice(0, MAX_EXCERPT_LINES).join("\n");
 }

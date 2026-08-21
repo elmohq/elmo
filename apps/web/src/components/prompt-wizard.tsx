@@ -1,9 +1,8 @@
 /**
  * Single-step onboarding wizard.
  *
- * One LLM call returns brand info + competitors + prompts; the user reviews
- * and edits before saving. Replaces the prior 4-step wizard that required
- * DataForSEO + Anthropic in tandem.
+ * One LLM call returns brand info, competitors, and prompts for review before
+ * saving.
  */
 import { useState, useCallback, useEffect, memo, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

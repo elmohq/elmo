@@ -363,7 +363,7 @@ export function extractTextFromCloro(rawOutput: any): string {
 /**
  * Extract text content from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
- * (for old data where provider column may be null).
+ * because persisted runs may not identify a provider.
  */
 export function extractTextContent(rawOutput: any, providerOrEngine: string): string {
 	switch (providerOrEngine) {
@@ -794,7 +794,7 @@ export function extractCitationsFromCloro(rawOutput: any): Citation[] {
 /**
  * Extract citations from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
- * (for old data where provider column may be null).
+ * because persisted runs may not identify a provider.
  */
 export function extractCitations(rawOutput: any, providerOrEngine: string): Citation[] {
 	switch (providerOrEngine) {

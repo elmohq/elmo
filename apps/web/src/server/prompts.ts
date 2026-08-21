@@ -1,7 +1,4 @@
-/**
- * Server functions for prompt operations.
- * Replaces apps/web/src/app/api/prompts/* and brands/[id]/prompts-summary API routes.
- */
+/** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
 import { premiumSlotsUsed, selectPremiumModels } from "@workspace/config/plans";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
@@ -163,10 +160,8 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			const userTags = p.tags || [];
 			const effectiveStatus = getEffectiveBrandedStatus(p.systemTags || [], userTags);
 			const systemTag = effectiveStatus.isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
-			// Push whichever system tag reflects the effective status so the
-			// tag filter on the visibility page matches "unbranded" too, not
-			// just "branded". Previously only BRANDED was pushed, so the
-			// unbranded filter silently matched nothing.
+			// Include exactly one effective system tag so both branded and
+			// unbranded filters use the same status shown in the UI.
 			const effectiveTags = userTags.includes(systemTag) ? [...userTags] : [...userTags, systemTag];
 
 			for (const tag of userTags) allUserTags.add(tag);
@@ -320,8 +315,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		const timezone = "UTC";
 		const timeCondition = gte(promptRuns.createdAt, fromDate);
 
-		// Run aggregation queries in parallel. Web-query stats used to be computed
-		// here too — the Web Queries tab now goes through getQueryFanoutFn instead.
 		const [mentionStatsResult, competitorMentionsResult] = await Promise.all([
 			// Total runs + brand mentions
 			db

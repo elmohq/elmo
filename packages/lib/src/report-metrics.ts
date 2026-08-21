@@ -382,7 +382,7 @@ export function analyzeByEngine(
 		if (run.brandMentioned) stats.mentions++;
 	}
 
-	// Legacy names from old reports, before model ids were normalized.
+	// Persisted reports may use provider names where current reports use model ids.
 	const legacyAliases: Record<string, string> = {
 		openai: "ChatGPT",
 		anthropic: "Claude",

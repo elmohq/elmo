@@ -243,7 +243,7 @@ export function selectDueTargets(targets: TargetPlan[], lastRunAtByKey: Map<stri
  * Runaway-tenant ceiling: the theoretical daily maximum the plan
  * can produce, with headroom for pick changes and retries. Null = no ceiling.
  * Deliberately derived from plan limits (not current usage) so it's stable
- * and generous — it exists to stop pathology, not to shave legitimate runs.
+ * and generous — it exists to stop runaway scheduling, not to shave legitimate runs.
  */
 export function dailyRunCeiling(entitlements: Entitlements): number | null {
 	if (entitlements.unlimited) return null;

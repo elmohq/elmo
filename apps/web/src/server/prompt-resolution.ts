@@ -69,8 +69,6 @@ export async function resolveFilteredPrompts(
 				if (!tagFilter.some((t) => effectiveTags.includes(t))) return false;
 			}
 
-			// Search filter — previously applied in the browser against the
-			// prompt text (case-insensitive substring).
 			if (search && !p.value.toLowerCase().includes(search.toLowerCase())) return false;
 
 			return true;

@@ -42,9 +42,8 @@ const { rewrite: stripMdSuffix } = rewritePath("/docs{/*path}.md", "/llms.mdx/do
 const { rewrite: stripMdxSuffix } = rewritePath("/docs{/*path}.mdx", "/llms.mdx/docs{/*path}");
 const { rewrite: toMarkdownRoute } = rewritePath("/docs{/*path}", "/llms.mdx/docs{/*path}");
 
-// Retired URLs, permanently moved. Kept here rather than deleted outright so the
-// links and ranking history the old page accumulated transfer to whatever
-// absorbed its content.
+// Keep permanent redirects server-side so backlinks and ranking signals reach
+// the canonical replacement rather than a client-rendered not-found page.
 const PERMANENT_REDIRECTS: Record<string, string> = {
 	"/blog/best-open-source-aeo-tools": "/ai-visibility-tools/category/open-source",
 };
