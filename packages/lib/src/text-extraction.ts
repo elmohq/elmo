@@ -131,9 +131,9 @@ export function extractTextFromDataforseoScraper(rawOutput: any): string {
 		const markdown = result?.markdown;
 		if (typeof markdown === "string" && markdown.trim()) return markdown;
 		// Older or partial responses may only populate the per-item blocks. They
-		// are separate markdown blocks, so they are joined by a blank line — a
-		// single newline would run a table's header into the paragraph above it
-		// and stop the whole block from parsing.
+		// are separate markdown blocks, so they are joined by a blank line; a
+		// single newline is a soft break, which would render consecutive blocks
+		// as one run-on paragraph.
 		const texts: string[] = [];
 		for (const item of result?.items ?? []) {
 			if (typeof item?.markdown === "string" && item.markdown.trim()) texts.push(item.markdown.trim());
@@ -357,7 +357,9 @@ export function extractTextFromCloro(rawOutput: any): string {
 	try {
 		const answer = cloroAnswer(rawOutput);
 		if (!answer) return "No content in Cloro output.";
-		for (const key of ["text", "markdown"]) {
+		// `markdown` first: the AI Overview task is asked for it explicitly, and
+		// `text` is the same answer with its formatting flattened away.
+		for (const key of ["markdown", "text"]) {
 			if (typeof answer[key] === "string" && answer[key].trim()) return answer[key].trim();
 		}
 		return "No text content found in Cloro output.";

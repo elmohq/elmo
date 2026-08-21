@@ -218,7 +218,7 @@ describe("text-extraction", () => {
 	});
 
 	describe("extractTextFromDataforseoScraper", () => {
-		it("keeps per-item blocks parseable as markdown when the top-level markdown is missing", () => {
+		it("keeps per-item blocks separate when the top-level markdown is missing", () => {
 			const raw = {
 				tasks: [
 					{
@@ -666,6 +666,22 @@ describe("text-extraction", () => {
 		it("still reads chatbot dataset answers and reports missing content", () => {
 			expect(extractTextFromBrightdata({ answer_text_markdown: "Dataset answer." })).toBe("Dataset answer.");
 			expect(extractTextFromBrightdata({})).toBe("No text content found in BrightData output.");
+		});
+	});
+
+	describe("extractTextFromCloro", () => {
+		it("reads the AI Overview's markdown rather than the flattened text beside it", () => {
+			const rawOutput = {
+				aioverview: {
+					text: "The Brooks Ghost is a well-reviewed beginner shoe.",
+					markdown: "The **Brooks Ghost** is a well-reviewed beginner shoe.",
+				},
+			};
+			expect(extractTextContent(rawOutput, "cloro")).toBe("The **Brooks Ghost** is a well-reviewed beginner shoe.");
+		});
+
+		it("falls back to text for the chatbot tasks, which carry no markdown field", () => {
+			expect(extractTextContent({ text: "Chatbot answer." }, "cloro")).toBe("Chatbot answer.");
 		});
 	});
 
