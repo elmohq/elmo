@@ -8,7 +8,12 @@ import remarkGfm from "remark-gfm";
  * a script vector, so links keep the stock rules.
  */
 const urlTransform: UrlTransform = (url, key, node) => {
-	if (key === "src" && node.tagName === "img" && /^data:image\//i.test(url)) return url;
+	if (key === "src" && node.tagName === "img") {
+		if (/^data:image\//i.test(url)) return url;
+		// Relative sources could make authenticated requests against this app,
+		// while protocol-relative sources obscure the destination's scheme.
+		if (!URL.canParse(url)) return "";
+	}
 	return defaultUrlTransform(url);
 };
 
@@ -32,7 +37,13 @@ const components: Components = {
 	// of breaking the answer into a column of logos.
 	img: ({ src, alt }) =>
 		typeof src === "string" && src ? (
-			<img src={src} alt={alt ?? ""} className="my-0 inline h-[1.2em] w-auto align-middle" />
+			<img
+				src={src}
+				alt={alt ?? ""}
+				className="my-0 inline h-[1.2em] w-auto align-middle"
+				loading="lazy"
+				referrerPolicy="no-referrer"
+			/>
 		) : null,
 };
 

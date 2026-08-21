@@ -107,6 +107,10 @@ export const HostileContent: Story = {
 [looks harmless](javascript:alert(1)) and [so does this](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)
 
 ![](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)
+
+![](/api/session)
+
+![](//tracker.example/pixel.png)
 `,
 	},
 	play: async ({ canvasElement }) => {
@@ -126,5 +130,10 @@ export const HostileContent: Story = {
 		// Widening image sources to data URLs must not have widened it to
 		// `data:text/html`, which is a document, not an image.
 		await expect(canvasElement.querySelector("img")).toBeNull();
+
+		// Images cannot use the viewer's credentials against this app or hide
+		// their destination behind the page's current protocol.
+		await expect(canvasElement.innerHTML).not.toContain("/api/session");
+		await expect(canvasElement.innerHTML).not.toContain("tracker.example");
 	},
 };

@@ -88,4 +88,23 @@ describe("answer rendering across providers", () => {
 	])("keeps %s blocks as separate paragraphs", (_name, provider, rawOutput) => {
 		expect(render(rawOutput, provider).match(/<p>/g)).toHaveLength(2);
 	});
+
+	it("does not load relative or protocol-relative images", () => {
+		const html = renderToStaticMarkup(
+			<ResponseMarkdown>{`![remote](https://images.example/favicon.png)
+
+![root relative](/api/session)
+
+![path relative](./pixel.png)
+
+![protocol relative](//tracker.example/pixel.png)`}</ResponseMarkdown>,
+		);
+
+		expect(html.match(/<img /g)).toHaveLength(1);
+		expect(html).toContain('src="https://images.example/favicon.png"');
+		expect(html).toContain('loading="lazy"');
+		expect(html).toContain('referrerPolicy="no-referrer"');
+		expect(html).not.toContain("/api/session");
+		expect(html).not.toContain("tracker.example");
+	});
 });
