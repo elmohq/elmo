@@ -32,8 +32,8 @@ import { usePromptStats } from "@/hooks/use-prompt-stats";
 import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
 import { getPromptMetadataFn } from "@/server/prompts";
+import { ResponseMarkdown } from "@/components/response-markdown";
 import { extractTextContent } from "@workspace/lib/text-extraction";
-import ReactMarkdown from "react-markdown";
 
 // -------------------------------------------------------------------
 // Types
@@ -668,8 +668,8 @@ function ResponsesTab({
 
 						<div>
 							<span className="text-xs text-muted-foreground block mb-1.5">LLM Response</span>
-							<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto prose prose-sm max-w-none">
-								<ReactMarkdown>{extractTextContent(run.rawOutput, run.provider ?? run.model)}</ReactMarkdown>
+							<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto">
+								<ResponseMarkdown>{extractTextContent(run.rawOutput, run.provider ?? run.model)}</ResponseMarkdown>
 							</div>
 						</div>
 
