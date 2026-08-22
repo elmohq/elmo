@@ -266,7 +266,6 @@ export interface WebQueryInsight {
  * These are the highest-value opportunities for content creation.
  */
 export function findContentGaps(runs: FullPromptRun[], maxResults: number = 5): ContentGap[] {
-	// Group by promptId
 	const byPrompt = new Map<string, FullPromptRun[]>();
 	for (const run of runs) {
 		if (!byPrompt.has(run.promptId)) byPrompt.set(run.promptId, []);
@@ -448,7 +447,6 @@ export function computeReportUnstableStats(raw: ReportRawPromptRuns): ReportUnst
 	let totalPromptRuns = 0;
 	const promptsWithBrand = new Set<number>();
 
-	// Track per-competitor: which prompts and how many runs mention them
 	const competitorPrompts = new Map<string, Set<number>>();
 	const competitorRunCounts = new Map<string, number>();
 
@@ -471,7 +469,7 @@ export function computeReportUnstableStats(raw: ReportRawPromptRuns): ReportUnst
 		if (promptHasBrand) promptsWithBrand.add(promptIndex);
 	});
 
-	// Compute SoV directly as 0-1 floats (avoid intermediate integer rounding)
+	// Avoid an intermediate integer percentage so small shares are not rounded away.
 	const brandMentionCount = runs.filter((r) => r.brandMentioned).length;
 	let totalCompetitorMentions = 0;
 	for (const run of runs) {

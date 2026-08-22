@@ -473,7 +473,6 @@ async function processPrompt(
 		`Processing prompt "${prompt.value}" for brand "${brand.name}" — ${dueTargets.length}/${plan.targets.length} targets due`,
 	);
 
-	// Run all due model iterations in parallel
 	const runPromises = dueTargets.flatMap((target) => {
 		const providerImpl = getProvider(target.config.provider);
 		return Array.from({ length: target.replication }, (_, i) =>

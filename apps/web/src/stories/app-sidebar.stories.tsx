@@ -149,7 +149,7 @@ const authedUser = (name: string, email: string, seed: string) => ({
  * The shadcn Sidebar uses `position: fixed` and `h-svh` / `min-h-svh` which
  * would otherwise break out of the story frame and overlap Ladle's own UI.
  *
- * The fix is two-fold:
+ * Two constraints keep it bounded:
  *  1. `transform: translate(0)` on the outer div creates a new CSS containing
  *     block so that `position: fixed` children are positioned relative to this
  *     container instead of the viewport.

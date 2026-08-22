@@ -134,7 +134,6 @@ function ReportRenderPage() {
 
 	const data: ReportData = report.rawOutput as ReportData;
 
-	// Build mock data structures for chart component compatibility
 	const mockBrand = {
 		id: "brand-1",
 		name: report.brandName,
@@ -161,7 +160,6 @@ function ReportRenderPage() {
 		createdAt: new Date(),
 	}));
 
-	// Build run arrays
 	const simpleRuns: ReportPromptRun[] = [];
 	const fullRuns: FullPromptRun[] = [];
 	const chartRuns: any[] = [];
@@ -663,7 +661,6 @@ function ReportRenderPage() {
 						.map((p) => {
 							const prompt = promptMap.get(p.promptId);
 							const brandSoV = p.sov ?? 0;
-							// Find the single highest competitor's SoV for this prompt
 							const topCompMentions = Math.max(...Object.values(p.competitorMentions), 0);
 							const denom = p.brandMentionCount + p.totalCompetitorMentions;
 							const maxCompSoV = denom > 0 ? Math.round((topCompMentions / denom) * 100) : 0;

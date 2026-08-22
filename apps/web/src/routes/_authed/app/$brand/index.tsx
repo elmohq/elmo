@@ -306,7 +306,6 @@ function DashboardPage() {
 		);
 	}
 
-	// Get metrics from optimized summary
 	const totalRuns = dashboardSummary?.totalRuns || 0;
 	const totalPrompts = dashboardSummary?.totalPrompts || 0;
 	const nonBrandedVisibility = dashboardSummary?.nonBrandedVisibility || 0;

@@ -170,7 +170,7 @@ export interface PerPromptDailyMentions {
  * Brand share of voice over time, smoothed with per-prompt Last-Value-Carried-
  * Forward (mirrors the visibility trend): each prompt's last-known brand and
  * competitor mention counts are carried across days it didn't run, then summed
- * per day — so staggered prompt schedules don't scallop the line. The carry is
+ * per day, so staggered prompt schedules do not create artificial dips. The carry is
  * pre-seeded with each prompt's earliest observation to avoid a ramp-up dip.
  * Share = brand / (brand + competitor), as a 0–100 percentage (null = no data).
  */

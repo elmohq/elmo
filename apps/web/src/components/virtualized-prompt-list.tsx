@@ -42,14 +42,12 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
 
 	const orderedPrompts = prompts;
 
-	// Measure the offset of the list from the top of the page
 	useLayoutEffect(() => {
 		if (listRef.current) {
 			setScrollMargin(listRef.current.offsetTop);
 		}
 	}, []);
 
-	// Create a stable key that changes when the prompts list changes
 	const promptsKey = useMemo(() => {
 		return orderedPrompts.map((p) => p.id).join(",");
 	}, [orderedPrompts]);

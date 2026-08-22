@@ -69,10 +69,6 @@ const fonts = [
 	},
 ];
 
-// ---------------------------------------------------------------------------
-// Render helper
-// ---------------------------------------------------------------------------
-
 async function render(element: React.ReactElement, width: number, height: number): Promise<Buffer> {
 	return Buffer.from(await renderOgPng(element, { width, height, fonts }));
 }
@@ -288,10 +284,6 @@ function OgImage({ title }: { title: string }) {
 		</div>
 	);
 }
-
-// ---------------------------------------------------------------------------
-// Generate all assets
-// ---------------------------------------------------------------------------
 
 const files: { name: string; data: Buffer }[] = [];
 

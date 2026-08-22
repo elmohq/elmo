@@ -231,7 +231,7 @@ jobs:
       - name: Seed local fixtures
         run: pnpm -C e2e exec tsx seed.ts
 
-      - name: "Local mode: legacy volume + dueness metering"
+      - name: "Local mode: fixed volume + cadence enforcement"
         env:
           DEPLOYMENT_MODE: local
           SCRAPE_TARGETS: stub:stub

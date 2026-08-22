@@ -37,10 +37,8 @@ interface PromptChartPrintProps {
 	brand: Brand;
 	competitors: Competitor[];
 	promptRuns: PromptRunData[];
-	// Whether this prompt has ever been evaluated (all-time)
-	// Used to distinguish "never evaluated" vs "no data in selected window"
+	/** Distinguishes first evaluation from an empty selected time window. */
 	hasEverBeenEvaluated?: boolean;
-	// Optional category for report display
 	category?: PromptCategory;
 }
 
@@ -51,7 +49,6 @@ interface PromptChartPrintProps {
 function computeSoVChartData(runs: PromptRunData[], brand: Brand, competitors: Competitor[]): ChartDataPoint[] | null {
 	if (runs.length === 0) return null;
 
-	// Count mentions
 	let brandMentions = 0;
 	const competitorMentions: Record<string, number> = {};
 	for (const comp of competitors) {
@@ -69,11 +66,9 @@ function computeSoVChartData(runs: PromptRunData[], brand: Brand, competitors: C
 		}
 	}
 
-	// Total mentions across all entities
 	const totalMentions = brandMentions + Object.values(competitorMentions).reduce((s, c) => s + c, 0);
 	if (totalMentions === 0) return null;
 
-	// Build chart data point with SoV percentages
 	const dataPoint: ChartDataPoint = { date: "sov" };
 	dataPoint[brand.id] = Math.round((brandMentions / totalMentions) * 100);
 	for (const comp of competitors) {
@@ -96,10 +91,8 @@ export function PromptChartPrint({
 	const fileName = `${brand.name}-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`;
 	const { chartRef, isDownloading, handleDownload } = useChartDownload(fileName);
 
-	// Filter prompt runs for this specific prompt
 	const promptSpecificRuns = promptRuns?.filter((run) => run.promptId === promptId) || [];
 
-	// Check if we have no prompt runs
 	const hasNoRuns = promptSpecificRuns.length === 0;
 
 	// For report context: use SoV-based chart data. For dashboard: use visibility time-series.
@@ -111,10 +104,8 @@ export function PromptChartPrint({
 		? (sovChartData ?? [])
 		: calculateVisibilityPercentages(promptSpecificRuns, brand, competitors, lookback);
 
-	// Select top competitors by visibility, filling with alphabetical order if needed
 	const selectedCompetitors = selectCompetitorsToDisplay(competitors, chartData, 5);
 
-	// Check if there's any non-zero data for brand or selected competitors
 	const hasVisibilityData = chartData.some((dataPoint) => {
 		const brandValue = dataPoint[brand.id] as number;
 		if (brandValue !== null && brandValue !== undefined && Number(brandValue) > 0) {

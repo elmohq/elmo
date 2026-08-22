@@ -1,9 +1,4 @@
-/**
- * Server functions for visibility and chart data.
- * Replaces:
- *   - apps/web/src/app/api/brands/[id]/batch-chart-data/route.ts
- *   - apps/web/src/app/api/brands/[id]/filtered-visibility/route.ts
- */
+/** Server functions for visibility and chart data. */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
@@ -20,10 +15,6 @@ import {
 	type ProcessedBatchChartDataPoint,
 } from "@/lib/postgres-read";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-
-// ============================================================================
-// Types
-// ============================================================================
 
 export interface BatchChartDataResponse {
 	chartData: ProcessedBatchChartDataPoint[];
@@ -54,10 +45,6 @@ export interface FilteredVisibilityResponse {
 	visibilityTimeSeries: VisibilityTimeSeriesPoint[];
 	lookback: LookbackPeriod;
 }
-
-// ============================================================================
-// Server functions
-// ============================================================================
 
 export const getBatchChartDataFn = createServerFn({ method: "GET" })
 	.validator(
@@ -91,7 +78,6 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 		});
 		const promptIds = resolvedPrompts.map((p) => p.id);
 
-		// Get brand and competitors from PostgreSQL
 		const [brandResult, competitorsResult] = await Promise.all([
 			db.select({ id: brands.id, name: brands.name }).from(brands).where(eq(brands.id, data.brandId)).limit(1),
 			db
@@ -117,7 +103,6 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 			};
 		}
 
-		// Fetch batch chart data
 		const chartData = await getBatchChartData(
 			data.brandId,
 			promptIds,
@@ -178,7 +163,6 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 
 		const timezone = resolveTimezone(data.timezone);
 
-		// Determine branded prompt IDs from effective branded status
 		const brandedPromptIds = resolvedPrompts
 			.filter((p) => getEffectiveBrandedStatus(p.systemTags, p.tags).isBranded)
 			.map((p) => p.id);
@@ -198,7 +182,7 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 
 		// Roll the period run totals from the raw observation sums (actual_*);
 		// the visibility time-series uses the per-day LVCF sums so gaps in
-		// individual prompt schedules don't scallop the line.
+		// individual prompt schedules do not create artificial dips in the line.
 		let totalBrandedRuns = 0;
 		let totalNonBrandedRuns = 0;
 		const visibilityTimeSeries: VisibilityTimeSeriesPoint[] = daily.map((row) => {

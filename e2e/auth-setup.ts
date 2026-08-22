@@ -56,11 +56,9 @@ export default async function globalSetup(config: FullConfig) {
 
 			const userId = userResult.rows[0].id;
 
-			// The local-mode signup hook creates the "default" org + admin
-			// membership on first register (matches TEST_BRAND_ID). On the
-			// sign-in path those rows already exist; the idempotent writes
-			// below cover DBs populated before the hook existed and let us
-			// tweak TEST_BRAND_NAME without a full reset.
+			// The local-mode signup hook creates the "default" org and admin
+			// membership. These idempotent writes also support the sign-in path and
+			// let the fixture rename the brand without resetting the database.
 			await client.query(
 				`INSERT INTO organization (id, name, slug, created_at)
 				 VALUES ($1, $2, $3, NOW())

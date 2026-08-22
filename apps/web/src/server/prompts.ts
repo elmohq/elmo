@@ -96,7 +96,6 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
 
-		// Get all prompts for the brand from DB
 		const allPrompts = await db
 			.select()
 			.from(prompts)
@@ -109,7 +108,6 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			return { prompts: [], totalPrompts: 0, availableTags: [] };
 		}
 
-		// Compute date range from lookback parameter
 		const timezone = "UTC";
 		let fromDateStr: string | null = null;
 		let toDateStr: string | null = null;
@@ -139,7 +137,6 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			toDateStr = toDate.toISOString().split("T")[0];
 		}
 
-		// Parse webSearchEnabled
 		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
 
 		const [summaryData, firstEvaluatedData] = await Promise.all([
@@ -147,7 +144,6 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			getPromptsFirstEvaluatedAt(data.brandId, promptIds),
 		]);
 
-		// Build prompt summaries
 		const summaryMap = new Map(summaryData.map((s) => [s.prompt_id, s]));
 		const firstEvalMap = new Map(firstEvaluatedData.map((f) => [f.prompt_id, f.first_evaluated_at]));
 
@@ -188,33 +184,27 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			};
 		});
 
-		// Apply tag filter
 		const filteredPrompts =
 			tagFilter.length > 0 ? promptSummaries.filter((p) => tagFilter.some((t) => p.tags.includes(t))) : promptSummaries;
 
-		// Sort by visibility data priority, then by weighted mentions, then alphabetically
 		const sortedPrompts = filteredPrompts.sort((a, b) => {
-			// Define priority order: 1 = has visibility data, 2 = awaiting first data, 3 = no brands found
 			const getPriority = (prompt: typeof a): number => {
-				if (prompt.hasVisibilityData) return 1; // Has visibility data - show first
-				if (prompt.totalRuns === 0) return 2; // Awaiting first data - show second
-				return 3; // Has runs but no visibility data (no brands found) - show last
+				if (prompt.hasVisibilityData) return 1;
+				if (prompt.totalRuns === 0) return 2;
+				return 3;
 			};
 
 			const priorityA = getPriority(a);
 			const priorityB = getPriority(b);
 
-			// First sort by priority
 			if (priorityA !== priorityB) {
 				return priorityA - priorityB;
 			}
 
-			// Within same priority, sort by weighted mentions (descending) for items with visibility data
 			if (priorityA === 1 && a.averageWeightedMentions !== b.averageWeightedMentions) {
 				return b.averageWeightedMentions - a.averageWeightedMentions;
 			}
 
-			// Then sort alphabetically
 			return a.value.localeCompare(b.value);
 		});
 
@@ -353,13 +343,11 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 				mentionStats.push({ name: brandName, count: Number(mentionData.brandMentions) });
 			}
 
-			// Initialize all competitors with 0 counts
 			const competitorCounts: Record<string, number> = {};
 			allCompetitors.forEach((c) => {
 				competitorCounts[c.name] = 0;
 			});
 
-			// Tally competitor mentions
 			competitorMentionsResult.forEach((row: any) => {
 				(row.competitorsMentioned || []).forEach((name: string) => {
 					if (name?.trim() && Object.hasOwn(competitorCounts, name)) {
@@ -391,7 +379,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			}
 		}
 
-		// Sort by count desc, then alphabetically
 		mentionStats.sort((a, b) => (a.count === b.count ? a.name.localeCompare(b.name) : b.count - a.count));
 
 		// ---- Citation stats ----
@@ -587,10 +574,6 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		return saved;
 	});
 
-// ============================================================================
-// Prompt Chart Data
-// ============================================================================
-
 export const getPromptChartDataFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
@@ -609,7 +592,6 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 		const timezone = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 		const lookbackParam = (data.lookback || "1m") as LookbackPeriod;
 
-		// Calculate date range
 		let fromDateStr: string | null = null;
 		let toDateStr: string | null = null;
 		let startDate: Date;
@@ -647,7 +629,6 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 			endDate = new Date(todayStr);
 		}
 
-		// Get metadata from DB
 		const [promptData, brandData, competitorsData] = await Promise.all([
 			db
 				.select({ id: prompts.id, value: prompts.value, brandId: prompts.brandId })
@@ -681,7 +662,6 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 
 		const dateRange = generateDateRange(startDate, endDate);
 
-		// Build maps
 		const dailyStatsMap = new Map<string, { total_runs: number; brand_mentioned_count: number }>();
 		for (const stat of dailyStats) {
 			dailyStatsMap.set(String(stat.date), {
@@ -699,7 +679,6 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 
 		const sortedCompetitors = [...brandCompetitors].sort((a, b) => a.name.localeCompare(b.name));
 
-		// Build chart data
 		const chartData = dateRange.map((date) => {
 			const dayStat = dailyStatsMap.get(date);
 			const totalRuns = dayStat?.total_runs || 0;

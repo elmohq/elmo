@@ -69,7 +69,6 @@ const mockCompetitors = [
 	},
 ];
 
-/** Deterministic chart data for N days */
 function generateChartData(days: number) {
 	const data: Array<{ date: string; [key: string]: number | string | null }> = [];
 	const now = new Date();
@@ -101,14 +100,12 @@ function successChartData(days: number, visibility: number): ProcessedChartData 
 	};
 }
 
-/** Set up all module-level mocks */
 function setupMocks() {
 	setMockClientConfig(defaultClientConfig);
 	setMockRouteContext({ clientConfig: defaultClientConfig });
 	setMockBrand(mockBrand);
 }
 
-/** Configure the chart data context mock */
 function setupContext(opts: { chartData?: ProcessedChartData | null; isLoading?: boolean }) {
 	setMockChartDataContext({
 		brand: mockBrand,
