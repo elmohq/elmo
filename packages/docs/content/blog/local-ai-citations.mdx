@@ -1,0 +1,136 @@
+---
+title: "Local AI Search Cites Your Website, Not Your Listings — Then Changes Its Mind"
+description: "A 14,472-citation study of local queries finds Gemini sends 60% of citations to business websites and repeats itself only 40% of the time — and ChatGPT rebuilt its local sourcing overnight in August."
+date: "2026-08-22"
+author: ai
+metaTitle: "Local AI Citations: What Gemini and ChatGPT Actually Cite"
+tags:
+  - ai-citations
+  - ai-visibility
+  - aeo
+  - ai-search
+definedTerms:
+  - term: Grounding drift
+    definition: "Grounding drift is the tendency of a grounded AI engine to cite different sources and recommend different businesses when the same query is repeated. In the first local-search measurement of it, identical Gemini queries produced overlapping cited domains only about 40% of the time, against roughly 90% top-result consistency for Google's local pack."
+  - term: Top-business match rate
+    definition: "Top-business match rate is the share of identical queries for which two AI engines recommend the same business first. Across 1,487 matched local queries, Gemini and ChatGPT agreed on the top business 4.2% of the time — near-total disagreement between the two engines a local customer is most likely to ask."
+  - term: Site-scoped fan-out query
+    definition: "A site-scoped fan-out query is a background search an AI engine runs against a single named domain using the site: operator while composing an answer. On 8 August 2026, such queries jumped from 0.37% to 16.8% of ChatGPT Search's fan-out traffic in a day — the change that coincided with Reddit's citation collapse."
+howTo:
+  name: "How to act on the first local AI citation data"
+  description: "Point local AI visibility work at the sources the engines measurably cite — starting with the business's own website — and measure with repetition, because single queries are snapshots of a system that disagrees with itself."
+  steps:
+    - name: Treat the business website as the primary local AI surface
+      text: "Nearly 60% of Gemini's local citations pointed at businesses' own sites — more than every directory, review platform, and forum combined. A thin site behind a strong Google Business Profile is the inverse of what this data rewards."
+    - name: Put city, service, and proof on pages an engine can quote
+      text: "A citation requires a page worth citing. Service pages that name the city and service, state prices or ranges, and carry real detail give a grounded engine something to extract; a homepage with a phone number does not."
+    - name: Check your vertical's source mix before buying placements
+      text: "The cited sources vary sharply by category — legal directories for lawyers, Zocdoc and Healthgrades for dentists, Reddit-heavy patterns for auto repair. The directory worth being on is the one cited in your category, not the one with the best sales team."
+    - name: Measure with repeated runs, not single spot checks
+      text: "Identical Gemini queries overlapped on cited domains only about 40% of the time, and the same top business recurred in roughly 7% of repeats. Any conclusion drawn from one query is a coin flip dressed as a finding."
+    - name: Track each engine separately
+      text: "Gemini and ChatGPT cited the same domains on 8.3% of identical local queries and agreed on the top business 4.2% of the time. Visibility in one engine says close to nothing about the other."
+    - name: Re-check after engine changes, not on a calendar
+      text: "ChatGPT went from citing Reddit in 41.7% of local answers to 0% within two weeks of an August retrieval change, with business websites nearly tripling. The source mix you optimized against can be discontinued overnight."
+faq:
+  - question: What sources do AI engines cite for local search queries?
+    answer: "Mostly the businesses' own websites, at least on Gemini. Steady Demand analyzed 14,472 citations from 1,487 local service queries across the 50 largest U.S. metros and found 59.9% of Gemini's citations pointed at business websites, with Reddit second at 13.7% — ahead of the entire local-directory category (Angi, Thumbtack, HomeAdvisor combined) at 10.3%. ChatGPT's mix was very different: after an August 2026 change, 42.8% business websites and 40.8% general directories."
+  - question: Do Gemini and ChatGPT recommend the same local businesses?
+    answer: "Almost never. Across 1,487 identical local queries, the two engines cited the same domains 8.3% of the time on average and recommended the same top business just 4.2% of the time. A business can dominate local answers in one engine while being invisible in the other, which makes single-engine spot checks close to meaningless."
+  - question: How consistent are AI engines on repeated local searches?
+    answer: "Strikingly inconsistent. Repeating an identical query in Gemini produced overlapping cited domains only about 40% of the time, and the same top business recurred in roughly 7% of repeats. The control makes the number legible: Google's traditional local pack returned the same top listing about 90% of the time for the same queries."
+  - question: Why did ChatGPT stop citing Reddit for local searches?
+    answer: "OpenAI hasn't said, but the timing matches a retrieval change. Promptwatch data shows Reddit fell from 3.83% of ChatGPT Search citations (18 July–7 August) to 0.52% by 14–17 August — an 86.4% drop — while site-scoped fan-out queries using the site: operator jumped from 0.37% to 16.8% of all fan-out queries on 8 August. In Steady Demand's local sample the swing was starker: Reddit went from 41.7% of local citations to zero, with a 150-query verification pass on 20 August finding no reddit.com citations in 334 total."
+  - question: Do reviews and star ratings affect AI local recommendations?
+    answer: "They look like a threshold, not a ranking factor. Businesses recommended by the AI engines averaged 4.75 stars, slightly below the 4.84 average of a plain Google search baseline, but 97% of recommended businesses sat at 4.0 stars or better and 90% at 4.5 or better. Being clearly reputable appears necessary; being the highest-rated does not appear decisive."
+  - question: Is a Google Business Profile enough for local AI visibility?
+    answer: "The citation data says no. The dominant cited source on Gemini is the business's own website, and after ChatGPT's August change business websites became its largest local source too, at 42.8%. Listings and profiles still matter as inputs, but an engine assembling a cited answer needs quotable pages, and a profile is not a page it cites."
+  - question: How reliable is this local AI citation data?
+    answer: "It is vendor research from Steady Demand, a local SEO agency, covering U.S. service categories in mid-2026 — a single country, one query template family, and a window that included a major ChatGPT retrieval change. The scale (14,472 citations, 4,410 businesses, 3,611 domains) and the published before/after splits make it the best local dataset available, but the decimals are theirs, and the consistency findings mean any percentage from this system carries wide error bars by construction."
+---
+
+**Local search was supposed to be the safe corner of SEO — the local pack is stable, the ranking factors are known, and the playbook is twenty years old. The first large study of local AI citations describes a different machine entirely.** Steady Demand analyzed [14,472 citations from 1,487 local service queries](https://www.steadydemand.com/ai-citation-ledger/) across the 50 largest U.S. metros and found that nearly 60% of Gemini's citations point at businesses' own websites — more than every directory, review site, and forum combined — while the same query, repeated, [produces overlapping sources only about 40% of the time](https://martech.org/business-websites-dominate-geminis-local-ai-citations/). And in the middle of the study window, ChatGPT quietly rebuilt its local sourcing: Reddit went from 41.7% of its local citations to zero.
+
+**Key takeaways**
+
+- Business websites carry local AI answers: 59.9% of Gemini's local citations, versus 13.7% for Reddit and 10.3% for the entire local-directory category — Angi, Thumbtack, and HomeAdvisor combined.
+- The engines disagree almost completely: Gemini and ChatGPT cited the same domains on 8.3% of identical queries and named the same top business 4.2% of the time.
+- Consistency is the real finding. Identical Gemini queries overlap on cited domains ~40% of the time and repeat the same top business ~7% of the time; Google's local pack, run as a control, repeats its top listing ~90% of the time.
+- ChatGPT's local source mix was discontinued mid-study: Reddit fell from 41.7% of citations to 0.0% after an 8 August retrieval change, while business websites jumped from 15.9% to 42.8%.
+- Star ratings behave as a floor, not a ladder: 97% of AI-recommended businesses sit at 4.0 stars or better, but the average (4.75) is slightly *below* the plain-Google baseline (4.84).
+- There is no universal local playbook — dentist queries leaned on Zocdoc and Healthgrades, lawyers on legal directories, and auto repair ran as high as 60% Reddit before the August change erased that channel on ChatGPT.
+
+## The source mix nobody's local budget matches
+
+Ask where local marketing money goes and the answer is listings: directories, aggregators, review platforms, profile management. Ask where Gemini's local citations go and the answer is the opposite end of the stack.
+
+| Source type | Share of Gemini local citations |
+|---|---|
+| Business's own website | 59.9% |
+| Reddit | 13.7% |
+| Local-service directories (Angi, Thumbtack, HomeAdvisor, etc.) | 10.3% |
+| Everything else (review platforms, media, forums, maps) | remainder |
+
+The business website outdrawing *the combined directory category* by nearly six to one is the finding with a budget attached. Local visibility work has spent two decades optimizing intermediaries on the theory that the intermediary ranks and the business does not. A grounded engine composing an answer inverts that: it wants a page that says what the business does, where, and for how much, and the page most likely to say so is the business's own.
+
+That reads as good news for small operators, and partly is — the study found [4,410 unique businesses cited across 3,611 domains](https://www.steadydemand.com/ai-citation-ledger/), a long tail no directory-dominated results page ever had room for. The catch is that it moves the burden onto the one asset most local businesses neglect. A five-page template site behind a well-tended Google Business Profile is precisely the wrong shape for this channel.
+
+## Two engines, 4.2% agreement
+
+The cross-engine comparison is where single-engine intuitions go to die. Running the same 1,487 queries through both engines, [Steady Demand found 8.3% average domain overlap and a 4.2% top-business match rate](https://www.steadydemand.com/ai-citation-ledger-gemini-vs-chatgpt/). The engines were not sampling the same pool differently; they were consulting different webs.
+
+Before August, ChatGPT's local mix barely touched business websites (15.9%) and leaned on Reddit (41.7%) and general directories (34.6%). In some verticals the Reddit reliance was extreme — 72.2% of citations for dentist queries, 60.1% for auto repair, against 12.3% for personal injury lawyers, whose answers came from legal directories instead. Gemini, meanwhile, held business websites near 60% throughout.
+
+Two practical consequences. First, "we checked ChatGPT and we look fine" is not a statement about local AI visibility; it is a statement about one engine, and the one whose sourcing just changed most. Second, category matters more than channel: the cited-source mix for a dentist and a lawyer in the same city have almost nothing in common, which is the same lesson the cross-industry data in [where AI citations come from](/blog/where-ai-citations-come-from) keeps teaching at the national level.
+
+## The August rupture: Reddit to zero
+
+Mid-study, the ground moved. Around 8 August 2026, ChatGPT's retrieval behavior changed, and [Promptwatch's tracking](https://promptwatch.com/blog/chatgpt-stop-citing-reddit) shows what happened underneath: fan-out queries using the `site:` operator — background searches scoped to a single named domain — jumped from 0.37% to 16.8% of all fan-out queries in a single day, and queries per response nearly doubled. ChatGPT started asking specific, named websites directly. Named official sites benefit from that pattern; discussion platforms are rarely the target of a `site:` query, and Reddit's share of ChatGPT Search citations fell from 3.83% to 0.52% — [an 86.4% drop in four days](https://searchengineland.com/reddit-chatgpt-search-citations-fall-report-485473), with no comparable move in Google's AI surfaces.
+
+In the local sample, the same event was not a decline but an extinction:
+
+| ChatGPT local citation source | 30 July | Post–8 August |
+|---|---|---|
+| Reddit | 41.7% | 0.0% |
+| Business websites | 15.9% | 42.8% |
+| General directories | 34.6% | 40.8% |
+| Local-service directories | 3.0% | 11.6% |
+
+A verification pass of 150 queries on 20 August found zero reddit.com citations in 334 total. Gemini's Reddit usage held steady through the same window, confirming the change was ChatGPT's, not Reddit's. Anyone who spent the spring seeding local recommendations into subreddits — the tactic whose risks were already visible in the [Reddit citation data](/blog/reddit-ai-citations) — watched that channel's ChatGPT value go to zero between two Mondays, which is [citation volatility](/blog/citation-volatility) expressed as a step function rather than a drift.
+
+## Same question, different answer
+
+The study's control experiment deserves more attention than its headline. Repeating identical queries, Google's traditional local pack returned the same top listing about 90% of the time. Gemini, on the same queries, overlapped on cited domains roughly 40% of the time and returned the same top business in about 7% of repeats.
+
+Steady Demand calls this grounding drift, and their reading is the right one: **a single AI search is a snapshot, not a measurement.** The practical corollaries are uncomfortable for both directions of the trade. For businesses, ranking "number one in ChatGPT" for a local query is not a stable asset anyone can sell you, because the engine itself will not repeat the answer. For measurement, any tool — ours included — that queries an engine once per prompt and reports the result as your visibility is reporting one draw from a wide distribution. Sampling repeatedly and reporting rates is the only honest shape for the number, the same conclusion the volatility data forced at the national level.
+
+The ratings finding fits the same picture of loose selection: recommended businesses averaged 4.75 stars against a 4.84 plain-search baseline, with 97% at 4.0 or better. Reputation is a gate the engine checks, not a scoreboard it sorts by. Past the gate, the draw is noisy.
+
+## What this does not prove
+
+**It is vendor research.** Steady Demand manages Google Business Profiles and local SEO for a living, and a study concluding that professional attention to local web presence matters is not against interest. The scale and the published splits — per-engine, per-vertical, before-and-after — make it checkable in a way most vendor decks are not, but the decimals are theirs.
+
+**It is one country, one query family, one season.** Fifty U.S. metros and ten service categories, queried in mid-2026, with a major retrieval change in the middle of the window. The ChatGPT numbers in particular describe two different systems joined by a date; extrapolating either half forward is a guess.
+
+**Citation share is not customer share.** Nothing here measures whether anyone called the plumber. A business website absorbing 60% of citations says where engines look, not what users do with the answer — and a business cited but not named, the [ghost citation](/blog/ghost-citations) pattern, earns nothing a customer can act on.
+
+**The consistency numbers undermine the precision of everything else.** If the same query returns overlapping sources 40% of the time, then every percentage in the study is an average over a noisy process. That is an argument for reading the ordering and the magnitudes, not the second digit.
+
+## What to do with it
+
+1. **Reallocate toward the website.** Not a redesign — pages. A page per service per area that names the city, the service, the price range, and the proof. The engine citing "the business's own site" is citing a specific URL that answers the question asked.
+2. **Map your vertical's cited sources before renewing directory spend.** Export the cited domains for your category's prompts from your own tracking. If Zocdoc carries dentist answers and Avvo carries lawyer answers, the generic directory subscription is funding a channel the engines in your category don't read.
+3. **Sample, don't spot-check.** Run each tracked prompt repeatedly and report citation and recommendation *rates*. A [prompt set](/blog/ai-prompt-tracking) queried once is a lottery ticket; queried thirty times, it's a measurement.
+4. **Track Gemini and ChatGPT as separate channels** with separate baselines. At 4.2% agreement, an aggregate "AI visibility" number for local is the average of two unrelated quantities.
+5. **Keep review operations at threshold, not maximum.** Getting from 3.9 to 4.2 stars plausibly matters; getting from 4.6 to 4.8 is polishing past the gate the data shows.
+6. **Assume the mix will break again.** The August change deleted a 40-point channel in a fortnight. Whatever share you measure this quarter is a reading with a date on it, and the alerting that catches the next step-change is worth more than the optimization tuned to the current one.
+
+## The local pack was a promise; this is weather
+
+The deeper shift is in what kind of system local visibility now is. The local pack was legible: deterministic enough to audit, stable enough to sell, contested enough to have a professional class attached. Local AI answers are none of those things yet — dominated by a source category nobody was optimizing, split between engines that agree 4% of the time, and rewritten by upstream retrieval changes with no announcement.
+
+That is not an argument to ignore it. It is an argument to measure it the way you'd measure weather: continuously, per engine, with rates instead of readings.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces on a schedule, recording every citation, mention, and competitor named alongside you. Because every run is stored with its full cited URLs in your own database, computing repeat-query consistency for your local prompts — the number this study says matters most — is a query over your own data.
+
+For the fundamentals, start with [AI citations](/blog/ai-citations) and [answer engine optimization](/blog/answer-engine-optimization), then [how to track your brand in AI search](/blog/track-brand-ai-search). For the wider sourcing picture, see [where AI citations come from](/blog/where-ai-citations-come-from) and [citation volatility](/blog/citation-volatility); for the channel that just vanished from ChatGPT, see [Reddit AI citations](/blog/reddit-ai-citations). For the vocabulary, see the [AI search glossary](/glossary).
