@@ -55,7 +55,7 @@ test.describe("Cloud self-serve signup", () => {
     await expect(page.getByText(NEW_USER.email)).toBeVisible();
   });
 
-  test("an unverified account cannot sign in, and a verified one can", async ({ page, request }) => {
+  test("an unverified account cannot sign in, and a verified one reaches plan selection", async ({ page, request }) => {
     const signUp = await request.post("/api/auth/sign-up/email", {
       data: NEW_USER,
       failOnStatusCode: false,
@@ -75,11 +75,11 @@ test.describe("Cloud self-serve signup", () => {
     await page.getByLabel("Password").fill(NEW_USER.password);
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    // Cloud provisions no organization on signup — the new account picks its
-    // own brand rather than inheriting one.
-    await page.waitForURL(/\/app(?:\/)?$/, { timeout: 30_000 });
-    await expect(page.getByText("No brands available")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("link", { name: /create new brand/i })).toBeVisible();
+    // Cloud provisions a workspace on signup, but app access starts only after
+    // that workspace has an active plan.
+    await page.waitForURL(/\/choose-plan(?:\?.*)?$/, { timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: "Choose your plan" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Subscribe to Starter" })).toBeVisible();
   });
 
   test("a disposable address is refused", async ({ request }) => {

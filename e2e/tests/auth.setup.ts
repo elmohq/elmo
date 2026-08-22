@@ -19,6 +19,7 @@ import type { APIRequestContext, Page } from "@playwright/test";
 import { authStatePath, isDeploymentMode, TEST_USER, type DeploymentMode } from "../fixtures";
 import {
   assertSessionAccepted,
+  ensureActiveCloudPlan,
   ensureOrgMembership,
   ensureUser,
   issueSessionCookie,
@@ -47,10 +48,11 @@ setup("authenticate", async ({ page, baseURL }, testInfo) => {
 });
 
 /** Every mode's specs assume this: an admin of the seeded brand. */
-async function ensureAdminOfSeededBrand(): Promise<string> {
+async function ensureAdminOfSeededBrand(mode?: DeploymentMode): Promise<string> {
   return withDb(async (client) => {
     const userId = await ensureUser(client, TEST_USER);
     await ensureOrgMembership(client, userId);
+    if (mode === "cloud") await ensureActiveCloudPlan(client);
     return userId;
   });
 }
@@ -74,7 +76,7 @@ async function authenticateWithPassword(request: APIRequestContext, mode: Deploy
     await markEmailVerified();
   }
 
-  await ensureAdminOfSeededBrand();
+  await ensureAdminOfSeededBrand(mode);
 
   if (!(await signIn(request))) {
     throw new Error(`[auth.setup] ${mode}: sign-in failed for ${TEST_USER.email}`);

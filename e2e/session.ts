@@ -135,6 +135,23 @@ export async function ensureOrgMembership(client: pg.Client, userId: string): Pr
   }
 }
 
+/** Give the seeded workspace a real cloud-plan shape without calling Stripe. */
+export async function ensureActiveCloudPlan(client: pg.Client): Promise<void> {
+  await client.query(
+    `INSERT INTO subscription
+       (id, plan, reference_id, status, period_start, period_end, billing_interval)
+     VALUES ('e2e-active-business-plan', 'business', $1, 'active', NOW(), NOW() + INTERVAL '30 days', 'monthly')
+     ON CONFLICT (id) DO UPDATE SET
+       plan = EXCLUDED.plan,
+       reference_id = EXCLUDED.reference_id,
+       status = EXCLUDED.status,
+       period_start = EXCLUDED.period_start,
+       period_end = EXCLUDED.period_end,
+       billing_interval = EXCLUDED.billing_interval`,
+    [TEST_BRAND_ID],
+  );
+}
+
 /** Remove accounts a spec created, so the spec can be run again. */
 export async function deleteUsers(emails: string[]): Promise<void> {
   await withDb(async (client) => {
