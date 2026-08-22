@@ -42,13 +42,15 @@ export function PromptOrderDropdown() {
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<FilterTriggerButton
-					icon={<ArrowUpDown className="size-3.5" />}
-					label={label}
-					active={selected !== DEFAULT_PROMPT_ORDER}
-				/>
-			</DropdownMenuTrigger>
+			<DropdownMenuTrigger
+				render={
+					<FilterTriggerButton
+						icon={<ArrowUpDown className="size-3.5" />}
+						label={label}
+						active={selected !== DEFAULT_PROMPT_ORDER}
+					/>
+				}
+			/>
 			<DropdownMenuContent align="start" className="w-60">
 				<DropdownMenuRadioGroup value={selected} onValueChange={(v) => setOrder(v as PromptOrder)}>
 					{PROMPT_ORDER_OPTIONS.map((o) => (

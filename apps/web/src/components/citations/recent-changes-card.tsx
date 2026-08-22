@@ -53,9 +53,7 @@ export function RecentChangesCard({
 				<CardTitle className="flex items-center gap-1.5">
 					Recent Changes
 					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-						</TooltipTrigger>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent className="max-w-xs text-sm font-normal">
 							Compares this {formatPeriodLabel(days)} with the {formatPeriodLabel(days)} before it. Shows new and
 							dropped pages, title changes, and new and dropped domains.

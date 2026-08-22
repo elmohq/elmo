@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardFooter, CardHeader } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { Inbox } from "lucide-react";
 import { IconEditCircle } from "@tabler/icons-react";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
@@ -122,12 +122,10 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 					<div className="text-center py-8 text-muted-foreground">
 						<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
 						<p className="mb-4">No prompts yet.</p>
-						<Button asChild size="sm" className="h-7 flex cursor-pointer">
-							<Link to={editLink}>
-								<IconEditCircle />
-								<span>Edit</span>
-							</Link>
-						</Button>
+						<Link to={editLink} className={buttonVariants({ size: "sm", className: "h-7 flex cursor-pointer" })}>
+							<IconEditCircle />
+							<span>Edit</span>
+						</Link>
 					</div>
 				</div>
 			}

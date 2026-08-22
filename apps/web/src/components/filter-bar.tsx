@@ -11,12 +11,7 @@ import {
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
-import {
-	InputGroup,
-	InputGroupAddon,
-	InputGroupButton,
-	InputGroupInput,
-} from "@workspace/ui/components/input-group";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
@@ -83,9 +78,9 @@ type FilterTriggerButtonProps = {
 	badgeCount?: number;
 } & React.ComponentProps<"button">;
 
-// Props forward to the underlying Button so `<DropdownMenuTrigger asChild>` /
-// `<PopoverTrigger asChild>` can hand their ref + data-state directly to the
-// button element (wrapping in a div would make Slot target the div instead).
+// Props forward to the underlying Button so a trigger's `render` prop can hand
+// its ref and state straight to the button element (wrapping in a div would
+// leave the trigger targeting the div instead).
 // Exported so page-specific bar controls (e.g. the prompts sort dropdown)
 // share the same trigger look without re-implementing it.
 export function FilterTriggerButton({
@@ -145,9 +140,11 @@ export function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarge
 	const groups = groupTrackedTargets(trackedTargets);
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<FilterTriggerButton icon={iconForModel(selected)} label={labelForModel(selected)} active={isFiltered} />
-			</DropdownMenuTrigger>
+			<DropdownMenuTrigger
+				render={
+					<FilterTriggerButton icon={iconForModel(selected)} label={labelForModel(selected)} active={isFiltered} />
+				}
+			/>
 			<DropdownMenuContent align="start" className="w-56">
 				<DropdownMenuRadioGroup value={selected} onValueChange={handleChange}>
 					<DropdownMenuRadioItem value={ALL_MODELS_VALUE} className="cursor-pointer gap-2">
@@ -156,9 +153,7 @@ export function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarge
 					</DropdownMenuRadioItem>
 					{groups.map((group) => (
 						<DropdownMenuGroup key={group.tier}>
-							<DropdownMenuLabel className="text-muted-foreground text-xs font-medium">
-								{group.label}
-							</DropdownMenuLabel>
+							<DropdownMenuLabel className="text-muted-foreground text-xs font-medium">{group.label}</DropdownMenuLabel>
 							{group.values.map((value) => (
 								<DropdownMenuRadioItem key={value} value={value} className="cursor-pointer gap-2">
 									{iconForModel(value)}
@@ -190,9 +185,9 @@ export function LookbackDropdown() {
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<FilterTriggerButton icon={<Clock className="size-3.5" />} label={getLookbackLabel(selected)} />
-			</DropdownMenuTrigger>
+			<DropdownMenuTrigger
+				render={<FilterTriggerButton icon={<Clock className="size-3.5" />} label={getLookbackLabel(selected)} />}
+			/>
 			<DropdownMenuContent align="start" className="w-48">
 				<DropdownMenuRadioGroup value={selected} onValueChange={(v) => handleChange(v as LookbackPeriod)}>
 					{LOOKBACK_OPTIONS.map((opt) => (
@@ -228,15 +223,17 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 
 	return (
 		<Popover open={open} onOpenChange={setOpen} modal={false}>
-			<PopoverTrigger asChild>
-				<FilterTriggerButton
-					icon={<TagIcon className="size-3.5" />}
-					label="Tags"
-					active={selected.length > 0}
-					badgeCount={selected.length > 0 ? selected.length : undefined}
-				/>
-			</PopoverTrigger>
-			<PopoverContent align="start" className="w-64 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+			<PopoverTrigger
+				render={
+					<FilterTriggerButton
+						icon={<TagIcon className="size-3.5" />}
+						label="Tags"
+						active={selected.length > 0}
+						badgeCount={selected.length > 0 ? selected.length : undefined}
+					/>
+				}
+			/>
+			<PopoverContent align="start" className="w-64 p-0" initialFocus={false}>
 				<div className="flex items-center justify-between px-3 h-10 border-b">
 					<span className="font-medium text-sm">Tags</span>
 					{selected.length > 0 && (

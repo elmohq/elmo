@@ -335,14 +335,16 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 
 	return (
 		<Dialog open={isOpen} onOpenChange={setIsOpen}>
-			<DialogTrigger asChild>
-				<Button
-					variant="ghost"
-					size="sm"
-					className={`cursor-pointer ${isFailed ? "text-red-600 hover:text-red-700" : "text-muted-foreground hover:text-foreground"}`}
-				>
-					View Logs
-				</Button>
+			<DialogTrigger
+				render={
+					<Button
+						variant="ghost"
+						size="sm"
+						className={`cursor-pointer ${isFailed ? "text-red-600 hover:text-red-700" : "text-muted-foreground hover:text-foreground"}`}
+					/>
+				}
+			>
+				View Logs
 			</DialogTrigger>
 			<DialogContent className="max-w-[90vw] sm:max-w-[90vw] w-full max-h-[80vh] overflow-y-auto">
 				<DialogHeader>
@@ -408,11 +410,7 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 							) : (
 								<>
 									<Button onClick={handleRetry} disabled={retryLoading} className="cursor-pointer">
-										{retryLoading ? (
-											<Spinner className="mr-2" />
-										) : (
-											<Play className="h-4 w-4 mr-2" />
-										)}
+										{retryLoading ? <Spinner className="mr-2" /> : <Play className="h-4 w-4 mr-2" />}
 										Retry This Job
 									</Button>
 									{retryError && <span className="text-sm text-red-600">{retryError}</span>}

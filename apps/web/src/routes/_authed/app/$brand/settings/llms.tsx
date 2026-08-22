@@ -20,11 +20,16 @@ import { PREMIUM_MODELS, PREMIUM_RUNS_PER_DAY, premiumModelLabel } from "@worksp
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { cn } from "@workspace/ui/lib/utils";
 import { useState } from "react";
-import { formatUsd, PlatformOperatorDetail, PlatformPicker, projectSelectionCostUsd } from "@/components/platform-picker";
+import {
+	formatUsd,
+	PlatformOperatorDetail,
+	PlatformPicker,
+	projectSelectionCostUsd,
+} from "@/components/platform-picker";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { groupPlatformOptions, platformGroupCopy, platformGroupId } from "@/lib/platform-groups";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
@@ -250,12 +255,14 @@ function UpgradePanel({ options, brandId }: { options: ModelPickerState["upgrade
 					</div>
 				))}
 			</div>
-			<Button asChild size="sm" variant="outline">
-				<Link to="/app/$brand/settings/billing" params={{ brand: brandId }}>
-					Compare plans
-					<IconArrowUpRight className="h-4 w-4" />
-				</Link>
-			</Button>
+			<Link
+				to="/app/$brand/settings/billing"
+				params={{ brand: brandId }}
+				className={buttonVariants({ variant: "outline", size: "sm" })}
+			>
+				Compare plans
+				<IconArrowUpRight className="h-4 w-4" />
+			</Link>
 		</div>
 	);
 }
@@ -331,17 +338,21 @@ function PremiumApiPool({ premium }: { premium: PremiumPool }) {
 				</p>
 
 				<div className="flex flex-wrap gap-2">
-					<Button asChild variant="outline" size="sm">
-						<Link to="/app/$brand/settings/prompts" params={{ brand: brandId }}>
-							Choose prompts
-						</Link>
-					</Button>
-					<Button asChild variant="ghost" size="sm">
-						<Link to="/app/$brand/settings/billing" params={{ brand: brandId }}>
-							Change how many
-							<IconArrowUpRight className="h-4 w-4" />
-						</Link>
-					</Button>
+					<Link
+						to="/app/$brand/settings/prompts"
+						params={{ brand: brandId }}
+						className={buttonVariants({ variant: "outline", size: "sm" })}
+					>
+						Choose prompts
+					</Link>
+					<Link
+						to="/app/$brand/settings/billing"
+						params={{ brand: brandId }}
+						className={buttonVariants({ variant: "ghost", size: "sm" })}
+					>
+						Change how many
+						<IconArrowUpRight className="h-4 w-4" />
+					</Link>
 				</div>
 			</CardContent>
 		</Card>
@@ -398,12 +409,15 @@ function AddPlatformsCard({ platforms }: { platforms: ModelPickerState["unconfig
 						</div>
 					))}
 				</div>
-				<Button asChild variant="outline" size="sm">
-					<a href={PROVIDERS_DOCS_URL} target="_blank" rel="noopener noreferrer">
-						Provider setup guide
-						<IconExternalLink className="h-4 w-4" />
-					</a>
-				</Button>
+				<a
+					href={PROVIDERS_DOCS_URL}
+					target="_blank"
+					rel="noopener noreferrer"
+					className={buttonVariants({ variant: "outline", size: "sm" })}
+				>
+					Provider setup guide
+					<IconExternalLink className="h-4 w-4" />
+				</a>
 			</CardContent>
 		</Card>
 	);

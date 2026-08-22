@@ -67,9 +67,7 @@ export function TopUrlsCard({
 						<CardTitle className="flex items-center gap-1.5">
 							Top Cited URLs
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-								</TooltipTrigger>
+								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-sm font-normal">
 									<p className="mb-2">
 										The specific pages most frequently cited by AI models. Filter by category to focus on brand,
@@ -183,10 +181,8 @@ export function TopUrlsCard({
 								<div className="flex items-center gap-3 shrink-0 pt-0.5">
 									{citation.avgPosition != null && (
 										<Tooltip>
-											<TooltipTrigger asChild>
-												<span className="text-[11px] text-muted-foreground tabular-nums">
-													avg {citation.avgPosition.toFixed(1)}
-												</span>
+											<TooltipTrigger render={<span className="text-[11px] text-muted-foreground tabular-nums" />}>
+												avg {citation.avgPosition.toFixed(1)}
 											</TooltipTrigger>
 											<TooltipContent className="text-xs">
 												Average citation position (lower = cited earlier in the response)
@@ -194,10 +190,10 @@ export function TopUrlsCard({
 										</Tooltip>
 									)}
 									<Tooltip>
-										<TooltipTrigger asChild>
-											<span className="text-sm font-semibold tabular-nums min-w-[2rem] text-right">
-												{citation.count.toLocaleString()}
-											</span>
+										<TooltipTrigger
+											render={<span className="text-sm font-semibold tabular-nums min-w-[2rem] text-right" />}
+										>
+											{citation.count.toLocaleString()}
 										</TooltipTrigger>
 										<TooltipContent className="text-xs">
 											Total times this URL was cited across all prompt evaluations
