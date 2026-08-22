@@ -33,6 +33,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { cn } from "@workspace/ui/lib/utils";
 import { Inbox, ListPlus, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 export interface EditablePrompt {
 	id?: string;
@@ -63,7 +64,7 @@ export interface PremiumAllowance {
 
 export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePrompt {
 	return {
-		_key: crypto.randomUUID(),
+		_key: uuidv4(),
 		value: partial?.value ?? "",
 		enabled: partial?.enabled ?? true,
 		tags: partial?.tags ?? [],
