@@ -159,7 +159,7 @@ test.describe("Demo features", () => {
 
   test("brands cannot be created", async ({ page }) => {
     await page.goto("/app");
-    await expect(page.getByRole("heading", { name: "Brand Switcher" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Brand Switcher", { exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("link", { name: /create new brand/i })).toHaveCount(0);
 
     await page.goto("/app/new");
