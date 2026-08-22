@@ -1,6 +1,6 @@
 {
 	"name": "@workspace/worker",
-	"version": "0.2.17",
+	"version": "0.2.19",
 	"private": true,
 	"license": "MIT",
 	"scripts": {
@@ -10,20 +10,21 @@
 		"check-types": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@sentry/node": "^10.69.0",
+		"@sentry/node": "^10.70.0",
+		"@workspace/config": "workspace:*",
 		"@workspace/deployment": "workspace:*",
 		"@workspace/lib": "workspace:*",
 		"@workspace/whitelabel": "workspace:*",
-		"auth0": "^6.1.0",
+		"auth0": "^6.2.0",
 		"drizzle-orm": "^0.45.2",
-		"pg": "^8.22.0",
-		"pg-boss": "^12.26.4",
-		"posthog-node": "^5.47.3"
+		"pg": "^8.23.0",
+		"pg-boss": "^12.27.0",
+		"posthog-node": "^5.49.1"
 	},
 	"devDependencies": {
-		"@types/node": "^26.1.2",
-		"@types/pg": "^8.20.3",
-		"tsx": "^4.23.1",
+		"@types/node": "^26.2.0",
+		"@types/pg": "^8.21.0",
+		"tsx": "^4.23.12",
 		"typescript": "^7.0.2"
 	}
 }

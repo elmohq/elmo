@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Inbox } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
+import type { TrackedTarget } from "@/lib/model-filter";
 import { FilterBar } from "@/components/filter-bar";
 import { FilterSection } from "@/components/page-header";
 import type { ListFilterState } from "@/hooks/use-list-filters";
@@ -9,7 +10,7 @@ interface FilteredListShellProps {
 	/** The page's `useListFilters()` result. */
 	filters: ListFilterState;
 	availableTags: readonly string[];
-	availableModels: string[];
+	trackedTargets: TrackedTarget[];
 	showSearch?: boolean;
 	showModelSelector?: boolean;
 	/** Show "n results" / "n of m results" next to the filter dropdowns. */
@@ -47,7 +48,7 @@ interface FilteredListShellProps {
 export function FilteredListShell({
 	filters,
 	availableTags,
-	availableModels,
+	trackedTargets,
 	showSearch = false,
 	showModelSelector = true,
 	showResultCount = false,
@@ -95,7 +96,7 @@ export function FilteredListShell({
 			<FilterSection>
 				<FilterBar
 					availableTags={availableTags}
-					availableModels={availableModels}
+					trackedTargets={trackedTargets}
 					showSearch={showSearch}
 					showModelSelector={showModelSelector}
 					resultCount={showResultCount && !isLoading ? effectiveFilteredCount : undefined}

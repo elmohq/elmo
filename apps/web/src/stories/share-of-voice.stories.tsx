@@ -4,15 +4,16 @@
  * the URL search params via the mocked router hooks (empty search = defaults).
  */
 import type { Meta, StoryObj } from "@storybook/react";
-import type { ComponentType, ReactNode } from "react";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
+import type { ComponentType, ReactNode } from "react";
 import { Route } from "@/routes/_authed/app/$brand/share-of-voice";
 
 // The route file exports only `Route` (route files must, for code-splitting).
 // Render its component via the route options — the mock exposes `options`.
 const ShareOfVoicePage = (Route as unknown as { options: { component: ComponentType } }).options.component;
-import { setMockBrand } from "./_mocks/use-brands";
+
 import { setMockShareOfVoice } from "./_mocks/server-analysis";
+import { setMockBrand } from "./_mocks/use-brands";
 import { mockShareOfVoice } from "./analytics-fixtures";
 
 const onboardedBrand = {

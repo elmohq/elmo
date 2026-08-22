@@ -5,13 +5,19 @@
  * Stories call `setMockClientConfig()` before rendering to control values.
  */
 
+import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
+
 export type DeploymentMode = "whitelabel" | "local" | "demo" | "cloud";
 
 export interface FeaturesConfig {
 	readOnly: boolean;
 	showOptimizeButton: boolean;
-	supportsMultiOrg: boolean;
 	canCreateBrands: boolean;
+	/** Cloud only: gates the Billing nav item and the billing/paywall routes. */
+	billing?: boolean;
+	teamInvites?: boolean;
+	reportGeneration?: boolean;
+	selfServeSignup?: boolean;
 }
 
 export interface BrandingConfig {
@@ -40,8 +46,6 @@ export interface ClientConfig {
 	hasUsers: boolean;
 }
 
-const DEFAULT_CHART_COLORS = ["#2563eb", "#efb118", "#3ca951", "#ff725c", "#a463f2", "#ff8ab7", "#38b2ac", "#9c6b4e"];
-
 // ---------------------------------------------------------------------------
 // Module-level config that stories can mutate
 // ---------------------------------------------------------------------------
@@ -51,7 +55,6 @@ let _config: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: false,
-		supportsMultiOrg: false,
 		canCreateBrands: false,
 	},
 	branding: {

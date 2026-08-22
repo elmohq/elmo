@@ -8,6 +8,8 @@
  * - :online: Append to enable web search. Omit = no web search.
  */
 
+import { PROVIDERS_DOCS_URL } from "./constants";
+
 export interface ModelConfig {
 	model: string;
 	provider: string;
@@ -28,7 +30,7 @@ export function parseScrapeTargets(envValue?: string): ModelConfig[] {
 			"SCRAPE_TARGETS environment variable is required. " +
 				"Set it to configure which AI models to track. Example:\n" +
 				"  SCRAPE_TARGETS=chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online\n" +
-				"See https://docs.elmohq.com/docs/user-guide/providers for details.",
+				`See ${PROVIDERS_DOCS_URL} for details.`,
 		);
 	}
 	return envValue.split(",").map((raw) => {
@@ -89,23 +91,47 @@ export const STATUS_TARGETS = [
 	"google-ai-mode:dataforseo:online",
 	"google-ai-overview:dataforseo:online",
 	"chatgpt:dataforseo:online",
-	"perplexity:dataforseo:online",
 	"gemini:dataforseo:online",
+	"perplexity:dataforseo:online",
+	// Pinning a model_name routes to LLM Responses instead of the scraper, so
+	// these keep the API side of the provider monitored too.
+	"chatgpt:dataforseo:gpt-5.5:online",
+	"gemini:dataforseo:gemini-2.5-flash:online",
 	"chatgpt:openai-api:gpt-5-mini",
 	"chatgpt:openai-api:gpt-5-mini:online",
-	"claude:anthropic-api:claude-sonnet-4-6",
-	"claude:anthropic-api:claude-sonnet-4-6:online",
-	"claude:openrouter:anthropic/claude-sonnet-4.6",
-	"claude:openrouter:anthropic/claude-sonnet-4.6:online",
+	"claude:anthropic-api:claude-sonnet-5",
+	"claude:anthropic-api:claude-sonnet-5:online",
+	"claude:openrouter:anthropic/claude-sonnet-5",
+	"claude:openrouter:anthropic/claude-sonnet-5:online",
 	"chatgpt:openrouter:openai/gpt-5-mini",
 	"chatgpt:openrouter:openai/gpt-5-mini:online",
 	"gemini:openrouter:google/gemini-2.5-flash",
 	"gemini:openrouter:google/gemini-2.5-flash:online",
 	"deepseek:openrouter:deepseek/deepseek-v3.2",
+	"qwen:openrouter:qwen/qwen3-235b-a22b",
 	"kimi:openrouter:moonshotai/kimi-k3",
 	"grok:openrouter:x-ai/grok-4.5",
 	"grok:openrouter:x-ai/grok-4.5:online",
 	"mistral:openrouter:mistralai/mistral-medium-3.1",
+	// Perplexity's own search, not OpenRouter's Exa fallback: with the plugin
+	// engine left unset, OpenRouter routes Perplexity slugs to native search.
+	"perplexity:openrouter:perplexity/sonar:online",
 	"mistral:mistral-api:mistral-medium-latest",
 	"mistral:mistral-api:mistral-medium-latest:online",
 ];
+
+/**
+ * Which providers can serve each trackable model, derived from STATUS_TARGETS so
+ * the answer is limited to combinations the scheduled provider workflow actually
+ * exercises. Used to tell a self-hosted operator what they would need in order
+ * to track a platform they have not configured yet.
+ */
+export function providersByModel(): Map<string, string[]> {
+	const byModel = new Map<string, Set<string>>();
+	for (const target of parseScrapeTargets(STATUS_TARGETS.join(","))) {
+		const providers = byModel.get(target.model) ?? new Set<string>();
+		providers.add(target.provider);
+		byModel.set(target.model, providers);
+	}
+	return new Map([...byModel].map(([model, providers]) => [model, [...providers].sort()]));
+}

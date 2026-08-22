@@ -54,10 +54,24 @@ export function extractTextFromGoogle(rawOutput: any): string {
 	return extractTextFromDataforseo(rawOutput);
 }
 
+/**
+ * The `dataforseo` provider routes to three different DataForSEO products, so
+ * stored rows under that one provider id carry three shapes. The LLM Scraper is
+ * the one that renders its answer as top-level `markdown` and cites through
+ * top-level `sources`; neither the LLM Responses nor the SERP results have
+ * either field.
+ */
+function isDataforseoScraperResult(result: any): boolean {
+	return typeof result?.markdown === "string" || Array.isArray(result?.sources);
+}
+
 export function extractTextFromDataforseo(rawOutput: any): string {
 	try {
 		const result = rawOutput?.tasks?.[0]?.result?.[0];
 		if (result) {
+			if (isDataforseoScraperResult(result)) {
+				return extractTextFromDataforseoScraper(rawOutput);
+			}
 			const items = result.items || [];
 			// AI Optimization LLM Responses (chatgpt/perplexity/gemini) use
 			// items[].sections[].text; the SERP Google AI Mode shape below uses
@@ -102,6 +116,64 @@ export function extractTextFromDataforseoLlm(rawOutput: any): string {
 	} catch (error) {
 		console.error("Error extracting text from DataForSEO LLM output:", error);
 		return "Error extracting text content.";
+	}
+}
+
+/**
+ * Text extraction for DataForSEO's AI Optimization "LLM Scraper" API
+ * (chatgpt / gemini). The scraped answer arrives pre-rendered as markdown at
+ * tasks[].result[].markdown; items[] carries the same content split into typed
+ * blocks (text, tables, product cards), so the top-level field is preferred.
+ */
+export function extractTextFromDataforseoScraper(rawOutput: any): string {
+	try {
+		const result = rawOutput?.tasks?.[0]?.result?.[0];
+		const markdown = result?.markdown;
+		if (typeof markdown === "string" && markdown.trim()) return markdown;
+		// Older or partial responses may only populate the per-item blocks. They
+		// are separate markdown blocks, so they are joined by a blank line; a
+		// single newline is a soft break, which would render consecutive blocks
+		// as one run-on paragraph.
+		const texts: string[] = [];
+		for (const item of result?.items ?? []) {
+			if (typeof item?.markdown === "string" && item.markdown.trim()) texts.push(item.markdown.trim());
+		}
+		if (texts.length) return texts.join("\n\n");
+		return "No text content found in DataForSEO Scraper output.";
+	} catch (error) {
+		console.error("Error extracting text from DataForSEO Scraper output:", error);
+		return "Error extracting text content.";
+	}
+}
+
+/**
+ * Citation extraction for DataForSEO's AI Optimization "LLM Scraper" API.
+ * tasks[].result[].sources is the deduplicated set the answer actually cited;
+ * items[].sources repeats those same entries. ChatGPT's `search_results` is
+ * deliberately ignored — those are results the model was shown, not sources it
+ * cited.
+ */
+export function extractCitationsFromDataforseoScraper(rawOutput: any): Citation[] {
+	try {
+		const citations: Citation[] = [];
+		const seen = new Set<string>();
+		let idx = 0;
+		const result = rawOutput?.tasks?.[0]?.result?.[0];
+		const sources = [...(result?.sources ?? []), ...(result?.items ?? []).flatMap((i: any) => i?.sources ?? [])];
+		for (const source of sources) {
+			const url = source?.url;
+			if (!url || typeof url !== "string" || !url.startsWith("http")) continue;
+			if (seen.has(url)) continue;
+			seen.add(url);
+			const c = parseCitationUrl(url, source.title, idx);
+			if (c) {
+				citations.push(c);
+				idx++;
+			}
+		}
+		return citations;
+	} catch {
+		return [];
 	}
 }
 
@@ -191,7 +263,10 @@ function extractBrightdataAiOverviewText(record: any): string | null {
 		if (!Array.isArray(aio[listKey])) continue;
 		const snippets: string[] = [];
 		collectAioSnippets(aio[listKey], snippets);
-		if (snippets.length) return snippets.join("\n");
+		// Each snippet is its own block in the overview, so they are separated by
+		// a blank line; a single newline is a markdown soft break and would render
+		// the whole overview as one run-on paragraph.
+		if (snippets.length) return snippets.join("\n\n");
 	}
 	return null;
 }
@@ -282,7 +357,9 @@ export function extractTextFromCloro(rawOutput: any): string {
 	try {
 		const answer = cloroAnswer(rawOutput);
 		if (!answer) return "No content in Cloro output.";
-		for (const key of ["text", "markdown"]) {
+		// `markdown` first: the AI Overview task is asked for it explicitly, and
+		// `text` is the same answer with its formatting flattened away.
+		for (const key of ["markdown", "text"]) {
 			if (typeof answer[key] === "string" && answer[key].trim()) return answer[key].trim();
 		}
 		return "No text content found in Cloro output.";
@@ -398,7 +475,11 @@ export function extractCitationsFromDataforseo(rawOutput: any): Citation[] {
 	try {
 		const citations: Citation[] = [];
 		let idx = 0;
-		const items = rawOutput?.tasks?.[0]?.result?.[0]?.items ?? [];
+		const result = rawOutput?.tasks?.[0]?.result?.[0];
+		if (isDataforseoScraperResult(result)) {
+			return extractCitationsFromDataforseoScraper(rawOutput);
+		}
+		const items = result?.items ?? [];
 		// AI Optimization LLM Responses (chatgpt/perplexity/gemini) carry
 		// citations in items[].sections[].annotations[]; delegate when present.
 		if (items.some((item: any) => Array.isArray(item?.sections))) {

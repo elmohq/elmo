@@ -42,7 +42,7 @@ export const clientLoader = browserCollections.docs.createClientLoader({
 	component({ toc, frontmatter, default: MDX }, _props: undefined) {
 		return (
 			<div className="flex gap-10">
-				<article className="prose min-w-0 max-w-none flex-1">
+				<article className="prose prose-zinc min-w-0 max-w-none flex-1">
 					<h1>{frontmatter.title}</h1>
 					{frontmatter.description && <p className="lead text-muted-foreground">{frontmatter.description}</p>}
 					<MDX components={useMDXComponents()} />
@@ -161,7 +161,7 @@ function OpenApiContent({
 	apiProps: ClientApiPageProps;
 }) {
 	return (
-		<article className="prose min-w-0 max-w-none flex-1">
+		<article className="prose prose-zinc min-w-0 max-w-none flex-1">
 			<h1>{title}</h1>
 			{description && <p className="lead text-muted-foreground">{description}</p>}
 			<div className="not-prose">

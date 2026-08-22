@@ -4,12 +4,20 @@
  * Generated via:  pnpm run generate:auth-schema
  * Source of truth: npx @better-auth/cli@latest generate
  *
- * DO NOT EDIT BY HAND. If you add/remove better-auth plugins in
- * packages/lib/src/auth/server.ts, re-run the generation script
- * and it will overwrite this file.
+ * The generator emits tables, columns, and relations implied by the plugins
+ * in the auth config (the _cli-helper.ts wrapper). Indexes created by the
+ * generator are included here; additional indexes added by hand in
+ * migrations (e.g. subscription index in 0012) are NOT represented in this
+ * file — drizzle-kit snapshots don't see them and would try to drop them on
+ * `drizzle-kit push`. They are maintained by their migration files instead.
+ *
+ * If you add a better-auth plugin that introduces new tables or columns,
+ * re-run the generation script (pnpm run generate:auth-schema) and
+ * commit the diff. If the new table needs indexes beyond what the generator
+ * emits, add them in a new migration — not in this file.
  */
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, index, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
 	id: text("id").primaryKey(),
@@ -26,6 +34,7 @@ export const user = pgTable("user", {
 	banned: boolean("banned").default(false),
 	banReason: text("ban_reason"),
 	banExpires: timestamp("ban_expires"),
+	stripeCustomerId: text("stripe_customer_id"),
 	hasReportGeneratorAccess: boolean("has_report_generator_access").default(false),
 });
 
@@ -99,6 +108,7 @@ export const organization = pgTable(
 		logo: text("logo"),
 		createdAt: timestamp("created_at").notNull(),
 		metadata: text("metadata"),
+		stripeCustomerId: text("stripe_customer_id"),
 	},
 	(table) => [uniqueIndex("organization_slug_uidx").on(table.slug)],
 );
@@ -150,6 +160,26 @@ export const ssoProvider = pgTable("sso_provider", {
 	providerId: text("provider_id").notNull().unique(),
 	organizationId: text("organization_id"),
 	domain: text("domain").notNull(),
+});
+
+export const subscription = pgTable("subscription", {
+	id: text("id").primaryKey(),
+	plan: text("plan").notNull(),
+	referenceId: text("reference_id").notNull(),
+	stripeCustomerId: text("stripe_customer_id"),
+	stripeSubscriptionId: text("stripe_subscription_id"),
+	status: text("status").default("incomplete"),
+	periodStart: timestamp("period_start"),
+	periodEnd: timestamp("period_end"),
+	trialStart: timestamp("trial_start"),
+	trialEnd: timestamp("trial_end"),
+	cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false),
+	cancelAt: timestamp("cancel_at"),
+	canceledAt: timestamp("canceled_at"),
+	endedAt: timestamp("ended_at"),
+	seats: integer("seats"),
+	billingInterval: text("billing_interval"),
+	stripeScheduleId: text("stripe_schedule_id"),
 });
 
 export const userRelations = relations(user, ({ many }) => ({

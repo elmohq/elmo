@@ -8,9 +8,11 @@ import path from "node:path";
 /** Directory this file lives in, so paths don't depend on the caller's cwd. */
 const E2E_DIR = import.meta.dirname;
 
-// Hardcoded to localhost so the destructive seeder can never point at a
-// production database.
-export const DATABASE_URL = "postgres://postgres:postgres@localhost:5432/elmo";
+// Defaults to localhost so the destructive seeder can never point at a
+// production database. The env override lets CI workflows pass their own
+// credentials (e.g. `elmo`/`elmo` for the scheduling-policy job's postgres
+// service) — the first one to set DATABASE_URL in a given step wins.
+export const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/elmo";
 
 // Must match ADMIN_API_KEYS in the CI-patched .env (.github/workflows/e2e.yaml)
 // and bruno/environments/local.bru.

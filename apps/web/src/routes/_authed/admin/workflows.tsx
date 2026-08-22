@@ -43,7 +43,7 @@ interface SchedulerInfo {
 	cadenceHours: number | null;
 }
 
-interface LastRunByModel {
+interface TargetRunStatus {
 	lastRunAt: string | null;
 	isOverdue: boolean;
 	overdueByMs: number | null;
@@ -56,7 +56,8 @@ interface PromptScheduleStatus {
 	brandName: string;
 	enabled: boolean;
 	runFrequencyMs: number;
-	lastRunsByModel: Record<string, LastRunByModel>;
+	/** Keyed by target (model + web search), which is what the plan runs. */
+	lastRunsByTarget: Record<string, TargetRunStatus>;
 	schedulerInfo: SchedulerInfo;
 	recentFailures: number;
 	jobStatus: "active" | "created" | "retry" | "none";
@@ -70,6 +71,11 @@ interface BrandScheduleSummary {
 	totalPrompts: number;
 	enabledPrompts: number;
 	runFrequencyMs: number;
+	/**
+	 * The union of targets across the brand's prompts. Premium targets are
+	 * assigned per prompt, so no single row's targets are the whole column set.
+	 */
+	targetColumns: { key: string; label: string }[];
 	overduePrompts: number;
 	onSchedulePrompts: number;
 	schedulerCoverage: { scheduled: number; total: number };
@@ -215,7 +221,12 @@ function SchedulerCell({ info }: { info: SchedulerInfo }) {
 	);
 }
 
-function ModelStatus({ status }: { status?: LastRunByModel }) {
+/** Whether any target of an enabled prompt has missed its cadence. */
+function isPromptStuck(prompt: PromptScheduleStatus): boolean {
+	return prompt.enabled && Object.values(prompt.lastRunsByTarget).some((status) => status?.isOverdue);
+}
+
+function TargetStatus({ status }: { status?: TargetRunStatus }) {
 	if (!status) {
 		return <span className="text-muted-foreground">-</span>;
 	}
@@ -493,9 +504,9 @@ function BrandRow({
 									<TableRow>
 										<TableHead className="w-[250px]">Prompt</TableHead>
 										<TableHead className="text-center">Status</TableHead>
-										{Object.keys(brand.prompts[0]?.lastRunsByModel || {}).map((model) => (
-											<TableHead key={model} className="text-center capitalize">
-												{model}
+										{brand.targetColumns.map((column) => (
+											<TableHead key={column.key} className="text-center">
+												{column.label}
 											</TableHead>
 										))}
 										<TableHead className="text-center">Prod Scheduler</TableHead>
@@ -507,15 +518,14 @@ function BrandRow({
 									{[...brand.prompts]
 										.sort((a, b) => {
 											const getCategory = (p: typeof a) => {
-												const isOverdue = p.enabled && Object.values(p.lastRunsByModel).some((e) => e?.isOverdue);
-												if (isOverdue) return 0;
+												if (isPromptStuck(p)) return 0;
 												if (p.enabled) return 1;
 												return 2;
 											};
 											return getCategory(a) - getCategory(b);
 										})
 										.map((prompt) => {
-											const isStuck = prompt.enabled && Object.values(prompt.lastRunsByModel).some((e) => e?.isOverdue);
+											const isStuck = isPromptStuck(prompt);
 											const promptJobs = recentJobs
 												.filter((j) => j.data?.promptId === prompt.promptId)
 												.sort((a, b) => b.timestamp - a.timestamp);
@@ -557,9 +567,11 @@ function BrandRow({
 															</div>
 														)}
 													</TableCell>
-													{Object.entries(prompt.lastRunsByModel).map(([model, status]) => (
-														<TableCell key={model} className="text-center">
-															<ModelStatus status={status} />
+													{brand.targetColumns.map((column) => (
+														<TableCell key={column.key} className="text-center">
+															{/* A prompt need not run every target its brand does —
+															    premium targets are assigned per prompt. */}
+															<TargetStatus status={prompt.lastRunsByTarget[column.key]} />
 														</TableCell>
 													))}
 													<TableCell className="text-center">
@@ -697,12 +709,10 @@ function WorkflowsPage() {
 	const overdueBreakdown = data.brands.reduce(
 		(acc, brand) => {
 			for (const prompt of brand.prompts) {
-				if (!prompt.enabled) continue;
-				const models = Object.values(prompt.lastRunsByModel);
-				const isOverdue = models.some((e) => e?.isOverdue);
-				const isSeverelyOverdue = models.some((e) => e?.isOverdue && e.overdueByMs && e.overdueByMs > THIRTY_MIN_MS);
-				if (isOverdue) acc.total++;
-				if (isSeverelyOverdue) acc.severe++;
+				if (!isPromptStuck(prompt)) continue;
+				acc.total++;
+				const targets = Object.values(prompt.lastRunsByTarget);
+				if (targets.some((t) => t?.isOverdue && t.overdueByMs && t.overdueByMs > THIRTY_MIN_MS)) acc.severe++;
 			}
 			return acc;
 		},

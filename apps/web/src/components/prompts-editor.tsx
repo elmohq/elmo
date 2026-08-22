@@ -1,9 +1,9 @@
-import { useMemo, useState, useRef } from "react";
-import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
-import { updatePromptsFn } from "@/server/prompts";
-import { trackEvent } from "@/lib/posthog";
-import { PromptsListEditor, type EditablePrompt } from "@/components/prompts-list-editor";
+import { useMemo, useRef, useState } from "react";
+import { type EditablePrompt, type PremiumAllowance, PromptsListEditor } from "@/components/prompts-list-editor";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
+import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
+import { trackEvent } from "@/lib/posthog";
+import { updatePromptsFn } from "@/server/prompts";
 
 interface PromptRow {
 	id: string;
@@ -11,6 +11,7 @@ interface PromptRow {
 	enabled: boolean;
 	tags?: string[] | null;
 	systemTags?: string[] | null;
+	premiumModels?: string[] | null;
 }
 
 interface PromptsEditorProps {
@@ -18,6 +19,17 @@ interface PromptsEditorProps {
 	brandId: string;
 	pageTitle: string;
 	pageDescription: string;
+	/**
+	 * The workspace's premium allowance. Omit to hide the column — self-hosted, or
+	 * a cloud plan whose pool is zero. Assignment lives here rather than on the LLM
+	 * settings page because it is per prompt.
+	 */
+	premium?: PremiumAllowance;
+}
+
+/** Order-insensitive, since the picker appends and the server returns catalog order. */
+function sameModels(a: string[], b: string[]): boolean {
+	return a.length === b.length && [...a].sort().join() === [...b].sort().join();
 }
 
 /** Same ordering the route loader asks Postgres for, so the list a save leaves
@@ -31,6 +43,7 @@ function toEditablePrompts(rows: PromptRow[]): EditablePrompt[] {
 			enabled: p.enabled,
 			tags: p.tags || [],
 			systemTags: p.systemTags || [],
+			premiumModels: p.premiumModels ?? [],
 		}))
 		.sort(
 			(a, b) => a.value.localeCompare(b.value) || Number(b.enabled) - Number(a.enabled) || a.id.localeCompare(b.id),
@@ -43,7 +56,7 @@ function sameTags(a: string[], b: string[]) {
 	return [...a].sort().every((t, i) => t === sortedB[i]);
 }
 
-export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescription }: PromptsEditorProps) {
+export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescription, premium }: PromptsEditorProps) {
 	const [baseline, setBaseline] = useState<EditablePrompt[]>(() => toEditablePrompts(initialPrompts));
 	const [prompts, setPrompts] = useState<EditablePrompt[]>(baseline);
 	const [isSaving, setIsSaving] = useState(false);
@@ -73,7 +86,12 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 				changed.add(p._key);
 				continue;
 			}
-			if (p.value.trim() !== prev.value.trim() || p.enabled !== prev.enabled || !sameTags(p.tags, prev.tags)) {
+			if (
+				p.value.trim() !== prev.value.trim() ||
+				p.enabled !== prev.enabled ||
+				!sameModels(p.premiumModels, prev.premiumModels) ||
+				!sameTags(p.tags, prev.tags)
+			) {
 				changed.add(p._key);
 				edited++;
 			}
@@ -109,7 +127,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 			const currentIds = new Set(validPrompts.filter((p) => p.id).map((p) => p.id));
 			const removedPrompts = baseline
 				.filter((p) => !currentIds.has(p.id))
-				.map((p) => ({ id: p.id, value: p.value, enabled: false, tags: p.tags }));
+				.map((p) => ({ id: p.id, value: p.value, enabled: false, tags: p.tags, premiumModels: [] }));
 
 			const allPrompts = [
 				...validPrompts.map((p) => ({
@@ -117,6 +135,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 					value: p.value.trim(),
 					enabled: p.enabled,
 					tags: p.tags,
+					premiumModels: p.premiumModels,
 				})),
 				...removedPrompts,
 			];
@@ -149,7 +168,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 				</div>
 			</div>
 
-			<PromptsListEditor prompts={prompts} onChange={setPrompts} changedKeys={changedKeys} />
+			<PromptsListEditor prompts={prompts} onChange={setPrompts} changedKeys={changedKeys} premium={premium} />
 
 			<UnsavedChangesBar
 				isDirty={isDirty}

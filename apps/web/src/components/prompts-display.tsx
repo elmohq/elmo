@@ -13,7 +13,7 @@ import { VirtualizedPromptList } from "@/components/virtualized-prompt-list";
 import { ChartDataProvider } from "@/contexts/chart-data-context";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { PageHeader } from "@/components/page-header";
-import { getAvailableModels, ALL_MODELS_VALUE } from "@/components/filter-bar";
+import { ALL_MODELS_VALUE } from "@/components/filter-bar";
 import { FilteredListShell } from "@/components/filtered-list-shell";
 import { PromptOrderDropdown } from "@/components/prompt-order-dropdown";
 import { VisibilityBarSection } from "@/components/visibility-bar-section";
@@ -58,13 +58,11 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 		select: (s) => coercePromptOrder((s as { order?: unknown }).order),
 	});
 
-	// Server hands us `effectiveModels` — the deployment-configured model ids
-	// this brand actually runs, after applying `enabledModels`. FilterBar
-	// adds the "all" sentinel on top; per-prompt chart controls only care
-	// about the concrete list.
-	const effectiveModels = brand?.effectiveModels ?? [];
-	const availableModels = useMemo(() => getAvailableModels(effectiveModels), [effectiveModels]);
-	const availableIndividualModels = effectiveModels;
+	// Server hands us the targets this brand actually runs. FilterBar adds the
+	// "all" sentinel on top; per-prompt chart controls only care about the
+	// concrete list.
+	const trackedTargets = brand?.trackedTargets ?? [];
+	const availableIndividualModels = useMemo(() => trackedTargets.map((target) => target.value), [trackedTargets]);
 
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 	const {
@@ -98,7 +96,7 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 		<FilteredListShell
 			filters={filters}
 			availableTags={availableTags}
-			availableModels={availableModels}
+			trackedTargets={trackedTargets}
 			showSearch
 			showModelSelector
 			showResultCount

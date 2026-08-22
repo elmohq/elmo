@@ -17,6 +17,7 @@ import {
 	IconTimeline,
 	IconTool,
 	IconUsers,
+	IconCreditCard,
 } from "@tabler/icons-react";
 
 import {
@@ -36,11 +37,19 @@ import { DemoModePill } from "@/components/demo-mode-pill";
 import { Logo } from "@/components/logo";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 
+/**
+ * How much of the app the shell around this page can reach:
+ *  - "brand":   a brand's own pages, plus admin for those who have it
+ *  - "admin":   the admin section only (there is no brand in scope)
+ *  - "account": nothing — the page is a gate the user has to clear first, so the
+ *               only things worth offering are who they are and how to leave
+ */
+export type SidebarScope = "brand" | "admin" | "account";
+
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	isAdmin?: boolean;
 	hasReportAccess?: boolean;
-	/** When true, only show admin section (no brand-specific nav) */
-	adminOnly?: boolean;
+	scope?: SidebarScope;
 	/** Brand data from route loader — avoids a separate client-side fetch */
 	brand?: BrandWithPrompts | null;
 }
@@ -48,7 +57,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 export function AppSidebar({
 	isAdmin = false,
 	hasReportAccess = false,
-	adminOnly = false,
+	scope = "brand",
 	brand,
 	...props
 }: AppSidebarProps) {
@@ -57,12 +66,14 @@ export function AppSidebar({
 	// Reports are disabled entirely in cloud; hide the nav entry there.
 	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
 
-	const showAdminSection = isAdmin || (hasReportAccess && reportsEnabled);
+	// A gate page offers no destinations: every link would either 404 or bounce
+	// the user straight back to the gate.
+	const showAdminSection = scope !== "account" && (isAdmin || (hasReportAccess && reportsEnabled));
 
 	const groups: NavGroup[] = [];
 
-	// Dashboard section - only show if we have a brand context and not admin-only
-	if (!adminOnly) {
+	// Dashboard section - only show if we have a brand context
+	if (scope === "brand") {
 		const dashboardItems = [
 			{
 				title: "Overview",
@@ -135,6 +146,9 @@ export function AppSidebar({
 					...(context.clientConfig?.features.teamInvites
 						? [{ title: "Team", url: "/settings/members", icon: IconUsers }]
 						: []),
+					...(context.clientConfig?.features.billing
+						? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard }]
+						: []),
 				],
 			});
 		}
@@ -178,19 +192,31 @@ export function AppSidebar({
 		});
 	}
 
+	const brandmark = (
+		<>
+			<Logo iconClassName="!size-5" />
+			<div className="ml-auto group-data-[collapsible=icon]:hidden">
+				<DemoModePill />
+			</div>
+		</>
+	);
+
 	return (
 		<Sidebar variant="inset" {...props}>
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
-						<SidebarMenuButton size="lg" asChild>
-							<Link to="/app" onClick={() => setOpenMobile(false)}>
-								<Logo iconClassName="!size-5" />
-								<div className="ml-auto group-data-[collapsible=icon]:hidden">
-									<DemoModePill />
-								</div>
-							</Link>
-						</SidebarMenuButton>
+						{/* On a gate page the mark still says whose product this is, but it
+						    leads nowhere — /app would redirect right back here. */}
+						{scope === "account" ? (
+							<div className="flex items-center gap-2 p-2">{brandmark}</div>
+						) : (
+							<SidebarMenuButton size="lg" asChild>
+								<Link to="/app" onClick={() => setOpenMobile(false)}>
+									{brandmark}
+								</Link>
+							</SidebarMenuButton>
+						)}
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarHeader>
@@ -198,7 +224,7 @@ export function AppSidebar({
 				<NavMain groups={groups} />
 			</SidebarContent>
 			<SidebarFooter>
-				<NavUser />
+				<NavUser canSwitchBrand={scope !== "account"} />
 				<NavAppInfo />
 			</SidebarFooter>
 		</Sidebar>

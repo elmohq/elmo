@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatScrapeTarget, type ModelConfig, parseScrapeTargets } from "./scrape-targets";
+import {
+	formatScrapeTarget,
+	type ModelConfig,
+	parseScrapeTargets,
+	providersByModel,
+	STATUS_TARGETS,
+} from "./scrape-targets";
 
 describe("formatScrapeTarget", () => {
 	it("formats model:provider", () => {
@@ -25,10 +31,10 @@ describe("formatScrapeTarget", () => {
 			formatScrapeTarget({
 				model: "claude",
 				provider: "openrouter",
-				version: "anthropic/claude-sonnet-4.6",
+				version: "anthropic/claude-sonnet-5",
 				webSearch: true,
 			}),
-		).toBe("claude:openrouter:anthropic/claude-sonnet-4.6:online");
+		).toBe("claude:openrouter:anthropic/claude-sonnet-5:online");
 	});
 });
 
@@ -37,7 +43,7 @@ describe("round-trip", () => {
 		const configs: ModelConfig[] = [
 			{ model: "chatgpt", provider: "olostep", version: undefined, webSearch: true },
 			{ model: "chatgpt", provider: "brightdata", version: undefined, webSearch: false },
-			{ model: "claude", provider: "anthropic-api", version: "claude-sonnet-4-6", webSearch: true },
+			{ model: "claude", provider: "anthropic-api", version: "claude-sonnet-5", webSearch: true },
 			{ model: "chatgpt", provider: "openai-api", version: "gpt-5-mini", webSearch: false },
 			{ model: "chatgpt", provider: "openrouter", version: "openai/gpt-5-mini:free", webSearch: true },
 			{ model: "google-ai-mode", provider: "dataforseo", version: undefined, webSearch: true },
@@ -49,7 +55,23 @@ describe("round-trip", () => {
 
 	it("format(parse(s)) returns s", () => {
 		const value =
-			"chatgpt:olostep:online,claude:openrouter:anthropic/claude-sonnet-4.6,mistral:mistral-api:mistral-medium-latest:online,chatgpt:brightdata";
+			"chatgpt:olostep:online,claude:openrouter:anthropic/claude-sonnet-5,mistral:mistral-api:mistral-medium-latest:online,chatgpt:brightdata";
 		expect(parseScrapeTargets(value).map(formatScrapeTarget).join(",")).toBe(value);
+	});
+});
+
+describe("providersByModel", () => {
+	it("lists every provider STATUS_TARGETS exercises for a model, deduped and sorted", () => {
+		const map = providersByModel();
+		// ChatGPT is the most widely served surface, via scrapers and APIs alike.
+		const chatgpt = map.get("chatgpt") ?? [];
+		expect(chatgpt).toContain("brightdata");
+		expect(chatgpt).toContain("openai-api");
+		expect(chatgpt).toEqual([...new Set(chatgpt)].sort());
+	});
+
+	it("covers every model STATUS_TARGETS names, and nothing else", () => {
+		const fromTargets = new Set(parseScrapeTargets(STATUS_TARGETS.join(",")).map((t) => t.model));
+		expect(new Set(providersByModel().keys())).toEqual(fromTargets);
 	});
 });

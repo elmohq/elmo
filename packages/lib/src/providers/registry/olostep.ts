@@ -1,8 +1,8 @@
 import Olostep from "olostep";
-import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
-import type { Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
+import type { Citation } from "../../text-extraction";
+import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 
 const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: string) => string; credits: number }> = {
 	chatgpt: {
@@ -107,6 +107,8 @@ function extractWebQueries(data: any): string[] {
 export const olostep: Provider = {
 	id: "olostep",
 	name: "Olostep",
+	access: "scraped",
+	docsAnchor: "olostep",
 
 	isConfigured() {
 		return !!getCredential("OLOSTEP_API_KEY");

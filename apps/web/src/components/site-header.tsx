@@ -194,7 +194,11 @@ function BrandBreadcrumbs({
 	);
 }
 
-export function SiteHeader() {
+/**
+ * `title` names a page that sits outside the brand and admin trees, where there
+ * is no trail to derive — the breadcrumb becomes that one label.
+ */
+export function SiteHeader({ title }: { title?: string } = {}) {
 	const { brandId, brand } = useBrand();
 	const { pathname } = useLocation();
 
@@ -207,7 +211,11 @@ export function SiteHeader() {
 				<Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
 				<Breadcrumb>
 					<BreadcrumbList>
-						{isAdminPage ? (
+						{title ? (
+							<BreadcrumbItem>
+								<BreadcrumbPage>{title}</BreadcrumbPage>
+							</BreadcrumbItem>
+						) : isAdminPage ? (
 							<AdminBreadcrumbs pathname={pathname} />
 						) : (
 							<BrandBreadcrumbs pathname={pathname} brandId={brandId} brandName={brand?.name || "Dashboard"} />

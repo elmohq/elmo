@@ -1,5 +1,28 @@
 # @workspace/worker
 
+## 0.2.19
+
+### Patch Changes
+
+- dac89d4: Waiting out a busy scraping provider's queue no longer abandons requests it has already charged for, and a prompt whose runs all fail now backs off instead of being retried immediately.
+- Updated dependencies [dac89d4]
+  - @workspace/lib@0.2.19
+  - @workspace/whitelabel@0.2.19
+  - @workspace/deployment@0.2.19
+
+## 0.2.18
+
+### Patch Changes
+
+- Updated dependencies [d0187ed]
+- Updated dependencies [bfa6282]
+- Updated dependencies [9394d65]
+- Updated dependencies [d9faaec]
+- Updated dependencies [72e7091]
+  - @workspace/lib@0.2.18
+  - @workspace/whitelabel@0.2.18
+  - @workspace/deployment@0.2.18
+
 ## 0.2.17
 
 ### Patch Changes

@@ -194,17 +194,17 @@ async function main(): Promise<void> {
 
 	// ── Step 2: Scrapers + DataForSEO (optional) ──────────────────────────
 
-	// BrightData confirm (default Yes) → No
-	await waitFor("Configure BrightData?");
+	// Cloro confirm (default Yes) → No
+	await waitFor("Configure Cloro?");
 	await send(ARROW_LEFT);
+	await send(ENTER);
+
+	// BrightData confirm (default No) → No
+	await waitFor("Configure BrightData?");
 	await send(ENTER);
 
 	// Oxylabs confirm (default No) → No
 	await waitFor("Configure Oxylabs?");
-	await send(ENTER);
-
-	// Cloro confirm (default No) → No
-	await waitFor("Configure Cloro?");
 	await send(ENTER);
 
 	// Olostep confirm (default No) → No

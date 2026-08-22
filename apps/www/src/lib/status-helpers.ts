@@ -21,7 +21,12 @@ export function parseTarget(target: string) {
 	const model = parts[0];
 	const provider = parts[1];
 	const rest = parts.slice(2).join(":");
-	return { model, provider, rest };
+	// Same split as parseScrapeTargets: everything between the provider and an
+	// optional trailing "online" is the version slug.
+	const webSearch = parts[parts.length - 1] === "online";
+	const versionParts = parts.slice(2, webSearch ? -1 : undefined);
+	const version = versionParts.length > 0 ? versionParts.join(":") : undefined;
+	return { model, provider, rest, version };
 }
 
 export function formatModel(model: string) {
@@ -43,10 +48,10 @@ export function formatModel(model: string) {
 
 export function formatProvider(provider: string) {
 	const names: Record<string, string> = {
-		olostep: "Olostep",
+		cloro: "Cloro",
 		brightdata: "BrightData",
 		oxylabs: "Oxylabs",
-		cloro: "Cloro",
+		olostep: "Olostep",
 		dataforseo: "DataForSEO",
 		"openai-api": "OpenAI API",
 		"anthropic-api": "Anthropic API",
@@ -56,33 +61,51 @@ export function formatProvider(provider: string) {
 	return names[provider] || provider;
 }
 
+// Surfaces the one `dataforseo` provider reaches by scraping — the two Google
+// SERP endpoints plus the LLM Scraper's ChatGPT and Gemini. Copied rather than
+// imported because this site does not depend on @workspace/lib; the provider
+// itself decides the same thing in `dataforseoAccess`.
+const DATAFORSEO_SCRAPED_MODELS = new Set(["google-ai-mode", "google-ai-overview", "chatgpt", "gemini"]);
+
 // The three first-party API providers collapse into one "Direct API" filter.
-export function providerCategory(provider: string) {
-	return provider === "openai-api" || provider === "anthropic-api" || provider === "mistral-api"
-		? "direct-api"
-		: provider;
+export function providerCategory(provider: string, model: string, version?: string) {
+	if (provider === "openai-api" || provider === "anthropic-api" || provider === "mistral-api") return "direct-api";
+	// DataForSEO is one provider spanning two kinds of route, and the target
+	// picks between them the same way the provider does: pinning a model_name
+	// forces the LLM Responses API, otherwise it scrapes wherever it can.
+	if (provider === "dataforseo") {
+		return !version && DATAFORSEO_SCRAPED_MODELS.has(model) ? "dataforseo-scraper" : "dataforseo-api";
+	}
+	return provider;
 }
 
 // The matrix columns split into two kinds of route: Model APIs (Direct API,
-// OpenRouter) call an LLM inference endpoint, while AI Search Scrapers (Olostep,
-// BrightData, Oxylabs, DataForSEO) scrape a live web surface.
-export const MODEL_API_CATEGORIES = ["direct-api", "openrouter"];
+// OpenRouter, DataForSEO API) call an LLM inference endpoint, while AI Search
+// Scrapers (Cloro, BrightData, Oxylabs, Olostep, DataForSEO Scraper) scrape a
+// live web surface.
+export const MODEL_API_CATEGORIES = ["direct-api", "openrouter", "dataforseo-api"];
 
 // Models that only exist as a scraped web surface. Google's AI Mode and AI
 // Overview are Search features and Copilot is a consumer assistant — none expose
 // an inference endpoint, so a Model API can't reach them at all.
 const SCRAPE_ONLY_MODELS = new Set(["google-ai-mode", "google-ai-overview", "copilot"]);
 
-// Which models each scraper has a collector for. A model missing from a
-// scraper's set can't be reached through it — a hard capability gap, not merely
-// something Elmo hasn't wired up yet. Mirrors the provider registries in
-// @workspace/lib.
-const SCRAPER_MODELS: Record<string, Set<string>> = {
-	olostep: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
+// Which models each provider category has a collector for. A model missing from
+// a category's set can't be reached through it — a hard capability gap, not
+// merely something Elmo hasn't wired up yet. Mirrors the provider registries in
+// @workspace/lib. Categories absent here (direct-api, openrouter) reach any
+// model that exposes an inference endpoint.
+const PROVIDER_MODELS: Record<string, Set<string>> = {
+	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	brightdata: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	oxylabs: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"]),
-	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
-	dataforseo: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "perplexity"]),
+	olostep: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
+	// Google AI Mode and AI Overview come from the SERP endpoints, ChatGPT and
+	// Gemini from the LLM Scraper API — all four scrape a live surface. There is
+	// no Perplexity scraper on either.
+	"dataforseo-scraper": new Set(["google-ai-mode", "google-ai-overview", "chatgpt", "gemini"]),
+	// Claude is reachable via LLM Responses but Elmo doesn't track it there.
+	"dataforseo-api": new Set(["chatgpt", "perplexity", "gemini", "claude"]),
 };
 
 export type CellAvailability = "tracked" | "untracked" | "unavailable";
@@ -92,36 +115,72 @@ export type CellAvailability = "tracked" | "untracked" | "unavailable";
 // "untracked" when it could exist but Elmo doesn't currently run it.
 export function cellAvailability(model: string, provider: string, hasTarget: boolean): CellAvailability {
 	if (hasTarget) return "tracked";
-	// Model APIs reach only models with an inference endpoint — never the
-	// scrape-only Search/consumer surfaces.
+	// Categories with a fixed collector list reach only those surfaces.
+	const reachable = PROVIDER_MODELS[provider];
+	if (reachable) return reachable.has(model) ? "untracked" : "unavailable";
+	// The unconstrained model APIs reach anything with an inference endpoint —
+	// never the scrape-only Search/consumer surfaces.
 	if (MODEL_API_CATEGORIES.includes(provider)) {
 		return SCRAPE_ONLY_MODELS.has(model) ? "unavailable" : "untracked";
 	}
-	// Scrapers reach only the surfaces they have a collector for.
-	const scrapeable = SCRAPER_MODELS[provider];
-	if (scrapeable && !scrapeable.has(model)) return "unavailable";
 	return "untracked";
 }
 
 export const PROVIDER_FILTER_ORDER = [
 	"direct-api",
 	"openrouter",
-	"olostep",
+	"dataforseo-api",
+	"cloro",
 	"brightdata",
 	"oxylabs",
-	"cloro",
-	"dataforseo",
+	"olostep",
+	"dataforseo-scraper",
 ];
 
 export const PROVIDER_FILTER_LABELS: Record<string, string> = {
 	"direct-api": "Direct API",
 	openrouter: "OpenRouter",
-	olostep: "Olostep",
+	"dataforseo-api": "DataForSEO API",
+	cloro: "Cloro",
 	brightdata: "BrightData",
 	oxylabs: "Oxylabs",
-	cloro: "Cloro",
-	dataforseo: "DataForSEO",
+	olostep: "Olostep",
+	"dataforseo-scraper": "DataForSEO Scraper",
 };
+
+// In the grouped matrix the column group header already says which kind of route
+// a column is, so DataForSEO's two columns don't repeat it.
+const GROUPED_COLUMN_LABELS: Record<string, string> = {
+	"dataforseo-api": "DataForSEO",
+	"dataforseo-scraper": "DataForSEO",
+};
+
+export function providerColumnLabel(provider: string, grouped: boolean) {
+	const short = grouped ? GROUPED_COLUMN_LABELS[provider] : undefined;
+	return short ?? PROVIDER_FILTER_LABELS[provider] ?? provider;
+}
+
+// A provider label as it reads mid-sentence. Every scraper and OpenRouter are
+// product names, but "Direct API" is a category and takes an article.
+export function providerPhrase(provider: string): string {
+	const label = PROVIDER_FILTER_LABELS[provider] ?? provider;
+	return provider === "direct-api" ? `the ${label}` : label;
+}
+
+// Why a combination classified "unavailable" can't exist, phrased for the
+// matrix tooltip. Follows cellAvailability's precedence: a category with a fixed
+// collector list is bounded by that list whichever kind of route it is, so a
+// model API with a short menu (DataForSEO API) reads as a missing endpoint
+// rather than the model lacking one.
+export function unavailableReason(model: string, provider: string): string {
+	const modelLabel = formatModel(model);
+	if (PROVIDER_MODELS[provider]) {
+		return MODEL_API_CATEGORIES.includes(provider)
+			? `${providerPhrase(provider)} has no ${modelLabel} endpoint, so that model can't be reached through it.`
+			: `${providerPhrase(provider)} has no ${modelLabel} collector, so that surface can't be reached through it.`;
+	}
+	return `${modelLabel} has no public inference endpoint — it only exists as a live web surface, so ${providerPhrase(provider)} can't reach it.`;
+}
 
 export function formatLatency(ms: number) {
 	if (ms < 1000) return `${ms}ms`;
@@ -202,10 +261,68 @@ export function overallStatus(targets: TargetStatus[]): OverallStatus {
 	};
 }
 
+export interface MetricStats {
+	min: number;
+	avg: number;
+	median: number;
+	max: number;
+}
+
+export interface RunStats {
+	targets: number;
+	runs: number;
+	passed: number;
+	/** Null when nothing succeeded — the per-run numbers would all be zeros. */
+	metrics: {
+		latency: MetricStats;
+		citations: MetricStats;
+		webQueries: MetricStats;
+		textLength: MetricStats;
+		retries: MetricStats;
+	} | null;
+}
+
+function metricStats(values: number[]): MetricStats {
+	const sorted = [...values].sort((a, b) => a - b);
+	const mid = Math.floor(sorted.length / 2);
+	return {
+		min: sorted[0],
+		avg: values.reduce((sum, v) => sum + v, 0) / values.length,
+		median: sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid],
+		max: sorted[sorted.length - 1],
+	};
+}
+
+/**
+ * Per-run shape of one or many targets over the loaded window. The run counts
+ * cover every deduped square — the same set the success rate is computed from —
+ * while the metrics cover only the successful ones, since a failed run's
+ * latency is time-to-error and its citations and text are always zero.
+ */
+export function runStats(targets: TargetStatus[]): RunStats {
+	const runs = targets.flatMap((t) => dedupeEntries(t.entries));
+	const passing = runs.filter((e) => e.status === "pass");
+
+	return {
+		targets: targets.length,
+		runs: runs.length,
+		passed: passing.length,
+		metrics: passing.length
+			? {
+					latency: metricStats(passing.map((e) => e.latency)),
+					citations: metricStats(passing.map((e) => e.citations)),
+					webQueries: metricStats(passing.map((e) => e.webQueries)),
+					textLength: metricStats(passing.map((e) => e.textLength)),
+					retries: metricStats(passing.map((e) => e.retries)),
+				}
+			: null,
+	};
+}
+
 export interface MatrixCell {
 	rate: number | null;
 	down: boolean;
-	count: number;
+	targets: TargetStatus[];
 }
 
 export interface StatusMatrix {
@@ -213,21 +330,24 @@ export interface StatusMatrix {
 	providers: string[];
 	cell: (model: string, provider: string) => MatrixCell | null;
 	availability: (model: string, provider: string) => CellAvailability;
-	rowRate: (model: string) => number | null;
-	colRate: (provider: string) => number | null;
-	overall: number | null;
+	rowTargets: (model: string) => TargetStatus[];
+	colTargets: (provider: string) => TargetStatus[];
 }
 
 // A model (rows) by provider-category (columns) grid of uptime, with a `down`
-// flag when any target in a cell is currently failing, plus aggregate health
-// per row, per column, and overall. Cells with no target return null so the
-// grid can render a blank.
+// flag when any target in a cell is currently failing. Cells with no target
+// return null so the grid can render a blank. Each cell carries the targets
+// behind it, and rows and columns expose theirs, so the aggregate health cells
+// and every tooltip re-derive their numbers from one grouping.
 export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
 	const models = [...new Set(data.map((d) => parseTarget(d.target).model))].sort((a, b) =>
 		formatModel(a).localeCompare(formatModel(b)),
 	);
 	const providers = PROVIDER_FILTER_ORDER.filter((c) =>
-		data.some((d) => providerCategory(parseTarget(d.target).provider) === c),
+		data.some((d) => {
+			const { model, provider, version } = parseTarget(d.target);
+			return providerCategory(provider, model, version) === c;
+		}),
 	);
 
 	const add = (m: Map<string, TargetStatus[]>, key: string, d: TargetStatus) => {
@@ -240,8 +360,8 @@ export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
 	const byModel = new Map<string, TargetStatus[]>();
 	const byProvider = new Map<string, TargetStatus[]>();
 	for (const d of data) {
-		const { model, provider } = parseTarget(d.target);
-		const pc = providerCategory(provider);
+		const { model, provider, version } = parseTarget(d.target);
+		const pc = providerCategory(provider, model, version);
 		add(byCell, `${model} ${pc}`, d);
 		add(byModel, model, d);
 		add(byProvider, pc, d);
@@ -256,15 +376,14 @@ export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
 			return {
 				rate: passRate(targets),
 				down: targets.some((t) => latestOf(t.entries)?.status === "fail"),
-				count: targets.length,
+				targets,
 			};
 		},
 		availability(model, provider) {
 			const targets = byCell.get(`${model} ${provider}`);
 			return cellAvailability(model, provider, !!targets && targets.length > 0);
 		},
-		rowRate: (model) => passRate(byModel.get(model) ?? []),
-		colRate: (provider) => passRate(byProvider.get(provider) ?? []),
-		overall: passRate(data),
+		rowTargets: (model) => byModel.get(model) ?? [],
+		colTargets: (provider) => byProvider.get(provider) ?? [],
 	};
 }

@@ -1,0 +1,33 @@
+export type { Entitlements } from "@workspace/config/entitlements";
+export {
+	assertAllowed,
+	assertCadenceAllowed,
+	assertCanAddPrompts,
+	assertCanAssignPremium,
+	assertCanCreateBrand,
+	assertEnabledModelsAllowed,
+	assertPromptSaveAllowed,
+	checkBrandCreate,
+	countBrandsByOrg,
+	countOrgAssignedPremiumSlots,
+	countOrgBrands,
+	countOrgEnabledPrompts,
+	decideBrandCreate,
+	decideCadenceOverride,
+	decideEnabledModels,
+	decidePremiumAssign,
+	decidePromptAdd,
+	type EntitlementDecision,
+	type EntitlementDenialCode,
+	EntitlementError,
+	type PromptSaveDelta,
+} from "./guards";
+export {
+	getBrandOrganizationId,
+	getOrgBillingState,
+	getOrgBillingStates,
+	getOrgEntitlements,
+	getOrgEntitlementsMap,
+	type OrgBillingState,
+	selectRelevantSubscription,
+} from "./service";

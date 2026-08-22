@@ -1,10 +1,10 @@
+import { getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { reports, type Brand, brands } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { RUNS_PER_PROMPT } from "@workspace/lib/constants";
-import { getProvider, parseScrapeTargets, type ModelConfig } from "@workspace/lib/providers";
+import { type Brand, brands, reports } from "@workspace/lib/db/schema";
 import { analyzeBrand } from "@workspace/lib/onboarding";
-import { isPromptBranded, computeSystemTags } from "@workspace/lib/tag-utils";
+import { getProvider, type ModelConfig, parseScrapeTargets } from "@workspace/lib/providers";
+import { computeSystemTags, isPromptBranded } from "@workspace/lib/tag-utils";
+import { eq } from "drizzle-orm";
 
 interface CompetitorResult {
 	name: string;
@@ -47,7 +47,7 @@ function getReportRunsForModel(model: string): number {
 		}
 		return count;
 	}
-	return RUNS_PER_PROMPT;
+	return getRunsPerPrompt();
 }
 
 export interface ReportJobData {

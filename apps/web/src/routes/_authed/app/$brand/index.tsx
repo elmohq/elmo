@@ -4,7 +4,8 @@
  * Shows visibility charts, citation trends, and stats.
  * Displays onboarding wizard if brand is not yet onboarded.
  */
-import { useEffect } from "react";
+import { type ReactNode, useEffect } from "react";
+import { describeTargetSchedule, labelForModelFilter } from "@/lib/model-filter";
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import {
@@ -110,7 +111,7 @@ function StatWithTooltip({
 	icon: typeof IconList;
 	label: string;
 	value: string | number;
-	tooltip: string;
+	tooltip: ReactNode;
 }) {
 	return (
 		<Tooltip>
@@ -167,6 +168,8 @@ function HeroStat({ value, loading }: { value: number | null; loading: boolean }
 function DashboardPage() {
 	const { brand: brandId } = Route.useParams();
 	const { brand, isLoading: isLoadingBrand } = useBrand();
+	// The footer reports what this brand actually runs, resolved server-side.
+	const trackedTargets = brand?.trackedTargets ?? [];
 	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brand?.id, "1m");
 	const { data: sovData, isLoading: isLoadingSov } = useShareOfVoice(brand?.id, { lookback: "1m" });
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
@@ -478,7 +481,20 @@ function DashboardPage() {
 									icon={IconList}
 									label="prompts tracked"
 									value={totalPrompts.toLocaleString()}
-									tooltip="Total number of unique prompts being monitored for AI visibility across ChatGPT, Claude, and Gemini."
+									tooltip={
+										trackedTargets.length > 0 ? (
+											<>
+												<p>Prompts monitored for AI visibility, each evaluated on:</p>
+												<ul className="mt-1 space-y-0.5">
+													{trackedTargets.map((target) => (
+														<li key={target.value}>{labelForModelFilter(target.value)}</li>
+													))}
+												</ul>
+											</>
+										) : (
+											"Prompts monitored for AI visibility. No platforms are configured for this brand yet."
+										)
+									}
 								/>
 								<StatWithTooltip
 									icon={IconActivity}
@@ -490,7 +506,23 @@ function DashboardPage() {
 									icon={IconClock}
 									label="run frequency"
 									value={formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24)}
-									tooltip={`Prompts are automatically evaluated every ${formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24).replace("~", "")} on average to track changes in AI model responses over time.`}
+									tooltip={
+										trackedTargets.length > 0 ? (
+											<>
+												{/* One rate for the brand is a summary, not the truth: a
+												    grounded call samples far less often than a scraped one,
+												    and self-hosted repeats every sample. */}
+												<p>How often each platform is sampled:</p>
+												<ul className="mt-1 space-y-0.5">
+													{trackedTargets.map((target) => (
+														<li key={target.value}>{describeTargetSchedule(target)}</li>
+													))}
+												</ul>
+											</>
+										) : (
+											"No platforms are configured for this brand yet."
+										)
+									}
 								/>
 								<StatWithTooltip
 									icon={IconRefresh}

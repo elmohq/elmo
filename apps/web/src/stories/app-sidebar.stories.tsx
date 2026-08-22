@@ -1,27 +1,29 @@
 /**
  * Stories for <AppSidebar /> across deployment environments.
  *
- * Six stories matching the real deployment scenarios:
+ * One story per real deployment scenario:
  *  - Local (self-hosted, no auth)
  *  - Demo (read-only preview)
- *  - Whitelabel
- *  - Whitelabel Admin (admin section visible)
- *  - Whitelabel Report-only (limited admin access)
- *  - Whitelabel Onboarding (brand not yet onboarded)
+ *  - Whitelabel, plus admin, report-only and pre-onboarding variants
+ *  - Cloud, the only mode whose settings nav carries Billing
+ *
+ * Every story passes `brand`, because the Settings group is gated on
+ * `brand.onboarded` and the sidebar takes it as a prop from the route loader
+ * rather than reading the useBrand hook.
  */
-import type { Meta } from "@storybook/react";
-import { SidebarProvider, SidebarInset } from "@workspace/ui/components/sidebar";
+import type { Meta, StoryObj } from "@storybook/react";
+import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
+import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
+import { expect, within } from "storybook/test";
 import { AppSidebar } from "@/components/app-sidebar";
-import { setMockBrand } from "./_mocks/use-brands";
-import { setMockAuth } from "./_mocks/use-auth";
-import { setMockClientConfig, type ClientConfig } from "./_mocks/config-client";
+import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
 import { setMockRouteContext } from "./_mocks/tanstack-router";
+import { setMockAuth } from "./_mocks/use-auth";
+import { setMockBrand } from "./_mocks/use-brands";
 
 // ---------------------------------------------------------------------------
 // Shared mock data
 // ---------------------------------------------------------------------------
-
-const CHART_COLORS = ["#2563eb", "#efb118", "#3ca951", "#ff725c", "#a463f2", "#ff8ab7", "#38b2ac", "#9c6b4e"];
 
 const onboardedBrand = {
 	id: "brand-1",
@@ -52,10 +54,9 @@ const localConfig: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: false,
-		supportsMultiOrg: true,
 		canCreateBrands: true,
 	},
-	branding: { name: "Elmo", chartColors: CHART_COLORS },
+	branding: { name: "Elmo", chartColors: DEFAULT_CHART_COLORS },
 	analytics: {},
 };
 
@@ -64,10 +65,9 @@ const demoConfig: ClientConfig = {
 	features: {
 		readOnly: true,
 		showOptimizeButton: false,
-		supportsMultiOrg: true,
 		canCreateBrands: false,
 	},
-	branding: { name: "Elmo", chartColors: CHART_COLORS },
+	branding: { name: "Elmo", chartColors: DEFAULT_CHART_COLORS },
 	analytics: {},
 };
 
@@ -76,7 +76,6 @@ const whitelabelConfig: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: true,
-		supportsMultiOrg: true,
 		canCreateBrands: false,
 	},
 	branding: {
@@ -85,7 +84,7 @@ const whitelabelConfig: ClientConfig = {
 		parentName: "AgencyCo",
 		parentUrl: "https://agency.example.com",
 		optimizationUrlTemplate: "https://agency.example.com/optimize?prompt={{promptId}}",
-		chartColors: CHART_COLORS,
+		chartColors: DEFAULT_CHART_COLORS,
 	},
 	analytics: {},
 };
@@ -94,15 +93,40 @@ const whitelabelAdminConfig: ClientConfig = {
 	...whitelabelConfig,
 };
 
+/**
+ * Cloud is the only mode with billing, so it is the only one whose settings
+ * nav carries a Billing item. Report generation is off there, so the admin
+ * Reports section stays hidden even for an admin.
+ */
+const cloudConfig: ClientConfig = {
+	mode: "cloud",
+	features: {
+		readOnly: false,
+		showOptimizeButton: false,
+		canCreateBrands: true,
+		billing: true,
+		teamInvites: true,
+		reportGeneration: false,
+	},
+	branding: { name: "Elmo", chartColors: DEFAULT_CHART_COLORS },
+	analytics: {},
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Returns the brand so stories can pass it to AppSidebar: the Settings nav is
+ * gated on `brand.onboarded`, and it comes from the route loader as a prop
+ * rather than from the useBrand hook.
+ */
 function configureMocks(config: ClientConfig, brand: any, auth?: Parameters<typeof setMockAuth>[0]) {
 	setMockClientConfig(config);
 	setMockBrand(brand);
 	setMockRouteContext({ clientConfig: config });
 	if (auth) setMockAuth(auth);
+	return brand;
 }
 
 const authedUser = (name: string, email: string, seed: string) => ({
@@ -168,11 +192,15 @@ export default {
 
 /** Local (self-hosted) — all nav visible, admin access, self-registered user */
 export const Local = () => {
-	configureMocks(localConfig, onboardedBrand, authedUser("Local Admin", "admin@localhost", "local-admin"));
+	const brand = configureMocks(
+		localConfig,
+		onboardedBrand,
+		authedUser("Local Admin", "admin@localhost", "local-admin"),
+	);
 
 	return (
 		<SidebarFrame label="Local — Self-hosted, full admin">
-			<AppSidebar isAdmin={true} hasReportAccess={true} />
+			<AppSidebar isAdmin={true} hasReportAccess={true} brand={brand} />
 		</SidebarFrame>
 	);
 };
@@ -181,55 +209,107 @@ export const Local = () => {
 export const Demo = () => {
 	const demoUser = authedUser("Demo User", "demo@elmohq.com", "demo");
 	demoUser.user.picture = "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Adrian";
-	configureMocks(demoConfig, onboardedBrand, demoUser);
+	const brand = configureMocks(demoConfig, onboardedBrand, demoUser);
 
 	return (
 		<SidebarFrame label="Demo — Read-only, seeded user">
-			<AppSidebar isAdmin={false} hasReportAccess={false} />
+			<AppSidebar isAdmin={false} hasReportAccess={false} brand={brand} />
 		</SidebarFrame>
 	);
 };
 
 /** Whitelabel — regular authenticated user, full dashboard + settings */
 export const Whitelabel = () => {
-	configureMocks(whitelabelConfig, onboardedBrand, authedUser("Alice Partner", "alice@agency.com", "alice"));
+	const brand = configureMocks(
+		whitelabelConfig,
+		onboardedBrand,
+		authedUser("Alice Partner", "alice@agency.com", "alice"),
+	);
 
 	return (
 		<SidebarFrame label="Whitelabel — Regular user, no admin section">
-			<AppSidebar isAdmin={false} hasReportAccess={false} />
+			<AppSidebar isAdmin={false} hasReportAccess={false} brand={brand} />
 		</SidebarFrame>
 	);
 };
 
 /** Whitelabel (Admin) — admin section with Brands, Reports, Workflows, Tools */
 export const WhitelabelAdmin = () => {
-	configureMocks(whitelabelAdminConfig, onboardedBrand, authedUser("Jane Admin", "jane@agency.com", "jane"));
+	const brand = configureMocks(
+		whitelabelAdminConfig,
+		onboardedBrand,
+		authedUser("Jane Admin", "jane@agency.com", "jane"),
+	);
 
 	return (
 		<SidebarFrame label="Whitelabel Admin — Full admin section visible">
-			<AppSidebar isAdmin={true} hasReportAccess={true} />
+			<AppSidebar isAdmin={true} hasReportAccess={true} brand={brand} />
 		</SidebarFrame>
 	);
 };
 
 /** Whitelabel (Report-only) — limited admin access, only reports visible */
 export const WhitelabelReportOnly = () => {
-	configureMocks(whitelabelAdminConfig, onboardedBrand, authedUser("Report Viewer", "reports@client.com", "reports"));
+	const brand = configureMocks(
+		whitelabelAdminConfig,
+		onboardedBrand,
+		authedUser("Report Viewer", "reports@client.com", "reports"),
+	);
 
 	return (
 		<SidebarFrame label="Whitelabel Report-only — Dashboard + Reports admin section">
-			<AppSidebar isAdmin={false} hasReportAccess={true} />
+			<AppSidebar isAdmin={false} hasReportAccess={true} brand={brand} />
 		</SidebarFrame>
 	);
 };
 
+/** Cloud — settings nav gains Team and Billing; no report generation */
+export const Cloud: StoryObj = {
+	render: () => {
+		const brand = configureMocks(cloudConfig, onboardedBrand, authedUser("Dana Cloud", "dana@acme.com", "dana"));
+
+		return (
+			<SidebarFrame label="Cloud — Billing and Team in settings">
+				<AppSidebar isAdmin={false} hasReportAccess={false} brand={brand} />
+			</SidebarFrame>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		// Billing is cloud-only, and it is the last settings item, so it can sit
+		// below the fold of this frame — assert it rather than eyeballing it.
+		await expect(await canvas.findByText("Billing")).toBeInTheDocument();
+		await expect(await canvas.findByText("Team")).toBeInTheDocument();
+		// Reports are disabled in cloud even for a user with report access.
+		await expect(canvas.queryByText("Reports")).toBeNull();
+	},
+};
+
+/** Whitelabel has no billing, so the settings nav stops at Team. */
+export const WhitelabelHasNoBilling: StoryObj = {
+	render: () => {
+		const brand = configureMocks(whitelabelConfig, onboardedBrand, authedUser("Alice", "alice@agency.com", "alice2"));
+
+		return (
+			<SidebarFrame label="Whitelabel — no Billing item">
+				<AppSidebar isAdmin={false} hasReportAccess={false} brand={brand} />
+			</SidebarFrame>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText("LLMs")).toBeInTheDocument();
+		await expect(canvas.queryByText("Billing")).toBeNull();
+	},
+};
+
 /** Whitelabel (Onboarding) — brand not yet onboarded, reduced nav */
 export const WhitelabelOnboarding = () => {
-	configureMocks(whitelabelConfig, newBrand, authedUser("New User", "new@agency.com", "newuser"));
+	const brand = configureMocks(whitelabelConfig, newBrand, authedUser("New User", "new@agency.com", "newuser"));
 
 	return (
 		<SidebarFrame label="Whitelabel Onboarding — Brand not onboarded, minimal nav">
-			<AppSidebar isAdmin={false} hasReportAccess={false} />
+			<AppSidebar isAdmin={false} hasReportAccess={false} brand={brand} />
 		</SidebarFrame>
 	);
 };

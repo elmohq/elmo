@@ -28,6 +28,7 @@ When you run `elmo init`, the CLI generates a `.env` file in your config directo
 | `ELMO_ENCRYPTION_KEY_OLD` | Previous encryption keys, comma-separated, kept readable during a rotation | — |
 | `DISABLE_TELEMETRY` | Set to `1` to disable all telemetry. See [Telemetry](/docs/developer-guide/telemetry). | — |
 | `DEFAULT_DELAY_HOURS` | How often each enabled prompt is re-run against the AI models, in hours. | `24` |
+| `RUNS_PER_PROMPT` | How many times each run samples every tracked platform. Answers vary between identical calls, so several samples make a mention rate a measurement rather than an anecdote — but each one is a provider call you pay for. | `5` |
 
 <Callout type="warn">
 	Back up `ELMO_ENCRYPTION_KEY` alongside your database. Credentials stored in the database are encrypted with it and nothing else — if you lose the key, or restore a database backup onto a deployment that generated a different one, those credentials cannot be recovered and have to be entered again. Elmo logs an error and falls back to the provider keys in your `.env` when a stored credential will not decrypt.
@@ -41,6 +42,14 @@ Every stored credential records which key encrypted it, so a rotation doesn't ha
 2. Put a freshly generated key in `ELMO_ENCRYPTION_KEY` (`openssl rand -base64 32`), and restart.
 
 New values are encrypted under the new key while anything saved under a retired one stays readable, so nothing has to be re-entered up front. Drop `ELMO_ENCRYPTION_KEY_OLD` once every stored credential has been saved again — until then, keep it, or those credentials become unreadable and Elmo logs which key it is missing.
+
+<Callout type="info">
+	`RUNS_PER_PROMPT` multiplies provider spend one-for-one: at the default, one firing of one prompt
+	against four platforms is twenty provider calls. Lowering it to `1` cuts the bill by five and makes
+	each result a single sample, so day-to-day movement gets noisier. It applies from the next firing —
+	no rescheduling needed. A value below `1`, fractional, or unparseable is ignored in favour of the
+	default, so a typo cannot silently stop tracking or inflate the bill.
+</Callout>
 
 <Callout type="warn">
 	`DEFAULT_DELAY_HOURS` only takes effect for prompts scheduled **after** you change it. Prompts that are already scheduled keep the cadence they were created with, even after a restart. To apply a new cadence to an existing prompt, disable it and then re-enable it under **Settings → Prompts** — re-enabling reschedules it at the current `DEFAULT_DELAY_HOURS`.
@@ -60,7 +69,7 @@ At least one provider is required for Elmo to track visibility. See [Providers](
 | `OPENAI_API_KEY` | OpenAI API key — enables ChatGPT (via API, not the consumer UI) |
 | `ANTHROPIC_API_KEY` | Anthropic API key — enables Claude tracking |
 | `OPENROUTER_API_KEY` | OpenRouter key — one key for Claude + other hosted models |
-| `DATAFORSEO_LOGIN` | DataForSEO login — optional, enables DataForSEO targets such as `google-ai-mode:dataforseo:online`, `chatgpt:dataforseo:online`, `perplexity:dataforseo:online`, and `gemini:dataforseo:online` |
+| `DATAFORSEO_LOGIN` | DataForSEO login — optional, enables DataForSEO targets such as `chatgpt:dataforseo:online`, `gemini:dataforseo:online`, `google-ai-mode:dataforseo:online`, and `perplexity:dataforseo:online` |
 | `DATAFORSEO_PASSWORD` | DataForSEO password |
 | `SCRAPE_TARGETS` | Comma-separated `model:provider[:version][:online]` entries. See [Providers](/docs/user-guide/providers#scrape_targets-format). |
 
@@ -82,3 +91,42 @@ elmo compose up -d
 By default, `elmo init` provisions a PostgreSQL container. To use an existing database instead, choose "Use existing Postgres" during `elmo init` and provide your connection string when prompted.
 
 Your database must be PostgreSQL 15 or later.
+
+## Upgrading Postgres
+
+`elmo init` provisions Postgres 18. `elmo upgrade` rolls the Elmo images but never touches the Postgres container, so a deployment created on an earlier major keeps running on it — supported, and nothing you have to act on. Postgres 16 gets fixes until November 2028.
+
+If you do want to move, Postgres cannot read a data directory written by a different major version, so it takes a dump and restore.
+
+<Callout type="warn">
+  Do not just change the image tag. From version 18 on, the official Postgres image stores its data in a version-specific subdirectory (`/var/lib/postgresql/18/docker`) and declares its volume one level up, at `/var/lib/postgresql`. An 18 image with the old `/var/lib/postgresql/data` mount does not fail — it writes a brand new, empty cluster to an anonymous volume that is discarded the next time the container is recreated. Your original data survives in `elmo_postgres_data`, but Elmo comes up empty and anything written in the meantime is lost.
+</Callout>
+
+Take a dump while the old container is still running:
+
+```bash
+elmo compose up -d postgres
+docker compose -f ~/.elmo/elmo.yaml exec -T postgres pg_dump -U postgres -d elmo > elmo-backup.sql
+elmo compose down
+```
+
+Check that `elmo-backup.sql` is non-empty and ends with `-- PostgreSQL database dump complete` before continuing. Then edit the Postgres service with `elmo edit compose`, changing **both** the image and the mount path:
+
+```yaml
+postgres:
+  image: postgres:18-alpine
+  volumes:
+    - postgres_data:/var/lib/postgresql
+```
+
+Now restore. Postgres 18 finds no cluster at its new path, initializes an empty one alongside the old files, and the dump goes into that:
+
+```bash
+elmo compose up -d postgres
+docker compose -f ~/.elmo/elmo.yaml exec -T postgres psql -U postgres -d elmo < elmo-backup.sql
+elmo compose up -d
+```
+
+Bringing up `postgres` on its own first matters: it keeps `db-migrate` from initializing an empty schema ahead of the restore.
+
+Nothing is destroyed along the way: the old cluster stays in the volume, unused, so you can roll back by putting the original image and `/var/lib/postgresql/data` mount back. Keep `elmo-backup.sql` either way.

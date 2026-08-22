@@ -39,7 +39,6 @@ export function createWhitelabelDeployment(options: CreateWhitelabelDeploymentOp
 		features: {
 			readOnly: false,
 			showOptimizeButton: true,
-			supportsMultiOrg: true,
 			canCreateBrands: false,
 			selfServeSignup: false,
 			billing: false,

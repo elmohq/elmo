@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-// Mock the LLM and excerpt modules so the test exercises only normalization.
+// Mock the LLM and excerpt modules so the tests never call external services.
 vi.mock("./llm", () => ({
 	resolveResearchTarget: vi.fn(() => ({
 		provider: { id: "anthropic-api", isConfigured: () => true } as any,
-		model: "claude-sonnet-4-6",
+		model: "claude-sonnet-5",
 	})),
 	runStructuredResearchPrompt: vi.fn(),
 }));
@@ -12,14 +12,140 @@ vi.mock("../website-excerpt", () => ({
 	getWebsiteExcerpt: vi.fn(async () => ""),
 }));
 
+import { getWebsiteExcerpt } from "../website-excerpt";
+import { analyzeBrand, buildAnalysisContext } from "./analyze";
 import { runStructuredResearchPrompt } from "./llm";
-import { analyzeBrand } from "./analyze";
 
 afterEach(() => {
 	vi.clearAllMocks();
 });
 
 describe("analyzeBrand", () => {
+	it("uses the full page URL for analysis while retaining the domain identity", async () => {
+		const pageUrl = "https://www.nike.com/golf?category=clubs#featured";
+		vi.mocked(getWebsiteExcerpt).mockResolvedValueOnce("Nike Golf page excerpt");
+		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
+			brandName: "Nike Golf",
+			additionalDomains: [],
+			aliases: [],
+			competitors: [],
+			suggestedPrompts: [],
+		});
+
+		const result = await analyzeBrand({
+			website: pageUrl,
+			brandName: "Nike Golf",
+		});
+		const prompt = vi.mocked(runStructuredResearchPrompt).mock.calls[0]?.[0];
+
+		expect(getWebsiteExcerpt).toHaveBeenCalledWith(pageUrl);
+		expect(prompt).toContain(`Analyze the brand at ${pageUrl}.`);
+		expect(prompt).toContain(`Text from ${pageUrl}:`);
+		expect(result.website).toBe("nike.com");
+	});
+
+	it("does not disclose embedded URL credentials to analysis services", async () => {
+		const privateUrl = "https://alice:secret@example.com/private?view=summary";
+		const safeUrl = "https://example.com/private?view=summary";
+
+		const ctx = await buildAnalysisContext({ website: privateUrl });
+
+		expect(getWebsiteExcerpt).toHaveBeenCalledWith(safeUrl);
+		expect(ctx.prompt).toContain(`Analyze the brand at ${safeUrl}.`);
+		expect(ctx.prompt).not.toContain("alice");
+		expect(ctx.prompt).not.toContain("secret");
+		expect(ctx.website).toBe("example.com");
+	});
+
+	it("rejects unsupported protocols before calling analysis services", async () => {
+		await expect(buildAnalysisContext({ website: "ftp://example.com/private" })).rejects.toThrow(
+			'Could not parse website "ftp://example.com/private"',
+		);
+
+		expect(getWebsiteExcerpt).not.toHaveBeenCalled();
+	});
+
+	// The case from the issue: research the Nike Golf section of the site, but
+	// keep tracking mentions against nike.com.
+	it("scopes a sub-page to its own brand without moving the tracked domain", async () => {
+		const pageUrl = "https://www.nike.com/golf";
+		vi.mocked(getWebsiteExcerpt).mockResolvedValueOnce("Nike Golf clubs, balls, and apparel");
+		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
+			// The model narrows a sub-brand to the parent it recognises.
+			brandName: "Nike",
+			additionalDomains: [],
+			aliases: [],
+			competitors: [{ name: "Titleist", domains: ["titleist.com"], aliases: [] }],
+			suggestedPrompts: [{ prompt: "best golf clubs", tags: ["golf"] }],
+		});
+
+		const result = await analyzeBrand({ website: pageUrl, brandName: "Nike Golf" });
+		const prompt = vi.mocked(runStructuredResearchPrompt).mock.calls[0]?.[0];
+
+		expect(getWebsiteExcerpt).toHaveBeenCalledWith(pageUrl);
+		expect(prompt).toContain(`Analyze the brand at ${pageUrl}.`);
+		expect(prompt).toContain(`Text from ${pageUrl}:`);
+		expect(prompt).toContain("not the site root");
+		// Mention and citation matching key off this, so it must stay the domain.
+		expect(result.website).toBe("nike.com");
+		expect(result.brandName).toBe("Nike Golf");
+	});
+
+	it("keeps the caller's brand name when the model answers with the parent brand", async () => {
+		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
+			brandName: "Nike",
+			additionalDomains: [],
+			aliases: ["Nike Golf Equipment"],
+			competitors: [],
+			suggestedPrompts: [],
+		});
+
+		const result = await analyzeBrand({ website: "nike.com", brandName: "Nike Golf" });
+
+		expect(result.brandName).toBe("Nike Golf");
+		// Aliases are filtered against the name we actually kept.
+		expect(result.aliases).toEqual([]);
+	});
+
+	it("takes the model's brand name when the caller supplied none", async () => {
+		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
+			brandName: "Acme",
+			additionalDomains: [],
+			aliases: [],
+			competitors: [],
+			suggestedPrompts: [],
+		});
+
+		const result = await analyzeBrand({ website: "acmecorp.com" });
+
+		expect(result.brandName).toBe("Acme");
+	});
+
+	// Same page, written two ways — the website field accepts either, so both
+	// must resolve to one analysis URL and one tracked domain.
+	it("treats a plain domain with a path the same as its full URL", async () => {
+		const contexts = [];
+		for (const website of ["nike.com/golf", "https://nike.com/golf"]) {
+			contexts.push(await buildAnalysisContext({ website }));
+		}
+
+		for (const ctx of contexts) {
+			expect(ctx.analysisUrl).toBe("https://nike.com/golf");
+			expect(ctx.website).toBe("nike.com");
+			expect(ctx.prompt).toContain("not the site root");
+		}
+		expect(getWebsiteExcerpt).toHaveBeenCalledWith("https://nike.com/golf");
+	});
+
+	it("does not add the sub-page note for a site root, in either form", async () => {
+		for (const website of ["nike.com", "www.nike.com", "https://nike.com/", "https://www.nike.com"]) {
+			const ctx = await buildAnalysisContext({ website });
+
+			expect(ctx.prompt).not.toContain("not the site root");
+			expect(ctx.website).toBe("nike.com");
+		}
+	});
+
 	it("normalizes brand fields, dedupes domains, and filters self-referential competitors", async () => {
 		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
 			brandName: "Acme",
@@ -83,6 +209,10 @@ describe("analyzeBrand", () => {
 		});
 
 		const result = await analyzeBrand({ website: "nike.com" });
+		const prompt = vi.mocked(runStructuredResearchPrompt).mock.calls[0]?.[0];
+
+		expect(getWebsiteExcerpt).toHaveBeenCalledWith("https://nike.com/");
+		expect(prompt).toContain("Analyze the brand at https://nike.com/.");
 		expect(result.brandName).toBe("Nike");
 	});
 

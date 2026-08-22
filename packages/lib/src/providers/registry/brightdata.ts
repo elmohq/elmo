@@ -1,8 +1,8 @@
 import { bdclient } from "@brightdata/sdk";
-import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
-import { extractCitationsFromBrightdata, extractTextFromBrightdata, type Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
+import { type Citation, extractCitationsFromBrightdata, extractTextFromBrightdata } from "../../text-extraction";
+import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 
 // Google AI Overview isn't a Web Scraper dataset — it's the AI summary block on
 // a normal Google results page, fetched through BrightData's SERP API instead of
@@ -124,7 +124,22 @@ function extractSources(record: Record<string, any>): Citation[] {
 	return citations;
 }
 
-function extractWebQueries(record: Record<string, any>): string[] {
+/**
+ * Exported for tests.
+ *
+ * Do not gate this on `web_search_triggered`. It looks like the right signal
+ * and isn't: across real ChatGPT runs, most carry `false` while still
+ * reporting a query plainly derived from the prompt ("test 1" → "test 1
+ * meaning"), so trusting it discards the bulk of genuine fan-out data.
+ *
+ * BrightData does occasionally attach another session's search metadata to a
+ * correct answer — a run for "test 1" came back with
+ * `web_search_query: ["OpenAI GPT-5.6 Luna"]` and matching sources. Nothing in
+ * the payload separates that from a real query, and "unrelated to the prompt"
+ * would throw away exactly the fan-out this feature exists to surface, so it
+ * is recorded as reported and left to the read layer.
+ */
+export function extractWebQueries(record: Record<string, any>): string[] {
 	// web_search_query is a direct array of strings
 	if (Array.isArray(record.web_search_query)) {
 		return record.web_search_query.filter((q: any) => typeof q === "string" && q.trim());
@@ -143,6 +158,8 @@ function extractWebQueries(record: Record<string, any>): string[] {
 export const brightdata: Provider = {
 	id: "brightdata",
 	name: "BrightData",
+	access: "scraped",
+	docsAnchor: "brightdata",
 
 	isConfigured() {
 		return !!getCredential("BRIGHTDATA_API_TOKEN");
@@ -271,7 +288,7 @@ async function pollUntilReady(snapshotId: string): Promise<void> {
 			throw new Error(`BrightData snapshot ${snapshotId} ${status}`);
 		}
 
-		const delay = Math.min(BASE_DELAY * Math.pow(2, Math.floor(attempt / 5)), MAX_DELAY);
+		const delay = Math.min(BASE_DELAY * 2 ** Math.floor(attempt / 5), MAX_DELAY);
 		await new Promise((resolve) => setTimeout(resolve, delay));
 	}
 

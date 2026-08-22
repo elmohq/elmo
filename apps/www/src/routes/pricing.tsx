@@ -7,9 +7,9 @@ import { Faq } from "@/components/faq";
 import { PRICING_FAQS } from "@/lib/faqs";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
 
-const title = "Pricing — Free & Open-Source AI Visibility · Elmo";
+const title = "Pricing — Free, Cloud & White-Label AI Visibility · Elmo";
 const description =
-	"Elmo is free and open source to self-host. Managed cloud hosting coming soon. White-label available for agencies.";
+	"Elmo is free and open source to self-host, available as managed cloud from $29/mo, and white-label for agencies.";
 
 export const Route = createFileRoute("/pricing")({
 	head: () => ({

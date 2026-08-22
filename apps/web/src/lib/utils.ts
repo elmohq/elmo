@@ -1,7 +1,7 @@
 /**
  * Shared utility functions.
  */
-import { getModelMeta } from "@workspace/lib/providers/models";
+import { getModelMeta } from "@workspace/config/models";
 
 /**
  * Display name for a model id. Thin wrapper over `getModelMeta` so the UI
