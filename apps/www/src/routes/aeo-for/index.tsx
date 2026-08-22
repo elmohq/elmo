@@ -6,7 +6,7 @@ import { aeoVerticals } from "@/data/aeo-verticals";
 
 const title = "Answer Engine Optimization by Industry · Elmo";
 const description =
-	"How answer engine optimization applies to your world: AEO for agencies, SaaS, e-commerce, B2B, startups, enterprise, healthcare, and financial services.";
+	"How answer engine optimization applies to your industry — 20 guides covering the prompts that matter, what to publish, and how AI engines pick sources in each one.";
 
 export const Route = createFileRoute("/aeo-for/")({
 	head: () => ({
@@ -63,6 +63,40 @@ function AeoForIndex() {
 									<p className="mt-2 text-sm leading-relaxed text-zinc-600">{v.short}</p>
 								</a>
 							))}
+						</div>
+					</div>
+				</section>
+
+				<section className="border-t border-zinc-200 bg-white py-12">
+					<div className="mx-auto max-w-6xl px-4 md:px-6">
+						<div className="max-w-3xl space-y-5 leading-relaxed text-zinc-600">
+							<h2 className="font-heading text-2xl text-zinc-950">Why AEO differs by industry</h2>
+							<p>
+								Answer engine optimization is the practice of getting a brand named, cited, and described accurately
+								when someone asks an AI engine a question. The mechanics are consistent across industries: engines
+								retrieve a handful of sources, weigh them for authority and specificity, and synthesise an answer that
+								names a few options. What changes from one industry to the next is which sources carry weight and which
+								questions decide the outcome.
+							</p>
+							<p>
+								In regulated categories like healthcare, financial services, and insurance, engines lean hard on
+								credentials, accreditation, and verifiable third-party sources, because the cost of a wrong answer is
+								high. In software and developer tools, documentation quality dominates — a tool whose docs are thorough
+								and crawlable gets recommended over an equally capable one whose docs are thin or client-rendered. In
+								local and travel categories, independent guides and review platforms outweigh anything a brand publishes
+								about itself.
+							</p>
+							<p>
+								The shape of the deciding question changes too. SaaS buyers ask for comparisons and alternatives.
+								Industrial buyers ask by specification. Donors ask about efficiency, patients ask about symptoms, and
+								travellers ask for itineraries rather than for hotels. Tracking the prompts that actually precede a
+								decision in your category — rather than a generic set of brand queries — is what makes AI visibility
+								measurable instead of anecdotal.
+							</p>
+							<p>
+								Each guide below covers the prompts worth tracking in that industry, what to publish so engines have
+								something specific to cite, and where the category's answers are currently sourced from.
+							</p>
 						</div>
 					</div>
 				</section>
