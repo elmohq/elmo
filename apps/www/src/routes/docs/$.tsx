@@ -68,7 +68,23 @@ export const Route = createFileRoute("/docs/$")({
 	},
 	loader: async ({ params }) => {
 		const slugs = params._splat?.split("/") ?? [];
-		return (await serverLoader({ data: slugs })) as LoaderData;
+		const data = (await serverLoader({ data: slugs })) as LoaderData;
+
+		// Resolve the compiled MDX before the component renders. Without this the
+		// client loader's `use()` hits an unresolved dynamic import mid-render, so
+		// the body only exists inside a suspended boundary — and when the stream
+		// closes before that boundary resolves, the server HTML ships with an
+		// errored boundary and no content (React #419). Crawlers that don't run
+		// JS then see an empty page. The import stays dynamic because the layout
+		// is otherwise only referenced from `component:`, which router-plugin
+		// splits out; a static import would hoist fumadocs-ui and shiki into the
+		// root bundle every marketing page loads.
+		if (data.type === "docs") {
+			const { clientLoader } = await import("@/components/docs-page-layout");
+			await clientLoader.preload(data.path);
+		}
+
+		return data;
 	},
 });
 

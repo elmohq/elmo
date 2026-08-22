@@ -103,7 +103,15 @@ export const Route = createFileRoute("/blog/$")({
 	},
 	loader: async ({ params }) => {
 		const slugs = params._splat?.split("/") ?? [];
-		return await serverLoader({ data: slugs });
+		const data = await serverLoader({ data: slugs });
+
+		// Same reason as routes/docs/$.tsx: resolving the compiled MDX here keeps
+		// the post body in the server-rendered HTML instead of behind a suspended
+		// boundary that may not resolve before the stream closes.
+		const { clientLoader } = await import("@/components/blog-post-layout");
+		await clientLoader.preload(data.path);
+
+		return data;
 	},
 });
 

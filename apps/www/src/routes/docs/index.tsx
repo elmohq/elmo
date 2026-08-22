@@ -34,7 +34,15 @@ export const Route = createFileRoute("/docs/")({
 			],
 		};
 	},
-	loader: async () => serverLoader({ data: [] }),
+	loader: async () => {
+		// See routes/docs/$.tsx for why this preload exists and why it is dynamic.
+		const data = (await serverLoader({ data: [] })) as LoaderData;
+		if (data.type === "docs") {
+			const { clientLoader } = await import("@/components/docs-page-layout");
+			await clientLoader.preload(data.path);
+		}
+		return data;
+	},
 });
 
 function Page() {
