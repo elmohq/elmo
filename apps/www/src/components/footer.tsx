@@ -2,8 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { Logo } from "./logo";
 import { externalRel } from "@/lib/external-link";
 
-// Our parent company. externalRel keeps the Referer (bluewhale.dev is owned);
-// the ?ref=elmo param is a belt-and-suspenders fallback.
+// externalRel keeps the Referer for this owned domain; `ref` preserves
+// attribution when an intermediary strips that header.
 const BLUEWHALE_URL = "https://bluewhale.dev?ref=elmo";
 
 const cols = [

@@ -4,7 +4,6 @@ import { Button } from "@workspace/ui/components/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
 
-/** Back link to the directory, matching the competitor comparison pages. */
 export function DirectoryBackLink({ label = "AI Visibility Tool Directory" }: { label?: string }) {
 	return (
 		<div className="mx-auto max-w-6xl px-4 pt-8 md:px-6">
@@ -72,7 +71,6 @@ export function DirectoryElmoBanner({
 	);
 }
 
-/** The "Ready to track your AI visibility?" closing CTA, shared across pages. */
 export function ElmoCta() {
 	return (
 		<section className="border-b border-zinc-200 bg-white py-16 lg:py-24">
@@ -97,7 +95,6 @@ export function ElmoCta() {
 	);
 }
 
-/** A simple bordered content section with an optional H2. */
 export function DirectorySection({ title, children }: { title?: string; children: ReactNode }) {
 	return (
 		<section className="border-b border-zinc-200 bg-white py-12">

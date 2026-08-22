@@ -32,7 +32,7 @@ import { trackWorkerEvent } from "../telemetry";
 
 export interface ProcessPromptData {
 	promptId: string;
-	/** Legacy field from pre-policy job payloads; cadence is now resolved fresh each firing. */
+	/** Accepted for queued jobs created by older app versions; the worker resolves cadence from current policy. */
 	cadenceHours?: number;
 	/** Cycles in a row where every run failed, carried forward to size the backoff. */
 	consecutiveFailures?: number;
@@ -44,10 +44,9 @@ export interface ProcessPromptData {
  * The expiry has to outlast the whole fan-out. A cycle submits every one of its
  * runs at once and each is bounded by the provider's own task ceiling, so the
  * job runs for about as long as its slowest run — which, behind a provider
- * queue deep enough to matter, is that ceiling. The previous 15 minutes was
- * shorter than a single backed-up wave takes to drain, so healthy cycles were
- * being expired and retried: pg-boss can't cancel a promise, so the original
- * runs still finished and recorded, and the retry paid for all of them again.
+ * queue deep enough to matter, is that ceiling. If pg-boss expires the job it
+ * cannot cancel the running promises, and a retry would pay for the fan-out a
+ * second time.
  *
  * `retryLimit: 0` for the same reason from the other side. By the time this job
  * can fail it has already submitted paid requests, and a queue-level retry
@@ -131,7 +130,7 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
  * positions + per-target cadence. Everything is looked up fresh so plan
  * changes, cancellations, and platform-pick edits apply on the next firing
  * without touching queued jobs. Outside cloud this reads nothing extra and
- * reproduces the legacy behavior exactly (asserted by run-policy tests).
+ * uses the deployment's fixed run settings.
  */
 async function resolvePlanForPrompt(
 	context: PromptContext,
@@ -160,7 +159,7 @@ async function resolvePlanForPrompt(
 	return { plan, entitlements };
 }
 
-/** Last successful run per target inside the dueness window. */
+/** Last successful run per target within the cadence lookup window. */
 async function getLastRunsByTargetKey(promptId: string, maxIntervalHours: number): Promise<Map<string, Date>> {
 	const windowStart = new Date(Date.now() - lastRunQueryWindowMs(maxIntervalHours));
 	const rows = await db
@@ -186,10 +185,9 @@ async function getLastRunsByTargetKey(promptId: string, maxIntervalHours: number
  * Runaway protection: how many provider attempts the org has recorded in the
  * last 24h, compared against its plan-derived ceiling before spending more.
  *
- * Counts usage_events rather than prompt_runs because a retry storm (the
- * v0.2.15 pathology that this guard was written for) writes no prompt_runs
+ * Counts usage_events rather than prompt_runs because a retry storm writes no prompt_runs
  * rows but burns spend — counting attempts is the stronger meaning for a
- * pathology ceiling. usage_events also has the org_id denormalized and an
+ * safety ceiling. usage_events also has the org_id denormalized and an
  * index on (organization_id, created_at), so this scan is cheap.
  */
 async function isOrgOverDailyCeiling(organizationId: string, ceiling: number): Promise<boolean> {
@@ -475,7 +473,6 @@ async function processPrompt(
 		`Processing prompt "${prompt.value}" for brand "${brand.name}" — ${dueTargets.length}/${plan.targets.length} targets due`,
 	);
 
-	// Run all due model iterations in parallel
 	const runPromises = dueTargets.flatMap((target) => {
 		const providerImpl = getProvider(target.config.provider);
 		return Array.from({ length: target.replication }, (_, i) =>

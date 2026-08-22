@@ -159,7 +159,7 @@ async function main(): Promise<void> {
 	// ── Step 1: Direct LLM APIs (loops until at least one is configured) ──
 	// The loop asks providers in the same order as the auto-pick preference:
 	// OpenRouter → Anthropic → OpenAI → Mistral. We say Yes to Anthropic and
-	// OpenAI to keep the resulting .env close to the pre-refactor shape.
+	// OpenAI to exercise multiple direct-provider credentials.
 
 	// OpenRouter confirm (default No) → No
 	await waitFor("Configure OpenRouter?");

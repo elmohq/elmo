@@ -48,7 +48,6 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 					const kMentionsParam = Number.parseInt(searchParams.get("kMentions") || "5", 10);
 					const kMentions = Number.isNaN(kMentionsParam) ? 5 : Math.max(1, Math.min(50, kMentionsParam));
 
-					// Parse raw output
 					const rawOutput = report.rawOutput as {
 						competitors: Array<{ name: string; domain: string }>;
 						prompts: Array<{ value: string }>;
@@ -62,7 +61,6 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 						}>;
 					};
 
-					// Build per-prompt snapshot data
 					const allPromptSnapshots = rawOutput.promptRuns.map((pr) => {
 						const totalRuns = pr.runs.length;
 						let brandMentionsTotal = 0;
@@ -77,7 +75,6 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 							}
 						}
 
-						// Sort competitors by count descending, take top K
 						const mentionsTopK = Object.entries(competitorCounts)
 							.map(([entity, count]) => ({ entity, count }))
 							.sort((a, b) => b.count - a.count)
@@ -95,7 +92,6 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 						};
 					});
 
-					// Compute unstable derived stats
 					const unstable = computeReportUnstableStats(rawOutput);
 
 					return {

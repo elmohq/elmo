@@ -4,12 +4,9 @@
  * can accumulate under the pre-0014 sync race), prove the dedupe keeps exactly
  * the right row and the new unique index then holds.
  *
- * This is deliberately narrow — it guards the one migration that mutates
- * existing auth data, not a whole-database rehearsal. Unlike the previous
- * version (which carried a hand-copied transcript of the migration), this
- * script reads the actual migration SQL from the migrations directory, splits
- * on --> statement-breakpoint, and executes the real statements. A change to
- * the migration is automatically exercised on the next run.
+ * This is deliberately narrow: it guards the one migration that mutates
+ * existing auth data, not a whole-database rehearsal. It reads the migration
+ * SQL directly so changes to the real statements are exercised automatically.
  *
  * Usage:
  *   DATABASE_URL=postgres://... pnpm -C packages/lib exec tsx scripts/verify-membership-dedupe.ts

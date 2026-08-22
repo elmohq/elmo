@@ -6,8 +6,8 @@ import { ALL_MODELS_VALUE } from "@/lib/model-filter";
 
 /** The shared dashboard filter params. Validated once at the `$brand` layout
  *  route (`validateSearch: validateBrandFilterSearch`) so every child route
- *  inherits them and links/filtered views stay shareable. `tags` stays a
- *  comma-joined string in the URL (the format our old nuqs links used);
+ *  inherits them and links/filtered views stay shareable. `tags` remains a
+ *  comma-joined string so existing shared links continue to resolve;
  *  consumers split/join via `splitTags`/`joinTags`. */
 export type BrandFilterSearch = {
 	model?: string;

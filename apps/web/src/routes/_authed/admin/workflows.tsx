@@ -704,7 +704,6 @@ function WorkflowsPage() {
 
 	if (!data) return null;
 
-	// Compute overdue breakdown
 	const THIRTY_MIN_MS = 30 * 60 * 1000;
 	const overdueBreakdown = data.brands.reduce(
 		(acc, brand) => {

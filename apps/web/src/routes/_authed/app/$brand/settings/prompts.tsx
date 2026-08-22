@@ -22,7 +22,6 @@ const getPromptsForEditing = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
 
-		// Fetch all prompts (including disabled) for editing
 		const brandPrompts = await db
 			.select()
 			.from(prompts)

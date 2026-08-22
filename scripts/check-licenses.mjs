@@ -88,9 +88,8 @@ const PACKAGE_EXCEPTIONS = new Map([
 
   // yuku-analyzer native bindings (transitive via knip). The 0.6.x platform
   // binding packages ship only a .node binary and omit the `license` field, so
-  // pnpm reports "Unknown". The yuku-toolchain repo and the parent
-  // yuku-analyzer/yuku-ast packages are MIT (later binding releases declare it
-  // too). All platform variants are listed so the check passes on any host.
+  // pnpm reports "Unknown". The yuku-toolchain repository and parent packages
+  // declare MIT. All platform variants are listed so the check passes on any host.
   ["@yuku-analyzer/binding-darwin-arm64", "Unknown"],
   ["@yuku-analyzer/binding-darwin-x64", "Unknown"],
   ["@yuku-analyzer/binding-freebsd-x64", "Unknown"],

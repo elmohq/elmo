@@ -432,7 +432,6 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
 
-		// Validate and clean domains
 		const cleanedCompetitors = data.competitors.map((c) => {
 			const cleanedDomains = c.domains.map((d) => cleanAndValidateDomain(d));
 			const invalid = c.domains.filter((_, i) => !cleanedDomains[i]);
