@@ -9,7 +9,6 @@
  * app.
  */
 
-import { IconLoader2 } from "@tabler/icons-react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import type { PlanKey } from "@workspace/config/plans";
 import { authClient } from "@workspace/lib/auth/client";
@@ -17,6 +16,7 @@ import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
+import { Spinner } from "@workspace/ui/components/spinner";
 import { Switch } from "@workspace/ui/components/switch";
 import { useEffect, useState } from "react";
 import { z } from "zod";
@@ -109,7 +109,7 @@ function ActivatingWorkspace({ organizationId }: { organizationId?: string }) {
 
 	return (
 		<div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
-			<IconLoader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+			<Spinner className="size-8 text-muted-foreground" />
 			<h1 className="text-2xl font-bold">Activating your workspace…</h1>
 			<p className="text-muted-foreground">Payment received — finishing setup. This takes a few seconds.</p>
 		</div>
@@ -181,7 +181,7 @@ function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
 						disabled={!isAdmin || subscribing !== null}
 						onClick={() => subscribe(plan.key)}
 					>
-						{subscribing === plan.key ? <IconLoader2 className="h-4 w-4 animate-spin" /> : "Subscribe"}
+						{subscribing === plan.key ? <Spinner /> : "Subscribe"}
 					</Button>
 				)}
 			/>

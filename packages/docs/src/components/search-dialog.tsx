@@ -4,6 +4,8 @@ import { useEffect, useCallback, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useDocsSearch } from "fumadocs-core/search/client";
 import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
+import { Kbd, KbdGroup } from "@workspace/ui/components/kbd";
+import { Spinner } from "@workspace/ui/components/spinner";
 import { cn } from "@workspace/ui/lib/utils";
 import { Search, FileText, Hash, Text } from "lucide-react";
 import type { SortedResult } from "fumadocs-core/search";
@@ -90,13 +92,13 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 						placeholder="Search docs..."
 						className="flex-1 bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
 					/>
-					<kbd className="hidden rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline-block">
-						ESC
-					</kbd>
+					<Kbd className="hidden border px-1.5 text-[10px] sm:inline-flex">ESC</Kbd>
 				</div>
 				<div ref={listRef} className="max-h-80 overflow-y-auto">
 					{query.isLoading && search.length > 0 && (
-						<div className="px-4 py-8 text-center text-sm text-muted-foreground">Searching...</div>
+						<div className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-muted-foreground">
+							<Spinner /> Searching...
+						</div>
 					)}
 					{!query.isLoading && search.length > 0 && results.length === 0 && (
 						<div className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -140,12 +142,15 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 					)}
 				</div>
 				<div className="flex items-center justify-between border-t px-3 py-2 text-xs text-muted-foreground">
-					<span>
-						<kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">↑</kbd>{" "}
-						<kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">↓</kbd> to navigate
+					<span className="flex items-center gap-1">
+						<KbdGroup>
+							<Kbd className="border font-mono text-[10px]">↑</Kbd>
+							<Kbd className="border font-mono text-[10px]">↓</Kbd>
+						</KbdGroup>
+						to navigate
 					</span>
-					<span>
-						<kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">↵</kbd> to select
+					<span className="flex items-center gap-1">
+						<Kbd className="border font-mono text-[10px]">↵</Kbd> to select
 					</span>
 				</div>
 			</DialogContent>

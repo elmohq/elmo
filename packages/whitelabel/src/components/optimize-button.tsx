@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { IconExternalLink, IconChevronDown, IconLoader2 } from "@tabler/icons-react";
+import { IconExternalLink, IconChevronDown } from "@tabler/icons-react";
 import { Button } from "@workspace/ui/components/button";
+import { Spinner } from "@workspace/ui/components/spinner";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -109,7 +110,7 @@ export function OptimizeButton({
 				onClick={(e) => handleOptimizeClick(e, selectedModel)}
 				disabled={loading}
 			>
-				{loading && <IconLoader2 size={12} className="size-3 mr-0.5 animate-spin" />}
+				{loading && <Spinner className="mr-0.5 size-3" />}
 				Optimize with {parentName}
 				<IconExternalLink size={12} className="size-3 ml-0.5" />
 			</Button>
@@ -141,7 +142,7 @@ export function OptimizeButton({
 								<div className="flex items-center justify-between w-full text-xs">
 									<span>{promptName}</span>
 									{loading ? (
-										<IconLoader2 size={12} className="size-3 ml-2 animate-spin" />
+										<Spinner className="ml-2 size-3" />
 									) : (
 										<IconExternalLink size={12} className="size-3 ml-2" />
 									)}

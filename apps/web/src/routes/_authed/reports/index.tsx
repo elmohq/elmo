@@ -18,6 +18,7 @@ import { Label } from "@workspace/ui/components/label";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Card, CardContent } from "@workspace/ui/components/card";
 import { Badge } from "@workspace/ui/components/badge";
+import { Spinner } from "@workspace/ui/components/spinner";
 import { trackEvent } from "@/lib/posthog";
 import { ExternalLink } from "lucide-react";
 import { requireAuthSession, isAdmin, hasReportAccess } from "@/lib/auth/helpers";
@@ -232,7 +233,7 @@ function ReportsPage() {
 										{isLoading ? (
 											<div className="flex items-center justify-center py-8">
 												<div className="flex items-center space-x-2">
-													<div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+													<Spinner className="size-6 text-primary" />
 													<span>Loading reports...</span>
 												</div>
 											</div>

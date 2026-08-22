@@ -9,7 +9,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
-import { Loader2, AlertCircle, Play, Rocket } from "lucide-react";
+import { Spinner } from "@workspace/ui/components/spinner";
+import { AlertCircle, Play, Rocket } from "lucide-react";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Separator } from "@workspace/ui/components/separator";
 import { useBrand, brandKeys } from "@/hooks/use-brands";
@@ -279,7 +280,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					>
 						{phase === "analyzing" ? (
 							<>
-								<Loader2 className="h-4 w-4 animate-spin" /> Analyzing brand…
+								<Spinner /> Analyzing brand…
 							</>
 						) : (
 							<>
@@ -376,7 +377,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			>
 				{isSaving ? (
 					<>
-						<Loader2 className="h-4 w-4 animate-spin" /> Saving…
+						<Spinner /> Saving…
 					</>
 				) : (
 					<>
