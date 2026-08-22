@@ -5,7 +5,7 @@ const BRAND_ID = "default";
 test.describe("Overview Page", () => {
   test("home page lands on the brand switcher and the default brand is reachable", async ({ page }) => {
     await page.goto("/");
-    // Local mode supports multiple brands, so / -> /app shows the switcher
+    // Every mode supports multiple brands, so / -> /app shows the switcher
     // rather than auto-redirecting through to a brand.
     await page.waitForURL(/\/app(?:\/)?$/, { timeout: 30_000 });
     const brandLink = page.locator(`a[href="/app/${BRAND_ID}"]`).first();
@@ -52,17 +52,15 @@ test.describe("Overview Page", () => {
     await page.waitForURL(new RegExp(`/app/${BRAND_ID}$`));
   });
 
-  test("admin section is accessible in local mode", async ({ page }) => {
+  test("an admin can reach the admin brand list", async ({ page }) => {
     await page.goto(`/app/${BRAND_ID}`);
 
     await expect(page.locator(`a[href="/app/${BRAND_ID}"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
 
-    const adminLink = page.locator('a[href*="/admin"]').first();
-    if (await adminLink.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await adminLink.click();
-      await page.waitForURL(/\/admin/);
-      expect(page.url()).toContain("/admin");
-    }
+    const adminLink = page.locator('a[href="/admin"][data-sidebar="menu-button"]');
+    await expect(adminLink).toBeVisible({ timeout: 15_000 });
+    await adminLink.click();
+    await page.waitForURL(/\/admin$/);
   });
 
   test("settings pages are accessible", async ({ page }) => {
