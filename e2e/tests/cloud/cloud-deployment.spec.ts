@@ -129,7 +129,7 @@ test.describe("Cloud features", () => {
     await expect(page.getByLabel("Email")).toBeVisible();
     await expect(page.getByRole("button", { name: "Invite" })).toBeVisible();
     // The signed-in admin is listed as a member of the brand.
-    await expect(page.getByText(TEST_USER.email)).toBeVisible();
+    await expect(page.getByRole("main").getByText(TEST_USER.email)).toBeVisible();
   });
 
   test("brands can be created from the UI", async ({ page }) => {
