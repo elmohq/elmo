@@ -3,8 +3,7 @@
  * gathers state (prompts, resolved run plans, last runs, pending pg-boss
  * jobs); this decides which chains to revive, which future jobs to expedite,
  * and how many prompts are overdue enough to alert on. Keeping it pure makes
- * the self-healing behavior — historically the most incident-prone part of
- * the scheduler — exhaustively unit-testable.
+ * the scheduler's self-healing behavior exhaustively unit-testable.
  */
 
 import { shouldExpediteJob } from "../expedite";

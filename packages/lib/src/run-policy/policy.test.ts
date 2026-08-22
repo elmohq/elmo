@@ -450,7 +450,7 @@ describe("resolvePromptRunPlan: cloud", () => {
 	});
 });
 
-describe("dueness metering", () => {
+describe("cadence enforcement", () => {
 	const plan = {
 		config: { model: "chatgpt", provider: "brightdata", webSearch: true },
 		intervalHours: 6,

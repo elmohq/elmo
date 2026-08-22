@@ -307,10 +307,9 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	const additionalDomains = dedupeDomains(input.additionalDomains ?? []).filter((d) => d !== websiteHost);
 	const aliases = dedupeAliases(input.aliases ?? []);
 
-	// Brands are hard-scoped to an org via a NOT NULL FK. This create path (the
-	// admin API) supplies the brand id directly and historically created brands
-	// whose id == the org id, so materialize that org first. No-op when it
-	// already exists (e.g. a whitelabel org already synced from Auth0).
+	// Brands are hard-scoped to an org via a NOT NULL FK. The admin API uses the
+	// supplied id for both records, so materialize the org first. This is a no-op
+	// when Auth0 synchronization has already created it.
 	//
 	// Both writes share a transaction so a conflicting brand id doesn't strand
 	// the org we just made: brand ids and org ids are independent now, so a

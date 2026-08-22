@@ -4,22 +4,9 @@ import { type CitationCategory, CITATION_CATEGORIES } from "@/lib/domain-categor
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
-/**
- * Determines the default lookback period based on the brand's data history.
- * Returns "1m" (1 month) if the brand has more than 1 week of data or if data hasn't loaded yet,
- * otherwise returns "1w" (1 week) for new brands with less than a week of data.
- *
- * Note: We default to "1m" when data is unavailable because most established brands
- * have more than a week of data, and this prevents inconsistent defaults when brand
- * data loads asynchronously (which was causing chart type mismatches downstream).
- *
- * @param earliestDataDate - ISO date string of the earliest data point, or null if no data
- * @returns The recommended default lookback period
- */
+/** Use a stable one-month default while history loads, then shorten it for brands with less than a week of data. */
 export function getDefaultLookbackPeriod(earliestDataDate: string | null | undefined): LookbackPeriod {
 	if (!earliestDataDate) {
-		// Data hasn't loaded yet - default to 1 month as a safe default
-		// (most brands have > 1 week of data, and this prevents default mismatches)
 		return "1m";
 	}
 
@@ -28,8 +15,6 @@ export function getDefaultLookbackPeriod(earliestDataDate: string | null | undef
 	const diffInMs = now.getTime() - earliestDate.getTime();
 	const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
 
-	// If brand has more than 7 days of data, default to 1 month
-	// Otherwise, default to 1 week (for new brands)
 	return diffInDays > 7 ? "1m" : "1w";
 }
 
@@ -46,7 +31,8 @@ export function getDaysFromLookback(lookback: LookbackPeriod): number {
 		case "1y":
 			return 365;
 		case "all":
-			return 365 * 2; // 2 years for "all"
+			// Bound the nominally unbounded UI option so chart queries remain predictable.
+			return 365 * 2;
 	}
 }
 
@@ -95,10 +81,6 @@ export function citationDateWindow(
 	};
 }
 
-// ============================================================================
-// Smoothing utilities
-// ============================================================================
-
 export interface DailyVisibilityBucket {
 	branded: { total: number; mentioned: number };
 	nonBranded: { total: number; mentioned: number };
@@ -127,7 +109,6 @@ export function applyPerPromptLVCF(
 } {
 	const brandedSet = new Set(brandedPromptIds);
 
-	// Group raw data by prompt_id -> date -> values
 	const byPrompt = new Map<string, Map<string, { total: number; mentioned: number }>>();
 	for (const row of perPromptData) {
 		if (!byPrompt.has(row.prompt_id)) byPrompt.set(row.prompt_id, new Map());
@@ -143,7 +124,6 @@ export function applyPerPromptLVCF(
 	let totalNonBrandedRuns = 0;
 	let totalNonBrandedMentioned = 0;
 
-	// For each prompt, walk the date range with LVCF, accumulating into the daily map.
 	// Pre-seed carried value with the prompt's earliest observation so that
 	// dates before the first run still get a contribution (avoids ramp-up artifact).
 	for (const [promptId, dateMap] of byPrompt) {
@@ -156,7 +136,6 @@ export function applyPerPromptLVCF(
 			if (actual) {
 				carried = actual;
 			}
-			// Only contribute if we have a value (actual or carried forward)
 			if (!carried) continue;
 
 			if (!dailyVisibilityMap.has(date)) {
@@ -170,7 +149,7 @@ export function applyPerPromptLVCF(
 			target.total += carried.total;
 			target.mentioned += carried.mentioned;
 
-			// Only count actual (non-carried) data toward period totals
+			// Period totals measure observations, not the synthetic daily series.
 			if (actual) {
 				if (isBranded) {
 					totalBrandedRuns += actual.total;
@@ -204,7 +183,6 @@ export function applyPerPromptKeyedLVCF<K extends string>(
 	const cadenceDays = Math.max(1, Math.ceil((cadenceHours ?? getDefaultDelayHours()) / 24));
 	const empty = (): Record<K, number> => Object.fromEntries(allKeys.map((k) => [k, 0])) as Record<K, number>;
 
-	// Group by prompt_id -> date -> per-key totals
 	const byPrompt = new Map<string, Map<string, Record<K, number>>>();
 	for (const row of rows) {
 		if (!byPrompt.has(row.prompt_id)) byPrompt.set(row.prompt_id, new Map());
@@ -216,7 +194,6 @@ export function applyPerPromptKeyedLVCF<K extends string>(
 
 	const daily = new Map<string, Record<K, number>>();
 	for (const [, dateMap] of byPrompt) {
-		// Pre-seed with the earliest observation to avoid ramp-up
 		const sortedEntries = [...dateMap.entries()].sort(([a], [b]) => a.localeCompare(b));
 		let carried: Record<K, number> | null = sortedEntries.length > 0 ? sortedEntries[0][1] : null;
 		for (const date of dateRange) {
@@ -229,14 +206,14 @@ export function applyPerPromptKeyedLVCF<K extends string>(
 		}
 	}
 
-	// Values are intentionally left fractional (not rounded to ints): both consumers
+	// Values are intentionally left fractional: both consumers
 	// convert to percentages via toRoundedPercentages, where the 1/cadenceDays factor
 	// cancels exactly — so cadence can't shift the chart, and a tiny category isn't
-	// pre-zeroed by an intermediate round before the percentage is taken.
+	// rounded to zero before the percentage is taken.
 	return daily;
 }
 
-/** Category-keyed LVCF (back-compat wrapper used by the dashboard). */
+/** Dashboard wrapper that converts citation domains to category keys before smoothing. */
 export function applyPerPromptCitationLVCF(
 	perPromptData: PerPromptDailyCitationStats[],
 	dateRange: string[],
@@ -256,11 +233,11 @@ export function applyPerPromptCitationLVCF(
 	);
 }
 
-// Function to normalize values from 0-500 range to 0-100% and round down to nearest 20%
+/** Map the 0–500 score range to 20-point percentage bands. */
 export const normalizeToPercentage = (value: number): number => {
 	const percentage = (value / 500) * 100;
 	const roundedPercentage = Math.floor(percentage / 20) * 20;
-	return Math.min(roundedPercentage, 100); // Ensure it never exceeds 100%
+	return Math.min(roundedPercentage, 100);
 };
 
 export function getBadgeVariant(value: number): "default" | "secondary" | "destructive" {
@@ -277,14 +254,11 @@ export function getBadgeClassName(value: number): string {
 
 export interface ChartDataPoint {
 	date: string;
-	[key: string]: number | string | boolean | null; // Dynamic keys for brand/competitor IDs and _extended_ flags
+	[key: string]: number | string | boolean | null;
 }
 
 import type { PromptRun, Brand, Competitor } from "@workspace/lib/db/schema";
 
-/**
- * Calculate visibility percentages for brand vs competitors from prompt runs
- */
 export function calculateVisibilityPercentages(
 	promptRuns: PromptRun[],
 	brand: Brand,
@@ -296,7 +270,6 @@ export function calculateVisibilityPercentages(
 	let endDate: Date;
 
 	if (lookback === "all" && promptRuns.length > 0) {
-		// For "all", use the actual data range from first to last prompt run
 		const sortedRuns = [...promptRuns].sort(
 			(a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
 		);
@@ -306,37 +279,32 @@ export function calculateVisibilityPercentages(
 		startDate = new Date(firstRun.createdAt);
 		endDate = new Date(lastRun.createdAt);
 
-		// Convert to date-only (remove time component) in user's timezone, then back to UTC Date objects
+		// Use local-day bounds so late UTC runs do not spill into the wrong day.
 		const startDateString = startDate.toLocaleDateString("en-CA", { timeZone: userTimezone });
 		const endDateString = endDate.toLocaleDateString("en-CA", { timeZone: userTimezone });
 		startDate = new Date(startDateString);
 		endDate = new Date(endDateString);
 	} else {
-		// For other lookback periods, use timezone-aware date range
 		const daysToSubtract = getDaysFromLookback(lookback);
 
-		// Get current date in user's timezone (not UTC) to avoid including "tomorrow"
+		// UTC may already be on tomorrow relative to the viewer.
 		const now = new Date();
 		const currentDateInTimezone = now.toLocaleDateString("en-CA", { timeZone: userTimezone });
 		endDate = new Date(currentDateInTimezone);
 
-		// Calculate start date from the timezone-aware end date
 		startDate = new Date(endDate);
 		startDate.setDate(startDate.getDate() - (daysToSubtract - 1));
 	}
 
-	// Generate complete UTC date range for the lookback period
 	const dateRange = generateDateRange(startDate, endDate);
 
-	// Sort competitors alphabetically by name for consistent color assignment
+	// Alphabetical order keeps colors stable when mention ranks change.
 	const sortedCompetitors = [...competitors].sort((a, b) => a.name.localeCompare(b.name));
 
-	// Group prompt runs by date (in user's timezone) - this is the key bucketing step
 	const runsByDate = promptRuns.reduce(
 		(acc, run) => {
 			const runDate = new Date(run.createdAt);
-			// Convert to user's timezone and get date string - this buckets events by local date
-			const dateKey = runDate.toLocaleDateString("en-CA", { timeZone: userTimezone }); // YYYY-MM-DD format
+			const dateKey = runDate.toLocaleDateString("en-CA", { timeZone: userTimezone });
 
 			if (!acc[dateKey]) {
 				acc[dateKey] = [];
@@ -347,7 +315,6 @@ export function calculateVisibilityPercentages(
 		{} as Record<string, PromptRun[]>,
 	);
 
-	// Calculate visibility percentages for each date in the UTC range
 	return dateRange.map((date) => {
 		const runsForDate = runsByDate[date] || [];
 		const totalRuns = runsForDate.length;
@@ -355,7 +322,6 @@ export function calculateVisibilityPercentages(
 		const dataPoint: ChartDataPoint = { date };
 
 		if (totalRuns === 0) {
-			// Set null values for brand and all competitors
 			dataPoint[brand.id] = null;
 			sortedCompetitors.forEach((competitor) => {
 				dataPoint[competitor.id] = null;
@@ -363,12 +329,10 @@ export function calculateVisibilityPercentages(
 			return dataPoint;
 		}
 
-		// Calculate brand visibility percentage
 		const brandMentions = runsForDate.filter((run) => run.brandMentioned).length;
 		const brandVisibility = Math.round((brandMentions / totalRuns) * 100);
 		dataPoint[brand.id] = brandVisibility;
 
-		// Calculate competitor visibility percentages
 		sortedCompetitors.forEach((competitor) => {
 			const competitorMentions = runsForDate.filter(
 				(run) => run.competitorsMentioned && run.competitorsMentioned.includes(competitor.name),
@@ -380,9 +344,6 @@ export function calculateVisibilityPercentages(
 		return dataPoint;
 	});
 }
-/**
- * Get competitor color based on alphabetical position using white label colors
- */
 export function getCompetitorColor(
 	competitorName: string,
 	competitors: Competitor[],
@@ -391,12 +352,11 @@ export function getCompetitorColor(
 	const sortedCompetitors = [...competitors].sort((a, b) => a.name.localeCompare(b.name));
 	const index = sortedCompetitors.findIndex((c) => c.name === competitorName);
 
-	// Start from index 1 (skip the first color which is for the brand)
+	// Index zero is reserved for the brand.
 	const colorIndex = (index + 1) % whitelabelColors.length;
 	return whitelabelColors[colorIndex] || whitelabelColors[1];
 }
 
-// Helper function to calculate average visibility for a competitor
 function calculateAverageVisibility(data: ChartDataPoint[], competitorId: string): number {
 	const validValues = data
 		.map((point) => point[competitorId] as number | null)
@@ -406,30 +366,25 @@ function calculateAverageVisibility(data: ChartDataPoint[], competitorId: string
 	return validValues.reduce((sum, value) => sum + value, 0) / validValues.length;
 }
 
-// Helper function to select top competitors to display by visibility
 export function selectCompetitorsToDisplay(
 	competitors: Competitor[],
 	data: ChartDataPoint[],
 	maxCompetitors: number = 3,
 ): Competitor[] {
-	// Calculate average visibility for each competitor
 	const competitorsWithAvgVisibility = competitors.map((competitor) => ({
 		competitor,
 		avgVisibility: calculateAverageVisibility(data, competitor.id),
 	}));
 
-	// Sort by highest average visibility
 	const sortedByVisibility = competitorsWithAvgVisibility.sort((a, b) => b.avgVisibility - a.avgVisibility);
 
-	// Take top competitors by visibility
 	const topCompetitors = sortedByVisibility.slice(0, maxCompetitors).map((item) => item.competitor);
 
-	// If we have fewer than maxCompetitors, fill with remaining competitors in alphabetical order
 	if (topCompetitors.length < maxCompetitors) {
 		const selectedIds = new Set(topCompetitors.map((c) => c.id));
 		const remaining = competitors
 			.filter((c) => !selectedIds.has(c.id))
-			.sort((a, b) => a.name.localeCompare(b.name)) // Sort alphabetically
+			.sort((a, b) => a.name.localeCompare(b.name))
 			.slice(0, maxCompetitors - topCompetitors.length);
 
 		topCompetitors.push(...remaining);
@@ -438,22 +393,17 @@ export function selectCompetitorsToDisplay(
 	return topCompetitors;
 }
 
-/**
- * Get brand color (always first color in white label config)
- */
 export function getBrandColor(whitelabelColors: string[]): string {
 	return whitelabelColors[0];
 }
 
 export function filterAndCompleteChartData(chartData: ChartDataPoint[], lookback: LookbackPeriod): ChartDataPoint[] {
-	// For "all", return the data as-is since it already contains the correct range
 	if (lookback === "all") {
 		return chartData;
 	}
 
 	const daysToSubtract = getDaysFromLookback(lookback);
 
-	// Use timezone-aware date range to be consistent with calculateVisibilityPercentages
 	const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	const now = new Date();
 	const currentDateInTimezone = now.toLocaleDateString("en-CA", { timeZone: userTimezone });
@@ -462,23 +412,18 @@ export function filterAndCompleteChartData(chartData: ChartDataPoint[], lookback
 	const startDate = new Date(referenceDate);
 	startDate.setDate(startDate.getDate() - (daysToSubtract - 1));
 
-	// Generate complete date range for the lookback period
 	const dateRange = generateDateRange(startDate, referenceDate);
 
-	// Filter existing data
 	const filteredData = chartData.filter((item) => {
 		const date = new Date(item.date);
 		return date >= startDate && date <= referenceDate;
 	});
 
-	// Create a complete dataset with null values for missing dates
 	return dateRange.map((date) => {
 		const existingData = filteredData.find((item) => item.date === date);
 		return (
 			existingData || {
 				date,
-				// Note: We can't set default values here since we don't know the keys
-				// The calling code should handle missing data appropriately
 			}
 		);
 	});
@@ -498,11 +443,10 @@ export function filterAndCompleteChartData(chartData: ChartDataPoint[], lookback
 export function extendLinesToChartEdges(chartData: ChartDataPoint[], dataKeys: string[]): ChartDataPoint[] {
 	if (chartData.length === 0) return chartData;
 
-	// Deep clone the chart data to avoid mutating the original
+	// Extension flags belong to the rendered copy, not the query cache.
 	const extendedData = chartData.map((point) => ({ ...point }));
 
 	for (const key of dataKeys) {
-		// Find the first and last indices with non-null values for this key
 		let firstValidIndex = -1;
 		let lastValidIndex = -1;
 		let firstValue: number | null = null;
@@ -520,15 +464,12 @@ export function extendLinesToChartEdges(chartData: ChartDataPoint[], dataKeys: s
 			}
 		}
 
-		// If we found valid data, extend it to the edges
 		if (firstValidIndex !== -1 && lastValidIndex !== -1) {
-			// Extend backward from the first valid value to the start
 			for (let i = 0; i < firstValidIndex; i++) {
 				extendedData[i][key] = firstValue;
 				extendedData[i][`_extended_${key}`] = true;
 			}
 
-			// Extend forward from the last valid value to the end
 			for (let i = lastValidIndex + 1; i < extendedData.length; i++) {
 				extendedData[i][key] = lastValue;
 				extendedData[i][`_extended_${key}`] = true;
@@ -539,9 +480,6 @@ export function extendLinesToChartEdges(chartData: ChartDataPoint[], dataKeys: s
 	return extendedData;
 }
 
-/**
- * Check if a data point's value for a specific key is an extended/synthetic value
- */
 export function isExtendedDataPoint(dataPoint: ChartDataPoint, key: string): boolean {
 	return dataPoint[`_extended_${key}`] === true;
 }
@@ -552,7 +490,6 @@ export function isExtendedDataPoint(dataPoint: ChartDataPoint, key: string): boo
 export function createPromptToWebQueryMapping(promptRuns: PromptRun[]): Record<string, string> {
 	const promptToWebQuery: Record<string, string> = {};
 
-	// Group prompt runs by prompt ID
 	const promptRunsByPromptId = promptRuns.reduce(
 		(acc, run) => {
 			if (!acc[run.promptId]) {
@@ -564,23 +501,18 @@ export function createPromptToWebQueryMapping(promptRuns: PromptRun[]): Record<s
 		{} as Record<string, PromptRun[]>,
 	);
 
-	// For each prompt, find the oldest web query
 	Object.entries(promptRunsByPromptId).forEach(([promptId, runs]) => {
-		// Filter runs that have web queries
 		const runsWithWebQueries = runs.filter((run) => run.webQueries && run.webQueries.length > 0);
 
 		if (runsWithWebQueries.length === 0) return;
 
-		// Sort by creation date (oldest first)
 		runsWithWebQueries.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
-		// Group by creation date to handle ties
 		const oldestDate = runsWithWebQueries[0].createdAt;
 		const oldestRuns = runsWithWebQueries.filter(
 			(run) => new Date(run.createdAt).getTime() === new Date(oldestDate).getTime(),
 		);
 
-		// Get all web queries from the oldest runs and find first alphabetically
 		const allWebQueries: string[] = [];
 		oldestRuns.forEach((run) => {
 			if (run.webQueries) {
@@ -589,7 +521,6 @@ export function createPromptToWebQueryMapping(promptRuns: PromptRun[]): Record<s
 		});
 
 		if (allWebQueries.length > 0) {
-			// Sort alphabetically and take the first
 			allWebQueries.sort();
 			promptToWebQuery[promptId] = allWebQueries[0];
 		}

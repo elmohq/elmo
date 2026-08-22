@@ -11,10 +11,7 @@ interface ListPaginationProps {
 	onPageChange: (page: number) => void;
 }
 
-/** Page-based pagination footer ("1–10 of 42" + Previous/Next). Controlled,
- *  so the same props work whether the caller paginates client-side over
- *  fetched data (v1, via `usePagedList`) or drives page/total from the
- *  server later. Renders nothing when everything fits on one page. */
+/** Controlled pagination footer that renders nothing when all items fit on one page. */
 export function ListPagination({ page, pageSize, totalItems, onPageChange }: ListPaginationProps) {
 	const totalPages = Math.ceil(totalItems / pageSize);
 	if (totalPages <= 1) return null;

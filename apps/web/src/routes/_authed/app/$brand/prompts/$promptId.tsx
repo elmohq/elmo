@@ -122,7 +122,6 @@ function PromptHistoryPage() {
 		days,
 	});
 
-	// Fetch prompt metadata
 	useEffect(() => {
 		if (!brandId || !promptId) return;
 		setIsMetaLoading(true);

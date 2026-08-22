@@ -1377,11 +1377,9 @@ function buildPostgresService(): string {
 		"    POSTGRES_PASSWORD: postgres",
 		"    POSTGRES_DB: elmo",
 		"  volumes:",
-		// From 18 on, the official image puts PGDATA in a version-specific
-		// subdirectory (/var/lib/postgresql/18/docker) and declares its VOLUME one
-		// level up, so the mount has to be the parent. Against the old .../data
-		// path an 18 image raises no error — it writes a new, empty cluster to an
-		// anonymous volume that is discarded when the container is recreated.
+		// PostgreSQL 18 puts PGDATA in a version-specific child directory and
+		// declares its volume at this parent. Mounting the child path can silently
+		// place the cluster in an anonymous volume that disappears on recreation.
 		"    - postgres_data:/var/lib/postgresql",
 		"  ports:",
 		'    - "5432:5432"',

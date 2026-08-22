@@ -177,12 +177,11 @@ jobs:
             e2e/test-results-worker/
           retention-days: 7
 
-  # Scheduling-policy verification: drives a real
-  # worker over a real database with the no-network stub provider, in local
-  # mode (legacy volume + dueness metering must match the pre-policy behavior
-  # exactly) and in cloud mode (plan cadence/replication, Claude assignment,
+  # Scheduling-policy verification drives a real worker over a real database
+  # with the no-network stub provider, in local mode (fixed run volume and
+  # cadence enforcement) and in cloud mode (plan cadence/replication, Claude assignment,
   # cancellation stop, resubscribe revival, usage attribution). This is the
-  # red-green guard that the run policy cannot change what self-hosted and
+  # regression guard that the run policy cannot change what self-hosted and
   # whitelabel deployments run.
   scheduling-policy:
     name: Scheduling Policy Verification
@@ -232,7 +231,7 @@ jobs:
       - name: Seed local fixtures
         run: pnpm -C e2e exec tsx seed.ts
 
-      - name: "Local mode: legacy volume + dueness metering"
+      - name: "Local mode: fixed volume + cadence enforcement"
         env:
           DEPLOYMENT_MODE: local
           SCRAPE_TARGETS: stub:stub

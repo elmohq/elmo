@@ -133,8 +133,7 @@ async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
 	const citations = extractCitationsFromGoogle(response);
 	// Google AI Mode always searches, but DataForSEO doesn't expose the query
 	// strings anywhere in its response. Mark "unavailable" when citations
-	// prove a search, like the other providers; never echo the prompt (runs
-	// before this change did).
+	// prove a search, like the other providers; never echo the prompt as a query.
 	return {
 		rawOutput: sanitizeForJson(response),
 		webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],

@@ -4,25 +4,16 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/component
 import { getModelMeta, KNOWN_MODELS } from "@workspace/config/models";
 
 export type ProgressBarItem = {
-	/** The label to display */
 	label: string;
-	/** The count/value to display */
 	count: number;
-	/** Optional subtitle shown below the label */
 	subtitle?: string;
-	/** Optional suffix rendered after the count (e.g. trend arrows) */
 	suffix?: React.ReactNode;
-	/** Optional category for color mapping */
 	category?: string;
-	/** Optional custom color (overrides category color) */
+	/** Overrides the category color. */
 	color?: string;
-	/** Optional click handler for future extensibility */
 	onClick?: () => void;
-	/** Optional tooltip text shown on hover over the label */
 	tooltip?: string;
-	/** Optional action element rendered next to the label */
 	action?: React.ReactNode;
-	/** Optional additional metadata */
 	metadata?: Record<string, any>;
 };
 
@@ -31,29 +22,19 @@ export type ColorMapping = {
 };
 
 export type ProgressBarChartProps = {
-	/** Array of items to display */
 	items: ProgressBarItem[];
-	/** Color mapping for categories */
 	colorMapping?: ColorMapping;
-	/** Default color if no category match */
 	defaultColor?: string;
-	/** Background color of the progress bar track */
 	trackColor?: string;
-	/** Height of the progress bar (tailwind class like 'h-2' or 'h-3') */
 	barHeight?: string;
-	/** How to calculate percentages: 'max' (relative to max count) or 'total' (relative to sum of all counts) */
+	/** Scale bars against the largest item or the sum of all items. */
 	percentageMode?: "max" | "total";
-	/** Custom total for percentage calculation (overrides percentageMode) */
+	/** Overrides the denominator selected by `percentageMode`. */
 	customTotal?: number;
-	/** Spacing between items (tailwind class) */
 	spacing?: string;
-	/** Show label in bold if it matches this value */
 	highlightLabel?: string;
-	/** Additional CSS classes for the container */
 	className?: string;
-	/** Whether labels should be truncated if too long */
 	truncateLabels?: boolean;
-	/** Use flex layout to fill parent height and distribute items evenly */
 	fillHeight?: boolean;
 };
 
@@ -71,7 +52,6 @@ export function ProgressBarChart({
 	truncateLabels = true,
 	fillHeight = false,
 }: ProgressBarChartProps) {
-	// Calculate the total for percentage calculations
 	const total = React.useMemo(() => {
 		if (customTotal !== undefined) {
 			return customTotal;
@@ -81,22 +61,18 @@ export function ProgressBarChart({
 			return items.reduce((sum, item) => sum + item.count, 0);
 		}
 
-		// percentageMode === "max"
 		return Math.max(...items.map((item) => item.count), 1);
 	}, [items, percentageMode, customTotal]);
 
 	const getItemColor = (item: ProgressBarItem): string => {
-		// Custom color takes precedence
 		if (item.color) {
 			return item.color;
 		}
 
-		// Category-based color
 		if (item.category && colorMapping[item.category]) {
 			return colorMapping[item.category];
 		}
 
-		// Default color
 		return defaultColor;
 	};
 

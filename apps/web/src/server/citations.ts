@@ -1,7 +1,4 @@
-/**
- * Server functions for citation data.
- * Replaces apps/web/src/app/api/brands/[id]/citations/route.ts
- */
+/** Server functions for citation data. */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
@@ -31,9 +28,6 @@ import {
 } from "@/lib/domain-categories.server";
 import { buildGoogleModule, emptyGoogleModule } from "@/lib/google-module";
 
-/**
- * Get citation statistics for a brand
- */
 export const getCitationsFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
@@ -56,7 +50,6 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		);
 		const timezone = "UTC";
 
-		// Get brand info, competitors, and all enabled prompts
 		const [brandResult, competitorsList, allPrompts] = await Promise.all([
 			db.select().from(brands).where(eq(brands.id, data.brandId)).limit(1),
 			db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
@@ -74,7 +67,6 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		// return below expose the same shape — `competitors` must be present in both.
 		const competitorSummary = competitorsList.map((c) => ({ id: c.id, name: c.name, domains: c.domains }));
 
-		// Collect available tags
 		const allUserTags = new Set<string>();
 		for (const p of allPrompts) {
 			for (const tag of p.tags || []) allUserTags.add(tag);
@@ -84,7 +76,6 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			.sort();
 		const availableTags = [SYSTEM_TAGS.BRANDED, SYSTEM_TAGS.UNBRANDED, ...userTagsWithoutSystemTags];
 
-		// Filter prompt IDs by tags if specified
 		let enabledPromptIds = allPrompts.map((p) => p.id);
 		const tagFilter = data.tags?.split(",").filter(Boolean) || [];
 		if (tagFilter.length > 0) {
@@ -200,7 +191,6 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			prevDomainMap.set(domain, (prevDomainMap.get(domain) ?? 0) + Number(count));
 		}
 
-		// Build previous period URL map for comparison
 		const prevUrlMap = new Map<string, { count: number; title?: string; domain: string }>();
 		for (const { url, domain, title, count } of prevUrlStats) {
 			if (isGoogleSurfaceUrl(url)) continue;

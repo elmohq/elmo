@@ -26,8 +26,7 @@ export { ALL_MODELS_VALUE, getAvailableModels } from "@/lib/model-filter";
 // per-key `useSearch` selectors so one filter's click doesn't re-render the
 // others, and write through `useFilterNavigate` (replace, no scroll reset).
 // The router commits search updates synchronously within the interaction, so
-// no optimistic layer is needed (nuqs throttled URL writes, which is why the
-// old code wrapped every change in `useOptimistic` + `startTransition`).
+// the URL itself is the authoritative filter state.
 import { coerceLookback, joinTags, splitTags, useFilterNavigate } from "@/hooks/use-list-filters";
 import {
 	ALL_MODELS_VALUE,
@@ -295,12 +294,8 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 	const value = urlValue ?? "";
 
 	const [local, setLocal] = useState(value);
-	// `pendingTargetRef` holds the value we're currently pushing to the URL
-	// while the navigation commits. While set, the sync effect ignores the
-	// stale `value` — without this, a re-render that fires after
-	// `setLocal("")` but before the router commits would see `value='abc'`
-	// and snap `local` back to 'abc'. That's what caused the
-	// "empty → abc → empty" flash when clicking the X.
+	// Ignore the URL echo while a local value is being committed; otherwise an
+	// intervening render can restore stale text and make the input flash.
 	const pendingTargetRef = useRef<string | null>(null);
 
 	useEffect(() => {
