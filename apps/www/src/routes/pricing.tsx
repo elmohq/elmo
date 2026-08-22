@@ -35,7 +35,7 @@ function PricingPage() {
 		<div className="min-h-screen">
 			<Navbar />
 			<main>
-				<Pricing />
+				<Pricing as="h1" />
 				<Faq items={PRICING_FAQS} eyebrow="/ FAQ" />
 				<CTA />
 			</main>
