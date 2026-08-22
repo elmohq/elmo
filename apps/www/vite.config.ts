@@ -34,7 +34,14 @@ export default defineConfig({
 		tailwindcss(),
 		tanstackStart(),
 		nitro({
-			traceDeps: ["@resvg/resvg-js"],
+			// `react` is traced rather than bundled because Vite's SSR pass leaves
+			// CJS dependencies calling `require("react")` at runtime — reachable
+			// here through fumadocs-openapi → @base-ui/react → use-sync-external-store,
+			// which has no ESM build. Bundling react cannot rewrite that call, so on
+			// Vercel it failed with "Cannot find module 'react'" and took out every
+			// /docs page. Tracing it externalises react across the whole server
+			// bundle, react-dom included, so there is still exactly one instance.
+			traceDeps: ["@resvg/resvg-js", "react"],
 			alias: {
 				tslib: tslibEsm,
 			},
