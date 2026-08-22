@@ -466,6 +466,9 @@ importers:
       '@playwright/test':
         specifier: ^1.62.1
         version: 1.62.1
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
       '@types/pg':
         specifier: ^8.21.0
         version: 8.21.0
@@ -481,6 +484,9 @@ importers:
       tsx:
         specifier: ^4.23.12
         version: 4.23.12
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
 
   packages/api-spec: {}
 
