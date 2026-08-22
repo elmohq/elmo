@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Input } from "@workspace/ui/components/input";
 import { Button } from "@workspace/ui/components/button";
+import { Spinner } from "@workspace/ui/components/spinner";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { Popover, PopoverTrigger, PopoverContent } from "@workspace/ui/components/popover";
 import { IconInfoCircle, IconPlus } from "@tabler/icons-react";
-import { Loader2 } from "lucide-react";
 import * as Sentry from "@sentry/tanstackstart-react";
 import { addDomainToBrandFn, addDomainToCompetitorFn, createCompetitorFromDomainFn } from "@/server/brands";
 
@@ -79,7 +79,7 @@ export function TrackDomainPopover({
 	if (saved) {
 		return (
 			<span className="shrink-0 p-1 text-muted-foreground">
-				<Loader2 className="h-3.5 w-3.5 animate-spin" />
+				<Spinner className="size-3.5" />
 			</span>
 		);
 	}
