@@ -51,6 +51,16 @@ jobs:
       - name: Log discovered candidates
         run: cat .agents/blog-candidates.json
 
+      - name: Collect previously rejected topics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr list --state closed --search "daily blog post" --limit 60 \
+            --json title,mergedAt,files \
+            --jq '.[] | select(.mergedAt == null) | .files[].path' \
+            | sort -u > .agents/rejected-topics.txt
+          cat .agents/rejected-topics.txt
+
       # Reviewed 2026-07-24. Keep this SHA pinned and review upstream changes
       # before updating it; these files become instructions for the writing agent.
       - name: Checkout pinned marketing skills
@@ -87,9 +97,19 @@ jobs:
           prompt: |
             Use /content-strategy, /ai-seo, and /copywriting.
 
-            Read .agents/blog-candidates.json. List the posts in packages/docs/content/blog/ and read relevant posts as needed.
+            Read .agents/blog-candidates.json. List the posts in packages/docs/content/blog/ and read relevant posts as needed. Read .agents/rejected-topics.txt — those drafts were reviewed and turned down; do not propose the same topic again.
 
-            Decide whether the recent research warrants one new post, one useful refresh of an existing post, or no change. Do not duplicate existing coverage. Verify claims with primary sources using WebSearch and WebFetch.
+            Start from a question an in-house marketing, SEO, or growth team is already asking — not from a news item. The candidates are evidence for answering such a question, not the subject. If today's research updates an answer we have already published, refresh that post instead of writing a new one.
+
+            Verify every claim against the primary source with WebSearch and WebFetch. Trade-press coverage points at a source; it is never the source. If you cannot reach the original study, paper, filing, or documentation, drop the topic.
+
+            Publish a new post only if all of these hold:
+            - The title is a question or claim a reader would search for, and the slug reads as an evergreen topic rather than an event or a vendor's product name.
+            - Either three or more independent datasets bear on the question — reconciled, with disagreements explained — or the single source is a preprint, peer-reviewed paper, or first-party dataset large enough to carry a post alone. One SEO or AEO vendor's study is not enough by itself.
+            - The post adds something the sources do not: a number from our own tracking, a reconciliation of conflicting figures, a limitation the source glosses over, or a decision rule the reader can apply. Restating findings and appending takeaways does not count.
+            - The subject is a brand's presence in AI answers. Skip local-business SEO, paid-media mechanics, and arguments about whether AI visibility measurement is a legitimate category.
+
+            Never build a post around a competitor's study, index, or survey. Citing one among several corroborating sources is fine; making it the spine is not.
 
             Blog conventions:
             - Only add or edit one MDX file in packages/docs/content/blog/.
