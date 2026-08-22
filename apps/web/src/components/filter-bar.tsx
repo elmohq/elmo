@@ -11,7 +11,12 @@ import {
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
-import { Input } from "@workspace/ui/components/input";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+	InputGroupInput,
+} from "@workspace/ui/components/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
@@ -334,25 +339,24 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 	};
 
 	return (
-		<div className="relative w-full sm:w-64">
-			<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-			<Input
+		<InputGroup className="h-8 sm:w-64">
+			<InputGroupInput
 				value={local}
 				onChange={(e) => setLocal(e.target.value)}
 				placeholder={placeholder}
-				className="h-8 pl-8 pr-8 text-sm"
+				className="h-8 text-sm"
 			/>
+			<InputGroupAddon className="pl-2.5">
+				<Search className="size-3.5" />
+			</InputGroupAddon>
 			{local && (
-				<button
-					type="button"
-					onClick={clear}
-					className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-					aria-label="Clear search"
-				>
-					<X className="h-3.5 w-3.5" />
-				</button>
+				<InputGroupAddon align="inline-end" className="pr-1.5">
+					<InputGroupButton size="icon-xs" onClick={clear} className="cursor-pointer" aria-label="Clear search">
+						<X className="size-3.5" />
+					</InputGroupButton>
+				</InputGroupAddon>
 			)}
-		</div>
+		</InputGroup>
 	);
 }
 

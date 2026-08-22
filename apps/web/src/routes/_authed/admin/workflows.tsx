@@ -10,6 +10,7 @@ import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Progress } from "@workspace/ui/components/progress";
+import { Spinner } from "@workspace/ui/components/spinner";
 import {
 	Dialog,
 	DialogContent,
@@ -29,7 +30,6 @@ import {
 	ChevronDown,
 	ChevronRight,
 	Play,
-	Loader2,
 } from "lucide-react";
 import { getWorkflowDataFn, retryJobFn, getJobLogsFn } from "@/server/admin";
 
@@ -285,7 +285,7 @@ function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: strin
 	return (
 		<div className="flex flex-col gap-1">
 			<Button size="sm" variant="outline" onClick={handleRetry} disabled={isLoading} className="cursor-pointer text-xs">
-				{isLoading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Play className="h-3 w-3 mr-1" />}
+				{isLoading ? <Spinner className="mr-1 size-3" /> : <Play className="h-3 w-3 mr-1" />}
 				Retry
 			</Button>
 			{error && <span className="text-xs text-red-500">{error}</span>}
@@ -382,7 +382,7 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 						<p className="text-muted-foreground mb-1">Execution Logs</p>
 						{logsLoading ? (
 							<div className="flex items-center gap-2 text-sm text-muted-foreground">
-								<Loader2 className="h-4 w-4 animate-spin" />
+								<Spinner />
 								Loading logs...
 							</div>
 						) : logsError ? (
@@ -409,7 +409,7 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 								<>
 									<Button onClick={handleRetry} disabled={retryLoading} className="cursor-pointer">
 										{retryLoading ? (
-											<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+											<Spinner className="mr-2" />
 										) : (
 											<Play className="h-4 w-4 mr-2" />
 										)}

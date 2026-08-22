@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { useBlocker } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
+import { Spinner } from "@workspace/ui/components/spinner";
 import {
 	Dialog,
 	DialogContent,
@@ -17,7 +18,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@workspace/ui/components/dialog";
-import { Loader2, Save } from "lucide-react";
+import { Save } from "lucide-react";
 
 interface UnsavedChangesBarProps {
 	isDirty: boolean;
@@ -78,7 +79,7 @@ export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, o
 								>
 									{isSaving ? (
 										<>
-											<Loader2 className="h-4 w-4 animate-spin" /> Saving…
+											<Spinner /> Saving…
 										</>
 									) : (
 										<>

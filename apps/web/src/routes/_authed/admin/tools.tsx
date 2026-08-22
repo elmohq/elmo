@@ -10,6 +10,7 @@ import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Badge } from "@workspace/ui/components/badge";
+import { Spinner } from "@workspace/ui/components/spinner";
 import {
 	Dialog,
 	DialogContent,
@@ -18,7 +19,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@workspace/ui/components/dialog";
-import { Sparkles, Loader2, Copy, Check } from "lucide-react";
+import { Sparkles, Copy, Check } from "lucide-react";
 import { adminAnalyzeBrandFn } from "@/server/admin";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 
@@ -117,7 +118,7 @@ function AnalyzeBrandDialog() {
 					<Button onClick={handleAnalyze} disabled={isLoading} className="cursor-pointer w-full">
 						{isLoading ? (
 							<>
-								<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+								<Spinner className="mr-2" />
 								Analyzing… (this may take a minute)
 							</>
 						) : (
