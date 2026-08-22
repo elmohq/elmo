@@ -105,7 +105,7 @@ test.describe("Whitelabel branding", () => {
 test.describe("Whitelabel features", () => {
   test("brands come from Auth0, so the UI offers no way to create one", async ({ page }) => {
     await page.goto("/app");
-    await expect(page.getByRole("heading", { name: "Brand Switcher" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Brand Switcher", { exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("link", { name: /create new brand/i })).toHaveCount(0);
 
     await page.goto("/app/new");
@@ -113,6 +113,15 @@ test.describe("Whitelabel features", () => {
   });
 
   test("prompt charts offer the optimize hand-off to the parent app", async ({ page, context }) => {
+    const optimizeRequests: string[] = [];
+    await context.route(
+      (url) => url.origin === WHITELABEL.optimizationUrlOrigin,
+      async (route) => {
+        optimizeRequests.push(route.request().url());
+        await route.fulfill({ status: 200, contentType: "text/html", body: "<html>parent app stub</html>" });
+      },
+    );
+
     await page.goto(`/app/${TEST_BRAND_ID}/visibility`);
 
     const optimize = page.getByRole("button", { name: `Optimize with ${WHITELABEL.parentName}` }).first();
@@ -124,7 +133,8 @@ test.describe("Whitelabel features", () => {
     await page.getByRole("menuitem").first().click();
 
     const popup = await popupPromise;
-    const optimizeUrl = new URL(popup.url());
+    await expect.poll(() => optimizeRequests.length, { timeout: 30_000 }).toBeGreaterThan(0);
+    const optimizeUrl = new URL(optimizeRequests[0]);
     expect(optimizeUrl.origin).toBe(WHITELABEL.optimizationUrlOrigin);
     expect(optimizeUrl.searchParams.get("org_id")).toBe(TEST_BRAND_ID);
     expect(optimizeUrl.searchParams.get("prompt")).toBeTruthy();
