@@ -7,9 +7,8 @@ import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
  * added to a brand, a premium model added to a prompt — so the change takes
  * effect now rather than whenever the current cadence happens to come around.
  *
- * Dragging the queued row forward is the only thing that works here: the
- * `prompt-${id}` singleton swallows a fresh send while a future job exists, so
- * `boss.send` would silently do nothing. Same UPDATE the worker's
+ * Dragging the queued row forward is required because the `prompt-${id}`
+ * singleton rejects a new send while a future job exists. This is the same update the worker's
  * schedule-maintenance uses to revive stalled chains.
  *
  * Safe to call on any save, and cheap: the cycle it triggers runs only the
@@ -43,8 +42,7 @@ export async function expeditePromptRuns(promptIds: string[]): Promise<void> {
 			await createMultiplePromptJobSchedulers(unqueued);
 		}
 	} catch (error) {
-		// Never fail the save over this: maintenance reaches the same state on its
-		// own, just an hour later.
+		// Never fail the save over this: the hourly maintenance job also expedites it.
 		console.error("Failed to expedite prompt runs:", error);
 	}
 }

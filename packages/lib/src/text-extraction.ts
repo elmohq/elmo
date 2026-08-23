@@ -130,12 +130,15 @@ export function extractTextFromDataforseoScraper(rawOutput: any): string {
 		const result = rawOutput?.tasks?.[0]?.result?.[0];
 		const markdown = result?.markdown;
 		if (typeof markdown === "string" && markdown.trim()) return markdown;
-		// Older or partial responses may only populate the per-item blocks.
+		// Older or partial responses may only populate the per-item blocks. They
+		// are separate markdown blocks, so they are joined by a blank line; a
+		// single newline is a soft break, which would render consecutive blocks
+		// as one run-on paragraph.
 		const texts: string[] = [];
 		for (const item of result?.items ?? []) {
 			if (typeof item?.markdown === "string" && item.markdown.trim()) texts.push(item.markdown.trim());
 		}
-		if (texts.length) return texts.join("\n");
+		if (texts.length) return texts.join("\n\n");
 		return "No text content found in DataForSEO Scraper output.";
 	} catch (error) {
 		console.error("Error extracting text from DataForSEO Scraper output:", error);
@@ -260,7 +263,10 @@ function extractBrightdataAiOverviewText(record: any): string | null {
 		if (!Array.isArray(aio[listKey])) continue;
 		const snippets: string[] = [];
 		collectAioSnippets(aio[listKey], snippets);
-		if (snippets.length) return snippets.join("\n");
+		// Each snippet is its own block in the overview, so they are separated by
+		// a blank line; a single newline is a markdown soft break and would render
+		// the whole overview as one run-on paragraph.
+		if (snippets.length) return snippets.join("\n\n");
 	}
 	return null;
 }
@@ -351,7 +357,9 @@ export function extractTextFromCloro(rawOutput: any): string {
 	try {
 		const answer = cloroAnswer(rawOutput);
 		if (!answer) return "No content in Cloro output.";
-		for (const key of ["text", "markdown"]) {
+		// `markdown` first: the AI Overview task is asked for it explicitly, and
+		// `text` is the same answer with its formatting flattened away.
+		for (const key of ["markdown", "text"]) {
 			if (typeof answer[key] === "string" && answer[key].trim()) return answer[key].trim();
 		}
 		return "No text content found in Cloro output.";
@@ -363,7 +371,7 @@ export function extractTextFromCloro(rawOutput: any): string {
 /**
  * Extract text content from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
- * (for old data where provider column may be null).
+ * because persisted runs may not identify a provider.
  */
 export function extractTextContent(rawOutput: any, providerOrEngine: string): string {
 	switch (providerOrEngine) {
@@ -794,7 +802,7 @@ export function extractCitationsFromCloro(rawOutput: any): Citation[] {
 /**
  * Extract citations from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
- * (for old data where provider column may be null).
+ * because persisted runs may not identify a provider.
  */
 export function extractCitations(rawOutput: any, providerOrEngine: string): Citation[] {
 	switch (providerOrEngine) {

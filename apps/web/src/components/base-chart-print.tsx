@@ -54,10 +54,8 @@ export function BaseChartPrint({
 	competitors,
 }: BaseChartPrintProps) {
 	const routeContext = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
-	// Get the most recent data point that has actual data
 	const latestDataPoint = data
 		.filter((point) => {
-			// Check if any brand or competitor has non-null data
 			const allIds = [brand.id, ...competitors.map((c) => c.id)];
 			return allIds.some((id) => point[id] !== null && point[id] !== undefined);
 		})
@@ -78,11 +76,9 @@ export function BaseChartPrint({
 		);
 	}
 
-	// Create bar data for all entities (brand + competitors)
 	const chartColors = routeContext.clientConfig?.branding.chartColors ?? [];
 	const allEntities: BarData[] = [];
 
-	// Add brand data
 	const brandValue = latestDataPoint[brand.id] as number;
 	if (brandValue !== null && brandValue !== undefined) {
 		allEntities.push({
@@ -93,7 +89,6 @@ export function BaseChartPrint({
 		});
 	}
 
-	// Add competitor data
 	competitors.forEach((competitor, index) => {
 		const competitorValue = latestDataPoint[competitor.id] as number;
 		if (competitorValue !== null && competitorValue !== undefined) {
@@ -107,7 +102,6 @@ export function BaseChartPrint({
 		}
 	});
 
-	// Sort all entities by value (highest first), then limit to top 6 (including brand if present)
 	const sortedEntities = allEntities.sort((a, b) => b.value - a.value).slice(0, 6);
 
 	return (

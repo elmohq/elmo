@@ -18,7 +18,6 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Load .env file
 const envPath = resolve(__dirname, "../.env");
 try {
 	const envContent = readFileSync(envPath, "utf-8");

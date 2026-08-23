@@ -46,7 +46,7 @@ export async function refreshRepoActivitySnapshot(): Promise<RepoActivityData> {
 
 	// `/stats/commit_activity` answers 202 (empty body) while GitHub recomputes it, so
 	// a fresh snapshot can arrive with no commit series. Don't regress a chart we already
-	// had: carry the last-good week data forward until a later refresh heals it.
+	// had: carry the last successful week forward until a refresh succeeds.
 	if (data.commitsByWeek.length === 0) {
 		const lastGood = await redis.get<RepoActivityData>(DATA_KEY);
 		if (lastGood && lastGood.commitsByWeek.length > 0) {

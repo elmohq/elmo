@@ -108,7 +108,7 @@ function ShareOfVoicePage() {
 		// The big number = the trend's last plotted point, so it matches the line beside it.
 		const currentShare = currentShareOf(data.shareTimeSeries);
 		content = (
-			<TooltipProvider delayDuration={150}>
+			<TooltipProvider delay={150}>
 				<div className="grid gap-6 lg:grid-cols-2">
 					<Card>
 						<CardHeader>
@@ -213,12 +213,7 @@ function ShareOfVoicePage() {
 			infoContent={infoContent}
 		>
 			<FilterSection>
-				<FilterBar
-					availableTags={availableTags}
-					trackedTargets={trackedTargets}
-					showSearch={false}
-					showModelSelector
-				/>
+				<FilterBar availableTags={availableTags} trackedTargets={trackedTargets} showSearch={false} showModelSelector />
 			</FilterSection>
 			<div className="space-y-6">{content}</div>
 		</PageHeader>

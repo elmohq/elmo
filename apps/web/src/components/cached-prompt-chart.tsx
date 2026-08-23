@@ -39,8 +39,7 @@ export interface CachedPromptChartProps {
 	 *  button can offer them; don't include the "all" sentinel here. */
 	availableModels?: string[];
 	searchHighlight?: string;
-	// Whether this prompt has ever been evaluated (all-time)
-	// Used to distinguish "never evaluated" vs "no data in selected window"
+	/** Distinguishes first evaluation from an empty selected time window. */
 	hasEverBeenEvaluated?: boolean;
 }
 
@@ -57,10 +56,8 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 	searchHighlight = "",
 	hasEverBeenEvaluated = false,
 }: CachedPromptChartProps) {
-	// Get data from context (pre-loaded)
 	const chartContext = useOptionalChartDataContext();
 
-	// Get processed chart data for this specific prompt
 	const chartData = useMemo(() => {
 		if (!chartContext) return null;
 		return chartContext.getChartDataForPrompt(promptId);

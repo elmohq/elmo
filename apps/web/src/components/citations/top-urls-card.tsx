@@ -2,7 +2,7 @@ import { IconExternalLink, IconInfoCircle, IconSearch } from "@tabler/icons-reac
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Input } from "@workspace/ui/components/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useMemo, useState } from "react";
@@ -67,9 +67,7 @@ export function TopUrlsCard({
 						<CardTitle className="flex items-center gap-1.5">
 							Top Cited URLs
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-								</TooltipTrigger>
+								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-sm font-normal">
 									<p className="mb-2">
 										The specific pages most frequently cited by AI models. Filter by category to focus on brand,
@@ -99,18 +97,20 @@ export function TopUrlsCard({
 							)}
 						</CardDescription>
 					</div>
-					<div className="relative w-full sm:w-48 shrink-0">
-						<IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-						<Input
+					<InputGroup className="h-8 shrink-0 sm:w-48">
+						<InputGroupInput
 							placeholder="Search URLs..."
 							value={urlSearch}
 							onChange={(e) => {
 								setUrlSearch(e.target.value);
 								setPage(0);
 							}}
-							className="h-8 pl-8 text-xs"
+							className="h-8 text-xs"
 						/>
-					</div>
+						<InputGroupAddon className="pl-2.5">
+							<IconSearch className="size-3.5" />
+						</InputGroupAddon>
+					</InputGroup>
 				</div>
 			</CardHeader>
 			<Separator />
@@ -181,10 +181,8 @@ export function TopUrlsCard({
 								<div className="flex items-center gap-3 shrink-0 pt-0.5">
 									{citation.avgPosition != null && (
 										<Tooltip>
-											<TooltipTrigger asChild>
-												<span className="text-[11px] text-muted-foreground tabular-nums">
-													avg {citation.avgPosition.toFixed(1)}
-												</span>
+											<TooltipTrigger render={<span className="text-[11px] text-muted-foreground tabular-nums" />}>
+												avg {citation.avgPosition.toFixed(1)}
 											</TooltipTrigger>
 											<TooltipContent className="text-xs">
 												Average citation position (lower = cited earlier in the response)
@@ -192,10 +190,10 @@ export function TopUrlsCard({
 										</Tooltip>
 									)}
 									<Tooltip>
-										<TooltipTrigger asChild>
-											<span className="text-sm font-semibold tabular-nums min-w-[2rem] text-right">
-												{citation.count.toLocaleString()}
-											</span>
+										<TooltipTrigger
+											render={<span className="text-sm font-semibold tabular-nums min-w-[2rem] text-right" />}
+										>
+											{citation.count.toLocaleString()}
 										</TooltipTrigger>
 										<TooltipContent className="text-xs">
 											Total times this URL was cited across all prompt evaluations

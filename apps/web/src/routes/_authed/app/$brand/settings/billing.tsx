@@ -7,7 +7,7 @@
  * state lives here. The redirect in the loader is UX only; the real gates are
  * the entitlement guards in the server functions.
  */
-import { IconExternalLink, IconLoader2 } from "@tabler/icons-react";
+import { IconExternalLink } from "@tabler/icons-react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { PREMIUM_ADDON_MONTHLY_USD, planDisplayName, summarizeSubscriptionCost } from "@workspace/config/plans";
@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@work
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Progress } from "@workspace/ui/components/progress";
+import { Spinner } from "@workspace/ui/components/spinner";
 import { type ReactNode, useState } from "react";
 import { PlanComparison } from "@/components/plan-comparison";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
@@ -178,7 +179,7 @@ function BillingSettingsPage() {
 									disabled={!isAdmin || busy !== null}
 									onClick={openPortal}
 								>
-									{busy === "portal" ? <IconLoader2 className="h-4 w-4 animate-spin" /> : "Manage"}
+									{busy === "portal" ? <Spinner /> : "Manage"}
 								</Button>
 							) : (
 								<Button
@@ -191,7 +192,7 @@ function BillingSettingsPage() {
 									disabled={!isAdmin || busy !== null}
 									onClick={() => changePlan(plan.key)}
 								>
-									{busy === `plan-${plan.key}` ? <IconLoader2 className="h-4 w-4 animate-spin" /> : "Switch"}
+									{busy === `plan-${plan.key}` ? <Spinner /> : "Switch"}
 								</Button>
 							)
 						}
@@ -310,7 +311,7 @@ function SubscriptionSummary({
 					(subscription ? (
 						<Button variant="outline" size="sm" onClick={onOpenPortal} disabled={busy !== null}>
 							{busy === "portal" ? (
-								<IconLoader2 className="h-4 w-4 animate-spin" />
+								<Spinner />
 							) : (
 								<IconExternalLink className="h-4 w-4" />
 							)}
@@ -448,7 +449,7 @@ function PremiumAddonCard({
 						/>
 					</div>
 					<Button onClick={save} disabled={!isAdmin || !hasSubscription || !changed || saving}>
-						{saving ? <IconLoader2 className="h-4 w-4 animate-spin" /> : "Update"}
+						{saving ? <Spinner /> : "Update"}
 					</Button>
 				</div>
 				{!hasSubscription && (

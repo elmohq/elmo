@@ -24,7 +24,7 @@ import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
 import { TrendChart } from "@/components/trend-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import type { ClientConfig } from "@workspace/config/types";
@@ -115,14 +115,12 @@ function StatWithTooltip({
 }) {
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>
-				<div className="flex items-center gap-2 cursor-help">
-					<Icon className="h-4 w-4 flex-shrink-0" />
-					<span>
-						<span className="font-semibold text-foreground">{value}</span> {label}
-					</span>
-					<IconInfoCircle className="h-3.5 w-3.5 opacity-50" />
-				</div>
+			<TooltipTrigger render={<div className="flex items-center gap-2 cursor-help" />}>
+				<Icon className="h-4 w-4 flex-shrink-0" />
+				<span>
+					<span className="font-semibold text-foreground">{value}</span> {label}
+				</span>
+				<IconInfoCircle className="h-3.5 w-3.5 opacity-50" />
 			</TooltipTrigger>
 			<TooltipContent className="max-w-xs text-sm">{tooltip}</TooltipContent>
 		</Tooltip>
@@ -142,9 +140,7 @@ function CardTitleWithTooltip({
 		<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${className}`}>
 			{title}
 			<Tooltip>
-				<TooltipTrigger asChild>
-					<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-				</TooltipTrigger>
+				<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 				<TooltipContent className="max-w-xs text-sm font-normal">{tooltip}</TooltipContent>
 			</Tooltip>
 		</CardTitle>
@@ -201,11 +197,13 @@ function DashboardPage() {
 								<IconEye className="h-5 w-5 text-muted-foreground" />
 								AI Visibility
 							</h2>
-							<Button asChild variant="ghost" size="sm" className="h-8">
-								<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
-									View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
-								</Link>
-							</Button>
+							<Link
+								to="/app/$brand/visibility"
+								params={{ brand: brandId }}
+								className={buttonVariants({ variant: "ghost", size: "sm", className: "h-8" })}
+							>
+								View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
+							</Link>
 						</div>
 						<div className="grid gap-4 lg:grid-cols-4">
 							<Card className="shadow-none flex flex-col gap-3 py-4">
@@ -232,11 +230,13 @@ function DashboardPage() {
 								<IconSpeakerphone className="h-5 w-5 text-muted-foreground" />
 								Share of Voice
 							</h2>
-							<Button asChild variant="ghost" size="sm" className="h-8">
-								<Link to="/app/$brand/share-of-voice" params={{ brand: brandId }}>
-									View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
-								</Link>
-							</Button>
+							<Link
+								to="/app/$brand/share-of-voice"
+								params={{ brand: brandId }}
+								className={buttonVariants({ variant: "ghost", size: "sm", className: "h-8" })}
+							>
+								View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
+							</Link>
 						</div>
 						<div className="grid gap-4 lg:grid-cols-4">
 							<Card className="shadow-none flex flex-col gap-3 py-4">
@@ -306,7 +306,6 @@ function DashboardPage() {
 		);
 	}
 
-	// Get metrics from optimized summary
 	const totalRuns = dashboardSummary?.totalRuns || 0;
 	const totalPrompts = dashboardSummary?.totalPrompts || 0;
 	const nonBrandedVisibility = dashboardSummary?.nonBrandedVisibility || 0;
@@ -346,12 +345,14 @@ function DashboardPage() {
 							<span className="font-semibold">{totalPrompts.toLocaleString()}</span>
 						</div>
 					)}
-					<Button asChild variant="outline" className="w-full">
-						<Link to="/app/$brand/settings/prompts" params={{ brand: brandId }}>
-							{hasEnabledPrompts ? "View Your Prompts" : hasPrompts ? "Edit Prompts" : "Set Up Prompts"}{" "}
-							<IconArrowRight className="h-4 w-4 ml-1" />
-						</Link>
-					</Button>
+					<Link
+						to="/app/$brand/settings/prompts"
+						params={{ brand: brandId }}
+						className={buttonVariants({ variant: "outline", className: "w-full" })}
+					>
+						{hasEnabledPrompts ? "View Your Prompts" : hasPrompts ? "Edit Prompts" : "Set Up Prompts"}{" "}
+						<IconArrowRight className="h-4 w-4 ml-1" />
+					</Link>
 				</div>
 				{hasEnabledPrompts && (
 					<p className="text-xs text-muted-foreground mt-6">
@@ -372,11 +373,13 @@ function DashboardPage() {
 							<IconEye className="h-5 w-5 text-muted-foreground" />
 							AI Visibility
 						</h2>
-						<Button asChild variant="ghost" size="sm" className="h-8">
-							<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
-								View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
-							</Link>
-						</Button>
+						<Link
+							to="/app/$brand/visibility"
+							params={{ brand: brandId }}
+							className={buttonVariants({ variant: "ghost", size: "sm", className: "h-8" })}
+						>
+							View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
+						</Link>
 					</div>
 
 					<div className="grid gap-4 lg:grid-cols-4">
@@ -417,11 +420,13 @@ function DashboardPage() {
 							<IconSpeakerphone className="h-5 w-5 text-muted-foreground" />
 							Share of Voice
 						</h2>
-						<Button asChild variant="ghost" size="sm" className="h-8">
-							<Link to="/app/$brand/share-of-voice" params={{ brand: brandId }}>
-								View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
-							</Link>
-						</Button>
+						<Link
+							to="/app/$brand/share-of-voice"
+							params={{ brand: brandId }}
+							className={buttonVariants({ variant: "ghost", size: "sm", className: "h-8" })}
+						>
+							View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
+						</Link>
 					</div>
 
 					<div className="grid gap-4 lg:grid-cols-4">

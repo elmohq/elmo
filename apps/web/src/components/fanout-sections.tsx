@@ -28,10 +28,8 @@ export const FANOUT_PURPLE = "#8b5cf6";
 export function InfoTip({ children }: { children: React.ReactNode }) {
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>
-				<span className="cursor-help">
-					<IconInfoCircle className="text-muted-foreground/60 size-3.5" />
-				</span>
+			<TooltipTrigger render={<span className="cursor-help" />}>
+				<IconInfoCircle className="text-muted-foreground/60 size-3.5" />
 			</TooltipTrigger>
 			<TooltipContent className="max-w-xs text-sm font-normal">{children}</TooltipContent>
 		</Tooltip>

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
 import { ArrowRight } from "lucide-react";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
@@ -216,20 +216,21 @@ function VisionPage() {
 							you.
 						</p>
 						<div className="mt-8 flex flex-wrap justify-center gap-3">
-							<Button asChild size="sm">
-								<a href={CLOUD_SIGNUP_URL}>
-									Start with Cloud
-									<ArrowRight className="size-3.5" />
-								</a>
-							</Button>
-							<Button asChild variant="outline" size="sm">
-								<Link to="/docs">Self-host free</Link>
-							</Button>
-							<Button asChild variant="outline" size="sm">
-								<a href="https://github.com/elmohq/elmo" target="_blank" rel="noopener noreferrer">
-									Star on GitHub
-								</a>
-							</Button>
+							<a href={CLOUD_SIGNUP_URL} className={buttonVariants({ size: "sm" })}>
+								Start with Cloud
+								<ArrowRight className="size-3.5" />
+							</a>
+							<Link to="/docs" className={buttonVariants({ variant: "outline", size: "sm" })}>
+								Self-host free
+							</Link>
+							<a
+								href="https://github.com/elmohq/elmo"
+								target="_blank"
+								rel="noopener noreferrer"
+								className={buttonVariants({ variant: "outline", size: "sm" })}
+							>
+								Star on GitHub
+							</a>
 						</div>
 					</div>
 				</section>

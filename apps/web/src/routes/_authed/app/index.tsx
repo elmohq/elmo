@@ -9,7 +9,7 @@
 
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import FullPageCard from "@/components/full-page-card";
@@ -96,27 +96,33 @@ function BrandSwitcherPage() {
 				{brandList.length > 0 || unprovisionedOrgs.length > 0 ? (
 					<>
 						{brandList.map((brand) => (
-							<Button key={brand.id} asChild variant="secondary">
-								<Link to="/app/$brand" params={{ brand: brand.id }}>
-									{brand.name}
-								</Link>
-							</Button>
+							<Link
+								key={brand.id}
+								to="/app/$brand"
+								params={{ brand: brand.id }}
+								className={buttonVariants({ variant: "secondary" })}
+							>
+								{brand.name}
+							</Link>
 						))}
 						{unprovisionedOrgs.map((org) => (
-							<Button key={org.id} asChild variant="outline">
-								<Link to="/app/$brand" params={{ brand: org.id }}>
-									Set up {org.name}
-								</Link>
-							</Button>
+							<Link
+								key={org.id}
+								to="/app/$brand"
+								params={{ brand: org.id }}
+								className={buttonVariants({ variant: "outline" })}
+							>
+								Set up {org.name}
+							</Link>
 						))}
 					</>
 				) : (
 					<p className="text-muted-foreground text-center">No brands available</p>
 				)}
 				{canCreateBrands && (
-					<Button asChild variant="outline">
-						<Link to="/app/new">+ Create new brand</Link>
-					</Button>
+					<Link to="/app/new" className={buttonVariants({ variant: "outline" })}>
+						+ Create new brand
+					</Link>
 				)}
 			</div>
 		</FullPageCard>

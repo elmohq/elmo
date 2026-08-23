@@ -1,14 +1,8 @@
-# Deployment smoke tests (issue #341)
-#
-# Protects the elmo-cloud build-out (issue #8): open-source (local), demo, and
-# whitelabel deployments must keep booting unchanged while cloud lands.
-#
-# One job, one `pnpm install`, two concerns:
+# Deployment smoke tests cover two concerns:
 #   1. Boot smoke  — every non-cloud mode in a single process: env validation +
 #                    deployment-factory resolution + auth initialization. No DB.
 #   2. Migrations  — apply to an empty DB, seed an existing local install, then
-#                    re-apply so a future backfill (e.g. #339 brands->org) that
-#                    breaks on existing data fails here before merge.
+#                    re-apply to catch migrations that fail on existing data.
 #
 # Runs on every push/PR (no path filter): the job is cheap — one install, an
 # in-process boot smoke, and ~15s of migration checks — so a mode-boot or
@@ -71,12 +65,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      # 1. Boot smoke — all non-cloud modes in one process.
       - name: Boot smoke (local, demo, whitelabel)
         run: pnpm -C apps/web exec tsx scripts/smoke-deployment-mode.ts
 
-      # 2. Migrations — fail if they don't apply cleanly, or (once #339 lands)
-      #    if a backfill breaks on the seeded existing-install data.
       - name: Apply migrations to an empty database
         run: pnpm -C packages/lib exec drizzle-kit migrate
 
@@ -86,8 +77,7 @@ jobs:
       - name: Re-apply migrations against seeded data
         run: pnpm -C packages/lib exec drizzle-kit migrate
 
-      # 3. Prove migration 0014's destructive dedupe (the one migration that
-      #    mutates existing auth data) keeps the correct member row and that
-      #    the unique index then holds — against the real seeded database.
+      # Migration 0014 mutates existing auth data, so verify both its row
+      # selection and the resulting uniqueness constraint against seeded data.
       - name: Verify membership dedupe
         run: pnpm -C packages/lib exec tsx scripts/verify-membership-dedupe.ts

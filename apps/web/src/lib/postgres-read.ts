@@ -292,8 +292,8 @@ export interface VisibilityDailyAggregate {
  * `applyPerPromptLVCF`.
  *
  * Builds a (prompt × date) grid in-database, left-joins raw daily observations,
- * and uses the `count(non_null) OVER (PARTITION BY prompt ORDER BY date)`
- * "grouper" trick to carry the last observation forward. Leading-null dates
+ * and groups rows by the running count of non-null observations to carry the
+ * last observation forward. Leading-null dates
  * (before a prompt's first observation) are back-seeded with the prompt's
  * earliest value to mirror the existing JS behavior. The result is already
  * aggregated by day and bucketed by branded / non-branded.
@@ -418,10 +418,8 @@ export async function getVisibilityDailyAggregate(
 }
 
 /**
- * Plain count of citations for the filter window. Used by the visibility bar,
- * which only needs the scalar total — the old `getDailyCitationStats` call
- * there returned one row per (date × domain) and we reduced to a single
- * number client-side, which is wasteful on large tables.
+ * Plain count of citations for the filter window. The visibility bar needs
+ * only this scalar, avoiding a row per date and domain on large tables.
  */
 export async function getCitationsTotalCount(
 	brandId: string,

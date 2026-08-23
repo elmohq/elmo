@@ -211,10 +211,8 @@ export function AppSidebar({
 						{scope === "account" ? (
 							<div className="flex items-center gap-2 p-2">{brandmark}</div>
 						) : (
-							<SidebarMenuButton size="lg" asChild>
-								<Link to="/app" onClick={() => setOpenMobile(false)}>
-									{brandmark}
-								</Link>
+							<SidebarMenuButton size="lg" render={<Link to="/app" onClick={() => setOpenMobile(false)} />}>
+								{brandmark}
 							</SidebarMenuButton>
 						)}
 					</SidebarMenuItem>

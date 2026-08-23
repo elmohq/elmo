@@ -153,7 +153,11 @@ function TeamSettingsPage() {
 				</div>
 				<div className="flex flex-col gap-2">
 					<Label htmlFor="invite-role">Role</Label>
-					<Select value={inviteRole} onValueChange={(value) => setInviteRole(value as "member" | "admin")}>
+					<Select
+						items={{ member: "Member", admin: "Admin" }}
+						value={inviteRole}
+						onValueChange={(value) => setInviteRole(value as "member" | "admin")}
+					>
 						<SelectTrigger id="invite-role" className="w-32">
 							<SelectValue />
 						</SelectTrigger>

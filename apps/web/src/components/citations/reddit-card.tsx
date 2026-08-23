@@ -80,9 +80,7 @@ export function RedditCard({ subreddits }: { subreddits: ReturnType<typeof useSu
 				<CardTitle className="flex items-center gap-1.5">
 					Reddit
 					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-						</TooltipTrigger>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent className="max-w-xs text-sm font-normal">
 							Reddit communities most frequently cited by AI models. Extracted from all reddit.com URLs in your citation
 							data.

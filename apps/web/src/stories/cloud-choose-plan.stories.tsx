@@ -75,9 +75,8 @@ export const ComparesPlansAcrossSharedRows: Story = {
 			await expect(await canvas.findByText(label)).toBeVisible();
 		}
 
-		// Picks run at the plan's rate — one cell per plan, since the plans differ
-		// on it — while the premium tier states its own rate once, beside the tier
-		// it belongs to. That split is what a single quoted number used to lose.
+		// Picks run at the plan's rate, while the premium tier states its own rate
+		// beside the tier it belongs to; a single number would blur that distinction.
 		await expect((await canvas.findAllByText(`${PLANS.pro.standardRunsPerDay}×/day`)).length).toBeGreaterThan(1);
 		await expect((await canvas.findAllByText(`${PREMIUM_RUNS_PER_DAY}×/day`)).length).toBeGreaterThan(0);
 

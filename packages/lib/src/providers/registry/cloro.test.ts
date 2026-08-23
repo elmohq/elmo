@@ -160,7 +160,8 @@ describe("cloro provider", () => {
 				include: { aioverview: { markdown: true } },
 			},
 		});
-		expect(result.textContent).toContain("Brooks Ghost");
+		// The markdown the task asked for, not the flattened `text` beside it.
+		expect(result.textContent).toContain("**Brooks Ghost**");
 		expect(result.citations).toHaveLength(1);
 		expect(result.citations[0].domain).toBe("runnersworld.com");
 		// The overview exposes no query strings, but its citations prove a search ran.

@@ -13,7 +13,6 @@ import {
 import { useBrand } from "@/hooks/use-brands";
 import { Link } from "@tanstack/react-router";
 
-/** Map of page segments to display names */
 const PAGE_NAMES: Record<string, string> = {
 	visibility: "Visibility",
 	"share-of-voice": "Share of Voice",
@@ -34,20 +33,13 @@ function getPageDisplayName(segment: string): string {
 
 function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 	const segments = pathname.split("/").filter(Boolean);
-	// /admin -> ["admin"]
-	// /admin/workflows -> ["admin", "workflows"]
-	// /admin/tools -> ["admin", "tools"]
-	// /reports -> ["reports"]
 
 	if (segments[0] === "reports") {
-		// /reports/render/[id] - keep existing behavior
 		if (segments.length > 1) {
 			return (
 				<>
 					<BreadcrumbItem className="hidden md:block">
-						<BreadcrumbLink asChild>
-							<Link to="/reports">Reports</Link>
-						</BreadcrumbLink>
+						<BreadcrumbLink render={<Link to="/reports" />}>Reports</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
 					<BreadcrumbItem>
@@ -56,7 +48,6 @@ function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 				</>
 			);
 		}
-		// /reports
 		return (
 			<>
 				<BreadcrumbItem className="hidden md:block">
@@ -70,7 +61,6 @@ function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 		);
 	}
 
-	// /admin - show Admin > Brands
 	if (segments.length === 1) {
 		return (
 			<>
@@ -85,7 +75,6 @@ function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 		);
 	}
 
-	// /admin/workflows, /admin/tools, etc.
 	const subPage = segments[1];
 	return (
 		<>
@@ -109,53 +98,38 @@ function BrandBreadcrumbs({
 	brandId: string | undefined;
 	brandName: string;
 }) {
-	// Extract the page segment from the path (e.g., /app/foo/prompts -> prompts)
 	const pathSegments = pathname.split("/");
 	const brandIndex = pathSegments.findIndex((segment) => segment === "app");
 	const pageSegment = brandIndex >= 0 && pathSegments[brandIndex + 2] ? pathSegments[brandIndex + 2] : "";
 	const subSegment = brandIndex >= 0 && pathSegments[brandIndex + 3] ? pathSegments[brandIndex + 3] : "";
 
-	// Check if we're on a specific prompt detail page (e.g., /app/foo/prompts/uuid)
 	const isPromptDetailPage =
 		pageSegment === "prompts" &&
 		subSegment &&
 		subSegment !== "edit" &&
 		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subSegment);
 
-	// Check if we're on an edit page
 	const isEditPage = pathname.endsWith("/edit");
 
-	// Settings sub-pages: /app/brandId/settings/brand, /app/brandId/settings/competitors, etc.
 	const isSettingsSubPage = pageSegment === "settings" && subSegment;
 
-	// Determine page name
 	const pageName = pageSegment ? getPageDisplayName(pageSegment) : "Overview";
 
 	return (
 		<>
 			<BreadcrumbItem className="hidden md:block">
-				<BreadcrumbLink asChild>
-					{brandId ? (
-						<Link to="/app/$brand" params={{ brand: brandId }}>
-							{brandName}
-						</Link>
-					) : (
-						<span>{brandName}</span>
-					)}
+				<BreadcrumbLink render={brandId ? <Link to="/app/$brand" params={{ brand: brandId }} /> : <span />}>
+					{brandName}
 				</BreadcrumbLink>
 			</BreadcrumbItem>
 			<BreadcrumbSeparator className="hidden md:block" />
 			{isPromptDetailPage ? (
 				<>
 					<BreadcrumbItem className="hidden md:block">
-						<BreadcrumbLink asChild>
-							{brandId ? (
-								<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
-									Visibility
-								</Link>
-							) : (
-								<span>Visibility</span>
-							)}
+						<BreadcrumbLink
+							render={brandId ? <Link to="/app/$brand/visibility" params={{ brand: brandId }} /> : <span />}
+						>
+							Visibility
 						</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
@@ -176,9 +150,7 @@ function BrandBreadcrumbs({
 			) : isEditPage ? (
 				<>
 					<BreadcrumbItem className="hidden md:block">
-						<BreadcrumbLink asChild>
-							<Link to={pathname.slice(0, -5)}>{pageName}</Link>
-						</BreadcrumbLink>
+						<BreadcrumbLink render={<Link to={pathname.slice(0, -5)} />}>{pageName}</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
 					<BreadcrumbItem>

@@ -33,6 +33,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { cn } from "@workspace/ui/lib/utils";
 import { Inbox, ListPlus, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 export interface EditablePrompt {
 	id?: string;
@@ -63,7 +64,7 @@ export interface PremiumAllowance {
 
 export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePrompt {
 	return {
-		_key: crypto.randomUUID(),
+		_key: uuidv4(),
 		value: partial?.value ?? "",
 		enabled: partial?.enabled ?? true,
 		tags: partial?.tags ?? [],
@@ -107,26 +108,28 @@ function PremiumModelsField({
 
 	return (
 		<Popover>
-			<PopoverTrigger asChild>
-				<Button
-					type="button"
-					variant="outline"
-					size="sm"
-					disabled={!promptEnabled}
-					className="h-8 w-full justify-center gap-1 px-2"
-					aria-label={`Premium models: ${summary}`}
-				>
-					{selected.length === 0 ? (
-						<span className="text-muted-foreground">{showLabel ? "Premium: none" : "—"}</span>
-					) : (
-						<>
-							{selected.map((model) => (
-								<ModelIcon key={model} iconId={getModelMeta(model).iconId} className="size-3.5" />
-							))}
-							{showLabel && <span className="ml-1 text-xs">{summary}</span>}
-						</>
-					)}
-				</Button>
+			<PopoverTrigger
+				render={
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						disabled={!promptEnabled}
+						className="h-8 w-full justify-center gap-1 px-2"
+						aria-label={`Premium models: ${summary}`}
+					/>
+				}
+			>
+				{selected.length === 0 ? (
+					<span className="text-muted-foreground">{showLabel ? "Premium: none" : "—"}</span>
+				) : (
+					<>
+						{selected.map((model) => (
+							<ModelIcon key={model} iconId={getModelMeta(model).iconId} className="size-3.5" />
+						))}
+						{showLabel && <span className="ml-1 text-xs">{summary}</span>}
+					</>
+				)}
 			</PopoverTrigger>
 			<PopoverContent align="end" className="w-64 space-y-1 p-2">
 				{PREMIUM_MODELS.map((model) => {
@@ -139,7 +142,9 @@ function PremiumModelsField({
 							// Normalized through the catalog on every toggle, because that is
 							// what the server stores — appending in click order instead would
 							// reshuffle the row the moment a save came back.
-							onClick={() => onChange(selectPremiumModels(checked ? selected.filter((m) => m !== model) : [...selected, model]))}
+							onClick={() =>
+								onChange(selectPremiumModels(checked ? selected.filter((m) => m !== model) : [...selected, model]))
+							}
 							className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							<Checkbox checked={checked} disabled={atCapacity && !checked} className="pointer-events-none" />
@@ -339,9 +344,7 @@ export function PromptsListEditor({
 				<div className="flex items-center gap-1 min-w-0">
 					Prompt Text
 					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-						</TooltipTrigger>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent>
 							<p className="max-w-xs">The question or query that will be sent to AI models for evaluation.</p>
 						</TooltipContent>
@@ -351,9 +354,7 @@ export function PromptsListEditor({
 					<div className="hidden md:flex items-center gap-1">
 						System
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-							</TooltipTrigger>
+							<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 							<TooltipContent>
 								<p className="max-w-xs">
 									Auto-generated tags like &quot;branded&quot; or &quot;unbranded&quot; based on prompt content.
@@ -365,9 +366,7 @@ export function PromptsListEditor({
 				<div className="flex items-center gap-1 min-w-0">
 					Tags
 					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-						</TooltipTrigger>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent>
 							<p className="max-w-xs">Custom labels to organize and filter prompts.</p>
 						</TooltipContent>
@@ -377,9 +376,7 @@ export function PromptsListEditor({
 					<div className="flex items-center justify-center gap-1">
 						Premium
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-							</TooltipTrigger>
+							<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 							<TooltipContent>
 								<p className="max-w-xs">
 									Also track this prompt on a model called directly with its own web search on, for a grounded answer

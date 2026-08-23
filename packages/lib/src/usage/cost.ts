@@ -25,8 +25,7 @@ const PROVIDER_COST_ESTIMATES_USD: Record<string, number> = {
 	stub: 0,
 };
 
-// The Anthropic figure tracks Sonnet 5 ($2/$10 per Mtok) at a typical answer
-// length; Sonnet 4.6 before it was half again as much.
+// The Anthropic estimate assumes Sonnet 5 pricing and a typical answer length.
 
 /** Anthropic bills native web search per use (plus tokens); max_uses is 1. */
 const ANTHROPIC_WEB_SEARCH_SURCHARGE_USD = 0.01;

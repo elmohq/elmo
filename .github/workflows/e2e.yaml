@@ -1,18 +1,30 @@
 # End-to-End Integration Tests
 #
-# Verifies the open source local deployment works end-to-end.
-# Walks through the `elmo init --dev` CLI flow in CI mode, then runs in two
-# phases against the Dockerized stack: with the worker down, seed data and run
-# the fixture-dependent Playwright + Bruno suites; then start the worker
-# (pointed at the no-network `stub` provider) and run the `worker` Playwright
-# project, which submits a job and asserts the worker processes it. Starting
-# the worker only after the fixture suites finish keeps its self-healing
-# scheduler from mutating seeded data.
+# Verifies every deployment mode works end-to-end.
+# Walks through the `elmo init --dev` CLI flow in CI mode, then runs in five
+# phases against the Dockerized stack:
+#
+#   1. local — worker down, seed data, run the `local` Playwright project
+#      (shared specs + local-only specs) and the Bruno API suite
+#   2. worker — start the worker (pointed at the no-network `stub` provider)
+#      and run the `worker` project, which submits a job and asserts the worker
+#      processes it
+#   3. cloud — worker back down, recreate `web` with e2e/modes/cloud.yaml,
+#      re-seed, run the `cloud` project
+#   4. whitelabel — same with e2e/modes/whitelabel.yaml
+#   5. demo — same with e2e/modes/demo.yaml
+#
+# The mode phases only recreate `web`: DEPLOYMENT_MODE is read at runtime, so
+# one image serves all of them. Ordering matters — the fixture suites run while
+# the worker is down so its self-healing scheduler can't mutate seeded data,
+# and the local phase runs first because it bootstraps the account the other
+# modes sign in with.
 #
 # This workflow is the SINGLE SOURCE OF TRUTH for E2E test orchestration.
 # Run locally via: pnpm test:e2e-local  (replays this workflow with
-# https://github.com/nektos/act); `pnpm test:e2e` runs just the fixture specs
-# against an already-running stack.
+# https://github.com/nektos/act); `pnpm test:e2e`, `pnpm test:e2e:cloud`,
+# `pnpm test:e2e:whitelabel`, and `pnpm test:e2e:demo` run one mode's specs
+# against an already-running stack in that mode.
 
 name: E2E Tests
 
@@ -34,12 +46,13 @@ jobs:
   e2e:
     name: E2E Integration Tests
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     env:
       # One file set for every `docker compose` invocation below, so no step
       # can silently run against a different effective config. The override
-      # scopes the worker to the no-network stub provider.
+      # scopes the worker to the no-network stub provider. The mode phases
+      # append their own override on top of this.
       COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml
 
     steps:
@@ -120,26 +133,18 @@ jobs:
         run: docker compose up -d --no-build web
 
       - name: Wait for web
-        run: |
-          echo "Waiting for web to be ready on http://localhost:1515..."
-          for i in $(seq 1 60); do
-            if curl -sf -o /dev/null http://localhost:1515/ 2>/dev/null; then
-              echo "Web is ready."
-              exit 0
-            fi
-            sleep 3
-          done
-          echo "ERROR: Web did not become ready in time."
-          docker compose logs
-          exit 1
+        run: bash e2e/wait-for-web.sh
 
       - name: Seed test data
         run: cd e2e && npx tsx seed.ts
 
-      # Phase 1 — worker still down. Run everything that reads the seeded
-      # fixtures, so no background job can mutate them mid-suite.
-      - name: Run Playwright E2E tests
-        run: pnpm -C e2e exec playwright test --project=fixtures
+      # Phase 1 — local mode, worker still down. Run everything that reads the
+      # seeded fixtures, so no background job can mutate them mid-suite. This
+      # phase also bootstraps the account the later modes sign in with.
+      - name: Run Playwright E2E tests (local mode)
+        run: pnpm -C e2e exec playwright test --project=local
+        env:
+          PLAYWRIGHT_HTML_REPORT: playwright-report-local
 
       - name: Run Bruno API tests
         run: pnpm test:api
@@ -150,8 +155,8 @@ jobs:
       - name: Start worker
         run: docker compose up -d --no-build worker
 
-      # `github` keeps PR annotations on failure; omitting `html` leaves phase
-      # 1's playwright-report/ untouched for the upload below.
+      # `github` keeps PR annotations on failure; omitting `html` leaves the
+      # per-mode playwright-report-* directories untouched for the upload below.
       - name: Run worker job-processing test
         run: pnpm -C e2e exec playwright test --project=worker --reporter=list,github
 
@@ -159,12 +164,71 @@ jobs:
         if: failure()
         run: docker compose logs worker
 
-      - name: Upload Playwright report
+      # Phase 3+ — the remaining deployment modes. The worker goes back down so
+      # its scheduler can't touch the re-seeded fixtures, then `web` is
+      # recreated with the mode's env overlay. `--no-deps` keeps the recreate
+      # off postgres, so the bootstrapped account and its session survive.
+      - name: Stop worker
+        run: docker compose stop worker
+
+      - name: Switch web to cloud mode
+        env:
+          COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml:e2e/modes/cloud.yaml
+        run: |
+          docker compose up -d --no-build --no-deps --force-recreate web
+          bash e2e/wait-for-web.sh
+
+      - name: Re-seed test data
+        run: cd e2e && npx tsx seed.ts
+
+      - name: Run Playwright E2E tests (cloud mode)
+        run: pnpm -C e2e exec playwright test --project=cloud
+        env:
+          PLAYWRIGHT_HTML_REPORT: playwright-report-cloud
+
+      - name: Switch web to whitelabel mode
+        env:
+          COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml:e2e/modes/whitelabel.yaml
+        run: |
+          docker compose up -d --no-build --no-deps --force-recreate web
+          bash e2e/wait-for-web.sh
+
+      - name: Re-seed test data
+        run: cd e2e && npx tsx seed.ts
+
+      - name: Run Playwright E2E tests (whitelabel mode)
+        run: pnpm -C e2e exec playwright test --project=whitelabel
+        env:
+          PLAYWRIGHT_HTML_REPORT: playwright-report-whitelabel
+
+      # Demo has no signup, so it reuses the account the local phase
+      # bootstrapped — the same way the public demo reuses a local install's
+      # database. It writes nothing, so it goes last.
+      - name: Switch web to demo mode
+        env:
+          COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml:e2e/modes/demo.yaml
+        run: |
+          docker compose up -d --no-build --no-deps --force-recreate web
+          bash e2e/wait-for-web.sh
+
+      - name: Re-seed test data
+        run: cd e2e && npx tsx seed.ts
+
+      - name: Run Playwright E2E tests (demo mode)
+        run: pnpm -C e2e exec playwright test --project=demo
+        env:
+          PLAYWRIGHT_HTML_REPORT: playwright-report-demo
+
+      - name: Dump web logs
+        if: failure()
+        run: docker compose logs web
+
+      - name: Upload Playwright reports
         uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
-          path: e2e/playwright-report/
+          path: e2e/playwright-report-*/
           retention-days: 14
 
       - name: Upload test results
@@ -174,15 +238,18 @@ jobs:
           name: test-results
           path: |
             e2e/test-results/
+            e2e/test-results-local/
+            e2e/test-results-cloud/
+            e2e/test-results-whitelabel/
+            e2e/test-results-demo/
             e2e/test-results-worker/
           retention-days: 7
 
-  # Scheduling-policy verification: drives a real
-  # worker over a real database with the no-network stub provider, in local
-  # mode (legacy volume + dueness metering must match the pre-policy behavior
-  # exactly) and in cloud mode (plan cadence/replication, Claude assignment,
+  # Scheduling-policy verification drives a real worker over a real database
+  # with the no-network stub provider, in local mode (fixed run volume and
+  # cadence enforcement) and in cloud mode (plan cadence/replication, Claude assignment,
   # cancellation stop, resubscribe revival, usage attribution). This is the
-  # red-green guard that the run policy cannot change what self-hosted and
+  # regression guard that the run policy cannot change what self-hosted and
   # whitelabel deployments run.
   scheduling-policy:
     name: Scheduling Policy Verification
@@ -232,7 +299,7 @@ jobs:
       - name: Seed local fixtures
         run: pnpm -C e2e exec tsx seed.ts
 
-      - name: "Local mode: legacy volume + dueness metering"
+      - name: "Local mode: fixed volume + cadence enforcement"
         env:
           DEPLOYMENT_MODE: local
           SCRAPE_TARGETS: stub:stub

@@ -62,7 +62,6 @@ export const Route = createFileRoute("/status")({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
-// Group targets by model for display
 function groupByModel(data: TargetStatus[]) {
 	const groups: Record<string, TargetStatus[]> = {};
 	for (const d of data) {
@@ -351,7 +350,6 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 		return name;
 	});
 
-	// Build chart data: each row is a time bucket, columns are targets
 	const bucketMs = 6 * 60 * 60 * 1000;
 	const now = Date.now();
 	const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;

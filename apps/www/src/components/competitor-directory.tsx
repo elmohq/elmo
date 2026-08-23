@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { Check, X } from "lucide-react";
 import {
 	sortedCompetitors,
@@ -95,14 +95,17 @@ export function CompetitorDirectory() {
 						Open source, self-hosted, and transparent. Track AI visibility without vendor lock-in or inflated pricing.
 					</p>
 					<div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-						<Button asChild size="sm">
-							<Link to="/docs">Read the Docs</Link>
-						</Button>
-						<Button asChild variant="outline" size="sm">
-							<a href="https://github.com/elmohq/elmo" target="_blank" rel="noopener noreferrer">
-								View on GitHub
-							</a>
-						</Button>
+						<Link to="/docs" className={buttonVariants({ size: "sm" })}>
+							Read the Docs
+						</Link>
+						<a
+							href="https://github.com/elmohq/elmo"
+							target="_blank"
+							rel="noopener noreferrer"
+							className={buttonVariants({ variant: "outline", size: "sm" })}
+						>
+							View on GitHub
+						</a>
 					</div>
 				</div>
 			</section>

@@ -2,11 +2,8 @@
  * The cloud plan ladder: a centred row of price cards, and one detail table
  * beneath.
  *
- * The cards used to carry the full platform breakdown each, which meant the
- * same thirteen model names were printed four times and every card ran about a
- * screen tall — so comparing two plans meant scrolling past the parts they
- * agree on. Here each fact is stated once, in a row the plans differ across,
- * which is the shape the question actually has.
+ * Shared facts appear once in aligned rows so differences between plans remain
+ * scannable without repeating the platform catalog in every card.
  *
  * Every section of the table names the plans again, so a reader deep in the
  * premium rows still knows which column is which. That is what frees the cards

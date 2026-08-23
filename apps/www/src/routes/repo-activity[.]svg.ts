@@ -26,10 +26,8 @@ export const Route = createFileRoute("/repo-activity.svg")({
 				return new Response(svg, {
 					headers: {
 						"Content-Type": "image/svg+xml; charset=utf-8",
-						// max-age is how often Camo revalidates the README image; the cron keeps
-						// the snapshot warm so each revalidation reads instantly. No long
-						// stale-while-revalidate — that let Camo serve a day-old image after
-						// max-age expired.
+						// Camo revalidates at max-age; matching the shared-cache TTL avoids
+						// serving a stale image beyond the snapshot's refresh window.
 						"Cache-Control": `public, max-age=${CACHE_TTL_SECONDS}, s-maxage=${CACHE_TTL_SECONDS}`,
 					},
 				});

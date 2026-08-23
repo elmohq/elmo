@@ -32,8 +32,8 @@ import { usePromptStats } from "@/hooks/use-prompt-stats";
 import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
 import { getPromptMetadataFn } from "@/server/prompts";
+import { ResponseMarkdown } from "@/components/response-markdown";
 import { extractTextContent } from "@workspace/lib/text-extraction";
-import ReactMarkdown from "react-markdown";
 
 // -------------------------------------------------------------------
 // Types
@@ -122,7 +122,6 @@ function PromptHistoryPage() {
 		days,
 	});
 
-	// Fetch prompt metadata
 	useEffect(() => {
 		if (!brandId || !promptId) return;
 		setIsMetaLoading(true);
@@ -405,9 +404,7 @@ function MentionsTab({
 				<CardTitle className="flex items-center gap-1.5 text-base">
 					Mentions
 					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-						</TooltipTrigger>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent className="max-w-xs text-sm font-normal">
 							<p>
 								Only competitors from your{" "}
@@ -668,8 +665,8 @@ function ResponsesTab({
 
 						<div>
 							<span className="text-xs text-muted-foreground block mb-1.5">LLM Response</span>
-							<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto prose prose-sm max-w-none">
-								<ReactMarkdown>{extractTextContent(run.rawOutput, run.provider ?? run.model)}</ReactMarkdown>
+							<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto">
+								<ResponseMarkdown>{extractTextContent(run.rawOutput, run.provider ?? run.model)}</ResponseMarkdown>
 							</div>
 						</div>
 

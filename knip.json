@@ -14,19 +14,20 @@
         "tailwindcss",
         "tw-animate-css",
         "@tailwindcss/typography",
-        "@fontsource/geist-sans"
+        "@fontsource/geist-sans",
+        "@base-ui/react"
       ]
     },
     "apps/www": {
       "entry": ["src/server.ts", "scripts/**"],
       "ignore": [".source/**"],
-      "ignoreDependencies": ["shiki"]
+      "ignoreDependencies": ["shiki", "@base-ui/react"]
     },
     "apps/worker": {
       "entry": ["scripts/test-provider.ts"]
     },
     "e2e": {
-      "entry": ["*.ts"],
+      "entry": ["*.ts", "tests/**/*.setup.ts"],
       "project": ["**/*.ts"]
     }
   }

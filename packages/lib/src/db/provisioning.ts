@@ -4,7 +4,7 @@
  * Single place where "create a new user with an org and admin membership"
  * happens for local mode. Demo deployments reuse a database populated by
  * running the stack in local mode first, so there is no separate demo
- * provisioning path — the public demo box is just a read-only view over
+ * provisioning path — the public demo box is a read-only view over
  * that already-bootstrapped data.
  *
  * Everything here is one-shot: the better-auth `user.create.before` hook
@@ -104,8 +104,8 @@ const RESERVED_ORG_SLUGS = new Set(["new"]);
 /**
  * Find a brand id that doesn't collide with an existing brand row or a
  * reserved route slug, appending -2, -3, … on collision. Brand ids are
- * globally unique — they appear directly in `/app/$brand` URLs — and, unlike
- * the legacy org-per-brand convention, are independent of any organization id.
+ * globally unique because they appear directly in `/app/$brand` URLs. They are
+ * independent of organization ids.
  */
 export async function findUniqueBrandId(baseSlug: string): Promise<string> {
 	let candidate = baseSlug;
