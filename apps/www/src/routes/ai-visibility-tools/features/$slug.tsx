@@ -28,7 +28,15 @@ export const Route = createFileRoute("/ai-visibility-tools/features/$slug")({
 		// name, and with the count, which is the format every page ranking for
 		// these terms uses. Features without measurable demand keep the old title.
 		const term = getFeatureSearchTerm(key);
-		const title = term ? `${tools.length} Best ${term} (2026) · Elmo` : `AI Visibility Tools with ${label} · Elmo`;
+		// "Best" only where the count reads as a curated shortlist. These pages
+		// list every tool in the directory with the feature, which runs to
+		// three figures for the common ones — "124 Best LLM Trackers" is not a
+		// claim anyone believes.
+		const title = !term
+			? `AI Visibility Tools with ${label} · Elmo`
+			: tools.length <= 25
+				? `${tools.length} Best ${term} (2026) · Elmo`
+				: `${term} Compared: ${tools.length} Tools (2026) · Elmo`;
 		const description = `${tools.length} AI visibility tools with ${label.toLowerCase()}, compared on engine coverage, pricing, and export — including Elmo, the open-source option.`;
 		const path = `/ai-visibility-tools/features/${params.slug}`;
 		return {
