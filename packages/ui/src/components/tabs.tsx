@@ -14,10 +14,17 @@ function Tabs({ className, ...props }: TabsPrimitive.Root.Props) {
   )
 }
 
-function TabsList({ className, ...props }: TabsPrimitive.List.Props) {
+function TabsList({
+  activateOnFocus = true,
+  className,
+  ...props
+}: TabsPrimitive.List.Props) {
   return (
     <TabsPrimitive.List
       data-slot="tabs-list"
+      // Base UI waits for Enter/Space where Radix switched panels as you
+      // arrowed across the strip; keep the arrow keys doing the switching.
+      activateOnFocus={activateOnFocus}
       className={cn(
         "bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px]",
         className
