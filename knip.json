@@ -21,7 +21,7 @@
     "apps/www": {
       "entry": ["src/server.ts", "scripts/**"],
       "ignore": [".source/**"],
-      "ignoreDependencies": ["shiki"]
+      "ignoreDependencies": ["shiki", "@base-ui/react"]
     },
     "apps/worker": {
       "entry": ["scripts/test-provider.ts"]

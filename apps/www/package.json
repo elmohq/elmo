@@ -7,12 +7,13 @@
 	"scripts": {
 		"postinstall": "fumadocs-mdx",
 		"dev": "vite dev --port 3001",
-		"build": "vite build",
+		"build": "vite build && node ../../scripts/check-server-bundle.mjs .output/server",
 		"start": "node .output/server/index.mjs",
 		"check-types": "tsc --noEmit",
 		"generate-icons": "tsx scripts/generate-brand-icons.tsx"
 	},
 	"dependencies": {
+		"@base-ui/react": "^1.7.0",
 		"@fontsource/geist-mono": "^5.3.0",
 		"@fontsource/geist-sans": "^5.3.0",
 		"@fontsource/titan-one": "^5.3.0",
