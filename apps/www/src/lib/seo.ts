@@ -109,6 +109,35 @@ export function softwareApplicationJsonLd() {
 	});
 }
 
+/**
+ * SoftwareApplication schema for one of the free tools at /tools. Separate from
+ * softwareApplicationJsonLd(), which describes Elmo itself: these are browser
+ * utilities that need no account, and saying so is the differentiator on SERPs
+ * where every other result is gated.
+ */
+export function freeToolJsonLd({ name, description, path }: { name: string; description: string; path: string }) {
+	return jsonLd({
+		"@type": "SoftwareApplication",
+		name,
+		description,
+		applicationCategory: "DeveloperApplication",
+		operatingSystem: "Any",
+		browserRequirements: "Requires a modern web browser",
+		isAccessibleForFree: true,
+		offers: {
+			"@type": "Offer",
+			price: "0",
+			priceCurrency: "USD",
+		},
+		url: canonicalUrl(path),
+		provider: {
+			"@type": "Organization",
+			name: SITE_NAME,
+			url: SITE_URL,
+		},
+	});
+}
+
 export function articleJsonLd({ title, description, path }: { title: string; description: string; path: string }) {
 	return jsonLd({
 		"@type": "TechArticle",

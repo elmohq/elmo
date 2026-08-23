@@ -66,6 +66,11 @@ const browseLinks = [
 		description: "Trackers, content platforms, APIs, SEO suites, and open source.",
 		href: "/ai-visibility-tools/category",
 	},
+	{
+		title: "Free AEO tools",
+		description: "Generate an llms.txt, or check which AI crawlers your robots.txt allows.",
+		href: "/tools",
+	},
 ];
 
 function AiVisibilitySoftwarePage() {
@@ -82,7 +87,7 @@ function AiVisibilitySoftwarePage() {
 							Compare tools head-to-head, find alternatives to one you're evaluating, or filter the field by feature and
 							category.
 						</p>
-						<div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+						<div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
 							{browseLinks.map((link) => (
 								<a
 									key={link.href}

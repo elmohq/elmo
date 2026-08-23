@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { Logo } from "./logo";
 import { externalRel } from "@/lib/external-link";
+import { Logo } from "./logo";
 
 // externalRel keeps the Referer for this owned domain; `ref` preserves
 // attribution when an intermediary strips that header.
@@ -39,6 +39,7 @@ const cols = [
 	{
 		heading: "Learn",
 		links: [
+			{ label: "Free AEO Tools", href: "/tools" },
 			{ label: "AEO Glossary", href: "/glossary" },
 			{ label: "AI Search Guides", href: "/ai-search" },
 			{ label: "AEO by Industry", href: "/aeo-for" },
