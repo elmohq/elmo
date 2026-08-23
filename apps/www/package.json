@@ -10,6 +10,7 @@
 		"build": "vite build && node ../../scripts/check-server-bundle.mjs .",
 		"start": "node .output/server/index.mjs",
 		"check-types": "tsc --noEmit",
+		"test": "vitest run",
 		"generate-icons": "tsx scripts/generate-brand-icons.tsx"
 	},
 	"dependencies": {
@@ -56,6 +57,7 @@
 		"@vitejs/plugin-react": "^6.0.5",
 		"png-to-ico": "^3.0.2",
 		"typescript": "^7.0.2",
-		"vite": "^8.2.1"
+		"vite": "^8.2.1",
+		"vitest": "^4.1.10"
 	}
 }

@@ -1,23 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { source } from "@/lib/source";
+import { aeoVerticals } from "@/data/aeo-verticals";
+import { aiSearchEngines } from "@/data/ai-search-engines";
+import { glossaryTerms } from "@/data/glossary";
+import { freeTools } from "@/data/tools";
 import { blogSource } from "@/lib/blog";
 import {
-	competitors,
-	getComparisonSlug,
-	isLowDR,
-	comparePairs,
-	comparePairSlug,
-	compareSets,
-	compareSetSlug,
-	indexedCompetitors,
-	indexableFeatureKeys,
-	FEATURE_SLUGS,
-	indexableCategories,
 	CATEGORY_SLUGS,
+	comparePairSlug,
+	comparePairs,
+	compareSetSlug,
+	compareSets,
+	competitors,
+	FEATURE_SLUGS,
+	getComparisonSlug,
+	indexableCategories,
+	indexableFeatureKeys,
+	indexedCompetitors,
+	isLowDR,
 } from "@/lib/competitors";
-import { glossaryTerms } from "@/data/glossary";
-import { aiSearchEngines } from "@/data/ai-search-engines";
-import { aeoVerticals } from "@/data/aeo-verticals";
+import { source } from "@/lib/source";
 
 const SITE_URL = "https://www.elmohq.com";
 
@@ -43,6 +44,7 @@ const staticPages: SitemapEntry[] = [
 	{ path: "/docs", changefreq: "weekly", priority: 0.9 },
 	{ path: "/blog", changefreq: "weekly", priority: 0.7 },
 	{ path: "/ai-visibility-tools", changefreq: "weekly", priority: 0.8 },
+	{ path: "/tools", changefreq: "monthly", priority: 0.8 },
 	{ path: "/vision", changefreq: "monthly", priority: 0.6 },
 	{ path: "/brand", changefreq: "monthly", priority: 0.5 },
 	{ path: "/status", changefreq: "daily", priority: 0.5 },
@@ -135,6 +137,12 @@ export const Route = createFileRoute("/sitemap.xml")({
 					})),
 				];
 
+				const toolPages: SitemapEntry[] = freeTools.map((tool) => ({
+					path: `/tools/${tool.slug}`,
+					changefreq: "monthly",
+					priority: 0.8,
+				}));
+
 				const allPages: SitemapEntry[] = [
 					...staticPages,
 					...docsPages,
@@ -144,6 +152,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 					...glossaryPages,
 					...aiSearchPages,
 					...aeoForPages,
+					...toolPages,
 				];
 
 				const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
