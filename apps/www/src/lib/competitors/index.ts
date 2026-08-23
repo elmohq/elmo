@@ -11,6 +11,7 @@ export {
 	LOW_DR_THRESHOLD,
 	isLowDR,
 	getFeatureLabel,
+	getFeatureSearchTerm,
 	getFeatureDescription,
 	getScreenshotUrl,
 } from "./types";
