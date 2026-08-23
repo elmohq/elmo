@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { Check, X, ExternalLink, ArrowLeft } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import {
@@ -311,14 +311,17 @@ export function CompetitorComparison({ competitor }: { competitor: Competitor })
 						brand.
 					</p>
 					<div className="mt-8 flex flex-wrap justify-center gap-3">
-						<Button asChild size="sm">
-							<Link to="/docs">Deploy Elmo</Link>
-						</Button>
-						<Button asChild variant="outline" size="sm">
-							<a href="https://github.com/elmohq/elmo" target="_blank" rel="noopener noreferrer">
-								View on GitHub
-							</a>
-						</Button>
+						<Link to="/docs" className={buttonVariants({ size: "sm" })}>
+							Deploy Elmo
+						</Link>
+						<a
+							href="https://github.com/elmohq/elmo"
+							target="_blank"
+							rel="noopener noreferrer"
+							className={buttonVariants({ variant: "outline", size: "sm" })}
+						>
+							View on GitHub
+						</a>
 					</div>
 				</div>
 			</section>

@@ -20,7 +20,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { checkBrandCreate, type EntitlementDenialCode } from "@workspace/lib/entitlements";
-import { Button } from "@workspace/ui/components/button";
+import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
@@ -107,7 +107,13 @@ function WorkspaceSelect({ organizations, value, onChange, disabled }: Workspace
 	return (
 		<div className="space-y-2">
 			<Label htmlFor="organization">Workspace</Label>
-			<Select value={value} onValueChange={onChange} disabled={disabled}>
+			{/* `items` lets the trigger show the workspace name rather than its id. */}
+			<Select
+				items={organizations.map((org) => ({ value: org.id, label: org.name }))}
+				value={value}
+				onValueChange={(next) => next && onChange(next)}
+				disabled={disabled}
+			>
 				<SelectTrigger id="organization" className="w-full">
 					<SelectValue />
 				</SelectTrigger>
@@ -205,17 +211,19 @@ function NewBrandPage() {
 			>
 				<div className="space-y-4">
 					<WorkspaceSelect organizations={organizations} value={organizationId} onChange={setOrganizationId} />
-					<Button asChild className="w-full">
-						{activeOrg.billingBrandId ? (
-							<Link to="/app/$brand/settings/billing" params={{ brand: activeOrg.billingBrandId }}>
-								Go to billing
-							</Link>
-						) : (
-							<Link to="/choose-plan" search={{ org: activeOrg.id }}>
-								Choose a plan
-							</Link>
-						)}
-					</Button>
+					{activeOrg.billingBrandId ? (
+						<Link
+							to="/app/$brand/settings/billing"
+							params={{ brand: activeOrg.billingBrandId }}
+							className={buttonVariants({ className: "w-full" })}
+						>
+							Go to billing
+						</Link>
+					) : (
+						<Link to="/choose-plan" search={{ org: activeOrg.id }} className={buttonVariants({ className: "w-full" })}>
+							Choose a plan
+						</Link>
+					)}
 				</div>
 			</FullPageCard>
 		);

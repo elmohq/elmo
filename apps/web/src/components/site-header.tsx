@@ -39,9 +39,7 @@ function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 			return (
 				<>
 					<BreadcrumbItem className="hidden md:block">
-						<BreadcrumbLink asChild>
-							<Link to="/reports">Reports</Link>
-						</BreadcrumbLink>
+						<BreadcrumbLink render={<Link to="/reports" />}>Reports</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
 					<BreadcrumbItem>
@@ -120,28 +118,18 @@ function BrandBreadcrumbs({
 	return (
 		<>
 			<BreadcrumbItem className="hidden md:block">
-				<BreadcrumbLink asChild>
-					{brandId ? (
-						<Link to="/app/$brand" params={{ brand: brandId }}>
-							{brandName}
-						</Link>
-					) : (
-						<span>{brandName}</span>
-					)}
+				<BreadcrumbLink render={brandId ? <Link to="/app/$brand" params={{ brand: brandId }} /> : <span />}>
+					{brandName}
 				</BreadcrumbLink>
 			</BreadcrumbItem>
 			<BreadcrumbSeparator className="hidden md:block" />
 			{isPromptDetailPage ? (
 				<>
 					<BreadcrumbItem className="hidden md:block">
-						<BreadcrumbLink asChild>
-							{brandId ? (
-								<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
-									Visibility
-								</Link>
-							) : (
-								<span>Visibility</span>
-							)}
+						<BreadcrumbLink
+							render={brandId ? <Link to="/app/$brand/visibility" params={{ brand: brandId }} /> : <span />}
+						>
+							Visibility
 						</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
@@ -162,9 +150,7 @@ function BrandBreadcrumbs({
 			) : isEditPage ? (
 				<>
 					<BreadcrumbItem className="hidden md:block">
-						<BreadcrumbLink asChild>
-							<Link to={pathname.slice(0, -5)}>{pageName}</Link>
-						</BreadcrumbLink>
+						<BreadcrumbLink render={<Link to={pathname.slice(0, -5)} />}>{pageName}</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
 					<BreadcrumbItem>

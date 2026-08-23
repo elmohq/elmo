@@ -1,18 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { IconExternalLink, IconChevronDown } from "@tabler/icons-react";
+import { IconChevronDown, IconExternalLink } from "@tabler/icons-react";
+import type { OptimizeButtonProps } from "@workspace/config/types";
 import { Button } from "@workspace/ui/components/button";
-import { Spinner } from "@workspace/ui/components/spinner";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuTrigger,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
-import type { OptimizeButtonProps } from "@workspace/config/types";
+import { Spinner } from "@workspace/ui/components/spinner";
+import { Fragment, useState } from "react";
 
 export type { OptimizeButtonProps };
 
@@ -120,35 +121,37 @@ export function OptimizeButton({
 	// Dropdown for "all" model selection - shows options for each model
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6">
-					Optimize with {parentName}
-					<IconChevronDown size={12} className="size-3 ml-0.5" />
-				</Button>
+			<DropdownMenuTrigger render={<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6" />}>
+				Optimize with {parentName}
+				<IconChevronDown size={12} className="size-3 ml-0.5" />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-48">
 				{availableModels.map((model, index) => {
 					const modelName = getModelDisplayName(model);
 					const loading = isLoading(model);
 					return (
-						<div key={model}>
+						<Fragment key={model}>
 							{index > 0 && <DropdownMenuSeparator />}
-							<DropdownMenuLabel>Optimize for {modelName}</DropdownMenuLabel>
-							<DropdownMenuItem
-								className="cursor-pointer"
-								onClick={(e) => handleOptimizeClick(e, model)}
-								disabled={loading}
-							>
-								<div className="flex items-center justify-between w-full text-xs">
-									<span>{promptName}</span>
-									{loading ? (
-										<Spinner className="ml-2 size-3" />
-									) : (
-										<IconExternalLink size={12} className="size-3 ml-2" />
-									)}
-								</div>
-							</DropdownMenuItem>
-						</div>
+							{/* The label names the entry below it, and Base UI wires that
+							    association through the group, so it has to sit inside one. */}
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Optimize for {modelName}</DropdownMenuLabel>
+								<DropdownMenuItem
+									className="cursor-pointer"
+									onClick={(e) => handleOptimizeClick(e, model)}
+									disabled={loading}
+								>
+									<div className="flex items-center justify-between w-full text-xs">
+										<span>{promptName}</span>
+										{loading ? (
+											<Spinner className="ml-2 size-3" />
+										) : (
+											<IconExternalLink size={12} className="size-3 ml-2" />
+										)}
+									</div>
+								</DropdownMenuItem>
+							</DropdownMenuGroup>
+						</Fragment>
 					);
 				})}
 			</DropdownMenuContent>

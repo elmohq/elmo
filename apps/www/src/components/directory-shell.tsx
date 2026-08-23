@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -55,15 +55,17 @@ export function DirectoryElmoBanner({
 					<h2 className="font-heading text-xl text-zinc-950">Elmo: the open-source alternative</h2>
 					<p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-600">{pitch}</p>
 					<div className="mt-4 flex flex-wrap gap-3">
-						<Button asChild size="sm">
-							<Link to="/docs">Deploy Elmo</Link>
-						</Button>
-						<Button asChild variant="outline" size="sm">
-							<Link to="/ai-visibility-tools/$slug" params={{ slug: comparison.slug }}>
-								Elmo vs {comparison.name}
-								<ArrowRight className="h-3.5 w-3.5" />
-							</Link>
-						</Button>
+						<Link to="/docs" className={buttonVariants({ size: "sm" })}>
+							Deploy Elmo
+						</Link>
+						<Link
+							to="/ai-visibility-tools/$slug"
+							params={{ slug: comparison.slug }}
+							className={buttonVariants({ variant: "outline", size: "sm" })}
+						>
+							Elmo vs {comparison.name}
+							<ArrowRight className="h-3.5 w-3.5" />
+						</Link>
 					</div>
 				</div>
 			</div>
@@ -81,14 +83,17 @@ export function ElmoCta() {
 					brand. Open source, self-hosted, free.
 				</p>
 				<div className="mt-8 flex flex-wrap justify-center gap-3">
-					<Button asChild size="sm">
-						<Link to="/docs">Deploy Elmo</Link>
-					</Button>
-					<Button asChild variant="outline" size="sm">
-						<a href="https://github.com/elmohq/elmo" target="_blank" rel="noopener noreferrer">
-							View on GitHub
-						</a>
-					</Button>
+					<Link to="/docs" className={buttonVariants({ size: "sm" })}>
+						Deploy Elmo
+					</Link>
+					<a
+						href="https://github.com/elmohq/elmo"
+						target="_blank"
+						rel="noopener noreferrer"
+						className={buttonVariants({ variant: "outline", size: "sm" })}
+					>
+						View on GitHub
+					</a>
 				</div>
 			</div>
 		</section>

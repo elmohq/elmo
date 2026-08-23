@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 
 export const Route = createFileRoute("/_authed/app/$brand/$")({
 	component: BrandSubpathNotFound,
@@ -16,11 +16,9 @@ function BrandSubpathNotFound() {
 			</div>
 
 			<div className="pt-2">
-				<Button asChild variant="outline">
-					<Link to="/app/$brand" params={{ brand: brandId }}>
-						Go Back
-					</Link>
-				</Button>
+				<Link to="/app/$brand" params={{ brand: brandId }} className={buttonVariants({ variant: "outline" })}>
+					Go Back
+				</Link>
 			</div>
 		</div>
 	);

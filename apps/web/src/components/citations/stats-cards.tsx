@@ -9,9 +9,7 @@ function StatCard({ title, tooltip, value }: { title: string; tooltip: React.Rea
 				<CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
 					{title}
 					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
-						</TooltipTrigger>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />} />
 						<TooltipContent className="max-w-xs text-sm font-normal">{tooltip}</TooltipContent>
 					</Tooltip>
 				</CardTitle>

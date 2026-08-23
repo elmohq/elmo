@@ -173,7 +173,7 @@ export const CloudAtPickLimit: Story = {
 		await expect(await canvas.findByText(CARD_TITLES.scraped)).toBeVisible();
 		await expect(await canvas.findByText(CARD_TITLES.api)).toBeVisible();
 		await expect(await canvas.findByRole("checkbox", { name: /claude/i })).toBeChecked();
-		await expect(await canvas.findByRole("checkbox", { name: /mistral/i })).toBeDisabled();
+		await expect(await canvas.findByRole("checkbox", { name: /mistral/i })).toHaveAttribute("aria-disabled", "true");
 	},
 };
 
@@ -211,7 +211,7 @@ export const CloudSwappingAPlatform: Story = {
 		await expect(await canvas.findByText("3 / 4 picks")).toBeVisible();
 
 		const mistral = await canvas.findByRole("checkbox", { name: /mistral/i });
-		await expect(mistral).toBeEnabled();
+		await expect(mistral).not.toHaveAttribute("aria-disabled", "true");
 		await userEvent.click(mistral);
 		await expect(await canvas.findByText("4 / 4 picks")).toBeVisible();
 		await expect(await canvas.findByRole("button", { name: /save changes/i })).toBeEnabled();
@@ -546,7 +546,7 @@ export const Whitelabel: Story = {
 		const canvas = within(canvasElement);
 		// Uncapped, like local.
 		await expect(canvas.queryByText(/picks$/)).toBeNull();
-		await expect(await canvas.findByRole("checkbox", { name: /grok/i })).toBeEnabled();
+		await expect(await canvas.findByRole("checkbox", { name: /grok/i })).not.toHaveAttribute("aria-disabled", "true");
 
 		// Operator detail withheld, like cloud.
 		await expect(canvas.queryByText("Track more platforms")).toBeNull();

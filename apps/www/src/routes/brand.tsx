@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, Copy, Download } from "lucide-react";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
@@ -272,16 +272,22 @@ function BrandPage() {
 						or open a GitHub issue.
 					</p>
 					<div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-						<Button asChild variant="outline" size="sm">
-							<a href="https://discord.gg/s24nubCtKz" target="_blank" rel="noopener noreferrer">
-								Ask on Discord
-							</a>
-						</Button>
-						<Button asChild variant="outline" size="sm">
-							<a href="https://github.com/elmohq/elmo/issues/new" target="_blank" rel="noopener noreferrer">
-								Open an Issue
-							</a>
-						</Button>
+						<a
+							href="https://discord.gg/s24nubCtKz"
+							target="_blank"
+							rel="noopener noreferrer"
+							className={buttonVariants({ variant: "outline", size: "sm" })}
+						>
+							Ask on Discord
+						</a>
+						<a
+							href="https://github.com/elmohq/elmo/issues/new"
+							target="_blank"
+							rel="noopener noreferrer"
+							className={buttonVariants({ variant: "outline", size: "sm" })}
+						>
+							Open an Issue
+						</a>
 					</div>
 				</div>
 			</main>
