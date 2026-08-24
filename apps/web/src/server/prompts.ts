@@ -1,7 +1,7 @@
 /** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
 import { premiumSlotsUsed, selectPremiumModels } from "@workspace/config/plans";
-import { MAX_PROMPTS } from "@workspace/lib/constants";
+import { promptSaveDenial } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { assertPromptSaveAllowed, type PromptSaveDelta } from "@workspace/lib/entitlements";
@@ -476,21 +476,21 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			prompts: z
-				.array(
-					z.object({
-						id: z.string().optional(),
-						value: z.string(),
-						enabled: z.boolean().optional().default(true),
-						tags: z.array(z.string()).optional(),
-						/**
-						 * Premium models to track this prompt on, grounded — one of the org's
-						 * premium slots each.
-						 */
-						premiumModels: z.array(z.string()).optional(),
-					}),
-				)
-				.max(MAX_PROMPTS, `A brand may have at most ${MAX_PROMPTS} prompts.`),
+			// The cap is applied in the handler, against what the brand already has:
+			// a brand the admin API pushed past MAX_PROMPTS must still be editable.
+			prompts: z.array(
+				z.object({
+					id: z.string().optional(),
+					value: z.string(),
+					enabled: z.boolean().optional().default(true),
+					tags: z.array(z.string()).optional(),
+					/**
+					 * Premium models to track this prompt on, grounded — one of the org's
+					 * premium slots each.
+					 */
+					premiumModels: z.array(z.string()).optional(),
+				}),
+			),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -508,6 +508,15 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 			.where(eq(prompts.brandId, data.brandId));
 		const existingIds = new Set(existingRows.map((p) => p.id));
 		const existingById = new Map(existingRows.map((p) => [p.id, p]));
+
+		// Rows the save introduces. Nothing is deleted here — the editor retires a
+		// prompt by disabling it — so this is the whole of the brand's growth.
+		const denial = promptSaveDenial({
+			existing: existingRows.length,
+			adding: data.prompts.filter((p) => !p.id).length,
+			submitted: data.prompts.length,
+		});
+		if (denial) throw new Error(denial);
 
 		// Plan pool accounting: the net number of prompts this save enables (new
 		// enabled rows + disabled→enabled transitions − enabled→disabled), and the

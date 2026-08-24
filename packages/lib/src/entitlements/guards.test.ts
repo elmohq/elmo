@@ -5,13 +5,14 @@ import {
 	UNLIMITED_ENTITLEMENTS,
 } from "@workspace/config/entitlements";
 import { describe, expect, it } from "vitest";
+import { MAX_PROMPTS, promptSaveDenial } from "../constants";
 import {
 	decideBrandCreate,
 	decideCadenceOverride,
 	decideEnabledModels,
-	type EntitlementDecision,
 	decidePremiumAssign,
 	decidePromptAdd,
+	type EntitlementDecision,
 } from "./guards";
 
 const NOW = new Date("2026-08-05T12:00:00Z");
@@ -94,6 +95,36 @@ describe("decidePromptAdd", () => {
 
 	it("adding zero is always allowed (disable/edit paths)", () => {
 		expect(decidePromptAdd(NO_PLAN_ENTITLEMENTS, 500, 0).allowed).toBe(true);
+	});
+});
+
+/**
+ * Two different prompt limits exist, and only one of them is a plan limit.
+ *
+ * `MAX_PROMPTS` is a flat per-brand cap the settings editor applies in every
+ * mode. These guards are the plan's, so they let an unlimited deployment —
+ * local, demo, whitelabel — add prompts through the admin API without limit.
+ * That asymmetry predates cloud and is deliberate: an operator scripting
+ * against their own instance is not a customer spending an allowance. It is
+ * pinned here because nothing else states it, and a guard that quietly started
+ * enforcing MAX_PROMPTS would break those scripts.
+ */
+describe("the flat cap and the plan limit are separate rules", () => {
+	it("lets an unlimited deployment add past MAX_PROMPTS over the admin API", () => {
+		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, MAX_PROMPTS, 1).allowed).toBe(true);
+		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, MAX_PROMPTS * 10, 500).allowed).toBe(true);
+	});
+
+	it("still refuses the same growth through the editor", () => {
+		const overCap = { existing: MAX_PROMPTS, adding: 1, submitted: MAX_PROMPTS + 1 };
+		expect(promptSaveDenial(overCap)).not.toBeNull();
+	});
+
+	it("leaves an over-cap brand editable on both paths", () => {
+		// The state the two rules together can produce: 150 prompts on a
+		// whitelabel brand. Neither path may freeze it.
+		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, 150, 0).allowed).toBe(true);
+		expect(promptSaveDenial({ existing: 150, adding: 0, submitted: 150 })).toBeNull();
 	});
 });
 
