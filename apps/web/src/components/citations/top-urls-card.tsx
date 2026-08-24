@@ -13,6 +13,7 @@ import {
 	getCategoryLabel,
 	UnderlineTabs,
 } from "@/components/citations/shared";
+import { BrandLogo } from "@/components/brand-logo";
 import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 
@@ -157,6 +158,7 @@ export function TopUrlsCard({
 								rel="noopener noreferrer"
 								className="flex items-start justify-between gap-3 py-3 group"
 							>
+								<BrandLogo name={citation.domain} domain={citation.domain} size="lg" className="mt-0.5" />
 								<div className="min-w-0 flex-1">
 									<div className="flex items-center gap-2 mb-0.5">
 										<Badge

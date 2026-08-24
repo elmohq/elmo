@@ -24,6 +24,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui
 import { Settings, TrendingUp, TrendingDown } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { getAdminStatsFn, updateDelayOverrideFn } from "@/server/admin";
+import { BrandLogo } from "@/components/brand-logo";
 
 interface BrandStats {
 	id: string;
@@ -595,11 +596,18 @@ function AdminDashboard() {
 									return (
 										<TableRow key={brand.id}>
 											<TableCell className="font-medium">
-												<div className="space-y-1">
-													<Link to="/app/$brand" params={{ brand: brand.id }} className="hover:underline text-primary">
-														{brand.name}
-													</Link>
-													<div className="text-xs text-muted-foreground">{brand.website}</div>
+												<div className="flex items-center gap-2">
+													<BrandLogo name={brand.name} domain={brand.website} size="lg" />
+													<div className="space-y-1 min-w-0">
+														<Link
+															to="/app/$brand"
+															params={{ brand: brand.id }}
+															className="hover:underline text-primary"
+														>
+															{brand.name}
+														</Link>
+														<div className="text-xs text-muted-foreground">{brand.website}</div>
+													</div>
 												</div>
 											</TableCell>
 											<TableCell className="text-right">

@@ -28,6 +28,8 @@ import { getDaysFromLookback } from "@/lib/chart-utils";
 import { getModelDisplayName } from "@/lib/utils";
 import { promptKeywords } from "@/lib/fanout-analysis";
 import { useBrand } from "@/hooks/use-brands";
+import { useBrandLogos } from "@/hooks/use-brand-logos";
+import { BrandLogo } from "@/components/brand-logo";
 import { usePromptStats } from "@/hooks/use-prompt-stats";
 import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
@@ -101,6 +103,7 @@ function PromptHistoryPage() {
 	const [isMetaLoading, setIsMetaLoading] = useState(true);
 
 	const { brand } = useBrand(brandId);
+	const { domainFor } = useBrandLogos(brandId);
 
 	// Web Queries fetches its own data (useQueryFanout) — stats only back Mentions/Citations.
 	const shouldFetchStats = visitedTabs.has("mentions") || visitedTabs.has("citations");
@@ -314,6 +317,7 @@ function PromptHistoryPage() {
 						totalRuns={aggregations?.totalRuns || 0}
 						brandName={brand?.name}
 						brandId={brandId}
+						domainFor={domainFor}
 					/>
 				)}
 
@@ -343,6 +347,7 @@ function PromptHistoryPage() {
 						currentPage={currentPage}
 						onPageChange={handlePageChange}
 						brandName={brand?.name}
+						domainFor={domainFor}
 					/>
 				)}
 			</div>
@@ -377,12 +382,14 @@ function MentionsTab({
 	totalRuns,
 	brandName,
 	brandId,
+	domainFor,
 }: {
 	isLoading: boolean;
 	mentionStats: { name: string; count: number }[];
 	totalRuns: number;
 	brandName?: string;
 	brandId: string;
+	domainFor: (name: string) => string | undefined;
 }) {
 	if (isLoading) return <TabLoadingSkeleton lines={5} />;
 
@@ -425,7 +432,11 @@ function MentionsTab({
 			<Separator />
 			<CardContent>
 				<ProgressBarChart
-					items={mentionStats.map((stat) => ({ label: stat.name, count: stat.count }))}
+					items={mentionStats.map((stat) => ({
+						label: stat.name,
+						count: stat.count,
+						icon: <BrandLogo name={stat.name} domain={domainFor(stat.name)} size="md" />,
+					}))}
 					defaultColor="#3b82f6"
 					customTotal={totalRuns || 1}
 					highlightLabel={brandName}
@@ -561,6 +572,7 @@ function ResponsesTab({
 	currentPage,
 	onPageChange,
 	brandName,
+	domainFor,
 }: {
 	runs: any[];
 	pagination: any;
@@ -568,6 +580,7 @@ function ResponsesTab({
 	currentPage: number;
 	onPageChange: (page: number) => void;
 	brandName?: string;
+	domainFor: (name: string) => string | undefined;
 }) {
 	const formatDate = (dateString: string) => new Date(dateString).toLocaleString(undefined, { timeZoneName: "short" });
 
@@ -651,9 +664,15 @@ function ResponsesTab({
 						<div>
 							<span className="text-xs text-muted-foreground block mb-1.5">Brands Mentioned</span>
 							<div className="flex flex-wrap gap-1.5">
-								{run.brandMentioned && brandName && <Badge className="text-xs font-normal">{brandName}</Badge>}
+								{run.brandMentioned && brandName && (
+									<Badge className="text-xs font-normal">
+										<BrandLogo name={brandName} domain={domainFor(brandName)} size="xs" />
+										{brandName}
+									</Badge>
+								)}
 								{run.competitorsMentioned?.map((competitor: string, cIndex: number) => (
 									<Badge key={cIndex} variant="outline" className="text-xs font-normal">
+										<BrandLogo name={competitor} domain={domainFor(competitor)} size="xs" />
 										{competitor}
 									</Badge>
 								))}

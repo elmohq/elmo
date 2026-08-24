@@ -4,6 +4,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/comp
 import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useMemo, useState } from "react";
+import { BrandLogo } from "@/components/brand-logo";
 import { UnderlineTabs } from "@/components/citations/shared";
 import { TrackDomainPopover } from "@/components/citations/track-domain-popover";
 import type { CitationData } from "@/components/citations/types";
@@ -100,6 +101,7 @@ export function TopDomainsCard({
 							items={pageItems.map((domain) => ({
 								label: domain.domain,
 								count: domain.count,
+								icon: <BrandLogo name={domain.domain} domain={domain.domain} size="md" />,
 								category: domain.category || "other",
 								action:
 									domain.category === "other" && brandId && competitors ? (

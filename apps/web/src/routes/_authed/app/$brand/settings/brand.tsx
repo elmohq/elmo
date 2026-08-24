@@ -18,6 +18,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/component
 import { IconInfoCircle } from "@tabler/icons-react";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { BrandLogo } from "@/components/brand-logo";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/brand")({
 	head: ({ matches, match }) => {
@@ -112,9 +113,12 @@ function BrandSettingsPage() {
 
 	return (
 		<div className="space-y-6 max-w-2xl">
-			<div>
-				<h1 className="text-3xl font-bold">Brand</h1>
-				<p className="text-muted-foreground">Manage your brand name and website</p>
+			<div className="flex items-center gap-3">
+				<BrandLogo name={brand.name} domain={brand.website} size="lg" className="size-10" />
+				<div>
+					<h1 className="text-3xl font-bold">Brand</h1>
+					<p className="text-muted-foreground">Manage your brand name and website</p>
+				</div>
 			</div>
 
 			<form action={handleSubmit} className="space-y-6">

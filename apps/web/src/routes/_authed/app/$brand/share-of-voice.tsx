@@ -21,6 +21,8 @@ import { FilterBar, getAvailableModels, ALL_MODELS_VALUE } from "@/components/fi
 import { useListFilters } from "@/hooks/use-list-filters";
 import { ColHead } from "@/components/col-head";
 import { ShareOfVoiceDonut } from "@/components/share-of-voice-donut";
+import { BrandLogo } from "@/components/brand-logo";
+import { useBrandLogos } from "@/hooks/use-brand-logos";
 import { TrendChart } from "@/components/trend-chart";
 
 export const Route = createFileRoute("/_authed/app/$brand/share-of-voice")({
@@ -59,6 +61,7 @@ function ShareOfVoicePage() {
 	const { model, lookback, tags } = useListFilters();
 
 	const { brand } = useBrand(brandId);
+	const { domainFor } = useBrandLogos(brandId);
 	const trackedTargets = brand?.trackedTargets ?? [];
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 
@@ -124,7 +127,7 @@ function ShareOfVoicePage() {
 									{data.entries.length > 1 ? ` and ${data.entries.length - 1} competitors` : ""}.
 								</p>
 							</div>
-							<ShareOfVoiceDonut entries={data.entries} />
+							<ShareOfVoiceDonut entries={data.entries} domainFor={domainFor} />
 						</CardContent>
 					</Card>
 
@@ -170,6 +173,7 @@ function ShareOfVoicePage() {
 										<TableCell className="text-muted-foreground tabular-nums">{i + 1}</TableCell>
 										<TableCell className="font-medium">
 											<span className="inline-flex items-center gap-2">
+												<BrandLogo name={e.name} domain={domainFor(e.name)} size="md" />
 												{e.name}
 												{e.isBrand && (
 													<Badge variant="secondary" className="text-xs">

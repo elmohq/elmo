@@ -7,6 +7,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@workspace/ui/component
 import { IconInfoCircle, IconPlus } from "@tabler/icons-react";
 import * as Sentry from "@sentry/tanstackstart-react";
 import { addDomainToBrandFn, addDomainToCompetitorFn, createCompetitorFromDomainFn } from "@/server/brands";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function TrackDomainPopover({
 	domain,
@@ -145,8 +146,9 @@ export function TrackDomainPopover({
 										type="button"
 										onClick={() => handleAddToExisting(c.id)}
 										disabled={saving}
-										className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
+										className="flex w-full items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
 									>
+										<BrandLogo name={c.name} domain={c.domains.find(Boolean)} size="sm" />
 										{c.name}
 									</button>
 								))}

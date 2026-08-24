@@ -11,6 +11,7 @@ import {
 	BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb";
 import { useBrand } from "@/hooks/use-brands";
+import { BrandLogo } from "@/components/brand-logo";
 import { Link } from "@tanstack/react-router";
 
 const PAGE_NAMES: Record<string, string> = {
@@ -93,10 +94,12 @@ function BrandBreadcrumbs({
 	pathname,
 	brandId,
 	brandName,
+	brandWebsite,
 }: {
 	pathname: string;
 	brandId: string | undefined;
 	brandName: string;
+	brandWebsite?: string;
 }) {
 	const pathSegments = pathname.split("/");
 	const brandIndex = pathSegments.findIndex((segment) => segment === "app");
@@ -117,7 +120,10 @@ function BrandBreadcrumbs({
 
 	return (
 		<>
-			<BreadcrumbItem className="hidden md:block">
+			<BreadcrumbItem className="hidden md:flex md:items-center md:gap-1.5">
+				{/* Held back until the brand loads — the placeholder would otherwise
+				    spell out the "Dashboard" stand-in name. */}
+				{brandWebsite && <BrandLogo name={brandName} domain={brandWebsite} size="sm" />}
 				<BreadcrumbLink render={brandId ? <Link to="/app/$brand" params={{ brand: brandId }} /> : <span />}>
 					{brandName}
 				</BreadcrumbLink>
@@ -190,7 +196,12 @@ export function SiteHeader({ title }: { title?: string } = {}) {
 						) : isAdminPage ? (
 							<AdminBreadcrumbs pathname={pathname} />
 						) : (
-							<BrandBreadcrumbs pathname={pathname} brandId={brandId} brandName={brand?.name || "Dashboard"} />
+							<BrandBreadcrumbs
+								pathname={pathname}
+								brandId={brandId}
+								brandName={brand?.name || "Dashboard"}
+								brandWebsite={brand?.website}
+							/>
 						)}
 					</BreadcrumbList>
 				</Breadcrumb>
