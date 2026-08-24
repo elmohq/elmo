@@ -21,10 +21,13 @@ export function HistoryButton({ brandId, promptName, promptId, tab }: HistoryBut
 			to="/app/$brand/prompts/$promptId"
 			params={{ brand: brandId, promptId }}
 			search={tab ? { tab } : undefined}
-			className={cn(buttonVariants({ variant: "secondary", size: "xs" }), "cursor-pointer")}
+			className={cn(
+				buttonVariants({ variant: "secondary", size: "sm" }),
+				"text-xs cursor-pointer h-6 flex items-center px-2",
+			)}
 		>
-			<GoStack className="size-3" />
-			<span>View Details</span>
+			<GoStack className="size-3 mr-0.5" />
+			<span className="text-xs font-normal">View Details</span>
 		</Link>
 	);
 }

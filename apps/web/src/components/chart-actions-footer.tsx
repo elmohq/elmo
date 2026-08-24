@@ -74,13 +74,13 @@ export function ChartActionsFooter({
 						<Button
 							onClick={onDownload}
 							disabled={isDownloading}
-							size="xs"
+							size="sm"
 							variant="secondary"
-							className="cursor-pointer"
+							className="text-xs cursor-pointer h-6 flex items-center px-2"
 							title="Download chart as PNG"
 						>
-							<Download className="size-3" />
-							<span>{isDownloading ? "Exporting..." : "Export (PNG)"}</span>
+							<Download className="size-3 mr-0.5" />
+							<span className="text-xs font-normal">{isDownloading ? "Exporting..." : "Export (PNG)"}</span>
 						</Button>
 					)}
 				</div>
