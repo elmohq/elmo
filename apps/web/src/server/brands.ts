@@ -425,13 +425,18 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			competitors: z.array(
-				z.object({
-					name: z.string(),
-					domains: z.array(z.string()).min(1),
-					aliases: z.array(z.string()).optional().default([]),
-				}),
-			),
+			// A bulk replace, so the list submitted is the list the brand ends up
+			// with — the cap is the same one the editor and the single-add paths
+			// apply.
+			competitors: z
+				.array(
+					z.object({
+						name: z.string(),
+						domains: z.array(z.string()).min(1),
+						aliases: z.array(z.string()).optional().default([]),
+					}),
+				)
+				.max(MAX_COMPETITORS, `A brand may have at most ${MAX_COMPETITORS} competitors.`),
 		}),
 	)
 	.handler(async ({ data }) => {

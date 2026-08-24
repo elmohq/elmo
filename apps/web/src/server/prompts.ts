@@ -1,6 +1,6 @@
 /** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
-import { premiumSlotsUsed, selectPremiumModels } from "@workspace/config/plans";
+import { premiumAssignmentChanged, premiumSlotsUsed, selectPremiumModels } from "@workspace/config/plans";
 import { promptSaveDenial } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
@@ -9,9 +9,11 @@ import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
+import { evaluatePremiumAssignable } from "@/lib/auth/policies";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import { generateDateRange } from "@/lib/chart-utils";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@/lib/citation-rollup";
+import { getDeployment } from "@/lib/config/server";
 import { extractDomain } from "@/lib/domain-categories";
 import { classifyUrl } from "@/lib/domain-categories.server";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
@@ -524,9 +526,17 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		// gaining a second premium model spends a second slot. Only a net increase
 		// is guarded; going down never needs permission.
 		const delta: PromptSaveDelta = { prompts: 0, premiumPairings: 0 };
+		// Outside cloud there is no pool to spend, so an assignment may only be
+		// carried back unchanged — a value a migrated database already holds. What
+		// self-hosted actually tracks grounded is a platform pick, made per brand
+		// on the LLMs page and untouched by this.
+		const premiumAssignable = evaluatePremiumAssignable(getDeployment().mode) === "allow";
 		for (const p of data.prompts) {
 			const before = p.id ? existingById.get(p.id) : undefined;
 			if (p.id && !before) continue;
+			if (!premiumAssignable && premiumAssignmentChanged(before?.premiumModels, p.premiumModels)) {
+				throw new Error("Grounded models are tracked per brand on this deployment — pick them in LLM settings.");
+			}
 			const after = { enabled: p.enabled, premiumModels: selectPremiumModels(p.premiumModels) };
 			delta.prompts += (p.enabled ? 1 : 0) - (before?.enabled ? 1 : 0);
 			delta.premiumPairings += premiumSlotsUsed([after]) - premiumSlotsUsed(before ? [before] : []);

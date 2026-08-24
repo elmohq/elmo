@@ -252,6 +252,21 @@ export function evaluatePlatformPicksEditable(mode: DeploymentMode, features: Fe
 }
 
 /**
+ * Evaluate whether prompts may carry per-prompt grounded ("premium") model
+ * assignments.
+ *
+ * Cloud sells grounded calls from a metered pool, one prompt/model pair at a
+ * time. Everywhere else the same models are tracked by picking their targets on
+ * the LLMs page — a self-hosted brand can absolutely run grounded Claude; it
+ * just runs it for the whole brand. A per-prompt assignment there would be a
+ * second, invisible way to spend the operator's money, and the run policy
+ * ignores it anyway.
+ */
+export function evaluatePremiumAssignable(mode: DeploymentMode): "allow" | "deny" {
+	return mode === "cloud" ? "allow" : "deny";
+}
+
+/**
  * Evaluate whether the deployment allows the user to create brands from the UI.
  * Used by the create-brand server function. Local mode is the only mode that
  * allows it — whitelabel orgs come from Auth0, demo is read-only.

@@ -20,6 +20,7 @@ import {
 	evaluateBrandRouteGuard,
 	evaluateDeploymentPolicy,
 	evaluatePlatformPicksEditable,
+	evaluatePremiumAssignable,
 	evaluateReadOnly,
 	evaluateRequireAdmin,
 	evaluateRequireCanCreateBrands,
@@ -477,6 +478,21 @@ describe("evaluatePlatformPicksEditable", () => {
 		// entitlements read "unlimited", exactly like local.
 		expect(WHITELABEL_FEATURES.readOnly).toBe(false);
 		expect(evaluatePlatformPicksEditable("whitelabel", WHITELABEL_FEATURES)).toBe("deny");
+	});
+});
+
+/**
+ * Grounded models are sold per prompt in cloud and picked per brand everywhere
+ * else. Both are real ways to track them — this only decides which mechanism a
+ * deployment uses, so a self-hosted brand tracking grounded Claude through its
+ * platform picks is unaffected.
+ */
+describe("evaluatePremiumAssignable", () => {
+	it("allows per-prompt assignment only in cloud, where a pool meters it", () => {
+		expect(evaluatePremiumAssignable("cloud")).toBe("allow");
+		expect(evaluatePremiumAssignable("local")).toBe("deny");
+		expect(evaluatePremiumAssignable("whitelabel")).toBe("deny");
+		expect(evaluatePremiumAssignable("demo")).toBe("deny");
 	});
 });
 

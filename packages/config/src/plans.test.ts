@@ -9,6 +9,7 @@ import {
 	PREMIUM_MODELS,
 	PREMIUM_RUNS_PER_DAY,
 	planPlatformBreakdown,
+	premiumAssignmentChanged,
 	premiumPairings,
 	premiumSlotsUsed,
 	STANDARD_PLATFORM_MENU,
@@ -171,6 +172,31 @@ describe("selectPremiumModels", () => {
 	it("treats nothing requested as nothing spent", () => {
 		expect(selectPremiumModels(undefined)).toEqual([]);
 		expect(selectPremiumModels([])).toEqual([]);
+	});
+});
+
+/**
+ * The write guard outside cloud is "did this save change the assignment", not
+ * "is the assignment empty" — a deployment with no pool must still be able to
+ * save a prompt whose value came from somewhere else (a database moved off
+ * cloud), or the editor would refuse every save on that brand.
+ */
+describe("premiumAssignmentChanged", () => {
+	it("sees no change when a save carries the same assignment back", () => {
+		expect(premiumAssignmentChanged(["claude"], ["claude"])).toBe(false);
+		expect(premiumAssignmentChanged([], [])).toBe(false);
+		expect(premiumAssignmentChanged(null, undefined)).toBe(false);
+	});
+
+	it("ignores order and entries that are not sellable as premium", () => {
+		expect(premiumAssignmentChanged(["claude", "grok"], ["grok", "claude"])).toBe(false);
+		expect(premiumAssignmentChanged(["claude"], ["claude", "gemini"])).toBe(false);
+	});
+
+	it("catches an assignment being added, swapped, or cleared", () => {
+		expect(premiumAssignmentChanged([], ["claude"])).toBe(true);
+		expect(premiumAssignmentChanged(["claude"], ["grok"])).toBe(true);
+		expect(premiumAssignmentChanged(["claude"], [])).toBe(true);
 	});
 });
 
