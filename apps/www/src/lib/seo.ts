@@ -81,9 +81,14 @@ export function organizationJsonLd() {
 		logo: SITE_LOGO_URL,
 		sameAs: [
 			"https://github.com/elmohq/elmo",
+			"https://hub.docker.com/u/elmohq",
 			"https://x.com/tryelmo",
 			"https://www.linkedin.com/company/elmohq",
 			"https://discord.gg/s24nubCtKz",
+			"https://www.producthunt.com/products/elmo",
+			"https://www.crunchbase.com/organization/elmo-14db",
+			"https://www.g2.com/products/blue-whale-software-llc-elmo/reviews",
+			"https://alternativeto.net/software/elmo/",
 		],
 		parentOrganization: {
 			"@type": "Organization",
