@@ -4,7 +4,7 @@ import { projectMonthlyTargetCostUsd } from "@workspace/lib/usage";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { cn } from "@workspace/ui/lib/utils";
-import { useId } from "react";
+import { type ReactNode, useId } from "react";
 
 export type PlatformOption = {
 	model: string;
@@ -100,7 +100,7 @@ export function PlatformPicker({
 	};
 
 	return (
-		<div className={cn("grid gap-2 sm:grid-cols-2 lg:grid-cols-3", className)}>
+		<PlatformGrid className={className}>
 			{options.map((option) => {
 				const checked = selected.has(option.model);
 				const atLimit = !checked && limit !== null && selected.size >= limit;
@@ -119,16 +119,45 @@ export function PlatformPicker({
 							disabled={atLimit || disabled}
 							onCheckedChange={(value) => toggle(option.model, value === true)}
 						/>
-						<ModelIcon iconId={getModelMeta(option.model).iconId} className="size-5 shrink-0" />
-						{/* The operator detail sits under the name rather than beside it, so a
-						    long provider string can't squeeze the platform it describes. */}
-						<span className="min-w-0 flex-1">
-							<span className="block truncate text-sm font-medium">{getModelMeta(option.model).label}</span>
-							<PlatformOperatorDetail option={option} />
-						</span>
+						<PlatformRowBody option={option} />
 					</label>
 				);
 			})}
-		</div>
+		</PlatformGrid>
+	);
+}
+
+/**
+ * The same platforms without the choice: what a brand is tracked on where the
+ * viewer doesn't decide it. Shares the picker's grid so switching between the
+ * two doesn't reflow the page around it.
+ */
+export function PlatformList({ options, className }: { options: PlatformOption[]; className?: string }) {
+	return (
+		<PlatformGrid className={className}>
+			{options.map((option) => (
+				<div key={option.model} className="flex items-center gap-3 rounded-md border p-3">
+					<PlatformRowBody option={option} />
+				</div>
+			))}
+		</PlatformGrid>
+	);
+}
+
+function PlatformGrid({ children, className }: { children: ReactNode; className?: string }) {
+	return <div className={cn("grid gap-2 sm:grid-cols-2 lg:grid-cols-3", className)}>{children}</div>;
+}
+
+function PlatformRowBody({ option }: { option: PlatformOption }) {
+	return (
+		<>
+			<ModelIcon iconId={getModelMeta(option.model).iconId} className="size-5 shrink-0" />
+			{/* The operator detail sits under the name rather than beside it, so a
+			    long provider string can't squeeze the platform it describes. */}
+			<span className="min-w-0 flex-1">
+				<span className="block truncate text-sm font-medium">{getModelMeta(option.model).label}</span>
+				<PlatformOperatorDetail option={option} />
+			</span>
+		</>
 	);
 }

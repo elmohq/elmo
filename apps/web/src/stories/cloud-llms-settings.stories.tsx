@@ -123,6 +123,7 @@ function loader(picker: ModelPickerState, premium: PremiumPool = NO_PREMIUM_POOL
 function standardPicker(overrides: Partial<ModelPickerState> = {}): ModelPickerState {
 	return {
 		available: menuOptions(STANDARD_PLATFORM_MENU),
+		editable: true,
 		enabledModels: ["chatgpt", "google-ai-mode", "perplexity", "claude"],
 		planLimits: { platformPicks: 4, platformMenu: [...STANDARD_PLATFORM_MENU] },
 		upgradeOptions: [],
@@ -226,6 +227,7 @@ export const StarterSinglePlatform: Story = {
 	render: () => {
 		loader({
 			available: menuOptions(["chatgpt"]),
+			editable: true,
 			enabledModels: ["chatgpt"],
 			planLimits: { platformPicks: 1, platformMenu: ["chatgpt"] },
 			upgradeOptions: PICKABLE.filter((option) => option.model !== "chatgpt"),
@@ -251,6 +253,7 @@ export const UpgradeableMidPlan: Story = {
 		const menu = ["chatgpt", "google-ai-mode", "perplexity", "claude"];
 		loader({
 			available: menuOptions(menu),
+			editable: true,
 			enabledModels: ["chatgpt", "claude"],
 			planLimits: { platformPicks: 4, platformMenu: menu },
 			upgradeOptions: PICKABLE.filter((option) => !menu.includes(option.model)),
@@ -277,6 +280,7 @@ export const UnlimitedPicks: Story = {
 	render: () => {
 		loader({
 			available: optionsByModel(false, { excludePremium: false }),
+			editable: true,
 			enabledModels: null,
 			planLimits: null,
 			upgradeOptions: [],
@@ -301,6 +305,7 @@ export const NoTargetsConfigured: Story = {
 	render: () => {
 		loader({
 			available: [],
+			editable: true,
 			enabledModels: null,
 			planLimits: null,
 			upgradeOptions: [],
@@ -370,6 +375,7 @@ export const SelfHostedShowsCostEstimates: Story = {
 	render: () => {
 		loader({
 			available: optionsByModel(true, { excludePremium: false }),
+			editable: true,
 			enabledModels: null,
 			planLimits: null,
 			upgradeOptions: [],
@@ -396,6 +402,7 @@ export const SelfHostedTotalFollowsTheSelection: Story = {
 	render: () => {
 		loader({
 			available: optionsByModel(true, { excludePremium: false }),
+			editable: true,
 			enabledModels: null,
 			planLimits: null,
 			upgradeOptions: [],
@@ -443,6 +450,7 @@ export const SelfHostedSuggestsMorePlatforms: Story = {
 		const configured = CLOUD_TARGETS.filter((t) => t.model === "chatgpt");
 		loader({
 			available: configured.map((config) => toOption(config, true)),
+			editable: true,
 			enabledModels: null,
 			planLimits: null,
 			upgradeOptions: [],
@@ -519,21 +527,21 @@ export const CloudHidesPlatformSuggestions: Story = {
 
 /**
  * Whitelabel is the case the mode gates exist for. It resolves the same
- * unlimited entitlements as local, so the picker is uncapped and grounded Claude
- * is offerable — but the person looking is the agency's *customer*, not the
- * operator. So the provider cost estimates (the agency's margin) and the
- * unconfigured-platform suggestions (the agency's SCRAPE_TARGETS) both stay
- * hidden, exactly as they are in cloud.
+ * unlimited entitlements as local — but the person looking is the agency's
+ * *customer*, not the operator. So the provider cost estimates (the agency's
+ * margin) and the unconfigured-platform suggestions (the agency's
+ * SCRAPE_TARGETS) both stay hidden, exactly as in cloud, and the picks are the
+ * agency's to make: the page reports what the brand is tracked on instead of
+ * offering checkboxes no save would accept.
  *
- * This pins the rendering half of that: given a payload with no cost basis and
- * no suggestions, the page must not invent either — it can't catch the server
- * gate itself widening from `mode === "local"`, since the server function is
- * mocked here.
+ * This pins the rendering half of that — it can't catch the server gates
+ * themselves widening, since the server function is mocked here.
  */
 export const Whitelabel: Story = {
 	render: () => {
 		loader({
 			available: optionsByModel(false, { excludePremium: false }),
+			editable: false,
 			enabledModels: ["chatgpt", "perplexity", "claude"],
 			planLimits: null,
 			upgradeOptions: [],
@@ -544,9 +552,14 @@ export const Whitelabel: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		// Uncapped, like local.
-		await expect(canvas.queryByText(/picks$/)).toBeNull();
-		await expect(await canvas.findByRole("checkbox", { name: /grok/i })).not.toHaveAttribute("aria-disabled", "true");
+		// Nothing to pick, and nothing to save.
+		await expect(canvas.queryByRole("checkbox")).toBeNull();
+		await expect(canvas.queryByRole("button", { name: /save changes/i })).toBeNull();
+		await expect(await canvas.findByText(/set by whoever runs this deployment/i)).toBeVisible();
+
+		// The tiers still explain what each kind of tracking means.
+		await expect(await canvas.findByText(CARD_TITLES.scraped)).toBeVisible();
+		await expect(await canvas.findByText("ChatGPT")).toBeVisible();
 
 		// Operator detail withheld, like cloud.
 		await expect(canvas.queryByText("Track more platforms")).toBeNull();
@@ -555,5 +568,34 @@ export const Whitelabel: Story = {
 
 		// No plan means no grounded Claude pool to report.
 		await expect(canvas.queryByText(CARD_TITLES.premium)).toBeNull();
+	},
+};
+
+/**
+ * Demo runs the local deployment with every write refused, so the page reports
+ * the same way whitelabel does — a checkbox there would fail on save. Only the
+ * platforms the brand is actually tracked on are listed; the configured-but-
+ * unpicked ones would read as an offer.
+ */
+export const DemoIsNotEditable: Story = {
+	render: () => {
+		loader({
+			available: optionsByModel(false, { excludePremium: false }),
+			editable: false,
+			enabledModels: ["chatgpt", "perplexity"],
+			planLimits: null,
+			upgradeOptions: [],
+			costBasis: null,
+			unconfiguredPlatforms: [],
+		});
+		return <LlmsSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.queryByRole("checkbox")).toBeNull();
+		await expect(await canvas.findByText("ChatGPT")).toBeVisible();
+		await expect(await canvas.findByText("Perplexity")).toBeVisible();
+		// Configured but not tracked — listing it would imply it could be turned on.
+		await expect(canvas.queryByText("Grok")).toBeNull();
 	},
 };

@@ -51,6 +51,13 @@ export type PlatformOption = {
 export type ModelPickerState = {
 	/** Models this brand may choose from, with target metadata for display. */
 	available: PlatformOption[];
+	/**
+	 * Whether the viewer decides the picks. False in demo, where every write is
+	 * refused, and in whitelabel, where the platforms a brand is tracked on are
+	 * the agency's decision rather than their customer's — in both, checkboxes
+	 * would offer a choice that does not exist.
+	 */
+	editable: boolean;
 	/** The brand's stored picks; null = follow deployment configuration. */
 	enabledModels: string[] | null;
 	/** Cloud plan constraints; null outside cloud (no pick limit). */
@@ -133,6 +140,16 @@ function optionsByModel(
 }
 
 /**
+ * Who owns the platform picks: the person looking, or whoever runs the
+ * deployment for them. Read by the page to decide between a picker and a
+ * report, and by the save path so the two can't disagree.
+ */
+function picksAreEditable(): boolean {
+	const deployment = getDeployment();
+	return !deployment.features.readOnly && deployment.mode !== "whitelabel";
+}
+
+/**
  * Provider spend is only the viewer's concern when they run the deployment.
  * Whitelabel is excluded deliberately: the agency pays the bills, but the person
  * looking at this page is their customer.
@@ -192,6 +209,7 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 					forOperator: selfHosted !== null,
 					excludePremium: false,
 				}),
+				editable: picksAreEditable(),
 				enabledModels: brand.enabledModels,
 				planLimits: null,
 				upgradeOptions: [],
@@ -205,6 +223,7 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 		const available = pickable.filter((option) => menu.has(option.model));
 		return {
 			available,
+			editable: picksAreEditable(),
 			// What the brand is actually tracked on, resolved the same way the run
 			// policy resolves it. Reporting the raw column and letting the page read
 			// null as "everything configured" is what showed a Pro brand 10 of 4
@@ -261,6 +280,12 @@ export const updateEnabledModelsFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
+
+		// The page hides the picker in these modes; refusing here is what makes
+		// that a rule rather than a rendering decision.
+		if (!picksAreEditable()) {
+			throw new Error("Platform picks are set by whoever runs this deployment.");
+		}
 
 		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
 		if (!brand) throw new Error("Brand not found");

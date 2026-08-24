@@ -23,15 +23,16 @@ import { Badge } from "@workspace/ui/components/badge";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { cn } from "@workspace/ui/lib/utils";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import {
 	formatUsd,
+	PlatformList,
 	PlatformOperatorDetail,
 	PlatformPicker,
 	projectSelectionCostUsd,
 } from "@/components/platform-picker";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
-import { groupPlatformOptions, platformGroupCopy, platformGroupId } from "@/lib/platform-groups";
+import { groupPlatformOptions, type PlatformGroup, platformGroupCopy, platformGroupId } from "@/lib/platform-groups";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { getModelPickerStateFn, type ModelPickerState, updateEnabledModelsFn } from "@/server/platform-picks";
 import { getPremiumPoolFn, type PremiumPool } from "@/server/premium-tracking";
@@ -59,7 +60,6 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
 
 function LlmsSettingsPage() {
 	const { picker, premium } = Route.useLoaderData();
-	const singlePlatform = picker.planLimits?.platformPicks === 1 && picker.available.length === 1;
 
 	return (
 		<div className="max-w-6xl space-y-8">
@@ -71,8 +71,7 @@ function LlmsSettingsPage() {
 				</p>
 			</div>
 
-			{/* A one-platform plan has nothing to choose, so it reports instead. */}
-			{singlePlatform ? <SinglePlatformSummary picker={picker} /> : <PlatformGroups picker={picker} />}
+			<PlatformSection picker={picker} />
 
 			{premium.available && <PremiumApiPool premium={premium} />}
 			{picker.unconfiguredPlatforms.length > 0 && <AddPlatformsCard platforms={picker.unconfiguredPlatforms} />}
@@ -80,11 +79,98 @@ function LlmsSettingsPage() {
 	);
 }
 
+/** Which of the three shapes this deployment and plan leave: a picker, or one of
+ *  the two reports — nothing configured, or nothing for the viewer to decide. */
+function PlatformSection({ picker }: { picker: ModelPickerState }) {
+	if (picker.available.length === 0) return <NoPlatformsCard />;
+	if (!picker.editable) return <TrackedPlatforms picker={picker} />;
+	// A one-platform plan has nothing to choose, so it reports instead.
+	if (picker.planLimits?.platformPicks === 1 && picker.available.length === 1) {
+		return <SinglePlatformSummary picker={picker} />;
+	}
+	return <PlatformGroups picker={picker} />;
+}
+
+function NoPlatformsCard() {
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle>Tracked platforms</CardTitle>
+			</CardHeader>
+			<CardContent>
+				<p className="text-sm text-muted-foreground">
+					No models are configured on this deployment. Set <code className="font-mono text-xs">SCRAPE_TARGETS</code>.
+				</p>
+			</CardContent>
+		</Card>
+	);
+}
+
 /**
- * The pickable tiers, in one card divided by tier. They answer different
- * questions about a brand — a scraped surface shows what a visitor sees, an API
- * call what the model already believes — but they spend a single pick budget, and
- * as separate cards they read as separate allowances.
+ * The same tiers with no checkboxes, for the modes where the picks are not the
+ * viewer's to make: demo refuses every write, and in whitelabel the agency
+ * decides what its customers are tracked on. Only the platforms actually tracked
+ * are listed — the rest would read as an offer.
+ */
+function TrackedPlatforms({ picker }: { picker: ModelPickerState }) {
+	const tracked = new Set(picker.enabledModels ?? picker.available.map((option) => option.model));
+	const groups = groupPlatformOptions(picker.available.filter((option) => tracked.has(option.model)));
+
+	if (groups.length === 0) {
+		return (
+			<Card>
+				<CardHeader>
+					<CardTitle>Tracked platforms</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<p className="text-sm text-muted-foreground">This brand is not tracked on any platform yet.</p>
+				</CardContent>
+			</Card>
+		);
+	}
+
+	return (
+		<div className="space-y-4">
+			<PlatformTierCard groups={groups} renderGroup={(group) => <PlatformList options={group.options} />} />
+			<p className="text-sm text-muted-foreground">
+				Which platforms this brand is tracked on is set by whoever runs this deployment.
+			</p>
+		</div>
+	);
+}
+
+/**
+ * One card, divided: the tiers answer different questions but spend the same
+ * budget, and separate cards read as separate allowances.
+ */
+function PlatformTierCard({
+	groups,
+	renderGroup,
+}: {
+	groups: PlatformGroup[];
+	renderGroup: (group: PlatformGroup) => ReactNode;
+}) {
+	return (
+		<Card className="gap-0 py-0">
+			{groups.map((group, index) => (
+				// Same vertical rhythm a Card gives its own header and content, so
+				// every tier sits the same distance from its description as the
+				// premium card below does.
+				<div key={group.id} className={cn("flex flex-col gap-6 py-6", index > 0 && "border-t")}>
+					<CardHeader>
+						<CardTitle>{group.title}</CardTitle>
+						<CardDescription>{group.description}</CardDescription>
+					</CardHeader>
+					<CardContent>{renderGroup(group)}</CardContent>
+				</div>
+			))}
+		</Card>
+	);
+}
+
+/**
+ * The tiers as a choice: a buffered selection, what it would cost or spend of
+ * the plan's budget, and the bar that commits it.
  */
 function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 	const { brand: brandId } = Route.useParams();
@@ -122,21 +208,6 @@ function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 		}
 	};
 
-	if (picker.available.length === 0) {
-		return (
-			<Card>
-				<CardHeader>
-					<CardTitle>Tracked platforms</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<p className="text-sm text-muted-foreground">
-						No models are configured on this deployment. Set <code className="font-mono text-xs">SCRAPE_TARGETS</code>.
-					</p>
-				</CardContent>
-			</Card>
-		);
-	}
-
 	return (
 		<div className="space-y-4">
 			{/* Self-hosted only: the operator pays these bills, and the figure that
@@ -165,30 +236,18 @@ function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 				</div>
 			)}
 
-			{/* One card, divided: the tiers answer different questions but spend the
-			    same budget, and separate cards read as separate allowances. */}
-			<Card className="gap-0 py-0">
-				{groups.map((group, index) => (
-					// Same vertical rhythm a Card gives its own header and content, so
-					// every tier sits the same distance from its description as the
-					// premium card below does.
-					<div key={group.id} className={cn("flex flex-col gap-6 py-6", index > 0 && "border-t")}>
-						<CardHeader>
-							<CardTitle>{group.title}</CardTitle>
-							<CardDescription>{group.description}</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<PlatformPicker
-								options={group.options}
-								selected={selected}
-								onSelectedChange={setSelected}
-								limit={limit}
-								disabled={saving}
-							/>
-						</CardContent>
-					</div>
-				))}
-			</Card>
+			<PlatformTierCard
+				groups={groups}
+				renderGroup={(group) => (
+					<PlatformPicker
+						options={group.options}
+						selected={selected}
+						onSelectedChange={setSelected}
+						limit={limit}
+						disabled={saving}
+					/>
+				)}
+			/>
 
 			{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} brandId={brandId} />}
 
