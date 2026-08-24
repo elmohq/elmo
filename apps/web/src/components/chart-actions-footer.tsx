@@ -74,9 +74,11 @@ export function ChartActionsFooter({
 						<Button
 							onClick={onDownload}
 							disabled={isDownloading}
-							size="sm"
+							// No size variant: this button sets its own compact height and padding, and the
+							// size variants' has-[>svg] padding would outrank a plain px override.
+							size={null}
 							variant="secondary"
-							className="text-xs cursor-pointer h-6 gap-0 px-2!"
+							className="text-xs cursor-pointer h-6 gap-0 px-2"
 							title="Download chart as PNG"
 						>
 							<Download className="size-3 mr-0.5" />
