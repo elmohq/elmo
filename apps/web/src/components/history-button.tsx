@@ -21,15 +21,10 @@ export function HistoryButton({ brandId, promptName, promptId, tab }: HistoryBut
 			to="/app/$brand/prompts/$promptId"
 			params={{ brand: brandId, promptId }}
 			search={tab ? { tab } : undefined}
-			// No size variant: this button sets its own compact height and padding, and the
-			// size variants' has-[>svg] padding would outrank a plain px override.
-			className={cn(
-				buttonVariants({ variant: "secondary", size: null }),
-				"text-xs cursor-pointer h-6 gap-0 px-2",
-			)}
+			className={cn(buttonVariants({ variant: "secondary", size: "xs" }), "cursor-pointer")}
 		>
-			<GoStack className="size-3 mr-0.5" />
-			<span className="text-xs font-normal">View Details</span>
+			<GoStack className="size-3" />
+			<span>View Details</span>
 		</Link>
 	);
 }

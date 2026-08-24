@@ -74,15 +74,13 @@ export function ChartActionsFooter({
 						<Button
 							onClick={onDownload}
 							disabled={isDownloading}
-							// No size variant: this button sets its own compact height and padding, and the
-							// size variants' has-[>svg] padding would outrank a plain px override.
-							size={null}
+							size="xs"
 							variant="secondary"
-							className="text-xs cursor-pointer h-6 gap-0 px-2"
+							className="cursor-pointer"
 							title="Download chart as PNG"
 						>
-							<Download className="size-3 mr-0.5" />
-							<span className="text-xs font-normal">{isDownloading ? "Exporting..." : "Export (PNG)"}</span>
+							<Download className="size-3" />
+							<span>{isDownloading ? "Exporting..." : "Export (PNG)"}</span>
 						</Button>
 					)}
 				</div>
