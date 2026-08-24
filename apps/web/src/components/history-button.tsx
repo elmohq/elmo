@@ -23,7 +23,7 @@ export function HistoryButton({ brandId, promptName, promptId, tab }: HistoryBut
 			className={buttonVariants({
 				variant: "secondary",
 				size: "sm",
-				className: "text-xs cursor-pointer h-6 flex items-center px-2",
+				className: "text-xs cursor-pointer h-6 flex items-center gap-0 px-2",
 			})}
 		>
 			<GoStack className="size-3 mr-0.5" />
