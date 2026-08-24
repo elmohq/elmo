@@ -23,7 +23,7 @@ export function HistoryButton({ brandId, promptName, promptId, tab }: HistoryBut
 			search={tab ? { tab } : undefined}
 			className={cn(
 				buttonVariants({ variant: "secondary", size: "sm" }),
-				"text-xs cursor-pointer h-6 gap-0 px-2 has-[>svg]:px-2",
+				"text-xs cursor-pointer h-6 gap-0 px-2!",
 			)}
 		>
 			<GoStack className="size-3 mr-0.5" />
