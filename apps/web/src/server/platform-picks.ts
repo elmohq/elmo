@@ -22,6 +22,7 @@ import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess, requireOrgAccess } from "@/lib/auth/helpers";
+import { evaluatePlatformPicksEditable } from "@/lib/auth/policies";
 import { getDeployment } from "@/lib/config/server";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { addedPlatforms } from "@/lib/run-config-changes";
@@ -142,11 +143,18 @@ function optionsByModel(
 /**
  * Who owns the platform picks: the person looking, or whoever runs the
  * deployment for them. Read by the page to decide between a picker and a
- * report, and by the save path so the two can't disagree.
+ * report, and by every write path so the two can't disagree.
  */
 function picksAreEditable(): boolean {
 	const deployment = getDeployment();
-	return !deployment.features.readOnly && deployment.mode !== "whitelabel";
+	return evaluatePlatformPicksEditable(deployment.mode, deployment.features) === "allow";
+}
+
+/** The one refusal, so creation and editing reject picks the same way. */
+export function assertPlatformPicksEditable(): void {
+	if (!picksAreEditable()) {
+		throw new Error("Platform picks are set by whoever runs this deployment.");
+	}
 }
 
 /**
@@ -283,9 +291,7 @@ export const updateEnabledModelsFn = createServerFn({ method: "POST" })
 
 		// The page hides the picker in these modes; refusing here is what makes
 		// that a rule rather than a rendering decision.
-		if (!picksAreEditable()) {
-			throw new Error("Platform picks are set by whoever runs this deployment.");
-		}
+		assertPlatformPicksEditable();
 
 		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
 		if (!brand) throw new Error("Brand not found");

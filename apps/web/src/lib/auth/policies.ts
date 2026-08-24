@@ -9,7 +9,7 @@
  * to one of these functions, making it trivial to write regression tests.
  */
 import { timingSafeEqual } from "node:crypto";
-import type { FeaturesConfig } from "@workspace/config/types";
+import type { DeploymentMode, FeaturesConfig } from "@workspace/config/types";
 
 // ============================================================================
 // Deployment Request Policy
@@ -239,6 +239,20 @@ export function resolveBrandOrganization(
  */
 export function evaluateReadOnly(readOnly: boolean): "allow" | "deny" {
 	return readOnly ? "deny" : "allow";
+}
+
+/**
+ * Evaluate whether the viewer chooses which platforms a brand is tracked on.
+ *
+ * Not a plan question — cloud sells the choice and local runs it, so both keep
+ * it. Demo refuses every write, and in whitelabel the picks, and the provider
+ * bills behind them, belong to the agency rather than the customer looking at
+ * the page. Entitlements can't answer this: they read "unlimited" for local,
+ * demo and whitelabel alike.
+ */
+export function evaluatePlatformPicksEditable(mode: DeploymentMode, features: FeaturesConfig): "allow" | "deny" {
+	if (features.readOnly) return "deny";
+	return mode === "whitelabel" ? "deny" : "allow";
 }
 
 /**

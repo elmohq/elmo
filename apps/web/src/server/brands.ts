@@ -31,6 +31,7 @@ import { validateWebsiteUrl } from "@/lib/brand-website";
 import { getDeployment } from "@/lib/config/server";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { type TrackedTarget, targetFilterValue } from "@/lib/model-filter";
+import { assertPlatformPicksEditable } from "@/server/platform-picks";
 
 const BRAND_ORG_ERRORS = {
 	"no-organization": "No organization for the current user",
@@ -118,14 +119,19 @@ async function initialEnabledModels(organizationId: string): Promise<string[] | 
 
 /**
  * Picks supplied at creation time go through the same checks as a
- * post-creation edit: the loud configured-target validation plus plan
- * enforcement. Without picks, creation falls back to the plan defaults.
+ * post-creation edit: whether this deployment lets the viewer choose at all,
+ * the loud configured-target validation, then plan enforcement. Without picks,
+ * creation falls back to the plan defaults.
  */
 async function resolveCreateEnabledModels(
 	organizationId: string,
 	requested: string[] | undefined,
 ): Promise<string[] | null> {
 	if (!requested || requested.length === 0) return initialEnabledModels(organizationId);
+	// Picks arriving with a new brand are the same permission as picks edited
+	// later, so they answer to the same gate — a deployment where the customer
+	// does not choose its platforms must not let creation choose them either.
+	assertPlatformPicksEditable();
 	const models = [...new Set(requested)];
 	selectTargetsForBrand(parseScrapeTargets(process.env.SCRAPE_TARGETS), models);
 	await assertEnabledModelsAllowed(organizationId, models);
