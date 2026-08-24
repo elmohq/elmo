@@ -76,7 +76,7 @@ export function ChartActionsFooter({
 							disabled={isDownloading}
 							size="sm"
 							variant="secondary"
-							className="text-xs cursor-pointer h-6 flex items-center px-2"
+							className="text-xs cursor-pointer h-6 gap-0 px-2 has-[>svg]:px-2"
 							title="Download chart as PNG"
 						>
 							<Download className="size-3 mr-0.5" />
