@@ -4,7 +4,7 @@
  * Decorative by design — every surface renders the name alongside it, so the
  * mark carries no information a screen reader would otherwise miss.
  */
-import { IconBuilding } from "@tabler/icons-react";
+import { IconWorld } from "@tabler/icons-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import { cn } from "@workspace/ui/lib/utils";
 import { faviconUrl } from "@/lib/brand-logo";
@@ -51,7 +51,7 @@ export function BrandLogo({
 			    row of a table and then swapping it for an icon. Nothing to wait
 			    for without a `src`, so those fall back at once. */}
 			<AvatarFallback delay={src ? 300 : 0} className="rounded-[inherit] bg-muted text-muted-foreground">
-				<IconBuilding className={glyph} />
+				<IconWorld className={glyph} />
 			</AvatarFallback>
 		</Avatar>
 	);
