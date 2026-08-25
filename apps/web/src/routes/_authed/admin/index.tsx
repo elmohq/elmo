@@ -597,7 +597,7 @@ function AdminDashboard() {
 										<TableRow key={brand.id}>
 											<TableCell className="font-medium">
 												<div className="flex items-center gap-2">
-													<BrandLogo name={brand.name} domain={brand.website} size="lg" />
+													<BrandLogo domain={brand.website} size="lg" />
 													<div className="space-y-1 min-w-0">
 														<Link
 															to="/app/$brand"

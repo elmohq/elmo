@@ -108,7 +108,7 @@ function BrandSwitcherPage() {
 								params={{ brand: brand.id }}
 								className={buttonVariants({ variant: "secondary" })}
 							>
-								<BrandLogo name={brand.name} domain={brand.website} size="md" />
+								<BrandLogo domain={brand.website} size="md" />
 								{brand.name}
 							</Link>
 						))}

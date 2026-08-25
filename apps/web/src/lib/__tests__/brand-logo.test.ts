@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildBrandDomainIndex, domainForName, faviconUrl, logoInitials } from "@/lib/brand-logo";
+import { buildBrandDomainIndex, domainForName, faviconUrl } from "@/lib/brand-logo";
 
 describe("faviconUrl", () => {
 	it("asks the icon service for the site behind a bare domain", () => {
@@ -22,26 +22,6 @@ describe("faviconUrl", () => {
 		expect(faviconUrl("")).toBeNull();
 		expect(faviconUrl(null)).toBeNull();
 		expect(faviconUrl("not a domain")).toBeNull();
-	});
-});
-
-describe("logoInitials", () => {
-	it("takes one letter from each of the first two words", () => {
-		expect(logoInitials("Coca Cola")).toBe("CC");
-		expect(logoInitials("The New York Times")).toBe("TN");
-	});
-
-	it("takes two letters from a single word", () => {
-		expect(logoInitials("Nike")).toBe("NI");
-	});
-
-	it("reads a domain as one word", () => {
-		expect(logoInitials("nytimes.com")).toBe("NY");
-	});
-
-	it("falls back to a placeholder when there are no letters", () => {
-		expect(logoInitials("")).toBe("?");
-		expect(logoInitials("  ")).toBe("?");
 	});
 });
 

@@ -66,7 +66,7 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 			{competitors.map((competitor, index) => (
 				<div key={competitor._key} className="border rounded-lg overflow-hidden">
 					<div className="flex items-center gap-3 p-3">
-						<BrandLogo name={competitor.name || "?"} domain={competitor.domains.find(Boolean)} size="lg" />
+						<BrandLogo domain={competitor.domains.find(Boolean)} size="lg" />
 						<div className="flex-1 min-w-0">
 							{competitor.name ? (
 								<span className="text-sm font-medium">{competitor.name}</span>

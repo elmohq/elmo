@@ -114,7 +114,7 @@ function BrandSettingsPage() {
 	return (
 		<div className="space-y-6 max-w-2xl">
 			<div className="flex items-center gap-3">
-				<BrandLogo name={brand.name} domain={brand.website} size="lg" className="size-10" />
+				<BrandLogo domain={brand.website} size="lg" className="size-10" />
 				<div>
 					<h1 className="text-3xl font-bold">Brand</h1>
 					<p className="text-muted-foreground">Manage your brand name and website</p>

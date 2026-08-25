@@ -435,7 +435,7 @@ function MentionsTab({
 					items={mentionStats.map((stat) => ({
 						label: stat.name,
 						count: stat.count,
-						icon: <BrandLogo name={stat.name} domain={domainFor(stat.name)} size="md" />,
+						icon: <BrandLogo domain={domainFor(stat.name)} size="md" />,
 					}))}
 					defaultColor="#3b82f6"
 					customTotal={totalRuns || 1}
@@ -666,13 +666,13 @@ function ResponsesTab({
 							<div className="flex flex-wrap gap-1.5">
 								{run.brandMentioned && brandName && (
 									<Badge className="text-xs font-normal">
-										<BrandLogo name={brandName} domain={domainFor(brandName)} size="xs" />
+										<BrandLogo domain={domainFor(brandName)} size="xs" />
 										{brandName}
 									</Badge>
 								)}
 								{run.competitorsMentioned?.map((competitor: string, cIndex: number) => (
 									<Badge key={cIndex} variant="outline" className="text-xs font-normal">
-										<BrandLogo name={competitor} domain={domainFor(competitor)} size="xs" />
+										<BrandLogo domain={domainFor(competitor)} size="xs" />
 										{competitor}
 									</Badge>
 								))}

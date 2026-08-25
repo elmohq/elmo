@@ -121,9 +121,9 @@ function BrandBreadcrumbs({
 	return (
 		<>
 			<BreadcrumbItem className="hidden md:flex md:items-center md:gap-1.5">
-				{/* Held back until the brand loads — the placeholder would otherwise
-				    spell out the "Dashboard" stand-in name. */}
-				{brandWebsite && <BrandLogo name={brandName} domain={brandWebsite} size="sm" />}
+				{/* Held back until the brand loads: there is nothing to mark while
+				    the name is still the "Dashboard" stand-in. */}
+				{brandWebsite && <BrandLogo domain={brandWebsite} size="sm" />}
 				<BreadcrumbLink render={brandId ? <Link to="/app/$brand" params={{ brand: brandId }} /> : <span />}>
 					{brandName}
 				</BreadcrumbLink>

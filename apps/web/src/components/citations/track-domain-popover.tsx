@@ -148,7 +148,7 @@ export function TrackDomainPopover({
 										disabled={saving}
 										className="flex w-full items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
 									>
-										<BrandLogo name={c.name} domain={c.domains.find(Boolean)} size="sm" />
+										<BrandLogo domain={c.domains.find(Boolean)} size="sm" />
 										{c.name}
 									</button>
 								))}

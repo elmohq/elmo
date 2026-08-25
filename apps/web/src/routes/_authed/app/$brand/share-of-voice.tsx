@@ -173,7 +173,7 @@ function ShareOfVoicePage() {
 										<TableCell className="text-muted-foreground tabular-nums">{i + 1}</TableCell>
 										<TableCell className="font-medium">
 											<span className="inline-flex items-center gap-2">
-												<BrandLogo name={e.name} domain={domainFor(e.name)} size="md" />
+												<BrandLogo domain={domainFor(e.name)} size="md" />
 												{e.name}
 												{e.isBrand && (
 													<Badge variant="secondary" className="text-xs">

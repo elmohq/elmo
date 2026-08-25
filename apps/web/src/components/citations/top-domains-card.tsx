@@ -101,7 +101,7 @@ export function TopDomainsCard({
 							items={pageItems.map((domain) => ({
 								label: domain.domain,
 								count: domain.count,
-								icon: <BrandLogo name={domain.domain} domain={domain.domain} size="md" />,
+								icon: <BrandLogo domain={domain.domain} size="md" />,
 								category: domain.category || "other",
 								action:
 									domain.category === "other" && brandId && competitors ? (

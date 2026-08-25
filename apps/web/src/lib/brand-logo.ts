@@ -19,10 +19,10 @@ function snapSize(size: number): number {
 /**
  * Icon URL for a domain or website URL, or null when there's no usable domain.
  *
- * `fallback_opts` asks the service for a generic mark instead of a 404 when a
- * site has no icon of its own, so a failed load here means the request itself
- * failed (offline, blocked by an extension) — that's what `BrandLogo`'s
- * initials cover.
+ * A site the service has no icon for answers 404 (with a generic mark as the
+ * body, which browsers discard), so both "no icon" and "request failed" reach
+ * the image's error path — that single path is what `BrandLogo`'s fallback
+ * glyph covers.
  */
 export function faviconUrl(source: string | null | undefined, size = 64): string | null {
 	const domain = source ? cleanAndValidateDomain(source) : null;
@@ -36,19 +36,6 @@ export function faviconUrl(source: string | null | undefined, size = 64): string
 		size: String(snapSize(size)),
 	});
 	return `${FAVICON_ENDPOINT}?${params.toString()}`;
-}
-
-/** Up to two letters standing in for a logo that couldn't load. */
-export function logoInitials(name: string | null | undefined): string {
-	const words = (name ?? "")
-		// A dot is not a separator: "nytimes.com" should read NY, not NC.
-		.split(/[\s_/-]+/)
-		.map((w) => w.replace(/[^\p{L}\p{N}]/gu, ""))
-		.filter(Boolean);
-
-	if (words.length === 0) return "?";
-	if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-	return (words[0][0] + words[1][0]).toUpperCase();
 }
 
 export interface BrandLogoSubject {

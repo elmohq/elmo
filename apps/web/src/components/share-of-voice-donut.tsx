@@ -73,7 +73,7 @@ export function ShareOfVoiceDonut({
 						const s = payload[0].payload as Slice;
 						return (
 							<div className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs shadow-md">
-								{s.name !== "Others" && <BrandLogo name={s.name} domain={s.domain} size="xs" />}
+								{s.name !== "Others" && <BrandLogo domain={s.domain} size="xs" />}
 								<span>
 									{s.name}: {Math.round((s.value / total) * 100)}%
 								</span>
