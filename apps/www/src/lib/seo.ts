@@ -82,6 +82,8 @@ export function organizationJsonLd() {
 		sameAs: [
 			"https://github.com/elmohq/elmo",
 			"https://hub.docker.com/u/elmohq",
+			"https://www.npmjs.com/package/@elmohq/cli",
+			"https://stackshare.io/elmo-mp4ocwtq",
 			"https://x.com/tryelmo",
 			"https://www.linkedin.com/company/elmohq",
 			"https://discord.gg/s24nubCtKz",
@@ -89,6 +91,9 @@ export function organizationJsonLd() {
 			"https://www.crunchbase.com/organization/elmo-14db",
 			"https://www.g2.com/products/blue-whale-software-llc-elmo/reviews",
 			"https://alternativeto.net/software/elmo/",
+			"https://www.saashub.com/elmohq",
+			"https://peerpush.com/p/elmo",
+			"https://devhunt.org/tool/elmo",
 		],
 		parentOrganization: {
 			"@type": "Organization",
