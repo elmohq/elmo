@@ -198,7 +198,6 @@ function PromptHeader({
 	);
 }
 
-/** Ids for `count` placeholder rows; they exist only to key them. */
 function skeletonRows(count: number): string[] {
 	return Array.from({ length: count }, (_, index) => `row-${index}`);
 }
