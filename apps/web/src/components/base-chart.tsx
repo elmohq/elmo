@@ -50,6 +50,7 @@ function SeriesLegend({
 	onPin: (key: string | null) => void;
 }) {
 	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: clears hover highlighting on the way out; the legend's own buttons carry the interaction
 		<div
 			className="flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-2"
 			onMouseLeave={() => onHover(null)}

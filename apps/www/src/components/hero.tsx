@@ -17,6 +17,7 @@ const MUX_PLAYER_STYLES = `
 function DemoVideo() {
 	return (
 		<div className="overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg shadow-blue-600/10">
+			{/* biome-ignore lint/security/noDangerouslySetInnerHtml: a static stylesheet constant in this file — mux-player exposes its internals only through ::part selectors */}
 			<style dangerouslySetInnerHTML={{ __html: MUX_PLAYER_STYLES }} />
 			<MuxPlayer
 				playbackId="PYV9FNIG008vlkchyQf9KMTxDt028zQdshaM4VLC6lS1Q"

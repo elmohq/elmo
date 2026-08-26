@@ -122,6 +122,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 										<div className="min-w-0 flex-1">
 											<span
 												className="block truncate font-medium [&_mark]:bg-primary/20 [&_mark]:text-foreground [&_mark]:rounded-sm [&_mark]:px-0.5"
+												// biome-ignore lint/security/noDangerouslySetInnerHtml: the search index's own <mark> highlighting over first-party docs content, which is the point of showing it
 												dangerouslySetInnerHTML={{
 													__html: String(result.content),
 												}}
