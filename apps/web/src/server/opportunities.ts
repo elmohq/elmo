@@ -520,31 +520,47 @@ function distinctBy<T>(items: T[], key: (item: T) => string): T[] {
 	});
 }
 
+const normalizeText = (text: string) => text.trim().toLowerCase();
+
 /**
- * Resolve the LLM output's prompt strings to tracked IDs (for deep-linking) and
- * attach each opportunity's cited pages split into the brand's vs competitors'.
+ * Keep the first mention in every list the report renders.
  *
  * Nothing constrains the model from repeating itself, and a report that lists
- * the same bullet, caveat, opportunity or prompt twice is telling the reader
- * something untrue about how much it found — so each list keeps first mentions.
+ * the same bullet, caveat, opportunity or prompt twice tells the reader
+ * something untrue about how much it found. Applied to stored reports as well
+ * as fresh ones: the table holds reports written before this existed, and they
+ * are served for up to REFRESH_AFTER_DAYS.
  */
+export function withoutRepeats(report: OpportunitiesReport): OpportunitiesReport {
+	return {
+		...report,
+		summary: distinctBy(report.summary, normalizeText),
+		risks: distinctBy(report.risks, normalizeText),
+		opportunities: distinctBy(report.opportunities, (o) => normalizeText(o.title)).map((o) => ({
+			...o,
+			relatedPrompts: distinctBy(o.relatedPrompts, (p) => normalizeText(p.text)),
+			yourCitations: distinctBy(o.yourCitations, (c) => c.url),
+			competitorCitations: distinctBy(o.competitorCitations, (c) => c.url),
+		})),
+	};
+}
+
+/** Resolve the LLM output's prompt strings to tracked IDs (for deep-linking) and
+ * attach each opportunity's cited pages split into the brand's vs competitors'. */
 function enrichReport(raw: RawReport, digest: Digest): OpportunitiesReport {
 	const idByText = new Map(digest.prompts.map((p) => [p.value.trim().toLowerCase(), p.id]));
-	const normalize = (text: string) => text.trim().toLowerCase();
 
-	return {
+	return withoutRepeats({
 		...raw,
-		summary: distinctBy(raw.summary, normalize),
-		risks: distinctBy(raw.risks, normalize),
-		opportunities: distinctBy(raw.opportunities, (o) => normalize(o.title)).map((o) => {
-			const relatedPrompts: ReportPrompt[] = distinctBy(o.relatedPrompts, normalize).map((text) => ({
+		opportunities: raw.opportunities.map((o) => {
+			const relatedPrompts: ReportPrompt[] = o.relatedPrompts.map((text) => ({
 				text,
-				promptId: idByText.get(normalize(text)) ?? null,
+				promptId: idByText.get(normalizeText(text)) ?? null,
 			}));
 			const ids = relatedPrompts.map((p) => p.promptId).filter((id): id is string => id !== null);
 			return { ...o, relatedPrompts, ...citationsForPrompts(ids, digest.citationsByPrompt) };
 		}),
-	};
+	});
 }
 
 /** Generate the report, retrying until the model's output satisfies the schema.
@@ -584,13 +600,23 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" })
 		const lastEvaluatedAt = latest?.createdAt.toISOString() ?? null;
 		const isFresh = latest && Date.now() - new Date(latest.createdAt).getTime() < REFRESH_AFTER_DAYS * 86_400_000;
 		if (latest && isFresh) {
-			return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
+			return {
+				report: withoutRepeats(latest.report as OpportunitiesReport),
+				reason: null,
+				generatedFor: null,
+				lastEvaluatedAt,
+			};
 		}
 
 		const digest = await buildDigest(data.brandId, data.timezone);
 		if (!digest) {
 			if (latest)
-				return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
+				return {
+					report: withoutRepeats(latest.report as OpportunitiesReport),
+					reason: null,
+					generatedFor: null,
+					lastEvaluatedAt,
+				};
 			return { report: null, reason: "insufficient-data", generatedFor: null, lastEvaluatedAt };
 		}
 
@@ -599,7 +625,12 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" })
 		if (!generated) {
 			// Couldn't get a schema-valid report — serve the last good one if we have it.
 			if (latest)
-				return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
+				return {
+					report: withoutRepeats(latest.report as OpportunitiesReport),
+					reason: null,
+					generatedFor: null,
+					lastEvaluatedAt,
+				};
 			throw new Error("Failed to generate a valid opportunities report");
 		}
 
