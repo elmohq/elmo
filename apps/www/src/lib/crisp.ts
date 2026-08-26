@@ -15,12 +15,12 @@ declare global {
 }
 
 const CRISP_SCRIPT_URL = "https://client.crisp.chat/l.js";
-const CRISP_WEBSITE_ID = "2f79a110-4e29-41a8-b45d-4993df6ff487";
+const CRISP_WEBSITE_ID = import.meta.env.VITE_CRISP_WEBSITE_ID;
 
 let initialized = false;
 
 export function initCrisp(): void {
-	if (initialized || typeof window === "undefined") return;
+	if (initialized || typeof window === "undefined" || !CRISP_WEBSITE_ID) return;
 	initialized = true;
 
 	window.$crisp = [];

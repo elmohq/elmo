@@ -4,4 +4,4 @@
 "@workspace/config": patch
 ---
 
-Adds a support chat widget to the marketing site and to Elmo Cloud and the demo, with the demo offering a guided walkthrough booking link.
+Adds a support chat widget to Elmo Cloud and the hosted demo, where the demo offers a guided walkthrough booking link. Self-hosted and whitelabel deployments do not load it.
