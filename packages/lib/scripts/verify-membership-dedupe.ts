@@ -57,8 +57,8 @@ async function main(): Promise<void> {
 	const client = new Client({ connectionString: DATABASE_URL });
 	await client.connect();
 	try {
-		await client.query(`DELETE FROM member WHERE organization_id = $1`, [ORG]);
-		await client.query(`DELETE FROM organization WHERE id = $1`, [ORG]);
+		await client.query("DELETE FROM member WHERE organization_id = $1", [ORG]);
+		await client.query("DELETE FROM organization WHERE id = $1", [ORG]);
 		await client.query(`DELETE FROM "user" WHERE id = $1`, [USER]);
 		await client.query(
 			`INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'Dedupe Verify', $1, NOW())`,
@@ -87,7 +87,7 @@ async function main(): Promise<void> {
 			await client.query(stmt);
 		}
 
-		const { rows } = await client.query(`SELECT id FROM member WHERE organization_id = $1 AND user_id = $2`, [
+		const { rows } = await client.query("SELECT id FROM member WHERE organization_id = $1 AND user_id = $2", [
 			ORG,
 			USER,
 		]);
@@ -106,8 +106,8 @@ async function main(): Promise<void> {
 		}
 		assert(rejected, "unique index rejects a subsequent duplicate membership");
 
-		await client.query(`DELETE FROM member WHERE organization_id = $1`, [ORG]);
-		await client.query(`DELETE FROM organization WHERE id = $1`, [ORG]);
+		await client.query("DELETE FROM member WHERE organization_id = $1", [ORG]);
+		await client.query("DELETE FROM organization WHERE id = $1", [ORG]);
 		await client.query(`DELETE FROM "user" WHERE id = $1`, [USER]);
 	} finally {
 		await client.end();
