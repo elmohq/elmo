@@ -67,8 +67,8 @@ describe("signup allowlist", () => {
 	async function signUp(email: string, allowlist: string) {
 		vi.stubEnv("CLOUD_SIGNUP_ALLOWLIST", allowlist);
 		const createBefore = getCloudAuthOptions().databaseHooks?.user?.create?.before;
-		if (!before) throw new Error("expected a user.create.before hook");
-		return before(makeUser(email), null);
+		if (!createBefore) throw new Error("expected a user.create.before hook");
+		return createBefore(makeUser(email), null);
 	}
 
 	it("denies everyone when the allowlist is unset", async () => {
