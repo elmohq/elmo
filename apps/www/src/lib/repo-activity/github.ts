@@ -170,6 +170,31 @@ async function fetchAreaLabels(token: string | undefined): Promise<LabelSlice[]>
 	return slices.filter((s) => s.count > 0).sort((a, b) => b.count - a.count);
 }
 
+/** Which commit-chart week each release lands in, so the chart can mark them. */
+function releaseWeekBuckets(releases: RawRelease[], commitsByWeek: WeekPoint[]): number[] {
+	const weekStarts = commitsByWeek.map((point) => point.week);
+	const buckets = new Set<number>();
+
+	for (const release of releases) {
+		const seconds = Math.floor(Date.parse(release.published_at as string) / 1000);
+		const week = [...weekStarts].reverse().find((start) => seconds >= start);
+		if (week !== undefined && seconds < week + WEEK_SECONDS) buckets.add(week);
+	}
+	return [...buckets];
+}
+
+/** The most active human contributors, with their avatars inlined. */
+async function topContributorsWithAvatars(humans: RawContributor[]): Promise<RepoContributor[]> {
+	const top = humans.slice(0, MAX_CONTRIB_AVATARS);
+	const avatarUris = await Promise.all(top.map((contributor) => fetchAvatar(contributor.avatar_url)));
+	return top.map((contributor, index) => ({
+		login: contributor.login,
+		htmlUrl: contributor.html_url,
+		contributions: contributor.contributions,
+		avatarDataUri: avatarUris[index],
+	}));
+}
+
 export async function fetchRepoActivityData(opts: { token?: string } = {}): Promise<RepoActivityData> {
 	const token = opts.token ?? process.env.GITHUB_TOKEN;
 	const now = new Date();
@@ -223,30 +248,11 @@ export async function fetchRepoActivityData(opts: { token?: string } = {}): Prom
 		? { tag: latest.tag_name, date: latest.published_at as string, prerelease: latest.prerelease }
 		: null;
 
-	// Map each release onto the commit-chart week bucket it falls in, for markers.
-	const weekStarts = commitsByWeek.map((p) => p.week);
-	const releaseWeekSet = new Set<number>();
-	for (const release of releases) {
-		const ts = Math.floor(Date.parse(release.published_at as string) / 1000);
-		for (let i = weekStarts.length - 1; i >= 0; i--) {
-			if (ts >= weekStarts[i]) {
-				if (ts < weekStarts[i] + WEEK_SECONDS) releaseWeekSet.add(weekStarts[i]);
-				break;
-			}
-		}
-	}
-
+	const releaseWeeks = releaseWeekBuckets(releases, commitsByWeek);
 	const humans = contributorsRaw
 		.filter((c) => !isBot(c.login, c.type))
 		.sort((a, b) => b.contributions - a.contributions);
-	const top = humans.slice(0, MAX_CONTRIB_AVATARS);
-	const avatarUris = await Promise.all(top.map((c) => fetchAvatar(c.avatar_url)));
-	const contributors: RepoContributor[] = top.map((c, i) => ({
-		login: c.login,
-		htmlUrl: c.html_url,
-		contributions: c.contributions,
-		avatarDataUri: avatarUris[i],
-	}));
+	const contributors = await topContributorsWithAvatars(humans);
 
 	// Fallback for the commit KPI if the commit search is unavailable (e.g. no
 	// token): sum the whole weeks inside the window from commit_activity.
@@ -266,7 +272,7 @@ export async function fetchRepoActivityData(opts: { token?: string } = {}): Prom
 		pushedAt: repo?.pushed_at ?? "",
 		commitsByWeek,
 		churnByWeek,
-		releaseWeeks: [...releaseWeekSet],
+		releaseWeeks,
 		kpis: {
 			commits: commitCount ?? commitsFromWeeks,
 			prsMerged: prsMerged ?? 0,
