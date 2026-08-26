@@ -5,7 +5,7 @@
  * Displays onboarding wizard if brand is not yet onboarded.
  */
 import { type ReactNode, useEffect } from "react";
-import { describeTargetSchedule, labelForModelFilter } from "@/lib/model-filter";
+import { describeTargetSchedule, labelForModelFilter, type TrackedTarget } from "@/lib/model-filter";
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import {
@@ -22,7 +22,7 @@ import PromptWizard from "@/components/prompt-wizard";
 import { useBrand } from "@/hooks/use-brands";
 import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
-import { TrendChart } from "@/components/trend-chart";
+import { TrendChart, type TrendPoint } from "@/components/trend-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -133,17 +133,259 @@ function CardTitleWithTooltip({
 	className = "",
 }: {
 	title: string;
-	tooltip: string;
+	/** Absent while the figures it would quote are still loading. */
+	tooltip?: string;
 	className?: string;
 }) {
 	return (
 		<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${className}`}>
 			{title}
-			<Tooltip>
-				<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
-				<TooltipContent className="max-w-xs text-sm font-normal">{tooltip}</TooltipContent>
-			</Tooltip>
+			{tooltip ? (
+				<Tooltip>
+					<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
+					<TooltipContent className="max-w-xs text-sm font-normal">{tooltip}</TooltipContent>
+				</Tooltip>
+			) : (
+				<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
+			)}
 		</CardTitle>
+	);
+}
+
+/**
+ * One dashboard band: the headline number beside the 30-day line it is the
+ * latest point of. Renders its own skeletons, so the loading dashboard is the
+ * same tree as the loaded one rather than a second copy of this markup.
+ */
+function TrendSection({
+	icon: Icon,
+	title,
+	linkTo,
+	linkLabel,
+	brandId,
+	chartTitle,
+	chartLabel,
+	tooltip,
+	value,
+	series,
+	loading,
+}: {
+	icon: typeof IconEye;
+	title: string;
+	linkTo: "/app/$brand/visibility" | "/app/$brand/share-of-voice";
+	linkLabel: string;
+	brandId: string;
+	chartTitle: string;
+	chartLabel: string;
+	tooltip?: string;
+	value: number | null;
+	series: TrendPoint[];
+	loading: boolean;
+}) {
+	const heroTone = value === null ? "" : `${getVisibilityBgColor(value)} ${getVisibilityBorderColor(value)}`;
+	return (
+		<section className="space-y-2">
+			<div className="flex items-center justify-between">
+				<h2 className="text-lg font-semibold flex items-center gap-2">
+					<Icon className="h-5 w-5 text-muted-foreground" />
+					{title}
+				</h2>
+				<Link
+					to={linkTo}
+					params={{ brand: brandId }}
+					className={buttonVariants({ variant: "ghost", size: "sm", className: "h-8" })}
+				>
+					{linkLabel} <IconArrowRight className="h-4 w-4 ml-1" />
+				</Link>
+			</div>
+
+			<div className="grid gap-4 lg:grid-cols-4">
+				<Card className={`shadow-none flex flex-col gap-3 py-4 ${heroTone}`}>
+					<HeroStat value={value} loading={loading} />
+				</Card>
+				<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
+					<CardHeader className="border-b border-dotted pb-2!">
+						<CardTitleWithTooltip title={chartTitle} tooltip={tooltip} />
+					</CardHeader>
+					<CardContent className="flex-1 min-h-[100px]">
+						{loading ? (
+							<Skeleton className="h-full w-full" />
+						) : (
+							<TrendChart data={series} label={chartLabel} color="#2563eb" />
+						)}
+					</CardContent>
+				</Card>
+			</div>
+		</section>
+	);
+}
+
+/** The dashboard's footer figures, each with the caveat behind it on hover. */
+function TrackingStats({
+	loading,
+	totalPrompts,
+	totalRuns,
+	lastUpdatedAt,
+	delayHours,
+	trackedTargets,
+}: {
+	loading: boolean;
+	totalPrompts: number;
+	totalRuns: number;
+	lastUpdatedAt: string | null;
+	delayHours: number;
+	trackedTargets: TrackedTarget[];
+}) {
+	if (loading) {
+		return (
+			<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
+				{[IconList, IconActivity, IconClock, IconRefresh].map((Icon, index) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: fixed-length placeholder row
+					<div key={index} className="flex items-center gap-2">
+						<Icon className="h-4 w-4 flex-shrink-0" />
+						<Skeleton className="h-4 w-28" />
+					</div>
+				))}
+			</div>
+		);
+	}
+
+	return (
+		<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
+			<StatWithTooltip
+				icon={IconList}
+				label="prompts tracked"
+				value={totalPrompts.toLocaleString()}
+				tooltip={
+					trackedTargets.length > 0 ? (
+						<>
+							<p>Prompts monitored for AI visibility, each evaluated on:</p>
+							<ul className="mt-1 space-y-0.5">
+								{trackedTargets.map((target) => (
+									<li key={target.value}>{labelForModelFilter(target.value)}</li>
+								))}
+							</ul>
+						</>
+					) : (
+						"Prompts monitored for AI visibility. No platforms are configured for this brand yet."
+					)
+				}
+			/>
+			<StatWithTooltip
+				icon={IconActivity}
+				label="evaluations (30d)"
+				value={totalRuns.toLocaleString()}
+				tooltip="Total number of times we have evaluated prompts against LLMs in the last 30 days. Each prompt is evaluated multiple times across different AI models."
+			/>
+			<StatWithTooltip
+				icon={IconClock}
+				label="run frequency"
+				value={formatRunFrequency(delayHours)}
+				tooltip={
+					trackedTargets.length > 0 ? (
+						<>
+							{/* One rate for the brand is a summary, not the truth: a
+							    grounded call samples far less often than a scraped one,
+							    and self-hosted repeats every sample. */}
+							<p>How often each platform is sampled:</p>
+							<ul className="mt-1 space-y-0.5">
+								{trackedTargets.map((target) => (
+									<li key={target.value}>{describeTargetSchedule(target)}</li>
+								))}
+							</ul>
+						</>
+					) : (
+						"No platforms are configured for this brand yet."
+					)
+				}
+			/>
+			<StatWithTooltip
+				icon={IconRefresh}
+				label="last updated"
+				value={formatRelativeTime(lastUpdatedAt)}
+				tooltip={
+					lastUpdatedAt
+						? `The last prompts we evaluated for your brand were run on ${new Date(lastUpdatedAt).toLocaleString()}`
+						: "No evaluations have been run yet."
+				}
+			/>
+		</div>
+	);
+}
+
+/**
+ * Shown until the first evaluation lands. What to do next depends on whether
+ * any prompt is configured, and whether any of them are enabled.
+ */
+function AwaitingFirstEvaluation({
+	brandId,
+	totalPrompts,
+	hasPrompts,
+}: {
+	brandId: string;
+	totalPrompts: number;
+	hasPrompts: boolean;
+}) {
+	const hasEnabledPrompts = totalPrompts > 0;
+	const message = hasEnabledPrompts
+		? "You are ready to track your AI visibility. We're currently running the first evaluation against AI models. This usually takes a few minutes."
+		: hasPrompts
+			? "You have prompts configured but none are currently enabled. Add or enable some prompts to start tracking your AI visibility."
+			: "Set up prompts to start tracking your AI visibility. Once configured, we'll evaluate them against AI models automatically.";
+
+	return (
+		<div className="flex flex-1 flex-col items-center justify-center p-8 max-w-xl mx-auto text-center">
+			<div className="rounded-full bg-muted p-4 mb-6">
+				<IconClock className="h-10 w-10 text-muted-foreground" />
+			</div>
+			<h2 className="text-2xl font-bold mb-3">{hasEnabledPrompts ? "Waiting for First Evaluation" : "No Data Yet"}</h2>
+			<p className="text-muted-foreground mb-6 text-balance">{message}</p>
+			<div className="flex flex-col gap-3 w-full">
+				{hasEnabledPrompts && (
+					<div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+						<div className="flex items-center gap-2">
+							<IconList className="h-5 w-5 text-muted-foreground" />
+							<span className="text-sm">Prompts configured and enabled</span>
+						</div>
+						<span className="font-semibold">{totalPrompts.toLocaleString()}</span>
+					</div>
+				)}
+				<Link
+					to="/app/$brand/settings/prompts"
+					params={{ brand: brandId }}
+					className={buttonVariants({ variant: "outline", className: "w-full" })}
+				>
+					{hasEnabledPrompts ? "View Your Prompts" : hasPrompts ? "Edit Prompts" : "Set Up Prompts"}{" "}
+					<IconArrowRight className="h-4 w-4 ml-1" />
+				</Link>
+			</div>
+			{hasEnabledPrompts && (
+				<p className="text-xs text-muted-foreground mt-6">
+					Refresh this page in a few minutes to see your AI visibility data.
+				</p>
+			)}
+		</div>
+	);
+}
+
+/** The research wizard, shown until a brand has been analyzed. */
+function ResearchBrandData({ brandId, clientConfig }: { brandId: string; clientConfig?: ClientConfig }) {
+	return (
+		<div className="space-y-6 max-w-2xl p-4">
+			<div className="space-y-2">
+				<h2 className="text-2xl font-bold">Research Brand Data</h2>
+				<p className="text-muted-foreground text-balance">
+					We will analyze your website and find the best generative AI prompts to track. This process may take a couple
+					of minutes.
+				</p>
+			</div>
+			<PromptWizard
+				onComplete={() => {
+					const template = clientConfig?.branding.onboardingRedirectUrlTemplate;
+					if (template) window.location.href = template.replace("{brandId}", brandId);
+				}}
+			/>
+		</div>
 	);
 }
 
@@ -171,377 +413,84 @@ function DashboardPage() {
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
 
-	const isLoading = isLoadingBrand || isLoadingSummary;
-
 	useEffect(() => {
 		if (dashboardSummary?.totalPrompts != null) {
 			setPersonProperties({ active_prompt_count: dashboardSummary.totalPrompts });
 		}
 	}, [dashboardSummary?.totalPrompts]);
 
-	const visibilityTimeSeries = dashboardSummary?.visibilityTimeSeries || [];
-
-	// "Current" = the latest plotted point of each trend, so the hero number always
-	// matches the right end of the chart beside it (rather than the whole-window average).
-	const currentVisibility = lastValue(visibilityTimeSeries, "overall");
-	const sovShare = lastValue(sovData?.shareTimeSeries ?? [], "share");
-
-	if (isLoadingBrand) {
-		return (
-			<div className="flex flex-1 flex-col">
-				<div className="m-auto flex w-full max-w-[1600px] flex-col gap-3 p-4">
-					{/* AI Visibility section skeleton */}
-					<section className="space-y-2">
-						<div className="flex items-center justify-between">
-							<h2 className="text-lg font-semibold flex items-center gap-2">
-								<IconEye className="h-5 w-5 text-muted-foreground" />
-								AI Visibility
-							</h2>
-							<Link
-								to="/app/$brand/visibility"
-								params={{ brand: brandId }}
-								className={buttonVariants({ variant: "ghost", size: "sm", className: "h-8" })}
-							>
-								View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
-							</Link>
-						</div>
-						<div className="grid gap-4 lg:grid-cols-4">
-							<Card className="shadow-none flex flex-col gap-3 py-4">
-								<HeroStat value={null} loading />
-							</Card>
-							<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
-								<CardHeader className="border-b border-dotted pb-2!">
-									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
-										Visibility Trends (30d)
-										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="flex-1 min-h-[100px]">
-									<Skeleton className="h-full w-full" />
-								</CardContent>
-							</Card>
-						</div>
-					</section>
-
-					{/* Share of Voice section skeleton */}
-					<section className="space-y-2">
-						<div className="flex items-center justify-between">
-							<h2 className="text-lg font-semibold flex items-center gap-2">
-								<IconSpeakerphone className="h-5 w-5 text-muted-foreground" />
-								Share of Voice
-							</h2>
-							<Link
-								to="/app/$brand/share-of-voice"
-								params={{ brand: brandId }}
-								className={buttonVariants({ variant: "ghost", size: "sm", className: "h-8" })}
-							>
-								View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
-							</Link>
-						</div>
-						<div className="grid gap-4 lg:grid-cols-4">
-							<Card className="shadow-none flex flex-col gap-3 py-4">
-								<HeroStat value={null} loading />
-							</Card>
-							<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
-								<CardHeader className="border-b border-dotted pb-2!">
-									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
-										Share of Voice Trends (30d)
-										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="flex-1 min-h-[100px]">
-									<Skeleton className="h-full w-full" />
-								</CardContent>
-							</Card>
-						</div>
-					</section>
-
-					{/* Footer stats skeleton */}
-					<section className="pt-2">
-						<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
-							<div className="flex items-center gap-2">
-								<IconList className="h-4 w-4 flex-shrink-0" />
-								<Skeleton className="h-4 w-28" />
-							</div>
-							<div className="flex items-center gap-2">
-								<IconActivity className="h-4 w-4 flex-shrink-0" />
-								<Skeleton className="h-4 w-32" />
-							</div>
-							<div className="flex items-center gap-2">
-								<IconClock className="h-4 w-4 flex-shrink-0" />
-								<Skeleton className="h-4 w-24" />
-							</div>
-							<div className="flex items-center gap-2">
-								<IconRefresh className="h-4 w-4 flex-shrink-0" />
-								<Skeleton className="h-4 w-24" />
-							</div>
-						</div>
-					</section>
-				</div>
-			</div>
-		);
-	}
-
-	const hasPrompts = brand?.prompts && brand.prompts.length > 0;
-
-	if (!brand?.onboarded) {
-		return (
-			<div className="space-y-6 max-w-2xl p-4">
-				<div className="space-y-2">
-					<h2 className="text-2xl font-bold">Research Brand Data</h2>
-					<p className="text-muted-foreground text-balance">
-						We will analyze your website and find the best generative AI prompts to track. This process may take a
-						couple of minutes.
-					</p>
-				</div>
-				<PromptWizard
-					onComplete={() => {
-						const template = clientConfig?.branding.onboardingRedirectUrlTemplate;
-						if (template) {
-							window.location.href = template.replace("{brandId}", brandId);
-						}
-					}}
-				/>
-			</div>
-		);
-	}
-
 	const totalRuns = dashboardSummary?.totalRuns || 0;
 	const totalPrompts = dashboardSummary?.totalPrompts || 0;
-	const nonBrandedVisibility = dashboardSummary?.nonBrandedVisibility || 0;
-	const lastUpdatedAt = dashboardSummary?.lastUpdatedAt || null;
+	const visibilityTimeSeries = dashboardSummary?.visibilityTimeSeries || [];
+	const sovTimeSeries = sovData?.shareTimeSeries ?? [];
+	const loadingVisibility = isLoadingBrand || isLoadingSummary;
+	const loadingSov = isLoadingBrand || isLoadingSov;
+	// The tooltips quote live figures, so they stay off until those have loaded.
+	const visibilityTooltip = loadingVisibility
+		? undefined
+		: `The percentage of AI answers to your prompts that mention your brand — the big number is the latest point on this line. For prompts that don't name your brand, it's ${dashboardSummary?.nonBrandedVisibility || 0}%. Visibility shifts as AI models, the prompts you track, or the sites AI scans change; the line is smoothed for staggered prompt schedules.`;
+	const sovTooltip = loadingSov
+		? undefined
+		: "Your brand's share of all brand and competitor mentions across the AI answers to your prompts — the big number is the latest point on this line. It shifts as AI models change, as you and competitors publish, or as the sites AI scans move; the line is smoothed for staggered prompt schedules.";
 
-	// Show placeholder if no evaluations yet
-	const hasNoEvaluations = totalRuns === 0 && !isLoadingSummary;
-	const hasEnabledPrompts = totalPrompts > 0;
+	if (!isLoadingBrand && !brand?.onboarded) {
+		return <ResearchBrandData brandId={brandId} clientConfig={clientConfig} />;
+	}
 
-	if (hasNoEvaluations) {
-		const getMessage = () => {
-			if (hasEnabledPrompts) {
-				return "You are ready to track your AI visibility. We're currently running the first evaluation against AI models. This usually takes a few minutes.";
-			}
-			if (hasPrompts) {
-				return "You have prompts configured but none are currently enabled. Add or enable some prompts to start tracking your AI visibility.";
-			}
-			return "Set up prompts to start tracking your AI visibility. Once configured, we'll evaluate them against AI models automatically.";
-		};
-
+	// No runs yet: the dashboard has nothing to plot, so point at what to do next.
+	if (!isLoadingBrand && !isLoadingSummary && totalRuns === 0) {
 		return (
-			<div className="flex flex-1 flex-col items-center justify-center p-8 max-w-xl mx-auto text-center">
-				<div className="rounded-full bg-muted p-4 mb-6">
-					<IconClock className="h-10 w-10 text-muted-foreground" />
-				</div>
-				<h2 className="text-2xl font-bold mb-3">
-					{hasEnabledPrompts ? "Waiting for First Evaluation" : "No Data Yet"}
-				</h2>
-				<p className="text-muted-foreground mb-6 text-balance">{getMessage()}</p>
-				<div className="flex flex-col gap-3 w-full">
-					{hasEnabledPrompts && (
-						<div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-							<div className="flex items-center gap-2">
-								<IconList className="h-5 w-5 text-muted-foreground" />
-								<span className="text-sm">Prompts configured and enabled</span>
-							</div>
-							<span className="font-semibold">{totalPrompts.toLocaleString()}</span>
-						</div>
-					)}
-					<Link
-						to="/app/$brand/settings/prompts"
-						params={{ brand: brandId }}
-						className={buttonVariants({ variant: "outline", className: "w-full" })}
-					>
-						{hasEnabledPrompts ? "View Your Prompts" : hasPrompts ? "Edit Prompts" : "Set Up Prompts"}{" "}
-						<IconArrowRight className="h-4 w-4 ml-1" />
-					</Link>
-				</div>
-				{hasEnabledPrompts && (
-					<p className="text-xs text-muted-foreground mt-6">
-						Refresh this page in a few minutes to see your AI visibility data.
-					</p>
-				)}
-			</div>
+			<AwaitingFirstEvaluation
+				brandId={brandId}
+				totalPrompts={totalPrompts}
+				hasPrompts={(brand?.prompts?.length ?? 0) > 0}
+			/>
 		);
 	}
 
 	return (
 		<div className="flex flex-1 flex-col">
 			<div className="m-auto flex w-full max-w-[1600px] flex-col gap-3 p-4">
-				{/* Section 1: AI Visibility */}
-				<section className="space-y-2">
-					<div className="flex items-center justify-between">
-						<h2 className="text-lg font-semibold flex items-center gap-2">
-							<IconEye className="h-5 w-5 text-muted-foreground" />
-							AI Visibility
-						</h2>
-						<Link
-							to="/app/$brand/visibility"
-							params={{ brand: brandId }}
-							className={buttonVariants({ variant: "ghost", size: "sm", className: "h-8" })}
-						>
-							View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
-						</Link>
-					</div>
+				<TrendSection
+					icon={IconEye}
+					title="AI Visibility"
+					linkTo="/app/$brand/visibility"
+					linkLabel="View Visibility"
+					brandId={brandId}
+					chartTitle="Visibility Trends (30d)"
+					chartLabel="AI Visibility (7d avg)"
+					tooltip={visibilityTooltip}
+					// "Current" = the latest plotted point, so the hero number always
+					// matches the right end of the chart beside it (rather than the
+					// whole-window average).
+					value={lastValue(visibilityTimeSeries, "overall")}
+					series={visibilityTimeSeries.map((p) => ({ date: p.date, value: p.overall }))}
+					loading={loadingVisibility}
+				/>
 
-					<div className="grid gap-4 lg:grid-cols-4">
-						{/* Hero Visibility Score */}
-						<Card
-							className={`shadow-none flex flex-col gap-3 py-4 ${currentVisibility === null ? "" : `${getVisibilityBgColor(currentVisibility)} ${getVisibilityBorderColor(currentVisibility)}`}`}
-						>
-							<HeroStat value={currentVisibility} loading={isLoading} />
-						</Card>
+				<TrendSection
+					icon={IconSpeakerphone}
+					title="Share of Voice"
+					linkTo="/app/$brand/share-of-voice"
+					linkLabel="View Share of Voice"
+					brandId={brandId}
+					chartTitle="Share of Voice Trends (30d)"
+					chartLabel="Share of Voice"
+					tooltip={sovTooltip}
+					value={lastValue(sovTimeSeries, "share")}
+					series={sovTimeSeries.map((p) => ({ date: p.date, value: p.share }))}
+					loading={loadingSov}
+				/>
 
-						{/* Visibility Chart */}
-						<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
-							<CardHeader className="border-b border-dotted pb-2!">
-								<CardTitleWithTooltip
-									title="Visibility Trends (30d)"
-									tooltip={`The percentage of AI answers to your prompts that mention your brand — the big number is the latest point on this line. For prompts that don't name your brand, it's ${nonBrandedVisibility}%. Visibility shifts as AI models, the prompts you track, or the sites AI scans change; the line is smoothed for staggered prompt schedules.`}
-								/>
-							</CardHeader>
-							<CardContent className="flex-1 min-h-[100px]">
-								{isLoading ? (
-									<Skeleton className="h-full w-full" />
-								) : (
-									<TrendChart
-										data={visibilityTimeSeries.map((p) => ({ date: p.date, value: p.overall }))}
-										label="AI Visibility (7d avg)"
-										color="#2563eb"
-									/>
-								)}
-							</CardContent>
-						</Card>
-					</div>
-				</section>
-
-				{/* Section: Share of Voice */}
-				<section className="space-y-2">
-					<div className="flex items-center justify-between">
-						<h2 className="text-lg font-semibold flex items-center gap-2">
-							<IconSpeakerphone className="h-5 w-5 text-muted-foreground" />
-							Share of Voice
-						</h2>
-						<Link
-							to="/app/$brand/share-of-voice"
-							params={{ brand: brandId }}
-							className={buttonVariants({ variant: "ghost", size: "sm", className: "h-8" })}
-						>
-							View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
-						</Link>
-					</div>
-
-					<div className="grid gap-4 lg:grid-cols-4">
-						<Card
-							className={`shadow-none flex flex-col gap-3 py-4 ${sovShare === null ? "" : `${getVisibilityBgColor(sovShare)} ${getVisibilityBorderColor(sovShare)}`}`}
-						>
-							<HeroStat value={sovShare} loading={isLoadingSov} />
-						</Card>
-
-						<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
-							<CardHeader className="border-b border-dotted pb-2!">
-								<CardTitleWithTooltip
-									title="Share of Voice Trends (30d)"
-									tooltip="Your brand's share of all brand and competitor mentions across the AI answers to your prompts — the big number is the latest point on this line. It shifts as AI models change, as you and competitors publish, or as the sites AI scans move; the line is smoothed for staggered prompt schedules."
-								/>
-							</CardHeader>
-							<CardContent className="flex-1 min-h-[100px]">
-								{isLoadingSov ? (
-									<Skeleton className="h-full w-full" />
-								) : (
-									<TrendChart
-										data={(sovData?.shareTimeSeries ?? []).map((p) => ({ date: p.date, value: p.share }))}
-										label="Share of Voice"
-										color="#2563eb"
-									/>
-								)}
-							</CardContent>
-						</Card>
-					</div>
-				</section>
-
-				{/* Section 3: Tracking Stats */}
 				<section className="pt-2">
-					<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
-						{isLoadingSummary ? (
-							<>
-								<div className="flex items-center gap-2">
-									<IconList className="h-4 w-4 flex-shrink-0" />
-									<Skeleton className="h-4 w-28" />
-								</div>
-								<div className="flex items-center gap-2">
-									<IconActivity className="h-4 w-4 flex-shrink-0" />
-									<Skeleton className="h-4 w-32" />
-								</div>
-								<div className="flex items-center gap-2">
-									<IconClock className="h-4 w-4 flex-shrink-0" />
-									<Skeleton className="h-4 w-24" />
-								</div>
-								<div className="flex items-center gap-2">
-									<IconRefresh className="h-4 w-4 flex-shrink-0" />
-									<Skeleton className="h-4 w-24" />
-								</div>
-							</>
-						) : (
-							<>
-								<StatWithTooltip
-									icon={IconList}
-									label="prompts tracked"
-									value={totalPrompts.toLocaleString()}
-									tooltip={
-										trackedTargets.length > 0 ? (
-											<>
-												<p>Prompts monitored for AI visibility, each evaluated on:</p>
-												<ul className="mt-1 space-y-0.5">
-													{trackedTargets.map((target) => (
-														<li key={target.value}>{labelForModelFilter(target.value)}</li>
-													))}
-												</ul>
-											</>
-										) : (
-											"Prompts monitored for AI visibility. No platforms are configured for this brand yet."
-										)
-									}
-								/>
-								<StatWithTooltip
-									icon={IconActivity}
-									label="evaluations (30d)"
-									value={totalRuns.toLocaleString()}
-									tooltip="Total number of times we have evaluated prompts against LLMs in the last 30 days. Each prompt is evaluated multiple times across different AI models."
-								/>
-								<StatWithTooltip
-									icon={IconClock}
-									label="run frequency"
-									value={formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24)}
-									tooltip={
-										trackedTargets.length > 0 ? (
-											<>
-												{/* One rate for the brand is a summary, not the truth: a
-												    grounded call samples far less often than a scraped one,
-												    and self-hosted repeats every sample. */}
-												<p>How often each platform is sampled:</p>
-												<ul className="mt-1 space-y-0.5">
-													{trackedTargets.map((target) => (
-														<li key={target.value}>{describeTargetSchedule(target)}</li>
-													))}
-												</ul>
-											</>
-										) : (
-											"No platforms are configured for this brand yet."
-										)
-									}
-								/>
-								<StatWithTooltip
-									icon={IconRefresh}
-									label="last updated"
-									value={formatRelativeTime(lastUpdatedAt)}
-									tooltip={
-										lastUpdatedAt
-											? `The last prompts we evaluated for your brand were run on ${new Date(lastUpdatedAt).toLocaleString()}`
-											: "No evaluations have been run yet."
-									}
-								/>
-							</>
-						)}
-					</div>
+					<TrackingStats
+						loading={loadingVisibility}
+						totalPrompts={totalPrompts}
+						totalRuns={totalRuns}
+						lastUpdatedAt={dashboardSummary?.lastUpdatedAt || null}
+						delayHours={brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24}
+						trackedTargets={trackedTargets}
+					/>
 				</section>
 			</div>
 		</div>
