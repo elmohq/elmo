@@ -29,13 +29,19 @@ const DEMO_NEXT_STEPS = [
 	`• [Self-host it free](${SELF_HOST_DOCS_URL}) — open source, running in about five minutes`,
 ].join("\n");
 
+// So an operator picking up the thread points at the same three places.
+const DEMO_SESSION_DATA: [string, string][] = [
+	["walkthrough_url", DEMO_WALKTHROUGH_URL],
+	["self_host_docs_url", SELF_HOST_DOCS_URL],
+	["cloud_signup_url", CLOUD_SIGNUP_URL],
+];
+
 interface CrispUser {
 	id: string;
 	email?: string;
 	name?: string;
 }
 
-let initialized = false;
 let loadedMode: DeploymentMode | null = null;
 let pendingUser: CrispUser | null = null;
 
@@ -51,32 +57,19 @@ function setSessionData(entries: [string, string][]): void {
 
 // The missing website ID is what keeps the widget off deployments we don't operate.
 export function initCrisp(websiteId: string | undefined, mode: DeploymentMode): void {
-	if (initialized || typeof window === "undefined" || !websiteId) return;
-	initialized = true;
+	if (loadedMode || typeof window === "undefined" || !websiteId) return;
 	loadedMode = mode;
 
 	window.$crisp = window.$crisp ?? [];
 	window.CRISP_WEBSITE_ID = websiteId;
 
 	push(["set", "session:segments", [[mode]]]);
+	setSessionData([["deployment_mode", mode], ...(mode === "demo" ? DEMO_SESSION_DATA : [])]);
+	if (mode === "demo") showDemoNextStepsOnOpen();
 
-	if (mode === "demo") {
-		// So an operator picking up the thread points at the same three places.
-		setSessionData([
-			["deployment_mode", mode],
-			["walkthrough_url", DEMO_WALKTHROUGH_URL],
-			["self_host_docs_url", SELF_HOST_DOCS_URL],
-			["cloud_signup_url", CLOUD_SIGNUP_URL],
-		]);
-		showDemoNextStepsOnOpen();
-	} else {
-		setSessionData([["deployment_mode", mode]]);
-	}
-
-	if (pendingUser) {
-		if (mode !== "demo") applyUser(pendingUser);
-		pendingUser = null;
-	}
+	const pending = pendingUser;
+	pendingUser = null;
+	if (pending) identifyCrispUser(pending);
 
 	const script = document.createElement("script");
 	script.src = CRISP_SCRIPT_URL;
@@ -100,12 +93,6 @@ function showDemoNextStepsOnOpen(): void {
 	]);
 }
 
-function applyUser(user: CrispUser): void {
-	if (user.email) push(["set", "user:email", [user.email]]);
-	if (user.name) push(["set", "user:nickname", [user.name]]);
-	setSessionData([["user_id", user.id]]);
-}
-
 /**
  * Held until the chatbox loads because React flushes child effects first, so the
  * route that knows the user runs before the root route that loads Crisp.
@@ -114,17 +101,19 @@ function applyUser(user: CrispUser): void {
  * sessions with it would merge every visitor into a single Crisp contact.
  */
 export function identifyCrispUser(user: CrispUser): void {
-	if (!initialized) {
+	if (!loadedMode) {
 		pendingUser = user;
 		return;
 	}
 	if (loadedMode === "demo") return;
-	applyUser(user);
+	if (user.email) push(["set", "user:email", [user.email]]);
+	if (user.name) push(["set", "user:nickname", [user.name]]);
+	setSessionData([["user_id", user.id]]);
 }
 
 // So the next person to sign in on this browser doesn't inherit the conversation.
 export function resetCrispSession(): void {
 	pendingUser = null;
-	if (!initialized) return;
+	if (!loadedMode) return;
 	push(["do", "session:reset"]);
 }

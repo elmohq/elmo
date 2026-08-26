@@ -10,10 +10,6 @@ import { isDeploymentMode, TEST_BRAND_ID } from "../../fixtures";
 
 const CRISP_HOSTS = "**://*.crisp.chat/**";
 
-function expectsSupportChat(mode: string): boolean {
-  return mode === "cloud" || mode === "demo";
-}
-
 test.describe("Support chat", () => {
   test("loads on the deployments we operate, and only those", async ({ page }, testInfo) => {
     const mode = testInfo.project.name;
@@ -40,9 +36,8 @@ test.describe("Support chat", () => {
         loaderScripts: document.querySelectorAll('script[src*="crisp.chat"]').length,
       }));
 
-    if (expectsSupportChat(mode)) {
-      await expect.poll(async () => (await readLoader()).websiteId, { timeout: 15_000 }).not.toBeNull();
-      expect((await readLoader()).loaderScripts).toBeGreaterThan(0);
+    if (mode === "cloud" || mode === "demo") {
+      await expect.poll(readLoader, { timeout: 15_000 }).toEqual({ websiteId: expect.any(String), loaderScripts: 1 });
     } else {
       expect(await readLoader()).toEqual({ websiteId: null, loaderScripts: 0 });
       expect(requestedCrisp, "a deployment we do not operate must not call Crisp").toBe(false);
