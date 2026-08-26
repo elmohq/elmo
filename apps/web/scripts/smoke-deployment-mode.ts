@@ -104,7 +104,6 @@ function applyEnv(mode: SmokeMode): Record<string, string> {
 	return env;
 }
 
-/** What each mode contributes to createAuth, as the real getters return it. */
 type AuthOptionsGetter = () => CreateAuthOptions;
 
 function getAuthOptions(
