@@ -50,8 +50,6 @@ function SeriesLegend({
 	onPin: (key: string | null) => void;
 }) {
 	return (
-		// A row of controls for picking a series out of the chart — a toolbar,
-		// which is also what lets it drop the highlight as the pointer leaves.
 		<div
 			role="toolbar"
 			aria-label="Chart series"
