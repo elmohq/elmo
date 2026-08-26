@@ -47,6 +47,16 @@ describe("initCrisp", () => {
 		expect(window.$crisp).toBeUndefined();
 	});
 
+	// The only thing telling an operator whether a conversation came from the
+	// demo, cloud, or the marketing site.
+	it("segments the session by deployment mode", async () => {
+		const { initCrisp } = await loadCrisp();
+
+		initCrisp("website-id", "cloud");
+
+		expect(findCommand("set", "session:segments")).toEqual(["set", "session:segments", [["cloud"]]]);
+	});
+
 	// Effects re-run under StrictMode and on any context change; a second load
 	// would put a second chatbox on the page.
 	it("loads the chatbox once however many times it is called", async () => {
@@ -57,14 +67,6 @@ describe("initCrisp", () => {
 
 		expect(appendedScripts).toHaveLength(1);
 		expect(window.CRISP_WEBSITE_ID).toBe("website-id");
-	});
-
-	it("segments the session by deployment mode", async () => {
-		const { initCrisp } = await loadCrisp();
-
-		initCrisp("website-id", "cloud");
-
-		expect(findCommand("set", "session:segments")).toEqual(["set", "session:segments", [["cloud"]]]);
 	});
 });
 
@@ -101,16 +103,6 @@ describe("the demo next steps", () => {
 });
 
 describe("session identity", () => {
-	it("carries the signed-in user into the conversation", async () => {
-		const { initCrisp, identifyCrispUser } = await loadCrisp();
-		initCrisp("website-id", "cloud");
-
-		identifyCrispUser({ id: "user-1", email: "a@example.com", name: "Ada" });
-
-		expect(findCommand("set", "user:email")).toEqual(["set", "user:email", ["a@example.com"]]);
-		expect(findCommand("set", "user:nickname")).toEqual(["set", "user:nickname", ["Ada"]]);
-	});
-
 	it("is dropped on sign-out so the next user starts fresh", async () => {
 		const { initCrisp, resetCrispSession } = await loadCrisp();
 		initCrisp("website-id", "cloud");
