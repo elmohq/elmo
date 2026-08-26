@@ -108,7 +108,11 @@ export function Stats() {
 				</div>
 
 				<div className="mt-12 overflow-hidden rounded-md border border-zinc-200 bg-zinc-200">
-					<ul role="list" className="grid grid-cols-2 gap-px bg-zinc-200 sm:grid-cols-3 md:grid-cols-5">
+					<ul
+						// biome-ignore lint/a11y/noRedundantRoles: Tailwind's preflight strips list-style, which makes Safari drop list semantics; the role restores them.
+						role="list"
+						className="grid grid-cols-2 gap-px bg-zinc-200 sm:grid-cols-3 md:grid-cols-5"
+					>
 						{models.map((m) => {
 							const Icon = m.icon;
 							return (

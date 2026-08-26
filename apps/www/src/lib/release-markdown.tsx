@@ -30,7 +30,11 @@ const components: Components = {
 		</a>
 	),
 	ul: ({ children }) => (
-		<ul role="list" className="my-2 list-disc space-y-1 pl-5 marker:text-zinc-400">
+		<ul
+			// biome-ignore lint/a11y/noRedundantRoles: Tailwind's preflight strips list-style, which makes Safari drop list semantics; the role restores them.
+			role="list"
+			className="my-2 list-disc space-y-1 pl-5 marker:text-zinc-400"
+		>
 			{children}
 		</ul>
 	),

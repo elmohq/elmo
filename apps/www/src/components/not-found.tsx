@@ -54,7 +54,11 @@ export function NotFound() {
 				<section className="border-b border-zinc-200 bg-zinc-50 py-12 lg:py-16">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
 						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ POPULAR DESTINATIONS</p>
-						<ul role="list" className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+						<ul
+							// biome-ignore lint/a11y/noRedundantRoles: Tailwind's preflight strips list-style, which makes Safari drop list semantics; the role restores them.
+							role="list"
+							className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+						>
 							{suggestedLinks.map((link) => (
 								<li key={link.href}>
 									<a

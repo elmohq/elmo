@@ -139,7 +139,11 @@ export function Pricing() {
 										</span>
 									)}
 								</div>
-								<ul role="list" className="mt-6 space-y-2.5 text-sm text-zinc-700">
+								<ul
+									// biome-ignore lint/a11y/noRedundantRoles: Tailwind's preflight strips list-style, which makes Safari drop list semantics; the role restores them.
+									role="list"
+									className="mt-6 space-y-2.5 text-sm text-zinc-700"
+								>
 									{plan.features.map((f) => (
 										<li key={f} className="flex items-start gap-2">
 											<Check className="mt-0.5 size-3.5 shrink-0 text-blue-600" strokeWidth={3} />
