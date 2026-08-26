@@ -79,12 +79,12 @@ async function fetchAuth0AppMetadata(auth0UserId: string): Promise<Auth0AppMetad
 
 async function syncOrganizations(userId: string, orgs: Array<{ id: string; name: string }>): Promise<void> {
 	const orgNameById = new Map(orgs.map((o) => [o.id, o.name]));
-	const { added, removed, skipped } = await syncMemberships(
+	const { added, removed, invalid } = await syncMemberships(
 		userId,
 		orgs.map((o) => o.id),
 	);
-	if (skipped.length > 0) {
-		console.warn(`[auth0-sync] user=${userId} orgs not provisioned here, skipped=[${skipped.join(", ")}]`);
+	if (invalid.length > 0) {
+		console.warn(`[auth0-sync] user=${userId} orgs not provisioned here, invalid=[${invalid.join(", ")}]`);
 	}
 	if (added.length > 0 || removed.length > 0) {
 		const parts: string[] = [];

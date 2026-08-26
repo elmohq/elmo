@@ -54,8 +54,7 @@ export async function ensureMembership(userId: string, orgId: string, role = "me
 export interface SyncMembershipsResult {
 	added: string[];
 	removed: string[];
-	/** Requested org ids with no row in this deployment. */
-	skipped: string[];
+	invalid: string[];
 }
 
 /**
@@ -63,13 +62,13 @@ export interface SyncMembershipsResult {
  * Adds missing memberships and removes stale ones in a single transaction.
  *
  * Orgs themselves are never created here — an id with no row is reported as
- * skipped. `member.organization_id` is a NOT NULL FK, so one unknown id would
+ * invalid. `member.organization_id` is a NOT NULL FK, so one unknown id would
  * otherwise abort the whole reconciliation.
  */
 export async function syncMemberships(userId: string, orgIds: string[]): Promise<SyncMembershipsResult> {
 	const added: string[] = [];
 	const removed: string[] = [];
-	const skipped: string[] = [];
+	const invalid: string[] = [];
 
 	await db.transaction(async (tx) => {
 		await lockUserMemberships(tx, userId);
@@ -82,7 +81,7 @@ export async function syncMemberships(userId: string, orgIds: string[]): Promise
 		const existingOrgIds = new Set(existing.map((m) => m.organizationId));
 		const knownOrgIds = new Set(known.map((o) => o.id));
 		const targetOrgIds = new Set(orgIds.filter((id) => knownOrgIds.has(id)));
-		skipped.push(...orgIds.filter((id) => !knownOrgIds.has(id)));
+		invalid.push(...orgIds.filter((id) => !knownOrgIds.has(id)));
 
 		for (const orgId of targetOrgIds) {
 			if (!existingOrgIds.has(orgId)) {
@@ -113,7 +112,7 @@ export async function syncMemberships(userId: string, orgIds: string[]): Promise
 		}
 	});
 
-	return { added, removed, skipped };
+	return { added, removed, invalid };
 }
 
 /**
