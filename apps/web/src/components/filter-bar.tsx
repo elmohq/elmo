@@ -253,28 +253,22 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 						{availableTags.map((tag) => {
 							const checked = selected.includes(tag);
 							return (
-								<div
+								<button
 									key={tag}
-									role="button"
-									tabIndex={0}
+									type="button"
 									onClick={(e) => {
+										// Keep the popover open so several tags can be picked at once.
 										e.preventDefault();
 										e.stopPropagation();
 										toggle(tag);
 									}}
-									onKeyDown={(e) => {
-										if (e.key === "Enter" || e.key === " ") {
-											e.preventDefault();
-											toggle(tag);
-										}
-									}}
-									className={`flex items-center gap-2.5 py-1.5 px-3 cursor-pointer text-left text-sm ${
+									className={`flex w-full items-center gap-2.5 py-1.5 px-3 cursor-pointer text-left text-sm ${
 										checked ? "bg-accent" : "hover:bg-muted"
 									}`}
 								>
 									<Checkbox checked={checked} className="pointer-events-none" />
 									<span className="capitalize flex-1">{tag}</span>
-								</div>
+								</button>
 							);
 						})}
 					</div>
