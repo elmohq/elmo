@@ -1,7 +1,7 @@
-import { createContext, useContext, useMemo, type ReactNode } from "react";
-import type { ProcessedBatchChartDataPoint } from "@/lib/postgres-read";
 import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import { createContext, type ReactNode, useContext, useMemo } from "react";
 import { generateDateRange } from "@/lib/chart-utils";
+import type { ProcessedBatchChartDataPoint } from "@/lib/postgres-read";
 
 // Chart data for a single prompt (pre-processed for rendering)
 export interface ProcessedChartData {

@@ -805,18 +805,14 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 		const webQueryData = await getPromptWebQueryCounts(data.promptId, fromDateStr, toDateStr, timezone, data.model);
 
 		let webQuery: string | null = null;
-		const modelWebQueries: Record<string, string> = {};
 		let maxOverallCount = 0;
 
 		for (const row of webQueryData) {
-			if (!modelWebQueries[row.model]) {
-				modelWebQueries[row.model] = row.web_query;
-			}
 			if (row.query_count > maxOverallCount) {
 				maxOverallCount = row.query_count;
 				webQuery = row.web_query;
 			}
 		}
 
-		return { webQuery, modelWebQueries };
+		return { webQuery };
 	});

@@ -8,9 +8,10 @@
  * All drizzle operations are co-located here with the schema to avoid
  * cross-package type mismatches from different drizzle-orm resolutions.
  */
+
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "./db";
-import { eq, and, inArray, sql } from "drizzle-orm";
-import { organization, member, user, account } from "./schema";
+import { account, member, organization, user } from "./schema";
 
 type AuthSyncTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 

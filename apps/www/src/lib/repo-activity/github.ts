@@ -14,12 +14,12 @@ import {
 	AREA_LABEL_ORDER,
 	CHART_COLORS,
 	HISTORY_WEEKS,
+	isBot,
 	MAX_CONTRIB_AVATARS,
 	REPO,
 	WINDOW_DAYS,
-	isBot,
 } from "./constants";
-import type { ChurnPoint, LabelSlice, RepoContributor, RepoActivityData, ReleaseInfo, WeekPoint } from "./types";
+import type { ChurnPoint, LabelSlice, ReleaseInfo, RepoActivityData, RepoContributor, WeekPoint } from "./types";
 
 const API = `https://api.github.com/repos/${REPO}`;
 const WEEK_SECONDS = 7 * 24 * 60 * 60;

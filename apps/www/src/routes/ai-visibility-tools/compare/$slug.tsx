@@ -1,20 +1,20 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
-import { Faq } from "@/components/faq";
-import { PairComparison } from "@/components/pair-comparison";
-import { MultiComparison } from "@/components/multi-comparison";
 import { DirectoryBackLink, DirectoryHero, ElmoCta } from "@/components/directory-shell";
+import { Faq } from "@/components/faq";
+import { Footer } from "@/components/footer";
+import { MultiComparison } from "@/components/multi-comparison";
+import { Navbar } from "@/components/navbar";
+import { PairComparison } from "@/components/pair-comparison";
+import { type Competitor, getCompareEntry, getCompareFaqs, getCompareVerdict } from "@/lib/competitors";
 import {
-	ogMeta,
-	canonicalUrl,
 	breadcrumbJsonLd,
-	faqJsonLd,
+	canonicalUrl,
 	comparisonJsonLd,
-	softwareApplicationJsonLd,
 	ELMO_LISTING,
+	faqJsonLd,
+	ogMeta,
+	softwareApplicationJsonLd,
 } from "@/lib/seo";
-import { getCompareEntry, getCompareVerdict, getCompareFaqs, type Competitor } from "@/lib/competitors";
 
 export const Route = createFileRoute("/ai-visibility-tools/compare/$slug")({
 	head: ({ params }) => {

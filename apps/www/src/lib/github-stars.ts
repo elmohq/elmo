@@ -1,5 +1,5 @@
-import { Redis } from "@upstash/redis";
 import { createServerFn } from "@tanstack/react-start";
+import { Redis } from "@upstash/redis";
 
 const redis = new Redis({
 	url: process.env.UPSTASH_REDIS_REST_URL!,

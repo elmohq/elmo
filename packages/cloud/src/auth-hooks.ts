@@ -5,9 +5,10 @@
  * Google OAuth, Resend transactional email, disposable-domain blocking,
  * invite-only signup allowlist, and umbrella org provisioning on signup.
  */
-import { APIError } from "better-auth/api";
+
 import type { CreateAuthOptions } from "@workspace/lib/auth/server";
 import { provisionUmbrellaOrg } from "@workspace/lib/db/provisioning";
+import { APIError } from "better-auth/api";
 import { createStripeBillingPlugin } from "./billing/plugin";
 import { isDisposableEmail } from "./disposable-domains";
 import { sendEmail } from "./email";

@@ -1,21 +1,21 @@
 import { useMemo } from "react";
+import { ContentGapsCard } from "@/components/citations/content-gaps-card";
+import { GoogleShoppingCard } from "@/components/citations/google-shopping-card";
+import { RecentChangesCard } from "@/components/citations/recent-changes-card";
+import { RedditCard, useSubredditData } from "@/components/citations/reddit-card";
+import { CATEGORY_META, PAGE_TYPE_META } from "@/components/citations/shared";
+import { CitationStatsCards } from "@/components/citations/stats-cards";
+import { TopDomainsCard } from "@/components/citations/top-domains-card";
+import { TopUrlsCard } from "@/components/citations/top-urls-card";
+import { TrendAreaChart } from "@/components/citations/trend-area-chart";
+import type { CitationData } from "@/components/citations/types";
 import {
-	type CitationCategory,
 	CATEGORY_CONFIG,
 	CITATION_CATEGORIES,
 	CITATION_PAGE_TYPES,
+	type CitationCategory,
 	PAGE_TYPE_CONFIG,
 } from "@/lib/domain-categories";
-import type { CitationData } from "@/components/citations/types";
-import { CATEGORY_META, PAGE_TYPE_META } from "@/components/citations/shared";
-import { CitationStatsCards } from "@/components/citations/stats-cards";
-import { TrendAreaChart } from "@/components/citations/trend-area-chart";
-import { RecentChangesCard } from "@/components/citations/recent-changes-card";
-import { ContentGapsCard } from "@/components/citations/content-gaps-card";
-import { TopDomainsCard } from "@/components/citations/top-domains-card";
-import { TopUrlsCard } from "@/components/citations/top-urls-card";
-import { GoogleShoppingCard } from "@/components/citations/google-shopping-card";
-import { RedditCard, useSubredditData } from "@/components/citations/reddit-card";
 
 export type {
 	CitationData,

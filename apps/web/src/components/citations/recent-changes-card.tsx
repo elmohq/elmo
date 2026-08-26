@@ -1,16 +1,16 @@
-import { useMemo, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Separator } from "@workspace/ui/components/separator";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import {
+	IconArrowDownRight,
 	IconExternalLink,
 	IconInfoCircle,
 	IconPlus,
-	IconArrowDownRight,
 	IconSwitchHorizontal,
 } from "@tabler/icons-react";
-import type { CitationData } from "@/components/citations/types";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Separator } from "@workspace/ui/components/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useMemo, useState } from "react";
 import { formatPeriodLabel, formatUrlForDisplay, UnderlineTabs } from "@/components/citations/shared";
+import type { CitationData } from "@/components/citations/types";
 
 type ChangeType = "new_pages" | "dropped_pages" | "title" | "new_domains" | "dropped_domains";
 

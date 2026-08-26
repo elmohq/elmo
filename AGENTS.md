@@ -24,11 +24,15 @@ Full setup instructions are in the developer guide at `packages/docs/content/doc
 - `pnpm test` — Vitest unit tests
 - `pnpm build` — build all packages
 - `pnpm format` — Biome format
+- `pnpm lint` — Biome check (errors only; warnings are not gated)
+- `pnpm lint:fix` — apply everything Biome can fix on its own
 - Migrations: from `packages/lib`, `pnpm exec drizzle-kit migrate` (NEVER RUN THESE UNLESS EXPLICITLY INSTRUCTED BY THE USER)
 - E2E tests need Playwright browsers (`pnpm exec playwright install`) and a running app; they are separate from unit tests
 - shadcn components: always install with the CLI (`pnpm dlx shadcn@latest add <component>`, from `packages/ui` or `apps/www` — each has its own `components.json`) — never hand-create them
 
-Do not routinely run formatting, linting, type checks, or tests after making changes; CI provides the default validation and these commands should not be part of every agent interaction. Run a targeted command only when it is strictly necessary to diagnose or iterate on the current work, or when the user explicitly requests it. Never run `pnpm lint` or the full test suite by default.
+Don't run formatting, linting, type checks, or tests after every change — only to diagnose what you're working on, or when asked.
+
+Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI fails on it. `pnpm lint:fix` handles the rest. Never silence a lint error with `biome-ignore` — fix the code.
 
 ## Tests
 

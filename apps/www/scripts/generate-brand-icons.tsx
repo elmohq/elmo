@@ -1,4 +1,11 @@
 #!/usr/bin/env tsx
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { renderOgPng } from "@workspace/og/rasterize";
+import pngToIco from "png-to-ico";
+
 /**
  * Generates favicon + PWA icon assets for the apps/www marketing site.
  *
@@ -21,14 +28,6 @@
  * Usage:
  *   pnpm -F @workspace/www generate-icons
  */
-// biome-ignore lint/correctness/noUnusedImports: classic JSX transform needs React in scope
-import React from "react";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { renderOgPng } from "@workspace/og/rasterize";
-import pngToIco from "png-to-ico";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);

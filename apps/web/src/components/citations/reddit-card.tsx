@@ -1,12 +1,12 @@
-import { useMemo, useState } from "react";
+import { IconChevronDown, IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
+import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
-import { Badge } from "@workspace/ui/components/badge";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
-import { IconExternalLink, IconInfoCircle, IconChevronDown } from "@tabler/icons-react";
-import { ListPagination, usePagedList } from "@/components/list-pagination";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useMemo, useState } from "react";
 import { extractSubreddit, formatUrlForDisplay } from "@/components/citations/shared";
 import type { CitationData } from "@/components/citations/types";
+import { ListPagination, usePagedList } from "@/components/list-pagination";
 
 const SUBREDDITS_PAGE_SIZE = 8;
 
