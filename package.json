@@ -10,8 +10,8 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "lint": "biome check --config-path=biome.json .",
-    "lint:fix": "biome check --write --config-path=biome.json .",
+    "lint": "biome check --diagnostic-level=error --config-path=biome.json .",
+    "lint:fix": "biome check --write --diagnostic-level=error --config-path=biome.json .",
     "test": "turbo test",
     "format": "biome format --write --config-path=biome.json .",
     "knip": "knip",
