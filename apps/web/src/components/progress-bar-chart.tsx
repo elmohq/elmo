@@ -38,10 +38,6 @@ export type ProgressBarChartProps = {
 	fillHeight?: boolean;
 };
 
-/**
- * A bar's label. Rendered as a button when it does something, so it can be
- * reached and triggered from the keyboard rather than by pointer alone.
- */
 function ItemLabel({
 	className,
 	bold,
