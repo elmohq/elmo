@@ -12,7 +12,13 @@
 
 import { IconCheck } from "@tabler/icons-react";
 import { CLOUD_ENTRY_PRICE_USD, PLANS, platformTierMembers, STANDARD_PLATFORM_MENU } from "@workspace/config/plans";
-import { cloudPricingUrl, cloudSignupUrl, marketingUrl, type ReferralSource } from "@workspace/config/referrals";
+import {
+	bookDemoUrl,
+	cloudPricingUrl,
+	cloudSignupUrl,
+	marketingUrl,
+	type ReferralSource,
+} from "@workspace/config/referrals";
 import { CUSTOMER_QUOTES, VECTOR_CUSTOMERS } from "@workspace/ui/brand/customers";
 import { G2Rating } from "@workspace/ui/brand/g2-rating";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
@@ -111,7 +117,7 @@ export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; so
 
 			<EngineStrip />
 
-			{variant === "self-hosted" && <CloudOffer source={source} />}
+			{variant === "self-hosted" ? <CloudOffer source={source} /> : <DemoOffer source={source} />}
 
 			<Proof quote={quote} />
 		</div>
@@ -160,8 +166,29 @@ function CloudOffer({ source }: { source: ReferralSource }) {
 				<a href={cloudSignupUrl(source)} className={buttonVariants({ size: "sm" })}>
 					Try Elmo Cloud
 				</a>
-				<a href={cloudPricingUrl(source)} className={buttonVariants({ variant: "ghost", size: "sm" })}>
-					Compare plans
+				<a href={bookDemoUrl(source)} className={buttonVariants({ variant: "ghost", size: "sm" })}>
+					Book a demo
+				</a>
+			</div>
+		</div>
+	);
+}
+
+/**
+ * The other way in, for someone who would rather be shown than sign up. Sits
+ * where the self-hosted panel argues for Cloud: both are the secondary ask.
+ */
+function DemoOffer({ source }: { source: ReferralSource }) {
+	return (
+		<div className="rounded-lg border bg-card p-5">
+			<h3 className="text-sm font-semibold">Rather see it before you sign up?</h3>
+			<p className="mt-2 text-sm text-muted-foreground">
+				Thirty minutes with the team that builds Elmo, to talk through what you want to track and whether we are the
+				right fit for it.
+			</p>
+			<div className="mt-4">
+				<a href={bookDemoUrl(source)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+					Book a demo
 				</a>
 			</div>
 		</div>
