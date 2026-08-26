@@ -67,8 +67,8 @@
     "//#format": {
       "cache": false
     },
-    "//#format-and-lint": {},
-    "//#format-and-lint:fix": {
+    "//#lint": {},
+    "//#lint:fix": {
       "cache": false
     },
     "build": {
