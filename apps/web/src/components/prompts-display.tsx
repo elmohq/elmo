@@ -21,6 +21,7 @@ import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import { coercePromptOrder, orderPrompts } from "@/lib/prompt-order";
+import { skeletonRows } from "@/lib/skeleton-rows";
 
 interface PromptsDisplayProps {
 	pageTitle: string;
@@ -235,12 +236,10 @@ function ChartSection({
 	);
 }
 
-const SKELETON_CARDS = ["first", "second", "third"];
-
 function ContentLoadingSkeleton() {
 	return (
 		<div className="space-y-6">
-			{SKELETON_CARDS.map((row) => (
+			{skeletonRows(3).map((row) => (
 				<Card key={row} className="py-3 gap-3">
 					<CardHeader className="flex justify-between items-center px-3">
 						<Skeleton className="h-4 w-48" />
