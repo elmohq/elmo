@@ -5,4 +5,4 @@
 "@elmohq/cli": patch
 ---
 
-Fixed the provider setup links in `elmo init` and the LLMs settings page, which pointed at a hostname that no longer exists.
+Fix broken docs link in `elmo init` and the LLMs settings page.
