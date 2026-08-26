@@ -4,29 +4,24 @@ import { resolveCrispWebsiteId } from "../config";
 afterEach(() => vi.unstubAllEnvs());
 
 describe("resolveCrispWebsiteId", () => {
-	it.each(["cloud", "demo"] as const)("returns the configured ID in %s mode", (mode) => {
-		vi.stubEnv("VITE_CRISP_WEBSITE_ID", "website-id");
+	it.each(["cloud", "demo"])("returns a website ID in %s mode", (mode) => {
+		vi.stubEnv("DEPLOYMENT_MODE", mode);
 
-		expect(resolveCrispWebsiteId(mode)).toBe("website-id");
+		expect(resolveCrispWebsiteId()).toBeTruthy();
 	});
 
-	// `local` + READ_ONLY=true reports mode "demo", so a self-hosted instance can
-	// pass the mode check — the unset env var is what keeps our inbox off it.
-	it.each(["local", "whitelabel"] as const)("stays off in %s mode even when configured", (mode) => {
-		vi.stubEnv("VITE_CRISP_WEBSITE_ID", "website-id");
+	it.each(["local", "whitelabel"])("returns nothing in %s mode", (mode) => {
+		vi.stubEnv("DEPLOYMENT_MODE", mode);
 
-		expect(resolveCrispWebsiteId(mode)).toBeUndefined();
+		expect(resolveCrispWebsiteId()).toBeUndefined();
 	});
 
-	it("stays off when no ID is configured", () => {
-		vi.stubEnv("VITE_CRISP_WEBSITE_ID", undefined);
+	// A local deployment with READ_ONLY set resolves to mode "demo", so gating on
+	// the resolved mode would put our support inbox on a self-hosted instance.
+	it("returns nothing for a read-only local deployment", () => {
+		vi.stubEnv("DEPLOYMENT_MODE", "local");
+		vi.stubEnv("READ_ONLY", "true");
 
-		expect(resolveCrispWebsiteId("cloud")).toBeUndefined();
-	});
-
-	it("treats an empty ID as opting out", () => {
-		vi.stubEnv("VITE_CRISP_WEBSITE_ID", "");
-
-		expect(resolveCrispWebsiteId("cloud")).toBeUndefined();
+		expect(resolveCrispWebsiteId()).toBeUndefined();
 	});
 });

@@ -319,13 +319,6 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Microsoft Clarity project ID.",
 	},
 	{
-		name: "VITE_CRISP_WEBSITE_ID",
-		scope: "client",
-		requiredBy: "optional",
-		description:
-			"Crisp support chat website ID. Unset means no chat widget; ignored outside cloud and demo deployments.",
-	},
-	{
 		name: "VITE_ONBOARDING_REDIRECT_URL_TEMPLATE",
 		scope: "client",
 		requiredBy: "optional",
