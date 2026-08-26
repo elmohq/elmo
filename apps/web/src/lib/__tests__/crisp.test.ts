@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
 
 // The unit project runs in Node, so stand up just enough of the two browser
 // globals the loader touches.
@@ -67,8 +68,8 @@ describe("initCrisp", () => {
 	});
 });
 
-describe("the demo walkthrough", () => {
-	it("is offered the first time the chat is opened, and only then", async () => {
+describe("the demo next steps", () => {
+	it("offers every next step the first time the chat is opened, and only then", async () => {
 		const { initCrisp } = await loadCrisp();
 
 		initCrisp("website-id", "demo");
@@ -79,8 +80,14 @@ describe("the demo walkthrough", () => {
 		openChat?.();
 
 		const shown = queue().filter((command) => command[0] === "do" && command[1] === "message:show");
-		expect(shown).toHaveLength(1);
-		expect(String((shown[0]?.[2] as [string, string])[1])).toContain("https://cal.com/jrhizor/elmo");
+		expect(shown, "reopening the chat must not repeat the sequence").toHaveLength(2);
+
+		const carousel = (shown[1]?.[2] as [string, { targets: { actions: { url: string }[] }[] }])[1];
+		expect(carousel.targets.flatMap((target) => target.actions.map((action) => action.url))).toEqual([
+			"https://cal.com/jrhizor/elmo",
+			"https://www.elmohq.com/docs/getting-started",
+			CLOUD_SIGNUP_URL,
+		]);
 	});
 
 	it("is not offered on cloud, which shares the same chatbox", async () => {

@@ -5,6 +5,7 @@
  * `window.$crisp` and replayed once the remote script finishes loading, so
  * callers never have to wait for a ready signal.
  */
+import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
 import type { DeploymentMode } from "@workspace/config/types";
 
 type CrispCommand = unknown[];
@@ -18,9 +19,32 @@ declare global {
 
 const CRISP_SCRIPT_URL = "https://client.crisp.chat/l.js";
 
-/** Guided walkthrough of the demo, offered to anyone who opens the chat there. */
 const DEMO_WALKTHROUGH_URL = "https://cal.com/jrhizor/elmo";
-const DEMO_WALKTHROUGH_MESSAGE = `👋 You're in the Elmo demo — it's read-only sample data, so click around freely. Want a guided walkthrough with the team? Grab a time here: ${DEMO_WALKTHROUGH_URL}`;
+const SELF_HOST_DOCS_URL = "https://www.elmohq.com/docs/getting-started";
+
+const DEMO_GREETING = "👋 You're in the Elmo demo — it's read-only sample data, so click around freely.";
+
+/** The three ways out of the demo, offered as linked cards. */
+const DEMO_NEXT_STEPS = {
+	text: "Whenever you're ready, here's where to go next:",
+	targets: [
+		{
+			title: "See it on your own brand",
+			description: "A live walkthrough with the team, using your data instead of ours.",
+			actions: [{ label: "Book a time", url: DEMO_WALKTHROUGH_URL }],
+		},
+		{
+			title: "Run it yourself",
+			description: "Elmo is open source and free to self-host. Up in about five minutes.",
+			actions: [{ label: "Read the setup guide", url: SELF_HOST_DOCS_URL }],
+		},
+		{
+			title: "Let us run it",
+			description: "Elmo Cloud is the managed version — nothing to deploy or maintain.",
+			actions: [{ label: "Start with Cloud", url: CLOUD_SIGNUP_URL }],
+		},
+	],
+};
 
 let initialized = false;
 
@@ -50,12 +74,14 @@ export function initCrisp(websiteId: string | undefined, mode: DeploymentMode): 
 
 	if (mode === "demo") {
 		// Mirrored into session data so an operator or bot picking up the thread
-		// suggests the same link the visitor was shown.
+		// points at the same three places the visitor was shown.
 		setSessionData([
 			["deployment_mode", mode],
 			["walkthrough_url", DEMO_WALKTHROUGH_URL],
+			["self_host_docs_url", SELF_HOST_DOCS_URL],
+			["cloud_signup_url", CLOUD_SIGNUP_URL],
 		]);
-		showDemoWalkthroughOnOpen();
+		showDemoNextStepsOnOpen();
 	} else {
 		setSessionData([["deployment_mode", mode]]);
 	}
@@ -67,19 +93,20 @@ export function initCrisp(websiteId: string | undefined, mode: DeploymentMode): 
 }
 
 /**
- * Offer the walkthrough the first time someone opens the chat. `message:show`
- * renders locally only — it never reaches the inbox — so the booking link reads
- * as a prompt to the visitor rather than an unanswered conversation.
+ * Greet the visitor and offer the three next steps the first time they open the
+ * chat. `message:show` renders locally only — it never reaches the inbox — so
+ * these read as a prompt to the visitor rather than an unanswered conversation.
  */
-function showDemoWalkthroughOnOpen(): void {
-	let nudged = false;
+function showDemoNextStepsOnOpen(): void {
+	let offered = false;
 	push([
 		"on",
 		"chat:opened",
 		() => {
-			if (nudged) return;
-			nudged = true;
-			push(["do", "message:show", ["text", DEMO_WALKTHROUGH_MESSAGE]]);
+			if (offered) return;
+			offered = true;
+			push(["do", "message:show", ["text", DEMO_GREETING]]);
+			push(["do", "message:show", ["carousel", DEMO_NEXT_STEPS]]);
 		},
 	]);
 }
