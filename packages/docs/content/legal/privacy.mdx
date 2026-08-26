@@ -9,7 +9,7 @@ The privacy of your data — and it is your data, not ours — is a big deal to 
 
 This policy applies to **Blue Whale Software, LLC** ("we", "our", "us") and to the hosted service at [app.elmohq.com](https://app.elmohq.com), our websites at elmohq.com and docs.elmohq.com, and our APIs (together, the "Services").
 
-**If you self-host Elmo, we never see the data inside your instance** — not your brands, prompts, or results. We do receive telemetry from it unless you turn telemetry off, and that telemetry is covered by this policy: a random deployment ID, version and platform details, command and event names, feature counts, and the IP address the event arrives from. If you opted in to product updates when you ran `elmo init`, we also hold the email address you gave. That one is not covered by the telemetry opt-out, because typing your email was a separate, deliberate act. [Telemetry](/docs/developer-guide/telemetry) documents all of it, including how to switch it off.
+**If you self-host Elmo, we never see the data inside your instance** — not your brands, prompts, or results. Unless you turn telemetry off, your instance and the CLI do send us usage telemetry, and that is covered by this policy. It is things like a random deployment identifier, version and platform details, which commands and features get used and how often, counts rather than content, and the IP address the event arrives from. If you gave us an email address when you set it up, we hold that too — separately from the telemetry switch, since typing your email is its own deliberate act. [Telemetry](/docs/developer-guide/telemetry) describes what we send today and how to turn it off.
 
 This policy covers our handling of information about site visitors, prospective customers, and customers and their authorized users. We refer to all of you as "you" throughout.
 
@@ -21,38 +21,40 @@ Our guiding principle is to collect only what we need.
 
 ### Identity and access
 
-When you sign up we ask for your name, email address, and a password (or you sign in with Google, in which case we receive your name, email address, and Google account identifier). That's so you can have an account, so we can send you the things you need, and so your teammates can tell who's who.
+When you sign up we collect what we need to create and run your account — things like your name, email address, and a password, or the profile details your identity provider hands us if you sign in with Google or a similar service. That's so you can have an account, so we can reach you, and so your teammates can tell who's who.
 
-We use your email address for the service email your account depends on: verification, password resets, teammate invitations, and billing notices. That is all Elmo Cloud sends you today. If we ever start sending product or marketing email, it will be opt-in and every message will carry a way to unsubscribe.
+We use your email address for the service email your account depends on — verification, password resets, teammate invitations, billing and account notices — and, if you opt in, for product news and other marketing. Marketing email always carries a way to unsubscribe. Service email doesn't, because your account depends on it.
 
 We will never sell your personal information, and we won't use your name or your company in marketing without your permission.
 
 ### Billing information
 
-If you subscribe to a paid plan you'll provide payment details and a billing address. Card details are submitted directly to our payment processor, Stripe, and never touch Elmo's servers. We store a record of the transaction — amount, date, and the last four digits of the card — for account history, invoicing, and billing support. We store your billing address so we can charge you correctly, calculate tax, and detect fraud.
+If you subscribe to a paid plan you'll provide payment details and a billing address. Card details go to our payment processor rather than to us. We keep the billing records that go with your account — transactions, invoices, and your billing address — so we can charge you correctly, calculate tax, support you when something looks wrong, and detect fraud.
 
 ### Product content
 
-We store the content you create in Elmo: the brands you track, the competitors and prompts you configure, the answers Elmo collects from AI answer engines on your behalf, and the reports built from them. This is what the product is. We keep it for as long as the account exists — see [Data retention](#data-retention) for how to have it deleted.
+We store the content you create in Elmo — the brands you track, the competitors and prompts you configure, the answers Elmo collects from answer engines on your behalf, the reports built from them, and anything else you put into the product. This is what the product is. We keep it for as long as the account exists; see [Data retention](#data-retention) for how to have it deleted.
 
 ### General geolocation data
 
-We log the IP address used to create an account and retain it to mitigate spam signups. We log account sign-ins by IP for security and fraud prevention, and keep that login data for as long as the account is active.
+We log IP addresses when an account is created and when people sign in, and use them for security, fraud prevention, abuse mitigation, and approximate location. We keep them for as long as they're useful for those purposes.
 
 ### Website interactions
 
-We collect information about browsing activity on our websites for analytics and statistical purposes — which pages were visited, how long they took to load, what referred you, and general browser and device information.
+We collect information about browsing activity on our websites and in the product for analytics and statistical purposes — things like which pages were visited, how long they took to load, what referred you, which features got used, and general browser and device information.
 
-We use two analytics tools, and they behave differently:
+We use more than one analytics tool, and they behave differently. Today that means:
 
-- **[Plausible](https://plausible.io/privacy-focused-web-analytics)** is our primary web analytics. It sets **no cookies**, stores nothing on your device, and does not collect or store personal data or cross-site identifiers. We proxy it through our own domain so it isn't blocked by ad blockers, not to collect anything extra.
-- **[PostHog](https://posthog.com/privacy)** is our product analytics. It **does** set cookies and store an identifier in your browser, so on our marketing site we only load it where we're allowed to — see [Advertising and cookies](#advertising-and-cookies) below. Inside the product it's tied to your account and used to understand which features get used.
+- **[Plausible](https://plausible.io/privacy-focused-web-analytics)** for web analytics. It is cookieless: it stores nothing on your device and creates no cross-site identifier. We proxy it through our own domain so it isn't blocked by ad blockers, not to collect anything extra.
+- **[PostHog](https://posthog.com/privacy)** for product analytics. It **does** set cookies and store an identifier in your browser, so on our marketing site we only load it where we're allowed to — see [Advertising and cookies](#advertising-and-cookies) below. Inside the product it's tied to your account and used to understand which features get used.
 
-We do not record your screen or your session.
+We don't currently run session replay or screen recording.
 
 ### Advertising and cookies
 
-We advertise Elmo on third-party platforms, and where permissible under law we load advertising and conversion-measurement tags from those platforms — currently or prospectively including **Google Ads, Meta (Facebook and Instagram), LinkedIn, X, and Reddit**. These tags set third-party cookies and report back which ad you clicked and whether you did something afterwards, such as starting a signup. They are how we tell whether our advertising works at all.
+We advertise Elmo on third-party platforms, and where permissible under law we load advertising and conversion-measurement tags from those platforms — currently or prospectively including **Google Ads, Meta (Facebook and Instagram), LinkedIn, X, and Reddit**, and others like them. These tags set third-party cookies and report back which ad you clicked and whether you did something afterwards, such as starting a signup. They are how we tell whether our advertising works at all.
+
+We don't sell personal information. Some U.S. state privacy laws treat advertising tags like these as "sharing" for cross-context behavioral advertising; where that applies, your cookie choices and the Global Privacy Control signal are how you turn it off.
 
 We also use first-party cookies to keep you signed in, to remember preferences, and to remember your cookie choices.
 
@@ -70,7 +72,7 @@ We also store information you volunteer, like responses to a survey or a researc
 
 ### Error monitoring
 
-We use Sentry to collect diagnostic information when something breaks: a stack trace, the browser and version, the URL, your IP address, and the account associated with the request. This is how we find and fix bugs. We don't send it prompt or answer content on purpose, but an error report quotes the state that produced it, so we can't rule out a fragment turning up in one.
+When something breaks we collect diagnostic information so we can fix it — the error and the context around it, which typically includes stack traces, request and browser details, IP address, the account involved, and whatever state the error touched. Some of that goes to our error-monitoring provider. We don't go hunting for prompt or answer content there, but an error report describes what produced it, so we can't promise a fragment never appears in one.
 
 ## When we access or disclose your information
 
@@ -112,7 +114,7 @@ If we deny a request and applicable law gives you a right to appeal, we'll expla
 
 ## How we secure your data
 
-All data is encrypted in transit with TLS. Our database backups are encrypted. Third-party credentials you store in Elmo are encrypted at rest with a key held outside the database.
+We encrypt data in transit, and we encrypt sensitive data at rest — including database backups and any third-party credentials you store with us.
 
 Access to production systems is limited to the people who need it.
 
@@ -122,9 +124,9 @@ If you believe you've found a security vulnerability, please email [security@elm
 
 Content you delete inside the product is removed from the application immediately. Our database backups roll over on a fixed schedule, so a copy can survive in a backup until that backup expires.
 
-**Cancelling a subscription is not a deletion request, and it is not a guarantee of storage.** It stops Elmo collecting anything new and closes off the paid features. It does not on its own erase what is already in the account, and it does not commit us to keeping it: a dormant account may be closed under the [Terms](/legal/terms), and closing an account deletes what is in it. Export anything you want before you cancel.
+**Cancelling a subscription is not a deletion request, and it is not a guarantee of storage.** It stops Elmo collecting anything new and closes off the paid features. It does not on its own erase what is already in the account, and it does not commit us to keeping it: a dormant account may be closed under the [Terms](/legal/terms), and closing an account deletes what is in it. If there's anything you want, ask us for a copy before you cancel.
 
-To actually have it deleted, ask us at [privacy@elmohq.com](mailto:privacy@elmohq.com). We will delete your account and its contents from our active systems within 30 days of a verified request, and remaining copies drop out of our backups as those backups expire. Once that is done we cannot recover any of it, so export anything you want to keep first.
+To actually have it deleted, ask us at [privacy@elmohq.com](mailto:privacy@elmohq.com). We will delete your account and its contents from our active systems within 30 days of a verified request, and remaining copies drop out of our backups as those backups expire. Once that is done we cannot recover any of it, so ask us for a copy first if you want one.
 
 ## Data retention
 

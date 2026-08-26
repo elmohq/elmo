@@ -44,10 +44,10 @@ So, plainly:
 
 ## Payment, refunds, and plan changes
 
-1. Paid plans are billed in advance, monthly or annually, through our payment processor. Annual plans are billed once for the year.
-2. Card details go directly to our payment processor and never touch Elmo's servers. Our payment processor keeps the card on file and the transaction history; we keep the subscription record that goes with it.
-3. If a payment fails, we'll email you and retry. If it stays unpaid, we may suspend the account until it is settled, and eventually cancel it.
-4. Plan changes take effect immediately and our payment processor prorates the difference, in both directions. Plan limits are enforced when you next save something, so moving to a smaller plan can leave you above its limits until you trim what you're tracking.
+1. Paid plans are billed in advance, through our payment processor, on the interval you choose.
+2. Card details go to our payment processor rather than to us. We keep the billing and subscription records that go with your account.
+3. If a payment fails we'll let you know, and we may retry. If it stays unpaid, we may suspend the account until it's settled, and eventually close it.
+4. Plan changes take effect when you make them, and our payment processor handles any proration.
 5. All fees are exclusive of taxes, levies, and duties. Where we are required to collect them we will, and remit them to the relevant authority. Otherwise you are responsible for them.
 6. **We try to be fair about refunds.** If you're unhappy, or you got charged for a renewal you meant to cancel, or you forgot to cancel an account you weren't using — [email us](mailto:hello@elmohq.com). We'd rather sort it out than have you feel ripped off, though refunds are at our discretion. We don't automatically prorate unused time when you cancel mid-cycle.
 7. Sometimes we change prices. When we do, we generally exempt existing customers. If we do change the price for an existing customer, we will give at least 30 days' notice by email.
@@ -69,14 +69,14 @@ Sometimes it becomes impractical to keep a feature running, or we redesign part 
 
 1. Your use of the Services is at your sole risk. We provide them on an "as is" and "as available" basis. We do not offer a service-level agreement on self-serve plans, but we take uptime seriously — see [status.elmohq.com](https://status.elmohq.com) for the hosted service and [our provider status page](/status) for the answer engines we track.
 2. We may temporarily throttle or disable an account whose usage significantly exceeds normal usage and degrades the service for other customers. We'll reach out first except when the load is actively causing harm.
-3. We encrypt data in transit and our database backups are encrypted. Where you store a third-party credential with us, it is encrypted at rest with a key held outside the database. No system is perfectly secure; if you find a problem, please tell us at [security@elmohq.com](mailto:security@elmohq.com) rather than disclosing it publicly.
-4. When you use the Services you entrust us with your data. You agree that we may process it as described in our [Privacy Policy](/legal/privacy) and for no other purpose. Humans at Blue Whale Software can access your account data only:
+3. We encrypt data in transit, and we encrypt sensitive data at rest — including database backups and any third-party credentials you store with us. No system is perfectly secure; if you find a problem, please tell us at [security@elmohq.com](mailto:security@elmohq.com) rather than disclosing it publicly.
+4. When you use the Services you entrust us with your data. You agree that we may process it as described in our [Privacy Policy](/legal/privacy) and for no other purpose. Humans at Blue Whale Software look at your account data sparingly, and only for reasons like these:
    - **to help with a support request you make** — we'll ask before going into your account;
    - **when an automated process breaks partway through** and fixing it requires looking at a minimum amount of data;
    - **to protect Elmo** — reviewing logs and metadata as part of keeping the service and its customers secure, including investigating an abuse report;
    - **to the extent required by applicable law.** We are a U.S. company. We only preserve or disclose customer data when compelled by a legally binding order from a U.S. authority, or in a genuine emergency. Requests from non-U.S. authorities are refused unless they come through an established mutual legal assistance mechanism.
 5. We use third-party vendors to run the Services. The current list is published at [Subprocessors](/legal/subprocessors).
-6. Under the California Consumer Privacy Act, Blue Whale Software is a "service provider" with respect to your use of the Services, not a "business" or "third party". We process the data you share with us only for the purposes you signed up for and as described in these Terms and the [Privacy Policy](/legal/privacy). We do not sell or share personal information, and we never have.
+6. Under the California Consumer Privacy Act, Blue Whale Software is a "service provider" with respect to your use of the Services, not a "business" or "third party". We process the data you share with us for the purposes you signed up for and as described in these Terms and the [Privacy Policy](/legal/privacy). We do not sell personal information; see the [Privacy Policy](/legal/privacy#advertising-and-cookies) for how advertising cookies are treated under state privacy laws and how to opt out of them.
 7. If the EU GDPR, the UK GDPR, or the Swiss FADP applies to your use of the Services, we will enter into a data processing addendum with you covering that processing, including the applicable Standard Contractual Clauses. Email [privacy@elmohq.com](mailto:privacy@elmohq.com) and we'll get one to you.
 
 ## Content ownership
@@ -84,7 +84,7 @@ Sometimes it becomes impractical to keep a feature running, or we redesign part 
 1. All content you put into the Services must comply with U.S. law and with our [Acceptable Use policy](/legal/acceptable-use).
 2. You give us a limited license to use the content in your account in order to provide the Services to you. We claim no ownership over it. What you submit remains yours.
 3. We do not pre-screen content, but we reserve the right — not the obligation — to refuse or remove any content in our sole discretion.
-4. We may use aggregated and de-identified data derived from the Services — data that does not identify you, your organization, or your brands — to operate, secure, and improve Elmo, and to publish industry research. We will not publish your prompts, your results, or anything that identifies you.
+4. We may use aggregated and de-identified data derived from the Services — data that does not identify you, your organization, or your brands — for any purpose, including operating, securing, and improving Elmo and publishing industry research. We will not publish your prompts, your results, or anything that identifies you.
 5. Blue Whale Software and its licensors own all right, title, and interest in the Services, including all intellectual property rights in them, except for the parts published under the MIT License in our public repository. You must ask before using the Elmo name or logo for promotional purposes; see our [brand assets](/brand) for what's already permitted.
 
 ## Features and bugs
