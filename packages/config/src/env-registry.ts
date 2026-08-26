@@ -322,7 +322,7 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		name: "VITE_CRISP_WEBSITE_ID",
 		scope: "client",
 		requiredBy: "optional",
-		description: "Crisp support chat website ID. Ignored outside cloud and demo deployments.",
+		description: "Crisp support chat website ID override. Ignored outside cloud and demo deployments.",
 	},
 	{
 		name: "VITE_ONBOARDING_REDIRECT_URL_TEMPLATE",

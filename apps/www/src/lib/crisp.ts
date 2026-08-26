@@ -15,16 +15,16 @@ declare global {
 }
 
 const CRISP_SCRIPT_URL = "https://client.crisp.chat/l.js";
-const WEBSITE_ID = import.meta.env.VITE_CRISP_WEBSITE_ID;
+const CRISP_WEBSITE_ID = "2f79a110-4e29-41a8-b45d-4993df6ff487";
 
 let initialized = false;
 
 export function initCrisp(): void {
-	if (initialized || typeof window === "undefined" || !WEBSITE_ID) return;
+	if (initialized || typeof window === "undefined") return;
 	initialized = true;
 
 	window.$crisp = [];
-	window.CRISP_WEBSITE_ID = WEBSITE_ID;
+	window.CRISP_WEBSITE_ID = CRISP_WEBSITE_ID;
 	// Segments the inbox by where the visitor started, so a marketing-site
 	// question is distinguishable from one raised inside the product.
 	window.$crisp.push(["set", "session:segments", [["marketing"]]]);

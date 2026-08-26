@@ -22,6 +22,7 @@ export type PublicClientConfig = Omit<ClientConfig, "branding"> & {
  * raw template string instead. The client can reconstruct the function if needed.
  */
 const POSTHOG_PUBLIC_KEY = "phc_Jhx9LnI9cTDFHpQmpOzJSDTW127qD9pFU65KRnYym6z";
+const CRISP_WEBSITE_ID = "2f79a110-4e29-41a8-b45d-4993df6ff487";
 
 function resolvePosthogKey(): string | undefined {
 	if (process.env.DISABLE_TELEMETRY) return undefined;
@@ -35,7 +36,7 @@ function resolvePosthogKey(): string | undefined {
  */
 function resolveCrispWebsiteId(mode: DeploymentMode): string | undefined {
 	if (mode !== "cloud" && mode !== "demo") return undefined;
-	return process.env.VITE_CRISP_WEBSITE_ID;
+	return process.env.VITE_CRISP_WEBSITE_ID ?? CRISP_WEBSITE_ID;
 }
 
 export const getClientConfig = createServerFn({ method: "GET" }).handler(async (): Promise<PublicClientConfig> => {
