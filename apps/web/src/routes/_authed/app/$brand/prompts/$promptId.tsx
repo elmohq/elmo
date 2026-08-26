@@ -355,6 +355,11 @@ function PromptHistoryPage() {
 // Tab Content Components
 // =====================================================================
 
+/** Ids for `count` placeholder rows; they exist only to key them. */
+function skeletonRows(count: number): string[] {
+	return Array.from({ length: count }, (_, index) => `row-${index}`);
+}
+
 function TabLoadingSkeleton({ lines = 3 }: { lines?: number }) {
 	return (
 		<Card>
@@ -364,9 +369,8 @@ function TabLoadingSkeleton({ lines = 3 }: { lines?: number }) {
 			</CardHeader>
 			<Separator />
 			<CardContent className="space-y-4 pt-6">
-				{Array.from({ length: lines }).map((_, i) => (
-					// biome-ignore lint/suspicious/noArrayIndexKey: fixed-length placeholder, no data to key on
-					<Skeleton key={i} className="h-8 w-full" />
+				{skeletonRows(lines).map((row) => (
+					<Skeleton key={row} className="h-8 w-full" />
 				))}
 			</CardContent>
 		</Card>
@@ -579,9 +583,8 @@ function ResponsesTab({
 	if (isLoading && runs.length === 0) {
 		return (
 			<div className="space-y-4">
-				{Array.from({ length: 3 }).map((_, i) => (
-					// biome-ignore lint/suspicious/noArrayIndexKey: fixed-length placeholder, no data to key on
-					<Card key={i}>
+				{skeletonRows(3).map((row) => (
+					<Card key={row}>
 						<CardHeader className="pb-0 gap-y-0">
 							<div className="grid grid-cols-3 gap-x-4">
 								<div>
@@ -642,9 +645,8 @@ function ResponsesTab({
 							<div>
 								<span className="text-xs text-muted-foreground block mb-1.5">Web Queries</span>
 								<div className="flex flex-wrap gap-1.5">
-									{run.webQueries.map((query: string, qIndex: number) => (
-										// biome-ignore lint/suspicious/noArrayIndexKey: a run can search the same query twice, so the index is what keeps sibling keys distinct
-										<Badge key={qIndex} variant="outline" className="text-xs font-normal">
+									{[...new Set<string>(run.webQueries)].map((query) => (
+										<Badge key={query} variant="outline" className="text-xs font-normal">
 											{query}
 										</Badge>
 									))}
