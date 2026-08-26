@@ -37,6 +37,7 @@ import {
 import { isBrandedPrompt } from "@/lib/prompt-tags";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { computeVolatility, type DailyDomainCount, stabilityScore } from "@/lib/visibility-stats";
+import { normalizeText, withoutRepeats } from "@/server/opportunities-dedupe";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
 // ============================================================================
@@ -432,33 +433,6 @@ function citationsForPrompts(
  * from cache. Surfaced as "Refreshed weekly" on the page — kept a touch under 7 days. */
 const REFRESH_AFTER_DAYS = 6;
 const MAX_GENERATION_ATTEMPTS = 3;
-
-/** First occurrence of each entry, by whatever `key` identifies it. */
-function distinctBy<T>(items: T[], key: (item: T) => string): T[] {
-	const seen = new Set<string>();
-	return items.filter((item) => {
-		const id = key(item);
-		if (seen.has(id)) return false;
-		seen.add(id);
-		return true;
-	});
-}
-
-const normalizeText = (text: string) => text.trim().toLowerCase();
-
-export function withoutRepeats(report: OpportunitiesReport): OpportunitiesReport {
-	return {
-		...report,
-		summary: distinctBy(report.summary, normalizeText),
-		risks: distinctBy(report.risks, normalizeText),
-		opportunities: distinctBy(report.opportunities, (o) => normalizeText(o.title)).map((o) => ({
-			...o,
-			relatedPrompts: distinctBy(o.relatedPrompts, (p) => normalizeText(p.text)),
-			yourCitations: distinctBy(o.yourCitations, (c) => c.url),
-			competitorCitations: distinctBy(o.competitorCitations, (c) => c.url),
-		})),
-	};
-}
 
 /** Resolve the LLM output's prompt strings to tracked IDs (for deep-linking) and
  * attach each opportunity's cited pages split into the brand's vs competitors'. */
