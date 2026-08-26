@@ -204,6 +204,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			webSearchEnabled: z.string().optional(),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			timezone: z.string().optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -222,7 +223,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			return { prompts: [], totalPrompts: 0, availableTags: [] };
 		}
 
-		const timezone = "UTC";
+		const timezone = resolveTimezone(data.timezone, "UTC");
 		const { fromDateStr, toDateStr } = getTimezoneLookbackRange((data.lookback || "1m") as LookbackPeriod, timezone);
 
 		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
