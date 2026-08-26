@@ -1,6 +1,5 @@
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { List } from "@/components/list";
 
 const FULL_CHANGELOG_RE = /\*\*Full Changelog\*\*:\s*(https:\/\/github\.com\/[^\s]+\/compare\/[^\s]+)/i;
 
@@ -30,7 +29,7 @@ const components: Components = {
 			{children}
 		</a>
 	),
-	ul: ({ children }) => <List className="my-2 list-disc space-y-1 pl-5 marker:text-zinc-400">{children}</List>,
+	ul: ({ children }) => <ul className="my-2 list-disc space-y-1 pl-5 marker:text-zinc-400">{children}</ul>,
 	ol: ({ children }) => <ol className="my-2 list-decimal space-y-1 pl-5 marker:text-zinc-400">{children}</ol>,
 	li: ({ children }) => <li className="text-[14px] leading-relaxed text-zinc-700">{children}</li>,
 	strong: ({ children }) => <strong className="font-semibold text-zinc-950">{children}</strong>,

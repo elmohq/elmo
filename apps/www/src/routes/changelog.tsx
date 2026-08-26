@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ArrowUpRight, GitCompare } from "lucide-react";
 import { Footer } from "@/components/footer";
-import { List } from "@/components/list";
 import { Navbar } from "@/components/navbar";
 import { type ChangelogIssue, getGitHubChangelog } from "@/lib/github-changelog";
 import { getGitHubReleases, type ReleaseEntry } from "@/lib/github-releases";
@@ -181,11 +180,11 @@ function ChangelogPage() {
 									<h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
 										{group.label}
 									</h3>
-									<List className="space-y-2">
+									<ul className="space-y-2">
 										{group.issues.map((issue) => (
 											<IssueRow key={issue.number} issue={issue} />
 										))}
-									</List>
+									</ul>
 								</div>
 							))}
 						</div>
