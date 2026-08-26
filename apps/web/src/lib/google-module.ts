@@ -47,6 +47,65 @@ export const emptyGoogleModule = (): GoogleModule => ({
 	search: { totalCitations: 0, queries: [] },
 });
 
+type ProductAgg = {
+	name: string;
+	count: number;
+	attribution: ProductAttribution;
+	prompts: Map<string, number>;
+	urls: Map<string, number>;
+};
+type QueryAgg = { query: string; count: number; prompts: Map<string, number> };
+
+/** Add `count` to `key`'s entry in a per-prompt tally. */
+function addPromptCount(byPrompt: Map<string, number>, promptId: string, count: number): void {
+	byPrompt.set(promptId, (byPrompt.get(promptId) ?? 0) + count);
+}
+
+/**
+ * Fold cited Google URLs onto the product or the search query they represent,
+ * keyed case-insensitively so the same product cited two ways is one row.
+ */
+function tallyGooglePages(
+	pages: GoogleModulePageRow[],
+	brandName: string,
+	competitors: { id: string; name: string }[],
+): { productByKey: Map<string, ProductAgg>; queryByKey: Map<string, QueryAgg> } {
+	const productByKey = new Map<string, ProductAgg>();
+	const queryByKey = new Map<string, QueryAgg>();
+
+	for (const row of pages) {
+		if (!row.url) continue;
+		const count = Number(row.count);
+
+		if (isGoogleShoppingUrl(row.url)) {
+			const name = parseGoogleProductName(row.url, row.title);
+			if (!name) continue;
+			const product = productByKey.get(name.toLowerCase()) ?? {
+				name,
+				count: 0,
+				attribution: attributeProduct(name, brandName, competitors),
+				prompts: new Map(),
+				urls: new Map(),
+			};
+			product.count += count;
+			addPromptCount(product.prompts, row.prompt_id, count);
+			product.urls.set(row.url, (product.urls.get(row.url) ?? 0) + count);
+			productByKey.set(name.toLowerCase(), product);
+			continue;
+		}
+
+		if (!isGoogleSearchUrl(row.url)) continue;
+		const query = parseGoogleSearchQuery(row.url);
+		if (!query) continue;
+		const entry = queryByKey.get(query.toLowerCase()) ?? { query, count: 0, prompts: new Map() };
+		entry.count += count;
+		addPromptCount(entry.prompts, row.prompt_id, count);
+		queryByKey.set(query.toLowerCase(), entry);
+	}
+
+	return { productByKey, queryByKey };
+}
+
 /**
  * Build the Google AI Mode module from per-prompt cited pages: Shopping products
  * (attributed brand/competitor/other by name) and search queries, each tied to
@@ -58,51 +117,7 @@ export function buildGoogleModule(
 	competitors: { id: string; name: string }[],
 	promptValue: (id: string) => string | undefined,
 ): GoogleModule {
-	type ProductAgg = {
-		name: string;
-		count: number;
-		attribution: ProductAttribution;
-		prompts: Map<string, number>;
-		urls: Map<string, number>;
-	};
-	type QueryAgg = { query: string; count: number; prompts: Map<string, number> };
-	const productByKey = new Map<string, ProductAgg>();
-	const queryByKey = new Map<string, QueryAgg>();
-
-	for (const row of pages) {
-		if (!row.url) continue;
-		const c = Number(row.count);
-		if (isGoogleShoppingUrl(row.url)) {
-			const name = parseGoogleProductName(row.url, row.title);
-			if (!name) continue;
-			const key = name.toLowerCase();
-			let e = productByKey.get(key);
-			if (!e) {
-				e = {
-					name,
-					count: 0,
-					attribution: attributeProduct(name, brandName, competitors),
-					prompts: new Map(),
-					urls: new Map(),
-				};
-				productByKey.set(key, e);
-			}
-			e.count += c;
-			e.prompts.set(row.prompt_id, (e.prompts.get(row.prompt_id) ?? 0) + c);
-			e.urls.set(row.url, (e.urls.get(row.url) ?? 0) + c);
-		} else if (isGoogleSearchUrl(row.url)) {
-			const query = parseGoogleSearchQuery(row.url);
-			if (!query) continue;
-			const key = query.toLowerCase();
-			let e = queryByKey.get(key);
-			if (!e) {
-				e = { query, count: 0, prompts: new Map() };
-				queryByKey.set(key, e);
-			}
-			e.count += c;
-			e.prompts.set(row.prompt_id, (e.prompts.get(row.prompt_id) ?? 0) + c);
-		}
-	}
+	const { productByKey, queryByKey } = tallyGooglePages(pages, brandName, competitors);
 
 	const promptRefs = (m: Map<string, number>): GooglePromptRef[] =>
 		[...m.entries()]
