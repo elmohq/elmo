@@ -181,8 +181,8 @@ function HoverTip({
 				createPortal(
 					// The wrapper's bottom padding bridges the gap to the trigger, so the
 					// pointer can reach an interactive tooltip without it closing.
-					// biome-ignore lint/a11y/noStaticElementInteractions: keeps an interactive tooltip open while the pointer crosses to it; the trigger is a button
 					<div
+						role="tooltip"
 						className={`fixed z-50 pb-1.5 ${interactive ? "" : "pointer-events-none"}`}
 						style={{ left: pos.x, top: pos.y, width, transform: "translate(-50%, -100%)" }}
 						onMouseEnter={cancelClose}
