@@ -522,15 +522,6 @@ function distinctBy<T>(items: T[], key: (item: T) => string): T[] {
 
 const normalizeText = (text: string) => text.trim().toLowerCase();
 
-/**
- * Keep the first mention in every list the report renders.
- *
- * Nothing constrains the model from repeating itself, and a report that lists
- * the same bullet, caveat, opportunity or prompt twice tells the reader
- * something untrue about how much it found. Applied to stored reports as well
- * as fresh ones: the table holds reports written before this existed, and they
- * are served for up to REFRESH_AFTER_DAYS.
- */
 export function withoutRepeats(report: OpportunitiesReport): OpportunitiesReport {
 	return {
 		...report,
