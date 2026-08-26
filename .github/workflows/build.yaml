@@ -52,6 +52,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Formatting, lint and import order in one pass, repo-wide. Runs first
+      # because it is the cheapest thing that can fail.
+      - name: Format and lint
+        run: pnpm lint
+
       # Redundant with `pnpm build` (turbo's build depends on check-types), but
       # it fails in a minute instead of after the whole build, and turbo caches
       # the result so the build step doesn't repeat it.
