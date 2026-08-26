@@ -1,25 +1,24 @@
 /**
  * Whitelabel auth hooks for better-auth.
  *
- * Syncs Auth0 app_metadata to better-auth's organization/user tables
- * on SSO login via the provisionUser callback.
+ * Syncs Auth0 app_metadata to better-auth's member/user tables on SSO login
+ * via the provisionUser callback.
+ *
+ * Auth0 is authoritative over who belongs where, not over which orgs exist:
+ * orgs are created by the admin API (`POST /api/v1/brands`) before their users
+ * sign in, so an `elmo_orgs` entry with no row here is skipped.
  *
  * Data flow:
  * 1. User logs in via Auth0 SSO -> better-auth creates user + session
  * 2. provisionUser fires (before session cookie is set)
  * 3. Fetches app_metadata from Auth0 Management API
- * 4. Upserts better-auth organizations from elmo_orgs
+ * 4. Reconciles memberships against elmo_orgs
  * 5. Sets user admin role and report generator access flags
  * 6. Mutates the user object so the session cookie has correct data
  */
 
 import type { CreateAuthOptions } from "@workspace/lib/auth/server";
-import {
-	findAccountByProvider,
-	syncMemberships,
-	updateUserFlags,
-	upsertOrganization,
-} from "@workspace/lib/db/auth-sync";
+import { findAccountByProvider, syncMemberships, updateUserFlags } from "@workspace/lib/db/auth-sync";
 import { ManagementClient } from "auth0";
 import { z } from "zod";
 
@@ -79,14 +78,14 @@ async function fetchAuth0AppMetadata(auth0UserId: string): Promise<Auth0AppMetad
 }
 
 async function syncOrganizations(userId: string, orgs: Array<{ id: string; name: string }>): Promise<void> {
-	for (const org of orgs) {
-		await upsertOrganization(org);
-	}
 	const orgNameById = new Map(orgs.map((o) => [o.id, o.name]));
-	const { added, removed } = await syncMemberships(
+	const { added, removed, invalid } = await syncMemberships(
 		userId,
 		orgs.map((o) => o.id),
 	);
+	if (invalid.length > 0) {
+		console.warn(`[auth0-sync] user=${userId} orgs not provisioned here, invalid=[${invalid.join(", ")}]`);
+	}
 	if (added.length > 0 || removed.length > 0) {
 		const parts: string[] = [];
 		if (added.length > 0) parts.push(`added=[${added.map((id) => orgNameById.get(id) ?? id).join(", ")}]`);
@@ -100,8 +99,8 @@ async function syncOrganizations(userId: string, orgs: Array<{ id: string; name:
 /**
  * Syncs Auth0 app_metadata for a user on login.
  *
- * Fetches metadata from Auth0 Management API, upserts organizations,
- * and updates user flags (admin role, report generator access).
+ * Fetches metadata from Auth0 Management API, reconciles the user's org
+ * memberships, and updates user flags (admin role, report generator access).
  *
  * Returns the resolved flags so the caller can apply them to the user
  * object before the session cookie is set.
@@ -140,7 +139,7 @@ export async function syncAuth0UserById(
  * Returns the CreateAuthOptions for whitelabel deployments.
  *
  * Wires up Auth0 OIDC SSO and the provisionUser callback that syncs
- * Auth0 app_metadata into better-auth's user/org tables on login.
+ * Auth0 app_metadata into better-auth's user/member tables on login.
  */
 export function getWhitelabelAuthOptions(): CreateAuthOptions {
 	const domain = process.env.AUTH0_DOMAIN!;

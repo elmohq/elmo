@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+
 /**
  * Integration test for scraping provider targets.
  * Exercises the same code paths as the worker against real provider APIs.
@@ -10,10 +11,10 @@
  *   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online" --output-json result.json
  */
 
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { getModelMeta } from "@workspace/config/models";
-import { parseScrapeTargets, getProvider, STATUS_TARGETS, type ScrapeResult } from "@workspace/lib/providers";
-import { extractTextContent, extractCitations } from "@workspace/lib/text-extraction";
-import { appendFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { getProvider, parseScrapeTargets, type ScrapeResult, STATUS_TARGETS } from "@workspace/lib/providers";
+import { extractCitations, extractTextContent } from "@workspace/lib/text-extraction";
 import { escapeGitHubSummaryTableCell } from "./github-summary";
 
 const colors = {

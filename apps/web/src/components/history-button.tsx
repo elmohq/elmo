@@ -1,7 +1,7 @@
-import { GoStack } from "react-icons/go";
+import { Link } from "@tanstack/react-router";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
-import { Link } from "@tanstack/react-router";
+import { GoStack } from "react-icons/go";
 
 interface HistoryButtonProps {
 	brandId?: string;

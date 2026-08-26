@@ -1,16 +1,16 @@
 import type { FaqItem } from "@/lib/faqs";
-import { competitors, getComparisonSlug, getPopularityRank } from "./data";
 import { CATEGORY_NOUN, indefiniteArticle, isOpenSource } from "./content";
+import { competitors, getComparisonSlug, getPopularityRank } from "./data";
 import {
-	ELMO_FEATURES,
-	FEATURE_CATEGORIES,
 	CATEGORY_LABELS,
-	getFeatureLabel,
-	getFeatureDescription,
-	isLowDR,
 	type Competitor,
 	type CompetitorCategory,
+	ELMO_FEATURES,
+	FEATURE_CATEGORIES,
 	type FeatureKey,
+	getFeatureDescription,
+	getFeatureLabel,
+	isLowDR,
 } from "./types";
 
 // ---------------------------------------------------------------------------

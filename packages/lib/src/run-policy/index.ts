@@ -22,7 +22,7 @@ export {
 	resolvePromptRunPlan,
 	selectDueTargets,
 	type TargetOverdueStatus,
-	targetOverdueStatus,
 	type TargetPlan,
 	targetKey,
+	targetOverdueStatus,
 } from "./policy";

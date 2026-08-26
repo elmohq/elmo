@@ -1,12 +1,12 @@
-import { useCallback } from "react";
-import { Download } from "lucide-react";
-import { Button } from "@workspace/ui/components/button";
-import { ChartFooter } from "./chart-footer";
-import { HistoryButton } from "./history-button";
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { getOptimizeButtonForMode } from "@workspace/deployment/client";
+import { Button } from "@workspace/ui/components/button";
+import { Download } from "lucide-react";
+import { useCallback } from "react";
 import { getPromptWebQueryFn } from "@/server/prompts";
+import { ChartFooter } from "./chart-footer";
+import { HistoryButton } from "./history-button";
 
 type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
@@ -22,8 +22,8 @@ interface ChartActionsFooterProps {
 	// For optimization
 	/** Current model filter ("all" = no filter). */
 	selectedModel?: string;
-	/** Concrete model ids this brand runs — no "all" sentinel. */
-	availableModels?: string[];
+	/** The targets this brand runs, as filter values — no "all" sentinel. */
+	availableModels: string[];
 	lookback?: LookbackPeriod;
 }
 
@@ -34,7 +34,7 @@ export function ChartActionsFooter({
 	onDownload,
 	isDownloading = false,
 	selectedModel = "all",
-	availableModels = [],
+	availableModels,
 	lookback = "1m",
 }: ChartActionsFooterProps) {
 	const isSinglePrompt = Boolean(promptId && brandId);

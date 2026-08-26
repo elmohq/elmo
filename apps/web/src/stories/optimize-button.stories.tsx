@@ -16,7 +16,7 @@ const PROPS = {
 	promptName: "best crm for startups",
 	parentName: "Acme",
 	optimizationUrlTemplate: "https://acme.example/optimize?prompt={prompt}&brand={brandId}",
-	availableModels: ["openai", "perplexity"],
+	availableModels: ["google-ai-mode", "claude", "chatgpt::premium"],
 	lookback: "1m",
 } as const;
 
@@ -24,7 +24,7 @@ const PROPS = {
 export const SingleModel: Story = {
 	render: () => (
 		<div className="p-8">
-			<OptimizeButton {...PROPS} selectedModel="openai" />
+			<OptimizeButton {...PROPS} selectedModel="google-ai-mode" />
 		</div>
 	),
 	play: async ({ canvasElement }) => {
@@ -42,10 +42,10 @@ export const SingleModel: Story = {
 };
 
 /**
- * "All models" opens a menu with one entry per model. Each entry carries a menu
- * group label, and a label rendered outside a group takes the whole menu down
- * rather than just itself — so this asserts the entries are reachable and still
- * hand off, not that the labels read a particular way.
+ * "All models" opens a menu with one entry per target, named the way the model
+ * filter names it — a grounded target is the product it is sold as, not a
+ * second "ChatGPT". Each entry carries a menu group label, and a label rendered
+ * outside a group takes the whole menu down rather than just itself.
  */
 export const AllModelsMenu: Story = {
 	render: () => (
@@ -64,6 +64,10 @@ export const AllModelsMenu: Story = {
 		const screen = within(document.body);
 		const items = await screen.findAllByRole("menuitem");
 		await expect(items).toHaveLength(PROPS.availableModels.length);
+
+		for (const label of ["Google AI Mode", "Claude", "GPT-5 Search"]) {
+			await expect(screen.getByText(`Optimize for ${label}`)).toBeInTheDocument();
+		}
 
 		await userEvent.click(items[0]);
 		await expect(open).toHaveBeenCalledWith(

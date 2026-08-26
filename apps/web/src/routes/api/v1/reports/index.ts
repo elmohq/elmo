@@ -7,12 +7,12 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
-import { reports, type NewReport } from "@workspace/lib/db/schema";
-import { desc, count, eq } from "drizzle-orm";
-import { z } from "zod";
+import { type NewReport, reports } from "@workspace/lib/db/schema";
 import { cleanOnboardingUrl } from "@workspace/lib/onboarding";
-import { sendReportJob } from "@/lib/job-scheduler";
+import { count, desc, eq } from "drizzle-orm";
+import { z } from "zod";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { sendReportJob } from "@/lib/job-scheduler";
 
 const createReportBody = z.object({
 	brandName: z

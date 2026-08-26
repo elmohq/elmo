@@ -1,16 +1,11 @@
 /**
  * /admin/workflows - Monitor prompt scheduling, job execution, and worker health
  */
-import { useEffect, useState } from "react";
+
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { getAppName } from "@/lib/route-head";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import { Skeleton } from "@workspace/ui/components/skeleton";
-import { Progress } from "@workspace/ui/components/progress";
-import { Spinner } from "@workspace/ui/components/spinner";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import {
 	Dialog,
 	DialogContent,
@@ -19,19 +14,25 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@workspace/ui/components/dialog";
+import { Progress } from "@workspace/ui/components/progress";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { Spinner } from "@workspace/ui/components/spinner";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import {
-	CheckCircle2,
-	AlertTriangle,
-	XCircle,
-	Clock,
 	Activity,
-	Server,
-	RefreshCw,
+	AlertTriangle,
+	CheckCircle2,
 	ChevronDown,
 	ChevronRight,
+	Clock,
 	Play,
+	RefreshCw,
+	Server,
+	XCircle,
 } from "lucide-react";
-import { getWorkflowDataFn, retryJobFn, getJobLogsFn } from "@/server/admin";
+import { useCallback, useEffect, useState } from "react";
+import { getAppName } from "@/lib/route-head";
+import { getJobLogsFn, getWorkflowDataFn, retryJobFn } from "@/server/admin";
 
 // ============================================================================
 // Types
@@ -620,6 +621,9 @@ export const Route = createFileRoute("/_authed/admin/workflows")({
 	component: WorkflowsPage,
 });
 
+/** How often the dashboard re-reads the queue while it is open. */
+const REFRESH_INTERVAL_MS = 30_000;
+
 function WorkflowsPage() {
 	const [data, setData] = useState<WorkflowsData | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -627,7 +631,7 @@ function WorkflowsPage() {
 	const [expandedBrands, setExpandedBrands] = useState<Set<string>>(new Set());
 	const [isRefreshing, setIsRefreshing] = useState(false);
 
-	const fetchData = async (showRefreshing = false) => {
+	const fetchData = useCallback(async (showRefreshing = false) => {
 		if (showRefreshing) setIsRefreshing(true);
 
 		try {
@@ -639,13 +643,13 @@ function WorkflowsPage() {
 			setLoading(false);
 			setIsRefreshing(false);
 		}
-	};
+	}, []);
 
 	useEffect(() => {
 		fetchData();
-		const interval = setInterval(() => fetchData(), 30000);
+		const interval = setInterval(() => fetchData(), REFRESH_INTERVAL_MS);
 		return () => clearInterval(interval);
-	}, []);
+	}, [fetchData]);
 
 	const toggleBrand = (brandId: string) => {
 		setExpandedBrands((prev) => {

@@ -1,22 +1,23 @@
 /// <reference types="vite/client" />
-import { useEffect } from "react";
-import { HeadContent, Outlet, ScriptOnce, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
-import { NotFound } from "@/router-default-components";
-import { TanStackDevtools } from "@tanstack/react-devtools";
-import type { QueryClient } from "@tanstack/react-query";
-import { DEFAULT_APP_ICON, ELMO_THEME_COLOR } from "@workspace/config/constants";
-import type { DeploymentMode } from "@workspace/config/types";
-import type { MissingEnvVar } from "@workspace/config/env";
-import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
-import MissingEnvPage from "@/components/missing-env-page";
-import { usesWordmarkFont } from "@/components/logo";
-import queryDevtools from "@/integrations/tanstack-query/devtools";
-import { initPostHog } from "@/lib/posthog";
-import { initCrisp } from "@/lib/crisp";
-import appCss from "../styles.css?url";
+
 // Preloaded so the wordmark font downloads in parallel with the CSS rather than
 // after it. Must resolve to the same emitted asset as the @font-face src.
 import titanOneFont from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
+import { TanStackDevtools } from "@tanstack/react-devtools";
+import type { QueryClient } from "@tanstack/react-query";
+import { createRootRouteWithContext, HeadContent, Outlet, ScriptOnce, Scripts } from "@tanstack/react-router";
+import { DEFAULT_APP_ICON, ELMO_THEME_COLOR } from "@workspace/config/constants";
+import type { MissingEnvVar } from "@workspace/config/env";
+import type { DeploymentMode } from "@workspace/config/types";
+import { useEffect } from "react";
+import { usesWordmarkFont } from "@/components/logo";
+import MissingEnvPage from "@/components/missing-env-page";
+import queryDevtools from "@/integrations/tanstack-query/devtools";
+import { initCrisp } from "@/lib/crisp";
+import { initPostHog } from "@/lib/posthog";
+import { NotFound } from "@/router-default-components";
+import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
+import appCss from "../styles.css?url";
 
 // clientConfig and envValidation are optional because the router renders against
 // its base context — which has neither — until this route's beforeLoad resolves.

@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // ../crisp is the module under test. It cannot be a top-level import: it latches
 // `initialized` on first load, so one shared instance would leave every case
@@ -81,8 +81,8 @@ describe("the demo next steps", () => {
 		const shown = queue().filter((command) => command[0] === "do" && command[1] === "message:show");
 		expect(shown, "reopening the chat must not repeat the sequence").toHaveLength(2);
 
-		const nextSteps = String((shown[1]?.[2] as [string, string])[1]);
-		const linked = [...nextSteps.matchAll(/\]\((https?:[^)]+)\)/g)].map((match) => match[1]);
+		const [, nextSteps] = (shown[1]?.[2] ?? []) as [string, string];
+		const linked = [...String(nextSteps).matchAll(/\]\((https?:[^)]+)\)/g)].map((match) => match[1]);
 		expect(linked).toEqual([
 			"https://cal.com/jrhizor/elmo",
 			CLOUD_SIGNUP_URL,
