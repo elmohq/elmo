@@ -24,15 +24,15 @@ Full setup instructions are in the developer guide at `packages/docs/content/doc
 - `pnpm test` — Vitest unit tests
 - `pnpm build` — build all packages
 - `pnpm format` — Biome format
-- `pnpm lint` — Biome check (formatting, lint, import order) repo-wide; the same check CI runs
-- `pnpm format-and-lint:fix` — apply everything Biome can fix on its own
+- `pnpm lint` — Biome check
+- `pnpm lint:fix` — apply everything Biome can fix on its own
 - Migrations: from `packages/lib`, `pnpm exec drizzle-kit migrate` (NEVER RUN THESE UNLESS EXPLICITLY INSTRUCTED BY THE USER)
 - E2E tests need Playwright browsers (`pnpm exec playwright install`) and a running app; they are separate from unit tests
 - shadcn components: always install with the CLI (`pnpm dlx shadcn@latest add <component>`, from `packages/ui` or `apps/www` — each has its own `components.json`) — never hand-create them
 
 Do not run formatting, linting, type checks, or tests after each change while you are working — they are slow, they interrupt the work, and a half-finished change failing them tells you nothing. Run a targeted one only when it is strictly necessary to diagnose or iterate on what you are doing, or when the user asks.
 
-Once the work is finished, before handing it back or opening a PR, run `pnpm lint` and get it passing. It is the same check CI runs and it fails the build, so leaving it broken hands the user a red PR. `pnpm format-and-lint:fix` applies everything Biome can fix on its own; what is left needs a decision, and a `biome-ignore` comment is the right answer only when you can say in it why the code is correct as written.
+Once the work is finished, before handing it back or opening a PR, run `pnpm lint` and get it passing. It is the same check CI runs and it fails the build, so leaving it broken hands the user a red PR. `pnpm lint:fix` applies everything Biome can fix on its own; what is left needs a decision, and a `biome-ignore` comment is the right answer only when you can say in it why the code is correct as written.
 
 ## Tests
 
