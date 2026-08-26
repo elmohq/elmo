@@ -144,14 +144,16 @@ async function findUniqueOrgSlug(baseSlug: string, conn: DbConnection = db): Pro
 
 /**
  * Ensure an organization row exists for a brand created outside the normal
- * signup / Auth0 flows — specifically the admin API (`POST /api/v1/brands`),
- * which accepts a caller-supplied brand id and no longer has a session/org to
- * lean on. Brands are hard-scoped to an org via a NOT NULL FK, so the org must
- * exist before the brand is inserted.
+ * signup flow — specifically the admin API (`POST /api/v1/brands`), which
+ * accepts a caller-supplied brand id and has no session/org to lean on. Brands
+ * are hard-scoped to an org via a NOT NULL FK, so the org must exist before the
+ * brand is inserted. Whitelabel goes through here too: Auth0 only reconciles
+ * memberships, so this is the sole path that creates the orgs its app_metadata
+ * refers to.
  *
- * No-op when the org already exists: we never overwrite an org that was synced
- * from Auth0 (whitelabel) or created on signup. The brand id is reused as the
- * org id (the long-standing convention), with a collision-free slug.
+ * No-op when the org already exists: we never overwrite an org created by an
+ * earlier call or on signup. The brand id is reused as the org id (the
+ * long-standing convention), with a collision-free slug.
  */
 export async function ensureOrganization(input: { id: string; name: string }, conn: DbConnection = db): Promise<void> {
 	const [existing] = await conn

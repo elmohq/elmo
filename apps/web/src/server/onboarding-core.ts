@@ -309,7 +309,7 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 
 	// Brands are hard-scoped to an org via a NOT NULL FK. The admin API uses the
 	// supplied id for both records, so materialize the org first. This is a no-op
-	// when Auth0 synchronization has already created it.
+	// when an earlier call already created it.
 	//
 	// Both writes share a transaction so a conflicting brand id doesn't strand
 	// the org we just made: brand ids and org ids are independent now, so a

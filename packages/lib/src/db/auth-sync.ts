@@ -9,7 +9,7 @@
  * cross-package type mismatches from different drizzle-orm resolutions.
  */
 import { db } from "./db";
-import { eq, and, ne, inArray, sql } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { organization, member, user, account } from "./schema";
 
 type AuthSyncTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -27,42 +27,20 @@ async function lockUserMemberships(tx: AuthSyncTransaction, userId: string): Pro
 	await tx.execute(sql`select pg_advisory_xact_lock(hashtext('elmo-user-memberships'), hashtext(${userId}))`);
 }
 
-async function uniqueSlug(baseSlug: string, excludeOrgId: string): Promise<string> {
-	let candidate = baseSlug;
-	let suffix = 2;
-	for (;;) {
-		const conflict = await db
-			.select({ id: organization.id })
-			.from(organization)
-			.where(and(eq(organization.slug, candidate), ne(organization.id, excludeOrgId)))
-			.limit(1);
-		if (conflict.length === 0) return candidate;
-		candidate = `${baseSlug}-${suffix}`;
-		suffix++;
-	}
-}
+/**
+ * Narrow a set of candidate org ids to the ones that actually have a row.
+ *
+ * Membership reconciliation is driven by an external identity provider, which
+ * can name an org this deployment has never been told about. Those have to be
+ * dropped before the member insert: `member.organization_id` is a NOT NULL FK,
+ * so a single unknown id would abort the whole reconciliation transaction.
+ */
+export async function filterExistingOrganizationIds(orgIds: string[]): Promise<Set<string>> {
+	if (orgIds.length === 0) return new Set();
 
-export async function upsertOrganization(org: { id: string; name: string; slug?: string }): Promise<void> {
-	const baseSlug =
-		org.slug ??
-		org.name
-			.toLowerCase()
-			.replace(/[^a-z0-9]+/g, "-")
-			.replace(/^-|-$/g, "");
-	const slug = await uniqueSlug(baseSlug, org.id);
+	const rows = await db.select({ id: organization.id }).from(organization).where(inArray(organization.id, orgIds));
 
-	await db
-		.insert(organization)
-		.values({
-			id: org.id,
-			name: org.name,
-			slug,
-			createdAt: new Date(),
-		})
-		.onConflictDoUpdate({
-			target: organization.id,
-			set: { name: org.name, slug },
-		});
+	return new Set(rows.map((row) => row.id));
 }
 
 export async function ensureMembership(userId: string, orgId: string, role = "member"): Promise<void> {

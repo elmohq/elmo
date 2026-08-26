@@ -50,9 +50,9 @@ test.describe("Authenticated access", () => {
   });
 
   test("organizations cannot be created over HTTP", async ({ request }) => {
-    // Orgs are provisioned server-side only (create-brand flow, Auth0 sync, or
-    // cloud invitations), so the better-auth org plugin's mutation endpoints
-    // are refused in every mode.
+    // Orgs are provisioned server-side only (create-brand flow, the admin
+    // brands API, or cloud invitations), so the better-auth org plugin's
+    // mutation endpoints are refused in every mode.
     const response = await request.post("/api/auth/organization/create", {
       data: { name: "Smuggled Org", slug: "smuggled-org" },
       failOnStatusCode: false,

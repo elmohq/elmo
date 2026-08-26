@@ -73,9 +73,10 @@ export function evaluateDeploymentPolicy(
 
 	// 0. Better-auth org plugin mutations are blocked everywhere over HTTP.
 	// Orgs are created server-side only — via the provisioning module
-	// (local/demo/cloud create-brand) or Auth0 sync (whitelabel) — and cloud
-	// team invitations go through server functions that call auth.api
-	// in-process, so no mode needs these HTTP endpoints.
+	// (local/demo/cloud create-brand, and the admin brands API that whitelabel
+	// is provisioned through) — and cloud team invitations go through server
+	// functions that call auth.api in-process, so no mode needs these HTTP
+	// endpoints.
 	if (isOrgPluginMutation) {
 		return {
 			action: "block",
@@ -244,7 +245,8 @@ export function evaluateReadOnly(readOnly: boolean): "allow" | "deny" {
 /**
  * Evaluate whether the deployment allows the user to create brands from the UI.
  * Used by the create-brand server function. Local mode is the only mode that
- * allows it — whitelabel orgs come from Auth0, demo is read-only.
+ * allows it — whitelabel brands are provisioned through the admin API, demo is
+ * read-only.
  */
 export function evaluateRequireCanCreateBrands(canCreateBrands: boolean): "allow" | "deny" {
 	return canCreateBrands ? "allow" : "deny";
