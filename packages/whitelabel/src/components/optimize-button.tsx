@@ -58,15 +58,7 @@ export function OptimizeButton({
 		setLoadingKey(key);
 
 		try {
-			let webQuery: string | null | undefined = null;
-
-			if (fetchWebQuery) {
-				const webQueryData = await fetchWebQuery(promptId, lookback ?? "1m", model);
-				// Already the top query for `model`: the server filters by it, and it
-				// understands a grounded target's filter value where a model id lookup
-				// would not.
-				webQuery = webQueryData.webQuery;
-			}
+			const modelWebQuery = await fetchWebQuery?.(promptId, lookback ?? "1m", model);
 
 			const url = generateOptimizationUrl(
 				optimizationUrlTemplate,
@@ -75,7 +67,7 @@ export function OptimizeButton({
 				// No genuine search query known (the engine searched the prompt
 				// verbatim or doesn't expose its queries) — the prompt itself is
 				// the best stand-in.
-				webQuery || promptName,
+				modelWebQuery?.webQuery || promptName,
 			);
 
 			window.open(url, "_blank", "noopener,noreferrer");
