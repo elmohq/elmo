@@ -7,7 +7,14 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["apps/**", "packages/**", "!**/node_modules", "!packages/ui/src/components", "!**/routeTree.gen.ts"]
+		"includes": [
+			"apps/**",
+			"packages/**",
+			"!**/node_modules",
+			"!packages/ui/src/components",
+			"!**/routeTree.gen.ts",
+			"!**/public"
+		]
 	},
 	"formatter": {
 		"enabled": true,
