@@ -54,26 +54,27 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	brand?: BrandWithPrompts | null;
 }
 
-export function AppSidebar({
-	isAdmin = false,
-	hasReportAccess = false,
-	scope = "brand",
-	brand,
-	...props
-}: AppSidebarProps) {
-	const { setOpenMobile } = useSidebar();
-	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
-	// Reports are disabled entirely in cloud; hide the nav entry there.
-	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
+/** The sidebar's sections, decided entirely by scope, onboarding and access. */
+function buildNavGroups(args: {
+	scope: SidebarScope;
+	brand?: BrandWithPrompts | null;
+	isAdmin: boolean;
+	showAdminSection: boolean;
+	reportsEnabled: boolean;
+	features?: ClientConfig["features"];
+}): NavGroup[] {
+	const { scope, brand, isAdmin, showAdminSection, reportsEnabled, features } = args;
+	return [
+		// Only a brand context has a dashboard; a gate page has no destinations.
+		...(scope === "brand" ? brandGroups(brand, features) : []),
+		...(showAdminSection ? [adminGroup(isAdmin, reportsEnabled)] : []),
+	];
+}
 
-	// A gate page offers no destinations: every link would either 404 or bounce
-	// the user straight back to the gate.
-	const showAdminSection = scope !== "account" && (isAdmin || (hasReportAccess && reportsEnabled));
-
+/** The dashboard and settings sections, both gated on the brand being onboarded. */
+function brandGroups(brand: BrandWithPrompts | null | undefined, features?: ClientConfig["features"]): NavGroup[] {
 	const groups: NavGroup[] = [];
-
-	// Dashboard section - only show if we have a brand context
-	if (scope === "brand") {
+	{
 		const dashboardItems = [
 			{
 				title: "Overview",
@@ -143,55 +144,56 @@ export function AppSidebar({
 						url: "/settings/llms",
 						icon: IconCpu,
 					},
-					...(context.clientConfig?.features.teamInvites
-						? [{ title: "Team", url: "/settings/members", icon: IconUsers }]
-						: []),
-					...(context.clientConfig?.features.billing
-						? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard }]
-						: []),
+					...(features?.teamInvites ? [{ title: "Team", url: "/settings/members", icon: IconUsers }] : []),
+					...(features?.billing ? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard }] : []),
 				],
 			});
 		}
 	}
 
-	// Admin section
-	if (showAdminSection) {
-		const reportsItem = {
-			title: "Reports",
-			url: "/reports",
-			icon: IconReport,
-			absolute: true,
-		};
-		const adminItems = isAdmin
-			? [
-					{
-						title: "Brands",
-						url: "/admin",
-						icon: IconTable,
-						absolute: true,
-					},
-					...(reportsEnabled ? [reportsItem] : []),
-					{
-						title: "Workflows",
-						url: "/admin/workflows",
-						icon: IconTimeline,
-						absolute: true,
-					},
-					{
-						title: "Tools",
-						url: "/admin/tools",
-						icon: IconTool,
-						absolute: true,
-					},
-				]
-			: [reportsItem];
+	return groups;
+}
 
-		groups.push({
-			label: "Admin",
-			items: adminItems,
-		});
-	}
+/** Admins get the whole console; report access alone gets only Reports. */
+function adminGroup(isAdmin: boolean, reportsEnabled: boolean): NavGroup {
+	const reportsItem = { title: "Reports", url: "/reports", icon: IconReport, absolute: true };
+	if (!isAdmin) return { label: "Admin", items: [reportsItem] };
 
+	return {
+		label: "Admin",
+		items: [
+			{ title: "Brands", url: "/admin", icon: IconTable, absolute: true },
+			...(reportsEnabled ? [reportsItem] : []),
+			{ title: "Workflows", url: "/admin/workflows", icon: IconTimeline, absolute: true },
+			{ title: "Tools", url: "/admin/tools", icon: IconTool, absolute: true },
+		],
+	};
+}
+
+export function AppSidebar({
+	isAdmin = false,
+	hasReportAccess = false,
+	scope = "brand",
+	brand,
+	...props
+}: AppSidebarProps) {
+	const { setOpenMobile } = useSidebar();
+	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	// Reports are disabled entirely in cloud; hide the nav entry there.
+	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
+
+	// A gate page offers no destinations: every link would either 404 or bounce
+	// the user straight back to the gate.
+	const showAdminSection = scope !== "account" && (isAdmin || (hasReportAccess && reportsEnabled));
+
+	const groups = buildNavGroups({
+		scope,
+		brand,
+		isAdmin,
+		showAdminSection,
+		reportsEnabled,
+		features: context.clientConfig?.features,
+	});
 	const brandmark = (
 		<>
 			<Logo iconClassName="!size-5" />
