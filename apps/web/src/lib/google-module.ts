@@ -56,7 +56,6 @@ type ProductAgg = {
 };
 type QueryAgg = { query: string; count: number; prompts: Map<string, number> };
 
-/** Add `count` to `key`'s entry in a per-prompt tally. */
 function addPromptCount(byPrompt: Map<string, number>, promptId: string, count: number): void {
 	byPrompt.set(promptId, (byPrompt.get(promptId) ?? 0) + count);
 }

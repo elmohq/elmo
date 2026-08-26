@@ -54,7 +54,6 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	brand?: BrandWithPrompts | null;
 }
 
-/** The sidebar's sections, decided entirely by scope, onboarding and access. */
 function buildNavGroups(args: {
 	scope: SidebarScope;
 	brand?: BrandWithPrompts | null;
@@ -71,7 +70,6 @@ function buildNavGroups(args: {
 	];
 }
 
-/** The dashboard and settings sections, both gated on the brand being onboarded. */
 function brandGroups(brand: BrandWithPrompts | null | undefined, features?: ClientConfig["features"]): NavGroup[] {
 	const groups: NavGroup[] = [];
 	const dashboardItems = [
@@ -82,7 +80,6 @@ function brandGroups(brand: BrandWithPrompts | null | undefined, features?: Clie
 		},
 	];
 
-	// Only show Visibility and Citations if the brand is onboarded
 	if (brand?.onboarded) {
 		dashboardItems.push(
 			{
@@ -118,7 +115,6 @@ function brandGroups(brand: BrandWithPrompts | null | undefined, features?: Clie
 		items: dashboardItems,
 	});
 
-	// Settings section - only show if onboarded
 	if (brand?.onboarded) {
 		groups.push({
 			label: "Settings",
@@ -152,7 +148,6 @@ function brandGroups(brand: BrandWithPrompts | null | undefined, features?: Clie
 	return groups;
 }
 
-/** Admins get the whole console; report access alone gets only Reports. */
 function adminGroup(isAdmin: boolean, reportsEnabled: boolean): NavGroup {
 	const reportsItem = { title: "Reports", url: "/reports", icon: IconReport, absolute: true };
 	if (!isAdmin) return { label: "Admin", items: [reportsItem] };

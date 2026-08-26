@@ -36,7 +36,6 @@ function FeatureRow({ label, elmo, competitor }: { label: string; elmo: boolean;
 	);
 }
 
-/** Which features only Elmo has, only the competitor has, and both have. */
 function diffFeatures(competitor: Competitor): {
 	elmoOnlyFeatures: string[];
 	competitorOnlyFeatures: string[];

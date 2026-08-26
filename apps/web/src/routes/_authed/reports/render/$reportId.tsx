@@ -92,7 +92,6 @@ function isPromptBranded(promptValue: string, brandName: string, brandWebsite: s
 	}
 }
 
-/** The stored report a render reads from — whatever the loader resolved. */
 type ReportRecord = NonNullable<Awaited<ReturnType<typeof loadReportData>>>;
 
 // ---------- Route ----------
@@ -120,10 +119,8 @@ function sovBgColor(sov: number | null): string {
 
 // ---------- Main component ----------
 
-/** A stored run as the print chart reads it — far fewer fields than a live one. */
 type ChartRun = any;
 
-/** Flatten the snapshot's nested runs into the three shapes the report reads. */
 function flattenPromptRuns(promptRuns: PromptRunResult[]): {
 	simpleRuns: ReportPromptRun[];
 	fullRuns: FullPromptRun[];
@@ -164,7 +161,6 @@ function flattenPromptRuns(promptRuns: PromptRunResult[]): {
 	return { simpleRuns, fullRuns, chartRuns };
 }
 
-/** Competitors by name, case-insensitively, with the brand itself dropped. */
 function dedupeCompetitors(competitors: CompetitorResult[], isBrandName: (name: string) => boolean) {
 	const seen = new Set<string>();
 	return competitors.filter((competitor) => {
@@ -332,14 +328,12 @@ function buildReportModel(report: ReportRecord) {
 	};
 }
 
-/** How far past the top competitor the goal is set, by how far behind the brand is. */
 function goalMargin(gap: number): number {
 	if (gap > 30) return 5;
 	if (gap > 15) return 8;
 	return 10;
 }
 
-/** Suggested article count, scaled to the size of the gap to close. */
 function articlesForGap(gap: number): number {
 	if (gap > 40) return 8;
 	if (gap > 25) return 6;
@@ -349,7 +343,6 @@ function articlesForGap(gap: number): number {
 
 const MAX_OPPORTUNITIES = 5;
 
-/** Prompts where the leading competitor is ahead, and by how much. */
 function buildOpportunities(promptSoVs: PromptSoV[], promptMap: Map<string, MockPrompt>) {
 	return (
 		promptSoVs

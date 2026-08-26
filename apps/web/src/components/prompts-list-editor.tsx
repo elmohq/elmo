@@ -256,7 +256,6 @@ function useRowSelection(prompts: EditablePrompt[]) {
 	};
 }
 
-/** Desktop column headings, each with the tooltip explaining its column. */
 function ColumnHeader({
 	gridCols,
 	showSystemTags,
@@ -336,7 +335,6 @@ function ColumnHeader({
 	);
 }
 
-/** One editable prompt: stacked on mobile, a single grid line from md up. */
 function PromptRow({
 	prompt,
 	index,
@@ -453,7 +451,6 @@ function PromptRow({
 	);
 }
 
-/** Paste-many box. Blocks the whole paste when it would overflow the cap. */
 function BulkPasteBox({ bulk }: { bulk: ReturnType<typeof useBulkPaste> }) {
 	return (
 		<div className="space-y-2 rounded-md border bg-muted/40 p-3">

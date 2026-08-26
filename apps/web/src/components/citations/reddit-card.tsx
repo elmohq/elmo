@@ -22,7 +22,6 @@ interface SubredditTally {
 	urls: { url: string; title?: string; count: number; isNew?: boolean }[];
 }
 
-/** Cited Reddit pages folded onto the subreddit they belong to. */
 function groupBySubreddit(specificUrls: CitationData["specificUrls"]): Map<string, SubredditTally> {
 	const bySubreddit = new Map<string, SubredditTally>();
 	for (const cited of specificUrls) {

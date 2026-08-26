@@ -100,7 +100,7 @@ function useCitationSections(citationData: CitationData) {
 /** Composes the citation sections. Each card owns its own in-card filter
  *  state (search, tabs, pagination); this component only derives the data
  *  every section shares. Section visibility keys off the UNFILTERED data —
- *  in-card filters must never hide a whole section (issue #322). */
+ *  in-card filters must never hide a whole section. */
 export function CitationsDisplay({
 	citationData,
 	brandId,

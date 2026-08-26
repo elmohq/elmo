@@ -88,7 +88,6 @@ type PromptCompetitorDailyStat = Awaited<ReturnType<typeof getPromptCompetitorDa
 type PromptWebQuery = Awaited<ReturnType<typeof getPromptWebQueriesForMapping>>[number];
 type PromptSummaryStat = Awaited<ReturnType<typeof getPromptsSummary>>[number];
 
-/** One chart point per day: mention rates, or null on days the prompt didn't run. */
 function buildVisibilityChartData(args: {
 	dateRange: string[];
 	dailyStats: PromptDailyStat[];
@@ -117,7 +116,6 @@ function buildVisibilityChartData(args: {
 	});
 }
 
-/** The earliest query in `rows`, ties broken alphabetically so it is stable. */
 function earliestQuery(rows: PromptWebQuery[]): string | undefined {
 	const oldest = rows[0];
 	if (!oldest) return undefined;
@@ -145,7 +143,6 @@ function webQueryMappings(
 	return { webQueryMapping: overall ? { [promptId]: overall } : {}, modelWebQueryMappings };
 }
 
-/** A prompt as the list renders it, folding in its run stats for the window. */
 function summarizePrompt(
 	prompt: {
 		id: string;
@@ -185,7 +182,6 @@ function summarizePrompt(
 
 type PromptSummary = ReturnType<typeof summarizePrompt>;
 
-/** Prompts with data first, then never-run ones, then the rest; ties by name. */
 function byVisibilityThenName(a: PromptSummary, b: PromptSummary): number {
 	const rank = (prompt: PromptSummary) => (prompt.hasVisibilityData ? 1 : prompt.totalRuns === 0 ? 2 : 3);
 	const rankA = rank(a);

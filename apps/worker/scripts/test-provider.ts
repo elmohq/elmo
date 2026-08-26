@@ -132,7 +132,6 @@ export interface TargetResult {
 	timestamp: string;
 }
 
-/** One aspect of a scrape result, reported as the issues it has (none = fine). */
 type ResultCheck = (result: ScrapeResult, providerId: string, webSearch: boolean) => ValidationIssue[];
 
 const checkTextContent: ResultCheck = (result) => {
@@ -263,13 +262,12 @@ async function retryForCitations(args: {
 				break;
 			}
 		} catch {
-			/* keep previous result */
+			// A failed retry leaves the best result so far in place.
 		}
 	}
 	return { result, retries, attemptStart };
 }
 
-/** The per-target block the runner prints once a target has finished. */
 function reportResult(args: {
 	result: ScrapeResult;
 	latency: number;

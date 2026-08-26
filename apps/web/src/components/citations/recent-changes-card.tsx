@@ -44,7 +44,6 @@ const MAX_VISIBLE_CHANGES = 6;
 
 const plural = (count: number) => (count === 1 ? "" : "s");
 
-/** What each kind of change links to and reads as in the list. */
 function describeChange(change: Change): { id: string; label: string; url: string; description: ReactNode } {
 	switch (change.type) {
 		case "new_pages":

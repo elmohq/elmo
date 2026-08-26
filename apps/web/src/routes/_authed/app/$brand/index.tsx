@@ -221,7 +221,6 @@ function TrendSection({
 	);
 }
 
-/** The footer's four figures, in order, for the shape shown while they load. */
 const STAT_PLACEHOLDERS = [
 	{ label: "prompts tracked", icon: IconList },
 	{ label: "evaluations", icon: IconActivity },
@@ -229,7 +228,6 @@ const STAT_PLACEHOLDERS = [
 	{ label: "last updated", icon: IconRefresh },
 ];
 
-/** The dashboard's footer figures, each with the caveat behind it on hover. */
 function TrackingStats({
 	loading,
 	totalPrompts,
@@ -376,7 +374,6 @@ function AwaitingFirstEvaluation({
 	);
 }
 
-/** The research wizard, shown until a brand has been analyzed. */
 function ResearchBrandData({ brandId, clientConfig }: { brandId: string; clientConfig?: ClientConfig }) {
 	return (
 		<div className="space-y-6 max-w-2xl p-4">

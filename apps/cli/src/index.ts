@@ -196,7 +196,6 @@ async function confirmEnvOverwrite(configDir: string): Promise<string | undefine
 	return isElmoEnv ? parseDotenv(contents).DEPLOYMENT_ID : undefined;
 }
 
-/** Where the compose file builds from — only dev mode builds from a checkout. */
 async function resolveDockerLocation(
 	options: InitOptions,
 	cwd: string,
@@ -1081,7 +1080,6 @@ async function runEdit(target: string, options: DirOption): Promise<void> {
 
 // ── Command: upgrade ───────────────────────────────────────────────────────────
 
-/** Warn when the stack is about to be upgraded by an out-of-date CLI. */
 async function confirmStaleCli(cliVersion: string, assumeYes: boolean | undefined): Promise<void> {
 	const latestCli = await fetchLatestCliVersion();
 	if (!latestCli || !semver.valid(cliVersion) || !semver.lt(cliVersion, latestCli)) return;
@@ -1102,7 +1100,6 @@ async function confirmStaleCli(cliVersion: string, assumeYes: boolean | undefine
 	}
 }
 
-/** Nothing to upgrade — offer a plain image pull, restarting only if it was up. */
 async function pullAtCurrentVersion(configDir: string, cliVersion: string, assumeYes: boolean | undefined) {
 	log.success(`Already at ${cliVersion}.`);
 	const pull = assumeYes
@@ -1147,7 +1144,6 @@ function planUpgradeMigrations(detectedVersion: string | null, fromVersion: stri
 	return plan;
 }
 
-/** Run the plan, leaving the recorded version untouched if anything fails. */
 async function applyUpgradeMigrations(
 	plan: Awaited<ReturnType<typeof planUpgradeMigrations>>,
 	ctx: MigrationContext,
@@ -1165,7 +1161,6 @@ async function applyUpgradeMigrations(
 	}
 }
 
-/** Bring the stack back only if the upgrade is what stopped it. */
 async function restartAfterUpgrade(configDir: string, wasRunning: boolean): Promise<void> {
 	if (!wasRunning) {
 		log.info("Stack was stopped before upgrade — leaving it stopped. Start with `elmo compose up -d`.");

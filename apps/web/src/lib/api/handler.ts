@@ -73,7 +73,6 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 	};
 }
 
-/** Either the validated value, or the 400 to answer with. */
 type Parsed<T> = { data: T } | { response: Response };
 
 function parseAgainst<T>(schema: z.ZodType<T>, value: unknown): Parsed<T> {

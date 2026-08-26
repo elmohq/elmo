@@ -176,7 +176,6 @@ interface Selection {
 	zeroSoVCount: number;
 }
 
-/** Claim up to `slots` of the remaining places from `candidates`, in order. */
 function take(selection: Selection, candidates: PromptSoV[], slots: number, category?: PromptCategory): void {
 	let remaining = slots;
 	for (const prompt of candidates) {

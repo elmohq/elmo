@@ -170,7 +170,6 @@ async function fetchAreaLabels(token: string | undefined): Promise<LabelSlice[]>
 	return slices.filter((s) => s.count > 0).sort((a, b) => b.count - a.count);
 }
 
-/** Which commit-chart week each release lands in, so the chart can mark them. */
 function releaseWeekBuckets(releases: RawRelease[], commitsByWeek: WeekPoint[]): number[] {
 	const weekStarts = commitsByWeek.map((point) => point.week);
 	const buckets = new Set<number>();
@@ -183,7 +182,6 @@ function releaseWeekBuckets(releases: RawRelease[], commitsByWeek: WeekPoint[]):
 	return [...buckets];
 }
 
-/** The most active human contributors, with their avatars inlined. */
 async function topContributorsWithAvatars(humans: RawContributor[]): Promise<RepoContributor[]> {
 	const top = humans.slice(0, MAX_CONTRIB_AVATARS);
 	const avatarUris = await Promise.all(top.map((contributor) => fetchAvatar(contributor.avatar_url)));

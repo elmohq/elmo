@@ -305,7 +305,6 @@ async function getQueueStats() {
 	});
 }
 
-/** Why a job failed, as pg-boss recorded it — null unless the job actually failed. */
 function failureReason(state: string, output: unknown): string | null {
 	if (state !== "failed" || !output) return null;
 	try {
@@ -406,7 +405,6 @@ function parseCron(cron: string): CronSchedule | null {
 	return null;
 }
 
-/** Next UTC hour strictly after `now` that lands on the interval. */
 function nextHourlyRun(interval: number, now: Date): number | null {
 	const nowMs = now.getTime();
 	const midnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0);
@@ -422,7 +420,6 @@ function nextHourlyRun(interval: number, now: Date): number | null {
 	return null;
 }
 
-/** Next UTC midnight strictly after `now` that lands on the day interval. */
 function nextDailyRun(interval: number, now: Date): number | null {
 	const nowMs = now.getTime();
 	for (let offset = 0; offset <= 31; offset += 1) {
@@ -593,7 +590,6 @@ function targetColumnsFor(plans: (PromptRunPlan | undefined)[]): { key: string; 
 /**
  * Get full workflow data: queue stats, recent jobs, brand schedule summaries.
  */
-/** Everything a workflows row is judged against, gathered once per request. */
 interface WorkflowContext {
 	runPlans: Map<string, PromptRunPlan>;
 	lastRunsByPrompt: Map<string, Map<string, Date>>;
@@ -605,7 +601,6 @@ interface WorkflowContext {
 
 const NO_SCHEDULER = { exists: false, nextRunAt: null as number | null, cadenceHours: null as number | null };
 
-/** How fresh each of a prompt's targets is, against the interval its plan sets. */
 function targetFreshness(
 	prompt: { enabled: boolean; createdAt: Date },
 	targets: TargetPlan[],
@@ -625,7 +620,6 @@ function targetFreshness(
 	return byTarget;
 }
 
-/** One prompt's row in the workflows table, plus the flags its brand tallies. */
 function promptWorkflowStatus(
 	prompt: { id: string; value: string; enabled: boolean; createdAt: Date },
 	brand: { id: string; name: string },
@@ -663,7 +657,6 @@ function promptWorkflowStatus(
 	};
 }
 
-/** One brand's block in the workflows table, with its prompts tallied. */
 function brandWorkflowSummary(
 	brand: { id: string; name: string; website: string; enabled: boolean },
 	brandPrompts: { id: string; value: string; enabled: boolean; createdAt: Date }[],
@@ -831,7 +824,6 @@ export const retryJobFn = createServerFn({ method: "POST" })
 /**
  * Get logs for a specific job.
  */
-/** A pg-boss job row rendered as the plain log lines the admin view shows. */
 function formatJobLogs(job: Record<string, any>): string[] {
 	/** JSON columns arrive as text or as parsed objects depending on the driver. */
 	const pretty = (value: unknown) => {

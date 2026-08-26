@@ -338,7 +338,6 @@ function toQueryStats(map: Map<string, Tally>, limit: number): FanoutQueryStat[]
 // Main aggregation
 // ---------------------------------------------------------------------------
 
-/** Every running total the fan-out report projects from, in one pass. */
 interface FanoutTallies {
 	overall: Map<string, Tally>;
 	/** query → prompt id → run instances (feeds the Top Queries drill-down). */
@@ -353,7 +352,6 @@ interface FanoutTallies {
 	totalBrand: number;
 }
 
-/** Add one row's counts to the token tallies that drive the word-change lists. */
 function tallyWordChanges(tallies: FanoutTallies, query: string, promptTokens: Set<string>, count: number): void {
 	// Term cloud — unigram frequency across fan-out queries, weighted by count.
 	for (const token of tokenize(query)) {

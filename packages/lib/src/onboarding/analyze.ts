@@ -359,7 +359,6 @@ function normalizeCompetitors(
 	return competitors;
 }
 
-/** Suggested prompts, folded to lowercase so near-duplicates collapse. */
 function normalizePrompts(raw: RawSuggestion["suggestedPrompts"], maxPrompts: number): OnboardingPrompt[] {
 	const prompts: OnboardingPrompt[] = [];
 	const seen = new Set<string>();

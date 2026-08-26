@@ -35,7 +35,6 @@ function textOrNull(value: unknown): string | null {
 	return typeof value === "string" && value.trim() ? value : null;
 }
 
-/** Join the text chunks a probe found, or null when it found none. */
 function joinText(chunks: unknown[]): string | null {
 	return textOrNull(chunks.filter((chunk) => typeof chunk === "string" && chunk).join("\n"));
 }
@@ -422,12 +421,10 @@ function asArray(value: unknown): any[] {
 	return Array.isArray(value) ? value : [];
 }
 
-/** Descend one level into a nested payload, gathering the named list-valued fields. */
 function pluck(nodes: any[], ...fields: string[]): any[] {
 	return nodes.flatMap((node) => fields.flatMap((field) => asArray(node?.[field])));
 }
 
-/** Keep the payload nodes tagged with a given `type`. */
 function byType(nodes: any[], type: string): any[] {
 	return nodes.filter((node) => node?.type === type);
 }

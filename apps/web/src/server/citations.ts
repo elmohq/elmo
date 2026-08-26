@@ -41,16 +41,12 @@ import {
 	type PerPromptDailyCitationPageRow,
 } from "@/lib/postgres-read";
 
-/** Places a citation against this brand's own domains and its competitors'. */
 type Classify = (domain: string, url: string, title?: string | null) => CitationCategory;
 
-/** What the brand-wide view hangs off each URL on top of the shared rollup. */
 type BrandCitationUrl = CitationUrl & { promptCount: number; isNew: boolean };
 
-/** What the brand-wide view hangs off each domain: its period-over-period trend. */
 type BrandCitationDomain = CitationDomain & { previousCount: number; changePercent: number | null };
 
-/** The previous window, keyed for the period-over-period comparisons. */
 interface PreviousPeriod {
 	countByDomain: Map<string, number>;
 	byUrl: Map<string, { count: number; title?: string; domain: string }>;
@@ -203,7 +199,6 @@ function buildKeyedTimeSeries<K extends string>(args: {
 	});
 }
 
-/** New, dropped and retitled URLs and domains across the two windows. */
 function buildWhatsChanged(args: {
 	specificUrls: BrandCitationUrl[];
 	domainDistribution: BrandCitationDomain[];

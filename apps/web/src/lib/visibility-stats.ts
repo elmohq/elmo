@@ -220,13 +220,11 @@ export interface LeaderboardLVCFResult {
 	competitors: Array<{ name: string; mentions: number; prompts: number }>;
 }
 
-/** One prompt's mention counts on one day. */
 interface DailyObservation {
 	brand: number;
 	competitors: Map<string, number>;
 }
 
-/** Both daily series folded onto a single observation per prompt and day. */
 function groupObservations(
 	brandDaily: Array<{ promptId: string; date: string; brand: number }>,
 	competitorDaily: Array<{ promptId: string; date: string; competitor: string; mentions: number }>,
@@ -247,7 +245,6 @@ function groupObservations(
 	return byPrompt;
 }
 
-/** The prompt's latest observation on or before `lastDate` — its current state. */
 function latestObservation(dateMap: Map<string, DailyObservation>, lastDate: string): DailyObservation | null {
 	let latest: DailyObservation | null = null;
 	let latestDate = "";

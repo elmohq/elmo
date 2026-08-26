@@ -29,7 +29,6 @@ const MAX_TOP_K = 50;
 const DEFAULT_TOP_MENTIONS = 5;
 const DEFAULT_TOP_CITATIONS = 10;
 
-/** A cited domain belongs to a set if it is one of them or a subdomain of one. */
 function isMatchingDomain(domain: string, domainSet: Set<string>): boolean {
 	for (const owned of domainSet) {
 		if (domain === owned || domain.endsWith(`.${owned}`)) return true;
@@ -42,7 +41,6 @@ function boundedTopK(raw: string | null, fallback: number): number {
 	return Number.isNaN(parsed) ? fallback : Math.max(1, Math.min(MAX_TOP_K, parsed));
 }
 
-/** The window and list sizes a snapshot request asks for. */
 function parseSnapshotQuery(url: URL): { startDate: string; endDate: string; kMentions: number; kCitations: number } {
 	const { searchParams } = url;
 	const startDate = searchParams.get("startDate");

@@ -80,7 +80,6 @@ export const Route = createFileRoute("/_authed/app/$brand/prompts/$promptId")({
 	component: PromptHistoryPage,
 });
 
-/** The prompt's own metadata (value, tags), loaded outside the stats queries. */
 function usePromptMetadata(brandId: string, promptId: string) {
 	const [promptMeta, setPromptMeta] = useState<PromptMetadata | null>(null);
 	const [isMetaLoading, setIsMetaLoading] = useState(true);
@@ -99,7 +98,6 @@ function usePromptMetadata(brandId: string, promptId: string) {
 	return { promptMeta, isMetaLoading };
 }
 
-/** Title, run state, tags and the lookback selector for the prompt on screen. */
 function PromptHeader({
 	brandId,
 	promptMeta,

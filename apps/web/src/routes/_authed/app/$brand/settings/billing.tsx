@@ -256,7 +256,6 @@ function SubscriptionCost({
 	);
 }
 
-/** Stripe's portal for a live subscription; otherwise the way in to buying one. */
 function BillingAction({
 	hasSubscription,
 	isCustomPlan,

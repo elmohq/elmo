@@ -290,7 +290,6 @@ function printUsage(): void {
 	);
 }
 
-/** An explicit --env-file wins over the repo's own .env files. */
 async function loadEnvFiles(envFile: string | undefined): Promise<void> {
 	if (envFile) {
 		const explicit = resolveHomePath(envFile);
@@ -307,7 +306,6 @@ async function loadEnvFiles(envFile: string | undefined): Promise<void> {
 	await loadDotEnv(join(repoRoot, ".env"));
 }
 
-/** Which providers to run, after --only and --skip. */
 function resolveTargets(only: string | undefined, skip: string | undefined): ProviderId[] {
 	const onlyList = parseList(only);
 	const skipList = parseList(skip);
@@ -327,7 +325,6 @@ function resolveTargets(only: string | undefined, skip: string | undefined): Pro
 	return targets;
 }
 
-/** Run one provider, recording it as a result or a failure either way. */
 async function runOne(
 	providerId: ProviderId,
 	ctx: Awaited<ReturnType<typeof buildAnalysisContext>>,

@@ -228,7 +228,6 @@ interface Digest {
 	citationsByPrompt: Map<string, DigestCitation[]>;
 }
 
-/** Everything the digest reads, over both windows, in one round trip. */
 async function loadDigestData(
 	brandId: string,
 	timezone: string,
@@ -257,7 +256,6 @@ async function loadDigestData(
 	return { brandRows, competitorRows, run30, comp30, daily30, pages30, run7, comp7, byModel };
 }
 
-/** How the digest attributes a cited domain: the brand's, a competitor's, or neither. */
 function resolveOwnership(
 	brand: { website: string | null; additionalDomains: string[] | null } | undefined,
 	competitorRows: { domains: string[] | null }[],
@@ -284,7 +282,6 @@ const TOP_THIRD_PARTY_DOMAINS = 10;
 const TOP_COMMUNITY_DOMAINS = 5;
 const TOP_COMPETITOR_PAGES = 8;
 
-/** Group rows under their prompt id, projecting each to what the digest needs. */
 function groupByPrompt<Row extends { prompt_id: string }, T>(rows: Row[], project: (row: Row) => T): Map<string, T[]> {
 	const byPrompt = new Map<string, T[]>();
 	for (const row of rows) {
@@ -295,7 +292,6 @@ function groupByPrompt<Row extends { prompt_id: string }, T>(rows: Row[], projec
 	return byPrompt;
 }
 
-/** The digest's one-line summary of where a prompt stands against its leader. */
 function promptDigestLine(facts: {
 	rank: number;
 	text: string;
@@ -316,7 +312,6 @@ function promptDigestLine(facts: {
 	return `${facts.rank}. ${facts.branded ? "*" : ""}"${facts.text}"${tags} — you ${pct(facts.brand30)}% (7d ${pct(facts.brand7)}%), top rival ${leader}, difficulty ${facts.difficulty}; cited via: ${citedVia}`;
 }
 
-/** Cited domains for the window, split by who owns them and ranked by citations. */
 function summarizeCitationLandscape(
 	pages: { domain: string; title: string | null; count: number }[],
 	catOf: (domain: string) => CitationCategory,
@@ -353,7 +348,6 @@ function summarizeCitationLandscape(
 	};
 }
 
-/** Share of each assistant's answers that name the brand, plus the overall rate. */
 function summarizePlatformVisibility(byModel: { model: string; runs: number; brand_mentioned_count: number }[]) {
 	const byPlatform = new Map<string, { runs: number; mentioned: number }>();
 	let allRuns = 0;

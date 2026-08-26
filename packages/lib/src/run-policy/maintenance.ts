@@ -49,7 +49,6 @@ function isPromptOverdue(state: MaintenancePromptState, now: number, graceMs: nu
 	);
 }
 
-/** What maintenance should do about one prompt, once it is known to be due. */
 type MaintenanceAction =
 	| { kind: "none" }
 	| { kind: "schedule"; cadenceHours: number }

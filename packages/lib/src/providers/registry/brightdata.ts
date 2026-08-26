@@ -220,7 +220,6 @@ function reportedWebQueries(webSearch: boolean, webQueries: string[], citations:
 	return citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [];
 }
 
-/** Start a dataset run and return the snapshot it will be collected from. */
 async function triggerSnapshot(datasetId: string, model: string, prompt: string, webSearch: boolean): Promise<string> {
 	const response = await fetch(
 		`https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,

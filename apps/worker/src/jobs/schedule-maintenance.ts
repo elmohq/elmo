@@ -151,7 +151,6 @@ async function loadLastRuns(plans: Map<string, PromptRunPlan>): Promise<Map<stri
 	return byPrompt;
 }
 
-/** Pull already-scheduled future jobs forward so they run on this tick. */
 async function expediteJobs(jobIds: string[]): Promise<void> {
 	try {
 		// Bind each id as its own uuid param: drizzle flattens a JS array into a
@@ -170,7 +169,6 @@ async function expediteJobs(jobIds: string[]): Promise<void> {
 
 const SCHEDULE_BATCH_SIZE = 50;
 
-/** Queue a fresh run for each prompt that has no pending job, in bounded batches. */
 async function scheduleNewJobs(promptIds: string[]): Promise<void> {
 	let successCount = 0;
 	let failCount = 0;
