@@ -21,6 +21,7 @@ import { Switch } from "@workspace/ui/components/switch";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { AppSidebar } from "@/components/app-sidebar";
+import { LegalConsentNotice } from "@/components/legal-consent-notice";
 import { PlanComparison } from "@/components/plan-comparison";
 import { SiteHeader } from "@/components/site-header";
 import { buildTitle, getAppName } from "@/lib/route-head";
@@ -185,6 +186,8 @@ function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
 					</Button>
 				)}
 			/>
+
+			<LegalConsentNotice action="subscribing" />
 
 			<p className="text-center text-sm text-muted-foreground">
 				Need more brands, any other models, higher numbers of samples, SSO, white label, or custom limits?{" "}

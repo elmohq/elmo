@@ -18,6 +18,7 @@ import { Separator } from "@workspace/ui/components/separator";
 import { useState } from "react";
 import { z } from "zod";
 import FullPageCard from "@/components/full-page-card";
+import { LegalConsentNotice } from "@/components/legal-consent-notice";
 import { safeReturnTo } from "@/lib/return-to";
 
 export const Route = createFileRoute("/auth/register")({
@@ -170,6 +171,7 @@ function RegisterPage() {
 				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? "Creating account..." : "Create account"}
 				</Button>
+				<LegalConsentNotice action="creating an account" />
 			</form>
 			{hasUsers && (
 				<p className="text-center text-sm text-muted-foreground pt-4">
