@@ -111,7 +111,6 @@ export function FeedbackBlock({ id, body, children, onSendAction }: FeedbackBloc
 				>
 					<MessageSquare className="size-3.5" />
 				</PopoverTrigger>
-				{/* Typing is the only thing to do in here, so the box opens focused. */}
 				<PopoverContent align="end" className="w-72 p-3" initialFocus={messageRef}>
 					{submitted ? (
 						<p className="text-center text-sm text-muted-foreground">Thanks for your feedback!</p>
