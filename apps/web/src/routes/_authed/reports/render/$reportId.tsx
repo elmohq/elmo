@@ -566,8 +566,8 @@ function CompetitiveOverviewPage({
 									.map((c) => ({ name: c.name, sov: c.sov, isBrand: false })),
 							]
 								.sort((a, b) => b.sov - a.sov)
-								.map((row, i) => (
-									<tr key={`sov-${i}`} className={row.isBrand ? "bg-blue-50/30" : ""}>
+								.map((row) => (
+									<tr key={`sov-${row.name}`} className={row.isBrand ? "bg-blue-50/30" : ""}>
 										<td className={`py-2.5 px-4 text-sm ${row.isBrand ? "font-semibold" : "text-slate-600"}`}>
 											{row.name}
 										</td>
@@ -614,8 +614,8 @@ function CompetitiveOverviewPage({
 											.map((c) => ({ ...c, isBrand: false })),
 									]
 										.sort((a, b) => b.mentionCount - a.mentionCount)
-										.map((c, i) => (
-											<tr key={`mention-${i}`} className={c.isBrand ? "bg-blue-50/30" : ""}>
+										.map((c) => (
+											<tr key={`mention-${c.name}`} className={c.isBrand ? "bg-blue-50/30" : ""}>
 												<td
 													className={`py-2 px-4 text-xs font-medium ${c.isBrand ? "text-slate-900" : "text-slate-700"}`}
 												>
@@ -659,6 +659,7 @@ function PromptChartPages({
 		<>
 			{/* ===== CHART PAGES ===== */}
 			{chartPairs.map((pair, pageIdx) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: the page's position in the report is its identity
 				<div key={pageIdx} className="print:break-before-page print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
 					<RunningHeader brand={report.brandName} />
 
