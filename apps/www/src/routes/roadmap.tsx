@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ArrowUpRight, MessageCircle, ThumbsUp } from "lucide-react";
 import { Footer } from "@/components/footer";
+import { List } from "@/components/list";
 import { Navbar } from "@/components/navbar";
 import upcomingData from "@/data/upcoming-features.json";
 import { type RoadmapIssue as GitHubRoadmapIssue, getGitHubRoadmap } from "@/lib/github-roadmap";
@@ -192,17 +193,13 @@ function RoadmapPage() {
 								<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600">/ ON DECK</p>
 								<h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Upcoming Features</h2>
 							</div>
-							<ul
-								// biome-ignore lint/a11y/noRedundantRoles: Tailwind's preflight strips list-style, which makes Safari drop list semantics; the role restores them.
-								role="list"
-								className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4"
-							>
+							<List className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
 								{upcoming.map((h) => (
 									<li key={h.title} className="flex">
 										<HighlightCard highlight={h} />
 									</li>
 								))}
-							</ul>
+							</List>
 						</div>
 					</section>
 				)}
@@ -214,15 +211,11 @@ function RoadmapPage() {
 							<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ ISSUES</p>
 							<h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Trending and Recent Issues</h2>
 						</div>
-						<ul
-							// biome-ignore lint/a11y/noRedundantRoles: Tailwind's preflight strips list-style, which makes Safari drop list semantics; the role restores them.
-							role="list"
-							className="space-y-2"
-						>
+						<List className="space-y-2">
 							{popularIssues.map((issue) => (
 								<IssueRow key={issue.number} issue={issue} />
 							))}
-						</ul>
+						</List>
 						<div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-5">
 							<div>
 								<p className="text-sm font-medium text-zinc-950">Want to see everything?</p>

@@ -8,6 +8,7 @@ import {
 } from "@workspace/config/plans";
 import { PlatformTier } from "@workspace/ui/brand/platform-tier";
 import { ArrowRight, Check } from "lucide-react";
+import { List } from "@/components/list";
 import { ContactForm } from "./contact-form";
 import { WaitlistForm } from "./waitlist-form";
 
@@ -139,18 +140,14 @@ export function Pricing() {
 										</span>
 									)}
 								</div>
-								<ul
-									// biome-ignore lint/a11y/noRedundantRoles: Tailwind's preflight strips list-style, which makes Safari drop list semantics; the role restores them.
-									role="list"
-									className="mt-6 space-y-2.5 text-sm text-zinc-700"
-								>
+								<List className="mt-6 space-y-2.5 text-sm text-zinc-700">
 									{plan.features.map((f) => (
 										<li key={f} className="flex items-start gap-2">
 											<Check className="mt-0.5 size-3.5 shrink-0 text-blue-600" strokeWidth={3} />
 											<span>{f}</span>
 										</li>
 									))}
-								</ul>
+								</List>
 							</div>
 							<div className={`mt-8 ${formButtonClass(plan.featured)}`}>
 								{plan.cta.type === "link" && (
@@ -202,12 +199,12 @@ function CloudPlans() {
 							</div>
 							<p className="mt-1 text-xs text-zinc-500 tabular-nums">${plan.annualPriceUsd}/yr</p>
 
-							<ul className="mt-4 space-y-1.5 text-xs text-zinc-700">
+							<List className="mt-4 space-y-1.5 text-xs text-zinc-700">
 								<li>
 									{plan.maxBrands} brand{plan.maxBrands === 1 ? "" : "s"}
 								</li>
 								<li>{plan.maxPrompts} tracked prompts</li>
-							</ul>
+							</List>
 
 							{/* The pick tiers all spend the same budget, so they sit together
 							    under what the plan lets you choose. */}
@@ -243,14 +240,14 @@ function CloudPlans() {
 					<h4 className="text-lg font-semibold tracking-tight text-zinc-950">Custom</h4>
 					<div className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Let&apos;s talk</div>
 					<p className="mt-1 text-xs text-zinc-500">Contract billing</p>
-					<ul className="mt-4 space-y-1.5 text-xs text-zinc-700">
+					<List className="mt-4 space-y-1.5 text-xs text-zinc-700">
 						<li>Multiple brands</li>
 						<li>Custom prompt limits</li>
 						<li>Higher daily sampling rates</li>
 						<li>Any models</li>
 						<li>White label</li>
 						<li>SSO</li>
-					</ul>
+					</List>
 				</div>
 			</div>
 

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { List } from "@/components/list";
 import { externalRel } from "@/lib/external-link";
 import { Logo } from "./logo";
 
@@ -81,11 +82,7 @@ export function Footer() {
 						{cols.map((col) => (
 							<div key={col.heading}>
 								<h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">{col.heading}</h3>
-								<ul
-									// biome-ignore lint/a11y/noRedundantRoles: Tailwind's preflight strips list-style, which makes Safari drop list semantics; the role restores them.
-									role="list"
-									className="mt-4 space-y-2.5 text-sm text-zinc-700"
-								>
+								<List className="mt-4 space-y-2.5 text-sm text-zinc-700">
 									{col.links.map((link) =>
 										"external" in link && link.external ? (
 											<li key={link.href}>
@@ -112,7 +109,7 @@ export function Footer() {
 											</li>
 										),
 									)}
-								</ul>
+								</List>
 							</div>
 						))}
 					</div>

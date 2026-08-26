@@ -1,3 +1,5 @@
+import { List } from "@/components/list";
+
 interface Customer {
 	name: string;
 	url: string;
@@ -122,11 +124,7 @@ export function CustomerLogosInline() {
 			<p className="flex h-5 items-center font-mono text-[10px] uppercase leading-none tracking-[0.2em] text-zinc-500">
 				Trusted by
 			</p>
-			<ul
-				// biome-ignore lint/a11y/noRedundantRoles: Tailwind's preflight strips list-style, which makes Safari drop list semantics; the role restores them.
-				role="list"
-				className="flex flex-wrap items-center gap-x-6 gap-y-3"
-			>
+			<List className="flex flex-wrap items-center gap-x-6 gap-y-3">
 				{customers.map((c) => (
 					<li key={c.name} className="flex h-5 items-center">
 						<a
@@ -140,7 +138,7 @@ export function CustomerLogosInline() {
 						</a>
 					</li>
 				))}
-			</ul>
+			</List>
 		</div>
 	);
 }

@@ -1,3 +1,5 @@
+import { List } from "@/components/list";
+
 // ---------------------------------------------------------------------------
 // Model coverage section — shows the AI models we track + how we access them
 // ---------------------------------------------------------------------------
@@ -108,11 +110,7 @@ export function Stats() {
 				</div>
 
 				<div className="mt-12 overflow-hidden rounded-md border border-zinc-200 bg-zinc-200">
-					<ul
-						// biome-ignore lint/a11y/noRedundantRoles: Tailwind's preflight strips list-style, which makes Safari drop list semantics; the role restores them.
-						role="list"
-						className="grid grid-cols-2 gap-px bg-zinc-200 sm:grid-cols-3 md:grid-cols-5"
-					>
+					<List className="grid grid-cols-2 gap-px bg-zinc-200 sm:grid-cols-3 md:grid-cols-5">
 						{models.map((m) => {
 							const Icon = m.icon;
 							return (
@@ -124,7 +122,7 @@ export function Stats() {
 								</li>
 							);
 						})}
-					</ul>
+					</List>
 					<div className="border-t border-zinc-200 bg-zinc-50 px-4 py-3 text-center font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
 						and all the rest!
 					</div>

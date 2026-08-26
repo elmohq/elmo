@@ -1,5 +1,6 @@
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { List } from "@/components/list";
 
 const FULL_CHANGELOG_RE = /\*\*Full Changelog\*\*:\s*(https:\/\/github\.com\/[^\s]+\/compare\/[^\s]+)/i;
 
@@ -29,15 +30,7 @@ const components: Components = {
 			{children}
 		</a>
 	),
-	ul: ({ children }) => (
-		<ul
-			// biome-ignore lint/a11y/noRedundantRoles: Tailwind's preflight strips list-style, which makes Safari drop list semantics; the role restores them.
-			role="list"
-			className="my-2 list-disc space-y-1 pl-5 marker:text-zinc-400"
-		>
-			{children}
-		</ul>
-	),
+	ul: ({ children }) => <List className="my-2 list-disc space-y-1 pl-5 marker:text-zinc-400">{children}</List>,
 	ol: ({ children }) => <ol className="my-2 list-decimal space-y-1 pl-5 marker:text-zinc-400">{children}</ol>,
 	li: ({ children }) => <li className="text-[14px] leading-relaxed text-zinc-700">{children}</li>,
 	strong: ({ children }) => <strong className="font-semibold text-zinc-950">{children}</strong>,
