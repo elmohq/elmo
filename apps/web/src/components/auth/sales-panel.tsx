@@ -153,10 +153,10 @@ function EngineStrip() {
 function CloudOffer({ source }: { source: ReferralSource }) {
 	return (
 		<div className="rounded-lg border bg-card p-5">
-			<h3 className="text-sm font-semibold">Would you rather not run this yourself?</h3>
+			<h3 className="text-sm font-semibold">Same Elmo, none of the upkeep.</h3>
 			<p className="mt-2 text-sm text-muted-foreground">
-				Elmo Cloud is the same open-source product, hosted by us. Scraper and model access is included, so there are no
-				provider accounts to open, no keys to rotate, and no server to keep up.
+				Elmo Cloud runs the open-source product you already have, on our infrastructure — with scraper and model access
+				included, so there are no provider accounts to open and no keys to rotate.
 			</p>
 			<p className="mt-3 text-sm">
 				<span className="font-semibold">From ${CLOUD_ENTRY_PRICE_USD}/mo</span>
