@@ -2,6 +2,7 @@
  * Server functions for providing deployment configuration to the client.
  */
 import { createServerFn } from "@tanstack/react-start";
+import { CRISP_WEBSITE_ID } from "@workspace/config/constants";
 import { getDeploymentModeFromEnv, getEnvValidationState } from "@workspace/config/env";
 import type { ClientConfig } from "@workspace/config/types";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
@@ -22,15 +23,12 @@ export type PublicClientConfig = Omit<ClientConfig, "branding"> & {
  * raw template string instead. The client can reconstruct the function if needed.
  */
 const POSTHOG_PUBLIC_KEY = "phc_Jhx9LnI9cTDFHpQmpOzJSDTW127qD9pFU65KRnYym6z";
-const CRISP_WEBSITE_ID = "2f79a110-4e29-41a8-b45d-4993df6ff487";
 
 function resolvePosthogKey(): string | undefined {
 	if (process.env.DISABLE_TELEMETRY) return undefined;
 	return process.env.VITE_POSTHOG_KEY ?? POSTHOG_PUBLIC_KEY;
 }
 
-// Reads DEPLOYMENT_MODE, not the resolved mode: `local` with READ_ONLY=true
-// resolves to "demo", and a self-hosted instance must not reach our inbox.
 export function resolveCrispWebsiteId(): string | undefined {
 	const mode = getDeploymentModeFromEnv();
 	if (mode !== "cloud" && mode !== "demo") return undefined;

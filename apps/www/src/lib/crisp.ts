@@ -1,3 +1,5 @@
+import { CRISP_WEBSITE_ID } from "@workspace/config/constants";
+
 type CrispCommand = unknown[];
 
 declare global {
@@ -8,7 +10,6 @@ declare global {
 }
 
 const CRISP_SCRIPT_URL = "https://client.crisp.chat/l.js";
-const CRISP_WEBSITE_ID = "2f79a110-4e29-41a8-b45d-4993df6ff487";
 
 let initialized = false;
 

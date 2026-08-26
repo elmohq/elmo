@@ -20,6 +20,9 @@ export const DEFAULT_APP_URL = "http://localhost:3000/";
  */
 export const PROVIDERS_DOCS_URL = "https://www.elmohq.com/docs/user-guide/providers";
 
+/** Public identifier for the support chat, shared by the app and the marketing site. */
+export const CRISP_WEBSITE_ID = "2f79a110-4e29-41a8-b45d-4993df6ff487";
+
 /**
  * Elmo brand constants — used for icon generation, manifest, and the brand kit.
  */
