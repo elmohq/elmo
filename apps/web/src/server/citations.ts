@@ -1,32 +1,32 @@
 /** Server functions for citation data. */
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { eq, and } from "drizzle-orm";
-import { getCitationUrlStats, getPerPromptDailyCitationPages, getPerPromptCitationPages } from "@/lib/postgres-read";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { citationDateWindow, applyPerPromptKeyedLVCF } from "@/lib/chart-utils";
+import { and, eq } from "drizzle-orm";
+import { z } from "zod";
+import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
+import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@/lib/citation-rollup";
 import {
-	type CitationCategory,
-	type CitationPageType,
 	CITATION_CATEGORIES,
 	CITATION_PAGE_TYPES,
+	type CitationCategory,
+	type CitationPageType,
 	emptyCategoryCounts,
 	emptyPageTypeCounts,
 	extractDomain,
-	normalizeUrl,
-	toRoundedPercentages,
-	resolvePageType,
 	isGoogleSurfaceUrl,
+	normalizeUrl,
+	resolvePageType,
+	toRoundedPercentages,
 } from "@/lib/domain-categories";
 import {
 	categorizeDomain as categorizeDomainShared,
 	classifyUrl as classifyUrlShared,
 } from "@/lib/domain-categories.server";
 import { buildGoogleModule, emptyGoogleModule } from "@/lib/google-module";
+import { getCitationUrlStats, getPerPromptCitationPages, getPerPromptDailyCitationPages } from "@/lib/postgres-read";
 
 export const getCitationsFn = createServerFn({ method: "GET" })
 	.validator(

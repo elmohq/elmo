@@ -1,7 +1,7 @@
-import React from "react";
-import { cn } from "@workspace/ui/lib/utils";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { getModelMeta, KNOWN_MODELS } from "@workspace/config/models";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { cn } from "@workspace/ui/lib/utils";
+import React from "react";
 
 export type ProgressBarItem = {
 	label: string;
@@ -37,6 +37,28 @@ export type ProgressBarChartProps = {
 	truncateLabels?: boolean;
 	fillHeight?: boolean;
 };
+
+function ItemLabel({
+	className,
+	bold,
+	onClick,
+	children,
+	...props
+}: React.ComponentProps<"button"> & { bold?: boolean }) {
+	const classes = cn("text-sm text-left", bold ? "font-bold" : "font-medium", className);
+	if (!onClick) {
+		return (
+			<span className={classes} {...props}>
+				{children}
+			</span>
+		);
+	}
+	return (
+		<button type="button" className={cn(classes, "cursor-pointer hover:underline")} onClick={onClick} {...props}>
+			{children}
+		</button>
+	);
+}
 
 export function ProgressBarChart({
 	items,
@@ -97,13 +119,9 @@ export function ProgressBarChart({
 									<Tooltip>
 										<TooltipTrigger
 											render={
-												<span
-													className={cn(
-														"text-sm cursor-default",
-														isHighlighted ? "font-bold" : "font-medium",
-														truncateLabels && "truncate",
-														isClickable && "cursor-pointer hover:underline",
-													)}
+												<ItemLabel
+													className={cn("cursor-default", truncateLabels && "truncate")}
+													bold={Boolean(isHighlighted)}
 													onClick={item.onClick}
 												/>
 											}
@@ -113,17 +131,13 @@ export function ProgressBarChart({
 										<TooltipContent className="max-w-xs text-xs font-normal">{item.tooltip}</TooltipContent>
 									</Tooltip>
 								) : (
-									<span
-										className={cn(
-											"text-sm",
-											isHighlighted ? "font-bold" : "font-medium",
-											truncateLabels && "truncate",
-											isClickable && "cursor-pointer hover:underline",
-										)}
+									<ItemLabel
+										className={cn(truncateLabels && "truncate")}
+										bold={Boolean(isHighlighted)}
 										onClick={item.onClick}
 									>
 										{item.label}
-									</span>
+									</ItemLabel>
 								)}
 								{item.action}
 							</div>

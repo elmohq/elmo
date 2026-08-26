@@ -1,8 +1,8 @@
-import type { Job } from "pg-boss";
-import { processReportJob, type ReportJobData } from "../report-worker";
 import { db } from "@workspace/lib/db/db";
 import { reports } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
+import type { Job } from "pg-boss";
+import { processReportJob, type ReportJobData } from "../report-worker";
 
 export interface GenerateReportData extends ReportJobData {}
 

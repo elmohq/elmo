@@ -3,37 +3,39 @@
  *
  * Shows prompt details with tabs: Mentions, Web Queries, Citations, LLM Responses.
  */
-import { useState, useCallback, useEffect, useMemo } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Badge } from "@workspace/ui/components/badge";
-import { Skeleton } from "@workspace/ui/components/skeleton";
-import { Separator } from "@workspace/ui/components/separator";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
+
 import { IconInfoCircle } from "@tabler/icons-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { extractTextContent } from "@workspace/lib/text-extraction";
+import { Badge } from "@workspace/ui/components/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Separator } from "@workspace/ui/components/separator";
+import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
-import { ProgressBarChart } from "@/components/progress-bar-chart";
-import { ListPagination } from "@/components/list-pagination";
-import { CitationsDisplay, type CitationData } from "@/components/citations-display";
-import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { type CitationData, CitationsDisplay } from "@/components/citations-display";
 import {
 	InfoTip,
 	QueryWordsSection,
 	UnknownQueriesNote,
-	VariationsList,
 	type VariationModelCount,
+	VariationsList,
 } from "@/components/fanout-sections";
-import { getDaysFromLookback } from "@/lib/chart-utils";
-import { getModelDisplayName } from "@/lib/utils";
-import { promptKeywords } from "@/lib/fanout-analysis";
-import { useBrand } from "@/hooks/use-brands";
-import { usePromptStats } from "@/hooks/use-prompt-stats";
-import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
-import { useQueryFanout } from "@/hooks/use-query-fanout";
-import { getPromptMetadataFn } from "@/server/prompts";
+import { ListPagination } from "@/components/list-pagination";
+import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
+import { ProgressBarChart } from "@/components/progress-bar-chart";
 import { ResponseMarkdown } from "@/components/response-markdown";
-import { extractTextContent } from "@workspace/lib/text-extraction";
+import { useBrand } from "@/hooks/use-brands";
+import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
+import { usePromptStats } from "@/hooks/use-prompt-stats";
+import { useQueryFanout } from "@/hooks/use-query-fanout";
+import { getDaysFromLookback } from "@/lib/chart-utils";
+import { promptKeywords } from "@/lib/fanout-analysis";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { skeletonRows } from "@/lib/skeleton-rows";
+import { getModelDisplayName } from "@/lib/utils";
+import { getPromptMetadataFn } from "@/server/prompts";
 
 // -------------------------------------------------------------------
 // Types
@@ -363,8 +365,8 @@ function TabLoadingSkeleton({ lines = 3 }: { lines?: number }) {
 			</CardHeader>
 			<Separator />
 			<CardContent className="space-y-4 pt-6">
-				{Array.from({ length: lines }).map((_, i) => (
-					<Skeleton key={i} className="h-8 w-full" />
+				{skeletonRows(lines).map((row) => (
+					<Skeleton key={row} className="h-8 w-full" />
 				))}
 			</CardContent>
 		</Card>
@@ -577,8 +579,8 @@ function ResponsesTab({
 	if (isLoading && runs.length === 0) {
 		return (
 			<div className="space-y-4">
-				{Array.from({ length: 3 }).map((_, i) => (
-					<Card key={i}>
+				{skeletonRows(3).map((row) => (
+					<Card key={row}>
 						<CardHeader className="pb-0 gap-y-0">
 							<div className="grid grid-cols-3 gap-x-4">
 								<div>
@@ -639,8 +641,8 @@ function ResponsesTab({
 							<div>
 								<span className="text-xs text-muted-foreground block mb-1.5">Web Queries</span>
 								<div className="flex flex-wrap gap-1.5">
-									{run.webQueries.map((query: string, qIndex: number) => (
-										<Badge key={qIndex} variant="outline" className="text-xs font-normal">
+									{[...new Set<string>(run.webQueries)].map((query) => (
+										<Badge key={query} variant="outline" className="text-xs font-normal">
 											{query}
 										</Badge>
 									))}
@@ -652,8 +654,8 @@ function ResponsesTab({
 							<span className="text-xs text-muted-foreground block mb-1.5">Brands Mentioned</span>
 							<div className="flex flex-wrap gap-1.5">
 								{run.brandMentioned && brandName && <Badge className="text-xs font-normal">{brandName}</Badge>}
-								{run.competitorsMentioned?.map((competitor: string, cIndex: number) => (
-									<Badge key={cIndex} variant="outline" className="text-xs font-normal">
+								{[...new Set<string>(run.competitorsMentioned ?? [])].map((competitor) => (
+									<Badge key={competitor} variant="outline" className="text-xs font-normal">
 										{competitor}
 									</Badge>
 								))}

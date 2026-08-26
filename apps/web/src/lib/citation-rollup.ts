@@ -12,8 +12,8 @@
  * by buildGoogleModule and would otherwise be double-counted in the source mix.
  */
 import {
-	type CitationCategory,
 	CITATION_PAGE_TYPES,
+	type CitationCategory,
 	type CitationPageType,
 	emptyCategoryCounts,
 	emptyPageTypeCounts,

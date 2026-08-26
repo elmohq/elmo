@@ -285,7 +285,7 @@ function PlanCard({ plan }: { plan: OffSitePlan }) {
 
 				<p className="mt-6 text-sm font-medium text-zinc-950">{plan.posts} placements / month</p>
 				{/* Fixed height so the DR breakdown lines up across all plans. */}
-				<ul role="list" className="mt-3 min-h-[8rem] space-y-1.5">
+				<ul className="mt-3 min-h-[8rem] space-y-1.5">
 					{plan.buckets.map((b) => (
 						<li key={b.dr} className="flex items-center gap-2 text-sm text-zinc-700">
 							<span className="inline-flex min-w-7 justify-center rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] tabular-nums text-zinc-600">
@@ -296,7 +296,7 @@ function PlanCard({ plan }: { plan: OffSitePlan }) {
 					))}
 				</ul>
 
-				<ul role="list" className="mt-6 space-y-2.5 text-sm text-zinc-700">
+				<ul className="mt-6 space-y-2.5 text-sm text-zinc-700">
 					{plan.features.map((f) => (
 						<li key={f} className="flex items-start gap-2">
 							<Check className="mt-0.5 size-3.5 shrink-0 text-blue-600" strokeWidth={3} />

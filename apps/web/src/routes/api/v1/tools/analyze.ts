@@ -8,8 +8,8 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
 import { analyzeBrand, cleanOnboardingUrl } from "@workspace/lib/onboarding";
+import { z } from "zod";
 import { createApiHandler } from "@/lib/api/handler";
 
 const analyzeBody = z.object({

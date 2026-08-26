@@ -1,4 +1,7 @@
 #!/usr/bin/env tsx
+import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 /**
  * Multi-provider comparison harness for the brand-analysis (onboarding)
  * pipeline. Builds the production analysis context once (same prompt, same
@@ -24,17 +27,14 @@
  * PATH overrides. Real env vars always win over .env entries.
  */
 import { parseArgs } from "node:util";
-import { readFile } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join, resolve } from "node:path";
-import { getProvider } from "../src/providers";
-import { RESEARCH_PROVIDER_PREFERENCE, type ResearchProviderId } from "../src/onboarding/llm";
 import {
+	type AnalysisContext,
 	buildAnalysisContext,
 	normalizeAnalysisResult,
-	type AnalysisContext,
 	type OnboardingSuggestion,
 } from "../src/onboarding/analyze";
+import { RESEARCH_PROVIDER_PREFERENCE, type ResearchProviderId } from "../src/onboarding/llm";
+import { getProvider } from "../src/providers";
 import { isPromptBranded } from "../src/tag-utils";
 
 type ProviderId = ResearchProviderId;

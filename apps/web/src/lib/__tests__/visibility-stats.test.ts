@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-	computeVolatility,
-	stabilityScore,
 	computeShareOfVoice,
-	shareOfVoiceTimeSeriesLVCF,
-	shareOfVoiceLeaderboardLVCF,
+	computeVolatility,
 	type DailyDomainCount,
+	shareOfVoiceLeaderboardLVCF,
+	shareOfVoiceTimeSeriesLVCF,
+	stabilityScore,
 } from "@/lib/visibility-stats";
 
 /** Helper: build daily rows from a {date: {domain: count}} spec. */

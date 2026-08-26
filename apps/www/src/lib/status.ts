@@ -1,5 +1,5 @@
-import { Redis } from "@upstash/redis";
 import { createServerFn } from "@tanstack/react-start";
+import { Redis } from "@upstash/redis";
 import { STATUS_TARGETS } from "@workspace/config/scrape-targets";
 import type { StatusEntry, TargetStatus } from "./status-helpers";
 

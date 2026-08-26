@@ -4,28 +4,29 @@
  * One LLM call returns brand info, competitors, and prompts for review before
  * saving.
  */
-import { useState, useCallback, useEffect, memo, useMemo } from "react";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
-import { Spinner } from "@workspace/ui/components/spinner";
-import { AlertCircle, Play, Rocket } from "lucide-react";
-import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Separator } from "@workspace/ui/components/separator";
-import { useBrand, brandKeys } from "@/hooks/use-brands";
+import { Spinner } from "@workspace/ui/components/spinner";
+import { TagsInput } from "@workspace/ui/components/tags-input";
+import { AlertCircle, Play, Rocket } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { type CompetitorEntry, CompetitorsEditor, newCompetitorEntry } from "@/components/competitors-editor";
+import { type EditablePrompt, newPromptEntry, PromptsListEditor } from "@/components/prompts-list-editor";
+import { brandKeys, useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { promptsSummaryKeys } from "@/hooks/use-prompts-summary";
+import { trackEvent } from "@/lib/posthog";
 import {
-	startAnalyzeBrandFn,
-	getAnalyzeBrandStatusFn,
 	cancelAnalyzeBrandFn,
+	getAnalyzeBrandStatusFn,
+	startAnalyzeBrandFn,
 	updateOnboardedBrandFn,
 } from "@/server/onboarding";
-import { trackEvent } from "@/lib/posthog";
-import { CompetitorsEditor, newCompetitorEntry, type CompetitorEntry } from "@/components/competitors-editor";
-import { PromptsListEditor, newPromptEntry, type EditablePrompt } from "@/components/prompts-list-editor";
 
 interface PromptWizardProps {
 	onComplete: () => void;

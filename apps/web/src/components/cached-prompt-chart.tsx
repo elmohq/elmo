@@ -1,15 +1,15 @@
-import { memo, useMemo, useCallback } from "react";
+import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
-import { Badge } from "@workspace/ui/components/badge";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { memo, useCallback, useMemo } from "react";
+import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
+import { useChartExport } from "@/hooks/use-chart-export";
+import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
+import { getBadgeClassName, getBadgeVariant } from "@/lib/chart-utils";
 import { BaseChart } from "./base-chart";
 import { ChartActionsFooter } from "./chart-actions-footer";
 import { TextHighlighter } from "./text-highlighter";
-import { useChartExport } from "@/hooks/use-chart-export";
-import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
-import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
-import { getBadgeVariant, getBadgeClassName } from "@/lib/chart-utils";
 
 const PLACEHOLDER_BARS_NO_DATA = [20, 35, 15, 45, 25, 40, 30, 50, 20, 35, 45, 28].map((h, i) => ({
 	key: String(i),

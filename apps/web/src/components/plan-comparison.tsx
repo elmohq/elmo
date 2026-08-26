@@ -14,12 +14,12 @@
  */
 import { IconCheck, IconMinus } from "@tabler/icons-react";
 import {
-	type PlanDefinition,
-	type PlanKey,
-	type PlanPlatformGroupId,
 	PLAN_KEYS,
 	PLANS,
 	PLATFORM_TIER_LABELS,
+	type PlanDefinition,
+	type PlanKey,
+	type PlanPlatformGroupId,
 	PREMIUM_ADDON_MONTHLY_USD,
 	PREMIUM_RUNS_PER_DAY,
 	platformTierMembers,

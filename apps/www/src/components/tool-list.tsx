@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
 import { ArrowRight, ExternalLink } from "lucide-react";
-import { CATEGORY_LABELS, getComparisonSlug, getPopularityGrade, type Competitor } from "@/lib/competitors";
+import { CATEGORY_LABELS, type Competitor, getComparisonSlug, getPopularityGrade } from "@/lib/competitors";
 
 function ToolCard({ competitor }: { competitor: Competitor }) {
 	const grade = getPopularityGrade(competitor);

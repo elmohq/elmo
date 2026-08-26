@@ -10,15 +10,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { ApiError, createApiHandler } from "@/lib/api/handler";
 import {
+	apiUpdateInputToInternal,
+	BrandNotFoundError,
+	buildBrandResult,
+	InvalidDomainsError,
 	updateBrand,
 	updateBrandBodySchema,
-	apiUpdateInputToInternal,
-	buildBrandResult,
-	BrandNotFoundError,
-	InvalidDomainsError,
 } from "@/server/onboarding-core";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
 
 export const Route = createFileRoute("/api/v1/brands/$brandId")({
 	server: {

@@ -1,10 +1,10 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getPageImage } from "@/lib/og";
-import { SITE_NAME, ogMeta, canonicalUrl, articleJsonLd, breadcrumbJsonLd } from "@/lib/seo";
-import { DocsPageLayout } from "@/components/docs-page-layout";
-import type { ClientApiPageProps } from "fumadocs-openapi/ui/create-client";
 import type { SerializedPageTree } from "fumadocs-core/source/client";
+import type { ClientApiPageProps } from "fumadocs-openapi/ui/create-client";
+import { DocsPageLayout } from "@/components/docs-page-layout";
+import { getPageImage } from "@/lib/og";
+import { articleJsonLd, breadcrumbJsonLd, canonicalUrl, ogMeta, SITE_NAME } from "@/lib/seo";
 
 const DOCS_DIR = "packages/docs/content/docs";
 
@@ -29,7 +29,7 @@ interface OpenApiLoaderData {
 
 type LoaderData = DocsLoaderData | OpenApiLoaderData;
 
-export type { DocsLoaderData, OpenApiLoaderData, LoaderData };
+export type { DocsLoaderData, LoaderData, OpenApiLoaderData };
 
 export const Route = createFileRoute("/docs/$")({
 	component: Page,

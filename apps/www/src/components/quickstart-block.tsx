@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Check, Copy, Terminal } from "lucide-react";
+import { useState } from "react";
 
 const COMMANDS = ["npm install -g @elmohq/cli", "elmo init"];
 

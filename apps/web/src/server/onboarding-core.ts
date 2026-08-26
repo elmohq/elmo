@@ -7,15 +7,16 @@
  * client bundle). Server functions live in onboarding.ts; everything else
  * lives here.
  */
-import { z } from "zod";
-import { eq, count } from "drizzle-orm";
-import { db } from "@workspace/lib/db/db";
-import { brands, prompts, competitors } from "@workspace/lib/db/schema";
-import { ensureOrganization } from "@workspace/lib/db/provisioning";
-import { assertCanAddPrompts, getBrandOrganizationId } from "@workspace/lib/entitlements";
+
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
+import { db } from "@workspace/lib/db/db";
+import { ensureOrganization } from "@workspace/lib/db/provisioning";
+import { brands, competitors, prompts } from "@workspace/lib/db/schema";
+import { assertCanAddPrompts, getBrandOrganizationId } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { dedupeDomains, dedupeAliases } from "@/lib/domain-categories";
+import { count, eq } from "drizzle-orm";
+import { z } from "zod";
+import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 
 // ============================================================================

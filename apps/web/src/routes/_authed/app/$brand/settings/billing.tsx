@@ -310,11 +310,7 @@ function SubscriptionSummary({
 					!showPlanGrid &&
 					(subscription ? (
 						<Button variant="outline" size="sm" onClick={onOpenPortal} disabled={busy !== null}>
-							{busy === "portal" ? (
-								<Spinner />
-							) : (
-								<IconExternalLink className="h-4 w-4" />
-							)}
+							{busy === "portal" ? <Spinner /> : <IconExternalLink className="h-4 w-4" />}
 							Manage billing
 						</Button>
 					) : (

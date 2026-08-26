@@ -4,30 +4,29 @@
  * Production-quality printable report (US Letter 8.5 x 11 in).
  * Uses Share of Voice as the primary metric with rich competitive analysis.
  */
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound, useRouteContext } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { requireAuthSession, hasReportAccess } from "@/lib/auth/helpers";
-import { getReportByIdFn } from "@/server/reports";
-import { PromptChartPrint } from "@/components/prompt-chart-print";
-import { Target, BarChart3, Rocket } from "lucide-react";
-import { Logo } from "@/components/logo";
-import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import {
+	analyzeByEngine,
+	analyzeCompetitorFrequency,
+	analyzeWebQueries,
+	computeCompetitorSoVs,
 	computeOverallSoV,
 	computePromptSoV,
-	computeCompetitorSoVs,
-	selectRepresentativePrompts,
+	type FullPromptRun,
 	findContentGaps,
-	analyzeWebQueries,
-	analyzeCompetitorFrequency,
-	analyzeByEngine,
 	getSoVColor,
 	getSoVLevel,
-	type ReportPromptRun,
-	type FullPromptRun,
 	type PromptCategory,
+	type ReportPromptRun,
+	selectRepresentativePrompts,
 } from "@workspace/lib/report-metrics";
+import { BarChart3, Rocket, Target } from "lucide-react";
+import { Logo } from "@/components/logo";
+import { PromptChartPrint } from "@/components/prompt-chart-print";
+import { hasReportAccess, requireAuthSession } from "@/lib/auth/helpers";
+import { getReportByIdFn } from "@/server/reports";
 
 // ---------- Types ----------
 
@@ -282,17 +281,6 @@ function ReportRenderPage() {
 
 	return (
 		<div className="max-w-[780px] mx-auto bg-white print:max-w-none text-slate-900">
-			<style
-				dangerouslySetInnerHTML={{
-					__html: `
-				@media print {
-					@page { size: letter; margin: 0.5in 0.6in; }
-					body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-				}
-			`,
-				}}
-			/>
-
 			{/* ===== PAGE 1: COVER ===== */}
 			<div className="print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
 				<div className="h-[3px] bg-slate-800 -mx-10 print:-mx-0 mb-8" />
@@ -390,8 +378,8 @@ function ReportRenderPage() {
 									.map((c) => ({ name: c.name, sov: c.sov, isBrand: false })),
 							]
 								.sort((a, b) => b.sov - a.sov)
-								.map((row, i) => (
-									<tr key={`sov-${i}`} className={row.isBrand ? "bg-blue-50/30" : ""}>
+								.map((row) => (
+									<tr key={`sov-${row.name}`} className={row.isBrand ? "bg-blue-50/30" : ""}>
 										<td className={`py-2.5 px-4 text-sm ${row.isBrand ? "font-semibold" : "text-slate-600"}`}>
 											{row.name}
 										</td>
@@ -438,8 +426,8 @@ function ReportRenderPage() {
 											.map((c) => ({ ...c, isBrand: false })),
 									]
 										.sort((a, b) => b.mentionCount - a.mentionCount)
-										.map((c, i) => (
-											<tr key={`mention-${i}`} className={c.isBrand ? "bg-blue-50/30" : ""}>
+										.map((c) => (
+											<tr key={`mention-${c.name}`} className={c.isBrand ? "bg-blue-50/30" : ""}>
 												<td
 													className={`py-2 px-4 text-xs font-medium ${c.isBrand ? "text-slate-900" : "text-slate-700"}`}
 												>
@@ -467,11 +455,14 @@ function ReportRenderPage() {
 			</div>
 
 			{/* ===== CHART PAGES ===== */}
-			{chartPairs.map((pair, pageIdx) => (
-				<div key={pageIdx} className="print:break-before-page print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
+			{chartPairs.map((pair, pageIndex) => (
+				<div
+					key={pair.map((selected) => selected.promptId).join("+")}
+					className="print:break-before-page print:h-[9.5in] print:flex print:flex-col p-10 print:p-0"
+				>
 					<RunningHeader brand={report.brandName} />
 
-					{pageIdx === 0 ? (
+					{pageIndex === 0 ? (
 						<Section
 							title="Prompt Analysis"
 							subtitle="Share of voice for representative prompts — strengths and growth opportunities"

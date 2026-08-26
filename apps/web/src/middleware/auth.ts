@@ -8,10 +8,10 @@
  */
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
-import { getDeployment } from "@/lib/config/server";
-import { auth } from "@/lib/auth/server";
 import { isAdmin } from "@/lib/auth/helpers";
 import { evaluateRequireAdmin } from "@/lib/auth/policies";
+import { auth } from "@/lib/auth/server";
+import { getDeployment } from "@/lib/config/server";
 
 /**
  * Auth middleware - provides deployment context to all server functions.
