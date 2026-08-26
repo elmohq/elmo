@@ -282,6 +282,7 @@ function ReportRenderPage() {
 	return (
 		<div className="max-w-[780px] mx-auto bg-white print:max-w-none text-slate-900">
 			<style
+				// biome-ignore lint/security/noDangerouslySetInnerHtml: a static @page rule; print sizing can't be expressed in inline styles
 				dangerouslySetInnerHTML={{
 					__html: `
 				@media print {

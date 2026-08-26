@@ -122,6 +122,7 @@ export function FeedbackBlock({ id, body, children, onSendAction }: FeedbackBloc
 								placeholder="What could be improved?"
 								className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 								rows={3}
+								// biome-ignore lint/a11y/noAutofocus: the box only exists once the reader has opened it, and typing is the only thing to do in it
 								autoFocus
 							/>
 							<Button size="sm" onClick={handleSubmit} disabled={message.trim().length === 0} className="w-full">
