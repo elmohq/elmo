@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { getBatchChartDataFn, type BatchChartDataResponse } from "@/server/visibility";
+import { type BatchChartDataResponse, getBatchChartDataFn } from "@/server/visibility";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 

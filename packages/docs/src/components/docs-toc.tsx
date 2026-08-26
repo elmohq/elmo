@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { cn } from "@workspace/ui/lib/utils";
-import { AnchorProvider, ScrollProvider, TOCItem, useActiveAnchors, type TOCItemType } from "fumadocs-core/toc";
+import { AnchorProvider, ScrollProvider, TOCItem, type TOCItemType, useActiveAnchors } from "fumadocs-core/toc";
 import { useOnChange } from "fumadocs-core/utils/use-on-change";
+import { useEffect, useRef } from "react";
 
 function TocThumb({ containerRef }: { containerRef: React.RefObject<HTMLElement | null> }) {
 	const thumbRef = useRef<HTMLDivElement>(null);

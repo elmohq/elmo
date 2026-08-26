@@ -1,10 +1,10 @@
 import { Badge } from "@workspace/ui/components/badge";
-import { Check, X, ExternalLink } from "lucide-react";
+import { Check, ExternalLink, X } from "lucide-react";
 import {
-	FEATURE_CATEGORIES,
-	ELMO_FEATURES,
 	CATEGORY_LABELS,
 	type Competitor,
+	ELMO_FEATURES,
+	FEATURE_CATEGORIES,
 	type FeatureKey,
 } from "@/lib/competitors";
 

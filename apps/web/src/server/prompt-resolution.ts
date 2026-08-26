@@ -13,8 +13,8 @@
  */
 import { db } from "@workspace/lib/db/db";
 import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { eq, and } from "drizzle-orm";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { and, eq } from "drizzle-orm";
 
 export interface ResolvedPrompt {
 	id: string;

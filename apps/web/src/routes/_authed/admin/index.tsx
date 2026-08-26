@@ -1,15 +1,12 @@
 /**
  * /admin - Admin dashboard with brand statistics and charts
  */
-import { useEffect, useState, type ReactNode } from "react";
+
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
-import { getAppName } from "@/lib/route-head";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
-import { Label } from "@workspace/ui/components/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import {
 	Dialog,
 	DialogContent,
@@ -19,10 +16,14 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@workspace/ui/components/dialog";
+import { Input } from "@workspace/ui/components/input";
+import { Label } from "@workspace/ui/components/label";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
-import { Settings, TrendingUp, TrendingDown } from "lucide-react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
+import { Settings, TrendingDown, TrendingUp } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { getAppName } from "@/lib/route-head";
 import { getAdminStatsFn, updateDelayOverrideFn } from "@/server/admin";
 
 interface BrandStats {

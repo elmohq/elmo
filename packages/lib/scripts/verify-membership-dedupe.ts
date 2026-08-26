@@ -59,7 +59,7 @@ async function main(): Promise<void> {
 	try {
 		await client.query("DELETE FROM member WHERE organization_id = $1", [ORG]);
 		await client.query("DELETE FROM organization WHERE id = $1", [ORG]);
-		await client.query("DELETE FROM \"user\" WHERE id = $1", [USER]);
+		await client.query('DELETE FROM "user" WHERE id = $1', [USER]);
 		await client.query(
 			`INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'Dedupe Verify', $1, NOW())`,
 			[ORG],

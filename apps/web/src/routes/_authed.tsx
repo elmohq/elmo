@@ -3,11 +3,12 @@
  *
  * Checks for an authenticated better-auth session, redirects to /auth/login if not found.
  */
-import { useEffect, useRef } from "react";
+
 import { createFileRoute, Outlet, redirect, useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
+import { useEffect, useRef } from "react";
 import { getSession } from "@/lib/auth/session";
 import { identifyUser, setPersonProperties } from "@/lib/posthog";
-import type { ClientConfig } from "@workspace/config/types";
 
 export const Route = createFileRoute("/_authed")({
 	beforeLoad: async ({ location }) => {

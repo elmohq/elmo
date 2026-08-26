@@ -8,11 +8,10 @@
  */
 
 export {
-	createWhitelabelDeployment,
-	type CreateWhitelabelDeploymentOptions,
-} from "./deployment";
-
-export {
 	OptimizeButton,
 	type OptimizeButtonProps,
 } from "./components/optimize-button";
+export {
+	type CreateWhitelabelDeploymentOptions,
+	createWhitelabelDeployment,
+} from "./deployment";

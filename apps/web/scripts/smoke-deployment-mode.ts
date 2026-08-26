@@ -21,9 +21,10 @@
  *   pnpm -C apps/web exec tsx scripts/smoke-deployment-mode.ts            # all modes
  *   pnpm -C apps/web exec tsx scripts/smoke-deployment-mode.ts whitelabel # one mode
  */
+
+import { getEnvValidationState } from "@workspace/config/env";
 import type { DeploymentMode } from "@workspace/config/types";
 import { getDeployment, resetDeploymentCache } from "@workspace/deployment";
-import { getEnvValidationState } from "@workspace/config/env";
 
 type SmokeMode = DeploymentMode;
 

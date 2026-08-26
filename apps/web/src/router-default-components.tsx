@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/tanstackstart-react";
 import type { ErrorComponentProps } from "@tanstack/react-router";
-import { useEffect } from "react";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { useEffect } from "react";
 import FullPageCard from "./components/full-page-card";
 
 export function NotFound() {

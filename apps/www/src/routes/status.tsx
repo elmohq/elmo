@@ -1,42 +1,42 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Navbar } from "@/components/navbar";
+import { Badge } from "@workspace/ui/components/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
+import { ArrowUpRight } from "lucide-react";
+import { type CSSProperties, Fragment, type ReactNode, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { Footer } from "@/components/footer";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
+import { Navbar } from "@/components/navbar";
 import { externalRel } from "@/lib/external-link";
+import { breadcrumbJsonLd, canonicalUrl, ogMeta } from "@/lib/seo";
 import { getStatusData } from "@/lib/status";
 import {
 	buildStatusMatrix,
+	type CellAvailability,
 	dedupeEntries,
 	formatLatency,
 	formatModel,
 	formatProvider,
 	getLatest,
-	parseTarget,
-	passRate,
+	type MatrixCell,
+	type MetricStats,
 	MODEL_API_CATEGORIES,
 	PROVIDER_FILTER_LABELS,
 	PROVIDER_FILTER_ORDER,
+	parseTarget,
+	passRate,
 	providerCategory,
 	providerColumnLabel,
 	providerPhrase,
-	rateTier,
-	runStats,
-	unavailableReason,
-	type CellAvailability,
-	type MatrixCell,
-	type MetricStats,
 	type RateTier,
 	type RunStats,
+	rateTier,
+	runStats,
 	type StatusEntry,
 	type TargetStatus,
+	unavailableReason,
 } from "@/lib/status-helpers";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@workspace/ui/components/chart";
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Badge } from "@workspace/ui/components/badge";
-import { ArrowUpRight } from "lucide-react";
-import { Fragment, useState, useRef, useEffect, type CSSProperties, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 
 const title = "Provider Status · Elmo";
 const description = "Real-time status and performance monitoring for AI search provider integrations.";
@@ -1006,10 +1006,7 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 									/>
 								))}
 								<div />
-								<MatrixSummaryCell
-									title={`${formatModel(model)} · All Providers`}
-									targets={matrix.rowTargets(model)}
-								/>
+								<MatrixSummaryCell title={`${formatModel(model)} · All Providers`} targets={matrix.rowTargets(model)} />
 							</Fragment>
 						))}
 						<div className="col-span-full h-2" />

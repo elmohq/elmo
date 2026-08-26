@@ -27,11 +27,7 @@ describe("getAvailableModels", () => {
 	});
 
 	it("prepends 'all' when several are tracked", () => {
-		expect(getAvailableModels([target("chatgpt"), target("claude")])).toEqual([
-			ALL_MODELS_VALUE,
-			"chatgpt",
-			"claude",
-		]);
+		expect(getAvailableModels([target("chatgpt"), target("claude")])).toEqual([ALL_MODELS_VALUE, "chatgpt", "claude"]);
 	});
 
 	it("preserves the caller's ordering", () => {

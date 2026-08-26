@@ -4,10 +4,11 @@
  * Used in browser code for session management, organization switching,
  * permission checks, and SSO flows.
  */
-import { createAuthClient } from "better-auth/react";
-import { organizationClient, adminClient } from "better-auth/client/plugins";
+
 import { ssoClient } from "@better-auth/sso/client";
 import { stripeClient } from "@better-auth/stripe/client";
+import { adminClient, organizationClient } from "better-auth/client/plugins";
+import { createAuthClient } from "better-auth/react";
 import { ac, adminRole, userRole } from "./permissions";
 
 export const authClient = createAuthClient({

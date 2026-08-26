@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
 	computeFanoutAnalysis,
-	promptKeywords,
-	normTok,
-	UNAVAILABLE_SENTINEL,
 	type FanoutBreakdownRow,
 	type FanoutModelTotalRow,
+	normTok,
+	promptKeywords,
+	UNAVAILABLE_SENTINEL,
 } from "@/lib/fanout-analysis";
 
 const promptMap = new Map<string, string>([

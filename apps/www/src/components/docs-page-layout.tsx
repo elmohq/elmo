@@ -4,19 +4,20 @@
 // The static imports below get hoisted into that chunk, so the heavy
 // fumadocs-ui + shiki + orama deps stay out of the main bundle that loads
 // on the marketing pages.
-import { Suspense } from "react";
-import browserCollections from "collections/browser";
-import { useFumadocsLoader } from "fumadocs-core/source/client";
-import { RootProvider } from "fumadocs-ui/provider/tanstack";
-import { useMDXComponents } from "@/components/mdx";
-import { ClientAPIPage } from "@/components/api-page";
-import type { ClientApiPageProps } from "fumadocs-openapi/ui/create-client";
-import { Feedback } from "@workspace/docs/components/feedback/client";
-import type { PageFeedback, ActionResponse } from "@workspace/docs/components/feedback/schema";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
+
 import { DocsSidebar } from "@workspace/docs/components/docs-sidebar";
 import { DocsToc } from "@workspace/docs/components/docs-toc";
+import { Feedback } from "@workspace/docs/components/feedback/client";
+import type { ActionResponse, PageFeedback } from "@workspace/docs/components/feedback/schema";
+import browserCollections from "collections/browser";
+import { useFumadocsLoader } from "fumadocs-core/source/client";
+import type { ClientApiPageProps } from "fumadocs-openapi/ui/create-client";
+import { RootProvider } from "fumadocs-ui/provider/tanstack";
+import { Suspense } from "react";
+import { ClientAPIPage } from "@/components/api-page";
+import { Footer } from "@/components/footer";
+import { useMDXComponents } from "@/components/mdx";
+import { Navbar } from "@/components/navbar";
 import type { LoaderData } from "@/routes/docs/$";
 
 const REPO = "elmohq/elmo";

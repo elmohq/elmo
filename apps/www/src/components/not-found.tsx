@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, ArrowUpRight, Home } from "lucide-react";
-import { Navbar } from "./navbar";
 import { Footer } from "./footer";
+import { Navbar } from "./navbar";
 
 const suggestedLinks = [
 	{ label: "Documentation", href: "/docs", description: "Get started and learn the API" },

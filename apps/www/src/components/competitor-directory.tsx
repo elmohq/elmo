@@ -1,18 +1,18 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Check, X } from "lucide-react";
+import { useState } from "react";
 import {
-	sortedCompetitors,
-	FEATURE_CATEGORIES,
-	ELMO_FEATURES,
 	CATEGORY_LABELS,
-	getFeatureLabel,
-	getComparisonSlug,
-	getPopularityGrade,
 	type Competitor,
 	type CompetitorCategory,
+	ELMO_FEATURES,
+	FEATURE_CATEGORIES,
 	type FeatureKey,
+	getComparisonSlug,
+	getFeatureLabel,
+	getPopularityGrade,
+	sortedCompetitors,
 } from "@/lib/competitors";
 
 function FeatureIcon({ has }: { has: boolean }) {

@@ -6,8 +6,8 @@ import type { Meta, StoryObj } from "@storybook/react";
 import type { ComponentType, ReactNode } from "react";
 import { expect, within } from "storybook/test";
 import { Route } from "@/routes/_authed/app/$brand/settings/members";
+import { setMockTeam, type TeamData } from "./_mocks/server-team";
 import { setMockLoaderData } from "./_mocks/tanstack-router";
-import { type TeamData, setMockTeam } from "./_mocks/server-team";
 
 const MembersPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 
