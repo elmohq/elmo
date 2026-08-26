@@ -43,13 +43,16 @@ function BrandSettingsPage() {
 	const [additionalDomains, setAdditionalDomains] = useState<string[]>([]);
 	const [aliases, setAliases] = useState<string[]>([]);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reseeds the form only when the brand actually changed server-side, not on every new object identity
-	useEffect(() => {
-		if (brand) {
-			setAdditionalDomains(brand.additionalDomains || []);
-			setAliases(brand.aliases || []);
-		}
-	}, [brand?.updatedAt]);
+	// Reseed the editable fields when the brand changes server-side — not on
+	// every new object identity, which would discard what is being typed.
+	// Adjusted during render rather than in an effect so a save never paints
+	// the previous values back for a frame.
+	const [seededFrom, setSeededFrom] = useState<Date | null>(null);
+	if (brand && brand.updatedAt !== seededFrom) {
+		setSeededFrom(brand.updatedAt);
+		setAdditionalDomains(brand.additionalDomains || []);
+		setAliases(brand.aliases || []);
+	}
 
 	const validateDomain = useCallback((val: string): true | string => {
 		const cleaned = cleanAndValidateDomain(val);

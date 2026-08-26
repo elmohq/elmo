@@ -32,10 +32,14 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
 	const results = query.data && query.data !== "empty" ? query.data : [];
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the query is the trigger — a new search resets the highlighted result without the effect reading it
-	useEffect(() => {
+	// A new query means new results, so the highlight goes back to the top.
+	// Adjusted during render rather than in an effect: an effect would paint
+	// the old highlight against the new list first.
+	const [highlightedFor, setHighlightedFor] = useState(search);
+	if (highlightedFor !== search) {
+		setHighlightedFor(search);
 		setActiveIndex(0);
-	}, [search]);
+	}
 
 	useEffect(() => {
 		if (open) {

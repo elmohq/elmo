@@ -294,7 +294,6 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 	// intervening render can restore stale text and make the input flash.
 	const pendingTargetRef = useRef<string | null>(null);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the URL is the trigger; re-running on every keystroke would fight the debounce below
 	useEffect(() => {
 		if (pendingTargetRef.current !== null) {
 			if (value === pendingTargetRef.current) {
@@ -307,7 +306,8 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 			setLocal(value);
 			return;
 		}
-		if (value !== local) setLocal(value);
+		// React bails out when the value is unchanged, so this needs no comparison.
+		setLocal(value);
 	}, [value]);
 
 	useEffect(() => {

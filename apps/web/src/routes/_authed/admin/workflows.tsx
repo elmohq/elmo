@@ -30,7 +30,7 @@ import {
 	Server,
 	XCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getAppName } from "@/lib/route-head";
 import { getJobLogsFn, getWorkflowDataFn, retryJobFn } from "@/server/admin";
 
@@ -621,6 +621,9 @@ export const Route = createFileRoute("/_authed/admin/workflows")({
 	component: WorkflowsPage,
 });
 
+/** How often the dashboard re-reads the queue while it is open. */
+const REFRESH_INTERVAL_MS = 30_000;
+
 function WorkflowsPage() {
 	const [data, setData] = useState<WorkflowsData | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -628,7 +631,7 @@ function WorkflowsPage() {
 	const [expandedBrands, setExpandedBrands] = useState<Set<string>>(new Set());
 	const [isRefreshing, setIsRefreshing] = useState(false);
 
-	const fetchData = async (showRefreshing = false) => {
+	const fetchData = useCallback(async (showRefreshing = false) => {
 		if (showRefreshing) setIsRefreshing(true);
 
 		try {
@@ -640,14 +643,13 @@ function WorkflowsPage() {
 			setLoading(false);
 			setIsRefreshing(false);
 		}
-	};
+	}, []);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: loads once on mount and then polls; the fetcher is rebuilt every render, so listing it would loop
 	useEffect(() => {
 		fetchData();
-		const interval = setInterval(() => fetchData(), 30000);
+		const interval = setInterval(() => fetchData(), REFRESH_INTERVAL_MS);
 		return () => clearInterval(interval);
-	}, []);
+	}, [fetchData]);
 
 	const toggleBrand = (brandId: string) => {
 		setExpandedBrands((prev) => {

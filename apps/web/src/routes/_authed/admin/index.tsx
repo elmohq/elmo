@@ -21,7 +21,7 @@ import { Label } from "@workspace/ui/components/label";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { Settings, TrendingDown, TrendingUp } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { getAppName } from "@/lib/route-head";
 import { getAdminStatsFn, updateDelayOverrideFn } from "@/server/admin";
@@ -273,7 +273,7 @@ function AdminDashboard() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	const fetchBrandStats = async () => {
+	const fetchBrandStats = useCallback(async () => {
 		try {
 			const data = await getAdminStatsFn();
 			setBrands(data.brands as any);
@@ -286,12 +286,11 @@ function AdminDashboard() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, []);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: loads once on mount; the fetcher is rebuilt every render, so listing it would loop
 	useEffect(() => {
 		fetchBrandStats();
-	}, []);
+	}, [fetchBrandStats]);
 
 	if (loading) {
 		return (
