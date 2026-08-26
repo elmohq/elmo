@@ -37,7 +37,7 @@ function generateOptimizationUrl(urlTemplate: string, promptValue: string, brand
 export function OptimizeButton({
 	brandId,
 	selectedModel = "all",
-	availableModels = [],
+	availableModels,
 	lookback = "1m",
 	promptName,
 	promptId,
