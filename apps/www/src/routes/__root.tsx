@@ -2,6 +2,7 @@
 import { useEffect, type ReactNode } from "react";
 import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { initPostHog } from "@/lib/posthog";
+import { initCrisp } from "@/lib/crisp";
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, websiteJsonLd, organizationJsonLd } from "@/lib/seo";
 import { getMarketingOgImage } from "@/lib/og";
 import { getGitHubStars } from "@/lib/github-stars";
@@ -95,6 +96,7 @@ export const Route = createRootRoute({
 function RootComponent() {
 	useEffect(() => {
 		initPostHog();
+		initCrisp();
 	}, []);
 
 	return (

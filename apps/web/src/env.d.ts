@@ -26,6 +26,9 @@ interface ImportMetaEnv {
 	readonly VITE_CLARITY_PROJECT_ID?: string;
 	readonly VITE_POSTHOG_KEY?: string;
 
+	// Support chat
+	readonly VITE_CRISP_WEBSITE_ID?: string;
+
 	// Sentry
 	readonly VITE_SENTRY_DSN?: string;
 }

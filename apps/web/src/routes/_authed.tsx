@@ -7,6 +7,7 @@ import { useEffect, useRef } from "react";
 import { createFileRoute, Outlet, redirect, useRouteContext } from "@tanstack/react-router";
 import { getSession } from "@/lib/auth/session";
 import { identifyUser, setPersonProperties } from "@/lib/posthog";
+import { identifyCrispUser } from "@/lib/crisp";
 import type { ClientConfig } from "@workspace/config/types";
 
 export const Route = createFileRoute("/_authed")({
@@ -45,6 +46,7 @@ function AuthedLayout() {
 		setPersonProperties({
 			deployment_mode: context.clientConfig?.mode,
 		});
+		identifyCrispUser({ id: user.id, email: user.email, name: user.name });
 	}, [context.session?.user, context.clientConfig?.mode]);
 
 	return <Outlet />;

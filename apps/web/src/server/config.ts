@@ -3,7 +3,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { getEnvValidationState } from "@workspace/config/env";
-import type { ClientConfig } from "@workspace/config/types";
+import type { ClientConfig, DeploymentMode } from "@workspace/config/types";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { countUsers } from "@workspace/lib/db/provisioning";
 import { getDeployment } from "@/lib/config/server";
@@ -28,6 +28,16 @@ function resolvePosthogKey(): string | undefined {
 	return process.env.VITE_POSTHOG_KEY ?? POSTHOG_PUBLIC_KEY;
 }
 
+/**
+ * Crisp routes into our own support inbox, so it only belongs on the
+ * deployments we operate. Self-hosted and whitelabel instances never get it,
+ * however their env is configured.
+ */
+function resolveCrispWebsiteId(mode: DeploymentMode): string | undefined {
+	if (mode !== "cloud" && mode !== "demo") return undefined;
+	return process.env.VITE_CRISP_WEBSITE_ID;
+}
+
 export const getClientConfig = createServerFn({ method: "GET" }).handler(async (): Promise<PublicClientConfig> => {
 	const deployment = getDeployment();
 
@@ -48,6 +58,7 @@ export const getClientConfig = createServerFn({ method: "GET" }).handler(async (
 			plausibleDomain: process.env.VITE_PLAUSIBLE_DOMAIN,
 			clarityProjectId: process.env.VITE_CLARITY_PROJECT_ID,
 			posthogKey: resolvePosthogKey(),
+			crispWebsiteId: resolveCrispWebsiteId(deployment.mode),
 		},
 		defaultDelayHours: getDefaultDelayHours(),
 		canRegister,

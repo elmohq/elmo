@@ -12,6 +12,7 @@ import MissingEnvPage from "@/components/missing-env-page";
 import { usesWordmarkFont } from "@/components/logo";
 import queryDevtools from "@/integrations/tanstack-query/devtools";
 import { initPostHog } from "@/lib/posthog";
+import { initCrisp } from "@/lib/crisp";
 import appCss from "../styles.css?url";
 // Preloaded so the wordmark font downloads in parallel with the CSS rather than
 // after it. Must resolve to the same emitted asset as the @font-face src.
@@ -160,6 +161,11 @@ function RootComponent() {
 		const key = clientConfig?.analytics?.posthogKey;
 		if (key) initPostHog(key);
 	}, [clientConfig?.analytics?.posthogKey]);
+
+	useEffect(() => {
+		if (!clientConfig) return;
+		initCrisp(clientConfig.analytics?.crispWebsiteId, clientConfig.mode);
+	}, [clientConfig]);
 
 	const clarityQueueScript = `window.clarity=window.clarity||function(){(window.clarity.q=window.clarity.q||[]).push(arguments)};`;
 

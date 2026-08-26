@@ -17,6 +17,7 @@ import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { useAuth } from "@/hooks/use-auth";
 import { resetPostHog } from "@/lib/posthog";
+import { resetCrispSession } from "@/lib/crisp";
 
 /** `canSwitchBrand` is false on gate pages, where /app just redirects back. */
 export function NavUser({ canSwitchBrand = true }: { canSwitchBrand?: boolean } = {}) {
@@ -120,6 +121,7 @@ export function NavUser({ canSwitchBrand = true }: { canSwitchBrand?: boolean } 
 									fetchOptions: {
 										onSuccess: () => {
 											resetPostHog();
+											resetCrispSession();
 											window.location.href = "/auth/logout";
 										},
 									},
