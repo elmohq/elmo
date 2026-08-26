@@ -338,6 +338,91 @@ function toQueryStats(map: Map<string, Tally>, limit: number): FanoutQueryStat[]
 // Main aggregation
 // ---------------------------------------------------------------------------
 
+/** Every running total the fan-out report projects from, in one pass. */
+interface FanoutTallies {
+	overall: Map<string, Tally>;
+	/** query → prompt id → run instances (feeds the Top Queries drill-down). */
+	promptsPerQuery: Map<string, Map<string, number>>;
+	perModel: Map<string, Map<string, Tally>>;
+	perPrompt: Map<string, { value: string; total: number; queries: Map<string, Tally> }>;
+	terms: Map<string, number>;
+	added: Map<string, number>;
+	dropped: Map<string, number>;
+	preserved: Map<string, number>;
+	totalQueries: number;
+	totalBrand: number;
+}
+
+/** Add one row's counts to the token tallies that drive the word-change lists. */
+function tallyWordChanges(tallies: FanoutTallies, query: string, promptTokens: Set<string>, count: number): void {
+	// Term cloud — unigram frequency across fan-out queries, weighted by count.
+	for (const token of tokenize(query)) {
+		if (STOPWORDS.has(token)) continue;
+		tallies.terms.set(token, (tallies.terms.get(token) ?? 0) + count);
+	}
+
+	// Word transformations — how the prompt's wording changes in this query.
+	// Each fan-out query votes once per distinct token (weighted by count).
+	const queryTokens = new Set(tokenize(query));
+	for (const token of queryTokens) {
+		if (!promptTokens.has(token)) tallies.added.set(token, (tallies.added.get(token) ?? 0) + count);
+	}
+	for (const token of promptTokens) {
+		const target = queryTokens.has(token) ? tallies.preserved : tallies.dropped;
+		target.set(token, (target.get(token) ?? 0) + count);
+	}
+}
+
+function tallyBreakdown(breakdown: FanoutBreakdownRow[], promptValueMap: Map<string, string>): FanoutTallies {
+	const tallies: FanoutTallies = {
+		overall: new Map(),
+		promptsPerQuery: new Map(),
+		perModel: new Map(),
+		perPrompt: new Map(),
+		terms: new Map(),
+		added: new Map(),
+		dropped: new Map(),
+		preserved: new Map(),
+		totalQueries: 0,
+		totalBrand: 0,
+	};
+
+	// A prompt's token set is identical for every one of its breakdown rows.
+	const promptTokensByPrompt = new Map<string, Set<string>>();
+
+	for (const row of breakdown) {
+		const query = norm(row.query);
+		if (!query || query === UNAVAILABLE_SENTINEL) continue;
+		tallies.totalQueries += row.count;
+		tallies.totalBrand += row.brand_mentions;
+
+		bump(tallies.overall, query, row.count, row.brand_mentions);
+
+		const queryPrompts = tallies.promptsPerQuery.get(query) ?? new Map<string, number>();
+		queryPrompts.set(row.prompt_id, (queryPrompts.get(row.prompt_id) ?? 0) + row.count);
+		tallies.promptsPerQuery.set(query, queryPrompts);
+
+		const modelQueries = tallies.perModel.get(row.model) ?? new Map<string, Tally>();
+		bump(modelQueries, query, row.count, row.brand_mentions);
+		tallies.perModel.set(row.model, modelQueries);
+
+		const promptValue = promptValueMap.get(row.prompt_id) ?? "";
+		const promptEntry = tallies.perPrompt.get(row.prompt_id) ?? { value: promptValue, total: 0, queries: new Map() };
+		promptEntry.total += row.count;
+		bump(promptEntry.queries, query, row.count, row.brand_mentions);
+		tallies.perPrompt.set(row.prompt_id, promptEntry);
+
+		let promptTokens = promptTokensByPrompt.get(row.prompt_id);
+		if (!promptTokens) {
+			promptTokens = new Set(tokenize(promptValue));
+			promptTokensByPrompt.set(row.prompt_id, promptTokens);
+		}
+		tallyWordChanges(tallies, query, promptTokens, row.count);
+	}
+
+	return tallies;
+}
+
 export function computeFanoutAnalysis(
 	breakdown: FanoutBreakdownRow[],
 	modelTotals: FanoutModelTotalRow[],
@@ -352,75 +437,8 @@ export function computeFanoutAnalysis(
 	const { promptRuns } = opts;
 	const L = { ...LIMITS, ...opts.limits };
 
-	const overall = new Map<string, Tally>();
-	/** query → prompt id → run instances (feeds the Top Queries drill-down). */
-	const promptsPerQuery = new Map<string, Map<string, number>>();
-	const perModel = new Map<string, Map<string, Tally>>();
-	const perPrompt = new Map<string, { value: string; total: number; queries: Map<string, Tally> }>();
-	const terms = new Map<string, number>();
-	const added = new Map<string, number>();
-	const dropped = new Map<string, number>();
-	const preserved = new Map<string, number>();
-
-	let totalQueries = 0;
-	let totalBrand = 0;
-
-	// A prompt's token set is identical for every one of its breakdown rows.
-	const promptTokensByPrompt = new Map<string, Set<string>>();
-	const promptTokensFor = (promptId: string, promptValue: string): Set<string> => {
-		let set = promptTokensByPrompt.get(promptId);
-		if (!set) {
-			set = new Set(tokenize(promptValue));
-			promptTokensByPrompt.set(promptId, set);
-		}
-		return set;
-	};
-
-	for (const row of breakdown) {
-		const query = norm(row.query);
-		if (!query || query === UNAVAILABLE_SENTINEL) continue;
-		totalQueries += row.count;
-		totalBrand += row.brand_mentions;
-
-		bump(overall, query, row.count, row.brand_mentions);
-
-		let queryPrompts = promptsPerQuery.get(query);
-		if (!queryPrompts) {
-			queryPrompts = new Map();
-			promptsPerQuery.set(query, queryPrompts);
-		}
-		queryPrompts.set(row.prompt_id, (queryPrompts.get(row.prompt_id) ?? 0) + row.count);
-
-		if (!perModel.has(row.model)) perModel.set(row.model, new Map());
-		bump(perModel.get(row.model)!, query, row.count, row.brand_mentions);
-
-		const promptValue = promptValueMap.get(row.prompt_id) ?? "";
-		let pp = perPrompt.get(row.prompt_id);
-		if (!pp) {
-			pp = { value: promptValue, total: 0, queries: new Map() };
-			perPrompt.set(row.prompt_id, pp);
-		}
-		pp.total += row.count;
-		bump(pp.queries, query, row.count, row.brand_mentions);
-
-		// Term cloud — unigram frequency across fan-out queries, weighted by count.
-		for (const tok of tokenize(query)) {
-			if (STOPWORDS.has(tok)) continue;
-			terms.set(tok, (terms.get(tok) ?? 0) + row.count);
-		}
-
-		// Word transformations — how the prompt's wording changes in this query.
-		// Each fan-out query votes once per distinct token (weighted by count).
-		const promptTokens = promptTokensFor(row.prompt_id, promptValue);
-		const queryTokens = new Set(tokenize(query));
-		for (const tok of queryTokens) {
-			if (!promptTokens.has(tok)) added.set(tok, (added.get(tok) ?? 0) + row.count);
-		}
-		for (const tok of promptTokens) {
-			const target = queryTokens.has(tok) ? preserved : dropped;
-			target.set(tok, (target.get(tok) ?? 0) + row.count);
-		}
-	}
+	const { overall, promptsPerQuery, perModel, perPrompt, terms, added, dropped, preserved, totalQueries, totalBrand } =
+		tallyBreakdown(breakdown, promptValueMap);
 
 	const coverageRate = pct(totalBrand, totalQueries);
 	const allQueryStats = toQueryStats(overall, overall.size);
