@@ -22,29 +22,23 @@ const CRISP_SCRIPT_URL = "https://client.crisp.chat/l.js";
 const DEMO_WALKTHROUGH_URL = "https://cal.com/jrhizor/elmo";
 const SELF_HOST_DOCS_URL = "https://www.elmohq.com/docs/getting-started";
 
-const DEMO_GREETING = "👋 You're in the Elmo demo — it's read-only sample data, so click around freely.";
+// A support chat's first job is to invite the question, so the greeting does
+// that and the routes out follow as a separate message.
+const DEMO_GREETING =
+	"👋 You're in the Elmo demo — it's read-only sample data, so click around freely. Ask me anything as you go.";
 
-/** The three ways out of the demo, offered as linked cards. */
-const DEMO_NEXT_STEPS = {
-	text: "Whenever you're ready, here's where to go next:",
-	targets: [
-		{
-			title: "See it on your own brand",
-			description: "A live walkthrough with the team, using your data instead of ours.",
-			actions: [{ label: "Book a time", url: DEMO_WALKTHROUGH_URL }],
-		},
-		{
-			title: "Run it yourself",
-			description: "Elmo is open source and free to self-host. Up in about five minutes.",
-			actions: [{ label: "Read the setup guide", url: SELF_HOST_DOCS_URL }],
-		},
-		{
-			title: "Let us run it",
-			description: "Elmo Cloud is the managed version — nothing to deploy or maintain.",
-			actions: [{ label: "Start with Cloud", url: CLOUD_SIGNUP_URL }],
-		},
-	],
-};
+/**
+ * The routes out of the demo, ordered by what the chat is uniquely good for: a
+ * walkthrough needs a person, the other two are self-serve. Markdown links in a
+ * plain message keep all three on screen — a carousel puts its cards on a
+ * horizontal track that only shows one at a time at chatbox width.
+ */
+const DEMO_NEXT_STEPS = [
+	"Whenever you're ready:",
+	`• [Book a walkthrough](${DEMO_WALKTHROUGH_URL}) — 30 minutes on your own brand's data`,
+	`• [Start with Elmo Cloud](${CLOUD_SIGNUP_URL}) — the managed version, nothing to deploy`,
+	`• [Self-host it free](${SELF_HOST_DOCS_URL}) — open source, running in about five minutes`,
+].join("\n");
 
 let initialized = false;
 
@@ -106,7 +100,7 @@ function showDemoNextStepsOnOpen(): void {
 			if (offered) return;
 			offered = true;
 			push(["do", "message:show", ["text", DEMO_GREETING]]);
-			push(["do", "message:show", ["carousel", DEMO_NEXT_STEPS]]);
+			push(["do", "message:show", ["text", DEMO_NEXT_STEPS]]);
 		},
 	]);
 }

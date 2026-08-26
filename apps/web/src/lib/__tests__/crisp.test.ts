@@ -82,11 +82,12 @@ describe("the demo next steps", () => {
 		const shown = queue().filter((command) => command[0] === "do" && command[1] === "message:show");
 		expect(shown, "reopening the chat must not repeat the sequence").toHaveLength(2);
 
-		const carousel = (shown[1]?.[2] as [string, { targets: { actions: { url: string }[] }[] }])[1];
-		expect(carousel.targets.flatMap((target) => target.actions.map((action) => action.url))).toEqual([
+		const nextSteps = String((shown[1]?.[2] as [string, string])[1]);
+		const linked = [...nextSteps.matchAll(/\]\((https?:[^)]+)\)/g)].map((match) => match[1]);
+		expect(linked).toEqual([
 			"https://cal.com/jrhizor/elmo",
-			"https://www.elmohq.com/docs/getting-started",
 			CLOUD_SIGNUP_URL,
+			"https://www.elmohq.com/docs/getting-started",
 		]);
 	});
 
