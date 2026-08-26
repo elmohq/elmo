@@ -231,6 +231,63 @@ function BillingSettingsPage() {
 }
 
 /**
+ * The plan price is on its card; what is worth stating here is the total, which
+ * an add-on makes different from it.
+ */
+function SubscriptionCost({
+	cost,
+	annual,
+}: {
+	cost: NonNullable<ReturnType<typeof summarizeSubscriptionCost>>;
+	annual: boolean;
+}) {
+	return (
+		<>
+			{cost.lines.length > 1 && (
+				<span className="text-muted-foreground">
+					{cost.lines.map((line) => `${line.label} $${line.amountUsd.toLocaleString()}`).join(" · ")}
+				</span>
+			)}
+			<span>
+				<span className="text-xl font-bold tabular-nums">${cost.totalUsd.toLocaleString()}</span>
+				<span className="text-muted-foreground">{annual ? "/year" : "/month"}</span>
+			</span>
+		</>
+	);
+}
+
+/** Stripe's portal for a live subscription; otherwise the way in to buying one. */
+function BillingAction({
+	hasSubscription,
+	isCustomPlan,
+	busy,
+	onOpenPortal,
+	onChoosePlan,
+}: {
+	hasSubscription: boolean;
+	isCustomPlan: boolean;
+	busy: string | null;
+	onOpenPortal: () => void;
+	onChoosePlan: () => void;
+}) {
+	if (hasSubscription) {
+		return (
+			<Button variant="outline" size="sm" onClick={onOpenPortal} disabled={busy !== null}>
+				{busy === "portal" ? <Spinner /> : <IconExternalLink className="h-4 w-4" />}
+				Manage billing
+			</Button>
+		);
+	}
+	// A custom agreement is billed outside self-serve, so there is nothing to buy.
+	if (isCustomPlan) return null;
+	return (
+		<Button size="sm" onClick={onChoosePlan}>
+			Choose a plan
+		</Button>
+	);
+}
+
+/**
  * The state of the subscription in one line, plus what it bills.
  *
  * Deliberately thin: when the plan grid is showing, it already names the plan,
@@ -289,41 +346,18 @@ function SubscriptionSummary({
 			</div>
 
 			<div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
-				{cost && (
-					<>
-						{/* The plan price is on its card; what is worth stating here is the
-						    total, which an add-on makes different from it. */}
-						{cost.lines.length > 1 && (
-							<span className="text-muted-foreground">
-								{cost.lines.map((line) => `${line.label} $${line.amountUsd.toLocaleString()}`).join(" · ")}
-							</span>
-						)}
-						<span>
-							<span className="text-xl font-bold tabular-nums">${cost.totalUsd.toLocaleString()}</span>
-							<span className="text-muted-foreground">{annual ? "/year" : "/month"}</span>
-						</span>
-					</>
-				)}
+				{cost && <SubscriptionCost cost={cost} annual={annual} />}
 
 				{/* Without the grid there is no current-plan card to hang these off. */}
-				{isAdmin &&
-					!showPlanGrid &&
-					(subscription ? (
-						<Button variant="outline" size="sm" onClick={onOpenPortal} disabled={busy !== null}>
-							{busy === "portal" ? (
-								<Spinner />
-							) : (
-								<IconExternalLink className="h-4 w-4" />
-							)}
-							Manage billing
-						</Button>
-					) : (
-						entitlements.planKey !== "custom" && (
-							<Button size="sm" onClick={onChoosePlan}>
-								Choose a plan
-							</Button>
-						)
-					))}
+				{isAdmin && !showPlanGrid && (
+					<BillingAction
+						hasSubscription={subscription !== null && subscription !== undefined}
+						isCustomPlan={entitlements.planKey === "custom"}
+						busy={busy}
+						onOpenPortal={onOpenPortal}
+						onChoosePlan={onChoosePlan}
+					/>
+				)}
 
 				{!isAdmin && <span className="text-muted-foreground">Only workspace admins can change the plan.</span>}
 			</div>
