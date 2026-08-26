@@ -1,5 +1,5 @@
-# Host-side checks: type check, unit + Storybook tests, and a real `pnpm build`
-# that must leave the working tree clean.
+# Host-side checks: format and lint, type check, unit + Storybook tests, and a
+# real `pnpm build` that must leave the working tree clean.
 #
 # The clean-tree check is the point of running a host build at all.
 # `routeTree.gen.ts` is committed because `tsc` needs it to resolve routes, so
