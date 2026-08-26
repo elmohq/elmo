@@ -40,7 +40,16 @@ const DEMO_NEXT_STEPS = [
 	`• [Self-host it free](${SELF_HOST_DOCS_URL}) — open source, running in about five minutes`,
 ].join("\n");
 
+interface CrispUser {
+	id: string;
+	email?: string;
+	name?: string;
+}
+
 let initialized = false;
+let loadedMode: DeploymentMode | null = null;
+/** Set when a user is identified before the chatbox has loaded; see identifyCrispUser. */
+let pendingUser: CrispUser | null = null;
 
 function push(command: CrispCommand): void {
 	if (typeof window === "undefined") return;
@@ -60,6 +69,7 @@ function setSessionData(entries: [string, string][]): void {
 export function initCrisp(websiteId: string | undefined, mode: DeploymentMode): void {
 	if (initialized || typeof window === "undefined" || !websiteId) return;
 	initialized = true;
+	loadedMode = mode;
 
 	window.$crisp = window.$crisp ?? [];
 	window.CRISP_WEBSITE_ID = websiteId;
@@ -78,6 +88,11 @@ export function initCrisp(websiteId: string | undefined, mode: DeploymentMode): 
 		showDemoNextStepsOnOpen();
 	} else {
 		setSessionData([["deployment_mode", mode]]);
+	}
+
+	if (pendingUser) {
+		if (mode !== "demo") applyUser(pendingUser);
+		pendingUser = null;
 	}
 
 	const script = document.createElement("script");
@@ -105,11 +120,32 @@ function showDemoNextStepsOnOpen(): void {
 	]);
 }
 
-export function identifyCrispUser(user: { id: string; email?: string; name?: string }): void {
-	if (!initialized) return;
+function applyUser(user: CrispUser): void {
 	if (user.email) push(["set", "user:email", [user.email]]);
 	if (user.name) push(["set", "user:nickname", [user.name]]);
 	setSessionData([["user_id", user.id]]);
+}
+
+/**
+ * Attach the signed-in user to the conversation.
+ *
+ * Skipped on the demo, where everyone signs in through the one advertised
+ * account: tagging each visitor with the shared address would collapse them
+ * into a single Crisp contact and tell an operator nothing. Anonymous is the
+ * honest answer there.
+ *
+ * The route that knows who is signed in sits below the one that loads the
+ * chatbox, and React flushes child effects before parent effects, so this can
+ * run first. Holding the identity until the chatbox loads keeps the order from
+ * mattering — otherwise support conversations would all be anonymous.
+ */
+export function identifyCrispUser(user: CrispUser): void {
+	if (!initialized) {
+		pendingUser = user;
+		return;
+	}
+	if (loadedMode === "demo") return;
+	applyUser(user);
 }
 
 /**
@@ -117,6 +153,7 @@ export function identifyCrispUser(user: { id: string; email?: string; name?: str
  * browser doesn't inherit the previous user's chat history.
  */
 export function resetCrispSession(): void {
+	pendingUser = null;
 	if (!initialized) return;
 	push(["do", "session:reset"]);
 }

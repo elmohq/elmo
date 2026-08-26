@@ -130,4 +130,47 @@ describe("session identity", () => {
 
 		expect(window.$crisp).toBeUndefined();
 	});
+
+	// React flushes child effects first, so the route that knows the user can
+	// identify before the root route has loaded the chatbox.
+	it("carries a user identified before the chatbox loaded", async () => {
+		const { initCrisp, identifyCrispUser } = await loadCrisp();
+
+		identifyCrispUser({ id: "user-1", email: "a@example.com", name: "Ada" });
+		initCrisp("website-id", "cloud");
+
+		expect(findCommand("set", "user:email")).toEqual(["set", "user:email", ["a@example.com"]]);
+		expect(findCommand("set", "user:nickname")).toEqual(["set", "user:nickname", ["Ada"]]);
+	});
+
+	// Every demo visitor signs in through the one advertised account, so tagging
+	// the session with it would merge them all into a single Crisp contact.
+	it.each([
+		["identified after load", false],
+		["identified before load", true],
+	])("leaves demo visitors anonymous (%s)", async (_label, identifyFirst) => {
+		const { initCrisp, identifyCrispUser } = await loadCrisp();
+		const demoUser = { id: "demo", email: "demo@elmohq.com", name: "Demo User" };
+
+		if (identifyFirst) {
+			identifyCrispUser(demoUser);
+			initCrisp("website-id", "demo");
+		} else {
+			initCrisp("website-id", "demo");
+			identifyCrispUser(demoUser);
+		}
+
+		expect(findCommand("set", "user:email")).toBeUndefined();
+		expect(findCommand("set", "user:nickname")).toBeUndefined();
+	});
+
+	it("does not resurrect a signed-out user if the chatbox loads later", async () => {
+		const { initCrisp, identifyCrispUser, resetCrispSession } = await loadCrisp();
+
+		identifyCrispUser({ id: "user-1", email: "a@example.com" });
+		resetCrispSession();
+		initCrisp("website-id", "cloud");
+
+		expect(findCommand("set", "user:email")).toBeUndefined();
+	});
 });
