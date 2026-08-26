@@ -21,6 +21,10 @@ function DemoVideo() {
 			<MuxPlayer
 				playbackId="PYV9FNIG008vlkchyQf9KMTxDt028zQdshaM4VLC6lS1Q"
 				streamType="on-demand"
+				// Mux Data otherwise writes a `muxData` cookie on page load — before
+				// anyone has answered the consent banner. Playback QoE still reports;
+				// only cross-visit viewer recognition goes away.
+				disableCookies
 				accentColor="#2563eb"
 				poster="/demo-poster.png"
 				metadata={{

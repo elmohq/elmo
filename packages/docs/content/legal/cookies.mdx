@@ -1,0 +1,76 @@
+---
+title: Cookie Policy
+description: What Elmo stores in your browser, why, and how to change your mind.
+updated: 2026-08-26
+order: 3
+---
+
+This policy explains what **Blue Whale Software, LLC** stores in your browser when you visit our websites or use Elmo Cloud, and what control you have over it. It supplements our [Privacy Policy](/legal/privacy).
+
+"Cookies" here is shorthand. It covers cookies, `localStorage`, and any other technology that stores or reads something on your device.
+
+## The short version
+
+- Our web analytics is cookieless today — [Plausible](https://plausible.io/privacy-focused-web-analytics), which sets **no cookies**. Most of what we know about our website traffic comes from it.
+- **Where consent is required — currently the EEA, the UK, and Switzerland — we set no analytics or advertising cookie until you accept one.** A banner asks on your first visit; nothing but strictly necessary storage is written before you answer.
+- Everywhere else, analytics and advertising cookies are on by default, and you can turn them off from the **Cookie preferences** control on our site.
+- Where we run **session replay**, it sits in the analytics category and follows your analytics choice — so in a consent region nothing is recorded until you accept.
+
+## Categories
+
+The tables below describe what we set at the time of writing. The categories are the part that matters — what lands in each one changes as the tools we use change, and your choices apply to the category, not to a particular cookie.
+
+### Strictly necessary
+
+These are always set. The site cannot work without them, and consent is not required for them under the ePrivacy Directive.
+
+| What | Where | Purpose | Lifetime |
+| --- | --- | --- | --- |
+| `better-auth.session_token` | app.elmohq.com | Keeps you signed in | Session, up to 30 days |
+| CSRF and callback state | app.elmohq.com | Protects sign-in and form submissions from cross-site request forgery | Minutes |
+| `elmo.cookie-consent` (localStorage) | elmohq.com, app.elmohq.com | Remembers your answer to the cookie banner so we don't ask again | Until you clear it |
+| Load-balancing and security cookies | all | Set by our hosting providers to route requests and mitigate abuse | Session |
+| Sentry session identifier (sessionStorage) | app.elmohq.com | Correlates errors from the same visit so a crash report is intelligible. No cookie. | Until the tab closes |
+
+### Analytics
+
+Helps us understand what people do with Elmo so we know what to build and fix.
+
+| What | Provider | Purpose | Lifetime |
+| --- | --- | --- | --- |
+| *(no cookie)* | [Plausible](https://plausible.io/privacy-focused-web-analytics) | Aggregate page views and referrers. Cookieless — nothing is stored on your device and no cross-site identifier is created. | n/a |
+| `ph_*_posthog` and related `localStorage` entries | [PostHog](https://posthog.com/privacy) | Distinguishes one browser from another so we can count unique visitors and follow a flow through the product | Up to 1 year |
+| `_ga`, `_ga_*` | [Google Analytics](https://business.safety.google/privacy/) | Distinguishes visitors and sessions for traffic reporting | Up to 2 years |
+| `_clck`, `_clsk` | [Microsoft Clarity](https://privacy.microsoft.com/privacystatement) | Ties a session replay and its interaction data to one visitor | Up to 1 year |
+
+### Advertising
+
+Measures whether our advertising works. We don't sell personal information to these platforms.
+
+| Provider | Purpose |
+| --- | --- |
+| [Google Ads](https://policies.google.com/technologies/ads) | Conversion measurement and remarketing |
+| [Meta](https://www.facebook.com/privacy/policies/cookies/) | Conversion measurement and remarketing on Facebook and Instagram |
+| [LinkedIn](https://www.linkedin.com/legal/l/cookie-table) | Conversion measurement and remarketing |
+| [X](https://help.x.com/en/rules-and-policies/x-cookies) | Conversion measurement |
+| [Reddit](https://www.reddit.com/policies/cookies) | Conversion measurement |
+
+Today these tags load on our marketing site rather than inside the product, and only where advertising consent applies. Each platform sets its own cookies under its own domain; the links above go to each one's current cookie disclosure.
+
+### Third-party embeds
+
+Some pages embed content from other services, which set their own storage when you interact with them:
+
+- **YouTube** — today we embed through `youtube-nocookie.com`, which does not set tracking cookies unless you press play.
+- **Mux** — video playback on some product pages.
+- **Live chat** — our support chat widget stores a conversation identifier so your chat history survives a page reload.
+
+## Changing your mind
+
+Look for **Cookie preferences** — it's in the footer of our website, and in the legal menu in Elmo Cloud. Your choice takes effect immediately: turning analytics off stops further collection and clears the identifier.
+
+You can also block or delete cookies in your browser settings, or use your browser's Do Not Track / Global Privacy Control setting. We honor Global Privacy Control as an opt-out of advertising cookies. Note that blocking strictly necessary cookies will stop you from being able to sign in.
+
+## Questions
+
+Email [privacy@elmohq.com](mailto:privacy@elmohq.com).

@@ -12,6 +12,7 @@
 		"./entitlements": "./src/entitlements.ts",
 		"./env": "./src/env.ts",
 		"./env-registry": "./src/env-registry.ts",
+		"./legal": "./src/legal.ts",
 		"./models": "./src/models.ts",
 		"./plans": "./src/plans.ts",
 		"./roles": "./src/roles.ts",

@@ -62,6 +62,21 @@ export const blog = defineDocs({
 	},
 });
 
+// Published legal policies (terms, privacy, cookies, subprocessors, acceptable
+// use). Kept as content rather than route components so every revision shows up
+// as a reviewable diff — which is what the policies themselves promise.
+export const legal = defineDocs({
+	dir: "../../packages/docs/content/legal",
+	docs: {
+		schema: pageSchema.extend({
+			// Drives the "Last updated" line and the sitemap's lastmod.
+			updated: frontmatterDate,
+			// Position on the /legal index; lower sorts first.
+			order: z.number(),
+		}),
+	},
+});
+
 export default defineConfig({
 	mdxOptions: {
 		remarkPlugins: [[remarkFeedbackBlock]],

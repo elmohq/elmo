@@ -1,43 +1,80 @@
-import posthog from "posthog-js";
+import type { PostHog } from "posthog-js";
+import { onAnalyticsConsent } from "@workspace/ui/lib/cookie-consent";
 
 const POSTHOG_HOST = "https://var.elmohq.com";
 
-let initialized = false;
+// posthog-js is ~60KB gzipped and sets cookies, so it is imported dynamically
+// and only once analytics consent is in effect. Anyone who declines never
+// downloads it at all.
+let instance: PostHog | null = null;
+let loading: Promise<void> | null = null;
 
-export function initPostHog(apiKey: string): void {
-	if (initialized || typeof window === "undefined") return;
+// Callers don't wait for that import, so anything they send in the meantime
+// would be dropped. Identity is latched until analytics actually starts — a
+// visitor who accepts after signing in still gets attributed. Events are only
+// held while a load is in flight, since an action taken before consent should
+// not be recorded once it arrives.
+let identity: ((posthog: PostHog) => void) | null = null;
+const queuedEvents: ((posthog: PostHog) => void)[] = [];
 
-	posthog.init(apiKey, {
-		api_host: POSTHOG_HOST,
-		capture_pageview: true,
-		capture_pageleave: true,
-		autocapture: true,
-		disable_session_recording: true,
+function send(call: (posthog: PostHog) => void): void {
+	if (instance) call(instance);
+	else if (loading) queuedEvents.push(call);
+}
+
+function load(apiKey: string): Promise<void> {
+	loading ??= import("posthog-js").then(({ default: posthog }) => {
+		posthog.init(apiKey, {
+			api_host: POSTHOG_HOST,
+			capture_pageview: true,
+			capture_pageleave: true,
+			autocapture: true,
+			disable_session_recording: true,
+		});
+		posthog.register({ app_version: __APP_VERSION__ });
+		instance = posthog;
+		identity?.(posthog);
+		for (const call of queuedEvents.splice(0)) call(posthog);
 	});
+	return loading;
+}
 
-	posthog.register({ app_version: __APP_VERSION__ });
-	initialized = true;
+function stop(): void {
+	if (!instance) return;
+	instance.opt_out_capturing();
+	// Drops the distinct id and stored properties, so withdrawing consent clears
+	// the identifier rather than just pausing it.
+	instance.reset(true);
+}
+
+/**
+ * Start analytics if the visitor's consent allows it, and keep following that
+ * answer for the rest of the session. Returns an unsubscribe.
+ */
+export function initAnalytics(apiKey: string, consentRequired: boolean): () => void {
+	return onAnalyticsConsent(consentRequired, (allowed) => {
+		if (allowed) void load(apiKey).then(() => instance?.opt_in_capturing());
+		else stop();
+	});
 }
 
 export function identifyUser(userId: string, properties?: Record<string, string | number | boolean | undefined>): void {
-	if (!initialized) return;
-	posthog.identify(userId, properties);
+	identity = (posthog) => posthog.identify(userId, properties);
+	if (instance) identity(instance);
 }
 
 export function trackEvent(
 	eventName: string,
 	properties?: Record<string, string | number | boolean | undefined>,
 ): void {
-	if (!initialized) return;
-	posthog.capture(eventName, properties);
+	send((posthog) => posthog.capture(eventName, properties));
 }
 
 export function setPersonProperties(properties: Record<string, string | number | boolean | undefined>): void {
-	if (!initialized) return;
-	posthog.people.set(properties);
+	send((posthog) => posthog.people.set(properties));
 }
 
 export function resetPostHog(): void {
-	if (!initialized) return;
-	posthog.reset();
+	identity = null;
+	instance?.reset();
 }
