@@ -658,7 +658,7 @@ function ResponsesTab({
 							<span className="text-xs text-muted-foreground block mb-1.5">Brands Mentioned</span>
 							<div className="flex flex-wrap gap-1.5">
 								{run.brandMentioned && brandName && <Badge className="text-xs font-normal">{brandName}</Badge>}
-								{run.competitorsMentioned?.map((competitor: string) => (
+								{[...new Set<string>(run.competitorsMentioned ?? [])].map((competitor) => (
 									<Badge key={competitor} variant="outline" className="text-xs font-normal">
 										{competitor}
 									</Badge>
