@@ -38,6 +38,32 @@ export type ProgressBarChartProps = {
 	fillHeight?: boolean;
 };
 
+/**
+ * A bar's label. Rendered as a button when it does something, so it can be
+ * reached and triggered from the keyboard rather than by pointer alone.
+ */
+function ItemLabel({
+	className,
+	bold,
+	onClick,
+	children,
+	...props
+}: React.ComponentProps<"button"> & { bold?: boolean }) {
+	const classes = cn("text-sm text-left", bold ? "font-bold" : "font-medium", className);
+	if (!onClick) {
+		return (
+			<span className={classes} {...props}>
+				{children}
+			</span>
+		);
+	}
+	return (
+		<button type="button" className={cn(classes, "cursor-pointer hover:underline")} onClick={onClick} {...props}>
+			{children}
+		</button>
+	);
+}
+
 export function ProgressBarChart({
 	items,
 	colorMapping = {},
@@ -97,13 +123,9 @@ export function ProgressBarChart({
 									<Tooltip>
 										<TooltipTrigger
 											render={
-												<span
-													className={cn(
-														"text-sm cursor-default",
-														isHighlighted ? "font-bold" : "font-medium",
-														truncateLabels && "truncate",
-														isClickable && "cursor-pointer hover:underline",
-													)}
+												<ItemLabel
+													className={cn("cursor-default", truncateLabels && "truncate")}
+													bold={Boolean(isHighlighted)}
 													onClick={item.onClick}
 												/>
 											}
@@ -113,17 +135,13 @@ export function ProgressBarChart({
 										<TooltipContent className="max-w-xs text-xs font-normal">{item.tooltip}</TooltipContent>
 									</Tooltip>
 								) : (
-									<span
-										className={cn(
-											"text-sm",
-											isHighlighted ? "font-bold" : "font-medium",
-											truncateLabels && "truncate",
-											isClickable && "cursor-pointer hover:underline",
-										)}
+									<ItemLabel
+										className={cn(truncateLabels && "truncate")}
+										bold={Boolean(isHighlighted)}
 										onClick={item.onClick}
 									>
 										{item.label}
-									</span>
+									</ItemLabel>
 								)}
 								{item.action}
 							</div>
