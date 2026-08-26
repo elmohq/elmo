@@ -12,42 +12,55 @@
 // Text extraction by provider
 // ============================================================================
 
-export function extractTextFromOpenAI(rawOutput: any): string {
+/**
+ * Stored payloads carry the answer in different places depending on which
+ * provider — and which revision of it — produced the run, so a read probes the
+ * known locations in order. A probe returns null when its shape isn't present.
+ */
+function firstText(emptyMessage: string, probes: Array<() => string | null>): string {
 	try {
-		if (rawOutput?.output && Array.isArray(rawOutput.output)) {
-			const messageOutputs = rawOutput.output.filter((item: any) => item.type === "message");
-			if (messageOutputs.length > 0) {
-				const texts: string[] = [];
-				for (const messageOutput of messageOutputs) {
-					if (messageOutput.content && Array.isArray(messageOutput.content)) {
-						for (const c of messageOutput.content) {
-							if (c.type === "output_text" && c.text) texts.push(c.text);
-						}
-					}
-				}
-				if (texts.length > 0) return texts.join("\n");
-			}
+		for (const probe of probes) {
+			const text = probe();
+			if (text !== null) return text;
 		}
-		if (rawOutput?.choices?.[0]?.message?.content) return rawOutput.choices[0].message.content;
-		if (typeof rawOutput?.text === "string") return rawOutput.text;
-		return "No text content found in OpenAI output.";
+		return emptyMessage;
 	} catch (error) {
-		console.error("Error extracting text from OpenAI output:", error);
+		console.error("Error extracting text content:", error);
 		return "Error extracting text content.";
 	}
 }
 
+/** Non-empty string, or null so the caller falls through to its next probe. */
+function textOrNull(value: unknown): string | null {
+	return typeof value === "string" && value.trim() ? value : null;
+}
+
+/** Join the text chunks a probe found, or null when it found none. */
+function joinText(chunks: unknown[]): string | null {
+	return textOrNull(chunks.filter((chunk) => typeof chunk === "string" && chunk).join("\n"));
+}
+
+/** OpenAI-shaped `output`: message items whose content holds output_text chunks. */
+function openAiOutputText(output: unknown): string | null {
+	return joinText(
+		pluck(byType(asArray(output), "message"), "content")
+			.filter((c: any) => c?.type === "output_text")
+			.map((c: any) => c?.text),
+	);
+}
+
+export function extractTextFromOpenAI(rawOutput: any): string {
+	return firstText("No text content found in OpenAI output.", [
+		() => openAiOutputText(rawOutput?.output),
+		() => textOrNull(rawOutput?.choices?.[0]?.message?.content),
+		() => textOrNull(rawOutput?.text),
+	]);
+}
+
 export function extractTextFromAnthropic(rawOutput: any): string {
-	try {
-		if (rawOutput && Array.isArray(rawOutput.content)) {
-			const textBlocks = rawOutput.content.filter((block: any) => block.type === "text");
-			return textBlocks.map((block: any) => block.text).join("\n");
-		}
-		return "No text content found in Anthropic output.";
-	} catch (error) {
-		console.error("Error extracting text from Anthropic output:", error);
-		return "Error extracting text content.";
-	}
+	return firstText("No text content found in Anthropic output.", [
+		() => joinText(byType(asArray(rawOutput?.content), "text").map((block: any) => block?.text)),
+	]);
 }
 
 export function extractTextFromGoogle(rawOutput: any): string {
@@ -162,55 +175,34 @@ export function extractCitationsFromDataforseoScraper(rawOutput: any): Citation[
 }
 
 export function extractTextFromMistral(rawOutput: any): string {
-	try {
+	return firstText("No text content found in Mistral output.", [
 		// Conversations API (web search enabled): outputs[].content[].text chunks.
-		if (Array.isArray(rawOutput?.outputs)) {
-			const texts: string[] = [];
-			for (const entry of rawOutput.outputs) {
-				for (const chunk of entry?.content ?? []) {
-					if (chunk?.type === "text" && typeof chunk.text === "string") texts.push(chunk.text);
-				}
-			}
-			if (texts.length) return texts.join("\n");
-		}
+		() => joinText(byType(pluck(asArray(rawOutput?.outputs), "content"), "text").map((chunk: any) => chunk?.text)),
 		// Chat Completions API (no web search): OpenAI-shaped.
-		if (rawOutput?.choices?.[0]?.message?.content) return rawOutput.choices[0].message.content;
-		return "No text content found in Mistral output.";
-	} catch {
-		return "Error extracting text content.";
-	}
+		() => textOrNull(rawOutput?.choices?.[0]?.message?.content),
+	]);
 }
 
 export function extractTextFromOpenRouter(rawOutput: any): string {
-	try {
-		if (rawOutput?.choices?.[0]?.message?.content) return rawOutput.choices[0].message.content;
-		if (rawOutput?.output && Array.isArray(rawOutput.output)) {
-			const texts: string[] = [];
-			for (const msg of rawOutput.output.filter((i: any) => i.type === "message")) {
-				for (const c of msg.content ?? []) {
-					if (c.type === "output_text" && c.text) texts.push(c.text);
-				}
-			}
-			if (texts.length) return texts.join("\n");
-		}
-		return "No text content found in OpenRouter output.";
-	} catch {
-		return "Error extracting text content.";
-	}
+	return firstText("No text content found in OpenRouter output.", [
+		() => textOrNull(rawOutput?.choices?.[0]?.message?.content),
+		() => openAiOutputText(rawOutput?.output),
+	]);
 }
 
 export function extractTextFromOlostep(rawOutput: any): string {
-	try {
-		const jsonStr = rawOutput?.json_content ?? rawOutput?.result?.json_content;
-		const parsed = typeof jsonStr === "string" ? JSON.parse(jsonStr) : rawOutput;
-		if (parsed?.result?.markdown_content) return parsed.result.markdown_content;
-		if (parsed?.answer_markdown) return parsed.answer_markdown;
-		if (parsed?.result?.text_content) return parsed.result.text_content;
-		if (typeof parsed?.answer === "string") return parsed.answer;
-		return "No text content found in Olostep output.";
-	} catch {
-		return "Error extracting text content.";
-	}
+	return firstText("No text content found in Olostep output.", [
+		() => {
+			const jsonStr = rawOutput?.json_content ?? rawOutput?.result?.json_content;
+			const parsed = typeof jsonStr === "string" ? JSON.parse(jsonStr) : rawOutput;
+			return (
+				textOrNull(parsed?.result?.markdown_content) ??
+				textOrNull(parsed?.answer_markdown) ??
+				textOrNull(parsed?.result?.text_content) ??
+				textOrNull(parsed?.answer)
+			);
+		},
+	]);
 }
 
 // BrightData's SERP `ai_overview.texts` is a tree: paragraph blocks carry a
@@ -218,20 +210,19 @@ export function extractTextFromOlostep(rawOutput: any): string {
 // nest), so walk it depth-first and collect snippets in reading order.
 function collectAioSnippets(node: any, out: string[], depth = 0): void {
 	if (node == null || depth > 8) return;
-	if (Array.isArray(node)) {
-		for (const child of node) collectAioSnippets(child, out, depth + 1);
-		return;
-	}
 	if (typeof node === "string") {
 		if (node.trim()) out.push(node.trim());
 		return;
 	}
-	if (typeof node === "object") {
-		if (typeof node.snippet === "string" && node.snippet.trim()) out.push(node.snippet.trim());
-		else if (typeof node.text === "string" && node.text.trim()) out.push(node.text.trim());
-		for (const key of ["list", "texts", "items", "blocks", "paragraphs"]) {
-			if (Array.isArray(node[key])) collectAioSnippets(node[key], out, depth + 1);
-		}
+	if (Array.isArray(node)) {
+		for (const child of node) collectAioSnippets(child, out, depth + 1);
+		return;
+	}
+	if (typeof node !== "object") return;
+	const snippet = textOrNull(node.snippet) ?? textOrNull(node.text);
+	if (snippet) out.push(snippet.trim());
+	for (const key of ["list", "texts", "items", "blocks", "paragraphs"]) {
+		collectAioSnippets(asArray(node[key]), out, depth + 1);
 	}
 }
 
