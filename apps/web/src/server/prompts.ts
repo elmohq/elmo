@@ -28,6 +28,7 @@ import {
 	getPromptWebQueryCounts,
 } from "@/lib/postgres-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
+import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 // Server Functions
 // ============================================================================
 
@@ -109,33 +110,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		}
 
 		const timezone = "UTC";
-		let fromDateStr: string | null = null;
-		let toDateStr: string | null = null;
-
-		const lookbackParam = data.lookback || "1m";
-		if (lookbackParam && lookbackParam !== "all") {
-			const toDate = new Date();
-			const fromDate = new Date();
-			switch (lookbackParam) {
-				case "1w":
-					fromDate.setDate(fromDate.getDate() - 7);
-					break;
-				case "1m":
-					fromDate.setMonth(fromDate.getMonth() - 1);
-					break;
-				case "3m":
-					fromDate.setMonth(fromDate.getMonth() - 3);
-					break;
-				case "6m":
-					fromDate.setMonth(fromDate.getMonth() - 6);
-					break;
-				case "1y":
-					fromDate.setFullYear(fromDate.getFullYear() - 1);
-					break;
-			}
-			fromDateStr = fromDate.toISOString().split("T")[0];
-			toDateStr = toDate.toISOString().split("T")[0];
-		}
+		const { fromDateStr, toDateStr } = getTimezoneLookbackRange((data.lookback || "1m") as LookbackPeriod, timezone);
 
 		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
 
@@ -589,45 +564,14 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
 
-		const timezone = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+		const timezone = resolveTimezone(data.timezone);
 		const lookbackParam = (data.lookback || "1m") as LookbackPeriod;
-
-		let fromDateStr: string | null = null;
-		let toDateStr: string | null = null;
-		let startDate: Date;
-		let endDate: Date;
-
-		const now = new Date();
-		const todayStr = now.toLocaleDateString("en-CA", { timeZone: timezone });
-
-		if (lookbackParam && lookbackParam !== "all") {
-			toDateStr = todayStr;
-			const fromDate = new Date(now);
-			switch (lookbackParam) {
-				case "1w":
-					fromDate.setDate(fromDate.getDate() - 6);
-					break;
-				case "1m":
-					fromDate.setMonth(fromDate.getMonth() - 1);
-					break;
-				case "3m":
-					fromDate.setMonth(fromDate.getMonth() - 3);
-					break;
-				case "6m":
-					fromDate.setMonth(fromDate.getMonth() - 6);
-					break;
-				case "1y":
-					fromDate.setFullYear(fromDate.getFullYear() - 1);
-					break;
-			}
-			fromDateStr = fromDate.toLocaleDateString("en-CA", { timeZone: timezone });
-			startDate = new Date(fromDateStr);
-			endDate = new Date(toDateStr);
-		} else {
-			toDateStr = todayStr;
-			startDate = new Date();
-			endDate = new Date(todayStr);
-		}
+		const { fromDateStr } = getTimezoneLookbackRange(lookbackParam, timezone);
+		// "all" leaves the query unbounded below; the chart still ends today, and
+		// its start is pulled back to the first day with data once that is known.
+		const toDateStr = new Date().toLocaleDateString("en-CA", { timeZone: timezone });
+		const endDate = new Date(toDateStr);
+		let startDate = fromDateStr ? new Date(fromDateStr) : new Date();
 
 		const [promptData, brandData, competitorsData] = await Promise.all([
 			db
@@ -774,33 +718,9 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
 
-		const timezone = data.timezone || "UTC";
-		const now = new Date();
-		const todayStr = now.toLocaleDateString("en-CA", { timeZone: timezone });
-		const toDateStr = todayStr;
-		let fromDateStr: string | null = null;
-
-		if (data.lookback && data.lookback !== "all") {
-			const fromDate = new Date(now);
-			switch (data.lookback) {
-				case "1w":
-					fromDate.setDate(fromDate.getDate() - 6);
-					break;
-				case "1m":
-					fromDate.setMonth(fromDate.getMonth() - 1);
-					break;
-				case "3m":
-					fromDate.setMonth(fromDate.getMonth() - 3);
-					break;
-				case "6m":
-					fromDate.setMonth(fromDate.getMonth() - 6);
-					break;
-				case "1y":
-					fromDate.setFullYear(fromDate.getFullYear() - 1);
-					break;
-			}
-			fromDateStr = fromDate.toLocaleDateString("en-CA", { timeZone: timezone });
-		}
+		const timezone = resolveTimezone(data.timezone, "UTC");
+		const { fromDateStr } = getTimezoneLookbackRange((data.lookback || "1m") as LookbackPeriod, timezone);
+		const toDateStr = new Date().toLocaleDateString("en-CA", { timeZone: timezone });
 
 		const webQueryData = await getPromptWebQueryCounts(data.promptId, fromDateStr, toDateStr, timezone, data.model);
 
