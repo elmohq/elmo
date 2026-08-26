@@ -32,6 +32,7 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
 	const results = query.data && query.data !== "empty" ? query.data : [];
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the query is the trigger — a new search resets the highlighted result without the effect reading it
 	useEffect(() => {
 		setActiveIndex(0);
 	}, [search]);

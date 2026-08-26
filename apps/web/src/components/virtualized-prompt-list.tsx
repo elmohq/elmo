@@ -63,6 +63,7 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
 	});
 
 	// Force virtualizer to recalculate when prompts list changes (e.g., after filtering)
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the key is the trigger — the effect exists to remeasure when the list changes, not to read it
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			virtualizer.measure();

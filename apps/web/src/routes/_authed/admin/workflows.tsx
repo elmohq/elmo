@@ -642,6 +642,7 @@ function WorkflowsPage() {
 		}
 	};
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: loads once on mount and then polls; the fetcher is rebuilt every render, so listing it would loop
 	useEffect(() => {
 		fetchData();
 		const interval = setInterval(() => fetchData(), 30000);

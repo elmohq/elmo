@@ -43,6 +43,7 @@ function BrandSettingsPage() {
 	const [additionalDomains, setAdditionalDomains] = useState<string[]>([]);
 	const [aliases, setAliases] = useState<string[]>([]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reseeds the form only when the brand actually changed server-side, not on every new object identity
 	useEffect(() => {
 		if (brand) {
 			setAdditionalDomains(brand.additionalDomains || []);
