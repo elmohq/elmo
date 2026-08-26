@@ -1,9 +1,9 @@
 /// <reference types="vite/client" />
 
-import geistMonoFont from "@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2?url";
 // Preload the 400-weight files used everywhere above the fold so they download
 // in parallel with the CSS instead of after it (the H1 LCP element was being
 // held back by the HTML→CSS→font waterfall).
+import geistMonoFont from "@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2?url";
 import geistSansFont from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
 import titanOneFont from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
