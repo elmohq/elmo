@@ -44,6 +44,7 @@
 		"@workspace/ui": "workspace:*",
 		"@workspace/whitelabel": "workspace:*",
 		"auth0": "^6.2.0",
+		"bloom-filters": "^3.0.4",
 		"drizzle-orm": "^0.45.2",
 		"html2canvas-pro": "^2.3.8",
 		"lucide-react": "^1.31.0",
