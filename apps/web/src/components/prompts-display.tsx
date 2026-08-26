@@ -235,7 +235,6 @@ function ChartSection({
 	);
 }
 
-/** Placeholder cards while the list loads; the ids exist only to key them. */
 const SKELETON_CARDS = ["first", "second", "third"];
 
 function ContentLoadingSkeleton() {
