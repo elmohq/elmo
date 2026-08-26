@@ -46,15 +46,15 @@ describe("getCloudAuthOptions", () => {
 	});
 
 	it("rejects disposable-email signups in the user.create.before hook", async () => {
-		const before = getCloudAuthOptions().databaseHooks?.user?.create?.before;
-		expect(before).toBeDefined();
-		await expect(before?.(makeUser("x@mailinator.com"), null)).rejects.toThrow();
+		const createBefore = getCloudAuthOptions().databaseHooks?.user?.create?.before;
+		expect(createBefore).toBeDefined();
+		await expect(createBefore?.(makeUser("x@mailinator.com"), null)).rejects.toThrow();
 	});
 
 	it("allows regular-email signups through the user.create.before hook", async () => {
-		const before = getCloudAuthOptions().databaseHooks?.user?.create?.before;
-		expect(before).toBeDefined();
-		await expect(before?.(makeUser("x@gmail.com"), null)).resolves.toBeUndefined();
+		const createBefore = getCloudAuthOptions().databaseHooks?.user?.create?.before;
+		expect(createBefore).toBeDefined();
+		await expect(createBefore?.(makeUser("x@gmail.com"), null)).resolves.toBeUndefined();
 	});
 });
 
@@ -66,7 +66,7 @@ describe("getCloudAuthOptions", () => {
 describe("signup allowlist", () => {
 	async function signUp(email: string, allowlist: string) {
 		vi.stubEnv("CLOUD_SIGNUP_ALLOWLIST", allowlist);
-		const before = getCloudAuthOptions().databaseHooks?.user?.create?.before;
+		const createBefore = getCloudAuthOptions().databaseHooks?.user?.create?.before;
 		if (!before) throw new Error("expected a user.create.before hook");
 		return before(makeUser(email), null);
 	}

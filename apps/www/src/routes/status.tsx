@@ -434,7 +434,8 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 								modelLabel: item.name,
 								providerLabel: item.name,
 							};
-							(groups[meta.modelLabel] ??= []).push({
+							groups[meta.modelLabel] ??= [];
+							groups[meta.modelLabel].push({
 								providerLabel: meta.providerLabel,
 								color: item.color,
 								value: item.value as number,
