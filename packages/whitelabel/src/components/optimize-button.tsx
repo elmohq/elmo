@@ -64,9 +64,6 @@ export function OptimizeButton({
 				optimizationUrlTemplate,
 				promptName,
 				brandId,
-				// No genuine search query known (the engine searched the prompt
-				// verbatim or doesn't expose its queries) — the prompt itself is
-				// the best stand-in.
 				modelWebQuery?.webQuery || promptName,
 			);
 
