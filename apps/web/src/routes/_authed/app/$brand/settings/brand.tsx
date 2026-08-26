@@ -43,10 +43,8 @@ function BrandSettingsPage() {
 	const [additionalDomains, setAdditionalDomains] = useState<string[]>([]);
 	const [aliases, setAliases] = useState<string[]>([]);
 
-	// Reseed the editable fields when the brand changes server-side — not on
-	// every new object identity, which would discard what is being typed.
-	// Adjusted during render rather than in an effect so a save never paints
-	// the previous values back for a frame.
+	// Reseed the fields when the brand changes server-side, without discarding
+	// whatever is being typed in between.
 	const [seededFrom, setSeededFrom] = useState<Date | null>(null);
 	if (brand && brand.updatedAt !== seededFrom) {
 		setSeededFrom(brand.updatedAt);
