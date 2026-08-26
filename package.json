@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "lint": "turbo lint",
+    "lint": "pnpm format-and-lint",
     "test": "turbo test",
     "format": "biome format --write --config-path=biome.json .",
     "format-and-lint": "biome check --config-path=biome.json .",

@@ -82,9 +82,6 @@
     "check-types": {
       "dependsOn": ["^check-types"]
     },
-    "lint": {
-      "dependsOn": ["^lint"]
-    },
     "test": {
       "dependsOn": ["^build"]
     },
