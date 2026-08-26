@@ -74,81 +74,79 @@ function buildNavGroups(args: {
 /** The dashboard and settings sections, both gated on the brand being onboarded. */
 function brandGroups(brand: BrandWithPrompts | null | undefined, features?: ClientConfig["features"]): NavGroup[] {
 	const groups: NavGroup[] = [];
-	{
-		const dashboardItems = [
+	const dashboardItems = [
+		{
+			title: "Overview",
+			url: "/",
+			icon: IconDashboard,
+		},
+	];
+
+	// Only show Visibility and Citations if the brand is onboarded
+	if (brand?.onboarded) {
+		dashboardItems.push(
 			{
-				title: "Overview",
-				url: "/",
-				icon: IconDashboard,
+				title: "Visibility",
+				url: "/visibility",
+				icon: IconChartBar,
 			},
-		];
+			{
+				title: "Share of Voice",
+				url: "/share-of-voice",
+				icon: IconSpeakerphone,
+			},
+			{
+				title: "Query Fan-Out",
+				url: "/query-fan-out",
+				icon: IconSitemap,
+			},
+			{
+				title: "Citations",
+				url: "/citations",
+				icon: IconLink,
+			},
+			{
+				title: "Opportunities",
+				url: "/opportunities",
+				icon: IconTarget,
+			},
+		);
+	}
 
-		// Only show Visibility and Citations if the brand is onboarded
-		if (brand?.onboarded) {
-			dashboardItems.push(
-				{
-					title: "Visibility",
-					url: "/visibility",
-					icon: IconChartBar,
-				},
-				{
-					title: "Share of Voice",
-					url: "/share-of-voice",
-					icon: IconSpeakerphone,
-				},
-				{
-					title: "Query Fan-Out",
-					url: "/query-fan-out",
-					icon: IconSitemap,
-				},
-				{
-					title: "Citations",
-					url: "/citations",
-					icon: IconLink,
-				},
-				{
-					title: "Opportunities",
-					url: "/opportunities",
-					icon: IconTarget,
-				},
-			);
-		}
+	groups.push({
+		label: "Dashboard",
+		items: dashboardItems,
+	});
 
+	// Settings section - only show if onboarded
+	if (brand?.onboarded) {
 		groups.push({
-			label: "Dashboard",
-			items: dashboardItems,
+			label: "Settings",
+			items: [
+				{
+					title: "Brand",
+					url: "/settings/brand",
+					icon: IconBuilding,
+				},
+				{
+					title: "Competitors",
+					url: "/settings/competitors",
+					icon: IconBuildings,
+				},
+				{
+					title: "Prompts",
+					url: "/settings/prompts",
+					icon: IconListDetails,
+				},
+				{
+					title: "LLMs",
+					url: "/settings/llms",
+					icon: IconCpu,
+				},
+				...(features?.teamInvites ? [{ title: "Team", url: "/settings/members", icon: IconUsers }] : []),
+				...(features?.billing ? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard }] : []),
+			],
 		});
-
-		// Settings section - only show if onboarded
-		if (brand?.onboarded) {
-			groups.push({
-				label: "Settings",
-				items: [
-					{
-						title: "Brand",
-						url: "/settings/brand",
-						icon: IconBuilding,
-					},
-					{
-						title: "Competitors",
-						url: "/settings/competitors",
-						icon: IconBuildings,
-					},
-					{
-						title: "Prompts",
-						url: "/settings/prompts",
-						icon: IconListDetails,
-					},
-					{
-						title: "LLMs",
-						url: "/settings/llms",
-						icon: IconCpu,
-					},
-					...(features?.teamInvites ? [{ title: "Team", url: "/settings/members", icon: IconUsers }] : []),
-					...(features?.billing ? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard }] : []),
-				],
-			});
-		}
 	}
 
 	return groups;
