@@ -14,6 +14,7 @@ import { IconCheck } from "@tabler/icons-react";
 import { CLOUD_ENTRY_PRICE_USD, PLANS, platformTierMembers, STANDARD_PLATFORM_MENU } from "@workspace/config/plans";
 import { cloudPricingUrl, cloudSignupUrl, marketingUrl, type ReferralSource } from "@workspace/config/referrals";
 import { CUSTOMER_QUOTES, VECTOR_CUSTOMERS } from "@workspace/ui/brand/customers";
+import { G2Rating } from "@workspace/ui/brand/g2-rating";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { buttonVariants } from "@workspace/ui/components/button";
 import type { ReactNode } from "react";
@@ -79,7 +80,10 @@ export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; so
 	return (
 		<div className="mx-auto flex w-full max-w-lg flex-col gap-8">
 			<div>
-				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">/ {pitch.eyebrow}</p>
+				<G2Rating className="text-muted-foreground" />
+				<p className="mt-4 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+					/ {pitch.eyebrow}
+				</p>
 				<h2 className="mt-4 text-3xl font-semibold leading-[1.1] tracking-tight text-balance">{pitch.headline}</h2>
 				<p className="mt-4 text-pretty text-sm text-muted-foreground md:text-base">{pitch.subhead}</p>
 			</div>

@@ -1,9 +1,10 @@
-import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
-import { ArrowUpRight } from "lucide-react";
 import MuxPlayer from "@mux/mux-player-react";
+import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
+import { G2Rating } from "@workspace/ui/brand/g2-rating";
+import { ArrowUpRight } from "lucide-react";
+import { CloudSignupCTA, QuietCTA, SelfHostCTA } from "./cta-buttons";
 import { CustomerLogosInline } from "./customer-logos";
 import { QuickstartBlock } from "./quickstart-block";
-import { CloudSignupCTA, QuietCTA, SelfHostCTA } from "./cta-buttons";
 
 // Cast a brand-blue glow under Mux Player's default center play button so it
 // echoes the wrapper's outer blue shadow. Drop-shadow follows the circle's
@@ -61,6 +62,7 @@ export function Hero() {
 								Star on GitHub
 								<ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
 							</a>
+							<G2Rating className="text-zinc-600 hover:text-zinc-950" />
 						</div>
 						<h1 className="mt-7 max-w-[18ch] text-5xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 sm:text-6xl lg:text-[4.25rem] lg:leading-[1.0]">
 							Know How AI Talks About Your Brand
