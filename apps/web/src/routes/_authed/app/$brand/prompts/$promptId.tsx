@@ -33,6 +33,7 @@ import { useQueryFanout } from "@/hooks/use-query-fanout";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { promptKeywords } from "@/lib/fanout-analysis";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { skeletonRows } from "@/lib/skeleton-rows";
 import { getModelDisplayName } from "@/lib/utils";
 import { getPromptMetadataFn } from "@/server/prompts";
 
@@ -354,10 +355,6 @@ function PromptHistoryPage() {
 // =====================================================================
 // Tab Content Components
 // =====================================================================
-
-function skeletonRows(count: number): string[] {
-	return Array.from({ length: count }, (_, index) => `row-${index}`);
-}
 
 function TabLoadingSkeleton({ lines = 3 }: { lines?: number }) {
 	return (
