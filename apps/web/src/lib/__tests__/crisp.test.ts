@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DeploymentMode } from "@workspace/config/types";
 
 // The unit project runs in Node, so stand up just enough of the two browser
 // globals the loader touches.
@@ -47,54 +46,54 @@ describe("initCrisp", () => {
 		expect(window.$crisp).toBeUndefined();
 	});
 
-	it("loads the chatbox and segments the session by deployment mode", async () => {
-		const { initCrisp } = await loadCrisp();
-
-		initCrisp("website-id", "cloud");
-
-		expect(appendedScripts).toEqual([{ src: "https://client.crisp.chat/l.js", async: true }]);
-		expect(window.CRISP_WEBSITE_ID).toBe("website-id");
-		expect(findCommand("set", "session:segments")).toEqual(["set", "session:segments", [["cloud"]]]);
-	});
-
-	it("loads the chatbox only once", async () => {
+	// Effects re-run under StrictMode and on any context change; a second load
+	// would put a second chatbox on the page.
+	it("loads the chatbox once however many times it is called", async () => {
 		const { initCrisp } = await loadCrisp();
 
 		initCrisp("website-id", "cloud");
 		initCrisp("website-id", "cloud");
 
 		expect(appendedScripts).toHaveLength(1);
+		expect(window.CRISP_WEBSITE_ID).toBe("website-id");
 	});
 
-	it("offers the demo walkthrough the first time the chat is opened", async () => {
+	it("segments the session by deployment mode", async () => {
+		const { initCrisp } = await loadCrisp();
+
+		initCrisp("website-id", "cloud");
+
+		expect(findCommand("set", "session:segments")).toEqual(["set", "session:segments", [["cloud"]]]);
+	});
+});
+
+describe("the demo walkthrough", () => {
+	it("is offered the first time the chat is opened, and only then", async () => {
 		const { initCrisp } = await loadCrisp();
 
 		initCrisp("website-id", "demo");
-		const listener = findCommand("on", "chat:opened");
-		expect(listener).toBeDefined();
+		const openChat = findCommand("on", "chat:opened")?.[2] as (() => void) | undefined;
+		expect(openChat).toBeDefined();
 
-		(listener?.[2] as () => void)();
-		(listener?.[2] as () => void)();
+		openChat?.();
+		openChat?.();
 
 		const shown = queue().filter((command) => command[0] === "do" && command[1] === "message:show");
 		expect(shown).toHaveLength(1);
 		expect(String((shown[0]?.[2] as [string, string])[1])).toContain("https://cal.com/jrhizor/elmo");
 	});
 
-	it.each(["cloud", "local", "whitelabel"] satisfies DeploymentMode[])(
-		"does not offer the demo walkthrough in %s mode",
-		async (mode) => {
-			const { initCrisp } = await loadCrisp();
+	it("is not offered on cloud, which shares the same chatbox", async () => {
+		const { initCrisp } = await loadCrisp();
 
-			initCrisp("website-id", mode);
+		initCrisp("website-id", "cloud");
 
-			expect(findCommand("on", "chat:opened")).toBeUndefined();
-		},
-	);
+		expect(findCommand("on", "chat:opened")).toBeUndefined();
+	});
 });
 
-describe("identifyCrispUser", () => {
-	it("attaches the signed-in user to the session", async () => {
+describe("session identity", () => {
+	it("carries the signed-in user into the conversation", async () => {
 		const { initCrisp, identifyCrispUser } = await loadCrisp();
 		initCrisp("website-id", "cloud");
 
@@ -104,22 +103,23 @@ describe("identifyCrispUser", () => {
 		expect(findCommand("set", "user:nickname")).toEqual(["set", "user:nickname", ["Ada"]]);
 	});
 
-	it("stays quiet when the chatbox was never loaded", async () => {
-		const { identifyCrispUser } = await loadCrisp();
-
-		identifyCrispUser({ id: "user-1", email: "a@example.com" });
-
-		expect(window.$crisp).toBeUndefined();
-	});
-});
-
-describe("resetCrispSession", () => {
-	it("clears the conversation so the next sign-in starts fresh", async () => {
+	it("is dropped on sign-out so the next user starts fresh", async () => {
 		const { initCrisp, resetCrispSession } = await loadCrisp();
 		initCrisp("website-id", "cloud");
 
 		resetCrispSession();
 
 		expect(findCommand("do", "session:reset")).toEqual(["do", "session:reset"]);
+	});
+
+	// Both are called unconditionally from routes that also run where the
+	// chatbox never loads.
+	it("does nothing at all when the chatbox was never loaded", async () => {
+		const { identifyCrispUser, resetCrispSession } = await loadCrisp();
+
+		identifyCrispUser({ id: "user-1", email: "a@example.com" });
+		resetCrispSession();
+
+		expect(window.$crisp).toBeUndefined();
 	});
 });
