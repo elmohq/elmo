@@ -34,11 +34,6 @@ export function parseModelFilter(value: string): { model: string; premium: boole
 		: { model: value, premium: false };
 }
 
-/**
- * What to call a filter value. The grounded variant takes the name it is sold
- * under — "GPT-5 Search", not a second "ChatGPT" — which is the same name the
- * LLM settings page and the pricing table use.
- */
 export function labelForModelFilter(value: string): string {
 	if (value === ALL_MODELS_VALUE) return "All models";
 	const parsed = parseModelFilter(value);
