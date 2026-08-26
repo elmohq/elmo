@@ -51,10 +51,6 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
 	// Uniform height estimate — all cards (loading, empty, full) have matching content areas
 	const estimateSize = useCallback(() => CHART_CARD_HEIGHT + CHART_GAP, []);
 
-	// Cards are measured as they render (measureElement below), so those
-	// measurements have to follow the prompt rather than the slot it happened to
-	// occupy — otherwise filtering the list leaves each row wearing the height of
-	// whatever used to be at its index.
 	const getItemKey = useCallback((index: number) => orderedPrompts[index].id, [orderedPrompts]);
 
 	const virtualizer = useWindowVirtualizer({
