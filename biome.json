@@ -13,7 +13,8 @@
 			"!**/node_modules",
 			"!packages/ui/src/components",
 			"!**/routeTree.gen.ts",
-			"!**/public"
+			"!**/public",
+			"!packages/lib/src/db/migrations"
 		]
 	},
 	"formatter": {
