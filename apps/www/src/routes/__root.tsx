@@ -1,10 +1,13 @@
 /// <reference types="vite/client" />
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-import { initPostHog } from "@/lib/posthog";
+import { initAnalytics } from "@/lib/posthog";
+import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
+import { getConsentRegion } from "@/lib/consent-region";
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, websiteJsonLd, organizationJsonLd } from "@/lib/seo";
 import { getMarketingOgImage } from "@/lib/og";
 import { getGitHubStars } from "@/lib/github-stars";
+import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner";
 import { NotFound } from "@/components/not-found";
 import appCss from "../styles.css?url";
 // Preload the 400-weight files used everywhere above the fold so they download
@@ -86,20 +89,30 @@ export const Route = createRootRoute({
 		],
 	}),
 	loader: async () => {
-		const githubStars = await getGitHubStars();
-		return { githubStars };
+		const [githubStars, consentRegion] = await Promise.all([getGitHubStars(), getConsentRegion()]);
+		return { githubStars, consentRegion };
 	},
 	component: RootComponent,
 });
 
 function RootComponent() {
+	const { consentRegion } = Route.useLoaderData();
+	// Null until the browser resolves it — the time-zone fallback would read the
+	// server's own zone during SSR.
+	const [consentRequired, setConsentRequired] = useState<boolean | null>(null);
+
 	useEffect(() => {
-		initPostHog();
-	}, []);
+		const required = isConsentRequired(consentRegion);
+		setConsentRequired(required);
+		return initAnalytics(required);
+	}, [consentRegion]);
 
 	return (
 		<RootDocument>
 			<Outlet />
+			{consentRequired !== null && (
+				<CookieConsentBanner consentRequired={consentRequired} policyHref="/legal/cookies" />
+			)}
 		</RootDocument>
 	);
 }

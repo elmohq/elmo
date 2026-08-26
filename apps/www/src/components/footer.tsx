@@ -1,10 +1,19 @@
 import { Link } from "@tanstack/react-router";
 import { Logo } from "./logo";
+import { openCookiePreferences } from "@workspace/ui/lib/cookie-consent";
 import { externalRel } from "@/lib/external-link";
 
 // externalRel keeps the Referer for this owned domain; `ref` preserves
 // attribution when an intermediary strips that header.
 const BLUEWHALE_URL = "https://bluewhale.dev?ref=elmo";
+
+const legalLinks = [
+	{ label: "Terms", href: "/legal/terms" },
+	{ label: "Privacy", href: "/legal/privacy" },
+	{ label: "Cookies", href: "/legal/cookies" },
+	{ label: "Subprocessors", href: "/legal/subprocessors" },
+	{ label: "Acceptable Use", href: "/legal/acceptable-use" },
+];
 
 const cols = [
 	{
@@ -114,7 +123,21 @@ export function Footer() {
 					</div>
 				</div>
 
-				<div className="mt-12 flex flex-col items-start gap-4 border-t border-zinc-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+				<nav
+					aria-label="Legal"
+					className="mt-12 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-zinc-200 pt-6 text-xs text-zinc-500"
+				>
+					{legalLinks.map((link) => (
+						<a key={link.href} href={link.href} className="hover:text-zinc-900 hover:underline">
+							{link.label}
+						</a>
+					))}
+					<button type="button" onClick={openCookiePreferences} className="hover:text-zinc-900 hover:underline">
+						Cookie preferences
+					</button>
+				</nav>
+
+				<div className="mt-4 flex flex-col items-start gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
 					<p className="font-mono text-[11px] text-zinc-500">
 						&copy; {new Date().getFullYear()}{" "}
 						<a

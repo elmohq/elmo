@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { HeadContent, Outlet, ScriptOnce, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { NotFound } from "@/router-default-components";
 import { TanStackDevtools } from "@tanstack/react-devtools";
@@ -11,7 +11,11 @@ import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } fro
 import MissingEnvPage from "@/components/missing-env-page";
 import { usesWordmarkFont } from "@/components/logo";
 import queryDevtools from "@/integrations/tanstack-query/devtools";
-import { initPostHog } from "@/lib/posthog";
+import { initAnalytics } from "@/lib/posthog";
+import { getConsentRegion } from "@/lib/consent-region";
+import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
+import { legalUrl } from "@workspace/config/legal";
+import { CookieConsentBanner } from "@workspace/ui/consent/cookie-consent-banner";
 import appCss from "../styles.css?url";
 // Preloaded so the wordmark font downloads in parallel with the CSS rather than
 // after it. Must resolve to the same emitted asset as the @font-face src.
@@ -27,6 +31,8 @@ interface RouterContext {
 		missing: MissingEnvVar[];
 		isValid: boolean;
 	};
+	/** Whether the request came from a country that requires prior cookie consent. */
+	consentRegion?: boolean | null;
 }
 
 // Client-side cache for config data — avoids HTTP round-trips on every SPA navigation.
@@ -37,15 +43,20 @@ interface RouterContext {
 let cachedRootData: {
 	clientConfig: PublicClientConfig;
 	envValidation: { mode: DeploymentMode; missing: MissingEnvVar[]; isValid: boolean };
+	consentRegion: boolean | null;
 } | null = null;
 
 export const Route = createRootRouteWithContext<RouterContext>()({
 	notFoundComponent: NotFound,
 	beforeLoad: async () => {
 		if (cachedRootData) return cachedRootData;
-		const [clientConfig, envValidation] = await Promise.all([getClientConfig(), getEnvValidationStateFn()]);
-		if (typeof window !== "undefined") cachedRootData = { clientConfig, envValidation };
-		return { clientConfig, envValidation };
+		const [clientConfig, envValidation, consentRegion] = await Promise.all([
+			getClientConfig(),
+			getEnvValidationStateFn(),
+			getConsentRegion(),
+		]);
+		if (typeof window !== "undefined") cachedRootData = { clientConfig, envValidation, consentRegion };
+		return { clientConfig, envValidation, consentRegion };
 	},
 	head: ({ match }) => {
 		const branding = match.context?.clientConfig?.branding;
@@ -153,13 +164,24 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 });
 
 function RootComponent() {
-	const { envValidation, clientConfig } = Route.useRouteContext();
+	const { envValidation, clientConfig, consentRegion } = Route.useRouteContext();
 	const clarityProjectId = clientConfig?.analytics?.clarityProjectId;
+	const posthogKey = clientConfig?.analytics?.posthogKey;
+	// Only Elmo Cloud asks: a self-hosted deployment is governed by whoever runs
+	// it, and its telemetry already has an operator-level opt-out.
+	const asksForConsent = clientConfig?.mode === "cloud";
+	// Null until the browser resolves it — the time-zone fallback would read the
+	// server's own zone during SSR.
+	const [consentRequired, setConsentRequired] = useState<boolean | null>(null);
 
 	useEffect(() => {
-		const key = clientConfig?.analytics?.posthogKey;
-		if (key) initPostHog(key);
-	}, [clientConfig?.analytics?.posthogKey]);
+		if (!posthogKey) return;
+		if (!asksForConsent) return initAnalytics(posthogKey, false);
+
+		const required = isConsentRequired(consentRegion ?? null);
+		setConsentRequired(required);
+		return initAnalytics(posthogKey, required);
+	}, [posthogKey, asksForConsent, consentRegion]);
 
 	const clarityQueueScript = `window.clarity=window.clarity||function(){(window.clarity.q=window.clarity.q||[]).push(arguments)};`;
 
@@ -187,6 +209,9 @@ function RootComponent() {
 			</head>
 			<body className="font-sans antialiased">
 				<Outlet />
+				{asksForConsent && consentRequired !== null && (
+					<CookieConsentBanner consentRequired={consentRequired} policyHref={legalUrl("cookies")} />
+				)}
 				<TanStackDevtools plugins={[queryDevtools]} />
 				<Scripts />
 			</body>
