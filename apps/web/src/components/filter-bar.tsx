@@ -306,7 +306,6 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 			setLocal(value);
 			return;
 		}
-		// React bails out when the value is unchanged, so this needs no comparison.
 		setLocal(value);
 	}, [value]);
 
