@@ -1,10 +1,3 @@
-/**
- * Crisp support chat.
- *
- * The chatbox exposes a queue-based SDK: every instruction is pushed onto
- * `window.$crisp` and replayed once the remote script finishes loading, so
- * callers never have to wait for a ready signal.
- */
 type CrispCommand = unknown[];
 
 declare global {
@@ -25,8 +18,7 @@ export function initCrisp(): void {
 
 	window.$crisp = [];
 	window.CRISP_WEBSITE_ID = CRISP_WEBSITE_ID;
-	// Segments the inbox by where the visitor started, so a marketing-site
-	// question is distinguishable from one raised inside the product.
+	// So a marketing-site question is distinguishable from one raised in the product.
 	window.$crisp.push(["set", "session:segments", [["marketing"]]]);
 
 	const script = document.createElement("script");

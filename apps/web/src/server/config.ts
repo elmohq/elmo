@@ -29,14 +29,8 @@ function resolvePosthogKey(): string | undefined {
 	return process.env.VITE_POSTHOG_KEY ?? POSTHOG_PUBLIC_KEY;
 }
 
-/**
- * Crisp routes into our own support inbox, so it only belongs on the deployments
- * we operate.
- *
- * Deliberately reads DEPLOYMENT_MODE rather than the resolved deployment mode:
- * `local` with `READ_ONLY=true` resolves to "demo", and a read-only self-hosted
- * instance must not reach our inbox — or show its users our demo walkthrough.
- */
+// Reads DEPLOYMENT_MODE, not the resolved mode: `local` with READ_ONLY=true
+// resolves to "demo", and a self-hosted instance must not reach our inbox.
 export function resolveCrispWebsiteId(): string | undefined {
 	const mode = getDeploymentModeFromEnv();
 	if (mode !== "cloud" && mode !== "demo") return undefined;

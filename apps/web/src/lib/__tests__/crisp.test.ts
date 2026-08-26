@@ -1,21 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
 
-/**
- * Loads ../crisp, the module under test, fresh for each case.
- *
- * It cannot be a top-level import: the module latches `initialized` on first
- * load because the chatbox must only ever be loaded once, so a single shared
- * instance would leave every case after the first talking to an already
- * initialised module.
- */
+// ../crisp is the module under test. It cannot be a top-level import: it latches
+// `initialized` on first load, so one shared instance would leave every case
+// after the first talking to an already-initialised module.
 async function loadCrisp() {
 	vi.resetModules();
 	return import("../crisp");
 }
 
-// The unit project runs in Node, so stand up just enough of the two browser
-// globals the module touches.
+// The unit project runs in Node, so the two browser globals need standing up.
 interface ScriptStub {
 	src: string;
 	async: boolean;
@@ -54,8 +48,6 @@ describe("initCrisp", () => {
 		expect(window.$crisp).toBeUndefined();
 	});
 
-	// The only thing telling an operator whether a conversation came from the
-	// demo, cloud, or the marketing site.
 	it("segments the session by deployment mode", async () => {
 		const { initCrisp } = await loadCrisp();
 
@@ -64,8 +56,6 @@ describe("initCrisp", () => {
 		expect(findCommand("set", "session:segments")).toEqual(["set", "session:segments", [["cloud"]]]);
 	});
 
-	// Effects re-run under StrictMode and on any context change; a second load
-	// would put a second chatbox on the page.
 	it("loads the chatbox once however many times it is called", async () => {
 		const { initCrisp } = await loadCrisp();
 
@@ -119,8 +109,6 @@ describe("session identity", () => {
 		expect(findCommand("do", "session:reset")).toEqual(["do", "session:reset"]);
 	});
 
-	// Both are called unconditionally from routes that also run where the
-	// chatbox never loads.
 	it("does nothing at all when the chatbox was never loaded", async () => {
 		const { identifyCrispUser, resetCrispSession } = await loadCrisp();
 
@@ -130,8 +118,6 @@ describe("session identity", () => {
 		expect(window.$crisp).toBeUndefined();
 	});
 
-	// React flushes child effects first, so the route that knows the user can
-	// identify before the root route has loaded the chatbox.
 	it("carries a user identified before the chatbox loaded", async () => {
 		const { initCrisp, identifyCrispUser } = await loadCrisp();
 
@@ -142,8 +128,6 @@ describe("session identity", () => {
 		expect(findCommand("set", "user:nickname")).toEqual(["set", "user:nickname", ["Ada"]]);
 	});
 
-	// Every demo visitor signs in through the one advertised account, so tagging
-	// the session with it would merge them all into a single Crisp contact.
 	it.each([
 		["identified after load", false],
 		["identified before load", true],

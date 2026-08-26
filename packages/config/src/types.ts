@@ -37,7 +37,7 @@ export interface AnalyticsConfig {
 	plausibleDomain?: string;
 	clarityProjectId?: string;
 	posthogKey?: string;
-	/** Crisp support chat. Only set on deployments we operate (cloud and demo). */
+	/** Only set on deployments we operate (cloud and demo). */
 	crispWebsiteId?: string;
 }
 

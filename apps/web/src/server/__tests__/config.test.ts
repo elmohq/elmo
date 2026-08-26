@@ -16,8 +16,7 @@ describe("resolveCrispWebsiteId", () => {
 		expect(resolveCrispWebsiteId()).toBeUndefined();
 	});
 
-	// A local deployment with READ_ONLY set resolves to mode "demo", so gating on
-	// the resolved mode would put our support inbox on a self-hosted instance.
+	// READ_ONLY makes a local deployment resolve to mode "demo".
 	it("returns nothing for a read-only local deployment", () => {
 		vi.stubEnv("DEPLOYMENT_MODE", "local");
 		vi.stubEnv("READ_ONLY", "true");
