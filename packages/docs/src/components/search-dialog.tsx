@@ -21,6 +21,35 @@ function ResultIcon({ type }: { type: SortedResult["type"] }) {
 	}
 }
 
+/**
+ * A result line, with the index's matches marked.
+ *
+ * fumadocs returns the snippet as a plain string with `<mark>` around each
+ * match, so the marks are rendered as elements rather than handing the string
+ * to innerHTML — the highlighting is the only markup in it either way.
+ */
+function Highlighted({ text }: { text: string }) {
+	const segments = text
+		.split(/(<mark>[\s\S]*?<\/mark>)/g)
+		.filter(Boolean)
+		.map((segment, index) => ({ id: `${index}:${segment}`, segment }));
+
+	return (
+		<>
+			{segments.map(({ id, segment }) => {
+				const match = segment.match(/^<mark>([\s\S]*)<\/mark>$/);
+				return match ? (
+					<mark key={id} className="rounded-sm bg-primary/20 px-0.5 text-foreground">
+						{match[1]}
+					</mark>
+				) : (
+					<span key={id}>{segment}</span>
+				);
+			})}
+		</>
+	);
+}
+
 export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
 	const navigate = useNavigate();
 	const { search, setSearch, query } = useDocsSearch({
@@ -125,13 +154,9 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 									>
 										<ResultIcon type={result.type} />
 										<div className="min-w-0 flex-1">
-											<span
-												className="block truncate font-medium [&_mark]:bg-primary/20 [&_mark]:text-foreground [&_mark]:rounded-sm [&_mark]:px-0.5"
-												// biome-ignore lint/security/noDangerouslySetInnerHtml: the search index's own <mark> highlighting over first-party docs content, which is the point of showing it
-												dangerouslySetInnerHTML={{
-													__html: String(result.content),
-												}}
-											/>
+											<span className="block truncate font-medium">
+												<Highlighted text={String(result.content)} />
+											</span>
 											{result.breadcrumbs && result.breadcrumbs.length > 0 && (
 												<span className="block truncate text-xs text-muted-foreground">
 													{result.breadcrumbs.join(" > ")}
