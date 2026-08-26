@@ -365,6 +365,7 @@ function TabLoadingSkeleton({ lines = 3 }: { lines?: number }) {
 			<Separator />
 			<CardContent className="space-y-4 pt-6">
 				{Array.from({ length: lines }).map((_, i) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: fixed-length placeholder, no data to key on
 					<Skeleton key={i} className="h-8 w-full" />
 				))}
 			</CardContent>
@@ -579,6 +580,7 @@ function ResponsesTab({
 		return (
 			<div className="space-y-4">
 				{Array.from({ length: 3 }).map((_, i) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: fixed-length placeholder, no data to key on
 					<Card key={i}>
 						<CardHeader className="pb-0 gap-y-0">
 							<div className="grid grid-cols-3 gap-x-4">
@@ -641,6 +643,7 @@ function ResponsesTab({
 								<span className="text-xs text-muted-foreground block mb-1.5">Web Queries</span>
 								<div className="flex flex-wrap gap-1.5">
 									{run.webQueries.map((query: string, qIndex: number) => (
+										// biome-ignore lint/suspicious/noArrayIndexKey: a run can search the same query twice, so the index is what keeps sibling keys distinct
 										<Badge key={qIndex} variant="outline" className="text-xs font-normal">
 											{query}
 										</Badge>
@@ -653,8 +656,8 @@ function ResponsesTab({
 							<span className="text-xs text-muted-foreground block mb-1.5">Brands Mentioned</span>
 							<div className="flex flex-wrap gap-1.5">
 								{run.brandMentioned && brandName && <Badge className="text-xs font-normal">{brandName}</Badge>}
-								{run.competitorsMentioned?.map((competitor: string, cIndex: number) => (
-									<Badge key={cIndex} variant="outline" className="text-xs font-normal">
+								{run.competitorsMentioned?.map((competitor: string) => (
+									<Badge key={competitor} variant="outline" className="text-xs font-normal">
 										{competitor}
 									</Badge>
 								))}

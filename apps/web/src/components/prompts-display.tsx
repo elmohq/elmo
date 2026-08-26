@@ -239,6 +239,7 @@ function ContentLoadingSkeleton() {
 	return (
 		<div className="space-y-6">
 			{[...Array(3)].map((_, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: fixed-length placeholder, no data to key on
 				<Card key={i} className="py-3 gap-3">
 					<CardHeader className="flex justify-between items-center px-3">
 						<Skeleton className="h-4 w-48" />
