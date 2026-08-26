@@ -56,7 +56,14 @@ const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 		const provisioned = new Set(scopedBrands.map((b) => b.organizationId));
 
 		return {
-			brands: scopedBrands.map((brand) => ({ id: brand.id, name: brand.name })),
+			// Alphabetical, with the id breaking ties between brands that share a
+			// name: an unordered select leaves the order up to Postgres, which is
+			// free to hand back a different one after any row rewrite or plan
+			// change. Sorted here rather than in SQL so the result doesn't depend
+			// on the deployment's database collation.
+			brands: scopedBrands
+				.map((brand) => ({ id: brand.id, name: brand.name }))
+				.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)),
 			unprovisionedOrgs: canCreateBrands ? [] : orgs.filter((o) => !provisioned.has(o.id)),
 			canCreateBrands,
 		};
