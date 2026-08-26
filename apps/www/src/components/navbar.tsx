@@ -1,6 +1,5 @@
 import { Link, useLoaderData } from "@tanstack/react-router";
 import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
-import { ArrowRight } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import {
 	NavigationMenu,
@@ -9,6 +8,7 @@ import {
 	NavigationMenuList,
 } from "@workspace/ui/components/navigation-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
+import { ArrowRight } from "lucide-react";
 import { formatStarCount } from "@/lib/github-stars";
 import { Logo } from "./logo";
 

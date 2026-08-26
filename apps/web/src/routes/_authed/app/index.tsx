@@ -9,15 +9,15 @@
 
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { db } from "@workspace/lib/db/db";
+import { brands } from "@workspace/lib/db/schema";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
+import { inArray } from "drizzle-orm";
 import FullPageCard from "@/components/full-page-card";
 import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
-import { db } from "@workspace/lib/db/db";
-import { brands } from "@workspace/lib/db/schema";
-import { inArray } from "drizzle-orm";
 
 const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 	async (): Promise<{

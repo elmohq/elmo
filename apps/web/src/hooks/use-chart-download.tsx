@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
 import html2canvas from "html2canvas-pro";
+import { useRef, useState } from "react";
 
 export function useChartDownload(fileName: string) {
 	const chartRef = useRef<HTMLDivElement>(null);

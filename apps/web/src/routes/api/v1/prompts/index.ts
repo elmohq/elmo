@@ -4,13 +4,13 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
+import { brands, prompts } from "@workspace/lib/db/schema";
 import { assertCanAddPrompts } from "@workspace/lib/entitlements";
-import { prompts, brands } from "@workspace/lib/db/schema";
-import { eq, count, desc } from "drizzle-orm";
+import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
+import { count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { sanitizeUserTags, computeSystemTags } from "@workspace/lib/tag-utils";
-import { createPromptJobScheduler } from "@/lib/job-scheduler";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { createPromptJobScheduler } from "@/lib/job-scheduler";
 
 const createPromptBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),

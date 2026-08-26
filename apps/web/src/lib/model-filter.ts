@@ -16,7 +16,7 @@
  * hook).
  */
 import { getModelMeta } from "@workspace/config/models";
-import { type PlanPlatformGroupId, PLATFORM_TIER_LABELS, premiumModelLabel } from "@workspace/config/plans";
+import { PLATFORM_TIER_LABELS, type PlanPlatformGroupId, premiumModelLabel } from "@workspace/config/plans";
 
 /** Sentinel for "no model filter". */
 export const ALL_MODELS_VALUE = "all";

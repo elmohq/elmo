@@ -4,31 +4,30 @@
  * Production-quality printable report (US Letter 8.5 x 11 in).
  * Uses Share of Voice as the primary metric with rich competitive analysis.
  */
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound, useRouteContext } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { requireAuthSession, hasReportAccess } from "@/lib/auth/helpers";
-import { getReportByIdFn } from "@/server/reports";
-import { PromptChartPrint } from "@/components/prompt-chart-print";
-import { Target, BarChart3, Rocket } from "lucide-react";
-import { Logo } from "@/components/logo";
-import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import {
+	analyzeByEngine,
+	analyzeCompetitorFrequency,
+	analyzeWebQueries,
+	computeCompetitorSoVs,
 	computeOverallSoV,
 	computePromptSoV,
-	computeCompetitorSoVs,
-	selectRepresentativePrompts,
+	type FullPromptRun,
 	findContentGaps,
-	analyzeWebQueries,
-	analyzeCompetitorFrequency,
-	analyzeByEngine,
 	getSoVColor,
 	getSoVLevel,
-	type ReportPromptRun,
-	type FullPromptRun,
 	type PromptCategory,
 	type PromptSoV,
+	type ReportPromptRun,
+	selectRepresentativePrompts,
 } from "@workspace/lib/report-metrics";
+import { BarChart3, Rocket, Target } from "lucide-react";
+import { Logo } from "@/components/logo";
+import { PromptChartPrint } from "@/components/prompt-chart-print";
+import { hasReportAccess, requireAuthSession } from "@/lib/auth/helpers";
+import { getReportByIdFn } from "@/server/reports";
 
 // ---------- Types ----------
 

@@ -1,7 +1,7 @@
-import React from "react";
-import { cn } from "@workspace/ui/lib/utils";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { getModelMeta, KNOWN_MODELS } from "@workspace/config/models";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { cn } from "@workspace/ui/lib/utils";
+import React from "react";
 
 export type ProgressBarItem = {
 	label: string;

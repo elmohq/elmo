@@ -1,10 +1,10 @@
-import * as React from "react";
-import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
-import { Badge } from "@workspace/ui/components/badge";
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
-import { ChartDataPoint, getBadgeVariant, getBadgeClassName } from "@/lib/chart-utils";
 import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import { Badge } from "@workspace/ui/components/badge";
+import * as React from "react";
+import { Bar, BarChart, Cell, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { type ChartDataPoint, getBadgeClassName, getBadgeVariant } from "@/lib/chart-utils";
 
 interface BaseChartPrintProps {
 	data: ChartDataPoint[];

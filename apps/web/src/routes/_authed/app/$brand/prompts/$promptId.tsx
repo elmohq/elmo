@@ -3,37 +3,38 @@
  *
  * Shows prompt details with tabs: Mentions, Web Queries, Citations, LLM Responses.
  */
-import { useState, useCallback, useEffect, useMemo } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Badge } from "@workspace/ui/components/badge";
-import { Skeleton } from "@workspace/ui/components/skeleton";
-import { Separator } from "@workspace/ui/components/separator";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
+
 import { IconInfoCircle } from "@tabler/icons-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { extractTextContent } from "@workspace/lib/text-extraction";
+import { Badge } from "@workspace/ui/components/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Separator } from "@workspace/ui/components/separator";
+import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
-import { ProgressBarChart } from "@/components/progress-bar-chart";
-import { ListPagination } from "@/components/list-pagination";
-import { CitationsDisplay, type CitationData } from "@/components/citations-display";
-import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { type CitationData, CitationsDisplay } from "@/components/citations-display";
 import {
 	InfoTip,
 	QueryWordsSection,
 	UnknownQueriesNote,
-	VariationsList,
 	type VariationModelCount,
+	VariationsList,
 } from "@/components/fanout-sections";
-import { getDaysFromLookback } from "@/lib/chart-utils";
-import { getModelDisplayName } from "@/lib/utils";
-import { promptKeywords } from "@/lib/fanout-analysis";
-import { useBrand } from "@/hooks/use-brands";
-import { usePromptStats } from "@/hooks/use-prompt-stats";
-import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
-import { useQueryFanout } from "@/hooks/use-query-fanout";
-import { getPromptMetadataFn } from "@/server/prompts";
+import { ListPagination } from "@/components/list-pagination";
+import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
+import { ProgressBarChart } from "@/components/progress-bar-chart";
 import { ResponseMarkdown } from "@/components/response-markdown";
-import { extractTextContent } from "@workspace/lib/text-extraction";
+import { useBrand } from "@/hooks/use-brands";
+import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
+import { usePromptStats } from "@/hooks/use-prompt-stats";
+import { useQueryFanout } from "@/hooks/use-query-fanout";
+import { getDaysFromLookback } from "@/lib/chart-utils";
+import { promptKeywords } from "@/lib/fanout-analysis";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { getModelDisplayName } from "@/lib/utils";
+import { getPromptMetadataFn } from "@/server/prompts";
 
 // -------------------------------------------------------------------
 // Types

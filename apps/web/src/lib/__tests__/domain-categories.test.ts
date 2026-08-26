@@ -1,16 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
+	attributeProduct,
 	inferPageType,
-	resolvePageType,
 	isForumDomain,
-	isGoogleShoppingUrl,
 	isGoogleSearchUrl,
+	isGoogleShoppingUrl,
 	isGoogleSurfaceUrl,
 	parseGoogleProductName,
 	parseGoogleSearchQuery,
-	attributeProduct,
+	resolvePageType,
 } from "@/lib/domain-categories";
-import { categorizeDomain, classifyUrl, CURATED_DOMAIN_LISTS } from "@/lib/domain-categories.server";
+import { CURATED_DOMAIN_LISTS, categorizeDomain, classifyUrl } from "@/lib/domain-categories.server";
 
 const brand = new Set(["mybrand.com"]);
 const competitors = new Set(["rival.com"]);

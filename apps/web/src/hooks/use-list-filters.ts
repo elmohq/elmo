@@ -1,7 +1,7 @@
-import { useCallback, useMemo } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { type LookbackPeriod, getDefaultLookbackPeriod } from "@/lib/chart-utils";
+import { useCallback, useMemo } from "react";
 import { useBrand } from "@/hooks/use-brands";
+import { getDefaultLookbackPeriod, type LookbackPeriod } from "@/lib/chart-utils";
 import { ALL_MODELS_VALUE } from "@/lib/model-filter";
 
 /** The shared dashboard filter params. Validated once at the `$brand` layout

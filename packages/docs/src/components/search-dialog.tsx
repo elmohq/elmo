@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useCallback, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useDocsSearch } from "fumadocs-core/search/client";
 import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
 import { Kbd, KbdGroup } from "@workspace/ui/components/kbd";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { cn } from "@workspace/ui/lib/utils";
-import { Search, FileText, Hash, Text } from "lucide-react";
 import type { SortedResult } from "fumadocs-core/search";
+import { useDocsSearch } from "fumadocs-core/search/client";
+import { FileText, Hash, Search, Text } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 function ResultIcon({ type }: { type: SortedResult["type"] }) {
 	switch (type) {

@@ -1,8 +1,8 @@
-import { useState, type ReactNode } from "react";
-import { ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
-import type { ActionResponse, PageFeedback, BlockFeedback } from "./schema";
+import { MessageSquare, ThumbsDown, ThumbsUp } from "lucide-react";
+import { type ReactNode, useState } from "react";
+import type { ActionResponse, BlockFeedback, PageFeedback } from "./schema";
 
 interface FeedbackProps {
 	onSendAction: (feedback: PageFeedback) => Promise<ActionResponse>;

@@ -1,19 +1,18 @@
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
 import { buttonVariants } from "@workspace/ui/components/button";
-import { Check, X, ExternalLink, ArrowLeft } from "lucide-react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, ExternalLink, X } from "lucide-react";
 import {
-	FEATURE_CATEGORIES,
-	ELMO_FEATURES,
 	CATEGORY_LABELS,
-	isLowDR,
-	getPopularityGrade,
-	getScreenshotUrl,
+	type Competitor,
+	ELMO_FEATURES,
+	FEATURE_CATEGORIES,
+	type FeatureKey,
 	getComparisonFaqs,
 	getComparisonVerdict,
-	type Competitor,
-	type FeatureKey,
+	getPopularityGrade,
+	getScreenshotUrl,
+	isLowDR,
 } from "@/lib/competitors";
 import { Faq } from "./faq";
 

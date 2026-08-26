@@ -9,12 +9,12 @@
  * per-prompt detail view so both render the same Google Shopping section.
  */
 import {
-	type ProductAttribution,
-	isGoogleShoppingUrl,
+	attributeProduct,
 	isGoogleSearchUrl,
+	isGoogleShoppingUrl,
+	type ProductAttribution,
 	parseGoogleProductName,
 	parseGoogleSearchQuery,
-	attributeProduct,
 } from "@/lib/domain-categories";
 
 /** Minimal per-prompt cited-page row this builder needs (a structural subset of

@@ -1,9 +1,9 @@
+import MuxPlayer from "@mux/mux-player-react";
 import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
 import { ArrowUpRight } from "lucide-react";
-import MuxPlayer from "@mux/mux-player-react";
+import { CloudSignupCTA, QuietCTA, SelfHostCTA } from "./cta-buttons";
 import { CustomerLogosInline } from "./customer-logos";
 import { QuickstartBlock } from "./quickstart-block";
-import { CloudSignupCTA, QuietCTA, SelfHostCTA } from "./cta-buttons";
 
 // Cast a brand-blue glow under Mux Player's default center play button so it
 // echoes the wrapper's outer blue shadow. Drop-shadow follows the circle's

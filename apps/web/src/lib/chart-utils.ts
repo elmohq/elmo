@@ -1,6 +1,6 @@
-import type { PerPromptVisibilityPoint, PerPromptDailyCitationStats } from "@/lib/postgres-read";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
-import { type CitationCategory, CITATION_CATEGORIES } from "@/lib/domain-categories";
+import { CITATION_CATEGORIES, type CitationCategory } from "@/lib/domain-categories";
+import type { PerPromptDailyCitationStats, PerPromptVisibilityPoint } from "@/lib/postgres-read";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
@@ -259,7 +259,7 @@ export interface ChartDataPoint {
 	[key: string]: number | string | boolean | null;
 }
 
-import type { PromptRun, Brand, Competitor } from "@workspace/lib/db/schema";
+import type { Brand, Competitor, PromptRun } from "@workspace/lib/db/schema";
 
 export function calculateVisibilityPercentages(
 	promptRuns: PromptRun[],

@@ -6,10 +6,9 @@
  * also guards the three ways those edits can vanish: in-app navigation,
  * browser back/forward, and closing the tab.
  */
-import { useState } from "react";
+
 import { useBlocker } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
-import { Spinner } from "@workspace/ui/components/spinner";
 import {
 	Dialog,
 	DialogContent,
@@ -18,7 +17,9 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@workspace/ui/components/dialog";
+import { Spinner } from "@workspace/ui/components/spinner";
 import { Save } from "lucide-react";
+import { useState } from "react";
 
 interface UnsavedChangesBarProps {
 	isDirty: boolean;

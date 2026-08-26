@@ -1,12 +1,12 @@
 import {
-	OverviewPageGraphic,
-	VisibilityPageGraphic,
-	ShareOfVoicePageGraphic,
-	QueryFanOutPageGraphic,
 	CitationsPageGraphic,
 	OpportunitiesPageGraphic,
-	PromptSearchGraphic,
+	OverviewPageGraphic,
 	PromptDetailGraphic,
+	PromptSearchGraphic,
+	QueryFanOutPageGraphic,
+	ShareOfVoicePageGraphic,
+	VisibilityPageGraphic,
 	VisibilityTrendGraphic,
 } from "./feature-graphics";
 

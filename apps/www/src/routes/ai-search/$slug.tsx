@@ -1,12 +1,12 @@
-import { createFileRoute, notFound, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
-import { Faq } from "@/components/faq";
 import { ElmoCta } from "@/components/directory-shell";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd, howToJsonLd } from "@/lib/seo";
+import { Faq } from "@/components/faq";
+import { Footer } from "@/components/footer";
+import { Navbar } from "@/components/navbar";
+import { type AiSearchEngine, aiSearchEngines, getAiSearchEngine } from "@/data/ai-search-engines";
 import type { FaqItem } from "@/lib/faqs";
-import { getAiSearchEngine, aiSearchEngines, type AiSearchEngine } from "@/data/ai-search-engines";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, howToJsonLd, ogMeta } from "@/lib/seo";
 
 function engineFaqs(e: AiSearchEngine): FaqItem[] {
 	return [

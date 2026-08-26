@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowRight } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
-import { trackEvent, identifyByEmail } from "@/lib/posthog";
+import { ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { identifyByEmail, trackEvent } from "@/lib/posthog";
 
 interface ContactFormProps {
 	source: string;

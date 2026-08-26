@@ -2,8 +2,8 @@
 
 import { REPO } from "../constants";
 import type { RepoActivityData } from "../types";
-import { svgDoc, text } from "./primitives";
 import { renderDashboard } from "./dashboard";
+import { svgDoc, text } from "./primitives";
 
 export function renderRepoActivity(data: RepoActivityData): string {
 	return renderDashboard(data);
