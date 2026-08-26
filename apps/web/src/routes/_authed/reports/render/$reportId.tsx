@@ -962,18 +962,6 @@ function ReportRenderPage() {
 
 	return (
 		<div className="max-w-[780px] mx-auto bg-white print:max-w-none text-slate-900">
-			<style
-				// biome-ignore lint/security/noDangerouslySetInnerHtml: a static @page rule; print sizing can't be expressed in inline styles
-				dangerouslySetInnerHTML={{
-					__html: `
-				@media print {
-					@page { size: letter; margin: 0.5in 0.6in; }
-					body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-				}
-			`,
-				}}
-			/>
-
 			<CoverPage report={report} branding={branding} model={model} />
 
 			<CompetitiveOverviewPage report={report} branding={branding} model={model} />

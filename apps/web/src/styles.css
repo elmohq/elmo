@@ -152,7 +152,13 @@
 @media print {
 	@page {
 		size: letter;
-		margin: 0.5in;
+		margin: 0.5in 0.6in;
+	}
+
+	/* Charts and status colours carry the meaning here, so they have to print. */
+	body {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
 	}
 
 	button,
