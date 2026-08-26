@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderOgPng } from "@workspace/og/rasterize";
 import pngToIco from "png-to-ico";
+
 /**
  * Generates favicon + PWA icon assets for the apps/www marketing site.
  *
@@ -27,8 +28,6 @@ import pngToIco from "png-to-ico";
  * Usage:
  *   pnpm -F @workspace/www generate-icons
  */
-// biome-ignore lint/correctness/noUnusedImports: classic JSX transform needs React in scope
-import type React from "react";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
