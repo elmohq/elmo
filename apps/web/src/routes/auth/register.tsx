@@ -8,6 +8,7 @@
 
 import { IconBrandGoogle } from "@tabler/icons-react";
 import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
+import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
@@ -17,22 +18,57 @@ import { Label } from "@workspace/ui/components/label";
 import { Separator } from "@workspace/ui/components/separator";
 import { useState } from "react";
 import { z } from "zod";
+import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
+import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { safeReturnTo } from "@/lib/return-to";
 
 export const Route = createFileRoute("/auth/register")({
 	validateSearch: z.object({
 		returnTo: z.string().optional(),
+		/**
+		 * Attribution tag carried by links back to us (see
+		 * @workspace/config/referrals). Declared so the router keeps it in the URL
+		 * long enough for analytics to record the pageview it arrived on.
+		 */
+		ref: z.string().optional(),
 	}),
 	component: RegisterPage,
 });
 
 function RegisterPage() {
-	const { returnTo } = Route.useSearch();
+	const { returnTo, ref: incomingRef } = Route.useSearch();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const canRegister = context.clientConfig?.canRegister ?? false;
-	const hasUsers = context.clientConfig?.hasUsers ?? false;
-	const isCloud = context.clientConfig?.mode === "cloud";
+
+	if (!canRegister) {
+		window.location.href = "/auth/login";
+		return null;
+	}
+
+	return (
+		<RegisterForm
+			returnTo={returnTo}
+			incomingRef={incomingRef}
+			isCloud={context.clientConfig?.mode === "cloud"}
+			hasUsers={context.clientConfig?.hasUsers ?? false}
+		/>
+	);
+}
+
+export function RegisterForm({
+	returnTo,
+	incomingRef,
+	isCloud,
+	hasUsers,
+}: {
+	returnTo?: string;
+	/** The `ref` this page was reached with, kept on links that stay inside auth. */
+	incomingRef?: string;
+	isCloud?: boolean;
+	/** A local instance before its bootstrap signup has nowhere to send an existing account. */
+	hasUsers?: boolean;
+}) {
 	const navigate = useNavigate();
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
@@ -41,11 +77,7 @@ function RegisterPage() {
 	const [loading, setLoading] = useState(false);
 	const [pendingVerification, setPendingVerification] = useState(false);
 	const [resending, setResending] = useState(false);
-
-	if (!canRegister) {
-		window.location.href = "/auth/login";
-		return null;
-	}
+	const source = isCloud ? "cloud-signup" : "self-hosted-signup";
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -104,7 +136,16 @@ function RegisterPage() {
 	}
 
 	return (
-		<FullPageCard title="Create account" subtitle="Sign up to get started">
+		<AuthSplitLayout
+			title={isCloud ? "Start tracking your AI visibility" : "Create your admin account"}
+			subtitle={
+				isCloud
+					? "See what AI says about your brand today, then watch it change."
+					: "This is the owner account for your self-hosted instance."
+			}
+			pitch={<SalesPanel variant={isCloud ? "cloud" : "self-hosted"} source={source} />}
+			footer={<SalesFooterLinks source={source} />}
+		>
 			{isCloud && (
 				<div className="space-y-4 w-full pb-4">
 					<Button
@@ -170,19 +211,24 @@ function RegisterPage() {
 				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? "Creating account..." : "Create account"}
 				</Button>
+				{isCloud && (
+					<p className="text-xs text-muted-foreground">
+						Plans start at ${CLOUD_ENTRY_PRICE_USD}/mo, billed monthly or annually. Cancel any time.
+					</p>
+				)}
 			</form>
 			{hasUsers && (
-				<p className="text-center text-sm text-muted-foreground pt-4">
+				<p className="text-sm text-muted-foreground pt-4">
 					Already have an account?{" "}
 					<Link
 						to="/auth/login"
-						search={returnTo ? { returnTo } : {}}
+						search={{ ...(returnTo ? { returnTo } : {}), ...(incomingRef ? { ref: incomingRef } : {}) }}
 						className="text-primary hover:underline font-medium"
 					>
 						Sign in
 					</Link>
 				</p>
 			)}
-		</FullPageCard>
+		</AuthSplitLayout>
 	);
 }

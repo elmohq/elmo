@@ -14,6 +14,7 @@
 		"./env-registry": "./src/env-registry.ts",
 		"./models": "./src/models.ts",
 		"./plans": "./src/plans.ts",
+		"./referrals": "./src/referrals.ts",
 		"./roles": "./src/roles.ts",
 		"./scrape-targets": "./src/scrape-targets.ts",
 		"./types": "./src/types.ts"

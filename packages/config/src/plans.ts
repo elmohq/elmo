@@ -13,6 +13,7 @@
  */
 
 import { getModelMeta } from "./models";
+import { CLOUD_APP_URL } from "./referrals";
 
 export type PlanKey = "starter" | "basic" | "pro" | "business";
 
@@ -471,7 +472,7 @@ export function summarizeSubscriptionCost(input: {
 	};
 }
 
-export const CLOUD_SIGNUP_URL = "https://app.elmohq.com/auth/register";
+export const CLOUD_SIGNUP_URL = `${CLOUD_APP_URL}/auth/register`;
 
 /** Lowest self-serve monthly price among all plans. */
 export const CLOUD_ENTRY_PRICE_USD = Math.min(...PLAN_KEYS.map((key) => PLANS[key].monthlyPriceUsd));

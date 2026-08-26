@@ -6,6 +6,8 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as p from "@clack/prompts";
+import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
+import { cloudPricingUrl } from "@workspace/config/referrals";
 import { formatScrapeTarget, parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { Command } from "commander";
 import { parse as parseDotenv } from "dotenv";
@@ -51,6 +53,7 @@ const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
 const DEFAULT_APP_PORT = 1515;
 const LOCAL_DATABASE_URL = "postgres://postgres:postgres@postgres:5432/elmo";
 const TELEMETRY_DOC_URL = "https://elmohq.com/docs/developer-guide/telemetry";
+const CLOUD_PRICING_URL = cloudPricingUrl("cli");
 
 // ── Banner ───────────────────────────────────────────────────────────────────
 
@@ -164,6 +167,24 @@ async function withVersionCheck(version: string, fn: () => Promise<void>): Promi
 async function runInit(options: InitOptions, version: string): Promise<void> {
 	printBanner();
 	p.intro(pc.bold("Setting up Elmo"));
+
+	// Said before the wizard asks for anything, not after: someone who would
+	// rather buy the managed version should find that out before they have gone
+	// and opened scraper accounts.
+	p.note(
+		[
+			"Self-hosting Elmo is free, and always will be. But it does mean",
+			"running Postgres and a worker, and opening your own scraper and",
+			"model provider accounts.",
+			"",
+			`Elmo Cloud is the same open-source product, hosted by us, from`,
+			`${pc.bold(`$${CLOUD_ENTRY_PRICE_USD}/month`)} — scraper and model access included, nothing to`,
+			"keep running.",
+			"",
+			`  ${link(pc.cyan(CLOUD_PRICING_URL), CLOUD_PRICING_URL)}`,
+		].join("\n"),
+		"Prefer not to self-host?",
+	);
 
 	const cwd = process.cwd();
 
