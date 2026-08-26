@@ -1,7 +1,7 @@
 "use client";
 
 import { IconChevronDown, IconExternalLink } from "@tabler/icons-react";
-import { getModelMeta } from "@workspace/config/models";
+import { labelForModelFilter } from "@workspace/config/model-filter";
 import type { OptimizeButtonProps } from "@workspace/config/types";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -37,7 +37,7 @@ function generateOptimizationUrl(urlTemplate: string, promptValue: string, brand
 export function OptimizeButton({
 	brandId,
 	selectedModel = "all",
-	availableModels = ["chatgpt", "claude", "gemini"],
+	availableModels = [],
 	lookback = "1m",
 	promptName,
 	promptId,
@@ -62,7 +62,10 @@ export function OptimizeButton({
 
 			if (fetchWebQuery) {
 				const webQueryData = await fetchWebQuery(promptId, lookback ?? "1m", model);
-				webQuery = model ? webQueryData.modelWebQueries[model] : webQueryData.webQuery;
+				// Already the top query for `model`: the server filters by it, and it
+				// understands a grounded target's filter value where a model id lookup
+				// would not.
+				webQuery = webQueryData.webQuery;
 			}
 
 			const url = generateOptimizationUrl(
@@ -115,7 +118,7 @@ export function OptimizeButton({
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-48">
 				{availableModels.map((model, index) => {
-					const modelName = getModelMeta(model).label;
+					const modelName = labelForModelFilter(model);
 					const loading = isLoading(model);
 					return (
 						<Fragment key={model}>

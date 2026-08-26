@@ -77,8 +77,8 @@ export interface ClientConfig {
 }
 
 export interface WebQueryResult {
+	/** Top web query over the requested window, for the requested model. */
 	webQuery: string | null;
-	modelWebQueries: Record<string, string>;
 }
 
 export interface OptimizeButtonProps {
