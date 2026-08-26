@@ -73,8 +73,8 @@ export function evaluateDeploymentPolicy(
 
 	// 0. Better-auth org plugin mutations are blocked everywhere over HTTP.
 	// Orgs are created server-side only — via the provisioning module
-	// (local/demo/cloud create-brand, and the admin brands API that whitelabel
-	// is provisioned through) — and cloud team invitations go through server
+	// (local/demo/cloud create-brand, or the admin brands API whitelabel is
+	// provisioned through) — and cloud team invitations go through server
 	// functions that call auth.api in-process, so no mode needs these HTTP
 	// endpoints.
 	if (isOrgPluginMutation) {

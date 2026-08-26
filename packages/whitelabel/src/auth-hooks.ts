@@ -5,26 +5,20 @@
  * via the provisionUser callback.
  *
  * Auth0 is authoritative over who belongs where, not over which orgs exist:
- * an org is only ever created by the admin API (`POST /api/v1/brands`), which
- * runs before its users sign in. An `elmo_orgs` entry with no matching row is
- * therefore skipped rather than provisioned.
+ * orgs are created by the admin API (`POST /api/v1/brands`) before their users
+ * sign in, so an `elmo_orgs` entry with no row here is skipped.
  *
  * Data flow:
  * 1. User logs in via Auth0 SSO -> better-auth creates user + session
  * 2. provisionUser fires (before session cookie is set)
  * 3. Fetches app_metadata from Auth0 Management API
- * 4. Reconciles memberships against the known orgs named by elmo_orgs
+ * 4. Reconciles memberships against elmo_orgs
  * 5. Sets user admin role and report generator access flags
  * 6. Mutates the user object so the session cookie has correct data
  */
 
 import type { CreateAuthOptions } from "@workspace/lib/auth/server";
-import {
-	filterExistingOrganizationIds,
-	findAccountByProvider,
-	syncMemberships,
-	updateUserFlags,
-} from "@workspace/lib/db/auth-sync";
+import { findAccountByProvider, syncMemberships, updateUserFlags } from "@workspace/lib/db/auth-sync";
 import { ManagementClient } from "auth0";
 import { z } from "zod";
 
@@ -83,24 +77,15 @@ async function fetchAuth0AppMetadata(auth0UserId: string): Promise<Auth0AppMetad
 	return parsed.data;
 }
 
-async function syncMembershipsFromMetadata(userId: string, orgs: Array<{ id: string; name: string }>): Promise<void> {
-	const known = await filterExistingOrganizationIds(orgs.map((o) => o.id));
-	const unknown = orgs.filter((o) => !known.has(o.id));
-	if (unknown.length > 0) {
-		// Loud but non-fatal: the org is expected to arrive through the admin API,
-		// and granting access to an org that doesn't exist yet isn't possible.
-		console.warn(
-			`[auth0-sync] user=${userId} skipping orgs with no row in this deployment: ${unknown
-				.map((o) => o.id)
-				.join(", ")}`,
-		);
-	}
-
+async function syncOrganizations(userId: string, orgs: Array<{ id: string; name: string }>): Promise<void> {
 	const orgNameById = new Map(orgs.map((o) => [o.id, o.name]));
-	const { added, removed } = await syncMemberships(
+	const { added, removed, skipped } = await syncMemberships(
 		userId,
-		orgs.filter((o) => known.has(o.id)).map((o) => o.id),
+		orgs.map((o) => o.id),
 	);
+	if (skipped.length > 0) {
+		console.warn(`[auth0-sync] user=${userId} orgs not provisioned here, skipped=[${skipped.join(", ")}]`);
+	}
 	if (added.length > 0 || removed.length > 0) {
 		const parts: string[] = [];
 		if (added.length > 0) parts.push(`added=[${added.map((id) => orgNameById.get(id) ?? id).join(", ")}]`);
@@ -127,7 +112,7 @@ export async function syncAuth0User(
 	console.log(`[auth0-sync] Syncing user=${userId}`);
 	const metadata = await fetchAuth0AppMetadata(auth0UserId);
 
-	await syncMembershipsFromMetadata(userId, metadata.elmo_orgs);
+	await syncOrganizations(userId, metadata.elmo_orgs);
 
 	const flags = {
 		role: metadata.elmo_admin ? "admin" : "user",

@@ -27,22 +27,6 @@ async function lockUserMemberships(tx: AuthSyncTransaction, userId: string): Pro
 	await tx.execute(sql`select pg_advisory_xact_lock(hashtext('elmo-user-memberships'), hashtext(${userId}))`);
 }
 
-/**
- * Narrow a set of candidate org ids to the ones that actually have a row.
- *
- * Membership reconciliation is driven by an external identity provider, which
- * can name an org this deployment has never been told about. Those have to be
- * dropped before the member insert: `member.organization_id` is a NOT NULL FK,
- * so a single unknown id would abort the whole reconciliation transaction.
- */
-export async function filterExistingOrganizationIds(orgIds: string[]): Promise<Set<string>> {
-	if (orgIds.length === 0) return new Set();
-
-	const rows = await db.select({ id: organization.id }).from(organization).where(inArray(organization.id, orgIds));
-
-	return new Set(rows.map((row) => row.id));
-}
-
 export async function ensureMembership(userId: string, orgId: string, role = "member"): Promise<void> {
 	await db.transaction(async (tx) => {
 		await lockUserMemberships(tx, userId);
@@ -70,15 +54,22 @@ export async function ensureMembership(userId: string, orgId: string, role = "me
 export interface SyncMembershipsResult {
 	added: string[];
 	removed: string[];
+	/** Requested org ids with no row in this deployment. */
+	skipped: string[];
 }
 
 /**
  * Reconciles a user's org memberships to match the given set of org IDs.
  * Adds missing memberships and removes stale ones in a single transaction.
+ *
+ * Orgs themselves are never created here — an id with no row is reported as
+ * skipped. `member.organization_id` is a NOT NULL FK, so one unknown id would
+ * otherwise abort the whole reconciliation.
  */
 export async function syncMemberships(userId: string, orgIds: string[]): Promise<SyncMembershipsResult> {
 	const added: string[] = [];
 	const removed: string[] = [];
+	const skipped: string[] = [];
 
 	await db.transaction(async (tx) => {
 		await lockUserMemberships(tx, userId);
@@ -86,11 +77,14 @@ export async function syncMemberships(userId: string, orgIds: string[]): Promise
 			.select({ id: member.id, organizationId: member.organizationId })
 			.from(member)
 			.where(eq(member.userId, userId));
+		const known = await tx.select({ id: organization.id }).from(organization).where(inArray(organization.id, orgIds));
 
 		const existingOrgIds = new Set(existing.map((m) => m.organizationId));
-		const targetOrgIds = new Set(orgIds);
+		const knownOrgIds = new Set(known.map((o) => o.id));
+		const targetOrgIds = new Set(orgIds.filter((id) => knownOrgIds.has(id)));
+		skipped.push(...orgIds.filter((id) => !knownOrgIds.has(id)));
 
-		for (const orgId of orgIds) {
+		for (const orgId of targetOrgIds) {
 			if (!existingOrgIds.has(orgId)) {
 				const inserted = await tx
 					.insert(member)
@@ -119,7 +113,7 @@ export async function syncMemberships(userId: string, orgIds: string[]): Promise
 		}
 	});
 
-	return { added, removed };
+	return { added, removed, skipped };
 }
 
 /**
