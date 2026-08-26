@@ -658,12 +658,14 @@ function PromptChartPages({
 	return (
 		<>
 			{/* ===== CHART PAGES ===== */}
-			{chartPairs.map((pair, pageIdx) => (
-				// biome-ignore lint/suspicious/noArrayIndexKey: the page's position in the report is its identity
-				<div key={pageIdx} className="print:break-before-page print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
+			{chartPairs.map((pair, pageIndex) => (
+				<div
+					key={pair.map((selected) => selected.promptId).join("+")}
+					className="print:break-before-page print:h-[9.5in] print:flex print:flex-col p-10 print:p-0"
+				>
 					<RunningHeader brand={report.brandName} />
 
-					{pageIdx === 0 ? (
+					{pageIndex === 0 ? (
 						<Section
 							title="Prompt Analysis"
 							subtitle="Share of voice for representative prompts — strengths and growth opportunities"

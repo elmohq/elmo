@@ -221,6 +221,14 @@ function TrendSection({
 	);
 }
 
+/** The footer's four figures, in order, for the shape shown while they load. */
+const STAT_PLACEHOLDERS = [
+	{ label: "prompts tracked", icon: IconList },
+	{ label: "evaluations", icon: IconActivity },
+	{ label: "run frequency", icon: IconClock },
+	{ label: "last updated", icon: IconRefresh },
+];
+
 /** The dashboard's footer figures, each with the caveat behind it on hover. */
 function TrackingStats({
 	loading,
@@ -240,9 +248,8 @@ function TrackingStats({
 	if (loading) {
 		return (
 			<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
-				{[IconList, IconActivity, IconClock, IconRefresh].map((Icon, index) => (
-					// biome-ignore lint/suspicious/noArrayIndexKey: fixed-length placeholder row
-					<div key={index} className="flex items-center gap-2">
+				{STAT_PLACEHOLDERS.map(({ label, icon: Icon }) => (
+					<div key={label} className="flex items-center gap-2">
 						<Icon className="h-4 w-4 flex-shrink-0" />
 						<Skeleton className="h-4 w-28" />
 					</div>

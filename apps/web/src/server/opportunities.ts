@@ -509,16 +509,37 @@ function citationsForPrompts(
 const REFRESH_AFTER_DAYS = 6;
 const MAX_GENERATION_ATTEMPTS = 3;
 
-/** Resolve the LLM output's prompt strings to tracked IDs (for deep-linking) and
- * attach each opportunity's cited pages split into the brand's vs competitors'. */
+/** First occurrence of each entry, by whatever `key` identifies it. */
+function distinctBy<T>(items: T[], key: (item: T) => string): T[] {
+	const seen = new Set<string>();
+	return items.filter((item) => {
+		const id = key(item);
+		if (seen.has(id)) return false;
+		seen.add(id);
+		return true;
+	});
+}
+
+/**
+ * Resolve the LLM output's prompt strings to tracked IDs (for deep-linking) and
+ * attach each opportunity's cited pages split into the brand's vs competitors'.
+ *
+ * Nothing constrains the model from repeating itself, and a report that lists
+ * the same bullet, caveat, opportunity or prompt twice is telling the reader
+ * something untrue about how much it found — so each list keeps first mentions.
+ */
 function enrichReport(raw: RawReport, digest: Digest): OpportunitiesReport {
 	const idByText = new Map(digest.prompts.map((p) => [p.value.trim().toLowerCase(), p.id]));
+	const normalize = (text: string) => text.trim().toLowerCase();
+
 	return {
 		...raw,
-		opportunities: raw.opportunities.map((o) => {
-			const relatedPrompts: ReportPrompt[] = o.relatedPrompts.map((text) => ({
+		summary: distinctBy(raw.summary, normalize),
+		risks: distinctBy(raw.risks, normalize),
+		opportunities: distinctBy(raw.opportunities, (o) => normalize(o.title)).map((o) => {
+			const relatedPrompts: ReportPrompt[] = distinctBy(o.relatedPrompts, normalize).map((text) => ({
 				text,
-				promptId: idByText.get(text.trim().toLowerCase()) ?? null,
+				promptId: idByText.get(normalize(text)) ?? null,
 			}));
 			const ids = relatedPrompts.map((p) => p.promptId).filter((id): id is string => id !== null);
 			return { ...o, relatedPrompts, ...citationsForPrompts(ids, digest.citationsByPrompt) };
