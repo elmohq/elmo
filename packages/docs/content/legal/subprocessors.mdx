@@ -1,0 +1,74 @@
+---
+title: Subprocessors
+description: The third parties that process data on Elmo Cloud's behalf, what each one does, and where it operates.
+updated: 2026-08-26
+order: 4
+---
+
+We use third-party subprocessors — cloud providers, payment and email services, and the AI and search platforms Elmo queries — to run Elmo Cloud. We put a data processing agreement in place with each one, extending the same safeguards described in our [Privacy Policy](/legal/privacy) everywhere personal data is processed.
+
+This page lists them. It applies to **Elmo Cloud only**. If you self-host Elmo, you choose your own infrastructure and providers, and none of this applies to you.
+
+## Infrastructure
+
+| Subprocessor | Purpose | Location |
+| --- | --- | --- |
+| [Railway](https://railway.com/legal/privacy) | Application and background-worker hosting | United States |
+| [Vercel](https://vercel.com/legal/privacy-policy) | Marketing site and documentation hosting, edge network, and file storage | United States |
+| [Supabase](https://supabase.com/privacy) | Managed PostgreSQL database | United States |
+| [Upstash](https://upstash.com/trust/privacy.pdf) | Cache for public marketing-site data | United States |
+| [Amazon Web Services](https://aws.amazon.com/compliance/gdpr-center/) | Underlying cloud infrastructure and object storage | United States |
+| [Google Cloud](https://cloud.google.com/privacy) | Underlying cloud infrastructure | United States |
+| [Neon](https://neon.com/privacy-policy) | Managed PostgreSQL database | United States |
+| [PlanetScale](https://planetscale.com/legal/privacy) | Managed database hosting | United States |
+
+## Running the business
+
+| Subprocessor | Purpose | Location |
+| --- | --- | --- |
+| [Stripe](https://stripe.com/privacy) | Payment processing, subscriptions, and invoicing | United States |
+| [Resend](https://resend.com/legal/privacy-policy) | Transactional email — verification, invitations, billing notices | United States |
+| [Google](https://policies.google.com/privacy) | "Sign in with Google" authentication | United States |
+| [Sentry](https://sentry.io/privacy/) | Application error monitoring | United States |
+| [PostHog](https://posthog.com/privacy) | Product analytics | United States |
+| [Plausible](https://plausible.io/data-policy) | Cookieless web analytics | European Union |
+| [Crisp](https://crisp.chat/en/privacy/) | Live chat support on our website | European Union |
+
+## Advertising
+
+We load advertising and conversion-measurement tags on our marketing site, subject to your [cookie choices](/legal/cookies). These platforms receive information about ad clicks and signups, not the contents of your Elmo account.
+
+| Platform | Purpose |
+| --- | --- |
+| [Google Ads](https://business.safety.google/privacy/) | Conversion measurement and remarketing |
+| [Meta](https://www.facebook.com/privacy/policy/) | Conversion measurement and remarketing |
+| [LinkedIn](https://www.linkedin.com/legal/privacy-policy) | Conversion measurement and remarketing |
+| [X](https://x.com/en/privacy) | Conversion measurement |
+| [Reddit](https://www.reddit.com/policies/privacy-policy) | Conversion measurement |
+
+## AI and search data providers
+
+This is the part that makes Elmo work: to measure how answer engines describe a brand, Elmo has to ask them. Prompts you configure are sent to these providers, either directly through their APIs or through a scraping provider that queries the consumer product on our behalf. The answers come back to us and are stored in your account.
+
+**What they receive is your prompt text and the domains you track** — market-research queries like "best project management software for agencies". They do not receive your name, your email address, your billing details, or anything else about your account. Do not put personal data into a prompt.
+
+Which of these is used depends on the platforms your plan tracks and how Elmo Cloud is configured at the time; we update this list when that changes.
+
+| Provider | Role |
+| --- | --- |
+| [OpenAI](https://openai.com/policies/privacy-policy/) | Model API, and analysis of collected answers |
+| [Anthropic](https://www.anthropic.com/legal/privacy) | Model API, and analysis of collected answers |
+| [Mistral](https://mistral.ai/terms#privacy-policy) | Model API |
+| [OpenRouter](https://openrouter.ai/privacy) | Model API gateway |
+| [Bright Data](https://brightdata.com/privacy) | Answer-engine and search result collection |
+| [Olostep](https://www.olostep.com/privacy) | Answer-engine and search result collection |
+| [Oxylabs](https://oxylabs.io/legal/oxylabs-privacy-policy) | Answer-engine and search result collection |
+| [Cloro](https://cloro.dev/) | Answer-engine and search result collection |
+| [DataForSEO](https://dataforseo.com/privacy-policy) | Search engine result data |
+| [Jina AI](https://jina.ai/legal/#privacy-policy) | Web page content extraction |
+
+## Getting notified when this changes
+
+This page lives in the [Elmo repository](https://github.com/elmohq/elmo/tree/main/packages/docs/content/legal). Watch that folder on GitHub and you'll see every change to this list, with a diff, before we announce it anywhere else.
+
+If you have a signed agreement with us that requires advance notice of new subprocessors, we'll email you as well. To object to a new subprocessor, email [privacy@elmohq.com](mailto:privacy@elmohq.com).
