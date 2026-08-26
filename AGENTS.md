@@ -32,7 +32,7 @@ Full setup instructions are in the developer guide at `packages/docs/content/doc
 
 Don't run formatting, linting, type checks, or tests after every change — only to diagnose what you're working on, or when asked.
 
-Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI fails on it. `pnpm lint:fix` handles the rest. Never silence a lint error with `biome-ignore` — fix the code. Only errors are gated; leave warnings alone.
+Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI fails on it. `pnpm lint:fix` handles the rest. Never silence a lint error with `biome-ignore` — fix the code.
 
 ## Tests
 
