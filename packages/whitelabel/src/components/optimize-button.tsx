@@ -18,15 +18,6 @@ import { Fragment, useState } from "react";
 
 export type { OptimizeButtonProps };
 
-/**
- * Generate optimization URL for a prompt using template substitution
- *
- * Template placeholders:
- * - {brandId} - Organization/brand ID
- * - {prompt} - The prompt text (URL encoded)
- * - {webQuery} - The search query (URL encoded); callers pass the prompt
- *   itself when no genuine query is known
- */
 function generateOptimizationUrl(urlTemplate: string, promptValue: string, brandId: string, webQuery: string): string {
 	return urlTemplate
 		.replace("{brandId}", encodeURIComponent(brandId))
