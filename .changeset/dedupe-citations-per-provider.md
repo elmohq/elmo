@@ -3,4 +3,4 @@
 "@workspace/web": patch
 ---
 
-AI citations are now de-duplicated by URL for every provider, so a page cited more than once in the same answer counts once.
+AI citations are now de-duplicated by URL for a specific answer, so pages cited more than once count only one time.
