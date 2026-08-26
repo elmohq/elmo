@@ -25,6 +25,7 @@
 import { getEnvValidationState } from "@workspace/config/env";
 import type { DeploymentMode } from "@workspace/config/types";
 import { getDeployment, resetDeploymentCache } from "@workspace/deployment";
+import type { CreateAuthOptions } from "@workspace/lib/auth/server";
 
 type SmokeMode = DeploymentMode;
 
@@ -103,7 +104,14 @@ function applyEnv(mode: SmokeMode): Record<string, string> {
 	return env;
 }
 
-function getAuthOptions(mode: SmokeMode, getWhitelabelAuthOptions: () => unknown, getCloudAuthOptions: () => unknown) {
+/** What each mode contributes to createAuth, as the real getters return it. */
+type AuthOptionsGetter = () => CreateAuthOptions;
+
+function getAuthOptions(
+	mode: SmokeMode,
+	getWhitelabelAuthOptions: AuthOptionsGetter,
+	getCloudAuthOptions: AuthOptionsGetter,
+) {
 	switch (mode) {
 		case "demo":
 			return { disableSignUp: true };
@@ -151,8 +159,7 @@ async function smokeMode(mode: SmokeMode): Promise<string[]> {
 		const { getWhitelabelAuthOptions } = await import("@workspace/whitelabel/auth-hooks");
 		const { getCloudAuthOptions } = await import("@workspace/cloud/auth-hooks");
 		const options = getAuthOptions(mode, getWhitelabelAuthOptions, getCloudAuthOptions);
-		// biome-ignore lint/suspicious/noExplicitAny: options shape varies per mode
-		const auth = createAuth(options as any);
+		const auth = createAuth(options);
 		if (typeof auth.handler !== "function" || typeof auth.api !== "object") {
 			failures.push("auth initialized without a handler/api");
 		}

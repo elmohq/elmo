@@ -4,8 +4,6 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderOgPng } from "@workspace/og/rasterize";
-// biome-ignore lint/correctness/noUnusedImports: classic JSX transform needs React
-import type React from "react";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
