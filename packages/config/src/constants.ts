@@ -13,8 +13,12 @@ export const DEFAULT_APP_NAME = "Elmo";
 export const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
 export const DEFAULT_APP_URL = "http://localhost:3000/";
 
-/** Provider setup guide, linked from SCRAPE_TARGETS errors and the LLMs page. */
-export const PROVIDERS_DOCS_URL = "https://docs.elmohq.com/docs/user-guide/providers";
+/**
+ * Provider setup guide, linked from SCRAPE_TARGETS errors and the LLMs page.
+ * Per-provider anchors are appended to it, so it has to stay the page itself
+ * rather than the docs index.
+ */
+export const PROVIDERS_DOCS_URL = "https://www.elmohq.com/docs/user-guide/providers";
 
 /**
  * Elmo brand constants — used for icon generation, manifest, and the brand kit.

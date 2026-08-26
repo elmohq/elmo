@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as p from "@clack/prompts";
+import { PROVIDERS_DOCS_URL } from "@workspace/config/constants";
 import { formatScrapeTarget, parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { Command } from "commander";
 import { parse as parseDotenv } from "dotenv";
@@ -400,7 +401,6 @@ const BRIGHTDATA_AFFILIATE = "https://get.brightdata.com/67h1b7h0shcn";
 const OXYLABS_AFFILIATE = "https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32";
 const OLOSTEP_AFFILIATE = "https://olostep.com/?ref=elmo";
 const DATAFORSEO_AFFILIATE = "https://dataforseo.com/?aff=184966";
-const PROVIDERS_DOC_URL = "https://docs.elmohq.com/docs/user-guide/providers";
 
 // Order here is the order they're offered everywhere in the wizard, ranked the
 // same way the providers doc ranks them.
@@ -939,7 +939,7 @@ async function finalizeScrapeTargets(
 
 	if (!deduped) {
 		p.log.warn("No SCRAPE_TARGETS configured. Elmo will not run scheduled checks until you set them.");
-		p.log.info(`Reference: ${link(pc.cyan(PROVIDERS_DOC_URL), PROVIDERS_DOC_URL)}`);
+		p.log.info(`Reference: ${link(pc.cyan(PROVIDERS_DOCS_URL), PROVIDERS_DOCS_URL)}`);
 
 		const addManual = await p.confirm({
 			message: "Enter SCRAPE_TARGETS manually now?",
@@ -970,7 +970,7 @@ async function finalizeScrapeTargets(
 	assertNotCancelled(customize);
 
 	if (customize) {
-		p.log.info(`Reference: ${link(pc.cyan(PROVIDERS_DOC_URL), PROVIDERS_DOC_URL)}`);
+		p.log.info(`Reference: ${link(pc.cyan(PROVIDERS_DOCS_URL), PROVIDERS_DOCS_URL)}`);
 		const manual = await p.text({
 			message: "SCRAPE_TARGETS",
 			initialValue: deduped,
