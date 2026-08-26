@@ -2,15 +2,12 @@
  * /admin/tools — Admin utility for running the onboarding analysis against an
  * arbitrary website without going through the wizard.
  */
-import { useState } from "react";
+
 import { createFileRoute } from "@tanstack/react-router";
-import { getAppName } from "@/lib/route-head";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
-import { Label } from "@workspace/ui/components/label";
+import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 import { Badge } from "@workspace/ui/components/badge";
-import { Spinner } from "@workspace/ui/components/spinner";
+import { Button } from "@workspace/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import {
 	Dialog,
 	DialogContent,
@@ -19,9 +16,13 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@workspace/ui/components/dialog";
-import { Sparkles, Copy, Check } from "lucide-react";
+import { Input } from "@workspace/ui/components/input";
+import { Label } from "@workspace/ui/components/label";
+import { Spinner } from "@workspace/ui/components/spinner";
+import { Check, Copy, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { getAppName } from "@/lib/route-head";
 import { adminAnalyzeBrandFn } from "@/server/admin";
-import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 
 function AnalyzeBrandDialog() {
 	const [open, setOpen] = useState(false);

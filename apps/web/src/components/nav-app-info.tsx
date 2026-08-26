@@ -1,7 +1,7 @@
 import { IconBrandGithub, IconWorld } from "@tabler/icons-react";
 import { useRouteContext } from "@tanstack/react-router";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import type { ClientConfig } from "@workspace/config/types";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 export function NavAppInfo() {
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
@@ -25,7 +25,9 @@ export function NavAppInfo() {
 			</a>
 			<div className="flex items-center gap-1">
 				<Tooltip>
-					<TooltipTrigger render={<a href="https://www.elmohq.com/" target="_blank" className={linkClass} />}>
+					<TooltipTrigger
+						render={<a href="https://www.elmohq.com/" target="_blank" className={linkClass} rel="noopener" />}
+					>
 						<IconWorld className="size-4" />
 					</TooltipTrigger>
 					<TooltipContent>elmohq.com</TooltipContent>

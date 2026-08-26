@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import type { BrandWithPrompts, Competitor } from "@workspace/lib/db/schema";
 import type { TrackedTarget } from "@/lib/model-filter";
-import { getBrands, getBrand, getCompetitors } from "@/server/brands";
+import { getBrand, getBrands, getCompetitors } from "@/server/brands";
 
 export type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	earliestDataDate?: string | null;

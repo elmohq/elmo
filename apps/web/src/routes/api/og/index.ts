@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { extname } from "node:path";
-import { createFileRoute } from "@tanstack/react-router";
-import titanOne400Data from "virtual:font/titan-one-400";
 import geistSans400Data from "virtual:font/geist-sans-400";
 import geistSans500Data from "virtual:font/geist-sans-500";
+import titanOne400Data from "virtual:font/titan-one-400";
+import { createFileRoute } from "@tanstack/react-router";
 import { DEFAULT_APP_NAME } from "@workspace/config/constants";
 import { renderOgPng } from "@workspace/og/rasterize";
 import { renderOgImage } from "@workspace/og/render";

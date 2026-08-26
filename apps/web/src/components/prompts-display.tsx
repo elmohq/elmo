@@ -1,26 +1,27 @@
-import { useMemo } from "react";
+import { IconEditCircle } from "@tabler/icons-react";
+import { Link, useSearch } from "@tanstack/react-router";
+import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
-import { buttonVariants } from "@workspace/ui/components/button";
+import { Skeleton } from "@workspace/ui/components/skeleton";
 import { cn } from "@workspace/ui/lib/utils";
 import { Inbox } from "lucide-react";
-import { IconEditCircle } from "@tabler/icons-react";
-import { usePromptsSummary } from "@/hooks/use-prompts-summary";
+import { useMemo } from "react";
+import { ALL_MODELS_VALUE } from "@/components/filter-bar";
+import { FilteredListShell } from "@/components/filtered-list-shell";
+import { PageHeader } from "@/components/page-header";
+import { PromptOrderDropdown } from "@/components/prompt-order-dropdown";
+import { VirtualizedPromptList } from "@/components/virtualized-prompt-list";
+import { VisibilityBarSection } from "@/components/visibility-bar-section";
+import { ChartDataProvider } from "@/contexts/chart-data-context";
 import { useBatchChartData } from "@/hooks/use-batch-chart-data";
 import { useBrand } from "@/hooks/use-brands";
 import { useListFilters } from "@/hooks/use-list-filters";
-import { Link, useSearch } from "@tanstack/react-router";
-import { VirtualizedPromptList } from "@/components/virtualized-prompt-list";
-import { ChartDataProvider } from "@/contexts/chart-data-context";
-import { Skeleton } from "@workspace/ui/components/skeleton";
-import { PageHeader } from "@/components/page-header";
-import { ALL_MODELS_VALUE } from "@/components/filter-bar";
-import { FilteredListShell } from "@/components/filtered-list-shell";
-import { PromptOrderDropdown } from "@/components/prompt-order-dropdown";
-import { VisibilityBarSection } from "@/components/visibility-bar-section";
-import { coercePromptOrder, orderPrompts } from "@/lib/prompt-order";
+import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import type { LookbackPeriod } from "@/lib/chart-utils";
-import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import { coercePromptOrder, orderPrompts } from "@/lib/prompt-order";
+import { skeletonRows } from "@/lib/skeleton-rows";
 
 interface PromptsDisplayProps {
 	pageTitle: string;
@@ -238,8 +239,8 @@ function ChartSection({
 function ContentLoadingSkeleton() {
 	return (
 		<div className="space-y-6">
-			{[...Array(3)].map((_, i) => (
-				<Card key={i} className="py-3 gap-3">
+			{skeletonRows(3).map((row) => (
+				<Card key={row} className="py-3 gap-3">
 					<CardHeader className="flex justify-between items-center px-3">
 						<Skeleton className="h-4 w-48" />
 						<Skeleton className="h-5 w-24 rounded-full" />

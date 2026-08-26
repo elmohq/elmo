@@ -37,6 +37,7 @@ import {
 import { isBrandedPrompt } from "@/lib/prompt-tags";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { computeVolatility, type DailyDomainCount, stabilityScore } from "@/lib/visibility-stats";
+import { normalizeText, withoutRepeats } from "@/server/opportunities-dedupe";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
 // ============================================================================
@@ -437,17 +438,18 @@ const MAX_GENERATION_ATTEMPTS = 3;
  * attach each opportunity's cited pages split into the brand's vs competitors'. */
 function enrichReport(raw: RawReport, digest: Digest): OpportunitiesReport {
 	const idByText = new Map(digest.prompts.map((p) => [p.value.trim().toLowerCase(), p.id]));
-	return {
+
+	return withoutRepeats({
 		...raw,
 		opportunities: raw.opportunities.map((o) => {
 			const relatedPrompts: ReportPrompt[] = o.relatedPrompts.map((text) => ({
 				text,
-				promptId: idByText.get(text.trim().toLowerCase()) ?? null,
+				promptId: idByText.get(normalizeText(text)) ?? null,
 			}));
 			const ids = relatedPrompts.map((p) => p.promptId).filter((id): id is string => id !== null);
 			return { ...o, relatedPrompts, ...citationsForPrompts(ids, digest.citationsByPrompt) };
 		}),
-	};
+	});
 }
 
 /** Generate the report, retrying until the model's output satisfies the schema.
@@ -487,13 +489,23 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" })
 		const lastEvaluatedAt = latest?.createdAt.toISOString() ?? null;
 		const isFresh = latest && Date.now() - new Date(latest.createdAt).getTime() < REFRESH_AFTER_DAYS * 86_400_000;
 		if (latest && isFresh) {
-			return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
+			return {
+				report: withoutRepeats(latest.report as OpportunitiesReport),
+				reason: null,
+				generatedFor: null,
+				lastEvaluatedAt,
+			};
 		}
 
 		const digest = await buildDigest(data.brandId, data.timezone);
 		if (!digest) {
 			if (latest)
-				return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
+				return {
+					report: withoutRepeats(latest.report as OpportunitiesReport),
+					reason: null,
+					generatedFor: null,
+					lastEvaluatedAt,
+				};
 			return { report: null, reason: "insufficient-data", generatedFor: null, lastEvaluatedAt };
 		}
 
@@ -502,7 +514,12 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" })
 		if (!generated) {
 			// Couldn't get a schema-valid report — serve the last good one if we have it.
 			if (latest)
-				return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
+				return {
+					report: withoutRepeats(latest.report as OpportunitiesReport),
+					reason: null,
+					generatedFor: null,
+					lastEvaluatedAt,
+				};
 			throw new Error("Failed to generate a valid opportunities report");
 		}
 

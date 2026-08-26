@@ -3,7 +3,7 @@
 	"root": false,
 	"extends": ["../../biome.json"],
 	"files": {
-		"includes": ["**/*", "!src/routeTree.gen.ts"],
+		"includes": ["**/*", "!src/routeTree.gen.ts", "!public"],
 		"ignoreUnknown": true
 	},
 	"overrides": [

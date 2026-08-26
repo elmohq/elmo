@@ -1,5 +1,5 @@
-import { Separator } from "@workspace/ui/components/separator";
 import { CardFooter } from "@workspace/ui/components/card";
+import { Separator } from "@workspace/ui/components/separator";
 
 interface ChartFooterProps {
 	children: React.ReactNode;

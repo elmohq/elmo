@@ -1,5 +1,5 @@
-import { createElement } from "react";
 import { DEFAULT_APP_NAME, ELMO_BRAND_COLOR } from "@workspace/config/constants";
+import { createElement } from "react";
 
 export const ACCENT_COLORS = ["#2563eb", "#f4d35e", "#ee964b", "#f95738"];
 export const DEFAULT_TAGLINE = "AI Search Optimization";

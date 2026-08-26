@@ -1,10 +1,10 @@
-import type { ReactNode } from "react";
-import { Inbox } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
-import type { TrackedTarget } from "@/lib/model-filter";
+import { Inbox } from "lucide-react";
+import type { ReactNode } from "react";
 import { FilterBar } from "@/components/filter-bar";
 import { FilterSection } from "@/components/page-header";
 import type { ListFilterState } from "@/hooks/use-list-filters";
+import type { TrackedTarget } from "@/lib/model-filter";
 
 interface FilteredListShellProps {
 	/** The page's `useListFilters()` result. */

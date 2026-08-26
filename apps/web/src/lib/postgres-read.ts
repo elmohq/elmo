@@ -5,14 +5,14 @@
  * on prompt_runs and citations tables.
  */
 
+import { getAllProviders } from "@workspace/lib/providers";
 import { type SQL, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { getAllProviders } from "@workspace/lib/providers";
 import {
-	UNAVAILABLE_SENTINEL,
 	type FanoutBreakdownRow,
 	type FanoutModelTotalRow,
 	type FanoutPromptTotalRow,
+	UNAVAILABLE_SENTINEL,
 } from "@/lib/fanout-analysis";
 import { parseModelFilter } from "@/lib/model-filter";
 

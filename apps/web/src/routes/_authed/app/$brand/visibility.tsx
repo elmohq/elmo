@@ -7,8 +7,8 @@
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PromptsDisplay } from "@/components/prompts-display";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import { coercePromptOrder, DEFAULT_PROMPT_ORDER, type PromptOrder } from "@/lib/prompt-order";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/$brand/visibility")({
 	// The prompts list's sort order (#60) is this route's own search key, on top

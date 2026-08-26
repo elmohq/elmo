@@ -4,8 +4,9 @@
  * Thin wrapper around @workspace/deployment's getDeployment().
  * All auth is handled by better-auth — the Deployment is pure config.
  */
-import { getDeployment as getDeploymentBase } from "@workspace/deployment";
+
 import type { Deployment } from "@workspace/config/types";
+import { getDeployment as getDeploymentBase } from "@workspace/deployment";
 
 export type { Deployment };
 
