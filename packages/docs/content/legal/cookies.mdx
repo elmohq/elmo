@@ -14,7 +14,7 @@ This policy explains what **Blue Whale Software, LLC** stores in your browser wh
 - Our web analytics is cookieless today — [Plausible](https://plausible.io/privacy-focused-web-analytics), which sets **no cookies**. Most of what we know about our website traffic comes from it.
 - **Where consent is required — currently the EEA, the UK, and Switzerland — we set no analytics or advertising cookie until you accept one.** A banner asks on your first visit; nothing but strictly necessary storage is written before you answer.
 - Everywhere else, analytics and advertising cookies are on by default, and you can turn them off from the **Cookie preferences** control on our site.
-- We don't currently run session replay or screen recording.
+- Where we run **session replay**, it sits in the analytics category and follows your analytics choice — so in a consent region nothing is recorded until you accept.
 
 ## Categories
 
@@ -40,6 +40,8 @@ Helps us understand what people do with Elmo so we know what to build and fix.
 | --- | --- | --- | --- |
 | *(no cookie)* | [Plausible](https://plausible.io/privacy-focused-web-analytics) | Aggregate page views and referrers. Cookieless — nothing is stored on your device and no cross-site identifier is created. | n/a |
 | `ph_*_posthog` and related `localStorage` entries | [PostHog](https://posthog.com/privacy) | Distinguishes one browser from another so we can count unique visitors and follow a flow through the product | Up to 1 year |
+| `_ga`, `_ga_*` | [Google Analytics](https://business.safety.google/privacy/) | Distinguishes visitors and sessions for traffic reporting | Up to 2 years |
+| `_clck`, `_clsk` | [Microsoft Clarity](https://privacy.microsoft.com/privacystatement) | Ties a session replay and its interaction data to one visitor | Up to 1 year |
 
 ### Advertising
 

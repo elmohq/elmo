@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { useEffect, useState } from "react";
-import { HeadContent, Outlet, ScriptOnce, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
+import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { NotFound } from "@/router-default-components";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import MissingEnvPage from "@/components/missing-env-page";
 import { usesWordmarkFont } from "@/components/logo";
 import queryDevtools from "@/integrations/tanstack-query/devtools";
 import { initAnalytics } from "@/lib/posthog";
+import { initClarity } from "@/lib/clarity";
 import { getConsentRegion } from "@/lib/consent-region";
 import { isConsentRequired } from "@workspace/ui/lib/cookie-consent";
 import { legalUrl } from "@workspace/config/legal";
@@ -62,12 +63,6 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 		const branding = match.context?.clientConfig?.branding;
 		const analytics = match.context?.clientConfig?.analytics;
 		const scripts = [];
-		if (analytics?.clarityProjectId) {
-			scripts.push({
-				src: `https://www.clarity.ms/tag/${analytics.clarityProjectId}`,
-				async: true,
-			});
-		}
 		if (analytics?.plausibleDomain) {
 			scripts.push({
 				src: "/api/plausible/js/script",
@@ -175,15 +170,17 @@ function RootComponent() {
 	const [consentRequired, setConsentRequired] = useState<boolean | null>(null);
 
 	useEffect(() => {
-		if (!posthogKey) return;
-		if (!asksForConsent) return initAnalytics(posthogKey, false);
+		const required = asksForConsent ? isConsentRequired(consentRegion ?? null) : false;
+		if (asksForConsent) setConsentRequired(required);
 
-		const required = isConsentRequired(consentRegion ?? null);
-		setConsentRequired(required);
-		return initAnalytics(posthogKey, required);
-	}, [posthogKey, asksForConsent, consentRegion]);
-
-	const clarityQueueScript = `window.clarity=window.clarity||function(){(window.clarity.q=window.clarity.q||[]).push(arguments)};`;
+		const stops = [
+			posthogKey ? initAnalytics(posthogKey, required) : undefined,
+			clarityProjectId ? initClarity(clarityProjectId, required) : undefined,
+		];
+		return () => {
+			for (const stop of stops) stop?.();
+		};
+	}, [posthogKey, clarityProjectId, asksForConsent, consentRegion]);
 
 	// Only swap in the missing-env page once we actually know env is invalid —
 	// envValidation is absent while a navigation's root beforeLoad is in flight.
@@ -204,7 +201,6 @@ function RootComponent() {
 	return (
 		<html lang="en">
 			<head>
-				{clarityProjectId && <ScriptOnce>{clarityQueueScript}</ScriptOnce>}
 				<HeadContent />
 			</head>
 			<body className="font-sans antialiased">

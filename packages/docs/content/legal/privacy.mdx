@@ -43,12 +43,9 @@ We log IP addresses when an account is created and when people sign in, and use 
 
 We collect information about browsing activity on our websites and in the product for analytics, product development, and marketing measurement — things like which pages were visited, how long they took to load, what referred you, which features got used, and general browser and device information.
 
-We use more than one analytics tool, and they behave differently. Today that means:
+We use more than one analytics tool and they behave differently. Some are cookieless. Others set cookies or store an identifier in your browser, and those only load where we're allowed to load them — see [Advertising and cookies](#advertising-and-cookies) below. Whichever we're using at a given time is listed at [Subprocessors](/legal/subprocessors); today that includes [Plausible](https://plausible.io/privacy-focused-web-analytics) for cookieless web analytics and [PostHog](https://posthog.com/privacy) for product analytics. We proxy some of them through our own domain so they aren't blocked by ad blockers.
 
-- **[Plausible](https://plausible.io/privacy-focused-web-analytics)** for web analytics. It is cookieless: it stores nothing on your device and creates no cross-site identifier. We proxy it through our own domain so it isn't blocked by ad blockers.
-- **[PostHog](https://posthog.com/privacy)** for product analytics. It **does** set cookies and store an identifier in your browser, so on our marketing site we only load it where we're allowed to — see [Advertising and cookies](#advertising-and-cookies) below. Inside the product it's tied to your account and used to understand which features get used.
-
-We don't currently run session replay or screen recording.
+Some analytics tools record how a page was used, including **session replay** — a reconstruction of a visit showing clicks, scrolling, and the content that was on screen. Where we run it, it counts as analytics and follows your analytics choice. These tools mask text you type into forms by default, and we don't use them to read the content of your account.
 
 ### Advertising and cookies
 

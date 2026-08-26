@@ -1,5 +1,5 @@
 import type { PostHog } from "posthog-js";
-import { onConsentChange, readConsent, resolveConsent } from "@workspace/ui/lib/cookie-consent";
+import { onAnalyticsConsent } from "@workspace/ui/lib/cookie-consent";
 
 const POSTHOG_HOST = "https://var.elmohq.com";
 
@@ -52,15 +52,10 @@ function stop(): void {
  * answer for the rest of the session. Returns an unsubscribe.
  */
 export function initAnalytics(apiKey: string, consentRequired: boolean): () => void {
-	if (typeof window === "undefined") return () => {};
-
-	const apply = (analytics: boolean) => {
-		if (analytics) void load(apiKey).then(() => instance?.opt_in_capturing());
+	return onAnalyticsConsent(consentRequired, (allowed) => {
+		if (allowed) void load(apiKey).then(() => instance?.opt_in_capturing());
 		else stop();
-	};
-
-	apply(resolveConsent(readConsent(), consentRequired).analytics);
-	return onConsentChange((consent) => apply(consent.analytics));
+	});
 }
 
 export function identifyUser(userId: string, properties?: Record<string, string | number | boolean | undefined>): void {

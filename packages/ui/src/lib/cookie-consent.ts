@@ -153,6 +153,17 @@ export function isConsentRequired(fromEdge: boolean | null): boolean {
 }
 
 /**
+ * Call `apply` with the visitor's current analytics answer, and again whenever
+ * it changes. Returns an unsubscribe. Every analytics tool goes through this,
+ * so they can't drift apart on what the same answer means.
+ */
+export function onAnalyticsConsent(consentRequired: boolean, apply: (allowed: boolean) => void): () => void {
+	if (typeof window === "undefined") return () => {};
+	apply(resolveConsent(readConsent(), consentRequired).analytics);
+	return onConsentChange((consent) => apply(consent.analytics));
+}
+
+/**
  * What the visitor's answer means right now. With no answer on file, consent
  * regions get nothing and everywhere else gets analytics — plus advertising,
  * unless the browser is already asking us not to.
