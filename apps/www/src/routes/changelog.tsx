@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ArrowUpRight, GitCompare } from "lucide-react";
 import { Footer } from "@/components/footer";
+import { List } from "@/components/list";
 import { Navbar } from "@/components/navbar";
 import { type ChangelogIssue, getGitHubChangelog } from "@/lib/github-changelog";
 import { getGitHubReleases, type ReleaseEntry } from "@/lib/github-releases";
@@ -180,15 +181,11 @@ function ChangelogPage() {
 									<h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
 										{group.label}
 									</h3>
-									<ul
-										// biome-ignore lint/a11y/noRedundantRoles: Tailwind's preflight strips list-style, which makes Safari drop list semantics; the role restores them.
-										role="list"
-										className="space-y-2"
-									>
+									<List className="space-y-2">
 										{group.issues.map((issue) => (
 											<IssueRow key={issue.number} issue={issue} />
 										))}
-									</ul>
+									</List>
 								</div>
 							))}
 						</div>
