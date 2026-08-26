@@ -288,6 +288,7 @@ function AdminDashboard() {
 		}
 	};
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: loads once on mount; the fetcher is rebuilt every render, so listing it would loop
 	useEffect(() => {
 		fetchBrandStats();
 	}, []);

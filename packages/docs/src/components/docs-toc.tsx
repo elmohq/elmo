@@ -34,6 +34,7 @@ function TocThumb({ containerRef }: { containerRef: React.RefObject<HTMLElement 
 		element.style.setProperty("--toc-height", `${lower - upper}px`);
 	}
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: observes the container once; listing the callback would tear down and rebuild the observer every render
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
