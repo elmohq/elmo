@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, ArrowUpRight, Home } from "lucide-react";
-import { List } from "@/components/list";
 import { Footer } from "./footer";
 import { Navbar } from "./navbar";
 
@@ -55,7 +54,7 @@ export function NotFound() {
 				<section className="border-b border-zinc-200 bg-zinc-50 py-12 lg:py-16">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
 						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ POPULAR DESTINATIONS</p>
-						<List className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+						<ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 							{suggestedLinks.map((link) => (
 								<li key={link.href}>
 									<a
@@ -70,7 +69,7 @@ export function NotFound() {
 									</a>
 								</li>
 							))}
-						</List>
+						</ul>
 					</div>
 				</section>
 			</main>

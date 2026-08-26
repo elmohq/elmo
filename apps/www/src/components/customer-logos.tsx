@@ -1,5 +1,3 @@
-import { List } from "@/components/list";
-
 interface Customer {
 	name: string;
 	url: string;
@@ -124,7 +122,7 @@ export function CustomerLogosInline() {
 			<p className="flex h-5 items-center font-mono text-[10px] uppercase leading-none tracking-[0.2em] text-zinc-500">
 				Trusted by
 			</p>
-			<List className="flex flex-wrap items-center gap-x-6 gap-y-3">
+			<ul className="flex flex-wrap items-center gap-x-6 gap-y-3">
 				{customers.map((c) => (
 					<li key={c.name} className="flex h-5 items-center">
 						<a
@@ -138,7 +136,7 @@ export function CustomerLogosInline() {
 						</a>
 					</li>
 				))}
-			</List>
+			</ul>
 		</div>
 	);
 }

@@ -11,6 +11,20 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@layer base {
+	/* Tailwind's preflight resets `list-style: none` on every list, and Safari
+	   stops treating an element styled that way as a list — so VoiceOver never
+	   announces "list, 5 items". An empty string removes the marker without
+	   costing the semantics, which `role="list"` would otherwise have to put
+	   back by hand on every list.
+	   https://www.matuzo.at/blog/2023/removing-list-styles-without-affecting-semantics */
+	ol,
+	ul,
+	menu {
+		list-style-type: "";
+	}
+}
+
 @theme inline {
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
