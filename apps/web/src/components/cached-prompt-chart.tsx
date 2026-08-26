@@ -35,9 +35,9 @@ export interface CachedPromptChartProps {
 	lookback: LookbackPeriod;
 	/** Current model filter from the URL. "all" = no filter. */
 	selectedModel?: string;
-	/** Concrete model ids this brand runs — passed down so the export / optimize
-	 *  button can offer them; don't include the "all" sentinel here. */
-	availableModels?: string[];
+	/** The targets this brand runs, as filter values — passed down so the export /
+	 *  optimize button can offer them; don't include the "all" sentinel here. */
+	availableModels: string[];
 	searchHighlight?: string;
 	/** Distinguishes first evaluation from an empty selected time window. */
 	hasEverBeenEvaluated?: boolean;
@@ -52,7 +52,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 	brandId,
 	lookback = "1m",
 	selectedModel = "all",
-	availableModels = [],
+	availableModels,
 	searchHighlight = "",
 	hasEverBeenEvaluated = false,
 }: CachedPromptChartProps) {

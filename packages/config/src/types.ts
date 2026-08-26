@@ -77,14 +77,14 @@ export interface ClientConfig {
 }
 
 export interface WebQueryResult {
+	/** Top web query over the requested window, for the requested model. */
 	webQuery: string | null;
-	modelWebQueries: Record<string, string>;
 }
 
 export interface OptimizeButtonProps {
 	brandId?: string;
 	selectedModel?: string;
-	availableModels?: string[];
+	availableModels: string[];
 	lookback?: "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 	promptName?: string;
 	promptId?: string;
