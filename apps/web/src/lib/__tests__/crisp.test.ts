@@ -1,8 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
 
+/**
+ * Loads ../crisp, the module under test, fresh for each case.
+ *
+ * It cannot be a top-level import: the module latches `initialized` on first
+ * load because the chatbox must only ever be loaded once, so a single shared
+ * instance would leave every case after the first talking to an already
+ * initialised module.
+ */
+async function loadCrisp() {
+	vi.resetModules();
+	return import("../crisp");
+}
+
 // The unit project runs in Node, so stand up just enough of the two browser
-// globals the loader touches.
+// globals the module touches.
 interface ScriptStub {
 	src: string;
 	async: boolean;
@@ -17,12 +30,6 @@ function installBrowserGlobals(): void {
 		createElement: () => ({ src: "", async: false }) as ScriptStub,
 		head: { appendChild: (node: ScriptStub) => appendedScripts.push(node) },
 	});
-}
-
-/** Fresh module per case — the loader deliberately only ever runs once. */
-async function loadCrisp() {
-	vi.resetModules();
-	return import("../crisp");
 }
 
 function queue(): unknown[][] {
