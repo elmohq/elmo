@@ -1,6 +1,7 @@
 "use client";
 
 import { IconChevronDown, IconExternalLink } from "@tabler/icons-react";
+import { getModelMeta } from "@workspace/config/models";
 import type { OptimizeButtonProps } from "@workspace/config/types";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -33,23 +34,10 @@ function generateOptimizationUrl(urlTemplate: string, promptValue: string, brand
 		.replace("{webQuery}", encodeURIComponent(webQuery));
 }
 
-function getModelDisplayName(model: string): string {
-	switch (model) {
-		case "openai":
-			return "ChatGPT";
-		case "anthropic":
-			return "Claude";
-		case "google":
-			return "Gemini";
-		default:
-			return model;
-	}
-}
-
 export function OptimizeButton({
 	brandId,
 	selectedModel = "all",
-	availableModels = ["openai", "anthropic", "google"],
+	availableModels = ["chatgpt", "claude", "gemini"],
 	lookback = "1m",
 	promptName,
 	promptId,
@@ -127,7 +115,7 @@ export function OptimizeButton({
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-48">
 				{availableModels.map((model, index) => {
-					const modelName = getModelDisplayName(model);
+					const modelName = getModelMeta(model).label;
 					const loading = isLoading(model);
 					return (
 						<Fragment key={model}>
