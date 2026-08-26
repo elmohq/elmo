@@ -14,6 +14,7 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
 import { useAuth } from "@/hooks/use-auth";
+import { resetCrispSession } from "@/lib/crisp";
 import { resetPostHog } from "@/lib/posthog";
 
 /** `canSwitchBrand` is false on gate pages, where /app just redirects back. */
@@ -118,6 +119,7 @@ export function NavUser({ canSwitchBrand = true }: { canSwitchBrand?: boolean } 
 									fetchOptions: {
 										onSuccess: () => {
 											resetPostHog();
+											resetCrispSession();
 											window.location.href = "/auth/logout";
 										},
 									},

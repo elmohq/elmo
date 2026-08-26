@@ -9,6 +9,7 @@ import titanOneFont from "@fontsource/titan-one/files/titan-one-latin-400-normal
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { type ReactNode, useEffect } from "react";
 import { NotFound } from "@/components/not-found";
+import { initCrisp } from "@/lib/crisp";
 import { getGitHubStars } from "@/lib/github-stars";
 import { getMarketingOgImage } from "@/lib/og";
 import { initPostHog } from "@/lib/posthog";
@@ -96,6 +97,7 @@ export const Route = createRootRoute({
 function RootComponent() {
 	useEffect(() => {
 		initPostHog();
+		initCrisp();
 	}, []);
 
 	return (
