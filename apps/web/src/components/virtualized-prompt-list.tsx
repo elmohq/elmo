@@ -1,5 +1,5 @@
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
 import { CachedPromptChart } from "./cached-prompt-chart";
 
@@ -48,28 +48,22 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
 		}
 	}, []);
 
-	const promptsKey = useMemo(() => {
-		return orderedPrompts.map((p) => p.id).join(",");
-	}, [orderedPrompts]);
-
 	// Uniform height estimate — all cards (loading, empty, full) have matching content areas
 	const estimateSize = useCallback(() => CHART_CARD_HEIGHT + CHART_GAP, []);
+
+	// Cards are measured as they render (measureElement below), so those
+	// measurements have to follow the prompt rather than the slot it happened to
+	// occupy — otherwise filtering the list leaves each row wearing the height of
+	// whatever used to be at its index.
+	const getItemKey = useCallback((index: number) => orderedPrompts[index].id, [orderedPrompts]);
 
 	const virtualizer = useWindowVirtualizer({
 		count: orderedPrompts.length,
 		estimateSize,
+		getItemKey,
 		overscan: 3, // Render 3 extra items above and below viewport
 		scrollMargin,
 	});
-
-	// Force virtualizer to recalculate when prompts list changes (e.g., after filtering)
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the key is the trigger — the effect exists to remeasure when the list changes, not to read it
-	useEffect(() => {
-		const timer = setTimeout(() => {
-			virtualizer.measure();
-		}, 50);
-		return () => clearTimeout(timer);
-	}, [virtualizer, promptsKey]);
 
 	const virtualItems = virtualizer.getVirtualItems();
 
