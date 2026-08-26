@@ -180,7 +180,11 @@ function ChangelogPage() {
 									<h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
 										{group.label}
 									</h3>
-									<ul role="list" className="space-y-2">
+									<ul
+										// biome-ignore lint/a11y/noRedundantRoles: Tailwind's preflight strips list-style, which makes Safari drop list semantics; the role restores them.
+										role="list"
+										className="space-y-2"
+									>
 										{group.issues.map((issue) => (
 											<IssueRow key={issue.number} issue={issue} />
 										))}

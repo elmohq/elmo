@@ -192,7 +192,11 @@ function RoadmapPage() {
 								<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600">/ ON DECK</p>
 								<h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Upcoming Features</h2>
 							</div>
-							<ul role="list" className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
+							<ul
+								// biome-ignore lint/a11y/noRedundantRoles: Tailwind's preflight strips list-style, which makes Safari drop list semantics; the role restores them.
+								role="list"
+								className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4"
+							>
 								{upcoming.map((h) => (
 									<li key={h.title} className="flex">
 										<HighlightCard highlight={h} />
@@ -210,7 +214,11 @@ function RoadmapPage() {
 							<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ ISSUES</p>
 							<h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Trending and Recent Issues</h2>
 						</div>
-						<ul role="list" className="space-y-2">
+						<ul
+							// biome-ignore lint/a11y/noRedundantRoles: Tailwind's preflight strips list-style, which makes Safari drop list semantics; the role restores them.
+							role="list"
+							className="space-y-2"
+						>
 							{popularIssues.map((issue) => (
 								<IssueRow key={issue.number} issue={issue} />
 							))}
