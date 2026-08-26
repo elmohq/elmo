@@ -3,13 +3,13 @@
 import { cn } from "@workspace/ui/lib/utils";
 import { AnchorProvider, ScrollProvider, TOCItem, type TOCItemType, useActiveAnchors } from "fumadocs-core/toc";
 import { useOnChange } from "fumadocs-core/utils/use-on-change";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 function TocThumb({ containerRef }: { containerRef: React.RefObject<HTMLElement | null> }) {
 	const thumbRef = useRef<HTMLDivElement>(null);
 	const active = useActiveAnchors();
 
-	function update() {
+	const update = useCallback(() => {
 		const container = containerRef.current;
 		const element = thumbRef.current;
 		if (!container || !element) return;
@@ -32,16 +32,15 @@ function TocThumb({ containerRef }: { containerRef: React.RefObject<HTMLElement 
 
 		element.style.setProperty("--toc-top", `${upper}px`);
 		element.style.setProperty("--toc-height", `${lower - upper}px`);
-	}
+	}, [containerRef, active]);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: observes the container once; listing the callback would tear down and rebuild the observer every render
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
 		const observer = new ResizeObserver(update);
 		observer.observe(container);
 		return () => observer.disconnect();
-	}, [containerRef]);
+	}, [containerRef, update]);
 
 	useOnChange(active, update);
 

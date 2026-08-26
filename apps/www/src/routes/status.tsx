@@ -138,8 +138,12 @@ function HoverTip({
 			closeTimer.current = null;
 		}
 	};
-	// biome-ignore lint/correctness/useExhaustiveDependencies: registers the unmount cleanup once; the timer it clears lives in a ref
-	useEffect(() => cancelClose, []);
+	useEffect(
+		() => () => {
+			if (closeTimer.current) clearTimeout(closeTimer.current);
+		},
+		[],
+	);
 
 	const show = (el: HTMLElement) => {
 		const rect = el.getBoundingClientRect();
