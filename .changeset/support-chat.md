@@ -4,4 +4,4 @@
 "@workspace/config": patch
 ---
 
-Adds a chat widget for reaching the team, on the marketing site and in Elmo Cloud and the demo.
+Adds a chat widget for asking questions to the team for Elmo Cloud.
