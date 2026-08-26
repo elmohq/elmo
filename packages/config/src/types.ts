@@ -5,7 +5,7 @@ export interface FeaturesConfig {
 	showOptimizeButton: boolean;
 	/**
 	 * Whether the user can create new brands from the UI. True in local and
-	 * cloud modes — whitelabel orgs come from Auth0, demo is read-only.
+	 * cloud modes — whitelabel brands come from the admin API, demo is read-only.
 	 */
 	canCreateBrands: boolean;
 	/**
