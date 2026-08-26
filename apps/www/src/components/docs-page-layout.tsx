@@ -39,18 +39,36 @@ async function onFeedback(feedback: PageFeedback): Promise<ActionResponse> {
 	return { success: true };
 }
 
+/**
+ * The rendered page body. Its own component so useMDXComponents runs at the
+ * top level of one, rather than inside the loader's render callback.
+ */
+function DocsArticle({
+	title,
+	description,
+	MDX,
+}: {
+	title: string;
+	description?: string;
+	MDX: React.FC<{ components: ReturnType<typeof useMDXComponents> }>;
+}) {
+	return (
+		<article className="prose prose-zinc min-w-0 max-w-none flex-1">
+			<h1>{title}</h1>
+			{description && <p className="lead text-muted-foreground">{description}</p>}
+			<MDX components={useMDXComponents()} />
+			<div className="not-prose">
+				<Feedback onSendAction={onFeedback} />
+			</div>
+		</article>
+	);
+}
+
 export const clientLoader = browserCollections.docs.createClientLoader({
 	component({ toc, frontmatter, default: MDX }, _props: undefined) {
 		return (
 			<div className="flex gap-10">
-				<article className="prose prose-zinc min-w-0 max-w-none flex-1">
-					<h1>{frontmatter.title}</h1>
-					{frontmatter.description && <p className="lead text-muted-foreground">{frontmatter.description}</p>}
-					<MDX components={useMDXComponents()} />
-					<div className="not-prose">
-						<Feedback onSendAction={onFeedback} />
-					</div>
-				</article>
+				<DocsArticle title={frontmatter.title} description={frontmatter.description} MDX={MDX} />
 
 				{toc.length > 0 && (
 					<aside className="hidden w-48 shrink-0 lg:block">
@@ -175,6 +193,14 @@ function OpenApiContent({
 	);
 }
 
+/**
+ * The MDX page for a path. Wrapping useContent in a component keeps the hook
+ * out of the branch that chooses between MDX and the OpenAPI renderer.
+ */
+function MdxContent({ path }: { path: string }) {
+	return clientLoader.useContent(path);
+}
+
 export function DocsPageLayout({ loaderData }: { loaderData: LoaderData }) {
 	const data = useFumadocsLoader(loaderData);
 
@@ -195,7 +221,9 @@ export function DocsPageLayout({ loaderData }: { loaderData: LoaderData }) {
 								<OpenApiContent title={data.title} description={data.description} apiProps={data.apiProps} />
 							) : (
 								<>
-									<Suspense>{clientLoader.useContent(data.path)}</Suspense>
+									<Suspense>
+										<MdxContent path={data.path} />
+									</Suspense>
 									<DocsPageActions filePath={data.filePath} mdUrl={docsMarkdownPath(data.slugs)} />
 								</>
 							)}
