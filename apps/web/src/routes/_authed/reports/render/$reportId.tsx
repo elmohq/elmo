@@ -19,6 +19,7 @@ import {
 	getSoVColor,
 	getSoVLevel,
 	type PromptCategory,
+	type PromptSoV,
 	type ReportPromptRun,
 	selectRepresentativePrompts,
 } from "@workspace/lib/report-metrics";
@@ -91,6 +92,9 @@ function isPromptBranded(promptValue: string, brandName: string, brandWebsite: s
 	}
 }
 
+/** The stored report a render reads from — whatever the loader resolved. */
+type ReportRecord = NonNullable<Awaited<ReturnType<typeof loadReportData>>>;
+
 // ---------- Route ----------
 
 export const Route = createFileRoute("/_authed/reports/render/$reportId")({
@@ -116,21 +120,129 @@ function sovBgColor(sov: number | null): string {
 
 // ---------- Main component ----------
 
-function ReportRenderPage() {
-	const { report } = Route.useLoaderData();
-	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
-	const branding = context.clientConfig?.branding;
+/** A stored run as the print chart reads it — far fewer fields than a live one. */
+type ChartRun = any;
 
-	if (report.status !== "completed") {
-		return (
-			<div className="max-w-3xl mx-auto p-8 text-center">
-				<p className="text-slate-500">
-					Report status: <span className="font-medium">{report.status}</span>
-				</p>
-			</div>
-		);
+/** Flatten the snapshot's nested runs into the three shapes the report reads. */
+function flattenPromptRuns(promptRuns: PromptRunResult[]): {
+	simpleRuns: ReportPromptRun[];
+	fullRuns: FullPromptRun[];
+	chartRuns: ChartRun[];
+} {
+	const simpleRuns: ReportPromptRun[] = [];
+	const fullRuns: FullPromptRun[] = [];
+	const chartRuns: ChartRun[] = [];
+
+	promptRuns.forEach((promptRun, promptIndex) => {
+		const promptId = `prompt-${promptIndex + 1}`;
+		promptRun.runs.forEach((run, runIndex) => {
+			simpleRuns.push({ promptId, brandMentioned: run.brandMentioned, competitorsMentioned: run.competitorsMentioned });
+			fullRuns.push({
+				promptId,
+				promptValue: promptRun.promptValue,
+				brandMentioned: run.brandMentioned,
+				competitorsMentioned: run.competitorsMentioned,
+				webQueries: run.webQueries || [],
+				textContent: run.textContent || "",
+				model: run.model,
+			});
+			chartRuns.push({
+				id: `run-${promptIndex}-${runIndex}`,
+				promptId,
+				brandMentioned: run.brandMentioned,
+				competitorsMentioned: run.competitorsMentioned,
+				createdAt: new Date(),
+				model: run.model,
+				version: run.version,
+				webSearchEnabled: run.webSearchEnabled,
+				rawOutput: run.rawOutput,
+				webQueries: run.webQueries,
+			});
+		});
+	});
+
+	return { simpleRuns, fullRuns, chartRuns };
+}
+
+/** Competitors by name, case-insensitively, with the brand itself dropped. */
+function dedupeCompetitors(competitors: CompetitorResult[], isBrandName: (name: string) => boolean) {
+	const seen = new Set<string>();
+	return competitors.filter((competitor) => {
+		const key = competitor.name.toLowerCase().trim();
+		if (isBrandName(competitor.name) || seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
+}
+
+/** A query is noise below this length; the report never shows it. */
+const MIN_QUERY_LENGTH = 3;
+
+/** How many of the report's search-query slots go to the most frequent queries. */
+const TOP_QUERIES_BY_FREQUENCY = 3;
+const TOP_QUERIES_TOTAL = 6;
+
+/**
+ * The searches the report shows: the most frequent ones first, then ones that
+ * produced a brand mention, then whatever frequency has left to fill the table.
+ * Ordered by competitor pressure, which is what the surrounding copy discusses.
+ */
+function buildTopSearchQueries(fullRuns: FullPromptRun[], allWebQueries: { query: string; count: number }[]) {
+	const mentionsByQuery = new Map<string, { brandMentioned: boolean; competitorCount: number }>();
+	for (const run of fullRuns) {
+		for (const query of run.webQueries || []) {
+			const normalized = query.toLowerCase().trim();
+			if (normalized.length < MIN_QUERY_LENGTH) continue;
+			const existing = mentionsByQuery.get(normalized);
+			if (!existing) {
+				mentionsByQuery.set(normalized, {
+					brandMentioned: run.brandMentioned,
+					competitorCount: run.competitorsMentioned.length,
+				});
+				continue;
+			}
+			existing.brandMentioned ||= run.brandMentioned;
+			existing.competitorCount = Math.max(existing.competitorCount, run.competitorsMentioned.length);
+		}
 	}
 
+	const enriched = allWebQueries.map((entry) => {
+		const mentions = mentionsByQuery.get(entry.query);
+		return {
+			...entry,
+			brandMentioned: mentions?.brandMentioned ?? false,
+			competitorCount: mentions?.competitorCount ?? 0,
+		};
+	});
+
+	const byFrequency = [...enriched].sort((a, b) => b.count - a.count);
+	const withBrand = byFrequency.filter((entry) => entry.brandMentioned);
+
+	const selected: typeof enriched = [];
+	const used = new Set<string>();
+	const fill = (candidates: typeof enriched, upTo: number) => {
+		for (const entry of candidates) {
+			if (selected.length >= upTo) return;
+			if (used.has(entry.query)) continue;
+			used.add(entry.query);
+			selected.push(entry);
+		}
+	};
+	fill(byFrequency, TOP_QUERIES_BY_FREQUENCY);
+	fill(withBrand, TOP_QUERIES_TOTAL);
+	fill(byFrequency, TOP_QUERIES_TOTAL);
+
+	return selected.sort((a, b) => b.competitorCount - a.competitorCount);
+}
+
+/**
+ * Everything the printed report renders, derived from the stored run data.
+ *
+ * The report is rebuilt from a snapshot rather than from live tables, so the
+ * brand, competitors and prompts are reconstructed as stand-ins with stable ids
+ * that the shared metric and chart helpers can key on.
+ */
+function buildReportModel(report: ReportRecord) {
 	const data: ReportData = report.rawOutput as ReportData;
 
 	const mockBrand = {
@@ -159,48 +271,11 @@ function ReportRenderPage() {
 		createdAt: new Date(),
 	}));
 
-	const simpleRuns: ReportPromptRun[] = [];
-	const fullRuns: FullPromptRun[] = [];
-	const chartRuns: any[] = [];
+	const { simpleRuns, fullRuns, chartRuns } = flattenPromptRuns(data.promptRuns);
 
-	data.promptRuns.forEach((pr, pi) => {
-		pr.runs.forEach((run, ri) => {
-			const promptId = `prompt-${pi + 1}`;
-			simpleRuns.push({ promptId, brandMentioned: run.brandMentioned, competitorsMentioned: run.competitorsMentioned });
-			fullRuns.push({
-				promptId,
-				promptValue: pr.promptValue,
-				brandMentioned: run.brandMentioned,
-				competitorsMentioned: run.competitorsMentioned,
-				webQueries: run.webQueries || [],
-				textContent: run.textContent || "",
-				model: run.model,
-			});
-			chartRuns.push({
-				id: `run-${pi}-${ri}`,
-				promptId,
-				brandMentioned: run.brandMentioned,
-				competitorsMentioned: run.competitorsMentioned,
-				createdAt: new Date(),
-				model: run.model,
-				version: run.version,
-				webSearchEnabled: run.webSearchEnabled,
-				rawOutput: run.rawOutput,
-				webQueries: run.webQueries,
-			});
-		});
-	});
-
-	// Deduplicate competitors by name (case-insensitive) and filter out brand
 	const brandNameLower = report.brandName.toLowerCase().trim();
 	const isBrandName = (name: string) => name.toLowerCase().trim() === brandNameLower;
-	const seenCompetitorNames = new Set<string>();
-	const filteredCompetitors = data.competitors.filter((c) => {
-		const key = c.name.toLowerCase().trim();
-		if (isBrandName(c.name) || seenCompetitorNames.has(key)) return false;
-		seenCompetitorNames.add(key);
-		return true;
-	});
+	const filteredCompetitors = dedupeCompetitors(data.competitors, isBrandName);
 
 	// Core metrics
 	const overallSoV = computeOverallSoV(simpleRuns, filteredCompetitors);
@@ -219,59 +294,12 @@ function ReportRenderPage() {
 	const competitorFreq = analyzeCompetitorFrequency(fullRuns, filteredCompetitors);
 	const engineBreakdown = analyzeByEngine(fullRuns);
 
-	// Enrich web queries with competitor mention data
-	const queryCompetitorMap = new Map<string, { brandMentioned: boolean; competitorCount: number }>();
-	for (const run of fullRuns) {
-		for (const query of run.webQueries || []) {
-			const normalized = query.toLowerCase().trim();
-			if (!normalized || normalized.length < 3) continue;
-			const existing = queryCompetitorMap.get(normalized);
-			const compCount = run.competitorsMentioned.length;
-			if (!existing) {
-				queryCompetitorMap.set(normalized, { brandMentioned: run.brandMentioned, competitorCount: compCount });
-			} else {
-				if (run.brandMentioned) existing.brandMentioned = true;
-				existing.competitorCount = Math.max(existing.competitorCount, compCount);
-			}
-		}
-	}
-	// Mix of top-frequency + brand-mentioned queries
-	const enrichedQueries = allWebQueries.map((q) => {
-		const extra = queryCompetitorMap.get(q.query);
-		return { ...q, brandMentioned: extra?.brandMentioned ?? false, competitorCount: extra?.competitorCount ?? 0 };
-	});
-	const topSearchQueries: typeof enrichedQueries = [];
-	const usedQueries = new Set<string>();
-	const byFrequency = [...enrichedQueries].sort((a, b) => b.count - a.count);
-	const withBrand = enrichedQueries.filter((q) => q.brandMentioned).sort((a, b) => b.count - a.count);
-	for (const q of byFrequency) {
-		if (topSearchQueries.length >= 3) break;
-		if (!usedQueries.has(q.query)) {
-			topSearchQueries.push(q);
-			usedQueries.add(q.query);
-		}
-	}
-	for (const q of withBrand) {
-		if (topSearchQueries.length >= 6) break;
-		if (!usedQueries.has(q.query)) {
-			topSearchQueries.push(q);
-			usedQueries.add(q.query);
-		}
-	}
-	for (const q of byFrequency) {
-		if (topSearchQueries.length >= 6) break;
-		if (!usedQueries.has(q.query)) {
-			topSearchQueries.push(q);
-			usedQueries.add(q.query);
-		}
-	}
-	topSearchQueries.sort((a, b) => b.competitorCount - a.competitorCount);
+	const topSearchQueries = buildTopSearchQueries(fullRuns, allWebQueries);
 
 	const sovLevel = getSoVLevel(overallSoV);
 	const sovColor = getSoVColor(overallSoV);
 	const totalPrompts = mockPrompts.length;
 	const promptsWithMentions = promptSoVs.filter((p) => p.brandMentionCount > 0).length;
-	const mentionRate = totalPrompts > 0 ? Math.round((promptsWithMentions / totalPrompts) * 100) : 0;
 
 	// Charts: 2 per page
 	const chartPairs: Array<typeof selectedPrompts> = [];
@@ -279,8 +307,143 @@ function ReportRenderPage() {
 		chartPairs.push(selectedPrompts.slice(i, i + 2));
 	}
 
+	return {
+		mockBrand,
+		mockCompetitors,
+		mockPrompts,
+		simpleRuns,
+		chartRuns,
+		isBrandName,
+		filteredCompetitors,
+		overallSoV,
+		competitorSoVs,
+		promptSoVs,
+		promptMap,
+		selectedPrompts,
+		contentGaps,
+		competitorFreq,
+		engineBreakdown,
+		topSearchQueries,
+		sovLevel,
+		sovColor,
+		totalPrompts,
+		promptsWithMentions,
+		chartPairs,
+	};
+}
+
+/** How far past the top competitor the goal is set, by how far behind the brand is. */
+function goalMargin(gap: number): number {
+	if (gap > 30) return 5;
+	if (gap > 15) return 8;
+	return 10;
+}
+
+/** Suggested article count, scaled to the size of the gap to close. */
+function articlesForGap(gap: number): number {
+	if (gap > 40) return 8;
+	if (gap > 25) return 6;
+	if (gap > 10) return 5;
+	return 4;
+}
+
+const MAX_OPPORTUNITIES = 5;
+
+/** Prompts where the leading competitor is ahead, and by how much. */
+function buildOpportunities(promptSoVs: PromptSoV[], promptMap: Map<string, MockPrompt>) {
 	return (
-		<div className="max-w-[780px] mx-auto bg-white print:max-w-none text-slate-900">
+		promptSoVs
+			.filter((p) => p.totalCompetitorMentions > 0)
+			.map((p) => {
+				const brandSoV = p.sov ?? 0;
+				const topCompetitorMentions = Math.max(...Object.values(p.competitorMentions), 0);
+				const totalMentions = p.brandMentionCount + p.totalCompetitorMentions;
+				const maxCompSoV = totalMentions > 0 ? Math.round((topCompetitorMentions / totalMentions) * 100) : 0;
+				const gap = maxCompSoV - brandSoV;
+				return {
+					promptValue: promptMap.get(p.promptId)?.value ?? p.promptId,
+					brandSoV,
+					maxCompSoV,
+					gap,
+					goalSoV: Math.min(100, maxCompSoV + goalMargin(gap)),
+					articleCount: articlesForGap(gap),
+				};
+			})
+			.filter((o) => o.gap > 0)
+			// A prompt the brand already shows up in is more actionable than one it is
+			// absent from, so those lead regardless of gap size.
+			.sort((a, b) => Number(b.brandSoV > 0) - Number(a.brandSoV > 0) || b.gap - a.gap)
+			.slice(0, MAX_OPPORTUNITIES)
+	);
+}
+
+function OpportunitiesTable({
+	promptSoVs,
+	promptMap,
+	brandName,
+}: {
+	promptSoVs: PromptSoV[];
+	promptMap: Map<string, MockPrompt>;
+	brandName: string;
+}) {
+	const opportunities = buildOpportunities(promptSoVs, promptMap);
+
+	if (opportunities.length === 0) {
+		return (
+			<div className="border border-slate-200 rounded-lg p-6 text-center">
+				<p className="text-slate-500 text-sm">{brandName} leads or matches competitors across all tested prompts.</p>
+			</div>
+		);
+	}
+
+	return (
+		<div className="border border-slate-200 rounded-lg overflow-hidden">
+			<table className="w-full">
+				<thead>
+					<tr className="bg-slate-50 border-b border-slate-200">
+						<TH align="left">Prompt</TH>
+						<TH align="center">Current SoV</TH>
+						<TH align="center">Top Competitor SoV</TH>
+						<TH align="center">Goal SoV</TH>
+						<TH align="left">Recommendation</TH>
+					</tr>
+				</thead>
+				<tbody className="divide-y divide-slate-100">
+					{opportunities.map((o) => (
+						<tr key={o.promptValue}>
+							<td className="py-2.5 px-4 text-xs text-slate-700 max-w-[200px] break-words leading-relaxed">
+								{o.promptValue}
+							</td>
+							<td className="py-2.5 px-4 text-center">
+								<span className={`text-xs font-semibold ${getSoVColor(o.brandSoV)}`}>{o.brandSoV}%</span>
+							</td>
+							<td className="py-2.5 px-4 text-center text-xs font-semibold text-slate-600">{o.maxCompSoV}%</td>
+							<td className="py-2.5 px-4 text-center text-xs font-semibold text-emerald-600">{o.goalSoV}%</td>
+							<td className="py-2.5 px-4 text-xs text-slate-600">
+								Write {o.articleCount} LLM-friendly articles on &ldquo;{o.promptValue}&rdquo;
+							</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</div>
+	);
+}
+
+type ReportModel = ReturnType<typeof buildReportModel>;
+
+function CoverPage({
+	report,
+	branding,
+	model,
+}: {
+	report: ReportRecord;
+	branding?: ClientConfig["branding"];
+	model: ReportModel;
+}) {
+	const { filteredCompetitors, overallSoV, sovLevel, sovColor, totalPrompts, promptsWithMentions } = model;
+	return (
+		<>
 			{/* ===== PAGE 1: COVER ===== */}
 			<div className="print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
 				<div className="h-[3px] bg-slate-800 -mx-10 print:-mx-0 mb-8" />
@@ -328,7 +491,32 @@ function ReportRenderPage() {
 
 				<PageFooter branding={branding} />
 			</div>
+		</>
+	);
+}
 
+function CompetitiveOverviewPage({
+	report,
+	branding,
+	model,
+}: {
+	report: ReportRecord;
+	branding?: ClientConfig["branding"];
+	model: ReportModel;
+}) {
+	const {
+		simpleRuns,
+		isBrandName,
+		overallSoV,
+		competitorSoVs,
+		competitorFreq,
+		engineBreakdown,
+		sovColor,
+		totalPrompts,
+		promptsWithMentions,
+	} = model;
+	return (
+		<>
 			{/* ===== PAGE 2: COMPETITIVE OVERVIEW ===== */}
 			<div className="print:break-before-page print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
 				<RunningHeader brand={report.brandName} />
@@ -453,7 +641,22 @@ function ReportRenderPage() {
 					<PageFooter branding={branding} />
 				</div>
 			</div>
+		</>
+	);
+}
 
+function PromptChartPages({
+	report,
+	branding,
+	model,
+}: {
+	report: ReportRecord;
+	branding?: ClientConfig["branding"];
+	model: ReportModel;
+}) {
+	const { mockBrand, mockCompetitors, chartRuns, promptMap, chartPairs } = model;
+	return (
+		<>
 			{/* ===== CHART PAGES ===== */}
 			{chartPairs.map((pair, pageIndex) => (
 				<div
@@ -496,7 +699,22 @@ function ReportRenderPage() {
 					</div>
 				</div>
 			))}
+		</>
+	);
+}
 
+function OpportunitiesPage({
+	report,
+	branding,
+	model,
+}: {
+	report: ReportRecord;
+	branding?: ClientConfig["branding"];
+	model: ReportModel;
+}) {
+	const { contentGaps, topSearchQueries } = model;
+	return (
+		<>
 			{/* ===== OPPORTUNITIES ===== */}
 			<div className="print:break-before-page print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
 				<RunningHeader brand={report.brandName} />
@@ -594,7 +812,22 @@ function ReportRenderPage() {
 					<PageFooter branding={branding} />
 				</div>
 			</div>
+		</>
+	);
+}
 
+function NextStepsPage({
+	report,
+	branding,
+	model,
+}: {
+	report: ReportRecord;
+	branding?: ClientConfig["branding"];
+	model: ReportModel;
+}) {
+	const { overallSoV, promptSoVs, promptMap, sovColor, totalPrompts, promptsWithMentions } = model;
+	return (
+		<>
 			{/* ===== SoV OPPORTUNITY + WHAT TO DO NEXT ===== */}
 			<div className="print:break-before-page print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
 				<RunningHeader brand={report.brandName} />
@@ -646,88 +879,19 @@ function ReportRenderPage() {
 					subtitle={`Prompts where competitors outperform ${report.brandName} — your biggest growth opportunities`}
 				/>
 
-				{(() => {
-					const opportunities = promptSoVs
-						.filter((p) => p.totalCompetitorMentions > 0)
-						.map((p) => {
-							const prompt = promptMap.get(p.promptId);
-							const brandSoV = p.sov ?? 0;
-							const topCompMentions = Math.max(...Object.values(p.competitorMentions), 0);
-							const denom = p.brandMentionCount + p.totalCompetitorMentions;
-							const maxCompSoV = denom > 0 ? Math.round((topCompMentions / denom) * 100) : 0;
-							const gap = maxCompSoV - brandSoV;
-							// Goal: match or slightly beat the top competitor
-							const margin = gap > 30 ? 5 : gap > 15 ? 8 : 10;
-							const goalSoV = Math.min(100, maxCompSoV + margin);
-							// Article count scales with gap
-							const articleCount = gap > 40 ? 8 : gap > 25 ? 6 : gap > 10 ? 5 : 4;
-							return {
-								promptValue: prompt?.value ?? p.promptId,
-								brandSoV,
-								maxCompSoV,
-								gap,
-								goalSoV,
-								articleCount,
-							};
-						})
-						.filter((o) => o.gap > 0)
-						// Prefer prompts where brand has SOME presence (more actionable), then by gap
-						.sort((a, b) => {
-							if (a.brandSoV > 0 && b.brandSoV === 0) return -1;
-							if (a.brandSoV === 0 && b.brandSoV > 0) return 1;
-							return b.gap - a.gap;
-						})
-						.slice(0, 5);
-
-					if (opportunities.length === 0) {
-						return (
-							<div className="border border-slate-200 rounded-lg p-6 text-center">
-								<p className="text-slate-500 text-sm">
-									{report.brandName} leads or matches competitors across all tested prompts.
-								</p>
-							</div>
-						);
-					}
-
-					return (
-						<div className="border border-slate-200 rounded-lg overflow-hidden">
-							<table className="w-full">
-								<thead>
-									<tr className="bg-slate-50 border-b border-slate-200">
-										<TH align="left">Prompt</TH>
-										<TH align="center">Current SoV</TH>
-										<TH align="center">Top Competitor SoV</TH>
-										<TH align="center">Goal SoV</TH>
-										<TH align="left">Recommendation</TH>
-									</tr>
-								</thead>
-								<tbody className="divide-y divide-slate-100">
-									{opportunities.map((o) => (
-										<tr key={o.promptValue}>
-											<td className="py-2.5 px-4 text-xs text-slate-700 max-w-[200px] break-words leading-relaxed">
-												{o.promptValue}
-											</td>
-											<td className="py-2.5 px-4 text-center">
-												<span className={`text-xs font-semibold ${getSoVColor(o.brandSoV)}`}>{o.brandSoV}%</span>
-											</td>
-											<td className="py-2.5 px-4 text-center text-xs font-semibold text-slate-600">{o.maxCompSoV}%</td>
-											<td className="py-2.5 px-4 text-center text-xs font-semibold text-emerald-600">{o.goalSoV}%</td>
-											<td className="py-2.5 px-4 text-xs text-slate-600">
-												Write {o.articleCount} LLM-friendly articles on &ldquo;{o.promptValue}&rdquo;
-											</td>
-										</tr>
-									))}
-								</tbody>
-							</table>
-						</div>
-					);
-				})()}
+				<OpportunitiesTable promptSoVs={promptSoVs} promptMap={promptMap} brandName={report.brandName} />
 
 				<div className="mt-auto">
 					<PageFooter branding={branding} />
 				</div>
 			</div>
+		</>
+	);
+}
 
+function CallToActionPage({ branding }: { branding?: ClientConfig["branding"] }) {
+	return (
+		<>
 			{/* ===== CTA ===== */}
 			<div className="print:break-before-page print:h-[9.5in] print:flex print:flex-col print:justify-center p-10 print:p-0">
 				<div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-10 text-center">
@@ -775,6 +939,40 @@ function ReportRenderPage() {
 					</div>
 				</div>
 			</div>
+		</>
+	);
+}
+
+function ReportRenderPage() {
+	const { report } = Route.useLoaderData();
+	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const branding = context.clientConfig?.branding;
+
+	if (report.status !== "completed") {
+		return (
+			<div className="max-w-3xl mx-auto p-8 text-center">
+				<p className="text-slate-500">
+					Report status: <span className="font-medium">{report.status}</span>
+				</p>
+			</div>
+		);
+	}
+
+	const model = buildReportModel(report);
+
+	return (
+		<div className="max-w-[780px] mx-auto bg-white print:max-w-none text-slate-900">
+			<CoverPage report={report} branding={branding} model={model} />
+
+			<CompetitiveOverviewPage report={report} branding={branding} model={model} />
+
+			<PromptChartPages report={report} branding={branding} model={model} />
+
+			<OpportunitiesPage report={report} branding={branding} model={model} />
+
+			<NextStepsPage report={report} branding={branding} model={model} />
+
+			<CallToActionPage branding={branding} />
 		</div>
 	);
 }
