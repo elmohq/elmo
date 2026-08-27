@@ -33,13 +33,11 @@ const ENGINES = [...platformTierMembers("scraped"), ...platformTierMembers("api"
 const RUNS_PER_DAY = PLANS.basic.standardRunsPerDay;
 
 interface Pitch {
-	eyebrow: string;
 	headline: string;
 	bullets: string[];
 }
 
 const CLOUD_PITCH: Pitch = {
-	eyebrow: "#1 Open Source Profound Alternative",
 	headline: "Know how AI talks about your brand.",
 	bullets: [
 		"Track your AI visibility on any model",
@@ -50,7 +48,6 @@ const CLOUD_PITCH: Pitch = {
 };
 
 const SELF_HOSTED_PITCH: Pitch = {
-	eyebrow: "#1 Open Source Profound Alternative",
 	headline: "Your AI visibility, on your own infrastructure.",
 	bullets: [
 		"Track your AI visibility on any model",
@@ -67,10 +64,7 @@ export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; so
 
 	return (
 		<div className="mx-auto flex w-full max-w-lg flex-col gap-8">
-			<div>
-				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">/ {pitch.eyebrow}</p>
-				<h2 className="mt-4 text-3xl font-semibold leading-[1.1] tracking-tight text-balance">{pitch.headline}</h2>
-			</div>
+			<h2 className="text-3xl font-semibold leading-[1.1] tracking-tight text-balance">{pitch.headline}</h2>
 
 			<ul className="space-y-2.5">
 				{pitch.bullets.map((bullet) => (
@@ -141,12 +135,15 @@ function CloudOffer({ source }: { source: ReferralSource }) {
 /**
  * The two ways to see Elmo without an account, offered as a genuine either/or —
  * poke at it alone, or have someone walk you through it.
+ *
+ * The question and its two answers read as one sentence, so they share a line
+ * wherever the panel is wide enough to hold them, and wrap together when not.
  */
 function TryBeforeYouBuy({ source }: { source: ReferralSource }) {
 	return (
-		<div className="rounded-lg border bg-card p-5">
+		<div className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-lg border bg-card p-5">
 			<h3 className="text-sm font-semibold">Try before you buy?</h3>
-			<div className="mt-4 flex flex-wrap items-center gap-3">
+			<div className="flex flex-wrap items-center gap-3">
 				<a
 					href={demoSiteUrl(source)}
 					target="_blank"
