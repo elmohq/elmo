@@ -19,20 +19,13 @@ import {
 	evaluateAuthedRouteGuard,
 	evaluateBrandRouteGuard,
 	evaluateDeploymentPolicy,
-	evaluatePlatformPicksEditable,
 	evaluateReadOnly,
 	evaluateRequireAdmin,
 	evaluateRequireCanCreateBrands,
 	type RequestInfo,
 	resolveBrandOrganization,
 } from "@/lib/auth/policies";
-import {
-	CLOUD_FEATURES,
-	createMockSession,
-	DEMO_FEATURES,
-	LOCAL_FEATURES,
-	WHITELABEL_FEATURES,
-} from "@/test/mocks/auth";
+import { createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
 
 // ============================================================================
 // Helpers
@@ -459,24 +452,6 @@ describe("evaluateRequireCanCreateBrands", () => {
 		expect(evaluateRequireCanCreateBrands(LOCAL_FEATURES.canCreateBrands)).toBe("allow");
 		expect(evaluateRequireCanCreateBrands(DEMO_FEATURES.canCreateBrands)).toBe("deny");
 		expect(evaluateRequireCanCreateBrands(WHITELABEL_FEATURES.canCreateBrands)).toBe("deny");
-	});
-});
-
-describe("evaluatePlatformPicksEditable", () => {
-	it("lets local and cloud viewers choose their own platforms", () => {
-		expect(evaluatePlatformPicksEditable(LOCAL_FEATURES.platformPicksEditable)).toBe("allow");
-		expect(evaluatePlatformPicksEditable(CLOUD_FEATURES.platformPicksEditable)).toBe("allow");
-	});
-
-	it("denies demo, which refuses every write", () => {
-		expect(evaluatePlatformPicksEditable(DEMO_FEATURES.platformPicksEditable)).toBe("deny");
-	});
-
-	it("denies whitelabel, where the picks are the agency's", () => {
-		// The reason it is declared per mode rather than derived: whitelabel is
-		// writable and its entitlements read "unlimited", exactly like local.
-		expect(WHITELABEL_FEATURES.readOnly).toBe(false);
-		expect(evaluatePlatformPicksEditable(WHITELABEL_FEATURES.platformPicksEditable)).toBe("deny");
 	});
 });
 

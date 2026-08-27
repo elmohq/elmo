@@ -21,8 +21,13 @@ import { defaultPlatformPicks, resolveBrandPicks } from "@workspace/lib/run-poli
 import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess, requireOrgAccess } from "@/lib/auth/helpers";
-import { evaluatePlatformPicksEditable } from "@/lib/auth/policies";
+import {
+	canEditPlatformPicks,
+	requireAuthSession,
+	requireBrandAccess,
+	requireOrgAccess,
+	requirePlatformPicksEditable,
+} from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { addedPlatforms } from "@/lib/run-config-changes";
@@ -146,22 +151,6 @@ function optionsByModel(
 }
 
 /**
- * Who owns the platform picks: the person looking, or whoever runs the
- * deployment for them. Read by the page to decide between a picker and a
- * report, and by every write path so the two can't disagree.
- */
-function picksAreEditable(): boolean {
-	return evaluatePlatformPicksEditable(getDeployment().features.platformPicksEditable) === "allow";
-}
-
-/** The one refusal, so creation and editing reject picks the same way. */
-export function assertPlatformPicksEditable(): void {
-	if (!picksAreEditable()) {
-		throw new Error("Platform picks are set by whoever runs this deployment.");
-	}
-}
-
-/**
  * Provider spend is only the viewer's concern when they run the deployment.
  * Whitelabel is excluded deliberately: the agency pays the bills, but the person
  * looking at this page is their customer.
@@ -219,7 +208,7 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 			const available = optionsByModel(configs, { forOperator: selfHosted !== null, excludePremium: false });
 			return {
 				available,
-				editable: picksAreEditable(),
+				editable: canEditPlatformPicks(),
 				// Unmetered, so a brand that has never chosen is tracked on every
 				// target the deployment configures.
 				enabledModels: brand.enabledModels ?? available.map((option) => option.model),
@@ -235,7 +224,7 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 		const available = pickable.filter((option) => menu.has(option.model));
 		return {
 			available,
-			editable: picksAreEditable(),
+			editable: canEditPlatformPicks(),
 			enabledModels: resolveBrandPicks(entitlements, brand, configs),
 			planLimits: {
 				platformPicks: entitlements.platformPicks ?? available.length,
@@ -291,7 +280,7 @@ export const updateEnabledModelsFn = createServerFn({ method: "POST" })
 
 		// The page hides the picker in these modes; refusing here is what makes
 		// that a rule rather than a rendering decision.
-		assertPlatformPicksEditable();
+		requirePlatformPicksEditable();
 
 		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
 		if (!brand) throw new Error("Brand not found");

@@ -239,16 +239,6 @@ export function evaluateReadOnly(readOnly: boolean): "allow" | "deny" {
 }
 
 /**
- * Evaluate whether the viewer chooses which platforms a brand is tracked on.
- * Used by the LLMs settings page and every platform-pick write path. Not a plan
- * question: entitlements read "unlimited" for local, demo and whitelabel alike,
- * so the deployment declares it the same way it declares brand creation.
- */
-export function evaluatePlatformPicksEditable(platformPicksEditable: boolean): "allow" | "deny" {
-	return platformPicksEditable ? "allow" : "deny";
-}
-
-/**
  * Evaluate whether the deployment allows the user to create brands from the UI.
  * Used by the create-brand server function. Local mode is the only mode that
  * allows it — whitelabel brands are provisioned through the admin API, demo is

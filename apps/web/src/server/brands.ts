@@ -26,14 +26,19 @@ import {
 import { defaultPlatformPicks, resolvePromptRunPlan } from "@workspace/lib/run-policy";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { listUserOrganizations, requireAuthSession, requireBrandAccess, requireOrgAccess } from "@/lib/auth/helpers";
+import {
+	listUserOrganizations,
+	requireAuthSession,
+	requireBrandAccess,
+	requireOrgAccess,
+	requirePlatformPicksEditable,
+} from "@/lib/auth/helpers";
 import { evaluateRequireCanCreateBrands, resolveBrandOrganization } from "@/lib/auth/policies";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { getDeployment } from "@/lib/config/server";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { type TrackedTarget, targetFilterValue } from "@/lib/model-filter";
-import { assertPlatformPicksEditable } from "@/server/platform-picks";
 
 const BRAND_ORG_ERRORS = {
 	"no-organization": "No organization for the current user",
@@ -133,7 +138,7 @@ async function resolveCreateEnabledModels(
 	// Picks arriving with a new brand are the same permission as picks edited
 	// later, so they answer to the same gate — a deployment where the customer
 	// does not choose its platforms must not let creation choose them either.
-	assertPlatformPicksEditable();
+	requirePlatformPicksEditable();
 	const models = [...new Set(requested)];
 	selectTargetsForBrand(parseScrapeTargets(process.env.SCRAPE_TARGETS), models);
 	await assertEnabledModelsAllowed(organizationId, models);
