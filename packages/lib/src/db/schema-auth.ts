@@ -16,7 +16,7 @@
  * migration — not in this file.
  */
 import { relations } from "drizzle-orm";
-import { boolean, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
 	id: text("id").primaryKey(),
@@ -98,19 +98,15 @@ export const verification = pgTable(
 	(table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
-export const organization = pgTable(
-	"organization",
-	{
-		id: text("id").primaryKey(),
-		name: text("name").notNull(),
-		slug: text("slug").notNull().unique(),
-		logo: text("logo"),
-		createdAt: timestamp("created_at").notNull(),
-		metadata: text("metadata"),
-		stripeCustomerId: text("stripe_customer_id"),
-	},
-	(table) => [uniqueIndex("organization_slug_uidx").on(table.slug)],
-);
+export const organization = pgTable("organization", {
+	id: text("id").primaryKey(),
+	name: text("name").notNull(),
+	slug: text("slug").notNull().unique(),
+	logo: text("logo"),
+	createdAt: timestamp("created_at").notNull(),
+	metadata: text("metadata"),
+	stripeCustomerId: text("stripe_customer_id"),
+});
 
 export const member = pgTable(
 	"member",
@@ -155,7 +151,9 @@ export const ssoProvider = pgTable("sso_provider", {
 	issuer: text("issuer").notNull(),
 	oidcConfig: text("oidc_config"),
 	samlConfig: text("saml_config"),
-	userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+	userId: text("user_id")
+		.notNull()
+		.references(() => user.id, { onDelete: "cascade" }),
 	providerId: text("provider_id").notNull().unique(),
 	organizationId: text("organization_id"),
 	domain: text("domain").notNull(),
@@ -167,7 +165,7 @@ export const subscription = pgTable("subscription", {
 	referenceId: text("reference_id").notNull(),
 	stripeCustomerId: text("stripe_customer_id"),
 	stripeSubscriptionId: text("stripe_subscription_id"),
-	status: text("status").default("incomplete"),
+	status: text("status").default("incomplete").notNull(),
 	periodStart: timestamp("period_start"),
 	periodEnd: timestamp("period_end"),
 	trialStart: timestamp("trial_start"),
