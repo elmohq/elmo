@@ -1551,9 +1551,6 @@
 					"value": {
 						"type": "string"
 					},
-					"enabled": {
-						"type": "boolean"
-					},
 					"tags": {
 						"type": "array",
 						"items": {
@@ -1585,7 +1582,6 @@
 				"required": [
 					"promptId",
 					"value",
-					"enabled",
 					"tags",
 					"totalRuns",
 					"brandMentionRate",
@@ -2710,7 +2706,7 @@
 		"/brands/{brandId}/prompt-performance": {
 			"get": {
 				"summary": "List prompt performance",
-				"description": "Per-prompt mention rates over the window. The analytics counterpart to `GET /prompts?brandId=`, which returns prompt configuration rather than results.",
+				"description": "Per-prompt mention rates over the window. The analytics counterpart to `GET /prompts?brandId=`, which returns prompt configuration rather than results.\n\nEnabled prompts only: a disabled prompt isn't sampled, so it has no results over the window to report.",
 				"operationId": "listBrandPromptPerformance",
 				"tags": ["Analytics"],
 				"x-elmo-scopes": ["analytics:read"],

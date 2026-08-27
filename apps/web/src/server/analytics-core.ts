@@ -21,7 +21,7 @@ import { generateDateRange } from "@/lib/chart-utils";
 import { rollUpCitationDomains, rollUpCitationUrls } from "@/lib/citation-rollup";
 import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
 import { classifyUrl as classifyUrlShared } from "@/lib/domain-categories.server";
-import { computeFanoutAnalysis, type FanoutAnalysis } from "@/lib/fanout-analysis";
+import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
 import {
 	getBrandMentionRateByModel,
 	getBrandMentionTotals,
@@ -29,6 +29,7 @@ import {
 	getCitationUrlStats,
 	getFanoutBreakdown,
 	getFanoutModelTotals,
+	getFanoutPromptTotals,
 	getPerPromptDailyCompetitorMentions,
 	getPerPromptDailyMentions,
 	getPromptsFirstEvaluatedAt,
@@ -384,27 +385,43 @@ export async function getBrandQueryFanout(
 	const promptIds = options.promptId ? scope.promptIds.filter((id) => id === options.promptId) : scope.promptIds;
 	if (promptIds.length === 0) return { brandName, ...emptyFanout() };
 
-	const [breakdown, modelTotals] = await Promise.all([
+	const [breakdown, modelTotals, promptTotals] = await Promise.all([
 		getFanoutBreakdown(brandId, startDate, endDate, timezone, promptIds, filters.model),
 		getFanoutModelTotals(brandId, startDate, endDate, timezone, promptIds, filters.model),
+		getFanoutPromptTotals(brandId, startDate, endDate, timezone, promptIds, filters.model),
 	]);
 
 	const promptValues = new Map(
 		scope.prompts.filter((prompt) => promptIds.includes(prompt.id)).map((prompt) => [prompt.id, prompt.value]),
 	);
+	// Runs per prompt is what turns a query count into a rate. Without it every
+	// byPrompt row reports zero runs and an average of zero.
+	const promptRuns = new Map(promptTotals.map((row) => [row.prompt_id, row.runs]));
+
 	return {
 		brandName,
 		...computeFanoutAnalysis(breakdown, modelTotals, promptValues, {
-			// The dashboard's caps are display caps. One prompt's worth of lists is
-			// small enough to show whole, and a caller that pages the list itself
-			// would otherwise page a silently truncated one.
-			limits:
-				options.promptId || options.uncapped ? { topQueries: UNCAPPED, breadth: UNCAPPED, terms: UNCAPPED } : undefined,
+			promptRuns,
+			limits: fanoutLimits(options),
 		}),
 	};
 }
 
-/** Effectively no cap, for the single-prompt view and for a caller that pages itself. */
+/**
+ * The dashboard's caps are display caps. One prompt's worth of lists is small
+ * enough to show whole; a caller that pages a list itself would otherwise page
+ * a silently truncated one.
+ */
+function fanoutLimits(options: { promptId?: string; uncapped?: boolean }): FanoutLimitOverrides | undefined {
+	if (options.uncapped) {
+		return { topQueries: UNCAPPED, breadth: UNCAPPED, terms: UNCAPPED, perModelTop: UNCAPPED, variations: UNCAPPED };
+	}
+	// A payload-size backstop, far above the largest observed prompt (~700).
+	if (options.promptId) return { topQueries: 2000, perModelTop: 2000, variations: 2000 };
+	return undefined;
+}
+
+/** Effectively no cap, for a caller that pages the list itself. */
 const UNCAPPED = Number.MAX_SAFE_INTEGER;
 
 function emptyFanout(): FanoutAnalysis {
@@ -428,7 +445,6 @@ function emptyFanout(): FanoutAnalysis {
 export interface PromptPerformance {
 	promptId: string;
 	value: string;
-	enabled: boolean;
 	tags: string[];
 	totalRuns: number;
 	brandMentionRate: number;
@@ -437,7 +453,14 @@ export interface PromptPerformance {
 	firstEvaluatedAt: string | null;
 }
 
-/** Per-prompt results over the window — the analytics counterpart to listing prompts. */
+/**
+ * Per-prompt results over the window — the analytics counterpart to listing
+ * prompts.
+ *
+ * Enabled prompts only: a disabled prompt isn't sampled, so it has no results
+ * to report. There is deliberately no `enabled` field rather than one that
+ * could only ever say `true`.
+ */
 export async function getBrandPromptPerformance(
 	brandId: string,
 	window: AnalyticsWindow,
@@ -461,7 +484,6 @@ export async function getBrandPromptPerformance(
 		return {
 			promptId: prompt.id,
 			value: prompt.value,
-			enabled: true,
 			tags: prompt.tags ?? [],
 			totalRuns: Number(stats?.total_runs ?? 0),
 			brandMentionRate: Math.round(Number(stats?.brand_mention_rate ?? 0)),
