@@ -22,9 +22,6 @@ export function isOpenSource(competitor: Competitor): boolean {
 	return (competitor.features.openSource ?? false) || competitor.category === "open-source";
 }
 
-/**
- * GetCito forked from Elmo's codebase on this date.
- */
 const GETCITO_FORK_DATE = "July 10, 2026";
 
 /**
