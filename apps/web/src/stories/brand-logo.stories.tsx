@@ -51,6 +51,30 @@ export const Subjects: Story = {
 	),
 };
 
+/**
+ * The three ways an icon can be absent, side by side: no domain set, a domain
+ * the favicon service has no icon for, and a domain that doesn't resolve. All
+ * three should land on the same glyph.
+ */
+export const MissingIcons: Story = {
+	args: { domain: null, size: "lg" },
+	render: () => (
+		<div className="flex flex-col gap-3 p-8">
+			{[
+				{ label: "has an icon", domain: "stripe.com" },
+				{ label: "no domain set", domain: null },
+				{ label: "no icon for the site", domain: "growwithless.com" },
+				{ label: "domain doesn't resolve", domain: "example.invalid" },
+			].map((subject) => (
+				<div key={subject.label} className="flex items-center gap-2 text-sm">
+					<BrandLogo domain={subject.domain} size="lg" />
+					{subject.label}
+				</div>
+			))}
+		</div>
+	),
+};
+
 /** A competitor with no domain yet still gets a mark. */
 export const FallsBackToGlyph: Story = {
 	args: { domain: null, size: "lg" },

@@ -19,10 +19,10 @@ function snapSize(size: number): number {
 /**
  * Icon URL for a domain or website URL, or null when there's no usable domain.
  *
- * A site the service has no icon for answers 404 (with a generic mark as the
- * body, which browsers discard), so both "no icon" and "request failed" reach
- * the image's error path — that single path is what `BrandLogo`'s fallback
- * glyph covers.
+ * A site the service has no icon for answers 404 with a generic globe in the
+ * body, which browsers render like any other image rather than treating as an
+ * error — `BrandLogo` is where that placeholder gets spotted and swapped for
+ * our own glyph.
  */
 export function faviconUrl(source: string | null | undefined, size = 64): string | null {
 	const domain = source ? cleanAndValidateDomain(source) : null;
