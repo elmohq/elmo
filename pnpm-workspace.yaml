@@ -38,6 +38,10 @@ overrides:
   form-data: "^4.0.6"
   axios: "^1.18.0"
   uuid: "^14.0.2"
+  # rolldown 1.2.5 splits the SSR router chunk into a circular pair, so `cva` is still in
+  # TDZ when the importing half evaluates and every page 500s. 1.2.6 is not out of the
+  # release-age cooldown yet.
+  rolldown: "1.2.4"
   shell-quote: "^1.8.5"
   ws: "^8.20.1"
   protobufjs: "^7.5.8"
