@@ -109,9 +109,7 @@ export function PlatformPicker({
 					<label
 						key={option.model}
 						htmlFor={checkboxId}
-						className={`flex items-center gap-3 rounded-md border p-3 ${
-							atLimit ? "opacity-50" : "cursor-pointer hover:bg-accent/50"
-						}`}
+						className={cn(PLATFORM_ROW, atLimit ? "opacity-50" : "cursor-pointer hover:bg-accent/50")}
 					>
 						<Checkbox
 							id={checkboxId}
@@ -136,13 +134,16 @@ export function PlatformList({ options, className }: { options: PlatformOption[]
 	return (
 		<PlatformGrid className={className}>
 			{options.map((option) => (
-				<div key={option.model} className="flex items-center gap-3 rounded-md border p-3">
+				<div key={option.model} className={PLATFORM_ROW}>
 					<PlatformRowBody option={option} />
 				</div>
 			))}
 		</PlatformGrid>
 	);
 }
+
+/** Shared so a platform reads the same whether or not it can be toggled. */
+const PLATFORM_ROW = "flex items-center gap-3 rounded-md border p-3";
 
 function PlatformGrid({ children, className }: { children: ReactNode; className?: string }) {
 	return <div className={cn("grid gap-2 sm:grid-cols-2 lg:grid-cols-3", className)}>{children}</div>;
