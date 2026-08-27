@@ -71,7 +71,7 @@ export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; so
 	const pitch = variant === "cloud" ? CLOUD_PITCH : SELF_HOSTED_PITCH;
 
 	return (
-		<div className="mx-auto flex w-full max-w-lg flex-col gap-8">
+		<div className="flex flex-1 flex-col justify-between gap-8">
 			<h2 className="text-3xl font-semibold leading-[1.1] tracking-tight text-balance">{pitch.headline}</h2>
 
 			<ul className="space-y-2.5">
@@ -157,9 +157,11 @@ const cloudOffer = (source: ReferralSource): Offer => ({
  * so they share a line — the question anchored left, the answer right — and
  * wrap together when the panel is too narrow to hold both.
  */
-function OfferCard({ question, offer }: { question: string; offer: Offer }) {
+function OfferCard({ question, offer, className = "" }: { question: string; offer: Offer; className?: string }) {
 	return (
-		<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-lg border bg-card p-5">
+		<div
+			className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-lg border bg-card p-5 ${className}`}
+		>
 			<h3 className="text-sm font-semibold">{question}</h3>
 			<a
 				href={offer.href}
