@@ -3,13 +3,15 @@
  * Replaces apps/web/src/app/api/brands/* API routes.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { getDefaultDelayHours, MAX_COMPETITORS } from "@workspace/lib/constants";
+import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { findUniqueBrandId, slugify } from "@workspace/lib/db/provisioning";
 import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
 import {
+	assertAllowed,
 	assertCanCreateBrand,
 	assertEnabledModelsAllowed,
+	decideCompetitorCap,
 	type Entitlements,
 	getOrgEntitlements,
 	getOrgEntitlementsMap,
@@ -425,23 +427,21 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			// A bulk replace, so the list submitted is the list the brand ends up
-			// with — the cap is the same one the editor and the single-add paths
-			// apply.
-			competitors: z
-				.array(
-					z.object({
-						name: z.string(),
-						domains: z.array(z.string()).min(1),
-						aliases: z.array(z.string()).optional().default([]),
-					}),
-				)
-				.max(MAX_COMPETITORS, `A brand may have at most ${MAX_COMPETITORS} competitors.`),
+			competitors: z.array(
+				z.object({
+					name: z.string(),
+					domains: z.array(z.string()).min(1),
+					aliases: z.array(z.string()).optional().default([]),
+				}),
+			),
 		}),
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
+
+		// A bulk replace, so the list submitted is the list the brand ends up with.
+		assertAllowed(decideCompetitorCap(data.competitors.length));
 
 		const cleanedCompetitors = data.competitors.map((c) => {
 			const cleanedDomains = c.domains.map((d) => cleanAndValidateDomain(d));
@@ -567,10 +567,7 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 			.select({ count: count() })
 			.from(competitors)
 			.where(eq(competitors.brandId, data.brandId));
-
-		if ((currentCount?.count || 0) >= MAX_COMPETITORS) {
-			throw new Error(`Cannot add competitor. Maximum of ${MAX_COMPETITORS} competitors reached.`);
-		}
+		assertAllowed(decideCompetitorCap((currentCount?.count || 0) + 1));
 
 		const [result] = await db
 			.insert(competitors)

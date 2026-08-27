@@ -113,21 +113,6 @@ export function selectPremiumModels(requested: readonly string[] | undefined): s
 }
 
 /**
- * Whether a save changes which grounded models a prompt is tracked on. Both
- * sides go through `selectPremiumModels` first, so a reordered or padded list
- * that resolves to the same assignment is not a change — a save that merely
- * carries a prompt's existing value back is not an attempt to set one.
- */
-export function premiumAssignmentChanged(
-	before: readonly string[] | null | undefined,
-	after: readonly string[] | null | undefined,
-): boolean {
-	const from = selectPremiumModels(before ?? undefined);
-	const to = selectPremiumModels(after ?? undefined);
-	return from.length !== to.length || from.some((model, index) => model !== to[index]);
-}
-
-/**
  * Premium slots a set of prompts spends: one per model it is tracked on, and
  * none at all while it is disabled, since a disabled prompt runs nothing.
  *

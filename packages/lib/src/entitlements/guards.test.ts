@@ -5,14 +5,18 @@ import {
 	UNLIMITED_ENTITLEMENTS,
 } from "@workspace/config/entitlements";
 import { describe, expect, it } from "vitest";
-import { MAX_PROMPTS, promptSaveDenial } from "../constants";
+import { MAX_COMPETITORS, MAX_PROMPTS } from "../constants";
 import {
 	decideBrandCreate,
 	decideCadenceOverride,
+	decideCompetitorCap,
 	decideEnabledModels,
 	decidePremiumAssign,
+	decidePremiumPool,
 	decidePromptAdd,
+	decidePromptCap,
 	type EntitlementDecision,
+	promptSaveDelta,
 } from "./guards";
 
 const NOW = new Date("2026-08-05T12:00:00Z");
@@ -34,9 +38,11 @@ function planEntitlements(plan: string): Entitlements {
 }
 
 const PRO = planEntitlements("pro");
+const STARTER = planEntitlements("starter");
 
-describe("unlimited entitlements short-circuit every guard", () => {
-	it("allows everything", () => {
+/** The pool rule is the deliberate exception; `decidePremiumPool` below. */
+describe("unlimited entitlements short-circuit every plan limit", () => {
+	it("allows everything the plan would otherwise bound", () => {
 		expect(decideBrandCreate(UNLIMITED_ENTITLEMENTS, 10_000).allowed).toBe(true);
 		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, 10_000, 500).allowed).toBe(true);
 		expect(decideEnabledModels(UNLIMITED_ENTITLEMENTS, ["anything", "claude", "made-up"]).allowed).toBe(true);
@@ -102,29 +108,140 @@ describe("decidePromptAdd", () => {
  * Two different prompt limits exist, and only one of them is a plan limit.
  *
  * `MAX_PROMPTS` is a flat per-brand cap the settings editor applies in every
- * mode. These guards are the plan's, so they let an unlimited deployment —
- * local, demo, whitelabel — add prompts through the admin API without limit.
- * That asymmetry predates cloud and is deliberate: an operator scripting
- * against their own instance is not a customer spending an allowance. It is
- * pinned here because nothing else states it, and a guard that quietly started
- * enforcing MAX_PROMPTS would break those scripts.
+ * mode. The plan limits let an unlimited deployment — local, demo,
+ * whitelabel — add prompts through the admin API without limit. That asymmetry
+ * predates cloud and is deliberate: an operator scripting against their own
+ * instance is not a customer spending an allowance. It is pinned here because
+ * nothing else states it, and a guard that quietly started enforcing
+ * MAX_PROMPTS would break those scripts.
  */
-describe("the flat cap and the plan limit are separate rules", () => {
+describe("decidePromptCap", () => {
+	it("allows a save that stays within the cap", () => {
+		expect(decidePromptCap(0, 1).allowed).toBe(true);
+		expect(decidePromptCap(MAX_PROMPTS - 1, 1).allowed).toBe(true);
+	});
+
+	it("refuses a save that grows past the cap", () => {
+		expect(denialMessage(decidePromptCap(MAX_PROMPTS, 1))).toMatch(new RegExp(`at most ${MAX_PROMPTS} prompts`));
+		expect(decidePromptCap(MAX_PROMPTS - 1, 2).allowed).toBe(false);
+	});
+
+	it("keeps an over-cap brand editable as long as the save adds nothing", () => {
+		// What the admin API leaves behind: 150 prompts, no plan limit in the way.
+		// Disabling one, or fixing a typo, submits all 150 and must go through.
+		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, 150, 0).allowed).toBe(true);
+		expect(decidePromptCap(150, 0).allowed).toBe(true);
+		expect(decidePromptCap(150, 1).allowed).toBe(false);
+	});
+
 	it("lets an unlimited deployment add past MAX_PROMPTS over the admin API", () => {
 		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, MAX_PROMPTS, 1).allowed).toBe(true);
 		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, MAX_PROMPTS * 10, 500).allowed).toBe(true);
 	});
+});
 
-	it("still refuses the same growth through the editor", () => {
-		const overCap = { existing: MAX_PROMPTS, adding: 1, submitted: MAX_PROMPTS + 1 };
-		expect(promptSaveDenial(overCap)).not.toBeNull();
+/** One bound for the bulk replace, the single add, and onboarding's bulk add:
+ *  each asks about the list the brand would end up with. */
+describe("decideCompetitorCap", () => {
+	it("allows a brand up to the cap", () => {
+		expect(decideCompetitorCap(0).allowed).toBe(true);
+		expect(decideCompetitorCap(MAX_COMPETITORS).allowed).toBe(true);
 	});
 
-	it("leaves an over-cap brand editable on both paths", () => {
-		// The state the two rules together can produce: 150 prompts on a
-		// whitelabel brand. Neither path may freeze it.
-		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, 150, 0).allowed).toBe(true);
-		expect(promptSaveDenial({ existing: 150, adding: 0, submitted: 150 })).toBeNull();
+	it("refuses the first competitor over it", () => {
+		expect(denialMessage(decideCompetitorCap(MAX_COMPETITORS + 1))).toMatch(
+			new RegExp(`at most ${MAX_COMPETITORS} competitors`),
+		);
+	});
+});
+
+/**
+ * The one rule that outlives the unlimited short-circuit. Grounded tracking is
+ * charged per prompt/model pairing, and outside cloud there is no pool to
+ * charge — self-hosted tracks the same models by picking their grounded targets
+ * on the LLMs page instead, for the whole brand.
+ */
+describe("decidePremiumPool", () => {
+	it("refuses an unlimited deployment and points at the per-brand mechanism", () => {
+		const decision = decidePremiumPool(UNLIMITED_ENTITLEMENTS);
+		expect(decision.allowed).toBe(false);
+		expect(denialMessage(decision)).toMatch(/LLM settings/);
+	});
+
+	it("sells the upgrade to a cloud plan without a pool", () => {
+		expect(denialMessage(decidePremiumPool(STARTER))).toMatch(/Pro and Business/);
+	});
+
+	it("allows a plan that has one", () => {
+		expect(decidePremiumPool(PRO).allowed).toBe(true);
+	});
+});
+
+/**
+ * The prompts editor submits the brand's whole list on every save, so these
+ * figures decide what the save is charged for. They are net, and the two cases
+ * that pin why are the ones a deployment with no premium pool runs into: it must
+ * be able to delete a prompt that carries grounded models, and it must not be
+ * able to start paying for one by re-enabling it.
+ */
+describe("promptSaveDelta", () => {
+	const grounded = { enabled: true, premiumModels: ["claude"] };
+
+	it("counts a deleted grounded prompt as a release, and not as an assignment", () => {
+		// The editor deletes by submitting the row disabled with its models cleared.
+		expect(promptSaveDelta([{ before: grounded, after: { enabled: false, premiumModels: [] } }])).toEqual({
+			prompts: -1,
+			premiumPairings: -1,
+			premiumAssigned: false,
+		});
+	});
+
+	it("counts disabling a grounded prompt as a release", () => {
+		expect(promptSaveDelta([{ before: grounded, after: { enabled: false, premiumModels: ["claude"] } }])).toEqual({
+			prompts: -1,
+			premiumPairings: -1,
+			premiumAssigned: false,
+		});
+	});
+
+	it("does not call re-enabling an assignment, though it does spend a pairing", () => {
+		// The distinction the no-pool rule turns on: nothing new is being asked
+		// for, so a deployment with no pool must let this through.
+		expect(promptSaveDelta([{ before: { enabled: false, premiumModels: ["claude"] }, after: grounded }])).toEqual({
+			prompts: 1,
+			premiumPairings: 1,
+			premiumAssigned: false,
+		});
+	});
+
+	it("calls a model the row did not carry an assignment", () => {
+		const delta = promptSaveDelta([{ before: grounded, after: { enabled: true, premiumModels: ["claude", "grok"] } }]);
+		expect(delta).toEqual({ prompts: 0, premiumPairings: 1, premiumAssigned: true });
+		// Which is what the pool rule refuses where there is no pool.
+		expect(decidePremiumPool(UNLIMITED_ENTITLEMENTS).allowed).toBe(false);
+	});
+
+	it("treats a row with no before as an insert", () => {
+		expect(promptSaveDelta([{ after: grounded }])).toEqual({
+			prompts: 1,
+			premiumPairings: 1,
+			premiumAssigned: true,
+		});
+		// Disabled, so it spends nothing — but it is still asking to carry one.
+		expect(promptSaveDelta([{ after: { enabled: false, premiumModels: ["claude"] } }])).toEqual({
+			prompts: 0,
+			premiumPairings: 0,
+			premiumAssigned: true,
+		});
+	});
+
+	it("nets a save that swaps one prompt for another to nothing", () => {
+		expect(
+			promptSaveDelta([
+				{ before: grounded, after: { enabled: false, premiumModels: [] } },
+				{ after: { enabled: true, premiumModels: [] } },
+			]),
+		).toEqual({ prompts: 0, premiumPairings: -1, premiumAssigned: false });
 	});
 });
 

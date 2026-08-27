@@ -1,21 +1,34 @@
 /**
- * Write-time plan enforcement, shared by the web server functions and the
- * /api/v1 handlers so the two surfaces cannot drift.
+ * Write-time enforcement, shared by the web server functions and the /api/v1
+ * handlers so the two surfaces cannot drift.
  *
- * Shape: pure decide* functions (entitlements + usage counts → verdict) that
- * the tests exercise exhaustively, wrapped by assert* helpers that load
- * entitlements and counts. Every assert short-circuits before any query when
- * entitlements are unlimited — non-cloud deployments keep exactly their
- * current behavior, including their current absence of server-side limits.
+ * Shape: pure decide* functions (inputs → verdict) that the tests exercise
+ * exhaustively, wrapped by assert* helpers that load whatever the decision
+ * needs. Two families live here:
+ *
+ * - Plan limits, decided from entitlements plus a usage count. Every assert
+ *   short-circuits before any query when entitlements are unlimited, so
+ *   non-cloud deployments never pay for a count they have no limit to check.
+ * - Flat caps (MAX_PROMPTS, MAX_COMPETITORS), which apply in every deployment
+ *   mode and need no entitlements at all. They bound one brand's list; the
+ *   plan limits bound the whole workspace.
+ *
+ * The one rule that crosses the two: spending a grounded pairing needs a pool
+ * to charge it to, and an unlimited deployment has none (see
+ * `decidePremiumPool`). That is the single limit that survives the unlimited
+ * short-circuit, because there the answer is "never", not "no limit".
  *
  * Downgrade policy: these guards only block *adding* beyond a limit. Resources
- * already over a limit (after a downgrade) are never deleted or mutated here —
- * the worker's run policy simply stops running the overage, oldest-first wins.
+ * already over a limit — after a downgrade, or written by the admin API, which
+ * the flat caps never consulted — are never deleted or mutated here, and a save
+ * that leaves the overage where it is still goes through. The worker's run
+ * policy simply stops running the overage, oldest-first wins.
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
-import { MAX_SELF_SERVE_BRANDS, premiumPairings } from "@workspace/config/plans";
+import { MAX_SELF_SERVE_BRANDS, premiumPairings, premiumSlotsUsed } from "@workspace/config/plans";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
+import { MAX_COMPETITORS, MAX_PROMPTS } from "../constants";
 import { db } from "../db/db";
 import { brands, prompts } from "../db/schema";
 import { getOrgEntitlements, getOrgEntitlementsMap } from "./service";
@@ -28,7 +41,9 @@ export type EntitlementDenialCode =
 	| "platform-picks-exceeded"
 	| "premium-not-in-plan"
 	| "premium-pool-exhausted"
-	| "cadence-faster-than-plan";
+	| "cadence-faster-than-plan"
+	| "prompt-cap"
+	| "competitor-cap";
 
 /**
  * Thrown by the assert* helpers. `status`/`error` are the HTTP response /api/v1
@@ -84,6 +99,30 @@ export function decideBrandCreate(entitlements: Entitlements, currentBrandCount:
 	return ALLOWED;
 }
 
+/**
+ * The flat per-brand prompt cap, applied to what a save would leave behind.
+ *
+ * It governs growth, not what a brand holds: the admin API adds prompts without
+ * consulting it, so brands over the cap exist, and the prompts editor submits
+ * the brand's whole list on every save. Refusing those saves would freeze such
+ * a brand — unable to disable a prompt or fix a typo — so only a save that adds
+ * rows and lands over the cap is denied.
+ */
+export function decidePromptCap(existing: number, adding: number): EntitlementDecision {
+	if (adding <= 0 || existing + adding <= MAX_PROMPTS) return ALLOWED;
+	return deny("prompt-cap", `A brand may have at most ${MAX_PROMPTS} prompts (this one has ${existing}).`);
+}
+
+/**
+ * The flat per-brand competitor cap, applied to what a write would leave
+ * behind — so the bulk replace the editor saves through, a single add, and a
+ * bulk add from onboarding all answer the same question with the same number.
+ */
+export function decideCompetitorCap(resulting: number): EntitlementDecision {
+	if (resulting <= MAX_COMPETITORS) return ALLOWED;
+	return deny("competitor-cap", `A brand may have at most ${MAX_COMPETITORS} competitors.`);
+}
+
 /** Adding or re-enabling prompts consumes the org-wide tracked-prompt pool. */
 export function decidePromptAdd(
 	entitlements: Entitlements,
@@ -124,6 +163,24 @@ export function decideEnabledModels(entitlements: Entitlements, requestedModels:
 }
 
 /**
+ * Whether there is a pool to charge a grounded pairing to. Needs no usage
+ * count, which is what lets it run on the unlimited path where the pool is
+ * zero: self-hosted tracks the same models by picking their grounded targets on
+ * the LLMs page, for the whole brand, where the operator sees what it costs. A
+ * per-prompt assignment there would be a second, invisible way to spend the
+ * same money, and the run policy ignores it.
+ */
+export function decidePremiumPool(entitlements: Entitlements): EntitlementDecision {
+	if (entitlements.premiumPool > 0) return ALLOWED;
+	return deny(
+		"premium-not-in-plan",
+		entitlements.unlimited
+			? "Grounded models are tracked per brand on this deployment — pick them in LLM settings."
+			: "Premium tracking — adding a grounded, cited answer to a prompt from a model's own web search — is available on the Pro and Business plans.",
+	);
+}
+
+/**
  * Tracking a prompt on a premium model spends one pairing from the org's pool,
  * and a prompt tracked on two premium models spends two — so `adding` counts
  * pairings rather than prompts.
@@ -136,12 +193,8 @@ export function decidePremiumAssign(
 	if (adding <= 0) return ALLOWED;
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
-	if (entitlements.premiumPool <= 0) {
-		return deny(
-			"premium-not-in-plan",
-			"Premium tracking — adding a grounded, cited answer to a prompt from a model's own web search — is available on the Pro and Business plans.",
-		);
-	}
+	const pool = decidePremiumPool(entitlements);
+	if (!pool.allowed) return pool;
 	if (currentAssignedEnabled + adding > entitlements.premiumPool) {
 		const remaining = Math.max(0, entitlements.premiumPool - currentAssignedEnabled);
 		return deny(
@@ -280,13 +333,6 @@ export async function assertEnabledModelsAllowed(organizationId: string, request
 	await withEntitlements(organizationId, (entitlements) => [decideEnabledModels(entitlements, requestedModels)]);
 }
 
-export async function assertCanAssignPremium(organizationId: string, adding: number): Promise<void> {
-	if (adding <= 0) return;
-	await withEntitlements(organizationId, async (entitlements) => [
-		decidePremiumAssign(entitlements, await countOrgAssignedPremiumSlots(organizationId), adding),
-	]);
-}
-
 export async function assertCadenceAllowed(organizationId: string, requestedDelayHours: number | null): Promise<void> {
 	await withEntitlements(organizationId, (entitlements) => [decideCadenceOverride(entitlements, requestedDelayHours)]);
 }
@@ -299,6 +345,42 @@ export async function assertCadenceAllowed(organizationId: string, requestedDela
 export interface PromptSaveDelta {
 	prompts: number;
 	premiumPairings: number;
+	/**
+	 * Whether any row is asked to carry a grounded model it does not already
+	 * carry. Deliberately a different question from a positive `premiumPairings`:
+	 * re-enabling a prompt spends a pairing without changing what any prompt is
+	 * assigned, and a deployment with no pool must still be able to do that.
+	 */
+	premiumAssigned: boolean;
+}
+
+/** A prompt row as the pools see it. `premiumModels` is what is (or will be)
+ *  stored, so a disabled prompt spends nothing whatever it is assigned. */
+export interface PromptPoolState {
+	enabled: boolean;
+	premiumModels: readonly string[];
+}
+
+/**
+ * The net effect of a prompts save on the org's pools, one row at a time.
+ * `before` is absent for a row the save inserts.
+ *
+ * The counts are net, and that is the whole design: a save that disables a
+ * prompt, clears its grounded models, or deletes it outright comes out negative
+ * and asks nothing of anyone. Only spending more than before needs permission.
+ */
+export function promptSaveDelta(
+	rows: readonly { before?: PromptPoolState; after: PromptPoolState }[],
+): PromptSaveDelta {
+	const delta: PromptSaveDelta = { prompts: 0, premiumPairings: 0, premiumAssigned: false };
+	for (const { before, after } of rows) {
+		delta.prompts += (after.enabled ? 1 : 0) - (before?.enabled ? 1 : 0);
+		delta.premiumPairings += premiumSlotsUsed([after]) - premiumSlotsUsed(before ? [before] : []);
+		if (after.premiumModels.some((model) => !before?.premiumModels.includes(model))) {
+			delta.premiumAssigned = true;
+		}
+	}
+	return delta;
 }
 
 /**
@@ -307,17 +389,26 @@ export interface PromptSaveDelta {
  * calling the single-limit asserts back to back would cost — and the two limits
  * are decided against the same snapshot, so a save can't pass one against a
  * plan the other was denied under.
+ *
+ * Written out rather than routed through `withEntitlements` because of the pool
+ * check: it is the one decision that must still be made when entitlements are
+ * unlimited. It keys off `premiumAssigned` rather than the pairing count, and
+ * the difference is what stops it freezing anyone — where there is no pool the
+ * run policy never reads a prompt's grounded models at all, so a row that
+ * already carries some is inert. The save may disable it, delete it, or carry it
+ * back untouched. Only *introducing* an assignment is refused, which is also the
+ * only one of those a deployment with no pool has no way to undo from the UI.
  */
 export async function assertPromptSaveAllowed(organizationId: string, delta: PromptSaveDelta): Promise<void> {
-	if (delta.prompts <= 0 && delta.premiumPairings <= 0) return;
-	await withEntitlements(organizationId, async (entitlements) => {
-		const [enabledPrompts, assignedPremium] = await Promise.all([
-			delta.prompts > 0 ? countOrgEnabledPrompts(organizationId) : 0,
-			delta.premiumPairings > 0 ? countOrgAssignedPremiumSlots(organizationId) : 0,
-		]);
-		return [
-			decidePromptAdd(entitlements, enabledPrompts, delta.prompts),
-			decidePremiumAssign(entitlements, assignedPremium, delta.premiumPairings),
-		];
-	});
+	if (delta.prompts <= 0 && delta.premiumPairings <= 0 && !delta.premiumAssigned) return;
+	const entitlements = await getOrgEntitlements(organizationId);
+	if (delta.premiumAssigned) assertAllowed(decidePremiumPool(entitlements));
+	if (entitlements.unlimited) return;
+
+	const [enabledPrompts, assignedPremium] = await Promise.all([
+		delta.prompts > 0 ? countOrgEnabledPrompts(organizationId) : 0,
+		delta.premiumPairings > 0 ? countOrgAssignedPremiumSlots(organizationId) : 0,
+	]);
+	assertAllowed(decidePromptAdd(entitlements, enabledPrompts, delta.prompts));
+	assertAllowed(decidePremiumAssign(entitlements, assignedPremium, delta.premiumPairings));
 }

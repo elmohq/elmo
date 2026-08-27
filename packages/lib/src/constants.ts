@@ -41,35 +41,11 @@ export function getDefaultDelayHours(): number {
 	return parsed;
 }
 
-// Maximum limits for brand resources
+// Flat per-brand caps. The rules that apply them — which is not simply "the
+// list must fit", see decidePromptCap — live with the other write guards in
+// src/entitlements/guards.ts.
 export const MAX_COMPETITORS = 500;
 export const MAX_PROMPTS = 100;
-
-/**
- * Whether a prompt-editor save may be written, given what the brand already has
- * and how many rows the save introduces. Null means allowed; a string is what
- * the customer is told.
- *
- * The cap governs growth, not what a brand holds. The admin API writes prompts
- * without consulting it, so a brand can legitimately sit above the cap — and
- * refusing its saves would freeze it there, unable to disable a prompt or fix a
- * typo, because the editor submits the brand's whole list on every save. Only a
- * save that adds rows and lands over the cap is refused.
- *
- * Not a plan limit: cloud meters prompts separately through entitlements, and
- * this applies in every deployment mode.
- */
-export function promptSaveDenial(input: { existing: number; adding: number; submitted: number }): string | null {
-	// The editor can only touch rows the brand has, plus the ones it adds, so a
-	// longer list than that is padding rather than an edit.
-	if (input.submitted > input.existing + MAX_PROMPTS) {
-		return "That save lists more prompts than this brand has.";
-	}
-	if (input.adding > 0 && input.existing + input.adding > MAX_PROMPTS) {
-		return `A brand may have at most ${MAX_PROMPTS} prompts (this one has ${input.existing}).`;
-	}
-	return null;
-}
 
 /**
  * Sentinel providers store in `prompt_runs.web_queries` when a web search

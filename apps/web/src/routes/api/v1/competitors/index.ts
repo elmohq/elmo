@@ -8,12 +8,12 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
-import { competitors, brands } from "@workspace/lib/db/schema";
-import { eq, count, desc } from "drizzle-orm";
+import { brands, competitors } from "@workspace/lib/db/schema";
+import { assertAllowed, decideCompetitorCap } from "@workspace/lib/entitlements";
+import { count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { MAX_COMPETITORS } from "@workspace/lib/constants";
-import { dedupeDomains, dedupeAliases } from "@/lib/domain-categories";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 
 const createCompetitorBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
@@ -77,13 +77,7 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 						.select({ count: count() })
 						.from(competitors)
 						.where(eq(competitors.brandId, brandId));
-					if ((currentCount || 0) + 1 > MAX_COMPETITORS) {
-						throw new ApiError(
-							409,
-							"Conflict",
-							`Brand already has ${currentCount}/${MAX_COMPETITORS} competitors. Delete one before adding another.`,
-						);
-					}
+					assertAllowed(decideCompetitorCap((currentCount || 0) + 1));
 
 					const [inserted] = await db
 						.insert(competitors)
