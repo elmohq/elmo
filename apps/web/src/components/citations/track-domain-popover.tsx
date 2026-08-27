@@ -7,6 +7,7 @@ import { Spinner } from "@workspace/ui/components/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
+import { useBrand } from "@/hooks/use-brands";
 import { addDomainToBrandFn, addDomainToCompetitorFn, createCompetitorFromDomainFn } from "@/server/brands";
 
 export function TrackDomainPopover({
@@ -22,6 +23,7 @@ export function TrackDomainPopover({
 	competitors: Array<{ id: string; name: string; domains: string[] }>;
 	onAdded?: () => void;
 }) {
+	const { brand } = useBrand(brandId);
 	const [open, setOpen] = useState(false);
 	const [newName, setNewName] = useState("");
 	const [saving, setSaving] = useState(false);
@@ -121,8 +123,9 @@ export function TrackDomainPopover({
 							type="button"
 							onClick={handleAddToBrand}
 							disabled={saving}
-							className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
+							className="flex w-full items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
 						>
+							<BrandLogo domain={brand?.website} size="sm" />
 							{brandName || "My brand"}
 						</button>
 					</div>
