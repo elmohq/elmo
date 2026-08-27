@@ -5,6 +5,7 @@
 	"license": "MIT",
 	"type": "module",
 	"exports": {
-		".": "./src/openapi.json"
+		".": "./src/openapi.json",
+		"./published": "./src/published.ts"
 	}
 }

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import spec from "@workspace/api-spec";
+import spec from "@workspace/api-spec/published";
 
 export const Route = createFileRoute("/api/openapi.json")({
 	server: {

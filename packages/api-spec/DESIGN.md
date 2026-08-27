@@ -45,11 +45,16 @@ expiry, per-key rate limit. Never usable as an app session.
 
 A key carries three things in its metadata:
 
-| Field            | Meaning                                                              |
-| ---------------- | -------------------------------------------------------------------- |
-| `organizationId` | The one organization this key acts inside. Never more than one.      |
-| `scopes`         | Closed set of `resource:action` grants (§1.3).                       |
-| `brandIds`       | Optional narrowing to a subset of that org's brands. Empty = all.    |
+| Field            | Stored in    | Meaning                                                           |
+| ---------------- | ------------ | ----------------------------------------------------------------- |
+| scopes           | `permissions`| Closed set of `resource:action` grants (§1.3).                     |
+| `organizationId` | `metadata`   | The one organization this key acts inside. Never more than one.    |
+| `brandIds`       | `metadata`   | Optional narrowing to a subset of that org's brands. Empty = all.  |
+
+Scopes live in the plugin's own `permissions` column (`{ resource: [action] }`)
+rather than in metadata, so revocation and verification stay the plugin's job
+and we don't reimplement either. The wire format is the flattened
+`resource:action` string.
 
 Effective access = `scopes` ∩ (`organizationId`'s brands, narrowed by
 `brandIds`). Resolution is one query and holds no stale authorization: brands
@@ -159,10 +164,27 @@ machine code:
 `internal_error`. Adding a value is not a breaking change; clients must treat
 unknown codes as the HTTP status implies.
 
-**Stability.** Every operation carries `x-elmo-stability: stable | beta`.
-Everything shipped today is `stable`. New analytics and runs endpoints land as
-`beta` and graduate once a real integration has used them. This is the main lever
-against locking ourselves in.
+**Scopes in the spec.** Each operation declares what it needs in
+`x-elmo-scopes`. OpenAPI 3.0 only allows a non-empty scope list on `oauth2` and
+`openIdConnect` schemes — writing scopes into the `security` array of a plain
+bearer scheme produces an invalid document — so the requirement is carried as an
+extension and summarized in the API description.
+
+**Stability.** Every operation carries
+`x-elmo-stability: stable | beta | planned`.
+
+- `stable` — everything shipped today. Additive changes only.
+- `beta` — built and supported, shape may still move while it is being used in
+  anger. This is the main lever against locking ourselves in: new endpoints
+  land here, not at `stable`.
+- `planned` — specified, not built. The document is written ahead of the code,
+  so `openapi.json` is the plan's machine-readable half.
+
+`planned` operations are **stripped from the document the app serves and the
+docs site renders** (`packages/api-spec/src/published.ts`). Anything a customer
+can read in the reference, they can call. Implementing an operation is one
+edit — `planned` → `beta` — and it appears in the docs and in
+`GET /api/v1/openapi.json` on the same commit.
 
 ---
 
@@ -239,6 +261,14 @@ filtered to the key's brands. Additions:
   `delayOverrideHours` (all already stored; additive fields).
 - `POST /v1/brands` starts calling `assertCanCreateBrand`, so a cloud org key
   hits its brand limit here rather than creating an unbillable brand.
+- **`POST /v1/brands` has to branch on key type.** Today it provisions a fresh
+  organization named after the brand id (`ensureOrganization` in
+  `apps/web/src/server/onboarding-core.ts`). That is right for an admin key
+  standing up a tenant, and wrong for an org key — a key would escape its own
+  tenancy on every create, and the new brand would be billed to nobody. An org
+  key must create the brand *inside* its own organization, the way
+  `createBrandInOrgFn` already does for the dashboard. This is the one place
+  where the two key types cannot share a code path.
 - **No** `DELETE /v1/brands/{brandId}`. Brand deletion cascades across runs,
   citations, and an organization; an irreversible cascade behind a leaked key is
   exactly the thing we would regret. Deletion stays a dashboard action.
@@ -345,16 +375,36 @@ Each step is independently shippable.
 6. **Analytics endpoints**, one shared analytics function each.
 7. **Runs endpoints.**
 8. **Prompt bulk create**, plus the additive list filters.
-9. **Docs + SDK.** Regenerate the docs site from the spec; publish a typed
-   client. Follow-up: derive `openapi.json` from the zod schemas rather than
-   hand-editing (the second half of #331).
+9. **Docs + SDK.** The docs site already renders whatever is not `planned`, so
+   each step above publishes its own reference page by flipping its operations
+   to `beta`. Then publish a typed client. Follow-up: derive `openapi.json` from
+   the zod schemas rather than hand-editing (the second half of #331).
 
 ## 6. Testing
 
 `e2e/bruno/` is the executable contract — one `.bru` per endpoint per outcome,
-run by `pnpm test:api` in CI. The suite is written before the implementation and
-covers, for every endpoint: the happy path, validation failures, missing/invalid
-key, missing scope, cross-tenant access (must be indistinguishable from
-not-found), read-only mode, and — where a limit applies — the plan denial.
+written before the implementation. Every case that depends on something not yet
+built fails today; each step of §5 turns a block of them green.
+
+**Identities.** Permission behavior can't be tested from one key, so `e2e/seed.ts`
+seeds a matrix of them (`API_KEYS` in `e2e/fixtures.ts`): every scope, read
+scopes only, a single scope, everything-but-`billing:read`, `analytics:read`
+alone, the other tenant, a key narrowed to one brand of its own org, an expired
+key, and a revoked one. They go straight into the `apikey` table — no session, no
+key-management UI — and are skipped while that table doesn't exist, so the seeder
+keeps working until organization keys land.
+
+**Two runs.** `pnpm test:api` runs everything untagged against a local-mode
+stack. `pnpm test:api:cloud` runs the `cloud`-tagged cases against the cloud-mode
+stack in the same CI job, because plan enforcement only exists there. The cloud
+fixtures are two extra tenants: one on a custom plan with deliberately tiny
+limits (config-only, no Stripe), one with no subscription at all.
+
+**What every endpoint is checked for.** Happy path and response shape;
+validation failures; missing and invalid key; missing scope; cross-tenant access
+(byte-identical to not-found); a brand restriction narrowing a key inside its
+own org; and — where a limit applies — the plan denial, that an admin key
+bypasses it, and that a rejected batch created nothing.
+
 Playwright covers the key-management UI; the entitlement decision tables stay
 unit-tested where they already are.
