@@ -7,6 +7,7 @@ import {
 	IconSettings,
 } from "@tabler/icons-react";
 import { Link, useParams } from "@tanstack/react-router";
+import { brandParams, brandSegment, orgParams } from "@workspace/lib/app-urls";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -18,7 +19,6 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
 import { useWorkspaces } from "@/hooks/use-workspaces";
-import { brandParams, brandSegment, orgParams } from "@/lib/workspaces/paths";
 import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
 
 /** Two letters is enough to tell workspaces apart at a glance in the rail. */

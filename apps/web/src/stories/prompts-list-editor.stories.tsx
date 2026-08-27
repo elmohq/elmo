@@ -137,7 +137,7 @@ async function openPremium(canvasElement: HTMLElement, says: RegExp) {
 export const PremiumColumn: StoryObj = {
 	render: () => (
 		<Harness
-			premium={{ total: 20, assignedElsewhere: 4, brandId: "mock-brand-id" }}
+			premium={{ total: 20, assignedElsewhere: 4 }}
 			initial={[
 				...entries(["best crm for small business"], { premiumModels: ["claude"] }),
 				...entries(["cheapest project management tool"]),
@@ -164,7 +164,7 @@ export const PremiumColumn: StoryObj = {
 export const PremiumSpendsASlotPerModel: StoryObj = {
 	render: () => (
 		<Harness
-			premium={{ total: 20, assignedElsewhere: 0, brandId: "mock-brand-id" }}
+			premium={{ total: 20, assignedElsewhere: 0 }}
 			initial={entries(["best crm for small business"], { premiumModels: ["claude"] })}
 		/>
 	),
@@ -185,7 +185,7 @@ export const PremiumSpendsASlotPerModel: StoryObj = {
 export const PremiumAtCapacity: StoryObj = {
 	render: () => (
 		<Harness
-			premium={{ total: 5, assignedElsewhere: 4, brandId: "mock-brand-id" }}
+			premium={{ total: 5, assignedElsewhere: 4 }}
 			initial={[
 				...entries(["best crm for small business"], { premiumModels: ["claude"] }),
 				...entries(["cheapest project management tool"]),
@@ -211,7 +211,7 @@ export const PremiumAtCapacity: StoryObj = {
 export const PremiumIgnoresDisabledPrompts: StoryObj = {
 	render: () => (
 		<Harness
-			premium={{ total: 20, assignedElsewhere: 0, brandId: "mock-brand-id" }}
+			premium={{ total: 20, assignedElsewhere: 0 }}
 			initial={entries(["most durable trail runners"], { enabled: false })}
 		/>
 	),

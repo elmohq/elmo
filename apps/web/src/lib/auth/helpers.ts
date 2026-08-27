@@ -132,26 +132,6 @@ export async function requireOrganization(userId: string, slugOrId: string): Pro
 }
 
 /**
- * A brand inside a workspace the caller can reach, by slug or by id.
- *
- * Scoped to the org because that is what the URL has already named, which is
- * also why brand slugs only need to be unique within one. The id is accepted
- * alongside the slug so a brand that has never been given one still resolves,
- * and so an `/app/org/$org/brand/$brand` link built from an id in hand works.
- */
-export async function resolveBrandInOrg(
-	organizationId: string,
-	slugOrId: string,
-): Promise<{ id: string; slug: string | null } | null> {
-	const [row] = await db
-		.select({ id: brands.id, slug: brands.slug })
-		.from(brands)
-		.where(and(eq(brands.organizationId, organizationId), or(eq(brands.slug, slugOrId), eq(brands.id, slugOrId))))
-		.limit(1);
-	return row ?? null;
-}
-
-/**
  * Where a brand lives, for a caller holding nothing but a name for it — the
  * `/app/$brand` links that predate workspace-scoped URLs, which the 404 page
  * resolves so a stale bookmark or a whitelabel parent dashboard still leads

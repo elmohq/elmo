@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/componen
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { useMemo, useState } from "react";
+import { BrandPromptLink } from "@/components/brand-prompt-link";
 import { InfoTip, QueryWordsSection, VariationLine } from "@/components/fanout-sections";
 import { ALL_MODELS_VALUE, FilterBar, getAvailableModels } from "@/components/filter-bar";
 import { HistoryButton } from "@/components/history-button";
@@ -29,7 +30,6 @@ import { useBrand } from "@/hooks/use-brands";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
-import { useBrandSlug, useOrgSlug } from "@/hooks/use-workspaces";
 import { type PromptFanoutStat, promptKeywords, type TopQueryStat } from "@/lib/fanout-analysis";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { getModelDisplayName } from "@/lib/utils";
@@ -418,12 +418,7 @@ function Prompts({ prompts, brandId }: { prompts: PromptFanoutStat[]; brandId: s
 											</div>
 										)}
 										<div className="pt-1">
-											<HistoryButton
-												brandId={brandId}
-												promptId={p.promptId}
-												promptName={p.promptValue}
-												tab="web-queries"
-											/>
+											<HistoryButton promptId={p.promptId} tab="web-queries" />
 										</div>
 									</div>
 								)}
@@ -448,8 +443,6 @@ type TopSort = "prompts" | "runs";
 const TOP_GRID = "grid grid-cols-[1.25rem_1fr_5rem_5.5rem] items-center gap-3";
 
 function TopQueries({ data, brandId }: { data: FanoutData; brandId: string }) {
-	const org = useOrgSlug();
-	const brand = useBrandSlug();
 	const [sort, setSort] = useState<TopSort>("prompts");
 	const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -510,15 +503,13 @@ function TopQueries({ data, brandId }: { data: FanoutData; brandId: string }) {
 									<div className="border-border mb-3 ml-8 mr-2 space-y-1.5 border-l pl-4">
 										{q.promptRefs.map((p) => (
 											<div key={p.promptId} className="flex items-baseline justify-between gap-4">
-												<Link
-													to="/app/org/$org/brand/$brand/prompts/$promptId"
-													params={{ org, brand, promptId: p.promptId }}
+												<BrandPromptLink
+													promptId={p.promptId}
 													search={{ tab: "web-queries" }}
 													className="min-w-0 truncate text-sm hover:underline"
-													title={p.promptValue}
 												>
 													{p.promptValue || "(untitled prompt)"}
-												</Link>
+												</BrandPromptLink>
 												<span
 													className="text-muted-foreground shrink-0 text-sm tabular-nums"
 													title="Runs of this prompt that issued the search"

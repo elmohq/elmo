@@ -33,7 +33,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { cn } from "@workspace/ui/lib/utils";
 import { Inbox, ListPlus, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
-import { useOrgSlug } from "@/hooks/use-workspaces";
+import { useWorkspaceParams } from "@/hooks/use-workspaces";
 
 export interface EditablePrompt {
 	id?: string;
@@ -74,9 +74,10 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 
 /** Both places that offer more pairings send you to the same page. */
 function BillingLink({ children }: { children: ReactNode }) {
-	const org = useOrgSlug();
+	const workspaceParams = useWorkspaceParams();
+	if (!workspaceParams) return <>{children}</>;
 	return (
-		<Link to="/app/org/$org/settings/billing" params={{ org }} className="underline">
+		<Link to="/app/org/$org/settings/billing" params={workspaceParams} className="underline">
 			{children}
 		</Link>
 	);

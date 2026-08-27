@@ -2,32 +2,27 @@
  * /app/org/$org/settings — what the workspace is, and what it holds.
  *
  * The workspace is the thing brands, members, and the subscription all hang
- * off, so this is where its name and its URL are stated plainly. Both are a
- * cloud/local admin action: a whitelabel workspace belongs to Auth0 and demo
- * writes nothing, and in both cases the fields are shown read-only rather than
- * hidden — the point of the page is to say which workspace this is.
+ * off, so this is where its name and its URL are stated plainly. Both are an
+ * admin action, and only where this deployment owns the record: a whitelabel
+ * workspace belongs to Auth0 and demo writes nothing. In every other case the
+ * fields are shown read-only rather than hidden — the point of the page is to
+ * say which workspace this is.
  */
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { MAX_SLUG_LENGTH } from "@workspace/lib/db/provisioning";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
+import { SlugField } from "@/components/slug-field";
 import { buildTitle, getAppName } from "@/lib/route-head";
-import { orgSegment } from "@/lib/workspaces/paths";
 import {
 	getWorkspaceSettingsFn,
 	renameWorkspaceFn,
 	setWorkspaceSlugFn,
 	type WorkspaceSettings,
 } from "@/server/workspaces";
-
-const SLUG_ERRORS: Record<string, string> = {
-	invalid: "Use lowercase letters, numbers, and hyphens.",
-	taken: "That URL is already in use.",
-};
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings/")({
 	loader: ({ params }): Promise<WorkspaceSettings> => getWorkspaceSettingsFn({ data: { org: params.org } }),
@@ -66,7 +61,7 @@ function WorkspaceSettingsPage() {
 		setError(null);
 		setSaving(true);
 		try {
-			await renameWorkspaceFn({ data: { org: orgSegment(workspace), name: trimmed } });
+			await renameWorkspaceFn({ data: { org: workspace.slug, name: trimmed } });
 			setName(trimmed);
 			await router.invalidate();
 		} catch (err) {
@@ -111,7 +106,17 @@ function WorkspaceSettingsPage() {
 				)}
 			</form>
 
-			<WorkspaceUrlForm slug={workspace.slug} canEdit={canRename} />
+			<SlugField
+				id="workspace-url"
+				prefix="/app/org/"
+				current={workspace.slug}
+				subject="workspace"
+				canEdit={canRename}
+				save={(slug) => setWorkspaceSlugFn({ data: { org: workspace.slug, slug } })}
+				// The URL every link into this workspace uses just moved, including
+				// the one in the address bar.
+				onSaved={(slug) => router.navigate({ to: "/app/org/$org/settings", params: { org: slug }, replace: true })}
+			/>
 
 			<div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
 				<Badge variant="secondary">{workspace.role}</Badge>
@@ -121,76 +126,5 @@ function WorkspaceSettingsPage() {
 				</span>
 			</div>
 		</div>
-	);
-}
-
-/**
- * The workspace's URL segment.
- *
- * Changing it moves every link into this workspace, so the page navigates to
- * the new address on success rather than leaving the browser sitting on a path
- * that no longer resolves.
- */
-function WorkspaceUrlForm({ slug, canEdit }: { slug: string; canEdit: boolean }) {
-	const router = useRouter();
-	const [value, setValue] = useState(slug);
-	const [saving, setSaving] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-
-	const next = value.trim().toLowerCase();
-	const isDirty = next !== slug;
-
-	async function handleSave(e: React.FormEvent) {
-		e.preventDefault();
-		if (!isDirty || next.length === 0) return;
-		setError(null);
-		setSaving(true);
-		try {
-			const result = await setWorkspaceSlugFn({ data: { org: slug, slug: next } });
-			if (!result.ok) {
-				setError(SLUG_ERRORS[result.error ?? "invalid"] ?? "That URL can't be used.");
-				return;
-			}
-			await router.navigate({
-				to: "/app/org/$org/settings",
-				params: { org: result.slug ?? next },
-				replace: true,
-			});
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to change the workspace URL");
-		} finally {
-			setSaving(false);
-		}
-	}
-
-	return (
-		<form onSubmit={handleSave} className="space-y-2">
-			<Label htmlFor="workspace-url">URL</Label>
-			<div className="flex flex-wrap items-center gap-3">
-				<div className="flex items-center rounded-md border font-mono text-sm">
-					<span className="pl-3 text-muted-foreground">/app/org/</span>
-					<Input
-						id="workspace-url"
-						value={value}
-						onChange={(e) => setValue(e.target.value)}
-						readOnly={!canEdit}
-						maxLength={MAX_SLUG_LENGTH}
-						className="w-52 border-0 pl-0 font-mono text-sm shadow-none focus-visible:ring-0"
-					/>
-				</div>
-				{canEdit && (
-					<Button type="submit" variant="outline" disabled={saving || !isDirty || next.length === 0}>
-						{saving ? "Saving..." : "Change URL"}
-					</Button>
-				)}
-			</div>
-			{error ? (
-				<p className="text-sm text-destructive">{error}</p>
-			) : (
-				<p className="text-sm text-muted-foreground">
-					Changing this breaks existing links to this workspace, including any bookmarks.
-				</p>
-			)}
-		</form>
 	);
 }

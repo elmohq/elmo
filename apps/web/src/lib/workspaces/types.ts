@@ -35,3 +35,14 @@ export interface WorkspaceWithBrands extends Workspace {
 	 */
 	canCreateBrand: boolean;
 }
+
+/**
+ * Everything the `/app/org/$org` layout resolves once and every page below it
+ * reads from route context: the workspace itself, plus the two session facts
+ * the rail needs to decide what to offer.
+ */
+export interface WorkspaceContext {
+	workspace: WorkspaceWithBrands;
+	isAdmin: boolean;
+	hasReportAccess: boolean;
+}

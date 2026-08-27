@@ -1,12 +1,12 @@
-import { useCallback } from "react";
-import { Download } from "lucide-react";
-import { Button } from "@workspace/ui/components/button";
-import { ChartFooter } from "./chart-footer";
-import { HistoryButton } from "./history-button";
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { getOptimizeButtonForMode } from "@workspace/deployment/client";
+import { Button } from "@workspace/ui/components/button";
+import { Download } from "lucide-react";
+import { useCallback } from "react";
 import { getPromptWebQueryFn } from "@/server/prompts";
+import { ChartFooter } from "./chart-footer";
+import { HistoryButton } from "./history-button";
 
 type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
@@ -69,7 +69,7 @@ export function ChartActionsFooter({
 		<ChartFooter>
 			<div className="flex flex-wrap items-center justify-between gap-2 w-full">
 				<div className="flex flex-wrap items-center gap-2">
-					<HistoryButton promptName={promptName} promptId={promptId} brandId={brandId} />
+					<HistoryButton promptId={promptId} />
 					{onDownload && (
 						<Button
 							onClick={onDownload}

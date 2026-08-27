@@ -13,10 +13,11 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "@tanstack/react-router";
+import { orgParams } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import FullPageCard from "@/components/full-page-card";
-import { brandParams, orgParams } from "@/lib/workspaces/paths";
+import { WorkspaceBrandList } from "@/components/workspace-brand-list";
 import { getNotFoundContextFn } from "@/server/workspaces";
 
 export function NotFoundPage() {
@@ -84,20 +85,7 @@ export function NotFoundPage() {
 							{workspace.name}
 						</Link>
 						<div className="flex flex-col space-y-2">
-							{workspace.brands.map((brand) => (
-								<Button key={brand.id} asChild variant="secondary">
-									<Link to="/app/org/$org/brand/$brand" params={brandParams(workspace, brand)}>
-										{brand.name}
-									</Link>
-								</Button>
-							))}
-							{workspace.brands.length === 0 && (
-								<Button asChild variant="outline">
-									<Link to="/app/org/$org" params={orgParams(workspace)}>
-										Set up {workspace.name}
-									</Link>
-								</Button>
-							)}
+							<WorkspaceBrandList workspace={workspace} />
 						</div>
 					</div>
 				))}

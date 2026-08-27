@@ -27,8 +27,11 @@ export function setMockWorkspaces(workspaces: WorkspaceWithBrands[]) {
 }
 
 export const listWorkspacesFn = async () => _workspaces;
-export const resolveWorkspaceFn = async () => _workspaces[0];
-export const resolveBrandFn = async () => ({ id: _workspaces[0].brands[0]?.id ?? "brand-1", slug: null });
+export const resolveWorkspaceFn = async () => ({
+	workspace: _workspaces[0],
+	isAdmin: false,
+	hasReportAccess: false,
+});
 export const getWorkspaceSettingsFn = async () => ({
 	workspace: _workspaces[0],
 	brandCount: _workspaces[0].brands.length,

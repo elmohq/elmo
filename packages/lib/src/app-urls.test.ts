@@ -10,10 +10,10 @@ import {
 	orgSegment,
 	parseStrandedAppPath,
 	workspacePath,
-} from "@/lib/workspaces/paths";
+	workspaceSettingsPath,
+} from "./app-urls";
 
 const ACME = { id: "org_123", slug: "acme" };
-const UNSLUGGED_ORG = { id: "org_123", slug: null };
 const NIKE = { id: "nike", slug: "nike-running" };
 const UNSLUGGED_BRAND = { id: "nike", slug: null };
 
@@ -27,20 +27,24 @@ describe("URL segments", () => {
 		expect(brandSegment(NIKE)).toBe("nike-running");
 	});
 
-	it("falls back to the id when a slug was never set", () => {
-		expect(orgSegment(UNSLUGGED_ORG)).toBe("org_123");
+	it("falls back to the brand's id when a slug was never set", () => {
 		expect(brandSegment(UNSLUGGED_BRAND)).toBe("nike");
 	});
 
 	it("builds route params from either form", () => {
-		expect(orgParams(UNSLUGGED_ORG)).toEqual({ org: "org_123" });
+		expect(orgParams(ACME)).toEqual({ org: "acme" });
 		expect(brandParams(ACME, UNSLUGGED_BRAND)).toEqual({ org: "acme", brand: "nike" });
 	});
 
 	it("encodes segments in string paths", () => {
 		expect(workspacePath(ACME)).toBe("/app/org/acme");
 		expect(brandPath(ACME, NIKE)).toBe("/app/org/acme/brand/nike-running");
-		expect(brandPath({ id: "a b", slug: null }, { id: "c/d", slug: null })).toBe("/app/org/a%20b/brand/c%2Fd");
+		expect(brandPath({ slug: "a b" }, { id: "c/d", slug: null })).toBe("/app/org/a%20b/brand/c%2Fd");
+	});
+
+	it("names the workspace's own pages", () => {
+		expect(workspaceSettingsPath(ACME)).toBe("/app/org/acme/settings");
+		expect(workspaceSettingsPath(ACME, "billing")).toBe("/app/org/acme/settings/billing");
 	});
 });
 

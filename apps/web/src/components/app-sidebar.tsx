@@ -19,8 +19,8 @@ import {
 } from "@tabler/icons-react";
 import { Link, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
+import { brandPath } from "@workspace/lib/app-urls";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
-
 import {
 	Sidebar,
 	SidebarContent,
@@ -35,10 +35,9 @@ import type * as React from "react";
 import { DemoModePill } from "@/components/demo-mode-pill";
 import { Logo } from "@/components/logo";
 import { NavAppInfo } from "@/components/nav-app-info";
-import { type NavGroup, NavMain } from "@/components/nav-main";
+import { type NavGroup, type NavItem, NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
-import { brandPath } from "@/lib/workspaces/paths";
 import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
 
 /**
@@ -96,7 +95,7 @@ export function AppSidebar({
 				title: b.name,
 				url: brandPath(workspace, b),
 				icon: IconDashboard,
-				absolute: true,
+				base: "absolute" as const,
 			})),
 		});
 	}
@@ -184,12 +183,12 @@ export function AppSidebar({
 		groups.push({
 			label: workspace ? `Workspace · ${workspace.name}` : "Workspace",
 			items: [
-				{ title: "General", url: "/settings", icon: IconBuildingSkyscraper, workspace: true },
+				{ title: "General", url: "/settings", icon: IconBuildingSkyscraper, base: "workspace" as const },
 				...(context.clientConfig?.features.teamInvites
-					? [{ title: "Team", url: "/settings/members", icon: IconUsers, workspace: true }]
+					? [{ title: "Team", url: "/settings/members", icon: IconUsers, base: "workspace" as const }]
 					: []),
 				...(context.clientConfig?.features.billing
-					? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard, workspace: true }]
+					? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard, base: "workspace" as const }]
 					: []),
 			],
 		});
@@ -197,11 +196,11 @@ export function AppSidebar({
 
 	// Admin section
 	if (showAdminSection) {
-		const reportsItem = {
+		const reportsItem: NavItem = {
 			title: "Reports",
 			url: "/reports",
 			icon: IconReport,
-			absolute: true,
+			base: "absolute",
 		};
 		const adminItems = isAdmin
 			? [
@@ -209,20 +208,20 @@ export function AppSidebar({
 						title: "Brands",
 						url: "/admin",
 						icon: IconTable,
-						absolute: true,
+						base: "absolute" as const,
 					},
 					...(reportsEnabled ? [reportsItem] : []),
 					{
 						title: "Workflows",
 						url: "/admin/workflows",
 						icon: IconTimeline,
-						absolute: true,
+						base: "absolute" as const,
 					},
 					{
 						title: "Tools",
 						url: "/admin/tools",
 						icon: IconTool,
-						absolute: true,
+						base: "absolute" as const,
 					},
 				]
 			: [reportsItem];

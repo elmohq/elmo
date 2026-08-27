@@ -10,7 +10,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { checkBrandCreate } from "@workspace/lib/entitlements";
 import { asc, eq } from "drizzle-orm";
-import { requireOrganization } from "@/lib/auth/helpers";
+import type { UserOrganization } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 import type { WorkspaceBrand, WorkspaceWithBrands } from "@/lib/workspaces/types";
 
@@ -34,13 +34,10 @@ async function listWorkspaceBrands(organizationId: string): Promise<WorkspaceBra
 }
 
 /**
- * The workspace an `/app/org/$org` page belongs to, with everything the shell
- * around it renders: its name, its brands, and whether another brand can be
- * added. The layouts load this so the rail is complete on first paint and stays
- * usable if the switcher's all-workspaces query fails.
+ * A resolved workspace with everything the shell around it renders: its brands,
+ * and whether another brand can be added.
  */
-export async function loadWorkspaceWithBrands(userId: string, org: string): Promise<WorkspaceWithBrands> {
-	const workspace = await requireOrganization(userId, org);
+export async function withBrands(workspace: UserOrganization): Promise<WorkspaceWithBrands> {
 	const [workspaceBrands, canCreate] = await Promise.all([
 		listWorkspaceBrands(workspace.id),
 		decideBrandCreation([workspace.id]),

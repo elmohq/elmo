@@ -14,6 +14,7 @@ import { DEFAULT_APP_URL } from "@workspace/config/constants";
 import { getEnv } from "@workspace/config/env";
 import { PAST_DUE_GRACE_DAYS } from "@workspace/config/plans";
 import { ORG_ADMIN_ROLES } from "@workspace/config/roles";
+import { workspaceSettingsPath } from "@workspace/lib/app-urls";
 import { db } from "@workspace/lib/db/db";
 import { member, organization, user } from "@workspace/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
@@ -68,7 +69,7 @@ async function billingSettingsUrl(organizationId: string): Promise<string> {
 		.from(organization)
 		.where(eq(organization.id, organizationId))
 		.limit(1);
-	return org ? `${appUrl}/app/org/${encodeURIComponent(org.slug)}/settings/billing` : appUrl;
+	return org ? `${appUrl}${workspaceSettingsPath(org, "billing")}` : appUrl;
 }
 
 export async function sendDunningNotice(organizationId: string, notice: DunningNotice): Promise<void> {

@@ -4,6 +4,7 @@
 
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
+import { brandSegment } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
@@ -24,7 +25,6 @@ import { Settings, TrendingDown, TrendingUp } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { getAppName } from "@/lib/route-head";
-import { brandSegment } from "@/lib/workspaces/paths";
 import { getAdminStatsFn, updateDelayOverrideFn } from "@/server/admin";
 
 interface BrandStats {

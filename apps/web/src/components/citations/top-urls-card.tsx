@@ -15,7 +15,7 @@ import {
 } from "@/components/citations/shared";
 import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
-import { useBrandSlug, useOrgSlug } from "@/hooks/use-workspaces";
+import { useBrandParams } from "@/hooks/use-workspaces";
 
 export function TopUrlsCard({
 	urls,
@@ -36,8 +36,7 @@ export function TopUrlsCard({
 	brandShare: number;
 	brandIsCited: boolean;
 }) {
-	const org = useOrgSlug();
-	const brand = useBrandSlug();
+	const brandParams = useBrandParams();
 	const [urlSearch, setUrlSearch] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string>("all");
 	const [selectedPageType, setSelectedPageType] = useState<string>("all");
@@ -80,10 +79,10 @@ export function TopUrlsCard({
 									</p>
 									<p>
 										<strong>Competitor</strong> domains are only those in your{" "}
-										{brandId ? (
+										{brandParams ? (
 											<Link
 												to="/app/org/$org/brand/$brand/settings/competitors"
-												params={{ org, brand }}
+												params={brandParams}
 												className="underline"
 											>
 												tracked competitors list

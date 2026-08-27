@@ -32,12 +32,13 @@ export function getAppUrl(match: RouteMatchContext): string | undefined {
 
 /**
  * Get the brand name from the matched routes hierarchy.
- * Searches for the $brand layout match which stores brandName in loader data.
+ * Reads it off the brand the $brand layout loaded, so the name has one home.
  */
 export function getBrandName(matches: Array<{ loaderData?: Record<string, unknown> }>): string | undefined {
 	for (const m of matches) {
-		if (m.loaderData && typeof m.loaderData.brandName === "string") {
-			return m.loaderData.brandName;
+		const brand = m.loaderData?.brand;
+		if (brand && typeof brand === "object" && "name" in brand && typeof brand.name === "string") {
+			return brand.name;
 		}
 	}
 	return undefined;

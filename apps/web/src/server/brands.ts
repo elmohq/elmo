@@ -44,6 +44,7 @@ import { validateWebsiteUrl } from "@/lib/brand-website";
 import { getDeployment } from "@/lib/config/server";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { type TrackedTarget, targetFilterValue } from "@/lib/model-filter";
+import type { SlugResult } from "@/lib/slugs";
 
 const BRAND_ORG_ERRORS = {
 	"no-organization": "No organization for the current user",
@@ -595,13 +596,6 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 		return result;
 	});
 
-export interface BrandSlugResult {
-	ok: boolean;
-	/** Why the slug was refused, for the field to say so without a thrown error. */
-	error?: "invalid" | "taken";
-	slug?: string;
-}
-
 /**
  * Set the brand's URL segment.
  *
@@ -612,7 +606,7 @@ export interface BrandSlugResult {
  */
 export const setBrandSlugFn = createServerFn({ method: "POST" })
 	.validator(z.object({ brandId: z.string(), slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH) }))
-	.handler(async ({ data }): Promise<BrandSlugResult> => {
+	.handler(async ({ data }): Promise<SlugResult> => {
 		const session = await requireAuthSession();
 		const org = await requireBrandOrganization(session.user.id, data.brandId);
 

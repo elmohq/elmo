@@ -8,6 +8,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { isOrgAdminRole } from "@workspace/config/roles";
+import { brandPath, parseStrandedAppPath, workspacePath } from "@workspace/lib/app-urls";
 import { db } from "@workspace/lib/db/db";
 import { isOrgSlugAvailable, isValidSlug, MAX_SLUG_LENGTH } from "@workspace/lib/db/provisioning";
 import { brands, member, organization } from "@workspace/lib/db/schema";
@@ -16,42 +17,42 @@ import { z } from "zod";
 import {
 	findBrandLocation,
 	getAuthSession,
+	hasReportAccess,
+	isAdmin,
 	listUserOrganizations,
 	requireAuthSession,
 	requireOrganization,
-	resolveBrandInOrg,
 	resolveOrganization,
 } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
-import { brandPath, parseStrandedAppPath, workspacePath } from "@/lib/workspaces/paths";
-import { decideBrandCreation } from "@/lib/workspaces/server";
-import type { Workspace, WorkspaceWithBrands } from "@/lib/workspaces/types";
+import type { SlugResult } from "@/lib/slugs";
+import { decideBrandCreation, withBrands } from "@/lib/workspaces/server";
+import type { Workspace, WorkspaceContext, WorkspaceWithBrands } from "@/lib/workspaces/types";
 
-export type { Workspace, WorkspaceBrand, WorkspaceWithBrands } from "@/lib/workspaces/types";
+export type { Workspace, WorkspaceBrand, WorkspaceContext, WorkspaceWithBrands } from "@/lib/workspaces/types";
 
+/**
+ * Everything the `/app/org/$org` layout puts in route context: the workspace the
+ * segment names, its brands, and the session facts the rail renders from.
+ *
+ * One call per navigation into the workspace, and the only place the org is
+ * resolved — pages below read it from context instead of asking again, and the
+ * brand layout finds its brand in `brands` without a second round trip.
+ */
 export const resolveWorkspaceFn = createServerFn({ method: "GET" })
 	.validator(z.object({ org: z.string() }))
 	// The explicit return type breaks the type-inference cycle between this fn
 	// and the route loaders that both consume it and redirect to typed routes.
-	.handler(async ({ data }): Promise<Workspace | null> => {
+	.handler(async ({ data }): Promise<WorkspaceContext | null> => {
 		const session = await requireAuthSession();
-		return resolveOrganization(session.user.id, data.org);
-	});
+		const org = await resolveOrganization(session.user.id, data.org);
+		if (!org) return null;
 
-/**
- * The brand an `/app/org/$org/brand/$brand` segment names, by slug or by id.
- *
- * Resolved once in the layout and handed down as context, so no page below has
- * to know which of the two the URL happens to carry. Membership is re-checked
- * here rather than trusted from the caller: a server function is reachable on
- * its own, not only through the route that normally calls it.
- */
-export const resolveBrandFn = createServerFn({ method: "GET" })
-	.validator(z.object({ org: z.string(), brand: z.string() }))
-	.handler(async ({ data }): Promise<{ id: string; slug: string | null } | null> => {
-		const session = await requireAuthSession();
-		const workspace = await requireOrganization(session.user.id, data.org);
-		return resolveBrandInOrg(workspace.id, data.brand);
+		return {
+			workspace: await withBrands(org),
+			isAdmin: isAdmin(session),
+			hasReportAccess: hasReportAccess(session),
+		};
 	});
 
 /** What the 404 page renders: where the path was going, and where else to go. */
@@ -161,15 +162,27 @@ export const getWorkspaceSettingsFn = createServerFn({ method: "GET" })
 			workspace,
 			brandCount: brandCount?.value ?? 0,
 			memberCount: memberCount?.value ?? 0,
-			// Whitelabel workspaces are Auth0's records, and demo writes nothing;
-			// renaming either here would be a change the source of truth undoes.
-			canRename: canRenameWorkspace() && isOrgAdminRole(workspace.role),
+			canRename: canEditWorkspace(workspace.role),
 		};
 	});
 
-function canRenameWorkspace(): boolean {
+/**
+ * Whether this caller may change what the workspace is called, by name or by
+ * URL. Both are workspace-wide: every member's links and the billing mail's
+ * links point at the slug, so this is an admin action for the same reason
+ * managing the plan and the member list is.
+ *
+ * Whitelabel workspaces are Auth0's records, and demo writes nothing; renaming
+ * either here would be a change the source of truth undoes.
+ */
+function canEditWorkspace(role: string): boolean {
 	const deployment = getDeployment();
-	return !deployment.features.readOnly && deployment.mode !== "whitelabel";
+	return !deployment.features.readOnly && deployment.mode !== "whitelabel" && isOrgAdminRole(role);
+}
+
+function assertCanEditWorkspace(role: string): void {
+	if (!isOrgAdminRole(role)) throw new Error("Only workspace admins can change the workspace name or URL");
+	if (!canEditWorkspace(role)) throw new Error("This workspace cannot be renamed in this deployment");
 }
 
 export const renameWorkspaceFn = createServerFn({ method: "POST" })
@@ -179,20 +192,11 @@ export const renameWorkspaceFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		const workspace = await requireOrganization(session.user.id, data.org);
-
-		if (!canRenameWorkspace()) throw new Error("This workspace cannot be renamed in this deployment");
-		if (!isOrgAdminRole(workspace.role)) throw new Error("Only admins can rename the workspace");
+		assertCanEditWorkspace(workspace.role);
 
 		await db.update(organization).set({ name: data.name }).where(eq(organization.id, workspace.id));
 		return { success: true };
 	});
-
-export interface WorkspaceSlugResult {
-	ok: boolean;
-	/** Why the slug was refused, for the field to say so without a thrown error. */
-	error?: "invalid" | "taken";
-	slug?: string;
-}
 
 /**
  * Set the workspace's URL segment.
@@ -202,12 +206,10 @@ export interface WorkspaceSlugResult {
  */
 export const setWorkspaceSlugFn = createServerFn({ method: "POST" })
 	.validator(z.object({ org: z.string(), slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH) }))
-	.handler(async ({ data }): Promise<WorkspaceSlugResult> => {
+	.handler(async ({ data }): Promise<SlugResult> => {
 		const session = await requireAuthSession();
 		const workspace = await requireOrganization(session.user.id, data.org);
-
-		if (!canRenameWorkspace()) throw new Error("This workspace's URL cannot be changed in this deployment");
-		if (!isOrgAdminRole(workspace.role)) throw new Error("Only admins can change the workspace URL");
+		assertCanEditWorkspace(workspace.role);
 
 		if (!isValidSlug(data.slug)) return { ok: false, error: "invalid" };
 		if (!(await isOrgSlugAvailable(data.slug, { excludeOrgId: workspace.id }))) return { ok: false, error: "taken" };

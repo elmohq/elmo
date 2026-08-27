@@ -8,26 +8,28 @@ export const workspaceKeys = {
 };
 
 /**
- * The workspace slug in the URL. Every page under `/app/org/$org` has one; the
- * empty string stands for the handful that sit outside it (the picker itself,
- * admin, the paywall), where callers use it to build nothing.
+ * Route params for linking to the current workspace, or null when the page sits
+ * outside one (the picker itself, admin, the paywall).
+ *
+ * Null rather than an empty string: a caller that can't build a link needs to
+ * render something else, and `/app/org//…` is not that.
  */
-export function useOrgSlug(): string {
+export function useWorkspaceParams(): { org: string } | null {
 	const params = useParams({ strict: false }) as { org?: string };
-	return params.org ?? "";
+	return params.org ? { org: params.org } : null;
 }
 
 /**
- * The `$brand` segment of the current URL — the brand's slug where it has one
- * and its id otherwise.
+ * Route params for linking within the current brand, or null off a brand page.
  *
- * For linking, not for identifying: a component that needs to *name* the brand
- * to the server wants `useBrandId`. Linking with the segment already in the
- * address bar keeps navigation off the canonicalizing redirect.
+ * The `brand` value is the segment already in the address bar — the brand's slug
+ * where it has one and its id otherwise — so navigation stays off the
+ * canonicalizing redirect. For *identifying* a brand to the server, use
+ * `useBrandId`.
  */
-export function useBrandSlug(): string {
-	const params = useParams({ strict: false }) as { brand?: string };
-	return params.brand ?? "";
+export function useBrandParams(): { org: string; brand: string } | null {
+	const params = useParams({ strict: false }) as { org?: string; brand?: string };
+	return params.org && params.brand ? { org: params.org, brand: params.brand } : null;
 }
 
 /**

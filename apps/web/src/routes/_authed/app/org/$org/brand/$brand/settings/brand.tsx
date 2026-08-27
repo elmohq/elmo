@@ -7,13 +7,13 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { MAX_SLUG_LENGTH } from "@workspace/lib/db/provisioning";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useCallback, useEffect, useState } from "react";
+import { SlugField } from "@/components/slug-field";
 import { useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
@@ -213,77 +213,28 @@ function BrandSettingsPage() {
 	);
 }
 
-const SLUG_ERRORS: Record<string, string> = {
-	invalid: "Use lowercase letters, numbers, and hyphens.",
-	taken: "Another brand in this workspace already uses that URL.",
-};
-
 /**
- * The brand's URL segment, saved on its own rather than with the rest of the
- * form: changing it moves the page the form is sitting on, so it navigates to
- * the new address instead of leaving the browser on one that no longer resolves.
- *
  * A brand that predates slugs shows its id, which is what its URL already
  * carries — saving is what turns that into a real slug.
  */
 function BrandUrlField({ brandId, slug }: { brandId: string; slug: string | null }) {
 	const router = useRouter();
 	const { org } = Route.useParams();
-	const current = slug ?? brandId;
-	const [value, setValue] = useState(current);
-	const [saving, setSaving] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-
-	const next = value.trim().toLowerCase();
-	const isDirty = next !== current;
-
-	const handleSave = async () => {
-		if (!isDirty || next.length === 0) return;
-		setError(null);
-		setSaving(true);
-		try {
-			const result = await setBrandSlugFn({ data: { brandId, slug: next } });
-			if (!result.ok) {
-				setError(SLUG_ERRORS[result.error ?? "invalid"] ?? "That URL can't be used.");
-				return;
-			}
-			await router.navigate({
-				to: "/app/org/$org/brand/$brand/settings/brand",
-				params: { org, brand: result.slug ?? next },
-				replace: true,
-			});
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to change the brand URL");
-		} finally {
-			setSaving(false);
-		}
-	};
 
 	return (
-		<div className="space-y-2">
-			<Label htmlFor="brand-url">URL</Label>
-			<div className="flex flex-wrap items-center gap-3">
-				<div className="flex items-center rounded-md border font-mono text-sm">
-					<span className="pl-3 text-muted-foreground">/brand/</span>
-					<Input
-						id="brand-url"
-						value={value}
-						onChange={(e) => setValue(e.target.value)}
-						maxLength={MAX_SLUG_LENGTH}
-						className="w-52 border-0 pl-0 font-mono text-sm shadow-none focus-visible:ring-0"
-					/>
-				</div>
-				<Button type="button" variant="outline" onClick={handleSave} disabled={saving || !isDirty || !next}>
-					{saving ? "Saving..." : "Change URL"}
-				</Button>
-			</div>
-			{error ? (
-				<p className="text-xs text-destructive">{error}</p>
-			) : (
-				<p className="text-xs text-muted-foreground">
-					Changing this breaks existing links to this brand, including any bookmarks.
-				</p>
-			)}
-		</div>
+		<SlugField
+			id="brand-url"
+			prefix="/brand/"
+			current={slug ?? brandId}
+			subject="brand"
+			save={(next) => setBrandSlugFn({ data: { brandId, slug: next } })}
+			onSaved={(next) =>
+				router.navigate({
+					to: "/app/org/$org/brand/$brand/settings/brand",
+					params: { org, brand: next },
+					replace: true,
+				})
+			}
+		/>
 	);
 }

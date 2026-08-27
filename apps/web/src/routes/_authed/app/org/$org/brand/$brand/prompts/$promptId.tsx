@@ -30,7 +30,6 @@ import { useBrand } from "@/hooks/use-brands";
 import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
 import { usePromptStats } from "@/hooks/use-prompt-stats";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
-import { useBrandSlug, useOrgSlug } from "@/hooks/use-workspaces";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { promptKeywords } from "@/lib/fanout-analysis";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
@@ -388,8 +387,7 @@ function MentionsTab({
 	brandName?: string;
 	brandId: string;
 }) {
-	const org = useOrgSlug();
-	const brand = useBrandSlug();
+	const brandParams = Route.useParams();
 
 	if (isLoading) return <TabLoadingSkeleton lines={5} />;
 
@@ -417,11 +415,7 @@ function MentionsTab({
 						<TooltipContent className="max-w-xs text-sm font-normal">
 							<p>
 								Only competitors from your{" "}
-								<Link
-									to="/app/org/$org/brand/$brand/settings/competitors"
-									params={{ org, brand }}
-									className="underline"
-								>
+								<Link to="/app/org/$org/brand/$brand/settings/competitors" params={brandParams} className="underline">
 									tracked competitors list
 								</Link>{" "}
 								are shown here.

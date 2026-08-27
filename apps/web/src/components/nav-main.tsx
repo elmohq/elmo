@@ -9,14 +9,19 @@ import {
 	useSidebar,
 } from "@workspace/ui/components/sidebar";
 
+/**
+ * What a nav entry's `url` is relative to. One field with three values rather
+ * than two independent booleans, so "workspace-relative *and* absolute" isn't a
+ * state the type allows and `href` is a switch instead of a precedence rule.
+ */
+export type NavBase = "brand" | "workspace" | "absolute";
+
 export interface NavItem {
 	title: string;
-	/** Relative to the brand by default; see `workspace` and `absolute`. */
+	/** Relative to `base`; "/" means that section's own root. */
 	url: string;
 	icon?: Icon;
-	/** Relative to the workspace (`/app/org/$org`) instead of the brand. */
-	workspace?: boolean;
-	absolute?: boolean;
+	base?: NavBase;
 }
 
 export interface NavGroup {
@@ -29,14 +34,19 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
 	const { setOpenMobile } = useSidebar();
 	const { pathname } = useLocation();
 
+	// Built from the segments already in the address bar rather than from ids, so
+	// a link never bounces through the canonicalizing redirect on its way.
 	const getHref = (item: NavItem) => {
-		if (item.absolute) return item.url;
 		// "/" means the section's own root, which is the prefix with nothing added.
 		const suffix = item.url === "/" ? "" : item.url;
-		// Built from the segments already in the address bar rather than from ids,
-		// so a link never bounces through the canonicalizing redirect on its way.
-		if (item.workspace) return `/app/org/${params.org}${suffix}`;
-		return `/app/org/${params.org}/brand/${params.brand}${suffix}`;
+		switch (item.base ?? "brand") {
+			case "absolute":
+				return item.url;
+			case "workspace":
+				return `/app/org/${params.org}${suffix}`;
+			case "brand":
+				return `/app/org/${params.org}/brand/${params.brand}${suffix}`;
+		}
 	};
 
 	// Exactly one entry lights up: the longest href the path is inside. Prefix

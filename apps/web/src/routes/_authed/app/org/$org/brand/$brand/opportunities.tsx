@@ -50,7 +50,7 @@ function OpportunitiesPage() {
 			</EmptyCard>
 		);
 	} else {
-		content = <OpportunitiesReport report={data.report} brandId={brandId} />;
+		content = <OpportunitiesReport report={data.report} />;
 	}
 
 	return (

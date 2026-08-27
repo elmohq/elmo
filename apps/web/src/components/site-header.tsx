@@ -1,4 +1,5 @@
 import { Link, useLocation, useParams } from "@tanstack/react-router";
+import { BRAND_PAGE_INDEX, BRAND_SUBPAGE_INDEX, pathSegments, WORKSPACE_SUBPAGE_INDEX } from "@workspace/lib/app-urls";
 import {
 	Breadcrumb,
 	BreadcrumbItem,
@@ -111,11 +112,11 @@ function BrandBreadcrumbs({
 	brand: string | undefined;
 	brandName: string;
 }) {
-	// ["app", "org", <org>, "brand", <brand>, <page>, <sub>] — e.g.
-	// /app/org/acme/brand/nike/prompts/<id> puts the page at 5 and its sub at 6.
-	const pathSegments = pathname.split("/").filter(Boolean);
-	const pageSegment = pathSegments[5] ?? "";
-	const subSegment = pathSegments[6] ?? "";
+	// Indexed with the same constants the router's redirects use, so the header
+	// and the URL never disagree about where the page name sits.
+	const segments = pathSegments(pathname);
+	const pageSegment = segments[BRAND_PAGE_INDEX] ?? "";
+	const subSegment = segments[BRAND_SUBPAGE_INDEX] ?? "";
 
 	// Check if we're on a specific prompt detail page (e.g., .../prompts/uuid)
 	const isPromptDetailPage =
@@ -198,9 +199,7 @@ function BrandBreadcrumbs({
 
 /** Settings that belong to the workspace: /app/org/$org/settings[/sub]. */
 function WorkspaceSettingsBreadcrumbs({ pathname, org }: { pathname: string; org: string }) {
-	// ["app", "org", <org>, "settings", <sub>]
-	const segments = pathname.split("/").filter(Boolean);
-	const sub = segments[4];
+	const sub = pathSegments(pathname)[WORKSPACE_SUBPAGE_INDEX];
 
 	if (!sub) {
 		return (
