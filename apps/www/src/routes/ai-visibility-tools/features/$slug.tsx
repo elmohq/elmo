@@ -10,6 +10,7 @@ import {
 	getFeatureFaqs,
 	getFeatureKeyBySlug,
 	getFeatureLabel,
+	getFeatureSearchTerm,
 	getFeatureVerdict,
 	MIN_TOOLS_FOR_FEATURE_PAGE,
 	toolsWithFeature,
@@ -23,8 +24,13 @@ export const Route = createFileRoute("/ai-visibility-tools/features/$slug")({
 		const tools = toolsWithFeature(key);
 		if (tools.length < MIN_TOOLS_FOR_FEATURE_PAGE) return {};
 		const label = getFeatureLabel(key);
-		const title = `AI Visibility Tools with ${label} · Elmo`;
-		const description = `See which AI visibility tools offer ${label.toLowerCase()} and how they compare, including the open-source option, Elmo.`;
+		const term = getFeatureSearchTerm(key);
+		const title = !term
+			? `AI Visibility Tools with ${label} · Elmo`
+			: tools.length <= 25
+				? `${tools.length} Best ${term} (2026) · Elmo`
+				: `${term} Compared: ${tools.length} Tools (2026) · Elmo`;
+		const description = `${tools.length} AI visibility tools with ${label.toLowerCase()}, compared on engine coverage, pricing, and export — including Elmo, the open-source option.`;
 		const path = `/ai-visibility-tools/features/${params.slug}`;
 		return {
 			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],

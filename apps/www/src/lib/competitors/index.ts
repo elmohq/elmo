@@ -57,6 +57,7 @@ export {
 	type FeatureKey,
 	getFeatureDescription,
 	getFeatureLabel,
+	getFeatureSearchTerm,
 	getScreenshotUrl,
 	isLowDR,
 	LOW_DR_THRESHOLD,

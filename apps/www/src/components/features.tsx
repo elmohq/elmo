@@ -93,15 +93,15 @@ const features: Feature[] = [
 	},
 ];
 
-export function Features() {
+export function Features({ as: Heading = "h2" }: { as?: "h1" | "h2" } = {}) {
 	return (
 		<section id="features" className="border-b border-zinc-200 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
 				<div>
 					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ FEATURES</p>
-					<h2 className="mt-4 text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
+					<Heading className="mt-4 text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
 						All you need to grow AI visibility.
-					</h2>
+					</Heading>
 				</div>
 
 				<div className="mt-16 space-y-16 lg:space-y-24">

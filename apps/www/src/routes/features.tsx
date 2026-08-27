@@ -32,7 +32,7 @@ function FeaturesPage() {
 		<div className="min-h-screen">
 			<Navbar />
 			<main>
-				<Features />
+				<Features as="h1" />
 				<CTA />
 			</main>
 			<Footer />
