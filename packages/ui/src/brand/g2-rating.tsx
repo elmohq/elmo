@@ -10,7 +10,6 @@ import { SiG2 } from "react-icons/si";
 
 const G2_RATING = 4.7;
 const G2_MAX_RATING = 5;
-const G2_PROFILE_URL = "https://www.g2.com/products/blue-whale-software-llc-elmo/reviews";
 
 const RATING_LABEL = `Rated ${G2_RATING} out of ${G2_MAX_RATING} on G2`;
 
@@ -48,9 +47,8 @@ function Stars() {
 /**
  * The mark and the stars, unlinked and unlabelled.
  *
- * For places that want the rating as a mark of quality rather than as
- * something to click — sitting in the corner of a sign-in page, it should
- * reassure, not offer a way off the page mid-signup.
+ * The rating reads as a mark of quality rather than as something to click — it
+ * should reassure in place, not offer a way off the page.
  */
 export function G2Stars({ className = "" }: { className?: string }) {
 	return (
@@ -58,27 +56,5 @@ export function G2Stars({ className = "" }: { className?: string }) {
 			<SiG2 className="size-4 shrink-0" style={{ color: G2_RED }} aria-hidden="true" />
 			<Stars />
 		</span>
-	);
-}
-
-/**
- * The same rating with the score spelled out, linking to the reviews.
- *
- * @param className tone for the label; the mark and stars keep their own colors.
- */
-export function G2Rating({ className = "" }: { className?: string }) {
-	return (
-		<a
-			href={G2_PROFILE_URL}
-			target="_blank"
-			rel="noopener noreferrer"
-			className={`inline-flex items-center gap-2 text-xs transition-opacity hover:opacity-80 ${className}`}
-		>
-			<SiG2 className="size-4 shrink-0" style={{ color: G2_RED }} aria-hidden="true" />
-			<Stars />
-			<span>
-				{G2_RATING}/{G2_MAX_RATING} stars on G2
-			</span>
-		</a>
 	);
 }
