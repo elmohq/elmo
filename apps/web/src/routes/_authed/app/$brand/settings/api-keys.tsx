@@ -82,7 +82,11 @@ function ApiKeysSettingsPage() {
 					brandId,
 					name,
 					scopes,
-					brandIds: restrictBrands ? selectedBrands : [],
+					// Null, not an empty array: unrestricted is the absence of a
+					// restriction. The server rejects `[]` rather than reading it as
+					// "all", so an empty picker surfaces as an error rather than a key
+					// that quietly reaches everything.
+					brandIds: restrictBrands ? selectedBrands : null,
 					expiresInDays: expiresInDays === "never" ? null : Number(expiresInDays),
 				},
 			});

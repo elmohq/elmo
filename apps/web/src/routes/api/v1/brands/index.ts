@@ -56,8 +56,12 @@ export const Route = createFileRoute("/api/v1/brands/")({
 						.limit(limit)
 						.offset(offset);
 
+					// `data` is the field to read; `brands` is the shipped name, kept
+					// until the one known consumer has migrated (see DESIGN.md §2).
+					const results = rows.map(buildBrandResult);
 					return {
-						brands: rows.map(buildBrandResult),
+						data: results,
+						brands: results,
 						pagination: { page, limit, total: totalCount, totalPages },
 					};
 				},
@@ -79,9 +83,21 @@ export const Route = createFileRoute("/api/v1/brands/")({
 					}
 				},
 				handle: async ({ body, auth }) => {
-					// An organization key creates inside its own workspace, whatever the
-					// body says. An admin key may name one, and falls back to the
-					// per-brand organization it has always provisioned.
+					// An organization key creates inside its own workspace. Naming that
+					// same workspace is fine — a client that fills the field in from
+					// `GET /me` shouldn't be punished for it — but naming another is a
+					// mistake worth reporting rather than silently ignoring.
+					//
+					// The check compares against the key's own org id and never looks
+					// the named one up, so the refusal cannot reveal whether some other
+					// tenant exists.
+					if (auth.kind === "organization" && body.organizationId && body.organizationId !== auth.organizationId) {
+						throw new ApiError(
+							400,
+							"Validation Error",
+							"Organization keys always create inside their own organization; omit organizationId or set it to the key's organization.",
+						);
+					}
 					const organizationId = auth.kind === "organization" ? auth.organizationId : (body.organizationId ?? null);
 					if (organizationId) await assertCanCreateBrand(organizationId);
 					const internal = apiCreateInputToInternal(body);

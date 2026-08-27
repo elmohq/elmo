@@ -49,13 +49,21 @@ const DEMO_AUTH_WRITE_ALLOWLIST = new Set([
 
 export type DeploymentPolicyResult =
 	| { action: "allow" }
-	| { action: "block"; status: 401 | 403; error: string; message: string }
+	| {
+			action: "block";
+			status: 401 | 403 | 404;
+			error: string;
+			message: string;
+			/** Set on /api/v1 blocks, which answer the same envelope every route does. */
+			code?: string;
+	  }
 	| { action: "redirect"; url: string }
 	| { action: "serve-openapi" };
 
 export interface RequestInfo {
 	pathname: string;
 	method: string;
+	authorizationHeader?: string | null;
 }
 
 /**
@@ -71,7 +79,7 @@ export interface RequestInfo {
  * createApiHandler is the gate for those routes.
  */
 export function evaluateDeploymentPolicy(features: FeaturesConfig, request: RequestInfo): DeploymentPolicyResult {
-	const { pathname, method } = request;
+	const { pathname, method, authorizationHeader } = request;
 	const isWriteMethod = WRITE_METHODS.has(method);
 	const isPlausibleEventRoute = pathname === "/api/plausible/event" || pathname === "/api/plausible/event/";
 
@@ -85,6 +93,7 @@ export function evaluateDeploymentPolicy(features: FeaturesConfig, request: Requ
 	// refusal carries the same `{ error, message, code }` envelope as every
 	// other /api/v1 error instead of a bare middleware body.
 	const isPublicApiV1 = pathname.startsWith("/api/v1/");
+	const isPublicApiV1Doc = pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
 
 	// 0a. Minting or editing an API key never happens over HTTP. The plugin
 	// rejects `permissions` on any request carrying headers, so a browser could
@@ -136,8 +145,26 @@ export function evaluateDeploymentPolicy(features: FeaturesConfig, request: Requ
 		return { action: "serve-openapi" };
 	}
 
-	// 3. /api/v1 authentication is createApiHandler's job — an organization key
-	// resolves against the database, which this function cannot do.
+	// 3. A coarse gate for /api/v1. Resolving a token needs a database lookup,
+	// which this function cannot do, so createApiHandler stays the real gate —
+	// but a request with no bearer at all can be turned away here.
+	//
+	// The invariant this exists to hold: **nothing under /api/v1 ever answers
+	// with HTML.** Without it a request the router doesn't match falls through
+	// to the SPA, and a client parsing JSON gets a page of markup instead of an
+	// error it can read.
+	if (isPublicApiV1 && !isPublicApiV1Doc) {
+		if (!hasBearerToken(authorizationHeader)) {
+			return {
+				action: "block",
+				status: 401,
+				error: "Unauthorized",
+				message: "Valid API key required as Bearer token in Authorization header",
+				code: "unauthorized",
+			};
+		}
+	}
+
 	return { action: "allow" };
 }
 
@@ -158,6 +185,15 @@ export function timingSafeStringEqual(a: string, b: string): boolean {
 		return false;
 	}
 	return timingSafeEqual(bufA, bufB);
+}
+
+/**
+ * Whether the request carries a non-empty Bearer token — a shape check only.
+ * Whether that token is *valid* needs a database lookup and belongs to
+ * createApiHandler.
+ */
+function hasBearerToken(header: string | null | undefined): boolean {
+	return typeof header === "string" && header.startsWith("Bearer ") && header.slice(7).trim().length > 0;
 }
 
 /**

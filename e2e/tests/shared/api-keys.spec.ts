@@ -90,4 +90,27 @@ test.describe("API keys", () => {
     const afterRevoke = await request.get("/api/v1/me", { headers: auth, failOnStatusCode: false });
     expect(afterRevoke.status()).toBe(401);
   });
+
+  test("a restriction that names no brand is refused, not read as all brands", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "demo", "demo refuses every write; covered by the Bruno demo suite");
+
+    await page.goto(KEYS_PAGE, { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: "API keys" })).toBeVisible();
+
+    const nameField = page.locator("#key-name");
+    const name = `Empty restriction ${Date.now()}`;
+    await expect(async () => {
+      await nameField.fill(name);
+      await expect(nameField).toHaveValue(name, { timeout: 1_000 });
+    }).toPass({ timeout: 30_000 });
+
+    // Ticking the restriction and choosing nothing is the case that must not
+    // quietly become "every brand" — the server, not the page, is what refuses.
+    await page.getByRole("button", { name: "Read only" }).click();
+    await page.getByRole("checkbox", { name: "Restrict this key to specific brands" }).first().click();
+    await page.getByRole("button", { name: "Create key", exact: true }).click();
+
+    await expect(page.getByText(/at least one brand/i)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(name)).toBeHidden();
+  });
 });

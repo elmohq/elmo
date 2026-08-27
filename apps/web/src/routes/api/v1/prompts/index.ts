@@ -71,7 +71,10 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 						.limit(limit)
 						.offset(offset);
 
+					// `data` is the field to read; `prompts` is the shipped name, kept
+					// until the one known consumer has migrated (see DESIGN.md §2).
 					return {
+						data: promptsList,
 						prompts: promptsList,
 						pagination: { page, limit, total: totalCount, totalPages },
 					};

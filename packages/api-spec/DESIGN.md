@@ -213,11 +213,14 @@ is a `400`. `startDate`/`endDate` is the shipped spelling on
 `{ page, limit, total, totalPages }`. Offset paging everywhere, for one paging
 model rather than two.
 
-**List envelopes.** Endpoints that ship today keep their named key
-(`{ brands: [...] }`, `{ prompts: [...] }`, …). Every new list returns
-`{ data: [...], pagination: {...} }`. We do not retrofit the old ones and we do
-not add new named-key lists — the split is "already public" vs "new", which is
-easy to explain and costs nothing to hold.
+**List envelopes.** Every list answers `{ data: [...], pagination: {...} }`.
+
+The lists that shipped before this also still carry their original key —
+`brands`, `prompts`, `competitors`, `reports` — holding the same array. That is
+a migration, not a permanent split: there is one known consumer, so the old keys
+are marked `deprecated` in the spec, `data` is documented as the field to read,
+and a later release removes them. Both are emitted unconditionally, so both stay
+`required` while the old one lives.
 
 **Filtering.** One spelling everywhere: `model` takes a single platform id,
 `tags` takes a comma-separated list and matches a resource carrying any of them.
@@ -253,25 +256,15 @@ assumed: emitting `err.code` straight from the handler ships the wrong spelling.
 bearer scheme produces an invalid document — so the requirement is carried as an
 extension and summarized in the API description.
 
-**Stability.** Every operation carries
-`x-elmo-stability: stable | beta | planned`. **This is a documentation label,
-not machinery** — nothing filters, gates, or branches on it. It exists so a
-reader knows what they're looking at.
+**Stability.** An operation whose response shape may still change carries
+`x-stability: experimental` and says so in the first line of its description,
+where a reader actually looks. Everything else is stable: its shape will only
+ever gain fields.
 
-- `stable` — everything shipped today. Additive changes only.
-- `beta` — built and supported, shape may still move. Concretely: we may add,
-  rename, or remove a response field, or tighten a parameter, and we will say so
-  in the changelog for the release that does it — but we won't change a path or
-  a status code, and we won't do it silently. This is the main lever against
-  locking ourselves in: new endpoints land here, not at `stable`, and it is what
-  lets us expose an LLM-generated shape like Opportunities at all.
-- `planned` — specified, not built. Calling it returns `404`. The document is
-  written ahead of the code, so the reference doubles as the roadmap. Nothing
-  carries this today: every operation below is implemented.
-
-An `x-` extension doesn't render, so anything that isn't `stable` also **says so
-in the first line of its description**, where a reader actually sees it.
-Implementing an operation is one edit: drop the note, flip `planned` → `beta`.
+The absence of the marker is the promise, which is why there is one value and
+not a ladder — a tier that means "probably fine" is a tier nobody acts on. Today
+exactly one operation carries it: Opportunities, whose shape is LLM-generated
+and still moving. Marking it is what makes exposing it reasonable at all.
 
 ---
 
@@ -380,12 +373,18 @@ filtered to the key's brands. Additions:
 
   | Caller | Owning organization |
   | --- | --- |
-  | Organization key | the key's own, always — the request can't name another |
+  | Organization key | its own. Naming that same organization is accepted; naming any other is a `400` |
   | Admin key | `organizationId` in the body when given; today's provisioning when not, so existing admin integrations are unchanged |
 
-  `CreateBrandRequest` gains that optional `organizationId`, ignored for org
-  keys. `assertCanCreateBrand` then runs against whichever org was resolved —
-  it's the easy part, and it's meaningless until the attachment is right.
+  `CreateBrandRequest` gains that optional `organizationId`. An organization key
+  naming its own workspace is fine — a client filling the field in from
+  `GET /me` shouldn't be punished for it — but naming another is a mistake worth
+  reporting rather than silently ignoring. The check compares against the key's
+  own organization id and never looks the named one up, so the refusal can't
+  become an existence oracle for another tenant.
+
+  `assertCanCreateBrand` then runs against whichever org was resolved — it's the
+  easy part, and it's meaningless until the attachment is right.
 - **No** `DELETE /v1/brands/{brandId}`. Brand deletion cascades across runs,
   citations, and an organization; an irreversible cascade behind a leaked key is
   exactly the thing we would regret. Deletion stays a dashboard action.

@@ -61,7 +61,10 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 						.limit(limit)
 						.offset(offset);
 
+					// `data` is the field to read; `competitors` is the shipped name,
+					// kept until the one known consumer has migrated (DESIGN.md §2).
 					return {
+						data: list,
 						competitors: list,
 						pagination: { page, limit, total: totalCount, totalPages },
 					};

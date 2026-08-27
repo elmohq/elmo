@@ -54,13 +54,27 @@ tests {
     }
   });
 
-  test("every operation declares its scope and stability", function() {
+  test("every operation declares the scope it needs", function() {
     const methods = ["get", "post", "put", "patch", "delete"];
     for (const [path, operations] of Object.entries(res.getBody().paths)) {
       for (const [method, operation] of Object.entries(operations)) {
         if (!methods.includes(method)) continue;
         expect(operation["x-elmo-scopes"], `${method} ${path}`).to.be.an("array");
-        expect(["stable", "beta", "planned"], `${method} ${path}`).to.include(operation["x-elmo-stability"]);
+      }
+    }
+  });
+
+  test("only an unsettled shape is marked, and it says so where a reader looks", function() {
+    // Absence of the marker is the promise, so a stray value anywhere would
+    // quietly weaken every operation that carries nothing.
+    const methods = ["get", "post", "put", "patch", "delete"];
+    for (const [path, operations] of Object.entries(res.getBody().paths)) {
+      for (const [method, operation] of Object.entries(operations)) {
+        if (!methods.includes(method)) continue;
+        const marker = operation["x-stability"];
+        if (marker === undefined) continue;
+        expect(marker, `${method} ${path}`).to.equal("experimental");
+        expect(operation.description, `${method} ${path}`).to.match(/^\*\*Experimental/);
       }
     }
   });

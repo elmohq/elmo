@@ -200,6 +200,8 @@ export const apikey = pgTable(
 		createdAt: timestamp("created_at").notNull(),
 		updatedAt: timestamp("updated_at").notNull(),
 		permissions: text("permissions"),
+		// Client-writable by plugin design: never store anything here that grants
+		// access. See readBrandRestriction in apps/web/src/lib/auth/api-auth.ts.
 		metadata: text("metadata"),
 	},
 	(table) => [

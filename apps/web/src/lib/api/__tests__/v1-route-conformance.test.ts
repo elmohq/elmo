@@ -23,7 +23,13 @@ function routeFiles(dir: string): string[] {
 	});
 }
 
-const HTTP_METHOD = /^\s*(GET|POST|PUT|PATCH|DELETE):/gm;
+/**
+ * A declared verb, and whatever it was assigned. Either a `createApiHandler({`
+ * call inline, or an identifier — which a route uses when one handler serves
+ * several verbs. An inline `async () => …` would match neither, which is the
+ * shape this is looking for.
+ */
+const HTTP_METHOD = /^\s*(GET|POST|PUT|PATCH|DELETE):\s*(\S+)/gm;
 
 describe("/api/v1 route conformance", () => {
 	const files = routeFiles(V1_ROOT);
@@ -38,15 +44,15 @@ describe("/api/v1 route conformance", () => {
 		"%s authenticates through createApiHandler",
 		(_name, file) => {
 			const source = readFileSync(file, "utf8");
-			const handlerCount = source.match(/createApiHandler\(/g)?.length ?? 0;
-			const methodCount = source.match(HTTP_METHOD)?.length ?? 0;
+			expect(source, "route declares no handlers built with createApiHandler").toContain("createApiHandler(");
 
-			expect(handlerCount, "route declares no handlers built with createApiHandler").toBeGreaterThan(0);
-			// Every declared verb has to be one of them. A method wired to a bare
+			// Every declared verb has to be one of them. A verb wired to a bare
 			// function would answer without ever resolving a caller.
-			expect(methodCount, "a declared HTTP method is not built with createApiHandler").toBeLessThanOrEqual(
-				handlerCount,
-			);
+			for (const [, method, assigned] of source.matchAll(HTTP_METHOD)) {
+				const viaFactory = assigned.startsWith("createApiHandler(");
+				const viaBinding = /^[A-Za-z_$][\w$]*,?$/.test(assigned);
+				expect(viaFactory || viaBinding, `${method} is not built with createApiHandler`).toBe(true);
+			}
 		},
 	);
 

@@ -105,7 +105,10 @@ export const Route = createFileRoute("/api/v1/reports/")({
 						.limit(limit)
 						.offset(offset);
 
+					// `data` is the field to read; `reports` is the shipped name, kept
+					// until the one known consumer has migrated (DESIGN.md §2).
 					return {
+						data: reportsList,
 						reports: reportsList,
 						pagination: { page, limit, total: totalCount, totalPages },
 					};

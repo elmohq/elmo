@@ -31,8 +31,13 @@ import { createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES }
 // Helpers
 // ============================================================================
 
-function req(method: string, pathname: string): RequestInfo {
-	return { pathname, method };
+function req(method: string, pathname: string, authorizationHeader?: string): RequestInfo {
+	return { pathname, method, authorizationHeader };
+}
+
+/** An /api/v1 request that carries a token, whatever that token turns out to be. */
+function apiReq(method: string, pathname: string): RequestInfo {
+	return req(method, pathname, "Bearer some-token");
 }
 
 const VALID_API_KEY = "test-key-abc123";
@@ -219,7 +224,7 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 
 		it("allows API v1 with valid key", () => {
-			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts"));
+			const result = evaluateDeploymentPolicy(features, apiReq("GET", "/api/v1/prompts"));
 			expect(result.action).toBe("allow");
 		});
 	});
@@ -228,11 +233,11 @@ describe("evaluateDeploymentPolicy", () => {
 	// /api/v1 is createApiHandler's to guard
 	// ────────────────────────────────────────────────────────────
 	describe("api v1", () => {
-		it("passes every /api/v1 request through, in every mode", () => {
-			// Authenticating an organization key means a database lookup, and this
-			// function is pure and synchronous by design. Refusing a write here would
-			// also send a bare middleware body instead of the `{ error, message,
-			// code }` envelope every other /api/v1 error uses. Both jobs belong to
+		it("passes a request that carries a token through, in every mode", () => {
+			// Whether the token is *valid* means a database lookup, and this function
+			// is pure and synchronous by design. Refusing a write here would also send
+			// a bare middleware body instead of the `{ error, message, code }`
+			// envelope every other /api/v1 error uses. Both jobs belong to
 			// createApiHandler; a conformance test keeps every route wired to it.
 			for (const features of [LOCAL_FEATURES, DEMO_FEATURES, WHITELABEL_FEATURES]) {
 				for (const [method, path] of [
@@ -243,9 +248,28 @@ describe("evaluateDeploymentPolicy", () => {
 					["DELETE", "/api/v1/competitors/01234567-89ab-cdef-0123-456789abcdef"],
 					["POST", "/api/v1/tools/analyze"],
 				] as const) {
-					expect(evaluateDeploymentPolicy(features, req(method, path)).action, `${method} ${path}`).toBe("allow");
+					expect(evaluateDeploymentPolicy(features, apiReq(method, path)).action, `${method} ${path}`).toBe("allow");
 				}
 			}
+		});
+
+		it("refuses a request carrying no usable token, without looking it up", () => {
+			// The coarse half of the gate: a request with nothing to authenticate is
+			// turned away here, so it can never reach a route or fall through to the
+			// SPA. Anything under /api/v1 that is refused is refused as JSON.
+			for (const header of [undefined, "", "Basic dXNlcjpwYXNz", "Bearer", "Bearer   "]) {
+				const result = evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/prompts", header));
+				expect(result, `header: ${JSON.stringify(header)}`).toMatchObject({
+					action: "block",
+					status: 401,
+					code: "unauthorized",
+				});
+			}
+		});
+
+		it("leaves the docs and the spec reachable without a token", () => {
+			expect(evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/docs")).action).toBe("allow");
+			expect(evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/openapi.json")).action).toBe("serve-openapi");
 		});
 
 		it("still serves the spec without a key", () => {
@@ -295,9 +319,9 @@ describe("evaluateDeploymentPolicy", () => {
 	// ────────────────────────────────────────────────────────────
 	describe("custom feature combinations", () => {
 		it("leaves API v1 authentication to createApiHandler", () => {
-			// An organization key resolves against the database, which this pure
-			// function cannot do — so it no longer decides who may call /api/v1.
-			const result = evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/prompts"));
+			// Whether a token is valid resolves against the database, which this pure
+			// function cannot do — so it decides only whether one is present at all.
+			const result = evaluateDeploymentPolicy(LOCAL_FEATURES, apiReq("GET", "/api/v1/prompts"));
 			expect(result.action).toBe("allow");
 		});
 

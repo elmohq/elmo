@@ -92,9 +92,32 @@ function isAdminKey(token: string): boolean {
 }
 
 /**
- * The brand narrowing, if the key carries one. Anything malformed is treated as
- * "no narrowing" rather than as an error: metadata is client-writable, so it
- * must not be able to break a key, only to shrink it.
+ * The brand narrowing, if the key carries one.
+ *
+ * ---------------------------------------------------------------------------
+ * `metadata` is client-writable. Nothing read from it may ever widen a key.
+ * ---------------------------------------------------------------------------
+ *
+ * The api-key plugin declares `metadata` with `input: true`, so anyone holding
+ * a session that reaches the plugin's create or update endpoint can set it to
+ * whatever they like. It is the one column on the row that works that way.
+ *
+ * `brandIds` is safe to keep here only because of what is done with it: it is
+ * intersected with the brands of the organization the key is already bound to,
+ * so a forged value can shrink a key's reach and never grow it. The worst a
+ * caller who writes this field directly achieves is handing their own key
+ * everything inside their own organization — which it already had.
+ *
+ * Anything that *grants* — the organization id, the scopes, a rate-limit
+ * override, an admin flag — lives in `referenceId` or `permissions`, both of
+ * which the plugin refuses to take from a request carrying headers.
+ *
+ * Before adding a field here, ask: what is the worst a caller who writes this
+ * field directly can do? If the answer is anything other than "nothing they
+ * couldn't already do", it does not belong in metadata.
+ *
+ * Anything malformed is read as "no narrowing" rather than raised as an error:
+ * a client-writable field must not be able to break a key either.
  */
 function readBrandRestriction(metadata: unknown): string[] | null {
 	if (!metadata || typeof metadata !== "object") return null;

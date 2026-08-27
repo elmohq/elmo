@@ -32,6 +32,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiManifestIndexRouteImport } from './routes/api/manifest/index'
 import { Route as ApiOgIndexRouteImport } from './routes/api/og/index'
 import { Route as ApiSetupStatusIndexRouteImport } from './routes/api/setup-status/index'
+import { Route as ApiV1SplatRouteImport } from './routes/api/v1/$'
 import { Route as ApiV1MeRouteImport } from './routes/api/v1/me'
 import { Route as ApiV1PlatformsRouteImport } from './routes/api/v1/platforms'
 import { Route as AuthedAppBrandIndexRouteImport } from './routes/_authed/app/$brand/index'
@@ -197,6 +198,11 @@ const ApiOgIndexRoute = ApiOgIndexRouteImport.update({
 const ApiSetupStatusIndexRoute = ApiSetupStatusIndexRouteImport.update({
   id: '/api/setup-status/',
   path: '/api/setup-status/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1SplatRoute = ApiV1SplatRouteImport.update({
+  id: '/api/v1/$',
+  path: '/api/v1/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV1MeRoute = ApiV1MeRouteImport.update({
@@ -505,6 +511,7 @@ export interface FileRoutesByFullPath {
   '/app/$brand': typeof AuthedAppBrandRouteWithChildren
   '/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v1/$': typeof ApiV1SplatRoute
   '/api/v1/me': typeof ApiV1MeRoute
   '/api/v1/platforms': typeof ApiV1PlatformsRoute
   '/admin/': typeof AuthedAdminIndexRoute
@@ -576,6 +583,7 @@ export interface FileRoutesByTo {
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v1/$': typeof ApiV1SplatRoute
   '/api/v1/me': typeof ApiV1MeRoute
   '/api/v1/platforms': typeof ApiV1PlatformsRoute
   '/admin': typeof AuthedAdminIndexRoute
@@ -653,6 +661,7 @@ export interface FileRoutesById {
   '/_authed/app/$brand': typeof AuthedAppBrandRouteWithChildren
   '/_authed/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v1/$': typeof ApiV1SplatRoute
   '/api/v1/me': typeof ApiV1MeRoute
   '/api/v1/platforms': typeof ApiV1PlatformsRoute
   '/_authed/admin/': typeof AuthedAdminIndexRoute
@@ -730,6 +739,7 @@ export interface FileRouteTypes {
     | '/app/$brand'
     | '/app/new'
     | '/api/auth/$'
+    | '/api/v1/$'
     | '/api/v1/me'
     | '/api/v1/platforms'
     | '/admin/'
@@ -801,6 +811,7 @@ export interface FileRouteTypes {
     | '/admin/workflows'
     | '/app/new'
     | '/api/auth/$'
+    | '/api/v1/$'
     | '/api/v1/me'
     | '/api/v1/platforms'
     | '/admin'
@@ -877,6 +888,7 @@ export interface FileRouteTypes {
     | '/_authed/app/$brand'
     | '/_authed/app/new'
     | '/api/auth/$'
+    | '/api/v1/$'
     | '/api/v1/me'
     | '/api/v1/platforms'
     | '/_authed/admin/'
@@ -945,6 +957,7 @@ export interface RootRouteChildren {
   AuthRegisterRoute: typeof AuthRegisterRoute
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiV1SplatRoute: typeof ApiV1SplatRoute
   ApiV1MeRoute: typeof ApiV1MeRoute
   ApiV1PlatformsRoute: typeof ApiV1PlatformsRoute
   ApiManifestIndexRoute: typeof ApiManifestIndexRoute
@@ -1129,6 +1142,13 @@ declare module '@tanstack/react-router' {
       path: '/api/setup-status'
       fullPath: '/api/setup-status/'
       preLoaderRoute: typeof ApiSetupStatusIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/$': {
+      id: '/api/v1/$'
+      path: '/api/v1/$'
+      fullPath: '/api/v1/$'
+      preLoaderRoute: typeof ApiV1SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v1/me': {
@@ -1674,6 +1694,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRegisterRoute: AuthRegisterRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiV1SplatRoute: ApiV1SplatRoute,
   ApiV1MeRoute: ApiV1MeRoute,
   ApiV1PlatformsRoute: ApiV1PlatformsRoute,
   ApiManifestIndexRoute: ApiManifestIndexRoute,

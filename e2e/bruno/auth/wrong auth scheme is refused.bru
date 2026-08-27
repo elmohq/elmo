@@ -1,0 +1,26 @@
+meta {
+  name: a non-Bearer authorization scheme is refused
+  type: http
+  seq: 25
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Basic dXNlcjpwYXNz
+}
+
+assert {
+  res.status: eq 401
+  res.body.code: eq unauthorized
+}
+
+tests {
+  test("the refusal is JSON", function() {
+    expect(res.getHeader("content-type")).to.contain("application/json");
+  });
+}

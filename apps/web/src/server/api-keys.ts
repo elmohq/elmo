@@ -133,8 +133,17 @@ const createInput = z.object({
 	brandId: z.string(),
 	name: z.string().trim().min(1, "Give the key a name"),
 	scopes: z.array(z.enum(API_SCOPES)).min(1, "Choose at least one scope"),
-	/** Empty means every brand in the workspace. */
-	brandIds: z.array(z.string()).default([]),
+	/**
+	 * Null means every brand in the workspace. An empty array is rejected rather
+	 * than read as "all": a restriction that lists no brands is either a mistake
+	 * or a key that reaches nothing, and treating it as "everything" is the one
+	 * reading that fails open.
+	 */
+	brandIds: z
+		.array(z.string())
+		.min(1, "Choose at least one brand, or leave the key unrestricted")
+		.nullable()
+		.default(null),
 	expiresInDays: z
 		.number()
 		.int()
@@ -153,11 +162,13 @@ export const createApiKeyFn = createServerFn({ method: "POST" })
 		// stored. It can only ever narrow — the resolver intersects it again on
 		// every request — but storing an id from another tenant would be
 		// misleading in the list, and there is no reason to accept one.
-		const owned = new Set(
-			(await db.select({ id: brands.id }).from(brands).where(eq(brands.organizationId, org.id))).map((row) => row.id),
-		);
-		const stray = data.brandIds.find((id) => !owned.has(id));
-		if (stray) throw new Error(`"${stray}" is not a brand in this workspace`);
+		if (data.brandIds) {
+			const owned = new Set(
+				(await db.select({ id: brands.id }).from(brands).where(eq(brands.organizationId, org.id))).map((row) => row.id),
+			);
+			const stray = data.brandIds.find((id) => !owned.has(id));
+			if (stray) throw new Error(`"${stray}" is not a brand in this workspace`);
+		}
 
 		// Deliberately no `headers`. The plugin treats any request carrying them as
 		// a client request and refuses to set `permissions` — which is exactly the
@@ -173,8 +184,9 @@ export const createApiKeyFn = createServerFn({ method: "POST" })
 				prefix: "elmo_",
 				permissions: scopesToPermissions(data.scopes),
 				// Absent rather than empty: "every brand" is the absence of a
-				// narrowing, not a narrowing to nothing.
-				metadata: data.brandIds.length > 0 ? { brandIds: data.brandIds } : {},
+				// narrowing, not a narrowing to nothing. The resolver reads it back
+				// the same way.
+				metadata: data.brandIds ? { brandIds: data.brandIds } : {},
 				...(data.expiresInDays !== null && { expiresIn: data.expiresInDays * 24 * 60 * 60 }),
 			},
 		});

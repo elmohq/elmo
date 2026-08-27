@@ -164,6 +164,18 @@ export const API_KEYS = {
     scopes: ["brands:read"],
     brandIds: null,
   },
+  /**
+   * No scopes at all. Organizations are the one carve-out that needs none, so
+   * this key proves that carve-out is exactly as wide as intended: it can name
+   * its own workspace and nothing else.
+   */
+  orgNoScopes: {
+    token: "elmo_e2e_org_no_scopes",
+    name: "E2E org key (no scopes)",
+    organizationId: TEST_BRAND_ID,
+    scopes: [],
+    brandIds: null,
+  },
   /** Every scope but the destructive ones: writes succeed, deletes must 403. */
   orgNoDelete: {
     token: "elmo_e2e_org_no_delete",
