@@ -117,7 +117,7 @@ function CloudOffer({ source }: { source: ReferralSource }) {
 		<div className="rounded-lg border bg-card p-5">
 			<h3 className="text-sm font-semibold">Same Elmo, managed for you.</h3>
 			<p className="mt-2 text-sm text-muted-foreground">
-				Don't worry about API keys, spend tracking, infrastructure, and updates. Plans start from $
+				Don't worry about API keys, spend tracking, infrastructure, or updates. Plans start from $
 				{CLOUD_ENTRY_PRICE_USD}/mo.
 			</p>
 			<div className="mt-4 flex flex-wrap items-center gap-2">
