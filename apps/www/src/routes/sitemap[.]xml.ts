@@ -1,23 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { source } from "@/lib/source";
+import { aeoVerticals } from "@/data/aeo-verticals";
+import { aiSearchEngines } from "@/data/ai-search-engines";
+import { glossaryTerms } from "@/data/glossary";
 import { blogSource } from "@/lib/blog";
 import {
-	competitors,
-	getComparisonSlug,
-	isLowDR,
-	comparePairs,
-	comparePairSlug,
-	compareSets,
-	compareSetSlug,
-	indexedCompetitors,
-	indexableFeatureKeys,
-	FEATURE_SLUGS,
-	indexableCategories,
 	CATEGORY_SLUGS,
+	comparePairSlug,
+	comparePairs,
+	compareSetSlug,
+	compareSets,
+	competitors,
+	FEATURE_SLUGS,
+	getComparisonSlug,
+	indexableCategories,
+	indexableFeatureKeys,
+	indexedCompetitors,
+	isLowDR,
 } from "@/lib/competitors";
-import { glossaryTerms } from "@/data/glossary";
-import { aiSearchEngines } from "@/data/ai-search-engines";
-import { aeoVerticals } from "@/data/aeo-verticals";
+import { source } from "@/lib/source";
 
 const SITE_URL = "https://www.elmohq.com";
 

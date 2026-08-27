@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Navbar } from "@/components/navbar";
-import { Features } from "@/components/features";
 import { CTA } from "@/components/cta";
+import { Features } from "@/components/features";
 import { Footer } from "@/components/footer";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
+import { Navbar } from "@/components/navbar";
+import { breadcrumbJsonLd, canonicalUrl, ogMeta } from "@/lib/seo";
 
 const title = "Features — AI Visibility & Citation Tracking · Elmo";
 const description =

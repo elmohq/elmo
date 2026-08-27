@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { serverLoader, type LoaderData } from "./$";
-import { getPageImage } from "@/lib/og";
-import { SITE_NAME, ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
 import { DocsPageLayout } from "@/components/docs-page-layout";
+import { getPageImage } from "@/lib/og";
+import { breadcrumbJsonLd, canonicalUrl, ogMeta, SITE_NAME } from "@/lib/seo";
+import { type LoaderData, serverLoader } from "./$";
 
 export const Route = createFileRoute("/docs/")({
 	component: Page,

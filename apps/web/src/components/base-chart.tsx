@@ -51,6 +51,8 @@ function SeriesLegend({
 }) {
 	return (
 		<div
+			role="toolbar"
+			aria-label="Chart series"
 			className="flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-2"
 			onMouseLeave={() => onHover(null)}
 		>

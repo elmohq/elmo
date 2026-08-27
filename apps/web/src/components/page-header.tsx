@@ -1,7 +1,7 @@
-import { ReactNode } from "react";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import type { ReactNode } from "react";
 
 interface PageHeaderProps {
 	title: string;

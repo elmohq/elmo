@@ -1,6 +1,6 @@
 export {
-	analyzeBrand,
 	type AnalyzeBrandOptions,
+	analyzeBrand,
 	type OnboardingCompetitor,
 	type OnboardingPrompt,
 	type OnboardingSuggestion,

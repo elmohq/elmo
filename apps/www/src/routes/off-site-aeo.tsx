@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Navbar } from "@/components/navbar";
-import { OffSiteHero, OffSiteValue, OffSiteProcess, OffSitePricing, OffSiteCTA } from "@/components/off-site-aeo";
-import { Footer } from "@/components/footer";
 import { Faq } from "@/components/faq";
+import { Footer } from "@/components/footer";
+import { Navbar } from "@/components/navbar";
+import { OffSiteCTA, OffSiteHero, OffSitePricing, OffSiteProcess, OffSiteValue } from "@/components/off-site-aeo";
 import { OFFSITE_FAQS } from "@/lib/faqs";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 const title = "Off-Site AEO — Get Cited by AI on High-Authority Sites · Elmo";
 const description =

@@ -189,6 +189,302 @@ interface PromptsListEditorProps {
 	premium?: PremiumAllowance;
 }
 
+/**
+ * The bulk-paste box's state. The parse is pure and lives in @workspace/lib so
+ * the rules (trim, dedupe, cap) are tested without a DOM; it runs on every
+ * keystroke only to label the button and warn about what will be dropped.
+ */
+function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void) {
+	const [bulkOpen, setBulkOpen] = useState(false);
+	const [bulkText, setBulkText] = useState("");
+
+	const bulkPreview = useMemo(
+		() => parseBulkPrompts(bulkText, { existing: filledValues, limit: MAX_PROMPTS }),
+		[bulkText, filledValues],
+	);
+
+	// Over capacity blocks the whole paste rather than quietly taking the lines
+	// that fit, so nobody submits a list believing all of it landed.
+	const overCapacity = bulkPreview.skipped.overCapacity.length;
+	const closeBulk = () => {
+		setBulkOpen(false);
+		setBulkText("");
+	};
+
+	return {
+		bulkOpen,
+		setBulkOpen,
+		bulkText,
+		setBulkText,
+		bulkPreview,
+		bulkNotice: bulkText.trim().length > 0 ? describeSkipped(bulkPreview.skipped) : null,
+		bulkError:
+			overCapacity > 0
+				? `This paste is ${overCapacity} prompt${overCapacity === 1 ? "" : "s"} over the ${MAX_PROMPTS} limit. Remove ${overCapacity === 1 ? "a line" : "some lines"} to continue.`
+				: null,
+		closeBulk,
+		addBulk: () => {
+			if (bulkPreview.added.length === 0 || overCapacity > 0) return;
+			onAdd(bulkPreview.added);
+			closeBulk();
+		},
+	};
+}
+
+/**
+ * Which rows are ticked. Counted against the current prompts so stale keys
+ * (e.g. after the wizard regenerates suggestions) don't linger in the tally.
+ */
+function useRowSelection(prompts: EditablePrompt[]) {
+	const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+	const liveSelectedCount = prompts.reduce((count, p) => (selectedKeys.has(p._key) ? count + 1 : count), 0);
+	const allSelected = prompts.length > 0 && liveSelectedCount === prompts.length;
+
+	return {
+		selectedKeys,
+		liveSelectedCount,
+		allSelected,
+		toggleSelect: (key: string) =>
+			setSelectedKeys((prev) => {
+				const next = new Set(prev);
+				if (next.has(key)) next.delete(key);
+				else next.add(key);
+				return next;
+			}),
+		toggleSelectAll: () => setSelectedKeys(allSelected ? new Set() : new Set(prompts.map((p) => p._key))),
+		clearSelection: () => setSelectedKeys(new Set()),
+	};
+}
+
+function ColumnHeader({
+	gridCols,
+	showSystemTags,
+	premium,
+	allSelected,
+	onToggleSelectAll,
+	disabled,
+}: {
+	gridCols: string;
+	showSystemTags: boolean;
+	premium?: PremiumAllowance;
+	allSelected: boolean;
+	onToggleSelectAll: () => void;
+	disabled: boolean;
+}) {
+	return (
+		<div className={`hidden md:grid ${gridCols} gap-2 text-sm font-medium text-muted-foreground border-b pb-2`}>
+			<div className="flex justify-center">
+				<Checkbox
+					checked={allSelected}
+					onCheckedChange={onToggleSelectAll}
+					disabled={disabled}
+					aria-label={allSelected ? "Deselect all prompts" : "Select all prompts"}
+				/>
+			</div>
+			<div className="flex items-center gap-1 min-w-0">
+				Prompt Text
+				<Tooltip>
+					<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
+					<TooltipContent>
+						<p className="max-w-xs">The question or query that will be sent to AI models for evaluation.</p>
+					</TooltipContent>
+				</Tooltip>
+			</div>
+			{showSystemTags && (
+				<div className="hidden md:flex items-center gap-1">
+					System
+					<Tooltip>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
+						<TooltipContent>
+							<p className="max-w-xs">
+								Auto-generated tags like &quot;branded&quot; or &quot;unbranded&quot; based on prompt content.
+							</p>
+						</TooltipContent>
+					</Tooltip>
+				</div>
+			)}
+			<div className="flex items-center gap-1 min-w-0">
+				Tags
+				<Tooltip>
+					<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
+					<TooltipContent>
+						<p className="max-w-xs">Custom labels to organize and filter prompts.</p>
+					</TooltipContent>
+				</Tooltip>
+			</div>
+			{premium && (
+				<div className="flex items-center justify-center gap-1">
+					Premium
+					<Tooltip>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
+						<TooltipContent>
+							<p className="max-w-xs">
+								Also track this prompt on a model called directly with its own web search on, for a grounded answer with
+								citations — {PREMIUM_RUNS_PER_DAY}× a day. Each model you pick here spends one of the workspace&apos;s
+								premium pairings. This is on top of the platforms the brand tracks, which run on every prompt either
+								way.
+							</p>
+						</TooltipContent>
+					</Tooltip>
+				</div>
+			)}
+			<div className="flex justify-center">
+				<span className="sr-only">Enabled</span>
+			</div>
+		</div>
+	);
+}
+
+function PromptRow({
+	prompt,
+	index,
+	total,
+	update,
+	allTagOptions,
+	showSystemTags,
+	changedKeys,
+	premium,
+	premiumAtCapacity,
+	gridCols,
+	selected,
+	onToggleSelect,
+}: {
+	prompt: EditablePrompt;
+	index: number;
+	total: number;
+	update: (index: number, patch: Partial<EditablePrompt>) => void;
+	allTagOptions: { value: string }[];
+	showSystemTags: boolean;
+	changedKeys?: ReadonlySet<string>;
+	premium?: PremiumAllowance;
+	premiumAtCapacity: boolean;
+	gridCols: string;
+	selected: boolean;
+	onToggleSelect: () => void;
+}) {
+	return (
+		<div
+			className={cn(
+				"-ml-3 border-l-2 pl-3 transition-colors",
+				changedKeys?.has(prompt._key) ? "border-amber-500" : "border-transparent",
+				!prompt.enabled && "opacity-60",
+			)}
+		>
+			{changedKeys?.has(prompt._key) && <span className="sr-only">Has unsaved changes</span>}
+			{/* Mobile: stacked, no selection/bulk */}
+			<div className={`md:hidden flex flex-col gap-2 pb-3 ${index < total - 1 ? "border-b" : ""}`}>
+				<div className="flex items-start gap-2">
+					<Input
+						value={prompt.value}
+						onChange={(e) => update(index, { value: e.target.value })}
+						placeholder="Enter prompt text..."
+						className="min-w-0 flex-1"
+					/>
+					<div className="pt-2">
+						<Switch
+							checked={prompt.enabled}
+							onCheckedChange={(checked) => update(index, { enabled: checked })}
+							aria-label={prompt.enabled ? "Disable prompt" : "Enable prompt"}
+						/>
+					</div>
+				</div>
+				<TagsInput
+					value={prompt.tags}
+					onValueChange={(tags) => update(index, { tags })}
+					options={allTagOptions}
+					placeholder="Add tag..."
+					searchPlaceholder="Search or create tag..."
+					normalizeValue={(raw) => raw.toLowerCase().trim()}
+				/>
+				{premium && (
+					<PremiumModelsField
+						selected={prompt.premiumModels}
+						promptEnabled={prompt.enabled}
+						atCapacity={premiumAtCapacity}
+						brandId={premium.brandId}
+						onChange={(premiumModels) => update(index, { premiumModels })}
+						showLabel
+					/>
+				)}
+			</div>
+
+			{/* Desktop (md+): single-line grid */}
+			<div className={`hidden md:grid ${gridCols} gap-2 items-start`}>
+				<div className="flex justify-center pt-2">
+					<Checkbox checked={selected} onCheckedChange={onToggleSelect} aria-label="Select prompt" />
+				</div>
+				<Input
+					value={prompt.value}
+					onChange={(e) => update(index, { value: e.target.value })}
+					placeholder="Enter prompt text..."
+					className="min-w-0"
+				/>
+				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
+				<TagsInput
+					value={prompt.tags}
+					onValueChange={(tags) => update(index, { tags })}
+					options={allTagOptions}
+					placeholder="Add tag..."
+					searchPlaceholder="Search or create tag..."
+					normalizeValue={(raw) => raw.toLowerCase().trim()}
+				/>
+				{premium && (
+					<div className="flex justify-center pt-1">
+						<PremiumModelsField
+							selected={prompt.premiumModels}
+							promptEnabled={prompt.enabled}
+							atCapacity={premiumAtCapacity}
+							brandId={premium.brandId}
+							onChange={(premiumModels) => update(index, { premiumModels })}
+						/>
+					</div>
+				)}
+				<div className="flex justify-center pt-2">
+					<Switch
+						checked={prompt.enabled}
+						onCheckedChange={(checked) => update(index, { enabled: checked })}
+						aria-label={prompt.enabled ? "Disable prompt" : "Enable prompt"}
+					/>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function BulkPasteBox({ bulk }: { bulk: ReturnType<typeof useBulkPaste> }) {
+	return (
+		<div className="space-y-2 rounded-md border bg-muted/40 p-3">
+			<Textarea
+				value={bulk.bulkText}
+				onChange={(e) => bulk.setBulkText(e.target.value)}
+				placeholder="One prompt per line"
+				rows={6}
+				aria-label="Prompts to add, one per line"
+			/>
+			<div className="flex flex-wrap items-center gap-2">
+				<Button
+					size="sm"
+					type="button"
+					onClick={bulk.addBulk}
+					disabled={bulk.bulkPreview.added.length === 0 || bulk.bulkError !== null}
+				>
+					Add {bulk.bulkPreview.added.length > 0 ? `${bulk.bulkPreview.added.length} ` : ""}
+					{bulk.bulkPreview.added.length === 1 ? "Prompt" : "Prompts"}
+				</Button>
+				<Button variant="ghost" size="sm" type="button" onClick={bulk.closeBulk}>
+					Cancel
+				</Button>
+				{bulk.bulkNotice && <span className="text-xs text-muted-foreground">{bulk.bulkNotice}</span>}
+			</div>
+			{bulk.bulkError && (
+				<p role="alert" className="text-xs text-destructive">
+					{bulk.bulkError}
+				</p>
+			)}
+		</div>
+	);
+}
+
 export function PromptsListEditor({
 	prompts,
 	onChange,
@@ -196,8 +492,6 @@ export function PromptsListEditor({
 	changedKeys,
 	premium,
 }: PromptsListEditorProps) {
-	const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
-
 	const allTagOptions = useMemo(() => {
 		const set = new Set<string>();
 		for (const p of prompts) for (const t of p.tags) set.add(t);
@@ -212,64 +506,23 @@ export function PromptsListEditor({
 		onChange([...prompts, newPromptEntry()]);
 	};
 
-	// Bulk paste. The parse is pure and lives in @workspace/lib so the rules
-	// (trim, dedupe, cap) are tested without a DOM, and it runs on every
-	// keystroke only to label the button and warn about what will be dropped.
-	const [bulkOpen, setBulkOpen] = useState(false);
-	const [bulkText, setBulkText] = useState("");
-
 	// A row only takes a slot once it has text. Blank rows are how this editor
 	// stages a new prompt and they're dropped on save, so counting them against
 	// the cap would refuse prompts the list still has room for.
 	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
 	const atCapacity = filledValues.length >= MAX_PROMPTS;
 
-	const bulkPreview = useMemo(
-		() => parseBulkPrompts(bulkText, { existing: filledValues, limit: MAX_PROMPTS }),
-		[bulkText, filledValues],
+	const bulk = useBulkPaste(filledValues, (added) =>
+		onChange([...prompts, ...added.map((value) => newPromptEntry({ value }))]),
 	);
-	const bulkNotice = bulkText.trim().length > 0 ? describeSkipped(bulkPreview.skipped) : null;
 
-	// Over capacity blocks the whole paste rather than quietly taking the lines
-	// that fit, so nobody submits a list believing all of it landed.
-	const overCapacity = bulkPreview.skipped.overCapacity.length;
-	const bulkError =
-		overCapacity > 0
-			? `This paste is ${overCapacity} prompt${overCapacity === 1 ? "" : "s"} over the ${MAX_PROMPTS} limit. Remove ${overCapacity === 1 ? "a line" : "some lines"} to continue.`
-			: null;
+	const { selectedKeys, liveSelectedCount, allSelected, toggleSelect, toggleSelectAll, clearSelection } =
+		useRowSelection(prompts);
 
-	const closeBulk = () => {
-		setBulkOpen(false);
-		setBulkText("");
-	};
-	const addBulk = () => {
-		if (bulkPreview.added.length === 0 || overCapacity > 0) return;
-		onChange([...prompts, ...bulkPreview.added.map((value) => newPromptEntry({ value }))]);
-		closeBulk();
-	};
-
-	// Count selection against current prompts so stale keys (e.g. after the
-	// wizard regenerates suggestions) don't linger.
-	const liveSelectedCount = prompts.reduce((n, p) => (selectedKeys.has(p._key) ? n + 1 : n), 0);
-	const allSelected = prompts.length > 0 && liveSelectedCount === prompts.length;
-
-	const toggleSelect = (key: string) => {
-		setSelectedKeys((prev) => {
-			const next = new Set(prev);
-			if (next.has(key)) next.delete(key);
-			else next.add(key);
-			return next;
-		});
-	};
-	const toggleSelectAll = () => {
-		if (allSelected) setSelectedKeys(new Set());
-		else setSelectedKeys(new Set(prompts.map((p) => p._key)));
-	};
 	const applyEnabledToSelection = (enabled: boolean) => {
 		if (liveSelectedCount === 0) return;
 		onChange(prompts.map((p) => (selectedKeys.has(p._key) ? { ...p, enabled } : p)));
 	};
-	const clearSelection = () => setSelectedKeys(new Set());
 
 	const validCount = prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
 
@@ -332,66 +585,14 @@ export function PromptsListEditor({
 				</p>
 			)}
 
-			<div className={`hidden md:grid ${gridCols} gap-2 text-sm font-medium text-muted-foreground border-b pb-2`}>
-				<div className="flex justify-center">
-					<Checkbox
-						checked={allSelected}
-						onCheckedChange={toggleSelectAll}
-						disabled={prompts.length === 0}
-						aria-label={allSelected ? "Deselect all prompts" : "Select all prompts"}
-					/>
-				</div>
-				<div className="flex items-center gap-1 min-w-0">
-					Prompt Text
-					<Tooltip>
-						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
-						<TooltipContent>
-							<p className="max-w-xs">The question or query that will be sent to AI models for evaluation.</p>
-						</TooltipContent>
-					</Tooltip>
-				</div>
-				{showSystemTags && (
-					<div className="hidden md:flex items-center gap-1">
-						System
-						<Tooltip>
-							<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
-							<TooltipContent>
-								<p className="max-w-xs">
-									Auto-generated tags like &quot;branded&quot; or &quot;unbranded&quot; based on prompt content.
-								</p>
-							</TooltipContent>
-						</Tooltip>
-					</div>
-				)}
-				<div className="flex items-center gap-1 min-w-0">
-					Tags
-					<Tooltip>
-						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
-						<TooltipContent>
-							<p className="max-w-xs">Custom labels to organize and filter prompts.</p>
-						</TooltipContent>
-					</Tooltip>
-				</div>
-				{premium && (
-					<div className="flex items-center justify-center gap-1">
-						Premium
-						<Tooltip>
-							<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
-							<TooltipContent>
-								<p className="max-w-xs">
-									Also track this prompt on a model called directly with its own web search on, for a grounded answer
-									with citations — {PREMIUM_RUNS_PER_DAY}× a day. Each model you pick here spends one of the
-									workspace&apos;s premium pairings. This is on top of the platforms the brand tracks, which run on
-									every prompt either way.
-								</p>
-							</TooltipContent>
-						</Tooltip>
-					</div>
-				)}
-				<div className="flex justify-center">
-					<span className="sr-only">Enabled</span>
-				</div>
-			</div>
+			<ColumnHeader
+				gridCols={gridCols}
+				showSystemTags={showSystemTags}
+				premium={premium}
+				allSelected={allSelected}
+				onToggleSelectAll={toggleSelectAll}
+				disabled={prompts.length === 0}
+			/>
 
 			{prompts.length === 0 ? (
 				<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
@@ -403,98 +604,21 @@ export function PromptsListEditor({
 			) : (
 				<div className="space-y-3">
 					{prompts.map((prompt, index) => (
-						<div
+						<PromptRow
 							key={prompt._key}
-							className={cn(
-								"-ml-3 border-l-2 pl-3 transition-colors",
-								changedKeys?.has(prompt._key) ? "border-amber-500" : "border-transparent",
-								!prompt.enabled && "opacity-60",
-							)}
-						>
-							{changedKeys?.has(prompt._key) && <span className="sr-only">Has unsaved changes</span>}
-							{/* Mobile: stacked, no selection/bulk */}
-							<div className={`md:hidden flex flex-col gap-2 pb-3 ${index < prompts.length - 1 ? "border-b" : ""}`}>
-								<div className="flex items-start gap-2">
-									<Input
-										value={prompt.value}
-										onChange={(e) => update(index, { value: e.target.value })}
-										placeholder="Enter prompt text..."
-										className="min-w-0 flex-1"
-									/>
-									<div className="pt-2">
-										<Switch
-											checked={prompt.enabled}
-											onCheckedChange={(checked) => update(index, { enabled: checked })}
-											aria-label={prompt.enabled ? "Disable prompt" : "Enable prompt"}
-										/>
-									</div>
-								</div>
-								<TagsInput
-									value={prompt.tags}
-									onValueChange={(tags) => update(index, { tags })}
-									options={allTagOptions}
-									placeholder="Add tag..."
-									searchPlaceholder="Search or create tag..."
-									normalizeValue={(raw) => raw.toLowerCase().trim()}
-								/>
-								{premium && (
-									<PremiumModelsField
-										selected={prompt.premiumModels}
-										promptEnabled={prompt.enabled}
-										atCapacity={premiumAtCapacity}
-										brandId={premium.brandId}
-										onChange={(premiumModels) => update(index, { premiumModels })}
-										showLabel
-									/>
-								)}
-							</div>
-
-							{/* Desktop (md+): single-line grid */}
-							<div className={`hidden md:grid ${gridCols} gap-2 items-start`}>
-								<div className="flex justify-center pt-2">
-									<Checkbox
-										checked={selectedKeys.has(prompt._key)}
-										onCheckedChange={() => toggleSelect(prompt._key)}
-										aria-label="Select prompt"
-									/>
-								</div>
-								<Input
-									value={prompt.value}
-									onChange={(e) => update(index, { value: e.target.value })}
-									placeholder="Enter prompt text..."
-									className="min-w-0"
-								/>
-								{showSystemTags && (
-									<TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />
-								)}
-								<TagsInput
-									value={prompt.tags}
-									onValueChange={(tags) => update(index, { tags })}
-									options={allTagOptions}
-									placeholder="Add tag..."
-									searchPlaceholder="Search or create tag..."
-									normalizeValue={(raw) => raw.toLowerCase().trim()}
-								/>
-								{premium && (
-									<div className="flex justify-center pt-1">
-										<PremiumModelsField
-											selected={prompt.premiumModels}
-											promptEnabled={prompt.enabled}
-											atCapacity={premiumAtCapacity}
-											brandId={premium.brandId}
-											onChange={(premiumModels) => update(index, { premiumModels })}
-										/>
-									</div>
-								)}
-								<div className="flex justify-center pt-2">
-									<Switch
-										checked={prompt.enabled}
-										onCheckedChange={(checked) => update(index, { enabled: checked })}
-										aria-label={prompt.enabled ? "Disable prompt" : "Enable prompt"}
-									/>
-								</div>
-							</div>
-						</div>
+							prompt={prompt}
+							index={index}
+							total={prompts.length}
+							update={update}
+							allTagOptions={allTagOptions}
+							showSystemTags={showSystemTags}
+							changedKeys={changedKeys}
+							premium={premium}
+							premiumAtCapacity={premiumAtCapacity}
+							gridCols={gridCols}
+							selected={selectedKeys.has(prompt._key)}
+							onToggleSelect={() => toggleSelect(prompt._key)}
+						/>
 					))}
 				</div>
 			)}
@@ -516,7 +640,7 @@ export function PromptsListEditor({
 						variant="outline"
 						size="sm"
 						type="button"
-						onClick={() => setBulkOpen((open) => !open)}
+						onClick={() => bulk.setBulkOpen((open) => !open)}
 						className="flex items-center gap-2 cursor-pointer"
 					>
 						<ListPlus className="h-4 w-4" /> Add Multiple
@@ -524,37 +648,7 @@ export function PromptsListEditor({
 				</div>
 			)}
 
-			{bulkOpen && !atCapacity && (
-				<div className="space-y-2 rounded-md border bg-muted/40 p-3">
-					<Textarea
-						value={bulkText}
-						onChange={(e) => setBulkText(e.target.value)}
-						placeholder="One prompt per line"
-						rows={6}
-						aria-label="Prompts to add, one per line"
-					/>
-					<div className="flex flex-wrap items-center gap-2">
-						<Button
-							size="sm"
-							type="button"
-							onClick={addBulk}
-							disabled={bulkPreview.added.length === 0 || overCapacity > 0}
-						>
-							Add {bulkPreview.added.length > 0 ? `${bulkPreview.added.length} ` : ""}
-							{bulkPreview.added.length === 1 ? "Prompt" : "Prompts"}
-						</Button>
-						<Button variant="ghost" size="sm" type="button" onClick={closeBulk}>
-							Cancel
-						</Button>
-						{bulkNotice && <span className="text-xs text-muted-foreground">{bulkNotice}</span>}
-					</div>
-					{bulkError && (
-						<p role="alert" className="text-xs text-destructive">
-							{bulkError}
-						</p>
-					)}
-				</div>
-			)}
+			{bulk.bulkOpen && !atCapacity && <BulkPasteBox bulk={bulk} />}
 
 			{atCapacity && (
 				<p className="text-xs text-muted-foreground">

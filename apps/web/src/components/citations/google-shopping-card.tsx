@@ -1,12 +1,12 @@
-import { useMemo, useState } from "react";
+import { IconChevronDown, IconInfoCircle, IconSearch } from "@tabler/icons-react";
+import { Link } from "@tanstack/react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
-import { IconInfoCircle, IconSearch, IconChevronDown } from "@tabler/icons-react";
-import { Link } from "@tanstack/react-router";
-import { ListPagination, usePagedList } from "@/components/list-pagination";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useMemo, useState } from "react";
 import { attributionDotClass } from "@/components/citations/shared";
 import type { GoogleModuleData } from "@/components/citations/types";
+import { ListPagination, usePagedList } from "@/components/list-pagination";
 
 const PRODUCTS_PAGE_SIZE = 10;
 

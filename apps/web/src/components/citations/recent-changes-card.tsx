@@ -1,18 +1,28 @@
-import { useMemo, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Separator } from "@workspace/ui/components/separator";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import {
+	IconArrowDownRight,
 	IconExternalLink,
 	IconInfoCircle,
 	IconPlus,
-	IconArrowDownRight,
 	IconSwitchHorizontal,
 } from "@tabler/icons-react";
-import type { CitationData } from "@/components/citations/types";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Separator } from "@workspace/ui/components/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { formatPeriodLabel, formatUrlForDisplay, UnderlineTabs } from "@/components/citations/shared";
+import type { CitationData } from "@/components/citations/types";
+
+type WhatsChanged = NonNullable<CitationData["whatsChanged"]>;
 
 type ChangeType = "new_pages" | "dropped_pages" | "title" | "new_domains" | "dropped_domains";
+
+type Change =
+	| ({ type: "new_pages" } & WhatsChanged["newUrls"][number])
+	| ({ type: "dropped_pages" } & WhatsChanged["droppedUrls"][number])
+	| ({ type: "title" } & WhatsChanged["titleChanges"][number])
+	| ({ type: "new_domains" } & WhatsChanged["newDomains"][number])
+	| ({ type: "dropped_domains" } & WhatsChanged["droppedDomains"][number]);
 
 const CHANGE_TYPE_TABS: { key: ChangeType; label: string }[] = [
 	{ key: "new_pages", label: "New Pages" },
@@ -22,30 +32,94 @@ const CHANGE_TYPE_TABS: { key: ChangeType; label: string }[] = [
 	{ key: "dropped_domains", label: "Dropped Domains" },
 ];
 
-export function RecentChangesCard({
-	whatsChanged,
-	days,
-}: {
-	whatsChanged: NonNullable<CitationData["whatsChanged"]>;
-	days: number;
-}) {
+const CHANGE_ICONS: Record<ChangeType, ReactNode> = {
+	new_pages: <IconPlus className="h-3.5 w-3.5 text-green-600" />,
+	new_domains: <IconPlus className="h-3.5 w-3.5 text-green-600" />,
+	dropped_pages: <IconArrowDownRight className="h-3.5 w-3.5 text-red-600" />,
+	dropped_domains: <IconArrowDownRight className="h-3.5 w-3.5 text-red-600" />,
+	title: <IconSwitchHorizontal className="h-3.5 w-3.5 text-amber-600" />,
+};
+
+const MAX_VISIBLE_CHANGES = 6;
+
+const plural = (count: number) => (count === 1 ? "" : "s");
+
+function describeChange(change: Change): { id: string; label: string; url: string; description: ReactNode } {
+	switch (change.type) {
+		case "new_pages":
+			return {
+				id: change.url,
+				label: formatUrlForDisplay(change.url),
+				url: change.url,
+				description: `0 → ${change.count} citations across ${change.promptCount} prompt${plural(change.promptCount)}`,
+			};
+		case "dropped_pages":
+			return {
+				id: change.url,
+				label: formatUrlForDisplay(change.url),
+				url: change.url,
+				description: `${change.previousCount} → ${change.currentCount} citations`,
+			};
+		case "title":
+			return {
+				id: change.url,
+				label: formatUrlForDisplay(change.url),
+				url: change.url,
+				description: (
+					<>
+						<span className="line-through opacity-60">{change.previousTitle}</span>
+						{" → "}
+						<span className="font-medium text-foreground">{change.currentTitle}</span>
+					</>
+				),
+			};
+		case "new_domains":
+			return {
+				id: change.domain,
+				label: change.domain,
+				url: `https://${change.domain}`,
+				description: `${change.count} citation${plural(change.count)} in the current period`,
+			};
+		case "dropped_domains":
+			return {
+				id: change.domain,
+				label: change.domain,
+				url: `https://${change.domain}`,
+				description: `${change.previousCount} citation${plural(change.previousCount)} last period, none now`,
+			};
+	}
+}
+
+function ChangeRow({ icon, label, url, description }: { icon: ReactNode } & ReturnType<typeof describeChange>) {
+	return (
+		<a href={url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2.5 py-2 group">
+			<div className="shrink-0 mt-0.5">{icon}</div>
+			<div className="min-w-0 flex-1">
+				<div className="flex items-center gap-1.5">
+					<span className="text-sm font-medium truncate text-foreground group-hover:underline">{label}</span>
+					<IconExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+				</div>
+				<p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+			</div>
+		</a>
+	);
+}
+
+export function RecentChangesCard({ whatsChanged, days }: { whatsChanged: WhatsChanged; days: number }) {
 	const [changeTypeFilter, setChangeTypeFilter] = useState<ChangeType>("new_pages");
 
-	const allChanges = useMemo(() => {
-		return [
-			...whatsChanged.newUrls.map((u) => ({ type: "new_pages" as const, ...u })),
-			...whatsChanged.droppedUrls.map((u) => ({ type: "dropped_pages" as const, ...u })),
-			...whatsChanged.titleChanges.map((u) => ({ type: "title" as const, ...u })),
-			...whatsChanged.newDomains.map((d) => ({ type: "new_domains" as const, ...d })),
-			...whatsChanged.droppedDomains.map((d) => ({ type: "dropped_domains" as const, ...d })),
-		];
-	}, [whatsChanged]);
+	const visibleChanges = useMemo((): Change[] => {
+		const byType: Record<ChangeType, Change[]> = {
+			new_pages: whatsChanged.newUrls.map((u) => ({ type: "new_pages", ...u })),
+			dropped_pages: whatsChanged.droppedUrls.map((u) => ({ type: "dropped_pages", ...u })),
+			title: whatsChanged.titleChanges.map((u) => ({ type: "title", ...u })),
+			new_domains: whatsChanged.newDomains.map((d) => ({ type: "new_domains", ...d })),
+			dropped_domains: whatsChanged.droppedDomains.map((d) => ({ type: "dropped_domains", ...d })),
+		};
+		return byType[changeTypeFilter].slice(0, MAX_VISIBLE_CHANGES);
+	}, [whatsChanged, changeTypeFilter]);
 
-	const filteredChanges = useMemo(() => {
-		return allChanges.filter((c) => c.type === changeTypeFilter);
-	}, [allChanges, changeTypeFilter]);
-
-	const visibleChanges = filteredChanges.slice(0, 6);
+	const activeTabLabel = CHANGE_TYPE_TABS.find((t) => t.key === changeTypeFilter)?.label.toLowerCase();
 
 	return (
 		<Card className="h-full flex flex-col">
@@ -71,76 +145,12 @@ export function RecentChangesCard({
 				/>
 				<div className="divide-y divide-border/50">
 					{visibleChanges.map((change) => {
-						const isDomainChange = change.type === "new_domains" || change.type === "dropped_domains";
-						const rawUrl = "url" in change ? (change.url as string) : undefined;
-						const domain = "domain" in change ? (change.domain as string) : undefined;
-						const url = rawUrl ?? (isDomainChange && domain ? `https://${domain}` : undefined);
-						const displayLabel = isDomainChange ? (domain ?? "") : rawUrl ? formatUrlForDisplay(rawUrl) : "";
-						const key = isDomainChange ? `${change.type}-${domain}` : `${change.type}-${url ?? ""}`;
-
-						const icon =
-							change.type === "new_pages" || change.type === "new_domains" ? (
-								<IconPlus className="h-3.5 w-3.5 text-green-600" />
-							) : change.type === "dropped_pages" || change.type === "dropped_domains" ? (
-								<IconArrowDownRight className="h-3.5 w-3.5 text-red-600" />
-							) : (
-								<IconSwitchHorizontal className="h-3.5 w-3.5 text-amber-600" />
-							);
-
-						let description: React.ReactNode = null;
-						if (change.type === "new_pages" && "promptCount" in change) {
-							description = `0 → ${change.count} citations across ${change.promptCount} prompt${change.promptCount !== 1 ? "s" : ""}`;
-						} else if (change.type === "dropped_pages" && "previousCount" in change) {
-							description = `${change.previousCount} → ${change.currentCount} citations`;
-						} else if (change.type === "title" && "currentTitle" in change && "previousTitle" in change) {
-							description = (
-								<>
-									<span className="line-through opacity-60">{change.previousTitle}</span>
-									{" → "}
-									<span className="font-medium text-foreground">{change.currentTitle}</span>
-								</>
-							);
-						} else if (change.type === "new_domains" && "count" in change) {
-							description = `${change.count} citation${change.count !== 1 ? "s" : ""} in the current period`;
-						} else if (change.type === "dropped_domains" && "previousCount" in change) {
-							description = `${change.previousCount} citation${change.previousCount !== 1 ? "s" : ""} last period, none now`;
-						}
-
-						const inner = (
-							<>
-								<div className="shrink-0 mt-0.5">{icon}</div>
-								<div className="min-w-0 flex-1">
-									<div className="flex items-center gap-1.5">
-										<span
-											className={`text-sm font-medium truncate text-foreground${url ? " group-hover:underline" : ""}`}
-										>
-											{displayLabel}
-										</span>
-										{url && (
-											<IconExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-										)}
-									</div>
-									{description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
-								</div>
-							</>
-						);
-
-						return (
-							<a
-								key={key}
-								href={url}
-								target="_blank"
-								rel="noopener noreferrer"
-								className="flex items-start gap-2.5 py-2 group"
-							>
-								{inner}
-							</a>
-						);
+						const described = describeChange(change);
+						return <ChangeRow key={`${change.type}-${described.id}`} icon={CHANGE_ICONS[change.type]} {...described} />;
 					})}
 					{visibleChanges.length === 0 && (
 						<p className="text-sm text-muted-foreground text-center py-4">
-							No {CHANGE_TYPE_TABS.find((t) => t.key === changeTypeFilter)?.label.toLowerCase() ?? changeTypeFilter}{" "}
-							changes in this period.
+							No {activeTabLabel ?? changeTypeFilter} changes in this period.
 						</p>
 					)}
 				</div>

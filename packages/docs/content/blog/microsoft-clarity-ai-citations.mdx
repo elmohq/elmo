@@ -1,8 +1,8 @@
 ---
 title: "Microsoft Clarity AI Citations: What It Tracks (and What It Misses)"
-description: "Clarity's Citation dashboard is free, first-party data on which of your pages AI answers cite. Here's what its metrics mean, and the one ecosystem it can see."
+description: "Clarity's Citation dashboard is free, first-party data on which of your pages AI answers cite. Here's what its metrics mean, what the new scrape-to-referral ratio tells you, and the one ecosystem it can see."
 date: "2026-07-25"
-updated: "2026-08-10"
+updated: "2026-08-24"
 author: ai
 metaTitle: "Microsoft Clarity AI Citations: What It Tracks & Misses"
 tags:
@@ -26,6 +26,8 @@ howTo:
       text: "Microsoft calculates it daily and excludes days where you were not cited for a query, which inflates the figure relative to broader calculations. Watch its trend rather than its absolute value."
     - name: Filter to non-branded queries before drawing conclusions
       text: "Branded grounding queries name your company, so a high share of authority on those mostly confirms that the engine grounds questions about you on your own pages. Non-branded queries are the ones competitors were also eligible to win, which makes them the competitive read."
+    - name: Check the scrape-to-referral ratio before changing crawler policy
+      text: "If you have a supported CDN connected, the Bot Analytics dashboard compares each AI operator's scraping volume against the referral sessions it sends back. Use the operator ranking and the filtered session recordings to decide which bots earn their crawl budget — but treat the ratio itself as a trend for your own site, not a number to benchmark against anyone else's."
     - name: Cover the engines Clarity cannot see
       text: "Clarity reports citations across supported AI experiences, which does not include ChatGPT's own search, Gemini, or Perplexity. Sample those with prompt tracking so your read on AI visibility is not one ecosystem wide."
 faq:
@@ -45,6 +47,8 @@ faq:
     answer: "Not on its own. Clarity gives you observed citations from one ecosystem's logs, which is data no prompt-based tool can reproduce. It cannot tell you what an answer said about your brand, which competitors were named beside you, or what happens in ChatGPT, Gemini, and Perplexity. Most teams need both the log view and cross-engine prompt sampling."
   - question: Does Clarity report AI referral traffic?
     answer: "Yes. The AI referral traffic metric shows the percentage of sessions on your site that arrived from AI assistants, calculated as AI-referred sessions divided by total sessions for the period. That makes it a rare free source for the downstream number Google's Search Console AI report omits, since that report launched with impressions but no clicks or click-through rate."
+  - question: Does Microsoft Clarity show whether AI crawlers send traffic back?
+    answer: "Yes, since 13 August 2026. The AI Scrape-to-Referral Ratio card in the Bot Analytics dashboard compares AI scrape activity against the referral traffic each operator sends back, ranks operators by it, and links through to session recordings filtered to the selected AI source. It requires connecting a supported CDN — Cloudflare, Fastly, or Amazon CloudFront, or the WordPress plugin — because the scrape side comes from server logs, not Clarity's JavaScript tag."
 ---
 
 **Microsoft Clarity now reports which of your pages AI answers cite, for free, using data you cannot get from prompt tracking.** The Citation dashboard went generally available on 13 May 2026, and it is built from the citation logs of the systems that generated the answers rather than from sampling. That makes it genuinely new. It also sees one ecosystem, which is the part most coverage skips.
@@ -58,6 +62,7 @@ faq:
 - Read share of authority carefully. Microsoft says its daily calculation "may lead to higher Share of authority values compared to broader calculations."
 - Since 3 August 2026 that metric splits by branded and non-branded grounding queries. Only the non-branded half is a read on your content rather than on demand you already had.
 - It reports AI referral traffic, the downstream number [Google's own AI report](/blog/opt-out-google-ai-overviews) still does not give you.
+- Since 13 August 2026, a scrape-to-referral ratio in Bot Analytics puts a per-operator number on whether AI crawling is buying you any visits — if you can meet the CDN requirement that feeds it.
 
 ## What the Citation dashboard actually shows
 
@@ -73,7 +78,7 @@ Clarity's [Citation dashboard](https://learn.microsoft.com/en-us/clarity/ai-visi
 
 Two notes in the documentation do more work than the metric definitions. The first sets the scope: "The Citation dashboard tracks citation activity in AI-generated answers only. It does not measure traditional search rankings, impressions, or click-through rates." The second is a warning against reading citations as placement: counts "reflect how often a page was referenced, not its ranking or prominence within an AI-generated answer." Being cited third in a hedged paragraph and being the source an answer is built on count the same.
 
-Setup is a one-time domain verification by a project administrator, through the Clarity tracking code, Google Search Console, or Bing Webmaster Tools. On 9 July 2026 Microsoft added [Topic Insights](https://clarity.microsoft.com/blog/topic-insights-announcement/) on top, grouping citations into topics with content recommendations. It ships in beta, and Microsoft's own framing is that it "should only be used for directional monitoring and insights." Two more releases followed within a month: query topics on 22 July, which group raw grounding queries into generated themes, and the branded/non-branded split on 3 August covered below.
+Setup is a one-time domain verification by a project administrator, through the Clarity tracking code, Google Search Console, or Bing Webmaster Tools. On 9 July 2026 Microsoft added [Topic Insights](https://clarity.microsoft.com/blog/topic-insights-announcement/) on top, grouping citations into topics with content recommendations. It ships in beta, and Microsoft's own framing is that it "should only be used for directional monitoring and insights." Three more releases followed within five weeks: query topics on 22 July, which group raw grounding queries into generated themes, the branded/non-branded split on 3 August, and the scrape-to-referral ratio on 13 August — both covered below.
 
 ## Observed citations vs sampled prompts
 
@@ -125,6 +130,22 @@ Two limits are worth carrying. Microsoft has not published how the classificatio
 
 The split is also a template worth copying into whatever you run outside Microsoft's stack. If your tracked prompt set is mostly your brand name plus a modifier, you are measuring that same ceiling and calling it AI visibility. The prompts that tell you something are the category questions a buyer asks before they know you exist, which is the distinction behind [AI competitor analysis](/blog/ai-competitor-analysis) and the reason prompt sets are worth designing rather than accumulating.
 
+## The scrape-to-referral ratio: what the crawling buys you
+
+**On 13 August 2026 Clarity added an [AI Scrape-to-Referral Ratio card](https://clarity.microsoft.com/blog/scrape-to-referral-insights/) to its Bot Analytics dashboard**, comparing AI scrape activity against the referral traffic each operator sends back, so that — in Microsoft's framing — you can "evaluate the tradeoff between content extraction and traffic return." It ships with a ranked list of operators by referral performance and a click-through into the Recordings tab pre-filtered to the selected AI source, so the question after "did they send anyone" — "did those visitors do anything" — is one click away.
+
+This card answers a question the Citation dashboard never touched. Citations tell you AI answers reference your pages; the ratio tells you what the extraction behind those answers costs and returns. It is the site-level version of the metric [Cloudflare introduced on Radar](https://blog.cloudflare.com/ai-search-crawl-refer-ratio-on-radar/) in July 2025, whose network-wide numbers set expectations: in Cloudflare's launch-week data, Anthropic's crawlers fetched roughly 70,900 HTML pages for every referred visit. The sample dashboard in Microsoft's own announcement shows about 6,000 scrapes per referral. If your ratio comes back in the thousands, that is the ordinary reading, not an anomaly.
+
+Three caveats before you act on it.
+
+**The scrape side needs a CDN you may not have.** Referral sessions come from Clarity's JavaScript tag, but crawler requests never execute JavaScript, so the bot side is built from server logs delivered through a connected CDN — Cloudflare, Fastly, or Amazon CloudFront, with WordPress sites covered automatically via the Clarity plugin. Microsoft also [notes](https://learn.microsoft.com/en-us/clarity/ai-visibility/cost-considerations-bot-activity-integrations) that log delivery may incur charges billed by your CDN provider. Without one of those integrations, the card has nothing to divide. Microsoft additionally restricts the calculation to correctly mapped domains, flagging when bot data and referral data cover different ones.
+
+**The denominator is undercounted.** AI referral sessions are only attributable when a referrer survives the click, and visits from in-app browsers or `noreferrer` links arrive as direct traffic — the same limitation that caps [every AI referral measurement](/blog/ai-referral-traffic-conversion). An undercounted denominator inflates the ratio, so read it as an upper bound on the imbalance.
+
+**The numerator mixes motives.** Scrape counts include training crawls that were never going to produce a referral, alongside retrieval fetches that might. A brutal ratio is an argument for revisiting [which crawlers your robots.txt allows](/blog/robots-txt-ai-crawlers), but the training/retrieval split — which that decision actually turns on — is not in the card.
+
+The decision rule that survives all three: use the operator ranking and the session recordings to compare *your own* bots against each other and over time. Do not benchmark your ratio against Cloudflare's network figures or anyone else's Clarity screenshot — the inputs differ enough that cross-site comparison is noise wearing a decimal point.
+
 ## Grounding queries are the real find
 
 The metric with the most to teach you is the least headline-friendly. Grounding queries are the phrasings the engine used to retrieve, and Microsoft is upfront that they "may differ from the exact phrases users type." A model takes a conversational question, decomposes it, and issues its own retrieval terms, which is the mechanism that makes grounding work at all.
@@ -135,7 +156,7 @@ The caveat is the same one as above. These are one ecosystem's retrieval pattern
 
 ## Where it fits in a free stack
 
-If you are assembling AI visibility measurement without a budget, Clarity is a real addition rather than another grader. It gives you observed citations, grounding queries, and AI referral traffic for nothing, which no free prompt-based option can match on precision. Expect the referral percentage to be small in absolute terms — [AI traffic is a fraction of a percent of visits on most sites](/blog/ai-referral-traffic-conversion), however well it converts — so read it as a trend, not a channel.
+If you are assembling AI visibility measurement without a budget, Clarity is a real addition rather than another grader. It gives you observed citations, grounding queries, AI referral traffic, and — with a CDN connected — a per-operator scrape-to-referral ratio for nothing, which no free prompt-based option can match on precision. Expect the referral percentage to be small in absolute terms — [AI traffic is a fraction of a percent of visits on most sites](/blog/ai-referral-traffic-conversion), however well it converts — so read it as a trend, not a channel.
 
 It leaves three gaps: the engines outside Microsoft's stack, the wording and sentiment of the answers themselves, and the competitor set named beside you. Those need sampling. The method is in our guide to [tracking your brand in AI search](/blog/track-brand-ai-search), and [Elmo](https://www.elmohq.com/) automates it as an open-source, self-hosted platform that runs your prompts across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces and records every mention, citation, and rival named alongside you. For the rest of the no-cost options, see our roundup of [free AI visibility tools](/blog/free-ai-visibility-tools); for the paid category, the [best AI visibility tools](/blog/best-ai-visibility-tools) comparison and the [AI visibility software](/ai-visibility-tools) hub.
 

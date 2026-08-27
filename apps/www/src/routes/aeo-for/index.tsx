@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, itemListJsonLd } from "@/lib/seo";
+import { Navbar } from "@/components/navbar";
 import { aeoVerticals } from "@/data/aeo-verticals";
+import { breadcrumbJsonLd, canonicalUrl, itemListJsonLd, ogMeta } from "@/lib/seo";
 
 const title = "Answer Engine Optimization by Industry · Elmo";
 const description =

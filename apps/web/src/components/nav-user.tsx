@@ -1,5 +1,7 @@
-import { IconSelector, IconExternalLink, IconLogout, IconStatusChange, IconUser } from "@tabler/icons-react";
-
+import { IconExternalLink, IconLogout, IconSelector, IconStatusChange, IconUser } from "@tabler/icons-react";
+import { Link, useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
+import { authClient } from "@workspace/lib/auth/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import {
 	DropdownMenu,
@@ -11,11 +13,8 @@ import {
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
-
-import { Link, useRouteContext } from "@tanstack/react-router";
-import type { ClientConfig } from "@workspace/config/types";
-import { authClient } from "@workspace/lib/auth/client";
 import { useAuth } from "@/hooks/use-auth";
+import { resetCrispSession } from "@/lib/crisp";
 import { resetPostHog } from "@/lib/posthog";
 
 /** `canSwitchBrand` is false on gate pages, where /app just redirects back. */
@@ -120,6 +119,7 @@ export function NavUser({ canSwitchBrand = true }: { canSwitchBrand?: boolean } 
 									fetchOptions: {
 										onSuccess: () => {
 											resetPostHog();
+											resetCrispSession();
 											window.location.href = "/auth/logout";
 										},
 									},

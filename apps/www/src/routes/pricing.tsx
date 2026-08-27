@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { CTA } from "@/components/cta";
+import { Faq } from "@/components/faq";
+import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { Pricing } from "@/components/pricing";
-import { CTA } from "@/components/cta";
-import { Footer } from "@/components/footer";
-import { Faq } from "@/components/faq";
 import { PRICING_FAQS } from "@/lib/faqs";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 const title = "Pricing — Free, Cloud & White-Label AI Visibility · Elmo";
 const description =

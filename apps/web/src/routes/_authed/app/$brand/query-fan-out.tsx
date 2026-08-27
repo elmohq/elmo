@@ -11,26 +11,27 @@
  * searches contribute runs but no queries. See `server/query-fanout.ts` and
  * `lib/fanout-analysis.ts`.
  */
-import { useMemo, useState } from "react";
+
+import { IconChevronDown, IconChevronRight, IconSearch } from "@tabler/icons-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { cn } from "@workspace/ui/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Input } from "@workspace/ui/components/input";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
-import { Input } from "@workspace/ui/components/input";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
-import { IconChevronDown, IconChevronRight, IconSearch } from "@tabler/icons-react";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
-import { getModelDisplayName } from "@/lib/utils";
+import { cn } from "@workspace/ui/lib/utils";
+import { useMemo, useState } from "react";
+import { InfoTip, QueryWordsSection, VariationLine } from "@/components/fanout-sections";
+import { ALL_MODELS_VALUE, FilterBar, getAvailableModels } from "@/components/filter-bar";
+import { HistoryButton } from "@/components/history-button";
+import { FilterSection, PageHeader } from "@/components/page-header";
+import { useBrand } from "@/hooks/use-brands";
+import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
-import { PageHeader, FilterSection } from "@/components/page-header";
-import { FilterBar, getAvailableModels, ALL_MODELS_VALUE } from "@/components/filter-bar";
-import { useListFilters } from "@/hooks/use-list-filters";
-import { useBrand } from "@/hooks/use-brands";
-import { HistoryButton } from "@/components/history-button";
-import { InfoTip, QueryWordsSection, VariationLine } from "@/components/fanout-sections";
-import { promptKeywords, type PromptFanoutStat, type TopQueryStat } from "@/lib/fanout-analysis";
+import { type PromptFanoutStat, promptKeywords, type TopQueryStat } from "@/lib/fanout-analysis";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { getModelDisplayName } from "@/lib/utils";
 
 /** The active tab lives in `?tab=` so each tab is directly linkable. */
 const FANOUT_TABS = ["fanout", "top-queries", "words"] as const;
