@@ -2,7 +2,6 @@
  * Better-auth Drizzle schema — tables and relations.
  *
  * Generated via:  pnpm run generate:auth-schema
- * Source of truth: npx @better-auth/cli@latest generate
  *
  * The generator emits tables, columns, and relations implied by the plugins
  * in the auth config (the _cli-helper.ts wrapper). Indexes created by the
@@ -11,10 +10,10 @@
  * file — drizzle-kit snapshots don't see them and would try to drop them on
  * `drizzle-kit push`. They are maintained by their migration files instead.
  *
- * If you add a better-auth plugin that introduces new tables or columns,
- * re-run the generation script (pnpm run generate:auth-schema) and
- * commit the diff. If the new table needs indexes beyond what the generator
- * emits, add them in a new migration — not in this file.
+ * DO NOT EDIT BY HAND. If you add a better-auth plugin that introduces new
+ * tables or columns, re-run the generation script and commit the diff. If the
+ * new table needs indexes beyond what the generator emits, add them in a new
+ * migration — not in this file.
  */
 import { relations } from "drizzle-orm";
 import { boolean, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";

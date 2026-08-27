@@ -62,8 +62,8 @@ allowBuilds:
   protobufjs: false
   tree-sitter: false
   tree-sitter-json: false
-  # Pulled in by @better-auth/cli (schema generation); we only use its drizzle
-  # generator, so neither package's native/postinstall build is needed.
+  # Optional peers of better-auth/drizzle-orm for adapters we don't use; we
+  # only ever talk to Postgres, so neither native build is needed.
   "@prisma/client": false
   better-sqlite3: false
 
