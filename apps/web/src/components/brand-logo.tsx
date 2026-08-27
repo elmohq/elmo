@@ -14,12 +14,15 @@ export type BrandLogoSize = "xs" | "sm" | "md" | "lg";
 
 // `request` is the pixel size asked of the favicon service — 2x the rendered
 // box, so the icon stays sharp on retina displays.
-const SIZES: Record<BrandLogoSize, { box: string; glyph: string; request: number }> = {
-	xs: { box: "size-4", glyph: "size-2.5", request: 32 },
-	sm: { box: "size-5", glyph: "size-3", request: 64 },
-	md: { box: "size-6", glyph: "size-3.5", request: 64 },
-	lg: { box: "size-8", glyph: "size-4", request: 64 },
+const SIZES: Record<BrandLogoSize, { box: string; request: number }> = {
+	xs: { box: "size-4", request: 32 },
+	sm: { box: "size-5", request: 64 },
+	md: { box: "size-6", request: 64 },
+	lg: { box: "size-8", request: 64 },
 };
+
+/** Share of the box the fallback glyph fills, so it reads at every size. */
+const GLYPH_SCALE = "size-[75%]";
 
 // The service answers a domain it has no icon for with a 404 whose body is a
 // generic globe — and a 404 body renders like any other image, so it never
@@ -38,7 +41,7 @@ export function BrandLogo({
 	size?: BrandLogoSize;
 	className?: string;
 }) {
-	const { box, glyph, request } = SIZES[size];
+	const { box, request } = SIZES[size];
 	const src = faviconUrl(domain, request);
 
 	const [checkedSrc, setCheckedSrc] = useState<string | null>(null);
@@ -71,7 +74,7 @@ export function BrandLogo({
 			    row of a table and then swapping it for an icon. Nothing to wait
 			    for once the icon is ruled out, so those fall back at once. */}
 			<AvatarFallback delay={iconSrc ? 300 : 0} className="rounded-[inherit] bg-muted text-muted-foreground">
-				<IconWorld className={glyph} />
+				<IconWorld className={GLYPH_SCALE} />
 			</AvatarFallback>
 		</Avatar>
 	);
