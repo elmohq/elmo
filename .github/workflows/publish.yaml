@@ -58,7 +58,7 @@ jobs:
 
       - name: Publish packages
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
           publish: pnpm release
           createGithubReleases: false
