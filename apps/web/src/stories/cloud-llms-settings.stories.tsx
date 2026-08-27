@@ -133,6 +133,24 @@ function standardPicker(overrides: Partial<ModelPickerState> = {}): ModelPickerS
 	};
 }
 
+/**
+ * An unmetered deployment: no plan menu, no pick count, and — for a brand that
+ * has never chosen — every configured target tracked, which is what the server
+ * resolves `enabledModels` to there.
+ */
+function unmeteredPicker(available: PlatformOption[], overrides: Partial<ModelPickerState> = {}): ModelPickerState {
+	return {
+		available,
+		editable: true,
+		enabledModels: available.map((option) => option.model),
+		planLimits: null,
+		upgradeOptions: [],
+		costBasis: null,
+		unconfiguredPlatforms: [],
+		...overrides,
+	};
+}
+
 function Shell({ children }: { children: ReactNode }) {
 	return (
 		<TooltipProvider>
@@ -278,15 +296,7 @@ export const UpgradeableMidPlan: Story = {
  */
 export const UnlimitedPicks: Story = {
 	render: () => {
-		loader({
-			available: optionsByModel(false, { excludePremium: false }),
-			editable: true,
-			enabledModels: null,
-			planLimits: null,
-			upgradeOptions: [],
-			costBasis: null,
-			unconfiguredPlatforms: [],
-		});
+		loader(unmeteredPicker(optionsByModel(false, { excludePremium: false })));
 		return <LlmsSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
@@ -300,23 +310,20 @@ export const UnlimitedPicks: Story = {
 	},
 };
 
-/** No targets configured at all: the page says so instead of an empty grid. */
+/**
+ * No targets configured at all: the page says so instead of an empty grid, and
+ * says only that. How to configure them is the operator's business, and the
+ * operator gets it from the "Track more platforms" card below.
+ */
 export const NoTargetsConfigured: Story = {
 	render: () => {
-		loader({
-			available: [],
-			editable: true,
-			enabledModels: null,
-			planLimits: null,
-			upgradeOptions: [],
-			costBasis: null,
-			unconfiguredPlatforms: [],
-		});
+		loader(unmeteredPicker([]));
 		return <LlmsSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText(/no models are configured on this deployment/i)).toBeVisible();
+		await expect(await canvas.findByText(/not tracked on any platform yet/i)).toBeVisible();
+		await expect(canvas.queryByText(/SCRAPE_TARGETS/)).toBeNull();
 	},
 };
 
@@ -373,15 +380,11 @@ export const NoClaudeAllowance: Story = {
  */
 export const SelfHostedShowsCostEstimates: Story = {
 	render: () => {
-		loader({
-			available: optionsByModel(true, { excludePremium: false }),
-			editable: true,
-			enabledModels: null,
-			planLimits: null,
-			upgradeOptions: [],
-			costBasis: { enabledPrompts: 40, runsPerDay: 1, replication: 5 },
-			unconfiguredPlatforms: [],
-		});
+		loader(
+			unmeteredPicker(optionsByModel(true, { excludePremium: false }), {
+				costBasis: { enabledPrompts: 40, runsPerDay: 1, replication: 5 },
+			}),
+		);
 		return <LlmsSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
@@ -400,15 +403,11 @@ export const SelfHostedShowsCostEstimates: Story = {
 /** Unticking a platform quotes the bill it would leave behind, before saving. */
 export const SelfHostedTotalFollowsTheSelection: Story = {
 	render: () => {
-		loader({
-			available: optionsByModel(true, { excludePremium: false }),
-			editable: true,
-			enabledModels: null,
-			planLimits: null,
-			upgradeOptions: [],
-			costBasis: { enabledPrompts: 40, runsPerDay: 1, replication: 5 },
-			unconfiguredPlatforms: [],
-		});
+		loader(
+			unmeteredPicker(optionsByModel(true, { excludePremium: false }), {
+				costBasis: { enabledPrompts: 40, runsPerDay: 1, replication: 5 },
+			}),
+		);
 		return <LlmsSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
@@ -448,47 +447,57 @@ export const SelfHostedSuggestsMorePlatforms: Story = {
 	render: () => {
 		// A minimal instance: only ChatGPT via BrightData.
 		const configured = CLOUD_TARGETS.filter((t) => t.model === "chatgpt");
-		loader({
-			available: configured.map((config) => toOption(config, true)),
-			editable: true,
-			enabledModels: null,
-			planLimits: null,
-			upgradeOptions: [],
-			costBasis: { enabledPrompts: 12, runsPerDay: 1, replication: 5 },
-			unconfiguredPlatforms: [
+		loader(
+			unmeteredPicker(
+				configured.map((config) => toOption(config, true)),
 				{
-					// Reachable either way, and the two are not equivalent.
-					model: "perplexity",
-					providers: [
-						{ id: "brightdata", name: "BrightData", access: "scraped", docsUrl: `${PROVIDERS_DOCS_URL}#brightdata` },
-						{ id: "oxylabs", name: "Oxylabs", access: "scraped", docsUrl: `${PROVIDERS_DOCS_URL}#oxylabs` },
+					costBasis: { enabledPrompts: 12, runsPerDay: 1, replication: 5 },
+					unconfiguredPlatforms: [
 						{
-							id: "openrouter",
-							name: "OpenRouter",
-							access: "api",
-							docsUrl: `${PROVIDERS_DOCS_URL}#direct-model-apis`,
+							// Reachable either way, and the two are not equivalent.
+							model: "perplexity",
+							providers: [
+								{
+									id: "brightdata",
+									name: "BrightData",
+									access: "scraped",
+									docsUrl: `${PROVIDERS_DOCS_URL}#brightdata`,
+								},
+								{ id: "oxylabs", name: "Oxylabs", access: "scraped", docsUrl: `${PROVIDERS_DOCS_URL}#oxylabs` },
+								{
+									id: "openrouter",
+									name: "OpenRouter",
+									access: "api",
+									docsUrl: `${PROVIDERS_DOCS_URL}#direct-model-apis`,
+								},
+							],
+						},
+						{
+							model: "claude",
+							providers: [
+								{
+									id: "anthropic-api",
+									name: "Anthropic",
+									access: "api",
+									docsUrl: `${PROVIDERS_DOCS_URL}#direct-model-apis`,
+								},
+							],
+						},
+						{
+							model: "copilot",
+							providers: [
+								{
+									id: "brightdata",
+									name: "BrightData",
+									access: "scraped",
+									docsUrl: `${PROVIDERS_DOCS_URL}#brightdata`,
+								},
+							],
 						},
 					],
 				},
-				{
-					model: "claude",
-					providers: [
-						{
-							id: "anthropic-api",
-							name: "Anthropic",
-							access: "api",
-							docsUrl: `${PROVIDERS_DOCS_URL}#direct-model-apis`,
-						},
-					],
-				},
-				{
-					model: "copilot",
-					providers: [
-						{ id: "brightdata", name: "BrightData", access: "scraped", docsUrl: `${PROVIDERS_DOCS_URL}#brightdata` },
-					],
-				},
-			],
-		});
+			),
+		);
 		return <LlmsSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {

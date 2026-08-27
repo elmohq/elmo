@@ -59,8 +59,13 @@ export type ModelPickerState = {
 	 * would offer a choice that does not exist.
 	 */
 	editable: boolean;
-	/** The brand's stored picks; null = follow deployment configuration. */
-	enabledModels: string[] | null;
+	/**
+	 * What the brand is actually tracked on, resolved the same way the run policy
+	 * resolves it. Never the raw column: reporting that and letting the page read
+	 * null as "everything configured" is what showed a Pro brand 10 of 4
+	 * platforms selected.
+	 */
+	enabledModels: string[];
 	/** Cloud plan constraints; null outside cloud (no pick limit). */
 	planLimits: { platformPicks: number; platformMenu: string[] } | null;
 	/**
@@ -146,8 +151,7 @@ function optionsByModel(
  * report, and by every write path so the two can't disagree.
  */
 function picksAreEditable(): boolean {
-	const deployment = getDeployment();
-	return evaluatePlatformPicksEditable(deployment.mode, deployment.features) === "allow";
+	return evaluatePlatformPicksEditable(getDeployment().features.platformPicksEditable) === "allow";
 }
 
 /** The one refusal, so creation and editing reject picks the same way. */
@@ -212,13 +216,13 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 		// there is no pool to reserve it for.
 		if (entitlements.unlimited) {
 			const selfHosted = await selfHostedCostBasis(brand);
+			const available = optionsByModel(configs, { forOperator: selfHosted !== null, excludePremium: false });
 			return {
-				available: optionsByModel(configs, {
-					forOperator: selfHosted !== null,
-					excludePremium: false,
-				}),
+				available,
 				editable: picksAreEditable(),
-				enabledModels: brand.enabledModels,
+				// Unmetered, so a brand that has never chosen is tracked on every
+				// target the deployment configures.
+				enabledModels: brand.enabledModels ?? available.map((option) => option.model),
 				planLimits: null,
 				upgradeOptions: [],
 				costBasis: selfHosted,
@@ -232,10 +236,6 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 		return {
 			available,
 			editable: picksAreEditable(),
-			// What the brand is actually tracked on, resolved the same way the run
-			// policy resolves it. Reporting the raw column and letting the page read
-			// null as "everything configured" is what showed a Pro brand 10 of 4
-			// platforms selected.
 			enabledModels: resolveBrandPicks(entitlements, brand, configs),
 			planLimits: {
 				platformPicks: entitlements.platformPicks ?? available.length,

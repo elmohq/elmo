@@ -80,10 +80,10 @@ function LlmsSettingsPage() {
 }
 
 /** Which of the three shapes this deployment and plan leave: a picker, or one of
- *  the two reports — nothing configured, or nothing for the viewer to decide. */
+ *  the two reports — nothing to show, or nothing for the viewer to decide. */
 function PlatformSection({ picker }: { picker: ModelPickerState }) {
-	if (picker.available.length === 0) return <NoPlatformsCard />;
 	if (!picker.editable) return <TrackedPlatforms picker={picker} />;
+	if (picker.available.length === 0) return <NoPlatformsCard />;
 	// A one-platform plan has nothing to choose, so it reports instead.
 	if (picker.planLimits?.platformPicks === 1 && picker.available.length === 1) {
 		return <SinglePlatformSummary picker={picker} />;
@@ -98,9 +98,10 @@ function NoPlatformsCard() {
 				<CardTitle>Tracked platforms</CardTitle>
 			</CardHeader>
 			<CardContent>
-				<p className="text-sm text-muted-foreground">
-					No models are configured on this deployment. Set <code className="font-mono text-xs">SCRAPE_TARGETS</code>.
-				</p>
+				{/* Deliberately says nothing about how to fix it: the operator gets
+				    that from the card below, and for everyone else the deployment's
+				    configuration is not theirs to change. */}
+				<p className="text-sm text-muted-foreground">This brand is not tracked on any platform yet.</p>
 			</CardContent>
 		</Card>
 	);
@@ -113,21 +114,9 @@ function NoPlatformsCard() {
  * are listed — the rest would read as an offer.
  */
 function TrackedPlatforms({ picker }: { picker: ModelPickerState }) {
-	const tracked = new Set(picker.enabledModels ?? picker.available.map((option) => option.model));
+	const tracked = new Set(picker.enabledModels);
 	const groups = groupPlatformOptions(picker.available.filter((option) => tracked.has(option.model)));
-
-	if (groups.length === 0) {
-		return (
-			<Card>
-				<CardHeader>
-					<CardTitle>Tracked platforms</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<p className="text-sm text-muted-foreground">This brand is not tracked on any platform yet.</p>
-				</CardContent>
-			</Card>
-		);
-	}
+	if (groups.length === 0) return <NoPlatformsCard />;
 
 	return (
 		<div className="space-y-4">
@@ -176,9 +165,7 @@ function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 	const { brand: brandId } = Route.useParams();
 	const router = useRouter();
 
-	// The server resolves what the brand is actually tracked on, so null only
-	// reaches here unmetered, where it means "everything configured".
-	const stored = new Set(picker.enabledModels ?? picker.available.map((m) => m.model));
+	const stored = new Set(picker.enabledModels);
 	const [selected, setSelected] = useState<Set<string>>(stored);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
