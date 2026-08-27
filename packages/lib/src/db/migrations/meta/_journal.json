@@ -110,8 +110,15 @@
     {
       "idx": 15,
       "version": "7",
-      "when": 1787822517559,
-      "tag": "0015_api_keys",
+      "when": 1787854702417,
+      "tag": "0015_align_better_auth_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1787856093717,
+      "tag": "0016_api_keys",
       "breakpoints": true
     }
   ]

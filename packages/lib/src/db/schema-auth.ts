@@ -2,7 +2,6 @@
  * Better-auth Drizzle schema — tables and relations.
  *
  * Generated via:  pnpm run generate:auth-schema
- * Source of truth: npx @better-auth/cli@latest generate
  *
  * The generator emits tables, columns, and relations implied by the plugins
  * in the auth config (the _cli-helper.ts wrapper). Indexes created by the
@@ -11,17 +10,18 @@
  * file — drizzle-kit snapshots don't see them and would try to drop them on
  * `drizzle-kit push`. They are maintained by their migration files instead.
  *
- * If you add a better-auth plugin that introduces new tables or columns,
- * re-run the generation script (pnpm run generate:auth-schema) and
- * commit the diff. The one exception is `apikey` below: @better-auth/cli has
- * no release past 1.4.x, which cannot load the 1.6 plugin set, so that table is
- * transcribed by hand from the plugin's own field definitions
- * (@better-auth/api-key, src/schema.ts). Re-check it against the plugin on
- * upgrade. If the new table needs indexes beyond what the generator
- * emits, add them in a new migration — not in this file.
+ * DO NOT EDIT BY HAND. If you add a better-auth plugin that introduces new
+ * tables or columns, re-run the generation script and commit the diff. If the
+ * new table needs indexes beyond what the generator emits, add them in a new
+ * migration — not in this file.
+ *
+ * One column deserves a warning the generator can't carry: `apikey.metadata` is
+ * writable by anyone with a session, by plugin design. Never store anything
+ * there that grants access — see readBrandRestriction in
+ * apps/web/src/lib/auth/api-auth.ts.
  */
 import { relations } from "drizzle-orm";
-import { boolean, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
 	id: text("id").primaryKey(),
@@ -103,19 +103,15 @@ export const verification = pgTable(
 	(table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
-export const organization = pgTable(
-	"organization",
-	{
-		id: text("id").primaryKey(),
-		name: text("name").notNull(),
-		slug: text("slug").notNull().unique(),
-		logo: text("logo"),
-		createdAt: timestamp("created_at").notNull(),
-		metadata: text("metadata"),
-		stripeCustomerId: text("stripe_customer_id"),
-	},
-	(table) => [uniqueIndex("organization_slug_uidx").on(table.slug)],
-);
+export const organization = pgTable("organization", {
+	id: text("id").primaryKey(),
+	name: text("name").notNull(),
+	slug: text("slug").notNull().unique(),
+	logo: text("logo"),
+	createdAt: timestamp("created_at").notNull(),
+	metadata: text("metadata"),
+	stripeCustomerId: text("stripe_customer_id"),
+});
 
 export const member = pgTable(
 	"member",
@@ -155,27 +151,6 @@ export const invitation = pgTable(
 	],
 );
 
-export const ssoProvider = pgTable("sso_provider", {
-	id: text("id").primaryKey(),
-	issuer: text("issuer").notNull(),
-	oidcConfig: text("oidc_config"),
-	samlConfig: text("saml_config"),
-	userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
-	providerId: text("provider_id").notNull().unique(),
-	organizationId: text("organization_id"),
-	domain: text("domain").notNull(),
-});
-
-/**
- * API keys, from @better-auth/api-key. Configured with
- * `references: "organization"`, so `referenceId` is an organization id rather
- * than a user id — which is what lets a key outlive whoever issued it.
- *
- * `permissions` holds the key's scopes and is server-only: the plugin rejects
- * any request carrying headers that tries to set it. `metadata` is the one
- * client-writable column, which is why nothing authorization-bearing lives
- * there.
- */
 export const apikey = pgTable(
 	"apikey",
 	{
@@ -200,8 +175,6 @@ export const apikey = pgTable(
 		createdAt: timestamp("created_at").notNull(),
 		updatedAt: timestamp("updated_at").notNull(),
 		permissions: text("permissions"),
-		// Client-writable by plugin design: never store anything here that grants
-		// access. See readBrandRestriction in apps/web/src/lib/auth/api-auth.ts.
 		metadata: text("metadata"),
 	},
 	(table) => [
@@ -211,13 +184,26 @@ export const apikey = pgTable(
 	],
 );
 
+export const ssoProvider = pgTable("sso_provider", {
+	id: text("id").primaryKey(),
+	issuer: text("issuer").notNull(),
+	oidcConfig: text("oidc_config"),
+	samlConfig: text("saml_config"),
+	userId: text("user_id")
+		.notNull()
+		.references(() => user.id, { onDelete: "cascade" }),
+	providerId: text("provider_id").notNull().unique(),
+	organizationId: text("organization_id"),
+	domain: text("domain").notNull(),
+});
+
 export const subscription = pgTable("subscription", {
 	id: text("id").primaryKey(),
 	plan: text("plan").notNull(),
 	referenceId: text("reference_id").notNull(),
 	stripeCustomerId: text("stripe_customer_id"),
 	stripeSubscriptionId: text("stripe_subscription_id"),
-	status: text("status").default("incomplete"),
+	status: text("status").default("incomplete").notNull(),
 	periodStart: timestamp("period_start"),
 	periodEnd: timestamp("period_end"),
 	trialStart: timestamp("trial_start"),

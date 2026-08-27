@@ -55,8 +55,8 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
-		"@better-auth/cli": "^1.4.22",
 		"@types/pg": "^8.21.0",
+		"auth": "1.6.29",
 		"drizzle-kit": "^0.31.10",
 		"stripe": "^22.5.0",
 		"typescript": "^7.0.2",

@@ -37,18 +37,11 @@ overrides:
   fast-uri: "^4.1.0"
   form-data: "^4.0.6"
   axios: "^1.18.0"
-  # Every @better-auth/* plugin declares `^1.6.x` on @better-auth/core, which
-  # semver happily resolves to 1.7 — a second copy of the same types that
-  # better-auth@1.6 does not use. Plugin objects then stop being assignable to
-  # BetterAuthPlugin and auth.api loses its inferred endpoints. Anchor the
-  # family to one core; lift this together with better-auth itself.
+  # @better-auth/api-key declares `^1.6.29` on @better-auth/core, which semver
+  # resolves to 1.7 — a second copy of the same types that better-auth@1.6 does
+  # not use. The plugin object then stops being assignable to BetterAuthPlugin
+  # and auth.api loses its inferred endpoints. Lift with better-auth itself.
   "@better-auth/core": "~1.6.29"
-  # Same reason, one level down: core's peers decide how many copies of it the
-  # store keeps, and two copies of the same version are as incompatible as two
-  # versions. These two pin the peer set so there is exactly one core.
-  "@better-fetch/fetch": "^1.3.1"
-  "@better-auth/utils": "0.4.2"
-  jose: "6.2.9"
   uuid: "^14.0.2"
   shell-quote: "^1.8.5"
   ws: "^8.20.1"
@@ -74,8 +67,8 @@ allowBuilds:
   protobufjs: false
   tree-sitter: false
   tree-sitter-json: false
-  # Pulled in by @better-auth/cli (schema generation); we only use its drizzle
-  # generator, so neither package's native/postinstall build is needed.
+  # Optional peers of better-auth/drizzle-orm for adapters we don't use; we
+  # only ever talk to Postgres, so neither native build is needed.
   "@prisma/client": false
   better-sqlite3: false
 
