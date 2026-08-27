@@ -61,8 +61,9 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 						.limit(limit)
 						.offset(offset);
 
-					// `data` is the field to read; `competitors` is the shipped name,
-					// kept until the one known consumer has migrated (DESIGN.md §2).
+					// Both keys hold the same array while callers move to `data`, which
+					// every list in this API answers with. `competitors` is documented
+					// as deprecated and goes in a later release.
 					return {
 						data: list,
 						competitors: list,

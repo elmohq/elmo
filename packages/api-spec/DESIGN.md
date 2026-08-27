@@ -234,7 +234,8 @@ machine code:
 ```
 
 `code` values: `unauthorized`, `insufficient_scope`, `forbidden`, `not_found`,
-`validation_error`, `conflict`, `rate_limited`, `read_only`, `no_active_plan`,
+`validation_error`, `conflict`, `rate_limited`, `method_not_allowed`, `read_only`,
+`no_active_plan`,
 `brand_limit`, `prompt_limit`, `platform_not_in_plan`, `platform_picks_exceeded`,
 `premium_not_in_plan`, `premium_pool_exhausted`, `cadence_faster_than_plan`,
 `system_tag_immutable`, `internal_error`.

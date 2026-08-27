@@ -10,8 +10,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { organization } from "@workspace/lib/db/schema";
 import { countBrandsByOrg } from "@workspace/lib/entitlements";
-import { count, eq } from "drizzle-orm";
+import { count } from "drizzle-orm";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { organizationScopeCondition } from "@/lib/api/scope";
 
 export const Route = createFileRoute("/api/v1/organizations/")({
 	server: {
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/api/v1/organizations/")({
 					const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20")));
 					const offset = (page - 1) * limit;
 
-					const where = auth.kind === "organization" ? eq(organization.id, auth.organizationId) : undefined;
+					const where = organizationScopeCondition(auth, organization.id);
 
 					const [totals] = await db.select({ count: count() }).from(organization).where(where);
 					const total = totals?.count ?? 0;

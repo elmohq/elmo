@@ -2,8 +2,7 @@
  * GET /api/v1/me — what the calling key is.
  *
  * Requires no scope, so it is always safe to call first when wiring up an
- * integration: it answers which organization and brands the key reaches, which
- * scopes it holds, and what kind of deployment answered.
+ * integration — including by a key that turns out to hold nothing.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";

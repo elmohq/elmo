@@ -24,6 +24,6 @@ body:json {
 }
 
 assert {
-  res.status: gte 400
-  res.status: lt 500
+  res.status: eq 405
+  res.body.code: eq method_not_allowed
 }

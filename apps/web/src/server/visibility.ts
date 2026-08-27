@@ -150,8 +150,8 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 		);
 
 		return {
-			// The API reports "no runs to plot" as null; this surface has always
-			// shown 0, and the hero renders a number.
+			// The hero renders this as a percentage, so "no runs to plot" has to
+			// arrive as a number rather than the null the shared function returns.
 			currentVisibility: result.currentVisibility ?? 0,
 			totalRuns: result.totalRuns,
 			totalPrompts: result.totalPrompts,

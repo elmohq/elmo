@@ -203,6 +203,18 @@ export const API_KEYS = {
     scopes: API_SCOPES.filter((scope) => scope !== "billing:read"),
     brandIds: null,
   },
+  /**
+   * Narrowed to a brand belonging to a *different* organization. Metadata is
+   * client-writable, so this is what a forged restriction looks like; the
+   * intersection empties it and the key reaches nothing.
+   */
+  orgForgedRestriction: {
+    token: "elmo_e2e_org_forged_restriction",
+    name: "E2E org key (forged restriction)",
+    organizationId: TEST_BRAND_ID,
+    scopes: API_SCOPES,
+    brandIds: [NIKE_BRAND_ID],
+  },
   /** The other tenant. Must never see anything belonging to the default org. */
   nikeFull: {
     token: "elmo_e2e_nike_full",

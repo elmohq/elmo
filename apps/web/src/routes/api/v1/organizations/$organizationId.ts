@@ -10,6 +10,7 @@ import { organization } from "@workspace/lib/db/schema";
 import { countOrgBrands } from "@workspace/lib/entitlements";
 import { eq } from "drizzle-orm";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { requireOrganizationInScope } from "@/lib/api/scope";
 
 export const Route = createFileRoute("/api/v1/organizations/$organizationId")({
 	server: {
@@ -17,9 +18,7 @@ export const Route = createFileRoute("/api/v1/organizations/$organizationId")({
 			GET: createApiHandler({
 				handle: async ({ params, auth }) => {
 					const { organizationId } = params;
-					if (auth.kind === "organization" && auth.organizationId !== organizationId) {
-						throw new ApiError(404, "Not Found", `Organization "${organizationId}" not found.`);
-					}
+					requireOrganizationInScope(auth, organizationId);
 					const [row] = await db
 						.select({
 							id: organization.id,

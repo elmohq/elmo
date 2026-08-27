@@ -8,11 +8,11 @@
  * and a catch-all that turns unexpected failures into a logged 500. Route files
  * supply only the resource-specific logic via `handle`.
  *
- * This is the *only* authentication gate for `/api/v1` — the deployment
- * middleware can't be one, because an organization key needs a database lookup
- * and that middleware is a pure synchronous policy function. A conformance test
- * asserts every route under `routes/api/v1` is built with this factory, which
- * is what stands between a newly added file and no auth at all.
+ * This is where a caller is identified. The deployment middleware ahead of it
+ * can only check that a bearer is present — resolving one needs a database
+ * lookup, and that middleware is pure and synchronous — so a route not built
+ * with this factory would answer to anyone holding any token. A conformance
+ * test is what keeps that from happening.
  *
  * Handlers signal expected failures (404, 409, ...) by throwing `ApiError`.
  * A plain-object return value is wrapped in `Response.json()` with `status`
@@ -38,6 +38,7 @@ export type ApiErrorCode =
 	| "validation_error"
 	| "conflict"
 	| "rate_limited"
+	| "method_not_allowed"
 	| "read_only"
 	| "no_active_plan"
 	| "brand_limit"
@@ -77,6 +78,7 @@ const CODE_FOR_STATUS: Record<number, ApiErrorCode> = {
 	402: "no_active_plan",
 	403: "forbidden",
 	404: "not_found",
+	405: "method_not_allowed",
 	409: "conflict",
 	429: "rate_limited",
 };
@@ -181,7 +183,7 @@ export function withMethodGuard<T extends Record<string, unknown>>(handlers: T):
 				{
 					error: "Method Not Allowed",
 					message: `${method} is not supported here; this resource accepts ${allowed.join(", ")}`,
-					code: "not_found",
+					code: "method_not_allowed",
 				},
 				{ status: 405, headers: { Allow: allowed.join(", ") } },
 			);

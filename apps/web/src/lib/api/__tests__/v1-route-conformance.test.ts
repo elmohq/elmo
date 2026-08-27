@@ -1,13 +1,12 @@
 /**
  * Every route under `routes/api/v1` must be built with `createApiHandler`.
  *
- * This matters more than it looks. The deployment middleware used to reject any
- * bearer token that wasn't an instance admin key before a route ever ran, so a
- * new file was authenticated whether or not its author thought about it. An
- * organization key can't be resolved there — it needs a database lookup, and
- * that middleware is pure and synchronous — so the gate moved into the handler
- * factory. This test is what replaced the middleware's blanket coverage: it
- * fails the moment a route is added that doesn't go through the gate.
+ * The deployment middleware can only check that a bearer is present — resolving
+ * one needs a database lookup, and that middleware is pure and synchronous — so
+ * the factory is where a caller is actually identified and their scopes
+ * checked. Nothing else enforces that a route uses it, which makes this test
+ * the only thing standing between a newly added file and an endpoint that
+ * answers to anyone.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -53,6 +52,21 @@ describe("/api/v1 route conformance", () => {
 				const viaBinding = /^[A-Za-z_$][\w$]*,?$/.test(assigned);
 				expect(viaFactory || viaBinding, `${method} is not built with createApiHandler`).toBe(true);
 			}
+		},
+	);
+
+	it.each(files.map((file) => [file.slice(V1_ROOT.length + 1), file]))(
+		"%s scopes whatever it reads to the caller",
+		(_name, file) => {
+			const source = readFileSync(file, "utf8");
+			// A route that queries directly has to decide what the caller may see.
+			// The helpers in lib/api/scope are the only place that decision is
+			// made, so a route reaching for the database without them is either a
+			// tenancy hole or an admin-only endpoint that says so.
+			if (!source.includes('from "@workspace/lib/db/db"')) return;
+			const scoped = source.includes('from "@/lib/api/scope"');
+			const adminOnly = source.includes("adminOnly: true");
+			expect(scoped || adminOnly, "queries the database without scoping to the caller").toBe(true);
 		},
 	);
 

@@ -15,6 +15,12 @@ headers {
 }
 
 assert {
-  res.status: gte 400
-  res.status: lt 500
+  res.status: eq 405
+  res.body.code: eq method_not_allowed
+}
+
+tests {
+  test("the resource says what it does accept", function() {
+    expect(res.getHeader("allow")).to.equal("GET");
+  });
 }

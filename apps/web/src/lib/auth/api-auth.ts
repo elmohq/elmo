@@ -9,13 +9,10 @@
  *    organization, holding an explicit set of scopes, optionally narrowed to a
  *    subset of that organization's brands.
  *
- * Everything authorization-bearing about an organization key comes from columns
- * the api-key plugin protects: `referenceId` (the organization, set from a
- * membership check at creation) and `permissions` (the scopes, rejected as a
- * server-only property on any request carrying headers). `metadata` is the one
- * column a session can write, so the only thing read from it is the brand
- * narrowing — which is intersected with the organization's brands and can
- * therefore never grant anything.
+ * Everything that grants comes from columns the api-key plugin protects:
+ * `referenceId` for the organization, set from a membership check at creation,
+ * and `permissions` for the scopes, which it rejects as a server-only property
+ * on any request carrying headers.
  */
 import { db } from "@workspace/lib/db/db";
 import { brands, organization } from "@workspace/lib/db/schema";
@@ -37,7 +34,11 @@ export interface OrganizationAuth {
 	organizationId: string;
 	organizationName: string;
 	scopes: Set<ApiScope>;
-	/** Null means every brand in the organization. Never an empty array. */
+	/**
+	 * Null means every brand in the organization. An empty array means the key
+	 * reaches none — which is what a restriction naming only other tenants'
+	 * brands collapses to once it is intersected, and the right answer for it.
+	 */
 	brandIds: string[] | null;
 	createdAt: Date | null;
 	lastUsedAt: Date | null;
@@ -98,8 +99,8 @@ function isAdminKey(token: string): boolean {
  * ---------------------------------------------------------------------------
  *
  * The api-key plugin declares `metadata` with `input: true`, so anyone holding
- * a session that reaches the plugin's create or update endpoint can set it to
- * whatever they like. It is the one column on the row that works that way.
+ * a session that reaches its create or update endpoint can set it to whatever
+ * they like. It is the one column on the row that works that way.
  *
  * `brandIds` is safe to keep here only because of what is done with it: it is
  * intersected with the brands of the organization the key is already bound to,
@@ -107,16 +108,12 @@ function isAdminKey(token: string): boolean {
  * caller who writes this field directly achieves is handing their own key
  * everything inside their own organization — which it already had.
  *
- * Anything that *grants* — the organization id, the scopes, a rate-limit
- * override, an admin flag — lives in `referenceId` or `permissions`, both of
- * which the plugin refuses to take from a request carrying headers.
+ * Before adding a field here, ask what the worst a caller who writes it
+ * directly can do. If the answer is anything but "nothing they couldn't already
+ * do", it belongs in `referenceId` or `permissions` instead.
  *
- * Before adding a field here, ask: what is the worst a caller who writes this
- * field directly can do? If the answer is anything other than "nothing they
- * couldn't already do", it does not belong in metadata.
- *
- * Anything malformed is read as "no narrowing" rather than raised as an error:
- * a client-writable field must not be able to break a key either.
+ * A malformed value is read as "no narrowing" rather than raised: a
+ * client-writable field must not be able to break a key either.
  */
 function readBrandRestriction(metadata: unknown): string[] | null {
 	if (!metadata || typeof metadata !== "object") return null;
@@ -177,13 +174,16 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 	const key = result?.key;
 	if (!result?.valid || !key) {
 		if (result?.error?.code === "RATE_LIMITED") {
+			// The plugin knows when the window resets; passing that on is the
+			// difference between a client backing off correctly and guessing.
+			const tryAgainIn = (result.error as { details?: { tryAgainIn?: unknown } }).details?.tryAgainIn;
 			return {
 				failure: {
 					status: 429,
 					error: "Too Many Requests",
 					message: "Rate limit exceeded for this API key",
 					code: "rate_limited",
-					retryAfterSeconds: 60,
+					retryAfterSeconds: typeof tryAgainIn === "number" ? Math.max(1, Math.ceil(tryAgainIn)) : 60,
 				},
 			};
 		}

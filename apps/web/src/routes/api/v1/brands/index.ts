@@ -56,8 +56,9 @@ export const Route = createFileRoute("/api/v1/brands/")({
 						.limit(limit)
 						.offset(offset);
 
-					// `data` is the field to read; `brands` is the shipped name, kept
-					// until the one known consumer has migrated (see DESIGN.md §2).
+					// Both keys hold the same array while callers move to `data`, which
+					// every list in this API answers with. `brands` is documented as
+					// deprecated and goes in a later release.
 					const results = rows.map(buildBrandResult);
 					return {
 						data: results,
