@@ -80,6 +80,123 @@ export const Route = createFileRoute("/_authed/app/$brand/prompts/$promptId")({
 	component: PromptHistoryPage,
 });
 
+function usePromptMetadata(brandId: string, promptId: string) {
+	const [promptMeta, setPromptMeta] = useState<PromptMetadata | null>(null);
+	const [isMetaLoading, setIsMetaLoading] = useState(true);
+
+	useEffect(() => {
+		if (!brandId || !promptId) return;
+		setIsMetaLoading(true);
+		getPromptMetadataFn({ data: { brandId, promptId } })
+			.then((data) => {
+				if (data) setPromptMeta(data);
+			})
+			.catch(console.error)
+			.finally(() => setIsMetaLoading(false));
+	}, [brandId, promptId]);
+
+	return { promptMeta, isMetaLoading };
+}
+
+function PromptHeader({
+	brandId,
+	promptMeta,
+	isMetaLoading,
+	onLookbackChange,
+}: {
+	brandId: string;
+	promptMeta: PromptMetadata | null;
+	isMetaLoading: boolean;
+	onLookbackChange: () => void;
+}) {
+	const systemTags = promptMeta?.systemTags || [];
+	const userTags = promptMeta?.tags || [];
+	const hasTags = systemTags.length > 0 || userTags.length > 0;
+
+	return (
+		<div className="pb-6 space-y-3">
+			<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+				<div className="flex-1 min-w-0">
+					{isMetaLoading ? (
+						<Skeleton className="h-8 w-[28rem] max-w-full" />
+					) : (
+						<h1 className="text-2xl font-semibold tracking-tight leading-tight break-words">{promptMeta?.value}</h1>
+					)}
+				</div>
+				<div className="shrink-0">
+					<LookbackSelector onLookbackChange={onLookbackChange} />
+				</div>
+			</div>
+
+			{isMetaLoading ? (
+				<div className="flex items-center gap-3">
+					<Skeleton className="h-5 w-14" />
+					<Skeleton className="h-5 w-40" />
+				</div>
+			) : (
+				<div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+					{promptMeta?.enabled ? (
+						<span className="inline-flex items-center gap-1.5 text-green-700">
+							<span className="relative flex h-2 w-2">
+								<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+								<span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+							</span>
+							Active
+						</span>
+					) : (
+						<span className="text-muted-foreground">Disabled</span>
+					)}
+
+					{promptMeta?.nextRunAt && (
+						<>
+							<span className="text-border">|</span>
+							<span className="text-muted-foreground">
+								Next run:{" "}
+								<span className="text-foreground tabular-nums">
+									{new Date(promptMeta.nextRunAt).toLocaleString(undefined, {
+										month: "short",
+										day: "numeric",
+										hour: "numeric",
+										minute: "2-digit",
+									})}
+								</span>
+							</span>
+						</>
+					)}
+
+					{hasTags && <span className="text-border">|</span>}
+
+					{hasTags && (
+						<div className="flex items-center gap-1.5">
+							<span className="text-muted-foreground">Tags:</span>
+							{systemTags.map((tag) => (
+								<Badge key={`sys-${tag}`} variant="secondary" className="text-xs capitalize font-normal">
+									{tag}
+								</Badge>
+							))}
+							{userTags.map((tag) => (
+								<Badge key={`usr-${tag}`} variant="outline" className="text-xs capitalize font-normal">
+									{tag}
+								</Badge>
+							))}
+						</div>
+					)}
+
+					<span className="text-border">|</span>
+
+					<Link
+						to="/app/$brand/settings/prompts"
+						params={{ brand: brandId }}
+						className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 decoration-muted-foreground/40 hover:decoration-foreground/40"
+					>
+						Edit prompts
+					</Link>
+				</div>
+			)}
+		</div>
+	);
+}
+
 function PromptHistoryPage() {
 	const { brand: brandId, promptId } = Route.useParams();
 
@@ -99,8 +216,7 @@ function PromptHistoryPage() {
 	);
 	const [visitedTabs, setVisitedTabs] = useState<Set<TabKey>>(() => new Set([activeTab]));
 	const [currentPage, setCurrentPage] = useState(1);
-	const [promptMeta, setPromptMeta] = useState<PromptMetadata | null>(null);
-	const [isMetaLoading, setIsMetaLoading] = useState(true);
+	const { promptMeta, isMetaLoading } = usePromptMetadata(brandId, promptId);
 
 	const { brand } = useBrand(brandId);
 
@@ -123,19 +239,6 @@ function PromptHistoryPage() {
 		limit: 15,
 		days,
 	});
-
-	useEffect(() => {
-		if (!brandId || !promptId) return;
-		setIsMetaLoading(true);
-		getPromptMetadataFn({ data: { brandId, promptId } })
-			.then((data) => {
-				if (data) {
-					setPromptMeta(data);
-				}
-			})
-			.catch(console.error)
-			.finally(() => setIsMetaLoading(false));
-	}, [brandId, promptId]);
 
 	const handleTabChange = useCallback(
 		(tab: TabKey) => {
@@ -160,10 +263,6 @@ function PromptHistoryPage() {
 
 	const mentionStats = aggregations?.mentionStats || [];
 	const citationStats = aggregations?.citationStats;
-
-	const systemTags = promptMeta?.systemTags || [];
-	const userTags = promptMeta?.tags || [];
-	const hasTags = systemTags.length > 0 || userTags.length > 0;
 
 	if (isStatsError || isRunsError) {
 		return (
@@ -198,87 +297,12 @@ function PromptHistoryPage() {
 
 	return (
 		<div className="space-y-0">
-			{/* HEADER */}
-			<div className="pb-6 space-y-3">
-				<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-					<div className="flex-1 min-w-0">
-						{isMetaLoading ? (
-							<Skeleton className="h-8 w-[28rem] max-w-full" />
-						) : (
-							<h1 className="text-2xl font-semibold tracking-tight leading-tight break-words">{promptMeta?.value}</h1>
-						)}
-					</div>
-					<div className="shrink-0">
-						<LookbackSelector onLookbackChange={handleLookbackChange} />
-					</div>
-				</div>
-
-				{isMetaLoading ? (
-					<div className="flex items-center gap-3">
-						<Skeleton className="h-5 w-14" />
-						<Skeleton className="h-5 w-40" />
-					</div>
-				) : (
-					<div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-						{promptMeta?.enabled ? (
-							<span className="inline-flex items-center gap-1.5 text-green-700">
-								<span className="relative flex h-2 w-2">
-									<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-									<span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
-								</span>
-								Active
-							</span>
-						) : (
-							<span className="text-muted-foreground">Disabled</span>
-						)}
-
-						{promptMeta?.nextRunAt && (
-							<>
-								<span className="text-border">|</span>
-								<span className="text-muted-foreground">
-									Next run:{" "}
-									<span className="text-foreground tabular-nums">
-										{new Date(promptMeta.nextRunAt).toLocaleString(undefined, {
-											month: "short",
-											day: "numeric",
-											hour: "numeric",
-											minute: "2-digit",
-										})}
-									</span>
-								</span>
-							</>
-						)}
-
-						{hasTags && <span className="text-border">|</span>}
-
-						{hasTags && (
-							<div className="flex items-center gap-1.5">
-								<span className="text-muted-foreground">Tags:</span>
-								{systemTags.map((tag) => (
-									<Badge key={`sys-${tag}`} variant="secondary" className="text-xs capitalize font-normal">
-										{tag}
-									</Badge>
-								))}
-								{userTags.map((tag) => (
-									<Badge key={`usr-${tag}`} variant="outline" className="text-xs capitalize font-normal">
-										{tag}
-									</Badge>
-								))}
-							</div>
-						)}
-
-						<span className="text-border">|</span>
-
-						<Link
-							to="/app/$brand/settings/prompts"
-							params={{ brand: brandId }}
-							className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 decoration-muted-foreground/40 hover:decoration-foreground/40"
-						>
-							Edit prompts
-						</Link>
-					</div>
-				)}
-			</div>
+			<PromptHeader
+				brandId={brandId}
+				promptMeta={promptMeta}
+				isMetaLoading={isMetaLoading}
+				onLookbackChange={handleLookbackChange}
+			/>
 
 			{/* TABS */}
 			<div className="border-b border-border">

@@ -36,21 +36,32 @@ function FeatureRow({ label, elmo, competitor }: { label: string; elmo: boolean;
 	);
 }
 
-export function CompetitorComparison({ competitor }: { competitor: Competitor }) {
+function diffFeatures(competitor: Competitor): {
+	elmoOnlyFeatures: string[];
+	competitorOnlyFeatures: string[];
+	sharedFeatures: string[];
+} {
 	const elmoOnlyFeatures: string[] = [];
 	const competitorOnlyFeatures: string[] = [];
 	const sharedFeatures: string[] = [];
 
-	for (const [catKey, cat] of Object.entries(FEATURE_CATEGORIES)) {
-		for (const featureKey of Object.keys(cat.features)) {
-			const k = featureKey as FeatureKey;
-			const elmoHas = ELMO_FEATURES[k] ?? false;
-			const compHas = competitor.features[k] ?? false;
-			if (elmoHas && !compHas) elmoOnlyFeatures.push(cat.features[k].label);
-			if (!elmoHas && compHas) competitorOnlyFeatures.push(cat.features[k].label);
-			if (elmoHas && compHas) sharedFeatures.push(cat.features[k].label);
+	for (const category of Object.values(FEATURE_CATEGORIES)) {
+		for (const featureKey of Object.keys(category.features)) {
+			const key = featureKey as FeatureKey;
+			const label = category.features[key].label;
+			const elmoHas = ELMO_FEATURES[key] ?? false;
+			const competitorHas = competitor.features[key] ?? false;
+			if (elmoHas && competitorHas) sharedFeatures.push(label);
+			else if (elmoHas) elmoOnlyFeatures.push(label);
+			else if (competitorHas) competitorOnlyFeatures.push(label);
 		}
 	}
+
+	return { elmoOnlyFeatures, competitorOnlyFeatures, sharedFeatures };
+}
+
+export function CompetitorComparison({ competitor }: { competitor: Competitor }) {
+	const { elmoOnlyFeatures, competitorOnlyFeatures, sharedFeatures } = diffFeatures(competitor);
 
 	return (
 		<>

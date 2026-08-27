@@ -266,6 +266,91 @@ function isProviderId(id: string): id is ProviderId {
 	return (RESEARCH_PROVIDER_PREFERENCE as readonly string[]).includes(id);
 }
 
+function printUsage(): void {
+	console.error(
+		[
+			"Usage: tsx compare-onboarding.ts <website> [options]",
+			"",
+			"Options:",
+			"  --max-prompts N       Pass through to analyzeBrand (default: production default)",
+			"  --max-competitors N   Pass through to analyzeBrand (default: production default)",
+			`  --only IDS            Comma-separated provider IDs (default all of: ${RESEARCH_PROVIDER_PREFERENCE.join(",")})`,
+			"  --skip IDS            Comma-separated provider IDs to skip",
+			"  --env-file PATH       Load API keys from this .env before defaults",
+			"  --timeout SECONDS     Hard timeout per provider (default 180)",
+			"",
+			"Each provider needs its own API key in env to participate;",
+			"missing-key providers are silently skipped, not treated as failures.",
+			"",
+			"Example:",
+			"  pnpm --filter @workspace/lib compare:onboarding nike.com",
+			"  pnpm --filter @workspace/lib compare:onboarding nike.com --only anthropic-api,openrouter",
+			"  pnpm --filter @workspace/lib compare:onboarding nike.com --env-file ~/code/elmo/apps/web/.env",
+		].join("\n"),
+	);
+}
+
+async function loadEnvFiles(envFile: string | undefined): Promise<void> {
+	if (envFile) {
+		const explicit = resolveHomePath(envFile);
+		try {
+			await readFile(explicit, "utf8");
+		} catch (err) {
+			console.error(`--env-file ${explicit} could not be read: ${err instanceof Error ? err.message : err}`);
+			process.exit(1);
+		}
+		await loadDotEnv(explicit);
+	}
+	const repoRoot = join(import.meta.dirname ?? __dirname, "..", "..", "..");
+	await loadDotEnv(join(repoRoot, "apps", "web", ".env"));
+	await loadDotEnv(join(repoRoot, ".env"));
+}
+
+function resolveTargets(only: string | undefined, skip: string | undefined): ProviderId[] {
+	const onlyList = parseList(only);
+	const skipList = parseList(skip);
+	for (const id of [...onlyList, ...skipList]) {
+		if (isProviderId(id)) continue;
+		console.error(`Unknown provider id: "${id}". Valid: ${RESEARCH_PROVIDER_PREFERENCE.join(", ")}`);
+		process.exit(1);
+	}
+
+	const targets = (onlyList.length > 0 ? onlyList : [...RESEARCH_PROVIDER_PREFERENCE]).filter(
+		(id): id is ProviderId => isProviderId(id) && !skipList.includes(id),
+	);
+	if (targets.length === 0) {
+		console.error("No providers to run after applying --only / --skip filters.");
+		process.exit(1);
+	}
+	return targets;
+}
+
+async function runOne(
+	providerId: ProviderId,
+	ctx: Awaited<ReturnType<typeof buildAnalysisContext>>,
+	timeoutMs: number,
+	results: RunResult[],
+	failures: RunFailure[],
+): Promise<void> {
+	if (!getProvider(providerId).isConfigured()) {
+		console.error(`○ ${providerId}: skipped (no API key configured)`);
+		return;
+	}
+
+	console.error(`→ ${providerId}: starting`);
+	const start = Date.now();
+	try {
+		const result = await runProvider(providerId, ctx, timeoutMs);
+		console.error(`✓ ${providerId}: done in ${formatMs(result.elapsedMs)}`);
+		results.push(result);
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		const elapsedMs = Date.now() - start;
+		console.error(`✗ ${providerId}: failed after ${formatMs(elapsedMs)} — ${message.split("\n")[0]}`);
+		failures.push({ providerId, error: message, elapsedMs });
+	}
+}
+
 async function main() {
 	const { values, positionals } = parseArgs({
 		args: process.argv.slice(2),
@@ -282,25 +367,7 @@ async function main() {
 	});
 
 	if (values.help || positionals.length === 0) {
-		console.error("Usage: tsx compare-onboarding.ts <website> [options]");
-		console.error("");
-		console.error("Options:");
-		console.error("  --max-prompts N       Pass through to analyzeBrand (default: production default)");
-		console.error("  --max-competitors N   Pass through to analyzeBrand (default: production default)");
-		console.error(
-			`  --only IDS            Comma-separated provider IDs (default all of: ${RESEARCH_PROVIDER_PREFERENCE.join(",")})`,
-		);
-		console.error("  --skip IDS            Comma-separated provider IDs to skip");
-		console.error("  --env-file PATH       Load API keys from this .env before defaults");
-		console.error("  --timeout SECONDS     Hard timeout per provider (default 180)");
-		console.error("");
-		console.error("Each provider needs its own API key in env to participate;");
-		console.error("missing-key providers are silently skipped, not treated as failures.");
-		console.error("");
-		console.error("Example:");
-		console.error("  pnpm --filter @workspace/lib compare:onboarding nike.com");
-		console.error("  pnpm --filter @workspace/lib compare:onboarding nike.com --only anthropic-api,openrouter");
-		console.error("  pnpm --filter @workspace/lib compare:onboarding nike.com --env-file ~/code/elmo/apps/web/.env");
+		printUsage();
 		process.exit(values.help ? 0 : 1);
 	}
 
@@ -313,36 +380,8 @@ async function main() {
 		process.exit(1);
 	}
 
-	if (values["env-file"]) {
-		const explicit = resolveHomePath(values["env-file"]);
-		try {
-			await readFile(explicit, "utf8");
-		} catch (err) {
-			console.error(`--env-file ${explicit} could not be read: ${err instanceof Error ? err.message : err}`);
-			process.exit(1);
-		}
-		await loadDotEnv(explicit);
-	}
-	const repoRoot = join(import.meta.dirname ?? __dirname, "..", "..", "..");
-	await loadDotEnv(join(repoRoot, "apps", "web", ".env"));
-	await loadDotEnv(join(repoRoot, ".env"));
-
-	// Determine which providers to run.
-	const onlyList = parseList(values.only);
-	const skipList = parseList(values.skip);
-	for (const id of [...onlyList, ...skipList]) {
-		if (!isProviderId(id)) {
-			console.error(`Unknown provider id: "${id}". Valid: ${RESEARCH_PROVIDER_PREFERENCE.join(", ")}`);
-			process.exit(1);
-		}
-	}
-	const targets = (onlyList.length > 0 ? onlyList : [...RESEARCH_PROVIDER_PREFERENCE]).filter(
-		(id): id is ProviderId => isProviderId(id) && !skipList.includes(id),
-	);
-	if (targets.length === 0) {
-		console.error("No providers to run after applying --only / --skip filters.");
-		process.exit(1);
-	}
+	await loadEnvFiles(values["env-file"]);
+	const targets = resolveTargets(values.only, values.skip);
 
 	// Build the same analysis context production would build — once. Every
 	// provider gets identical prompt + schema + excerpt.
@@ -355,60 +394,47 @@ async function main() {
 	const results: RunResult[] = [];
 	const failures: RunFailure[] = [];
 
-	const runs = targets.map(async (providerId): Promise<void> => {
-		const provider = getProvider(providerId);
-		if (!provider.isConfigured()) {
-			console.error(`○ ${providerId}: skipped (no API key configured)`);
-			return;
-		}
-		console.error(`→ ${providerId}: starting`);
-		const start = Date.now();
-		try {
-			const result = await runProvider(providerId, ctx, timeoutMs);
-			console.error(`✓ ${providerId}: done in ${formatMs(result.elapsedMs)}`);
-			results.push(result);
-		} catch (err) {
-			const elapsedMs = Date.now() - start;
-			const message = err instanceof Error ? err.message : String(err);
-			console.error(`✗ ${providerId}: failed after ${formatMs(elapsedMs)} — ${message.split("\n")[0]}`);
-			failures.push({ providerId, error: message, elapsedMs });
-		}
-	});
-	await Promise.all(runs);
+	await Promise.all(targets.map((providerId) => runOne(providerId, ctx, timeoutMs, results, failures)));
 
-	// Print full per-provider summary blocks + tabulated comparison to stderr
-	// (human-readable). Stdout gets just the CSV so `> results.csv` captures
-	// clean parseable output.
+	reportToStderr(results, failures);
+	writeCsvToStdout(results, failures);
+
+	if (results.length === 0) process.exit(1);
+}
+
+/**
+ * Human-readable output goes to stderr so stdout stays clean parseable CSV for
+ * `> results.csv`.
+ */
+function reportToStderr(results: RunResult[], failures: RunFailure[]): void {
 	if (results.length > 0) {
 		console.error("\n========== SUMMARY ==========");
-		for (const r of results) {
-			console.error(`\n[${r.providerId}]`);
-			console.error(summary(r));
+		for (const result of results) {
+			console.error(`\n[${result.providerId}]`);
+			console.error(summary(result));
 		}
 	}
-	for (const f of failures) {
-		console.error(`\n[${f.providerId}] FAILED`);
-		console.error(`  ${f.error.split("\n").join("\n  ")}`);
+	for (const failure of failures) {
+		console.error(`\n[${failure.providerId}] FAILED`);
+		console.error(`  ${failure.error.split("\n").join("\n  ")}`);
 	}
-	if (results.length >= 2) {
-		console.error(tabulatedComparison(results));
-	}
+	if (results.length >= 2) console.error(tabulatedComparison(results));
+}
 
-	// Two CSV blocks on stdout, separated by a blank line:
-	//   1. Summary — one row per provider (success or failure)
-	//   2. Prompts — one row per (provider, prompt) so you can compare the
-	//      actual prompt text + tags side-by-side across providers
-	// awk '/^$/{n++;next} {print > "out"n".csv"}' splits them; pandas can
-	// read one section at a time with skiprows + nrows.
+/**
+ * Two CSV blocks separated by a blank line: one row per provider, then one row
+ * per (provider, prompt) so prompt text and tags compare side-by-side.
+ * `awk '/^$/{n++;next} {print > "out"n".csv"}'` splits them; pandas can read one
+ * section at a time with skiprows + nrows.
+ */
+function writeCsvToStdout(results: RunResult[], failures: RunFailure[]): void {
 	console.log(CSV_HEADERS.join(","));
-	for (const r of results) console.log(rowFromResult(r));
-	for (const f of failures) console.log(rowFromFailure(f));
+	for (const result of results) console.log(rowFromResult(result));
+	for (const failure of failures) console.log(rowFromFailure(failure));
 
 	console.log("");
 	console.log(PROMPT_CSV_HEADERS.join(","));
-	for (const r of results) for (const row of promptRowsFromResult(r)) console.log(row);
-
-	if (results.length === 0) process.exit(1);
+	for (const result of results) for (const row of promptRowsFromResult(result)) console.log(row);
 }
 
 main().catch((err) => {

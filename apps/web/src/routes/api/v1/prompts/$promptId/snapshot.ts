@@ -24,6 +24,50 @@ function isValidDate(dateStr: string): boolean {
 	return !Number.isNaN(d.getTime());
 }
 
+/** Top-K lists are bounded so one request can't ask for the whole history. */
+const MAX_TOP_K = 50;
+const DEFAULT_TOP_MENTIONS = 5;
+const DEFAULT_TOP_CITATIONS = 10;
+
+function isMatchingDomain(domain: string, domainSet: Set<string>): boolean {
+	for (const owned of domainSet) {
+		if (domain === owned || domain.endsWith(`.${owned}`)) return true;
+	}
+	return false;
+}
+
+function boundedTopK(raw: string | null, fallback: number): number {
+	const parsed = Number.parseInt(raw || String(fallback), 10);
+	return Number.isNaN(parsed) ? fallback : Math.max(1, Math.min(MAX_TOP_K, parsed));
+}
+
+function parseSnapshotQuery(url: URL): { startDate: string; endDate: string; kMentions: number; kCitations: number } {
+	const { searchParams } = url;
+	const startDate = searchParams.get("startDate");
+	const endDate = searchParams.get("endDate");
+
+	if (!startDate || !endDate) {
+		throw new ApiError(
+			400,
+			"Validation Error",
+			"startDate and endDate query parameters are required (YYYY-MM-DD format)",
+		);
+	}
+	if (!isValidDate(startDate) || !isValidDate(endDate)) {
+		throw new ApiError(400, "Validation Error", "startDate and endDate must be valid dates in YYYY-MM-DD format");
+	}
+	if (startDate > endDate) {
+		throw new ApiError(400, "Validation Error", "startDate must be before or equal to endDate");
+	}
+
+	return {
+		startDate,
+		endDate,
+		kMentions: boundedTopK(searchParams.get("kMentions"), DEFAULT_TOP_MENTIONS),
+		kCitations: boundedTopK(searchParams.get("kCitations"), DEFAULT_TOP_CITATIONS),
+	};
+}
+
 export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 	server: {
 		handlers: {
@@ -31,32 +75,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
 				handle: async ({ params, request }) => {
 					const { promptId } = params;
-					const { searchParams } = new URL(request.url);
-
-					const startDate = searchParams.get("startDate");
-					const endDate = searchParams.get("endDate");
-					if (!startDate || !endDate) {
-						throw new ApiError(
-							400,
-							"Validation Error",
-							"startDate and endDate query parameters are required (YYYY-MM-DD format)",
-						);
-					}
-					if (!isValidDate(startDate) || !isValidDate(endDate)) {
-						throw new ApiError(
-							400,
-							"Validation Error",
-							"startDate and endDate must be valid dates in YYYY-MM-DD format",
-						);
-					}
-					if (startDate > endDate) {
-						throw new ApiError(400, "Validation Error", "startDate must be before or equal to endDate");
-					}
-
-					const kMentionsParam = Number.parseInt(searchParams.get("kMentions") || "5", 10);
-					const kMentions = Number.isNaN(kMentionsParam) ? 5 : Math.max(1, Math.min(50, kMentionsParam));
-					const kCitationsParam = Number.parseInt(searchParams.get("kCitations") || "10", 10);
-					const kCitations = Number.isNaN(kCitationsParam) ? 10 : Math.max(1, Math.min(50, kCitationsParam));
+					const { startDate, endDate, kMentions, kCitations } = parseSnapshotQuery(new URL(request.url));
 
 					const promptResult = await db
 						.select({ id: prompts.id, brandId: prompts.brandId, value: prompts.value })
@@ -83,13 +102,6 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 					const competitorDomains = new Set(
 						competitorsList.flatMap((c) => (c.domains || []).map(extractDomain)).filter(Boolean),
 					);
-
-					const isMatchingDomain = (domain: string, domainSet: Set<string>) => {
-						for (const d of domainSet) {
-							if (domain === d || domain.endsWith(`.${d}`)) return true;
-						}
-						return false;
-					};
 
 					const timezone = "UTC";
 					const [mentionData, topCompetitors, citationUrlStats] = await Promise.all([

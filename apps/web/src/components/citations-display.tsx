@@ -35,37 +35,25 @@ interface CitationsDisplayProps {
 	onCompetitorAdded?: () => void;
 }
 
-/** Composes the citation sections. Each card owns its own in-card filter
- *  state (search, tabs, pagination); this component only derives the data
- *  every section shares. Section visibility keys off the UNFILTERED data —
- *  in-card filters must never hide a whole section (issue #322). */
-export function CitationsDisplay({
-	citationData,
-	brandId,
-	brandName,
-	showStats = false,
-	maxDomains = 10,
-	maxUrls = 20,
-	days = 7,
-	onCompetitorAdded,
-}: CitationsDisplayProps) {
-	// Match the last point of the Citation Categories chart exactly (smoothed daily
-	// brand share), falling back to the window aggregate if there's no time series.
+/**
+ * What every citation section keys off. Which categories and page types appear
+ * is derived from the RAW aggregates (categoryCounts / pageTypeDistribution),
+ * not the smoothed % time series: a tiny category that rounds to 0% on every
+ * day would otherwise vanish from both the chart keys and the tab filters
+ * despite having real citations (and being filterable in the URL list). The
+ * same lists feed the tab filters and the chart `keys`, so the two stay
+ * consistent.
+ */
+function useCitationSections(citationData: CitationData) {
+	// Match the last point of the Citation Categories chart exactly (smoothed
+	// daily brand share), falling back to the window aggregate when there is no
+	// time series.
 	const lastTrendPoint = citationData.citationTimeSeries?.[citationData.citationTimeSeries.length - 1];
-	const brandShare = lastTrendPoint
-		? (lastTrendPoint.brand ?? 0)
-		: citationData.totalCitations > 0
+	const windowShare =
+		citationData.totalCitations > 0
 			? Math.round((citationData.categoryCounts.brand / citationData.totalCitations) * 100)
 			: 0;
 
-	const hasGaps = !!(citationData.competitorOnlyPrompts && citationData.competitorOnlyPrompts.length > 0 && brandId);
-
-	// Single source of truth for which categories / page types appear. Derived from
-	// the RAW aggregates (categoryCounts / pageTypeDistribution), NOT the smoothed %
-	// time series: a tiny category that rounds to 0% on every day would otherwise
-	// vanish from both the chart keys and the tab filters despite having real
-	// citations (and being filterable in the URL list). The same lists feed the tab
-	// filters and the chart `keys`, so the two stay consistent.
 	const chartSourceCategories = useMemo(
 		() => CITATION_CATEGORIES.filter((c: CitationCategory) => (citationData.categoryCounts[c] ?? 0) > 0),
 		[citationData.categoryCounts],
@@ -76,6 +64,7 @@ export function CitationsDisplay({
 		);
 		return CITATION_PAGE_TYPES.filter((p) => present.has(p));
 	}, [citationData.pageTypeDistribution]);
+
 	const urlSourceTabs = useMemo<{ key: string; label: string }[]>(
 		() => [
 			{ key: "all", label: "All Sources" },
@@ -83,7 +72,6 @@ export function CitationsDisplay({
 		],
 		[chartSourceCategories],
 	);
-	const domainSourceTabs = urlSourceTabs; // identical by construction (same chart-category list)
 	const urlPageTypeTabs = useMemo<{ key: string; label: string }[]>(
 		() => [
 			{ key: "all", label: "All Page Types" },
@@ -92,16 +80,45 @@ export function CitationsDisplay({
 		[chartPageTypes],
 	);
 
+	const changed = citationData.whatsChanged;
+	return {
+		brandShare: lastTrendPoint ? (lastTrendPoint.brand ?? 0) : windowShare,
+		chartSourceCategories,
+		chartPageTypes,
+		urlSourceTabs,
+		urlPageTypeTabs,
+		totalChanges: changed
+			? changed.newUrls.length +
+				changed.droppedUrls.length +
+				changed.titleChanges.length +
+				changed.newDomains.length +
+				changed.droppedDomains.length
+			: 0,
+	};
+}
+
+/** Composes the citation sections. Each card owns its own in-card filter
+ *  state (search, tabs, pagination); this component only derives the data
+ *  every section shares. Section visibility keys off the UNFILTERED data —
+ *  in-card filters must never hide a whole section. */
+export function CitationsDisplay({
+	citationData,
+	brandId,
+	brandName,
+	showStats = false,
+	maxDomains = 10,
+	maxUrls = 20,
+	days = 7,
+	onCompetitorAdded,
+}: CitationsDisplayProps) {
+	const { brandShare, chartSourceCategories, chartPageTypes, urlSourceTabs, urlPageTypeTabs, totalChanges } =
+		useCitationSections(citationData);
+	const domainSourceTabs = urlSourceTabs; // identical by construction (same chart-category list)
+
+	const hasGaps = !!(citationData.competitorOnlyPrompts && citationData.competitorOnlyPrompts.length > 0 && brandId);
 	const googleModule = citationData.googleModule;
-	const subredditData = useSubredditData(citationData.specificUrls, citationData.whatsChanged);
 	const whatsChanged = citationData.whatsChanged;
-	const totalChanges = whatsChanged
-		? whatsChanged.newUrls.length +
-			whatsChanged.droppedUrls.length +
-			whatsChanged.titleChanges.length +
-			whatsChanged.newDomains.length +
-			whatsChanged.droppedDomains.length
-		: 0;
+	const subredditData = useSubredditData(citationData.specificUrls, citationData.whatsChanged);
 
 	// Bail out only AFTER every hook above has run unconditionally (Rules of Hooks).
 	if (citationData.totalCitations === 0) return null;

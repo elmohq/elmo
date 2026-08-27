@@ -54,6 +54,115 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	brand?: BrandWithPrompts | null;
 }
 
+function buildNavGroups(args: {
+	scope: SidebarScope;
+	brand?: BrandWithPrompts | null;
+	isAdmin: boolean;
+	showAdminSection: boolean;
+	reportsEnabled: boolean;
+	features?: ClientConfig["features"];
+}): NavGroup[] {
+	const { scope, brand, isAdmin, showAdminSection, reportsEnabled, features } = args;
+	return [
+		// Only a brand context has a dashboard; a gate page has no destinations.
+		...(scope === "brand" ? brandGroups(brand, features) : []),
+		...(showAdminSection ? [adminGroup(isAdmin, reportsEnabled)] : []),
+	];
+}
+
+function brandGroups(brand: BrandWithPrompts | null | undefined, features?: ClientConfig["features"]): NavGroup[] {
+	const groups: NavGroup[] = [];
+	const dashboardItems = [
+		{
+			title: "Overview",
+			url: "/",
+			icon: IconDashboard,
+		},
+	];
+
+	if (brand?.onboarded) {
+		dashboardItems.push(
+			{
+				title: "Visibility",
+				url: "/visibility",
+				icon: IconChartBar,
+			},
+			{
+				title: "Share of Voice",
+				url: "/share-of-voice",
+				icon: IconSpeakerphone,
+			},
+			{
+				title: "Query Fan-Out",
+				url: "/query-fan-out",
+				icon: IconSitemap,
+			},
+			{
+				title: "Citations",
+				url: "/citations",
+				icon: IconLink,
+			},
+			{
+				title: "Opportunities",
+				url: "/opportunities",
+				icon: IconTarget,
+			},
+		);
+	}
+
+	groups.push({
+		label: "Dashboard",
+		items: dashboardItems,
+	});
+
+	if (brand?.onboarded) {
+		groups.push({
+			label: "Settings",
+			items: [
+				{
+					title: "Brand",
+					url: "/settings/brand",
+					icon: IconBuilding,
+				},
+				{
+					title: "Competitors",
+					url: "/settings/competitors",
+					icon: IconBuildings,
+				},
+				{
+					title: "Prompts",
+					url: "/settings/prompts",
+					icon: IconListDetails,
+				},
+				{
+					title: "LLMs",
+					url: "/settings/llms",
+					icon: IconCpu,
+				},
+				...(features?.teamInvites ? [{ title: "Team", url: "/settings/members", icon: IconUsers }] : []),
+				...(features?.billing ? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard }] : []),
+			],
+		});
+	}
+
+	return groups;
+}
+
+function adminGroup(isAdmin: boolean, reportsEnabled: boolean): NavGroup {
+	const reportsItem = { title: "Reports", url: "/reports", icon: IconReport, absolute: true };
+	if (!isAdmin) return { label: "Admin", items: [reportsItem] };
+
+	return {
+		label: "Admin",
+		items: [
+			{ title: "Brands", url: "/admin", icon: IconTable, absolute: true },
+			...(reportsEnabled ? [reportsItem] : []),
+			{ title: "Workflows", url: "/admin/workflows", icon: IconTimeline, absolute: true },
+			{ title: "Tools", url: "/admin/tools", icon: IconTool, absolute: true },
+		],
+	};
+}
+
 export function AppSidebar({
 	isAdmin = false,
 	hasReportAccess = false,
@@ -70,128 +179,14 @@ export function AppSidebar({
 	// the user straight back to the gate.
 	const showAdminSection = scope !== "account" && (isAdmin || (hasReportAccess && reportsEnabled));
 
-	const groups: NavGroup[] = [];
-
-	// Dashboard section - only show if we have a brand context
-	if (scope === "brand") {
-		const dashboardItems = [
-			{
-				title: "Overview",
-				url: "/",
-				icon: IconDashboard,
-			},
-		];
-
-		// Only show Visibility and Citations if the brand is onboarded
-		if (brand?.onboarded) {
-			dashboardItems.push(
-				{
-					title: "Visibility",
-					url: "/visibility",
-					icon: IconChartBar,
-				},
-				{
-					title: "Share of Voice",
-					url: "/share-of-voice",
-					icon: IconSpeakerphone,
-				},
-				{
-					title: "Query Fan-Out",
-					url: "/query-fan-out",
-					icon: IconSitemap,
-				},
-				{
-					title: "Citations",
-					url: "/citations",
-					icon: IconLink,
-				},
-				{
-					title: "Opportunities",
-					url: "/opportunities",
-					icon: IconTarget,
-				},
-			);
-		}
-
-		groups.push({
-			label: "Dashboard",
-			items: dashboardItems,
-		});
-
-		// Settings section - only show if onboarded
-		if (brand?.onboarded) {
-			groups.push({
-				label: "Settings",
-				items: [
-					{
-						title: "Brand",
-						url: "/settings/brand",
-						icon: IconBuilding,
-					},
-					{
-						title: "Competitors",
-						url: "/settings/competitors",
-						icon: IconBuildings,
-					},
-					{
-						title: "Prompts",
-						url: "/settings/prompts",
-						icon: IconListDetails,
-					},
-					{
-						title: "LLMs",
-						url: "/settings/llms",
-						icon: IconCpu,
-					},
-					...(context.clientConfig?.features.teamInvites
-						? [{ title: "Team", url: "/settings/members", icon: IconUsers }]
-						: []),
-					...(context.clientConfig?.features.billing
-						? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard }]
-						: []),
-				],
-			});
-		}
-	}
-
-	// Admin section
-	if (showAdminSection) {
-		const reportsItem = {
-			title: "Reports",
-			url: "/reports",
-			icon: IconReport,
-			absolute: true,
-		};
-		const adminItems = isAdmin
-			? [
-					{
-						title: "Brands",
-						url: "/admin",
-						icon: IconTable,
-						absolute: true,
-					},
-					...(reportsEnabled ? [reportsItem] : []),
-					{
-						title: "Workflows",
-						url: "/admin/workflows",
-						icon: IconTimeline,
-						absolute: true,
-					},
-					{
-						title: "Tools",
-						url: "/admin/tools",
-						icon: IconTool,
-						absolute: true,
-					},
-				]
-			: [reportsItem];
-
-		groups.push({
-			label: "Admin",
-			items: adminItems,
-		});
-	}
-
+	const groups = buildNavGroups({
+		scope,
+		brand,
+		isAdmin,
+		showAdminSection,
+		reportsEnabled,
+		features: context.clientConfig?.features,
+	});
 	const brandmark = (
 		<>
 			<Logo iconClassName="!size-5" />
