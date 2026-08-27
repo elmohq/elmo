@@ -411,11 +411,18 @@ key, and a revoked one. They go straight into the `apikey` table — no session,
 key-management UI — and are skipped while that table doesn't exist, so the seeder
 keeps working until organization keys land.
 
-**Two runs.** `pnpm test:api` runs everything untagged against a local-mode
-stack. `pnpm test:api:cloud` runs the `cloud`-tagged cases against the cloud-mode
-stack in the same CI job, because plan enforcement only exists there. The cloud
-fixtures are two extra tenants: one on a custom plan with deliberately tiny
-limits (config-only, no Stripe), one with no subscription at all.
+**Three runs, one collection.** Some rules only exist in one deployment mode,
+so those cases are tagged and run in that mode's CI phase:
+
+| Command | Mode | Covers |
+| --- | --- | --- |
+| `pnpm test:api` | local | everything untagged |
+| `pnpm test:api:cloud` | cloud | plan enforcement, which exists nowhere else |
+| `pnpm test:api:demo` | demo | read-only mode refusing every write |
+
+The cloud fixtures are two extra tenants: one on a custom plan with
+deliberately tiny limits (config-only, no Stripe), one with no subscription at
+all.
 
 **What every endpoint is checked for.** Happy path and response shape;
 validation failures; missing and invalid key; missing scope; cross-tenant access
