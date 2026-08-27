@@ -146,9 +146,9 @@ tenant-scoped brand ids, a schema change with no other motivation.
 The rate limit is deliberately generous: it is there to stop a runaway loop from
 saturating the database, not to meter normal use. A nightly analytics pull over
 ten brands costs under a hundred requests; exporting a brand's answer text costs
-one per run, which is hundreds of thousands for a large workspace — at 120/min
-that export took a day, which is a limit shaping the product rather than
-protecting it.
+one per run, which is hundreds of thousands for a large workspace. A few hundred
+per minute would turn that export into a day-long job — a limit shaping the
+product rather than protecting it.
 
 Two properties worth knowing. It is the plugin's fixed window, counted with a
 read-modify-write per request, so under concurrency it is approximate —
@@ -568,16 +568,13 @@ this plan got wrong.
 2. **Key issuance + schema.** `@better-auth/api-key` is pinned to `~1.6.29`,
    the line matching `better-auth`; `^` would resolve to 1.7, whose peer on
    `@better-auth/core` is a different copy of the same types, and plugin objects
-   then stop being assignable to `BetterAuthPlugin`. Four `overrides` anchors
-   (`@better-auth/core`, `@better-fetch/fetch`, `@better-auth/utils`, `jose`)
-   keep exactly one core in the store — two copies of one version are as
-   incompatible as two versions.
+   then stop being assignable to `BetterAuthPlugin`. One `overrides` anchor on
+   `@better-auth/core` keeps a single copy in the store — two copies of one
+   version are as incompatible as two versions.
 
-   `@better-auth/cli` has no release past 1.4.x and cannot load the 1.6 plugin
-   set, so the `apikey` table is transcribed by hand into `schema-auth.ts` from
-   the plugin's own field definitions, with the exception noted in that file's
-   header. `/api/auth/api-key/create`, `/update`, and `/delete` are blocked over
-   HTTP.
+   The `apikey` table comes from `pnpm run generate:auth-schema` like every
+   other better-auth table. `/api/auth/api-key/create`, `/update`, and `/delete`
+   are blocked over HTTP.
 
    Settings → API keys does the issuing, over server functions in
    `apps/web/src/server/api-keys.ts`. Creation calls `auth.api.createApiKey`
