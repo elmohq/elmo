@@ -72,11 +72,11 @@ export function getComparisonFaqs(competitor: Competitor): FaqItem[] {
 			},
 			{
 				question: `Is ${name} open source?`,
-				answer: `Yes, ${name} carries an MIT license. Elmo is open source too — audit the code, self-host it, and skip the fork.`,
+				answer: `Yes, ${name} is an MIT licensed fork of Elmo.`,
 			},
 			{
 				question: `Is Elmo a free, open-source alternative to ${name}?`,
-				answer: `Elmo is not an alternative to ${name} so much as the project ${name} forked from. It is free to self-host under MIT, with unlimited prompts and every model, covering ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews. There is little reason to run a fork when the upstream project is free and moving faster.`,
+				answer: `${name} is actually a fork of Elmo, which is free to self-host and developing faster than ${name}. If you want to self-host under MIT, with unlimited prompts and every model, covering ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews, you should use Elmo instead of a fork.`,
 			},
 		];
 	}
