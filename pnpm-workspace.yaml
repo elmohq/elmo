@@ -42,6 +42,11 @@ overrides:
   # TDZ when the importing half evaluates and every page 500s. 1.2.6 is not out of the
   # release-age cooldown yet.
   rolldown: "1.2.4"
+  # better-auth 1.7 adds account.issuer to its expected Drizzle schema; sign-in 500s
+  # without it. The migration belongs in its own PR, not a grouped dependency bump.
+  better-auth: "1.6.29"
+  "@better-auth/sso": "1.6.29"
+  "@better-auth/stripe": "1.6.29"
   shell-quote: "^1.8.5"
   ws: "^8.20.1"
   protobufjs: "^7.5.8"
