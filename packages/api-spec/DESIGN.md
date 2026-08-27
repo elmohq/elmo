@@ -43,7 +43,7 @@ Issued from the dashboard (`Settings → API keys`), backed by better-auth's
 `apiKey` plugin: `elmo_…`, hashed at rest, prefix stored for display, optional
 expiry, per-key rate limit. Never usable as an app session.
 
-A key carries three things in its metadata:
+A key carries three things:
 
 | Field            | Stored in    | Meaning                                                           |
 | ---------------- | ------------ | ----------------------------------------------------------------- |
@@ -298,17 +298,20 @@ scope-checked, org-filtered, with `limit` capped at 100. Additions:
 - List filters: `enabled`, `tag` (repeatable), `q`.
 - Prompt object gains `premiumModels`.
 - `PATCH` accepts `premiumModels`, guarded by `assertCanAssignPremium`.
-- `POST /v1/prompts/bulk` — create up to 100 prompts for one brand in a single
-  call, entitlement-checked as one delta so a partial overrun can't slip past.
-  Returns per-item results. This is the single most-requested shape in every
-  comparable API (Profound's `POST /prompts`, Peec's per-project create).
+- `POST /v1/prompts/bulk` — create up to 100 prompts for one brand in one call.
+  All-or-nothing: the batch is checked against the plan as a single delta and
+  either every prompt is created or none is, so a batch that would overrun a
+  limit can't leave the caller guessing how far it got. Every comparable API has
+  this shape (Profound's `POST /prompts`, Peec's per-project create); the
+  all-or-nothing part is what keeps it from becoming a partial-failure protocol
+  we'd have to keep supporting.
 
 ### 3.6 Competitors — unchanged surface
 
 `GET/POST /v1/competitors`, `GET/PATCH/DELETE /v1/competitors/{competitorId}`,
 now scope-checked and org-filtered. `MAX_COMPETITORS` already applies.
 
-### 3.7 Analytics — `/v1/brands/{brandId}/…`  *(`analytics:read`, all beta)*
+### 3.7 Analytics — `/v1/brands/{brandId}/…`  *(`analytics:read`)*
 
 Brand-nested rather than a `/reports/*` family, because `reports` already means
 the one-shot generator in this product. Every endpoint takes the standard date
@@ -331,7 +334,7 @@ Every one of these is a thin route over a shared analytics function that the
 dashboard's server function also calls, so the API physically cannot report
 different numbers than the UI (see §5).
 
-### 3.8 Runs — `runs:read`, beta
+### 3.8 Runs — `runs:read`
 
 - `GET /v1/prompts/{promptId}/runs` — paginated run metadata: `id`, `model`,
   `provider`, `webSearchEnabled`, `brandMentioned`, `competitorsMentioned`,
