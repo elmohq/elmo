@@ -84,7 +84,7 @@ export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; so
 								href={bullet.href}
 								target="_blank"
 								rel="noopener noreferrer"
-								className="underline-offset-2 hover:underline"
+								className="underline underline-offset-2 hover:opacity-80"
 							>
 								{bullet.text}
 							</a>
