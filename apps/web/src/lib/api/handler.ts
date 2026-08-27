@@ -123,6 +123,38 @@ export interface ApiHandlerContext<P, B> {
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+/**
+ * Stamped onto every handler this module produces, so a test can ask a route
+ * what it actually wired up instead of reading its source and hoping.
+ *
+ * Grepping a file for `createApiHandler(` proves only that the string occurs in
+ * it — not that the exported handler came from it.
+ */
+const API_HANDLER = Symbol.for("elmo.api.handler");
+
+export interface ApiHandlerMeta {
+	/** `method-guard` is a generated 405 filler; `endpoint` is a real operation. */
+	kind: "endpoint" | "method-guard";
+	scopes: readonly ApiScope[];
+	adminOnly: boolean;
+}
+
+function brand<T extends object>(handler: T, meta: ApiHandlerMeta): T {
+	Object.defineProperty(handler, API_HANDLER, {
+		value: Object.freeze(meta),
+		enumerable: false,
+		writable: false,
+		configurable: false,
+	});
+	return handler;
+}
+
+/** The stamp, or undefined for anything not built here. */
+export function apiHandlerMeta(value: unknown): ApiHandlerMeta | undefined {
+	if (typeof value !== "function") return undefined;
+	return (value as unknown as Record<symbol, ApiHandlerMeta | undefined>)[API_HANDLER];
+}
+
 export function createApiHandler<P = Record<string, string>, B = undefined>(opts: {
 	/** Zod schema for route path params, e.g. `z.object({ promptId: z.guid() })`. */
 	params?: z.ZodType<P>;
@@ -138,7 +170,13 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 	mapError?: (err: unknown) => ApiError | undefined;
 	handle: (ctx: ApiHandlerContext<P, B>) => Promise<Response | object>;
 }) {
-	return async ({ request, params }: { request: Request; params: Record<string, string> }): Promise<Response> => {
+	const handler = async ({
+		request,
+		params,
+	}: {
+		request: Request;
+		params: Record<string, string>;
+	}): Promise<Response> => {
 		const resolved = await resolveApiAuth(request);
 		if ("failure" in resolved) return authFailureResponse(resolved.failure);
 
@@ -160,6 +198,12 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 			return withRateLimit(errorFromThrow(err, request, opts.mapError), auth);
 		}
 	};
+
+	return brand(handler, {
+		kind: "endpoint",
+		scopes: opts.scopes ?? [],
+		adminOnly: opts.adminOnly === true,
+	});
 }
 
 const ALL_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
@@ -178,15 +222,18 @@ export function withMethodGuard<T extends Record<string, unknown>>(handlers: T):
 	const guarded: Record<string, unknown> = { ...handlers };
 	for (const method of ALL_METHODS) {
 		if (method in handlers) continue;
-		guarded[method] = async () =>
-			Response.json(
-				{
-					error: "Method Not Allowed",
-					message: `${method} is not supported here; this resource accepts ${allowed.join(", ")}`,
-					code: "method_not_allowed",
-				},
-				{ status: 405, headers: { Allow: allowed.join(", ") } },
-			);
+		guarded[method] = brand(
+			async () =>
+				Response.json(
+					{
+						error: "Method Not Allowed",
+						message: `${method} is not supported here; this resource accepts ${allowed.join(", ")}`,
+						code: "method_not_allowed",
+					},
+					{ status: 405, headers: { Allow: allowed.join(", ") } },
+				),
+			{ kind: "method-guard", scopes: [], adminOnly: false },
+		);
 	}
 	return guarded as T;
 }
