@@ -9,7 +9,7 @@ import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/r
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
-import { Button } from "@workspace/ui/components/button";
+import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
@@ -89,11 +89,11 @@ export function ResetPasswordForm({
 				pitch={panel}
 				footer={footer}
 			>
-				<p className="text-sm text-muted-foreground">
-					<Link to="/auth/forgot-password" className="text-primary hover:underline font-medium">
-						Request a new reset link
-					</Link>
-				</p>
+				{/* The only thing to do from here, so it carries the weight the other
+				    pages give their submit button. */}
+				<Link to="/auth/forgot-password" className={buttonVariants({ className: "w-full" })}>
+					Request a new reset link
+				</Link>
 			</AuthSplitLayout>
 		);
 	}
