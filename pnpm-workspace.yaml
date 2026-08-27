@@ -37,7 +37,10 @@ overrides:
   fast-uri: "^4.1.0"
   form-data: "^4.0.6"
   axios: "^1.18.0"
-  uuid: "^11.1.1"
+  # uuid v12 dropped CommonJS support and these two still require() it, so they stay on
+  # the v11 line. Scoped per-parent so a workspace package can move to a newer major.
+  "auth0>uuid": "^11.1.1"
+  "@usebruno/js>uuid": "^11.1.1"
   shell-quote: "^1.8.5"
   ws: "^8.20.1"
   protobufjs: "^7.5.8"
