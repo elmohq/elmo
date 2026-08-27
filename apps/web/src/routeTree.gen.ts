@@ -32,6 +32,8 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiManifestIndexRouteImport } from './routes/api/manifest/index'
 import { Route as ApiOgIndexRouteImport } from './routes/api/og/index'
 import { Route as ApiSetupStatusIndexRouteImport } from './routes/api/setup-status/index'
+import { Route as ApiV1MeRouteImport } from './routes/api/v1/me'
+import { Route as ApiV1PlatformsRouteImport } from './routes/api/v1/platforms'
 import { Route as AuthedAppBrandIndexRouteImport } from './routes/_authed/app/$brand/index'
 import { Route as AuthedAppBrandSplatRouteImport } from './routes/_authed/app/$brand/$'
 import { Route as AuthedAppBrandCitationsRouteImport } from './routes/_authed/app/$brand/citations'
@@ -46,6 +48,8 @@ import { Route as ApiV1BrandsBrandIdRouteImport } from './routes/api/v1/brands/$
 import { Route as ApiV1CompetitorsIndexRouteImport } from './routes/api/v1/competitors/index'
 import { Route as ApiV1CompetitorsCompetitorIdRouteImport } from './routes/api/v1/competitors/$competitorId'
 import { Route as ApiV1DocsIndexRouteImport } from './routes/api/v1/docs/index'
+import { Route as ApiV1OrganizationsIndexRouteImport } from './routes/api/v1/organizations/index'
+import { Route as ApiV1OrganizationsOrganizationIdRouteImport } from './routes/api/v1/organizations/$organizationId'
 import { Route as ApiV1PromptsIndexRouteImport } from './routes/api/v1/prompts/index'
 import { Route as ApiV1PromptsPromptIdRouteImport } from './routes/api/v1/prompts/$promptId'
 import { Route as ApiV1ReportsIndexRouteImport } from './routes/api/v1/reports/index'
@@ -62,6 +66,7 @@ import { Route as AuthedAppBrandSettingsLlmsRouteImport } from './routes/_authed
 import { Route as AuthedAppBrandSettingsMembersRouteImport } from './routes/_authed/app/$brand/settings/members'
 import { Route as AuthedAppBrandSettingsPromptsRouteImport } from './routes/_authed/app/$brand/settings/prompts'
 import { Route as ApiPlausibleJsScriptIndexRouteImport } from './routes/api/plausible/js/script/index'
+import { Route as ApiV1OrganizationsOrganizationIdBillingRouteImport } from './routes/api/v1/organizations/$organizationId/billing'
 import { Route as ApiV1PromptsPromptIdSnapshotRouteImport } from './routes/api/v1/prompts/$promptId/snapshot'
 
 const IndexRoute = IndexRouteImport.update({
@@ -179,6 +184,16 @@ const ApiSetupStatusIndexRoute = ApiSetupStatusIndexRouteImport.update({
   path: '/api/setup-status/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1MeRoute = ApiV1MeRouteImport.update({
+  id: '/api/v1/me',
+  path: '/api/v1/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1PlatformsRoute = ApiV1PlatformsRouteImport.update({
+  id: '/api/v1/platforms',
+  path: '/api/v1/platforms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthedAppBrandIndexRoute = AuthedAppBrandIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -255,6 +270,17 @@ const ApiV1DocsIndexRoute = ApiV1DocsIndexRouteImport.update({
   path: '/api/v1/docs/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1OrganizationsIndexRoute = ApiV1OrganizationsIndexRouteImport.update({
+  id: '/api/v1/organizations/',
+  path: '/api/v1/organizations/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1OrganizationsOrganizationIdRoute =
+  ApiV1OrganizationsOrganizationIdRouteImport.update({
+    id: '/api/v1/organizations/$organizationId',
+    path: '/api/v1/organizations/$organizationId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiV1PromptsIndexRoute = ApiV1PromptsIndexRouteImport.update({
   id: '/api/v1/prompts/',
   path: '/api/v1/prompts/',
@@ -346,6 +372,12 @@ const ApiPlausibleJsScriptIndexRoute =
     path: '/api/plausible/js/script/',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiV1OrganizationsOrganizationIdBillingRoute =
+  ApiV1OrganizationsOrganizationIdBillingRouteImport.update({
+    id: '/billing',
+    path: '/billing',
+    getParentRoute: () => ApiV1OrganizationsOrganizationIdRoute,
+  } as any)
 const ApiV1PromptsPromptIdSnapshotRoute =
   ApiV1PromptsPromptIdSnapshotRouteImport.update({
     id: '/snapshot',
@@ -370,6 +402,8 @@ export interface FileRoutesByFullPath {
   '/app/$brand': typeof AuthedAppBrandRouteWithChildren
   '/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v1/me': typeof ApiV1MeRoute
+  '/api/v1/platforms': typeof ApiV1PlatformsRoute
   '/admin/': typeof AuthedAdminIndexRoute
   '/app/': typeof AuthedAppIndexRoute
   '/reports/': typeof AuthedReportsIndexRoute
@@ -385,6 +419,7 @@ export interface FileRoutesByFullPath {
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
   '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
   '/api/v1/competitors/$competitorId': typeof ApiV1CompetitorsCompetitorIdRoute
+  '/api/v1/organizations/$organizationId': typeof ApiV1OrganizationsOrganizationIdRouteWithChildren
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
   '/api/v1/tools/analyze': typeof ApiV1ToolsAnalyzeRoute
@@ -393,6 +428,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/brands/': typeof ApiV1BrandsIndexRoute
   '/api/v1/competitors/': typeof ApiV1CompetitorsIndexRoute
   '/api/v1/docs/': typeof ApiV1DocsIndexRoute
+  '/api/v1/organizations/': typeof ApiV1OrganizationsIndexRoute
   '/api/v1/prompts/': typeof ApiV1PromptsIndexRoute
   '/api/v1/reports/': typeof ApiV1ReportsIndexRoute
   '/app/$brand/prompts/$promptId': typeof AuthedAppBrandPromptsPromptIdRoute
@@ -403,6 +439,7 @@ export interface FileRoutesByFullPath {
   '/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
   '/app/$brand/settings/members': typeof AuthedAppBrandSettingsMembersRoute
   '/app/$brand/settings/prompts': typeof AuthedAppBrandSettingsPromptsRoute
+  '/api/v1/organizations/$organizationId/billing': typeof ApiV1OrganizationsOrganizationIdBillingRoute
   '/api/v1/prompts/$promptId/snapshot': typeof ApiV1PromptsPromptIdSnapshotRoute
   '/app/$brand/prompts/': typeof AuthedAppBrandPromptsIndexRoute
   '/app/$brand/settings/': typeof AuthedAppBrandSettingsIndexRoute
@@ -421,6 +458,8 @@ export interface FileRoutesByTo {
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v1/me': typeof ApiV1MeRoute
+  '/api/v1/platforms': typeof ApiV1PlatformsRoute
   '/admin': typeof AuthedAdminIndexRoute
   '/app': typeof AuthedAppIndexRoute
   '/reports': typeof AuthedReportsIndexRoute
@@ -436,6 +475,7 @@ export interface FileRoutesByTo {
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
   '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
   '/api/v1/competitors/$competitorId': typeof ApiV1CompetitorsCompetitorIdRoute
+  '/api/v1/organizations/$organizationId': typeof ApiV1OrganizationsOrganizationIdRouteWithChildren
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
   '/api/v1/tools/analyze': typeof ApiV1ToolsAnalyzeRoute
@@ -444,6 +484,7 @@ export interface FileRoutesByTo {
   '/api/v1/brands': typeof ApiV1BrandsIndexRoute
   '/api/v1/competitors': typeof ApiV1CompetitorsIndexRoute
   '/api/v1/docs': typeof ApiV1DocsIndexRoute
+  '/api/v1/organizations': typeof ApiV1OrganizationsIndexRoute
   '/api/v1/prompts': typeof ApiV1PromptsIndexRoute
   '/api/v1/reports': typeof ApiV1ReportsIndexRoute
   '/app/$brand/prompts/$promptId': typeof AuthedAppBrandPromptsPromptIdRoute
@@ -454,6 +495,7 @@ export interface FileRoutesByTo {
   '/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
   '/app/$brand/settings/members': typeof AuthedAppBrandSettingsMembersRoute
   '/app/$brand/settings/prompts': typeof AuthedAppBrandSettingsPromptsRoute
+  '/api/v1/organizations/$organizationId/billing': typeof ApiV1OrganizationsOrganizationIdBillingRoute
   '/api/v1/prompts/$promptId/snapshot': typeof ApiV1PromptsPromptIdSnapshotRoute
   '/app/$brand/prompts': typeof AuthedAppBrandPromptsIndexRoute
   '/app/$brand/settings': typeof AuthedAppBrandSettingsIndexRoute
@@ -478,6 +520,8 @@ export interface FileRoutesById {
   '/_authed/app/$brand': typeof AuthedAppBrandRouteWithChildren
   '/_authed/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v1/me': typeof ApiV1MeRoute
+  '/api/v1/platforms': typeof ApiV1PlatformsRoute
   '/_authed/admin/': typeof AuthedAdminIndexRoute
   '/_authed/app/': typeof AuthedAppIndexRoute
   '/_authed/reports/': typeof AuthedReportsIndexRoute
@@ -493,6 +537,7 @@ export interface FileRoutesById {
   '/_authed/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
   '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
   '/api/v1/competitors/$competitorId': typeof ApiV1CompetitorsCompetitorIdRoute
+  '/api/v1/organizations/$organizationId': typeof ApiV1OrganizationsOrganizationIdRouteWithChildren
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
   '/api/v1/tools/analyze': typeof ApiV1ToolsAnalyzeRoute
@@ -501,6 +546,7 @@ export interface FileRoutesById {
   '/api/v1/brands/': typeof ApiV1BrandsIndexRoute
   '/api/v1/competitors/': typeof ApiV1CompetitorsIndexRoute
   '/api/v1/docs/': typeof ApiV1DocsIndexRoute
+  '/api/v1/organizations/': typeof ApiV1OrganizationsIndexRoute
   '/api/v1/prompts/': typeof ApiV1PromptsIndexRoute
   '/api/v1/reports/': typeof ApiV1ReportsIndexRoute
   '/_authed/app/$brand/prompts/$promptId': typeof AuthedAppBrandPromptsPromptIdRoute
@@ -511,6 +557,7 @@ export interface FileRoutesById {
   '/_authed/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
   '/_authed/app/$brand/settings/members': typeof AuthedAppBrandSettingsMembersRoute
   '/_authed/app/$brand/settings/prompts': typeof AuthedAppBrandSettingsPromptsRoute
+  '/api/v1/organizations/$organizationId/billing': typeof ApiV1OrganizationsOrganizationIdBillingRoute
   '/api/v1/prompts/$promptId/snapshot': typeof ApiV1PromptsPromptIdSnapshotRoute
   '/_authed/app/$brand/prompts/': typeof AuthedAppBrandPromptsIndexRoute
   '/_authed/app/$brand/settings/': typeof AuthedAppBrandSettingsIndexRoute
@@ -535,6 +582,8 @@ export interface FileRouteTypes {
     | '/app/$brand'
     | '/app/new'
     | '/api/auth/$'
+    | '/api/v1/me'
+    | '/api/v1/platforms'
     | '/admin/'
     | '/app/'
     | '/reports/'
@@ -550,6 +599,7 @@ export interface FileRouteTypes {
     | '/reports/render/$reportId'
     | '/api/v1/brands/$brandId'
     | '/api/v1/competitors/$competitorId'
+    | '/api/v1/organizations/$organizationId'
     | '/api/v1/prompts/$promptId'
     | '/api/v1/reports/$reportId'
     | '/api/v1/tools/analyze'
@@ -558,6 +608,7 @@ export interface FileRouteTypes {
     | '/api/v1/brands/'
     | '/api/v1/competitors/'
     | '/api/v1/docs/'
+    | '/api/v1/organizations/'
     | '/api/v1/prompts/'
     | '/api/v1/reports/'
     | '/app/$brand/prompts/$promptId'
@@ -568,6 +619,7 @@ export interface FileRouteTypes {
     | '/app/$brand/settings/llms'
     | '/app/$brand/settings/members'
     | '/app/$brand/settings/prompts'
+    | '/api/v1/organizations/$organizationId/billing'
     | '/api/v1/prompts/$promptId/snapshot'
     | '/app/$brand/prompts/'
     | '/app/$brand/settings/'
@@ -586,6 +638,8 @@ export interface FileRouteTypes {
     | '/admin/workflows'
     | '/app/new'
     | '/api/auth/$'
+    | '/api/v1/me'
+    | '/api/v1/platforms'
     | '/admin'
     | '/app'
     | '/reports'
@@ -601,6 +655,7 @@ export interface FileRouteTypes {
     | '/reports/render/$reportId'
     | '/api/v1/brands/$brandId'
     | '/api/v1/competitors/$competitorId'
+    | '/api/v1/organizations/$organizationId'
     | '/api/v1/prompts/$promptId'
     | '/api/v1/reports/$reportId'
     | '/api/v1/tools/analyze'
@@ -609,6 +664,7 @@ export interface FileRouteTypes {
     | '/api/v1/brands'
     | '/api/v1/competitors'
     | '/api/v1/docs'
+    | '/api/v1/organizations'
     | '/api/v1/prompts'
     | '/api/v1/reports'
     | '/app/$brand/prompts/$promptId'
@@ -619,6 +675,7 @@ export interface FileRouteTypes {
     | '/app/$brand/settings/llms'
     | '/app/$brand/settings/members'
     | '/app/$brand/settings/prompts'
+    | '/api/v1/organizations/$organizationId/billing'
     | '/api/v1/prompts/$promptId/snapshot'
     | '/app/$brand/prompts'
     | '/app/$brand/settings'
@@ -642,6 +699,8 @@ export interface FileRouteTypes {
     | '/_authed/app/$brand'
     | '/_authed/app/new'
     | '/api/auth/$'
+    | '/api/v1/me'
+    | '/api/v1/platforms'
     | '/_authed/admin/'
     | '/_authed/app/'
     | '/_authed/reports/'
@@ -657,6 +716,7 @@ export interface FileRouteTypes {
     | '/_authed/reports/render/$reportId'
     | '/api/v1/brands/$brandId'
     | '/api/v1/competitors/$competitorId'
+    | '/api/v1/organizations/$organizationId'
     | '/api/v1/prompts/$promptId'
     | '/api/v1/reports/$reportId'
     | '/api/v1/tools/analyze'
@@ -665,6 +725,7 @@ export interface FileRouteTypes {
     | '/api/v1/brands/'
     | '/api/v1/competitors/'
     | '/api/v1/docs/'
+    | '/api/v1/organizations/'
     | '/api/v1/prompts/'
     | '/api/v1/reports/'
     | '/_authed/app/$brand/prompts/$promptId'
@@ -675,6 +736,7 @@ export interface FileRouteTypes {
     | '/_authed/app/$brand/settings/llms'
     | '/_authed/app/$brand/settings/members'
     | '/_authed/app/$brand/settings/prompts'
+    | '/api/v1/organizations/$organizationId/billing'
     | '/api/v1/prompts/$promptId/snapshot'
     | '/_authed/app/$brand/prompts/'
     | '/_authed/app/$brand/settings/'
@@ -690,11 +752,14 @@ export interface RootRouteChildren {
   AuthRegisterRoute: typeof AuthRegisterRoute
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiV1MeRoute: typeof ApiV1MeRoute
+  ApiV1PlatformsRoute: typeof ApiV1PlatformsRoute
   ApiManifestIndexRoute: typeof ApiManifestIndexRoute
   ApiOgIndexRoute: typeof ApiOgIndexRoute
   ApiSetupStatusIndexRoute: typeof ApiSetupStatusIndexRoute
   ApiV1BrandsBrandIdRoute: typeof ApiV1BrandsBrandIdRoute
   ApiV1CompetitorsCompetitorIdRoute: typeof ApiV1CompetitorsCompetitorIdRoute
+  ApiV1OrganizationsOrganizationIdRoute: typeof ApiV1OrganizationsOrganizationIdRouteWithChildren
   ApiV1PromptsPromptIdRoute: typeof ApiV1PromptsPromptIdRouteWithChildren
   ApiV1ReportsReportIdRoute: typeof ApiV1ReportsReportIdRoute
   ApiV1ToolsAnalyzeRoute: typeof ApiV1ToolsAnalyzeRoute
@@ -702,6 +767,7 @@ export interface RootRouteChildren {
   ApiV1BrandsIndexRoute: typeof ApiV1BrandsIndexRoute
   ApiV1CompetitorsIndexRoute: typeof ApiV1CompetitorsIndexRoute
   ApiV1DocsIndexRoute: typeof ApiV1DocsIndexRoute
+  ApiV1OrganizationsIndexRoute: typeof ApiV1OrganizationsIndexRoute
   ApiV1PromptsIndexRoute: typeof ApiV1PromptsIndexRoute
   ApiV1ReportsIndexRoute: typeof ApiV1ReportsIndexRoute
   ApiPlausibleJsScriptIndexRoute: typeof ApiPlausibleJsScriptIndexRoute
@@ -870,6 +936,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSetupStatusIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/me': {
+      id: '/api/v1/me'
+      path: '/api/v1/me'
+      fullPath: '/api/v1/me'
+      preLoaderRoute: typeof ApiV1MeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/platforms': {
+      id: '/api/v1/platforms'
+      path: '/api/v1/platforms'
+      fullPath: '/api/v1/platforms'
+      preLoaderRoute: typeof ApiV1PlatformsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authed/app/$brand/': {
       id: '/_authed/app/$brand/'
       path: '/'
@@ -966,6 +1046,20 @@ declare module '@tanstack/react-router' {
       path: '/api/v1/docs'
       fullPath: '/api/v1/docs/'
       preLoaderRoute: typeof ApiV1DocsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/organizations/': {
+      id: '/api/v1/organizations/'
+      path: '/api/v1/organizations'
+      fullPath: '/api/v1/organizations/'
+      preLoaderRoute: typeof ApiV1OrganizationsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/organizations/$organizationId': {
+      id: '/api/v1/organizations/$organizationId'
+      path: '/api/v1/organizations/$organizationId'
+      fullPath: '/api/v1/organizations/$organizationId'
+      preLoaderRoute: typeof ApiV1OrganizationsOrganizationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v1/prompts/': {
@@ -1079,6 +1173,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/plausible/js/script/'
       preLoaderRoute: typeof ApiPlausibleJsScriptIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/organizations/$organizationId/billing': {
+      id: '/api/v1/organizations/$organizationId/billing'
+      path: '/billing'
+      fullPath: '/api/v1/organizations/$organizationId/billing'
+      preLoaderRoute: typeof ApiV1OrganizationsOrganizationIdBillingRouteImport
+      parentRoute: typeof ApiV1OrganizationsOrganizationIdRoute
     }
     '/api/v1/prompts/$promptId/snapshot': {
       id: '/api/v1/prompts/$promptId/snapshot'
@@ -1201,6 +1302,21 @@ const AuthedRouteChildren: AuthedRouteChildren = {
 const AuthedRouteWithChildren =
   AuthedRoute._addFileChildren(AuthedRouteChildren)
 
+interface ApiV1OrganizationsOrganizationIdRouteChildren {
+  ApiV1OrganizationsOrganizationIdBillingRoute: typeof ApiV1OrganizationsOrganizationIdBillingRoute
+}
+
+const ApiV1OrganizationsOrganizationIdRouteChildren: ApiV1OrganizationsOrganizationIdRouteChildren =
+  {
+    ApiV1OrganizationsOrganizationIdBillingRoute:
+      ApiV1OrganizationsOrganizationIdBillingRoute,
+  }
+
+const ApiV1OrganizationsOrganizationIdRouteWithChildren =
+  ApiV1OrganizationsOrganizationIdRoute._addFileChildren(
+    ApiV1OrganizationsOrganizationIdRouteChildren,
+  )
+
 interface ApiV1PromptsPromptIdRouteChildren {
   ApiV1PromptsPromptIdSnapshotRoute: typeof ApiV1PromptsPromptIdSnapshotRoute
 }
@@ -1221,11 +1337,15 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRegisterRoute: AuthRegisterRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiV1MeRoute: ApiV1MeRoute,
+  ApiV1PlatformsRoute: ApiV1PlatformsRoute,
   ApiManifestIndexRoute: ApiManifestIndexRoute,
   ApiOgIndexRoute: ApiOgIndexRoute,
   ApiSetupStatusIndexRoute: ApiSetupStatusIndexRoute,
   ApiV1BrandsBrandIdRoute: ApiV1BrandsBrandIdRoute,
   ApiV1CompetitorsCompetitorIdRoute: ApiV1CompetitorsCompetitorIdRoute,
+  ApiV1OrganizationsOrganizationIdRoute:
+    ApiV1OrganizationsOrganizationIdRouteWithChildren,
   ApiV1PromptsPromptIdRoute: ApiV1PromptsPromptIdRouteWithChildren,
   ApiV1ReportsReportIdRoute: ApiV1ReportsReportIdRoute,
   ApiV1ToolsAnalyzeRoute: ApiV1ToolsAnalyzeRoute,
@@ -1233,6 +1353,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1BrandsIndexRoute: ApiV1BrandsIndexRoute,
   ApiV1CompetitorsIndexRoute: ApiV1CompetitorsIndexRoute,
   ApiV1DocsIndexRoute: ApiV1DocsIndexRoute,
+  ApiV1OrganizationsIndexRoute: ApiV1OrganizationsIndexRoute,
   ApiV1PromptsIndexRoute: ApiV1PromptsIndexRoute,
   ApiV1ReportsIndexRoute: ApiV1ReportsIndexRoute,
   ApiPlausibleJsScriptIndexRoute: ApiPlausibleJsScriptIndexRoute,

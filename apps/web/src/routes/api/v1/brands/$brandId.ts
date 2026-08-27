@@ -7,10 +7,8 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { db } from "@workspace/lib/db/db";
-import { brands } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { requireBrandInScope } from "@/lib/api/scope";
 import {
 	apiUpdateInputToInternal,
 	BrandNotFoundError,
@@ -26,13 +24,9 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 			// No params schema: brand IDs are caller-chosen strings (e.g. "acme"),
 			// not UUIDs like the competitor/prompt/report routes validate.
 			GET: createApiHandler({
-				handle: async ({ params }) => {
-					const { brandId } = params;
-					const row = await db.query.brands.findFirst({ where: eq(brands.id, brandId) });
-					if (!row) {
-						throw new ApiError(404, "Not Found", `Brand "${brandId}" not found.`);
-					}
-					return buildBrandResult(row);
+				scopes: ["brands:read"],
+				handle: async ({ params, auth }) => {
+					return buildBrandResult(await requireBrandInScope(auth, params.brandId));
 				},
 			}),
 
@@ -49,7 +43,11 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 						return new ApiError(404, "Not Found", err.message);
 					}
 				},
-				handle: async ({ params, body }) => {
+				scopes: ["brands:write"],
+				handle: async ({ params, body, auth }) => {
+					// Out of scope reads as not-found, so a key can't discover another
+					// tenant's brand by trying to write to it.
+					await requireBrandInScope(auth, params.brandId);
 					const internal = apiUpdateInputToInternal(params.brandId, body);
 					return await updateBrand(internal);
 				},

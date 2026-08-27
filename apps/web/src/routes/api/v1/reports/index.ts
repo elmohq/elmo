@@ -33,6 +33,7 @@ export const Route = createFileRoute("/api/v1/reports/")({
 	server: {
 		handlers: {
 			POST: createApiHandler({
+				adminOnly: true,
 				body: createReportBody,
 				status: 201,
 				handle: async ({ body }) => {
@@ -79,6 +80,7 @@ export const Route = createFileRoute("/api/v1/reports/")({
 			}),
 
 			GET: createApiHandler({
+				adminOnly: true,
 				handle: async ({ request }) => {
 					const { searchParams } = new URL(request.url);
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));

@@ -70,6 +70,12 @@ export const createBrandInputSchema = z.object({
 	aliases: z.array(z.string()).optional(),
 	competitors: z.array(competitorInputSchema).optional(),
 	prompts: z.array(promptInputSchema).optional(),
+	/**
+	 * Workspace to create the brand in. Honoured only for instance admin keys;
+	 * an organization key always creates inside its own, so the route overrides
+	 * whatever is here.
+	 */
+	organizationId: z.string().min(1).optional(),
 });
 
 /** PATCH /api/v1/brands/:brandId body. brandId comes from the URL. */
@@ -100,6 +106,13 @@ export interface CreateBrandInput {
 	aliases?: string[];
 	competitors?: CompetitorInput[];
 	prompts?: PromptInput[];
+	/**
+	 * The workspace that will own — and be billed for — the brand. Null keeps
+	 * the historical behaviour of provisioning one named after the brand id,
+	 * which is right for an admin key standing up a whole tenant and wrong for
+	 * anyone acting inside a workspace that already exists.
+	 */
+	organizationId?: string | null;
 }
 
 /** Internal shape for updateBrand — matches storage. */
@@ -117,10 +130,15 @@ export type WizardOnboardingInput = z.infer<typeof wizardOnboardingInputSchema>;
 export interface BrandResult {
 	id: string;
 	name: string;
+	organizationId: string;
 	domains: string[];
 	aliases: string[];
 	enabled: boolean;
 	onboarded: boolean;
+	/** Platforms this brand is tracked on. Null means the deployment default. */
+	enabledModels: string[] | null;
+	/** Sampling cadence override in hours. Null means the plan cadence. */
+	delayOverrideHours: number | null;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -147,10 +165,13 @@ export function buildBrandResult(row: typeof brands.$inferSelect): BrandResult {
 	return {
 		id: row.id,
 		name: row.name,
+		organizationId: row.organizationId,
 		domains: [websiteHost, ...row.additionalDomains],
 		aliases: row.aliases,
 		enabled: row.enabled,
 		onboarded: row.onboarded,
+		enabledModels: row.enabledModels,
+		delayOverrideHours: row.delayOverrideHours,
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 	};
@@ -186,6 +207,7 @@ export function apiCreateInputToInternal(input: z.infer<typeof createBrandInputS
 		aliases: input.aliases,
 		competitors: input.competitors,
 		prompts: input.prompts,
+		organizationId: input.organizationId ?? null,
 	};
 }
 
@@ -315,14 +337,19 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	// Both writes share a transaction so a conflicting brand id doesn't strand
 	// the org we just made: brand ids and org ids are independent now, so a
 	// taken brand id no longer implies the org already exists.
+	const organizationId = input.organizationId ?? input.id;
 	await db.transaction(async (tx) => {
-		await ensureOrganization({ id: input.id, name: input.name }, tx);
+		// Only provision a workspace when the caller didn't name one. Naming an
+		// existing one is how a brand joins a tenant that is already being billed.
+		if (!input.organizationId) {
+			await ensureOrganization({ id: input.id, name: input.name }, tx);
+		}
 
 		const [inserted] = await tx
 			.insert(brands)
 			.values({
 				id: input.id,
-				organizationId: input.id,
+				organizationId,
 				name: input.name,
 				website: formattedWebsite,
 				additionalDomains,

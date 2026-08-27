@@ -4,12 +4,13 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
-import { brands, prompts } from "@workspace/lib/db/schema";
+import { prompts } from "@workspace/lib/db/schema";
 import { assertCanAddPrompts } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { count, desc, eq } from "drizzle-orm";
+import { and, arrayOverlaps, count, desc, eq, ilike, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { createApiHandler } from "@/lib/api/handler";
+import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
 import { createPromptJobScheduler } from "@/lib/job-scheduler";
 
 const createPromptBody = z.object({
@@ -22,14 +23,31 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 	server: {
 		handlers: {
 			GET: createApiHandler({
-				handle: async ({ request }) => {
+				scopes: ["prompts:read"],
+				handle: async ({ request, auth }) => {
 					const { searchParams } = new URL(request.url);
 					const brandId = searchParams.get("brandId");
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-					const limit = Math.max(1, parseInt(searchParams.get("limit") || "20"));
+					// Clamped rather than rejected, so an existing caller asking for
+					// more keeps working instead of starting to 400.
+					const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20")));
 					const offset = (page - 1) * limit;
 
-					const whereConditions = brandId ? eq(prompts.brandId, brandId) : undefined;
+					const filters: (SQL | undefined)[] = [await brandScopeCondition(auth, prompts.brandId)];
+					if (brandId) filters.push(eq(prompts.brandId, brandId));
+					const enabled = searchParams.get("enabled");
+					if (enabled === "true" || enabled === "false") {
+						filters.push(eq(prompts.enabled, enabled === "true"));
+					}
+					const tags = (searchParams.get("tags") ?? "")
+						.split(",")
+						.map((tag) => tag.trim().toLowerCase())
+						.filter(Boolean);
+					if (tags.length > 0) filters.push(arrayOverlaps(prompts.tags, tags));
+					const query = searchParams.get("q")?.trim();
+					if (query) filters.push(ilike(prompts.value, `%${query}%`));
+
+					const whereConditions = and(...filters.filter(Boolean));
 
 					const [totalCountResult] = await db.select({ count: count() }).from(prompts).where(whereConditions);
 					const totalCount = totalCountResult?.count || 0;
@@ -43,6 +61,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 							enabled: prompts.enabled,
 							tags: prompts.tags,
 							systemTags: prompts.systemTags,
+							premiumModels: prompts.premiumModels,
 							createdAt: prompts.createdAt,
 							updatedAt: prompts.updatedAt,
 						})
@@ -62,15 +81,11 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 			POST: createApiHandler({
 				body: createPromptBody,
 				status: 201,
-				handle: async ({ body }) => {
+				scopes: ["prompts:write"],
+				handle: async ({ body, auth }) => {
 					const { brandId, value, tags } = body;
 
-					const brandInfo = await db.select().from(brands).where(eq(brands.id, brandId)).limit(1);
-					if (brandInfo.length === 0) {
-						throw new ApiError(400, "Validation Error", `Brand with ID '${brandId}' not found`);
-					}
-
-					const brand = brandInfo[0];
+					const brand = await requireBrandInScope(auth, brandId, "body");
 					await assertCanAddPrompts(brand.organizationId, 1);
 					const userTags = tags ? sanitizeUserTags(tags) : [];
 					const systemTags = computeSystemTags(value, brand.name, brand.website);

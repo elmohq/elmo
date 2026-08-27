@@ -10,6 +10,7 @@ import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { isBrandInScope } from "@/lib/api/scope";
 import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
 import {
 	getPromptCitationUrlStats,
@@ -73,7 +74,8 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 		handlers: {
 			GET: createApiHandler({
 				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
-				handle: async ({ params, request }) => {
+				scopes: ["analytics:read"],
+				handle: async ({ params, request, auth }) => {
 					const { promptId } = params;
 					const { startDate, endDate, kMentions, kCitations } = parseSnapshotQuery(new URL(request.url));
 
@@ -86,6 +88,9 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
 					}
 					const prompt = promptResult[0];
+					if (!(await isBrandInScope(auth, prompt.brandId))) {
+						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
+					}
 
 					const [brandInfo, competitorsList] = await Promise.all([
 						db.select().from(brands).where(eq(brands.id, prompt.brandId)).limit(1),

@@ -36,6 +36,7 @@ export const Route = createFileRoute("/api/v1/tools/analyze")({
 	server: {
 		handlers: {
 			POST: createApiHandler({
+				adminOnly: true,
 				body: analyzeBody,
 				handle: async ({ body }) => {
 					return await analyzeBrand({
