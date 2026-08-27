@@ -9,7 +9,6 @@ import {
 } from "@workspace/ui/components/breadcrumb";
 import { Separator } from "@workspace/ui/components/separator";
 import { SidebarTrigger } from "@workspace/ui/components/sidebar";
-import { BrandLogo } from "@/components/brand-logo";
 import { useBrand } from "@/hooks/use-brands";
 
 const PAGE_NAMES: Record<string, string> = {
@@ -92,12 +91,10 @@ function BrandBreadcrumbs({
 	pathname,
 	brandId,
 	brandName,
-	brandWebsite,
 }: {
 	pathname: string;
 	brandId: string | undefined;
 	brandName: string;
-	brandWebsite?: string;
 }) {
 	const pathSegments = pathname.split("/");
 	const brandIndex = pathSegments.findIndex((segment) => segment === "app");
@@ -118,10 +115,7 @@ function BrandBreadcrumbs({
 
 	return (
 		<>
-			<BreadcrumbItem className="hidden md:flex md:items-center md:gap-1.5">
-				{/* Held back until the brand loads: there is nothing to mark while
-				    the name is still the "Dashboard" stand-in. */}
-				{brandWebsite && <BrandLogo domain={brandWebsite} size="sm" />}
+			<BreadcrumbItem className="hidden md:block">
 				<BreadcrumbLink render={brandId ? <Link to="/app/$brand" params={{ brand: brandId }} /> : <span />}>
 					{brandName}
 				</BreadcrumbLink>
@@ -194,12 +188,7 @@ export function SiteHeader({ title }: { title?: string } = {}) {
 						) : isAdminPage ? (
 							<AdminBreadcrumbs pathname={pathname} />
 						) : (
-							<BrandBreadcrumbs
-								pathname={pathname}
-								brandId={brandId}
-								brandName={brand?.name || "Dashboard"}
-								brandWebsite={brand?.website}
-							/>
+							<BrandBreadcrumbs pathname={pathname} brandId={brandId} brandName={brand?.name || "Dashboard"} />
 						)}
 					</BreadcrumbList>
 				</Breadcrumb>
