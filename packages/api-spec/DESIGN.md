@@ -115,7 +115,7 @@ billing:read
   `:write`.
 - There is deliberately **no `reports:*`**. Report generation and brand analysis
   spend provider budget immediately, with no organization to attribute it to —
-  the `reports` table has no org column at all — so they stay admin-only (§3.9)
+  the `reports` table has no org column at all — so they stay admin-only (§3.11)
   rather than being reachable with a scope we'd then have to take back.
 - The UI offers presets ("Read-only", "Full access") that expand to scope sets.
   The wire format is always the explicit list, so a preset's meaning can change
@@ -411,7 +411,7 @@ scope-checked, org-filtered, with `limit` capped at 100. Additions:
 `GET/POST /v1/competitors`, `GET/PATCH/DELETE /v1/competitors/{competitorId}`,
 now scope-checked and org-filtered. `MAX_COMPETITORS` already applies.
 
-### 3.6a Tags — `prompts:read` / `prompts:write`
+### 3.7 Tags — `prompts:read` / `prompts:write`
 
 - `GET /v1/brands/{brandId}/tags` — every tag in use on the brand's prompts,
   with how many carry each.
@@ -438,7 +438,7 @@ and destroy no tracked data, and a caller with `prompts:write` could already do
 the same thing one `PATCH /v1/prompts/{promptId}` at a time. Neither touches an
 entitlement pool — a relabel changes no count.
 
-### 3.6b Opportunities — `analytics:read`
+### 3.8 Opportunities — `analytics:read`
 
 `GET /v1/brands/{brandId}/opportunities` — the brand's latest Opportunities
 report: prioritized ways to get cited more often, each with the tracked prompts
@@ -452,14 +452,14 @@ pinning.
 
 Read-only, and deliberately no `POST` to regenerate. Elmo decides when a report
 is stale; generation spends provider budget with nothing metering it per call,
-the same reason `/tools/analyze` stays admin-only (§3.9). What the API returns
+the same reason `/tools/analyze` stays admin-only (§3.11). What the API returns
 is the newest row of an append-only history.
 
 `status` (`ready` / `insufficient-data` / `not-generated`) says why the lists
 are empty when they are, so a caller never has to distinguish "no opportunities"
 from "not enough data yet" from "never generated".
 
-### 3.7 Analytics — `/v1/brands/{brandId}/…`  *(`analytics:read`)*
+### 3.9 Analytics — `/v1/brands/{brandId}/…`  *(`analytics:read`)*
 
 Brand-nested rather than a `/reports/*` family, because `reports` already means
 the one-shot generator in this product. Every endpoint takes the standard date
@@ -482,7 +482,7 @@ Every one of these is a thin route over a shared analytics function that the
 dashboard's server function also calls, so the API physically cannot report
 different numbers than the UI (see §5).
 
-### 3.8 Runs — `runs:read`
+### 3.10 Runs — `runs:read`
 
 - `GET /v1/prompts/{promptId}/runs` — paginated run metadata: `id`, `model`,
   `provider`, `webSearchEnabled`, `brandMentioned`, `competitorsMentioned`,
@@ -495,7 +495,7 @@ different numbers than the UI (see §5).
 provider's `rawOutput` blob. Exposing provider-shaped JSON would hand our
 callers a contract we don't control.
 
-### 3.9 Reports and tools — unchanged, and admin-only
+### 3.11 Reports and tools — unchanged, and admin-only
 
 `POST/GET /v1/reports`, `GET /v1/reports/{reportId}`, and `POST /v1/tools/analyze`
 keep their exact current behavior and are reachable **only with an admin key**.
@@ -525,8 +525,8 @@ would have to take back.
 | Any billing write | Structural guarantee; no scope exists. |
 | Org / member / invitation mutations | Already blocked at the middleware for every caller. |
 | `DELETE /v1/brands/{id}` | Irreversible cascade; dashboard-only. |
-| Creating a tag that no prompt carries | Tags are derived from `prompts.tags`; a standalone tag would promise a table we don't have (§3.6a). |
-| Triggering an Opportunities generation | Spends provider budget with nothing metering it per call (§3.6b). |
+| Creating a tag that no prompt carries | Tags are derived from `prompts.tags`; a standalone tag would promise a table we don't have (§3.7). |
+| Triggering an Opportunities generation | Spends provider budget with nothing metering it per call (§3.8). |
 | Opportunities history | Only the latest report. The table is append-only, so a `generatedBefore` filter can be added the day someone wants one. |
 | Raw `rawOutput` | Provider-shaped; would become our contract. |
 | Cadence / scheduling internals | pg-boss detail; `delayOverrideHours` on the brand is the only knob worth exposing, and only for reading initially. |
@@ -569,7 +569,7 @@ Each step is independently shippable.
    attachment (§3.4), not a one-line guard.
 4. **Service layer (#331).** Extract `packages/lib/src/services/{brands,prompts,
    competitors}.ts` and an `analytics` module; make both the REST handlers and
-   the server functions thin wrappers. Required before §3.7 — it is what
+   the server functions thin wrappers. Required before §3.9 — it is what
    guarantees the API and the dashboard compute the same numbers, and it is what
    a future MCP server (#105/#386) wraps instead of re-querying. This is the
    biggest step by some margin: the analytics half means moving
