@@ -29,7 +29,7 @@ export type ApiScope = (typeof API_SCOPES)[number];
 
 const SCOPE_SET = new Set<string>(API_SCOPES);
 
-export function isApiScope(value: string): value is ApiScope {
+function isApiScope(value: string): value is ApiScope {
 	return SCOPE_SET.has(value);
 }
 

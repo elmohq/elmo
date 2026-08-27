@@ -220,7 +220,3 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 		},
 	};
 }
-
-export function hasScope(auth: ApiAuth, scope: ApiScope): boolean {
-	return auth.kind === "admin" || auth.scopes.has(scope);
-}

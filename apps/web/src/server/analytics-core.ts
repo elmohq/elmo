@@ -17,7 +17,6 @@ import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
-import type { LookbackPeriod } from "@/lib/chart-utils";
 import { generateDateRange } from "@/lib/chart-utils";
 import { rollUpCitationDomains, rollUpCitationUrls } from "@/lib/citation-rollup";
 import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
@@ -51,7 +50,7 @@ export interface AnalyticsFilters {
 	search?: string;
 }
 
-export interface VisibilityPoint {
+interface VisibilityPoint {
 	date: string;
 	visibility: number | null;
 }
@@ -119,7 +118,7 @@ export async function getBrandVisibility(
 	return { currentVisibility, totalRuns, totalPrompts: promptIds.length, totalCitations, series };
 }
 
-export interface ShareOfVoiceEntry {
+interface ShareOfVoiceEntry {
 	name: string;
 	isBrand: boolean;
 	mentions: number;
@@ -261,12 +260,6 @@ export async function getBrandPlatformBreakdown(
 			citations: citationsByModel.get(row.model) ?? 0,
 		};
 	});
-}
-
-export interface CitationTotals {
-	citations: number;
-	uniqueDomains: number;
-	uniqueUrls: number;
 }
 
 async function citationContext(brandId: string) {
@@ -499,5 +492,3 @@ export async function getBrandSummary(brandId: string, window: AnalyticsWindow, 
 		platforms: platforms.map((platform) => platform.model),
 	};
 }
-
-export type { LookbackPeriod };

@@ -10,14 +10,14 @@
  */
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
-import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
+import { eq, inArray, type SQL, sql } from "drizzle-orm";
 import type { ApiAuth } from "@/lib/auth/api-auth";
 import { ApiError } from "./handler";
 
 type Brand = typeof brands.$inferSelect;
 
 /** Every brand the caller may reach, or null when that is "all of them". */
-export async function scopedBrandIds(auth: ApiAuth): Promise<string[] | null> {
+async function scopedBrandIds(auth: ApiAuth): Promise<string[] | null> {
 	if (auth.kind === "admin") return null;
 	if (auth.brandIds) return auth.brandIds;
 	const rows = await db.select({ id: brands.id }).from(brands).where(eq(brands.organizationId, auth.organizationId));
