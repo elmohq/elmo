@@ -10,10 +10,9 @@
  * decided to look, and a whitelabel tenant is not ours to sell to.
  */
 
-import { IconCalendarEvent, IconCheck, IconCloud, IconEye } from "@tabler/icons-react";
+import { IconCheck, IconCloud, IconEye } from "@tabler/icons-react";
 import { PLANS, platformTierMembers } from "@workspace/config/plans";
 import {
-	bookDemoUrl,
 	cloudPricingUrl,
 	cloudSignupUrl,
 	demoSiteUrl,
@@ -24,7 +23,7 @@ import { CUSTOMER_QUOTES } from "@workspace/ui/brand/customers";
 import { G2Stars } from "@workspace/ui/brand/g2-rating";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { buttonVariants } from "@workspace/ui/components/button";
-import { Fragment, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 /** Everything Elmo reaches, named — the coverage claim is the product. */
 const ENGINES = [...platformTierMembers("scraped"), ...platformTierMembers("api")];
@@ -103,7 +102,7 @@ export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; so
 
 			<OfferCard
 				question={variant === "self-hosted" ? "Don't want to self-host?" : "Try before you buy?"}
-				options={variant === "self-hosted" ? cloudOptions(source) : demoOptions(source)}
+				offer={variant === "self-hosted" ? cloudOffer(source) : demoOffer(source)}
 			/>
 		</div>
 	);
@@ -137,43 +136,39 @@ interface Offer {
 	newTab?: boolean;
 }
 
-const demoOptions = (source: ReferralSource): Offer[] => [
-	{ label: "View Demo", href: demoSiteUrl(source), icon: IconEye, newTab: true },
-	{ label: "Talk to Us", href: bookDemoUrl(source), icon: IconCalendarEvent },
-];
+const demoOffer = (source: ReferralSource): Offer => ({
+	label: "View Demo",
+	href: demoSiteUrl(source),
+	icon: IconEye,
+	newTab: true,
+});
 
-const cloudOptions = (source: ReferralSource): Offer[] => [
-	{ label: "Try Elmo Cloud", href: cloudSignupUrl(source), icon: IconCloud },
-	{ label: "Talk to Us", href: bookDemoUrl(source), icon: IconCalendarEvent },
-];
+const cloudOffer = (source: ReferralSource): Offer => ({
+	label: "Try Elmo Cloud",
+	href: cloudSignupUrl(source),
+	icon: IconCloud,
+});
 
 /**
  * The secondary ask, in whichever form the deployment calls for: a way to see
  * Elmo before signing up, or the managed option for someone already running it.
  *
- * The question and its answers are one sentence, so they share a line wherever
- * the panel can hold them — the question anchored left, the answers right, and
- * both wrapping together when it can't.
+ * One way out, not a menu. The question and its answer are a single exchange,
+ * so they share a line — the question anchored left, the answer right — and
+ * wrap together when the panel is too narrow to hold both.
  */
-function OfferCard({ question, options }: { question: string; options: Offer[] }) {
+function OfferCard({ question, offer }: { question: string; offer: Offer }) {
 	return (
 		<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-lg border bg-card p-5">
 			<h3 className="text-sm font-semibold">{question}</h3>
-			<div className="flex flex-wrap items-center gap-1">
-				{options.map((option, index) => (
-					<Fragment key={option.label}>
-						{index > 0 && <span className="px-1 text-xs text-muted-foreground">or</span>}
-						<a
-							href={option.href}
-							className={buttonVariants({ variant: "ghost", size: "sm" })}
-							{...(option.newTab ? { target: "_blank", rel: "noopener" } : {})}
-						>
-							<option.icon className="size-4" />
-							{option.label}
-						</a>
-					</Fragment>
-				))}
-			</div>
+			<a
+				href={offer.href}
+				className={buttonVariants({ variant: "ghost", size: "sm" })}
+				{...(offer.newTab ? { target: "_blank", rel: "noopener" } : {})}
+			>
+				<offer.icon className="size-4" />
+				{offer.label}
+			</a>
 		</div>
 	);
 }
