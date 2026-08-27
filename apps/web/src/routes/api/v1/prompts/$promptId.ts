@@ -11,7 +11,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { selectPremiumModels } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import { citations, promptRuns, prompts } from "@workspace/lib/db/schema";
-import { assertPromptSaveAllowed } from "@workspace/lib/entitlements";
+import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -94,15 +94,13 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 					const existing = existingPrompt[0];
 					const wasEnabled = existing.enabled;
 					const willBeEnabled = enabled ?? wasEnabled;
-					const nextPremium = premiumModels ?? existing.premiumModels;
+					// Normalized once, then used for both the quota decision and the
+					// write. Counting the raw request would charge for duplicates and
+					// unsupported names that selectPremiumModels drops before storing.
+					const nextPremium = premiumModels ? selectPremiumModels(premiumModels) : existing.premiumModels;
 					const promptDelta = (willBeEnabled ? 1 : 0) - (wasEnabled ? 1 : 0);
 					const premiumDelta =
 						(willBeEnabled ? nextPremium.length : 0) - (wasEnabled ? existing.premiumModels.length : 0);
-					await assertPromptSaveAllowed(brand.organizationId, {
-						prompts: promptDelta,
-						premiumPairings: premiumDelta,
-					});
-
 					const updateData: Partial<typeof prompts.$inferInsert> = {};
 					if (value !== undefined) {
 						updateData.value = value;
@@ -115,10 +113,18 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 						updateData.tags = sanitizeUserTags(tags);
 					}
 					if (premiumModels !== undefined) {
-						updateData.premiumModels = selectPremiumModels(premiumModels);
+						updateData.premiumModels = nextPremium;
 					}
 
-					const [updatedPrompt] = await db.update(prompts).set(updateData).where(eq(prompts.id, promptId)).returning();
+					// Check and write under one lock, so two saves can't each be the
+					// one that fits.
+					const [updatedPrompt] = await withQuotaLock(brand.organizationId, async () => {
+						await assertPromptSaveAllowed(brand.organizationId, {
+							prompts: promptDelta,
+							premiumPairings: premiumDelta,
+						});
+						return db.update(prompts).set(updateData).where(eq(prompts.id, promptId)).returning();
+					});
 					// The existence check above can race with a concurrent delete;
 					// the update's returning() is the source of truth.
 					if (!updatedPrompt) {
