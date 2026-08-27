@@ -113,6 +113,13 @@ export interface CreateBrandInput {
 	 * anyone acting inside a workspace that already exists.
 	 */
 	organizationId?: string | null;
+	/** A transaction the caller is already inside; see createBrand. */
+	conn?: DbConnection;
+	/**
+	 * Runs work once `conn`'s transaction commits. Scheduling is the only thing
+	 * here that must not happen inside it — see the call site.
+	 */
+	afterCommit?: (task: () => Promise<unknown>) => void;
 }
 
 /** Internal shape for updateBrand — matches storage. */
@@ -322,7 +329,7 @@ async function insertPrompts(args: {
 	// Covers both wizard onboarding and POST /api/v1/brands — the two bulk
 	// prompt-creation surfaces share this chokepoint.
 	const organizationId = args.organizationId ?? (await getBrandOrganizationId(args.brandId));
-	await assertCanAddPrompts(organizationId, rows.filter((r) => r.enabled).length);
+	await assertCanAddPrompts(organizationId, rows.filter((r) => r.enabled).length, args.conn);
 
 	const inserted = await conn.insert(prompts).values(rows).returning({ id: prompts.id });
 	return inserted.map((r) => r.id);
@@ -347,7 +354,7 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	// of its prompts is worse than no brand at all: the caller gets an error but
 	// retrying hits BrandConflictError, so there is no way back to a good state.
 	const organizationId = input.organizationId ?? input.id;
-	const promptIds = await db.transaction(async (tx) => {
+	const write = async (tx: DbConnection) => {
 		// Only provision a workspace when the caller didn't name one. Naming an
 		// existing one is how a brand joins a tenant that is already being billed.
 		if (!input.organizationId) {
@@ -394,13 +401,20 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 			conn: tx,
 			organizationId,
 		});
-	});
+	};
+	// Reuse the caller's transaction when there is one. Opening a second here
+	// would hold theirs open while waiting on another pooled connection.
+	const promptIds = input.conn ? await write(input.conn) : await db.transaction(write);
 
-	// After commit: a scheduler for a prompt the transaction rolled back would
-	// outlive the prompt itself.
-	await createMultiplePromptJobSchedulers(promptIds);
+	// A scheduler for a prompt the transaction rolled back would outlive the
+	// prompt itself, and it queries through the pool — which would strand this
+	// transaction waiting on a second connection. So it waits for the commit,
+	// whether that is ours or the caller's.
+	const schedule = () => createMultiplePromptJobSchedulers(promptIds);
+	if (input.afterCommit) input.afterCommit(schedule);
+	else await schedule();
 
-	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.id) });
+	const refreshed = await (input.conn ?? db).query.brands.findFirst({ where: eq(brands.id, input.id) });
 	return buildBrandResult(refreshed!);
 }
 

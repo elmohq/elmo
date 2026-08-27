@@ -85,7 +85,17 @@
 						"description": "Platforms this prompt is tracked on grounded. Each entry spends one premium pairing."
 					}
 				},
-				"required": ["id", "brandId", "value", "enabled", "tags", "systemTags", "createdAt", "updatedAt"]
+				"required": [
+					"id",
+					"brandId",
+					"value",
+					"enabled",
+					"tags",
+					"systemTags",
+					"createdAt",
+					"updatedAt",
+					"premiumModels"
+				]
 			},
 			"CreatePromptRequest": {
 				"type": "object",
@@ -226,7 +236,7 @@
 						"description": "Timestamp when the report completed"
 					}
 				},
-				"required": ["id", "brandName", "brandWebsite", "status", "createdAt"]
+				"required": ["id", "brandName", "brandWebsite", "status", "createdAt", "completedAt"]
 			},
 			"ReportPromptSnapshot": {
 				"type": "object",
@@ -565,7 +575,19 @@
 						"nullable": true
 					}
 				},
-				"required": ["id", "name", "domains", "aliases", "enabled", "onboarded", "createdAt", "updatedAt"]
+				"required": [
+					"id",
+					"name",
+					"domains",
+					"aliases",
+					"enabled",
+					"onboarded",
+					"createdAt",
+					"updatedAt",
+					"organizationId",
+					"enabledModels",
+					"delayOverrideHours"
+				]
 			},
 			"BrandsList": {
 				"type": "object",
@@ -849,7 +871,8 @@
 								"enum": ["minute", "hour"]
 							}
 						},
-						"description": "The key's configured limit — generous by design: it exists to stop a runaway loop, not to meter normal use. Enforcement is a fixed window and approximate under concurrency."
+						"description": "The key's configured limit — generous by design: it exists to stop a runaway loop, not to meter normal use. Enforcement is a fixed window and approximate under concurrency.",
+						"nullable": true
 					},
 					"deployment": {
 						"type": "object",
@@ -880,7 +903,19 @@
 						"nullable": true
 					}
 				},
-				"required": ["keyType", "organizationId", "scopes", "brandIds", "deployment"]
+				"required": [
+					"keyType",
+					"organizationId",
+					"organizationName",
+					"scopes",
+					"brandIds",
+					"createdAt",
+					"expiresAt",
+					"rateLimit",
+					"deployment",
+					"createdBy",
+					"lastUsedAt"
+				]
 			},
 			"Platform": {
 				"type": "object",
@@ -1347,9 +1382,12 @@
 							},
 							"uniqueDomains": {
 								"type": "integer"
+							},
+							"uniqueUrls": {
+								"type": "integer"
 							}
 						},
-						"required": ["citations", "uniqueDomains"]
+						"required": ["citations", "uniqueDomains", "uniqueUrls"]
 					},
 					"data": {
 						"type": "array",
@@ -1442,11 +1480,14 @@
 							"citations": {
 								"type": "integer"
 							},
+							"uniqueDomains": {
+								"type": "integer"
+							},
 							"uniqueUrls": {
 								"type": "integer"
 							}
 						},
-						"required": ["citations", "uniqueUrls"]
+						"required": ["citations", "uniqueDomains", "uniqueUrls"]
 					},
 					"data": {
 						"type": "array",
@@ -3752,7 +3793,8 @@
 												"totalPages": {
 													"type": "integer"
 												}
-											}
+											},
+											"required": ["page", "limit", "total", "totalPages"]
 										}
 									},
 									"required": ["data", "prompts", "pagination"]
@@ -4420,7 +4462,8 @@
 												"totalPages": {
 													"type": "integer"
 												}
-											}
+											},
+											"required": ["page", "limit", "total", "totalPages"]
 										}
 									},
 									"required": ["data", "reports", "pagination"]

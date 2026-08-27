@@ -104,9 +104,9 @@ export const Route = createFileRoute("/api/v1/brands/")({
 					if (!organizationId) return await createBrand({ ...internal, organizationId });
 					// Check and create under one lock: otherwise two requests on an
 					// organization's last brand slot both pass the check.
-					return await withQuotaLock(organizationId, async () => {
-						await assertCanCreateBrand(organizationId);
-						return await createBrand({ ...internal, organizationId });
+					return await withQuotaLock(organizationId, async (tx, afterCommit) => {
+						await assertCanCreateBrand(organizationId, tx);
+						return await createBrand({ ...internal, organizationId, conn: tx, afterCommit });
 					});
 				},
 			}),

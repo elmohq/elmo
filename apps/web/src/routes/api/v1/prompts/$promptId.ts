@@ -118,12 +118,13 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 
 					// Check and write under one lock, so two saves can't each be the
 					// one that fits.
-					const [updatedPrompt] = await withQuotaLock(brand.organizationId, async () => {
-						await assertPromptSaveAllowed(brand.organizationId, {
-							prompts: promptDelta,
-							premiumPairings: premiumDelta,
-						});
-						return db.update(prompts).set(updateData).where(eq(prompts.id, promptId)).returning();
+					const [updatedPrompt] = await withQuotaLock(brand.organizationId, async (tx) => {
+						await assertPromptSaveAllowed(
+							brand.organizationId,
+							{ prompts: promptDelta, premiumPairings: premiumDelta },
+							tx,
+						);
+						return tx.update(prompts).set(updateData).where(eq(prompts.id, promptId)).returning();
 					});
 					// The existence check above can race with a concurrent delete;
 					// the update's returning() is the source of truth.

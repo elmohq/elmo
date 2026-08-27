@@ -57,12 +57,16 @@ export const Route = createFileRoute("/api/v1/prompts/bulk")({
 					// and the insert under the same lock so two batches can't both
 					// spend the last slot.
 					const enabled = rows.filter((row) => row.enabled);
-					const created = await withQuotaLock(brand.organizationId, async () => {
-						await assertPromptSaveAllowed(brand.organizationId, {
-							prompts: enabled.length,
-							premiumPairings: enabled.reduce((sum, row) => sum + row.premiumModels.length, 0),
-						});
-						return db.transaction(async (tx) => tx.insert(prompts).values(rows).returning());
+					const created = await withQuotaLock(brand.organizationId, async (tx) => {
+						await assertPromptSaveAllowed(
+							brand.organizationId,
+							{
+								prompts: enabled.length,
+								premiumPairings: enabled.reduce((sum, row) => sum + row.premiumModels.length, 0),
+							},
+							tx,
+						);
+						return tx.insert(prompts).values(rows).returning();
 					});
 
 					// Scheduling is deliberately outside the transaction: a queue hiccup

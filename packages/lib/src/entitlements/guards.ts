@@ -17,6 +17,7 @@ import type { Entitlements } from "@workspace/config/entitlements";
 import { MAX_SELF_SERVE_BRANDS, premiumPairings } from "@workspace/config/plans";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db/db";
+import type { DbConnection } from "../db/provisioning";
 import { brands, prompts } from "../db/schema";
 import { getOrgEntitlements, getOrgEntitlementsMap } from "./service";
 
@@ -188,9 +189,9 @@ export function assertAllowed(decision: EntitlementDecision): void {
 // Usage counts (cloud-only paths; every assert below skips them when unlimited)
 // ---------------------------------------------------------------------------
 
-export async function countBrandsByOrg(orgIds: string[]): Promise<Map<string, number>> {
+export async function countBrandsByOrg(orgIds: string[], conn: DbConnection = db): Promise<Map<string, number>> {
 	if (orgIds.length === 0) return new Map();
-	const rows = await db
+	const rows = await conn
 		.select({ organizationId: brands.organizationId, value: count() })
 		.from(brands)
 		.where(inArray(brands.organizationId, orgIds))
@@ -198,12 +199,12 @@ export async function countBrandsByOrg(orgIds: string[]): Promise<Map<string, nu
 	return new Map(rows.map((row) => [row.organizationId, row.value]));
 }
 
-export async function countOrgBrands(organizationId: string): Promise<number> {
-	return (await countBrandsByOrg([organizationId])).get(organizationId) ?? 0;
+export async function countOrgBrands(organizationId: string, conn: DbConnection = db): Promise<number> {
+	return (await countBrandsByOrg([organizationId], conn)).get(organizationId) ?? 0;
 }
 
-export async function countOrgEnabledPrompts(organizationId: string): Promise<number> {
-	const [row] = await db
+export async function countOrgEnabledPrompts(organizationId: string, conn: DbConnection = db): Promise<number> {
+	const [row] = await conn
 		.select({ value: count() })
 		.from(prompts)
 		.innerJoin(brands, eq(prompts.brandId, brands.id))
@@ -216,8 +217,8 @@ export async function countOrgEnabledPrompts(organizationId: string): Promise<nu
  * so a prompt tracked on two premium models counts twice. Picking the same model
  * ungrounded is a platform pick and never counts here.
  */
-export async function countOrgAssignedPremiumSlots(organizationId: string): Promise<number> {
-	const [row] = await db
+export async function countOrgAssignedPremiumSlots(organizationId: string, conn: DbConnection = db): Promise<number> {
+	const [row] = await conn
 		.select({ value: sql<string>`coalesce(sum(cardinality(${prompts.premiumModels})), 0)` })
 		.from(prompts)
 		.innerJoin(brands, eq(prompts.brandId, brands.id))
@@ -237,8 +238,9 @@ export async function countOrgAssignedPremiumSlots(organizationId: string): Prom
 async function withEntitlements(
 	organizationId: string,
 	decide: (entitlements: Entitlements) => EntitlementDecision[] | Promise<EntitlementDecision[]>,
+	conn?: DbConnection,
 ): Promise<void> {
-	const entitlements = await getOrgEntitlements(organizationId);
+	const entitlements = await getOrgEntitlements(organizationId, conn ? { conn } : undefined);
 	if (entitlements.unlimited) return;
 	for (const decision of await decide(entitlements)) assertAllowed(decision);
 }
@@ -257,24 +259,34 @@ const QUOTA_LOCK_CLASS = 0x656c6d6f;
  * both take it. Running the pair under a transaction-scoped advisory lock makes
  * them atomic with respect to anyone else holding the same lock.
  *
- * `run` is free to use the ordinary `db` connection: the lock is held until
- * this transaction commits, which happens after `run` resolves, so whatever it
- * wrote is already visible to the next holder's count.
+ * `run` must do all of its work on the `tx` it is handed, checks included —
+ * that is what the `conn` parameters above are for. Reaching for the pooled
+ * `db` instead would hold this transaction open while waiting for a second
+ * connection, and enough concurrent callers doing that exhaust the pool and
+ * deadlock: every one of them holds a connection and needs one more.
  *
  * This orders writers against other writers. A caller that skips it is not
  * blocked, and an unlocked reader still sees a count mid-flight.
  */
-export async function withQuotaLock<T>(organizationId: string, run: () => Promise<T>): Promise<T> {
-	return db.transaction(async (tx) => {
+export async function withQuotaLock<T>(
+	organizationId: string,
+	run: (tx: DbConnection, afterCommit: (task: () => Promise<unknown>) => void) => Promise<T>,
+): Promise<T> {
+	const deferred: Array<() => Promise<unknown>> = [];
+	const value = await db.transaction(async (tx) => {
 		await tx.execute(sql`select pg_advisory_xact_lock(${QUOTA_LOCK_CLASS}, hashtext(${organizationId}))`);
-		return run();
+		return run(tx, (task) => deferred.push(task));
 	});
+	for (const task of deferred) await task();
+	return value;
 }
 
-export async function assertCanCreateBrand(organizationId: string): Promise<void> {
-	await withEntitlements(organizationId, async (entitlements) => [
-		decideBrandCreate(entitlements, await countOrgBrands(organizationId)),
-	]);
+export async function assertCanCreateBrand(organizationId: string, conn?: DbConnection): Promise<void> {
+	await withEntitlements(
+		organizationId,
+		async (entitlements) => [decideBrandCreate(entitlements, await countOrgBrands(organizationId, conn ?? db))],
+		conn,
+	);
 }
 
 /**
@@ -297,11 +309,15 @@ export async function checkBrandCreate(orgIds: string[]): Promise<Map<string, En
 }
 
 /** Guard creating `adding` new enabled prompts (or re-enabling that many). */
-export async function assertCanAddPrompts(organizationId: string, adding: number): Promise<void> {
+export async function assertCanAddPrompts(organizationId: string, adding: number, conn?: DbConnection): Promise<void> {
 	if (adding <= 0) return;
-	await withEntitlements(organizationId, async (entitlements) => [
-		decidePromptAdd(entitlements, await countOrgEnabledPrompts(organizationId), adding),
-	]);
+	await withEntitlements(
+		organizationId,
+		async (entitlements) => [
+			decidePromptAdd(entitlements, await countOrgEnabledPrompts(organizationId, conn ?? db), adding),
+		],
+		conn,
+	);
 }
 
 export async function assertEnabledModelsAllowed(organizationId: string, requestedModels: string[]): Promise<void> {
@@ -336,16 +352,24 @@ export interface PromptSaveDelta {
  * are decided against the same snapshot, so a save can't pass one against a
  * plan the other was denied under.
  */
-export async function assertPromptSaveAllowed(organizationId: string, delta: PromptSaveDelta): Promise<void> {
+export async function assertPromptSaveAllowed(
+	organizationId: string,
+	delta: PromptSaveDelta,
+	conn?: DbConnection,
+): Promise<void> {
 	if (delta.prompts <= 0 && delta.premiumPairings <= 0) return;
-	await withEntitlements(organizationId, async (entitlements) => {
-		const [enabledPrompts, assignedPremium] = await Promise.all([
-			delta.prompts > 0 ? countOrgEnabledPrompts(organizationId) : 0,
-			delta.premiumPairings > 0 ? countOrgAssignedPremiumSlots(organizationId) : 0,
-		]);
-		return [
-			decidePromptAdd(entitlements, enabledPrompts, delta.prompts),
-			decidePremiumAssign(entitlements, assignedPremium, delta.premiumPairings),
-		];
-	});
+	await withEntitlements(
+		organizationId,
+		async (entitlements) => {
+			const [enabledPrompts, assignedPremium] = await Promise.all([
+				delta.prompts > 0 ? countOrgEnabledPrompts(organizationId, conn ?? db) : 0,
+				delta.premiumPairings > 0 ? countOrgAssignedPremiumSlots(organizationId, conn ?? db) : 0,
+			]);
+			return [
+				decidePromptAdd(entitlements, enabledPrompts, delta.prompts),
+				decidePremiumAssign(entitlements, assignedPremium, delta.premiumPairings),
+			];
+		},
+		conn,
+	);
 }
