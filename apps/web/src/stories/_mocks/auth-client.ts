@@ -60,6 +60,9 @@ export const authClient = {
 		sso: async () => ({ error: _ssoError ? { message: _ssoError } : null }),
 	},
 	signUp: { email: async () => ({ error: null }) },
+	requestPasswordReset: async () => ({ error: null }),
+	resetPassword: async () => ({ error: null }),
+	sendVerificationEmail: async () => ({ error: null }),
 	signOut: async () => ({ error: null }),
 	useSession: () => ({ data: null, isPending: false }),
 	organization: {

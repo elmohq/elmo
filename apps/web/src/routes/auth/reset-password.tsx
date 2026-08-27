@@ -5,7 +5,8 @@
  * ?error=INVALID_TOKEN on a bad one.
  */
 
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button } from "@workspace/ui/components/button";
@@ -13,7 +14,8 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import { z } from "zod";
-import FullPageCard from "@/components/full-page-card";
+import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
+import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 
 export const Route = createFileRoute("/auth/reset-password")({
 	validateSearch: z.object({
@@ -24,24 +26,34 @@ export const Route = createFileRoute("/auth/reset-password")({
 });
 
 function ResetPasswordPage() {
-	const { token, error: searchError } = Route.useSearch();
+	const { token, error } = Route.useSearch();
+	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+
+	// Cloud is the only mode that can have issued the link that leads here.
+	if (context.clientConfig?.mode !== "cloud") {
+		window.location.href = "/auth/login";
+		return null;
+	}
+
+	return <ResetPasswordForm token={token} linkError={error} isCloud />;
+}
+
+export function ResetPasswordForm({
+	token,
+	linkError,
+	isCloud,
+}: {
+	token?: string;
+	/** Set by better-auth when the link is bad, in place of a token. */
+	linkError?: string;
+	isCloud?: boolean;
+}) {
 	const navigate = useNavigate();
 	const [newPassword, setNewPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
-
-	if (searchError || !token) {
-		return (
-			<FullPageCard title="Reset link invalid or expired">
-				<p className="text-center text-sm text-muted-foreground w-full">
-					<Link to="/auth/forgot-password" className="text-primary hover:underline font-medium">
-						Request a new reset link
-					</Link>
-				</p>
-			</FullPageCard>
-		);
-	}
+	const source = isCloud ? "cloud-signin" : "self-hosted-signin";
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -66,8 +78,28 @@ function ResetPasswordPage() {
 		}
 	}
 
+	const panel = <SalesPanel variant={isCloud ? "cloud" : "self-hosted"} source={source} />;
+	const footer = <SalesFooterLinks source={source} />;
+
+	if (linkError || !token) {
+		return (
+			<AuthSplitLayout
+				title="Reset link invalid or expired"
+				subtitle="Reset links are single-use and time-limited."
+				pitch={panel}
+				footer={footer}
+			>
+				<p className="text-sm text-muted-foreground">
+					<Link to="/auth/forgot-password" className="text-primary hover:underline font-medium">
+						Request a new reset link
+					</Link>
+				</p>
+			</AuthSplitLayout>
+		);
+	}
+
 	return (
-		<FullPageCard title="Choose a new password">
+		<AuthSplitLayout title="Choose a new password" pitch={panel} footer={footer}>
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
 				{error && (
 					<Alert variant="destructive">
@@ -105,6 +137,6 @@ function ResetPasswordPage() {
 					{loading ? "Resetting..." : "Reset password"}
 				</Button>
 			</form>
-		</FullPageCard>
+		</AuthSplitLayout>
 	);
 }
