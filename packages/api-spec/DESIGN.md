@@ -114,10 +114,27 @@ other tenants.
 | Cross-org access       | yes                  | never                                                |
 
 Cloud plan limits are already centralized in `@workspace/lib/entitlements`;
-the API's job is to make sure every write path calls them. Two gaps to close:
+the API's job is to make sure every write path calls them. What each write
+spends:
+
+| Write | Guard |
+| --- | --- |
+| `POST /v1/brands` | `assertCanCreateBrand` |
+| `POST /v1/prompts`, re-enabling one | `assertCanAddPrompts` |
+| `POST /v1/prompts/bulk` | `assertPromptSaveAllowed` — one decision for the whole batch, against both pools it can spend |
+| `PATCH /v1/prompts/{id}` with `premiumModels` | `assertCanAssignPremium` |
+| `POST /v1/competitors` | `MAX_COMPETITORS`, already enforced |
+
+Two gaps to close:
 
 - `POST /v1/brands` does not currently call `assertCanCreateBrand`.
 - `GET /v1/prompts` clamps `limit` to a minimum but not a maximum.
+
+The two limits with no write path — a brand's platform picks
+(`assertEnabledModelsAllowed`) and its sampling cadence
+(`assertCadenceAllowed`) — stay that way for now: `enabledModels` and
+`delayOverrideHours` are readable on the brand and not writable. Opening either
+means carrying its guard, and neither is worth an endpoint until someone asks.
 
 Entitlement denials surface as the errors they already are: `402` when there is
 no active plan, `409` for a limit conflict, with the specific reason in `code`.

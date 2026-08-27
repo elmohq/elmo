@@ -32,4 +32,11 @@ tests {
   test("the provider's own payload is not exposed", function() {
     expect(res.getBody().rawOutput).to.be.undefined;
   });
+
+  test("the answer is normalized, not a provider envelope or a fallback", function() {
+    const text = res.getBody().answer.text;
+    expect(text).to.be.a("string").and.to.not.be.empty;
+    expect(text, "the wrong extractor was used for this run's provider")
+      .to.not.match(/cannot extract text content/i);
+  });
 }
