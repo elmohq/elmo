@@ -3,24 +3,25 @@
  *
  * Sign-in is the highest-intent page either deployment has, so it carries the
  * argument for the product rather than just a card on an empty background: what
- * Elmo does, which engines it reaches, who already runs it, and — for a
- * self-hosted instance — that a managed option exists.
+ * Elmo does, which engines it reaches, and — for a self-hosted instance — that
+ * a managed option exists.
  *
  * Demo and whitelabel deliberately never see this. A demo visitor has already
  * decided to look, and a whitelabel tenant is not ours to sell to.
  */
 
 import { IconCheck } from "@tabler/icons-react";
-import { CLOUD_ENTRY_PRICE_USD, PLANS, platformTierMembers, STANDARD_PLATFORM_MENU } from "@workspace/config/plans";
+import { CLOUD_ENTRY_PRICE_USD, PLANS, platformTierMembers } from "@workspace/config/plans";
 import {
 	bookDemoUrl,
 	cloudPricingUrl,
 	cloudSignupUrl,
+	demoSiteUrl,
 	marketingUrl,
 	type ReferralSource,
 } from "@workspace/config/referrals";
-import { CUSTOMER_QUOTES, VECTOR_CUSTOMERS } from "@workspace/ui/brand/customers";
-import { G2Rating } from "@workspace/ui/brand/g2-rating";
+import { CUSTOMER_QUOTES } from "@workspace/ui/brand/customers";
+import { G2Stars } from "@workspace/ui/brand/g2-rating";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { buttonVariants } from "@workspace/ui/components/button";
 import type { ReactNode } from "react";
@@ -28,52 +29,34 @@ import type { ReactNode } from "react";
 /** Everything Elmo reaches, named — the coverage claim is the product. */
 const ENGINES = [...platformTierMembers("scraped"), ...platformTierMembers("api")];
 
-const ENGINE_COUNT = STANDARD_PLATFORM_MENU.length;
-
-interface Stat {
-	value: string;
-	label: string;
-}
+/** The comparison the pricing rests on, kept in step with what a plan actually samples. */
+const RUNS_PER_DAY = PLANS.basic.standardRunsPerDay;
 
 interface Pitch {
 	eyebrow: string;
 	headline: string;
-	subhead: string;
 	bullets: string[];
-	stats: Stat[];
 }
 
 const CLOUD_PITCH: Pitch = {
-	eyebrow: "AI Visibility",
+	eyebrow: "#1 Open Source Profound Alternative",
 	headline: "Know how AI talks about your brand.",
-	subhead:
-		"Elmo watches what ChatGPT, Google AI Overviews, Perplexity, and Gemini say when someone asks about your category — and tells you why they said it.",
 	bullets: [
-		"Read every answer AI gives about you, in full",
-		"Benchmark share of voice against your competitors",
-		"See which citations are moving your visibility",
-	],
-	stats: [
-		{ value: String(ENGINE_COUNT), label: "engines tracked" },
-		{ value: `${PLANS.basic.standardRunsPerDay}×`, label: "sampled daily" },
-		{ value: `$${CLOUD_ENTRY_PRICE_USD}`, label: "per month to start" },
+		"Track your AI visibility on any model",
+		"Benchmark against your competitors",
+		"Analyze citations to find opportunities",
+		`${RUNS_PER_DAY}× Profound's daily runs, same price`,
 	],
 };
 
 const SELF_HOSTED_PITCH: Pitch = {
-	eyebrow: "Self-Hosted",
+	eyebrow: "#1 Open Source Profound Alternative",
 	headline: "Your AI visibility, on your own infrastructure.",
-	subhead:
-		"Elmo watches what ChatGPT, Google AI Overviews, Perplexity, and Gemini say about your brand. This instance is yours — your database, your keys, your data.",
 	bullets: [
+		"Track your AI visibility on any model",
 		"Unlimited prompts, brands, and seats",
 		"Bring your own model and scraper keys",
 		"MIT licensed — read it, change it, fork it",
-	],
-	stats: [
-		{ value: String(ENGINE_COUNT), label: "engines you can track" },
-		{ value: "$0", label: "self-hosted, forever" },
-		{ value: "MIT", label: "open source license" },
 	],
 };
 
@@ -81,18 +64,17 @@ type SalesPanelVariant = "cloud" | "self-hosted";
 
 export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; source: ReferralSource }) {
 	const pitch = variant === "cloud" ? CLOUD_PITCH : SELF_HOSTED_PITCH;
-	const quote = CUSTOMER_QUOTES.speakeasy;
 
 	return (
 		<div className="mx-auto flex w-full max-w-lg flex-col gap-8">
 			<div>
-				<G2Rating className="text-muted-foreground" />
-				<p className="mt-4 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-					/ {pitch.eyebrow}
-				</p>
+				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">/ {pitch.eyebrow}</p>
 				<h2 className="mt-4 text-3xl font-semibold leading-[1.1] tracking-tight text-balance">{pitch.headline}</h2>
-				<p className="mt-4 text-pretty text-sm text-muted-foreground md:text-base">{pitch.subhead}</p>
 			</div>
+
+			{/* Directly under the headline, where a paragraph of our own claims used
+			    to sit — a customer saying it carries further than we can. */}
+			<Quote />
 
 			<ul className="space-y-2.5">
 				{pitch.bullets.map((bullet) => (
@@ -103,23 +85,9 @@ export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; so
 				))}
 			</ul>
 
-			<dl className="grid grid-cols-3 gap-px overflow-hidden rounded-lg border bg-border">
-				{pitch.stats.map((stat) => (
-					<div key={stat.label} className="bg-card px-3 py-3">
-						<dt className="sr-only">{stat.label}</dt>
-						<dd>
-							<span className="block text-xl font-semibold tabular-nums">{stat.value}</span>
-							<span className="mt-0.5 block text-[11px] leading-tight text-muted-foreground">{stat.label}</span>
-						</dd>
-					</div>
-				))}
-			</dl>
-
 			<EngineStrip />
 
-			{variant === "self-hosted" ? <CloudOffer source={source} /> : <DemoOffer source={source} />}
-
-			<Proof quote={quote} />
+			{variant === "self-hosted" ? <CloudOffer source={source} /> : <TryBeforeYouBuy source={source} />}
 		</div>
 	);
 }
@@ -153,14 +121,10 @@ function EngineStrip() {
 function CloudOffer({ source }: { source: ReferralSource }) {
 	return (
 		<div className="rounded-lg border bg-card p-5">
-			<h3 className="text-sm font-semibold">Same Elmo, none of the upkeep.</h3>
+			<h3 className="text-sm font-semibold">Same Elmo, managed for you.</h3>
 			<p className="mt-2 text-sm text-muted-foreground">
-				Elmo Cloud runs the open-source product you already have, on our infrastructure — with scraper and model access
-				included, so there are no provider accounts to open and no keys to rotate.
-			</p>
-			<p className="mt-3 text-sm">
-				<span className="font-semibold">From ${CLOUD_ENTRY_PRICE_USD}/mo</span>
-				<span className="text-muted-foreground"> · unlimited seats · cancel anytime</span>
+				Don't worry about API keys, spend tracking, infrastructure, and updates. Plans start from $
+				{CLOUD_ENTRY_PRICE_USD}/mo.
 			</p>
 			<div className="mt-4 flex flex-wrap items-center gap-2">
 				<a href={cloudSignupUrl(source)} className={buttonVariants({ size: "sm" })}>
@@ -175,84 +139,74 @@ function CloudOffer({ source }: { source: ReferralSource }) {
 }
 
 /**
- * The other way in, for someone who would rather be shown than sign up. Sits
- * where the self-hosted panel argues for Cloud: both are the secondary ask.
+ * The two ways to see Elmo without an account, offered as a genuine either/or —
+ * poke at it alone, or have someone walk you through it.
  */
-function DemoOffer({ source }: { source: ReferralSource }) {
+function TryBeforeYouBuy({ source }: { source: ReferralSource }) {
 	return (
 		<div className="rounded-lg border bg-card p-5">
-			<h3 className="text-sm font-semibold">Rather see it before you sign up?</h3>
-			<p className="mt-2 text-sm text-muted-foreground">
-				Thirty minutes with the team that builds Elmo, to talk through what you want to track and whether we are the
-				right fit for it.
-			</p>
-			<div className="mt-4">
+			<h3 className="text-sm font-semibold">Try before you buy?</h3>
+			<div className="mt-4 flex flex-wrap items-center gap-3">
+				<a
+					href={demoSiteUrl(source)}
+					target="_blank"
+					rel="noopener"
+					className={buttonVariants({ variant: "outline", size: "sm" })}
+				>
+					Live Demo
+				</a>
+				<span className="text-xs text-muted-foreground">or</span>
 				<a href={bookDemoUrl(source)} className={buttonVariants({ variant: "outline", size: "sm" })}>
-					Book a demo
+					Talk to Us
 				</a>
 			</div>
 		</div>
 	);
 }
 
-function Proof({ quote }: { quote: (typeof CUSTOMER_QUOTES)[keyof typeof CUSTOMER_QUOTES] }) {
+function Quote() {
+	const quote = CUSTOMER_QUOTES.speakeasy;
 	return (
-		<div className="space-y-5">
-			<div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-				<p className="flex h-5 items-center font-mono text-[10px] uppercase leading-none tracking-[0.2em] text-muted-foreground">
-					Trusted by
-				</p>
-				<ul className="flex flex-wrap items-center gap-x-5 gap-y-3">
-					{VECTOR_CUSTOMERS.map((customer) => (
-						<li key={customer.name} className="flex h-5 items-center">
-							<a
-								href={customer.url}
-								target="_blank"
-								rel={customer.nofollow ? "nofollow noopener noreferrer" : "noopener noreferrer"}
-								aria-label={customer.name}
-								className="flex h-5 items-center text-muted-foreground transition-colors hover:text-foreground"
-							>
-								{customer.mark}
-							</a>
-						</li>
-					))}
-				</ul>
-			</div>
-
-			<figure className="rounded-lg border bg-card p-5">
-				<blockquote className="text-pretty text-sm font-medium leading-relaxed">“{quote.quote}”</blockquote>
-				<figcaption className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-					<span className="font-semibold text-foreground">{quote.author}</span>
-					<span>at</span>
-					<a
-						href={quote.companyUrl}
-						target="_blank"
-						rel="noopener noreferrer"
-						aria-label={quote.company}
-						className="inline-flex items-center text-foreground transition-opacity hover:opacity-80"
-					>
-						{quote.mark}
-					</a>
-				</figcaption>
-			</figure>
-		</div>
+		<figure className="rounded-lg border bg-card p-5">
+			<blockquote className="text-pretty text-sm font-medium leading-relaxed">“{quote.quote}”</blockquote>
+			<figcaption className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+				<span className="font-semibold text-foreground">{quote.author}</span>
+				<span>at</span>
+				<a
+					href={quote.companyUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					aria-label={quote.company}
+					className="inline-flex items-center text-foreground transition-opacity hover:opacity-80"
+				>
+					{quote.mark}
+				</a>
+			</figcaption>
+		</figure>
 	);
 }
 
-/** Small print under the form: where to read more before committing. */
+/**
+ * The bottom of the form column: where to read more on the left, and the G2
+ * rating in the corner. The rating doesn't link out — this is the one page
+ * where sending someone away costs a signup.
+ */
 export function SalesFooterLinks({ source }: { source: ReferralSource }): ReactNode {
 	const linkClass = "hover:text-foreground";
 	return (
-		<p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-			<a href={marketingUrl("/docs", source)} className={linkClass}>
-				Docs
-			</a>
-			<a href={cloudPricingUrl(source)} className={linkClass}>
-				Pricing
-			</a>
-			<a href="https://github.com/elmohq/elmo" target="_blank" rel="noopener noreferrer" className={linkClass}>
-				GitHub
-			</a>
-		</p>
+		<div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2">
+			<p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+				<a href={marketingUrl("/docs", source)} className={linkClass}>
+					Docs
+				</a>
+				<a href={cloudPricingUrl(source)} className={linkClass}>
+					Pricing
+				</a>
+				<a href="https://github.com/elmohq/elmo" target="_blank" rel="noopener noreferrer" className={linkClass}>
+					GitHub
+				</a>
+			</p>
+			<G2Stars />
+		</div>
 	);
 }

@@ -41,6 +41,7 @@ function LoginPage() {
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const mode = context.clientConfig?.mode;
 	const canRegister = context.clientConfig?.canRegister ?? false;
+	const hasUsers = context.clientConfig?.hasUsers ?? false;
 
 	if (mode === "whitelabel") {
 		return <SSOLogin returnTo={returnTo} />;
@@ -48,6 +49,13 @@ function LoginPage() {
 
 	if (mode === "demo") {
 		return <DemoLogin returnTo={returnTo} />;
+	}
+
+	// A fresh self-hosted instance has no account to sign in to, so the form
+	// could only ever fail. Send them to the one thing that can work.
+	if (mode === "local" && !hasUsers) {
+		window.location.href = "/auth/register";
+		return null;
 	}
 
 	return (
@@ -60,7 +68,7 @@ function LoginPage() {
 	);
 }
 
-function SSOLogin({ returnTo }: { returnTo?: string }) {
+export function SSOLogin({ returnTo }: { returnTo?: string }) {
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
@@ -193,9 +201,7 @@ export function EmailPasswordLogin({
 	return (
 		<AuthSplitLayout
 			title="Welcome back"
-			subtitle={
-				isCloud ? "Sign in to pick up where your tracking left off." : "Sign in to your self-hosted Elmo instance."
-			}
+			subtitle={isCloud ? "Check in on your AI visibility." : "Sign in to your Elmo instance."}
 			pitch={<SalesPanel variant={isCloud ? "cloud" : "self-hosted"} source={source} />}
 			footer={<SalesFooterLinks source={source} />}
 		>

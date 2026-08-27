@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookDemoUrl, cloudPricingUrl, cloudSignupUrl, marketingUrl } from "./referrals";
+import { bookDemoUrl, cloudPricingUrl, cloudSignupUrl, demoSiteUrl, marketingUrl } from "./referrals";
 
 /**
  * The contract every one of these has to keep: land on the right page, and say
@@ -12,6 +12,7 @@ describe("referral links", () => {
 		signup: () => cloudSignupUrl("cli"),
 		pricing: () => cloudPricingUrl("cli"),
 		demo: () => bookDemoUrl("cli"),
+		liveDemo: () => demoSiteUrl("cli"),
 	};
 
 	it.each(Object.entries(builders))("%s carries the source", (_name, build) => {
@@ -23,5 +24,6 @@ describe("referral links", () => {
 		expect(cloudSignupUrl("cloud-signin")).toBe("https://app.elmohq.com/auth/register?ref=cloud-signin");
 		expect(cloudPricingUrl("cloud-signin")).toBe("https://www.elmohq.com/pricing?ref=cloud-signin");
 		expect(bookDemoUrl("cloud-signin")).toBe("https://cal.com/jrhizor/elmo?ref=cloud-signin");
+		expect(demoSiteUrl("cloud-signin")).toBe("https://demo.elmohq.com/?ref=cloud-signin");
 	});
 });

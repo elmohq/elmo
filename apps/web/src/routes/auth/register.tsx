@@ -140,7 +140,7 @@ export function RegisterForm({
 			title={isCloud ? "Start tracking your AI visibility" : "Create your admin account"}
 			subtitle={
 				isCloud
-					? "See what AI says about your brand today, then watch it change."
+					? `Plans start at $${CLOUD_ENTRY_PRICE_USD}/mo. Cancel any time.`
 					: "This is the owner account for your self-hosted instance."
 			}
 			pitch={<SalesPanel variant={isCloud ? "cloud" : "self-hosted"} source={source} />}
@@ -211,11 +211,6 @@ export function RegisterForm({
 				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? "Creating account..." : "Create account"}
 				</Button>
-				{isCloud && (
-					<p className="text-xs text-muted-foreground">
-						Plans start at ${CLOUD_ENTRY_PRICE_USD}/mo, billed monthly or annually. Cancel any time.
-					</p>
-				)}
 			</form>
 			{hasUsers && (
 				<p className="text-sm text-muted-foreground pt-4">

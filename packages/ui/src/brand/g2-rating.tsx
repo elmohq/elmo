@@ -10,7 +10,9 @@ import { SiG2 } from "react-icons/si";
 
 const G2_RATING = 4.7;
 const G2_MAX_RATING = 5;
-export const G2_PROFILE_URL = "https://www.g2.com/products/blue-whale-software-llc-elmo/reviews";
+const G2_PROFILE_URL = "https://www.g2.com/products/blue-whale-software-llc-elmo/reviews";
+
+const RATING_LABEL = `Rated ${G2_RATING} out of ${G2_MAX_RATING} on G2`;
 
 /** G2's brand red, so the mark reads as theirs and not as our accent. */
 const G2_RED = "#FF492C";
@@ -44,6 +46,24 @@ function Stars() {
 }
 
 /**
+ * The mark and the stars, unlinked and unlabelled.
+ *
+ * For places that want the rating as a mark of quality rather than as
+ * something to click — sitting in the corner of a sign-in page, it should
+ * reassure, not offer a way off the page mid-signup.
+ */
+export function G2Stars({ className = "" }: { className?: string }) {
+	return (
+		<span role="img" aria-label={RATING_LABEL} className={`inline-flex items-center gap-1.5 ${className}`}>
+			<SiG2 className="size-4 shrink-0" style={{ color: G2_RED }} aria-hidden="true" />
+			<Stars />
+		</span>
+	);
+}
+
+/**
+ * The same rating with the score spelled out, linking to the reviews.
+ *
  * @param className tone for the label; the mark and stars keep their own colors.
  */
 export function G2Rating({ className = "" }: { className?: string }) {

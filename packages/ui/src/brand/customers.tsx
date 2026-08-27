@@ -67,30 +67,6 @@ export function TradeSitesWordmark({ className = "" }: { className?: string }) {
 	);
 }
 
-interface Customer {
-	name: string;
-	url: string;
-	/** Link with rel="nofollow" — set where the customer asked us to. */
-	nofollow?: boolean;
-	mark: ReactNode;
-}
-
-/**
- * Customers whose mark is inline SVG, so any app can render them without
- * shipping an image. Logos that only exist as raster files stay with whichever
- * app serves them.
- */
-export const VECTOR_CUSTOMERS: Customer[] = [
-	{
-		name: "Fermat Commerce",
-		url: "https://www.fermatcommerce.com/?ref=elmo",
-		nofollow: true,
-		mark: <FermatWordmark />,
-	},
-	{ name: "Speakeasy", url: "https://www.speakeasy.com/?ref=elmo", mark: <SpeakeasyLockup /> },
-	{ name: "TradeSites", url: "https://www.tradesites.ai/?ref=elmo", mark: <TradeSitesWordmark /> },
-];
-
 export interface CustomerQuote {
 	quote: string;
 	author: string;
