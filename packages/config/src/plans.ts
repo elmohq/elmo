@@ -417,9 +417,7 @@ function premiumSummary(plan: PlanDefinition): string {
 		return `Grounded and cited. Available as an add-on at $${PREMIUM_ADDON_MONTHLY_USD}/mo per pairing.`;
 	}
 	const included = `Grounded and cited. ${premiumPairings(plan.premiumIncluded)} included, each answered daily.`;
-	return plan.premiumAddonAvailable
-		? `${included} $${PREMIUM_ADDON_MONTHLY_USD}/mo for each extra pairing.`
-		: included;
+	return plan.premiumAddonAvailable ? `${included} $${PREMIUM_ADDON_MONTHLY_USD}/mo for each extra pairing.` : included;
 }
 
 /** The premium allowance's unit, named the same way wherever it is counted. */

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { compactDecrypt, CompactEncrypt, decodeProtectedHeader } from "jose";
+import { CompactEncrypt, compactDecrypt, decodeProtectedHeader } from "jose";
 
 const KEY_BYTES = 32; // 256-bit
 

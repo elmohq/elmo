@@ -1,19 +1,19 @@
+import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import { getSoVBadgeClasses, type PromptCategory } from "@workspace/lib/report-metrics";
+import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
-import { Badge } from "@workspace/ui/components/badge";
+import { useChartDownload } from "@/hooks/use-chart-download";
+import {
+	type ChartDataPoint,
+	calculateVisibilityPercentages,
+	getBadgeClassName,
+	getBadgeVariant,
+	type LookbackPeriod,
+	selectCompetitorsToDisplay,
+} from "@/lib/chart-utils";
 import { BaseChartPrint } from "./base-chart-print";
 import { ChartDownloadFooter } from "./chart-download-footer";
-import { useChartDownload } from "@/hooks/use-chart-download";
-import type { Brand, Competitor } from "@workspace/lib/db/schema";
-import {
-	LookbackPeriod,
-	getBadgeVariant,
-	getBadgeClassName,
-	calculateVisibilityPercentages,
-	selectCompetitorsToDisplay,
-	type ChartDataPoint,
-} from "@/lib/chart-utils";
-import { getSoVBadgeClasses, type PromptCategory } from "@workspace/lib/report-metrics";
 
 interface PromptRunData {
 	id: string;

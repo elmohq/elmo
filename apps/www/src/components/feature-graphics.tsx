@@ -241,7 +241,12 @@ export function VisibilityTrendGraphic() {
 				</div>
 
 				<div className="relative flex-1">
-					<svg viewBox={`0 0 ${w} ${h}`} className="size-full overflow-visible" preserveAspectRatio="none">
+					<svg
+						aria-hidden="true"
+						viewBox={`0 0 ${w} ${h}`}
+						className="size-full overflow-visible"
+						preserveAspectRatio="none"
+					>
 						<defs>
 							<linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
 								<stop offset="0%" stopColor="#2563eb" stopOpacity="0.22" />

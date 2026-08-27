@@ -59,8 +59,8 @@ vi.mock("dataforseo-client", () => ({
 	},
 }));
 
-import { dataforseo } from "./dataforseo";
 import { extractCitations, extractTextContent } from "../../text-extraction";
+import { dataforseo } from "./dataforseo";
 
 afterEach(() => {
 	vi.clearAllMocks();
@@ -137,7 +137,9 @@ describe("dataforseo provider", () => {
 					{
 						status_code: 20000,
 						status_message: "Ok.",
-						result: [{ model_name: "gpt-4.1", items: [{ type: "message", sections: [{ type: "text", text: "Hi." }] }] }],
+						result: [
+							{ model_name: "gpt-4.1", items: [{ type: "message", sections: [{ type: "text", text: "Hi." }] }] },
+						],
 					},
 				],
 			});

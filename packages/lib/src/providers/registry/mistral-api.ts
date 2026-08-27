@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { getCredential } from "../../secrets";
-import type { Citation } from "../../text-extraction";
+import { type Citation, extractCitationsFromMistral } from "../../text-extraction";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
 import type {
 	Provider,
@@ -32,52 +32,55 @@ async function mistralPost(path: string, body: object): Promise<any> {
 	return res.json();
 }
 
-function parseConversationsResponse(data: any): { textContent: string; citations: Citation[]; webQueries: string[] } {
-	const texts: string[] = [];
-	const citations: Citation[] = [];
-	const webQueries: string[] = [];
-	const seen = new Set<string>();
-	let idx = 0;
+/** A payload field that should hold a list but may be missing or malformed. */
+function asList(value: unknown): any[] {
+	return Array.isArray(value) ? value : [];
+}
 
-	for (const entry of data?.outputs ?? []) {
-		// Tool-execution entries carry the search query as a JSON-encoded string
-		// in `arguments`. Best-effort parse — webQueries is a reporting signal,
-		// not load-bearing, so a malformed payload shouldn't blow up the response.
-		if (entry?.type === "tool.execution" && entry?.name === "web_search" && typeof entry.arguments === "string") {
-			try {
-				const args = JSON.parse(entry.arguments);
-				if (args?.query) webQueries.push(args.query);
-			} catch {
-				// ignore — keep going
-			}
+/**
+ * Search queries the model ran. Tool-execution entries carry the query as a
+ * JSON-encoded string in `arguments` — best-effort, since webQueries is a
+ * reporting signal and a malformed payload shouldn't fail the response.
+ */
+function conversationWebQueries(data: any): string[] {
+	const queries: string[] = [];
+	for (const entry of asList(data?.outputs)) {
+		if (entry?.type !== "tool.execution" || entry?.name !== "web_search") continue;
+		try {
+			const args = JSON.parse(entry.arguments);
+			if (args?.query) queries.push(args.query);
+		} catch {
+			// ignore — keep going
 		}
+	}
+	return queries;
+}
 
-		// Conversations API returns message content as either a plain string
-		// (single-shot replies) or an array of typed chunks (when tools cite sources).
+/**
+ * The answer text. Conversations returns message content as either a plain
+ * string (single-shot replies) or an array of typed chunks (when tools cite
+ * sources).
+ */
+function conversationText(data: any): string {
+	const texts: string[] = [];
+	for (const entry of asList(data?.outputs)) {
 		if (typeof entry?.content === "string") {
 			texts.push(entry.content);
 			continue;
 		}
-		for (const chunk of Array.isArray(entry?.content) ? entry.content : []) {
-			if (chunk?.type === "text" && typeof chunk.text === "string") {
-				texts.push(chunk.text);
-			} else if (chunk?.type === "tool_reference" && typeof chunk.url === "string" && !seen.has(chunk.url)) {
-				seen.add(chunk.url);
-				try {
-					citations.push({
-						url: chunk.url,
-						title: chunk.title ?? undefined,
-						domain: new URL(chunk.url).hostname.replace(/^www\./, ""),
-						citationIndex: idx++,
-					});
-				} catch (e) {
-					console.warn(`Mistral: skipping invalid citation URL: ${chunk.url}`, e);
-				}
-			}
+		for (const chunk of asList(entry?.content)) {
+			if (chunk?.type === "text" && typeof chunk.text === "string") texts.push(chunk.text);
 		}
 	}
+	return texts.join("\n");
+}
 
-	return { textContent: texts.join("\n"), citations, webQueries };
+function parseConversationsResponse(data: any): { textContent: string; citations: Citation[]; webQueries: string[] } {
+	return {
+		textContent: conversationText(data),
+		citations: extractCitationsFromMistral(data),
+		webQueries: conversationWebQueries(data),
+	};
 }
 
 export const mistralApi: Provider = {

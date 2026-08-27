@@ -1,6 +1,7 @@
 "use client";
 
 import { IconChevronDown, IconExternalLink } from "@tabler/icons-react";
+import { labelForModelFilter } from "@workspace/config/model-filter";
 import type { OptimizeButtonProps } from "@workspace/config/types";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -17,15 +18,6 @@ import { Fragment, useState } from "react";
 
 export type { OptimizeButtonProps };
 
-/**
- * Generate optimization URL for a prompt using template substitution
- *
- * Template placeholders:
- * - {brandId} - Organization/brand ID
- * - {prompt} - The prompt text (URL encoded)
- * - {webQuery} - The search query (URL encoded); callers pass the prompt
- *   itself when no genuine query is known
- */
 function generateOptimizationUrl(urlTemplate: string, promptValue: string, brandId: string, webQuery: string): string {
 	return urlTemplate
 		.replace("{brandId}", encodeURIComponent(brandId))
@@ -33,23 +25,10 @@ function generateOptimizationUrl(urlTemplate: string, promptValue: string, brand
 		.replace("{webQuery}", encodeURIComponent(webQuery));
 }
 
-function getModelDisplayName(model: string): string {
-	switch (model) {
-		case "openai":
-			return "ChatGPT";
-		case "anthropic":
-			return "Claude";
-		case "google":
-			return "Gemini";
-		default:
-			return model;
-	}
-}
-
 export function OptimizeButton({
 	brandId,
 	selectedModel = "all",
-	availableModels = ["openai", "anthropic", "google"],
+	availableModels,
 	lookback = "1m",
 	promptName,
 	promptId,
@@ -70,21 +49,13 @@ export function OptimizeButton({
 		setLoadingKey(key);
 
 		try {
-			let webQuery: string | null | undefined = null;
-
-			if (fetchWebQuery) {
-				const webQueryData = await fetchWebQuery(promptId, lookback ?? "1m", model);
-				webQuery = model ? webQueryData.modelWebQueries[model] : webQueryData.webQuery;
-			}
+			const modelWebQuery = await fetchWebQuery?.(promptId, lookback ?? "1m", model);
 
 			const url = generateOptimizationUrl(
 				optimizationUrlTemplate,
 				promptName,
 				brandId,
-				// No genuine search query known (the engine searched the prompt
-				// verbatim or doesn't expose its queries) — the prompt itself is
-				// the best stand-in.
-				webQuery || promptName,
+				modelWebQuery?.webQuery || promptName,
 			);
 
 			window.open(url, "_blank", "noopener,noreferrer");
@@ -127,7 +98,7 @@ export function OptimizeButton({
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-48">
 				{availableModels.map((model, index) => {
-					const modelName = getModelDisplayName(model);
+					const modelName = labelForModelFilter(model);
 					const loading = isLoading(model);
 					return (
 						<Fragment key={model}>

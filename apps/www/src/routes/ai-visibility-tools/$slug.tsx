@@ -1,17 +1,17 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { Navbar } from "@/components/navbar";
 import { CompetitorComparison } from "@/components/competitor-comparison";
 import { Footer } from "@/components/footer";
+import { Navbar } from "@/components/navbar";
+import { type Competitor, competitors, getComparisonFaqs, getComparisonSlug, isLowDR } from "@/lib/competitors";
 import {
-	ogMeta,
-	canonicalUrl,
 	breadcrumbJsonLd,
-	faqJsonLd,
+	canonicalUrl,
 	comparisonJsonLd,
-	softwareApplicationJsonLd,
 	ELMO_LISTING,
+	faqJsonLd,
+	ogMeta,
+	softwareApplicationJsonLd,
 } from "@/lib/seo";
-import { competitors, getComparisonSlug, getComparisonFaqs, isLowDR, type Competitor } from "@/lib/competitors";
 
 export const Route = createFileRoute("/ai-visibility-tools/$slug")({
 	head: ({ params }) => {

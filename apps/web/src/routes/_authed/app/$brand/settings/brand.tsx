@@ -3,21 +3,22 @@
  *
  * Form to edit brand name, website, additional domains, and aliases.
  */
-import { useState, useCallback, useEffect } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+
+import { IconInfoCircle } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
+import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
+import { TagsInput } from "@workspace/ui/components/tags-input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useCallback, useEffect, useState } from "react";
 import { useBrand } from "@/hooks/use-brands";
-import { updateBrandFn } from "@/server/brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
-import { IconInfoCircle } from "@tabler/icons-react";
-import { TagsInput } from "@workspace/ui/components/tags-input";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { updateBrandFn } from "@/server/brands";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/brand")({
 	head: ({ matches, match }) => {
@@ -42,12 +43,14 @@ function BrandSettingsPage() {
 	const [additionalDomains, setAdditionalDomains] = useState<string[]>([]);
 	const [aliases, setAliases] = useState<string[]>([]);
 
-	useEffect(() => {
-		if (brand) {
-			setAdditionalDomains(brand.additionalDomains || []);
-			setAliases(brand.aliases || []);
-		}
-	}, [brand?.updatedAt]);
+	// Reseed the fields when the brand changes server-side, without discarding
+	// whatever is being typed in between.
+	const [seededFrom, setSeededFrom] = useState<Date | null>(null);
+	if (brand && brand.updatedAt !== seededFrom) {
+		setSeededFrom(brand.updatedAt);
+		setAdditionalDomains(brand.additionalDomains || []);
+		setAliases(brand.aliases || []);
+	}
 
 	const validateDomain = useCallback((val: string): true | string => {
 		const cleaned = cleanAndValidateDomain(val);

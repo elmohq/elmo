@@ -2,8 +2,7 @@ import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
 import Anthropic from "@anthropic-ai/sdk";
 import { generateText, Output } from "ai";
 import { getCredential } from "../../secrets";
-import type { Citation } from "../../text-extraction";
-import { extractTextFromAnthropic } from "../../text-extraction";
+import { extractCitationsFromAnthropic, extractTextFromAnthropic } from "../../text-extraction";
 import {
 	ANTHROPIC_WEB_SEARCH_MAX_USES,
 	API_PROVIDER_MAX_OUTPUT_TOKENS,
@@ -74,7 +73,7 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 		.map((block) => (block as any).input?.query)
 		.filter(Boolean);
 
-	const citations = extractAnthropicCitations(response.content);
+	const citations = extractCitationsFromAnthropic(response);
 
 	// Strip full page text from web search results to reduce storage.
 	// Only url/title are used for citation extraction.
@@ -95,57 +94,6 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 		citations,
 		modelVersion: model,
 	};
-}
-
-function extractAnthropicCitations(content: Anthropic.Messages.ContentBlock[]): Citation[] {
-	const seen = new Set<string>();
-	const citations: Citation[] = [];
-	let idx = 0;
-
-	for (const block of content) {
-		// Citations from text blocks
-		if (block.type === "text") {
-			for (const cit of Array.isArray((block as any).citations) ? (block as any).citations : []) {
-				if (cit.type === "web_search_result_location" && cit.url) {
-					if (seen.has(cit.url)) continue;
-					seen.add(cit.url);
-					try {
-						const parsed = new URL(cit.url);
-						citations.push({
-							url: cit.url,
-							title: cit.title ?? undefined,
-							domain: parsed.hostname.replace(/^www\./, ""),
-							citationIndex: idx++,
-						});
-					} catch (e) {
-						console.warn(`Anthropic: skipping invalid citation URL: ${cit.url}`, e);
-					}
-				}
-			}
-		}
-		// Citations from web search results
-		if (block.type === "web_search_tool_result") {
-			for (const result of Array.isArray((block as any).content) ? (block as any).content : []) {
-				if (result.type === "web_search_result" && result.url) {
-					if (seen.has(result.url)) continue;
-					seen.add(result.url);
-					try {
-						const parsed = new URL(result.url);
-						citations.push({
-							url: result.url,
-							title: result.title ?? undefined,
-							domain: parsed.hostname.replace(/^www\./, ""),
-							citationIndex: idx++,
-						});
-					} catch (e) {
-						console.warn(`Anthropic: skipping invalid search result URL: ${result.url}`, e);
-					}
-				}
-			}
-		}
-	}
-
-	return citations;
 }
 
 export const anthropicApi: Provider = {

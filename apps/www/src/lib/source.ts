@@ -1,5 +1,5 @@
 import { docs } from "collections/server";
-import { loader, type LoaderPlugin } from "fumadocs-core/source";
+import { type LoaderPlugin, loader } from "fumadocs-core/source";
 import { openapiPlugin, openapiSource } from "fumadocs-openapi/server";
 import { openapi } from "@/lib/openapi";
 

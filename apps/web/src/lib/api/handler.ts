@@ -58,51 +58,57 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 			return errorResponse(401, "Unauthorized", "Valid API key required");
 		}
 
-		let parsedParams = params as P;
-		if (opts.params) {
-			const result = opts.params.safeParse(params);
-			if (!result.success) {
-				return errorResponse(400, "Validation Error", formatZodError(result.error));
-			}
-			parsedParams = result.data;
-		}
+		const parsedParams = opts.params ? parseAgainst(opts.params, params) : { data: params as P };
+		if ("response" in parsedParams) return parsedParams.response;
 
-		let parsedBody = undefined as B;
-		if (opts.body) {
-			let raw: unknown;
-			try {
-				raw = await request.json();
-			} catch {
-				return errorResponse(400, "Validation Error", "Request body must be valid JSON");
-			}
-			const result = opts.body.safeParse(raw);
-			if (!result.success) {
-				return errorResponse(400, "Validation Error", formatZodError(result.error));
-			}
-			parsedBody = result.data;
-		}
+		const parsedBody = opts.body ? await parseJsonBody(opts.body, request) : { data: undefined as B };
+		if ("response" in parsedBody) return parsedBody.response;
 
 		try {
-			const result = await opts.handle({ params: parsedParams, body: parsedBody, request });
-			if (result instanceof Response) {
-				return result;
-			}
-			return Response.json(result, { status: opts.status ?? 200 });
+			const result = await opts.handle({ params: parsedParams.data, body: parsedBody.data, request });
+			return result instanceof Response ? result : Response.json(result, { status: opts.status ?? 200 });
 		} catch (err) {
-			if (err instanceof ApiError || err instanceof EntitlementError) {
-				return errorResponse(err.status, err.error, err.message);
-			}
-			let mapped: ApiError | undefined;
-			try {
-				mapped = opts.mapError?.(err);
-			} catch (mapErr) {
-				console.error(`[api] ${request.method} ${new URL(request.url).pathname} mapError threw:`, mapErr);
-			}
-			if (mapped) {
-				return errorResponse(mapped.status, mapped.error, mapped.message);
-			}
-			console.error(`[api] ${request.method} ${new URL(request.url).pathname} failed:`, err);
-			return errorResponse(500, "Internal Server Error", "An unexpected error occurred");
+			return errorFromThrow(err, request, opts.mapError);
 		}
 	};
+}
+
+type Parsed<T> = { data: T } | { response: Response };
+
+function parseAgainst<T>(schema: z.ZodType<T>, value: unknown): Parsed<T> {
+	const result = schema.safeParse(value);
+	if (result.success) return { data: result.data };
+	return { response: errorResponse(400, "Validation Error", formatZodError(result.error)) };
+}
+
+async function parseJsonBody<B>(schema: z.ZodType<B>, request: Request): Promise<Parsed<B>> {
+	let raw: unknown;
+	try {
+		raw = await request.json();
+	} catch {
+		return { response: errorResponse(400, "Validation Error", "Request body must be valid JSON") };
+	}
+	return parseAgainst(schema, raw);
+}
+
+/**
+ * Turn whatever `handle` threw into a response: domain errors carry their own
+ * status, a route's mapError gets the next say, and anything left is a 500 the
+ * caller shouldn't see the details of.
+ */
+function errorFromThrow(err: unknown, request: Request, mapError?: (err: unknown) => ApiError | undefined): Response {
+	if (err instanceof ApiError || err instanceof EntitlementError) {
+		return errorResponse(err.status, err.error, err.message);
+	}
+
+	const route = `${request.method} ${new URL(request.url).pathname}`;
+	try {
+		const mapped = mapError?.(err);
+		if (mapped) return errorResponse(mapped.status, mapped.error, mapped.message);
+	} catch (mapErr) {
+		console.error(`[api] ${route} mapError threw:`, mapErr);
+	}
+
+	console.error(`[api] ${route} failed:`, err);
+	return errorResponse(500, "Internal Server Error", "An unexpected error occurred");
 }

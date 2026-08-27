@@ -64,7 +64,9 @@ function ChoosePlanPage() {
 	// The loader redirects an entitled org away unless it is returning from
 	// checkout, which the first branch handles.
 	const body =
-		status === "success" ? <ActivatingWorkspace organizationId={org} /> : paywall.needsPlan ? (
+		status === "success" ? (
+			<ActivatingWorkspace organizationId={org} />
+		) : paywall.needsPlan ? (
 			<PlanPicker paywall={paywall} />
 		) : null;
 

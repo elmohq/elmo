@@ -152,7 +152,12 @@
 @media print {
 	@page {
 		size: letter;
-		margin: 0.5in;
+		margin: 0.5in 0.6in;
+	}
+
+	body {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
 	}
 
 	button,

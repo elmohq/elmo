@@ -3,19 +3,20 @@
  *
  * Form to manage competitor list with multiple domains and aliases per competitor.
  */
-import { useState, useEffect } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+
 import { useQueryClient } from "@tanstack/react-query";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
+import { createFileRoute } from "@tanstack/react-router";
+import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
 import { Button } from "@workspace/ui/components/button";
+import { AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
+import { type CompetitorEntry, CompetitorsEditor } from "@/components/competitors-editor";
 import { useBrand, useCompetitors } from "@/hooks/use-brands";
-import { updateCompetitors } from "@/server/brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
-import { AlertTriangle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
-import { CompetitorsEditor, type CompetitorEntry } from "@/components/competitors-editor";
-import { v4 as uuidv4 } from "uuid";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { updateCompetitors } from "@/server/brands";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/competitors")({
 	head: ({ matches, match }) => {

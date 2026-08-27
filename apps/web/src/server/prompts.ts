@@ -28,6 +28,7 @@ import {
 	getPromptWebQueryCounts,
 } from "@/lib/postgres-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
+import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 // Server Functions
 // ============================================================================
 
@@ -82,6 +83,115 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 /**
  * Get prompts summary for a brand (visibility scores, tags, etc.)
  */
+type PromptDailyStat = Awaited<ReturnType<typeof getPromptDailyStats>>[number];
+type PromptCompetitorDailyStat = Awaited<ReturnType<typeof getPromptCompetitorDailyStats>>[number];
+type PromptWebQuery = Awaited<ReturnType<typeof getPromptWebQueriesForMapping>>[number];
+type PromptSummaryStat = Awaited<ReturnType<typeof getPromptsSummary>>[number];
+
+function buildVisibilityChartData(args: {
+	dateRange: string[];
+	dailyStats: PromptDailyStat[];
+	competitorStats: PromptCompetitorDailyStat[];
+	brandId: string;
+	competitors: { id: string; name: string }[];
+}): { date: string; [seriesId: string]: number | string | null }[] {
+	const runsByDate = new Map(args.dailyStats.map((stat) => [String(stat.date), stat]));
+	const mentionsByDate = new Map<string, Map<string, number>>();
+	for (const stat of args.competitorStats) {
+		const date = String(stat.date);
+		const byCompetitor = mentionsByDate.get(date) ?? new Map<string, number>();
+		byCompetitor.set(stat.competitor_name, Number(stat.mention_count));
+		mentionsByDate.set(date, byCompetitor);
+	}
+
+	return args.dateRange.map((date) => {
+		const dayStat = runsByDate.get(date);
+		const totalRuns = Number(dayStat?.total_runs ?? 0);
+		const rate = (count: number) => (totalRuns === 0 ? null : Math.round((count / totalRuns) * 100));
+		const mentions = mentionsByDate.get(date);
+		const point: { date: string; [seriesId: string]: number | string | null } = { date };
+		point[args.brandId] = rate(Number(dayStat?.brand_mentioned_count ?? 0));
+		for (const competitor of args.competitors) point[competitor.id] = rate(mentions?.get(competitor.name) ?? 0);
+		return point;
+	});
+}
+
+function earliestQuery(rows: PromptWebQuery[]): string | undefined {
+	const oldest = rows[0];
+	if (!oldest) return undefined;
+	const oldestTime = new Date(oldest.created_at_iso).getTime();
+	return rows
+		.filter((row) => new Date(row.created_at_iso).getTime() === oldestTime)
+		.map((row) => row.web_query)
+		.sort()[0];
+}
+
+/**
+ * The query this prompt first triggered, overall and per model — what labels the
+ * chart's series. Rows arrive oldest-first.
+ */
+function webQueryMappings(
+	rows: PromptWebQuery[],
+	promptId: string,
+): { webQueryMapping: Record<string, string>; modelWebQueryMappings: Record<string, Record<string, string>> } {
+	const overall = earliestQuery(rows);
+	const modelWebQueryMappings: Record<string, Record<string, string>> = {};
+	for (const model of new Set(rows.map((row) => row.model))) {
+		const query = earliestQuery(rows.filter((row) => row.model === model));
+		if (query) modelWebQueryMappings[model] = { [promptId]: query };
+	}
+	return { webQueryMapping: overall ? { [promptId]: overall } : {}, modelWebQueryMappings };
+}
+
+function summarizePrompt(
+	prompt: {
+		id: string;
+		value: string;
+		enabled: boolean;
+		createdAt: Date;
+		tags: string[] | null;
+		systemTags: string[] | null;
+	},
+	stats: PromptSummaryStat | undefined,
+	firstEvaluatedAt: string | Date | null | undefined,
+) {
+	const userTags = prompt.tags || [];
+	const { isBranded } = getEffectiveBrandedStatus(prompt.systemTags || [], userTags);
+	const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
+	const totalRuns = Number(stats?.total_runs ?? 0);
+	const brandMentionRate = Number(stats?.brand_mention_rate ?? 0);
+	const competitorMentionRate = Number(stats?.competitor_mention_rate ?? 0);
+
+	return {
+		id: prompt.id,
+		value: prompt.value,
+		enabled: prompt.enabled,
+		createdAt: prompt.createdAt,
+		totalRuns,
+		brandMentionRate,
+		competitorMentionRate,
+		averageWeightedMentions: totalRuns > 0 ? Number(stats?.total_weighted_mentions ?? 0) / totalRuns : 0,
+		hasVisibilityData: totalRuns > 0 && (brandMentionRate > 0 || competitorMentionRate > 0),
+		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
+		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
+		// Exactly one effective system tag, so branded and unbranded filters use
+		// the same status the UI shows.
+		tags: userTags.includes(systemTag) ? [...userTags] : [...userTags, systemTag],
+	};
+}
+
+type PromptSummary = ReturnType<typeof summarizePrompt>;
+
+function byVisibilityThenName(a: PromptSummary, b: PromptSummary): number {
+	const rank = (prompt: PromptSummary) => (prompt.hasVisibilityData ? 1 : prompt.totalRuns === 0 ? 2 : 3);
+	const rankA = rank(a);
+	if (rankA !== rank(b)) return rankA - rank(b);
+	if (rankA === 1 && a.averageWeightedMentions !== b.averageWeightedMentions) {
+		return b.averageWeightedMentions - a.averageWeightedMentions;
+	}
+	return a.value.localeCompare(b.value);
+}
+
 export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
@@ -90,6 +200,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			webSearchEnabled: z.string().optional(),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			timezone: z.string().optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -108,34 +219,8 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			return { prompts: [], totalPrompts: 0, availableTags: [] };
 		}
 
-		const timezone = "UTC";
-		let fromDateStr: string | null = null;
-		let toDateStr: string | null = null;
-
-		const lookbackParam = data.lookback || "1m";
-		if (lookbackParam && lookbackParam !== "all") {
-			const toDate = new Date();
-			const fromDate = new Date();
-			switch (lookbackParam) {
-				case "1w":
-					fromDate.setDate(fromDate.getDate() - 7);
-					break;
-				case "1m":
-					fromDate.setMonth(fromDate.getMonth() - 1);
-					break;
-				case "3m":
-					fromDate.setMonth(fromDate.getMonth() - 3);
-					break;
-				case "6m":
-					fromDate.setMonth(fromDate.getMonth() - 6);
-					break;
-				case "1y":
-					fromDate.setFullYear(fromDate.getFullYear() - 1);
-					break;
-			}
-			fromDateStr = fromDate.toISOString().split("T")[0];
-			toDateStr = toDate.toISOString().split("T")[0];
-		}
+		const timezone = resolveTimezone(data.timezone, "UTC");
+		const { fromDateStr, toDateStr } = getTimezoneLookbackRange((data.lookback || "1m") as LookbackPeriod, timezone);
 
 		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
 
@@ -152,61 +237,13 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		const tagFilter = data.tags?.split(",").filter(Boolean) || [];
 
 		const promptSummaries = allPrompts.map((p) => {
-			const stats = summaryMap.get(p.id);
-			const userTags = p.tags || [];
-			const effectiveStatus = getEffectiveBrandedStatus(p.systemTags || [], userTags);
-			const systemTag = effectiveStatus.isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
-			// Include exactly one effective system tag so both branded and
-			// unbranded filters use the same status shown in the UI.
-			const effectiveTags = userTags.includes(systemTag) ? [...userTags] : [...userTags, systemTag];
-
-			for (const tag of userTags) allUserTags.add(tag);
-
-			const totalRuns = stats ? Number(stats.total_runs) : 0;
-			const totalWeightedMentions = stats ? Number(stats.total_weighted_mentions) : 0;
-			const averageWeightedMentions = totalRuns > 0 ? totalWeightedMentions / totalRuns : 0;
-
-			return {
-				id: p.id,
-				value: p.value,
-				enabled: p.enabled,
-				createdAt: p.createdAt,
-				totalRuns,
-				brandMentionRate: stats ? Number(stats.brand_mention_rate) : 0,
-				competitorMentionRate: stats ? Number(stats.competitor_mention_rate) : 0,
-				averageWeightedMentions,
-				hasVisibilityData:
-					totalRuns > 0 &&
-					(Number(stats?.brand_mention_rate || 0) > 0 || Number(stats?.competitor_mention_rate || 0) > 0),
-				lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
-				firstEvaluatedAt: firstEvalMap.get(p.id) ? new Date(firstEvalMap.get(p.id)!) : null,
-				tags: effectiveTags,
-			};
+			for (const tag of p.tags || []) allUserTags.add(tag);
+			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id));
 		});
 
 		const filteredPrompts =
 			tagFilter.length > 0 ? promptSummaries.filter((p) => tagFilter.some((t) => p.tags.includes(t))) : promptSummaries;
-
-		const sortedPrompts = filteredPrompts.sort((a, b) => {
-			const getPriority = (prompt: typeof a): number => {
-				if (prompt.hasVisibilityData) return 1;
-				if (prompt.totalRuns === 0) return 2;
-				return 3;
-			};
-
-			const priorityA = getPriority(a);
-			const priorityB = getPriority(b);
-
-			if (priorityA !== priorityB) {
-				return priorityA - priorityB;
-			}
-
-			if (priorityA === 1 && a.averageWeightedMentions !== b.averageWeightedMentions) {
-				return b.averageWeightedMentions - a.averageWeightedMentions;
-			}
-
-			return a.value.localeCompare(b.value);
-		});
+		const sortedPrompts = filteredPrompts.sort(byVisibilityThenName);
 
 		return {
 			prompts: sortedPrompts,
@@ -589,45 +626,14 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
 
-		const timezone = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+		const timezone = resolveTimezone(data.timezone);
 		const lookbackParam = (data.lookback || "1m") as LookbackPeriod;
-
-		let fromDateStr: string | null = null;
-		let toDateStr: string | null = null;
-		let startDate: Date;
-		let endDate: Date;
-
-		const now = new Date();
-		const todayStr = now.toLocaleDateString("en-CA", { timeZone: timezone });
-
-		if (lookbackParam && lookbackParam !== "all") {
-			toDateStr = todayStr;
-			const fromDate = new Date(now);
-			switch (lookbackParam) {
-				case "1w":
-					fromDate.setDate(fromDate.getDate() - 6);
-					break;
-				case "1m":
-					fromDate.setMonth(fromDate.getMonth() - 1);
-					break;
-				case "3m":
-					fromDate.setMonth(fromDate.getMonth() - 3);
-					break;
-				case "6m":
-					fromDate.setMonth(fromDate.getMonth() - 6);
-					break;
-				case "1y":
-					fromDate.setFullYear(fromDate.getFullYear() - 1);
-					break;
-			}
-			fromDateStr = fromDate.toLocaleDateString("en-CA", { timeZone: timezone });
-			startDate = new Date(fromDateStr);
-			endDate = new Date(toDateStr);
-		} else {
-			toDateStr = todayStr;
-			startDate = new Date();
-			endDate = new Date(todayStr);
-		}
+		const { fromDateStr } = getTimezoneLookbackRange(lookbackParam, timezone);
+		// "all" leaves the query unbounded below; the chart still ends today, and
+		// its start is pulled back to the first day with data once that is known.
+		const toDateStr = new Date().toLocaleDateString("en-CA", { timeZone: timezone });
+		const endDate = new Date(toDateStr);
+		let startDate = fromDateStr ? new Date(fromDateStr) : new Date();
 
 		const [promptData, brandData, competitorsData] = await Promise.all([
 			db
@@ -661,87 +667,21 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 		}
 
 		const dateRange = generateDateRange(startDate, endDate);
-
-		const dailyStatsMap = new Map<string, { total_runs: number; brand_mentioned_count: number }>();
-		for (const stat of dailyStats) {
-			dailyStatsMap.set(String(stat.date), {
-				total_runs: Number(stat.total_runs),
-				brand_mentioned_count: Number(stat.brand_mentioned_count),
-			});
-		}
-
-		const competitorStatsMap = new Map<string, Map<string, number>>();
-		for (const stat of competitorStats) {
-			const dateStr = String(stat.date);
-			if (!competitorStatsMap.has(dateStr)) competitorStatsMap.set(dateStr, new Map());
-			competitorStatsMap.get(dateStr)!.set(stat.competitor_name, Number(stat.mention_count));
-		}
-
 		const sortedCompetitors = [...brandCompetitors].sort((a, b) => a.name.localeCompare(b.name));
-
-		const chartData = dateRange.map((date) => {
-			const dayStat = dailyStatsMap.get(date);
-			const totalRuns = dayStat?.total_runs || 0;
-			const dataPoint: { date: string; [key: string]: number | string | null } = { date };
-
-			if (totalRuns === 0) {
-				dataPoint[brand.id] = null;
-				sortedCompetitors.forEach((c) => {
-					dataPoint[c.id] = null;
-				});
-				return dataPoint;
-			}
-
-			dataPoint[brand.id] = Math.round(((dayStat?.brand_mentioned_count || 0) / totalRuns) * 100);
-
-			const competitorCounts = competitorStatsMap.get(date) || new Map();
-			sortedCompetitors.forEach((c) => {
-				dataPoint[c.id] = Math.round(((competitorCounts.get(c.name) || 0) / totalRuns) * 100);
-			});
-
-			return dataPoint;
+		const chartData = buildVisibilityChartData({
+			dateRange,
+			dailyStats,
+			competitorStats,
+			brandId: brand.id,
+			competitors: sortedCompetitors,
 		});
 
 		const totalRuns = dailyStats.reduce((sum, s) => sum + Number(s.total_runs), 0);
-		const hasVisibilityData = chartData.some((dp) => {
-			const allIds = [brand.id, ...sortedCompetitors.map((c) => c.id)];
-			return allIds.some((id) => dp[id] !== null && dp[id] !== undefined && Number(dp[id]) > 0);
-		});
-		const lastDataPoint = chartData.filter((p) => p[brand.id] !== null).pop();
-		const lastBrandVisibility = lastDataPoint ? (lastDataPoint[brand.id] as number) : null;
-
-		// Web query mappings
-		const webQueryMapping: Record<string, string> = {};
-		const modelWebQueryMappings: Record<string, Record<string, string>> = {};
-
-		if (webQueryData.length > 0) {
-			const oldestQuery = webQueryData[0];
-			if (oldestQuery) {
-				const oldestTime = new Date(oldestQuery.created_at_iso).getTime();
-				const oldestQueries = webQueryData
-					.filter((q) => new Date(q.created_at_iso).getTime() === oldestTime)
-					.map((q) => q.web_query)
-					.sort();
-				if (oldestQueries.length > 0) webQueryMapping[data.promptId] = oldestQueries[0];
-			}
-
-			const seenModels = new Set(webQueryData.map((q) => q.model));
-			for (const model of seenModels) {
-				const modelQueries = webQueryData.filter((q) => q.model === model);
-				if (modelQueries.length > 0) {
-					const oldest = modelQueries[0];
-					const oldestTime = new Date(oldest.created_at_iso).getTime();
-					const sorted = modelQueries
-						.filter((q) => new Date(q.created_at_iso).getTime() === oldestTime)
-						.map((q) => q.web_query)
-						.sort();
-					if (sorted.length > 0) {
-						if (!modelWebQueryMappings[model]) modelWebQueryMappings[model] = {};
-						modelWebQueryMappings[model][data.promptId] = sorted[0];
-					}
-				}
-			}
-		}
+		const seriesIds = [brand.id, ...sortedCompetitors.map((c) => c.id)];
+		const hasVisibilityData = chartData.some((point) => seriesIds.some((id) => Number(point[id] ?? 0) > 0));
+		const lastBrandVisibility =
+			(chartData.filter((point) => point[brand.id] !== null).pop()?.[brand.id] as number | undefined) ?? null;
+		const { webQueryMapping, modelWebQueryMappings } = webQueryMappings(webQueryData, data.promptId);
 
 		return {
 			prompt: { id: prompt.id, value: prompt.value },
@@ -774,49 +714,21 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
 
-		const timezone = data.timezone || "UTC";
-		const now = new Date();
-		const todayStr = now.toLocaleDateString("en-CA", { timeZone: timezone });
-		const toDateStr = todayStr;
-		let fromDateStr: string | null = null;
-
-		if (data.lookback && data.lookback !== "all") {
-			const fromDate = new Date(now);
-			switch (data.lookback) {
-				case "1w":
-					fromDate.setDate(fromDate.getDate() - 6);
-					break;
-				case "1m":
-					fromDate.setMonth(fromDate.getMonth() - 1);
-					break;
-				case "3m":
-					fromDate.setMonth(fromDate.getMonth() - 3);
-					break;
-				case "6m":
-					fromDate.setMonth(fromDate.getMonth() - 6);
-					break;
-				case "1y":
-					fromDate.setFullYear(fromDate.getFullYear() - 1);
-					break;
-			}
-			fromDateStr = fromDate.toLocaleDateString("en-CA", { timeZone: timezone });
-		}
+		const timezone = resolveTimezone(data.timezone, "UTC");
+		const { fromDateStr } = getTimezoneLookbackRange((data.lookback || "1m") as LookbackPeriod, timezone);
+		const toDateStr = new Date().toLocaleDateString("en-CA", { timeZone: timezone });
 
 		const webQueryData = await getPromptWebQueryCounts(data.promptId, fromDateStr, toDateStr, timezone, data.model);
 
 		let webQuery: string | null = null;
-		const modelWebQueries: Record<string, string> = {};
 		let maxOverallCount = 0;
 
 		for (const row of webQueryData) {
-			if (!modelWebQueries[row.model]) {
-				modelWebQueries[row.model] = row.web_query;
-			}
 			if (row.query_count > maxOverallCount) {
 				maxOverallCount = row.query_count;
 				webQuery = row.web_query;
 			}
 		}
 
-		return { webQuery, modelWebQueries };
+		return { webQuery };
 	});
