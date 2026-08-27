@@ -37,11 +37,11 @@ overrides:
   fast-uri: "^4.1.0"
   form-data: "^4.0.6"
   axios: "^1.18.0"
-  # Both cap below v12 in their own manifests (auth0 at ^11.1.1, @usebruno/js at ^10.0.0),
-  # so they stay on the v11 line. Scoped per-parent so a workspace package can move to a
-  # newer major.
-  "auth0>uuid": "^11.1.1"
-  "@usebruno/js>uuid": "^11.1.1"
+  # Global so the tree keeps a single copy. auth0 and @usebruno/js cap below v12 in their
+  # own manifests, but only because v12 dropped the CommonJS build -- Node 24 loads the
+  # ESM-only one through require(). auth0 reaches uuid solely on the private_key_jwt
+  # branch, which this repo does not use.
+  uuid: "^14.0.2"
   shell-quote: "^1.8.5"
   ws: "^8.20.1"
   protobufjs: "^7.5.8"
