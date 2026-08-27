@@ -12,7 +12,7 @@
 import { db } from "@workspace/lib/db/db";
 import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { isSystemTag, normalizeTag } from "@workspace/lib/tag-utils";
-import { eq } from "drizzle-orm";
+import { and, arrayContains, eq, sql } from "drizzle-orm";
 import { ApiError } from "@/lib/api/handler";
 
 export interface Tag {
@@ -68,43 +68,52 @@ export async function listBrandTags(brandId: string): Promise<Tag[]> {
 	return [...system, ...user];
 }
 
-/** Returns how many prompts actually changed, which is not the same as how many carried the tag. */
+/**
+ * Rename a tag across every prompt in the brand, in one statement.
+ *
+ * One set-based update rather than a read-then-write per prompt: the loop it
+ * replaces left the brand half-renamed if it failed partway, and could clobber
+ * a concurrent prompt edit with the array it had read moments earlier.
+ *
+ * `array_remove` then `array_append` is what merges a rename onto a tag a
+ * prompt already carries — removing both spellings first means the append can't
+ * leave a duplicate behind.
+ */
 export async function renameBrandTag(brandId: string, from: string, to: string): Promise<number> {
 	assertNotSystemTag(from);
 	const target = normalizeTag(to);
 	assertNotSystemTag(target);
-
 	const source = normalizeTag(from);
-	const rows = (await brandPrompts(brandId)).filter((row) => (row.tags ?? []).map(normalizeTag).includes(source));
+
+	if (source === target) return 0;
+
+	const rows = await db
+		.update(prompts)
+		.set({
+			tags: sql`array_append(array_remove(array_remove(${prompts.tags}, ${source}), ${target}), ${target})`,
+		})
+		.where(and(eq(prompts.brandId, brandId), arrayContains(prompts.tags, [source])))
+		.returning({ id: prompts.id });
+
 	if (rows.length === 0) {
 		throw new ApiError(404, "Not Found", `Tag "${source}" not found on any prompt in this brand.`);
 	}
-
-	let updated = 0;
-	for (const row of rows) {
-		// Renaming onto a tag a prompt already carries merges the two; the Set
-		// keeps that from leaving a duplicate behind.
-		const next = [
-			...new Set((row.tags ?? []).map((tag) => (normalizeTag(tag) === source ? target : normalizeTag(tag)))),
-		];
-		await db.update(prompts).set({ tags: next }).where(eq(prompts.id, row.id));
-		updated++;
-	}
-	return updated;
+	return rows.length;
 }
 
+/** Remove a tag from every prompt in the brand, in one statement. */
 export async function removeBrandTag(brandId: string, tag: string): Promise<number> {
 	assertNotSystemTag(tag);
 	const target = normalizeTag(tag);
 
-	const rows = (await brandPrompts(brandId)).filter((row) => (row.tags ?? []).map(normalizeTag).includes(target));
+	const rows = await db
+		.update(prompts)
+		.set({ tags: sql`array_remove(${prompts.tags}, ${target})` })
+		.where(and(eq(prompts.brandId, brandId), arrayContains(prompts.tags, [target])))
+		.returning({ id: prompts.id });
+
 	if (rows.length === 0) {
 		throw new ApiError(404, "Not Found", `Tag "${target}" not found on any prompt in this brand.`);
-	}
-
-	for (const row of rows) {
-		const next = (row.tags ?? []).filter((existing) => normalizeTag(existing) !== target);
-		await db.update(prompts).set({ tags: next }).where(eq(prompts.id, row.id));
 	}
 	return rows.length;
 }
