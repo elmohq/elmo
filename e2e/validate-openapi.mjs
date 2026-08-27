@@ -29,13 +29,23 @@ function resolve(schema) {
 		return resolve(SPEC.components.schemas[name]);
 	}
 	if (schema?.allOf) {
-		// The spec only ever uses allOf to add properties to a base object.
-		return schema.allOf.map(resolve).reduce((merged, part) => ({
+		const { allOf, ...siblings } = schema;
+		const merged = allOf.map(resolve).reduce(
+			(acc, part) => ({
+				...acc,
+				...part,
+				properties: { ...acc.properties, ...part.properties },
+				required: [...(acc.required ?? []), ...(part.required ?? [])],
+			}),
+			{},
+		);
+		// `nullable` beside an allOf is how OpenAPI 3.0 spells a nullable $ref —
+		// a bare `$ref` can carry no siblings, so it gets wrapped in one.
+		return {
 			...merged,
-			...part,
-			properties: { ...merged.properties, ...part.properties },
-			required: [...(merged.required ?? []), ...(part.required ?? [])],
-		}), {});
+			...siblings,
+			required: [...(merged.required ?? []), ...(siblings.required ?? [])],
+		};
 	}
 	return schema ?? {};
 }
@@ -165,16 +175,17 @@ const alwaysPresent = [...out.optionalSeen.entries()].filter(
 console.log(`checked ${checked} responses against the spec`);
 if (unmatched) console.log(`${unmatched} responses hit no documented path (redirects and unclaimed routes)`);
 
+const unique = [...new Set(out.violations)].sort();
+if (unique.length) {
+	console.log(`\n${unique.length} response(s) contradict the spec:`);
+	for (const violation of unique) console.log(`  ${violation}`);
+} else {
+	console.log("\nno response contradicted the spec");
+}
+
 if (alwaysPresent.length) {
 	console.log(`\ndrift — documented optional, but present in every response observed:`);
 	for (const [key, seen] of alwaysPresent) console.log(`  ${key} (${seen.present}/${seen.total})`);
 }
 
-if (out.violations.length) {
-	const unique = [...new Set(out.violations)].sort();
-	console.error(`\n${unique.length} response(s) contradict the spec:`);
-	for (const violation of unique) console.error(`  ${violation}`);
-	process.exit(1);
-}
-
-console.log("\nno response contradicted the spec");
+if (unique.length) process.exit(1);

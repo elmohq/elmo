@@ -872,7 +872,8 @@
 							}
 						},
 						"description": "The key's configured limit — generous by design: it exists to stop a runaway loop, not to meter normal use. Enforcement is a fixed window and approximate under concurrency.",
-						"nullable": true
+						"nullable": true,
+						"required": ["limit", "window"]
 					},
 					"deployment": {
 						"type": "object",
@@ -4630,7 +4631,7 @@
 											}
 										}
 									},
-									"required": ["reportId", "status", "brandName", "brandWebsite", "createdAt"]
+									"required": ["reportId", "status", "brandName", "brandWebsite", "createdAt", "completedAt"]
 								},
 								"example": {
 									"reportId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
