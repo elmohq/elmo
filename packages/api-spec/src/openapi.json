@@ -861,7 +861,8 @@
 								"type": "string",
 								"enum": ["minute", "hour"]
 							}
-						}
+						},
+						"description": "The key's configured limit. Enforcement is a fixed window and approximate under concurrency."
 					},
 					"deployment": {
 						"type": "object",
@@ -1906,7 +1907,7 @@
 						}
 					},
 					"X-RateLimit-Remaining": {
-						"description": "Requests left in the current window.",
+						"description": "Requests left in the current window. Counted with a read-modify-write per request, so treat it as a guide and back off on 429 rather than riding it to zero.",
 						"schema": {
 							"type": "integer"
 						}

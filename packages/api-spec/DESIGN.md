@@ -140,7 +140,13 @@ tenant-scoped brand ids, a schema change with no other motivation.
 | Cross-org access       | yes                              | never                                     |
 | Plan entitlements      | the target org's, same as anyone | the same `assert*` guards the dashboard calls |
 | Read-only (demo) mode  | blocked on writes                | blocked on writes                         |
-| Request rate limit     | none                             | per-key, default 120/min, `X-RateLimit-*` + `429` |
+| Request rate limit     | none                             | per-key, default 120/min, `X-RateLimit-*` + `429` (see below) |
+
+The rate limit is the plugin's: a fixed window counted with a read-modify-write
+per request, so under concurrency it is approximate. `X-RateLimit-Remaining` is
+a guide, not a ledger — clients should back off on `429` rather than trying to
+ride the number to zero. Say so in the docs rather than implying a precision the
+counter doesn't have.
 
 **An admin key is not exempt from a customer's plan.** It bypasses tenancy and
 scopes — that is what makes it an operator key — but a limit protects the
