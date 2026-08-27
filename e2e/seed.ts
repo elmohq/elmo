@@ -9,14 +9,18 @@
  *
  * Usage: tsx seed.ts
  */
+import { createHash } from "node:crypto";
 import pg from "pg";
 import {
+  API_KEYS,
+  type ApiKeyFixture,
   COMPETITOR_IDS,
   DATABASE_URL,
   NIKE_BRAND_ID,
   NIKE_COMPETITOR_IDS,
   NIKE_ORG_ID,
   NIKE_PROMPT_IDS,
+  NIKE_SECOND_BRAND_ID,
   PROMPT_IDS,
   REPORT_IDS,
   TEST_BRAND_ID,
@@ -34,6 +38,79 @@ const RUN_IDS = [
   "00000000-0000-0000-0000-200000000007",
   "00000000-0000-0000-0000-200000000008",
 ];
+
+
+/**
+ * How better-auth's api-key plugin stores a key: unpadded base64url of the
+ * SHA-256 digest. Reproduced here so the suite can seed keys straight into the
+ * table without a session or a running app.
+ */
+function hashApiKey(token: string): string {
+  return createHash("sha256").update(token).digest("base64url");
+}
+
+/** better-auth stores permissions as `{ resource: [action] }`. */
+function toPermissions(scopes: readonly string[]): Record<string, string[]> {
+  const permissions: Record<string, string[]> = {};
+  for (const scope of scopes) {
+    const [resource, action] = scope.split(":");
+    (permissions[resource] ??= []).push(action);
+  }
+  return permissions;
+}
+
+/**
+ * Seed the API keys the Bruno suite authenticates as.
+ *
+ * Skipped when the `apikey` table isn't there yet: organization keys are still
+ * being built, and the seeder has to keep working — and keep every other suite
+ * working — until the migration lands. The Bruno cases that need these keys
+ * fail until then, which is the point of having written them first.
+ */
+async function seedApiKeys(client: pg.Client): Promise<void> {
+  const [{ exists }] = (
+    await client.query<{ exists: boolean }>(
+      "SELECT to_regclass('public.apikey') IS NOT NULL AS exists",
+    )
+  ).rows;
+  if (!exists) {
+    console.log("  Skipped API keys: the apikey table does not exist yet");
+    return;
+  }
+
+  const [{ id: ownerId }] = (
+    await client.query<{ id: string }>("SELECT id FROM \"user\" ORDER BY created_at LIMIT 1")
+  ).rows ?? [];
+  if (!ownerId) {
+    console.log("  Skipped API keys: no user to attribute them to yet");
+    return;
+  }
+
+  await client.query("DELETE FROM apikey WHERE name LIKE 'E2E %'");
+
+  const keys = Object.values(API_KEYS) as ApiKeyFixture[];
+  for (const [index, key] of keys.entries()) {
+    await client.query(
+      `INSERT INTO apikey (
+         id, name, start, prefix, key, reference_id, enabled,
+         rate_limit_enabled, rate_limit_time_window, rate_limit_max,
+         request_count, expires_at, permissions, metadata, created_at, updated_at
+       ) VALUES ($1, $2, $3, 'elmo', $4, $5, $6, true, 60000, 120, 0, $7, $8, $9, NOW(), NOW())`,
+      [
+        `e2e-apikey-${index + 1}`,
+        key.name,
+        key.token.slice(0, 12),
+        hashApiKey(key.token),
+        ownerId,
+        key.enabled !== false,
+        key.expiresInMs === undefined ? null : new Date(Date.now() + key.expiresInMs),
+        JSON.stringify(toPermissions(key.scopes)),
+        JSON.stringify({ organizationId: key.organizationId, brandIds: key.brandIds }),
+      ],
+    );
+  }
+  console.log(`  Created ${keys.length} API keys`);
+}
 
 async function seed() {
   const client = new pg.Client({ connectionString: DATABASE_URL });
@@ -432,7 +509,16 @@ async function seed() {
         [nikeRunId, NIKE_PROMPT_IDS.training, NIKE_BRAND_ID, cite.url, cite.domain, cite.title, i],
       );
     }
-    console.log("  Created second tenant: Nike (brand, 2 prompts, 2 competitors, 1 run, 2 citations)");
+    // A second brand in the same org, so a key narrowed to one brand has
+    // something inside its own organization that it must not reach.
+    await client.query(
+      `INSERT INTO brands (id, organization_id, name, website, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $2, 'Jordan', 'https://jordan.com', true, true, NOW(), NOW())`,
+      [NIKE_SECOND_BRAND_ID, NIKE_ORG_ID],
+    );
+    console.log("  Created second tenant: Nike (2 brands, 2 prompts, 2 competitors, 1 run, 2 citations)");
+
+    await seedApiKeys(client);
 
     console.log("\nE2E database seeding complete!");
     console.log(`  Brand: ${TEST_BRAND_ID} (${TEST_BRAND_NAME})`);

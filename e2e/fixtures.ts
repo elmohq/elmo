@@ -51,6 +51,12 @@ export const REPORT_IDS = {
 // Second tenant — a brand in an org the E2E user is NOT a member of.
 export const NIKE_ORG_ID = "nike";
 export const NIKE_BRAND_ID = "nike";
+/**
+ * A second brand inside the Nike org, so a key narrowed to one brand of an org
+ * it fully belongs to has something to be narrowed *away* from. Deliberately in
+ * the tenant the E2E user can't see, so no dashboard spec's brand list changes.
+ */
+export const NIKE_SECOND_BRAND_ID = "nike-jordan";
 export const NIKE_PROMPT_IDS = {
   training: "00000000-0000-0000-0000-400000000001",
   lifestyle: "00000000-0000-0000-0000-400000000002",
@@ -59,6 +65,123 @@ export const NIKE_COMPETITOR_IDS = {
   adidas: "00000000-0000-0000-0000-410000000001",
   puma: "00000000-0000-0000-0000-410000000002",
 } as const;
+
+// ---------------------------------------------------------------------------
+// API keys
+// ---------------------------------------------------------------------------
+
+/**
+ * The organization keys the Bruno suite authenticates as, one per access
+ * pattern the API has to get right. Seeded directly into the `apikey` table
+ * (see seed.ts) rather than minted over HTTP, so the suite doesn't depend on a
+ * session or on the key-management UI existing yet.
+ *
+ * `scopes` mirrors what better-auth stores in `apikey.permissions`
+ * (`{ resource: [action] }`); the wire format the API reports is
+ * `resource:action`.
+ */
+export const API_SCOPES = [
+  "brands:read",
+  "brands:write",
+  "prompts:read",
+  "prompts:write",
+  "competitors:read",
+  "competitors:write",
+  "analytics:read",
+  "runs:read",
+  "billing:read",
+  "reports:read",
+  "reports:write",
+] as const;
+
+export type ApiScope = (typeof API_SCOPES)[number];
+
+export const READ_SCOPES = API_SCOPES.filter((scope) => scope.endsWith(":read"));
+
+export interface ApiKeyFixture {
+  /** The plaintext token a request sends. Hashed on the way into the table. */
+  token: string;
+  name: string;
+  organizationId: string;
+  scopes: readonly ApiScope[];
+  /** Empty means every brand in the organization. */
+  brandIds: readonly string[];
+  enabled?: boolean;
+  /** Milliseconds from seed time; negative for an already-expired key. */
+  expiresInMs?: number;
+}
+
+export const API_KEYS = {
+  /** Everything the default tenant can do. The default identity for happy paths. */
+  orgFull: {
+    token: "elmo_e2e_org_full",
+    name: "E2E org key (full)",
+    organizationId: TEST_BRAND_ID,
+    scopes: API_SCOPES,
+    brandIds: [],
+  },
+  /** Every read scope and no write scope: writes must 403, reads must succeed. */
+  orgReadOnly: {
+    token: "elmo_e2e_org_readonly",
+    name: "E2E org key (read-only)",
+    organizationId: TEST_BRAND_ID,
+    scopes: READ_SCOPES,
+    brandIds: [],
+  },
+  /** Only brands:read — every other resource must 403 on missing scope. */
+  orgBrandsOnly: {
+    token: "elmo_e2e_org_brands_only",
+    name: "E2E org key (brands only)",
+    organizationId: TEST_BRAND_ID,
+    scopes: ["brands:read"],
+    brandIds: [],
+  },
+  /** Full access except billing:read, so the billing endpoint must 403. */
+  orgNoBilling: {
+    token: "elmo_e2e_org_no_billing",
+    name: "E2E org key (no billing)",
+    organizationId: TEST_BRAND_ID,
+    scopes: API_SCOPES.filter((scope) => scope !== "billing:read"),
+    brandIds: [],
+  },
+  /** The other tenant. Must never see anything belonging to the default org. */
+  nikeFull: {
+    token: "elmo_e2e_nike_full",
+    name: "E2E Nike key (full)",
+    organizationId: NIKE_ORG_ID,
+    scopes: API_SCOPES,
+    brandIds: [],
+  },
+  /**
+   * Nike's org, narrowed to one of its two brands. Proves a restriction narrows
+   * a key below what its organization would otherwise reach.
+   */
+  nikeNarrow: {
+    token: "elmo_e2e_nike_narrow",
+    name: "E2E Nike key (one brand)",
+    organizationId: NIKE_ORG_ID,
+    scopes: API_SCOPES,
+    brandIds: [NIKE_BRAND_ID],
+  },
+  /** Past its expiry: must 401 exactly like an unknown key. */
+  expired: {
+    token: "elmo_e2e_expired",
+    name: "E2E org key (expired)",
+    organizationId: TEST_BRAND_ID,
+    scopes: API_SCOPES,
+    brandIds: [],
+    expiresInMs: -60_000,
+  },
+  /** Revoked: must 401 exactly like an unknown key. */
+  disabled: {
+    token: "elmo_e2e_disabled",
+    name: "E2E org key (revoked)",
+    organizationId: TEST_BRAND_ID,
+    scopes: API_SCOPES,
+    brandIds: [],
+    enabled: false,
+  },
+} as const satisfies Record<string, ApiKeyFixture>;
 
 // ---------------------------------------------------------------------------
 // Deployment modes
