@@ -4,12 +4,12 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/comp
 import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useMemo, useState } from "react";
-import { BrandLogo } from "@/components/brand-logo";
 import { UnderlineTabs } from "@/components/citations/shared";
 import { TrackDomainPopover } from "@/components/citations/track-domain-popover";
 import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 import { DOMAIN_CATEGORY_COLORS, ProgressBarChart } from "@/components/progress-bar-chart";
+import { SiteIcon } from "@/components/site-icon";
 
 export function TopDomainsCard({
 	domains,
@@ -101,7 +101,7 @@ export function TopDomainsCard({
 							items={pageItems.map((domain) => ({
 								label: domain.domain,
 								count: domain.count,
-								icon: <BrandLogo domain={domain.domain} size="md" />,
+								icon: <SiteIcon domain={domain.domain} size="md" />,
 								category: domain.category || "other",
 								action:
 									domain.category === "other" && brandId && competitors ? (

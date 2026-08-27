@@ -17,7 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { BrandLogo } from "@/components/brand-logo";
+import { SiteIcon } from "@/components/site-icon";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
 export interface CompetitorEntry {
@@ -67,7 +67,7 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 			{competitors.map((competitor, index) => (
 				<div key={competitor._key} className="border rounded-lg overflow-hidden">
 					<div className="flex items-center gap-3 p-3">
-						<BrandLogo domain={competitor.domains.find(Boolean)} size="lg" />
+						<SiteIcon domain={competitor.domains.find(Boolean)} size="lg" />
 						<div className="flex-1 min-w-0">
 							{competitor.name ? (
 								<span className="text-sm font-medium">{competitor.name}</span>

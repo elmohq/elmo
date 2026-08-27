@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import { useBrand, useCompetitors } from "@/hooks/use-brands";
-import { buildBrandDomainIndex, domainForName } from "@/lib/brand-logo";
+import { buildBrandDomainIndex, domainForName } from "@/lib/site-icon";
 
 /**
- * Logo domains for everyone a brand's pages can name: the brand itself and the
+ * Icon domains for everyone a brand's pages can name: the brand itself and the
  * competitors it tracks. Mention data carries names only, so surfaces that
  * render those names look the domain up here.
  */
-export function useBrandLogos(brandId?: string) {
+export function useSiteIcons(brandId?: string) {
 	const { brand } = useBrand(brandId);
 	const { competitors } = useCompetitors(brandId);
 

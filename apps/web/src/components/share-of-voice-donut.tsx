@@ -5,7 +5,7 @@
 
 import { ChartContainer } from "@workspace/ui/components/chart";
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
-import { BrandLogo } from "@/components/brand-logo";
+import { SiteIcon } from "@/components/site-icon";
 import { BRAND_COLOR, OTHERS_COLOR, COMPETITOR_PALETTE as PALETTE } from "@/lib/share-of-voice-palette";
 import type { ShareOfVoiceEntry } from "@/server/analysis";
 
@@ -74,7 +74,7 @@ export function ShareOfVoiceDonut({
 						const s = payload[0].payload as Slice;
 						return (
 							<div className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs shadow-md">
-								{s.name !== "Others" && <BrandLogo domain={s.domain} size="xs" />}
+								{s.name !== "Others" && <SiteIcon domain={s.domain} size="xs" />}
 								<span>
 									{s.name}: {Math.round((s.value / total) * 100)}%
 								</span>

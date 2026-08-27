@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/component
 import { Spinner } from "@workspace/ui/components/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useState } from "react";
-import { BrandLogo } from "@/components/brand-logo";
+import { SiteIcon } from "@/components/site-icon";
 import { useBrand } from "@/hooks/use-brands";
 import { addDomainToBrandFn, addDomainToCompetitorFn, createCompetitorFromDomainFn } from "@/server/brands";
 
@@ -125,7 +125,7 @@ export function TrackDomainPopover({
 							disabled={saving}
 							className="flex w-full items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
 						>
-							<BrandLogo domain={brand?.website} size="sm" />
+							<SiteIcon domain={brand?.website} size="sm" />
 							{brandName || "My brand"}
 						</button>
 					</div>
@@ -151,7 +151,7 @@ export function TrackDomainPopover({
 										disabled={saving}
 										className="flex w-full items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
 									>
-										<BrandLogo domain={c.domains.find(Boolean)} size="sm" />
+										<SiteIcon domain={c.domains.find(Boolean)} size="sm" />
 										{c.name}
 									</button>
 								))}

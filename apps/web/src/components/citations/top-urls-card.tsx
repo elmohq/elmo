@@ -6,7 +6,6 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/comp
 import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useMemo, useState } from "react";
-import { BrandLogo } from "@/components/brand-logo";
 import {
 	extractFilenameFromUrl,
 	formatUrlForDisplay,
@@ -16,6 +15,7 @@ import {
 } from "@/components/citations/shared";
 import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
+import { SiteIcon } from "@/components/site-icon";
 
 export function TopUrlsCard({
 	urls,
@@ -158,7 +158,7 @@ export function TopUrlsCard({
 								rel="noopener noreferrer"
 								className="flex items-start justify-between gap-3 py-3 group"
 							>
-								<BrandLogo domain={citation.domain} size="lg" className="mt-0.5" />
+								<SiteIcon domain={citation.domain} size="lg" className="mt-0.5" />
 								<div className="min-w-0 flex-1">
 									<div className="flex items-center gap-2 mb-0.5">
 										<Badge

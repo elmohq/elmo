@@ -15,8 +15,8 @@ import { buttonVariants } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import { inArray } from "drizzle-orm";
-import { BrandLogo } from "@/components/brand-logo";
 import FullPageCard from "@/components/full-page-card";
+import { SiteIcon } from "@/components/site-icon";
 import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 
@@ -115,7 +115,7 @@ function BrandSwitcherPage() {
 								params={{ brand: brand.id }}
 								className={buttonVariants({ variant: "secondary" })}
 							>
-								<BrandLogo domain={brand.website} size="md" />
+								<SiteIcon domain={brand.website} size="md" />
 								{brand.name}
 							</Link>
 						))}

@@ -5,7 +5,7 @@ import React from "react";
 
 export type ProgressBarItem = {
 	label: string;
-	/** Rendered before the label — a `BrandLogo`, on the charts that name brands or domains. */
+	/** Rendered before the label — a `SiteIcon`, on the charts that name brands or domains. */
 	icon?: React.ReactNode;
 	count: number;
 	subtitle?: string;

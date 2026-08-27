@@ -1,23 +1,23 @@
 /**
- * BrandLogo — the mark shown beside a brand, competitor, or cited domain.
+ * SiteIcon — the mark shown beside a brand, competitor, or cited domain.
  *
  * The icons themselves come from a third-party service, so the galleries need
  * network access to look right; the fallback story does not.
  */
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, waitFor, within } from "storybook/test";
-import { BrandLogo, type BrandLogoSize } from "@/components/brand-logo";
+import { SiteIcon, type SiteIconSize } from "@/components/site-icon";
 
 const meta = {
-	title: "Components/Brand Logo",
-	component: BrandLogo,
-} satisfies Meta<typeof BrandLogo>;
+	title: "Components/Site Icon",
+	component: SiteIcon,
+} satisfies Meta<typeof SiteIcon>;
 
 export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const SIZES: BrandLogoSize[] = ["xs", "sm", "md", "lg"];
+const SIZES: SiteIconSize[] = ["xs", "sm", "md", "lg"];
 
 export const Sizes: Story = {
 	args: { domain: "nike.com" },
@@ -25,7 +25,7 @@ export const Sizes: Story = {
 		<div className="flex items-center gap-6 p-8">
 			{SIZES.map((size) => (
 				<div key={size} className="flex flex-col items-center gap-2">
-					<BrandLogo {...args} size={size} />
+					<SiteIcon {...args} size={size} />
 					<span className="text-xs text-muted-foreground">{size}</span>
 				</div>
 			))}
@@ -43,7 +43,7 @@ export const Subjects: Story = {
 				{ name: "reddit.com", domain: "reddit.com" },
 			].map((subject) => (
 				<div key={subject.name} className="flex items-center gap-2 text-sm">
-					<BrandLogo domain={subject.domain} size="lg" />
+					<SiteIcon domain={subject.domain} size="lg" />
 					{subject.name}
 				</div>
 			))}
@@ -67,7 +67,7 @@ export const MissingIcons: Story = {
 				{ label: "domain doesn't resolve", domain: "example.invalid" },
 			].map((subject) => (
 				<div key={subject.label} className="flex items-center gap-2 text-sm">
-					<BrandLogo domain={subject.domain} size="lg" />
+					<SiteIcon domain={subject.domain} size="lg" />
 					{subject.label}
 				</div>
 			))}

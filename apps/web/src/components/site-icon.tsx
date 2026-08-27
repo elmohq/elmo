@@ -1,5 +1,5 @@
 /**
- * The logo for a brand, competitor, or cited domain.
+ * The icon for a brand, competitor, or cited domain.
  *
  * Decorative by design — every surface renders the name alongside it, so the
  * mark carries no information a screen reader would otherwise miss.
@@ -8,13 +8,13 @@ import { IconWorld } from "@tabler/icons-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import { cn } from "@workspace/ui/lib/utils";
 import { useState } from "react";
-import { faviconUrl } from "@/lib/brand-logo";
+import { faviconUrl } from "@/lib/site-icon";
 
-export type BrandLogoSize = "xs" | "sm" | "md" | "lg";
+export type SiteIconSize = "xs" | "sm" | "md" | "lg";
 
 // `request` is the pixel size asked of the favicon service — 2x the rendered
 // box, so the icon stays sharp on retina displays.
-const SIZES: Record<BrandLogoSize, { box: string; request: number }> = {
+const SIZES: Record<SiteIconSize, { box: string; request: number }> = {
 	xs: { box: "size-4", request: 32 },
 	sm: { box: "size-5", request: 64 },
 	md: { box: "size-6", request: 64 },
@@ -31,14 +31,14 @@ const GLYPH_SCALE = "size-[75%]";
 // one signal we get that the icon is missing.
 const PLACEHOLDER_SIZE = 16;
 
-export function BrandLogo({
+export function SiteIcon({
 	domain,
 	size = "sm",
 	className,
 }: {
 	/** Domain or website URL. Without one, the mark is the fallback glyph. */
 	domain?: string | null;
-	size?: BrandLogoSize;
+	size?: SiteIconSize;
 	className?: string;
 }) {
 	const { box, request } = SIZES[size];

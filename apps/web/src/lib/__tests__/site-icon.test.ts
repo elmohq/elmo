@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildBrandDomainIndex, domainForName, faviconUrl } from "@/lib/brand-logo";
+import { buildBrandDomainIndex, domainForName, faviconUrl } from "@/lib/site-icon";
 
 describe("faviconUrl", () => {
 	it("asks the icon service for the site behind a bare domain", () => {
@@ -32,7 +32,7 @@ describe("buildBrandDomainIndex", () => {
 		{ name: "Unknown Co", domains: [] },
 	]);
 
-	it("resolves a name to its logo domain", () => {
+	it("resolves a name to its icon domain", () => {
 		expect(domainForName(index, "Nike")).toBe("nike.com");
 	});
 

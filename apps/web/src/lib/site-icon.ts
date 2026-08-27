@@ -1,9 +1,9 @@
 /**
- * Resolving a brand, competitor, or bare domain to a logo.
+ * Resolving a brand, competitor, or bare domain to a site icon.
  *
- * Logos come from Google's favicon service, which takes a site URL and returns
+ * Icons come from Google's favicon service, which takes a site URL and returns
  * that site's icon. Nothing is stored on our side: the browser requests the
- * icon directly, so a brand's logo appears the moment its domain is set.
+ * icon directly, so a brand's icon appears the moment its domain is set.
  */
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
@@ -21,7 +21,7 @@ function snapSize(size: number): number {
  *
  * A site the service has no icon for answers 404 with a generic globe in the
  * body, which browsers render like any other image rather than treating as an
- * error — `BrandLogo` is where that placeholder gets spotted and swapped for
+ * error — `SiteIcon` is where that placeholder gets spotted and swapped for
  * our own glyph.
  */
 export function faviconUrl(source: string | null | undefined, size = 64): string | null {
@@ -38,22 +38,22 @@ export function faviconUrl(source: string | null | undefined, size = 64): string
 	return `${FAVICON_ENDPOINT}?${params.toString()}`;
 }
 
-export interface BrandLogoSubject {
+export interface SiteIconSubject {
 	name: string;
-	/** Tried in order; the first that parses as a domain is the logo source. */
+	/** Tried in order; the first that parses as a domain is the icon source. */
 	domains: (string | null | undefined)[];
 	/** Alternate names this subject is reported under in AI answers. */
 	aliases?: string[];
 }
 
 /**
- * Index from every name a subject goes by to the domain its logo comes from.
+ * Index from every name a subject goes by to the domain its icon comes from.
  *
  * Mention data identifies brands by name only, so surfaces that list mentions
  * (leaderboards, per-run badges) need this to get back to a domain. Earlier
  * subjects win a contested name — the brand itself is passed first.
  */
-export function buildBrandDomainIndex(subjects: BrandLogoSubject[]): Map<string, string> {
+export function buildBrandDomainIndex(subjects: SiteIconSubject[]): Map<string, string> {
 	const index = new Map<string, string>();
 
 	for (const subject of subjects) {
