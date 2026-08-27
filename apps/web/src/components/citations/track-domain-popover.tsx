@@ -6,6 +6,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/component
 import { Spinner } from "@workspace/ui/components/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useState } from "react";
+import { SiteIcon } from "@/components/site-icon";
+import { useBrand } from "@/hooks/use-brands";
 import { addDomainToBrandFn, addDomainToCompetitorFn, createCompetitorFromDomainFn } from "@/server/brands";
 
 export function TrackDomainPopover({
@@ -21,6 +23,7 @@ export function TrackDomainPopover({
 	competitors: Array<{ id: string; name: string; domains: string[] }>;
 	onAdded?: () => void;
 }) {
+	const { brand } = useBrand(brandId);
 	const [open, setOpen] = useState(false);
 	const [newName, setNewName] = useState("");
 	const [saving, setSaving] = useState(false);
@@ -120,8 +123,9 @@ export function TrackDomainPopover({
 							type="button"
 							onClick={handleAddToBrand}
 							disabled={saving}
-							className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
+							className="flex w-full items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
 						>
+							<SiteIcon domain={brand?.website} size="sm" />
 							{brandName || "My brand"}
 						</button>
 					</div>
@@ -145,8 +149,9 @@ export function TrackDomainPopover({
 										type="button"
 										onClick={() => handleAddToExisting(c.id)}
 										disabled={saving}
-										className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
+										className="flex w-full items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
 									>
+										<SiteIcon domain={c.domains.find(Boolean)} size="sm" />
 										{c.name}
 									</button>
 								))}

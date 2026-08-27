@@ -5,6 +5,8 @@ import React from "react";
 
 export type ProgressBarItem = {
 	label: string;
+	/** Rendered before the label — a `SiteIcon`, on the charts that name brands or domains. */
+	icon?: React.ReactNode;
 	count: number;
 	subtitle?: string;
 	suffix?: React.ReactNode;
@@ -114,7 +116,8 @@ export function ProgressBarChart({
 				return (
 					<div key={item.label} className="space-y-2">
 						<div className="flex items-center justify-between">
-							<div className="flex items-center gap-1 min-w-0 flex-1">
+							<div className="flex items-center gap-1.5 min-w-0 flex-1">
+								{item.icon}
 								{item.tooltip ? (
 									<Tooltip>
 										<TooltipTrigger

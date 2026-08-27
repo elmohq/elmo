@@ -26,10 +26,12 @@ import { ListPagination } from "@/components/list-pagination";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
 import { ResponseMarkdown } from "@/components/response-markdown";
+import { SiteIcon } from "@/components/site-icon";
 import { useBrand } from "@/hooks/use-brands";
 import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
 import { usePromptStats } from "@/hooks/use-prompt-stats";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
+import { useSiteIcons } from "@/hooks/use-site-icons";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { promptKeywords } from "@/lib/fanout-analysis";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
@@ -219,6 +221,7 @@ function PromptHistoryPage() {
 	const { promptMeta, isMetaLoading } = usePromptMetadata(brandId, promptId);
 
 	const { brand } = useBrand(brandId);
+	const { domainFor } = useSiteIcons(brandId);
 
 	// Web Queries fetches its own data (useQueryFanout) — stats only back Mentions/Citations.
 	const shouldFetchStats = visitedTabs.has("mentions") || visitedTabs.has("citations");
@@ -340,6 +343,7 @@ function PromptHistoryPage() {
 						totalRuns={aggregations?.totalRuns || 0}
 						brandName={brand?.name}
 						brandId={brandId}
+						domainFor={domainFor}
 					/>
 				)}
 
@@ -369,6 +373,7 @@ function PromptHistoryPage() {
 						currentPage={currentPage}
 						onPageChange={handlePageChange}
 						brandName={brand?.name}
+						domainFor={domainFor}
 					/>
 				)}
 			</div>
@@ -403,12 +408,14 @@ function MentionsTab({
 	totalRuns,
 	brandName,
 	brandId,
+	domainFor,
 }: {
 	isLoading: boolean;
 	mentionStats: { name: string; count: number }[];
 	totalRuns: number;
 	brandName?: string;
 	brandId: string;
+	domainFor: (name: string) => string | undefined;
 }) {
 	if (isLoading) return <TabLoadingSkeleton lines={5} />;
 
@@ -451,7 +458,11 @@ function MentionsTab({
 			<Separator />
 			<CardContent>
 				<ProgressBarChart
-					items={mentionStats.map((stat) => ({ label: stat.name, count: stat.count }))}
+					items={mentionStats.map((stat) => ({
+						label: stat.name,
+						count: stat.count,
+						icon: <SiteIcon domain={domainFor(stat.name)} size="md" />,
+					}))}
 					defaultColor="#3b82f6"
 					customTotal={totalRuns || 1}
 					highlightLabel={brandName}
@@ -587,6 +598,7 @@ function ResponsesTab({
 	currentPage,
 	onPageChange,
 	brandName,
+	domainFor,
 }: {
 	runs: any[];
 	pagination: any;
@@ -594,6 +606,7 @@ function ResponsesTab({
 	currentPage: number;
 	onPageChange: (page: number) => void;
 	brandName?: string;
+	domainFor: (name: string) => string | undefined;
 }) {
 	const formatDate = (dateString: string) => new Date(dateString).toLocaleString(undefined, { timeZoneName: "short" });
 
@@ -677,9 +690,15 @@ function ResponsesTab({
 						<div>
 							<span className="text-xs text-muted-foreground block mb-1.5">Brands Mentioned</span>
 							<div className="flex flex-wrap gap-1.5">
-								{run.brandMentioned && brandName && <Badge className="text-xs font-normal">{brandName}</Badge>}
+								{run.brandMentioned && brandName && (
+									<Badge className="text-xs font-normal">
+										<SiteIcon domain={domainFor(brandName)} size="xs" />
+										{brandName}
+									</Badge>
+								)}
 								{[...new Set<string>(run.competitorsMentioned ?? [])].map((competitor) => (
 									<Badge key={competitor} variant="outline" className="text-xs font-normal">
+										<SiteIcon domain={domainFor(competitor)} size="xs" />
 										{competitor}
 									</Badge>
 								))}

@@ -16,12 +16,13 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import { inArray } from "drizzle-orm";
 import FullPageCard from "@/components/full-page-card";
+import { SiteIcon } from "@/components/site-icon";
 import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 
 const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 	async (): Promise<{
-		brands: { id: string; name: string }[];
+		brands: { id: string; name: string; website: string }[];
 		unprovisionedOrgs: { id: string; name: string }[];
 		canCreateBrands: boolean;
 	}> => {
@@ -44,7 +45,12 @@ const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 			orgIds.length === 0
 				? []
 				: await db
-						.select({ id: brands.id, name: brands.name, organizationId: brands.organizationId })
+						.select({
+							id: brands.id,
+							name: brands.name,
+							website: brands.website,
+							organizationId: brands.organizationId,
+						})
 						.from(brands)
 						.where(inArray(brands.organizationId, orgIds));
 
@@ -62,7 +68,7 @@ const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 			// change. Sorted here rather than in SQL so the result doesn't depend
 			// on the deployment's database collation.
 			brands: scopedBrands
-				.map((brand) => ({ id: brand.id, name: brand.name }))
+				.map((brand) => ({ id: brand.id, name: brand.name, website: brand.website }))
 				.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)),
 			unprovisionedOrgs: canCreateBrands ? [] : orgs.filter((o) => !provisioned.has(o.id)),
 			canCreateBrands,
@@ -85,7 +91,7 @@ function OrgSwitcherSkeleton() {
 export const Route = createFileRoute("/_authed/app/")({
 	pendingComponent: OrgSwitcherSkeleton,
 	loader: async (): Promise<{
-		brands: { id: string; name: string }[];
+		brands: { id: string; name: string; website: string }[];
 		unprovisionedOrgs: { id: string; name: string }[];
 		canCreateBrands: boolean;
 	}> => {
@@ -109,6 +115,7 @@ function BrandSwitcherPage() {
 								params={{ brand: brand.id }}
 								className={buttonVariants({ variant: "secondary" })}
 							>
+								<SiteIcon domain={brand.website} size="md" />
 								{brand.name}
 							</Link>
 						))}

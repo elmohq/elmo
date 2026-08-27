@@ -5,6 +5,7 @@
 
 import { ChartContainer } from "@workspace/ui/components/chart";
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
+import { SiteIcon } from "@/components/site-icon";
 import { BRAND_COLOR, OTHERS_COLOR, COMPETITOR_PALETTE as PALETTE } from "@/lib/share-of-voice-palette";
 import type { ShareOfVoiceEntry } from "@/server/analysis";
 
@@ -12,9 +13,19 @@ interface Slice {
 	name: string;
 	value: number;
 	color: string;
+	/** Absent on the "Others" bucket, which stands for no single brand. */
+	domain?: string;
 }
 
-export function ShareOfVoiceDonut({ entries, topN = 6 }: { entries: ShareOfVoiceEntry[]; topN?: number }) {
+export function ShareOfVoiceDonut({
+	entries,
+	topN = 6,
+	domainFor,
+}: {
+	entries: ShareOfVoiceEntry[];
+	topN?: number;
+	domainFor?: (name: string) => string | undefined;
+}) {
 	const slices: Slice[] = [];
 	let paletteIdx = 0;
 	let shownCompetitors = 0;
@@ -23,9 +34,14 @@ export function ShareOfVoiceDonut({ entries, topN = 6 }: { entries: ShareOfVoice
 	for (const e of entries) {
 		if (e.mentions <= 0) continue;
 		if (e.isBrand) {
-			slices.push({ name: e.name, value: e.mentions, color: BRAND_COLOR });
+			slices.push({ name: e.name, value: e.mentions, color: BRAND_COLOR, domain: domainFor?.(e.name) });
 		} else if (shownCompetitors < topN) {
-			slices.push({ name: e.name, value: e.mentions, color: PALETTE[paletteIdx++ % PALETTE.length] });
+			slices.push({
+				name: e.name,
+				value: e.mentions,
+				color: PALETTE[paletteIdx++ % PALETTE.length],
+				domain: domainFor?.(e.name),
+			});
 			shownCompetitors++;
 		} else {
 			othersValue += e.mentions;
@@ -57,8 +73,11 @@ export function ShareOfVoiceDonut({ entries, topN = 6 }: { entries: ShareOfVoice
 						if (!active || !payload?.length) return null;
 						const s = payload[0].payload as Slice;
 						return (
-							<div className="rounded-md border bg-background px-2 py-1 text-xs shadow-md">
-								{s.name}: {Math.round((s.value / total) * 100)}%
+							<div className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs shadow-md">
+								{s.name !== "Others" && <SiteIcon domain={s.domain} size="xs" />}
+								<span>
+									{s.name}: {Math.round((s.value / total) * 100)}%
+								</span>
 							</div>
 						);
 					}}

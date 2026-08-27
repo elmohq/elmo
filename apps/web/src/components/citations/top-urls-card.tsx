@@ -15,6 +15,7 @@ import {
 } from "@/components/citations/shared";
 import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
+import { SiteIcon } from "@/components/site-icon";
 
 export function TopUrlsCard({
 	urls,
@@ -157,6 +158,7 @@ export function TopUrlsCard({
 								rel="noopener noreferrer"
 								className="flex items-start justify-between gap-3 py-3 group"
 							>
+								<SiteIcon domain={citation.domain} size="lg" className="mt-0.5" />
 								<div className="min-w-0 flex-1">
 									<div className="flex items-center gap-2 mb-0.5">
 										<Badge
