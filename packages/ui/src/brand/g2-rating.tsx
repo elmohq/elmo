@@ -15,6 +15,9 @@ export const G2_PROFILE_URL = "https://www.g2.com/products/blue-whale-software-l
 /** G2's brand red, so the mark reads as theirs and not as our accent. */
 const G2_RED = "#FF492C";
 
+/** First star through fifth. Their own identity, so a row of them needs no index. */
+const STAR_POSITIONS = Array.from({ length: G2_MAX_RATING }, (_, i) => i + 1);
+
 /**
  * Five outlines with a filled row clipped over them, so 4.7 shows as four stars
  * and most of a fifth rather than rounding to a number we didn't earn.
@@ -22,10 +25,9 @@ const G2_RED = "#FF492C";
 function Stars() {
 	const percent = (G2_RATING / G2_MAX_RATING) * 100;
 	const row = (filled: boolean) =>
-		Array.from({ length: G2_MAX_RATING }, (_, i) => (
+		STAR_POSITIONS.map((position) => (
 			<Star
-				// biome-ignore lint/suspicious/noArrayIndexKey: five fixed stars, never reordered
-				key={i}
+				key={position}
 				className={`size-3.5 shrink-0 ${filled ? "fill-amber-400 text-amber-400" : "fill-transparent text-amber-400/40"}`}
 				strokeWidth={1.5}
 			/>
