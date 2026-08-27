@@ -47,7 +47,7 @@ interface Pitch {
 }
 
 const CLOUD_PITCH: Pitch = {
-	headline: "Know how AI talks about your brand.",
+	headline: "Be the brand AI recommends.",
 	bullets: [
 		{ text: "Track your AI visibility on any model" },
 		{ text: "Benchmark against your competitors" },
