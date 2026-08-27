@@ -34,12 +34,6 @@ export type CompetitorCategory =
 export interface FeatureDefinition {
 	label: string;
 	description: string;
-	/**
-	 * The complete plural noun phrase buyers search for, which is rarely what we
-	 * call the feature internally — nobody searches "multi-LLM tracking", they
-	 * search "LLM tracker". Set only where there is measurable demand; used for
-	 * the page title and meta description, never for the slug or on-page label.
-	 */
 	searchTerm?: string;
 }
 
@@ -216,7 +210,6 @@ export function getFeatureLabel(key: FeatureKey): string {
 	return key;
 }
 
-/** The searched phrasing, when this feature has measurable search demand. */
 export function getFeatureSearchTerm(key: FeatureKey): string | undefined {
 	for (const cat of Object.values(FEATURE_CATEGORIES)) {
 		if (key in cat.features) return cat.features[key].searchTerm;

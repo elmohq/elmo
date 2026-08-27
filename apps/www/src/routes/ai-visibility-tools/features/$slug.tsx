@@ -24,14 +24,7 @@ export const Route = createFileRoute("/ai-visibility-tools/features/$slug")({
 		const tools = toolsWithFeature(key);
 		if (tools.length < MIN_TOOLS_FOR_FEATURE_PAGE) return {};
 		const label = getFeatureLabel(key);
-		// Lead with the phrasing buyers search for rather than our internal feature
-		// name, and with the count, which is the format every page ranking for
-		// these terms uses. Features without measurable demand keep the old title.
 		const term = getFeatureSearchTerm(key);
-		// "Best" only where the count reads as a curated shortlist. These pages
-		// list every tool in the directory with the feature, which runs to
-		// three figures for the common ones — "124 Best LLM Trackers" is not a
-		// claim anyone believes.
 		const title = !term
 			? `AI Visibility Tools with ${label} · Elmo`
 			: tools.length <= 25

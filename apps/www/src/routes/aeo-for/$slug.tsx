@@ -25,9 +25,6 @@ export const Route = createFileRoute("/aeo-for/$slug")({
 					{ name: `AEO for ${v.audience}`, path },
 				]),
 				faqJsonLd(v.faqs),
-				// The plays render as an ordered list of concrete actions, which is
-				// exactly what HowTo describes — and it is the part of the page an
-				// answer engine is most likely to quote back as steps.
 				howToJsonLd({
 					name: `How to improve AI visibility for ${v.audience}`,
 					description: v.short,

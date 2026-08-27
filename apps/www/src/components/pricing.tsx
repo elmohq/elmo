@@ -101,11 +101,6 @@ function formButtonClass(featured?: boolean): string {
 		: `${base} [&_button]:bg-white [&_button]:text-zinc-900 [&_button]:ring-zinc-200 [&_button]:hover:bg-zinc-50 [&_button]:hover:ring-zinc-300`;
 }
 
-/**
- * `as` controls the section heading level. The section is the whole page on
- * /pricing, where it has to be the h1, but sits under the homepage h1 when
- * embedded there.
- */
 export function Pricing({ as: Heading = "h2" }: { as?: "h1" | "h2" } = {}) {
 	return (
 		<section id="pricing" className="border-b border-zinc-200 bg-white">

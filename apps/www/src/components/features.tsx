@@ -93,11 +93,6 @@ const features: Feature[] = [
 	},
 ];
 
-/**
- * `as` controls the section heading level. The section is the whole page on
- * /features, where it has to be the h1, but sits under the homepage h1 when
- * embedded there.
- */
 export function Features({ as: Heading = "h2" }: { as?: "h1" | "h2" } = {}) {
 	return (
 		<section id="features" className="border-b border-zinc-200 bg-white">
