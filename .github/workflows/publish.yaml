@@ -58,14 +58,15 @@ jobs:
 
       - name: Publish packages
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
-          publish: pnpm release
-          createGithubReleases: false
+          publish-script: pnpm release
+          create-github-releases: false
+          # Tags are not gated on create-github-releases anymore, and the only
+          # tag we want is the aggregated v$VERSION one cut below.
+          push-git-tags: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create aggregated GitHub release
         if: steps.changesets.outputs.published == 'true'
