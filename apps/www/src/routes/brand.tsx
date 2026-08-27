@@ -1,10 +1,10 @@
-import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, Copy, Download } from "lucide-react";
 import { buttonVariants } from "@workspace/ui/components/button";
-import { Navbar } from "@/components/navbar";
+import { Check, Copy, Download } from "lucide-react";
+import { useState } from "react";
 import { Footer } from "@/components/footer";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
+import { Navbar } from "@/components/navbar";
+import { breadcrumbJsonLd, canonicalUrl, ogMeta } from "@/lib/seo";
 
 const title = "Brand · Elmo";
 const description = "Download Elmo logos, icons, and brand assets. Everything you need to represent the Elmo brand.";

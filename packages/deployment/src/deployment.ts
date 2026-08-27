@@ -13,9 +13,10 @@
  * module (and anything that imports getDeployment) stays Node-safe — the
  * worker builds a Deployment without pulling in the React OptimizeButton.
  */
+
+import { createCloudDeployment } from "@workspace/cloud";
 import { getDeploymentModeFromEnv } from "@workspace/config/env";
 import type { Deployment } from "@workspace/config/types";
-import { createCloudDeployment } from "@workspace/cloud";
 import { createLocalDeployment } from "@workspace/local";
 import { createWhitelabelDeployment } from "@workspace/whitelabel/deployment";
 

@@ -2,9 +2,10 @@
  * What makes a whitelabel deployment different.
  *
  * A whitelabel instance is embedded in a partner's product: it wears their
- * branding, sends every sign-in to their Auth0 tenant, takes its organizations
- * from Auth0 rather than letting users create brands, and adds an "Optimize
- * with <parent>" hand-off from each prompt chart back to the parent app.
+ * branding, sends every sign-in to their Auth0 tenant, has its brands
+ * provisioned through the admin API rather than letting users create them, and
+ * adds an "Optimize with <parent>" hand-off from each prompt chart back to the
+ * parent app.
  *
  * The identity provider is a non-resolvable placeholder domain, so these specs
  * assert that the app hands off to it correctly rather than completing a real
@@ -103,7 +104,7 @@ test.describe("Whitelabel branding", () => {
 });
 
 test.describe("Whitelabel features", () => {
-  test("brands come from Auth0, so the UI offers no way to create one", async ({ page }) => {
+  test("brands are provisioned through the API, so the UI offers no way to create one", async ({ page }) => {
     await page.goto("/app");
     await expect(page.getByText("Brand Switcher", { exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("link", { name: /create new brand/i })).toHaveCount(0);

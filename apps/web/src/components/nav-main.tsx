@@ -1,5 +1,5 @@
-import { type Icon } from "@tabler/icons-react";
-
+import type { Icon } from "@tabler/icons-react";
+import { Link, useLocation, useParams } from "@tanstack/react-router";
 import {
 	SidebarGroup,
 	SidebarGroupLabel,
@@ -8,7 +8,6 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@workspace/ui/components/sidebar";
-import { Link, useLocation, useParams } from "@tanstack/react-router";
 
 export interface NavItem {
 	title: string;

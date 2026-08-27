@@ -1,19 +1,20 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
-import { Faq } from "@/components/faq";
 import { DirectoryHero, ElmoCta } from "@/components/directory-shell";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
-import { getAeoVertical, aeoVerticals, type AeoVertical } from "@/data/aeo-verticals";
+import { Faq } from "@/components/faq";
+import { Footer } from "@/components/footer";
+import { Navbar } from "@/components/navbar";
+import { type AeoVertical, aeoVerticals, getAeoVertical } from "@/data/aeo-verticals";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, howToJsonLd, itemListJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/aeo-for/$slug")({
 	head: ({ params }) => {
 		const v = getAeoVertical(params.slug);
 		if (!v) return {};
-		const title = `AEO for ${v.audience} · Elmo`;
+		const title = `AEO for ${v.audience}: Track AI Visibility · Elmo`;
 		const description = v.short;
 		const path = `/aeo-for/${v.slug}`;
+		const others = aeoVerticals.filter((x) => x.slug !== v.slug);
 		return {
 			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],
 			links: [{ rel: "canonical", href: canonicalUrl(path) }],
@@ -24,6 +25,14 @@ export const Route = createFileRoute("/aeo-for/$slug")({
 					{ name: `AEO for ${v.audience}`, path },
 				]),
 				faqJsonLd(v.faqs),
+				howToJsonLd({
+					name: `How to improve AI visibility for ${v.audience}`,
+					description: v.short,
+					steps: v.plays.map((play) => ({ name: play.name, text: play.text })),
+				}),
+				itemListJsonLd(
+					others.map((o) => ({ name: `AEO for ${o.audience}`, path: `/aeo-for/${o.slug}`, description: o.short })),
+				),
 			],
 		};
 	},

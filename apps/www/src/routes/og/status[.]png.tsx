@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import titanOne400Data from "virtual:font/titan-one-400";
 import geistSans400Data from "virtual:font/geist-sans-400";
 import geistSans500Data from "virtual:font/geist-sans-500";
+import titanOne400Data from "virtual:font/titan-one-400";
+import { createFileRoute } from "@tanstack/react-router";
 import { renderOgPng } from "@workspace/og/rasterize";
 import { loadStatusData } from "@/lib/status";
 import { renderStatusOgImage } from "@/lib/status-og";

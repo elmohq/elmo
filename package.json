@@ -10,11 +10,10 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "lint": "turbo lint",
+    "lint": "biome check --diagnostic-level=error --config-path=biome.json .",
+    "lint:fix": "biome check --write --diagnostic-level=error --config-path=biome.json .",
     "test": "turbo test",
     "format": "biome format --write --config-path=biome.json .",
-    "format-and-lint": "biome check --config-path=biome.json .",
-    "format-and-lint:fix": "biome check --write --config-path=biome.json .",
     "knip": "knip",
     "elmo": "tsx apps/cli/src/index.ts",
     "cli:link": "npm unlink -g @elmohq/cli || true && pnpm -C apps/cli build && (cd apps/cli && npm link)",
@@ -33,7 +32,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.8",
-    "@changesets/cli": "^2.31.1",
+    "@changesets/cli": "^3.0.1",
     "knip": "^6.32.2",
     "tsx": "^4.23.12",
     "turbo": "^2.10.10",

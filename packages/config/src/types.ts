@@ -5,7 +5,7 @@ export interface FeaturesConfig {
 	showOptimizeButton: boolean;
 	/**
 	 * Whether the user can create new brands from the UI. True in local and
-	 * cloud modes — whitelabel orgs come from Auth0, demo is read-only.
+	 * cloud modes — whitelabel brands come from the admin API, demo is read-only.
 	 */
 	canCreateBrands: boolean;
 	/**
@@ -45,6 +45,8 @@ export interface AnalyticsConfig {
 	plausibleDomain?: string;
 	clarityProjectId?: string;
 	posthogKey?: string;
+	/** Only set on deployments we operate (cloud and demo). */
+	crispWebsiteId?: string;
 }
 
 export interface BrandingConfig {
@@ -85,14 +87,14 @@ export interface ClientConfig {
 }
 
 export interface WebQueryResult {
+	/** Top web query over the requested window, for the requested model. */
 	webQuery: string | null;
-	modelWebQueries: Record<string, string>;
 }
 
 export interface OptimizeButtonProps {
 	brandId?: string;
 	selectedModel?: string;
-	availableModels?: string[];
+	availableModels: string[];
 	lookback?: "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 	promptName?: string;
 	promptId?: string;

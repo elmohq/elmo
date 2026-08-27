@@ -9,19 +9,20 @@
 
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { db } from "@workspace/lib/db/db";
+import { brands } from "@workspace/lib/db/schema";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
+import { inArray } from "drizzle-orm";
 import FullPageCard from "@/components/full-page-card";
+import { SiteIcon } from "@/components/site-icon";
 import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
-import { db } from "@workspace/lib/db/db";
-import { brands } from "@workspace/lib/db/schema";
-import { inArray } from "drizzle-orm";
 
 const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 	async (): Promise<{
-		brands: { id: string; name: string }[];
+		brands: { id: string; name: string; website: string }[];
 		unprovisionedOrgs: { id: string; name: string }[];
 		canCreateBrands: boolean;
 	}> => {
@@ -44,7 +45,12 @@ const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 			orgIds.length === 0
 				? []
 				: await db
-						.select({ id: brands.id, name: brands.name, organizationId: brands.organizationId })
+						.select({
+							id: brands.id,
+							name: brands.name,
+							website: brands.website,
+							organizationId: brands.organizationId,
+						})
 						.from(brands)
 						.where(inArray(brands.organizationId, orgIds));
 
@@ -56,7 +62,14 @@ const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 		const provisioned = new Set(scopedBrands.map((b) => b.organizationId));
 
 		return {
-			brands: scopedBrands.map((brand) => ({ id: brand.id, name: brand.name })),
+			// Alphabetical, with the id breaking ties between brands that share a
+			// name: an unordered select leaves the order up to Postgres, which is
+			// free to hand back a different one after any row rewrite or plan
+			// change. Sorted here rather than in SQL so the result doesn't depend
+			// on the deployment's database collation.
+			brands: scopedBrands
+				.map((brand) => ({ id: brand.id, name: brand.name, website: brand.website }))
+				.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)),
 			unprovisionedOrgs: canCreateBrands ? [] : orgs.filter((o) => !provisioned.has(o.id)),
 			canCreateBrands,
 		};
@@ -78,7 +91,7 @@ function OrgSwitcherSkeleton() {
 export const Route = createFileRoute("/_authed/app/")({
 	pendingComponent: OrgSwitcherSkeleton,
 	loader: async (): Promise<{
-		brands: { id: string; name: string }[];
+		brands: { id: string; name: string; website: string }[];
 		unprovisionedOrgs: { id: string; name: string }[];
 		canCreateBrands: boolean;
 	}> => {
@@ -102,6 +115,7 @@ function BrandSwitcherPage() {
 								params={{ brand: brand.id }}
 								className={buttonVariants({ variant: "secondary" })}
 							>
+								<SiteIcon domain={brand.website} size="md" />
 								{brand.name}
 							</Link>
 						))}

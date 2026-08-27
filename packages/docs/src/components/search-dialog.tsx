@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useCallback, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useDocsSearch } from "fumadocs-core/search/client";
 import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
 import { Kbd, KbdGroup } from "@workspace/ui/components/kbd";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { cn } from "@workspace/ui/lib/utils";
-import { Search, FileText, Hash, Text } from "lucide-react";
 import type { SortedResult } from "fumadocs-core/search";
+import { useDocsSearch } from "fumadocs-core/search/client";
+import { FileText, Hash, Search, Text } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 function ResultIcon({ type }: { type: SortedResult["type"] }) {
 	switch (type) {
@@ -19,6 +19,35 @@ function ResultIcon({ type }: { type: SortedResult["type"] }) {
 		case "text":
 			return <Text className="size-4 shrink-0 text-muted-foreground" />;
 	}
+}
+
+/**
+ * A result line, with the index's matches marked.
+ *
+ * fumadocs returns the snippet as a plain string with `<mark>` around each
+ * match, so the marks are rendered as elements rather than handing the string
+ * to innerHTML — the highlighting is the only markup in it either way.
+ */
+function Highlighted({ text }: { text: string }) {
+	const segments = text
+		.split(/(<mark>[\s\S]*?<\/mark>)/g)
+		.filter(Boolean)
+		.map((segment, index) => ({ id: `${index}:${segment}`, segment }));
+
+	return (
+		<>
+			{segments.map(({ id, segment }) => {
+				const match = segment.match(/^<mark>([\s\S]*)<\/mark>$/);
+				return match ? (
+					<mark key={id} className="rounded-sm bg-primary/20 px-0.5 text-foreground">
+						{match[1]}
+					</mark>
+				) : (
+					<span key={id}>{segment}</span>
+				);
+			})}
+		</>
+	);
 }
 
 export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -32,9 +61,14 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
 	const results = query.data && query.data !== "empty" ? query.data : [];
 
-	useEffect(() => {
+	// A new query means new results, so the highlight goes back to the top.
+	// Adjusted during render rather than in an effect: an effect would paint
+	// the old highlight against the new list first.
+	const [highlightedFor, setHighlightedFor] = useState(search);
+	if (highlightedFor !== search) {
+		setHighlightedFor(search);
 		setActiveIndex(0);
-	}, [search]);
+	}
 
 	useEffect(() => {
 		if (open) {
@@ -120,12 +154,9 @@ export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 									>
 										<ResultIcon type={result.type} />
 										<div className="min-w-0 flex-1">
-											<span
-												className="block truncate font-medium [&_mark]:bg-primary/20 [&_mark]:text-foreground [&_mark]:rounded-sm [&_mark]:px-0.5"
-												dangerouslySetInnerHTML={{
-													__html: String(result.content),
-												}}
-											/>
+											<span className="block truncate font-medium">
+												<Highlighted text={String(result.content)} />
+											</span>
 											{result.breadcrumbs && result.breadcrumbs.length > 0 && (
 												<span className="block truncate text-xs text-muted-foreground">
 													{result.breadcrumbs.join(" > ")}

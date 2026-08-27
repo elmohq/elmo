@@ -1,23 +1,14 @@
-import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
-import { ArrowUpRight } from "lucide-react";
 import MuxPlayer from "@mux/mux-player-react";
+import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
+import { G2Stars } from "@workspace/ui/brand/g2-rating";
+import { ArrowUpRight } from "lucide-react";
+import { CloudSignupCTA, QuietCTA, SelfHostCTA } from "./cta-buttons";
 import { CustomerLogosInline } from "./customer-logos";
 import { QuickstartBlock } from "./quickstart-block";
-import { CloudSignupCTA, QuietCTA, SelfHostCTA } from "./cta-buttons";
-
-// Cast a brand-blue glow under Mux Player's default center play button so it
-// echoes the wrapper's outer blue shadow. Drop-shadow follows the circle's
-// shape, unlike box-shadow which would paint a square.
-const MUX_PLAYER_STYLES = `
-	mux-player::part(center play button) {
-		filter: drop-shadow(0 8px 24px rgba(37, 99, 235, 0.35));
-	}
-`;
 
 function DemoVideo() {
 	return (
 		<div className="overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg shadow-blue-600/10">
-			<style dangerouslySetInnerHTML={{ __html: MUX_PLAYER_STYLES }} />
 			<MuxPlayer
 				playbackId="PYV9FNIG008vlkchyQf9KMTxDt028zQdshaM4VLC6lS1Q"
 				streamType="on-demand"
@@ -61,6 +52,7 @@ export function Hero() {
 								Star on GitHub
 								<ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
 							</a>
+							<G2Stars className="ml-auto" />
 						</div>
 						<h1 className="mt-7 max-w-[18ch] text-5xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 sm:text-6xl lg:text-[4.25rem] lg:leading-[1.0]">
 							Know How AI Talks About Your Brand

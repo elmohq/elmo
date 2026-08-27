@@ -1,18 +1,20 @@
 /// <reference types="vite/client" />
-import { useEffect, type ReactNode } from "react";
-import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-import { initPostHog } from "@/lib/posthog";
-import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, websiteJsonLd, organizationJsonLd } from "@/lib/seo";
-import { getMarketingOgImage } from "@/lib/og";
-import { getGitHubStars } from "@/lib/github-stars";
-import { NotFound } from "@/components/not-found";
-import appCss from "../styles.css?url";
+
 // Preload the 400-weight files used everywhere above the fold so they download
 // in parallel with the CSS instead of after it (the H1 LCP element was being
 // held back by the HTML→CSS→font waterfall).
-import geistSansFont from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
 import geistMonoFont from "@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2?url";
+import geistSansFont from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
 import titanOneFont from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
+import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { type ReactNode, useEffect } from "react";
+import { NotFound } from "@/components/not-found";
+import { initCrisp } from "@/lib/crisp";
+import { getGitHubStars } from "@/lib/github-stars";
+import { getMarketingOgImage } from "@/lib/og";
+import { initPostHog } from "@/lib/posthog";
+import { organizationJsonLd, SITE_DESCRIPTION, SITE_NAME, SITE_URL, websiteJsonLd } from "@/lib/seo";
+import appCss from "../styles.css?url";
 
 const ROOT_TITLE = `${SITE_NAME} · Open Source AI Visibility`;
 const ROOT_OG_IMAGE = `${SITE_URL}${getMarketingOgImage({ title: ROOT_TITLE, description: SITE_DESCRIPTION })}`;
@@ -95,6 +97,7 @@ export const Route = createRootRoute({
 function RootComponent() {
 	useEffect(() => {
 		initPostHog();
+		initCrisp();
 	}, []);
 
 	return (
