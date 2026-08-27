@@ -700,3 +700,23 @@ bypasses it, and that a rejected batch created nothing.
 
 Playwright covers the key-management UI; the entitlement decision tables stay
 unit-tested where they already are.
+
+**Two checks that hold the surface together.** Neither tests an endpoint; both
+catch the class of mistake a per-endpoint test can't see, because the thing that
+went wrong is the absence of something.
+
+`v1-route-conformance.test.ts` imports every route and reads the handler map the
+router will serve. Each handler carries a stamp only `createApiHandler` applies,
+so a verb wired to anything else is visible — an earlier version read the source
+for `createApiHandler(`, which a file could satisfy while exporting something
+else entirely. It also compares the scopes each handler enforces against the
+`x-elmo-scopes` its operation documents: a spec that asks for less than the route
+wants sends callers to a 403 on an endpoint they were told their key covered, and
+one that asks for more is documenting security that isn't there.
+
+`e2e/validate-openapi.mjs` runs after the three Bruno phases and holds the
+responses they recorded against the schema that documents them. A response the
+spec calls impossible fails CI; a field documented optional that was present in
+every response observed is reported, since one run can't prove it. It also lists
+the operations no recorded response exercised, so its coverage doesn't read as
+larger than it is.
