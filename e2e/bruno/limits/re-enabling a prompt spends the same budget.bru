@@ -1,0 +1,29 @@
+meta {
+  name: disabling frees a slot and re-enabling spends it again
+  type: http
+  seq: 7
+  tags: [
+    cloud
+  ]
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/prompts/{{operatorPromptId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{cappedKey}}
+}
+
+body:json {
+  {
+    "enabled": false
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.enabled: isFalsy
+}

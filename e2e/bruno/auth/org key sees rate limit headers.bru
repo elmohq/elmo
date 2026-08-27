@@ -1,0 +1,26 @@
+meta {
+  name: an org key is told its rate limit
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("the response advertises the per-key rate limit", function() {
+    expect(res.getHeader("x-ratelimit-limit")).to.not.be.undefined;
+    expect(res.getHeader("x-ratelimit-remaining")).to.not.be.undefined;
+  });
+}

@@ -10,7 +10,8 @@
 #      and run the `worker` project, which submits a job and asserts the worker
 #      processes it
 #   3. cloud — worker back down, recreate `web` with e2e/modes/cloud.yaml,
-#      re-seed, run the `cloud` project
+#      re-seed, run the `cloud` project and the `cloud`-tagged Bruno cases
+#      (plan enforcement, which only exists in this mode)
 #   4. whitelabel — same with e2e/modes/whitelabel.yaml
 #   5. demo — same with e2e/modes/demo.yaml
 #
@@ -185,6 +186,11 @@ jobs:
         run: pnpm -C e2e exec playwright test --project=cloud
         env:
           PLAYWRIGHT_HTML_REPORT: playwright-report-cloud
+
+      # Plan enforcement only exists in cloud mode, so the Bruno cases that
+      # assert it are tagged `cloud` and excluded from the local run above.
+      - name: Run Bruno API tests (cloud mode)
+        run: pnpm test:api:cloud
 
       - name: Switch web to whitelabel mode
         env:

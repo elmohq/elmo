@@ -1,0 +1,26 @@
+meta {
+  name: hitting a write limit does not close the data
+  type: http
+  seq: 11
+  tags: [
+    cloud
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{cappedBrandId}}/summary?lookback=1y
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{cappedKey}}
+}
+
+params:query {
+  lookback: 1y
+}
+
+assert {
+  res.status: eq 200
+}

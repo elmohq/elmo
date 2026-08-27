@@ -67,6 +67,31 @@ export const NIKE_COMPETITOR_IDS = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Billing fixtures (only meaningful when the stack runs in cloud mode)
+// ---------------------------------------------------------------------------
+
+/**
+ * An org on a custom plan with deliberately tiny limits, so a write can be
+ * pushed past one without seeding hundreds of rows. Custom plans are
+ * config-only (`organization_settings.entitlement_overrides`), so this needs no
+ * Stripe subscription.
+ */
+export const CAPPED_ORG_ID = "capped";
+export const CAPPED_BRAND_ID = "capped";
+export const CAPPED_ENTITLEMENT_OVERRIDES = {
+  planOverride: "custom",
+  maxBrands: 1,
+  maxPrompts: 6,
+  premiumPoolIncluded: 0,
+} as const;
+/** Seeded enabled prompts, one short of CAPPED_ENTITLEMENT_OVERRIDES.maxPrompts. */
+export const CAPPED_PROMPT_COUNT = 5;
+
+/** An org with no subscription at all: reads work, every write is a 402. */
+export const UNPAID_ORG_ID = "unpaid";
+export const UNPAID_BRAND_ID = "unpaid";
+
+// ---------------------------------------------------------------------------
 // API keys
 // ---------------------------------------------------------------------------
 
@@ -136,6 +161,17 @@ export const API_KEYS = {
     scopes: ["brands:read"],
     brandIds: [],
   },
+  /**
+   * Only analytics:read. Proves the analytics endpoints stand on their own
+   * scope, and that a key without brands:read can't reach the org endpoints.
+   */
+  orgAnalyticsOnly: {
+    token: "elmo_e2e_org_analytics_only",
+    name: "E2E org key (analytics only)",
+    organizationId: TEST_BRAND_ID,
+    scopes: ["analytics:read"],
+    brandIds: [],
+  },
   /** Full access except billing:read, so the billing endpoint must 403. */
   orgNoBilling: {
     token: "elmo_e2e_org_no_billing",
@@ -171,6 +207,22 @@ export const API_KEYS = {
     scopes: API_SCOPES,
     brandIds: [],
     expiresInMs: -60_000,
+  },
+  /** Cloud only: an org one prompt short of a custom plan's limit. */
+  capped: {
+    token: "elmo_e2e_capped",
+    name: "E2E capped key",
+    organizationId: CAPPED_ORG_ID,
+    scopes: API_SCOPES,
+    brandIds: [],
+  },
+  /** Cloud only: an org with no subscription. Reads work, writes are 402. */
+  unpaid: {
+    token: "elmo_e2e_unpaid",
+    name: "E2E unpaid key",
+    organizationId: UNPAID_ORG_ID,
+    scopes: API_SCOPES,
+    brandIds: [],
   },
   /** Revoked: must 401 exactly like an unknown key. */
   disabled: {

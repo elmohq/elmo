@@ -27,6 +27,7 @@
     "test:e2e:demo": "pnpm --filter e2e test:e2e:demo",
     "test:e2e-local": "bash e2e/run-local.sh",
     "test:api": "pnpm --filter e2e test:api",
+    "test:api:cloud": "pnpm --filter e2e test:api:cloud",
     "test:scripts": "node --test 'scripts/*.test.mjs'",
     "license-check": "node scripts/check-licenses.mjs"
   },

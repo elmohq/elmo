@@ -1,0 +1,27 @@
+meta {
+  name: an unsubscribed tenant can still read its data
+  type: http
+  seq: 13
+  tags: [
+    cloud
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?brandId={{unpaidBrandId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{unpaidKey}}
+}
+
+params:query {
+  brandId: {{unpaidBrandId}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.prompts: isArray
+}

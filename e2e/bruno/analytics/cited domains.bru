@@ -1,0 +1,41 @@
+meta {
+  name: domains the engines cited
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/citations/domains?lookback=1y
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  lookback: 1y
+}
+
+assert {
+  res.status: eq 200
+  res.body.data: isArray
+  res.body.totals.citations: gte 1
+  res.body.totals.uniqueDomains: gte 1
+  res.body.pagination.total: gte 1
+}
+
+tests {
+  test("the brand's own domain is categorized as the brand's", function() {
+    const own = res.getBody().data.find((d) => d.domain === "example.com");
+    expect(own, "example.com should be cited in the seed").to.not.be.undefined;
+    expect(own.category).to.equal("brand");
+  });
+
+  test("a competitor's domain is categorized as a competitor's", function() {
+    const rival = res.getBody().data.find((d) => d.domain === "competitor-alpha.com");
+    expect(rival).to.not.be.undefined;
+    expect(rival.category).to.equal("competitor");
+  });
+}

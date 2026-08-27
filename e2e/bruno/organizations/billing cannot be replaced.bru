@@ -1,0 +1,26 @@
+meta {
+  name: billing cannot be replaced
+  type: http
+  seq: 11
+}
+
+put {
+  url: {{baseUrl}}/api/v1/organizations/{{orgId}}/billing
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+body:json {
+  {
+    "plan": "business"
+  }
+}
+
+assert {
+  res.status: gte 400
+  res.status: lt 500
+}

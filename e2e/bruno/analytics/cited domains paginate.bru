@@ -1,0 +1,27 @@
+meta {
+  name: cited domains paginate
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/citations/domains?lookback=1y&page=1&limit=1
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  lookback: 1y
+  page: 1
+  limit: 1
+}
+
+assert {
+  res.status: eq 200
+  res.body.pagination.limit: eq 1
+  res.body.data: length 1
+}

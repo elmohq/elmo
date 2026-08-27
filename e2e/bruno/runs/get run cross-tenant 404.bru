@@ -1,0 +1,20 @@
+meta {
+  name: another tenant's run is not found
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/runs/{{nikeRunId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}

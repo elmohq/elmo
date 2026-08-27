@@ -1,0 +1,41 @@
+meta {
+  name: list the answers behind a prompt
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}/runs?lookback=1y
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  lookback: 1y
+}
+
+assert {
+  res.status: eq 200
+  res.body.data: isArray
+  res.body.pagination.total: gte 1
+}
+
+tests {
+  test("each run reports how it was produced and what it said about the brand", function() {
+    for (const run of res.getBody().data) {
+      expect(run.model).to.be.a("string");
+      expect(run.webSearchEnabled).to.be.a("boolean");
+      expect(run.brandMentioned).to.be.a("boolean");
+      expect(run.competitorsMentioned).to.be.an("array");
+      expect(run.citationCount).to.be.a("number");
+    }
+  });
+}
+
+script:post-response {
+  bru.setVar("listedRunId", res.getBody().data[0].id);
+}

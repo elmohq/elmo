@@ -1,0 +1,33 @@
+meta {
+  name: an admin key is not bound by the plan
+  type: http
+  seq: 6
+  tags: [
+    cloud
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+body:json {
+  {
+    "brandId": "{{cappedBrandId}}",
+    "value": "Operator prompt past the plan limit"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("operatorPromptId", res.getBody().id);
+}

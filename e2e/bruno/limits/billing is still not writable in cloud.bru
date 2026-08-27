@@ -1,0 +1,29 @@
+meta {
+  name: billing is not writable even where billing is real
+  type: http
+  seq: 15
+  tags: [
+    cloud
+  ]
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/organizations/{{cappedOrgId}}/billing
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{cappedKey}}
+}
+
+body:json {
+  {
+    "plan": "business"
+  }
+}
+
+assert {
+  res.status: gte 400
+  res.status: lt 500
+}

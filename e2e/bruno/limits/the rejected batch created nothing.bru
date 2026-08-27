@@ -1,0 +1,32 @@
+meta {
+  name: the rejected batch created nothing
+  type: http
+  seq: 3
+  tags: [
+    cloud
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?brandId={{cappedBrandId}}&limit=100
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{cappedKey}}
+}
+
+params:query {
+  brandId: {{cappedBrandId}}
+  limit: 100
+}
+
+assert {
+  res.status: eq 200
+  res.body.pagination.total: eq 5
+}
+
+script:post-response {
+  bru.setVar("cappedPromptId", res.getBody().prompts[0].id);
+}

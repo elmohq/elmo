@@ -14,6 +14,10 @@ import pg from "pg";
 import {
   API_KEYS,
   type ApiKeyFixture,
+  CAPPED_BRAND_ID,
+  CAPPED_ENTITLEMENT_OVERRIDES,
+  CAPPED_ORG_ID,
+  CAPPED_PROMPT_COUNT,
   COMPETITOR_IDS,
   DATABASE_URL,
   NIKE_BRAND_ID,
@@ -26,6 +30,8 @@ import {
   TEST_BRAND_ID,
   TEST_BRAND_NAME,
   TEST_BRAND_WEBSITE,
+  UNPAID_BRAND_ID,
+  UNPAID_ORG_ID,
 } from "./fixtures";
 
 const RUN_IDS = [
@@ -110,6 +116,50 @@ async function seedApiKeys(client: pg.Client): Promise<void> {
     );
   }
   console.log(`  Created ${keys.length} API keys`);
+}
+
+
+/**
+ * Two tenants that only mean anything in cloud mode: one on a custom plan with
+ * tiny limits, one with no subscription at all. Both are inert everywhere else,
+ * where entitlements resolve to unlimited regardless of what is stored here.
+ */
+async function seedBillingTenants(client: pg.Client): Promise<void> {
+  for (const [orgId, brandId, name, website] of [
+    [CAPPED_ORG_ID, CAPPED_BRAND_ID, "Capped Co", "https://capped.example.com"],
+    [UNPAID_ORG_ID, UNPAID_BRAND_ID, "Unpaid Co", "https://unpaid.example.com"],
+  ] as const) {
+    await client.query(
+      `INSERT INTO organization (id, name, slug, created_at)
+       VALUES ($1, $2, $1, NOW()) ON CONFLICT (id) DO NOTHING`,
+      [orgId, name],
+    );
+    await client.query(
+      `INSERT INTO brands (id, organization_id, name, website, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, true, true, NOW(), NOW())`,
+      [brandId, orgId, name, website],
+    );
+  }
+
+  await client.query("DELETE FROM organization_settings WHERE organization_id = ANY($1)", [
+    [CAPPED_ORG_ID, UNPAID_ORG_ID],
+  ]);
+  await client.query(
+    `INSERT INTO organization_settings (organization_id, entitlement_overrides, premium_addon_quantity, created_at, updated_at)
+     VALUES ($1, $2, 0, NOW(), NOW())`,
+    [CAPPED_ORG_ID, JSON.stringify(CAPPED_ENTITLEMENT_OVERRIDES)],
+  );
+
+  for (let i = 0; i < CAPPED_PROMPT_COUNT; i++) {
+    await client.query(
+      `INSERT INTO prompts (brand_id, value, enabled, tags, system_tags, created_at, updated_at)
+       VALUES ($1, $2, true, '{}', '{}', NOW(), NOW())`,
+      [CAPPED_BRAND_ID, `Capped tenant prompt ${i + 1}`],
+    );
+  }
+  console.log(
+    `  Created billing tenants: ${CAPPED_ORG_ID} (${CAPPED_PROMPT_COUNT}/${CAPPED_ENTITLEMENT_OVERRIDES.maxPrompts} prompts) and ${UNPAID_ORG_ID} (no plan)`,
+  );
 }
 
 async function seed() {
@@ -518,6 +568,7 @@ async function seed() {
     );
     console.log("  Created second tenant: Nike (2 brands, 2 prompts, 2 competitors, 1 run, 2 citations)");
 
+    await seedBillingTenants(client);
     await seedApiKeys(client);
 
     console.log("\nE2E database seeding complete!");

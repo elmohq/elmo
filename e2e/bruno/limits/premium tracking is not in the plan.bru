@@ -1,0 +1,29 @@
+meta {
+  name: grounded tracking is not in the plan
+  type: http
+  seq: 10
+  tags: [
+    cloud
+  ]
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/prompts/{{cappedPromptId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{cappedKey}}
+}
+
+body:json {
+  {
+    "premiumModels": ["claude"]
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq premium_not_in_plan
+}

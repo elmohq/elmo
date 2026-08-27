@@ -10,7 +10,8 @@
     "test:e2e:cloud": "playwright test --project=cloud",
     "test:e2e:whitelabel": "playwright test --project=whitelabel",
     "test:e2e:demo": "playwright test --project=demo",
-    "test:api": "mkdir -p test-results && cd bruno && bru run -r --env local --reporter-junit ../test-results/api-junit.xml --reporter-json ../test-results/api-report.json",
+    "test:api": "mkdir -p test-results && cd bruno && bru run -r --env local --exclude-tags cloud --reporter-junit ../test-results/api-junit.xml --reporter-json ../test-results/api-report.json",
+    "test:api:cloud": "mkdir -p test-results && cd bruno && bru run -r --env cloud --tags cloud --reporter-junit ../test-results/api-cloud-junit.xml --reporter-json ../test-results/api-cloud-report.json",
     "seed": "tsx seed.ts"
   },
   "dependencies": {

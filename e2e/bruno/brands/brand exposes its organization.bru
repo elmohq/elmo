@@ -1,0 +1,20 @@
+meta {
+  name: a brand names the workspace that owns it
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.organizationId: eq default
+}

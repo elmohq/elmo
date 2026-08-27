@@ -1,0 +1,25 @@
+meta {
+  name: an unsubscribed tenant is told it has no plan
+  type: http
+  seq: 14
+  tags: [
+    cloud
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/v1/organizations/{{unpaidOrgId}}/billing
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{unpaidKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.billingEnabled: isTruthy
+  res.body.plan: isNull
+  res.body.limits.maxPrompts: eq 0
+}

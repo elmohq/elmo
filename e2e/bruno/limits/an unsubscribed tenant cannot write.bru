@@ -1,0 +1,30 @@
+meta {
+  name: an unsubscribed tenant cannot write
+  type: http
+  seq: 12
+  tags: [
+    cloud
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{unpaidKey}}
+}
+
+body:json {
+  {
+    "brandId": "{{unpaidBrandId}}",
+    "value": "Written without a plan"
+  }
+}
+
+assert {
+  res.status: eq 402
+  res.body.code: eq no_active_plan
+}

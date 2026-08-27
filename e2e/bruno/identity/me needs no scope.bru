@@ -1,0 +1,19 @@
+meta {
+  name: me needs no scope
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/me
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgAnalyticsOnlyKey}}
+}
+
+assert {
+  res.status: eq 200
+}

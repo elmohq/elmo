@@ -1,0 +1,27 @@
+meta {
+  name: a bulk create for an unknown brand
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts/bulk
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+body:json {
+  {
+    "brandId": "does-not-exist",
+    "prompts": [{ "value": "orphan" }]
+  }
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}

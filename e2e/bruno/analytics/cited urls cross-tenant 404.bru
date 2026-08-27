@@ -1,0 +1,24 @@
+meta {
+  name: another tenant's cited URLs are not found
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{nikeBrandId}}/citations/urls?lookback=1y
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  lookback: 1y
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}

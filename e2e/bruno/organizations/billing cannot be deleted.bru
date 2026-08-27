@@ -1,0 +1,20 @@
+meta {
+  name: billing cannot be deleted
+  type: http
+  seq: 12
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/organizations/{{orgId}}/billing
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: gte 400
+  res.status: lt 500
+}

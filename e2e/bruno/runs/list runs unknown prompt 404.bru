@@ -1,0 +1,24 @@
+meta {
+  name: runs for a prompt that does not exist
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{missingUuid}}/runs?lookback=1y
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  lookback: 1y
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}

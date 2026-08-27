@@ -1,0 +1,20 @@
+meta {
+  name: an unparseable run id
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/runs/{{badUuid}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq validation_error
+}
