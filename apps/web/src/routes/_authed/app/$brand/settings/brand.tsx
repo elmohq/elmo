@@ -13,7 +13,6 @@ import { Label } from "@workspace/ui/components/label";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useCallback, useEffect, useState } from "react";
-import { BrandLogo } from "@/components/brand-logo";
 import { useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
@@ -116,12 +115,9 @@ function BrandSettingsPage() {
 
 	return (
 		<div className="space-y-6 max-w-2xl">
-			<div className="flex items-center gap-3">
-				<BrandLogo domain={brand.website} size="lg" className="size-10" />
-				<div>
-					<h1 className="text-3xl font-bold">Brand</h1>
-					<p className="text-muted-foreground">Manage your brand name and website</p>
-				</div>
+			<div>
+				<h1 className="text-3xl font-bold">Brand</h1>
+				<p className="text-muted-foreground">Manage your brand name and website</p>
 			</div>
 
 			<form action={handleSubmit} className="space-y-6">

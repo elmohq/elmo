@@ -23,7 +23,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Settings, TrendingDown, TrendingUp } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
-import { BrandLogo } from "@/components/brand-logo";
 import { getAppName } from "@/lib/route-head";
 import { getAdminStatsFn, updateDelayOverrideFn } from "@/server/admin";
 
@@ -597,18 +596,11 @@ function AdminDashboard() {
 									return (
 										<TableRow key={brand.id}>
 											<TableCell className="font-medium">
-												<div className="flex items-center gap-2">
-													<BrandLogo domain={brand.website} size="lg" />
-													<div className="space-y-1 min-w-0">
-														<Link
-															to="/app/$brand"
-															params={{ brand: brand.id }}
-															className="hover:underline text-primary"
-														>
-															{brand.name}
-														</Link>
-														<div className="text-xs text-muted-foreground">{brand.website}</div>
-													</div>
+												<div className="space-y-1">
+													<Link to="/app/$brand" params={{ brand: brand.id }} className="hover:underline text-primary">
+														{brand.name}
+													</Link>
+													<div className="text-xs text-muted-foreground">{brand.website}</div>
 												</div>
 											</TableCell>
 											<TableCell className="text-right">
