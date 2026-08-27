@@ -23,6 +23,7 @@ import { CUSTOMER_QUOTES } from "@workspace/ui/brand/customers";
 import { G2Stars } from "@workspace/ui/brand/g2-rating";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { buttonVariants } from "@workspace/ui/components/button";
+import { cn } from "@workspace/ui/lib/utils";
 import type { ReactNode } from "react";
 
 /** Everything Elmo reaches, named — the coverage claim is the product. */
@@ -137,7 +138,7 @@ interface Offer {
 }
 
 const demoOffer = (source: ReferralSource): Offer => ({
-	label: "View Demo",
+	label: "View Live Demo",
 	href: demoSiteUrl(source),
 	icon: IconEye,
 	newTab: true,
@@ -165,7 +166,10 @@ function OfferCard({ question, offer, className = "" }: { question: string; offe
 			<h3 className="text-sm font-semibold">{question}</h3>
 			<a
 				href={offer.href}
-				className={buttonVariants({ variant: "ghost", size: "sm" })}
+				className={cn(
+					buttonVariants({ variant: "ghost", size: "sm" }),
+					"bg-accent text-accent-foreground hover:underline dark:bg-accent/50",
+				)}
 				{...(offer.newTab ? { target: "_blank", rel: "noopener" } : {})}
 			>
 				<offer.icon className="size-4" />
