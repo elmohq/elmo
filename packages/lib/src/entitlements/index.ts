@@ -16,7 +16,6 @@ export {
 	decideCompetitorCap,
 	decideEnabledModels,
 	decidePremiumAssign,
-	decidePremiumPool,
 	decidePromptAdd,
 	decidePromptCap,
 	type EntitlementDecision,
@@ -24,6 +23,7 @@ export {
 	EntitlementError,
 	type PromptPoolState,
 	type PromptSaveDelta,
+	type PromptSaveRow,
 	promptSaveDelta,
 } from "./guards";
 export {

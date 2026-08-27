@@ -12,7 +12,6 @@ import {
 	decideCompetitorCap,
 	decideEnabledModels,
 	decidePremiumAssign,
-	decidePremiumPool,
 	decidePromptAdd,
 	decidePromptCap,
 	type EntitlementDecision,
@@ -40,9 +39,8 @@ function planEntitlements(plan: string): Entitlements {
 const PRO = planEntitlements("pro");
 const STARTER = planEntitlements("starter");
 
-/** The pool rule is the deliberate exception; `decidePremiumPool` below. */
-describe("unlimited entitlements short-circuit every plan limit", () => {
-	it("allows everything the plan would otherwise bound", () => {
+describe("unlimited entitlements short-circuit every guard", () => {
+	it("allows everything", () => {
 		expect(decideBrandCreate(UNLIMITED_ENTITLEMENTS, 10_000).allowed).toBe(true);
 		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, 10_000, 500).allowed).toBe(true);
 		expect(decideEnabledModels(UNLIMITED_ENTITLEMENTS, ["anything", "claude", "made-up"]).allowed).toBe(true);
@@ -156,43 +154,18 @@ describe("decideCompetitorCap", () => {
 });
 
 /**
- * The one rule that outlives the unlimited short-circuit. Grounded tracking is
- * charged per prompt/model pairing, and outside cloud there is no pool to
- * charge — self-hosted tracks the same models by picking their grounded targets
- * on the LLMs page instead, for the whole brand.
- */
-describe("decidePremiumPool", () => {
-	it("refuses an unlimited deployment and points at the per-brand mechanism", () => {
-		const decision = decidePremiumPool(UNLIMITED_ENTITLEMENTS);
-		expect(decision.allowed).toBe(false);
-		expect(denialMessage(decision)).toMatch(/LLM settings/);
-	});
-
-	it("sells the upgrade to a cloud plan without a pool", () => {
-		expect(denialMessage(decidePremiumPool(STARTER))).toMatch(/Pro and Business/);
-	});
-
-	it("allows a plan that has one", () => {
-		expect(decidePremiumPool(PRO).allowed).toBe(true);
-	});
-});
-
-/**
  * The prompts editor submits the brand's whole list on every save, so these
- * figures decide what the save is charged for. They are net, and the two cases
- * that pin why are the ones a deployment with no premium pool runs into: it must
- * be able to delete a prompt that carries grounded models, and it must not be
- * able to start paying for one by re-enabling it.
+ * figures decide what the save is charged for. They are net: only spending more
+ * than before needs anyone's permission.
  */
 describe("promptSaveDelta", () => {
 	const grounded = { enabled: true, premiumModels: ["claude"] };
 
-	it("counts a deleted grounded prompt as a release, and not as an assignment", () => {
+	it("counts a deleted grounded prompt as a release", () => {
 		// The editor deletes by submitting the row disabled with its models cleared.
 		expect(promptSaveDelta([{ before: grounded, after: { enabled: false, premiumModels: [] } }])).toEqual({
 			prompts: -1,
 			premiumPairings: -1,
-			premiumAssigned: false,
 		});
 	});
 
@@ -200,38 +173,28 @@ describe("promptSaveDelta", () => {
 		expect(promptSaveDelta([{ before: grounded, after: { enabled: false, premiumModels: ["claude"] } }])).toEqual({
 			prompts: -1,
 			premiumPairings: -1,
-			premiumAssigned: false,
 		});
 	});
 
-	it("does not call re-enabling an assignment, though it does spend a pairing", () => {
-		// The distinction the no-pool rule turns on: nothing new is being asked
-		// for, so a deployment with no pool must let this through.
+	it("charges re-enabling a grounded prompt for the pairing it resumes", () => {
 		expect(promptSaveDelta([{ before: { enabled: false, premiumModels: ["claude"] }, after: grounded }])).toEqual({
 			prompts: 1,
 			premiumPairings: 1,
-			premiumAssigned: false,
 		});
 	});
 
-	it("calls a model the row did not carry an assignment", () => {
-		const delta = promptSaveDelta([{ before: grounded, after: { enabled: true, premiumModels: ["claude", "grok"] } }]);
-		expect(delta).toEqual({ prompts: 0, premiumPairings: 1, premiumAssigned: true });
-		// Which is what the pool rule refuses where there is no pool.
-		expect(decidePremiumPool(UNLIMITED_ENTITLEMENTS).allowed).toBe(false);
+	it("charges a second model on a row that already carries one", () => {
+		expect(
+			promptSaveDelta([{ before: grounded, after: { enabled: true, premiumModels: ["claude", "grok"] } }]),
+		).toEqual({ prompts: 0, premiumPairings: 1 });
 	});
 
 	it("treats a row with no before as an insert", () => {
-		expect(promptSaveDelta([{ after: grounded }])).toEqual({
-			prompts: 1,
-			premiumPairings: 1,
-			premiumAssigned: true,
-		});
-		// Disabled, so it spends nothing — but it is still asking to carry one.
+		expect(promptSaveDelta([{ after: grounded }])).toEqual({ prompts: 1, premiumPairings: 1 });
+		// Disabled, so it spends nothing whatever it is assigned.
 		expect(promptSaveDelta([{ after: { enabled: false, premiumModels: ["claude"] } }])).toEqual({
 			prompts: 0,
 			premiumPairings: 0,
-			premiumAssigned: true,
 		});
 	});
 
@@ -241,7 +204,7 @@ describe("promptSaveDelta", () => {
 				{ before: grounded, after: { enabled: false, premiumModels: [] } },
 				{ after: { enabled: true, premiumModels: [] } },
 			]),
-		).toEqual({ prompts: 0, premiumPairings: -1, premiumAssigned: false });
+		).toEqual({ prompts: 0, premiumPairings: -1 });
 	});
 });
 
@@ -292,6 +255,14 @@ describe("decideEnabledModels", () => {
 });
 
 describe("decidePremiumAssign", () => {
+	it("reports a lapsed subscription as a payment problem, not an upsell", () => {
+		// The plan gate runs before the pool check, and the order matters: an org
+		// with no subscription has no pool either, and "buy Pro" is the wrong
+		// answer to "your plan lapsed".
+		expect(decidePremiumAssign(NO_PLAN_ENTITLEMENTS, 0, 1)).toMatchObject({ code: "no-active-plan" });
+		expect(denialMessage(decidePremiumAssign(NO_PLAN_ENTITLEMENTS, 0, 1))).not.toMatch(/Pro and Business/);
+	});
+
 	it("denies on plans without a claude pool", () => {
 		expect(decidePremiumAssign(planEntitlements("basic"), 0, 1)).toMatchObject({
 			allowed: false,

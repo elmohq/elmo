@@ -3,7 +3,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { selectPremiumModels } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { assertAllowed, assertPromptSaveAllowed, decidePromptCap, promptSaveDelta } from "@workspace/lib/entitlements";
+import {
+	assertAllowed,
+	assertPromptSaveAllowed,
+	decidePromptCap,
+	getOrgEntitlements,
+	promptSaveDelta,
+} from "@workspace/lib/entitlements";
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -562,16 +568,28 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		// so the rows being inserted are the whole of the brand's growth.
 		assertAllowed(decidePromptCap(existingRows.length, toInsert.length));
 
-		const delta = promptSaveDelta(
-			[...toUpdate, ...toInsert].map((p) => ({
-				before: p.id ? existingById.get(p.id) : undefined,
-				after: { enabled: p.enabled, premiumModels: selectPremiumModels(p.premiumModels) },
-			})),
-		);
-		await assertPromptSaveAllowed(brand.organizationId, delta);
+		// Grounded models are metered per prompt/model pairing from a cloud pool.
+		// Where there is none the run policy never reads the column, so the field
+		// is not the editor's to set: each row keeps whatever it already stores.
+		// Refusing the save instead would freeze any database moved off cloud,
+		// which submits its stored assignments on every save.
+		const metered = !(await getOrgEntitlements(brand.organizationId)).unlimited;
+		const resolvePremiumModels = (requested: string[] | undefined, before?: { premiumModels: string[] }) =>
+			metered ? selectPremiumModels(requested) : (before?.premiumModels ?? []);
+
+		const updates = toUpdate.map((p) => {
+			const before = existingById.get(p.id);
+			return { p, before, after: { enabled: p.enabled, premiumModels: resolvePremiumModels(p.premiumModels, before) } };
+		});
+		const inserts = toInsert.map((p) => ({
+			p,
+			after: { enabled: p.enabled, premiumModels: resolvePremiumModels(p.premiumModels) },
+		}));
+
+		await assertPromptSaveAllowed(brand.organizationId, promptSaveDelta([...updates, ...inserts]));
 
 		const saved = await db.transaction(async (tx) => {
-			for (const p of toUpdate) {
+			for (const { p, after } of updates) {
 				await tx
 					.update(prompts)
 					.set({
@@ -579,20 +597,20 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						enabled: p.enabled,
 						tags: p.tags || [],
 						systemTags: computeSystemTags(p.value, brand.name, brand.website),
-						premiumModels: selectPremiumModels(p.premiumModels),
+						premiumModels: after.premiumModels,
 					})
 					.where(and(eq(prompts.id, p.id), eq(prompts.brandId, data.brandId)));
 			}
 
-			if (toInsert.length > 0) {
+			if (inserts.length > 0) {
 				await tx.insert(prompts).values(
-					toInsert.map((p) => ({
+					inserts.map(({ p, after }) => ({
 						brandId: data.brandId,
 						value: p.value,
 						enabled: p.enabled,
 						tags: p.tags || [],
 						systemTags: computeSystemTags(p.value, brand.name, brand.website),
-						premiumModels: selectPremiumModels(p.premiumModels),
+						premiumModels: after.premiumModels,
 					})),
 				);
 			}
