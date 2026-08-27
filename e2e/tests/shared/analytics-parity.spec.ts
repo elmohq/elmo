@@ -54,6 +54,95 @@ test.describe("dashboard and API parity", () => {
     }
   });
 
+  test("citations agree between the page and the API", async ({ page, request }) => {
+    // Citations is the one metric still computed twice — getCitationsFn returns
+    // more than the API publishes (the Google module, what's-changed, page-type
+    // distribution), so it isn't a wrapper. Two implementations are fine; two
+    // answers are not. This pins the fields they both produce.
+    await page.goto(`/app/${TEST_BRAND_ID}/citations`, { waitUntil: "networkidle" });
+    await expect(page.getByText("Total Citations")).toBeVisible({ timeout: 30_000 });
+
+    // The page's default window is the last 30 days, ending today, which is what
+    // `citationDateWindow` builds. The API takes it explicitly.
+    const today = new Date();
+    const iso = (date: Date) => date.toISOString().slice(0, 10);
+    const from = new Date(today);
+    from.setUTCDate(from.getUTCDate() - 29);
+    const window = `startDate=${iso(from)}&endDate=${iso(today)}`;
+
+    const numberUnder = async (label: string) => {
+      const value = page.locator("div", { has: page.getByText(label, { exact: true }) }).last();
+      return Number((await value.innerText()).match(/(\d+)/)?.[1]);
+    };
+
+    const domains = await request.get(
+      `/api/v1/brands/${TEST_BRAND_ID}/citations/domains?${window}&limit=100`,
+      { headers: AUTH },
+    );
+    expect(domains.status()).toBe(200);
+    const domainBody = await domains.json();
+
+    const pageText = await page.locator("main").innerText();
+    const totalOnPage = Number(pageText.match(/Total Citations\s*\n?\s*(\d+)/)?.[1]);
+    const domainsOnPage = Number(pageText.match(/Unique Domains\s*\n?\s*(\d+)/)?.[1]);
+
+    expect(totalOnPage, "the page renders a citation total").toBeGreaterThan(0);
+    expect(domainBody.totals.citations).toBe(totalOnPage);
+    expect(domainBody.totals.uniqueDomains).toBe(domainsOnPage);
+
+    // Every domain the API reports, with the count the page renders beside it.
+    // The "Top Cited Domains" table lists them as `domain` then count, ordered
+    // by count — so the whole list is comparable, not just its presence.
+    const section = pageText.slice(pageText.indexOf("Top Cited Domains"));
+    const onPage = new Map<string, number>();
+    for (const [, domain, count] of section.matchAll(/^([a-z0-9.-]+\.[a-z]{2,})\s*\n\s*(\d+)$/gm)) {
+      if (!onPage.has(domain)) onPage.set(domain, Number(count));
+    }
+    expect(onPage.size, "no domain rows were parsed off the page").toBeGreaterThan(3);
+    for (const row of domainBody.data) {
+      expect(onPage.get(row.domain), `${row.domain} count differs from the page`).toBe(row.count);
+    }
+
+    // Categorization is the likeliest place for two implementations to drift,
+    // so check it per URL rather than trusting the totals to catch it.
+    const urls = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/citations/urls?${window}&limit=100`, {
+      headers: AUTH,
+    });
+    expect(urls.status()).toBe(200);
+    const urlBody = await urls.json();
+    expect(urlBody.totals.citations).toBe(totalOnPage);
+
+    // A URL appears in more than one section, and only the categorized table
+    // carries a badge — so collect every row it appears in and look for the
+    // category in any of them.
+    const rendered: { href: string; rows: string[] }[] = await page.evaluate(() => {
+      const byHref = new Map<string, string[]>();
+      for (const anchor of document.querySelectorAll("a[href^='http']")) {
+        const href = anchor.getAttribute("href") ?? "";
+        const rows: string[] = [];
+        let node = anchor.parentElement;
+        for (let depth = 0; node && depth < 4; depth++) {
+          rows.push((node.textContent ?? "").toLowerCase());
+          node = node.parentElement;
+        }
+        byHref.set(href, [...(byHref.get(href) ?? []), ...rows]);
+      }
+      return [...byHref].map(([href, rows]) => ({ href, rows }));
+    });
+
+    let compared = 0;
+    for (const row of urlBody.data) {
+      const match = rendered.find((candidate) => candidate.href === row.url);
+      if (!match) continue; // the page caps its list; the API does not
+      expect(
+        match.rows.some((text) => text.includes(row.category)),
+        `${row.url} is categorized differently on the page (API says ${row.category})`,
+      ).toBe(true);
+      compared++;
+    }
+    expect(compared, "no URL was actually compared").toBeGreaterThan(3);
+  });
+
   test("query fan-out totals agree between the page and the API", async ({ page, request }) => {
     await page.goto(`/app/${TEST_BRAND_ID}/query-fan-out`);
     await expect(page.getByRole("heading", { name: /fan.?out/i }).first()).toBeVisible({ timeout: 30_000 });

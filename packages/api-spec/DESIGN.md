@@ -602,7 +602,11 @@ this plan got wrong.
    **Still to do:** citations still has two implementations —
    `getCitationsFn` returns more than the API publishes (the Google module,
    what's-changed, page-type distribution), so folding them together is its own
-   piece of work rather than a wrapper. Moving the module into `packages/lib`
+   piece of work rather than a wrapper. Two implementations are acceptable; two
+   *answers* are not, so `analytics-parity.spec.ts` pins the fields they both
+   produce: the citation and unique-domain totals, every domain's count, and
+   every URL's category — categorization being the likeliest place for two
+   implementations to drift apart quietly. Moving the module into `packages/lib`
    (which means moving `apps/web/src/lib/postgres-read.ts`, ~1,400 lines, with
    it) is what a future MCP server (#105/#386) would wrap instead of
    re-querying. Same for the CRUD half: the REST handlers are thin, but they are
@@ -645,8 +649,9 @@ authenticates as keys the seeder wrote straight into the table, which says
 nothing about whether the product can mint one — `api-keys.spec.ts` creates one
 through the page and checks it carries exactly the scopes ticked, is refused on
 one it isn't, sees the other tenant as absent rather than forbidden, and stops
-working the moment it is revoked. `analytics-parity.spec.ts` reads a figure off
-the rendered dashboard and asserts the API reports the same one.
+working the moment it is revoked. `analytics-parity.spec.ts` reads figures off the
+rendered dashboard and asserts the API reports the same ones — including for
+citations, which is the one metric still computed twice.
 
 Two of them were worth nothing as first written: the API-key forgery cases
 posted to `/api/auth/api-key/create` with no session, so they would have passed
