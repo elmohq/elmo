@@ -32,10 +32,11 @@ Two kinds of Bearer token, distinguished at the edge by a single resolver.
 
 ### 1.1 Instance admin keys — unchanged
 
-`ADMIN_API_KEYS` (comma-separated env var, timing-safe compared). Full access to
-every organization and every endpoint, including the admin-only ones. No plan
-enforcement — an operator key is for support and automation on an instance the
-operator owns. Self-hosters keep using exactly what they use today.
+`ADMIN_API_KEYS` (comma-separated env var, timing-safe compared). Reaches every
+organization and every endpoint, including the admin-only ones, and holds every
+scope — it is the operator's key for an instance the operator owns. It is still
+answerable to the plan of whichever organization it is writing into (§1.4).
+Self-hosters keep using exactly what they use today.
 
 ### 1.2 Organization API keys — new
 
