@@ -9,7 +9,7 @@
  * to one of these functions, making it trivial to write regression tests.
  */
 import { timingSafeEqual } from "node:crypto";
-import type { DeploymentMode, FeaturesConfig } from "@workspace/config/types";
+import type { FeaturesConfig } from "@workspace/config/types";
 
 // ============================================================================
 // Deployment Request Policy
@@ -239,31 +239,12 @@ export function evaluateReadOnly(readOnly: boolean): "allow" | "deny" {
 
 /**
  * Evaluate whether the viewer chooses which platforms a brand is tracked on.
- *
- * Not a plan question — cloud sells the choice and local runs it, so both keep
- * it. Demo refuses every write, and in whitelabel the picks, and the provider
- * bills behind them, belong to the agency rather than the customer looking at
- * the page. Entitlements can't answer this: they read "unlimited" for local,
- * demo and whitelabel alike.
+ * Used by the LLMs settings page and every platform-pick write path. Not a plan
+ * question: entitlements read "unlimited" for local, demo and whitelabel alike,
+ * so the deployment declares it the same way it declares brand creation.
  */
-export function evaluatePlatformPicksEditable(mode: DeploymentMode, features: FeaturesConfig): "allow" | "deny" {
-	if (features.readOnly) return "deny";
-	return mode === "whitelabel" ? "deny" : "allow";
-}
-
-/**
- * Evaluate whether prompts may carry per-prompt grounded ("premium") model
- * assignments.
- *
- * Cloud sells grounded calls from a metered pool, one prompt/model pair at a
- * time. Everywhere else the same models are tracked by picking their targets on
- * the LLMs page — a self-hosted brand can absolutely run grounded Claude; it
- * just runs it for the whole brand. A per-prompt assignment there would be a
- * second, invisible way to spend the operator's money, and the run policy
- * ignores it anyway.
- */
-export function evaluatePremiumAssignable(mode: DeploymentMode): "allow" | "deny" {
-	return mode === "cloud" ? "allow" : "deny";
+export function evaluatePlatformPicksEditable(platformPicksEditable: boolean): "allow" | "deny" {
+	return platformPicksEditable ? "allow" : "deny";
 }
 
 /**

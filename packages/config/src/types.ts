@@ -31,6 +31,14 @@ export interface FeaturesConfig {
 	 * demo is read-only.
 	 */
 	teamInvites: boolean;
+	/**
+	 * Whether the person looking at a brand chooses which platforms it is
+	 * tracked on. True in local and cloud, where the viewer either runs the
+	 * deployment or buys the choice; false in whitelabel, where the picks and
+	 * the provider bills behind them are the agency's, and in demo, which
+	 * refuses every write.
+	 */
+	platformPicksEditable: boolean;
 }
 
 export interface AnalyticsConfig {

@@ -40,6 +40,7 @@ export function createWhitelabelDeployment(options: CreateWhitelabelDeploymentOp
 			readOnly: false,
 			showOptimizeButton: true,
 			canCreateBrands: false,
+			platformPicksEditable: false,
 			selfServeSignup: false,
 			billing: false,
 			reportGeneration: true,
