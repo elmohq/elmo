@@ -23,6 +23,8 @@ const SPEC = JSON.parse(
 );
 const BASE_PATH = new URL(SPEC.servers[0].url, "http://x").pathname.replace(/\/$/, "");
 
+const METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
+
 function resolve(schema) {
 	if (schema?.$ref) {
 		const name = schema.$ref.replace("#/components/schemas/", "");
@@ -128,6 +130,7 @@ if (reports.length === 0) {
 }
 
 const out = { violations: [], optionalSeen: new Map() };
+const exercised = new Set();
 let checked = 0;
 let unmatched = 0;
 
@@ -160,6 +163,7 @@ for (const file of reports) {
 				out.violations.push(`${result.request.method} ${template}: answered ${status}, which the spec never mentions`);
 				continue;
 			}
+			exercised.add(`${result.request.method} ${template}`);
 			const schema = response.content?.["application/json"]?.schema;
 			if (!schema) continue;
 			validate(body, schema, `${result.request.method} ${template} ${status}`, out);
@@ -172,8 +176,23 @@ const alwaysPresent = [...out.optionalSeen.entries()].filter(
 	([, seen]) => seen.total >= 3 && seen.present === seen.total,
 );
 
+const documented = [];
+for (const [path, methods] of Object.entries(SPEC.paths)) {
+	for (const method of Object.keys(methods)) {
+		if (METHODS.has(method.toUpperCase())) documented.push(`${method.toUpperCase()} ${path}`);
+	}
+}
+const unexercised = documented.filter((operation) => !exercised.has(operation)).sort();
+
 console.log(`checked ${checked} responses against the spec`);
+console.log(`${exercised.size}/${documented.length} documented operations were exercised`);
 if (unmatched) console.log(`${unmatched} responses hit no documented path (redirects and unclaimed routes)`);
+
+// Saying only what was checked would read as "all of it".
+if (unexercised.length) {
+	console.log(`\nnot exercised by any recorded response, so unchecked here:`);
+	for (const operation of unexercised) console.log(`  ${operation}`);
+}
 
 const unique = [...new Set(out.violations)].sort();
 if (unique.length) {
