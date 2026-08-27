@@ -2,6 +2,7 @@
 title: "ChatGPT UI now cites Reddit the same amount as the OpenAI API"
 description: "Reddit's share of citations in the ChatGPT UI fell by more than 90%. The surprising part is where it landed: near the level API web search was already returning."
 date: "2026-08-19"
+updated: "2026-08-27"
 author: ai
 metaTitle: "ChatGPT UI Reddit Citations Fell to API Levels"
 tags:
@@ -118,6 +119,26 @@ Afterward, the UI sat at 0.38% while the API sat at 0.67%. Those are not identic
 
 The cleanest reading is therefore not "OpenAI stopped citing Reddit." It is **"the ChatGPT UI stopped citing Reddit much more often than the API did."**
 
+## A week later, a mechanism surfaced
+
+*Updated August 27.* When we first published this analysis, the cause was an open question. Promptwatch has since published a [follow-up on the retrieval change](https://promptwatch.com/blog/chatgpt-stop-citing-reddit) behind the August 8 step, and it points at how ChatGPT searches rather than what it thinks of Reddit.
+
+On August 8, the share of ChatGPT's fanout queries using the `site:` operator jumped from 0.37% to 16.8% — a 46-fold increase in one day — while the number of search queries issued per response nearly doubled, from 1.08 to 1.83. ChatGPT did not stop searching the open web; it started asking specific, named websites for answers directly. Domain-scoped queries go to official sites and documentation, almost never to forums, so a retrieval mix that leans on them mechanically pushes discussion platforms down the citation list.
+
+That is a mechanism hypothesis, not a confirmed cause. Promptwatch says it cannot yet rule out a data-collection artifact on its own end, and OpenAI [did not respond to requests for comment](https://www.searchenginejournal.com/why-reddits-chatgpt-citation-drop-isnt-fully-explained/586479/). But it is consistent with what our two series show: a retrieval change on the consumer surface would move the UI without touching an API integration that runs its own web-search path.
+
+It also explains why the event is ChatGPT-shaped rather than web-wide. Over the same period, [Promptwatch measured](https://searchengineland.com/reddit-chatgpt-search-citations-fall-report-485473) Reddit citations falling only 11% in Google AI Overviews and 31% in Google AI Mode, with Facebook, LinkedIn, YouTube, and TikTok also dipping in ChatGPT by much smaller amounts than Reddit. One engine rewired its retrieval; the others kept citing Reddit at close to their prior rates.
+
+## This happened before, and it reversed
+
+The strongest reason not to write Reddit's obituary is that ChatGPT already ran this experiment once.
+
+In September 2025, Reddit's share of ChatGPT citations collapsed from roughly 7% to roughly 1%, according to [Profound's analysis of more than four billion AI citations](https://www.tryprofound.com/blog/the-data-on-reddit-and-ai-search). By late October it had rebounded to around 3%, in line with its spring 2025 levels, and Reddit held its position as ChatGPT's second most-cited domain, behind Wikipedia, through the entire episode.
+
+That drop also traced back to retrieval plumbing rather than source preference. [Kevin Indig's analysis](https://learn.g2.com/reddit-chatgpt-citations) tied the timing to Google removing the `num=100` search parameter around September 10, 2025, which cut the depth of search results available to the data providers OpenAI buys SERP data from. Ahrefs data in the same analysis put 57.8% of Reddit's ranking keywords outside the top 20 results — exactly the region that vanished from the data supply. When the pipeline adjusted, the citations came back.
+
+The parallel is not proof that the August 2026 drop will reverse the same way; a deliberate shift toward domain-scoped retrieval could prove stickier than a broken scraping parameter. But two collapses in eleven months, both explained by retrieval infrastructure rather than by anything Reddit did, are a strong argument against treating any single week of citation data as a verdict on a channel.
+
 ## The product surface matters
 
 It is tempting to treat "ChatGPT" as one measurable thing. It is not.
@@ -134,7 +155,7 @@ This chart measures **visible citations**, not training data, licensing, or whet
 
 The series also cover different prompt sets. Absolute percentages depend heavily on what was asked: shopping, software, health, and local prompts naturally draw on different source mixes. The useful signal here is the large change in one continuously monitored UI series, its agreement with another UI study, and the absence of that change in the API series.
 
-Finally, four or five post-change days are enough to identify a break, not enough to call it permanent. [AI citation sources are volatile](/blog/citation-volatility), and Reddit has already moved sharply more than once. We will keep watching whether the UI remains near the API baseline or rebounds.
+Finally, four or five post-change days are enough to identify a break, not enough to call it permanent. [AI citation sources are volatile](/blog/citation-volatility), and the September 2025 collapse-and-recovery above shows how quickly a drop this size can unwind. We will keep watching whether the UI remains near the API baseline or rebounds.
 
 ## The interesting part is the convergence
 
@@ -142,6 +163,6 @@ The dramatic headline is that Reddit lost more than 90% of its citation share in
 
 For anyone measuring AI visibility, that leaves a simple rule: **measure the surface your customers actually use.** API calls are easier to automate and useful in their own right, but they are not automatically a substitute for the consumer product.
 
-And for anyone building a Reddit strategy around AI citations, it is another reminder not to turn one engine's temporary source preference into a permanent channel plan. Reddit remains an important source, but its value is specific to the prompt, the surface, and the week you measured it.
+And for anyone deciding whether to pull Reddit budget over this: the evidence argues for changing your measurement before your strategy. The drop is confined to one surface of one engine, other engines barely moved, and the last collapse of this size reversed within weeks once the retrieval pipeline behind it changed. A reasonable decision rule is to keep community work funded on the prompts where forums carry answers on other engines, and revisit only if the ChatGPT UI is still sitting at API levels a quarter from now. Reddit remains an important source — [mostly as one of the third-party surfaces that carry answers about you](/blog/where-ai-citations-come-from) — but its value is specific to the prompt, the surface, and the week you measured it.
 
 You can read our broader analysis of [Reddit's changing role in AI citations](/blog/reddit-ai-citations), or use [Elmo](https://www.elmohq.com/) to track the cited domains behind your own prompts across consumer AI surfaces and API models.
