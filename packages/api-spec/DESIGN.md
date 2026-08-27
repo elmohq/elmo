@@ -628,6 +628,12 @@ this plan got wrong.
    publish a typed client. Follow-up: derive `openapi.json` from
    the zod schemas rather than hand-editing (the second half of #331).
 
+Until that generation exists, `e2e/validate-openapi.mjs` is what keeps the
+hand-written spec honest: it replays the responses the Bruno runs recorded and
+fails CI on any that the documented schema says are impossible. It also reports
+fields documented as optional that were present in every response observed —
+weaker evidence, so it prints rather than fails.
+
 ### Open PRs this supersedes
 
 Both are open against `main` and conflict with the above. Neither should merge

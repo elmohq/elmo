@@ -570,32 +570,26 @@
 			"BrandsList": {
 				"type": "object",
 				"properties": {
-					"brands": {
+					"data": {
+						"description": "The items on this page. Read this rather than the named key below.",
 						"type": "array",
 						"items": {
 							"$ref": "#/components/schemas/Brand"
 						}
 					},
-					"pagination": {
-						"type": "object",
-						"properties": {
-							"page": {
-								"type": "integer"
-							},
-							"limit": {
-								"type": "integer"
-							},
-							"total": {
-								"type": "integer"
-							},
-							"totalPages": {
-								"type": "integer"
-							}
+					"brands": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Brand"
 						},
-						"required": ["page", "limit", "total", "totalPages"]
+						"deprecated": true,
+						"description": "Deprecated: read `data` instead. Kept while the one known consumer migrates, and removed in a future release."
+					},
+					"pagination": {
+						"$ref": "#/components/schemas/Pagination"
 					}
 				},
-				"required": ["brands", "pagination"]
+				"required": ["data", "brands", "pagination"]
 			},
 			"Competitor": {
 				"type": "object",
@@ -636,32 +630,26 @@
 			"CompetitorsList": {
 				"type": "object",
 				"properties": {
-					"competitors": {
+					"data": {
+						"description": "The items on this page. Read this rather than the named key below.",
 						"type": "array",
 						"items": {
 							"$ref": "#/components/schemas/Competitor"
 						}
 					},
-					"pagination": {
-						"type": "object",
-						"properties": {
-							"page": {
-								"type": "integer"
-							},
-							"limit": {
-								"type": "integer"
-							},
-							"total": {
-								"type": "integer"
-							},
-							"totalPages": {
-								"type": "integer"
-							}
+					"competitors": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Competitor"
 						},
-						"required": ["page", "limit", "total", "totalPages"]
+						"deprecated": true,
+						"description": "Deprecated: read `data` instead. Kept while the one known consumer migrates, and removed in a future release."
+					},
+					"pagination": {
+						"$ref": "#/components/schemas/Pagination"
 					}
 				},
-				"required": ["competitors", "pagination"]
+				"required": ["data", "competitors", "pagination"]
 			},
 			"CreateCompetitorRequest": {
 				"type": "object",
@@ -2263,25 +2251,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/BrandsList",
-									"properties": {
-										"data": {
-											"description": "The items on this page. Read this rather than the named key below.",
-											"type": "array",
-											"items": {
-												"$ref": "#/components/schemas/Brand"
-											}
-										},
-										"brands": {
-											"type": "array",
-											"items": {
-												"$ref": "#/components/schemas/Brand"
-											},
-											"deprecated": true,
-											"description": "Deprecated: read `data` instead. Kept while the one known consumer migrates, and removed in a future release."
-										}
-									},
-									"required": ["data", "brands", "pagination"]
+									"$ref": "#/components/schemas/BrandsList"
 								}
 							}
 						}
@@ -3235,25 +3205,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/CompetitorsList",
-									"properties": {
-										"data": {
-											"description": "The items on this page. Read this rather than the named key below.",
-											"type": "array",
-											"items": {
-												"$ref": "#/components/schemas/Competitor"
-											}
-										},
-										"competitors": {
-											"type": "array",
-											"items": {
-												"$ref": "#/components/schemas/Competitor"
-											},
-											"deprecated": true,
-											"description": "Deprecated: read `data` instead. Kept while the one known consumer migrates, and removed in a future release."
-										}
-									},
-									"required": ["data", "competitors", "pagination"]
+									"$ref": "#/components/schemas/CompetitorsList"
 								}
 							}
 						}

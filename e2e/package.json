@@ -13,6 +13,7 @@
     "test:api": "mkdir -p test-results && cd bruno && bru run -r --env local --exclude-tags cloud,demo --reporter-junit ../test-results/api-junit.xml --reporter-json ../test-results/api-report.json",
     "test:api:cloud": "mkdir -p test-results && cd bruno && bru run -r --env cloud --tags cloud --reporter-junit ../test-results/api-cloud-junit.xml --reporter-json ../test-results/api-cloud-report.json",
     "test:api:demo": "mkdir -p test-results && cd bruno && bru run -r --env demo --tags demo --reporter-junit ../test-results/api-demo-junit.xml --reporter-json ../test-results/api-demo-report.json",
+    "validate:spec": "node validate-openapi.mjs test-results/api-report.json test-results/api-cloud-report.json test-results/api-demo-report.json",
     "seed": "tsx seed.ts"
   },
   "dependencies": {

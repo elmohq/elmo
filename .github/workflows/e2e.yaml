@@ -230,6 +230,12 @@ jobs:
       - name: Run Bruno API tests (demo mode)
         run: pnpm test:api:demo
 
+      # The spec is written by hand next to the code it describes, so nothing
+      # but this stops the two from disagreeing. Every response the three runs
+      # above recorded is held against the schema that documents it.
+      - name: Check responses against the OpenAPI spec
+        run: pnpm validate:spec
+
       - name: Dump web logs
         if: failure()
         run: docker compose logs web
