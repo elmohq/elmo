@@ -15,11 +15,18 @@ import { describe, expect, it } from "vitest";
 
 const V1_ROOT = join(import.meta.dirname, "../../../routes/api/v1");
 
+/**
+ * Every file under the tree that answers HTTP, `.tsx` included — a route that
+ * serves an endpoint from a `.tsx` file is still an endpoint. Files with no
+ * `handlers` block aren't endpoints at all (the docs path is a redirect), and
+ * nothing below applies to them.
+ */
 function routeFiles(dir: string): string[] {
 	return readdirSync(dir).flatMap((entry) => {
 		const full = join(dir, entry);
 		if (statSync(full).isDirectory()) return routeFiles(full);
-		return entry.endsWith(".ts") ? [full] : [];
+		if (!entry.endsWith(".ts") && !entry.endsWith(".tsx")) return [];
+		return readFileSync(full, "utf8").includes("handlers:") ? [full] : [];
 	});
 }
 
@@ -46,7 +53,7 @@ function documentedOperations(): string[] {
 
 /** The route file's path on disk is the URL it answers for; `$id` is `{id}`. */
 function pathForRoute(file: string): string | null {
-	const route = file.slice(V1_ROOT.length + 1).replace(/\.ts$/, "");
+	const route = file.slice(V1_ROOT.length + 1).replace(/\.tsx?$/, "");
 	// The catch-all answers for paths nothing claimed; it has no operation.
 	if (route === "$") return null;
 	const trimmed = route.replace(/\/index$/, "").replace(/^index$/, "");
