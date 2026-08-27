@@ -10,8 +10,8 @@
  * decided to look, and a whitelabel tenant is not ours to sell to.
  */
 
-import { IconCheck } from "@tabler/icons-react";
-import { CLOUD_ENTRY_PRICE_USD, PLANS, platformTierMembers } from "@workspace/config/plans";
+import { IconCalendarEvent, IconCheck, IconCloud, IconEye } from "@tabler/icons-react";
+import { PLANS, platformTierMembers } from "@workspace/config/plans";
 import {
 	bookDemoUrl,
 	cloudPricingUrl,
@@ -24,36 +24,45 @@ import { CUSTOMER_QUOTES } from "@workspace/ui/brand/customers";
 import { G2Stars } from "@workspace/ui/brand/g2-rating";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { buttonVariants } from "@workspace/ui/components/button";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 /** Everything Elmo reaches, named — the coverage claim is the product. */
 const ENGINES = [...platformTierMembers("scraped"), ...platformTierMembers("api")];
 
+const GITHUB_URL = "https://github.com/elmohq/elmo";
+
 /** The comparison the pricing rests on, kept in step with what a plan actually samples. */
 const RUNS_PER_DAY = PLANS.basic.standardRunsPerDay;
 
+interface Bullet {
+	/** Doubles as the list key. */
+	text: string;
+	/** Set where the bullet is an invitation rather than a statement. */
+	href?: string;
+}
+
 interface Pitch {
 	headline: string;
-	bullets: string[];
+	bullets: Bullet[];
 }
 
 const CLOUD_PITCH: Pitch = {
 	headline: "Know how AI talks about your brand.",
 	bullets: [
-		"Track your AI visibility on any model",
-		"Benchmark against your competitors",
-		"Analyze citations to find opportunities",
-		`${RUNS_PER_DAY}× Profound's daily runs, same price`,
+		{ text: "Track your AI visibility on any model" },
+		{ text: "Benchmark against your competitors" },
+		{ text: "Analyze citations to find opportunities" },
+		{ text: `${RUNS_PER_DAY}× Profound's daily runs, same price` },
 	],
 };
 
 const SELF_HOSTED_PITCH: Pitch = {
-	headline: "Your AI visibility, on your own infrastructure.",
+	headline: "Self-host your AEO.",
 	bullets: [
-		"Track your AI visibility on any model",
-		"Unlimited prompts, brands, and seats",
-		"Bring your own model and scraper keys",
-		"MIT licensed — read it, change it, fork it",
+		{ text: "Track your AI visibility on any model" },
+		{ text: "Unlimited prompts, brands, and seats" },
+		{ text: "Bring your own model and scraper keys" },
+		{ text: "Please star us on GitHub!", href: GITHUB_URL },
 	],
 };
 
@@ -68,9 +77,20 @@ export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; so
 
 			<ul className="space-y-2.5">
 				{pitch.bullets.map((bullet) => (
-					<li key={bullet} className="flex items-start gap-2.5 text-sm">
+					<li key={bullet.text} className="flex items-start gap-2.5 text-sm">
 						<IconCheck className="mt-0.5 size-4 shrink-0 text-primary" />
-						<span>{bullet}</span>
+						{bullet.href ? (
+							<a
+								href={bullet.href}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="underline-offset-2 hover:underline"
+							>
+								{bullet.text}
+							</a>
+						) : (
+							<span>{bullet.text}</span>
+						)}
 					</li>
 				))}
 			</ul>
@@ -81,7 +101,10 @@ export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; so
 
 			<EngineStrip />
 
-			{variant === "self-hosted" ? <CloudOffer source={source} /> : <TryBeforeYouBuy source={source} />}
+			<OfferCard
+				question={variant === "self-hosted" ? "Don't want to self-host?" : "Try before you buy?"}
+				options={variant === "self-hosted" ? cloudOptions(source) : demoOptions(source)}
+			/>
 		</div>
 	);
 }
@@ -106,56 +129,50 @@ function EngineStrip() {
 	);
 }
 
-/**
- * Shown only to a self-hosted operator: the same product, managed. Someone at a
- * self-hosted sign-in screen has already chosen to run it themselves, so this
- * argues the part they haven't priced — provider accounts, keys, and uptime —
- * rather than repeating the feature list they just read.
- */
-function CloudOffer({ source }: { source: ReferralSource }) {
-	return (
-		<div className="rounded-lg border bg-card p-5">
-			<h3 className="text-sm font-semibold">Same Elmo, managed for you.</h3>
-			<p className="mt-2 text-sm text-muted-foreground">
-				Don't worry about API keys, spend tracking, infrastructure, or updates. Plans start from $
-				{CLOUD_ENTRY_PRICE_USD}/mo.
-			</p>
-			<div className="mt-4 flex flex-wrap items-center gap-2">
-				<a href={cloudSignupUrl(source)} className={buttonVariants({ size: "sm" })}>
-					Try Elmo Cloud
-				</a>
-				<a href={bookDemoUrl(source)} className={buttonVariants({ variant: "ghost", size: "sm" })}>
-					Book a demo
-				</a>
-			</div>
-		</div>
-	);
+interface Offer {
+	label: string;
+	href: string;
+	icon: typeof IconEye;
+	/** Somewhere to look around rather than a conversion — worth keeping this page open for. */
+	newTab?: boolean;
 }
 
+const demoOptions = (source: ReferralSource): Offer[] => [
+	{ label: "View Demo", href: demoSiteUrl(source), icon: IconEye, newTab: true },
+	{ label: "Talk to Us", href: bookDemoUrl(source), icon: IconCalendarEvent },
+];
+
+const cloudOptions = (source: ReferralSource): Offer[] => [
+	{ label: "Try Elmo Cloud", href: cloudSignupUrl(source), icon: IconCloud },
+	{ label: "Talk to Us", href: bookDemoUrl(source), icon: IconCalendarEvent },
+];
+
 /**
- * The two ways to see Elmo without an account, offered as a genuine either/or —
- * poke at it alone, or have someone walk you through it.
+ * The secondary ask, in whichever form the deployment calls for: a way to see
+ * Elmo before signing up, or the managed option for someone already running it.
  *
- * The question and its two answers read as one sentence, so they share a line
- * wherever the panel is wide enough to hold them, and wrap together when not.
+ * The question and its answers are one sentence, so they share a line wherever
+ * the panel can hold them — the question anchored left, the answers right, and
+ * both wrapping together when it can't.
  */
-function TryBeforeYouBuy({ source }: { source: ReferralSource }) {
+function OfferCard({ question, options }: { question: string; options: Offer[] }) {
 	return (
-		<div className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-lg border bg-card p-5">
-			<h3 className="text-sm font-semibold">Try before you buy?</h3>
-			<div className="flex flex-wrap items-center gap-3">
-				<a
-					href={demoSiteUrl(source)}
-					target="_blank"
-					rel="noopener"
-					className={buttonVariants({ variant: "outline", size: "sm" })}
-				>
-					Live Demo
-				</a>
-				<span className="text-xs text-muted-foreground">or</span>
-				<a href={bookDemoUrl(source)} className={buttonVariants({ variant: "outline", size: "sm" })}>
-					Talk to Us
-				</a>
+		<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-lg border bg-card p-5">
+			<h3 className="text-sm font-semibold">{question}</h3>
+			<div className="flex flex-wrap items-center gap-1">
+				{options.map((option, index) => (
+					<Fragment key={option.label}>
+						{index > 0 && <span className="px-1 text-xs text-muted-foreground">or</span>}
+						<a
+							href={option.href}
+							className={buttonVariants({ variant: "ghost", size: "sm" })}
+							{...(option.newTab ? { target: "_blank", rel: "noopener" } : {})}
+						>
+							<option.icon className="size-4" />
+							{option.label}
+						</a>
+					</Fragment>
+				))}
 			</div>
 		</div>
 	);
@@ -199,7 +216,7 @@ export function SalesFooterLinks({ source }: { source: ReferralSource }): ReactN
 				<a href={cloudPricingUrl(source)} className={linkClass}>
 					Pricing
 				</a>
-				<a href="https://github.com/elmohq/elmo" target="_blank" rel="noopener noreferrer" className={linkClass}>
+				<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className={linkClass}>
 					GitHub
 				</a>
 			</p>
