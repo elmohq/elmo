@@ -20,7 +20,7 @@
  */
 import { EntitlementError } from "@workspace/lib/entitlements";
 import type { z } from "zod";
-import { type ApiAuth, resolveApiAuth } from "@/lib/auth/api-auth";
+import { type ApiAuth, type ApiAuthFailure, resolveApiAuth } from "@/lib/auth/api-auth";
 import { getDeployment } from "@/lib/config/server";
 import type { ApiScope } from "./scopes";
 
@@ -138,52 +138,11 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 }) {
 	return async ({ request, params }: { request: Request; params: Record<string, string> }): Promise<Response> => {
 		const resolved = await resolveApiAuth(request);
-		if ("failure" in resolved) {
-			const { status, error, message, code, retryAfterSeconds } = resolved.failure;
-			return errorResponse(
-				status,
-				error,
-				message,
-				code,
-				retryAfterSeconds ? { "Retry-After": String(retryAfterSeconds) } : undefined,
-			);
-		}
+		if ("failure" in resolved) return authFailureResponse(resolved.failure);
+
 		const auth = resolved.auth;
-
-		if (opts.adminOnly && auth.kind !== "admin") {
-			return errorResponse(
-				403,
-				"Forbidden",
-				"This endpoint requires an instance admin key",
-				"forbidden",
-				rateLimitHeaders(auth),
-			);
-		}
-
-		if (auth.kind === "organization") {
-			const missing = (opts.scopes ?? []).find((scope) => !auth.scopes.has(scope));
-			if (missing) {
-				return errorResponse(
-					403,
-					"Forbidden",
-					`This API key is missing the ${missing} scope`,
-					"insufficient_scope",
-					rateLimitHeaders(auth),
-				);
-			}
-		}
-
-		// Read-only mode is not a property of the key, so it is checked after
-		// the caller is known but before anything they asked for happens.
-		if (getDeployment().features.readOnly && WRITE_METHODS.has(request.method)) {
-			return errorResponse(
-				403,
-				"Demo Mode",
-				"Write operations are disabled in demo mode",
-				"read_only",
-				rateLimitHeaders(auth),
-			);
-		}
+		const refusal = refuseRequest(auth, request, opts);
+		if (refusal) return refusal;
 
 		const parsedParams = opts.params ? parseAgainst(opts.params, params) : { data: params as P };
 		if ("response" in parsedParams) return withRateLimit(parsedParams.response, auth);
@@ -199,6 +158,55 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 			return withRateLimit(errorFromThrow(err, request, opts.mapError), auth);
 		}
 	};
+}
+
+function authFailureResponse(failure: ApiAuthFailure): Response {
+	const { status, error, message, code, retryAfterSeconds } = failure;
+	return errorResponse(
+		status,
+		error,
+		message,
+		code,
+		retryAfterSeconds ? { "Retry-After": String(retryAfterSeconds) } : undefined,
+	);
+}
+
+/**
+ * Everything that can refuse a request once the caller is known: the endpoint
+ * being admin-only, a scope the key doesn't hold, or the deployment being
+ * read-only. Returns null when the request may proceed.
+ */
+function refuseRequest(
+	auth: ApiAuth,
+	request: Request,
+	opts: { scopes?: ApiScope[]; adminOnly?: boolean },
+): Response | null {
+	const headers = rateLimitHeaders(auth);
+
+	if (opts.adminOnly && auth.kind !== "admin") {
+		return errorResponse(403, "Forbidden", "This endpoint requires an instance admin key", "forbidden", headers);
+	}
+
+	if (auth.kind === "organization") {
+		const missing = (opts.scopes ?? []).find((scope) => !auth.scopes.has(scope));
+		if (missing) {
+			return errorResponse(
+				403,
+				"Forbidden",
+				`This API key is missing the ${missing} scope`,
+				"insufficient_scope",
+				headers,
+			);
+		}
+	}
+
+	// Read-only mode is not a property of the key, so it is checked after the
+	// caller is known but before anything they asked for happens.
+	if (getDeployment().features.readOnly && WRITE_METHODS.has(request.method)) {
+		return errorResponse(403, "Demo Mode", "Write operations are disabled in demo mode", "read_only", headers);
+	}
+
+	return null;
 }
 
 /**

@@ -53,7 +53,9 @@ export function scopesToPermissions(scopes: readonly string[]): Record<string, s
 	for (const scope of scopes) {
 		if (!isApiScope(scope)) continue;
 		const [resource, action] = scope.split(":");
-		(permissions[resource] ??= []).push(action);
+		const actions = permissions[resource] ?? [];
+		actions.push(action);
+		permissions[resource] = actions;
 	}
 	return permissions;
 }

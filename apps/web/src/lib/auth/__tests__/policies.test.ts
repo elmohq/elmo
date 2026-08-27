@@ -249,9 +249,7 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 
 		it("still serves the spec without a key", () => {
-			expect(evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/openapi.json")).action).toBe(
-				"serve-openapi",
-			);
+			expect(evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/openapi.json")).action).toBe("serve-openapi");
 		});
 	});
 
