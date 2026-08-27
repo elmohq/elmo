@@ -10,7 +10,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { analyzeBrand, cleanOnboardingUrl } from "@workspace/lib/onboarding";
 import { z } from "zod";
-import { createApiHandler } from "@/lib/api/handler";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 
 const analyzeBody = z.object({
 	// Mirrors the checks inside analyzeBrand so an unparseable or unfetchable
@@ -34,7 +34,7 @@ const analyzeBody = z.object({
 
 export const Route = createFileRoute("/api/v1/tools/analyze")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			POST: createApiHandler({
 				adminOnly: true,
 				body: analyzeBody,
@@ -47,6 +47,6 @@ export const Route = createFileRoute("/api/v1/tools/analyze")({
 					});
 				},
 			}),
-		},
+		}),
 	},
 });

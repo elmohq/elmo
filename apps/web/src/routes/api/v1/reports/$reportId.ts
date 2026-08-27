@@ -12,11 +12,11 @@ import { reports } from "@workspace/lib/db/schema";
 import { computeReportUnstableStats } from "@workspace/lib/report-metrics";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 
 export const Route = createFileRoute("/api/v1/reports/$reportId")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				adminOnly: true,
 				params: z.object({ reportId: z.guid("Invalid report ID format") }),
@@ -107,6 +107,6 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 					};
 				},
 			}),
-		},
+		}),
 	},
 });

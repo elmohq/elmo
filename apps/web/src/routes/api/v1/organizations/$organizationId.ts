@@ -9,11 +9,11 @@ import { db } from "@workspace/lib/db/db";
 import { organization } from "@workspace/lib/db/schema";
 import { countOrgBrands } from "@workspace/lib/entitlements";
 import { eq } from "drizzle-orm";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 
 export const Route = createFileRoute("/api/v1/organizations/$organizationId")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				handle: async ({ params, auth }) => {
 					const { organizationId } = params;
@@ -36,6 +36,6 @@ export const Route = createFileRoute("/api/v1/organizations/$organizationId")({
 					return { ...row, brandCount: await countOrgBrands(organizationId) };
 				},
 			}),
-		},
+		}),
 	},
 });

@@ -9,7 +9,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { isBrandInScope } from "@/lib/api/scope";
 import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
 import {
@@ -71,7 +71,7 @@ function parseSnapshotQuery(url: URL): { startDate: string; endDate: string; kMe
 
 export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
 				scopes: ["analytics:read"],
@@ -174,6 +174,6 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 					};
 				},
 			}),
-		},
+		}),
 	},
 });

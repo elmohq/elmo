@@ -60,7 +60,7 @@ tests {
       for (const [method, operation] of Object.entries(operations)) {
         if (!methods.includes(method)) continue;
         expect(operation["x-elmo-scopes"], `${method} ${path}`).to.be.an("array");
-        expect(["stable", "beta"], `${method} ${path}`).to.include(operation["x-elmo-stability"]);
+        expect(["stable", "beta", "planned"], `${method} ${path}`).to.include(operation["x-elmo-stability"]);
       }
     }
   });

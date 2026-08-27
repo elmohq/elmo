@@ -11,7 +11,7 @@ import { type NewReport, reports } from "@workspace/lib/db/schema";
 import { cleanOnboardingUrl } from "@workspace/lib/onboarding";
 import { count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { sendReportJob } from "@/lib/job-scheduler";
 
 const createReportBody = z.object({
@@ -31,7 +31,7 @@ const createReportBody = z.object({
 
 export const Route = createFileRoute("/api/v1/reports/")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			POST: createApiHandler({
 				adminOnly: true,
 				body: createReportBody,
@@ -111,6 +111,6 @@ export const Route = createFileRoute("/api/v1/reports/")({
 					};
 				},
 			}),
-		},
+		}),
 	},
 });

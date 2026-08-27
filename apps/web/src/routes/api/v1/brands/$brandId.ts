@@ -7,7 +7,7 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
 import {
 	apiUpdateInputToInternal,
@@ -20,7 +20,7 @@ import {
 
 export const Route = createFileRoute("/api/v1/brands/$brandId")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			// No params schema: brand IDs are caller-chosen strings (e.g. "acme"),
 			// not UUIDs like the competitor/prompt/report routes validate.
 			GET: createApiHandler({
@@ -52,6 +52,6 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 					return await updateBrand(internal);
 				},
 			}),
-		},
+		}),
 	},
 });

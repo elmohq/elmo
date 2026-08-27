@@ -9,7 +9,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { getModelMeta, KNOWN_MODELS } from "@workspace/config/models";
 import { PREMIUM_MODELS } from "@workspace/config/plans";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
-import { createApiHandler } from "@/lib/api/handler";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 
 function configuredModels(): string[] {
 	try {
@@ -21,7 +21,7 @@ function configuredModels(): string[] {
 
 export const Route = createFileRoute("/api/v1/platforms")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				handle: async () => {
 					// `configured` is what the operator has actually wired up; the rest
@@ -40,6 +40,6 @@ export const Route = createFileRoute("/api/v1/platforms")({
 					};
 				},
 			}),
-		},
+		}),
 	},
 });

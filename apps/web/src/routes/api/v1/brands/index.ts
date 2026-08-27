@@ -11,7 +11,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { assertCanCreateBrand } from "@workspace/lib/entitlements";
 import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandScopeCondition } from "@/lib/api/scope";
 import {
 	apiCreateInputToInternal,
@@ -24,7 +24,7 @@ import {
 
 export const Route = createFileRoute("/api/v1/brands/")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				scopes: ["brands:read"],
 				handle: async ({ request, auth }) => {
@@ -88,6 +88,6 @@ export const Route = createFileRoute("/api/v1/brands/")({
 					return await createBrand({ ...internal, organizationId });
 				},
 			}),
-		},
+		}),
 	},
 });

@@ -68,6 +68,11 @@ function toPermissions(scopes: readonly string[]): Record<string, string[]> {
 /**
  * Seed the API keys the Bruno suite authenticates as.
  *
+ * The rate limit is set absurdly high on purpose: the suite fires every case
+ * for a resource through one key within seconds, and a realistic 120/min would
+ * make unrelated assertions fail as 429s. The limit itself is covered by
+ * asserting the headers are reported, not by exhausting it.
+ *
  * `reference_id` is the organization, not a user: the plugin is configured with
  * `references: "organization"`, which is what makes a key outlive whoever
  * issued it. Only the brand narrowing lives in metadata, because metadata is
@@ -98,7 +103,7 @@ async function seedApiKeys(client: pg.Client): Promise<void> {
          id, name, start, prefix, key, reference_id, enabled,
          rate_limit_enabled, rate_limit_time_window, rate_limit_max,
          request_count, expires_at, permissions, metadata, created_at, updated_at
-       ) VALUES ($1, $2, $3, 'elmo', $4, $5, $6, true, 60000, 120, 0, $7, $8, $9, NOW(), NOW())`,
+       ) VALUES ($1, $2, $3, 'elmo', $4, $5, $6, true, 60000, 1000000, 0, $7, $8, $9, NOW(), NOW())`,
       [
         `e2e-apikey-${index + 1}`,
         key.name,

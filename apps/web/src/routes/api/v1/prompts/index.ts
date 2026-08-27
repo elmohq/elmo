@@ -9,7 +9,7 @@ import { assertCanAddPrompts } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { and, arrayOverlaps, count, desc, eq, ilike, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { createApiHandler } from "@/lib/api/handler";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
 import { createPromptJobScheduler } from "@/lib/job-scheduler";
 
@@ -21,7 +21,7 @@ const createPromptBody = z.object({
 
 export const Route = createFileRoute("/api/v1/prompts/")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				scopes: ["prompts:read"],
 				handle: async ({ request, auth }) => {
@@ -100,6 +100,6 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 					return newPrompt;
 				},
 			}),
-		},
+		}),
 	},
 });

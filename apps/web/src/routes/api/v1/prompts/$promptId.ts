@@ -15,7 +15,7 @@ import { assertPromptSaveAllowed } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
 import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
 
@@ -37,7 +37,7 @@ const updatePromptBody = z
 
 export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				params: promptParams,
 				scopes: ["prompts:read"],
@@ -176,6 +176,6 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 					return { ...deleted, deletedRunsCount: result.deletedRuns.length };
 				},
 			}),
-		},
+		}),
 	},
 });

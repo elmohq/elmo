@@ -1,5 +1,5 @@
 meta {
-  name: a bulk create against another tenant's brand
+  name: a bulk create naming another tenant's brand
   type: http
   seq: 21
 }
@@ -22,6 +22,7 @@ body:json {
 }
 
 assert {
-  res.status: eq 404
-  res.body.error: eq Not Found
+  res.status: eq 400
+  res.body.error: eq Validation Error
+  res.body.message: contains not found
 }

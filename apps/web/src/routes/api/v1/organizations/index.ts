@@ -11,11 +11,11 @@ import { db } from "@workspace/lib/db/db";
 import { organization } from "@workspace/lib/db/schema";
 import { countBrandsByOrg } from "@workspace/lib/entitlements";
 import { count, eq } from "drizzle-orm";
-import { createApiHandler } from "@/lib/api/handler";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 
 export const Route = createFileRoute("/api/v1/organizations/")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				handle: async ({ request, auth }) => {
 					const { searchParams } = new URL(request.url);
@@ -49,6 +49,6 @@ export const Route = createFileRoute("/api/v1/organizations/")({
 					};
 				},
 			}),
-		},
+		}),
 	},
 });

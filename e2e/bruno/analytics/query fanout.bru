@@ -34,7 +34,8 @@ tests {
   });
 
   test("a seeded web query is reported", function() {
-    const queries = res.getBody().data.map((q) => q.query);
-    expect(queries).to.include("best AI monitoring tools 2025");
+    // Fan-out normalizes queries before grouping them, so compare in kind.
+    const queries = res.getBody().data.map((q) => q.query.toLowerCase());
+    expect(queries).to.include("best ai monitoring tools 2025");
   });
 }

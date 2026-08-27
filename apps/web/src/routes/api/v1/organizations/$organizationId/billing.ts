@@ -21,12 +21,12 @@ import {
 	getOrgBillingState,
 } from "@workspace/lib/entitlements";
 import { eq } from "drizzle-orm";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { getDeployment } from "@/lib/config/server";
 
 export const Route = createFileRoute("/api/v1/organizations/$organizationId/billing")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				scopes: ["billing:read"],
 				handle: async ({ params, auth }) => {
@@ -92,6 +92,6 @@ export const Route = createFileRoute("/api/v1/organizations/$organizationId/bill
 					};
 				},
 			}),
-		},
+		}),
 	},
 });

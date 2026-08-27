@@ -12,7 +12,7 @@ import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { isBrandInScope } from "@/lib/api/scope";
 import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 
@@ -42,7 +42,7 @@ async function loadInScope(auth: Parameters<typeof isBrandInScope>[0], competito
 
 export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				params: competitorParams,
 				scopes: ["competitors:read"],
@@ -101,6 +101,6 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 					return deleted;
 				},
 			}),
-		},
+		}),
 	},
 });

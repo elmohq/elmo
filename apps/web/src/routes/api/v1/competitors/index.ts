@@ -12,7 +12,7 @@ import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
 import { and, count, desc, eq, ilike, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
 import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 
@@ -25,7 +25,7 @@ const createCompetitorBody = z.object({
 
 export const Route = createFileRoute("/api/v1/competitors/")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				scopes: ["competitors:read"],
 				handle: async ({ request, auth }) => {
@@ -102,6 +102,6 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 					return inserted;
 				},
 			}),
-		},
+		}),
 	},
 });

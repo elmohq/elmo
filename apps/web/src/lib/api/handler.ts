@@ -160,6 +160,35 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 	};
 }
 
+const ALL_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+
+/**
+ * Fill in the verbs a route doesn't implement with a `405`.
+ *
+ * Without this, a method no handler claims falls through the file router to the
+ * SPA and answers `200` with HTML — so `PATCH /organizations/x/billing` would
+ * look like it worked. Wrapping the handler map makes "this resource is
+ * read-only" something the API states rather than something a caller has to
+ * infer from a page of markup.
+ */
+export function withMethodGuard<T extends Record<string, unknown>>(handlers: T): T {
+	const allowed = ALL_METHODS.filter((method) => method in handlers);
+	const guarded: Record<string, unknown> = { ...handlers };
+	for (const method of ALL_METHODS) {
+		if (method in handlers) continue;
+		guarded[method] = async () =>
+			Response.json(
+				{
+					error: "Method Not Allowed",
+					message: `${method} is not supported here; this resource accepts ${allowed.join(", ")}`,
+					code: "not_found",
+				},
+				{ status: 405, headers: { Allow: allowed.join(", ") } },
+			);
+	}
+	return guarded as T;
+}
+
 function authFailureResponse(failure: ApiAuthFailure): Response {
 	const { status, error, message, code, retryAfterSeconds } = failure;
 	return errorResponse(

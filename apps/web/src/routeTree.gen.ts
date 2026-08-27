@@ -52,8 +52,10 @@ import { Route as ApiV1OrganizationsIndexRouteImport } from './routes/api/v1/org
 import { Route as ApiV1OrganizationsOrganizationIdRouteImport } from './routes/api/v1/organizations/$organizationId'
 import { Route as ApiV1PromptsIndexRouteImport } from './routes/api/v1/prompts/index'
 import { Route as ApiV1PromptsPromptIdRouteImport } from './routes/api/v1/prompts/$promptId'
+import { Route as ApiV1PromptsBulkRouteImport } from './routes/api/v1/prompts/bulk'
 import { Route as ApiV1ReportsIndexRouteImport } from './routes/api/v1/reports/index'
 import { Route as ApiV1ReportsReportIdRouteImport } from './routes/api/v1/reports/$reportId'
+import { Route as ApiV1RunsRunIdRouteImport } from './routes/api/v1/runs/$runId'
 import { Route as ApiV1ToolsAnalyzeRouteImport } from './routes/api/v1/tools/analyze'
 import { Route as AuthedAppBrandPromptsIndexRouteImport } from './routes/_authed/app/$brand/prompts/index'
 import { Route as AuthedAppBrandPromptsPromptIdRouteImport } from './routes/_authed/app/$brand/prompts/$promptId'
@@ -66,8 +68,20 @@ import { Route as AuthedAppBrandSettingsLlmsRouteImport } from './routes/_authed
 import { Route as AuthedAppBrandSettingsMembersRouteImport } from './routes/_authed/app/$brand/settings/members'
 import { Route as AuthedAppBrandSettingsPromptsRouteImport } from './routes/_authed/app/$brand/settings/prompts'
 import { Route as ApiPlausibleJsScriptIndexRouteImport } from './routes/api/plausible/js/script/index'
+import { Route as ApiV1BrandsBrandIdOpportunitiesRouteImport } from './routes/api/v1/brands/$brandId/opportunities'
+import { Route as ApiV1BrandsBrandIdPlatformsRouteImport } from './routes/api/v1/brands/$brandId/platforms'
+import { Route as ApiV1BrandsBrandIdPromptPerformanceRouteImport } from './routes/api/v1/brands/$brandId/prompt-performance'
+import { Route as ApiV1BrandsBrandIdQueryFanoutRouteImport } from './routes/api/v1/brands/$brandId/query-fanout'
+import { Route as ApiV1BrandsBrandIdShareOfVoiceRouteImport } from './routes/api/v1/brands/$brandId/share-of-voice'
+import { Route as ApiV1BrandsBrandIdSummaryRouteImport } from './routes/api/v1/brands/$brandId/summary'
+import { Route as ApiV1BrandsBrandIdVisibilityRouteImport } from './routes/api/v1/brands/$brandId/visibility'
 import { Route as ApiV1OrganizationsOrganizationIdBillingRouteImport } from './routes/api/v1/organizations/$organizationId/billing'
+import { Route as ApiV1PromptsPromptIdRunsRouteImport } from './routes/api/v1/prompts/$promptId/runs'
 import { Route as ApiV1PromptsPromptIdSnapshotRouteImport } from './routes/api/v1/prompts/$promptId/snapshot'
+import { Route as ApiV1BrandsBrandIdCitationsDomainsRouteImport } from './routes/api/v1/brands/$brandId/citations/domains'
+import { Route as ApiV1BrandsBrandIdCitationsUrlsRouteImport } from './routes/api/v1/brands/$brandId/citations/urls'
+import { Route as ApiV1BrandsBrandIdTagsIndexRouteImport } from './routes/api/v1/brands/$brandId/tags/index'
+import { Route as ApiV1BrandsBrandIdTagsTagRouteImport } from './routes/api/v1/brands/$brandId/tags/$tag'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -291,6 +305,11 @@ const ApiV1PromptsPromptIdRoute = ApiV1PromptsPromptIdRouteImport.update({
   path: '/api/v1/prompts/$promptId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1PromptsBulkRoute = ApiV1PromptsBulkRouteImport.update({
+  id: '/api/v1/prompts/bulk',
+  path: '/api/v1/prompts/bulk',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1ReportsIndexRoute = ApiV1ReportsIndexRouteImport.update({
   id: '/api/v1/reports/',
   path: '/api/v1/reports/',
@@ -299,6 +318,11 @@ const ApiV1ReportsIndexRoute = ApiV1ReportsIndexRouteImport.update({
 const ApiV1ReportsReportIdRoute = ApiV1ReportsReportIdRouteImport.update({
   id: '/api/v1/reports/$reportId',
   path: '/api/v1/reports/$reportId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1RunsRunIdRoute = ApiV1RunsRunIdRouteImport.update({
+  id: '/api/v1/runs/$runId',
+  path: '/api/v1/runs/$runId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV1ToolsAnalyzeRoute = ApiV1ToolsAnalyzeRouteImport.update({
@@ -372,17 +396,89 @@ const ApiPlausibleJsScriptIndexRoute =
     path: '/api/plausible/js/script/',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiV1BrandsBrandIdOpportunitiesRoute =
+  ApiV1BrandsBrandIdOpportunitiesRouteImport.update({
+    id: '/opportunities',
+    path: '/opportunities',
+    getParentRoute: () => ApiV1BrandsBrandIdRoute,
+  } as any)
+const ApiV1BrandsBrandIdPlatformsRoute =
+  ApiV1BrandsBrandIdPlatformsRouteImport.update({
+    id: '/platforms',
+    path: '/platforms',
+    getParentRoute: () => ApiV1BrandsBrandIdRoute,
+  } as any)
+const ApiV1BrandsBrandIdPromptPerformanceRoute =
+  ApiV1BrandsBrandIdPromptPerformanceRouteImport.update({
+    id: '/prompt-performance',
+    path: '/prompt-performance',
+    getParentRoute: () => ApiV1BrandsBrandIdRoute,
+  } as any)
+const ApiV1BrandsBrandIdQueryFanoutRoute =
+  ApiV1BrandsBrandIdQueryFanoutRouteImport.update({
+    id: '/query-fanout',
+    path: '/query-fanout',
+    getParentRoute: () => ApiV1BrandsBrandIdRoute,
+  } as any)
+const ApiV1BrandsBrandIdShareOfVoiceRoute =
+  ApiV1BrandsBrandIdShareOfVoiceRouteImport.update({
+    id: '/share-of-voice',
+    path: '/share-of-voice',
+    getParentRoute: () => ApiV1BrandsBrandIdRoute,
+  } as any)
+const ApiV1BrandsBrandIdSummaryRoute =
+  ApiV1BrandsBrandIdSummaryRouteImport.update({
+    id: '/summary',
+    path: '/summary',
+    getParentRoute: () => ApiV1BrandsBrandIdRoute,
+  } as any)
+const ApiV1BrandsBrandIdVisibilityRoute =
+  ApiV1BrandsBrandIdVisibilityRouteImport.update({
+    id: '/visibility',
+    path: '/visibility',
+    getParentRoute: () => ApiV1BrandsBrandIdRoute,
+  } as any)
 const ApiV1OrganizationsOrganizationIdBillingRoute =
   ApiV1OrganizationsOrganizationIdBillingRouteImport.update({
     id: '/billing',
     path: '/billing',
     getParentRoute: () => ApiV1OrganizationsOrganizationIdRoute,
   } as any)
+const ApiV1PromptsPromptIdRunsRoute =
+  ApiV1PromptsPromptIdRunsRouteImport.update({
+    id: '/runs',
+    path: '/runs',
+    getParentRoute: () => ApiV1PromptsPromptIdRoute,
+  } as any)
 const ApiV1PromptsPromptIdSnapshotRoute =
   ApiV1PromptsPromptIdSnapshotRouteImport.update({
     id: '/snapshot',
     path: '/snapshot',
     getParentRoute: () => ApiV1PromptsPromptIdRoute,
+  } as any)
+const ApiV1BrandsBrandIdCitationsDomainsRoute =
+  ApiV1BrandsBrandIdCitationsDomainsRouteImport.update({
+    id: '/citations/domains',
+    path: '/citations/domains',
+    getParentRoute: () => ApiV1BrandsBrandIdRoute,
+  } as any)
+const ApiV1BrandsBrandIdCitationsUrlsRoute =
+  ApiV1BrandsBrandIdCitationsUrlsRouteImport.update({
+    id: '/citations/urls',
+    path: '/citations/urls',
+    getParentRoute: () => ApiV1BrandsBrandIdRoute,
+  } as any)
+const ApiV1BrandsBrandIdTagsIndexRoute =
+  ApiV1BrandsBrandIdTagsIndexRouteImport.update({
+    id: '/tags/',
+    path: '/tags/',
+    getParentRoute: () => ApiV1BrandsBrandIdRoute,
+  } as any)
+const ApiV1BrandsBrandIdTagsTagRoute =
+  ApiV1BrandsBrandIdTagsTagRouteImport.update({
+    id: '/tags/$tag',
+    path: '/tags/$tag',
+    getParentRoute: () => ApiV1BrandsBrandIdRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -417,11 +513,13 @@ export interface FileRoutesByFullPath {
   '/app/$brand/share-of-voice': typeof AuthedAppBrandShareOfVoiceRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
-  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
+  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRouteWithChildren
   '/api/v1/competitors/$competitorId': typeof ApiV1CompetitorsCompetitorIdRoute
   '/api/v1/organizations/$organizationId': typeof ApiV1OrganizationsOrganizationIdRouteWithChildren
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
+  '/api/v1/prompts/bulk': typeof ApiV1PromptsBulkRoute
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
+  '/api/v1/runs/$runId': typeof ApiV1RunsRunIdRoute
   '/api/v1/tools/analyze': typeof ApiV1ToolsAnalyzeRoute
   '/app/$brand/': typeof AuthedAppBrandIndexRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
@@ -439,11 +537,23 @@ export interface FileRoutesByFullPath {
   '/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
   '/app/$brand/settings/members': typeof AuthedAppBrandSettingsMembersRoute
   '/app/$brand/settings/prompts': typeof AuthedAppBrandSettingsPromptsRoute
+  '/api/v1/brands/$brandId/opportunities': typeof ApiV1BrandsBrandIdOpportunitiesRoute
+  '/api/v1/brands/$brandId/platforms': typeof ApiV1BrandsBrandIdPlatformsRoute
+  '/api/v1/brands/$brandId/prompt-performance': typeof ApiV1BrandsBrandIdPromptPerformanceRoute
+  '/api/v1/brands/$brandId/query-fanout': typeof ApiV1BrandsBrandIdQueryFanoutRoute
+  '/api/v1/brands/$brandId/share-of-voice': typeof ApiV1BrandsBrandIdShareOfVoiceRoute
+  '/api/v1/brands/$brandId/summary': typeof ApiV1BrandsBrandIdSummaryRoute
+  '/api/v1/brands/$brandId/visibility': typeof ApiV1BrandsBrandIdVisibilityRoute
   '/api/v1/organizations/$organizationId/billing': typeof ApiV1OrganizationsOrganizationIdBillingRoute
+  '/api/v1/prompts/$promptId/runs': typeof ApiV1PromptsPromptIdRunsRoute
   '/api/v1/prompts/$promptId/snapshot': typeof ApiV1PromptsPromptIdSnapshotRoute
   '/app/$brand/prompts/': typeof AuthedAppBrandPromptsIndexRoute
   '/app/$brand/settings/': typeof AuthedAppBrandSettingsIndexRoute
   '/api/plausible/js/script/': typeof ApiPlausibleJsScriptIndexRoute
+  '/api/v1/brands/$brandId/citations/domains': typeof ApiV1BrandsBrandIdCitationsDomainsRoute
+  '/api/v1/brands/$brandId/citations/urls': typeof ApiV1BrandsBrandIdCitationsUrlsRoute
+  '/api/v1/brands/$brandId/tags/$tag': typeof ApiV1BrandsBrandIdTagsTagRoute
+  '/api/v1/brands/$brandId/tags/': typeof ApiV1BrandsBrandIdTagsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -473,11 +583,13 @@ export interface FileRoutesByTo {
   '/app/$brand/share-of-voice': typeof AuthedAppBrandShareOfVoiceRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
-  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
+  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRouteWithChildren
   '/api/v1/competitors/$competitorId': typeof ApiV1CompetitorsCompetitorIdRoute
   '/api/v1/organizations/$organizationId': typeof ApiV1OrganizationsOrganizationIdRouteWithChildren
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
+  '/api/v1/prompts/bulk': typeof ApiV1PromptsBulkRoute
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
+  '/api/v1/runs/$runId': typeof ApiV1RunsRunIdRoute
   '/api/v1/tools/analyze': typeof ApiV1ToolsAnalyzeRoute
   '/app/$brand': typeof AuthedAppBrandIndexRoute
   '/api/plausible/event': typeof ApiPlausibleEventIndexRoute
@@ -495,11 +607,23 @@ export interface FileRoutesByTo {
   '/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
   '/app/$brand/settings/members': typeof AuthedAppBrandSettingsMembersRoute
   '/app/$brand/settings/prompts': typeof AuthedAppBrandSettingsPromptsRoute
+  '/api/v1/brands/$brandId/opportunities': typeof ApiV1BrandsBrandIdOpportunitiesRoute
+  '/api/v1/brands/$brandId/platforms': typeof ApiV1BrandsBrandIdPlatformsRoute
+  '/api/v1/brands/$brandId/prompt-performance': typeof ApiV1BrandsBrandIdPromptPerformanceRoute
+  '/api/v1/brands/$brandId/query-fanout': typeof ApiV1BrandsBrandIdQueryFanoutRoute
+  '/api/v1/brands/$brandId/share-of-voice': typeof ApiV1BrandsBrandIdShareOfVoiceRoute
+  '/api/v1/brands/$brandId/summary': typeof ApiV1BrandsBrandIdSummaryRoute
+  '/api/v1/brands/$brandId/visibility': typeof ApiV1BrandsBrandIdVisibilityRoute
   '/api/v1/organizations/$organizationId/billing': typeof ApiV1OrganizationsOrganizationIdBillingRoute
+  '/api/v1/prompts/$promptId/runs': typeof ApiV1PromptsPromptIdRunsRoute
   '/api/v1/prompts/$promptId/snapshot': typeof ApiV1PromptsPromptIdSnapshotRoute
   '/app/$brand/prompts': typeof AuthedAppBrandPromptsIndexRoute
   '/app/$brand/settings': typeof AuthedAppBrandSettingsIndexRoute
   '/api/plausible/js/script': typeof ApiPlausibleJsScriptIndexRoute
+  '/api/v1/brands/$brandId/citations/domains': typeof ApiV1BrandsBrandIdCitationsDomainsRoute
+  '/api/v1/brands/$brandId/citations/urls': typeof ApiV1BrandsBrandIdCitationsUrlsRoute
+  '/api/v1/brands/$brandId/tags/$tag': typeof ApiV1BrandsBrandIdTagsTagRoute
+  '/api/v1/brands/$brandId/tags': typeof ApiV1BrandsBrandIdTagsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -535,11 +659,13 @@ export interface FileRoutesById {
   '/_authed/app/$brand/share-of-voice': typeof AuthedAppBrandShareOfVoiceRoute
   '/_authed/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/_authed/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
-  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
+  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRouteWithChildren
   '/api/v1/competitors/$competitorId': typeof ApiV1CompetitorsCompetitorIdRoute
   '/api/v1/organizations/$organizationId': typeof ApiV1OrganizationsOrganizationIdRouteWithChildren
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
+  '/api/v1/prompts/bulk': typeof ApiV1PromptsBulkRoute
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
+  '/api/v1/runs/$runId': typeof ApiV1RunsRunIdRoute
   '/api/v1/tools/analyze': typeof ApiV1ToolsAnalyzeRoute
   '/_authed/app/$brand/': typeof AuthedAppBrandIndexRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
@@ -557,11 +683,23 @@ export interface FileRoutesById {
   '/_authed/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
   '/_authed/app/$brand/settings/members': typeof AuthedAppBrandSettingsMembersRoute
   '/_authed/app/$brand/settings/prompts': typeof AuthedAppBrandSettingsPromptsRoute
+  '/api/v1/brands/$brandId/opportunities': typeof ApiV1BrandsBrandIdOpportunitiesRoute
+  '/api/v1/brands/$brandId/platforms': typeof ApiV1BrandsBrandIdPlatformsRoute
+  '/api/v1/brands/$brandId/prompt-performance': typeof ApiV1BrandsBrandIdPromptPerformanceRoute
+  '/api/v1/brands/$brandId/query-fanout': typeof ApiV1BrandsBrandIdQueryFanoutRoute
+  '/api/v1/brands/$brandId/share-of-voice': typeof ApiV1BrandsBrandIdShareOfVoiceRoute
+  '/api/v1/brands/$brandId/summary': typeof ApiV1BrandsBrandIdSummaryRoute
+  '/api/v1/brands/$brandId/visibility': typeof ApiV1BrandsBrandIdVisibilityRoute
   '/api/v1/organizations/$organizationId/billing': typeof ApiV1OrganizationsOrganizationIdBillingRoute
+  '/api/v1/prompts/$promptId/runs': typeof ApiV1PromptsPromptIdRunsRoute
   '/api/v1/prompts/$promptId/snapshot': typeof ApiV1PromptsPromptIdSnapshotRoute
   '/_authed/app/$brand/prompts/': typeof AuthedAppBrandPromptsIndexRoute
   '/_authed/app/$brand/settings/': typeof AuthedAppBrandSettingsIndexRoute
   '/api/plausible/js/script/': typeof ApiPlausibleJsScriptIndexRoute
+  '/api/v1/brands/$brandId/citations/domains': typeof ApiV1BrandsBrandIdCitationsDomainsRoute
+  '/api/v1/brands/$brandId/citations/urls': typeof ApiV1BrandsBrandIdCitationsUrlsRoute
+  '/api/v1/brands/$brandId/tags/$tag': typeof ApiV1BrandsBrandIdTagsTagRoute
+  '/api/v1/brands/$brandId/tags/': typeof ApiV1BrandsBrandIdTagsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -601,7 +739,9 @@ export interface FileRouteTypes {
     | '/api/v1/competitors/$competitorId'
     | '/api/v1/organizations/$organizationId'
     | '/api/v1/prompts/$promptId'
+    | '/api/v1/prompts/bulk'
     | '/api/v1/reports/$reportId'
+    | '/api/v1/runs/$runId'
     | '/api/v1/tools/analyze'
     | '/app/$brand/'
     | '/api/plausible/event/'
@@ -619,11 +759,23 @@ export interface FileRouteTypes {
     | '/app/$brand/settings/llms'
     | '/app/$brand/settings/members'
     | '/app/$brand/settings/prompts'
+    | '/api/v1/brands/$brandId/opportunities'
+    | '/api/v1/brands/$brandId/platforms'
+    | '/api/v1/brands/$brandId/prompt-performance'
+    | '/api/v1/brands/$brandId/query-fanout'
+    | '/api/v1/brands/$brandId/share-of-voice'
+    | '/api/v1/brands/$brandId/summary'
+    | '/api/v1/brands/$brandId/visibility'
     | '/api/v1/organizations/$organizationId/billing'
+    | '/api/v1/prompts/$promptId/runs'
     | '/api/v1/prompts/$promptId/snapshot'
     | '/app/$brand/prompts/'
     | '/app/$brand/settings/'
     | '/api/plausible/js/script/'
+    | '/api/v1/brands/$brandId/citations/domains'
+    | '/api/v1/brands/$brandId/citations/urls'
+    | '/api/v1/brands/$brandId/tags/$tag'
+    | '/api/v1/brands/$brandId/tags/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -657,7 +809,9 @@ export interface FileRouteTypes {
     | '/api/v1/competitors/$competitorId'
     | '/api/v1/organizations/$organizationId'
     | '/api/v1/prompts/$promptId'
+    | '/api/v1/prompts/bulk'
     | '/api/v1/reports/$reportId'
+    | '/api/v1/runs/$runId'
     | '/api/v1/tools/analyze'
     | '/app/$brand'
     | '/api/plausible/event'
@@ -675,11 +829,23 @@ export interface FileRouteTypes {
     | '/app/$brand/settings/llms'
     | '/app/$brand/settings/members'
     | '/app/$brand/settings/prompts'
+    | '/api/v1/brands/$brandId/opportunities'
+    | '/api/v1/brands/$brandId/platforms'
+    | '/api/v1/brands/$brandId/prompt-performance'
+    | '/api/v1/brands/$brandId/query-fanout'
+    | '/api/v1/brands/$brandId/share-of-voice'
+    | '/api/v1/brands/$brandId/summary'
+    | '/api/v1/brands/$brandId/visibility'
     | '/api/v1/organizations/$organizationId/billing'
+    | '/api/v1/prompts/$promptId/runs'
     | '/api/v1/prompts/$promptId/snapshot'
     | '/app/$brand/prompts'
     | '/app/$brand/settings'
     | '/api/plausible/js/script'
+    | '/api/v1/brands/$brandId/citations/domains'
+    | '/api/v1/brands/$brandId/citations/urls'
+    | '/api/v1/brands/$brandId/tags/$tag'
+    | '/api/v1/brands/$brandId/tags'
   id:
     | '__root__'
     | '/'
@@ -718,7 +884,9 @@ export interface FileRouteTypes {
     | '/api/v1/competitors/$competitorId'
     | '/api/v1/organizations/$organizationId'
     | '/api/v1/prompts/$promptId'
+    | '/api/v1/prompts/bulk'
     | '/api/v1/reports/$reportId'
+    | '/api/v1/runs/$runId'
     | '/api/v1/tools/analyze'
     | '/_authed/app/$brand/'
     | '/api/plausible/event/'
@@ -736,11 +904,23 @@ export interface FileRouteTypes {
     | '/_authed/app/$brand/settings/llms'
     | '/_authed/app/$brand/settings/members'
     | '/_authed/app/$brand/settings/prompts'
+    | '/api/v1/brands/$brandId/opportunities'
+    | '/api/v1/brands/$brandId/platforms'
+    | '/api/v1/brands/$brandId/prompt-performance'
+    | '/api/v1/brands/$brandId/query-fanout'
+    | '/api/v1/brands/$brandId/share-of-voice'
+    | '/api/v1/brands/$brandId/summary'
+    | '/api/v1/brands/$brandId/visibility'
     | '/api/v1/organizations/$organizationId/billing'
+    | '/api/v1/prompts/$promptId/runs'
     | '/api/v1/prompts/$promptId/snapshot'
     | '/_authed/app/$brand/prompts/'
     | '/_authed/app/$brand/settings/'
     | '/api/plausible/js/script/'
+    | '/api/v1/brands/$brandId/citations/domains'
+    | '/api/v1/brands/$brandId/citations/urls'
+    | '/api/v1/brands/$brandId/tags/$tag'
+    | '/api/v1/brands/$brandId/tags/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -757,11 +937,13 @@ export interface RootRouteChildren {
   ApiManifestIndexRoute: typeof ApiManifestIndexRoute
   ApiOgIndexRoute: typeof ApiOgIndexRoute
   ApiSetupStatusIndexRoute: typeof ApiSetupStatusIndexRoute
-  ApiV1BrandsBrandIdRoute: typeof ApiV1BrandsBrandIdRoute
+  ApiV1BrandsBrandIdRoute: typeof ApiV1BrandsBrandIdRouteWithChildren
   ApiV1CompetitorsCompetitorIdRoute: typeof ApiV1CompetitorsCompetitorIdRoute
   ApiV1OrganizationsOrganizationIdRoute: typeof ApiV1OrganizationsOrganizationIdRouteWithChildren
   ApiV1PromptsPromptIdRoute: typeof ApiV1PromptsPromptIdRouteWithChildren
+  ApiV1PromptsBulkRoute: typeof ApiV1PromptsBulkRoute
   ApiV1ReportsReportIdRoute: typeof ApiV1ReportsReportIdRoute
+  ApiV1RunsRunIdRoute: typeof ApiV1RunsRunIdRoute
   ApiV1ToolsAnalyzeRoute: typeof ApiV1ToolsAnalyzeRoute
   ApiPlausibleEventIndexRoute: typeof ApiPlausibleEventIndexRoute
   ApiV1BrandsIndexRoute: typeof ApiV1BrandsIndexRoute
@@ -1076,6 +1258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1PromptsPromptIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/prompts/bulk': {
+      id: '/api/v1/prompts/bulk'
+      path: '/api/v1/prompts/bulk'
+      fullPath: '/api/v1/prompts/bulk'
+      preLoaderRoute: typeof ApiV1PromptsBulkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/reports/': {
       id: '/api/v1/reports/'
       path: '/api/v1/reports'
@@ -1088,6 +1277,13 @@ declare module '@tanstack/react-router' {
       path: '/api/v1/reports/$reportId'
       fullPath: '/api/v1/reports/$reportId'
       preLoaderRoute: typeof ApiV1ReportsReportIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/runs/$runId': {
+      id: '/api/v1/runs/$runId'
+      path: '/api/v1/runs/$runId'
+      fullPath: '/api/v1/runs/$runId'
+      preLoaderRoute: typeof ApiV1RunsRunIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v1/tools/analyze': {
@@ -1174,6 +1370,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPlausibleJsScriptIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/brands/$brandId/opportunities': {
+      id: '/api/v1/brands/$brandId/opportunities'
+      path: '/opportunities'
+      fullPath: '/api/v1/brands/$brandId/opportunities'
+      preLoaderRoute: typeof ApiV1BrandsBrandIdOpportunitiesRouteImport
+      parentRoute: typeof ApiV1BrandsBrandIdRoute
+    }
+    '/api/v1/brands/$brandId/platforms': {
+      id: '/api/v1/brands/$brandId/platforms'
+      path: '/platforms'
+      fullPath: '/api/v1/brands/$brandId/platforms'
+      preLoaderRoute: typeof ApiV1BrandsBrandIdPlatformsRouteImport
+      parentRoute: typeof ApiV1BrandsBrandIdRoute
+    }
+    '/api/v1/brands/$brandId/prompt-performance': {
+      id: '/api/v1/brands/$brandId/prompt-performance'
+      path: '/prompt-performance'
+      fullPath: '/api/v1/brands/$brandId/prompt-performance'
+      preLoaderRoute: typeof ApiV1BrandsBrandIdPromptPerformanceRouteImport
+      parentRoute: typeof ApiV1BrandsBrandIdRoute
+    }
+    '/api/v1/brands/$brandId/query-fanout': {
+      id: '/api/v1/brands/$brandId/query-fanout'
+      path: '/query-fanout'
+      fullPath: '/api/v1/brands/$brandId/query-fanout'
+      preLoaderRoute: typeof ApiV1BrandsBrandIdQueryFanoutRouteImport
+      parentRoute: typeof ApiV1BrandsBrandIdRoute
+    }
+    '/api/v1/brands/$brandId/share-of-voice': {
+      id: '/api/v1/brands/$brandId/share-of-voice'
+      path: '/share-of-voice'
+      fullPath: '/api/v1/brands/$brandId/share-of-voice'
+      preLoaderRoute: typeof ApiV1BrandsBrandIdShareOfVoiceRouteImport
+      parentRoute: typeof ApiV1BrandsBrandIdRoute
+    }
+    '/api/v1/brands/$brandId/summary': {
+      id: '/api/v1/brands/$brandId/summary'
+      path: '/summary'
+      fullPath: '/api/v1/brands/$brandId/summary'
+      preLoaderRoute: typeof ApiV1BrandsBrandIdSummaryRouteImport
+      parentRoute: typeof ApiV1BrandsBrandIdRoute
+    }
+    '/api/v1/brands/$brandId/visibility': {
+      id: '/api/v1/brands/$brandId/visibility'
+      path: '/visibility'
+      fullPath: '/api/v1/brands/$brandId/visibility'
+      preLoaderRoute: typeof ApiV1BrandsBrandIdVisibilityRouteImport
+      parentRoute: typeof ApiV1BrandsBrandIdRoute
+    }
     '/api/v1/organizations/$organizationId/billing': {
       id: '/api/v1/organizations/$organizationId/billing'
       path: '/billing'
@@ -1181,12 +1426,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1OrganizationsOrganizationIdBillingRouteImport
       parentRoute: typeof ApiV1OrganizationsOrganizationIdRoute
     }
+    '/api/v1/prompts/$promptId/runs': {
+      id: '/api/v1/prompts/$promptId/runs'
+      path: '/runs'
+      fullPath: '/api/v1/prompts/$promptId/runs'
+      preLoaderRoute: typeof ApiV1PromptsPromptIdRunsRouteImport
+      parentRoute: typeof ApiV1PromptsPromptIdRoute
+    }
     '/api/v1/prompts/$promptId/snapshot': {
       id: '/api/v1/prompts/$promptId/snapshot'
       path: '/snapshot'
       fullPath: '/api/v1/prompts/$promptId/snapshot'
       preLoaderRoute: typeof ApiV1PromptsPromptIdSnapshotRouteImport
       parentRoute: typeof ApiV1PromptsPromptIdRoute
+    }
+    '/api/v1/brands/$brandId/citations/domains': {
+      id: '/api/v1/brands/$brandId/citations/domains'
+      path: '/citations/domains'
+      fullPath: '/api/v1/brands/$brandId/citations/domains'
+      preLoaderRoute: typeof ApiV1BrandsBrandIdCitationsDomainsRouteImport
+      parentRoute: typeof ApiV1BrandsBrandIdRoute
+    }
+    '/api/v1/brands/$brandId/citations/urls': {
+      id: '/api/v1/brands/$brandId/citations/urls'
+      path: '/citations/urls'
+      fullPath: '/api/v1/brands/$brandId/citations/urls'
+      preLoaderRoute: typeof ApiV1BrandsBrandIdCitationsUrlsRouteImport
+      parentRoute: typeof ApiV1BrandsBrandIdRoute
+    }
+    '/api/v1/brands/$brandId/tags/': {
+      id: '/api/v1/brands/$brandId/tags/'
+      path: '/tags'
+      fullPath: '/api/v1/brands/$brandId/tags/'
+      preLoaderRoute: typeof ApiV1BrandsBrandIdTagsIndexRouteImport
+      parentRoute: typeof ApiV1BrandsBrandIdRoute
+    }
+    '/api/v1/brands/$brandId/tags/$tag': {
+      id: '/api/v1/brands/$brandId/tags/$tag'
+      path: '/tags/$tag'
+      fullPath: '/api/v1/brands/$brandId/tags/$tag'
+      preLoaderRoute: typeof ApiV1BrandsBrandIdTagsTagRouteImport
+      parentRoute: typeof ApiV1BrandsBrandIdRoute
     }
   }
 }
@@ -1302,6 +1582,39 @@ const AuthedRouteChildren: AuthedRouteChildren = {
 const AuthedRouteWithChildren =
   AuthedRoute._addFileChildren(AuthedRouteChildren)
 
+interface ApiV1BrandsBrandIdRouteChildren {
+  ApiV1BrandsBrandIdOpportunitiesRoute: typeof ApiV1BrandsBrandIdOpportunitiesRoute
+  ApiV1BrandsBrandIdPlatformsRoute: typeof ApiV1BrandsBrandIdPlatformsRoute
+  ApiV1BrandsBrandIdPromptPerformanceRoute: typeof ApiV1BrandsBrandIdPromptPerformanceRoute
+  ApiV1BrandsBrandIdQueryFanoutRoute: typeof ApiV1BrandsBrandIdQueryFanoutRoute
+  ApiV1BrandsBrandIdShareOfVoiceRoute: typeof ApiV1BrandsBrandIdShareOfVoiceRoute
+  ApiV1BrandsBrandIdSummaryRoute: typeof ApiV1BrandsBrandIdSummaryRoute
+  ApiV1BrandsBrandIdVisibilityRoute: typeof ApiV1BrandsBrandIdVisibilityRoute
+  ApiV1BrandsBrandIdCitationsDomainsRoute: typeof ApiV1BrandsBrandIdCitationsDomainsRoute
+  ApiV1BrandsBrandIdCitationsUrlsRoute: typeof ApiV1BrandsBrandIdCitationsUrlsRoute
+  ApiV1BrandsBrandIdTagsTagRoute: typeof ApiV1BrandsBrandIdTagsTagRoute
+  ApiV1BrandsBrandIdTagsIndexRoute: typeof ApiV1BrandsBrandIdTagsIndexRoute
+}
+
+const ApiV1BrandsBrandIdRouteChildren: ApiV1BrandsBrandIdRouteChildren = {
+  ApiV1BrandsBrandIdOpportunitiesRoute: ApiV1BrandsBrandIdOpportunitiesRoute,
+  ApiV1BrandsBrandIdPlatformsRoute: ApiV1BrandsBrandIdPlatformsRoute,
+  ApiV1BrandsBrandIdPromptPerformanceRoute:
+    ApiV1BrandsBrandIdPromptPerformanceRoute,
+  ApiV1BrandsBrandIdQueryFanoutRoute: ApiV1BrandsBrandIdQueryFanoutRoute,
+  ApiV1BrandsBrandIdShareOfVoiceRoute: ApiV1BrandsBrandIdShareOfVoiceRoute,
+  ApiV1BrandsBrandIdSummaryRoute: ApiV1BrandsBrandIdSummaryRoute,
+  ApiV1BrandsBrandIdVisibilityRoute: ApiV1BrandsBrandIdVisibilityRoute,
+  ApiV1BrandsBrandIdCitationsDomainsRoute:
+    ApiV1BrandsBrandIdCitationsDomainsRoute,
+  ApiV1BrandsBrandIdCitationsUrlsRoute: ApiV1BrandsBrandIdCitationsUrlsRoute,
+  ApiV1BrandsBrandIdTagsTagRoute: ApiV1BrandsBrandIdTagsTagRoute,
+  ApiV1BrandsBrandIdTagsIndexRoute: ApiV1BrandsBrandIdTagsIndexRoute,
+}
+
+const ApiV1BrandsBrandIdRouteWithChildren =
+  ApiV1BrandsBrandIdRoute._addFileChildren(ApiV1BrandsBrandIdRouteChildren)
+
 interface ApiV1OrganizationsOrganizationIdRouteChildren {
   ApiV1OrganizationsOrganizationIdBillingRoute: typeof ApiV1OrganizationsOrganizationIdBillingRoute
 }
@@ -1318,10 +1631,12 @@ const ApiV1OrganizationsOrganizationIdRouteWithChildren =
   )
 
 interface ApiV1PromptsPromptIdRouteChildren {
+  ApiV1PromptsPromptIdRunsRoute: typeof ApiV1PromptsPromptIdRunsRoute
   ApiV1PromptsPromptIdSnapshotRoute: typeof ApiV1PromptsPromptIdSnapshotRoute
 }
 
 const ApiV1PromptsPromptIdRouteChildren: ApiV1PromptsPromptIdRouteChildren = {
+  ApiV1PromptsPromptIdRunsRoute: ApiV1PromptsPromptIdRunsRoute,
   ApiV1PromptsPromptIdSnapshotRoute: ApiV1PromptsPromptIdSnapshotRoute,
 }
 
@@ -1342,12 +1657,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApiManifestIndexRoute: ApiManifestIndexRoute,
   ApiOgIndexRoute: ApiOgIndexRoute,
   ApiSetupStatusIndexRoute: ApiSetupStatusIndexRoute,
-  ApiV1BrandsBrandIdRoute: ApiV1BrandsBrandIdRoute,
+  ApiV1BrandsBrandIdRoute: ApiV1BrandsBrandIdRouteWithChildren,
   ApiV1CompetitorsCompetitorIdRoute: ApiV1CompetitorsCompetitorIdRoute,
   ApiV1OrganizationsOrganizationIdRoute:
     ApiV1OrganizationsOrganizationIdRouteWithChildren,
   ApiV1PromptsPromptIdRoute: ApiV1PromptsPromptIdRouteWithChildren,
+  ApiV1PromptsBulkRoute: ApiV1PromptsBulkRoute,
   ApiV1ReportsReportIdRoute: ApiV1ReportsReportIdRoute,
+  ApiV1RunsRunIdRoute: ApiV1RunsRunIdRoute,
   ApiV1ToolsAnalyzeRoute: ApiV1ToolsAnalyzeRoute,
   ApiPlausibleEventIndexRoute: ApiPlausibleEventIndexRoute,
   ApiV1BrandsIndexRoute: ApiV1BrandsIndexRoute,

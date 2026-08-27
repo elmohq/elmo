@@ -6,13 +6,13 @@
  * scopes it holds, and what kind of deployment answered.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { createApiHandler } from "@/lib/api/handler";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { API_SCOPES } from "@/lib/api/scopes";
 import { getDeployment } from "@/lib/config/server";
 
 export const Route = createFileRoute("/api/v1/me")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				handle: async ({ auth }) => {
 					const deployment = getDeployment();
@@ -55,6 +55,6 @@ export const Route = createFileRoute("/api/v1/me")({
 					};
 				},
 			}),
-		},
+		}),
 	},
 });
