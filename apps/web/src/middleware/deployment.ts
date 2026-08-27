@@ -11,7 +11,7 @@
  */
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import openApiSpec from "@workspace/api-spec/published";
+import openApiSpec from "@workspace/api-spec";
 import { evaluateApiKeyAuth, evaluateDeploymentPolicy, evaluateReadOnly, getAdminApiKeys } from "@/lib/auth/policies";
 import { getDeployment } from "@/lib/config/server";
 

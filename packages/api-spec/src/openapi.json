@@ -2,8 +2,7 @@
 	"openapi": "3.0.3",
 	"info": {
 		"title": "Elmo API",
-		"description": "Read and manage the brands, prompts, competitors, and AI-visibility analytics of an Elmo deployment.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header. Two kinds of token are accepted.\n\n**Instance admin keys** come from the operator's `ADMIN_API_KEYS` environment variable. They reach every organization and every endpoint, including the admin-only ones, and are not subject to plan limits or rate limits.\n\n**Organization keys** (`elmo_…`) are issued from the dashboard. A key acts inside exactly one organization, carries an explicit set of scopes, and may be narrowed further to a subset of that organization's brands. Plan limits, read-only mode, and per-key rate limits all apply.\n\n## Scopes\n\nEach operation lists the scope it requires in `x-elmo-scopes`. Admin keys hold every scope implicitly.\n\n| Scope | Grants |\n| --- | --- |\n| `brands:read` / `brands:write` | Read or manage brands |\n| `prompts:read` / `prompts:write` / `prompts:delete` | Read, manage, or delete prompts |\n| `competitors:read` / `competitors:write` / `competitors:delete` | Read, manage, or delete competitors |\n| `analytics:read` | Read aggregated visibility, share of voice, citations, and fan-out |\n| `runs:read` | Read individual model answers and their citations |\n| `billing:read` | Read the organization's plan, limits, and usage |\n\nDeleting is a scope of its own wherever a delete exists: removing a prompt takes its runs and citations with it, and an integration that syncs prompts has no business erasing history.\n\nThere is deliberately no billing write scope: the API cannot change a subscription, an add-on quantity, or a payment method under any key, including an admin key. Operations marked `x-elmo-admin-only` — report generation and brand analysis — are reachable with an instance admin key only; no scope grants them, because both spend provider budget with no organization to bill it to.\n\n## Access and errors\n\nA brand outside the calling key's reach answers `404` with the same body a brand that does not exist would, so a key can never probe another tenant's data. A key that is valid but lacks the scope an operation requires answers `403` naming the missing scope.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Lists take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object. Analytics endpoints take either `startDate` + `endDate` (with an optional `timezone`) or the `lookback` shorthand — one form or the other, never both.\n\n## Stability\n\n`x-elmo-stability: stable` means the response shape will only ever gain fields. `beta` means the endpoint works and is supported, but its shape may still change while it is being used in anger. `planned` means it is specified but not built yet — those operations are stripped from the document this deployment serves, so anything you can read here you can call.",
-		"x-elmo-published-description": "Read and manage the brands, prompts, competitors, and AI-visibility analytics of an Elmo deployment.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header, taken from the operator's `ADMIN_API_KEYS` environment variable.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Lists take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.",
+		"description": "Read and manage the brands, prompts, competitors, and AI-visibility analytics of an Elmo deployment.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header. Two kinds of token are accepted.\n\n**Instance admin keys** come from the operator's `ADMIN_API_KEYS` environment variable. They reach every organization and every endpoint, including the admin-only ones, and are not subject to plan limits or rate limits.\n\n**Organization keys** (`elmo_…`) are issued from the dashboard. A key acts inside exactly one organization, carries an explicit set of scopes, and may be narrowed further to a subset of that organization's brands. Plan limits, read-only mode, and per-key rate limits all apply.\n\n## Scopes\n\nEach operation lists the scope it requires in `x-elmo-scopes`. Admin keys hold every scope implicitly.\n\n| Scope | Grants |\n| --- | --- |\n| `brands:read` / `brands:write` | Read or manage brands |\n| `prompts:read` / `prompts:write` / `prompts:delete` | Read, manage, or delete prompts |\n| `competitors:read` / `competitors:write` / `competitors:delete` | Read, manage, or delete competitors |\n| `analytics:read` | Read aggregated visibility, share of voice, citations, and fan-out |\n| `runs:read` | Read individual model answers and their citations |\n| `billing:read` | Read the organization's plan, limits, and usage |\n\nDeleting is a scope of its own wherever a delete exists: removing a prompt takes its runs and citations with it, and an integration that syncs prompts has no business erasing history.\n\nThere is deliberately no billing write scope: the API cannot change a subscription, an add-on quantity, or a payment method under any key, including an admin key. Operations marked `x-elmo-admin-only` — report generation and brand analysis — are reachable with an instance admin key only; no scope grants them, because both spend provider budget with no organization to bill it to.\n\n## Access and errors\n\nA brand outside the calling key's reach answers `404` with the same body a brand that does not exist would, so a key can never probe another tenant's data. A key that is valid but lacks the scope an operation requires answers `403` naming the missing scope.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Lists take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object. Analytics endpoints take either `startDate` + `endDate` (with an optional `timezone`) or the `lookback` shorthand — one form or the other, never both.\n\n## Stability\n\nEvery operation carries `x-elmo-stability`, and any operation that isn't `stable` says so in the first line of its description.\n\n- `stable` — the response shape will only ever gain fields.\n- `beta` — built and supported, but the shape may still change: we may add, rename, or remove a response field, and we'll say so in the release that does it. Pin nothing you can't adjust.\n- `planned` — specified here, not built yet. Calling it returns `404`. This document is written ahead of the code, so the reference doubles as the roadmap.",
 		"version": "1.1.0",
 		"contact": {
 			"name": "Elmo",
@@ -152,7 +151,7 @@
 					},
 					"code": {
 						"type": "string",
-						"description": "Stable machine-readable code. Deliberately not an enum: new values are added without a version bump, so treat an unrecognized one as its HTTP status implies. Currently: `unauthorized`, `insufficient_scope`, `forbidden`, `not_found`, `validation_error`, `conflict`, `rate_limited`, `read_only`, `no_active_plan`, `brand_limit`, `prompt_limit`, `platform_not_in_plan`, `platform_picks_exceeded`, `premium_not_in_plan`, `premium_pool_exhausted`, `cadence_faster_than_plan`, `internal_error`."
+						"description": "Stable machine-readable code. Deliberately not an enum: new values are added without a version bump, so treat an unrecognized one as its HTTP status implies. Currently: `unauthorized`, `insufficient_scope`, `forbidden`, `not_found`, `validation_error`, `conflict`, `rate_limited`, `read_only`, `no_active_plan`, `brand_limit`, `prompt_limit`, `platform_not_in_plan`, `platform_picks_exceeded`, `premium_not_in_plan`, `premium_pool_exhausted`, `cadence_faster_than_plan`, `system_tag_immutable`, `internal_error`."
 					}
 				},
 				"required": ["error"]
@@ -1828,6 +1827,189 @@
 					}
 				},
 				"required": ["data", "pagination"]
+			},
+			"Tag": {
+				"type": "object",
+				"properties": {
+					"name": {
+						"type": "string",
+						"description": "The tag, normalized to lower case."
+					},
+					"promptCount": {
+						"type": "integer",
+						"description": "Prompts in this brand carrying the tag."
+					},
+					"system": {
+						"type": "boolean",
+						"description": "True for `branded` and `unbranded`, which Elmo computes from the prompt text. A system tag always appears here; applying it to a prompt as a user tag overrides the computed classification rather than creating a new tag."
+					}
+				},
+				"required": ["name", "promptCount", "system"]
+			},
+			"TagList": {
+				"type": "object",
+				"properties": {
+					"brandId": {
+						"type": "string"
+					},
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Tag"
+						},
+						"description": "System tags first, then user tags alphabetically — the order the dashboard's filter shows."
+					}
+				},
+				"required": ["brandId", "data"]
+			},
+			"RenameTagRequest": {
+				"description": "Renames the tag on every prompt in the brand that carries it. Merging into an existing tag is allowed and deduplicates.",
+				"type": "object",
+				"properties": {
+					"name": {
+						"type": "string",
+						"description": "The new tag. Normalized the same way tags on a prompt are.",
+						"minLength": 1
+					}
+				},
+				"required": ["name"]
+			},
+			"TagMutationResult": {
+				"type": "object",
+				"properties": {
+					"brandId": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string",
+						"description": "The tag after the change, or null when it was removed.",
+						"nullable": true
+					},
+					"promptsUpdated": {
+						"type": "integer",
+						"description": "Prompts whose tag list actually changed."
+					}
+				},
+				"required": ["brandId", "name", "promptsUpdated"]
+			},
+			"OpportunityPrompt": {
+				"type": "object",
+				"properties": {
+					"text": {
+						"type": "string",
+						"description": "The prompt as the report names it."
+					},
+					"promptId": {
+						"type": "string",
+						"description": "The tracked prompt it resolved to, or null when it didn't match one.",
+						"format": "uuid",
+						"nullable": true
+					}
+				},
+				"required": ["text", "promptId"]
+			},
+			"CitedPage": {
+				"type": "object",
+				"properties": {
+					"url": {
+						"type": "string",
+						"format": "uri"
+					},
+					"domain": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"required": ["url", "domain", "title"]
+			},
+			"Opportunity": {
+				"type": "object",
+				"properties": {
+					"category": {
+						"type": "string",
+						"description": "Which workstream this belongs to: `creation` is net-new content, `existing-content` is a page that could win the mention with a refresh, `outreach` is earning a placement on a third-party site assistants cite, `social` is the community conversations they pull from.",
+						"enum": ["creation", "existing-content", "outreach", "social"]
+					},
+					"title": {
+						"type": "string",
+						"description": "Short and action-oriented — the concrete surface or angle."
+					},
+					"why": {
+						"type": "string",
+						"description": "Why it is worth doing, in plain language."
+					},
+					"relatedPrompts": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/OpportunityPrompt"
+						},
+						"description": "Tracked prompts this would help. May be empty."
+					},
+					"yourCitations": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CitedPage"
+						},
+						"description": "Pages on the brand's own domains already cited for those prompts."
+					},
+					"competitorCitations": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CitedPage"
+						},
+						"description": "Pages on competitor domains cited for those prompts."
+					}
+				},
+				"required": ["category", "title", "why", "relatedPrompts", "yourCitations", "competitorCitations"]
+			},
+			"BrandOpportunities": {
+				"description": "The brand's latest Opportunities report — the same LLM-generated analysis the dashboard shows, read from the append-only history rather than regenerated. Elmo decides when to produce a new one; there is no way to trigger generation over the API, because it spends provider budget with no per-call metering behind it.",
+				"type": "object",
+				"properties": {
+					"brandId": {
+						"type": "string"
+					},
+					"status": {
+						"type": "string",
+						"description": "`ready` when a report is present. `insufficient-data` when the brand hasn't accumulated enough tracked answers to say anything useful yet. `not-generated` when none has been produced for this brand at all. The lists are empty for anything but `ready`.",
+						"enum": ["ready", "insufficient-data", "not-generated"]
+					},
+					"generatedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"model": {
+						"type": "string",
+						"description": "The model that produced the report, when recorded.",
+						"nullable": true
+					},
+					"summary": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "A few bullets on where the brand stands and the through-line of the plan."
+					},
+					"opportunities": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Opportunity"
+						},
+						"description": "Prioritized, highest impact first."
+					},
+					"risks": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "Caveats: hard-to-win areas, or tactics to avoid."
+					}
+				},
+				"required": ["brandId", "status", "generatedAt", "model", "summary", "opportunities", "risks"]
 			}
 		},
 		"responses": {
@@ -2273,7 +2455,7 @@
 		"/brands/{brandId}/citations/domains": {
 			"get": {
 				"summary": "List cited domains",
-				"description": "Domains the engines cited when answering this brand's prompts, categorized and compared against the equal-length window immediately before this one.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nDomains the engines cited when answering this brand's prompts, categorized and compared against the equal-length window immediately before this one.",
 				"operationId": "listBrandCitationDomains",
 				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
@@ -2342,7 +2524,7 @@
 		"/brands/{brandId}/citations/urls": {
 			"get": {
 				"summary": "List cited URLs",
-				"description": "Individual pages the engines cited, with their category and page type.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nIndividual pages the engines cited, with their category and page type.",
 				"operationId": "listBrandCitationUrls",
 				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
@@ -2408,10 +2590,52 @@
 				}
 			}
 		},
+		"/brands/{brandId}/opportunities": {
+			"get": {
+				"summary": "Get the latest opportunities report",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nThe brand's most recent Opportunities report: a prioritized set of ways to get cited more often, with the tracked prompts and cited pages behind each one. The same analysis the dashboard shows.\n\nRead-only. Elmo generates a report when the brand's data has moved enough to warrant one; there is no way to trigger generation over the API, because it spends provider budget with nothing metering it per call. `status` says why the lists are empty when they are.",
+				"operationId": "getBrandOpportunities",
+				"tags": ["Opportunities"],
+				"x-elmo-stability": "planned",
+				"x-elmo-scopes": ["analytics:read"],
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BrandIdPath"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Get the latest opportunities report",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BrandOpportunities"
+								}
+							}
+						}
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
 		"/brands/{brandId}/platforms": {
 			"get": {
 				"summary": "Get visibility by platform",
-				"description": "Runs, mentions, and visibility broken down by answer engine, so a customer can see where they are strong and where they are invisible.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nRuns, mentions, and visibility broken down by answer engine, so a customer can see where they are strong and where they are invisible.",
 				"operationId": "getBrandPlatformBreakdown",
 				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
@@ -2471,7 +2695,7 @@
 		"/brands/{brandId}/prompt-performance": {
 			"get": {
 				"summary": "List prompt performance",
-				"description": "Per-prompt mention rates over the window. The analytics counterpart to `GET /prompts?brandId=`, which returns prompt configuration rather than results.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nPer-prompt mention rates over the window. The analytics counterpart to `GET /prompts?brandId=`, which returns prompt configuration rather than results.",
 				"operationId": "listBrandPromptPerformance",
 				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
@@ -2540,7 +2764,7 @@
 		"/brands/{brandId}/query-fanout": {
 			"get": {
 				"summary": "Get query fan-out",
-				"description": "The searches engines ran while answering this brand's prompts. Engines that don't expose their searches still contribute runs, so `coverageRate` is the honest denominator.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nThe searches engines ran while answering this brand's prompts. Engines that don't expose their searches still contribute runs, so `coverageRate` is the honest denominator.",
 				"operationId": "getBrandQueryFanout",
 				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
@@ -2609,7 +2833,7 @@
 		"/brands/{brandId}/share-of-voice": {
 			"get": {
 				"summary": "Get share of voice",
-				"description": "The brand against its tracked competitors: a leaderboard of mention counts and shares, plus the brand's own share over time.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nThe brand against its tracked competitors: a leaderboard of mention counts and shares, plus the brand's own share over time.",
 				"operationId": "getBrandShareOfVoice",
 				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
@@ -2672,7 +2896,7 @@
 		"/brands/{brandId}/summary": {
 			"get": {
 				"summary": "Get a brand summary",
-				"description": "Every headline figure the dashboard shows for a brand — visibility, share of voice, and period totals — in a single request.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nEvery headline figure the dashboard shows for a brand — visibility, share of voice, and period totals — in a single request.",
 				"operationId": "getBrandSummary",
 				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
@@ -2732,10 +2956,171 @@
 				}
 			}
 		},
+		"/brands/{brandId}/tags": {
+			"get": {
+				"summary": "List a brand's tags",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nEvery tag in use on the brand's prompts, with how many carry each — enough to build the same filter the dashboard shows without paging the whole prompt list to derive it.\n\nTags are not a resource of their own: a tag exists exactly as long as some prompt carries it. `branded` and `unbranded` are computed by Elmo and always listed.",
+				"operationId": "listBrandTags",
+				"tags": ["Tags"],
+				"x-elmo-stability": "planned",
+				"x-elmo-scopes": ["prompts:read"],
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BrandIdPath"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "List a brand's tags",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TagList"
+								}
+							}
+						}
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/brands/{brandId}/tags/{tag}": {
+			"patch": {
+				"summary": "Rename a tag",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nRename the tag on every prompt in the brand that carries it. Renaming onto a tag that already exists merges the two and deduplicates.\n\nNeeds `prompts:write`, not `prompts:delete`: this relabels prompts and destroys no tracked data, and a caller holding `prompts:write` could already do it one `PATCH /prompts/{promptId}` at a time.\n\nThe computed `branded` and `unbranded` tags cannot be renamed (`409 system_tag_immutable`).",
+				"operationId": "renameBrandTag",
+				"tags": ["Tags"],
+				"x-elmo-stability": "planned",
+				"x-elmo-scopes": ["prompts:write"],
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BrandIdPath"
+					},
+					{
+						"name": "tag",
+						"in": "path",
+						"required": true,
+						"description": "The tag, matched case-insensitively.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RenameTagRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Rename a tag",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TagMutationResult"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"409": {
+						"$ref": "#/components/responses/ConflictError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			},
+			"delete": {
+				"summary": "Remove a tag",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nRemove the tag from every prompt in the brand that carries it. The prompts themselves, and their runs and citations, are untouched — which is why this needs `prompts:write` rather than `prompts:delete`.\n\nThe computed `branded` and `unbranded` tags cannot be removed (`409 system_tag_immutable`).",
+				"operationId": "deleteBrandTag",
+				"tags": ["Tags"],
+				"x-elmo-stability": "planned",
+				"x-elmo-scopes": ["prompts:write"],
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BrandIdPath"
+					},
+					{
+						"name": "tag",
+						"in": "path",
+						"required": true,
+						"description": "The tag, matched case-insensitively.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Remove a tag",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TagMutationResult"
+								}
+							}
+						}
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"409": {
+						"$ref": "#/components/responses/ConflictError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
 		"/brands/{brandId}/visibility": {
 			"get": {
 				"summary": "Get visibility over time",
-				"description": "A daily series of the share of runs that mentioned the brand, plus period totals. Days with no runs to plot carry `null` rather than zero, so a gap in sampling never reads as a collapse in visibility.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nA daily series of the share of runs that mentioned the brand, plus period totals. Days with no runs to plot carry `null` rather than zero, so a gap in sampling never reads as a collapse in visibility.",
 				"operationId": "getBrandVisibility",
 				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
@@ -3093,7 +3478,7 @@
 		"/me": {
 			"get": {
 				"summary": "Describe the calling key",
-				"description": "What this key is, which organization and brands it reaches, which scopes it holds, and what kind of deployment answered. Requires no scope, so it is always safe to call first when wiring up an integration.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nWhat this key is, which organization and brands it reaches, which scopes it holds, and what kind of deployment answered. Requires no scope, so it is always safe to call first when wiring up an integration.",
 				"operationId": "getMe",
 				"tags": ["Identity"],
 				"x-elmo-stability": "planned",
@@ -3127,7 +3512,7 @@
 		"/organizations": {
 			"get": {
 				"summary": "List organizations",
-				"description": "One entry for an organization key — the one it acts inside. Every organization for an instance admin key. No scope required: a key can only ever see the workspace it is already bound to.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nOne entry for an organization key — the one it acts inside. Every organization for an instance admin key. No scope required: a key can only ever see the workspace it is already bound to.",
 				"operationId": "listOrganizations",
 				"tags": ["Organizations"],
 				"x-elmo-stability": "planned",
@@ -3169,7 +3554,7 @@
 		"/organizations/{organizationId}": {
 			"get": {
 				"summary": "Get an organization",
-				"description": "No scope required. An organization outside the key's reach answers `404`, identically to one that does not exist.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nNo scope required. An organization outside the key's reach answers `404`, identically to one that does not exist.",
 				"operationId": "getOrganization",
 				"tags": ["Organizations"],
 				"x-elmo-stability": "planned",
@@ -3216,7 +3601,7 @@
 		"/organizations/{organizationId}/billing": {
 			"get": {
 				"summary": "Get billing state",
-				"description": "The organization's plan, its limits, and how much of each limit is already spent — enough for an integration to know a write will be rejected before attempting it.\n\nThis endpoint is read-only by construction. No API key of any kind can change a subscription, an add-on quantity, or a payment method; there is no billing write endpoint and no billing write scope. Stripe identifiers, invoices, and payment methods are never returned.\n\nDeployments without billing answer `200` with `billingEnabled: false`, a null plan, and null limits, so callers need no special case.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nThe organization's plan, its limits, and how much of each limit is already spent — enough for an integration to know a write will be rejected before attempting it.\n\nThis endpoint is read-only by construction. No API key of any kind can change a subscription, an add-on quantity, or a payment method; there is no billing write endpoint and no billing write scope. Stripe identifiers, invoices, and payment methods are never returned.\n\nDeployments without billing answer `200` with `billingEnabled: false`, a null plan, and null limits, so callers need no special case.",
 				"operationId": "getOrganizationBilling",
 				"tags": ["Organizations"],
 				"x-elmo-stability": "planned",
@@ -3263,7 +3648,7 @@
 		"/platforms": {
 			"get": {
 				"summary": "List trackable platforms",
-				"description": "The answer engines this deployment can track, with the identifiers accepted by every `model` filter. Lets a client build a platform picker without hardcoding names.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nThe answer engines this deployment can track, with the identifiers accepted by every `model` filter. Lets a client build a platform picker without hardcoding names.",
 				"operationId": "listPlatforms",
 				"tags": ["Platforms"],
 				"x-elmo-stability": "planned",
@@ -3468,7 +3853,7 @@
 		"/prompts/bulk": {
 			"post": {
 				"summary": "Create prompts in bulk",
-				"description": "Create up to 100 prompts for one brand in a single request. The batch is checked against the organization's prompt and premium limits as one delta and applied all-or-nothing, so a batch that would overrun a limit creates nothing rather than part of itself.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nCreate up to 100 prompts for one brand in a single request. The batch is checked against the organization's prompt and premium limits as one delta and applied all-or-nothing, so a batch that would overrun a limit creates nothing rather than part of itself.",
 				"operationId": "createPromptsBulk",
 				"tags": ["Prompts"],
 				"x-elmo-stability": "planned",
@@ -3712,7 +4097,7 @@
 		"/prompts/{promptId}/runs": {
 			"get": {
 				"summary": "List runs for a prompt",
-				"description": "Individual model answers behind the aggregates, newest first, without their text — the list stays small enough to page through. Fetch `GET /runs/{runId}` for the answer itself.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nIndividual model answers behind the aggregates, newest first, without their text — the list stays small enough to page through. Fetch `GET /runs/{runId}` for the answer itself.",
 				"operationId": "listPromptRuns",
 				"tags": ["Runs"],
 				"x-elmo-stability": "planned",
@@ -4309,7 +4694,7 @@
 		"/runs/{runId}": {
 			"get": {
 				"summary": "Get a run",
-				"description": "One model answer, with its text normalized out of the provider's response and its citations in the order the engine listed them. The provider's raw payload is deliberately not exposed — its shape belongs to the provider, not to this API.",
+				"description": "**Planned — specified but not implemented yet; this endpoint currently returns `404`.**\n\nOne model answer, with its text normalized out of the provider's response and its citations in the order the engine listed them. The provider's raw payload is deliberately not exposed — its shape belongs to the provider, not to this API.",
 				"operationId": "getRun",
 				"tags": ["Runs"],
 				"x-elmo-stability": "planned",
@@ -4456,6 +4841,14 @@
 		{
 			"name": "Runs",
 			"description": "Individual model answers behind the aggregates"
+		},
+		{
+			"name": "Tags",
+			"description": "The tags in use on a brand's prompts"
+		},
+		{
+			"name": "Opportunities",
+			"description": "Where a brand could win more citations, and why"
 		}
 	]
 }

@@ -1,0 +1,27 @@
+meta {
+  name: renaming onto an existing tag merges the two
+  type: http
+  seq: 11
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/tags/bruno-renamed
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+body:json {
+  {
+    "name": "bruno-target"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.name: eq bruno-target
+  res.body.promptsUpdated: eq 2
+}

@@ -159,6 +159,62 @@ async function seedBillingTenants(client: pg.Client): Promise<void> {
   );
 }
 
+/**
+ * One stored Opportunities report for the default brand, so the API test for it
+ * exercises the populated path rather than only the "nothing generated yet" one.
+ * Shaped like what the generator persists: the model's own output, enriched with
+ * resolved prompt ids and the pages already cited for them.
+ */
+async function seedOpportunities(client: pg.Client): Promise<void> {
+  const report = {
+    summary: [
+      "Competitor Alpha is named in comparison answers you are absent from.",
+      "Assistants build monitoring answers from example.com and techblog.io.",
+      "Branded prompts are covered; unbranded discovery is where the gap is.",
+    ],
+    risks: [
+      "Comparison roundups rotate slowly, so placements take time to land.",
+      "Do not chase prompts where every assistant cites the same locked-in source.",
+    ],
+    opportunities: [
+      {
+        category: "creation",
+        title: "Publish a monitoring-tool comparison for unbranded discovery",
+        why: "Assistants answer 'best AI monitoring tool' from third-party roundups, and the brand is named in none of them.",
+        relatedPrompts: [
+          {
+            text: "What is the best AI monitoring tool for tracking brand visibility?",
+            promptId: PROMPT_IDS.branded1,
+          },
+        ],
+        yourCitations: [
+          { title: "AI Monitoring Guide", domain: "example.com", url: "https://example.com/blog/ai-monitoring" },
+        ],
+        competitorCitations: [
+          { title: "Competitor Alpha Features", domain: "competitor-alpha.com", url: "https://competitor-alpha.com/features" },
+        ],
+      },
+      {
+        category: "outreach",
+        title: "Get into the techblog.io tools roundup",
+        why: "It is cited in answers where the brand is absent, and its list rotates often enough to break into.",
+        relatedPrompts: [{ text: "Compare AI visibility platforms and their features", promptId: PROMPT_IDS.branded2 }],
+        yourCitations: [],
+        competitorCitations: [
+          { title: "Best AI Tools 2025", domain: "techblog.io", url: "https://techblog.io/ai-tools-2025" },
+        ],
+      },
+    ],
+  };
+
+  await client.query(
+    `INSERT INTO brand_opportunities (brand_id, report, model, created_at)
+     VALUES ($1, $2, $3, NOW())`,
+    [TEST_BRAND_ID, JSON.stringify(report), "claude-sonnet-5"],
+  );
+  console.log(`  Created 1 opportunities report (${report.opportunities.length} opportunities)`);
+}
+
 async function seed() {
   const client = new pg.Client({ connectionString: DATABASE_URL });
   await client.connect();
@@ -166,6 +222,7 @@ async function seed() {
   try {
     console.log("Seeding E2E test database...");
 
+    await client.query("DELETE FROM brand_opportunities");
     await client.query("DELETE FROM citations");
     await client.query("DELETE FROM prompt_runs");
     await client.query("DELETE FROM prompts");
@@ -565,6 +622,7 @@ async function seed() {
     );
     console.log("  Created second tenant: Nike (2 brands, 2 prompts, 2 competitors, 1 run, 2 citations)");
 
+    await seedOpportunities(client);
     await seedBillingTenants(client);
     await seedApiKeys(client);
 

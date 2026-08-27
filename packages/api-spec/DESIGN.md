@@ -234,7 +234,7 @@ machine code:
 `validation_error`, `conflict`, `rate_limited`, `read_only`, `no_active_plan`,
 `brand_limit`, `prompt_limit`, `platform_not_in_plan`, `platform_picks_exceeded`,
 `premium_not_in_plan`, `premium_pool_exhausted`, `cadence_faster_than_plan`,
-`internal_error`.
+`system_tag_immutable`, `internal_error`.
 
 Adding a value is not a breaking change, so `code` is **not** an `enum` in the
 spec — a generated client would turn one into a closed type that throws on the
@@ -254,22 +254,23 @@ bearer scheme produces an invalid document — so the requirement is carried as 
 extension and summarized in the API description.
 
 **Stability.** Every operation carries
-`x-elmo-stability: stable | beta | planned`.
+`x-elmo-stability: stable | beta | planned`. **This is a documentation label,
+not machinery** — nothing filters, gates, or branches on it. It exists so a
+reader knows what they're looking at.
 
 - `stable` — everything shipped today. Additive changes only.
 - `beta` — built and supported, shape may still move. Concretely: we may add,
   rename, or remove a response field, or tighten a parameter, and we will say so
   in the changelog for the release that does it — but we won't change a path or
   a status code, and we won't do it silently. This is the main lever against
-  locking ourselves in: new endpoints land here, not at `stable`.
-- `planned` — specified, not built. The document is written ahead of the code,
-  so `openapi.json` is the plan's machine-readable half.
+  locking ourselves in: new endpoints land here, not at `stable`, and it is what
+  lets us expose an LLM-generated shape like Opportunities at all.
+- `planned` — specified, not built. Calling it returns `404`. The document is
+  written ahead of the code, so the reference doubles as the roadmap.
 
-`planned` operations are **stripped from the document the app serves and the
-docs site renders** (`packages/api-spec/src/published.ts`). Anything a customer
-can read in the reference, they can call. Implementing an operation is one
-edit — `planned` → `beta` — and it appears in the docs and in
-`GET /api/v1/openapi.json` on the same commit.
+An `x-` extension doesn't render, so anything that isn't `stable` also **says so
+in the first line of its description**, where a reader actually sees it.
+Implementing an operation is one edit: drop the note, flip `planned` → `beta`.
 
 ---
 
@@ -410,6 +411,54 @@ scope-checked, org-filtered, with `limit` capped at 100. Additions:
 `GET/POST /v1/competitors`, `GET/PATCH/DELETE /v1/competitors/{competitorId}`,
 now scope-checked and org-filtered. `MAX_COMPETITORS` already applies.
 
+### 3.6a Tags — `prompts:read` / `prompts:write`
+
+- `GET /v1/brands/{brandId}/tags` — every tag in use on the brand's prompts,
+  with how many carry each.
+- `PATCH /v1/brands/{brandId}/tags/{tag}` — rename it across the brand.
+  Renaming onto an existing tag merges them.
+- `DELETE /v1/brands/{brandId}/tags/{tag}` — remove it from every prompt.
+
+**Derived, not a resource.** There is no tag table: a tag is a string in
+`prompts.tags`, and it exists exactly as long as some prompt carries it. These
+endpoints are a view over that and a bulk edit of it — which is the whole reason
+they're safe to add. A `POST /v1/tags` that created a tag nothing carries would
+be promising a model we don't have, and we'd have to keep it.
+
+What the list buys a caller is real: today, building the filter the dashboard
+shows means paging every prompt in the brand and deduplicating client-side.
+
+`branded` and `unbranded` are computed from the prompt text. They always appear
+in the list, marked `system: true`, and cannot be renamed or removed
+(`409 system_tag_immutable`) — applying one to a prompt as a user tag overrides
+the computed classification, which is a prompt edit, not a tag edit.
+
+Both mutations need `prompts:write`, not `prompts:delete`: they relabel prompts
+and destroy no tracked data, and a caller with `prompts:write` could already do
+the same thing one `PATCH /v1/prompts/{promptId}` at a time. Neither touches an
+entitlement pool — a relabel changes no count.
+
+### 3.6b Opportunities — `analytics:read`
+
+`GET /v1/brands/{brandId}/opportunities` — the brand's latest Opportunities
+report: prioritized ways to get cited more often, each with the tracked prompts
+it targets and the pages already cited for them, plus a summary and the risks.
+
+This is the one endpoint whose shape we are least sure of — it is LLM-generated
+and still moving — which is exactly what `beta` is for. Shipping it labelled
+beats withholding it: the analysis is the most useful thing in the product to
+pipe somewhere else, and a caller who reads the label knows what they're
+pinning.
+
+Read-only, and deliberately no `POST` to regenerate. Elmo decides when a report
+is stale; generation spends provider budget with nothing metering it per call,
+the same reason `/tools/analyze` stays admin-only (§3.9). What the API returns
+is the newest row of an append-only history.
+
+`status` (`ready` / `insufficient-data` / `not-generated`) says why the lists
+are empty when they are, so a caller never has to distinguish "no opportunities"
+from "not enough data yet" from "never generated".
+
 ### 3.7 Analytics — `/v1/brands/{brandId}/…`  *(`analytics:read`)*
 
 Brand-nested rather than a `/reports/*` family, because `reports` already means
@@ -476,8 +525,9 @@ would have to take back.
 | Any billing write | Structural guarantee; no scope exists. |
 | Org / member / invitation mutations | Already blocked at the middleware for every caller. |
 | `DELETE /v1/brands/{id}` | Irreversible cascade; dashboard-only. |
-| A `/v1/tags` resource | Tags are strings on prompts today. A tag resource would promise a model we don't have. |
-| Opportunities reports | LLM-generated shape, still moving. |
+| Creating a tag that no prompt carries | Tags are derived from `prompts.tags`; a standalone tag would promise a table we don't have (§3.6a). |
+| Triggering an Opportunities generation | Spends provider budget with nothing metering it per call (§3.6b). |
+| Opportunities history | Only the latest report. The table is append-only, so a `generatedBefore` filter can be added the day someone wants one. |
 | Raw `rawOutput` | Provider-shaped; would become our contract. |
 | Cadence / scheduling internals | pg-boss detail; `delayOverrideHours` on the brand is the only knob worth exposing, and only for reading initially. |
 | Cursor pagination, idempotency keys, webhooks | Real features, not blockers. Add when an integration needs one. |
@@ -528,10 +578,11 @@ Each step is independently shippable.
    billing.
 6. **Analytics endpoints**, one shared analytics function each.
 7. **Runs endpoints.**
-8. **Prompt bulk create**, plus the additive list filters.
-9. **Docs + SDK.** The docs site already renders whatever is not `planned`, so
-   each step above publishes its own reference page by flipping its operations
-   to `beta`. Then publish a typed client. Follow-up: derive `openapi.json` from
+8. **Tags and opportunities.** Both are thin: tags read and rewrite
+   `prompts.tags`, opportunities reads the newest `brand_opportunities` row.
+9. **Prompt bulk create**, plus the additive list filters.
+10. **Docs + SDK.** Each step above drops its operations' planned note and
+   flips them to `beta`. Then publish a typed client. Follow-up: derive `openapi.json` from
    the zod schemas rather than hand-editing (the second half of #331).
 
 ### Open PRs this supersedes

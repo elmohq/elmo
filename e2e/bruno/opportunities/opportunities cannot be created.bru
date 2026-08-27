@@ -1,0 +1,24 @@
+meta {
+  name: a report cannot be created over the API
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/opportunities
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: gte 400
+  res.status: lt 500
+}

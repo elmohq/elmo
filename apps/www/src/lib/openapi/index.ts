@@ -1,4 +1,4 @@
-import spec from "@workspace/api-spec/published";
+import spec from "@workspace/api-spec";
 import type { OpenAPIV3_2 } from "fumadocs-openapi";
 import { createOpenAPI } from "fumadocs-openapi/server";
 

@@ -1,0 +1,26 @@
+meta {
+  name: the prompts that carried the removed tag are untouched
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{tagPromptA}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{tagPromptA}}
+}
+
+tests {
+  test("the prompt is still there, just without the tag", function() {
+    expect(res.getBody().tags).to.not.include("bruno-target");
+  });
+}

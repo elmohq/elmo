@@ -1,0 +1,20 @@
+meta {
+  name: tags for a brand that does not exist
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/does-not-exist/tags
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}
