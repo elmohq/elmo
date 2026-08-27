@@ -1,11 +1,16 @@
 {
 	"openapi": "3.0.3",
 	"info": {
-		"title": "API",
-		"description": "API for managing prompts and generating AI Share of Voice reports.",
-		"version": "1.0.0",
+		"title": "Elmo API",
+		"description": "Read and manage the brands, prompts, competitors, and AI-visibility analytics of an Elmo deployment.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header. Two kinds of token are accepted.\n\n**Instance admin keys** come from the operator's `ADMIN_API_KEYS` environment variable. They reach every organization and every endpoint, including the admin-only ones, and are not subject to plan limits or rate limits.\n\n**Organization keys** (`elmo_…`) are issued from the dashboard. A key acts inside exactly one organization, carries an explicit set of scopes, and may be narrowed further to a subset of that organization's brands. Plan limits, read-only mode, and per-key rate limits all apply.\n\n## Scopes\n\nEach operation lists the scope it requires in `x-elmo-scopes`. Admin keys hold every scope implicitly.\n\n| Scope | Grants |\n| --- | --- |\n| `brands:read` / `brands:write` | Read or manage brands and organizations |\n| `prompts:read` / `prompts:write` | Read or manage prompts |\n| `competitors:read` / `competitors:write` | Read or manage competitors |\n| `analytics:read` | Read aggregated visibility, share of voice, citations, and fan-out |\n| `runs:read` | Read individual model answers and their citations |\n| `billing:read` | Read the organization's plan, limits, and usage |\n| `reports:read` / `reports:write` | Read or generate one-shot Share of Voice reports |\n\nThere is deliberately no billing write scope: the API cannot change a subscription, an add-on quantity, or a payment method under any key, including an admin key.\n\n## Access and errors\n\nA brand outside the calling key's reach answers `404` with the same body a brand that does not exist would, so a key can never probe another tenant's data. A key that is valid but lacks the scope an operation requires answers `403` naming the missing scope.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Lists take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object. Analytics endpoints take either `startDate` + `endDate` (with an optional `timezone`) or the `lookback` shorthand — one form or the other, never both.\n\n## Stability\n\n`x-elmo-stability: stable` means the response shape will only ever gain fields. `beta` means the endpoint works and is supported, but its shape may still change while it is being used in anger.",
+		"version": "1.1.0",
 		"contact": {
-			"name": "API Support"
+			"name": "Elmo",
+			"url": "https://github.com/elmohq/elmo"
+		},
+		"license": {
+			"name": "MIT",
+			"url": "https://github.com/elmohq/elmo/blob/main/LICENSE.md"
 		}
 	},
 	"servers": [
@@ -24,7 +29,7 @@
 			"BearerAuth": {
 				"type": "http",
 				"scheme": "bearer",
-				"description": "Bearer API token for access"
+				"description": "An instance admin key from `ADMIN_API_KEYS`, or an organization key (`elmo_…`) issued from the dashboard."
 			}
 		},
 		"schemas": {
@@ -71,6 +76,13 @@
 						"type": "string",
 						"format": "date-time",
 						"description": "Timestamp when the prompt was last updated"
+					},
+					"premiumModels": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "Platforms this prompt is tracked on grounded. Each entry spends one premium pairing."
 					}
 				},
 				"required": ["id", "brandId", "value", "enabled", "tags", "systemTags", "createdAt", "updatedAt"]
@@ -116,6 +128,13 @@
 							"type": "string"
 						},
 						"description": "User-defined tags for categorizing this prompt"
+					},
+					"premiumModels": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "Replaces the prompt's grounded platforms. Checked against the organization's premium pool."
 					}
 				}
 			},
@@ -129,6 +148,29 @@
 					"message": {
 						"type": "string",
 						"description": "Detailed error message"
+					},
+					"code": {
+						"type": "string",
+						"description": "Stable machine-readable code. Unrecognized values should be treated as the HTTP status implies.",
+						"enum": [
+							"unauthorized",
+							"insufficient_scope",
+							"forbidden",
+							"not_found",
+							"validation_error",
+							"conflict",
+							"rate_limited",
+							"read_only",
+							"no_active_plan",
+							"brand_limit",
+							"prompt_limit",
+							"platform_not_in_plan",
+							"platform_picks_exceeded",
+							"premium_not_in_plan",
+							"premium_pool_exhausted",
+							"cadence_faster_than_plan",
+							"internal_error"
+						]
 					}
 				},
 				"required": ["error"]
@@ -314,18 +356,45 @@
 			"OnboardingSuggestion": {
 				"type": "object",
 				"properties": {
-					"brandName": { "type": "string" },
-					"website": { "type": "string", "description": "Cleaned hostname" },
-					"additionalDomains": { "type": "array", "items": { "type": "string" } },
-					"aliases": { "type": "array", "items": { "type": "string" } },
+					"brandName": {
+						"type": "string"
+					},
+					"website": {
+						"type": "string",
+						"description": "Cleaned hostname"
+					},
+					"additionalDomains": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"aliases": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
 					"competitors": {
 						"type": "array",
 						"items": {
 							"type": "object",
 							"properties": {
-								"name": { "type": "string" },
-								"domains": { "type": "array", "items": { "type": "string" } },
-								"aliases": { "type": "array", "items": { "type": "string" } }
+								"name": {
+									"type": "string"
+								},
+								"domains": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									}
+								},
+								"aliases": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									}
+								}
 							},
 							"required": ["name", "domains", "aliases"]
 						}
@@ -335,8 +404,15 @@
 						"items": {
 							"type": "object",
 							"properties": {
-								"prompt": { "type": "string" },
-								"tags": { "type": "array", "items": { "type": "string" } }
+								"prompt": {
+									"type": "string"
+								},
+								"tags": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									}
+								}
 							},
 							"required": ["prompt", "tags"]
 						}
@@ -348,23 +424,49 @@
 				"type": "object",
 				"description": "Create a brand. Skips onboarding. The first entry in `domains` is treated as the brand's primary website; the rest are stored as additional domains.",
 				"properties": {
-					"id": { "type": "string", "minLength": 1 },
-					"name": { "type": "string", "minLength": 1 },
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"name": {
+						"type": "string",
+						"minLength": 1
+					},
 					"domains": {
 						"type": "array",
-						"items": { "type": "string" },
+						"items": {
+							"type": "string"
+						},
 						"minItems": 1,
 						"description": "Brand domains. The first entry is the primary website; remaining entries are additional domains."
 					},
-					"aliases": { "type": "array", "items": { "type": "string" } },
+					"aliases": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
 					"competitors": {
 						"type": "array",
 						"items": {
 							"type": "object",
 							"properties": {
-								"name": { "type": "string", "minLength": 1 },
-								"domains": { "type": "array", "items": { "type": "string" } },
-								"aliases": { "type": "array", "items": { "type": "string" } }
+								"name": {
+									"type": "string",
+									"minLength": 1
+								},
+								"domains": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									}
+								},
+								"aliases": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									}
+								}
 							},
 							"required": ["name"]
 						}
@@ -374,9 +476,20 @@
 						"items": {
 							"type": "object",
 							"properties": {
-								"value": { "type": "string", "minLength": 1 },
-								"tags": { "type": "array", "items": { "type": "string" } },
-								"enabled": { "type": "boolean", "default": true }
+								"value": {
+									"type": "string",
+									"minLength": 1
+								},
+								"tags": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									}
+								},
+								"enabled": {
+									"type": "boolean",
+									"default": true
+								}
 							},
 							"required": ["value"]
 						}
@@ -389,46 +502,110 @@
 				"description": "Update brand-level fields. At least one field must be provided. Provided arrays replace the stored values verbatim. When `domains` is provided, the first entry becomes the primary website and the rest become additional domains. Prompts and competitors are managed via /prompts and /competitors.",
 				"minProperties": 1,
 				"properties": {
-					"brandName": { "type": "string", "minLength": 1 },
+					"brandName": {
+						"type": "string",
+						"minLength": 1
+					},
 					"domains": {
 						"type": "array",
-						"items": { "type": "string" },
+						"items": {
+							"type": "string"
+						},
 						"minItems": 1,
 						"description": "Brand domains. The first entry is the primary website; remaining entries are additional domains."
 					},
-					"aliases": { "type": "array", "items": { "type": "string" } },
-					"enabled": { "type": "boolean" }
+					"aliases": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"enabled": {
+						"type": "boolean"
+					}
 				}
 			},
 			"Brand": {
 				"type": "object",
 				"properties": {
-					"id": { "type": "string", "description": "User-supplied brand identifier (e.g. \"acme\")" },
-					"name": { "type": "string" },
+					"id": {
+						"type": "string",
+						"description": "User-supplied brand identifier (e.g. \"acme\")"
+					},
+					"name": {
+						"type": "string"
+					},
 					"domains": {
 						"type": "array",
-						"items": { "type": "string" },
+						"items": {
+							"type": "string"
+						},
 						"description": "Brand domains. The first entry is the primary website; remaining entries are additional domains."
 					},
-					"aliases": { "type": "array", "items": { "type": "string" } },
-					"enabled": { "type": "boolean" },
-					"onboarded": { "type": "boolean" },
-					"createdAt": { "type": "string", "format": "date-time" },
-					"updatedAt": { "type": "string", "format": "date-time" }
+					"aliases": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"enabled": {
+						"type": "boolean"
+					},
+					"onboarded": {
+						"type": "boolean"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"organizationId": {
+						"type": "string",
+						"description": "The workspace that owns this brand and is billed for it."
+					},
+					"enabledModels": {
+						"description": "Platforms this brand is tracked on. Null means the deployment default.",
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"nullable": true
+					},
+					"delayOverrideHours": {
+						"type": "integer",
+						"description": "Sampling cadence override in hours. Null means the plan cadence.",
+						"nullable": true
+					}
 				},
 				"required": ["id", "name", "domains", "aliases", "enabled", "onboarded", "createdAt", "updatedAt"]
 			},
 			"BrandsList": {
 				"type": "object",
 				"properties": {
-					"brands": { "type": "array", "items": { "$ref": "#/components/schemas/Brand" } },
+					"brands": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Brand"
+						}
+					},
 					"pagination": {
 						"type": "object",
 						"properties": {
-							"page": { "type": "integer" },
-							"limit": { "type": "integer" },
-							"total": { "type": "integer" },
-							"totalPages": { "type": "integer" }
+							"page": {
+								"type": "integer"
+							},
+							"limit": {
+								"type": "integer"
+							},
+							"total": {
+								"type": "integer"
+							},
+							"totalPages": {
+								"type": "integer"
+							}
 						},
 						"required": ["page", "limit", "total", "totalPages"]
 					}
@@ -438,27 +615,63 @@
 			"Competitor": {
 				"type": "object",
 				"properties": {
-					"id": { "type": "string", "format": "uuid" },
-					"brandId": { "type": "string" },
-					"name": { "type": "string" },
-					"domains": { "type": "array", "items": { "type": "string" } },
-					"aliases": { "type": "array", "items": { "type": "string" } },
-					"createdAt": { "type": "string", "format": "date-time" },
-					"updatedAt": { "type": "string", "format": "date-time" }
+					"id": {
+						"type": "string",
+						"format": "uuid"
+					},
+					"brandId": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"domains": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"aliases": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
 				},
 				"required": ["id", "brandId", "name", "domains", "aliases", "createdAt", "updatedAt"]
 			},
 			"CompetitorsList": {
 				"type": "object",
 				"properties": {
-					"competitors": { "type": "array", "items": { "$ref": "#/components/schemas/Competitor" } },
+					"competitors": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Competitor"
+						}
+					},
 					"pagination": {
 						"type": "object",
 						"properties": {
-							"page": { "type": "integer" },
-							"limit": { "type": "integer" },
-							"total": { "type": "integer" },
-							"totalPages": { "type": "integer" }
+							"page": {
+								"type": "integer"
+							},
+							"limit": {
+								"type": "integer"
+							},
+							"total": {
+								"type": "integer"
+							},
+							"totalPages": {
+								"type": "integer"
+							}
 						},
 						"required": ["page", "limit", "total", "totalPages"]
 					}
@@ -469,10 +682,26 @@
 				"type": "object",
 				"description": "Add a competitor to a brand.",
 				"properties": {
-					"brandId": { "type": "string", "minLength": 1 },
-					"name": { "type": "string", "minLength": 1 },
-					"domains": { "type": "array", "items": { "type": "string" } },
-					"aliases": { "type": "array", "items": { "type": "string" } }
+					"brandId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"name": {
+						"type": "string",
+						"minLength": 1
+					},
+					"domains": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"aliases": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					}
 				},
 				"required": ["brandId", "name"]
 			},
@@ -481,9 +710,22 @@
 				"description": "Update a competitor. At least one field must be provided. Provided arrays replace the stored values verbatim.",
 				"minProperties": 1,
 				"properties": {
-					"name": { "type": "string", "minLength": 1 },
-					"domains": { "type": "array", "items": { "type": "string" } },
-					"aliases": { "type": "array", "items": { "type": "string" } }
+					"name": {
+						"type": "string",
+						"minLength": 1
+					},
+					"domains": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"aliases": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					}
 				}
 			},
 			"PromptSnapshot": {
@@ -542,6 +784,1056 @@
 					}
 				},
 				"required": ["brandId", "promptId", "promptValue", "startDate", "endDate", "mentions", "citations"]
+			},
+			"Pagination": {
+				"type": "object",
+				"properties": {
+					"page": {
+						"type": "integer"
+					},
+					"limit": {
+						"type": "integer"
+					},
+					"total": {
+						"type": "integer",
+						"description": "Total items matching the request."
+					},
+					"totalPages": {
+						"type": "integer"
+					}
+				},
+				"required": ["page", "limit", "total", "totalPages"]
+			},
+			"DateRange": {
+				"description": "The window the response was computed over, resolved from either the explicit dates or the lookback shorthand.",
+				"type": "object",
+				"properties": {
+					"startDate": {
+						"type": "string",
+						"format": "date"
+					},
+					"endDate": {
+						"type": "string",
+						"format": "date"
+					},
+					"timezone": {
+						"type": "string"
+					}
+				},
+				"required": ["startDate", "endDate", "timezone"]
+			},
+			"ApiKeyIdentity": {
+				"type": "object",
+				"properties": {
+					"keyType": {
+						"type": "string",
+						"description": "`admin` for an instance key, `organization` for a dashboard-issued key.",
+						"enum": ["admin", "organization"]
+					},
+					"organizationId": {
+						"type": "string",
+						"description": "The organization this key acts inside. Null for admin keys.",
+						"nullable": true
+					},
+					"organizationName": {
+						"type": "string",
+						"nullable": true
+					},
+					"scopes": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "Scopes this key holds. Admin keys list every scope."
+					},
+					"brandIds": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "Brands the key is narrowed to. Empty means every brand it can otherwise reach."
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"expiresAt": {
+						"type": "string",
+						"description": "When the key stops working, if it has an expiry.",
+						"format": "date-time",
+						"nullable": true
+					},
+					"rateLimit": {
+						"type": "object",
+						"properties": {
+							"limit": {
+								"type": "integer"
+							},
+							"window": {
+								"type": "string",
+								"enum": ["minute", "hour"]
+							}
+						}
+					},
+					"deployment": {
+						"type": "object",
+						"properties": {
+							"mode": {
+								"type": "string",
+								"enum": ["local", "cloud", "whitelabel", "demo"]
+							},
+							"billingEnabled": {
+								"type": "boolean",
+								"description": "Whether plan limits and the billing endpoints apply."
+							},
+							"readOnly": {
+								"type": "boolean",
+								"description": "When true, every write answers `403`."
+							}
+						},
+						"required": ["mode", "billingEnabled", "readOnly"]
+					}
+				},
+				"required": ["keyType", "organizationId", "scopes", "brandIds", "deployment"]
+			},
+			"Platform": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "Model identifier used by the `model` filter, e.g. `chatgpt`."
+					},
+					"label": {
+						"type": "string",
+						"description": "Human-readable name."
+					},
+					"premiumCapable": {
+						"type": "boolean",
+						"description": "Whether this platform can be tracked grounded, spending a premium pairing."
+					},
+					"configured": {
+						"type": "boolean",
+						"description": "Whether this deployment is actually wired to reach the platform."
+					}
+				},
+				"required": ["id", "label", "premiumCapable", "configured"]
+			},
+			"Organization": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"slug": {
+						"type": "string"
+					},
+					"brandCount": {
+						"type": "integer"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": ["id", "name", "slug", "brandCount", "createdAt"]
+			},
+			"PlanLimits": {
+				"description": "The organization's plan limits. Every field is null on deployments without billing.",
+				"type": "object",
+				"properties": {
+					"maxBrands": {
+						"type": "integer",
+						"description": "Null means no limit.",
+						"nullable": true
+					},
+					"maxPrompts": {
+						"type": "integer",
+						"description": "Enabled prompts across the whole organization. Null means no limit.",
+						"nullable": true
+					},
+					"platformPicks": {
+						"type": "integer",
+						"description": "Platforms trackable per brand.",
+						"nullable": true
+					},
+					"platformMenu": {
+						"description": "Platforms the plan may pick from. Null means any.",
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"nullable": true
+					},
+					"standardRunsPerDay": {
+						"type": "integer",
+						"nullable": true
+					},
+					"premiumPool": {
+						"type": "integer",
+						"description": "Prompt/model pairings trackable grounded."
+					},
+					"premiumRunsPerDay": {
+						"type": "integer"
+					}
+				},
+				"required": [
+					"maxBrands",
+					"maxPrompts",
+					"platformPicks",
+					"platformMenu",
+					"standardRunsPerDay",
+					"premiumPool",
+					"premiumRunsPerDay"
+				]
+			},
+			"OrganizationBilling": {
+				"description": "Read-only view of an organization's subscription, limits, and usage. The API has no way to change any of it: there is no billing write endpoint and no billing write scope. Stripe identifiers, payment methods, and invoices are deliberately not exposed — those live in the Stripe customer portal.",
+				"type": "object",
+				"properties": {
+					"organizationId": {
+						"type": "string"
+					},
+					"billingEnabled": {
+						"type": "boolean",
+						"description": "False on self-hosted deployments, where nothing is metered."
+					},
+					"plan": {
+						"description": "Null when the organization has no subscription, or when billing is disabled.",
+						"nullable": true,
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/BillingPlan"
+							}
+						]
+					},
+					"limits": {
+						"nullable": true,
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/PlanLimits"
+							}
+						]
+					},
+					"usage": {
+						"type": "object",
+						"properties": {
+							"brands": {
+								"type": "integer"
+							},
+							"enabledPrompts": {
+								"type": "integer"
+							},
+							"premiumPairingsAssigned": {
+								"type": "integer"
+							}
+						},
+						"required": ["brands", "enabledPrompts", "premiumPairingsAssigned"]
+					}
+				},
+				"required": ["organizationId", "billingEnabled", "plan", "limits", "usage"]
+			},
+			"BillingPlan": {
+				"type": "object",
+				"properties": {
+					"key": {
+						"type": "string",
+						"description": "Plan identifier, or `custom` for a negotiated plan.",
+						"nullable": true
+					},
+					"name": {
+						"type": "string",
+						"description": "Display name."
+					},
+					"status": {
+						"type": "string",
+						"description": "Subscription status as reported by the payment provider."
+					},
+					"standing": {
+						"type": "string",
+						"description": "What the subscription means for service: `active` and `grace` keep tracking running, `paused` stops it, `none` is unsubscribed.",
+						"enum": ["active", "grace", "paused", "none"]
+					},
+					"interval": {
+						"type": "string",
+						"enum": ["monthly", "annual"],
+						"nullable": true
+					},
+					"periodEnd": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"cancelAtPeriodEnd": {
+						"type": "boolean"
+					},
+					"trackingActive": {
+						"type": "boolean",
+						"description": "Whether prompts are currently being sampled."
+					}
+				},
+				"required": ["key", "name", "status", "standing", "cancelAtPeriodEnd", "trackingActive"]
+			},
+			"BrandSummary": {
+				"description": "Every headline figure the dashboard shows for a brand, in one request.",
+				"type": "object",
+				"properties": {
+					"brandId": {
+						"type": "string"
+					},
+					"brandName": {
+						"type": "string"
+					},
+					"range": {
+						"$ref": "#/components/schemas/DateRange"
+					},
+					"visibility": {
+						"type": "number",
+						"description": "Share of runs mentioning the brand at the end of the window. Percentage 0–100.",
+						"nullable": true
+					},
+					"shareOfVoice": {
+						"type": "number",
+						"description": "The brand's share of all brand and competitor mentions. Percentage 0–100.",
+						"nullable": true
+					},
+					"totalRuns": {
+						"type": "integer"
+					},
+					"totalPrompts": {
+						"type": "integer",
+						"description": "Enabled prompts counted in the window."
+					},
+					"totalCitations": {
+						"type": "integer"
+					},
+					"uniqueDomains": {
+						"type": "integer"
+					},
+					"platforms": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "Platforms that produced at least one run in the window."
+					}
+				},
+				"required": [
+					"brandId",
+					"brandName",
+					"range",
+					"visibility",
+					"shareOfVoice",
+					"totalRuns",
+					"totalPrompts",
+					"totalCitations",
+					"uniqueDomains",
+					"platforms"
+				]
+			},
+			"VisibilityPoint": {
+				"type": "object",
+				"properties": {
+					"date": {
+						"type": "string",
+						"format": "date"
+					},
+					"visibility": {
+						"type": "number",
+						"description": "Null on days with no runs to plot; the series is not gap-filled with zeros. Percentage 0–100.",
+						"nullable": true
+					}
+				},
+				"required": ["date", "visibility"]
+			},
+			"BrandVisibility": {
+				"type": "object",
+				"properties": {
+					"brandId": {
+						"type": "string"
+					},
+					"range": {
+						"$ref": "#/components/schemas/DateRange"
+					},
+					"currentVisibility": {
+						"type": "number",
+						"description": "The last plotted point — the number the dashboard hero shows. Percentage 0–100.",
+						"nullable": true
+					},
+					"totalRuns": {
+						"type": "integer"
+					},
+					"totalPrompts": {
+						"type": "integer"
+					},
+					"totalCitations": {
+						"type": "integer"
+					},
+					"series": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/VisibilityPoint"
+						}
+					}
+				},
+				"required": ["brandId", "range", "currentVisibility", "totalRuns", "totalPrompts", "totalCitations", "series"]
+			},
+			"ShareOfVoiceEntry": {
+				"type": "object",
+				"properties": {
+					"name": {
+						"type": "string",
+						"description": "Brand or competitor name."
+					},
+					"isBrand": {
+						"type": "boolean",
+						"description": "True for the tracked brand's own row."
+					},
+					"mentions": {
+						"type": "integer"
+					},
+					"prompts": {
+						"type": "integer",
+						"description": "Distinct prompts this entity appeared in."
+					},
+					"share": {
+						"type": "number",
+						"description": "Percentage 0–100."
+					}
+				},
+				"required": ["name", "isBrand", "mentions", "prompts", "share"]
+			},
+			"ShareOfVoicePoint": {
+				"type": "object",
+				"properties": {
+					"date": {
+						"type": "string",
+						"format": "date"
+					},
+					"share": {
+						"type": "number",
+						"description": "Percentage 0–100.",
+						"nullable": true
+					}
+				},
+				"required": ["date", "share"]
+			},
+			"BrandShareOfVoice": {
+				"type": "object",
+				"properties": {
+					"brandId": {
+						"type": "string"
+					},
+					"brandName": {
+						"type": "string"
+					},
+					"range": {
+						"$ref": "#/components/schemas/DateRange"
+					},
+					"brandShare": {
+						"type": "number",
+						"description": "The brand's own share at the end of the window. Percentage 0–100.",
+						"nullable": true
+					},
+					"totalRuns": {
+						"type": "integer"
+					},
+					"entries": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/ShareOfVoiceEntry"
+						},
+						"description": "Leaderboard, highest share first."
+					},
+					"series": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/ShareOfVoicePoint"
+						},
+						"description": "The brand's share over time."
+					}
+				},
+				"required": ["brandId", "brandName", "range", "brandShare", "totalRuns", "entries", "series"]
+			},
+			"PlatformVisibility": {
+				"type": "object",
+				"properties": {
+					"model": {
+						"type": "string"
+					},
+					"label": {
+						"type": "string"
+					},
+					"runs": {
+						"type": "integer"
+					},
+					"brandMentions": {
+						"type": "integer"
+					},
+					"visibility": {
+						"type": "number",
+						"description": "Share of this platform's runs that mentioned the brand. Percentage 0–100.",
+						"nullable": true
+					},
+					"citations": {
+						"type": "integer"
+					}
+				},
+				"required": ["model", "label", "runs", "brandMentions", "visibility", "citations"]
+			},
+			"BrandPlatformBreakdown": {
+				"type": "object",
+				"properties": {
+					"brandId": {
+						"type": "string"
+					},
+					"range": {
+						"$ref": "#/components/schemas/DateRange"
+					},
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/PlatformVisibility"
+						}
+					}
+				},
+				"required": ["brandId", "range", "data"]
+			},
+			"CitationDomain": {
+				"type": "object",
+				"properties": {
+					"domain": {
+						"type": "string"
+					},
+					"category": {
+						"type": "string",
+						"description": "Which side of the citation landscape the domain sits on.",
+						"enum": [
+							"brand",
+							"competitor",
+							"editorial",
+							"reviews",
+							"ecommerce",
+							"social",
+							"developer",
+							"pr",
+							"reference",
+							"institutional",
+							"other"
+						]
+					},
+					"count": {
+						"type": "integer",
+						"description": "Citations to this domain in the window."
+					},
+					"share": {
+						"type": "number",
+						"description": "Share of all citations in the window. Percentage 0–100."
+					},
+					"promptCount": {
+						"type": "integer",
+						"description": "Distinct prompts whose answers cited this domain."
+					},
+					"previousCount": {
+						"type": "integer",
+						"description": "Citations in the equal-length window immediately before this one."
+					},
+					"changePercent": {
+						"type": "number",
+						"description": "Change against the previous window. Null when the domain is new.",
+						"nullable": true
+					}
+				},
+				"required": ["domain", "category", "count", "share", "promptCount", "previousCount", "changePercent"]
+			},
+			"CitationDomainList": {
+				"type": "object",
+				"properties": {
+					"brandId": {
+						"type": "string"
+					},
+					"range": {
+						"$ref": "#/components/schemas/DateRange"
+					},
+					"totals": {
+						"type": "object",
+						"properties": {
+							"citations": {
+								"type": "integer"
+							},
+							"uniqueDomains": {
+								"type": "integer"
+							}
+						},
+						"required": ["citations", "uniqueDomains"]
+					},
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CitationDomain"
+						}
+					},
+					"pagination": {
+						"$ref": "#/components/schemas/Pagination"
+					}
+				},
+				"required": ["brandId", "range", "totals", "data", "pagination"]
+			},
+			"CitationUrl": {
+				"type": "object",
+				"properties": {
+					"url": {
+						"type": "string",
+						"format": "uri"
+					},
+					"domain": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string",
+						"nullable": true
+					},
+					"category": {
+						"type": "string",
+						"description": "Which side of the citation landscape the domain sits on.",
+						"enum": [
+							"brand",
+							"competitor",
+							"editorial",
+							"reviews",
+							"ecommerce",
+							"social",
+							"developer",
+							"pr",
+							"reference",
+							"institutional",
+							"other"
+						]
+					},
+					"pageType": {
+						"type": "string",
+						"description": "What kind of page was cited.",
+						"enum": [
+							"homepage",
+							"article",
+							"listicle",
+							"howto",
+							"comparison",
+							"review",
+							"forum",
+							"video",
+							"doc",
+							"product",
+							"info",
+							"search",
+							"shopping",
+							"other"
+						]
+					},
+					"count": {
+						"type": "integer"
+					},
+					"promptCount": {
+						"type": "integer"
+					},
+					"isNew": {
+						"type": "boolean",
+						"description": "Not cited in the equal-length window immediately before this one."
+					}
+				},
+				"required": ["url", "domain", "title", "category", "pageType", "count", "promptCount", "isNew"]
+			},
+			"CitationUrlList": {
+				"type": "object",
+				"properties": {
+					"brandId": {
+						"type": "string"
+					},
+					"range": {
+						"$ref": "#/components/schemas/DateRange"
+					},
+					"totals": {
+						"type": "object",
+						"properties": {
+							"citations": {
+								"type": "integer"
+							},
+							"uniqueUrls": {
+								"type": "integer"
+							}
+						},
+						"required": ["citations", "uniqueUrls"]
+					},
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CitationUrl"
+						}
+					},
+					"pagination": {
+						"$ref": "#/components/schemas/Pagination"
+					}
+				},
+				"required": ["brandId", "range", "totals", "data", "pagination"]
+			},
+			"FanoutQuery": {
+				"type": "object",
+				"properties": {
+					"query": {
+						"type": "string",
+						"description": "A search the engine ran while answering."
+					},
+					"runs": {
+						"type": "integer"
+					},
+					"promptCount": {
+						"type": "integer"
+					}
+				},
+				"required": ["query", "runs", "promptCount"]
+			},
+			"BrandQueryFanout": {
+				"type": "object",
+				"properties": {
+					"brandId": {
+						"type": "string"
+					},
+					"range": {
+						"$ref": "#/components/schemas/DateRange"
+					},
+					"totalQueries": {
+						"type": "integer"
+					},
+					"uniqueQueries": {
+						"type": "integer"
+					},
+					"fanoutRuns": {
+						"type": "integer",
+						"description": "Runs that searched at all. Engines that don't expose their searches contribute runs but no queries."
+					},
+					"totalRuns": {
+						"type": "integer"
+					},
+					"avgQueriesPerRun": {
+						"type": "number"
+					},
+					"coverageRate": {
+						"type": "number",
+						"description": "Share of runs that searched. Percentage 0–100."
+					},
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/FanoutQuery"
+						},
+						"description": "Most-run queries first."
+					},
+					"pagination": {
+						"$ref": "#/components/schemas/Pagination"
+					}
+				},
+				"required": [
+					"brandId",
+					"range",
+					"totalQueries",
+					"uniqueQueries",
+					"fanoutRuns",
+					"totalRuns",
+					"avgQueriesPerRun",
+					"coverageRate",
+					"data",
+					"pagination"
+				]
+			},
+			"PromptPerformance": {
+				"type": "object",
+				"properties": {
+					"promptId": {
+						"type": "string",
+						"format": "uuid"
+					},
+					"value": {
+						"type": "string"
+					},
+					"enabled": {
+						"type": "boolean"
+					},
+					"tags": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"totalRuns": {
+						"type": "integer"
+					},
+					"brandMentionRate": {
+						"type": "number",
+						"description": "Share of this prompt's runs mentioning the brand. Percentage 0–100."
+					},
+					"competitorMentionRate": {
+						"type": "number",
+						"description": "Percentage 0–100."
+					},
+					"lastRunAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"firstEvaluatedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					}
+				},
+				"required": [
+					"promptId",
+					"value",
+					"enabled",
+					"tags",
+					"totalRuns",
+					"brandMentionRate",
+					"competitorMentionRate",
+					"lastRunAt",
+					"firstEvaluatedAt"
+				]
+			},
+			"PromptPerformanceList": {
+				"type": "object",
+				"properties": {
+					"brandId": {
+						"type": "string"
+					},
+					"range": {
+						"$ref": "#/components/schemas/DateRange"
+					},
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/PromptPerformance"
+						}
+					},
+					"pagination": {
+						"$ref": "#/components/schemas/Pagination"
+					}
+				},
+				"required": ["brandId", "range", "data", "pagination"]
+			},
+			"RunSummary": {
+				"description": "A single model answer, without its text. Fetch `GET /runs/{runId}` for the answer itself.",
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"format": "uuid"
+					},
+					"promptId": {
+						"type": "string",
+						"format": "uuid"
+					},
+					"brandId": {
+						"type": "string"
+					},
+					"model": {
+						"type": "string"
+					},
+					"provider": {
+						"type": "string",
+						"description": "How the answer was obtained. Informational; not a stable enum.",
+						"nullable": true
+					},
+					"webSearchEnabled": {
+						"type": "boolean",
+						"description": "Whether the engine answered with its own web search on."
+					},
+					"brandMentioned": {
+						"type": "boolean"
+					},
+					"competitorsMentioned": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"webQueries": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "Searches the engine ran, where it exposes them."
+					},
+					"citationCount": {
+						"type": "integer"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"id",
+					"promptId",
+					"brandId",
+					"model",
+					"provider",
+					"webSearchEnabled",
+					"brandMentioned",
+					"competitorsMentioned",
+					"webQueries",
+					"citationCount",
+					"createdAt"
+				]
+			},
+			"RunCitation": {
+				"type": "object",
+				"properties": {
+					"url": {
+						"type": "string",
+						"format": "uri"
+					},
+					"domain": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string",
+						"nullable": true
+					},
+					"citationIndex": {
+						"type": "integer",
+						"description": "Position within the answer's citation list."
+					}
+				},
+				"required": ["url", "domain", "title", "citationIndex"]
+			},
+			"Run": {
+				"description": "One model answer with its normalized text and citations.",
+				"allOf": [
+					{
+						"$ref": "#/components/schemas/RunSummary"
+					},
+					{
+						"type": "object",
+						"properties": {
+							"answer": {
+								"type": "object",
+								"properties": {
+									"text": {
+										"type": "string",
+										"description": "The answer, normalized out of the provider's response. Null when nothing could be extracted.",
+										"nullable": true
+									}
+								},
+								"required": ["text"]
+							},
+							"citations": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/RunCitation"
+								}
+							}
+						},
+						"required": ["answer", "citations"]
+					}
+				]
+			},
+			"RunList": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/RunSummary"
+						}
+					},
+					"pagination": {
+						"$ref": "#/components/schemas/Pagination"
+					}
+				},
+				"required": ["data", "pagination"]
+			},
+			"BulkCreatePromptsRequest": {
+				"description": "All-or-nothing: the whole batch is checked against the plan as one delta and either every prompt is created or none is.",
+				"type": "object",
+				"properties": {
+					"brandId": {
+						"type": "string"
+					},
+					"prompts": {
+						"type": "array",
+						"minItems": 1,
+						"maxItems": 100,
+						"items": {
+							"type": "object",
+							"properties": {
+								"value": {
+									"type": "string",
+									"minLength": 1
+								},
+								"tags": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									}
+								},
+								"enabled": {
+									"type": "boolean",
+									"default": true
+								},
+								"premiumModels": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									},
+									"description": "Platforms to track this prompt on grounded. Each entry spends one premium pairing."
+								}
+							},
+							"required": ["value"]
+						}
+					}
+				},
+				"required": ["brandId", "prompts"]
+			},
+			"BulkCreatePromptsResponse": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Prompt"
+						}
+					}
+				},
+				"required": ["data"]
+			},
+			"PlatformList": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Platform"
+						}
+					}
+				},
+				"required": ["data"]
+			},
+			"OrganizationList": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Organization"
+						}
+					},
+					"pagination": {
+						"$ref": "#/components/schemas/Pagination"
+					}
+				},
+				"required": ["data", "pagination"]
 			}
 		},
 		"responses": {
@@ -594,39 +1886,158 @@
 						}
 					}
 				}
+			},
+			"ForbiddenError": {
+				"description": "The key is valid but not permitted: a missing scope, an admin-only endpoint, or a write in read-only (demo) mode.",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/Error"
+						}
+					}
+				}
+			},
+			"RateLimitError": {
+				"description": "Per-key rate limit exceeded.",
+				"headers": {
+					"Retry-After": {
+						"description": "Seconds until the limit resets.",
+						"schema": {
+							"type": "integer"
+						}
+					},
+					"X-RateLimit-Limit": {
+						"description": "Requests allowed per window.",
+						"schema": {
+							"type": "integer"
+						}
+					},
+					"X-RateLimit-Remaining": {
+						"description": "Requests left in the current window.",
+						"schema": {
+							"type": "integer"
+						}
+					},
+					"X-RateLimit-Reset": {
+						"description": "Unix seconds at which the window resets.",
+						"schema": {
+							"type": "integer"
+						}
+					}
+				},
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/Error"
+						}
+					}
+				}
+			},
+			"PaymentRequiredError": {
+				"description": "The organization has no active subscription. Cloud deployments only.",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/Error"
+						}
+					}
+				}
+			}
+		},
+		"parameters": {
+			"BrandIdPath": {
+				"name": "brandId",
+				"in": "path",
+				"description": "Brand identifier.",
+				"required": true,
+				"schema": {
+					"type": "string"
+				}
+			},
+			"Page": {
+				"name": "page",
+				"in": "query",
+				"description": "Page number, 1-based.",
+				"required": false,
+				"schema": {
+					"type": "integer",
+					"minimum": 1,
+					"default": 1
+				}
+			},
+			"Limit": {
+				"name": "limit",
+				"in": "query",
+				"description": "Items per page.",
+				"required": false,
+				"schema": {
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 100,
+					"default": 20
+				}
+			},
+			"StartDate": {
+				"name": "startDate",
+				"in": "query",
+				"description": "Start of the window (inclusive), `YYYY-MM-DD`. Required unless `lookback` is given.",
+				"required": false,
+				"schema": {
+					"type": "string",
+					"format": "date"
+				}
+			},
+			"EndDate": {
+				"name": "endDate",
+				"in": "query",
+				"description": "End of the window (inclusive), `YYYY-MM-DD`. Required unless `lookback` is given.",
+				"required": false,
+				"schema": {
+					"type": "string",
+					"format": "date"
+				}
+			},
+			"Lookback": {
+				"name": "lookback",
+				"in": "query",
+				"description": "Relative window ending today. Mutually exclusive with `startDate`/`endDate`; supplying both is a `400`.",
+				"required": false,
+				"schema": {
+					"type": "string",
+					"enum": ["1w", "1m", "3m", "6m", "1y", "all"]
+				}
+			},
+			"Timezone": {
+				"name": "timezone",
+				"in": "query",
+				"description": "IANA timezone the daily buckets are computed in.",
+				"required": false,
+				"schema": {
+					"type": "string",
+					"default": "UTC"
+				}
+			},
+			"ModelFilter": {
+				"name": "model",
+				"in": "query",
+				"description": "Restrict to one platform, e.g. `chatgpt`. See `GET /platforms`.",
+				"required": false,
+				"schema": {
+					"type": "string"
+				}
+			},
+			"TagsFilter": {
+				"name": "tags",
+				"in": "query",
+				"description": "Comma-separated prompt tags. Only prompts carrying at least one of them are counted.",
+				"required": false,
+				"schema": {
+					"type": "string"
+				}
 			}
 		}
 	},
 	"paths": {
-		"/tools/analyze": {
-			"post": {
-				"summary": "Analyze a website",
-				"description": "Run brand analysis without persisting anything. Returns suggested additional domains, aliases, competitors, and prompts.",
-				"operationId": "analyzeBrand",
-				"tags": ["Tools"],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": { "$ref": "#/components/schemas/AnalyzeBrandRequest" }
-						}
-					}
-				},
-				"responses": {
-					"200": {
-						"description": "Brand analysis suggestion",
-						"content": {
-							"application/json": {
-								"schema": { "$ref": "#/components/schemas/OnboardingSuggestion" }
-							}
-						}
-					},
-					"400": { "$ref": "#/components/responses/ValidationError" },
-					"401": { "$ref": "#/components/responses/UnauthorizedError" },
-					"500": { "$ref": "#/components/responses/InternalServerError" }
-				}
-			}
-		},
 		"/brands": {
 			"get": {
 				"summary": "List brands",
@@ -637,13 +2048,40 @@
 						"name": "page",
 						"in": "query",
 						"required": false,
-						"schema": { "type": "integer", "minimum": 1, "default": 1 }
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"default": 1
+						}
 					},
 					{
 						"name": "limit",
 						"in": "query",
 						"required": false,
-						"schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 100,
+							"default": 20
+						}
+					},
+					{
+						"name": "enabled",
+						"in": "query",
+						"description": "Only brands with this enabled state.",
+						"required": false,
+						"schema": {
+							"type": "boolean"
+						}
+					},
+					{
+						"name": "q",
+						"in": "query",
+						"description": "Case-insensitive substring match on brand name or id.",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"responses": {
@@ -651,13 +2089,27 @@
 						"description": "Paginated list of brands",
 						"content": {
 							"application/json": {
-								"schema": { "$ref": "#/components/schemas/BrandsList" }
+								"schema": {
+									"$ref": "#/components/schemas/BrandsList"
+								}
 							}
 						}
 					},
-					"401": { "$ref": "#/components/responses/UnauthorizedError" },
-					"500": { "$ref": "#/components/responses/InternalServerError" }
-				}
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["brands:read"]
 			},
 			"post": {
 				"summary": "Create a brand",
@@ -667,7 +2119,9 @@
 					"required": true,
 					"content": {
 						"application/json": {
-							"schema": { "$ref": "#/components/schemas/CreateBrandRequest" }
+							"schema": {
+								"$ref": "#/components/schemas/CreateBrandRequest"
+							}
 						}
 					}
 				},
@@ -676,15 +2130,36 @@
 						"description": "Brand created",
 						"content": {
 							"application/json": {
-								"schema": { "$ref": "#/components/schemas/Brand" }
+								"schema": {
+									"$ref": "#/components/schemas/Brand"
+								}
 							}
 						}
 					},
-					"400": { "$ref": "#/components/responses/ValidationError" },
-					"401": { "$ref": "#/components/responses/UnauthorizedError" },
-					"409": { "$ref": "#/components/responses/ConflictError" },
-					"500": { "$ref": "#/components/responses/InternalServerError" }
-				}
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"402": {
+						"$ref": "#/components/responses/PaymentRequiredError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"409": {
+						"$ref": "#/components/responses/ConflictError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["brands:write"]
 			}
 		},
 		"/brands/{brandId}": {
@@ -698,7 +2173,10 @@
 						"in": "path",
 						"required": true,
 						"description": "Brand identifier",
-						"schema": { "type": "string", "minLength": 1 }
+						"schema": {
+							"type": "string",
+							"minLength": 1
+						}
 					}
 				],
 				"responses": {
@@ -706,14 +2184,30 @@
 						"description": "Brand",
 						"content": {
 							"application/json": {
-								"schema": { "$ref": "#/components/schemas/Brand" }
+								"schema": {
+									"$ref": "#/components/schemas/Brand"
+								}
 							}
 						}
 					},
-					"401": { "$ref": "#/components/responses/UnauthorizedError" },
-					"404": { "$ref": "#/components/responses/NotFoundError" },
-					"500": { "$ref": "#/components/responses/InternalServerError" }
-				}
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["brands:read"]
 			},
 			"patch": {
 				"summary": "Update a brand",
@@ -725,14 +2219,19 @@
 						"in": "path",
 						"required": true,
 						"description": "Brand identifier",
-						"schema": { "type": "string", "minLength": 1 }
+						"schema": {
+							"type": "string",
+							"minLength": 1
+						}
 					}
 				],
 				"requestBody": {
 					"required": true,
 					"content": {
 						"application/json": {
-							"schema": { "$ref": "#/components/schemas/UpdateBrandRequest" }
+							"schema": {
+								"$ref": "#/components/schemas/UpdateBrandRequest"
+							}
 						}
 					}
 				},
@@ -741,14 +2240,563 @@
 						"description": "Brand updated",
 						"content": {
 							"application/json": {
-								"schema": { "$ref": "#/components/schemas/Brand" }
+								"schema": {
+									"$ref": "#/components/schemas/Brand"
+								}
 							}
 						}
 					},
-					"400": { "$ref": "#/components/responses/ValidationError" },
-					"401": { "$ref": "#/components/responses/UnauthorizedError" },
-					"404": { "$ref": "#/components/responses/NotFoundError" },
-					"500": { "$ref": "#/components/responses/InternalServerError" }
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"402": {
+						"$ref": "#/components/responses/PaymentRequiredError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"409": {
+						"$ref": "#/components/responses/ConflictError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["brands:write"]
+			}
+		},
+		"/brands/{brandId}/citations/domains": {
+			"get": {
+				"summary": "List cited domains",
+				"description": "Domains the engines cited when answering this brand's prompts, categorized and compared against the equal-length window immediately before this one.",
+				"operationId": "listBrandCitationDomains",
+				"tags": ["Analytics"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": ["analytics:read"],
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BrandIdPath"
+					},
+					{
+						"$ref": "#/components/parameters/StartDate"
+					},
+					{
+						"$ref": "#/components/parameters/EndDate"
+					},
+					{
+						"$ref": "#/components/parameters/Lookback"
+					},
+					{
+						"$ref": "#/components/parameters/Timezone"
+					},
+					{
+						"$ref": "#/components/parameters/ModelFilter"
+					},
+					{
+						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/Page"
+					},
+					{
+						"$ref": "#/components/parameters/Limit"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "List cited domains",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CitationDomainList"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/brands/{brandId}/citations/urls": {
+			"get": {
+				"summary": "List cited URLs",
+				"description": "Individual pages the engines cited, with their category and page type.",
+				"operationId": "listBrandCitationUrls",
+				"tags": ["Analytics"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": ["analytics:read"],
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BrandIdPath"
+					},
+					{
+						"$ref": "#/components/parameters/StartDate"
+					},
+					{
+						"$ref": "#/components/parameters/EndDate"
+					},
+					{
+						"$ref": "#/components/parameters/Lookback"
+					},
+					{
+						"$ref": "#/components/parameters/Timezone"
+					},
+					{
+						"$ref": "#/components/parameters/ModelFilter"
+					},
+					{
+						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/Page"
+					},
+					{
+						"$ref": "#/components/parameters/Limit"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "List cited URLs",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CitationUrlList"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/brands/{brandId}/platforms": {
+			"get": {
+				"summary": "Get visibility by platform",
+				"description": "Runs, mentions, and visibility broken down by answer engine, so a customer can see where they are strong and where they are invisible.",
+				"operationId": "getBrandPlatformBreakdown",
+				"tags": ["Analytics"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": ["analytics:read"],
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BrandIdPath"
+					},
+					{
+						"$ref": "#/components/parameters/StartDate"
+					},
+					{
+						"$ref": "#/components/parameters/EndDate"
+					},
+					{
+						"$ref": "#/components/parameters/Lookback"
+					},
+					{
+						"$ref": "#/components/parameters/Timezone"
+					},
+					{
+						"$ref": "#/components/parameters/TagsFilter"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Get visibility by platform",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BrandPlatformBreakdown"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/brands/{brandId}/prompt-performance": {
+			"get": {
+				"summary": "List prompt performance",
+				"description": "Per-prompt mention rates over the window. The analytics counterpart to `GET /prompts?brandId=`, which returns prompt configuration rather than results.",
+				"operationId": "listBrandPromptPerformance",
+				"tags": ["Analytics"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": ["analytics:read"],
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BrandIdPath"
+					},
+					{
+						"$ref": "#/components/parameters/StartDate"
+					},
+					{
+						"$ref": "#/components/parameters/EndDate"
+					},
+					{
+						"$ref": "#/components/parameters/Lookback"
+					},
+					{
+						"$ref": "#/components/parameters/Timezone"
+					},
+					{
+						"$ref": "#/components/parameters/ModelFilter"
+					},
+					{
+						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/Page"
+					},
+					{
+						"$ref": "#/components/parameters/Limit"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "List prompt performance",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PromptPerformanceList"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/brands/{brandId}/query-fanout": {
+			"get": {
+				"summary": "Get query fan-out",
+				"description": "The searches engines ran while answering this brand's prompts. Engines that don't expose their searches still contribute runs, so `coverageRate` is the honest denominator.",
+				"operationId": "getBrandQueryFanout",
+				"tags": ["Analytics"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": ["analytics:read"],
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BrandIdPath"
+					},
+					{
+						"$ref": "#/components/parameters/StartDate"
+					},
+					{
+						"$ref": "#/components/parameters/EndDate"
+					},
+					{
+						"$ref": "#/components/parameters/Lookback"
+					},
+					{
+						"$ref": "#/components/parameters/Timezone"
+					},
+					{
+						"$ref": "#/components/parameters/ModelFilter"
+					},
+					{
+						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/Page"
+					},
+					{
+						"$ref": "#/components/parameters/Limit"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Get query fan-out",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BrandQueryFanout"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/brands/{brandId}/share-of-voice": {
+			"get": {
+				"summary": "Get share of voice",
+				"description": "The brand against its tracked competitors: a leaderboard of mention counts and shares, plus the brand's own share over time.",
+				"operationId": "getBrandShareOfVoice",
+				"tags": ["Analytics"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": ["analytics:read"],
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BrandIdPath"
+					},
+					{
+						"$ref": "#/components/parameters/StartDate"
+					},
+					{
+						"$ref": "#/components/parameters/EndDate"
+					},
+					{
+						"$ref": "#/components/parameters/Lookback"
+					},
+					{
+						"$ref": "#/components/parameters/Timezone"
+					},
+					{
+						"$ref": "#/components/parameters/ModelFilter"
+					},
+					{
+						"$ref": "#/components/parameters/TagsFilter"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Get share of voice",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BrandShareOfVoice"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/brands/{brandId}/summary": {
+			"get": {
+				"summary": "Get a brand summary",
+				"description": "Every headline figure the dashboard shows for a brand — visibility, share of voice, and period totals — in a single request.",
+				"operationId": "getBrandSummary",
+				"tags": ["Analytics"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": ["analytics:read"],
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BrandIdPath"
+					},
+					{
+						"$ref": "#/components/parameters/StartDate"
+					},
+					{
+						"$ref": "#/components/parameters/EndDate"
+					},
+					{
+						"$ref": "#/components/parameters/Lookback"
+					},
+					{
+						"$ref": "#/components/parameters/Timezone"
+					},
+					{
+						"$ref": "#/components/parameters/ModelFilter"
+					},
+					{
+						"$ref": "#/components/parameters/TagsFilter"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Get a brand summary",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BrandSummary"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/brands/{brandId}/visibility": {
+			"get": {
+				"summary": "Get visibility over time",
+				"description": "A daily series of the share of runs that mentioned the brand, plus period totals. Days with no runs to plot carry `null` rather than zero, so a gap in sampling never reads as a collapse in visibility.",
+				"operationId": "getBrandVisibility",
+				"tags": ["Analytics"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": ["analytics:read"],
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BrandIdPath"
+					},
+					{
+						"$ref": "#/components/parameters/StartDate"
+					},
+					{
+						"$ref": "#/components/parameters/EndDate"
+					},
+					{
+						"$ref": "#/components/parameters/Lookback"
+					},
+					{
+						"$ref": "#/components/parameters/Timezone"
+					},
+					{
+						"$ref": "#/components/parameters/ModelFilter"
+					},
+					{
+						"$ref": "#/components/parameters/TagsFilter"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Get visibility over time",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BrandVisibility"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
 				}
 			}
 		},
@@ -762,19 +2810,39 @@
 						"name": "brandId",
 						"in": "query",
 						"required": false,
-						"schema": { "type": "string" }
+						"schema": {
+							"type": "string"
+						}
 					},
 					{
 						"name": "page",
 						"in": "query",
 						"required": false,
-						"schema": { "type": "integer", "minimum": 1, "default": 1 }
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"default": 1
+						}
 					},
 					{
 						"name": "limit",
 						"in": "query",
 						"required": false,
-						"schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 100,
+							"default": 20
+						}
+					},
+					{
+						"name": "q",
+						"in": "query",
+						"description": "Case-insensitive substring match on competitor name.",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"responses": {
@@ -782,13 +2850,27 @@
 						"description": "Paginated list of competitors",
 						"content": {
 							"application/json": {
-								"schema": { "$ref": "#/components/schemas/CompetitorsList" }
+								"schema": {
+									"$ref": "#/components/schemas/CompetitorsList"
+								}
 							}
 						}
 					},
-					"401": { "$ref": "#/components/responses/UnauthorizedError" },
-					"500": { "$ref": "#/components/responses/InternalServerError" }
-				}
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["competitors:read"]
 			},
 			"post": {
 				"summary": "Add a competitor",
@@ -798,7 +2880,9 @@
 					"required": true,
 					"content": {
 						"application/json": {
-							"schema": { "$ref": "#/components/schemas/CreateCompetitorRequest" }
+							"schema": {
+								"$ref": "#/components/schemas/CreateCompetitorRequest"
+							}
 						}
 					}
 				},
@@ -807,15 +2891,36 @@
 						"description": "Competitor created",
 						"content": {
 							"application/json": {
-								"schema": { "$ref": "#/components/schemas/Competitor" }
+								"schema": {
+									"$ref": "#/components/schemas/Competitor"
+								}
 							}
 						}
 					},
-					"400": { "$ref": "#/components/responses/ValidationError" },
-					"401": { "$ref": "#/components/responses/UnauthorizedError" },
-					"409": { "$ref": "#/components/responses/ConflictError" },
-					"500": { "$ref": "#/components/responses/InternalServerError" }
-				}
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"402": {
+						"$ref": "#/components/responses/PaymentRequiredError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"409": {
+						"$ref": "#/components/responses/ConflictError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["competitors:write"]
 			}
 		},
 		"/competitors/{competitorId}": {
@@ -829,7 +2934,10 @@
 						"in": "path",
 						"required": true,
 						"description": "Competitor identifier (UUID)",
-						"schema": { "type": "string", "format": "uuid" }
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						}
 					}
 				],
 				"responses": {
@@ -837,15 +2945,33 @@
 						"description": "Competitor",
 						"content": {
 							"application/json": {
-								"schema": { "$ref": "#/components/schemas/Competitor" }
+								"schema": {
+									"$ref": "#/components/schemas/Competitor"
+								}
 							}
 						}
 					},
-					"400": { "$ref": "#/components/responses/ValidationError" },
-					"401": { "$ref": "#/components/responses/UnauthorizedError" },
-					"404": { "$ref": "#/components/responses/NotFoundError" },
-					"500": { "$ref": "#/components/responses/InternalServerError" }
-				}
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["competitors:read"]
 			},
 			"patch": {
 				"summary": "Update a competitor",
@@ -857,14 +2983,19 @@
 						"in": "path",
 						"required": true,
 						"description": "Competitor identifier (UUID)",
-						"schema": { "type": "string", "format": "uuid" }
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						}
 					}
 				],
 				"requestBody": {
 					"required": true,
 					"content": {
 						"application/json": {
-							"schema": { "$ref": "#/components/schemas/UpdateCompetitorRequest" }
+							"schema": {
+								"$ref": "#/components/schemas/UpdateCompetitorRequest"
+							}
 						}
 					}
 				},
@@ -873,15 +3004,39 @@
 						"description": "Competitor updated",
 						"content": {
 							"application/json": {
-								"schema": { "$ref": "#/components/schemas/Competitor" }
+								"schema": {
+									"$ref": "#/components/schemas/Competitor"
+								}
 							}
 						}
 					},
-					"400": { "$ref": "#/components/responses/ValidationError" },
-					"401": { "$ref": "#/components/responses/UnauthorizedError" },
-					"404": { "$ref": "#/components/responses/NotFoundError" },
-					"500": { "$ref": "#/components/responses/InternalServerError" }
-				}
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"402": {
+						"$ref": "#/components/responses/PaymentRequiredError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"409": {
+						"$ref": "#/components/responses/ConflictError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["competitors:write"]
 			},
 			"delete": {
 				"summary": "Delete a competitor",
@@ -893,7 +3048,10 @@
 						"in": "path",
 						"required": true,
 						"description": "Competitor identifier (UUID)",
-						"schema": { "type": "string", "format": "uuid" }
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						}
 					}
 				],
 				"responses": {
@@ -901,14 +3059,242 @@
 						"description": "Competitor deleted (returns the deleted competitor)",
 						"content": {
 							"application/json": {
-								"schema": { "$ref": "#/components/schemas/Competitor" }
+								"schema": {
+									"$ref": "#/components/schemas/Competitor"
+								}
 							}
 						}
 					},
-					"400": { "$ref": "#/components/responses/ValidationError" },
-					"401": { "$ref": "#/components/responses/UnauthorizedError" },
-					"404": { "$ref": "#/components/responses/NotFoundError" },
-					"500": { "$ref": "#/components/responses/InternalServerError" }
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"402": {
+						"$ref": "#/components/responses/PaymentRequiredError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"409": {
+						"$ref": "#/components/responses/ConflictError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["competitors:write"]
+			}
+		},
+		"/me": {
+			"get": {
+				"summary": "Describe the calling key",
+				"description": "What this key is, which organization and brands it reaches, which scopes it holds, and what kind of deployment answered. Requires no scope, so it is always safe to call first when wiring up an integration.",
+				"operationId": "getMe",
+				"tags": ["Identity"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": [],
+				"responses": {
+					"200": {
+						"description": "Describe the calling key",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ApiKeyIdentity"
+								}
+							}
+						}
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/organizations": {
+			"get": {
+				"summary": "List organizations",
+				"description": "One entry for an organization key. Every organization for an instance admin key.",
+				"operationId": "listOrganizations",
+				"tags": ["Organizations"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": ["brands:read"],
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/Page"
+					},
+					{
+						"$ref": "#/components/parameters/Limit"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "List organizations",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OrganizationList"
+								}
+							}
+						}
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/organizations/{organizationId}": {
+			"get": {
+				"summary": "Get an organization",
+				"description": "An organization outside the key's reach answers `404`, identically to one that does not exist.",
+				"operationId": "getOrganization",
+				"tags": ["Organizations"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": ["brands:read"],
+				"parameters": [
+					{
+						"name": "organizationId",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Get an organization",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Organization"
+								}
+							}
+						}
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/organizations/{organizationId}/billing": {
+			"get": {
+				"summary": "Get billing state",
+				"description": "The organization's plan, its limits, and how much of each limit is already spent — enough for an integration to know a write will be rejected before attempting it.\n\nThis endpoint is read-only by construction. No API key of any kind can change a subscription, an add-on quantity, or a payment method; there is no billing write endpoint and no billing write scope. Stripe identifiers, invoices, and payment methods are never returned.\n\nDeployments without billing answer `200` with `billingEnabled: false`, a null plan, and null limits, so callers need no special case.",
+				"operationId": "getOrganizationBilling",
+				"tags": ["Organizations"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": ["billing:read"],
+				"parameters": [
+					{
+						"name": "organizationId",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Get billing state",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OrganizationBilling"
+								}
+							}
+						}
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/platforms": {
+			"get": {
+				"summary": "List trackable platforms",
+				"description": "The answer engines this deployment can track, with the identifiers accepted by every `model` filter. Lets a client build a platform picker without hardcoding names.",
+				"operationId": "listPlatforms",
+				"tags": ["Platforms"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": [],
+				"responses": {
+					"200": {
+						"description": "List trackable platforms",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PlatformList"
+								}
+							}
+						}
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
 				}
 			}
 		},
@@ -949,6 +3335,33 @@
 							"minimum": 1,
 							"maximum": 100,
 							"default": 20
+						}
+					},
+					{
+						"name": "enabled",
+						"in": "query",
+						"description": "Only prompts with this enabled state.",
+						"required": false,
+						"schema": {
+							"type": "boolean"
+						}
+					},
+					{
+						"name": "tag",
+						"in": "query",
+						"description": "Comma-separated tags; a prompt matches if it carries any of them.",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "q",
+						"in": "query",
+						"description": "Case-insensitive substring match on prompt text.",
+						"required": false,
+						"schema": {
+							"type": "string"
 						}
 					}
 				],
@@ -991,10 +3404,18 @@
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
 					"500": {
 						"$ref": "#/components/responses/InternalServerError"
 					}
-				}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["prompts:read"]
 			},
 			"post": {
 				"summary": "Create a new prompt",
@@ -1027,6 +3448,336 @@
 					},
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"402": {
+						"$ref": "#/components/responses/PaymentRequiredError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"409": {
+						"$ref": "#/components/responses/ConflictError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["prompts:write"]
+			}
+		},
+		"/prompts/bulk": {
+			"post": {
+				"summary": "Create prompts in bulk",
+				"description": "Create up to 100 prompts for one brand in a single request. The batch is checked against the organization's prompt and premium limits as one delta and applied all-or-nothing, so a batch that would overrun a limit creates nothing rather than part of itself.",
+				"operationId": "createPromptsBulk",
+				"tags": ["Prompts"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": ["prompts:write"],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/BulkCreatePromptsRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Prompts created",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BulkCreatePromptsResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"402": {
+						"$ref": "#/components/responses/PaymentRequiredError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"409": {
+						"$ref": "#/components/responses/ConflictError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/prompts/{promptId}": {
+			"get": {
+				"summary": "Get a prompt",
+				"description": "Retrieve a specific prompt by ID",
+				"operationId": "getPrompt",
+				"tags": ["Prompts"],
+				"parameters": [
+					{
+						"name": "promptId",
+						"in": "path",
+						"required": true,
+						"description": "The ID of the prompt",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Prompt details",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Prompt"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["prompts:read"]
+			},
+			"patch": {
+				"summary": "Update a prompt",
+				"description": "Update a prompt's properties. Only provided fields will be updated. Toggling `enabled` schedules or unschedules the recurring run job.",
+				"operationId": "updatePrompt",
+				"tags": ["Prompts"],
+				"parameters": [
+					{
+						"name": "promptId",
+						"in": "path",
+						"required": true,
+						"description": "The ID of the prompt to update",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UpdatePromptRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Prompt updated successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Prompt"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"402": {
+						"$ref": "#/components/responses/PaymentRequiredError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"409": {
+						"$ref": "#/components/responses/ConflictError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["prompts:write"]
+			},
+			"delete": {
+				"summary": "Delete a prompt",
+				"description": "Permanently delete a prompt and cancel all related scheduled jobs. This will also cascade delete all associated prompt runs.",
+				"operationId": "deletePrompt",
+				"tags": ["Prompts"],
+				"parameters": [
+					{
+						"name": "promptId",
+						"in": "path",
+						"required": true,
+						"description": "The ID of the prompt to delete",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Prompt deleted (returns the deleted prompt)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"allOf": [
+										{
+											"$ref": "#/components/schemas/Prompt"
+										},
+										{
+											"type": "object",
+											"properties": {
+												"deletedRunsCount": {
+													"type": "integer",
+													"description": "Number of related prompt_runs rows deleted by the cascade."
+												}
+											},
+											"required": ["deletedRunsCount"]
+										}
+									]
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"402": {
+						"$ref": "#/components/responses/PaymentRequiredError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"409": {
+						"$ref": "#/components/responses/ConflictError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["prompts:write"]
+			}
+		},
+		"/prompts/{promptId}/runs": {
+			"get": {
+				"summary": "List runs for a prompt",
+				"description": "Individual model answers behind the aggregates, newest first, without their text — the list stays small enough to page through. Fetch `GET /runs/{runId}` for the answer itself.",
+				"operationId": "listPromptRuns",
+				"tags": ["Runs"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": ["runs:read"],
+				"parameters": [
+					{
+						"name": "promptId",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						}
+					},
+					{
+						"$ref": "#/components/parameters/StartDate"
+					},
+					{
+						"$ref": "#/components/parameters/EndDate"
+					},
+					{
+						"$ref": "#/components/parameters/Lookback"
+					},
+					{
+						"$ref": "#/components/parameters/Timezone"
+					},
+					{
+						"$ref": "#/components/parameters/ModelFilter"
+					},
+					{
+						"$ref": "#/components/parameters/Page"
+					},
+					{
+						"$ref": "#/components/parameters/Limit"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "List runs for a prompt",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RunList"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
 					},
 					"500": {
 						"$ref": "#/components/responses/InternalServerError"
@@ -1117,9 +3868,18 @@
 										"brandMentionsTotal": 42,
 										"competitorMentionsTotal": 130,
 										"mentionsTopK": [
-											{ "entity": "Adidas", "count": 58 },
-											{ "entity": "New Balance", "count": 45 },
-											{ "entity": "ASICS", "count": 27 }
+											{
+												"entity": "Adidas",
+												"count": 58
+											},
+											{
+												"entity": "New Balance",
+												"count": 45
+											},
+											{
+												"entity": "ASICS",
+												"count": 27
+											}
 										]
 									},
 									"citations": {
@@ -1149,169 +3909,27 @@
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
-					"404": {
-						"$ref": "#/components/responses/NotFoundError"
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalServerError"
-					}
-				}
-			}
-		},
-		"/prompts/{promptId}": {
-			"get": {
-				"summary": "Get a prompt",
-				"description": "Retrieve a specific prompt by ID",
-				"operationId": "getPrompt",
-				"tags": ["Prompts"],
-				"parameters": [
-					{
-						"name": "promptId",
-						"in": "path",
-						"required": true,
-						"description": "The ID of the prompt",
-						"schema": {
-							"type": "string",
-							"format": "uuid"
-						}
-					}
-				],
-				"responses": {
-					"200": {
-						"description": "Prompt details",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Prompt"
-								}
-							}
-						}
-					},
-					"400": {
-						"$ref": "#/components/responses/ValidationError"
-					},
-					"401": {
-						"$ref": "#/components/responses/UnauthorizedError"
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
 					},
 					"404": {
 						"$ref": "#/components/responses/NotFoundError"
 					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
 					"500": {
 						"$ref": "#/components/responses/InternalServerError"
-					}
-				}
-			},
-			"patch": {
-				"summary": "Update a prompt",
-				"description": "Update a prompt's properties. Only provided fields will be updated. Toggling `enabled` schedules or unschedules the recurring run job.",
-				"operationId": "updatePrompt",
-				"tags": ["Prompts"],
-				"parameters": [
-					{
-						"name": "promptId",
-						"in": "path",
-						"required": true,
-						"description": "The ID of the prompt to update",
-						"schema": {
-							"type": "string",
-							"format": "uuid"
-						}
-					}
-				],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/UpdatePromptRequest"
-							}
-						}
 					}
 				},
-				"responses": {
-					"200": {
-						"description": "Prompt updated successfully",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Prompt"
-								}
-							}
-						}
-					},
-					"400": {
-						"$ref": "#/components/responses/ValidationError"
-					},
-					"401": {
-						"$ref": "#/components/responses/UnauthorizedError"
-					},
-					"404": {
-						"$ref": "#/components/responses/NotFoundError"
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalServerError"
-					}
-				}
-			},
-			"delete": {
-				"summary": "Delete a prompt",
-				"description": "Permanently delete a prompt and cancel all related scheduled jobs. This will also cascade delete all associated prompt runs.",
-				"operationId": "deletePrompt",
-				"tags": ["Prompts"],
-				"parameters": [
-					{
-						"name": "promptId",
-						"in": "path",
-						"required": true,
-						"description": "The ID of the prompt to delete",
-						"schema": {
-							"type": "string",
-							"format": "uuid"
-						}
-					}
-				],
-				"responses": {
-					"200": {
-						"description": "Prompt deleted (returns the deleted prompt)",
-						"content": {
-							"application/json": {
-								"schema": {
-									"allOf": [
-										{ "$ref": "#/components/schemas/Prompt" },
-										{
-											"type": "object",
-											"properties": {
-												"deletedRunsCount": {
-													"type": "integer",
-													"description": "Number of related prompt_runs rows deleted by the cascade."
-												}
-											},
-											"required": ["deletedRunsCount"]
-										}
-									]
-								}
-							}
-						}
-					},
-					"400": {
-						"$ref": "#/components/responses/ValidationError"
-					},
-					"401": {
-						"$ref": "#/components/responses/UnauthorizedError"
-					},
-					"404": {
-						"$ref": "#/components/responses/NotFoundError"
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalServerError"
-					}
-				}
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["analytics:read"]
 			}
 		},
 		"/reports": {
 			"post": {
 				"summary": "Create a report",
-				"description": "Create a new AI Share of Voice report and queue it for generation. The report will evaluate the brand across multiple AI engines (ChatGPT, Claude, Google AI) using generated and optional custom prompts.",
+				"description": "Create a new AI Share of Voice report and queue it for generation. The report will evaluate the brand across multiple AI engines (ChatGPT, Claude, Google AI) using generated and optional custom prompts.\n\nRequires an instance admin key; organization keys receive `403`.",
 				"operationId": "createReport",
 				"tags": ["Reports"],
 				"requestBody": {
@@ -1364,14 +3982,29 @@
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
+					"402": {
+						"$ref": "#/components/responses/PaymentRequiredError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"409": {
+						"$ref": "#/components/responses/ConflictError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
 					"500": {
 						"$ref": "#/components/responses/InternalServerError"
 					}
-				}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["reports:write"],
+				"x-elmo-admin-only": true
 			},
 			"get": {
 				"summary": "List reports",
-				"description": "Retrieve a paginated list of all reports, ordered by creation date (newest first).",
+				"description": "Retrieve a paginated list of all reports, ordered by creation date (newest first).\n\nRequires an instance admin key; organization keys receive `403`.",
 				"operationId": "listReports",
 				"tags": ["Reports"],
 				"parameters": [
@@ -1416,10 +4049,18 @@
 										"pagination": {
 											"type": "object",
 											"properties": {
-												"page": { "type": "integer" },
-												"limit": { "type": "integer" },
-												"total": { "type": "integer" },
-												"totalPages": { "type": "integer" }
+												"page": {
+													"type": "integer"
+												},
+												"limit": {
+													"type": "integer"
+												},
+												"total": {
+													"type": "integer"
+												},
+												"totalPages": {
+													"type": "integer"
+												}
 											}
 										}
 									}
@@ -1430,16 +4071,25 @@
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
 					"500": {
 						"$ref": "#/components/responses/InternalServerError"
 					}
-				}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["reports:read"],
+				"x-elmo-admin-only": true
 			}
 		},
 		"/reports/{reportId}": {
 			"get": {
 				"summary": "Get report status and data",
-				"description": "Poll a report's status. When completed, returns per-prompt snapshot data with raw mention counts. Consumers are responsible for computing SoV and other derived metrics from the raw data.",
+				"description": "Poll a report's status. When completed, returns per-prompt snapshot data with raw mention counts. Consumers are responsible for computing SoV and other derived metrics from the raw data.\n\nRequires an instance admin key; organization keys receive `403`.",
 				"operationId": "getReport",
 				"tags": ["Reports"],
 				"parameters": [
@@ -1546,7 +4196,10 @@
 													"items": {
 														"type": "object",
 														"properties": {
-															"name": { "type": "string", "description": "Competitor name" },
+															"name": {
+																"type": "string",
+																"description": "Competitor name"
+															},
 															"sov": {
 																"type": "number",
 																"minimum": 0,
@@ -1593,8 +4246,14 @@
 												"brandMentionsTotal": 3,
 												"competitorMentionsTotal": 4,
 												"mentionsTopK": [
-													{ "entity": "Competitor A", "count": 2 },
-													{ "entity": "Competitor B", "count": 2 }
+													{
+														"entity": "Competitor A",
+														"count": 2
+													},
+													{
+														"entity": "Competitor B",
+														"count": 2
+													}
 												]
 											}
 										}
@@ -1633,13 +4292,127 @@
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
 					"404": {
 						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["reports:read"],
+				"x-elmo-admin-only": true
+			}
+		},
+		"/runs/{runId}": {
+			"get": {
+				"summary": "Get a run",
+				"description": "One model answer, with its text normalized out of the provider's response and its citations in the order the engine listed them. The provider's raw payload is deliberately not exposed — its shape belongs to the provider, not to this API.",
+				"operationId": "getRun",
+				"tags": ["Runs"],
+				"x-elmo-stability": "beta",
+				"x-elmo-scopes": ["runs:read"],
+				"parameters": [
+					{
+						"name": "runId",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Get a run",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Run"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
 					},
 					"500": {
 						"$ref": "#/components/responses/InternalServerError"
 					}
 				}
+			}
+		},
+		"/tools/analyze": {
+			"post": {
+				"summary": "Analyze a website",
+				"description": "Run brand analysis without persisting anything. Returns suggested additional domains, aliases, competitors, and prompts.\n\nRequires an instance admin key; organization keys receive `403`.",
+				"operationId": "analyzeBrand",
+				"tags": ["Tools"],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AnalyzeBrandRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Brand analysis suggestion",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OnboardingSuggestion"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"402": {
+						"$ref": "#/components/responses/PaymentRequiredError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"409": {
+						"$ref": "#/components/responses/ConflictError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				},
+				"x-elmo-stability": "stable",
+				"x-elmo-scopes": ["brands:write"],
+				"x-elmo-admin-only": true
 			}
 		}
 	},
@@ -1667,6 +4440,26 @@
 		{
 			"name": "Reports",
 			"description": "Generate and retrieve AI Share of Voice reports"
+		},
+		{
+			"name": "Identity",
+			"description": "What the calling key is and what it may reach"
+		},
+		{
+			"name": "Platforms",
+			"description": "The answer engines this deployment can track"
+		},
+		{
+			"name": "Organizations",
+			"description": "Workspaces, their plan limits, and their usage"
+		},
+		{
+			"name": "Analytics",
+			"description": "Aggregated visibility, share of voice, citations, and query fan-out for a brand"
+		},
+		{
+			"name": "Runs",
+			"description": "Individual model answers behind the aggregates"
 		}
 	]
 }
