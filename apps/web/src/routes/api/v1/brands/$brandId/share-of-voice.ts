@@ -2,8 +2,8 @@
  * GET /api/v1/brands/:brandId/share-of-voice — the brand against its rivals.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { parseAnalyticsFilters, parseAnalyticsWindow } from "@/lib/api/analytics-range";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
 import { getBrandShareOfVoice } from "@/server/analytics-core";
 

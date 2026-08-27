@@ -84,7 +84,9 @@ export async function renameBrandTag(brandId: string, from: string, to: string):
 	for (const row of rows) {
 		// Renaming onto a tag a prompt already carries merges the two; the Set
 		// keeps that from leaving a duplicate behind.
-		const next = [...new Set((row.tags ?? []).map((tag) => (normalizeTag(tag) === source ? target : normalizeTag(tag))))];
+		const next = [
+			...new Set((row.tags ?? []).map((tag) => (normalizeTag(tag) === source ? target : normalizeTag(tag)))),
+		];
 		await db.update(prompts).set({ tags: next }).where(eq(prompts.id, row.id));
 		updated++;
 	}

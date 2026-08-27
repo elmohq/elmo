@@ -2,8 +2,8 @@
  * GET /api/v1/brands/:brandId/platforms — visibility per answer engine.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { parseAnalyticsFilters, parseAnalyticsWindow } from "@/lib/api/analytics-range";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
 import { getBrandPlatformBreakdown } from "@/server/analytics-core";
 

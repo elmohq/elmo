@@ -11,14 +11,18 @@
  * The queries and the pure roll-up helpers are the dashboard's own — nothing
  * here reimplements a metric.
  */
+
+import { getModelMeta } from "@workspace/config/models";
+import { db } from "@workspace/lib/db/db";
+import { brands, competitors } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { rollUpCitationDomains, rollUpCitationUrls } from "@/lib/citation-rollup";
+import { eq } from "drizzle-orm";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import { generateDateRange } from "@/lib/chart-utils";
-import { classifyUrl as classifyUrlShared } from "@/lib/domain-categories.server";
+import { rollUpCitationDomains, rollUpCitationUrls } from "@/lib/citation-rollup";
 import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
+import { classifyUrl as classifyUrlShared } from "@/lib/domain-categories.server";
 import { computeFanoutAnalysis } from "@/lib/fanout-analysis";
-import { getModelMeta } from "@workspace/config/models";
 import {
 	getBrandMentionRateByModel,
 	getBrandMentionTotals,
@@ -34,9 +38,6 @@ import {
 } from "@/lib/postgres-read";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
-import { db } from "@workspace/lib/db/db";
-import { brands, competitors } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
 
 export interface AnalyticsWindow {
 	startDate: string;
@@ -280,9 +281,7 @@ async function citationContext(brandId: string) {
 	const brandDomains = new Set(
 		[extractDomain(brand?.website ?? ""), ...(brand?.additionalDomains ?? []).map(extractDomain)].filter(Boolean),
 	);
-	const competitorDomains = new Set(
-		competitorRows.flatMap((row) => row.domains.map(extractDomain)).filter(Boolean),
-	);
+	const competitorDomains = new Set(competitorRows.flatMap((row) => row.domains.map(extractDomain)).filter(Boolean));
 	return { brandDomains, competitorDomains };
 }
 
@@ -291,11 +290,7 @@ async function citationContext(brandId: string) {
  * window immediately before this one — which is what makes "new" and "changed"
  * mean anything.
  */
-export async function getBrandCitations(
-	brandId: string,
-	window: AnalyticsWindow,
-	filters: AnalyticsFilters = {},
-) {
+export async function getBrandCitations(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters = {}) {
 	const { promptIds } = await resolveScope(brandId, filters);
 	const { startDate, endDate, timezone } = window;
 	if (promptIds.length === 0) {
@@ -380,11 +375,7 @@ export interface FanoutQuery {
  * searches still contribute runs, so `coverageRate` is measured against every
  * run rather than only the ones that searched.
  */
-export async function getBrandQueryFanout(
-	brandId: string,
-	window: AnalyticsWindow,
-	filters: AnalyticsFilters = {},
-) {
+export async function getBrandQueryFanout(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters = {}) {
 	const scope = await resolveScope(brandId, filters);
 	const { startDate, endDate, timezone } = window;
 	const empty = {

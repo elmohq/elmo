@@ -8,7 +8,7 @@ meta {
 }
 
 patch {
-  url: {{baseUrl}}/api/v1/prompts/{{cappedPromptId}}
+  url: {{baseUrl}}/api/v1/prompts/{{freedSlotPromptId}}
   body: json
   auth: none
 }
@@ -26,4 +26,9 @@ body:json {
 assert {
   res.status: eq 409
   res.body.code: eq premium_not_in_plan
+}
+
+docs {
+  Targets an enabled prompt on purpose. A disabled prompt spends nothing from
+  either pool, so assigning it a grounded platform is free — see the next case.
 }

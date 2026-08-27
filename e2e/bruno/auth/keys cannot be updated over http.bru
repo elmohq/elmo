@@ -1,7 +1,7 @@
 meta {
   name: the key plugin's update endpoint is not reachable over HTTP
   type: http
-  seq: 20
+  seq: 21
 }
 
 post {
@@ -18,6 +18,7 @@ body:json {
 }
 
 assert {
-  res.status: gte 400
-  res.status: lt 500
+  res.status: eq 403
+  res.body.error: eq Forbidden
+  res.body.message: contains issued from the dashboard
 }

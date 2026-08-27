@@ -2,8 +2,8 @@
  * GET /api/v1/brands/:brandId/summary — every headline figure in one request.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { parseAnalyticsFilters, parseAnalyticsWindow } from "@/lib/api/analytics-range";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
 import { getBrandSummary } from "@/server/analytics-core";
 

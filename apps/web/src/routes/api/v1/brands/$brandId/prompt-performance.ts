@@ -5,8 +5,8 @@
  * prompt CRUD is ever wanted: this returns results, not configuration.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { paginate, parseAnalyticsFilters, parseAnalyticsWindow, parsePaging } from "@/lib/api/analytics-range";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
 import { getBrandPromptPerformance } from "@/server/analytics-core";
 

@@ -2,8 +2,8 @@
  * GET /api/v1/brands/:brandId/query-fanout — the searches engines ran.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { paginate, parseAnalyticsFilters, parseAnalyticsWindow, parsePaging } from "@/lib/api/analytics-range";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
 import { getBrandQueryFanout } from "@/server/analytics-core";
 
