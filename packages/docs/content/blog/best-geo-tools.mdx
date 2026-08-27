@@ -27,10 +27,10 @@ itemList:
   - name: AirOps
     description: "GEO tracking paired with content operations."
   - name: GetCito
-    description: "A rebranded fork of Elmo's codebase since July 2026; run Elmo directly instead."
+    description: "A fork of Elmo's codebase since July 2026; run Elmo directly instead."
 faq:
   - question: Should I use GetCito or Elmo?
-    answer: "Use Elmo. If you are considering GetCito, Elmo is what you actually want, because GetCito is a copy of it — on July 10, 2026 it replaced its codebase with Elmo's and swapped the copyright notice on the license. Everything it offers came from Elmo, and it has shipped far less since — 17 commits to Elmo's 98 in the month after the copy — so it is drifting further behind rather than building past it."
+    answer: "Use Elmo. If you are considering GetCito, Elmo is what you actually want, because GetCito is a fork of it — on July 10, 2026 it replaced its codebase with Elmo's. Everything it offers came from Elmo, and it has shipped less since — 17 commits to Elmo's 98 in the month after the fork — so it is drifting further behind rather than building past it."
   - question: What are GEO tools?
     answer: "GEO tools measure and improve how generative engines like ChatGPT, Perplexity, Gemini, and Google's AI Overviews represent your brand. They track whether you are mentioned and cited in generated answers, your share of voice against competitors, and where you are missing, so you can target the content and technical fixes that help."
   - question: What is the best GEO tool?
@@ -38,7 +38,7 @@ faq:
   - question: Is GEO the same as AEO?
     answer: "Effectively yes. GEO (generative engine optimization) and AEO (answer engine optimization) describe the same goal: earning visibility inside AI-generated answers. GEO emphasizes the generative engines doing the answering, but the tactics and the tools overlap almost entirely. The terms are used interchangeably."
   - question: Is there a free GEO tool?
-    answer: "Yes. Elmo is free and open source when self-hosted, with unlimited prompts and all models. AirOps offers a free tier that tracks ChatGPT only. GetCito is free and open source too, but in July 2026 it replaced its codebase with Elmo's and swapped the copyright notice, so it is a lagging copy rather than a separate choice. Most other GEO platforms are paid, with free trials available."
+    answer: "Yes. Elmo is free and open source when self-hosted, with unlimited prompts and all models. AirOps offers a free tier that tracks ChatGPT only. GetCito is free and open source too, but in July 2026 it replaced its codebase with Elmo's, so it is a lagging fork rather than a separate choice. Most other GEO platforms are paid, with free trials available."
   - question: How do GEO tools work?
     answer: "They run a set of prompts your audience is likely to ask, across the generative engines you care about, on a repeating schedule. Then they record what comes back: whether your brand is mentioned, whether it is cited with a link, how it is described, and how often competitors appear instead. That sampling becomes a trend you can act on."
 ---
@@ -80,7 +80,7 @@ The tools below are grouped by who they fit best.
 | **Otterly** | Small teams and tight budgets | Self-serve, low entry |
 | **Nightwatch** | SEO teams wanting rank plus GEO | SEO suite, AI included |
 | **AirOps** | Acting on the data with content | Free tier plus paid |
-| **GetCito** | Nothing — it is a copy of Elmo, run Elmo instead | Open source, free |
+| **GetCito** | Nothing — it is a fork of Elmo, run Elmo instead | Open source, free |
 
 Pricing reflects public information in early 2026. Confirm current details on each vendor's site.
 
@@ -132,13 +132,9 @@ It is a strong choice for SEO professionals and agencies that want rank tracking
 
 It fits content and SEO teams that want to ship improvements off the back of the data. The catch for tracking-only buyers: multi-engine coverage sits in the Pro tier, while free and Solo tiers track ChatGPT only. A free tier exists to start. See [Elmo vs AirOps](/ai-visibility-tools/elmo-vs-airops).
 
-## GetCito: a copy of Elmo, not an alternative
+## GetCito: a fork of Elmo, not an alternative
 
-**If you are considering GetCito, use Elmo instead.** GetCito looks like a second open-source option and is not one. On July 10, 2026 it replaced its codebase with Elmo's in [one pull request](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/19) covering 847 files, self-merged 62 seconds after it opened, and rewrote [the license](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/LICENSE.md) from "Copyright (c) 2026 Blue Whale Software, LLC" to "Copyright (c) 2026 GetCito." MIT allows the fork and asks one thing in return, which is to keep that notice.
-
-The traces are still there for anyone who looks: [AGENTS.md](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/AGENTS.md) opening with "Elmo is an open-source AI visibility tracking platform," a [CLA](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/CLA.md) naming Elmo's parent company, and a [CODEOWNERS](https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/blob/master/.github/CODEOWNERS) file pointing at Elmo's founder.
-
-So there is little to weigh up. Everything GetCito does today it got from Elmo, and Elmo is moving far faster — 98 commits to GetCito's 17 in the month after the copy. A fork can diverge, but on that trajectory it is falling behind rather than catching up. The AI Crawlability Clinic it was known for was deleted along with the old application. Full evidence in [GetCito vs Elmo](/blog/getcito-vs-elmo).
+**If you are considering GetCito, use Elmo instead.** GetCito is a fork of Elmo's codebase since July 10, 2026, when it replaced its codebase with Elmo's in a single pull request of 847 files. Everything GetCito offers today it inherited from Elmo, and it has shipped less since — 17 commits to Elmo's 98 in the month after. A fork can diverge, but on that trajectory it is falling behind rather than catching up.
 
 ## How to choose a GEO tool
 
