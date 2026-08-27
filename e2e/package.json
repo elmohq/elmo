@@ -19,7 +19,7 @@
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@types/node": "^26.2.0",
-    "@types/pg": "^8.21.0",
+    "@types/pg": "^8.23.1",
     "@usebruno/cli": "4.0.0",
     "pg": "^8.23.0",
     "pg-boss": "^12.27.0",
