@@ -72,10 +72,6 @@ export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; so
 				<h2 className="mt-4 text-3xl font-semibold leading-[1.1] tracking-tight text-balance">{pitch.headline}</h2>
 			</div>
 
-			{/* Directly under the headline, where a paragraph of our own claims used
-			    to sit — a customer saying it carries further than we can. */}
-			<Quote />
-
 			<ul className="space-y-2.5">
 				{pitch.bullets.map((bullet) => (
 					<li key={bullet} className="flex items-start gap-2.5 text-sm">
@@ -84,6 +80,10 @@ export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; so
 					</li>
 				))}
 			</ul>
+
+			{/* After our own claims, not before: a customer backing them up reads as
+			    corroboration, where opening with it reads as decoration. */}
+			<Quote />
 
 			<EngineStrip />
 
