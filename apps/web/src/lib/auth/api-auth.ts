@@ -22,7 +22,6 @@ import { brands, organization } from "@workspace/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { type ApiScope, permissionsToScopes } from "@/lib/api/scopes";
 import { getAdminApiKeys, timingSafeStringEqual } from "./policies";
-import { auth } from "./server";
 
 export interface AdminAuth {
 	kind: "admin";
@@ -159,8 +158,14 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 		return { auth: { kind: "admin", scopes: null, organizationId: null } };
 	}
 
-	let result: Awaited<ReturnType<typeof auth.api.verifyApiKey>>;
+	// Imported here rather than at module scope: constructing the auth instance
+	// reads APP_URL and throws without it, which would make every module that
+	// reaches this one — including createApiHandler, and so every route —
+	// unimportable outside a configured environment. An admin key never gets
+	// this far, so it never pays for it either.
+	let result: Awaited<ReturnType<typeof import("./server").auth.api.verifyApiKey>>;
 	try {
+		const { auth } = await import("./server");
 		result = await auth.api.verifyApiKey({ body: { key: token } });
 	} catch (err) {
 		// A resolver that throws must fail closed: an unavailable database is a

@@ -1,3 +1,4 @@
+import { resetDeploymentCache } from "@workspace/deployment";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { ApiError, createApiHandler } from "../handler";
@@ -20,11 +21,16 @@ function makeRequest(options?: { method?: string; body?: string; apiKey?: string
 describe("createApiHandler", () => {
 	beforeEach(() => {
 		vi.stubEnv("ADMIN_API_KEYS", API_KEY);
+		// The handler refuses writes in read-only mode, so it reads the
+		// deployment. Nothing here exercises that; the mode just has to resolve.
+		vi.stubEnv("DEPLOYMENT_MODE", "local");
+		resetDeploymentCache();
 	});
 
 	afterEach(() => {
 		vi.unstubAllEnvs();
 		vi.restoreAllMocks();
+		resetDeploymentCache();
 	});
 
 	it("returns 401 when the API key is missing", async () => {
