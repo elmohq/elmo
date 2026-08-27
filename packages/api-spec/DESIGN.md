@@ -266,7 +266,8 @@ reader knows what they're looking at.
   locking ourselves in: new endpoints land here, not at `stable`, and it is what
   lets us expose an LLM-generated shape like Opportunities at all.
 - `planned` — specified, not built. Calling it returns `404`. The document is
-  written ahead of the code, so the reference doubles as the roadmap.
+  written ahead of the code, so the reference doubles as the roadmap. Nothing
+  carries this today: every operation below is implemented.
 
 An `x-` extension doesn't render, so anything that isn't `stable` also **says so
 in the first line of its description**, where a reader actually sees it.
@@ -537,7 +538,9 @@ would have to take back.
 
 ## 5. Implementation sequence
 
-Each step is independently shippable.
+Each step is independently shippable. **Steps 1–9 are done**; what each one
+turned out to involve is recorded below, including the parts the first draft of
+this plan got wrong.
 
 1. **Auth resolver.** `resolveApiAuth(request) → AdminAuth | OrgAuth | Failure`,
    scopes and brand narrowing included. `createApiHandler` becomes the single
@@ -554,26 +557,44 @@ Each step is independently shippable.
    *first*, and loosen the middleware in the same commit that lands
    handler-side auth — not before.
 
-2. **Key issuance + schema.** Add `@better-auth/api-key` (a new dependency,
-   subject to the workspace's release-age cooldown), configure it with
-   `references: "organization"`, add an `apiKey` statement to the org access
-   control so roles decide who may mint and revoke, regenerate `schema-auth.ts`
-   (`pnpm run generate:auth-schema`) and write the migration. Block
-   `/api/auth/api-key/create` and `/update` over HTTP. Add the server function
-   that validates `brandIds` and calls `auth.api.createApiKey` in-process. Then
-   the settings page: list, create (name, scopes, brand narrowing, expiry —
-   secret shown once), revoke.
+2. **Key issuance + schema.** `@better-auth/api-key` is pinned to `~1.6.29`,
+   the line matching `better-auth`; `^` would resolve to 1.7, whose peer on
+   `@better-auth/core` is a different copy of the same types, and plugin objects
+   then stop being assignable to `BetterAuthPlugin`. Four `overrides` anchors
+   (`@better-auth/core`, `@better-fetch/fetch`, `@better-auth/utils`, `jose`)
+   keep exactly one core in the store — two copies of one version are as
+   incompatible as two versions.
 
-3. **Scope-check and org-filter the existing routes.** No response shapes change.
-   Close the three enforcement gaps (§1.4) — the brand-creation one is org
-   attachment (§3.4), not a one-line guard.
-4. **Service layer (#331).** Extract `packages/lib/src/services/{brands,prompts,
-   competitors}.ts` and an `analytics` module; make both the REST handlers and
-   the server functions thin wrappers. Required before §3.9 — it is what
-   guarantees the API and the dashboard compute the same numbers, and it is what
-   a future MCP server (#105/#386) wraps instead of re-querying. This is the
-   biggest step by some margin: the analytics half means moving
-   `apps/web/src/lib/postgres-read.ts` (~1,400 lines) into `packages/lib`.
+   `@better-auth/cli` has no release past 1.4.x and cannot load the 1.6 plugin
+   set, so the `apikey` table is transcribed by hand into `schema-auth.ts` from
+   the plugin's own field definitions, with the exception noted in that file's
+   header. `/api/auth/api-key/create`, `/update`, and `/delete` are blocked over
+   HTTP.
+
+   **Still to do:** the settings page, and the server function behind it that
+   validates `brandIds` and calls `auth.api.createApiKey` in-process. The API
+   itself is complete without them — `e2e/seed.ts` writes keys straight into the
+   table — but nobody can issue one from the product yet.
+
+3. **Scope-check and org-filter the existing routes.** Done, with one addition
+   the plan didn't foresee: a verb no handler claimed fell through the file
+   router to the SPA and answered `200` with HTML, so `PATCH` on a read-only
+   resource looked like it had worked. `withMethodGuard` fills in the unclaimed
+   verbs with a `405`, and the conformance test requires it on every route
+   alongside `createApiHandler`.
+4. **Service layer (#331).** Half done. `apps/web/src/server/analytics-core.ts`
+   holds the analytics as edge-agnostic functions — no session, no `Request` —
+   built from the dashboard's own queries and roll-up helpers, so nothing there
+   reimplements a metric.
+
+   **Still to do:** the dashboard's server functions call those queries directly
+   rather than going through `analytics-core`, so the two *can* still drift even
+   though they don't today. Pointing them at the same module closes that, and
+   moving the module into `packages/lib` (which means moving
+   `apps/web/src/lib/postgres-read.ts`, ~1,400 lines, with it) is what a future
+   MCP server (#105/#386) would wrap instead of re-querying. Same for the CRUD
+   half: the REST handlers are thin, but they are thin over drizzle rather than
+   over a shared service.
 5. **Read surface.** `/v1/me`, `/v1/platforms`, `/v1/organizations*`, including
    billing.
 6. **Analytics endpoints**, one shared analytics function each.
@@ -581,8 +602,8 @@ Each step is independently shippable.
 8. **Tags and opportunities.** Both are thin: tags read and rewrite
    `prompts.tags`, opportunities reads the newest `brand_opportunities` row.
 9. **Prompt bulk create**, plus the additive list filters.
-10. **Docs + SDK.** Each step above drops its operations' planned note and
-   flips them to `beta`. Then publish a typed client. Follow-up: derive `openapi.json` from
+10. **Docs + SDK.** Every operation is `beta` and rendered. **Still to do:**
+   publish a typed client. Follow-up: derive `openapi.json` from
    the zod schemas rather than hand-editing (the second half of #331).
 
 ### Open PRs this supersedes
@@ -604,8 +625,14 @@ as-is.
 ## 6. Testing
 
 `e2e/bruno/` is the executable contract — one `.bru` per endpoint per outcome,
-written before the implementation. Every case that depends on something not yet
-built fails today; each step of §5 turns a block of them green.
+written before the implementation. **213 cases; all pass** except
+`tools/analyze`, which calls a real provider and needs a key.
+
+Two of them were worth nothing as first written: the API-key forgery cases
+posted to `/api/auth/api-key/create` with no session, so they would have passed
+with the endpoint wide open — a request with no session is refused for want of
+one either way. They now sign in first and assert the block's own message, which
+is what tells "we refused this" apart from "better-auth wanted a session".
 
 **Identities.** Permission behavior can't be tested from one key, so `e2e/seed.ts`
 seeds a matrix of them (`API_KEYS` in `e2e/fixtures.ts`): every scope, read
