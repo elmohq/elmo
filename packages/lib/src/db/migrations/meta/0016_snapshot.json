@@ -1,5 +1,5 @@
 {
-  "id": "d6c28753-da7b-4e29-a370-80b997ca0dc2",
+  "id": "fadfe0a5-8c3e-4fa3-b37d-12fc31303671",
   "prevId": "0e69f0ab-e5a8-47d7-8c6d-3bd851bb1a86",
   "version": "7",
   "dialect": "postgresql",
@@ -1350,7 +1350,7 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
-          "default": 120
+          "default": 1000
         },
         "request_count": {
           "name": "request_count",

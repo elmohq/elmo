@@ -12,7 +12,7 @@ CREATE TABLE "apikey" (
 	"enabled" boolean DEFAULT true,
 	"rate_limit_enabled" boolean DEFAULT true,
 	"rate_limit_time_window" integer DEFAULT 60000,
-	"rate_limit_max" integer DEFAULT 120,
+	"rate_limit_max" integer DEFAULT 1000,
 	"request_count" integer DEFAULT 0,
 	"remaining" integer,
 	"last_request" timestamp,

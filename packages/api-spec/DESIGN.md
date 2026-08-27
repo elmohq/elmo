@@ -141,13 +141,21 @@ tenant-scoped brand ids, a schema change with no other motivation.
 | Cross-org access       | yes                              | never                                     |
 | Plan entitlements      | the target org's, same as anyone | the same `assert*` guards the dashboard calls |
 | Read-only (demo) mode  | blocked on writes                | blocked on writes                         |
-| Request rate limit     | none                             | per-key, default 120/min, `X-RateLimit-*` + `429` (see below) |
+| Request rate limit     | none                             | per-key, default 1,000/min, `X-RateLimit-*` + `429` (see below) |
 
-The rate limit is the plugin's: a fixed window counted with a read-modify-write
-per request, so under concurrency it is approximate. `X-RateLimit-Remaining` is
-a guide, not a ledger — clients should back off on `429` rather than trying to
-ride the number to zero. Say so in the docs rather than implying a precision the
-counter doesn't have.
+The rate limit is deliberately generous: it is there to stop a runaway loop from
+saturating the database, not to meter normal use. A nightly analytics pull over
+ten brands costs under a hundred requests; exporting a brand's answer text costs
+one per run, which is hundreds of thousands for a large workspace — at 120/min
+that export took a day, which is a limit shaping the product rather than
+protecting it.
+
+Two properties worth knowing. It is the plugin's fixed window, counted with a
+read-modify-write per request, so under concurrency it is approximate —
+`X-RateLimit-Remaining` is a guide to back off on, not a ledger to ride to zero.
+And the limit is **stamped onto each key when it is created**, not read from
+configuration per request, so raising the default does nothing for keys already
+issued. There is no way to change an issued key's limit short of reissuing it.
 
 **An admin key is not exempt from a customer's plan.** It bypasses tenancy and
 scopes — that is what makes it an operator key — but a limit protects the
@@ -285,7 +293,7 @@ What this key is, so an integrator can debug in one call.
   "createdBy": "Dana",
   "lastUsedAt": "2026-08-26T11:04:00Z",
   "expiresAt": null,
-  "rateLimit": { "limit": 120, "window": "minute" },
+  "rateLimit": { "limit": 1000, "window": "minute" },
   "deployment": { "mode": "cloud", "billingEnabled": true, "readOnly": false }
 }
 ```

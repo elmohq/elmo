@@ -861,7 +861,7 @@
 								"enum": ["minute", "hour"]
 							}
 						},
-						"description": "The key's configured limit. Enforcement is a fixed window and approximate under concurrency."
+						"description": "The key's configured limit — generous by design: it exists to stop a runaway loop, not to meter normal use. Enforcement is a fixed window and approximate under concurrency."
 					},
 					"deployment": {
 						"type": "object",

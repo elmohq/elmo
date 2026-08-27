@@ -127,7 +127,16 @@ export function createAuth(options?: CreateAuthOptions) {
 				references: "organization",
 				defaultPrefix: "elmo_",
 				enableMetadata: true,
-				rateLimit: { enabled: true, timeWindow: 60_000, maxRequests: 120 },
+				// Generous on purpose: this exists to stop a runaway loop from
+				// saturating the database, not to meter normal use. A nightly
+				// analytics pull costs a few dozen requests; exporting a brand's
+				// answer text costs one per run, which is hundreds of thousands for
+				// a large workspace. At 120/min that export took a day.
+				//
+				// The limit is stamped onto each key when it is created, not read
+				// from here per request — raising this later does nothing for keys
+				// already issued.
+				rateLimit: { enabled: true, timeWindow: 60_000, maxRequests: 1_000 },
 			}),
 			admin({
 				ac,
