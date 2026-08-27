@@ -22,7 +22,7 @@ import { generateDateRange } from "@/lib/chart-utils";
 import { rollUpCitationDomains, rollUpCitationUrls } from "@/lib/citation-rollup";
 import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
 import { classifyUrl as classifyUrlShared } from "@/lib/domain-categories.server";
-import { computeFanoutAnalysis } from "@/lib/fanout-analysis";
+import { computeFanoutAnalysis, type FanoutAnalysis } from "@/lib/fanout-analysis";
 import {
 	getBrandMentionRateByModel,
 	getBrandMentionTotals,
@@ -124,11 +124,13 @@ export interface ShareOfVoiceEntry {
 	isBrand: boolean;
 	mentions: number;
 	prompts: number;
+	/** Exact ratio 0..1. Each edge rounds once, on the way out. */
 	share: number;
 }
 
 export interface BrandShareOfVoice {
 	brandName: string;
+	/** Exact ratio 0..1, or null when nothing was mentioned. */
 	brandShare: number | null;
 	totalRuns: number;
 	entries: ShareOfVoiceEntry[];
@@ -181,39 +183,34 @@ export async function getBrandShareOfVoice(
 		standings.competitors.map((c) => ({ name: c.name, mentions: c.mentions })),
 	);
 
-	// The trend wants brand and competitor counts on one row per prompt/day; the
-	// two queries return them separately, so fold the competitor totals in.
-	const competitorsByPromptDay = new Map<string, number>();
-	for (const row of perPromptCompetitorDaily) {
-		const key = `${row.prompt_id}|${String(row.date)}`;
-		competitorsByPromptDay.set(key, (competitorsByPromptDay.get(key) ?? 0) + Number(row.mentions));
-	}
+	// The same per-prompt carry-forward as the standings above, per day — so the
+	// line's final point equals the headline share. The competitor total comes
+	// off this row rather than from summing the per-competitor query, which
+	// counts mention *instances* and would not agree with it.
 	const series = shareOfVoiceTimeSeriesLVCF(
 		perPromptDaily.map((row) => ({
 			promptId: row.prompt_id,
 			date: String(row.date),
-			brandMentions: Number(row.brand_mentions),
-			competitorMentions: competitorsByPromptDay.get(`${row.prompt_id}|${String(row.date)}`) ?? 0,
+			brandMentions: row.brand_mentions,
+			competitorMentions: row.competitor_mentions,
 		})),
 		dateRange,
 	);
 
-	// computeShareOfVoice deliberately returns exact 0..1 ratios so the dashboard
-	// can round once at the point of display. The wire is percentages, and this
-	// is that point — round here, and only here, so the leaderboard and the
-	// headline can never disagree by a point.
-	const asPercent = (ratio: number) => Math.round(ratio * 100);
-
+	// `share` and `brandShare` stay exact 0..1 ratios, deliberately unrounded:
+	// the dashboard rounds once at the point of display so its table, donut, and
+	// trend never disagree by a point, and the API rounds once on the way out.
+	// Rounding here would double-round for one of them.
 	return {
 		brandName,
-		brandShare: brandShare === null ? null : asPercent(brandShare),
+		brandShare,
 		totalRuns: Number(totals?.total_runs ?? 0),
 		entries: entries.map((entry) => ({
 			name: entry.name,
 			isBrand: entry.isBrand,
 			mentions: entry.mentions,
 			prompts: entry.isBrand ? standings.brandPrompts : (promptsByName.get(entry.name) ?? 0),
-			share: asPercent(entry.share),
+			share: entry.share,
 		})),
 		series,
 	};
@@ -364,57 +361,74 @@ export async function getBrandCitations(brandId: string, window: AnalyticsWindow
 	};
 }
 
-export interface FanoutQuery {
-	query: string;
-	runs: number;
-	promptCount: number;
+/**
+ * The searches the engines ran while answering.
+ *
+ * Returns the whole analysis rather than a slice of it: the dashboard renders
+ * terms, word changes, and the per-model and per-prompt breakdowns, and the API
+ * narrows to the list it publishes. One computation, two views.
+ */
+export async function getBrandQueryFanout(
+	brandId: string,
+	window: AnalyticsWindow,
+	filters: AnalyticsFilters = {},
+	options: {
+		/** Scope to a single prompt — the prompt-details drill-down. */
+		promptId?: string;
+		/** Skip the display caps, for a caller that pages the lists itself. */
+		uncapped?: boolean;
+	} = {},
+): Promise<FanoutAnalysis & { brandName: string }> {
+	const { startDate, endDate, timezone } = window;
+	const [brandRow, scope] = await Promise.all([
+		db.select({ name: brands.name }).from(brands).where(eq(brands.id, brandId)).limit(1),
+		resolveScope(brandId, filters),
+	]);
+	const brandName = brandRow[0]?.name ?? "Your brand";
+
+	// Scoping to one prompt is the prompt-details drill-down; the lists come back
+	// uncapped there because there is only one prompt's worth of them.
+	const promptIds = options.promptId ? scope.promptIds.filter((id) => id === options.promptId) : scope.promptIds;
+	if (promptIds.length === 0) return { brandName, ...emptyFanout() };
+
+	const [breakdown, modelTotals] = await Promise.all([
+		getFanoutBreakdown(brandId, startDate, endDate, timezone, promptIds, filters.model),
+		getFanoutModelTotals(brandId, startDate, endDate, timezone, promptIds, filters.model),
+	]);
+
+	const promptValues = new Map(
+		scope.prompts.filter((prompt) => promptIds.includes(prompt.id)).map((prompt) => [prompt.id, prompt.value]),
+	);
+	return {
+		brandName,
+		...computeFanoutAnalysis(breakdown, modelTotals, promptValues, {
+			// The dashboard's caps are display caps. One prompt's worth of lists is
+			// small enough to show whole, and a caller that pages the list itself
+			// would otherwise page a silently truncated one.
+			limits:
+				options.promptId || options.uncapped ? { topQueries: UNCAPPED, breadth: UNCAPPED, terms: UNCAPPED } : undefined,
+		}),
+	};
 }
 
-/**
- * The searches the engines ran while answering. Engines that don't expose their
- * searches still contribute runs, so `coverageRate` is measured against every
- * run rather than only the ones that searched.
- */
-export async function getBrandQueryFanout(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters = {}) {
-	const scope = await resolveScope(brandId, filters);
-	const { startDate, endDate, timezone } = window;
-	const empty = {
+/** Effectively no cap, for the single-prompt view and for a caller that pages itself. */
+const UNCAPPED = Number.MAX_SAFE_INTEGER;
+
+function emptyFanout(): FanoutAnalysis {
+	return {
 		totalQueries: 0,
 		uniqueQueries: 0,
 		fanoutRuns: 0,
 		totalRuns: 0,
-		avgQueriesPerRun: 0,
+		avgPerExecution: 0,
 		coverageRate: 0,
-		queries: [] as FanoutQuery[],
-	};
-	if (scope.promptIds.length === 0) return empty;
-
-	const [breakdown, modelTotals] = await Promise.all([
-		getFanoutBreakdown(brandId, startDate, endDate, timezone, scope.promptIds, filters.model),
-		getFanoutModelTotals(brandId, startDate, endDate, timezone, scope.promptIds, filters.model),
-	]);
-
-	const promptValues = new Map(scope.prompts.map((prompt) => [prompt.id, prompt.value]));
-	const analysis = computeFanoutAnalysis(breakdown, modelTotals, promptValues, {
-		// The API pages its own list, so the display caps the dashboard applies
-		// would silently truncate it.
-		limits: { breadth: Number.MAX_SAFE_INTEGER },
-	});
-
-	return {
-		totalQueries: analysis.totalQueries,
-		uniqueQueries: analysis.uniqueQueries,
-		fanoutRuns: analysis.fanoutRuns,
-		totalRuns: analysis.totalRuns,
-		avgQueriesPerRun: analysis.avgPerExecution,
-		coverageRate: analysis.coverageRate,
-		// topByRuns already carries both figures per query, which is what a caller
-		// paging this list wants; topQueries carries only an instance count.
-		queries: analysis.topByRuns.map((entry) => ({
-			query: entry.query,
-			runs: entry.runs,
-			promptCount: entry.prompts,
-		})),
+		topQueries: [],
+		terms: [],
+		wordChanges: { added: [], dropped: [], preserved: [] },
+		byModel: [],
+		byPrompt: [],
+		topByPrompts: [],
+		topByRuns: [],
 	};
 }
 

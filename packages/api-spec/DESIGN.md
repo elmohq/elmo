@@ -571,10 +571,14 @@ this plan got wrong.
    header. `/api/auth/api-key/create`, `/update`, and `/delete` are blocked over
    HTTP.
 
-   **Still to do:** the settings page, and the server function behind it that
-   validates `brandIds` and calls `auth.api.createApiKey` in-process. The API
-   itself is complete without them — `e2e/seed.ts` writes keys straight into the
-   table — but nobody can issue one from the product yet.
+   Settings → API keys does the issuing, over server functions in
+   `apps/web/src/server/api-keys.ts`. Creation calls `auth.api.createApiKey`
+   with **no headers**: the plugin treats any request carrying them as a client
+   request and refuses to set `permissions`, which is the guard that stops a
+   browser minting a scoped key and the thing a genuine server-side call has to
+   get past. Passing `userId` instead says what the call is; the plugin still
+   runs its own membership and role check before creating anything. Only an
+   owner or admin may issue or revoke.
 
 3. **Scope-check and org-filter the existing routes.** Done, with one addition
    the plan didn't foresee: a verb no handler claimed fell through the file
@@ -582,19 +586,28 @@ this plan got wrong.
    resource looked like it had worked. `withMethodGuard` fills in the unclaimed
    verbs with a `405`, and the conformance test requires it on every route
    alongside `createApiHandler`.
-4. **Service layer (#331).** Half done. `apps/web/src/server/analytics-core.ts`
-   holds the analytics as edge-agnostic functions — no session, no `Request` —
-   built from the dashboard's own queries and roll-up helpers, so nothing there
-   reimplements a metric.
+4. **Service layer (#331).** The analytics half is done and wired both ways.
+   `apps/web/src/server/analytics-core.ts` holds the computations as
+   edge-agnostic functions — no session, no `Request` — and **both** surfaces
+   are thin wrappers over it: `getFilteredVisibilityFn`, `getShareOfVoiceFn`,
+   and `getQueryFanoutFn` on the dashboard side, the `/api/v1` routes on the
+   other. `e2e/tests/shared/analytics-parity.spec.ts` reads a figure off the
+   rendered page and asserts the API reports the same one, so a metric
+   reimplemented on one side fails a test rather than shipping.
 
-   **Still to do:** the dashboard's server functions call those queries directly
-   rather than going through `analytics-core`, so the two *can* still drift even
-   though they don't today. Pointing them at the same module closes that, and
-   moving the module into `packages/lib` (which means moving
-   `apps/web/src/lib/postgres-read.ts`, ~1,400 lines, with it) is what a future
-   MCP server (#105/#386) would wrap instead of re-querying. Same for the CRUD
-   half: the REST handlers are thin, but they are thin over drizzle rather than
-   over a shared service.
+   Wiring the two together immediately turned up a real divergence: the core was
+   summing the per-competitor query for the share-of-voice trend, where the
+   dashboard reads the `competitor_mentions` column on the per-prompt row. Those
+   count different things — mention instances versus per-prompt totals.
+
+   **Still to do:** citations still has two implementations —
+   `getCitationsFn` returns more than the API publishes (the Google module,
+   what's-changed, page-type distribution), so folding them together is its own
+   piece of work rather than a wrapper. Moving the module into `packages/lib`
+   (which means moving `apps/web/src/lib/postgres-read.ts`, ~1,400 lines, with
+   it) is what a future MCP server (#105/#386) would wrap instead of
+   re-querying. Same for the CRUD half: the REST handlers are thin, but they are
+   thin over drizzle rather than over a shared service.
 5. **Read surface.** `/v1/me`, `/v1/platforms`, `/v1/organizations*`, including
    billing.
 6. **Analytics endpoints**, one shared analytics function each.
@@ -627,6 +640,14 @@ as-is.
 `e2e/bruno/` is the executable contract — one `.bru` per endpoint per outcome,
 written before the implementation. **213 cases; all pass** except
 `tools/analyze`, which calls a real provider and needs a key.
+
+Two Playwright specs cover what Bruno structurally can't. The suite
+authenticates as keys the seeder wrote straight into the table, which says
+nothing about whether the product can mint one — `api-keys.spec.ts` creates one
+through the page and checks it carries exactly the scopes ticked, is refused on
+one it isn't, sees the other tenant as absent rather than forbidden, and stops
+working the moment it is revoked. `analytics-parity.spec.ts` reads a figure off
+the rendered dashboard and asserts the API reports the same one.
 
 Two of them were worth nothing as first written: the API-key forgery cases
 posted to `/api/auth/api-key/create` with no session, so they would have passed

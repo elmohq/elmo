@@ -17,8 +17,27 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/query-fanout")({
 					const url = new URL(request.url);
 					const range = parseAnalyticsWindow(url);
 					const { page, limit } = parsePaging(url);
-					const { queries, ...totals } = await getBrandQueryFanout(brand.id, range, parseAnalyticsFilters(url));
-					return { brandId: brand.id, range, ...totals, ...paginate(queries, page, limit) };
+					const analysis = await getBrandQueryFanout(brand.id, range, parseAnalyticsFilters(url), {
+						uncapped: true,
+					});
+					// topByRuns carries both figures per query, which is what a caller
+					// paging this list wants; topQueries carries only an instance count.
+					const queries = analysis.topByRuns.map((entry) => ({
+						query: entry.query,
+						runs: entry.runs,
+						promptCount: entry.prompts,
+					}));
+					return {
+						brandId: brand.id,
+						range,
+						totalQueries: analysis.totalQueries,
+						uniqueQueries: analysis.uniqueQueries,
+						fanoutRuns: analysis.fanoutRuns,
+						totalRuns: analysis.totalRuns,
+						avgQueriesPerRun: analysis.avgPerExecution,
+						coverageRate: analysis.coverageRate,
+						...paginate(queries, page, limit),
+					};
 				},
 			}),
 		}),

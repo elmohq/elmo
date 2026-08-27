@@ -2,18 +2,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import type { LookbackPeriod } from "@/lib/chart-utils";
-import {
-	getBatchChartData,
-	getCitationsTotalCount,
-	getVisibilityDailyAggregate,
-	type ProcessedBatchChartDataPoint,
-} from "@/lib/postgres-read";
+import { getBatchChartData, type ProcessedBatchChartDataPoint } from "@/lib/postgres-read";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { getBrandVisibility } from "@/server/analytics-core";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
 export interface BatchChartDataResponse {
@@ -137,81 +132,31 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 	)
 	.handler(async ({ data }): Promise<FilteredVisibilityResponse> => {
 		const session = await requireAuthSession();
-		const lookbackParam = data.lookback as LookbackPeriod;
-
 		await requireBrandAccess(session.user.id, data.brandId);
 
-		// Resolve the in-scope prompts server-side from the filter criteria so
-		// the client never ships the full prompt-id list (issue #68).
-		const resolvedPrompts = await resolveFilteredPrompts(data.brandId, {
-			tags: data.tags,
-			search: data.search,
-		});
-		const promptIds = resolvedPrompts.map((p) => p.id);
-		const totalPrompts = promptIds.length;
-
-		if (totalPrompts === 0) {
-			return {
-				currentVisibility: 0,
-				totalRuns: 0,
-				totalPrompts: 0,
-				totalCitations: 0,
-				visibilityTimeSeries: [],
-				lookback: lookbackParam,
-			};
-		}
-
+		const lookback = data.lookback as LookbackPeriod;
 		const timezone = resolveTimezone(data.timezone);
+		// `allStrategy: "1y"` caps the "all" lookback at a one-year window so the
+		// visibility bar matches the chart section.
+		const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookback, timezone, { allStrategy: "1y" }) as {
+			fromDateStr: string;
+			toDateStr: string;
+		};
 
-		const brandedPromptIds = resolvedPrompts
-			.filter((p) => getEffectiveBrandedStatus(p.systemTags, p.tags).isBranded)
-			.map((p) => p.id);
-
-		// `allStrategy: "1y"` caps the "all" lookback at a one-year window so
-		// the visibility bar matches the chart section. Every other lookback
-		// already returns concrete bounds, so we can destructure without
-		// null-checking.
-		const { fromDateStr: fromDate, toDateStr: toDate } = getTimezoneLookbackRange(lookbackParam, timezone, {
-			allStrategy: "1y",
-		}) as { fromDateStr: string; toDateStr: string };
-
-		const [daily, totalCitations] = await Promise.all([
-			getVisibilityDailyAggregate(data.brandId, fromDate, toDate, timezone, promptIds, brandedPromptIds, data.model),
-			getCitationsTotalCount(data.brandId, fromDate, toDate, timezone, promptIds, data.model),
-		]);
-
-		// Roll the period run totals from the raw observation sums (actual_*);
-		// the visibility time-series uses the per-day LVCF sums so gaps in
-		// individual prompt schedules do not create artificial dips in the line.
-		let totalBrandedRuns = 0;
-		let totalNonBrandedRuns = 0;
-		const visibilityTimeSeries: VisibilityTimeSeriesPoint[] = daily.map((row) => {
-			totalBrandedRuns += row.actual_branded_runs;
-			totalNonBrandedRuns += row.actual_nonbranded_runs;
-			const t = row.lvcf_branded_runs + row.lvcf_nonbranded_runs;
-			const m = row.lvcf_branded_mentioned + row.lvcf_nonbranded_mentioned;
-			return { date: row.date, visibility: t === 0 ? null : Math.round((m / t) * 100) };
-		});
-
-		const totalRuns = totalBrandedRuns + totalNonBrandedRuns;
-		// "Current" = the latest plotted point (last non-null LVCF day), so the headline
-		// number matches the right end of the trend/sparkline beside it — and the
-		// overview's current-visibility hero — rather than the whole-window average.
-		let currentVisibility = 0;
-		for (let i = visibilityTimeSeries.length - 1; i >= 0; i--) {
-			const v = visibilityTimeSeries[i].visibility;
-			if (v != null) {
-				currentVisibility = v;
-				break;
-			}
-		}
+		const result = await getBrandVisibility(
+			data.brandId,
+			{ startDate: fromDateStr, endDate: toDateStr, timezone },
+			{ model: data.model, tags: data.tags, search: data.search },
+		);
 
 		return {
-			currentVisibility,
-			totalRuns,
-			totalPrompts,
-			totalCitations,
-			visibilityTimeSeries,
-			lookback: lookbackParam,
+			// The API reports "no runs to plot" as null; this surface has always
+			// shown 0, and the hero renders a number.
+			currentVisibility: result.currentVisibility ?? 0,
+			totalRuns: result.totalRuns,
+			totalPrompts: result.totalPrompts,
+			totalCitations: result.totalCitations,
+			visibilityTimeSeries: result.series,
+			lookback,
 		};
 	});
