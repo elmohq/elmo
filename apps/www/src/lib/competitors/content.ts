@@ -23,9 +23,7 @@ export function isOpenSource(competitor: Competitor): boolean {
 }
 
 /**
- * GetCito replaced its codebase with a copy of Elmo's on this date. The generic
- * open-source copy below frames the two as peers you might pick between, which
- * is the wrong answer for a rebranded fork, so it gets its own wording.
+ * GetCito forked from Elmo's codebase on this date.
  */
 const GETCITO_FORK_DATE = "July 10, 2026";
 
@@ -38,7 +36,7 @@ export function getComparisonVerdict(competitor: Competitor): string {
 	const name = competitor.name;
 
 	if (competitor.slug === "getcito") {
-		return `If you are considering ${name}, use Elmo instead. ${name} is running a copy of Elmo's codebase, which it adopted on ${GETCITO_FORK_DATE} and shipped with Elmo's copyright notice replaced by its own. Everything it offers today it inherited from Elmo, and it has shipped far less since — 17 commits to Elmo's 98 in the month after the copy — so it is drifting further behind rather than building past it. Elmo is the original, and it is free to self-host.`;
+		return `If you are considering ${name}, use Elmo instead. ${name} is a fork of Elmo's codebase since ${GETCITO_FORK_DATE}. Everything it offers today it inherited from Elmo, and it has shipped less since — 17 commits to Elmo's 98 in the month after the fork. Elmo is the original, and it is free to self-host.`;
 	}
 
 	if (isOpenSource(competitor)) {
@@ -65,23 +63,23 @@ export function getComparisonFaqs(competitor: Competitor): FaqItem[] {
 		return [
 			{
 				question: `Should I use ${name} or Elmo?`,
-				answer: `Use Elmo. If you are considering ${name}, Elmo is the tool you actually want, because ${name} is a copy of it. On ${GETCITO_FORK_DATE}, ${name} replaced its entire codebase with Elmo's in a single pull request of 847 files, self-merged 62 seconds after it opened. Running ${name} means running an older snapshot of Elmo, maintained by people who did not write it.`,
+				answer: `Use Elmo. If you are considering ${name}, Elmo is the tool you actually want, because ${name} is a fork of it. On ${GETCITO_FORK_DATE}, ${name} replaced its codebase with Elmo's in a single pull request of 847 files. Running ${name} means running an older snapshot of Elmo.`,
 			},
 			{
 				question: `What is the difference between Elmo and ${name}?`,
-				answer: `Elmo is the original codebase and ${name} is a copy of it, taken on ${GETCITO_FORK_DATE}. Everything ${name} offers today it inherited from Elmo. A fork is free to diverge from there, but ${name} has shipped far less than the project it copied — 98 commits to its 17 in the month after the copy, from two contributors working on code they did not write — so the gap is widening rather than closing.`,
+				answer: `Elmo is the original codebase and ${name} is a fork of it, taken on ${GETCITO_FORK_DATE}. Everything ${name} offers today it inherited from Elmo. A fork is free to diverge from there, but ${name} has shipped less than the project it forked — 98 commits to its 17 in the month after — so the gap is widening rather than closing.`,
 			},
 			{
 				question: `Is ${name} a fork of Elmo?`,
-				answer: `Yes, and the evidence is still in its public repository. ${name}'s AGENTS.md opens with the sentence "Elmo is an open-source AI visibility tracking platform." Its contributor license agreement names Elmo's parent company, Blue Whale Software, LLC. Its CODEOWNERS file assigns every path to Elmo's founder, and its contributor registry lists Elmo's contributors.`,
+				answer: `Yes, ${name} is a fork of Elmo since ${GETCITO_FORK_DATE}. Its codebase is based on Elmo's, which is MIT-licensed and freely available to self-host.`,
 			},
 			{
 				question: `Is ${name} open source?`,
-				answer: `It carries the MIT license, but that license file is Elmo's with the copyright line changed from Blue Whale Software, LLC to ${name}. MIT permits anyone to fork, modify, and sell the software; the one condition it sets is that the original copyright notice be kept. Elmo is open source at the source — audit it, self-host it, and skip the copy.`,
+				answer: `Yes, ${name} carries an MIT license. Elmo is open source too — audit the code, self-host it, and skip the fork.`,
 			},
 			{
 				question: `Is Elmo a free, open-source alternative to ${name}?`,
-				answer: `Elmo is not an alternative to ${name} so much as the thing ${name} is a copy of. It is free to self-host under MIT, with unlimited prompts and every model, covering ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews. There is no reason to run a rebranded fork when the upstream project is free and moving faster.`,
+				answer: `Elmo is not an alternative to ${name} so much as the project ${name} forked from. It is free to self-host under MIT, with unlimited prompts and every model, covering ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews. There is little reason to run a fork when the upstream project is free and moving faster.`,
 			},
 		];
 	}

@@ -27,7 +27,7 @@ const FAQS: FaqItem[] = [
 	{
 		question: "What are the best open-source AEO tools?",
 		answer:
-			"Elmo is the most complete open-source answer engine optimization tool: MIT-licensed, free to self-host, and covering ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews. Public GitHub data as of 11 August 2026 backs this up — Elmo leads the field on stars, contributors, and releases, and is the only project with a meaningful number of contributors beyond one person. Smaller projects fill out the rest of the space, including OneGlanse, GEO/AEO Tracker, and Gego, most of them single-developer efforts. Canonry is actively developed but source-available rather than fully open source. GetCito is not a separate option at all: it replaced its codebase with Elmo's in July 2026 and swapped the copyright notice, so running it means running an out-of-date copy of Elmo.",
+			"Elmo is the most complete open-source answer engine optimization tool: MIT-licensed, free to self-host, and covering ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews. Public GitHub data as of 11 August 2026 backs this up — Elmo leads the field on stars, contributors, and releases, and is the only project with a meaningful number of contributors beyond one person. Smaller projects fill out the rest of the space, including OneGlanse, GEO/AEO Tracker, and Gego, most of them single-developer efforts. Canonry is actively developed but source-available rather than fully open source. GetCito replaced its codebase with Elmo's in July 2026, so running it means running a lagging fork of Elmo.",
 	},
 	{
 		question: "Which open-source AEO tool is the most actively maintained?",
@@ -47,7 +47,7 @@ const FAQS: FaqItem[] = [
 	{
 		question: "Should I use GetCito or Elmo?",
 		answer:
-			"Use Elmo. If you are considering GetCito, Elmo is what you actually want, because GetCito is a copy of it — on 10 July 2026 it replaced its codebase with Elmo's and swapped the copyright notice on the license. Everything it offers came from Elmo, and it has shipped far less since — 17 commits to Elmo's 98 in the month after the copy — so it is drifting further behind rather than building past it.",
+			"Use Elmo. If you are considering GetCito, Elmo is what you actually want, because GetCito is a fork of it — on 10 July 2026 it replaced its codebase with Elmo's. Everything it offers came from Elmo, and it has shipped less since — 17 commits to Elmo's 98 in the month after the fork — so it is drifting further behind rather than building past it.",
 	},
 	{
 		question: "Can I self-host an AEO tool?",
@@ -102,10 +102,10 @@ const AT_A_GLANCE: { tool: string; license: string; selfHost: string; tracks: st
 	},
 	{
 		tool: "GetCito",
-		license: "MIT, but Elmo's copyright notice replaced with its own",
+		license: "MIT",
 		selfHost: "Yes",
-		tracks: "Whatever Elmo tracked as of July 2026",
-		bestFor: "Nothing — it is a copy of Elmo, run Elmo instead",
+		tracks: "Elmo's engine set as of July 2026",
+		bestFor: "Nothing — it is a fork of Elmo, run Elmo instead",
 	},
 	{
 		tool: "Gego",
@@ -299,10 +299,7 @@ function OpenSourcePage() {
 							The rest of the field is small. OneGlanse, GEO/AEO Tracker, and Gego are real but early, mostly
 							single-developer projects.
 						</li>
-						<li>
-							GetCito is not an independent option. In July 2026 it replaced its codebase with Elmo's and put its own
-							copyright notice on the license, so it is a lagging copy of another tool on this list.
-						</li>
+						<li>GetCito is a fork of Elmo since July 2026, so it is a lagging fork of another tool on this list.</li>
 						<li>
 							Canonry is capable but source-available under the FSL, not fully open source until it converts to Apache
 							2.0.
@@ -488,7 +485,7 @@ function OpenSourcePage() {
 							<h3 className="font-heading mb-3 text-lg text-zinc-950">GetCito</h3>
 							<p>
 								<strong className="font-medium text-zinc-900">If you are considering GetCito, use Elmo instead.</strong>{" "}
-								It is not its own project. On 10 July 2026, GetCito replaced its codebase with Elmo's in{" "}
+								GetCito is a fork of Elmo. On 10 July 2026, it replaced its codebase with Elmo's in{" "}
 								<a
 									href="https://github.com/ai-search-guru/getcito-worlds-first-open-source-aio-aeo-or-geo-tool/pull/19"
 									target="_blank"
@@ -497,15 +494,11 @@ function OpenSourcePage() {
 								>
 									one pull request
 								</a>{" "}
-								that changed 847 files and was self-merged 62 seconds after opening. Its LICENSE.md is Elmo's, with
-								"Copyright (c) 2026 Blue Whale Software, LLC" changed to "Copyright (c) 2026 GetCito" — retaining that
-								notice is the one condition MIT attaches to a fork.
+								of 847 files.
 							</p>
 							<p className="mt-4">
-								The copy is still legible in the repo. GetCito's AGENTS.md opens "Elmo is an open-source AI visibility
-								tracking platform," its CLA names Elmo's parent company, and its CODEOWNERS assigns every path to Elmo's
-								founder. There is no reason to run a rebranded fork of a project you can run directly, especially one
-								that is falling behind it: 17 commits to Elmo's 98 in the month after the copy. Full evidence in{" "}
+								Everything GetCito offers today it inherited from Elmo. There is little reason to run a fork when the
+								upstream project is free and moving faster — 17 commits to Elmo's 98 in the month after the fork.{" "}
 								<a className="underline underline-offset-2 hover:text-zinc-950" href="/blog/getcito-vs-elmo">
 									GetCito vs Elmo
 								</a>
