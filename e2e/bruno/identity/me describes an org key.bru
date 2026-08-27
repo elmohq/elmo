@@ -18,7 +18,7 @@ assert {
   res.status: eq 200
   res.body.keyType: eq organization
   res.body.organizationId: eq default
-  res.body.brandIds: isEmpty
+  res.body.brandIds: isNull
 }
 
 tests {

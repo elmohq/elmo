@@ -110,18 +110,21 @@ export const API_SCOPES = [
   "brands:write",
   "prompts:read",
   "prompts:write",
+  "prompts:delete",
   "competitors:read",
   "competitors:write",
+  "competitors:delete",
   "analytics:read",
   "runs:read",
   "billing:read",
-  "reports:read",
-  "reports:write",
 ] as const;
 
 export type ApiScope = (typeof API_SCOPES)[number];
 
 export const READ_SCOPES = API_SCOPES.filter((scope) => scope.endsWith(":read"));
+
+/** Everything short of destroying data — the preset most integrations want. */
+export const NON_DESTRUCTIVE_SCOPES = API_SCOPES.filter((scope) => !scope.endsWith(":delete"));
 
 export interface ApiKeyFixture {
   /** The plaintext token a request sends. Hashed on the way into the table. */
@@ -129,8 +132,8 @@ export interface ApiKeyFixture {
   name: string;
   organizationId: string;
   scopes: readonly ApiScope[];
-  /** Empty means every brand in the organization. */
-  brandIds: readonly string[];
+  /** Null means every brand in the organization. An empty array is never valid. */
+  brandIds: readonly string[] | null;
   enabled?: boolean;
   /** Milliseconds from seed time; negative for an already-expired key. */
   expiresInMs?: number;
@@ -143,7 +146,7 @@ export const API_KEYS = {
     name: "E2E org key (full)",
     organizationId: TEST_BRAND_ID,
     scopes: API_SCOPES,
-    brandIds: [],
+    brandIds: null,
   },
   /** Every read scope and no write scope: writes must 403, reads must succeed. */
   orgReadOnly: {
@@ -151,7 +154,7 @@ export const API_KEYS = {
     name: "E2E org key (read-only)",
     organizationId: TEST_BRAND_ID,
     scopes: READ_SCOPES,
-    brandIds: [],
+    brandIds: null,
   },
   /** Only brands:read — every other resource must 403 on missing scope. */
   orgBrandsOnly: {
@@ -159,7 +162,15 @@ export const API_KEYS = {
     name: "E2E org key (brands only)",
     organizationId: TEST_BRAND_ID,
     scopes: ["brands:read"],
-    brandIds: [],
+    brandIds: null,
+  },
+  /** Every scope but the destructive ones: writes succeed, deletes must 403. */
+  orgNoDelete: {
+    token: "elmo_e2e_org_no_delete",
+    name: "E2E org key (no delete)",
+    organizationId: TEST_BRAND_ID,
+    scopes: NON_DESTRUCTIVE_SCOPES,
+    brandIds: null,
   },
   /**
    * Only analytics:read. Proves the analytics endpoints stand on their own
@@ -170,7 +181,7 @@ export const API_KEYS = {
     name: "E2E org key (analytics only)",
     organizationId: TEST_BRAND_ID,
     scopes: ["analytics:read"],
-    brandIds: [],
+    brandIds: null,
   },
   /** Full access except billing:read, so the billing endpoint must 403. */
   orgNoBilling: {
@@ -178,7 +189,7 @@ export const API_KEYS = {
     name: "E2E org key (no billing)",
     organizationId: TEST_BRAND_ID,
     scopes: API_SCOPES.filter((scope) => scope !== "billing:read"),
-    brandIds: [],
+    brandIds: null,
   },
   /** The other tenant. Must never see anything belonging to the default org. */
   nikeFull: {
@@ -186,7 +197,7 @@ export const API_KEYS = {
     name: "E2E Nike key (full)",
     organizationId: NIKE_ORG_ID,
     scopes: API_SCOPES,
-    brandIds: [],
+    brandIds: null,
   },
   /**
    * Nike's org, narrowed to one of its two brands. Proves a restriction narrows
@@ -205,7 +216,7 @@ export const API_KEYS = {
     name: "E2E org key (expired)",
     organizationId: TEST_BRAND_ID,
     scopes: API_SCOPES,
-    brandIds: [],
+    brandIds: null,
     expiresInMs: -60_000,
   },
   /** Cloud only: an org one prompt short of a custom plan's limit. */
@@ -214,7 +225,7 @@ export const API_KEYS = {
     name: "E2E capped key",
     organizationId: CAPPED_ORG_ID,
     scopes: API_SCOPES,
-    brandIds: [],
+    brandIds: null,
   },
   /** Cloud only: an org with no subscription. Reads work, writes are 402. */
   unpaid: {
@@ -222,7 +233,7 @@ export const API_KEYS = {
     name: "E2E unpaid key",
     organizationId: UNPAID_ORG_ID,
     scopes: API_SCOPES,
-    brandIds: [],
+    brandIds: null,
   },
   /** Revoked: must 401 exactly like an unknown key. */
   disabled: {
@@ -230,7 +241,7 @@ export const API_KEYS = {
     name: "E2E org key (revoked)",
     organizationId: TEST_BRAND_ID,
     scopes: API_SCOPES,
-    brandIds: [],
+    brandIds: null,
     enabled: false,
   },
 } as const satisfies Record<string, ApiKeyFixture>;

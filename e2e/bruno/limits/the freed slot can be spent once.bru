@@ -1,7 +1,7 @@
 meta {
-  name: an admin key is not bound by the plan
+  name: the freed slot can be spent, but only once
   type: http
-  seq: 6
+  seq: 8
   tags: [
     cloud
   ]
@@ -14,13 +14,13 @@ post {
 }
 
 headers {
-  Authorization: Bearer {{adminKey}}
+  Authorization: Bearer {{cappedKey}}
 }
 
 body:json {
   {
     "brandId": "{{cappedBrandId}}",
-    "value": "Operator prompt past the plan limit"
+    "value": "Capped tenant prompt filling the freed slot"
   }
 }
 
@@ -29,5 +29,5 @@ assert {
 }
 
 script:post-response {
-  bru.setVar("operatorPromptId", res.getBody().id);
+  bru.setVar("freedSlotPromptId", res.getBody().id);
 }

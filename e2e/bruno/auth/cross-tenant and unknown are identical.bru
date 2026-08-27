@@ -20,7 +20,8 @@ assert {
 }
 
 tests {
-  test("the body is byte-identical to the out-of-scope brand's", function() {
-    expect(JSON.stringify(res.getBody())).to.equal(bru.getVar("crossTenantBody"));
+  test("a brand held by another tenant reads exactly like one that never existed", function() {
+    const shape = JSON.stringify(res.getBody()).split("definitely-not-a-brand").join("<id>");
+    expect(shape).to.equal(bru.getVar("crossTenantShape"));
   });
 }

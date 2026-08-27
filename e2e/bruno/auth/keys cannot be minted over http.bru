@@ -1,0 +1,31 @@
+meta {
+  name: the key plugin's create endpoint is not reachable over HTTP
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/api/auth/api-key/create
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "forged",
+    "organizationId": "{{nikeOrgId}}",
+    "metadata": { "brandIds": [] }
+  }
+}
+
+assert {
+  res.status: gte 400
+  res.status: lt 500
+}
+
+tests {
+  test("no key comes back, whatever the status", function() {
+    expect(res.getBody() && res.getBody().key, "a forged request must never yield a usable key")
+      .to.be.undefined;
+  });
+}

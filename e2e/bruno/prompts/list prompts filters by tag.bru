@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/v1/prompts?brandId={{brandId}}&tag=monitoring
+  url: {{baseUrl}}/api/v1/prompts?brandId={{brandId}}&tags=monitoring
   body: none
   auth: none
 }
@@ -16,7 +16,7 @@ headers {
 
 params:query {
   brandId: {{brandId}}
-  tag: monitoring
+  tags: monitoring
 }
 
 assert {

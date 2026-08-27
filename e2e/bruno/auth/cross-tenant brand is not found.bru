@@ -20,5 +20,8 @@ assert {
 }
 
 script:post-response {
-  bru.setVar("crossTenantBody", JSON.stringify(res.getBody()));
+  // Normalize the id out: a 404 names the brand it was asked for, so two
+  // different ids can never produce byte-identical bodies. What has to match is
+  // everything else.
+  bru.setVar("crossTenantShape", JSON.stringify(res.getBody()).split("nike").join("<id>"));
 }

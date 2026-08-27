@@ -1,14 +1,14 @@
 meta {
-  name: re-enabling past the limit is rejected
+  name: re-enabling the disabled prompt now exceeds the plan
   type: http
-  seq: 8
+  seq: 9
   tags: [
     cloud
   ]
 }
 
 patch {
-  url: {{baseUrl}}/api/v1/prompts/{{operatorPromptId}}
+  url: {{baseUrl}}/api/v1/prompts/{{cappedPromptId}}
   body: json
   auth: none
 }

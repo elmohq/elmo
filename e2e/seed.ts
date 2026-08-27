@@ -68,6 +68,11 @@ function toPermissions(scopes: readonly string[]): Record<string, string[]> {
 /**
  * Seed the API keys the Bruno suite authenticates as.
  *
+ * `reference_id` is the organization, not a user: the plugin is configured with
+ * `references: "organization"`, which is what makes a key outlive whoever
+ * issued it. Only the brand narrowing lives in metadata, because metadata is
+ * writable by anyone with a session and so may never grant anything.
+ *
  * Skipped when the `apikey` table isn't there yet: organization keys are still
  * being built, and the seeder has to keep working — and keep every other suite
  * working — until the migration lands. The Bruno cases that need these keys
@@ -81,14 +86,6 @@ async function seedApiKeys(client: pg.Client): Promise<void> {
   ).rows;
   if (!exists) {
     console.log("  Skipped API keys: the apikey table does not exist yet");
-    return;
-  }
-
-  const [{ id: ownerId }] = (
-    await client.query<{ id: string }>("SELECT id FROM \"user\" ORDER BY created_at LIMIT 1")
-  ).rows ?? [];
-  if (!ownerId) {
-    console.log("  Skipped API keys: no user to attribute them to yet");
     return;
   }
 
@@ -107,11 +104,11 @@ async function seedApiKeys(client: pg.Client): Promise<void> {
         key.name,
         key.token.slice(0, 12),
         hashApiKey(key.token),
-        ownerId,
+        key.organizationId,
         key.enabled !== false,
         key.expiresInMs === undefined ? null : new Date(Date.now() + key.expiresInMs),
         JSON.stringify(toPermissions(key.scopes)),
-        JSON.stringify({ organizationId: key.organizationId, brandIds: key.brandIds }),
+        key.brandIds === null ? null : JSON.stringify({ brandIds: key.brandIds }),
       ],
     );
   }

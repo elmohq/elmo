@@ -2,7 +2,8 @@
 	"openapi": "3.0.3",
 	"info": {
 		"title": "Elmo API",
-		"description": "Read and manage the brands, prompts, competitors, and AI-visibility analytics of an Elmo deployment.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header. Two kinds of token are accepted.\n\n**Instance admin keys** come from the operator's `ADMIN_API_KEYS` environment variable. They reach every organization and every endpoint, including the admin-only ones, and are not subject to plan limits or rate limits.\n\n**Organization keys** (`elmo_…`) are issued from the dashboard. A key acts inside exactly one organization, carries an explicit set of scopes, and may be narrowed further to a subset of that organization's brands. Plan limits, read-only mode, and per-key rate limits all apply.\n\n## Scopes\n\nEach operation lists the scope it requires in `x-elmo-scopes`. Admin keys hold every scope implicitly.\n\n| Scope | Grants |\n| --- | --- |\n| `brands:read` / `brands:write` | Read or manage brands and organizations |\n| `prompts:read` / `prompts:write` | Read or manage prompts |\n| `competitors:read` / `competitors:write` | Read or manage competitors |\n| `analytics:read` | Read aggregated visibility, share of voice, citations, and fan-out |\n| `runs:read` | Read individual model answers and their citations |\n| `billing:read` | Read the organization's plan, limits, and usage |\n| `reports:read` / `reports:write` | Read or generate one-shot Share of Voice reports |\n\nThere is deliberately no billing write scope: the API cannot change a subscription, an add-on quantity, or a payment method under any key, including an admin key.\n\n## Access and errors\n\nA brand outside the calling key's reach answers `404` with the same body a brand that does not exist would, so a key can never probe another tenant's data. A key that is valid but lacks the scope an operation requires answers `403` naming the missing scope.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Lists take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object. Analytics endpoints take either `startDate` + `endDate` (with an optional `timezone`) or the `lookback` shorthand — one form or the other, never both.\n\n## Stability\n\n`x-elmo-stability: stable` means the response shape will only ever gain fields. `beta` means the endpoint works and is supported, but its shape may still change while it is being used in anger. `planned` means it is specified but not built yet — those operations are stripped from the document this deployment serves, so anything you can read here you can call.",
+		"description": "Read and manage the brands, prompts, competitors, and AI-visibility analytics of an Elmo deployment.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header. Two kinds of token are accepted.\n\n**Instance admin keys** come from the operator's `ADMIN_API_KEYS` environment variable. They reach every organization and every endpoint, including the admin-only ones, and are not subject to plan limits or rate limits.\n\n**Organization keys** (`elmo_…`) are issued from the dashboard. A key acts inside exactly one organization, carries an explicit set of scopes, and may be narrowed further to a subset of that organization's brands. Plan limits, read-only mode, and per-key rate limits all apply.\n\n## Scopes\n\nEach operation lists the scope it requires in `x-elmo-scopes`. Admin keys hold every scope implicitly.\n\n| Scope | Grants |\n| --- | --- |\n| `brands:read` / `brands:write` | Read or manage brands |\n| `prompts:read` / `prompts:write` / `prompts:delete` | Read, manage, or delete prompts |\n| `competitors:read` / `competitors:write` / `competitors:delete` | Read, manage, or delete competitors |\n| `analytics:read` | Read aggregated visibility, share of voice, citations, and fan-out |\n| `runs:read` | Read individual model answers and their citations |\n| `billing:read` | Read the organization's plan, limits, and usage |\n\nDeleting is a scope of its own wherever a delete exists: removing a prompt takes its runs and citations with it, and an integration that syncs prompts has no business erasing history.\n\nThere is deliberately no billing write scope: the API cannot change a subscription, an add-on quantity, or a payment method under any key, including an admin key. Operations marked `x-elmo-admin-only` — report generation and brand analysis — are reachable with an instance admin key only; no scope grants them, because both spend provider budget with no organization to bill it to.\n\n## Access and errors\n\nA brand outside the calling key's reach answers `404` with the same body a brand that does not exist would, so a key can never probe another tenant's data. A key that is valid but lacks the scope an operation requires answers `403` naming the missing scope.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Lists take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object. Analytics endpoints take either `startDate` + `endDate` (with an optional `timezone`) or the `lookback` shorthand — one form or the other, never both.\n\n## Stability\n\n`x-elmo-stability: stable` means the response shape will only ever gain fields. `beta` means the endpoint works and is supported, but its shape may still change while it is being used in anger. `planned` means it is specified but not built yet — those operations are stripped from the document this deployment serves, so anything you can read here you can call.",
+		"x-elmo-published-description": "Read and manage the brands, prompts, competitors, and AI-visibility analytics of an Elmo deployment.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header, taken from the operator's `ADMIN_API_KEYS` environment variable.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Lists take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.",
 		"version": "1.1.0",
 		"contact": {
 			"name": "Elmo",
@@ -151,26 +152,7 @@
 					},
 					"code": {
 						"type": "string",
-						"description": "Stable machine-readable code. Unrecognized values should be treated as the HTTP status implies.",
-						"enum": [
-							"unauthorized",
-							"insufficient_scope",
-							"forbidden",
-							"not_found",
-							"validation_error",
-							"conflict",
-							"rate_limited",
-							"read_only",
-							"no_active_plan",
-							"brand_limit",
-							"prompt_limit",
-							"platform_not_in_plan",
-							"platform_picks_exceeded",
-							"premium_not_in_plan",
-							"premium_pool_exhausted",
-							"cadence_faster_than_plan",
-							"internal_error"
-						]
+						"description": "Stable machine-readable code. Deliberately not an enum: new values are added without a version bump, so treat an unrecognized one as its HTTP status implies. Currently: `unauthorized`, `insufficient_scope`, `forbidden`, `not_found`, `validation_error`, `conflict`, `rate_limited`, `read_only`, `no_active_plan`, `brand_limit`, `prompt_limit`, `platform_not_in_plan`, `platform_picks_exceeded`, `premium_not_in_plan`, `premium_pool_exhausted`, `cadence_faster_than_plan`, `internal_error`."
 					}
 				},
 				"required": ["error"]
@@ -493,6 +475,10 @@
 							},
 							"required": ["value"]
 						}
+					},
+					"organizationId": {
+						"description": "Workspace to create the brand in. Admin keys only, and optional: omitted, an admin key provisions a new organization named after the brand id, exactly as it does today. Ignored for organization keys, which always create inside their own.",
+						"type": "string"
 					}
 				},
 				"required": ["id", "name", "domains"]
@@ -847,11 +833,12 @@
 						"description": "Scopes this key holds. Admin keys list every scope."
 					},
 					"brandIds": {
+						"description": "Brands the key is narrowed to, or null when it reaches every brand in its organization. Never an empty array — a restriction to no brands is rejected at creation rather than treated as no restriction.",
 						"type": "array",
 						"items": {
 							"type": "string"
 						},
-						"description": "Brands the key is narrowed to. Empty means every brand it can otherwise reach."
+						"nullable": true
 					},
 					"createdAt": {
 						"type": "string",
@@ -893,6 +880,16 @@
 							}
 						},
 						"required": ["mode", "billingEnabled", "readOnly"]
+					},
+					"createdBy": {
+						"description": "Name of the member who issued the key. Null for admin keys.",
+						"type": "string",
+						"nullable": true
+					},
+					"lastUsedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
 					}
 				},
 				"required": ["keyType", "organizationId", "scopes", "brandIds", "deployment"]
@@ -1048,13 +1045,9 @@
 						"type": "string",
 						"description": "Display name."
 					},
-					"status": {
-						"type": "string",
-						"description": "Subscription status as reported by the payment provider."
-					},
 					"standing": {
 						"type": "string",
-						"description": "What the subscription means for service: `active` and `grace` keep tracking running, `paused` stops it, `none` is unsubscribed.",
+						"description": "What the subscription means for service, and the only field a caller needs to act on: `active` and `grace` keep tracking running, `paused` stops it, `none` is unsubscribed. The payment provider's own status string is deliberately not passed through.",
 						"enum": ["active", "grace", "paused", "none"]
 					},
 					"interval": {
@@ -1075,7 +1068,7 @@
 						"description": "Whether prompts are currently being sampled."
 					}
 				},
-				"required": ["key", "name", "status", "standing", "cancelAtPeriodEnd", "trackingActive"]
+				"required": ["key", "name", "standing", "cancelAtPeriodEnd", "trackingActive"]
 			},
 			"BrandSummary": {
 				"description": "Every headline figure the dashboard shows for a brand, in one request.",
@@ -1968,7 +1961,7 @@
 			"Limit": {
 				"name": "limit",
 				"in": "query",
-				"description": "Items per page.",
+				"description": "Items per page. Values above the maximum are clamped, not rejected.",
 				"required": false,
 				"schema": {
 					"type": "integer",
@@ -2063,7 +2056,8 @@
 							"minimum": 1,
 							"maximum": 100,
 							"default": 20
-						}
+						},
+						"description": "Items per page. Values above the maximum are clamped, not rejected."
 					},
 					{
 						"name": "enabled",
@@ -2833,7 +2827,8 @@
 							"minimum": 1,
 							"maximum": 100,
 							"default": 20
-						}
+						},
+						"description": "Items per page. Values above the maximum are clamped, not rejected."
 					},
 					{
 						"name": "q",
@@ -3091,7 +3086,7 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": ["competitors:write"]
+				"x-elmo-scopes": ["competitors:delete"]
 			}
 		},
 		"/me": {
@@ -3131,11 +3126,11 @@
 		"/organizations": {
 			"get": {
 				"summary": "List organizations",
-				"description": "One entry for an organization key. Every organization for an instance admin key.",
+				"description": "One entry for an organization key — the one it acts inside. Every organization for an instance admin key. No scope required: a key can only ever see the workspace it is already bound to.",
 				"operationId": "listOrganizations",
 				"tags": ["Organizations"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": ["brands:read"],
+				"x-elmo-scopes": [],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/Page"
@@ -3173,11 +3168,11 @@
 		"/organizations/{organizationId}": {
 			"get": {
 				"summary": "Get an organization",
-				"description": "An organization outside the key's reach answers `404`, identically to one that does not exist.",
+				"description": "No scope required. An organization outside the key's reach answers `404`, identically to one that does not exist.",
 				"operationId": "getOrganization",
 				"tags": ["Organizations"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": ["brands:read"],
+				"x-elmo-scopes": [],
 				"parameters": [
 					{
 						"name": "organizationId",
@@ -3328,7 +3323,7 @@
 					{
 						"name": "limit",
 						"in": "query",
-						"description": "Number of items per page",
+						"description": "Items per page. Values above the maximum are clamped, not rejected.",
 						"required": false,
 						"schema": {
 							"type": "integer",
@@ -3347,9 +3342,9 @@
 						}
 					},
 					{
-						"name": "tag",
+						"name": "tags",
 						"in": "query",
-						"description": "Comma-separated tags; a prompt matches if it carries any of them.",
+						"description": "Comma-separated tags. A prompt matches if it carries any of them.",
 						"required": false,
 						"schema": {
 							"type": "string"
@@ -3710,7 +3705,7 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": ["prompts:write"]
+				"x-elmo-scopes": ["prompts:delete"]
 			}
 		},
 		"/prompts/{promptId}/runs": {
@@ -3999,7 +3994,7 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": ["reports:write"],
+				"x-elmo-scopes": [],
 				"x-elmo-admin-only": true
 			},
 			"get": {
@@ -4022,7 +4017,7 @@
 					{
 						"name": "limit",
 						"in": "query",
-						"description": "Number of items per page",
+						"description": "Items per page. Values above the maximum are clamped, not rejected.",
 						"required": false,
 						"schema": {
 							"type": "integer",
@@ -4082,7 +4077,7 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": ["reports:read"],
+				"x-elmo-scopes": [],
 				"x-elmo-admin-only": true
 			}
 		},
@@ -4306,7 +4301,7 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": ["reports:read"],
+				"x-elmo-scopes": [],
 				"x-elmo-admin-only": true
 			}
 		},

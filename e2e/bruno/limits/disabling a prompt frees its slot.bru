@@ -1,5 +1,5 @@
 meta {
-  name: disabling frees a slot and re-enabling spends it again
+  name: disabling a prompt frees its slot
   type: http
   seq: 7
   tags: [
@@ -8,7 +8,7 @@ meta {
 }
 
 patch {
-  url: {{baseUrl}}/api/v1/prompts/{{operatorPromptId}}
+  url: {{baseUrl}}/api/v1/prompts/{{cappedPromptId}}
   body: json
   auth: none
 }
