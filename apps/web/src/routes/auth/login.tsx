@@ -96,12 +96,14 @@ export function SSOLogin({ returnTo }: { returnTo?: string }) {
 	if (error) {
 		return (
 			<FullPageCard title="Sign in">
-				<Alert variant="destructive">
-					<AlertDescription>{error}</AlertDescription>
-				</Alert>
-				<Button className="w-full" onClick={() => window.location.reload()}>
-					Try Again
-				</Button>
+				<div className="w-full space-y-4">
+					<Alert variant="destructive">
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+					<Button className="w-full" onClick={() => window.location.reload()}>
+						Try Again
+					</Button>
+				</div>
 			</FullPageCard>
 		);
 	}
