@@ -18,6 +18,7 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
 import { useWorkspaces } from "@/hooks/use-workspaces";
+import { brandParams, brandSegment, orgParams } from "@/lib/workspaces/paths";
 import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
 
 /** Two letters is enough to tell workspaces apart at a glance in the rail. */
@@ -55,7 +56,7 @@ export function WorkspaceSwitcher({
 	const others = workspaces.filter((w) => w.id !== current?.id);
 	const listed = current ? [current, ...others] : others;
 
-	const currentBrand = current?.brands.find((brand) => brand.id === params.brand);
+	const currentBrand = current?.brands.find((brand) => brandSegment(brand) === params.brand);
 	const workspaceName = current?.name ?? params.org ?? "";
 	const brandName = resolvedBrandName ?? currentBrand?.name;
 	const close = () => setOpenMobile(false);
@@ -93,9 +94,9 @@ export function WorkspaceSwitcher({
 								</DropdownMenuLabel>
 								{entry.brands.map((brand) => (
 									<DropdownMenuItem key={brand.id} asChild className="cursor-pointer">
-										<Link to="/app/$org/$brand" params={{ org: entry.slug, brand: brand.id }} onClick={close}>
+										<Link to="/app/org/$org/brand/$brand" params={brandParams(entry, brand)} onClick={close}>
 											<span className="truncate">{brand.name}</span>
-											{brand.id === params.brand && entry.id === current?.id && (
+											{brandSegment(brand) === params.brand && entry.id === current?.id && (
 												<IconCheck className="ml-auto size-3.5 shrink-0" />
 											)}
 										</Link>
@@ -103,7 +104,7 @@ export function WorkspaceSwitcher({
 								))}
 								{entry.brands.length === 0 && (
 									<DropdownMenuItem asChild className="cursor-pointer">
-										<Link to="/app/$org" params={{ org: entry.slug }} onClick={close}>
+										<Link to="/app/org/$org" params={orgParams(entry)} onClick={close}>
 											<span className="text-muted-foreground">Set up this workspace</span>
 										</Link>
 									</DropdownMenuItem>
@@ -112,7 +113,7 @@ export function WorkspaceSwitcher({
 								    per workspace: the same menu can create in one and not another. */}
 								{entry.canCreateBrand && (
 									<DropdownMenuItem asChild className="cursor-pointer">
-										<Link to="/app/$org/new" params={{ org: entry.slug }} onClick={close}>
+										<Link to="/app/org/$org/new" params={orgParams(entry)} onClick={close}>
 											<IconPlus />
 											New brand
 										</Link>
@@ -142,7 +143,7 @@ export function WorkspaceSwitcher({
 						)}
 						{current && (
 							<DropdownMenuItem asChild className="cursor-pointer">
-								<Link to="/app/$org/settings" params={{ org: current.slug }} onClick={close}>
+								<Link to="/app/org/$org/settings" params={orgParams(current)} onClick={close}>
 									<IconSettings />
 									Workspace settings
 								</Link>

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
+import { useBrandId } from "@/hooks/use-brand-id";
 import { getCitationsFn } from "@/server/citations";
 
 export interface CitationFilters {
@@ -14,8 +14,8 @@ export const citationKeys = {
 };
 
 export function useCitations(brandId?: string, filters?: CitationFilters) {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+	const routeBrandId = useBrandId();
+	const resolvedBrandId = brandId || routeBrandId;
 
 	const query = useQuery({
 		queryKey: citationKeys.list(resolvedBrandId || "", filters),

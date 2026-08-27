@@ -14,7 +14,7 @@ const PROMPT_TEXT = "What is the best AI monitoring tool";
 
 test.describe("Prompt Details Page", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/app/${ORG_SLUG}/${BRAND_ID}/prompts/${PROMPT_ID}`);
+    await page.goto(`/app/org/${ORG_SLUG}/brand/${BRAND_ID}/prompts/${PROMPT_ID}`);
     // Wait for the prompt text to appear (route loader + client data fetch)
     await expect(page.getByText(PROMPT_TEXT)).toBeVisible({ timeout: 30_000 });
   });
@@ -77,7 +77,7 @@ test.describe("Prompt Details Page", () => {
 
   test("has back navigation", async ({ page }) => {
     // There should be breadcrumb or link navigation back to the parent page
-    const backNav = page.locator("a[href*='/app/default']").first();
+    const backNav = page.locator("a[href*='/app/org/default']").first();
     await expect(backNav).toBeVisible();
   });
 });

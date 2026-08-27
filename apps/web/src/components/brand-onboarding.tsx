@@ -33,7 +33,7 @@ export default function BrandOnboarding({ workspaceSlug, brandId, brandName, pla
 		setError("");
 
 		try {
-			await createBrandFn({
+			const { brand } = await createBrandFn({
 				data: {
 					brandId,
 					brandName,
@@ -44,7 +44,12 @@ export default function BrandOnboarding({ workspaceSlug, brandId, brandName, pla
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
 			await router.invalidate();
-			await navigate({ to: "/app/$org/$brand", params: { org: workspaceSlug, brand: brandId } });
+			// The brand arrives with a slug, so land on it rather than on the id and
+			// a redirect.
+			await navigate({
+				to: "/app/org/$org/brand/$brand",
+				params: { org: workspaceSlug, brand: brand.slug ?? brandId },
+			});
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "An error occurred");
 		} finally {

@@ -5,7 +5,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getDefaultDelayHours, MAX_COMPETITORS } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { findUniqueBrandId, slugify } from "@workspace/lib/db/provisioning";
+import {
+	findUniqueBrandId,
+	findUniqueBrandSlug,
+	isBrandSlugAvailable,
+	isValidSlug,
+	MAX_SLUG_LENGTH,
+	slugify,
+} from "@workspace/lib/db/provisioning";
 import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
 import {
 	assertCanCreateBrand,
@@ -24,7 +31,13 @@ import {
 import { defaultPlatformPicks, resolvePromptRunPlan } from "@workspace/lib/run-policy";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { listUserOrganizations, requireAuthSession, requireBrandAccess, requireOrgAccess } from "@/lib/auth/helpers";
+import {
+	listUserOrganizations,
+	requireAuthSession,
+	requireBrandAccess,
+	requireBrandOrganization,
+	requireOrgAccess,
+} from "@/lib/auth/helpers";
 import { evaluateRequireCanCreateBrands, resolveBrandOrganization } from "@/lib/auth/policies";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
@@ -260,6 +273,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 
 		const defaultDomains = getDefaultBrandDomains();
 		const enabledModels = await resolveCreateEnabledModels(data.brandId, data.enabledModels);
+		const slug = await findUniqueBrandSlug(data.brandId, slugify(data.brandName));
 
 		const result = await db
 			.insert(brands)
@@ -269,6 +283,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 				// brand belongs to that org.
 				organizationId: data.brandId,
 				name: data.brandName,
+				slug,
 				website: urlValidation.formattedUrl,
 				enabled: true,
 				...(enabledModels && { enabledModels }),
@@ -340,7 +355,12 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 		const orgId = choice.organizationId;
 		await assertCanCreateBrand(orgId);
 
-		const brandId = await findUniqueBrandId(slugify(trimmedName));
+		const baseSlug = slugify(trimmedName);
+		const brandId = await findUniqueBrandId(baseSlug);
+		// The id is globally unique and may have picked up a suffix on the way;
+		// the slug only has to clear this workspace, so it usually keeps the plain
+		// name even when the id could not.
+		const slug = await findUniqueBrandSlug(orgId, baseSlug);
 		const defaultDomains = getDefaultBrandDomains();
 		const enabledModels = await resolveCreateEnabledModels(orgId, data.enabledModels);
 
@@ -348,13 +368,14 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 			id: brandId,
 			organizationId: orgId,
 			name: trimmedName,
+			slug,
 			website: urlValidation.formattedUrl,
 			enabled: true,
 			...(enabledModels && { enabledModels }),
 			...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
 		});
 
-		return { brandId };
+		return { brandId, brandSlug: slug };
 	});
 
 /**
@@ -572,4 +593,35 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 			.returning();
 
 		return result;
+	});
+
+export interface BrandSlugResult {
+	ok: boolean;
+	/** Why the slug was refused, for the field to say so without a thrown error. */
+	error?: "invalid" | "taken";
+	slug?: string;
+}
+
+/**
+ * Set the brand's URL segment.
+ *
+ * Unique within the workspace rather than globally — `/app/org/$org/brand/$brand`
+ * has already named the workspace by the time this segment is read. Ids are
+ * checked alongside slugs because that segment resolves as either, so a slug
+ * matching a sibling's id would make one URL name two brands.
+ */
+export const setBrandSlugFn = createServerFn({ method: "POST" })
+	.validator(z.object({ brandId: z.string(), slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH) }))
+	.handler(async ({ data }): Promise<BrandSlugResult> => {
+		const session = await requireAuthSession();
+		const org = await requireBrandOrganization(session.user.id, data.brandId);
+
+		if (getDeployment().features.readOnly) throw new Error("This deployment is read-only");
+		if (!isValidSlug(data.slug)) return { ok: false, error: "invalid" };
+		if (!(await isBrandSlugAvailable(org.id, data.slug, { excludeBrandId: data.brandId }))) {
+			return { ok: false, error: "taken" };
+		}
+
+		await db.update(brands).set({ slug: data.slug }).where(eq(brands.id, data.brandId));
+		return { ok: true, slug: data.slug };
 	});

@@ -27,14 +27,14 @@ export async function decideBrandCreation(orgIds: string[]): Promise<Map<string,
 /** The brands a workspace owns, in the order every list of them uses. */
 async function listWorkspaceBrands(organizationId: string): Promise<WorkspaceBrand[]> {
 	return db
-		.select({ id: brands.id, name: brands.name, onboarded: brands.onboarded })
+		.select({ id: brands.id, slug: brands.slug, name: brands.name, onboarded: brands.onboarded })
 		.from(brands)
 		.where(eq(brands.organizationId, organizationId))
 		.orderBy(asc(brands.name));
 }
 
 /**
- * The workspace an `/app/$org` page belongs to, with everything the shell
+ * The workspace an `/app/org/$org` page belongs to, with everything the shell
  * around it renders: its name, its brands, and whether another brand can be
  * added. The layouts load this so the rail is complete on first paint and stays
  * usable if the switcher's all-workspaces query fails.

@@ -11,7 +11,6 @@
 
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
-import { useOrgSlug } from "@/hooks/use-workspaces";
 import { getModelMeta } from "@workspace/config/models";
 import {
 	PREMIUM_MODELS,
@@ -34,6 +33,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { cn } from "@workspace/ui/lib/utils";
 import { Inbox, ListPlus, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
+import { useOrgSlug } from "@/hooks/use-workspaces";
 
 export interface EditablePrompt {
 	id?: string;
@@ -76,7 +76,7 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 function BillingLink({ children }: { children: ReactNode }) {
 	const org = useOrgSlug();
 	return (
-		<Link to="/app/$org/settings/billing" params={{ org }} className="underline">
+		<Link to="/app/org/$org/settings/billing" params={{ org }} className="underline">
 			{children}
 		</Link>
 	);
@@ -137,7 +137,9 @@ function PremiumModelsField({
 							// Normalized through the catalog on every toggle, because that is
 							// what the server stores — appending in click order instead would
 							// reshuffle the row the moment a save came back.
-							onClick={() => onChange(selectPremiumModels(checked ? selected.filter((m) => m !== model) : [...selected, model]))}
+							onClick={() =>
+								onChange(selectPremiumModels(checked ? selected.filter((m) => m !== model) : [...selected, model]))
+							}
 							className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							<Checkbox checked={checked} disabled={atCapacity && !checked} className="pointer-events-none" />

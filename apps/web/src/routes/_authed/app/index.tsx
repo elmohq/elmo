@@ -15,6 +15,7 @@ import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import FullPageCard from "@/components/full-page-card";
 import { requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
+import { brandParams, orgParams, workspacePath } from "@/lib/workspaces/paths";
 import { listWorkspacesFn, type WorkspaceWithBrands } from "@/server/workspaces";
 
 const getWorkspacePickerData = createServerFn({ method: "GET" }).handler(
@@ -55,7 +56,7 @@ export const Route = createFileRoute("/_authed/app/")({
 		// One workspace is no choice at all — and it is the common case, so the
 		// picker would be a page users click through on the way to their work.
 		if (data.workspaces.length === 1) {
-			throw redirect({ to: "/app/$org", params: { org: data.workspaces[0].slug } });
+			throw redirect({ to: "/app/org/$org", params: orgParams(data.workspaces[0]) });
 		}
 
 		return data;
@@ -80,22 +81,22 @@ function WorkspacePickerPage() {
 				{workspaces.map((workspace) => (
 					<div key={workspace.id} className="space-y-2">
 						<div className="flex items-baseline justify-between gap-3">
-							<Link to="/app/$org" params={{ org: workspace.slug }} className="font-medium hover:underline">
+							<Link to="/app/org/$org" params={orgParams(workspace)} className="font-medium hover:underline">
 								{workspace.name}
 							</Link>
-							<span className="text-xs text-muted-foreground">/app/{workspace.slug}</span>
+							<span className="text-xs text-muted-foreground">{workspacePath(workspace)}</span>
 						</div>
 						<div className="flex flex-col space-y-2">
 							{workspace.brands.map((brand) => (
 								<Button key={brand.id} asChild variant="secondary">
-									<Link to="/app/$org/$brand" params={{ org: workspace.slug, brand: brand.id }}>
+									<Link to="/app/org/$org/brand/$brand" params={brandParams(workspace, brand)}>
 										{brand.name}
 									</Link>
 								</Button>
 							))}
 							{workspace.brands.length === 0 && (
 								<Button asChild variant="outline">
-									<Link to="/app/$org" params={{ org: workspace.slug }}>
+									<Link to="/app/org/$org" params={orgParams(workspace)}>
 										{canCreateBrands ? `Add a brand to ${workspace.name}` : `Set up ${workspace.name}`}
 									</Link>
 								</Button>
@@ -104,7 +105,7 @@ function WorkspacePickerPage() {
 							    so the picker offers creation only where it would go through. */}
 							{workspace.canCreateBrand && workspace.brands.length > 0 && (
 								<Button asChild variant="outline">
-									<Link to="/app/$org/new" params={{ org: workspace.slug }}>
+									<Link to="/app/org/$org/new" params={orgParams(workspace)}>
 										+ New brand
 									</Link>
 								</Button>

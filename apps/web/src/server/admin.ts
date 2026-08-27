@@ -39,7 +39,7 @@ async function requireAdmin() {
 
 /**
  * Workspace slug by org id, so admin's brand links land on the canonical
- * `/app/$org/$brand` instead of bouncing through a redirect.
+ * `/app/org/$org/brand/$brand` instead of bouncing through a redirect.
  */
 async function organizationSlugs(): Promise<Map<string, string>> {
 	const rows = await db.select({ id: organization.id, slug: organization.slug }).from(organization);
@@ -762,6 +762,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 
 		return {
 			brandId: brand.id,
+			brandSlug: brand.slug,
 			brandName: brand.name,
 			organizationSlug: orgSlugs.get(brand.organizationId) ?? brand.organizationId,
 			website: brand.website,

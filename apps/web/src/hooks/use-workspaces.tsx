@@ -8,13 +8,26 @@ export const workspaceKeys = {
 };
 
 /**
- * The workspace slug in the URL. Every page under `/app/$org` has one; the
+ * The workspace slug in the URL. Every page under `/app/org/$org` has one; the
  * empty string stands for the handful that sit outside it (the picker itself,
  * admin, the paywall), where callers use it to build nothing.
  */
 export function useOrgSlug(): string {
 	const params = useParams({ strict: false }) as { org?: string };
 	return params.org ?? "";
+}
+
+/**
+ * The `$brand` segment of the current URL — the brand's slug where it has one
+ * and its id otherwise.
+ *
+ * For linking, not for identifying: a component that needs to *name* the brand
+ * to the server wants `useBrandId`. Linking with the segment already in the
+ * address bar keeps navigation off the canonicalizing redirect.
+ */
+export function useBrandSlug(): string {
+	const params = useParams({ strict: false }) as { brand?: string };
+	return params.brand ?? "";
 }
 
 /**

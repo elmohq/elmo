@@ -1,7 +1,7 @@
-import { GoStack } from "react-icons/go";
-import { Button } from "@workspace/ui/components/button";
 import { Link } from "@tanstack/react-router";
-import { useOrgSlug } from "@/hooks/use-workspaces";
+import { Button } from "@workspace/ui/components/button";
+import { GoStack } from "react-icons/go";
+import { useBrandSlug, useOrgSlug } from "@/hooks/use-workspaces";
 
 interface HistoryButtonProps {
 	brandId?: string;
@@ -13,6 +13,7 @@ interface HistoryButtonProps {
 
 export function HistoryButton({ brandId, promptName, promptId, tab }: HistoryButtonProps) {
 	const org = useOrgSlug();
+	const brand = useBrandSlug();
 	if (!brandId || !promptId) {
 		return null;
 	}
@@ -20,8 +21,8 @@ export function HistoryButton({ brandId, promptName, promptId, tab }: HistoryBut
 	return (
 		<Button size="sm" variant="secondary" className="text-xs cursor-pointer h-6 flex items-center px-2" asChild>
 			<Link
-				to="/app/$org/$brand/prompts/$promptId"
-				params={{ org, brand: brandId, promptId }}
+				to="/app/org/$org/brand/$brand/prompts/$promptId"
+				params={{ org, brand, promptId }}
 				search={tab ? { tab } : undefined}
 			>
 				<GoStack className="size-3 mr-0.5" />

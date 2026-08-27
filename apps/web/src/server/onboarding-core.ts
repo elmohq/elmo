@@ -7,15 +7,16 @@
  * client bundle). Server functions live in onboarding.ts; everything else
  * lives here.
  */
-import { z } from "zod";
-import { eq, count } from "drizzle-orm";
-import { db } from "@workspace/lib/db/db";
-import { brands, prompts, competitors } from "@workspace/lib/db/schema";
-import { ensureOrganization } from "@workspace/lib/db/provisioning";
-import { assertCanAddPrompts, getBrandOrganizationId } from "@workspace/lib/entitlements";
+
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
+import { db } from "@workspace/lib/db/db";
+import { ensureOrganization, findUniqueBrandSlug, slugify } from "@workspace/lib/db/provisioning";
+import { brands, competitors, prompts } from "@workspace/lib/db/schema";
+import { assertCanAddPrompts, getBrandOrganizationId } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { dedupeDomains, dedupeAliases } from "@/lib/domain-categories";
+import { count, eq } from "drizzle-orm";
+import { z } from "zod";
+import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 
 // ============================================================================
@@ -318,12 +319,19 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	await db.transaction(async (tx) => {
 		await ensureOrganization({ id: input.id, name: input.name }, tx);
 
+		// The org was just minted from this same brand, so the plain name is free
+		// here even when the org's own slug had to take a suffix to clear the
+		// global namespace — `/app/org/nike-2/brand/nike` rather than dragging the
+		// suffix down both segments.
+		const slug = await findUniqueBrandSlug(input.id, slugify(input.name), tx);
+
 		const [inserted] = await tx
 			.insert(brands)
 			.values({
 				id: input.id,
 				organizationId: input.id,
 				name: input.name,
+				slug,
 				website: formattedWebsite,
 				additionalDomains,
 				aliases,

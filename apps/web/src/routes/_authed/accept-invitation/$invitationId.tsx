@@ -60,7 +60,7 @@ function AcceptInvitationPage() {
 			const { orgId } = await acceptInvitationFn({ data: { invitationId } });
 			// Into the workspace they just joined, rather than a picker that makes
 			// them find it — the id resolves and the URL settles on its slug.
-			navigate({ to: "/app/$org", params: { org: orgId } });
+			navigate({ to: "/app/org/$org", params: { org: orgId } });
 		} catch (err) {
 			setAcceptError(err instanceof Error ? err.message : "Failed to accept the invitation");
 			setAccepting(false);

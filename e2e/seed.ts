@@ -19,6 +19,9 @@ import {
   NIKE_PROMPT_IDS,
   PROMPT_IDS,
   REPORT_IDS,
+  SLUGGED_BRAND_ID,
+  SLUGGED_BRAND_NAME,
+  SLUGGED_BRAND_SLUG,
   TEST_BRAND_ID,
   TEST_BRAND_NAME,
   TEST_BRAND_WEBSITE,
@@ -67,6 +70,16 @@ async function seed() {
       [TEST_BRAND_ID, TEST_BRAND_NAME, TEST_BRAND_WEBSITE]
     );
     console.log("  Created brand:", TEST_BRAND_ID);
+
+    // A second brand in the same workspace, with a slug. The one above has none
+    // on purpose — between them they cover both halves of the URL rule: a brand
+    // that falls back to its id, and one whose id canonicalizes to its slug.
+    await client.query(
+      `INSERT INTO brands (id, organization_id, slug, name, website, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 'https://labs.example.com', true, true, NOW(), NOW())`,
+      [SLUGGED_BRAND_ID, TEST_BRAND_ID, SLUGGED_BRAND_SLUG, SLUGGED_BRAND_NAME]
+    );
+    console.log("  Created brand:", SLUGGED_BRAND_ID, `(/brand/${SLUGGED_BRAND_SLUG})`);
 
     // -----------------------------------------------------------------------
     // 2. Prompts

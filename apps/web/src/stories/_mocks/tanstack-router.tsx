@@ -13,6 +13,13 @@ import React, { createContext, type ReactNode, useContext } from "react";
 
 const RouteCtx = createContext<Record<string, unknown>>({});
 
+/**
+ * What the real `$brand` layout always puts in context. Stories that set their
+ * own context are naming what they care about, not clearing this — a component
+ * that resolves its brand through context would otherwise render empty.
+ */
+const BASE_ROUTE_CONTEXT: Record<string, unknown> = { brandId: "mock-brand-id" };
+
 let _routeContext: Record<string, unknown> = {};
 
 export function setMockRouteContext(ctx: Record<string, unknown>) {
@@ -33,7 +40,7 @@ export function MockRouteContextProvider({ value, children }: { value: Record<st
 export function useRouteContext(_opts?: unknown) {
 	const ctx = useContext(RouteCtx);
 	// Merge with module-level context so both approaches work
-	return { ..._routeContext, ...ctx };
+	return { ...BASE_ROUTE_CONTEXT, ..._routeContext, ...ctx };
 }
 
 export function createRouter(_opts?: unknown) {
@@ -91,7 +98,7 @@ export function useNavigate() {
 }
 
 export function useLocation() {
-	return { pathname: "/app/mock-workspace/mock-brand-id", search: "", hash: "" };
+	return { pathname: "/app/org/mock-workspace/brand/mock-brand-id", search: "", hash: "" };
 }
 
 // Stories never navigate, so the blocker is always idle.

@@ -103,21 +103,21 @@ function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 function BrandBreadcrumbs({
 	pathname,
 	org,
-	brandId,
+	brand,
 	brandName,
 }: {
 	pathname: string;
 	org: string | undefined;
-	brandId: string | undefined;
+	brand: string | undefined;
 	brandName: string;
 }) {
-	// Extract the page segment from the path (e.g., /app/acme/foo/prompts -> prompts)
-	const pathSegments = pathname.split("/");
-	const appIndex = pathSegments.findIndex((segment) => segment === "app");
-	const pageSegment = appIndex >= 0 && pathSegments[appIndex + 3] ? pathSegments[appIndex + 3] : "";
-	const subSegment = appIndex >= 0 && pathSegments[appIndex + 4] ? pathSegments[appIndex + 4] : "";
+	// ["app", "org", <org>, "brand", <brand>, <page>, <sub>] — e.g.
+	// /app/org/acme/brand/nike/prompts/<id> puts the page at 5 and its sub at 6.
+	const pathSegments = pathname.split("/").filter(Boolean);
+	const pageSegment = pathSegments[5] ?? "";
+	const subSegment = pathSegments[6] ?? "";
 
-	// Check if we're on a specific prompt detail page (e.g., /app/acme/foo/prompts/uuid)
+	// Check if we're on a specific prompt detail page (e.g., .../prompts/uuid)
 	const isPromptDetailPage =
 		pageSegment === "prompts" &&
 		subSegment &&
@@ -127,7 +127,7 @@ function BrandBreadcrumbs({
 	// Check if we're on an edit page
 	const isEditPage = pathname.endsWith("/edit");
 
-	// Settings sub-pages: /app/$org/$brand/settings/brand, .../settings/competitors, etc.
+	// Settings sub-pages: /app/org/$org/brand/$brand/settings/brand, .../settings/competitors, etc.
 	const isSettingsSubPage = pageSegment === "settings" && subSegment;
 
 	// Determine page name
@@ -137,8 +137,8 @@ function BrandBreadcrumbs({
 		<>
 			<BreadcrumbItem className="hidden md:block">
 				<BreadcrumbLink asChild>
-					{org && brandId ? (
-						<Link to="/app/$org/$brand" params={{ org, brand: brandId }}>
+					{org && brand ? (
+						<Link to="/app/org/$org/brand/$brand" params={{ org, brand }}>
 							{brandName}
 						</Link>
 					) : (
@@ -151,8 +151,8 @@ function BrandBreadcrumbs({
 				<>
 					<BreadcrumbItem className="hidden md:block">
 						<BreadcrumbLink asChild>
-							{org && brandId ? (
-								<Link to="/app/$org/$brand/visibility" params={{ org, brand: brandId }}>
+							{org && brand ? (
+								<Link to="/app/org/$org/brand/$brand/visibility" params={{ org, brand }}>
 									Visibility
 								</Link>
 							) : (
@@ -196,10 +196,11 @@ function BrandBreadcrumbs({
 	);
 }
 
-/** Settings that belong to the workspace: /app/$org/settings[/sub]. */
+/** Settings that belong to the workspace: /app/org/$org/settings[/sub]. */
 function WorkspaceSettingsBreadcrumbs({ pathname, org }: { pathname: string; org: string }) {
+	// ["app", "org", <org>, "settings", <sub>]
 	const segments = pathname.split("/").filter(Boolean);
-	const sub = segments[3];
+	const sub = segments[4];
 
 	if (!sub) {
 		return (
@@ -213,7 +214,7 @@ function WorkspaceSettingsBreadcrumbs({ pathname, org }: { pathname: string; org
 		<>
 			<BreadcrumbItem className="hidden md:block">
 				<BreadcrumbLink asChild>
-					<Link to="/app/$org/settings" params={{ org }}>
+					<Link to="/app/org/$org/settings" params={{ org }}>
 						Settings
 					</Link>
 				</BreadcrumbLink>
@@ -235,7 +236,7 @@ function WorkspaceSettingsBreadcrumbs({ pathname, org }: { pathname: string; org
  * isn't the name.
  */
 export function SiteHeader({ title, workspaceName }: { title?: string; workspaceName?: string } = {}) {
-	const { brandId, brand } = useBrand();
+	const { brand } = useBrand();
 	const { pathname } = useLocation();
 	const params = useParams({ strict: false }) as { org?: string; brand?: string };
 
@@ -254,7 +255,7 @@ export function SiteHeader({ title, workspaceName }: { title?: string; workspace
 							<>
 								<BreadcrumbItem className="hidden md:block">
 									<BreadcrumbLink asChild>
-										<Link to="/app/$org" params={{ org: params.org }}>
+										<Link to="/app/org/$org" params={{ org: params.org }}>
 											{workspaceName ?? params.org}
 										</Link>
 									</BreadcrumbLink>
@@ -274,7 +275,7 @@ export function SiteHeader({ title, workspaceName }: { title?: string; workspace
 							<BrandBreadcrumbs
 								pathname={pathname}
 								org={params.org}
-								brandId={brandId}
+								brand={params.brand}
 								brandName={brand?.name || "Dashboard"}
 							/>
 						)}

@@ -38,6 +38,7 @@ import { NavAppInfo } from "@/components/nav-app-info";
 import { type NavGroup, NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
+import { brandPath } from "@/lib/workspaces/paths";
 import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
 
 /**
@@ -93,7 +94,7 @@ export function AppSidebar({
 			label: "Brands",
 			items: workspace.brands.map((b) => ({
 				title: b.name,
-				url: `/app/${workspace.slug}/${b.id}`,
+				url: brandPath(workspace, b),
 				icon: IconDashboard,
 				absolute: true,
 			})),

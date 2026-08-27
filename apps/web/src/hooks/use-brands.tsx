@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
 import type { BrandWithPrompts, Competitor } from "@workspace/lib/db/schema";
+import { useBrandId } from "@/hooks/use-brand-id";
 import type { TrackedTarget } from "@/lib/model-filter";
-import { getBrands, getBrand, getCompetitors } from "@/server/brands";
+import { getBrand, getBrands, getCompetitors } from "@/server/brands";
 
 export type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	earliestDataDate?: string | null;
@@ -54,9 +54,10 @@ export function useBrands() {
  * If no brandId provided, extracts from route params.
  */
 export function useBrand(brandId?: string) {
-	// Try to get brandId from route params if not provided
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+	// The URL segment is the brand's slug where it has one, so the id comes from
+	// route context rather than from params.
+	const routeBrandId = useBrandId();
+	const resolvedBrandId = brandId || routeBrandId;
 	const queryClient = useQueryClient();
 
 	const query = useQuery({
@@ -87,8 +88,8 @@ export function useBrand(brandId?: string) {
  * Get competitors for a brand
  */
 export function useCompetitors(brandId?: string) {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+	const routeBrandId = useBrandId();
+	const resolvedBrandId = brandId || routeBrandId;
 
 	const query = useQuery({
 		queryKey: brandKeys.competitors(resolvedBrandId || ""),

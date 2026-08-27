@@ -14,7 +14,7 @@
  * call is a bug and should fail at the database layer rather than
  * silently rewriting rows.
  */
-import { count, eq } from "drizzle-orm";
+import { and, count, eq, or } from "drizzle-orm";
 import { db } from "./db";
 import { brands, member, organization, user } from "./schema";
 
@@ -42,7 +42,7 @@ export async function countUsers(): Promise<number> {
  * Hardcoded because local mode has exactly one org per install, the user
  * never sees or interacts with this identity (they pick a brand in the
  * onboarding wizard, which is what the UI actually surfaces), and a
- * stable id makes URLs like `/app/default` predictable.
+ * stable id makes URLs like `/app/org/default` predictable.
  */
 const LOCAL_ORG = {
 	id: "default",
@@ -95,26 +95,33 @@ export function slugify(name: string): string {
 }
 
 /**
- * Slugs that would collide with a sibling route under `/app/$org`, where brand
- * ids live. A user-named brand that slugifies to one of these gets a numeric
- * suffix instead so the URL stays unambiguous.
+ * Whether a user-supplied slug is shaped like one `slugify` would produce:
+ * lowercase alphanumerics and interior hyphens, bounded so a slug always reads
+ * as a URL segment rather than a paragraph.
+ *
+ * Availability is a separate question — see `isOrgSlugAvailable` and
+ * `isBrandSlugAvailable`, which is where the id namespace gets consulted.
  */
-const RESERVED_ORG_SLUGS = new Set(["new", "settings"]);
+export const MAX_SLUG_LENGTH = 48;
+
+export function isValidSlug(slug: string): boolean {
+	if (slug.length === 0 || slug.length > MAX_SLUG_LENGTH) return false;
+	return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
+}
 
 /**
- * Find a brand id that doesn't collide with an existing brand row or a
- * reserved route slug, appending -2, -3, … on collision. Brand ids are
- * globally unique — they appear directly in `/app/$org/$brand` URLs — and, unlike
- * the legacy org-per-brand convention, are independent of any organization id.
+ * Find a brand id that no other brand holds, appending -2, -3, … on collision.
+ *
+ * Brand ids are globally unique because they are the primary key and the admin
+ * API's handle on a brand. Nothing reserves route names any more: brands live
+ * under `/app/org/$org/brand/$brand`, so no brand can shadow a sibling route
+ * however it is named.
  */
 export async function findUniqueBrandId(baseSlug: string): Promise<string> {
 	let candidate = baseSlug;
 	let suffix = 2;
 	for (;;) {
-		const isReserved = RESERVED_ORG_SLUGS.has(candidate);
-		const conflict = isReserved
-			? [{ id: candidate }]
-			: await db.select({ id: brands.id }).from(brands).where(eq(brands.id, candidate)).limit(1);
+		const conflict = await db.select({ id: brands.id }).from(brands).where(eq(brands.id, candidate)).limit(1);
 		if (conflict.length === 0) return candidate;
 		candidate = `${baseSlug}-${suffix}`;
 		suffix++;
@@ -122,21 +129,76 @@ export async function findUniqueBrandId(baseSlug: string): Promise<string> {
 }
 
 /**
- * Find an organization slug that doesn't collide with an existing org,
- * appending -2, -3, … on collision. Used by `provisionUmbrellaOrg`, where the
- * org id itself is a random uuid (decoupled from any brand) but the slug
- * still needs to be unique and human-readable.
+ * Whether an org slug is free.
+ *
+ * Both namespaces are checked, because `/app/org/$org` resolves a segment as a
+ * slug *or* an id: a slug equal to another org's id would make that segment
+ * name two workspaces. Ids here are not uniformly shaped — local mode uses
+ * `default`, cloud signup a uuid, the admin API the brand's own id — so no
+ * shape test could stand in for the lookup.
+ */
+export async function isOrgSlugAvailable(
+	slug: string,
+	options: { excludeOrgId?: string } = {},
+	conn: DbConnection = db,
+): Promise<boolean> {
+	const [conflict] = await conn
+		.select({ id: organization.id })
+		.from(organization)
+		.where(or(eq(organization.slug, slug), eq(organization.id, slug)))
+		.limit(1);
+	return !conflict || conflict.id === options.excludeOrgId;
+}
+
+/**
+ * An org slug nothing else answers to, appending -2, -3, … on collision.
  */
 async function findUniqueOrgSlug(baseSlug: string, conn: DbConnection = db): Promise<string> {
 	let candidate = baseSlug;
 	let suffix = 2;
 	for (;;) {
-		const [conflict] = await conn
-			.select({ id: organization.id })
-			.from(organization)
-			.where(eq(organization.slug, candidate))
-			.limit(1);
-		if (!conflict) return candidate;
+		if (await isOrgSlugAvailable(candidate, {}, conn)) return candidate;
+		candidate = `${baseSlug}-${suffix}`;
+		suffix++;
+	}
+}
+
+/**
+ * Whether a brand slug is free within its workspace.
+ *
+ * Scoped to the org rather than global — `/app/org/$org/brand/$brand` has
+ * already picked the workspace by the time the brand segment is read, so two
+ * customers can each own a `nike`. Ids are checked alongside slugs for the same
+ * reason they are for orgs: the segment resolves as either.
+ */
+export async function isBrandSlugAvailable(
+	organizationId: string,
+	slug: string,
+	options: { excludeBrandId?: string } = {},
+	conn: DbConnection = db,
+): Promise<boolean> {
+	const [conflict] = await conn
+		.select({ id: brands.id })
+		.from(brands)
+		.where(and(eq(brands.organizationId, organizationId), or(eq(brands.slug, slug), eq(brands.id, slug))))
+		.limit(1);
+	return !conflict || conflict.id === options.excludeBrandId;
+}
+
+/**
+ * A brand slug free within the workspace, appending -2, -3, … on collision. New
+ * brands get one at creation, so a brand arrives with a readable URL instead of
+ * waiting for someone to open settings and name one.
+ */
+export async function findUniqueBrandSlug(
+	organizationId: string,
+	baseSlug: string,
+	conn: DbConnection = db,
+): Promise<string> {
+	let candidate = baseSlug;
+	let suffix = 2;
+	for (;;) {
+		if (await isBrandSlugAvailable(organizationId, candidate, {}, conn)) return candidate;
 		candidate = `${baseSlug}-${suffix}`;
 		suffix++;
 	}

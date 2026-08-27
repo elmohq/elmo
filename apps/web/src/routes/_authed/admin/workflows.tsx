@@ -1,15 +1,11 @@
 /**
  * /admin/workflows - Monitor prompt scheduling, job execution, and worker health
  */
-import { useEffect, useState } from "react";
+
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { getAppName } from "@/lib/route-head";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import { Skeleton } from "@workspace/ui/components/skeleton";
-import { Progress } from "@workspace/ui/components/progress";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import {
 	Dialog,
 	DialogContent,
@@ -18,20 +14,25 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@workspace/ui/components/dialog";
+import { Progress } from "@workspace/ui/components/progress";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import {
-	CheckCircle2,
-	AlertTriangle,
-	XCircle,
-	Clock,
 	Activity,
-	Server,
-	RefreshCw,
+	AlertTriangle,
+	CheckCircle2,
 	ChevronDown,
 	ChevronRight,
-	Play,
+	Clock,
 	Loader2,
+	Play,
+	RefreshCw,
+	Server,
+	XCircle,
 } from "lucide-react";
-import { getWorkflowDataFn, retryJobFn, getJobLogsFn } from "@/server/admin";
+import { useEffect, useState } from "react";
+import { getAppName } from "@/lib/route-head";
+import { getJobLogsFn, getWorkflowDataFn, retryJobFn } from "@/server/admin";
 
 // ============================================================================
 // Types
@@ -65,8 +66,9 @@ interface PromptScheduleStatus {
 
 interface BrandScheduleSummary {
 	brandId: string;
+	/** Both halves of the canonical brand URL — null falls back to the id. */
+	brandSlug: string | null;
 	brandName: string;
-	/** Which workspace owns it, so the link lands on the canonical brand URL. */
 	organizationSlug: string;
 	website: string;
 	enabled: boolean;
@@ -457,8 +459,8 @@ function BrandRow({
 						)}
 						<div>
 							<Link
-								to="/app/$org/$brand"
-								params={{ org: brand.organizationSlug, brand: brand.brandId }}
+								to="/app/org/$org/brand/$brand"
+								params={{ org: brand.organizationSlug, brand: brand.brandSlug ?? brand.brandId }}
 								className="font-medium text-primary hover:underline"
 								onClick={(e) => e.stopPropagation()}
 							>

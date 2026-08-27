@@ -1,6 +1,5 @@
 import { IconExternalLink, IconInfoCircle, IconSearch } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
-import { useOrgSlug } from "@/hooks/use-workspaces";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Input } from "@workspace/ui/components/input";
@@ -16,6 +15,7 @@ import {
 } from "@/components/citations/shared";
 import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
+import { useBrandSlug, useOrgSlug } from "@/hooks/use-workspaces";
 
 export function TopUrlsCard({
 	urls,
@@ -37,6 +37,7 @@ export function TopUrlsCard({
 	brandIsCited: boolean;
 }) {
 	const org = useOrgSlug();
+	const brand = useBrandSlug();
 	const [urlSearch, setUrlSearch] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string>("all");
 	const [selectedPageType, setSelectedPageType] = useState<string>("all");
@@ -81,8 +82,8 @@ export function TopUrlsCard({
 										<strong>Competitor</strong> domains are only those in your{" "}
 										{brandId ? (
 											<Link
-												to="/app/$org/$brand/settings/competitors"
-												params={{ org, brand: brandId }}
+												to="/app/org/$org/brand/$brand/settings/competitors"
+												params={{ org, brand }}
 												className="underline"
 											>
 												tracked competitors list

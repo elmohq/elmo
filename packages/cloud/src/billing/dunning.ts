@@ -68,7 +68,7 @@ async function billingSettingsUrl(organizationId: string): Promise<string> {
 		.from(organization)
 		.where(eq(organization.id, organizationId))
 		.limit(1);
-	return org ? `${appUrl}/app/${org.slug}/settings/billing` : appUrl;
+	return org ? `${appUrl}/app/org/${encodeURIComponent(org.slug)}/settings/billing` : appUrl;
 }
 
 export async function sendDunningNotice(organizationId: string, notice: DunningNotice): Promise<void> {

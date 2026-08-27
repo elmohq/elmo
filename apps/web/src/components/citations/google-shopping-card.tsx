@@ -1,13 +1,13 @@
-import { useMemo, useState } from "react";
+import { IconChevronDown, IconInfoCircle, IconSearch } from "@tabler/icons-react";
+import { Link } from "@tanstack/react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
-import { IconInfoCircle, IconSearch, IconChevronDown } from "@tabler/icons-react";
-import { Link } from "@tanstack/react-router";
-import { useOrgSlug } from "@/hooks/use-workspaces";
-import { ListPagination, usePagedList } from "@/components/list-pagination";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useMemo, useState } from "react";
 import { attributionDotClass } from "@/components/citations/shared";
 import type { GoogleModuleData } from "@/components/citations/types";
+import { ListPagination, usePagedList } from "@/components/list-pagination";
+import { useBrandSlug, useOrgSlug } from "@/hooks/use-workspaces";
 
 const PRODUCTS_PAGE_SIZE = 10;
 
@@ -19,14 +19,15 @@ function PromptCountList({
 	brandId?: string;
 }) {
 	const org = useOrgSlug();
+	const brand = useBrandSlug();
 	return (
 		<div className="pl-5 pb-2 space-y-0.5">
 			{prompts.map((p) =>
 				brandId ? (
 					<Link
 						key={p.id}
-						to="/app/$org/$brand/prompts/$promptId"
-						params={{ org, brand: brandId, promptId: p.id }}
+						to="/app/org/$org/brand/$brand/prompts/$promptId"
+						params={{ org, brand, promptId: p.id }}
 						className="flex items-center justify-between py-1 group text-xs"
 					>
 						<span className="text-muted-foreground group-hover:text-foreground group-hover:underline truncate min-w-0">

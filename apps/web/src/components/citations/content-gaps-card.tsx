@@ -1,10 +1,10 @@
+import { IconAlertTriangle, IconInfoCircle } from "@tabler/icons-react";
+import { Link } from "@tanstack/react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
-import { IconInfoCircle, IconAlertTriangle } from "@tabler/icons-react";
-import { Link } from "@tanstack/react-router";
-import { useOrgSlug } from "@/hooks/use-workspaces";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
+import { useBrandSlug, useOrgSlug } from "@/hooks/use-workspaces";
 
 const PAGE_SIZE = 6;
 
@@ -16,6 +16,7 @@ export function ContentGapsCard({
 	brandId: string;
 }) {
 	const org = useOrgSlug();
+	const brand = useBrandSlug();
 	const { page, setPage, pageItems, totalItems } = usePagedList(prompts, PAGE_SIZE);
 
 	return (
@@ -41,8 +42,8 @@ export function ContentGapsCard({
 					{pageItems.map((prompt) => (
 						<Link
 							key={prompt.id}
-							to="/app/$org/$brand/prompts/$promptId"
-							params={{ org, brand: brandId, promptId: prompt.id }}
+							to="/app/org/$org/brand/$brand/prompts/$promptId"
+							params={{ org, brand, promptId: prompt.id }}
 							className="flex items-start gap-2.5 py-2 group"
 						>
 							<div className="shrink-0 mt-0.5">

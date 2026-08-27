@@ -110,7 +110,7 @@ export async function listUserOrganizations(userId: string): Promise<UserOrganiz
 }
 
 /**
- * The organization behind an `/app/$org` segment, or null when the user has no
+ * The organization behind an `/app/org/$org` segment, or null when the user has no
  * such workspace. Accepts the slug (what the URL carries) or the id, so links
  * minted before an org was renamed — and anything built from an
  * `organizationId` in hand — still resolve.
@@ -132,21 +132,52 @@ export async function requireOrganization(userId: string, slugOrId: string): Pro
 }
 
 /**
- * Which workspace owns a brand, for callers holding only a brand id — the
- * `/app/$brand` links that predate workspace-scoped URLs, and anywhere else a
- * canonical `/app/$org/$brand` path has to be rebuilt. Null when the user
- * can't reach the brand, which covers "no such brand" too.
+ * A brand inside a workspace the caller can reach, by slug or by id.
+ *
+ * Scoped to the org because that is what the URL has already named, which is
+ * also why brand slugs only need to be unique within one. The id is accepted
+ * alongside the slug so a brand that has never been given one still resolves,
+ * and so an `/app/org/$org/brand/$brand` link built from an id in hand works.
  */
-export async function findBrandWorkspace(
-	userId: string,
-	brandId: string,
-): Promise<{ organizationSlug: string } | null> {
+export async function resolveBrandInOrg(
+	organizationId: string,
+	slugOrId: string,
+): Promise<{ id: string; slug: string | null } | null> {
 	const [row] = await db
-		.select({ organizationSlug: organization.slug })
+		.select({ id: brands.id, slug: brands.slug })
+		.from(brands)
+		.where(and(eq(brands.organizationId, organizationId), or(eq(brands.slug, slugOrId), eq(brands.id, slugOrId))))
+		.limit(1);
+	return row ?? null;
+}
+
+/**
+ * Where a brand lives, for a caller holding nothing but a name for it — the
+ * `/app/$brand` links that predate workspace-scoped URLs, which the 404 page
+ * resolves so a stale bookmark or a whitelabel parent dashboard still leads
+ * somewhere. Null when the user can't reach the brand, which covers "no such
+ * brand" too.
+ */
+export async function findBrandLocation(
+	userId: string,
+	brandSlugOrId: string,
+): Promise<{ org: { id: string; slug: string }; brand: { id: string; slug: string | null; name: string } } | null> {
+	const [row] = await db
+		.select({
+			orgId: organization.id,
+			orgSlug: organization.slug,
+			brandId: brands.id,
+			brandSlug: brands.slug,
+			brandName: brands.name,
+		})
 		.from(brands)
 		.innerJoin(member, and(eq(member.organizationId, brands.organizationId), eq(member.userId, userId)))
 		.innerJoin(organization, eq(organization.id, brands.organizationId))
-		.where(eq(brands.id, brandId))
+		.where(or(eq(brands.id, brandSlugOrId), eq(brands.slug, brandSlugOrId)))
 		.limit(1);
-	return row ?? null;
+	if (!row) return null;
+	return {
+		org: { id: row.orgId, slug: row.orgSlug },
+		brand: { id: row.brandId, slug: row.brandSlug, name: row.brandName },
+	};
 }

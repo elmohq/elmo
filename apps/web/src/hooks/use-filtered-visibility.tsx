@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
-import { getFilteredVisibilityFn, type FilteredVisibilityResponse } from "@/server/visibility";
+import { useBrandId } from "@/hooks/use-brand-id";
+import { type FilteredVisibilityResponse, getFilteredVisibilityFn } from "@/server/visibility";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
@@ -14,8 +14,8 @@ export interface FilteredVisibilityFilters {
 }
 
 export function useFilteredVisibility(brandId?: string, filters?: FilteredVisibilityFilters) {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+	const routeBrandId = useBrandId();
+	const resolvedBrandId = brandId || routeBrandId;
 
 	const query = useQuery({
 		queryKey: [

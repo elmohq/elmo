@@ -10,6 +10,7 @@ import {
 	smallint,
 	text,
 	timestamp,
+	uniqueIndex,
 	uuid,
 } from "drizzle-orm/pg-core";
 // `organization` is referenced by the brands FK below; the re-export makes it
@@ -31,6 +32,16 @@ export const brands = pgTable(
 	{
 		id: text("id").primaryKey().notNull(),
 		name: text("name").notNull(),
+		/**
+		 * What `/app/org/$org/brand/$brand` carries when it's set. Null means the
+		 * brand has never been given one and its URL falls back to the id, so
+		 * existing rows keep resolving without a backfill and adopt the slug the
+		 * moment one is chosen.
+		 *
+		 * Unique per organization, not globally: brand lookups are already scoped
+		 * to the workspace in the URL, so two customers can each own a `nike`.
+		 */
+		slug: text("slug"),
 		website: text("website").notNull(),
 		additionalDomains: text("additional_domains").array().notNull().default([]),
 		aliases: text("aliases").array().notNull().default([]),
@@ -54,6 +65,10 @@ export const brands = pgTable(
 	},
 	(table) => ({
 		organizationIdIdx: index("brands_organization_id_idx").on(table.organizationId),
+		// Postgres treats nulls as distinct in a unique index, which is what lets
+		// every un-slugged brand in a workspace coexist. Don't "fix" this with
+		// NULLS NOT DISTINCT — it would allow only one.
+		organizationSlugIdx: uniqueIndex("brands_organization_id_slug_idx").on(table.organizationId, table.slug),
 	}),
 ).enableRLS();
 

@@ -1,5 +1,5 @@
 /**
- * Stories for /app/$org/$brand/settings/llms — where a customer chooses which AI
+ * Stories for /app/org/$org/brand/$brand/settings/llms — where a customer chooses which AI
  * platforms a brand is tracked against.
  *
  * The same page serves self-hosted and cloud, and the difference is the point:
@@ -16,7 +16,7 @@ import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import { platformGroupCopy } from "@/lib/platform-groups";
-import { Route } from "@/routes/_authed/app/$org/$brand/settings/llms";
+import { Route } from "@/routes/_authed/app/org/$org/brand/$brand/settings/llms";
 import type { ModelPickerState, PlatformOption } from "@/server/platform-picks";
 import type { PremiumPool } from "@/server/premium-tracking";
 import { setMockLoaderData } from "./_mocks/tanstack-router";

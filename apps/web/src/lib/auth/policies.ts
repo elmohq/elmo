@@ -275,8 +275,8 @@ export function evaluateAdminRouteGuard(isAdmin: boolean): RouteGuardResult {
 }
 
 /**
- * Evaluate the `/app/$org/$brand` layout guard.
- * Mirrors the `loader` in `_authed/app/$org/$brand.tsx`.
+ * Evaluate the `/app/org/$org/brand/$brand` layout guard.
+ * Mirrors the `loader` in `_authed/app/org/$org/brand/$brand.tsx`.
  */
 export function evaluateBrandRouteGuard(hasAccess: boolean): RouteGuardResult {
 	return hasAccess ? "allow" : "not-found";

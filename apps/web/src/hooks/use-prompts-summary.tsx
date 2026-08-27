@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
+import { useBrandId } from "@/hooks/use-brand-id";
 import { getPromptsSummaryFn } from "@/server/prompts";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
@@ -17,8 +17,8 @@ export const promptsSummaryKeys = {
 };
 
 export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilters) {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+	const routeBrandId = useBrandId();
+	const resolvedBrandId = brandId || routeBrandId;
 
 	const query = useQuery({
 		queryKey: promptsSummaryKeys.list(resolvedBrandId || "", filters),

@@ -1,15 +1,12 @@
 /**
  * /admin - Admin dashboard with brand statistics and charts
  */
-import { useEffect, useState, type ReactNode } from "react";
+
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
-import { getAppName } from "@/lib/route-head";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
-import { Label } from "@workspace/ui/components/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import {
 	Dialog,
 	DialogContent,
@@ -19,16 +16,22 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@workspace/ui/components/dialog";
+import { Input } from "@workspace/ui/components/input";
+import { Label } from "@workspace/ui/components/label";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
-import { Settings, TrendingUp, TrendingDown } from "lucide-react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
+import { Settings, TrendingDown, TrendingUp } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { getAppName } from "@/lib/route-head";
+import { brandSegment } from "@/lib/workspaces/paths";
 import { getAdminStatsFn, updateDelayOverrideFn } from "@/server/admin";
 
 interface BrandStats {
 	id: string;
+	/** Both halves of the canonical brand URL — null falls back to the id. */
+	slug: string | null;
 	name: string;
-	/** Which workspace owns it, so the link lands on the canonical brand URL. */
 	organizationSlug: string;
 	website: string;
 	enabled: boolean;
@@ -601,8 +604,8 @@ function AdminDashboard() {
 											<TableCell className="font-medium">
 												<div className="space-y-1">
 													<Link
-														to="/app/$org/$brand"
-														params={{ org: brand.organizationSlug, brand: brand.id }}
+														to="/app/org/$org/brand/$brand"
+														params={{ org: brand.organizationSlug, brand: brandSegment(brand) }}
 														className="hover:underline text-primary"
 													>
 														{brand.name}

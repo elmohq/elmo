@@ -12,18 +12,18 @@ test.describe("Workspace settings", () => {
     // Checked against the HTML the server sends, not just the settled DOM: the
     // rail's Brands section comes from the layout loader, so the way back into
     // a brand is there before any client-side query could have supplied it.
-    const response = await page.request.get(`/app/${TEST_ORG_SLUG}/settings`);
+    const response = await page.request.get(`/app/org/${TEST_ORG_SLUG}/settings`);
     expect(response.ok()).toBe(true);
-    expect(await response.text()).toContain(`/app/${TEST_ORG_SLUG}/${TEST_BRAND_ID}`);
+    expect(await response.text()).toContain(`/app/org/${TEST_ORG_SLUG}/brand/${TEST_BRAND_ID}`);
 
-    await page.goto(`/app/${TEST_ORG_SLUG}/settings`);
+    await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
     await expect(
-      page.locator(`a[href="/app/${TEST_ORG_SLUG}/${TEST_BRAND_ID}"][data-sidebar="menu-button"]`)
+      page.locator(`a[href="/app/org/${TEST_ORG_SLUG}/brand/${TEST_BRAND_ID}"][data-sidebar="menu-button"]`)
     ).toBeVisible({ timeout: 30_000 });
   });
 
   test("a name padded with spaces can still be saved, and settles trimmed", async ({ page }) => {
-    await page.goto(`/app/${TEST_ORG_SLUG}/settings`);
+    await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
 
     const nameField = page.getByLabel("Name", { exact: true });
     await expect(nameField).toHaveValue(TEST_BRAND_NAME, { timeout: 30_000 });
@@ -43,7 +43,7 @@ test.describe("Workspace settings", () => {
   });
 
   test("a name of nothing but spaces cannot be saved", async ({ page }) => {
-    await page.goto(`/app/${TEST_ORG_SLUG}/settings`);
+    await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
 
     const nameField = page.getByLabel("Name", { exact: true });
     await expect(nameField).toHaveValue(TEST_BRAND_NAME, { timeout: 30_000 });

@@ -1,0 +1,216 @@
+/**
+ * /app/org/$org/brand/$brand layout - Brand-specific layout with sidebar
+ *
+ * Fetches brand data and provides it to child routes.
+ * Shows sidebar navigation, header, and optional demo banner.
+ */
+import { createFileRoute, notFound, Outlet, redirect } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
+import { db } from "@workspace/lib/db/db";
+import type { BrandWithPrompts } from "@workspace/lib/db/schema";
+import { brands, competitors, prompts } from "@workspace/lib/db/schema";
+import { getOrgBillingState } from "@workspace/lib/entitlements";
+import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
+import { hasReportAccess, isAdmin, requireAuthSession } from "@/lib/auth/helpers";
+import { getAppName } from "@/lib/route-head";
+import { BRAND_SEGMENT_INDEX, brandSegment, canonicalHref } from "@/lib/workspaces/paths";
+import { loadWorkspaceWithBrands } from "@/lib/workspaces/server";
+import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
+import { resolveBrandFn } from "@/server/workspaces";
+
+interface BrandRouteData {
+	brand: BrandWithPrompts | null;
+	brandName: string | null;
+	/** The workspace the shell renders from — its name, brands, and whether it can take another. */
+	workspace: WorkspaceWithBrands | null;
+	isAdmin: boolean;
+	hasReportAccess: boolean;
+	hasAccess: boolean;
+	/** The org that must be subscribed before this brand renders; null when nothing is owed. */
+	unpaidOrganizationId: string | null;
+}
+
+/** No access, and nothing else worth saying about it. */
+const DENIED: BrandRouteData = {
+	brand: null,
+	brandName: null,
+	workspace: null,
+	isAdmin: false,
+	hasReportAccess: false,
+	hasAccess: false,
+	unpaidOrganizationId: null,
+};
+
+const getBrandData = createServerFn({ method: "GET" })
+	.validator(z.object({ org: z.string(), brandId: z.string() }))
+	.handler(async ({ data }): Promise<BrandRouteData> => {
+		const session = await requireAuthSession();
+		const [workspace, brand] = await Promise.all([
+			loadWorkspaceWithBrands(session.user.id, data.org),
+			db.query.brands.findFirst({ where: eq(brands.id, data.brandId) }),
+		]);
+
+		// Membership in the workspace is what grants access, so a brand owned by
+		// a different one is as good as absent — including to a user who happens
+		// to belong to both.
+		if (!brand || brand.organizationId !== workspace.id) return DENIED;
+
+		const [brandPrompts, brandCompetitors, { entitlements }] = await Promise.all([
+			db.query.prompts.findMany({ where: eq(prompts.brandId, brand.id) }),
+			db.query.competitors.findMany({ where: eq(competitors.brandId, brand.id) }),
+			// Paywall signal (cloud only): outside cloud this resolves without
+			// touching the database.
+			getOrgBillingState(brand.organizationId),
+		]);
+
+		return {
+			brand: { ...brand, prompts: brandPrompts, competitors: brandCompetitors },
+			brandName: brand.name,
+			workspace,
+			isAdmin: isAdmin(session),
+			hasReportAccess: hasReportAccess(session),
+			hasAccess: true,
+			unpaidOrganizationId: entitlements.standing === "none" ? brand.organizationId : null,
+		};
+	});
+
+function BrandLayoutSkeleton() {
+	return (
+		<SidebarProvider>
+			{/* Sidebar skeleton */}
+			<div className="w-[var(--sidebar-width)] shrink-0 hidden md:block">
+				<div className="flex flex-col gap-4 p-4">
+					<Skeleton className="h-8 w-full" />
+					<div className="space-y-2">
+						<Skeleton className="h-8 w-full" />
+						<Skeleton className="h-8 w-full" />
+						<Skeleton className="h-8 w-full" />
+						<Skeleton className="h-8 w-full" />
+					</div>
+				</div>
+			</div>
+			{/* `overflow-clip` rather than `overflow-hidden`: both clip to the rounded
+			    corners, but `hidden` makes this a scroll container, which stops
+			    descendants from sticking to the viewport (the site header included). */}
+			<SidebarInset className="md:border md:border-border/60 md:rounded-xl overflow-clip">
+				{/* Header skeleton */}
+				<div className="flex h-14 items-center gap-2 px-4 border-b">
+					<Skeleton className="h-6 w-6" />
+					<Skeleton className="h-5 w-32" />
+				</div>
+				{/* Content skeleton */}
+				<div className="flex flex-1 flex-col">
+					<div className="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
+						<div className="space-y-2">
+							<Skeleton className="h-9 w-48" />
+							<Skeleton className="h-5 w-80" />
+						</div>
+						<div className="space-y-4">
+							<Skeleton className="h-10 w-full" />
+							<Skeleton className="h-64 w-full rounded-lg" />
+							<Skeleton className="h-64 w-full rounded-lg" />
+						</div>
+					</div>
+				</div>
+			</SidebarInset>
+		</SidebarProvider>
+	);
+}
+
+export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
+	// The shared dashboard filters (model/lookback/tags/q) are validated here
+	// once so every child route inherits them in its search schema. The loader
+	// has no `loaderDeps`, so filter-only navigations never re-run it.
+	validateSearch: validateBrandFilterSearch,
+	// The segment can be either the brand's slug or its id. Resolving it here and
+	// putting the id in context is what lets everything below — loaders, hooks,
+	// query keys — go on speaking in ids without caring which form the URL took.
+	beforeLoad: async ({ params, location }): Promise<{ brandId: string }> => {
+		const brand = await resolveBrandFn({ data: { org: params.org, brand: params.brand } });
+		if (!brand) throw notFound();
+
+		const canonical = brandSegment(brand);
+		if (canonical !== params.brand) {
+			throw redirect({ href: canonicalHref(location, BRAND_SEGMENT_INDEX, canonical) });
+		}
+
+		return { brandId: brand.id };
+	},
+	loader: async ({
+		params,
+		context,
+	}): Promise<{
+		brand: BrandWithPrompts;
+		brandName: string;
+		workspace: WorkspaceWithBrands;
+		isAdmin: boolean;
+		hasReportAccess: boolean;
+	}> => {
+		const result = await getBrandData({ data: { org: params.org, brandId: context.brandId } });
+
+		if (!result.hasAccess || !result.brand || !result.workspace) {
+			throw notFound();
+		}
+
+		// Scoped to this brand's workspace, and says which one — the /app gate only
+		// knows whether the user has *any* entitled org, which is a different
+		// question and would send a mixed-membership user to the wrong checkout.
+		if (result.unpaidOrganizationId) {
+			throw redirect({ to: "/choose-plan", search: { org: result.unpaidOrganizationId } });
+		}
+
+		return {
+			brand: result.brand,
+			brandName: result.brandName ?? result.brand.name,
+			workspace: result.workspace,
+			isAdmin: result.isAdmin,
+			hasReportAccess: result.hasReportAccess,
+		};
+	},
+	head: ({ match, loaderData }) => {
+		const appName = getAppName(match);
+		const brandName = (loaderData as { brandName?: string | null } | undefined)?.brandName;
+		return {
+			meta: [
+				{ title: brandName ? `${brandName} · ${appName}` : appName },
+				{
+					name: "description",
+					content: brandName ? `AI visibility tracking for ${brandName}.` : "AI visibility tracking and optimization.",
+				},
+			],
+		};
+	},
+	// Cache brand data for 5 minutes — it rarely changes and is re-fetched by TanStack Query hooks
+	staleTime: 5 * 60 * 1000,
+	pendingComponent: BrandLayoutSkeleton,
+	component: BrandLayout,
+});
+
+function BrandLayout() {
+	const { brand, workspace, isAdmin, hasReportAccess } = Route.useLoaderData();
+
+	return (
+		<SidebarProvider>
+			<AppSidebar isAdmin={isAdmin} hasReportAccess={hasReportAccess} brand={brand} workspace={workspace} />
+			{/* `overflow-clip` rather than `overflow-hidden`: both clip to the rounded
+			    corners, but `hidden` makes this a scroll container, which stops
+			    descendants from sticking to the viewport (the site header included). */}
+			<SidebarInset className="md:border md:border-border/60 md:rounded-xl overflow-clip">
+				<SiteHeader workspaceName={workspace.name} />
+				<div className="flex flex-1 flex-col">
+					<div className="@container/main flex flex-1 flex-col gap-2">
+						<div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">
+							<Outlet />
+						</div>
+					</div>
+				</div>
+			</SidebarInset>
+		</SidebarProvider>
+	);
+}

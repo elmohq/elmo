@@ -11,7 +11,7 @@ const ORG_SLUG = "default";
 
 test.describe("Citations Page", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/app/${ORG_SLUG}/${BRAND_ID}/citations`);
+    await page.goto(`/app/org/${ORG_SLUG}/brand/${BRAND_ID}/citations`);
     // Wait for SSR streaming + hydration to complete — the heading appears once
     // the route loaders finish and the page component renders.
     await expect(page.getByRole("heading", { name: /citations/i })).toBeVisible({ timeout: 30_000 });
@@ -45,10 +45,10 @@ test.describe("Citations Page", () => {
   });
 
   test("page is accessible via sidebar navigation", async ({ page }) => {
-    await page.goto(`/app/${ORG_SLUG}/${BRAND_ID}`);
+    await page.goto(`/app/org/${ORG_SLUG}/brand/${BRAND_ID}`);
     // Wait for sidebar to fully render (route loader must complete)
-    await expect(page.locator(`a[href="/app/${ORG_SLUG}/${BRAND_ID}/citations"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
-    await page.locator(`a[href="/app/${ORG_SLUG}/${BRAND_ID}/citations"][data-sidebar="menu-button"]`).click();
+    await expect(page.locator(`a[href="/app/org/${ORG_SLUG}/brand/${BRAND_ID}/citations"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
+    await page.locator(`a[href="/app/org/${ORG_SLUG}/brand/${BRAND_ID}/citations"][data-sidebar="menu-button"]`).click();
     await page.waitForURL(/\/citations/);
 
     const pageContent = await page.textContent("body");
