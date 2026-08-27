@@ -13,7 +13,11 @@
  *
  * If you add a better-auth plugin that introduces new tables or columns,
  * re-run the generation script (pnpm run generate:auth-schema) and
- * commit the diff. If the new table needs indexes beyond what the generator
+ * commit the diff. The one exception is `apikey` below: @better-auth/cli has
+ * no release past 1.4.x, which cannot load the 1.6 plugin set, so that table is
+ * transcribed by hand from the plugin's own field definitions
+ * (@better-auth/api-key, src/schema.ts). Re-check it against the plugin on
+ * upgrade. If the new table needs indexes beyond what the generator
  * emits, add them in a new migration — not in this file.
  */
 import { relations } from "drizzle-orm";
@@ -161,6 +165,49 @@ export const ssoProvider = pgTable("sso_provider", {
 	organizationId: text("organization_id"),
 	domain: text("domain").notNull(),
 });
+
+/**
+ * API keys, from @better-auth/api-key. Configured with
+ * `references: "organization"`, so `referenceId` is an organization id rather
+ * than a user id — which is what lets a key outlive whoever issued it.
+ *
+ * `permissions` holds the key's scopes and is server-only: the plugin rejects
+ * any request carrying headers that tries to set it. `metadata` is the one
+ * client-writable column, which is why nothing authorization-bearing lives
+ * there.
+ */
+export const apikey = pgTable(
+	"apikey",
+	{
+		id: text("id").primaryKey(),
+		configId: text("config_id").default("default").notNull(),
+		name: text("name"),
+		start: text("start"),
+		referenceId: text("reference_id").notNull(),
+		prefix: text("prefix"),
+		key: text("key").notNull(),
+		refillInterval: integer("refill_interval"),
+		refillAmount: integer("refill_amount"),
+		lastRefillAt: timestamp("last_refill_at"),
+		enabled: boolean("enabled").default(true),
+		rateLimitEnabled: boolean("rate_limit_enabled").default(true),
+		rateLimitTimeWindow: integer("rate_limit_time_window").default(60000),
+		rateLimitMax: integer("rate_limit_max").default(120),
+		requestCount: integer("request_count").default(0),
+		remaining: integer("remaining"),
+		lastRequest: timestamp("last_request"),
+		expiresAt: timestamp("expires_at"),
+		createdAt: timestamp("created_at").notNull(),
+		updatedAt: timestamp("updated_at").notNull(),
+		permissions: text("permissions"),
+		metadata: text("metadata"),
+	},
+	(table) => [
+		index("apikey_configId_idx").on(table.configId),
+		index("apikey_referenceId_idx").on(table.referenceId),
+		index("apikey_key_idx").on(table.key),
+	],
+);
 
 export const subscription = pgTable("subscription", {
 	id: text("id").primaryKey(),

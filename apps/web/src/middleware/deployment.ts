@@ -24,15 +24,10 @@ export const deploymentMiddleware = createMiddleware().server(async ({ next }) =
 	const request = getRequest();
 	const url = new URL(request.url);
 
-	const result = evaluateDeploymentPolicy(
-		deployment.features,
-		{
-			pathname: url.pathname,
-			method: request.method,
-			authorizationHeader: request.headers.get("Authorization"),
-		},
-		{ adminApiKeys: getAdminApiKeys() },
-	);
+	const result = evaluateDeploymentPolicy(deployment.features, {
+		pathname: url.pathname,
+		method: request.method,
+	});
 
 	switch (result.action) {
 		case "block":

@@ -2,10 +2,17 @@
  * Shared handler factory for /api/v1 routes.
  *
  * Centralizes the cross-cutting concerns every external API endpoint needs:
- * API key authentication, zod validation of path params and JSON bodies,
- * uniform error envelopes (`{ error, message }`), and a catch-all that turns
- * unexpected failures into a logged 500. Route files supply only the
- * resource-specific logic via `handle`.
+ * resolving the caller (admin key or organization key), checking the scope the
+ * operation requires, refusing writes in read-only mode, zod validation of path
+ * params and JSON bodies, uniform error envelopes (`{ error, message, code }`),
+ * and a catch-all that turns unexpected failures into a logged 500. Route files
+ * supply only the resource-specific logic via `handle`.
+ *
+ * This is the *only* authentication gate for `/api/v1` — the deployment
+ * middleware can't be one, because an organization key needs a database lookup
+ * and that middleware is a pure synchronous policy function. A conformance test
+ * asserts every route under `routes/api/v1` is built with this factory, which
+ * is what stands between a newly added file and no auth at all.
  *
  * Handlers signal expected failures (404, 409, ...) by throwing `ApiError`.
  * A plain-object return value is wrapped in `Response.json()` with `status`
@@ -13,21 +20,90 @@
  */
 import { EntitlementError } from "@workspace/lib/entitlements";
 import type { z } from "zod";
-import { validateApiKeyFromRequest } from "@/lib/auth/policies";
+import { type ApiAuth, resolveApiAuth } from "@/lib/auth/api-auth";
+import { getDeployment } from "@/lib/config/server";
+import type { ApiScope } from "./scopes";
+
+/**
+ * Stable machine-readable codes. Deliberately a plain union rather than an
+ * enum in the published spec: new values are added without a version bump, and
+ * a generated client that turned this into a closed type would throw on the
+ * first one it hasn't seen.
+ */
+export type ApiErrorCode =
+	| "unauthorized"
+	| "insufficient_scope"
+	| "forbidden"
+	| "not_found"
+	| "validation_error"
+	| "conflict"
+	| "rate_limited"
+	| "read_only"
+	| "no_active_plan"
+	| "brand_limit"
+	| "prompt_limit"
+	| "platform_not_in_plan"
+	| "platform_picks_exceeded"
+	| "premium_not_in_plan"
+	| "premium_pool_exhausted"
+	| "cadence_faster_than_plan"
+	| "system_tag_immutable"
+	| "internal_error";
+
+/**
+ * The entitlement guards spell their codes with hyphens internally. The wire
+ * spells every code with underscores. One mapping, here, rather than two
+ * conventions leaking into each other.
+ */
+const ENTITLEMENT_CODES: Record<string, ApiErrorCode> = {
+	"no-active-plan": "no_active_plan",
+	"brand-limit": "brand_limit",
+	"prompt-limit": "prompt_limit",
+	"platform-not-in-plan": "platform_not_in_plan",
+	"platform-picks-exceeded": "platform_picks_exceeded",
+	"premium-not-in-plan": "premium_not_in_plan",
+	"premium-pool-exhausted": "premium_pool_exhausted",
+	"cadence-faster-than-plan": "cadence_faster_than_plan",
+};
+
+/**
+ * What a status means when a thrower didn't say. Most failures have exactly one
+ * sensible code, so routes only pass one explicitly when they mean something
+ * more specific than "this is what a 409 is".
+ */
+const CODE_FOR_STATUS: Record<number, ApiErrorCode> = {
+	400: "validation_error",
+	401: "unauthorized",
+	402: "no_active_plan",
+	403: "forbidden",
+	404: "not_found",
+	409: "conflict",
+	429: "rate_limited",
+};
 
 export class ApiError extends Error {
+	readonly code: ApiErrorCode;
+
 	constructor(
 		public readonly status: number,
 		public readonly error: string,
 		message: string,
+		code?: ApiErrorCode,
 	) {
 		super(message);
 		this.name = "ApiError";
+		this.code = code ?? CODE_FOR_STATUS[status] ?? "internal_error";
 	}
 }
 
-function errorResponse(status: number, error: string, message: string): Response {
-	return Response.json({ error, message }, { status });
+function errorResponse(
+	status: number,
+	error: string,
+	message: string,
+	code: ApiErrorCode,
+	headers?: Record<string, string>,
+): Response {
+	return Response.json({ error, message, code }, { status, headers });
 }
 
 function formatZodError(error: z.ZodError): string {
@@ -40,7 +116,10 @@ export interface ApiHandlerContext<P, B> {
 	params: P;
 	body: B;
 	request: Request;
+	auth: ApiAuth;
 }
+
+const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 export function createApiHandler<P = Record<string, string>, B = undefined>(opts: {
 	/** Zod schema for route path params, e.g. `z.object({ promptId: z.guid() })`. */
@@ -49,28 +128,98 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 	body?: z.ZodType<B>;
 	/** Success status used when `handle` returns a plain object (default 200). */
 	status?: number;
+	/** Scopes an organization key must hold. Admin keys hold every scope. */
+	scopes?: ApiScope[];
+	/** Reachable only with an instance admin key; no scope grants it. */
+	adminOnly?: boolean;
 	/** Translate domain errors thrown by `handle` into `ApiError` before the generic 500. */
 	mapError?: (err: unknown) => ApiError | undefined;
 	handle: (ctx: ApiHandlerContext<P, B>) => Promise<Response | object>;
 }) {
 	return async ({ request, params }: { request: Request; params: Record<string, string> }): Promise<Response> => {
-		if (!validateApiKeyFromRequest(request)) {
-			return errorResponse(401, "Unauthorized", "Valid API key required");
+		const resolved = await resolveApiAuth(request);
+		if ("failure" in resolved) {
+			const { status, error, message, code, retryAfterSeconds } = resolved.failure;
+			return errorResponse(
+				status,
+				error,
+				message,
+				code,
+				retryAfterSeconds ? { "Retry-After": String(retryAfterSeconds) } : undefined,
+			);
+		}
+		const auth = resolved.auth;
+
+		if (opts.adminOnly && auth.kind !== "admin") {
+			return errorResponse(
+				403,
+				"Forbidden",
+				"This endpoint requires an instance admin key",
+				"forbidden",
+				rateLimitHeaders(auth),
+			);
+		}
+
+		if (auth.kind === "organization") {
+			const missing = (opts.scopes ?? []).find((scope) => !auth.scopes.has(scope));
+			if (missing) {
+				return errorResponse(
+					403,
+					"Forbidden",
+					`This API key is missing the ${missing} scope`,
+					"insufficient_scope",
+					rateLimitHeaders(auth),
+				);
+			}
+		}
+
+		// Read-only mode is not a property of the key, so it is checked after
+		// the caller is known but before anything they asked for happens.
+		if (getDeployment().features.readOnly && WRITE_METHODS.has(request.method)) {
+			return errorResponse(
+				403,
+				"Demo Mode",
+				"Write operations are disabled in demo mode",
+				"read_only",
+				rateLimitHeaders(auth),
+			);
 		}
 
 		const parsedParams = opts.params ? parseAgainst(opts.params, params) : { data: params as P };
-		if ("response" in parsedParams) return parsedParams.response;
+		if ("response" in parsedParams) return withRateLimit(parsedParams.response, auth);
 
 		const parsedBody = opts.body ? await parseJsonBody(opts.body, request) : { data: undefined as B };
-		if ("response" in parsedBody) return parsedBody.response;
+		if ("response" in parsedBody) return withRateLimit(parsedBody.response, auth);
 
 		try {
-			const result = await opts.handle({ params: parsedParams.data, body: parsedBody.data, request });
-			return result instanceof Response ? result : Response.json(result, { status: opts.status ?? 200 });
+			const result = await opts.handle({ params: parsedParams.data, body: parsedBody.data, request, auth });
+			const response = result instanceof Response ? result : Response.json(result, { status: opts.status ?? 200 });
+			return withRateLimit(response, auth);
 		} catch (err) {
-			return errorFromThrow(err, request, opts.mapError);
+			return withRateLimit(errorFromThrow(err, request, opts.mapError), auth);
 		}
 	};
+}
+
+/**
+ * Tell an organization key where it stands. The plugin counts a fixed window
+ * with a read-modify-write per request, so `Remaining` is a guide to back off
+ * on rather than a ledger to ride to zero.
+ */
+function rateLimitHeaders(auth: ApiAuth): Record<string, string> | undefined {
+	if (auth.kind !== "organization") return undefined;
+	const headers: Record<string, string> = { "X-RateLimit-Limit": String(auth.rateLimit.limit) };
+	headers["X-RateLimit-Remaining"] = String(auth.rateLimitRemaining ?? auth.rateLimit.limit);
+	return headers;
+}
+
+function withRateLimit(response: Response, auth: ApiAuth): Response {
+	const headers = rateLimitHeaders(auth);
+	if (!headers) return response;
+	for (const [name, value] of Object.entries(headers)) {
+		if (!response.headers.has(name)) response.headers.set(name, value);
+	}
+	return response;
 }
 
 type Parsed<T> = { data: T } | { response: Response };
@@ -78,7 +227,7 @@ type Parsed<T> = { data: T } | { response: Response };
 function parseAgainst<T>(schema: z.ZodType<T>, value: unknown): Parsed<T> {
 	const result = schema.safeParse(value);
 	if (result.success) return { data: result.data };
-	return { response: errorResponse(400, "Validation Error", formatZodError(result.error)) };
+	return { response: errorResponse(400, "Validation Error", formatZodError(result.error), "validation_error") };
 }
 
 async function parseJsonBody<B>(schema: z.ZodType<B>, request: Request): Promise<Parsed<B>> {
@@ -86,7 +235,9 @@ async function parseJsonBody<B>(schema: z.ZodType<B>, request: Request): Promise
 	try {
 		raw = await request.json();
 	} catch {
-		return { response: errorResponse(400, "Validation Error", "Request body must be valid JSON") };
+		return {
+			response: errorResponse(400, "Validation Error", "Request body must be valid JSON", "validation_error"),
+		};
 	}
 	return parseAgainst(schema, raw);
 }
@@ -97,18 +248,21 @@ async function parseJsonBody<B>(schema: z.ZodType<B>, request: Request): Promise
  * caller shouldn't see the details of.
  */
 function errorFromThrow(err: unknown, request: Request, mapError?: (err: unknown) => ApiError | undefined): Response {
-	if (err instanceof ApiError || err instanceof EntitlementError) {
-		return errorResponse(err.status, err.error, err.message);
+	if (err instanceof ApiError) {
+		return errorResponse(err.status, err.error, err.message, err.code);
+	}
+	if (err instanceof EntitlementError) {
+		return errorResponse(err.status, err.error, err.message, ENTITLEMENT_CODES[err.code] ?? "conflict");
 	}
 
 	const route = `${request.method} ${new URL(request.url).pathname}`;
 	try {
 		const mapped = mapError?.(err);
-		if (mapped) return errorResponse(mapped.status, mapped.error, mapped.message);
+		if (mapped) return errorResponse(mapped.status, mapped.error, mapped.message, mapped.code);
 	} catch (mapErr) {
 		console.error(`[api] ${route} mapError threw:`, mapErr);
 	}
 
 	console.error(`[api] ${route} failed:`, err);
-	return errorResponse(500, "Internal Server Error", "An unexpected error occurred");
+	return errorResponse(500, "Internal Server Error", "An unexpected error occurred", "internal_error");
 }

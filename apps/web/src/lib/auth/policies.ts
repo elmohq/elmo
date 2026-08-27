@@ -29,6 +29,17 @@ const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
  * delete-user, forget-password, admin plugin endpoints, etc.) has no
  * business mutating the shared demo account.
  */
+/**
+ * The api-key plugin endpoints that would otherwise let a signed-in user mint
+ * or edit a key straight from the browser. Blocked outright: issuance goes
+ * through the server function that validates the key's brand narrowing.
+ */
+const API_KEY_PLUGIN_MUTATIONS = new Set([
+	"/api/auth/api-key/create",
+	"/api/auth/api-key/update",
+	"/api/auth/api-key/delete",
+]);
+
 const DEMO_AUTH_WRITE_ALLOWLIST = new Set([
 	"/api/auth/sign-in/email",
 	"/api/auth/sign-in/email/",
@@ -45,7 +56,6 @@ export type DeploymentPolicyResult =
 export interface RequestInfo {
 	pathname: string;
 	method: string;
-	authorizationHeader?: string | null;
 }
 
 /**
@@ -55,14 +65,13 @@ export interface RequestInfo {
  * 1. Read-only mode blocks API + server-function writes (except analytics events)
  * 2. Admin access control (disabled / readonly / full)
  * 3. OpenAPI spec serving
- * 4. API v1 key authentication
+ *
+ * /api/v1 authentication is deliberately absent: an organization key resolves
+ * against the database, and this function is pure and synchronous by design.
+ * createApiHandler is the gate for those routes.
  */
-export function evaluateDeploymentPolicy(
-	features: FeaturesConfig,
-	request: RequestInfo,
-	options?: { adminApiKeys?: string[] },
-): DeploymentPolicyResult {
-	const { pathname, method, authorizationHeader } = request;
+export function evaluateDeploymentPolicy(features: FeaturesConfig, request: RequestInfo): DeploymentPolicyResult {
+	const { pathname, method } = request;
 	const isWriteMethod = WRITE_METHODS.has(method);
 	const isPlausibleEventRoute = pathname === "/api/plausible/event" || pathname === "/api/plausible/event/";
 
@@ -70,8 +79,29 @@ export function evaluateDeploymentPolicy(
 	const isServerFunctionRoute = pathname.startsWith("/_server");
 	const isAllowedAuthWrite = DEMO_AUTH_WRITE_ALLOWLIST.has(pathname);
 	const isOrgPluginMutation = pathname.startsWith("/api/auth/organization/") && isWriteMethod;
+	const isApiKeyPluginMutation = API_KEY_PLUGIN_MUTATIONS.has(pathname.replace(/\/$/, ""));
+	// createApiHandler is the auth gate for /api/v1 (it needs a database lookup
+	// this pure function can't do), and it enforces read-only there too, so its
+	// refusal carries the same `{ error, message, code }` envelope as every
+	// other /api/v1 error instead of a bare middleware body.
+	const isPublicApiV1 = pathname.startsWith("/api/v1/");
 
-	// 0. Better-auth org plugin mutations are blocked everywhere over HTTP.
+	// 0a. Minting or editing an API key never happens over HTTP. The plugin
+	// rejects `permissions` on any request carrying headers, so a browser could
+	// only ever create a scopeless key — but a key's brand narrowing lives in
+	// client-writable metadata, and the create path is where that gets validated
+	// against the organization's brands. Routing every key through the server
+	// function keeps that validation unskippable.
+	if (isApiKeyPluginMutation) {
+		return {
+			action: "block",
+			status: 403,
+			error: "Forbidden",
+			message: "API keys are issued from the dashboard, not over this endpoint",
+		};
+	}
+
+	// 0b. Better-auth org plugin mutations are blocked everywhere over HTTP.
 	// Orgs are created server-side only — via the provisioning module
 	// (local/demo/cloud create-brand, or the admin brands API whitelabel is
 	// provisioned through) — and cloud team invitations go through server
@@ -88,7 +118,7 @@ export function evaluateDeploymentPolicy(
 
 	// 1. Read-only mode: block every write except the explicit allowlist
 	// (analytics events + the two auth endpoints a visitor needs to use).
-	if (features.readOnly && isWriteMethod) {
+	if (features.readOnly && isWriteMethod && !isPublicApiV1) {
 		if ((isApiRoute || isServerFunctionRoute) && !isPlausibleEventRoute && !isAllowedAuthWrite) {
 			return {
 				action: "block",
@@ -106,22 +136,8 @@ export function evaluateDeploymentPolicy(
 		return { action: "serve-openapi" };
 	}
 
-	// 3. Public API v1 key authentication (except docs and spec)
-	const isPublicApiV1 = pathname.startsWith("/api/v1/");
-	const isPublicApiV1Doc = pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
-
-	if (isPublicApiV1 && !isPublicApiV1Doc && !isOpenApi) {
-		const keyResult = evaluateApiKeyAuth(authorizationHeader, options?.adminApiKeys ?? []);
-		if (keyResult !== "allow") {
-			return {
-				action: "block",
-				status: 401,
-				error: keyResult.error,
-				message: keyResult.message,
-			};
-		}
-	}
-
+	// 3. /api/v1 authentication is createApiHandler's job — an organization key
+	// resolves against the database, which this function cannot do.
 	return { action: "allow" };
 }
 
@@ -133,7 +149,7 @@ export function evaluateDeploymentPolicy(
  * Constant-time string comparison to prevent timing attacks on API keys.
  * Returns true if the strings are equal, false otherwise.
  */
-function timingSafeStringEqual(a: string, b: string): boolean {
+export function timingSafeStringEqual(a: string, b: string): boolean {
 	const bufA = Buffer.from(a);
 	const bufB = Buffer.from(b);
 	if (bufA.length !== bufB.length) {

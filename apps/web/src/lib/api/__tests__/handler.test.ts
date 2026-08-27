@@ -31,7 +31,11 @@ describe("createApiHandler", () => {
 		const handler = createApiHandler({ handle: async () => ({ ok: true }) });
 		const response = await handler({ request: makeRequest({ apiKey: null }), params: {} });
 		expect(response.status).toBe(401);
-		expect(await response.json()).toEqual({ error: "Unauthorized", message: "Valid API key required" });
+		expect(await response.json()).toEqual({
+			error: "Unauthorized",
+			message: "Valid API key required as Bearer token in Authorization header",
+			code: "unauthorized",
+		});
 	});
 
 	it("returns 401 when the API key is wrong", async () => {
@@ -108,6 +112,7 @@ describe("createApiHandler", () => {
 		expect(await response.json()).toEqual({
 			error: "Validation Error",
 			message: "Request body must be valid JSON",
+			code: "validation_error",
 		});
 	});
 
@@ -146,7 +151,11 @@ describe("createApiHandler", () => {
 		});
 		const response = await handler({ request: makeRequest(), params: {} });
 		expect(response.status).toBe(404);
-		expect(await response.json()).toEqual({ error: "Not Found", message: "Prompt not found" });
+		expect(await response.json()).toEqual({
+			error: "Not Found",
+			message: "Prompt not found",
+			code: "not_found",
+		});
 	});
 
 	it("uses mapError to translate domain errors", async () => {
@@ -163,7 +172,11 @@ describe("createApiHandler", () => {
 		});
 		const response = await handler({ request: makeRequest(), params: {} });
 		expect(response.status).toBe(409);
-		expect(await response.json()).toEqual({ error: "Conflict", message: "Already exists" });
+		expect(await response.json()).toEqual({
+			error: "Conflict",
+			message: "Already exists",
+			code: "conflict",
+		});
 	});
 
 	it("falls back to the enveloped 500 when mapError itself throws", async () => {
@@ -181,6 +194,7 @@ describe("createApiHandler", () => {
 		expect(await response.json()).toEqual({
 			error: "Internal Server Error",
 			message: "An unexpected error occurred",
+			code: "internal_error",
 		});
 		expect(consoleError).toHaveBeenCalled();
 	});
@@ -197,6 +211,7 @@ describe("createApiHandler", () => {
 		expect(await response.json()).toEqual({
 			error: "Internal Server Error",
 			message: "An unexpected error occurred",
+			code: "internal_error",
 		});
 		expect(consoleError).toHaveBeenCalledOnce();
 	});
