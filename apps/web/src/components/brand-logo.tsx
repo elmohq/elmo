@@ -35,7 +35,7 @@ export function BrandLogo({
 
 	// Square-ish rather than circular: these are site icons, not people.
 	return (
-		<Avatar aria-hidden="true" className={cn("shrink-0 rounded-[0.25rem] border bg-background", box, className)}>
+		<Avatar aria-hidden="true" className={cn("shrink-0 rounded-[0.25rem]", box, className)}>
 			{src && (
 				<AvatarImage
 					src={src}
