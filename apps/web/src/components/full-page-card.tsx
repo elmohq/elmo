@@ -1,8 +1,8 @@
-import { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { buttonVariants } from "@workspace/ui/components/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
+import type { ReactNode } from "react";
 import { Logo } from "@/components/logo";
 
 interface FullPageCardProps {

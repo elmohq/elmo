@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { buildBrandDomainIndex, domainForName } from "@/lib/brand-logo";
 import { useBrand, useCompetitors } from "@/hooks/use-brands";
+import { buildBrandDomainIndex, domainForName } from "@/lib/brand-logo";
 
 /**
  * Logo domains for everyone a brand's pages can name: the brand itself and the

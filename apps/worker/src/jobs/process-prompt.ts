@@ -176,7 +176,10 @@ async function getLastRunsByTargetKey(promptId: string, maxIntervalHours: number
 	const map = new Map<string, Date>();
 	for (const row of rows) {
 		if (!row.provider) continue;
-		map.set(targetKey({ model: row.model, provider: row.provider, webSearch: row.webSearchEnabled }), new Date(row.lastRunAt));
+		map.set(
+			targetKey({ model: row.model, provider: row.provider, webSearch: row.webSearchEnabled }),
+			new Date(row.lastRunAt),
+		);
 	}
 	return map;
 }
@@ -498,7 +501,6 @@ async function processPrompt(
 
 		// Log failures but don't throw if some succeeded
 		console.error(`Prompt ${promptId} had ${failures.length}/${runPromises.length} failed runs: ${errorMessages}`);
-
 	}
 
 	const successCount = runPromises.length - failures.length;

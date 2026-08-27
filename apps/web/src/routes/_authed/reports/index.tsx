@@ -4,25 +4,26 @@
  * Requires admin OR report generator access.
  * Replicates: apps/web/src/app/reports/page.tsx + reports-content.tsx
  */
-import { useState } from "react";
-import { createFileRoute, notFound, Link } from "@tanstack/react-router";
-import { getAppName } from "@/lib/route-head";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { SidebarProvider, SidebarInset } from "@workspace/ui/components/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
-import { SiteHeader } from "@/components/site-header";
+import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
+import { Card, CardContent } from "@workspace/ui/components/card";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
-import { Textarea } from "@workspace/ui/components/textarea";
-import { Card, CardContent } from "@workspace/ui/components/card";
-import { Badge } from "@workspace/ui/components/badge";
+import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
 import { Spinner } from "@workspace/ui/components/spinner";
-import { trackEvent } from "@/lib/posthog";
+import { Textarea } from "@workspace/ui/components/textarea";
 import { ExternalLink } from "lucide-react";
-import { requireAuthSession, isAdmin, hasReportAccess } from "@/lib/auth/helpers";
-import { getReportsFn, createReportFn } from "@/server/reports";
+import { useState } from "react";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import { hasReportAccess, isAdmin, requireAuthSession } from "@/lib/auth/helpers";
+import { trackEvent } from "@/lib/posthog";
+import { getAppName } from "@/lib/route-head";
+import { createReportFn, getReportsFn } from "@/server/reports";
 
 const checkReportAccess = createServerFn({ method: "GET" }).handler(
 	async (): Promise<{

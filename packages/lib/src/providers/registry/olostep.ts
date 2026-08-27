@@ -81,27 +81,18 @@ function extractCitationsFromOlostep(data: any): Citation[] {
 }
 
 function extractWebQueries(data: any): string[] {
-	const queries: string[] = [];
+	const nonEmpty = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
+	const asList = (value: unknown): any[] => (Array.isArray(value) ? value : []);
 
-	// Batch API returns a flat string array at data.search_queries
-	const flat = data?.search_queries;
-	if (Array.isArray(flat)) {
-		for (const q of flat) {
-			if (typeof q === "string" && q.trim()) queries.push(q);
-		}
-	}
+	// Batch API returns a flat string array at data.search_queries.
+	const flat = asList(data?.search_queries).filter(nonEmpty);
+	if (flat.length > 0) return flat;
 
-	// Scrape API nests queries under network_search_calls or search_model_queries
-	if (queries.length === 0) {
-		const searchCalls = data?.network_search_calls?.search_queries ?? data?.search_model_queries ?? [];
-		for (const call of Array.isArray(searchCalls) ? searchCalls : []) {
-			// May be a string (flat array) or an object with .query
-			if (typeof call === "string" && call.trim()) queries.push(call);
-			else if (call?.query) queries.push(call.query);
-		}
-	}
-
-	return queries;
+	// Scrape API nests them under network_search_calls or search_model_queries,
+	// as either bare strings or objects carrying the query.
+	return asList(data?.network_search_calls?.search_queries ?? data?.search_model_queries)
+		.map((call) => (typeof call === "string" ? call : call?.query))
+		.filter(nonEmpty);
 }
 
 export const olostep: Provider = {

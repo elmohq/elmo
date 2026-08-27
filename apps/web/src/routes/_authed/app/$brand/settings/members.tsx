@@ -14,14 +14,14 @@ import { Label } from "@workspace/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { useState } from "react";
 import { trackEvent } from "@/lib/posthog";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import {
 	cancelInvitationFn,
 	inviteTeamMemberFn,
 	listTeamFn,
 	removeTeamMemberFn,
-	updateOrganizationFn,
 	type TeamData,
+	updateOrganizationFn,
 } from "@/server/team";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/members")({

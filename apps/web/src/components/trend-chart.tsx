@@ -5,8 +5,9 @@
  * auto-ranged y-axis, the tooltip, the softened fill) is fixed here so the
  * stacked trends stay visually identical without being tuned in two places.
  */
+
+import { type ChartConfig, ChartContainer, ChartTooltip } from "@workspace/ui/components/chart";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { ChartContainer, ChartTooltip, type ChartConfig } from "@workspace/ui/components/chart";
 
 export interface TrendPoint {
 	date: string;

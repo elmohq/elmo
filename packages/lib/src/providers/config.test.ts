@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { parseScrapeTargets, validateScrapeTargets } from "./config";
 import { brightdata } from "./registry/brightdata";
-import { oxylabs } from "./registry/oxylabs";
 import { cloro } from "./registry/cloro";
 import { dataforseo } from "./registry/dataforseo";
 import { olostep } from "./registry/olostep";
+import { oxylabs } from "./registry/oxylabs";
 import type { ModelConfig } from "./types";
 
 describe("parseScrapeTargets", () => {

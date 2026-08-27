@@ -220,6 +220,42 @@ export interface LeaderboardLVCFResult {
 	competitors: Array<{ name: string; mentions: number; prompts: number }>;
 }
 
+interface DailyObservation {
+	brand: number;
+	competitors: Map<string, number>;
+}
+
+function groupObservations(
+	brandDaily: Array<{ promptId: string; date: string; brand: number }>,
+	competitorDaily: Array<{ promptId: string; date: string; competitor: string; mentions: number }>,
+): Map<string, Map<string, DailyObservation>> {
+	const byPrompt = new Map<string, Map<string, DailyObservation>>();
+	const observationAt = (promptId: string, date: string): DailyObservation => {
+		const dateMap = byPrompt.get(promptId) ?? new Map<string, DailyObservation>();
+		byPrompt.set(promptId, dateMap);
+		const observation = dateMap.get(date) ?? { brand: 0, competitors: new Map() };
+		dateMap.set(date, observation);
+		return observation;
+	};
+
+	for (const row of brandDaily) observationAt(row.promptId, row.date).brand = row.brand;
+	for (const row of competitorDaily) {
+		if (row.mentions > 0) observationAt(row.promptId, row.date).competitors.set(row.competitor, row.mentions);
+	}
+	return byPrompt;
+}
+
+function latestObservation(dateMap: Map<string, DailyObservation>, lastDate: string): DailyObservation | null {
+	let latest: DailyObservation | null = null;
+	let latestDate = "";
+	for (const [date, observation] of dateMap) {
+		if (date > lastDate || date < latestDate) continue;
+		latest = observation;
+		latestDate = date;
+	}
+	return latest;
+}
+
 /**
  * "Current standings" leaderboard: carry each prompt's most recent (brand +
  * per-competitor) mention counts forward to the last day, then sum across
@@ -237,28 +273,7 @@ export function shareOfVoiceLeaderboardLVCF(
 	if (dateRange.length === 0) return { brandMentions: 0, brandPrompts: 0, competitors: [] };
 	const lastDate = dateRange[dateRange.length - 1];
 
-	interface Obs {
-		brand: number;
-		competitors: Map<string, number>;
-	}
-	const byPrompt = new Map<string, Map<string, Obs>>();
-	const obsAt = (promptId: string, date: string): Obs => {
-		let dateMap = byPrompt.get(promptId);
-		if (!dateMap) {
-			dateMap = new Map();
-			byPrompt.set(promptId, dateMap);
-		}
-		let obs = dateMap.get(date);
-		if (!obs) {
-			obs = { brand: 0, competitors: new Map() };
-			dateMap.set(date, obs);
-		}
-		return obs;
-	};
-	for (const r of brandDaily) obsAt(r.promptId, r.date).brand = r.brand;
-	for (const r of competitorDaily) {
-		if (r.mentions > 0) obsAt(r.promptId, r.date).competitors.set(r.competitor, r.mentions);
-	}
+	const byPrompt = groupObservations(brandDaily, competitorDaily);
 
 	let brandMentions = 0;
 	let brandPrompts = 0;
@@ -266,21 +281,13 @@ export function shareOfVoiceLeaderboardLVCF(
 	const compPrompts = new Map<string, number>();
 
 	for (const [, dateMap] of byPrompt) {
-		// The prompt's latest observation on/before the last day = its current state.
-		let last: Obs | null = null;
-		let lastSeen = "";
-		for (const [date, obs] of dateMap) {
-			if (date <= lastDate && date >= lastSeen) {
-				last = obs;
-				lastSeen = date;
-			}
-		}
+		const last = latestObservation(dateMap, lastDate);
 		if (!last) continue;
 		brandMentions += last.brand;
 		if (last.brand > 0) brandPrompts++;
-		for (const [name, n] of last.competitors) {
-			if (n <= 0) continue;
-			compMentions.set(name, (compMentions.get(name) ?? 0) + n);
+		for (const [name, mentions] of last.competitors) {
+			if (mentions <= 0) continue;
+			compMentions.set(name, (compMentions.get(name) ?? 0) + mentions);
 			compPrompts.set(name, (compPrompts.get(name) ?? 0) + 1);
 		}
 	}

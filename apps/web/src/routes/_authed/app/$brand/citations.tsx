@@ -3,20 +3,21 @@
  *
  * Shows citation statistics with filtering by model, tags, and lookback period.
  */
-import { createFileRoute, Link } from "@tanstack/react-router";
+
 import { useQueryClient } from "@tanstack/react-query";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { useCitations } from "@/hooks/use-citations";
-import { useBrand, brandKeys } from "@/hooks/use-brands";
-import { useListFilters } from "@/hooks/use-list-filters";
-import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { CitationsDisplay } from "@/components/citations-display";
+import { ALL_MODELS_VALUE, getAvailableModels } from "@/components/filter-bar";
 import { FilteredListShell } from "@/components/filtered-list-shell";
-import { getDaysFromLookback } from "@/lib/chart-utils";
 import { PageHeader } from "@/components/page-header";
-import { getAvailableModels, ALL_MODELS_VALUE } from "@/components/filter-bar";
+import { brandKeys, useBrand } from "@/hooks/use-brands";
+import { useCitations } from "@/hooks/use-citations";
+import { dashboardKeys } from "@/hooks/use-dashboard-summary";
+import { useListFilters } from "@/hooks/use-list-filters";
+import { getDaysFromLookback } from "@/lib/chart-utils";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/$brand/citations")({
 	head: ({ matches, match }) => {

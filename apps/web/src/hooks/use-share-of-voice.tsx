@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { getShareOfVoiceFn } from "@/server/analysis";
 import type { LookbackPeriod } from "@/lib/chart-utils";
+import { getShareOfVoiceFn } from "@/server/analysis";
 
 export interface ShareOfVoiceFilters {
 	lookback?: LookbackPeriod;

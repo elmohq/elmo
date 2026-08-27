@@ -2,11 +2,12 @@
  * Donut of share of voice: the brand plus its top competitors, with the long
  * tail bucketed into "Others". Sits beside the headline share number.
  */
-import { Cell, Pie, PieChart, Tooltip } from "recharts";
+
 import { ChartContainer } from "@workspace/ui/components/chart";
-import type { ShareOfVoiceEntry } from "@/server/analysis";
-import { BRAND_COLOR, COMPETITOR_PALETTE as PALETTE, OTHERS_COLOR } from "@/lib/share-of-voice-palette";
+import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import { BrandLogo } from "@/components/brand-logo";
+import { BRAND_COLOR, OTHERS_COLOR, COMPETITOR_PALETTE as PALETTE } from "@/lib/share-of-voice-palette";
+import type { ShareOfVoiceEntry } from "@/server/analysis";
 
 interface Slice {
 	name: string;

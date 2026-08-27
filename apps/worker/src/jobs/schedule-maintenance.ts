@@ -49,90 +49,79 @@ export async function scheduleMaintenanceJob(jobs: Job<ScheduleMaintenanceData>[
 	}
 }
 
-async function runMaintenanceCheck(): Promise<void> {
-	const enabledBrands = await db.query.brands.findMany({
-		where: eq(brands.enabled, true),
-	});
+type EnabledBrand = Awaited<ReturnType<typeof db.query.brands.findMany>>[number];
+type EnabledPrompt = Awaited<ReturnType<typeof db.query.prompts.findMany>>[number];
 
-	if (enabledBrands.length === 0) {
-		console.log("[schedule-maintenance] No enabled brands found");
-		return;
-	}
-
-	const brandById = new Map(enabledBrands.map((b) => [b.id, b]));
-	const orgIds = [...new Set(enabledBrands.map((b) => b.organizationId))];
-	const entitlementsByOrg = await getOrgEntitlementsMap(orgIds);
-
-	const enabledPrompts = await db.query.prompts.findMany({
-		where: and(
-			eq(prompts.enabled, true),
-			inArray(
-				prompts.brandId,
-				enabledBrands.map((b) => b.id),
-			),
-		),
-	});
-
-	if (enabledPrompts.length === 0) {
-		console.log("[schedule-maintenance] No enabled prompts found");
-		return;
-	}
-
-	console.log(`[schedule-maintenance] Checking ${enabledPrompts.length} enabled prompts`);
-
-	// Pool positions are decided across the whole org, while run plans resolve
-	// per brand — group the prompts both ways.
-	const promptsByOrg = new Map<string, typeof enabledPrompts>();
-	const promptsByBrand = new Map<string, typeof enabledPrompts>();
+/**
+ * Pool positions are decided across the whole org, while run plans resolve per
+ * brand, so the prompts are needed grouped both ways.
+ */
+function groupPrompts(
+	enabledPrompts: EnabledPrompt[],
+	brandById: Map<string, EnabledBrand>,
+): { byOrg: Map<string, EnabledPrompt[]>; byBrand: Map<string, EnabledPrompt[]> } {
+	const byOrg = new Map<string, EnabledPrompt[]>();
+	const byBrand = new Map<string, EnabledPrompt[]>();
 	for (const prompt of enabledPrompts) {
 		const orgId = brandById.get(prompt.brandId)?.organizationId;
 		if (!orgId) continue;
-		const orgList = promptsByOrg.get(orgId) ?? [];
+		const orgList = byOrg.get(orgId) ?? [];
 		orgList.push(prompt);
-		promptsByOrg.set(orgId, orgList);
-		const brandList = promptsByBrand.get(prompt.brandId) ?? [];
+		byOrg.set(orgId, orgList);
+		const brandList = byBrand.get(prompt.brandId) ?? [];
 		brandList.push(prompt);
-		promptsByBrand.set(prompt.brandId, brandList);
+		byBrand.set(prompt.brandId, brandList);
 	}
+	return { byOrg, byBrand };
+}
 
+/**
+ * Every prompt's plan, brand by brand. A brand with a broken configuration
+ * (e.g. enabledModels naming a model no longer in SCRAPE_TARGETS) must not take
+ * maintenance down for everyone — contain it and move on.
+ */
+function resolveRunPlans(args: {
+	promptsByBrand: Map<string, EnabledPrompt[]>;
+	promptsByOrg: Map<string, EnabledPrompt[]>;
+	brandById: Map<string, EnabledBrand>;
+	entitlementsByOrg: Awaited<ReturnType<typeof getOrgEntitlementsMap>>;
+}): Map<string, PromptRunPlan> {
+	const planByPromptId = new Map<string, PromptRunPlan>();
 	const scrapeTargets = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 	const defaultDelayHours = getDefaultDelayHours();
 
-	// Resolve every prompt's plan, brand by brand. A brand with a broken
-	// configuration (e.g. enabledModels referencing a model no longer in
-	// SCRAPE_TARGETS) must not take maintenance down for everyone — contain it
-	// and move on.
-	const planByPromptId = new Map<string, PromptRunPlan>();
-	for (const [brandId, brandPrompts] of promptsByBrand) {
-		const brand = brandById.get(brandId);
-		if (!brand) continue;
-		const entitlements = entitlementsByOrg.get(brand.organizationId);
-		if (!entitlements) continue;
+	for (const [brandId, brandPrompts] of args.promptsByBrand) {
+		const brand = args.brandById.get(brandId);
+		const entitlements = brand && args.entitlementsByOrg.get(brand.organizationId);
+		if (!brand || !entitlements) continue;
 		try {
 			const plans = resolveBrandPromptRunPlans({
 				scrapeTargets,
 				defaultDelayHours,
 				entitlements,
-				orgPrompts: promptsByOrg.get(brand.organizationId) ?? [],
+				orgPrompts: args.promptsByOrg.get(brand.organizationId) ?? [],
 				brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
 				prompts: brandPrompts,
 			});
-			for (const [promptId, plan] of plans) {
-				planByPromptId.set(promptId, plan);
-			}
+			for (const [promptId, plan] of plans) planByPromptId.set(promptId, plan);
 		} catch (error) {
 			console.error(`[schedule-maintenance] Skipping brand ${brand.id} (invalid target config):`, error);
 		}
 	}
+	return planByPromptId;
+}
 
-	// Last runs per (prompt, target), bounded by the slowest cadence in play so
-	// the aggregate stops scanning all of prompt_runs on every 5-minute tick.
+/**
+ * Last run per (prompt, target), bounded by the slowest cadence in play so the
+ * aggregate stops scanning all of prompt_runs on every 5-minute tick.
+ */
+async function loadLastRuns(plans: Map<string, PromptRunPlan>): Promise<Map<string, Map<string, Date>>> {
 	const maxIntervalHours = Math.max(
 		1,
-		...[...planByPromptId.values()].flatMap((plan) => plan.targets.map((t) => t.intervalHours)),
+		...[...plans.values()].flatMap((plan) => plan.targets.map((t) => t.intervalHours)),
 	);
 	const windowStart = new Date(Date.now() - lastRunQueryWindowMs(maxIntervalHours));
-	const lastRunsQuery = await db
+	const rows = await db
 		.select({
 			promptId: promptRuns.promptId,
 			model: promptRuns.model,
@@ -144,104 +133,130 @@ async function runMaintenanceCheck(): Promise<void> {
 		.where(gt(promptRuns.createdAt, windowStart))
 		.groupBy(promptRuns.promptId, promptRuns.model, promptRuns.provider, promptRuns.webSearchEnabled);
 
-	const lastRunsByPrompt = new Map<string, Map<string, Date>>();
-	for (const run of lastRunsQuery) {
-		let byKey = lastRunsByPrompt.get(run.promptId);
-		if (!byKey) {
-			byKey = new Map();
-			lastRunsByPrompt.set(run.promptId, byKey);
-		}
+	const byPrompt = new Map<string, Map<string, Date>>();
+	for (const run of rows) {
 		// provider is nullable on the column; a row without one predates target
 		// keying and can't be matched to a target anyway.
 		if (!run.provider) continue;
+		let byKey = byPrompt.get(run.promptId);
+		if (!byKey) {
+			byKey = new Map();
+			byPrompt.set(run.promptId, byKey);
+		}
 		byKey.set(
 			targetKey({ model: run.model, provider: run.provider, webSearch: run.webSearchEnabled }),
 			new Date(run.lastRunAt),
 		);
 	}
+	return byPrompt;
+}
 
-	const pendingJobMap = await getPendingJobMap();
+async function expediteJobs(jobIds: string[]): Promise<void> {
+	try {
+		// Bind each id as its own uuid param: drizzle flattens a JS array into a
+		// single text param, which `ANY(...)` / `IN (...)` can't compare against a
+		// uuid column.
+		const inList = sql.join(
+			jobIds.map((id) => sql`${id}::uuid`),
+			sql`, `,
+		);
+		await db.execute(sql`UPDATE pgboss.job SET start_after = now() WHERE id IN (${inList}) AND state = 'created'`);
+		console.log(`[schedule-maintenance] Expedited ${jobIds.length} future jobs to run now`);
+	} catch (error) {
+		console.error(`[schedule-maintenance] Failed to expedite jobs:`, error);
+	}
+}
 
-	const promptStates: MaintenancePromptState[] = [];
-	for (const prompt of enabledPrompts) {
-		const plan = planByPromptId.get(prompt.id);
-		if (!plan) continue;
-		promptStates.push({
-			promptId: prompt.id,
-			promptCreatedAt: prompt.createdAt,
-			plan,
-			lastRunAtByKey: lastRunsByPrompt.get(prompt.id) ?? new Map(),
-			pendingJob: pendingJobMap.get(prompt.id) ?? null,
-		});
+const SCHEDULE_BATCH_SIZE = 50;
+
+async function scheduleNewJobs(promptIds: string[]): Promise<void> {
+	let successCount = 0;
+	let failCount = 0;
+
+	for (let i = 0; i < promptIds.length; i += SCHEDULE_BATCH_SIZE) {
+		const results = await Promise.allSettled(
+			promptIds.slice(i, i + SCHEDULE_BATCH_SIZE).map((promptId) =>
+				boss.send(
+					"process-prompt",
+					{ promptId },
+					{
+						singletonKey: `prompt-${promptId}`,
+						singletonSeconds: 60 * 60, // 1 hour - prevent duplicates
+						...PROMPT_JOB_OPTIONS,
+					},
+				),
+			),
+		);
+		for (const result of results) {
+			if (result.status === "fulfilled") successCount++;
+			else {
+				failCount++;
+				console.error("[schedule-maintenance] Failed to schedule job:", result.reason);
+			}
+		}
 	}
 
-	const decisions = computeMaintenanceDecisions(promptStates, new Date());
+	console.log(
+		`[schedule-maintenance] Scheduled ${successCount} new jobs${failCount > 0 ? ` (${failCount} failed)` : ""}`,
+	);
+}
 
+async function runMaintenanceCheck(): Promise<void> {
+	const enabledBrands = await db.query.brands.findMany({ where: eq(brands.enabled, true) });
+	if (enabledBrands.length === 0) {
+		console.log("[schedule-maintenance] No enabled brands found");
+		return;
+	}
+
+	const enabledPrompts = await db.query.prompts.findMany({
+		where: and(
+			eq(prompts.enabled, true),
+			inArray(
+				prompts.brandId,
+				enabledBrands.map((b) => b.id),
+			),
+		),
+	});
+	if (enabledPrompts.length === 0) {
+		console.log("[schedule-maintenance] No enabled prompts found");
+		return;
+	}
+	console.log(`[schedule-maintenance] Checking ${enabledPrompts.length} enabled prompts`);
+
+	const brandById = new Map(enabledBrands.map((b) => [b.id, b]));
+	const entitlementsByOrg = await getOrgEntitlementsMap([...new Set(enabledBrands.map((b) => b.organizationId))]);
+	const { byOrg: promptsByOrg, byBrand: promptsByBrand } = groupPrompts(enabledPrompts, brandById);
+	const planByPromptId = resolveRunPlans({ promptsByBrand, promptsByOrg, brandById, entitlementsByOrg });
+
+	const [lastRunsByPrompt, pendingJobMap] = await Promise.all([loadLastRuns(planByPromptId), getPendingJobMap()]);
+
+	const promptStates: MaintenancePromptState[] = enabledPrompts.flatMap((prompt) => {
+		const plan = planByPromptId.get(prompt.id);
+		if (!plan) return [];
+		return [
+			{
+				promptId: prompt.id,
+				promptCreatedAt: prompt.createdAt,
+				plan,
+				lastRunAtByKey: lastRunsByPrompt.get(prompt.id) ?? new Map(),
+				pendingJob: pendingJobMap.get(prompt.id) ?? null,
+			},
+		];
+	});
+
+	const decisions = computeMaintenanceDecisions(promptStates, new Date());
 	reportOverduePrompts(decisions.alertOverdueCount);
 
 	if (decisions.toSchedule.length === 0 && decisions.toExpedite.length === 0) {
 		console.log("[schedule-maintenance] All prompts are on schedule or have pending jobs");
 		return;
 	}
-
 	console.log(
 		`[schedule-maintenance] Found ${decisions.toSchedule.length} prompts needing new jobs, ${decisions.toExpedite.length} jobs to expedite`,
 	);
 
-	// Expedite existing future jobs to run now by updating start_after
-	if (decisions.toExpedite.length > 0) {
-		const jobIds = decisions.toExpedite.map((d) => d.jobId);
-		try {
-			// Bind each id as its own uuid param: drizzle flattens a JS array
-			// into a single text param, which `ANY(...)` / `IN (...)` can't
-			// compare against a uuid column.
-			const inList = sql.join(
-				jobIds.map((id) => sql`${id}::uuid`),
-				sql`, `,
-			);
-			await db.execute(sql`UPDATE pgboss.job SET start_after = now() WHERE id IN (${inList}) AND state = 'created'`);
-			console.log(`[schedule-maintenance] Expedited ${jobIds.length} future jobs to run now`);
-		} catch (error) {
-			console.error(`[schedule-maintenance] Failed to expedite jobs:`, error);
-		}
-	}
-
-	// Schedule new jobs for prompts with no pending job
-	if (decisions.toSchedule.length > 0) {
-		const BATCH_SIZE = 50;
-		let successCount = 0;
-		let failCount = 0;
-
-		for (let i = 0; i < decisions.toSchedule.length; i += BATCH_SIZE) {
-			const batch = decisions.toSchedule.slice(i, i + BATCH_SIZE);
-			const results = await Promise.allSettled(
-				batch.map(({ promptId }) =>
-					boss.send(
-						"process-prompt",
-						{ promptId },
-						{
-							singletonKey: `prompt-${promptId}`,
-							singletonSeconds: 60 * 60, // 1 hour - prevent duplicates
-							...PROMPT_JOB_OPTIONS,
-						},
-					),
-				),
-			);
-
-			for (const result of results) {
-				if (result.status === "fulfilled") {
-					successCount++;
-				} else {
-					failCount++;
-					console.error("[schedule-maintenance] Failed to schedule job:", result.reason);
-				}
-			}
-		}
-
-		console.log(
-			`[schedule-maintenance] Scheduled ${successCount} new jobs${failCount > 0 ? ` (${failCount} failed)` : ""}`,
-		);
-	}
+	if (decisions.toExpedite.length > 0) await expediteJobs(decisions.toExpedite.map((d) => d.jobId));
+	if (decisions.toSchedule.length > 0) await scheduleNewJobs(decisions.toSchedule.map((d) => d.promptId));
 }
 
 /**

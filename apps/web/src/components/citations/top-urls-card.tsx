@@ -6,6 +6,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/comp
 import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useMemo, useState } from "react";
+import { BrandLogo } from "@/components/brand-logo";
 import {
 	extractFilenameFromUrl,
 	formatUrlForDisplay,
@@ -13,7 +14,6 @@ import {
 	getCategoryLabel,
 	UnderlineTabs,
 } from "@/components/citations/shared";
-import { BrandLogo } from "@/components/brand-logo";
 import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 

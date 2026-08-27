@@ -316,50 +316,63 @@ function normalize(args: {
 	const dedupedAdditionalDomains = uniqueLowercase(additionalDomains);
 	const aliases = filterRedundantAliases(uniqueTrim(raw.aliases ?? []), brandName);
 
-	const competitors: OnboardingCompetitor[] = [];
-	if (includeCompetitors) {
-		const seenCompetitorDomains = new Set<string>();
-		for (const c of raw.competitors ?? []) {
-			if (competitors.length >= maxCompetitors) break;
-			const cleaned = uniqueLowercase(
-				(c.domains ?? [])
-					.map((d) => cleanAndValidateDomain(d))
-					.filter((d): d is string => d !== null && !ownedDomains.has(d)),
-			);
-			if (cleaned.length === 0) continue;
-			// Dedupe at the competitor level: if any of this competitor's domains
-			// already belong to a competitor we kept, skip the whole entry.
-			if (cleaned.some((d) => seenCompetitorDomains.has(d))) continue;
-			for (const d of cleaned) seenCompetitorDomains.add(d);
-
-			const compName = c.name.trim();
-			competitors.push({
-				name: compName,
-				domains: cleaned,
-				aliases: filterRedundantAliases(uniqueTrim(c.aliases ?? []), compName),
-			});
-		}
-	}
-
-	const suggestedPrompts: OnboardingPrompt[] = [];
-	if (includePrompts) {
-		const seen = new Set<string>();
-		for (const p of raw.suggestedPrompts ?? []) {
-			if (suggestedPrompts.length >= maxPrompts) break;
-			const value = p.prompt.trim().toLowerCase();
-			if (!value || seen.has(value)) continue;
-			seen.add(value);
-			const tags = uniqueLowercase((p.tags ?? []).map(toKebabCase).filter(Boolean)).slice(0, 3);
-			suggestedPrompts.push({ prompt: value, tags });
-		}
-	}
-
 	return {
 		brandName,
 		website,
 		additionalDomains: dedupedAdditionalDomains,
 		aliases,
-		competitors,
-		suggestedPrompts,
+		competitors: includeCompetitors ? normalizeCompetitors(raw.competitors ?? [], ownedDomains, maxCompetitors) : [],
+		suggestedPrompts: includePrompts ? normalizePrompts(raw.suggestedPrompts ?? [], maxPrompts) : [],
 	};
+}
+
+/** At most this many topic tags survive per suggested prompt. */
+const MAX_PROMPT_TAGS = 3;
+
+/**
+ * Competitors the model named, keeping only those with a domain that is neither
+ * the brand's own nor already claimed by a competitor above them: two entries
+ * sharing a domain are the same company under two names.
+ */
+function normalizeCompetitors(
+	raw: RawSuggestion["competitors"],
+	ownedDomains: Set<string>,
+	maxCompetitors: number,
+): OnboardingCompetitor[] {
+	const competitors: OnboardingCompetitor[] = [];
+	const claimedDomains = new Set<string>();
+
+	for (const competitor of raw ?? []) {
+		if (competitors.length >= maxCompetitors) break;
+		const domains = uniqueLowercase(
+			(competitor.domains ?? [])
+				.map((domain) => cleanAndValidateDomain(domain))
+				.filter((domain): domain is string => domain !== null && !ownedDomains.has(domain)),
+		);
+		if (domains.length === 0 || domains.some((domain) => claimedDomains.has(domain))) continue;
+		for (const domain of domains) claimedDomains.add(domain);
+
+		const name = competitor.name.trim();
+		competitors.push({ name, domains, aliases: filterRedundantAliases(uniqueTrim(competitor.aliases ?? []), name) });
+	}
+
+	return competitors;
+}
+
+function normalizePrompts(raw: RawSuggestion["suggestedPrompts"], maxPrompts: number): OnboardingPrompt[] {
+	const prompts: OnboardingPrompt[] = [];
+	const seen = new Set<string>();
+
+	for (const suggestion of raw ?? []) {
+		if (prompts.length >= maxPrompts) break;
+		const prompt = suggestion.prompt.trim().toLowerCase();
+		if (!prompt || seen.has(prompt)) continue;
+		seen.add(prompt);
+		prompts.push({
+			prompt,
+			tags: uniqueLowercase((suggestion.tags ?? []).map(toKebabCase).filter(Boolean)).slice(0, MAX_PROMPT_TAGS),
+		});
+	}
+
+	return prompts;
 }

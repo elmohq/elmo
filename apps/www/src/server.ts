@@ -4,15 +4,15 @@ import { isMarkdownPreferred, rewritePath } from "fumadocs-core/negotiation";
 const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy": [
 		"default-src 'self'",
-		"script-src 'self' 'unsafe-inline' https://var.elmohq.com",
-		"style-src 'self' 'unsafe-inline'",
+		"script-src 'self' 'unsafe-inline' https://var.elmohq.com https://*.crisp.chat",
+		"style-src 'self' 'unsafe-inline' https://*.crisp.chat",
 		"img-src 'self' data: https:",
-		"font-src 'self' data:",
-		"connect-src 'self' https://var.elmohq.com https://*.mux.com https://*.litix.io",
-		"media-src 'self' blob: https://*.mux.com",
-		"worker-src 'self' blob:",
+		"font-src 'self' data: https://*.crisp.chat",
+		"connect-src 'self' https://var.elmohq.com https://*.mux.com https://*.litix.io https://*.crisp.chat wss://*.relay.crisp.chat wss://*.relay.rescue.crisp.chat",
+		"media-src 'self' blob: https://*.mux.com https://*.crisp.chat",
+		"worker-src 'self' blob: https://*.crisp.chat",
 		// YouTube embeds in blog posts (privacy-enhanced youtube-nocookie host).
-		"frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com",
+		"frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://*.crisp.chat",
 		"object-src 'none'",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",

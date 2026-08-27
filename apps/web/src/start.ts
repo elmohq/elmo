@@ -12,8 +12,8 @@
  */
 import { sentryGlobalFunctionMiddleware, sentryGlobalRequestMiddleware } from "@sentry/tanstackstart-react";
 import { createCsrfMiddleware, createStart } from "@tanstack/react-start";
-import { deploymentMiddleware, readOnlyMiddleware } from "@/middleware/deployment";
 import { authMiddleware } from "@/middleware/auth";
+import { deploymentMiddleware, readOnlyMiddleware } from "@/middleware/deployment";
 
 const csrfMiddleware = createCsrfMiddleware({
 	filter: (ctx) => ctx.handlerType === "serverFn",

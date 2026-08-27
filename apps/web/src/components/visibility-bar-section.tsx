@@ -1,6 +1,6 @@
 import { useRef } from "react";
+import { VisibilityBar, VisibilityBarEmpty, VisibilityBarSkeleton } from "@/components/visibility-bar";
 import { useFilteredVisibility } from "@/hooks/use-filtered-visibility";
-import { VisibilityBar, VisibilityBarSkeleton, VisibilityBarEmpty } from "@/components/visibility-bar";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { ALL_MODELS_VALUE } from "@/lib/model-filter";
 

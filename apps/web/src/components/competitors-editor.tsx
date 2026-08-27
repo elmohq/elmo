@@ -6,18 +6,19 @@
  * callbacks. State helpers like expand/collapse and the "X/MAX competitors
  * configured" footer live here so both surfaces look identical.
  */
-import { useCallback } from "react";
+
+import { IconInfoCircle } from "@tabler/icons-react";
+import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { TagsInput } from "@workspace/ui/components/tags-input";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
-import { Plus, Pencil, Trash2 } from "lucide-react";
-import { IconInfoCircle } from "@tabler/icons-react";
-import { MAX_COMPETITORS } from "@workspace/lib/constants";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
-import { BrandLogo } from "@/components/brand-logo";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { BrandLogo } from "@/components/brand-logo";
+import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
 export interface CompetitorEntry {
 	_key: string;

@@ -1,8 +1,8 @@
+import { IconAlertTriangle, IconInfoCircle } from "@tabler/icons-react";
+import { Link } from "@tanstack/react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
-import { IconInfoCircle, IconAlertTriangle } from "@tabler/icons-react";
-import { Link } from "@tanstack/react-router";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 
 const PAGE_SIZE = 6;

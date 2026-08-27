@@ -9,16 +9,16 @@
 
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { db } from "@workspace/lib/db/db";
+import { brands } from "@workspace/lib/db/schema";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
+import { inArray } from "drizzle-orm";
 import { BrandLogo } from "@/components/brand-logo";
 import FullPageCard from "@/components/full-page-card";
 import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
-import { db } from "@workspace/lib/db/db";
-import { brands } from "@workspace/lib/db/schema";
-import { inArray } from "drizzle-orm";
 
 const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 	async (): Promise<{
@@ -62,7 +62,14 @@ const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 		const provisioned = new Set(scopedBrands.map((b) => b.organizationId));
 
 		return {
-			brands: scopedBrands.map((brand) => ({ id: brand.id, name: brand.name, website: brand.website })),
+			// Alphabetical, with the id breaking ties between brands that share a
+			// name: an unordered select leaves the order up to Postgres, which is
+			// free to hand back a different one after any row rewrite or plan
+			// change. Sorted here rather than in SQL so the result doesn't depend
+			// on the deployment's database collation.
+			brands: scopedBrands
+				.map((brand) => ({ id: brand.id, name: brand.name, website: brand.website }))
+				.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)),
 			unprovisionedOrgs: canCreateBrands ? [] : orgs.filter((o) => !provisioned.has(o.id)),
 			canCreateBrands,
 		};

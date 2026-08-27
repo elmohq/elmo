@@ -1,7 +1,4 @@
-import { useLocation } from "@tanstack/react-router";
-
-import { Separator } from "@workspace/ui/components/separator";
-import { SidebarTrigger } from "@workspace/ui/components/sidebar";
+import { Link, useLocation } from "@tanstack/react-router";
 import {
 	Breadcrumb,
 	BreadcrumbItem,
@@ -10,9 +7,10 @@ import {
 	BreadcrumbPage,
 	BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb";
-import { useBrand } from "@/hooks/use-brands";
+import { Separator } from "@workspace/ui/components/separator";
+import { SidebarTrigger } from "@workspace/ui/components/sidebar";
 import { BrandLogo } from "@/components/brand-logo";
-import { Link } from "@tanstack/react-router";
+import { useBrand } from "@/hooks/use-brands";
 
 const PAGE_NAMES: Record<string, string> = {
 	visibility: "Visibility",

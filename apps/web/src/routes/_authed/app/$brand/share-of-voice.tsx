@@ -6,24 +6,24 @@
  * donut of top competitors, and share of voice over time.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { Badge } from "@workspace/ui/components/badge";
-import { shareOfVoiceColorMap } from "@/lib/share-of-voice-palette";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
-import { useShareOfVoice } from "@/hooks/use-share-of-voice";
-import { usePromptsSummary } from "@/hooks/use-prompts-summary";
-import { useBrand } from "@/hooks/use-brands";
-import { PageHeader, FilterSection } from "@/components/page-header";
-import { FilterBar, getAvailableModels, ALL_MODELS_VALUE } from "@/components/filter-bar";
-import { useListFilters } from "@/hooks/use-list-filters";
-import { ColHead } from "@/components/col-head";
-import { ShareOfVoiceDonut } from "@/components/share-of-voice-donut";
 import { BrandLogo } from "@/components/brand-logo";
-import { useBrandLogos } from "@/hooks/use-brand-logos";
+import { ColHead } from "@/components/col-head";
+import { ALL_MODELS_VALUE, FilterBar, getAvailableModels } from "@/components/filter-bar";
+import { FilterSection, PageHeader } from "@/components/page-header";
+import { ShareOfVoiceDonut } from "@/components/share-of-voice-donut";
 import { TrendChart } from "@/components/trend-chart";
+import { useBrandLogos } from "@/hooks/use-brand-logos";
+import { useBrand } from "@/hooks/use-brands";
+import { useListFilters } from "@/hooks/use-list-filters";
+import { usePromptsSummary } from "@/hooks/use-prompts-summary";
+import { useShareOfVoice } from "@/hooks/use-share-of-voice";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { shareOfVoiceColorMap } from "@/lib/share-of-voice-palette";
 
 export const Route = createFileRoute("/_authed/app/$brand/share-of-voice")({
 	head: ({ matches, match }) => {

@@ -3,8 +3,8 @@
 // this from a client module would bloat the browser bundle — keep it confined to
 // server functions. Client code imports types/config from `./domain-categories`.
 
+import { type CitationCategory, FORUM_DOMAINS, inferPageType, isForumDomain } from "./domain-categories";
 import { EDITORIAL_DOMAINS } from "./editorial-domains";
-import { type CitationCategory, inferPageType, isForumDomain, FORUM_DOMAINS } from "./domain-categories";
 
 const SOCIAL_MEDIA_DOMAINS = new Set([
 	"facebook.com",
