@@ -13,7 +13,8 @@
 #      re-seed, run the `cloud` project and the `cloud`-tagged Bruno cases
 #      (plan enforcement, which only exists in this mode)
 #   4. whitelabel — same with e2e/modes/whitelabel.yaml
-#   5. demo — same with e2e/modes/demo.yaml
+#   5. demo — same with e2e/modes/demo.yaml, plus the `demo`-tagged Bruno
+#      cases (every API write must be refused)
 #
 # The mode phases only recreate `web`: DEPLOYMENT_MODE is read at runtime, so
 # one image serves all of them. Ordering matters — the fixture suites run while
@@ -224,6 +225,10 @@ jobs:
         run: pnpm -C e2e exec playwright test --project=demo
         env:
           PLAYWRIGHT_HTML_REPORT: playwright-report-demo
+
+      # Every /api/v1 write has to be refused here, whatever the key.
+      - name: Run Bruno API tests (demo mode)
+        run: pnpm test:api:demo
 
       - name: Dump web logs
         if: failure()

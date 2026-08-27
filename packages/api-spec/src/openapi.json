@@ -85,16 +85,7 @@
 						"description": "Platforms this prompt is tracked on grounded. Each entry spends one premium pairing."
 					}
 				},
-				"required": [
-					"id",
-					"brandId",
-					"value",
-					"enabled",
-					"tags",
-					"systemTags",
-					"createdAt",
-					"updatedAt"
-				]
+				"required": ["id", "brandId", "value", "enabled", "tags", "systemTags", "createdAt", "updatedAt"]
 			},
 			"CreatePromptRequest": {
 				"type": "object",
@@ -116,10 +107,7 @@
 						"description": "User-defined tags for categorizing this prompt"
 					}
 				},
-				"required": [
-					"brandId",
-					"value"
-				]
+				"required": ["brandId", "value"]
 			},
 			"UpdatePromptRequest": {
 				"type": "object",
@@ -185,9 +173,7 @@
 						]
 					}
 				},
-				"required": [
-					"error"
-				]
+				"required": ["error"]
 			},
 			"SuccessMessage": {
 				"type": "object",
@@ -201,9 +187,7 @@
 						"description": "Additional response data"
 					}
 				},
-				"required": [
-					"message"
-				]
+				"required": ["message"]
 			},
 			"CreateReportRequest": {
 				"type": "object",
@@ -226,10 +210,7 @@
 						"description": "Optional list of custom prompts to include in the report"
 					}
 				},
-				"required": [
-					"brandName",
-					"brandWebsite"
-				]
+				"required": ["brandName", "brandWebsite"]
 			},
 			"ReportSummary": {
 				"type": "object",
@@ -249,12 +230,7 @@
 					},
 					"status": {
 						"type": "string",
-						"enum": [
-							"pending",
-							"processing",
-							"completed",
-							"failed"
-						],
+						"enum": ["pending", "processing", "completed", "failed"],
 						"description": "Current report status"
 					},
 					"createdAt": {
@@ -269,13 +245,7 @@
 						"description": "Timestamp when the report completed"
 					}
 				},
-				"required": [
-					"id",
-					"brandName",
-					"brandWebsite",
-					"status",
-					"createdAt"
-				]
+				"required": ["id", "brandName", "brandWebsite", "status", "createdAt"]
 			},
 			"ReportPromptSnapshot": {
 				"type": "object",
@@ -293,11 +263,7 @@
 						"$ref": "#/components/schemas/MentionsSummary"
 					}
 				},
-				"required": [
-					"promptValue",
-					"totalRuns",
-					"mentions"
-				]
+				"required": ["promptValue", "totalRuns", "mentions"]
 			},
 			"MentionsSummary": {
 				"type": "object",
@@ -323,12 +289,7 @@
 						"description": "Top-K competitor entities ranked by mention count"
 					}
 				},
-				"required": [
-					"mentionsTotal",
-					"brandMentionsTotal",
-					"competitorMentionsTotal",
-					"mentionsTopK"
-				]
+				"required": ["mentionsTotal", "brandMentionsTotal", "competitorMentionsTotal", "mentionsTopK"]
 			},
 			"MentionEntry": {
 				"type": "object",
@@ -342,10 +303,7 @@
 						"description": "Number of runs where this entity was mentioned"
 					}
 				},
-				"required": [
-					"entity",
-					"count"
-				]
+				"required": ["entity", "count"]
 			},
 			"CitedUrlEntry": {
 				"type": "object",
@@ -364,11 +322,7 @@
 						"description": "Number of times this URL was cited"
 					}
 				},
-				"required": [
-					"url",
-					"title",
-					"count"
-				]
+				"required": ["url", "title", "count"]
 			},
 			"AnalyzeBrandRequest": {
 				"type": "object",
@@ -397,9 +351,7 @@
 						"default": 30
 					}
 				},
-				"required": [
-					"website"
-				]
+				"required": ["website"]
 			},
 			"OnboardingSuggestion": {
 				"type": "object",
@@ -444,11 +396,7 @@
 									}
 								}
 							},
-							"required": [
-								"name",
-								"domains",
-								"aliases"
-							]
+							"required": ["name", "domains", "aliases"]
 						}
 					},
 					"suggestedPrompts": {
@@ -466,21 +414,11 @@
 									}
 								}
 							},
-							"required": [
-								"prompt",
-								"tags"
-							]
+							"required": ["prompt", "tags"]
 						}
 					}
 				},
-				"required": [
-					"brandName",
-					"website",
-					"additionalDomains",
-					"aliases",
-					"competitors",
-					"suggestedPrompts"
-				]
+				"required": ["brandName", "website", "additionalDomains", "aliases", "competitors", "suggestedPrompts"]
 			},
 			"CreateBrandRequest": {
 				"type": "object",
@@ -530,9 +468,7 @@
 									}
 								}
 							},
-							"required": [
-								"name"
-							]
+							"required": ["name"]
 						}
 					},
 					"prompts": {
@@ -555,17 +491,11 @@
 									"default": true
 								}
 							},
-							"required": [
-								"value"
-							]
+							"required": ["value"]
 						}
 					}
 				},
-				"required": [
-					"id",
-					"name",
-					"domains"
-				]
+				"required": ["id", "name", "domains"]
 			},
 			"UpdateBrandRequest": {
 				"type": "object",
@@ -650,16 +580,7 @@
 						"nullable": true
 					}
 				},
-				"required": [
-					"id",
-					"name",
-					"domains",
-					"aliases",
-					"enabled",
-					"onboarded",
-					"createdAt",
-					"updatedAt"
-				]
+				"required": ["id", "name", "domains", "aliases", "enabled", "onboarded", "createdAt", "updatedAt"]
 			},
 			"BrandsList": {
 				"type": "object",
@@ -686,18 +607,10 @@
 								"type": "integer"
 							}
 						},
-						"required": [
-							"page",
-							"limit",
-							"total",
-							"totalPages"
-						]
+						"required": ["page", "limit", "total", "totalPages"]
 					}
 				},
-				"required": [
-					"brands",
-					"pagination"
-				]
+				"required": ["brands", "pagination"]
 			},
 			"Competitor": {
 				"type": "object",
@@ -733,15 +646,7 @@
 						"format": "date-time"
 					}
 				},
-				"required": [
-					"id",
-					"brandId",
-					"name",
-					"domains",
-					"aliases",
-					"createdAt",
-					"updatedAt"
-				]
+				"required": ["id", "brandId", "name", "domains", "aliases", "createdAt", "updatedAt"]
 			},
 			"CompetitorsList": {
 				"type": "object",
@@ -768,18 +673,10 @@
 								"type": "integer"
 							}
 						},
-						"required": [
-							"page",
-							"limit",
-							"total",
-							"totalPages"
-						]
+						"required": ["page", "limit", "total", "totalPages"]
 					}
 				},
-				"required": [
-					"competitors",
-					"pagination"
-				]
+				"required": ["competitors", "pagination"]
 			},
 			"CreateCompetitorRequest": {
 				"type": "object",
@@ -806,10 +703,7 @@
 						}
 					}
 				},
-				"required": [
-					"brandId",
-					"name"
-				]
+				"required": ["brandId", "name"]
 			},
 			"UpdateCompetitorRequest": {
 				"type": "object",
@@ -886,23 +780,10 @@
 								"description": "Top-K cited URLs ranked by frequency"
 							}
 						},
-						"required": [
-							"citationsTotal",
-							"brandCitationsTotal",
-							"competitorCitationsTotal",
-							"citedUrlsTopK"
-						]
+						"required": ["citationsTotal", "brandCitationsTotal", "competitorCitationsTotal", "citedUrlsTopK"]
 					}
 				},
-				"required": [
-					"brandId",
-					"promptId",
-					"promptValue",
-					"startDate",
-					"endDate",
-					"mentions",
-					"citations"
-				]
+				"required": ["brandId", "promptId", "promptValue", "startDate", "endDate", "mentions", "citations"]
 			},
 			"Pagination": {
 				"type": "object",
@@ -921,12 +802,7 @@
 						"type": "integer"
 					}
 				},
-				"required": [
-					"page",
-					"limit",
-					"total",
-					"totalPages"
-				]
+				"required": ["page", "limit", "total", "totalPages"]
 			},
 			"DateRange": {
 				"description": "The window the response was computed over, resolved from either the explicit dates or the lookback shorthand.",
@@ -944,11 +820,7 @@
 						"type": "string"
 					}
 				},
-				"required": [
-					"startDate",
-					"endDate",
-					"timezone"
-				]
+				"required": ["startDate", "endDate", "timezone"]
 			},
 			"ApiKeyIdentity": {
 				"type": "object",
@@ -956,10 +828,7 @@
 					"keyType": {
 						"type": "string",
 						"description": "`admin` for an instance key, `organization` for a dashboard-issued key.",
-						"enum": [
-							"admin",
-							"organization"
-						]
+						"enum": ["admin", "organization"]
 					},
 					"organizationId": {
 						"type": "string",
@@ -1003,10 +872,7 @@
 							},
 							"window": {
 								"type": "string",
-								"enum": [
-									"minute",
-									"hour"
-								]
+								"enum": ["minute", "hour"]
 							}
 						}
 					},
@@ -1015,12 +881,7 @@
 						"properties": {
 							"mode": {
 								"type": "string",
-								"enum": [
-									"local",
-									"cloud",
-									"whitelabel",
-									"demo"
-								]
+								"enum": ["local", "cloud", "whitelabel", "demo"]
 							},
 							"billingEnabled": {
 								"type": "boolean",
@@ -1031,20 +892,10 @@
 								"description": "When true, every write answers `403`."
 							}
 						},
-						"required": [
-							"mode",
-							"billingEnabled",
-							"readOnly"
-						]
+						"required": ["mode", "billingEnabled", "readOnly"]
 					}
 				},
-				"required": [
-					"keyType",
-					"organizationId",
-					"scopes",
-					"brandIds",
-					"deployment"
-				]
+				"required": ["keyType", "organizationId", "scopes", "brandIds", "deployment"]
 			},
 			"Platform": {
 				"type": "object",
@@ -1066,12 +917,7 @@
 						"description": "Whether this deployment is actually wired to reach the platform."
 					}
 				},
-				"required": [
-					"id",
-					"label",
-					"premiumCapable",
-					"configured"
-				]
+				"required": ["id", "label", "premiumCapable", "configured"]
 			},
 			"Organization": {
 				"type": "object",
@@ -1093,13 +939,7 @@
 						"format": "date-time"
 					}
 				},
-				"required": [
-					"id",
-					"name",
-					"slug",
-					"brandCount",
-					"createdAt"
-				]
+				"required": ["id", "name", "slug", "brandCount", "createdAt"]
 			},
 			"PlanLimits": {
 				"description": "The organization's plan limits. Every field is null on deployments without billing.",
@@ -1191,20 +1031,10 @@
 								"type": "integer"
 							}
 						},
-						"required": [
-							"brands",
-							"enabledPrompts",
-							"premiumPairingsAssigned"
-						]
+						"required": ["brands", "enabledPrompts", "premiumPairingsAssigned"]
 					}
 				},
-				"required": [
-					"organizationId",
-					"billingEnabled",
-					"plan",
-					"limits",
-					"usage"
-				]
+				"required": ["organizationId", "billingEnabled", "plan", "limits", "usage"]
 			},
 			"BillingPlan": {
 				"type": "object",
@@ -1225,19 +1055,11 @@
 					"standing": {
 						"type": "string",
 						"description": "What the subscription means for service: `active` and `grace` keep tracking running, `paused` stops it, `none` is unsubscribed.",
-						"enum": [
-							"active",
-							"grace",
-							"paused",
-							"none"
-						]
+						"enum": ["active", "grace", "paused", "none"]
 					},
 					"interval": {
 						"type": "string",
-						"enum": [
-							"monthly",
-							"annual"
-						],
+						"enum": ["monthly", "annual"],
 						"nullable": true
 					},
 					"periodEnd": {
@@ -1253,14 +1075,7 @@
 						"description": "Whether prompts are currently being sampled."
 					}
 				},
-				"required": [
-					"key",
-					"name",
-					"status",
-					"standing",
-					"cancelAtPeriodEnd",
-					"trackingActive"
-				]
+				"required": ["key", "name", "status", "standing", "cancelAtPeriodEnd", "trackingActive"]
 			},
 			"BrandSummary": {
 				"description": "Every headline figure the dashboard shows for a brand, in one request.",
@@ -1332,10 +1147,7 @@
 						"nullable": true
 					}
 				},
-				"required": [
-					"date",
-					"visibility"
-				]
+				"required": ["date", "visibility"]
 			},
 			"BrandVisibility": {
 				"type": "object",
@@ -1367,15 +1179,7 @@
 						}
 					}
 				},
-				"required": [
-					"brandId",
-					"range",
-					"currentVisibility",
-					"totalRuns",
-					"totalPrompts",
-					"totalCitations",
-					"series"
-				]
+				"required": ["brandId", "range", "currentVisibility", "totalRuns", "totalPrompts", "totalCitations", "series"]
 			},
 			"ShareOfVoiceEntry": {
 				"type": "object",
@@ -1400,13 +1204,7 @@
 						"description": "Percentage 0–100."
 					}
 				},
-				"required": [
-					"name",
-					"isBrand",
-					"mentions",
-					"prompts",
-					"share"
-				]
+				"required": ["name", "isBrand", "mentions", "prompts", "share"]
 			},
 			"ShareOfVoicePoint": {
 				"type": "object",
@@ -1421,10 +1219,7 @@
 						"nullable": true
 					}
 				},
-				"required": [
-					"date",
-					"share"
-				]
+				"required": ["date", "share"]
 			},
 			"BrandShareOfVoice": {
 				"type": "object",
@@ -1461,15 +1256,7 @@
 						"description": "The brand's share over time."
 					}
 				},
-				"required": [
-					"brandId",
-					"brandName",
-					"range",
-					"brandShare",
-					"totalRuns",
-					"entries",
-					"series"
-				]
+				"required": ["brandId", "brandName", "range", "brandShare", "totalRuns", "entries", "series"]
 			},
 			"PlatformVisibility": {
 				"type": "object",
@@ -1495,14 +1282,7 @@
 						"type": "integer"
 					}
 				},
-				"required": [
-					"model",
-					"label",
-					"runs",
-					"brandMentions",
-					"visibility",
-					"citations"
-				]
+				"required": ["model", "label", "runs", "brandMentions", "visibility", "citations"]
 			},
 			"BrandPlatformBreakdown": {
 				"type": "object",
@@ -1520,11 +1300,7 @@
 						}
 					}
 				},
-				"required": [
-					"brandId",
-					"range",
-					"data"
-				]
+				"required": ["brandId", "range", "data"]
 			},
 			"CitationDomain": {
 				"type": "object",
@@ -1571,15 +1347,7 @@
 						"nullable": true
 					}
 				},
-				"required": [
-					"domain",
-					"category",
-					"count",
-					"share",
-					"promptCount",
-					"previousCount",
-					"changePercent"
-				]
+				"required": ["domain", "category", "count", "share", "promptCount", "previousCount", "changePercent"]
 			},
 			"CitationDomainList": {
 				"type": "object",
@@ -1600,10 +1368,7 @@
 								"type": "integer"
 							}
 						},
-						"required": [
-							"citations",
-							"uniqueDomains"
-						]
+						"required": ["citations", "uniqueDomains"]
 					},
 					"data": {
 						"type": "array",
@@ -1615,13 +1380,7 @@
 						"$ref": "#/components/schemas/Pagination"
 					}
 				},
-				"required": [
-					"brandId",
-					"range",
-					"totals",
-					"data",
-					"pagination"
-				]
+				"required": ["brandId", "range", "totals", "data", "pagination"]
 			},
 			"CitationUrl": {
 				"type": "object",
@@ -1685,16 +1444,7 @@
 						"description": "Not cited in the equal-length window immediately before this one."
 					}
 				},
-				"required": [
-					"url",
-					"domain",
-					"title",
-					"category",
-					"pageType",
-					"count",
-					"promptCount",
-					"isNew"
-				]
+				"required": ["url", "domain", "title", "category", "pageType", "count", "promptCount", "isNew"]
 			},
 			"CitationUrlList": {
 				"type": "object",
@@ -1715,10 +1465,7 @@
 								"type": "integer"
 							}
 						},
-						"required": [
-							"citations",
-							"uniqueUrls"
-						]
+						"required": ["citations", "uniqueUrls"]
 					},
 					"data": {
 						"type": "array",
@@ -1730,13 +1477,7 @@
 						"$ref": "#/components/schemas/Pagination"
 					}
 				},
-				"required": [
-					"brandId",
-					"range",
-					"totals",
-					"data",
-					"pagination"
-				]
+				"required": ["brandId", "range", "totals", "data", "pagination"]
 			},
 			"FanoutQuery": {
 				"type": "object",
@@ -1752,11 +1493,7 @@
 						"type": "integer"
 					}
 				},
-				"required": [
-					"query",
-					"runs",
-					"promptCount"
-				]
+				"required": ["query", "runs", "promptCount"]
 			},
 			"BrandQueryFanout": {
 				"type": "object",
@@ -1883,12 +1620,7 @@
 						"$ref": "#/components/schemas/Pagination"
 					}
 				},
-				"required": [
-					"brandId",
-					"range",
-					"data",
-					"pagination"
-				]
+				"required": ["brandId", "range", "data", "pagination"]
 			},
 			"RunSummary": {
 				"description": "A single model answer, without its text. Fetch `GET /runs/{runId}` for the answer itself.",
@@ -1974,12 +1706,7 @@
 						"description": "Position within the answer's citation list."
 					}
 				},
-				"required": [
-					"url",
-					"domain",
-					"title",
-					"citationIndex"
-				]
+				"required": ["url", "domain", "title", "citationIndex"]
 			},
 			"Run": {
 				"description": "One model answer with its normalized text and citations.",
@@ -1999,9 +1726,7 @@
 										"nullable": true
 									}
 								},
-								"required": [
-									"text"
-								]
+								"required": ["text"]
 							},
 							"citations": {
 								"type": "array",
@@ -2010,10 +1735,7 @@
 								}
 							}
 						},
-						"required": [
-							"answer",
-							"citations"
-						]
+						"required": ["answer", "citations"]
 					}
 				]
 			},
@@ -2030,10 +1752,7 @@
 						"$ref": "#/components/schemas/Pagination"
 					}
 				},
-				"required": [
-					"data",
-					"pagination"
-				]
+				"required": ["data", "pagination"]
 			},
 			"BulkCreatePromptsRequest": {
 				"description": "All-or-nothing: the whole batch is checked against the plan as one delta and either every prompt is created or none is.",
@@ -2071,16 +1790,11 @@
 									"description": "Platforms to track this prompt on grounded. Each entry spends one premium pairing."
 								}
 							},
-							"required": [
-								"value"
-							]
+							"required": ["value"]
 						}
 					}
 				},
-				"required": [
-					"brandId",
-					"prompts"
-				]
+				"required": ["brandId", "prompts"]
 			},
 			"BulkCreatePromptsResponse": {
 				"type": "object",
@@ -2092,9 +1806,7 @@
 						}
 					}
 				},
-				"required": [
-					"data"
-				]
+				"required": ["data"]
 			},
 			"PlatformList": {
 				"type": "object",
@@ -2106,9 +1818,7 @@
 						}
 					}
 				},
-				"required": [
-					"data"
-				]
+				"required": ["data"]
 			},
 			"OrganizationList": {
 				"type": "object",
@@ -2123,10 +1833,7 @@
 						"$ref": "#/components/schemas/Pagination"
 					}
 				},
-				"required": [
-					"data",
-					"pagination"
-				]
+				"required": ["data", "pagination"]
 			}
 		},
 		"responses": {
@@ -2297,14 +2004,7 @@
 				"required": false,
 				"schema": {
 					"type": "string",
-					"enum": [
-						"1w",
-						"1m",
-						"3m",
-						"6m",
-						"1y",
-						"all"
-					]
+					"enum": ["1w", "1m", "3m", "6m", "1y", "all"]
 				}
 			},
 			"Timezone": {
@@ -2342,9 +2042,7 @@
 			"get": {
 				"summary": "List brands",
 				"operationId": "listBrands",
-				"tags": [
-					"Brands"
-				],
+				"tags": ["Brands"],
 				"parameters": [
 					{
 						"name": "page",
@@ -2411,16 +2109,12 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"brands:read"
-				]
+				"x-elmo-scopes": ["brands:read"]
 			},
 			"post": {
 				"summary": "Create a brand",
 				"operationId": "createBrand",
-				"tags": [
-					"Brands"
-				],
+				"tags": ["Brands"],
 				"requestBody": {
 					"required": true,
 					"content": {
@@ -2465,18 +2159,14 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"brands:write"
-				]
+				"x-elmo-scopes": ["brands:write"]
 			}
 		},
 		"/brands/{brandId}": {
 			"get": {
 				"summary": "Get a brand",
 				"operationId": "getBrand",
-				"tags": [
-					"Brands"
-				],
+				"tags": ["Brands"],
 				"parameters": [
 					{
 						"name": "brandId",
@@ -2517,16 +2207,12 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"brands:read"
-				]
+				"x-elmo-scopes": ["brands:read"]
 			},
 			"patch": {
 				"summary": "Update a brand",
 				"operationId": "updateBrand",
-				"tags": [
-					"Brands"
-				],
+				"tags": ["Brands"],
 				"parameters": [
 					{
 						"name": "brandId",
@@ -2586,9 +2272,7 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"brands:write"
-				]
+				"x-elmo-scopes": ["brands:write"]
 			}
 		},
 		"/brands/{brandId}/citations/domains": {
@@ -2596,13 +2280,9 @@
 				"summary": "List cited domains",
 				"description": "Domains the engines cited when answering this brand's prompts, categorized and compared against the equal-length window immediately before this one.",
 				"operationId": "listBrandCitationDomains",
-				"tags": [
-					"Analytics"
-				],
+				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": [
-					"analytics:read"
-				],
+				"x-elmo-scopes": ["analytics:read"],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
@@ -2669,13 +2349,9 @@
 				"summary": "List cited URLs",
 				"description": "Individual pages the engines cited, with their category and page type.",
 				"operationId": "listBrandCitationUrls",
-				"tags": [
-					"Analytics"
-				],
+				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": [
-					"analytics:read"
-				],
+				"x-elmo-scopes": ["analytics:read"],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
@@ -2742,13 +2418,9 @@
 				"summary": "Get visibility by platform",
 				"description": "Runs, mentions, and visibility broken down by answer engine, so a customer can see where they are strong and where they are invisible.",
 				"operationId": "getBrandPlatformBreakdown",
-				"tags": [
-					"Analytics"
-				],
+				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": [
-					"analytics:read"
-				],
+				"x-elmo-scopes": ["analytics:read"],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
@@ -2806,13 +2478,9 @@
 				"summary": "List prompt performance",
 				"description": "Per-prompt mention rates over the window. The analytics counterpart to `GET /prompts?brandId=`, which returns prompt configuration rather than results.",
 				"operationId": "listBrandPromptPerformance",
-				"tags": [
-					"Analytics"
-				],
+				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": [
-					"analytics:read"
-				],
+				"x-elmo-scopes": ["analytics:read"],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
@@ -2879,13 +2547,9 @@
 				"summary": "Get query fan-out",
 				"description": "The searches engines ran while answering this brand's prompts. Engines that don't expose their searches still contribute runs, so `coverageRate` is the honest denominator.",
 				"operationId": "getBrandQueryFanout",
-				"tags": [
-					"Analytics"
-				],
+				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": [
-					"analytics:read"
-				],
+				"x-elmo-scopes": ["analytics:read"],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
@@ -2952,13 +2616,9 @@
 				"summary": "Get share of voice",
 				"description": "The brand against its tracked competitors: a leaderboard of mention counts and shares, plus the brand's own share over time.",
 				"operationId": "getBrandShareOfVoice",
-				"tags": [
-					"Analytics"
-				],
+				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": [
-					"analytics:read"
-				],
+				"x-elmo-scopes": ["analytics:read"],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
@@ -3019,13 +2679,9 @@
 				"summary": "Get a brand summary",
 				"description": "Every headline figure the dashboard shows for a brand — visibility, share of voice, and period totals — in a single request.",
 				"operationId": "getBrandSummary",
-				"tags": [
-					"Analytics"
-				],
+				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": [
-					"analytics:read"
-				],
+				"x-elmo-scopes": ["analytics:read"],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
@@ -3086,13 +2742,9 @@
 				"summary": "Get visibility over time",
 				"description": "A daily series of the share of runs that mentioned the brand, plus period totals. Days with no runs to plot carry `null` rather than zero, so a gap in sampling never reads as a collapse in visibility.",
 				"operationId": "getBrandVisibility",
-				"tags": [
-					"Analytics"
-				],
+				"tags": ["Analytics"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": [
-					"analytics:read"
-				],
+				"x-elmo-scopes": ["analytics:read"],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
@@ -3152,9 +2804,7 @@
 			"get": {
 				"summary": "List competitors",
 				"operationId": "listCompetitors",
-				"tags": [
-					"Competitors"
-				],
+				"tags": ["Competitors"],
 				"parameters": [
 					{
 						"name": "brandId",
@@ -3220,16 +2870,12 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"competitors:read"
-				]
+				"x-elmo-scopes": ["competitors:read"]
 			},
 			"post": {
 				"summary": "Add a competitor",
 				"operationId": "createCompetitor",
-				"tags": [
-					"Competitors"
-				],
+				"tags": ["Competitors"],
 				"requestBody": {
 					"required": true,
 					"content": {
@@ -3274,18 +2920,14 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"competitors:write"
-				]
+				"x-elmo-scopes": ["competitors:write"]
 			}
 		},
 		"/competitors/{competitorId}": {
 			"get": {
 				"summary": "Get a competitor",
 				"operationId": "getCompetitor",
-				"tags": [
-					"Competitors"
-				],
+				"tags": ["Competitors"],
 				"parameters": [
 					{
 						"name": "competitorId",
@@ -3329,16 +2971,12 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"competitors:read"
-				]
+				"x-elmo-scopes": ["competitors:read"]
 			},
 			"patch": {
 				"summary": "Update a competitor",
 				"operationId": "updateCompetitor",
-				"tags": [
-					"Competitors"
-				],
+				"tags": ["Competitors"],
 				"parameters": [
 					{
 						"name": "competitorId",
@@ -3398,16 +3036,12 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"competitors:write"
-				]
+				"x-elmo-scopes": ["competitors:write"]
 			},
 			"delete": {
 				"summary": "Delete a competitor",
 				"operationId": "deleteCompetitor",
-				"tags": [
-					"Competitors"
-				],
+				"tags": ["Competitors"],
 				"parameters": [
 					{
 						"name": "competitorId",
@@ -3457,9 +3091,7 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"competitors:write"
-				]
+				"x-elmo-scopes": ["competitors:write"]
 			}
 		},
 		"/me": {
@@ -3467,9 +3099,7 @@
 				"summary": "Describe the calling key",
 				"description": "What this key is, which organization and brands it reaches, which scopes it holds, and what kind of deployment answered. Requires no scope, so it is always safe to call first when wiring up an integration.",
 				"operationId": "getMe",
-				"tags": [
-					"Identity"
-				],
+				"tags": ["Identity"],
 				"x-elmo-stability": "planned",
 				"x-elmo-scopes": [],
 				"responses": {
@@ -3503,13 +3133,9 @@
 				"summary": "List organizations",
 				"description": "One entry for an organization key. Every organization for an instance admin key.",
 				"operationId": "listOrganizations",
-				"tags": [
-					"Organizations"
-				],
+				"tags": ["Organizations"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": [
-					"brands:read"
-				],
+				"x-elmo-scopes": ["brands:read"],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/Page"
@@ -3549,13 +3175,9 @@
 				"summary": "Get an organization",
 				"description": "An organization outside the key's reach answers `404`, identically to one that does not exist.",
 				"operationId": "getOrganization",
-				"tags": [
-					"Organizations"
-				],
+				"tags": ["Organizations"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": [
-					"brands:read"
-				],
+				"x-elmo-scopes": ["brands:read"],
 				"parameters": [
 					{
 						"name": "organizationId",
@@ -3600,13 +3222,9 @@
 				"summary": "Get billing state",
 				"description": "The organization's plan, its limits, and how much of each limit is already spent — enough for an integration to know a write will be rejected before attempting it.\n\nThis endpoint is read-only by construction. No API key of any kind can change a subscription, an add-on quantity, or a payment method; there is no billing write endpoint and no billing write scope. Stripe identifiers, invoices, and payment methods are never returned.\n\nDeployments without billing answer `200` with `billingEnabled: false`, a null plan, and null limits, so callers need no special case.",
 				"operationId": "getOrganizationBilling",
-				"tags": [
-					"Organizations"
-				],
+				"tags": ["Organizations"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": [
-					"billing:read"
-				],
+				"x-elmo-scopes": ["billing:read"],
 				"parameters": [
 					{
 						"name": "organizationId",
@@ -3651,9 +3269,7 @@
 				"summary": "List trackable platforms",
 				"description": "The answer engines this deployment can track, with the identifiers accepted by every `model` filter. Lets a client build a platform picker without hardcoding names.",
 				"operationId": "listPlatforms",
-				"tags": [
-					"Platforms"
-				],
+				"tags": ["Platforms"],
 				"x-elmo-stability": "planned",
 				"x-elmo-scopes": [],
 				"responses": {
@@ -3687,9 +3303,7 @@
 				"summary": "List all prompts",
 				"description": "Retrieve a paginated list of all prompts across all brands",
 				"operationId": "listPrompts",
-				"tags": [
-					"Prompts"
-				],
+				"tags": ["Prompts"],
 				"parameters": [
 					{
 						"name": "brandId",
@@ -3801,17 +3415,13 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"prompts:read"
-				]
+				"x-elmo-scopes": ["prompts:read"]
 			},
 			"post": {
 				"summary": "Create a new prompt",
 				"description": "Create a new prompt for a brand. This will automatically schedule the prompt for execution.",
 				"operationId": "createPrompt",
-				"tags": [
-					"Prompts"
-				],
+				"tags": ["Prompts"],
 				"requestBody": {
 					"required": true,
 					"content": {
@@ -3856,9 +3466,7 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"prompts:write"
-				]
+				"x-elmo-scopes": ["prompts:write"]
 			}
 		},
 		"/prompts/bulk": {
@@ -3866,13 +3474,9 @@
 				"summary": "Create prompts in bulk",
 				"description": "Create up to 100 prompts for one brand in a single request. The batch is checked against the organization's prompt and premium limits as one delta and applied all-or-nothing, so a batch that would overrun a limit creates nothing rather than part of itself.",
 				"operationId": "createPromptsBulk",
-				"tags": [
-					"Prompts"
-				],
+				"tags": ["Prompts"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": [
-					"prompts:write"
-				],
+				"x-elmo-scopes": ["prompts:write"],
 				"requestBody": {
 					"required": true,
 					"content": {
@@ -3926,9 +3530,7 @@
 				"summary": "Get a prompt",
 				"description": "Retrieve a specific prompt by ID",
 				"operationId": "getPrompt",
-				"tags": [
-					"Prompts"
-				],
+				"tags": ["Prompts"],
 				"parameters": [
 					{
 						"name": "promptId",
@@ -3972,17 +3574,13 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"prompts:read"
-				]
+				"x-elmo-scopes": ["prompts:read"]
 			},
 			"patch": {
 				"summary": "Update a prompt",
 				"description": "Update a prompt's properties. Only provided fields will be updated. Toggling `enabled` schedules or unschedules the recurring run job.",
 				"operationId": "updatePrompt",
-				"tags": [
-					"Prompts"
-				],
+				"tags": ["Prompts"],
 				"parameters": [
 					{
 						"name": "promptId",
@@ -4042,17 +3640,13 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"prompts:write"
-				]
+				"x-elmo-scopes": ["prompts:write"]
 			},
 			"delete": {
 				"summary": "Delete a prompt",
 				"description": "Permanently delete a prompt and cancel all related scheduled jobs. This will also cascade delete all associated prompt runs.",
 				"operationId": "deletePrompt",
-				"tags": [
-					"Prompts"
-				],
+				"tags": ["Prompts"],
 				"parameters": [
 					{
 						"name": "promptId",
@@ -4083,9 +3677,7 @@
 													"description": "Number of related prompt_runs rows deleted by the cascade."
 												}
 											},
-											"required": [
-												"deletedRunsCount"
-											]
+											"required": ["deletedRunsCount"]
 										}
 									]
 								}
@@ -4118,9 +3710,7 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"prompts:write"
-				]
+				"x-elmo-scopes": ["prompts:write"]
 			}
 		},
 		"/prompts/{promptId}/runs": {
@@ -4128,13 +3718,9 @@
 				"summary": "List runs for a prompt",
 				"description": "Individual model answers behind the aggregates, newest first, without their text — the list stays small enough to page through. Fetch `GET /runs/{runId}` for the answer itself.",
 				"operationId": "listPromptRuns",
-				"tags": [
-					"Runs"
-				],
+				"tags": ["Runs"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": [
-					"runs:read"
-				],
+				"x-elmo-scopes": ["runs:read"],
 				"parameters": [
 					{
 						"name": "promptId",
@@ -4204,9 +3790,7 @@
 				"summary": "Get prompt snapshot",
 				"description": "Get an aggregated snapshot of mention and citation analytics for a specific prompt over a date range. Use this to identify competitive gaps, track brand visibility trends, and discover top cited URLs.",
 				"operationId": "getPromptSnapshot",
-				"tags": [
-					"Snapshots"
-				],
+				"tags": ["Snapshots"],
 				"parameters": [
 					{
 						"name": "promptId",
@@ -4339,9 +3923,7 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"analytics:read"
-				]
+				"x-elmo-scopes": ["analytics:read"]
 			}
 		},
 		"/reports": {
@@ -4349,9 +3931,7 @@
 				"summary": "Create a report",
 				"description": "Create a new AI Share of Voice report and queue it for generation. The report will evaluate the brand across multiple AI engines (ChatGPT, Claude, Google AI) using generated and optional custom prompts.\n\nRequires an instance admin key; organization keys receive `403`.",
 				"operationId": "createReport",
-				"tags": [
-					"Reports"
-				],
+				"tags": ["Reports"],
 				"requestBody": {
 					"required": true,
 					"content": {
@@ -4377,9 +3957,7 @@
 										},
 										"status": {
 											"type": "string",
-											"enum": [
-												"pending"
-											],
+											"enum": ["pending"],
 											"description": "Initial report status"
 										},
 										"brandName": {
@@ -4393,13 +3971,7 @@
 											"format": "date-time"
 										}
 									},
-									"required": [
-										"reportId",
-										"status",
-										"brandName",
-										"brandWebsite",
-										"createdAt"
-									]
+									"required": ["reportId", "status", "brandName", "brandWebsite", "createdAt"]
 								}
 							}
 						}
@@ -4427,18 +3999,14 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"reports:write"
-				],
+				"x-elmo-scopes": ["reports:write"],
 				"x-elmo-admin-only": true
 			},
 			"get": {
 				"summary": "List reports",
 				"description": "Retrieve a paginated list of all reports, ordered by creation date (newest first).\n\nRequires an instance admin key; organization keys receive `403`.",
 				"operationId": "listReports",
-				"tags": [
-					"Reports"
-				],
+				"tags": ["Reports"],
 				"parameters": [
 					{
 						"name": "page",
@@ -4514,9 +4082,7 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"reports:read"
-				],
+				"x-elmo-scopes": ["reports:read"],
 				"x-elmo-admin-only": true
 			}
 		},
@@ -4525,9 +4091,7 @@
 				"summary": "Get report status and data",
 				"description": "Poll a report's status. When completed, returns per-prompt snapshot data with raw mention counts. Consumers are responsible for computing SoV and other derived metrics from the raw data.\n\nRequires an instance admin key; organization keys receive `403`.",
 				"operationId": "getReport",
-				"tags": [
-					"Reports"
-				],
+				"tags": ["Reports"],
 				"parameters": [
 					{
 						"name": "reportId",
@@ -4566,12 +4130,7 @@
 										},
 										"status": {
 											"type": "string",
-											"enum": [
-												"pending",
-												"processing",
-												"completed",
-												"failed"
-											]
+											"enum": ["pending", "processing", "completed", "failed"]
 										},
 										"progress": {
 											"type": "integer",
@@ -4662,26 +4221,14 @@
 																"description": "Number of individual prompt runs where this competitor was mentioned"
 															}
 														},
-														"required": [
-															"name",
-															"sov",
-															"visibility",
-															"promptsWithMentions",
-															"promptRunsWithMentions"
-														]
+														"required": ["name", "sov", "visibility", "promptsWithMentions", "promptRunsWithMentions"]
 													},
 													"description": "Per-competitor SoV breakdown, sorted by SoV descending"
 												}
 											}
 										}
 									},
-									"required": [
-										"reportId",
-										"status",
-										"brandName",
-										"brandWebsite",
-										"createdAt"
-									]
+									"required": ["reportId", "status", "brandName", "brandWebsite", "createdAt"]
 								},
 								"example": {
 									"reportId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -4759,9 +4306,7 @@
 					}
 				},
 				"x-elmo-stability": "stable",
-				"x-elmo-scopes": [
-					"reports:read"
-				],
+				"x-elmo-scopes": ["reports:read"],
 				"x-elmo-admin-only": true
 			}
 		},
@@ -4770,13 +4315,9 @@
 				"summary": "Get a run",
 				"description": "One model answer, with its text normalized out of the provider's response and its citations in the order the engine listed them. The provider's raw payload is deliberately not exposed — its shape belongs to the provider, not to this API.",
 				"operationId": "getRun",
-				"tags": [
-					"Runs"
-				],
+				"tags": ["Runs"],
 				"x-elmo-stability": "planned",
-				"x-elmo-scopes": [
-					"runs:read"
-				],
+				"x-elmo-scopes": ["runs:read"],
 				"parameters": [
 					{
 						"name": "runId",
@@ -4825,9 +4366,7 @@
 				"summary": "Analyze a website",
 				"description": "Run brand analysis without persisting anything. Returns suggested additional domains, aliases, competitors, and prompts.\n\nRequires an instance admin key; organization keys receive `403`.",
 				"operationId": "analyzeBrand",
-				"tags": [
-					"Tools"
-				],
+				"tags": ["Tools"],
 				"requestBody": {
 					"required": true,
 					"content": {

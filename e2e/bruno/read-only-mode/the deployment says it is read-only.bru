@@ -1,0 +1,23 @@
+meta {
+  name: the deployment says it is read-only
+  type: http
+  seq: 7
+  tags: [
+    demo
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/v1/me
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.deployment.readOnly: isTruthy
+}
