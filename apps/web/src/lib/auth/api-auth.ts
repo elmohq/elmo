@@ -112,15 +112,21 @@ function isAdminKey(token: string): boolean {
  * directly can do. If the answer is anything but "nothing they couldn't already
  * do", it belongs in `referenceId` or `permissions` instead.
  *
- * A malformed value is read as "no narrowing" rather than raised: a
- * client-writable field must not be able to break a key either.
+ * Absence and invalidity mean opposite things, and conflating them fails in the
+ * dangerous direction: `null` here means "reaches every brand in the
+ * organization", so reading a corrupted or truncated `brandIds` as absent would
+ * *widen* a key that was deliberately narrowed. A restriction that is present
+ * but unusable resolves to an empty list — no brands — instead.
  */
-function readBrandRestriction(metadata: unknown): string[] | null {
+export function readBrandRestriction(metadata: unknown): string[] | null {
 	if (!metadata || typeof metadata !== "object") return null;
+	if (!("brandIds" in metadata)) return null;
+
 	const raw = (metadata as Record<string, unknown>).brandIds;
-	if (!Array.isArray(raw)) return null;
-	const ids = raw.filter((id): id is string => typeof id === "string" && id.length > 0);
-	return ids.length > 0 ? ids : null;
+	// Present but not a list of usable ids: the key was narrowed to something,
+	// and we cannot tell to what.
+	if (!Array.isArray(raw)) return [];
+	return raw.filter((id): id is string => typeof id === "string" && id.length > 0);
 }
 
 function asDate(value: unknown): Date | null {

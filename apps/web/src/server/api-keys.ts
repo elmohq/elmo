@@ -24,6 +24,7 @@ import { brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { API_SCOPES, type ApiScope, permissionsToScopes, scopesToPermissions } from "@/lib/api/scopes";
+import { readBrandRestriction } from "@/lib/auth/api-auth";
 import { requireAuthSession, requireBrandOrganization } from "@/lib/auth/helpers";
 import { auth } from "@/lib/auth/server";
 
@@ -64,14 +65,6 @@ function toDate(value: unknown): string | null {
 	return null;
 }
 
-function readBrandIds(metadata: unknown): string[] | null {
-	if (!metadata || typeof metadata !== "object") return null;
-	const raw = (metadata as Record<string, unknown>).brandIds;
-	if (!Array.isArray(raw)) return null;
-	const ids = raw.filter((id): id is string => typeof id === "string" && id.length > 0);
-	return ids.length > 0 ? ids : null;
-}
-
 /** The plugin's own row shape, whichever endpoint it came back from. */
 type StoredApiKey = Awaited<ReturnType<typeof auth.api.listApiKeys>>["apiKeys"][number];
 
@@ -81,7 +74,7 @@ function summarize(key: StoredApiKey): ApiKeySummary {
 		name: key.name ?? null,
 		start: key.start ?? null,
 		scopes: permissionsToScopes(key.permissions),
-		brandIds: readBrandIds(key.metadata),
+		brandIds: readBrandRestriction(key.metadata),
 		enabled: key.enabled !== false,
 		createdAt: toDate(key.createdAt),
 		lastUsedAt: toDate(key.lastRequest),
