@@ -951,6 +951,75 @@ export async function getPerPromptDailyMentions(
 	return rows;
 }
 
+export interface PromptRunRow {
+	id: string;
+	prompt_id: string;
+	brand_id: string;
+	model: string;
+	provider: string | null;
+	web_search_enabled: boolean;
+	brand_mentioned: boolean;
+	competitors_mentioned: string[];
+	web_queries: string[];
+	citation_count: number;
+	created_at: string;
+}
+
+/**
+ * One prompt's runs over a window, newest first, with the citation count each
+ * produced. Lives here rather than in the route so the window is bounded by the
+ * same timezone-aware, half-open `dateFilter` every other read uses — building
+ * the boundaries in JavaScript puts runs near local midnight on the wrong day.
+ */
+export async function getPromptRuns(
+	promptId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	limit: number,
+	offset: number,
+	model?: string,
+): Promise<PromptRunRow[]> {
+	return queryPg<PromptRunRow>(sql`
+		SELECT
+			prompt_runs.id::text AS id,
+			prompt_runs.prompt_id::text AS prompt_id,
+			prompt_runs.brand_id,
+			prompt_runs.model,
+			prompt_runs.provider,
+			prompt_runs.web_search_enabled,
+			prompt_runs.brand_mentioned,
+			prompt_runs.competitors_mentioned,
+			prompt_runs.web_queries,
+			(SELECT count(*) FROM citations c WHERE c.prompt_run_id = prompt_runs.id)::int AS citation_count,
+			prompt_runs.created_at
+		FROM prompt_runs
+		WHERE prompt_id = ${promptId}::uuid
+			${dateFilter(fromDate, toDate, timezone)}
+			${modelFilter(model)}
+		ORDER BY prompt_runs.created_at DESC
+		LIMIT ${limit} OFFSET ${offset}
+	`);
+}
+
+/** The same window and filters, counted — for the pagination envelope. */
+export async function countPromptRuns(
+	promptId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	model?: string,
+): Promise<number> {
+	const rows = await queryPg<{ total: number }>(sql`
+		SELECT count(*)::int AS total
+		FROM prompt_runs
+		WHERE prompt_id = ${promptId}::uuid
+			${dateFilter(fromDate, toDate, timezone)}
+			${modelFilter(model)}
+	`);
+	return rows[0]?.total ?? 0;
+}
+
 export interface PerPromptDailyCompetitorRow {
 	prompt_id: string;
 	date: string;
