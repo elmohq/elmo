@@ -1,7 +1,12 @@
-import { IconBuildingSkyscraper, IconCheck, IconPlus, IconSelector, IconSettings } from "@tabler/icons-react";
+import {
+	IconBuildingSkyscraper,
+	IconCheck,
+	IconPlus,
+	IconRefresh,
+	IconSelector,
+	IconSettings,
+} from "@tabler/icons-react";
 import { Link, useParams } from "@tanstack/react-router";
-import type { ClientConfig } from "@workspace/config/types";
-import { useRouteContext } from "@tanstack/react-router";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -13,6 +18,7 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
 import { useWorkspaces } from "@/hooks/use-workspaces";
+import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
 
 /** Two letters is enough to tell workspaces apart at a glance in the rail. */
 function initials(name: string): string {
@@ -29,26 +35,28 @@ function initials(name: string): string {
  * The brand line is the page's own subject; the workspace above it is what
  * decides who can see that page and who is billed for it, which is exactly the
  * thing a user with more than one workspace has to keep straight.
+ *
+ * The workspace being viewed comes from the route loader, so its brands and its
+ * settings are reachable whatever the all-workspaces query is doing; that query
+ * only ever adds the workspaces this page isn't in.
  */
 export function WorkspaceSwitcher({
-	workspaceName: resolvedName,
+	workspace,
 	brandName: resolvedBrandName,
 }: {
-	workspaceName?: string;
+	workspace?: WorkspaceWithBrands | null;
 	brandName?: string;
 }) {
 	const { isMobile, setOpenMobile } = useSidebar();
 	const params = useParams({ strict: false }) as { org?: string; brand?: string };
-	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
-	const canCreateBrands = context.clientConfig?.features.canCreateBrands ?? false;
-	const { workspaces } = useWorkspaces();
+	const { workspaces, isLoading, isError, isFetching, refetch } = useWorkspaces();
 
-	const current = workspaces.find((workspace) => workspace.slug === params.org || workspace.id === params.org);
+	const current = workspace ?? workspaces.find((w) => w.slug === params.org || w.id === params.org) ?? null;
+	const others = workspaces.filter((w) => w.id !== current?.id);
+	const listed = current ? [current, ...others] : others;
+
 	const currentBrand = current?.brands.find((brand) => brand.id === params.brand);
-
-	// The route hands down the names it already resolved, so the rail never
-	// paints a raw slug — or the wrong brand — while the list is still in flight.
-	const workspaceName = resolvedName ?? current?.name ?? params.org ?? "";
+	const workspaceName = current?.name ?? params.org ?? "";
 	const brandName = resolvedBrandName ?? currentBrand?.name;
 	const close = () => setOpenMobile(false);
 
@@ -77,32 +85,34 @@ export function WorkspaceSwitcher({
 						align="start"
 						sideOffset={4}
 					>
-						{workspaces.map((workspace) => (
-							<DropdownMenuGroup key={workspace.id}>
+						{listed.map((entry) => (
+							<DropdownMenuGroup key={entry.id}>
 								<DropdownMenuLabel className="flex items-center justify-between gap-2 text-muted-foreground">
-									<span className="truncate">{workspace.name}</span>
-									{workspace.id === current?.id && <IconCheck className="size-3.5 shrink-0" />}
+									<span className="truncate">{entry.name}</span>
+									{entry.id === current?.id && <IconCheck className="size-3.5 shrink-0" />}
 								</DropdownMenuLabel>
-								{workspace.brands.map((brand) => (
+								{entry.brands.map((brand) => (
 									<DropdownMenuItem key={brand.id} asChild className="cursor-pointer">
-										<Link to="/app/$org/$brand" params={{ org: workspace.slug, brand: brand.id }} onClick={close}>
+										<Link to="/app/$org/$brand" params={{ org: entry.slug, brand: brand.id }} onClick={close}>
 											<span className="truncate">{brand.name}</span>
-											{brand.id === params.brand && workspace.id === current?.id && (
+											{brand.id === params.brand && entry.id === current?.id && (
 												<IconCheck className="ml-auto size-3.5 shrink-0" />
 											)}
 										</Link>
 									</DropdownMenuItem>
 								))}
-								{workspace.brands.length === 0 && (
+								{entry.brands.length === 0 && (
 									<DropdownMenuItem asChild className="cursor-pointer">
-										<Link to="/app/$org" params={{ org: workspace.slug }} onClick={close}>
+										<Link to="/app/$org" params={{ org: entry.slug }} onClick={close}>
 											<span className="text-muted-foreground">Set up this workspace</span>
 										</Link>
 									</DropdownMenuItem>
 								)}
-								{canCreateBrands && (
+								{/* Offered per workspace, because a plan's brand allowance is spent
+								    per workspace: the same menu can create in one and not another. */}
+								{entry.canCreateBrand && (
 									<DropdownMenuItem asChild className="cursor-pointer">
-										<Link to="/app/$org/new" params={{ org: workspace.slug }} onClick={close}>
+										<Link to="/app/$org/new" params={{ org: entry.slug }} onClick={close}>
 											<IconPlus />
 											New brand
 										</Link>
@@ -111,6 +121,25 @@ export function WorkspaceSwitcher({
 								<DropdownMenuSeparator />
 							</DropdownMenuGroup>
 						))}
+						{isLoading && (
+							<DropdownMenuItem disabled>
+								<span className="text-muted-foreground">Loading workspaces…</span>
+							</DropdownMenuItem>
+						)}
+						{isError && (
+							<DropdownMenuItem
+								className="cursor-pointer"
+								// Keep the menu open: the point of the item is to watch the retry
+								// land, and closing would hide whatever it turns up.
+								onSelect={(event) => {
+									event.preventDefault();
+									refetch();
+								}}
+							>
+								<IconRefresh className={isFetching ? "animate-spin" : undefined} />
+								{isFetching ? "Retrying…" : "Couldn't load your other workspaces — retry"}
+							</DropdownMenuItem>
+						)}
 						{current && (
 							<DropdownMenuItem asChild className="cursor-pointer">
 								<Link to="/app/$org/settings" params={{ org: current.slug }} onClick={close}>
@@ -119,7 +148,7 @@ export function WorkspaceSwitcher({
 								</Link>
 							</DropdownMenuItem>
 						)}
-						{workspaces.length > 1 && (
+						{listed.length > 1 && (
 							<DropdownMenuItem asChild className="cursor-pointer">
 								<Link to="/app" onClick={close}>
 									<IconBuildingSkyscraper />

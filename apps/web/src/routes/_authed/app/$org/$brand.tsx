@@ -4,26 +4,29 @@
  * Fetches brand data and provides it to child routes.
  * Shows sidebar navigation, header, and optional demo banner.
  */
-import { createFileRoute, Outlet, notFound, redirect } from "@tanstack/react-router";
-import { getAppName } from "@/lib/route-head";
+import { createFileRoute, notFound, Outlet, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireAuthSession, isAdmin, hasReportAccess, requireOrganization } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
-import { brands, prompts, competitors } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
+import { brands, competitors, prompts } from "@workspace/lib/db/schema";
+import { getOrgBillingState } from "@workspace/lib/entitlements";
 import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import { getOrgBillingState } from "@workspace/lib/entitlements";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
+import { hasReportAccess, isAdmin, requireAuthSession } from "@/lib/auth/helpers";
+import { getAppName } from "@/lib/route-head";
+import { loadWorkspaceWithBrands } from "@/lib/workspaces/server";
+import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
 
 interface BrandRouteData {
 	brand: BrandWithPrompts | null;
 	brandName: string | null;
-	workspaceName: string | null;
+	/** The workspace the shell renders from — its name, brands, and whether it can take another. */
+	workspace: WorkspaceWithBrands | null;
 	isAdmin: boolean;
 	hasReportAccess: boolean;
 	hasAccess: boolean;
@@ -35,7 +38,7 @@ interface BrandRouteData {
 const DENIED: BrandRouteData = {
 	brand: null,
 	brandName: null,
-	workspaceName: null,
+	workspace: null,
 	isAdmin: false,
 	hasReportAccess: false,
 	hasAccess: false,
@@ -46,9 +49,10 @@ const getBrandData = createServerFn({ method: "GET" })
 	.validator(z.object({ org: z.string(), brandId: z.string() }))
 	.handler(async ({ data }): Promise<BrandRouteData> => {
 		const session = await requireAuthSession();
-		const workspace = await requireOrganization(session.user.id, data.org);
-
-		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
+		const [workspace, brand] = await Promise.all([
+			loadWorkspaceWithBrands(session.user.id, data.org),
+			db.query.brands.findFirst({ where: eq(brands.id, data.brandId) }),
+		]);
 
 		// Membership in the workspace is what grants access, so a brand owned by
 		// a different one is as good as absent — including to a user who happens
@@ -66,7 +70,7 @@ const getBrandData = createServerFn({ method: "GET" })
 		return {
 			brand: { ...brand, prompts: brandPrompts, competitors: brandCompetitors },
 			brandName: brand.name,
-			workspaceName: workspace.name,
+			workspace,
 			isAdmin: isAdmin(session),
 			hasReportAccess: hasReportAccess(session),
 			hasAccess: true,
@@ -127,13 +131,13 @@ export const Route = createFileRoute("/_authed/app/$org/$brand")({
 	}): Promise<{
 		brand: BrandWithPrompts;
 		brandName: string;
-		workspaceName: string;
+		workspace: WorkspaceWithBrands;
 		isAdmin: boolean;
 		hasReportAccess: boolean;
 	}> => {
 		const result = await getBrandData({ data: { org: params.org, brandId: params.brand } });
 
-		if (!result.hasAccess || !result.brand) {
+		if (!result.hasAccess || !result.brand || !result.workspace) {
 			throw notFound();
 		}
 
@@ -147,7 +151,7 @@ export const Route = createFileRoute("/_authed/app/$org/$brand")({
 		return {
 			brand: result.brand,
 			brandName: result.brandName ?? result.brand.name,
-			workspaceName: result.workspaceName ?? params.org,
+			workspace: result.workspace,
 			isAdmin: result.isAdmin,
 			hasReportAccess: result.hasReportAccess,
 		};
@@ -172,16 +176,16 @@ export const Route = createFileRoute("/_authed/app/$org/$brand")({
 });
 
 function BrandLayout() {
-	const { brand, workspaceName, isAdmin, hasReportAccess } = Route.useLoaderData();
+	const { brand, workspace, isAdmin, hasReportAccess } = Route.useLoaderData();
 
 	return (
 		<SidebarProvider>
-			<AppSidebar isAdmin={isAdmin} hasReportAccess={hasReportAccess} brand={brand} workspaceName={workspaceName} />
+			<AppSidebar isAdmin={isAdmin} hasReportAccess={hasReportAccess} brand={brand} workspace={workspace} />
 			{/* `overflow-clip` rather than `overflow-hidden`: both clip to the rounded
 			    corners, but `hidden` makes this a scroll container, which stops
 			    descendants from sticking to the viewport (the site header included). */}
 			<SidebarInset className="md:border md:border-border/60 md:rounded-xl overflow-clip">
-				<SiteHeader />
+				<SiteHeader workspaceName={workspace.name} />
 				<div className="flex flex-1 flex-col">
 					<div className="@container/main flex flex-1 flex-col gap-2">
 						<div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">

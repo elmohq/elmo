@@ -39,12 +39,23 @@ function WorkspaceSettingsPage() {
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	// The stored name is the trimmed one, so saving " Acme " leaves the field
+	// showing something the server never kept. Comparing the raw value is what
+	// keeps the button live long enough to normalize it, and adopting the trimmed
+	// value afterwards is what settles the field instead of leaving it dirty.
+	const trimmed = name.trim();
+	const isDirty = name !== workspace.name;
+
 	async function handleSave(e: React.FormEvent) {
 		e.preventDefault();
+		// Enter submits the form whatever the button is doing, and a name of only
+		// spaces would clear `required` on its way to a server-side rejection.
+		if (!isDirty || trimmed.length === 0) return;
 		setError(null);
 		setSaving(true);
 		try {
-			await renameWorkspaceFn({ data: { org: workspace.slug, name } });
+			await renameWorkspaceFn({ data: { org: workspace.slug, name: trimmed } });
+			setName(trimmed);
 			await router.invalidate();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to rename the workspace");
@@ -82,7 +93,7 @@ function WorkspaceSettingsPage() {
 					/>
 				</div>
 				{canRename && (
-					<Button type="submit" disabled={saving || name.trim() === workspace.name}>
+					<Button type="submit" disabled={saving || !isDirty || trimmed.length === 0}>
 						{saving ? "Saving..." : "Save"}
 					</Button>
 				)}

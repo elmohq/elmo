@@ -8,10 +8,10 @@
  */
 
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
-import { createServerFn } from "@tanstack/react-start";
 import FullPageCard from "@/components/full-page-card";
 import { requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
@@ -100,7 +100,9 @@ function WorkspacePickerPage() {
 									</Link>
 								</Button>
 							)}
-							{canCreateBrands && workspace.brands.length > 0 && (
+							{/* Per workspace: a plan's brand allowance is spent per workspace,
+							    so the picker offers creation only where it would go through. */}
+							{workspace.canCreateBrand && workspace.brands.length > 0 && (
 								<Button asChild variant="outline">
 									<Link to="/app/$org/new" params={{ org: workspace.slug }}>
 										+ New brand

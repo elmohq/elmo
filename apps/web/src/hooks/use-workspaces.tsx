@@ -17,7 +17,12 @@ export function useOrgSlug(): string {
 	return params.org ?? "";
 }
 
-/** Every workspace the user belongs to, with its brands — what the switcher lists. */
+/**
+ * Every workspace the user belongs to, with its brands — the *other* workspaces
+ * the switcher offers. The one being viewed comes from the route loader, so
+ * callers surface `isLoading` and `isError` for what this adds on top rather
+ * than letting a failed request empty the navigation.
+ */
 export function useWorkspaces() {
 	const query = useQuery({
 		queryKey: workspaceKeys.list(),
@@ -28,5 +33,8 @@ export function useWorkspaces() {
 	return {
 		workspaces: (query.data ?? []) as WorkspaceWithBrands[],
 		isLoading: query.isLoading,
+		isError: query.isError,
+		isFetching: query.isFetching,
+		refetch: query.refetch,
 	};
 }

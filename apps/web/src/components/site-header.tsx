@@ -1,7 +1,4 @@
-import { useLocation } from "@tanstack/react-router";
-
-import { Separator } from "@workspace/ui/components/separator";
-import { SidebarTrigger } from "@workspace/ui/components/sidebar";
+import { Link, useLocation, useParams } from "@tanstack/react-router";
 import {
 	Breadcrumb,
 	BreadcrumbItem,
@@ -10,9 +7,9 @@ import {
 	BreadcrumbPage,
 	BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb";
+import { Separator } from "@workspace/ui/components/separator";
+import { SidebarTrigger } from "@workspace/ui/components/sidebar";
 import { useBrand } from "@/hooks/use-brands";
-import { useWorkspaces } from "@/hooks/use-workspaces";
-import { Link, useParams } from "@tanstack/react-router";
 
 /** Map of page segments to display names */
 const PAGE_NAMES: Record<string, string> = {
@@ -232,13 +229,15 @@ function WorkspaceSettingsBreadcrumbs({ pathname, org }: { pathname: string; org
 /**
  * `title` names a page that sits outside the brand and admin trees, where there
  * is no trail to derive — the breadcrumb becomes that one label.
+ *
+ * `workspaceName` comes from the layout that already resolved the workspace;
+ * without it the trail falls back to the slug in the URL, which is readable but
+ * isn't the name.
  */
-export function SiteHeader({ title }: { title?: string } = {}) {
+export function SiteHeader({ title, workspaceName }: { title?: string; workspaceName?: string } = {}) {
 	const { brandId, brand } = useBrand();
 	const { pathname } = useLocation();
 	const params = useParams({ strict: false }) as { org?: string; brand?: string };
-	const { workspaces } = useWorkspaces();
-	const workspace = workspaces.find((w) => w.slug === params.org || w.id === params.org);
 
 	const isAdminPage = pathname.startsWith("/admin") || pathname.startsWith("/reports");
 
@@ -256,7 +255,7 @@ export function SiteHeader({ title }: { title?: string } = {}) {
 								<BreadcrumbItem className="hidden md:block">
 									<BreadcrumbLink asChild>
 										<Link to="/app/$org" params={{ org: params.org }}>
-											{workspace?.name ?? params.org}
+											{workspaceName ?? params.org}
 										</Link>
 									</BreadcrumbLink>
 								</BreadcrumbItem>

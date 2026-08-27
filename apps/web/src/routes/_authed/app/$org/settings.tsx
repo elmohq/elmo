@@ -6,28 +6,30 @@
  * back into the dashboard rather than out to a picker.
  */
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
 import { createServerFn } from "@tanstack/react-start";
+import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
 import { z } from "zod";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import { hasReportAccess, isAdmin, requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
+import { hasReportAccess, isAdmin, requireAuthSession } from "@/lib/auth/helpers";
+import { loadWorkspaceWithBrands } from "@/lib/workspaces/server";
+import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
 
 interface WorkspaceShell {
 	isAdmin: boolean;
 	hasReportAccess: boolean;
-	workspaceName: string;
+	/** The rail's Brands section comes from here, so it is there on first paint. */
+	workspace: WorkspaceWithBrands;
 }
 
 const getWorkspaceShell = createServerFn({ method: "GET" })
 	.validator(z.object({ org: z.string() }))
 	.handler(async ({ data }): Promise<WorkspaceShell> => {
 		const session = await requireAuthSession();
-		const workspace = await requireOrganization(session.user.id, data.org);
 		return {
 			isAdmin: isAdmin(session),
 			hasReportAccess: hasReportAccess(session),
-			workspaceName: workspace.name,
+			workspace: await loadWorkspaceWithBrands(session.user.id, data.org),
 		};
 	});
 
@@ -37,16 +39,16 @@ export const Route = createFileRoute("/_authed/app/$org/settings")({
 });
 
 function WorkspaceSettingsLayout() {
-	const { isAdmin: admin, hasReportAccess: reports, workspaceName } = Route.useLoaderData();
+	const { isAdmin: admin, hasReportAccess: reports, workspace } = Route.useLoaderData();
 
 	return (
 		<SidebarProvider>
-			<AppSidebar scope="workspace" isAdmin={admin} hasReportAccess={reports} workspaceName={workspaceName} />
+			<AppSidebar scope="workspace" isAdmin={admin} hasReportAccess={reports} workspace={workspace} />
 			{/* `overflow-clip` rather than `overflow-hidden`: both clip to the rounded
 			    corners, but `hidden` makes this a scroll container, which stops
 			    descendants from sticking to the viewport (the site header included). */}
 			<SidebarInset className="md:border md:border-border/60 md:rounded-xl overflow-clip">
-				<SiteHeader />
+				<SiteHeader workspaceName={workspace.name} />
 				<div className="flex flex-1 flex-col">
 					<div className="@container/main flex flex-1 flex-col gap-2">
 						<div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">

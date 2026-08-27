@@ -1,25 +1,25 @@
-import * as React from "react";
-import { Link, useParams, useRouteContext } from "@tanstack/react-router";
-import type { ClientConfig } from "@workspace/config/types";
 import {
-	IconDashboard,
-	IconChartBar,
-	IconSpeakerphone,
-	IconSitemap,
-	IconTarget,
-	IconLink,
 	IconBuilding,
+	IconBuildingSkyscraper,
 	IconBuildings,
-	IconListDetails,
+	IconChartBar,
 	IconCpu,
-	IconTable,
+	IconCreditCard,
+	IconDashboard,
+	IconLink,
+	IconListDetails,
 	IconReport,
+	IconSitemap,
+	IconSpeakerphone,
+	IconTable,
+	IconTarget,
 	IconTimeline,
 	IconTool,
 	IconUsers,
-	IconCreditCard,
-	IconBuildingSkyscraper,
 } from "@tabler/icons-react";
+import { Link, useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
+import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 
 import {
 	Sidebar,
@@ -31,14 +31,14 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@workspace/ui/components/sidebar";
-import { NavMain, type NavGroup } from "@/components/nav-main";
-import { NavUser } from "@/components/nav-user";
-import { NavAppInfo } from "@/components/nav-app-info";
+import type * as React from "react";
 import { DemoModePill } from "@/components/demo-mode-pill";
 import { Logo } from "@/components/logo";
+import { NavAppInfo } from "@/components/nav-app-info";
+import { type NavGroup, NavMain } from "@/components/nav-main";
+import { NavUser } from "@/components/nav-user";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
-import { useWorkspaces } from "@/hooks/use-workspaces";
-import type { BrandWithPrompts } from "@workspace/lib/db/schema";
+import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
 
 /**
  * How much of the app the shell around this page can reach:
@@ -58,8 +58,12 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	scope?: SidebarScope;
 	/** Brand data from route loader — avoids a separate client-side fetch */
 	brand?: BrandWithPrompts | null;
-	/** From the route loader too, so the shell names the workspace on first paint. */
-	workspaceName?: string;
+	/**
+	 * The workspace this page belongs to, from the route loader. The rail names
+	 * it and lists its brands from here, so neither waits on — nor can be emptied
+	 * by — the switcher's all-workspaces query.
+	 */
+	workspace?: WorkspaceWithBrands | null;
 }
 
 export function AppSidebar({
@@ -67,15 +71,11 @@ export function AppSidebar({
 	hasReportAccess = false,
 	scope = "brand",
 	brand,
-	workspaceName,
+	workspace,
 	...props
 }: AppSidebarProps) {
 	const { setOpenMobile } = useSidebar();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
-	const params = useParams({ strict: false }) as { org?: string };
-	const { workspaces } = useWorkspaces();
-	const workspace = workspaces.find((w) => w.slug === params.org || w.id === params.org);
-	const currentWorkspaceName = workspaceName ?? workspace?.name;
 	// Reports are disabled entirely in cloud; hide the nav entry there.
 	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
 
@@ -181,7 +181,7 @@ export function AppSidebar({
 	// workspace's name.
 	if (inWorkspace) {
 		groups.push({
-			label: currentWorkspaceName ? `Workspace · ${currentWorkspaceName}` : "Workspace",
+			label: workspace ? `Workspace · ${workspace.name}` : "Workspace",
 			items: [
 				{ title: "General", url: "/settings", icon: IconBuildingSkyscraper, workspace: true },
 				...(context.clientConfig?.features.teamInvites
@@ -259,7 +259,7 @@ export function AppSidebar({
 						)}
 					</SidebarMenuItem>
 				</SidebarMenu>
-				{inWorkspace && <WorkspaceSwitcher workspaceName={currentWorkspaceName} brandName={brand?.name} />}
+				{inWorkspace && <WorkspaceSwitcher workspace={workspace} brandName={brand?.name} />}
 			</SidebarHeader>
 			<SidebarContent>
 				<NavMain groups={groups} />

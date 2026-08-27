@@ -20,24 +20,10 @@ import {
 	resolveOrganization,
 } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
+import { decideBrandCreation } from "@/lib/workspaces/server";
+import type { Workspace, WorkspaceWithBrands } from "@/lib/workspaces/types";
 
-export interface Workspace {
-	id: string;
-	/** What `/app/$org` carries. */
-	slug: string;
-	name: string;
-	role: string;
-}
-
-export interface WorkspaceBrand {
-	id: string;
-	name: string;
-	onboarded: boolean;
-}
-
-export interface WorkspaceWithBrands extends Workspace {
-	brands: WorkspaceBrand[];
-}
+export type { Workspace, WorkspaceBrand, WorkspaceWithBrands } from "@/lib/workspaces/types";
 
 /**
  * What the `/app/$org` segment resolved to.
@@ -74,27 +60,27 @@ export const listWorkspacesFn = createServerFn({ method: "GET" }).handler(async 
 	const orgs = await listUserOrganizations(session.user.id);
 	if (orgs.length === 0) return [];
 
-	const rows = await db
-		.select({
-			id: brands.id,
-			name: brands.name,
-			onboarded: brands.onboarded,
-			organizationId: brands.organizationId,
-		})
-		.from(brands)
-		.where(
-			inArray(
-				brands.organizationId,
-				orgs.map((org) => org.id),
-			),
-		)
-		.orderBy(asc(brands.name));
+	const orgIds = orgs.map((org) => org.id);
+	const [rows, canCreate] = await Promise.all([
+		db
+			.select({
+				id: brands.id,
+				name: brands.name,
+				onboarded: brands.onboarded,
+				organizationId: brands.organizationId,
+			})
+			.from(brands)
+			.where(inArray(brands.organizationId, orgIds))
+			.orderBy(asc(brands.name)),
+		decideBrandCreation(orgIds),
+	]);
 
 	return orgs.map((org) => ({
 		...org,
 		brands: rows
 			.filter((brand) => brand.organizationId === org.id)
 			.map(({ id, name, onboarded }) => ({ id, name, onboarded })),
+		canCreateBrand: canCreate.get(org.id) ?? false,
 	}));
 });
 
@@ -133,7 +119,9 @@ function canRenameWorkspace(): boolean {
 }
 
 export const renameWorkspaceFn = createServerFn({ method: "POST" })
-	.validator(z.object({ org: z.string(), name: z.string().min(1).max(100) }))
+	// Trimmed here rather than in the handler, so a name of nothing but spaces is
+	// rejected instead of stored as an empty one.
+	.validator(z.object({ org: z.string(), name: z.string().trim().min(1).max(100) }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		const workspace = await requireOrganization(session.user.id, data.org);
@@ -141,6 +129,6 @@ export const renameWorkspaceFn = createServerFn({ method: "POST" })
 		if (!canRenameWorkspace()) throw new Error("This workspace cannot be renamed in this deployment");
 		if (!isOrgAdminRole(workspace.role)) throw new Error("Only admins can rename the workspace");
 
-		await db.update(organization).set({ name: data.name.trim() }).where(eq(organization.id, workspace.id));
+		await db.update(organization).set({ name: data.name }).where(eq(organization.id, workspace.id));
 		return { success: true };
 	});

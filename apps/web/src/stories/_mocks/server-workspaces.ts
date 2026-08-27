@@ -6,7 +6,7 @@
 
 export type WorkspaceBrand = { id: string; name: string; onboarded: boolean };
 export type Workspace = { id: string; slug: string; name: string; role: string };
-export type WorkspaceWithBrands = Workspace & { brands: WorkspaceBrand[] };
+export type WorkspaceWithBrands = Workspace & { brands: WorkspaceBrand[]; canCreateBrand: boolean };
 
 let _workspaces: WorkspaceWithBrands[] = [
 	{
@@ -14,6 +14,7 @@ let _workspaces: WorkspaceWithBrands[] = [
 		slug: "acme",
 		name: "Acme",
 		role: "admin",
+		canCreateBrand: true,
 		brands: [
 			{ id: "brand-1", name: "Acme", onboarded: true },
 			{ id: "brand-2", name: "Acme Labs", onboarded: true },
