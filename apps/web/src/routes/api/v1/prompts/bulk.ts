@@ -10,7 +10,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { selectPremiumModels } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import { prompts } from "@workspace/lib/db/schema";
-import { assertPromptSaveAllowed } from "@workspace/lib/entitlements";
+import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { z } from "zod";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
@@ -53,14 +53,17 @@ export const Route = createFileRoute("/api/v1/prompts/bulk")({
 						premiumModels: selectPremiumModels(prompt.premiumModels),
 					}));
 
-					// One decision for the whole batch, against both pools it can spend.
+					// One decision for the whole batch, against both pools it can spend,
+					// and the insert under the same lock so two batches can't both
+					// spend the last slot.
 					const enabled = rows.filter((row) => row.enabled);
-					await assertPromptSaveAllowed(brand.organizationId, {
-						prompts: enabled.length,
-						premiumPairings: enabled.reduce((sum, row) => sum + row.premiumModels.length, 0),
+					const created = await withQuotaLock(brand.organizationId, async () => {
+						await assertPromptSaveAllowed(brand.organizationId, {
+							prompts: enabled.length,
+							premiumPairings: enabled.reduce((sum, row) => sum + row.premiumModels.length, 0),
+						});
+						return db.transaction(async (tx) => tx.insert(prompts).values(rows).returning());
 					});
-
-					const created = await db.transaction(async (tx) => tx.insert(prompts).values(rows).returning());
 
 					// Scheduling is deliberately outside the transaction: a queue hiccup
 					// must not roll back prompts the customer can see, and the worker's

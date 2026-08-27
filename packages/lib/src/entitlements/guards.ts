@@ -243,6 +243,34 @@ async function withEntitlements(
 	for (const decision of await decide(entitlements)) assertAllowed(decision);
 }
 
+/**
+ * Postgres advisory locks share one namespace per database. The first argument
+ * keeps quota locks from colliding with any other use of the same org id.
+ */
+const QUOTA_LOCK_CLASS = 0x656c6d6f;
+
+/**
+ * Serialize one organization's quota-consuming writes against each other.
+ *
+ * Every guard above reads a usage count and the caller then writes; on their
+ * own those are two steps, so two requests can both see the last free slot and
+ * both take it. Running the pair under a transaction-scoped advisory lock makes
+ * them atomic with respect to anyone else holding the same lock.
+ *
+ * `run` is free to use the ordinary `db` connection: the lock is held until
+ * this transaction commits, which happens after `run` resolves, so whatever it
+ * wrote is already visible to the next holder's count.
+ *
+ * This orders writers against other writers. A caller that skips it is not
+ * blocked, and an unlocked reader still sees a count mid-flight.
+ */
+export async function withQuotaLock<T>(organizationId: string, run: () => Promise<T>): Promise<T> {
+	return db.transaction(async (tx) => {
+		await tx.execute(sql`select pg_advisory_xact_lock(${QUOTA_LOCK_CLASS}, hashtext(${organizationId}))`);
+		return run();
+	});
+}
+
 export async function assertCanCreateBrand(organizationId: string): Promise<void> {
 	await withEntitlements(organizationId, async (entitlements) => [
 		decideBrandCreate(entitlements, await countOrgBrands(organizationId)),

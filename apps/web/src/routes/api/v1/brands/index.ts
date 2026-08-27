@@ -9,7 +9,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
-import { assertCanCreateBrand } from "@workspace/lib/entitlements";
+import { assertCanCreateBrand, withQuotaLock } from "@workspace/lib/entitlements";
 import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandScopeCondition } from "@/lib/api/scope";
@@ -100,9 +100,14 @@ export const Route = createFileRoute("/api/v1/brands/")({
 						);
 					}
 					const organizationId = auth.kind === "organization" ? auth.organizationId : (body.organizationId ?? null);
-					if (organizationId) await assertCanCreateBrand(organizationId);
 					const internal = apiCreateInputToInternal(body);
-					return await createBrand({ ...internal, organizationId });
+					if (!organizationId) return await createBrand({ ...internal, organizationId });
+					// Check and create under one lock: otherwise two requests on an
+					// organization's last brand slot both pass the check.
+					return await withQuotaLock(organizationId, async () => {
+						await assertCanCreateBrand(organizationId);
+						return await createBrand({ ...internal, organizationId });
+					});
 				},
 			}),
 		}),

@@ -21,6 +21,7 @@ export {
 	type EntitlementDenialCode,
 	EntitlementError,
 	type PromptSaveDelta,
+	withQuotaLock,
 } from "./guards";
 export {
 	getBrandOrganizationId,
