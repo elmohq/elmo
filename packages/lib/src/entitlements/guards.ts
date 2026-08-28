@@ -144,24 +144,6 @@ export function decideEnabledModels(entitlements: Entitlements, requestedModels:
 }
 
 /**
- * Self-hosted has no premium pool, and its run policy ignores a prompt's
- * premiumModels, so assigning one there would have no effect. Refuse it.
- *
- * Only blocks *new* assignments. A database moved off cloud still has models
- * stored on its prompts, and the editor resubmits them on every save.
- *
- * Tests `unlimited` rather than `premiumPool > 0` so that cloud plans without a
- * pool fall through to decidePremiumAssign and get its "upgrade" message.
- */
-export function decideGroundedAssign(entitlements: Entitlements, adding: number): EntitlementDecision {
-	if (adding <= 0 || !entitlements.unlimited) return ALLOWED;
-	return deny(
-		"premium-not-in-plan",
-		"Grounded models are tracked per brand on this deployment — pick them in LLM settings.",
-	);
-}
-
-/**
  * Tracking a prompt on a premium model spends one pairing from the org's pool,
  * and a prompt tracked on two premium models spends two — so `adding` counts
  * pairings rather than prompts.
@@ -330,9 +312,6 @@ export async function assertCadenceAllowed(organizationId: string, requestedDela
 export interface PromptSaveDelta {
 	prompts: number;
 	premiumPairings: number;
-	/** Models newly assigned to a row. Not the same as `premiumPairings`:
-	 *  re-enabling a prompt spends a pairing but assigns nothing new. */
-	premiumAdded: number;
 }
 
 export interface PromptPoolState {
@@ -352,32 +331,21 @@ export function promptSaveDelta(rows: readonly PromptSaveRow[]): PromptSaveDelta
 	return {
 		prompts: enabled(after) - enabled(before),
 		premiumPairings: premiumSlotsUsed(after) - premiumSlotsUsed(before),
-		premiumAdded: rows.reduce(
-			(total, row) =>
-				total + row.after.premiumModels.filter((model) => !row.before?.premiumModels.includes(model)).length,
-			0,
-		),
 	};
 }
 
-/**
- * Loads entitlements once and counts once, so every limit is judged against the
- * same snapshot.
- *
- * Does not use `withEntitlements`: that helper skips every decision when
- * entitlements are unlimited, and unlimited is the only case
- * decideGroundedAssign ever denies. Routing it through would make it dead code.
- */
+/** Loads entitlements once and counts once, so both limits are judged against
+ *  the same snapshot. */
 export async function assertPromptSaveAllowed(organizationId: string, delta: PromptSaveDelta): Promise<void> {
-	if (delta.prompts <= 0 && delta.premiumPairings <= 0 && delta.premiumAdded <= 0) return;
-	const entitlements = await getOrgEntitlements(organizationId);
-	assertAllowed(decideGroundedAssign(entitlements, delta.premiumAdded));
-	if (entitlements.unlimited) return;
-
-	const [enabledPrompts, assignedPremium] = await Promise.all([
-		delta.prompts > 0 ? countOrgEnabledPrompts(organizationId) : 0,
-		delta.premiumPairings > 0 ? countOrgAssignedPremiumSlots(organizationId) : 0,
-	]);
-	assertAllowed(decidePromptAdd(entitlements, enabledPrompts, delta.prompts));
-	assertAllowed(decidePremiumAssign(entitlements, assignedPremium, delta.premiumPairings));
+	if (delta.prompts <= 0 && delta.premiumPairings <= 0) return;
+	await withEntitlements(organizationId, async (entitlements) => {
+		const [enabledPrompts, assignedPremium] = await Promise.all([
+			delta.prompts > 0 ? countOrgEnabledPrompts(organizationId) : 0,
+			delta.premiumPairings > 0 ? countOrgAssignedPremiumSlots(organizationId) : 0,
+		]);
+		return [
+			decidePromptAdd(entitlements, enabledPrompts, delta.prompts),
+			decidePremiumAssign(entitlements, assignedPremium, delta.premiumPairings),
+		];
+	});
 }

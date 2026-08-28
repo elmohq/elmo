@@ -15,7 +15,6 @@ export {
 	decideCadenceOverride,
 	decideCompetitorCap,
 	decideEnabledModels,
-	decideGroundedAssign,
 	decidePremiumAssign,
 	decidePromptAdd,
 	decidePromptCap,

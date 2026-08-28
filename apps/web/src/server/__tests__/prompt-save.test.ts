@@ -1,5 +1,3 @@
-import { UNLIMITED_ENTITLEMENTS } from "@workspace/config/entitlements";
-import { decideGroundedAssign, promptSaveDelta } from "@workspace/lib/entitlements";
 import { describe, expect, it } from "vitest";
 import { planPromptSave, type StoredPrompt, type SubmittedPrompt } from "@/server/prompt-save";
 
@@ -83,34 +81,5 @@ describe("the plan prices the save", () => {
 		const plan = planPromptSave([submitted()], []);
 
 		expect(plan.inserts[0]).not.toHaveProperty("before");
-	});
-});
-
-describe("a save with no premium pool, planned and then judged", () => {
-	const verdict = (submitted: SubmittedPrompt[], existing: StoredPrompt[]) => {
-		const { updates, inserts } = planPromptSave(submitted, existing);
-		return decideGroundedAssign(UNLIMITED_ENTITLEMENTS, promptSaveDelta([...updates, ...inserts]).premiumAdded);
-	};
-	const groundedRow = [stored("own", { premiumModels: ["claude"] })];
-
-	it("refuses a row asked to carry a model it does not already carry", () => {
-		expect(verdict([submitted({ id: "own", premiumModels: ["grok"] })], groundedRow).allowed).toBe(false);
-		expect(verdict([submitted({ id: "own", premiumModels: ["claude", "grok"] })], groundedRow).allowed).toBe(false);
-		expect(verdict([submitted({ premiumModels: ["claude"] })], []).allowed).toBe(false);
-	});
-
-	it("lets a database moved off cloud carry its assignments back unchanged", () => {
-		expect(
-			verdict([submitted({ id: "own", value: "fixed typo", premiumModels: ["claude"] })], groundedRow).allowed,
-		).toBe(true);
-	});
-
-	it("lets go of an assignment, which is how the editor deletes a grounded prompt", () => {
-		expect(verdict([submitted({ id: "own", enabled: false, premiumModels: [] })], groundedRow).allowed).toBe(true);
-	});
-
-	it("does not let a model the premium tier stopped selling block the save", () => {
-		const retired = [stored("own", { premiumModels: ["retired-model"] })];
-		expect(verdict([submitted({ id: "own", premiumModels: ["retired-model"] })], retired).allowed).toBe(true);
 	});
 });

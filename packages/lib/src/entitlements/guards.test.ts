@@ -11,7 +11,6 @@ import {
 	decideCadenceOverride,
 	decideCompetitorCap,
 	decideEnabledModels,
-	decideGroundedAssign,
 	decidePremiumAssign,
 	decidePromptAdd,
 	decidePromptCap,
@@ -146,7 +145,6 @@ describe("promptSaveDelta", () => {
 		expect(promptSaveDelta([{ before: grounded, after: { enabled: false, premiumModels: [] } }])).toEqual({
 			prompts: -1,
 			premiumPairings: -1,
-			premiumAdded: 0,
 		});
 	});
 
@@ -154,7 +152,6 @@ describe("promptSaveDelta", () => {
 		expect(promptSaveDelta([{ before: grounded, after: { enabled: false, premiumModels: ["claude"] } }])).toEqual({
 			prompts: -1,
 			premiumPairings: -1,
-			premiumAdded: 0,
 		});
 	});
 
@@ -162,7 +159,6 @@ describe("promptSaveDelta", () => {
 		expect(promptSaveDelta([{ before: { enabled: false, premiumModels: ["claude"] }, after: grounded }])).toEqual({
 			prompts: 1,
 			premiumPairings: 1,
-			premiumAdded: 0,
 		});
 	});
 
@@ -170,30 +166,27 @@ describe("promptSaveDelta", () => {
 		expect(promptSaveDelta([{ before: grounded, after: grounded }])).toEqual({
 			prompts: 0,
 			premiumPairings: 0,
-			premiumAdded: 0,
 		});
 	});
 
 	it("charges a second model on a row that already carries one, and calls it an assignment", () => {
 		expect(
 			promptSaveDelta([{ before: grounded, after: { enabled: true, premiumModels: ["claude", "grok"] } }]),
-		).toEqual({ prompts: 0, premiumPairings: 1, premiumAdded: 1 });
+		).toEqual({ prompts: 0, premiumPairings: 1 });
 	});
 
 	it("counts a swap as one assignment, not two", () => {
 		expect(promptSaveDelta([{ before: grounded, after: { enabled: true, premiumModels: ["grok"] } }])).toEqual({
 			prompts: 0,
 			premiumPairings: 0,
-			premiumAdded: 1,
 		});
 	});
 
 	it("treats a row with no before as an insert", () => {
-		expect(promptSaveDelta([{ after: grounded }])).toEqual({ prompts: 1, premiumPairings: 1, premiumAdded: 1 });
+		expect(promptSaveDelta([{ after: grounded }])).toEqual({ prompts: 1, premiumPairings: 1 });
 		expect(promptSaveDelta([{ after: { enabled: false, premiumModels: ["claude"] } }])).toEqual({
 			prompts: 0,
 			premiumPairings: 0,
-			premiumAdded: 1,
 		});
 	});
 
@@ -203,25 +196,7 @@ describe("promptSaveDelta", () => {
 				{ before: grounded, after: { enabled: false, premiumModels: [] } },
 				{ after: { enabled: true, premiumModels: [] } },
 			]),
-		).toEqual({ prompts: 0, premiumPairings: -1, premiumAdded: 0 });
-	});
-});
-
-describe("decideGroundedAssign", () => {
-	it("refuses an unlimited deployment and points at the per-brand mechanism", () => {
-		const decision = decideGroundedAssign(UNLIMITED_ENTITLEMENTS, 1);
-		expect(decision.allowed).toBe(false);
-		expect(denialMessage(decision)).toMatch(/LLM settings/);
-	});
-
-	it("leaves a save that introduces nothing alone, whatever it spends", () => {
-		expect(decideGroundedAssign(UNLIMITED_ENTITLEMENTS, 0).allowed).toBe(true);
-	});
-
-	it("leaves the metered plans to decidePremiumAssign", () => {
-		expect(decideGroundedAssign(STARTER, 1).allowed).toBe(true);
-		expect(decideGroundedAssign(PRO, 1).allowed).toBe(true);
-		expect(denialMessage(decidePremiumAssign(STARTER, 0, 1))).toMatch(/Pro and Business/);
+		).toEqual({ prompts: 0, premiumPairings: -1 });
 	});
 });
 
