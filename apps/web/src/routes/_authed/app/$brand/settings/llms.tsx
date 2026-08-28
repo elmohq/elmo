@@ -24,13 +24,7 @@ import { buttonVariants } from "@workspace/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { cn } from "@workspace/ui/lib/utils";
 import { type ReactNode, useState } from "react";
-import {
-	formatUsd,
-	PlatformList,
-	PlatformOperatorDetail,
-	PlatformPicker,
-	projectSelectionCostUsd,
-} from "@/components/platform-picker";
+import { formatUsd, PlatformList, PlatformPicker, projectSelectionCostUsd } from "@/components/platform-picker";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { groupPlatformOptions, type PlatformGroup, platformGroupCopy, platformGroupId } from "@/lib/platform-groups";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
@@ -329,11 +323,7 @@ function SinglePlatformSummary({ picker }: { picker: ModelPickerState }) {
 				<CardDescription>{copy.description}</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4">
-				<div className="flex items-center gap-3 rounded-md border p-3">
-					<ModelIcon iconId={getModelMeta(option.model).iconId} className="size-5" />
-					<span className="flex-1 text-sm font-medium">{getModelMeta(option.model).label}</span>
-					<PlatformOperatorDetail option={option} />
-				</div>
+				<PlatformList options={[option]} />
 				<p className="text-sm text-muted-foreground">Your plan tracks one platform for this brand.</p>
 
 				{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} brandId={brandId} />}
