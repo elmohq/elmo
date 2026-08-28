@@ -12,7 +12,7 @@ import { SiteHeader } from "@/components/site-header";
 import { useWorkspaceRoute } from "@/hooks/use-workspaces";
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings")({
-	staticData: { crumb: "Settings" },
+	// No crumb: the workspace crumb above already leads here.
 	component: WorkspaceSettingsLayout,
 });
 

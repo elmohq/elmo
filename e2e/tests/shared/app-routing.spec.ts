@@ -117,8 +117,9 @@ test.describe("App routing", () => {
 		await page.goto(`${workspaceUrl()}/settings/brands`);
 
 		const trail = page.getByRole("navigation", { name: "breadcrumb" });
+		// The workspace crumb leads to the settings, so the trail doesn't say it too.
 		await expect(trail.locator(`a[href="${workspaceUrl()}"]`)).toBeVisible({ timeout: 30_000 });
-		await expect(trail.getByText("Settings", { exact: true })).toBeVisible();
 		await expect(trail.getByText("Brands", { exact: true })).toBeVisible();
+		await expect(trail.getByText("Settings", { exact: true })).toHaveCount(0);
 	});
 });
