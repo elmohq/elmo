@@ -21,6 +21,7 @@ import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { promptsSummaryKeys } from "@/hooks/use-prompts-summary";
 import { trackEvent } from "@/lib/posthog";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import {
 	cancelAnalyzeBrandFn,
 	getAnalyzeBrandStatusFn,
@@ -82,6 +83,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const { brand } = useBrand();
 	const queryClient = useQueryClient();
 	const router = useRouter();
+	const writeError = useWriteErrorMessage();
 	const [phase, setPhase] = useState<"idle" | "analyzing" | "review">("idle");
 	const [error, setError] = useState<string | null>(null);
 	const [submitError, setSubmitError] = useState<string | null>(null);
@@ -115,7 +117,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const { mutate: enqueueAnalysis, isSuccess: analysisEnqueued } = useMutation({
 		mutationFn: (vars: { brandId: string; website: string; brandName?: string }) => startAnalyzeBrandFn({ data: vars }),
 		onError: (err) => {
-			setError(err instanceof Error ? err.message : "Analysis failed");
+			setError(writeError(err, "Analysis failed"));
 			setPhase("idle");
 		},
 	});
@@ -254,11 +256,11 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 			onComplete();
 		} catch (err) {
-			setSubmitError(err instanceof Error ? err.message : "Failed to save");
+			setSubmitError(writeError(err, "Failed to save"));
 		} finally {
 			setIsSaving(false);
 		}
-	}, [brand, data, queryClient, router, onComplete]);
+	}, [brand, data, queryClient, router, onComplete, writeError]);
 
 	if (phase === "idle" || phase === "analyzing") {
 		return (
