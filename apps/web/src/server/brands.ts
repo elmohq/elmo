@@ -3,13 +3,16 @@
  * Replaces apps/web/src/app/api/brands/* API routes.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { getDefaultDelayHours, MAX_COMPETITORS } from "@workspace/lib/constants";
+import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { findUniqueBrandId, slugify } from "@workspace/lib/db/provisioning";
 import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
 import {
+	assertAllowed,
 	assertCanCreateBrand,
+	assertCompetitorCap,
 	assertEnabledModelsAllowed,
+	decideCompetitorCap,
 	type Entitlements,
 	getOrgEntitlements,
 	getOrgEntitlementsMap,
@@ -22,9 +25,15 @@ import {
 	selectTargetsForBrand,
 } from "@workspace/lib/providers";
 import { defaultPlatformPicks, resolvePromptRunPlan } from "@workspace/lib/run-policy";
-import { and, count, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { listUserOrganizations, requireAuthSession, requireBrandAccess, requireOrgAccess } from "@/lib/auth/helpers";
+import {
+	listUserOrganizations,
+	requireAuthSession,
+	requireBrandAccess,
+	requireOrgAccess,
+	requirePlatformPicksEditable,
+} from "@/lib/auth/helpers";
 import { evaluateRequireCanCreateBrands, resolveBrandOrganization } from "@/lib/auth/policies";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
@@ -118,14 +127,16 @@ async function initialEnabledModels(organizationId: string): Promise<string[] | 
 
 /**
  * Picks supplied at creation time go through the same checks as a
- * post-creation edit: the loud configured-target validation plus plan
- * enforcement. Without picks, creation falls back to the plan defaults.
+ * post-creation edit: the same deployment gate, the loud configured-target
+ * validation, then plan enforcement. Without picks, creation falls back to the
+ * plan defaults.
  */
 async function resolveCreateEnabledModels(
 	organizationId: string,
 	requested: string[] | undefined,
 ): Promise<string[] | null> {
 	if (!requested || requested.length === 0) return initialEnabledModels(organizationId);
+	requirePlatformPicksEditable();
 	const models = [...new Set(requested)];
 	selectTargetsForBrand(parseScrapeTargets(process.env.SCRAPE_TARGETS), models);
 	await assertEnabledModelsAllowed(organizationId, models);
@@ -433,6 +444,9 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
 
+		// A bulk replace, so the list submitted is the list the brand ends up with.
+		assertAllowed(decideCompetitorCap(data.competitors.length));
+
 		const cleanedCompetitors = data.competitors.map((c) => {
 			const cleanedDomains = c.domains.map((d) => cleanAndValidateDomain(d));
 			const invalid = c.domains.filter((_, i) => !cleanedDomains[i]);
@@ -553,14 +567,7 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
 
-		const [currentCount] = await db
-			.select({ count: count() })
-			.from(competitors)
-			.where(eq(competitors.brandId, data.brandId));
-
-		if ((currentCount?.count || 0) >= MAX_COMPETITORS) {
-			throw new Error(`Cannot add competitor. Maximum of ${MAX_COMPETITORS} competitors reached.`);
-		}
+		await assertCompetitorCap(data.brandId, 1);
 
 		const [result] = await db
 			.insert(competitors)

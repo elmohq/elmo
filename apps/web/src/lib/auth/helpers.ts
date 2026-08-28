@@ -32,6 +32,16 @@ export function hasReportAccess(session: SessionLike): boolean {
 	return session.user.hasReportGeneratorAccess === true;
 }
 
+export function canEditPlatformPicks(): boolean {
+	return getDeployment().features.platformPicksEditable;
+}
+
+export function requirePlatformPicksEditable(): void {
+	if (!canEditPlatformPicks()) {
+		throw new Error("Platform picks are set by whoever runs this deployment.");
+	}
+}
+
 export async function checkOrgAccess(userId: string, orgId: string): Promise<boolean> {
 	const [row] = await db
 		.select({ id: member.id })

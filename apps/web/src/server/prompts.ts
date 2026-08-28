@@ -1,10 +1,8 @@
 /** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
-import { premiumSlotsUsed, selectPremiumModels } from "@workspace/config/plans";
-import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { assertPromptSaveAllowed, type PromptSaveDelta } from "@workspace/lib/entitlements";
+import { assertAllowed, assertPromptSaveAllowed, decidePromptCap, promptSaveDelta } from "@workspace/lib/entitlements";
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -29,6 +27,7 @@ import {
 } from "@/lib/postgres-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { planPromptSave } from "@/server/prompt-save";
 // Server Functions
 // ============================================================================
 
@@ -513,21 +512,21 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			prompts: z
-				.array(
-					z.object({
-						id: z.string().optional(),
-						value: z.string(),
-						enabled: z.boolean().optional().default(true),
-						tags: z.array(z.string()).optional(),
-						/**
-						 * Premium models to track this prompt on, grounded — one of the org's
-						 * premium slots each.
-						 */
-						premiumModels: z.array(z.string()).optional(),
-					}),
-				)
-				.max(MAX_PROMPTS, `A brand may have at most ${MAX_PROMPTS} prompts.`),
+			// No .max() here: brands can already be over MAX_PROMPTS. decidePromptCap
+			// checks how many rows the save inserts instead.
+			prompts: z.array(
+				z.object({
+					id: z.string().optional(),
+					value: z.string(),
+					enabled: z.boolean().optional().default(true),
+					tags: z.array(z.string()).optional(),
+					/**
+					 * Premium models to track this prompt on, grounded — one of the org's
+					 * premium slots each.
+					 */
+					premiumModels: z.array(z.string()).optional(),
+				}),
+			),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -546,47 +545,33 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		const existingIds = new Set(existingRows.map((p) => p.id));
 		const existingById = new Map(existingRows.map((p) => [p.id, p]));
 
-		// Plan pool accounting: the net number of prompts this save enables (new
-		// enabled rows + disabled→enabled transitions − enabled→disabled), and the
-		// net premium slots it spends — one per prompt/model pair, so a prompt
-		// gaining a second premium model spends a second slot. Only a net increase
-		// is guarded; going down never needs permission.
-		const delta: PromptSaveDelta = { prompts: 0, premiumPairings: 0 };
-		for (const p of data.prompts) {
-			const before = p.id ? existingById.get(p.id) : undefined;
-			if (p.id && !before) continue;
-			const after = { enabled: p.enabled, premiumModels: selectPremiumModels(p.premiumModels) };
-			delta.prompts += (p.enabled ? 1 : 0) - (before?.enabled ? 1 : 0);
-			delta.premiumPairings += premiumSlotsUsed([after]) - premiumSlotsUsed(before ? [before] : []);
-		}
-		await assertPromptSaveAllowed(brand.organizationId, delta);
+		const { updates, inserts } = planPromptSave(data.prompts, existingRows);
+		assertAllowed(decidePromptCap(existingRows.length, inserts.length));
+		await assertPromptSaveAllowed(brand.organizationId, promptSaveDelta({ updates, inserts }));
 
 		const saved = await db.transaction(async (tx) => {
-			const toUpdate = data.prompts.filter((p) => p.id);
-			const toInsert = data.prompts.filter((p) => !p.id);
-
-			for (const p of toUpdate) {
+			for (const { id, prompt, after } of updates) {
 				await tx
 					.update(prompts)
 					.set({
-						value: p.value,
-						enabled: p.enabled,
-						tags: p.tags || [],
-						systemTags: computeSystemTags(p.value, brand.name, brand.website),
-						premiumModels: selectPremiumModels(p.premiumModels),
+						value: prompt.value,
+						enabled: prompt.enabled,
+						tags: prompt.tags || [],
+						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
+						premiumModels: after.premiumModels,
 					})
-					.where(and(eq(prompts.id, p.id!), eq(prompts.brandId, data.brandId)));
+					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
 			}
 
-			if (toInsert.length > 0) {
+			if (inserts.length > 0) {
 				await tx.insert(prompts).values(
-					toInsert.map((p) => ({
+					inserts.map(({ prompt, after }) => ({
 						brandId: data.brandId,
-						value: p.value,
-						enabled: p.enabled,
-						tags: p.tags || [],
-						systemTags: computeSystemTags(p.value, brand.name, brand.website),
-						premiumModels: selectPremiumModels(p.premiumModels),
+						value: prompt.value,
+						enabled: prompt.enabled,
+						tags: prompt.tags || [],
+						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
+						premiumModels: after.premiumModels,
 					})),
 				);
 			}

@@ -11,7 +11,7 @@
  * A plain-object return value is wrapped in `Response.json()` with `status`
  * (default 200); returning a `Response` passes through untouched.
  */
-import { EntitlementError } from "@workspace/lib/entitlements";
+import { WriteDeniedError } from "@workspace/lib/entitlements";
 import type { z } from "zod";
 import { validateApiKeyFromRequest } from "@/lib/auth/policies";
 
@@ -97,7 +97,7 @@ async function parseJsonBody<B>(schema: z.ZodType<B>, request: Request): Promise
  * caller shouldn't see the details of.
  */
 function errorFromThrow(err: unknown, request: Request, mapError?: (err: unknown) => ApiError | undefined): Response {
-	if (err instanceof ApiError || err instanceof EntitlementError) {
+	if (err instanceof ApiError || err instanceof WriteDeniedError) {
 		return errorResponse(err.status, err.error, err.message);
 	}
 

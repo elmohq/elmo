@@ -31,6 +31,14 @@ export interface FeaturesConfig {
 	 * demo is read-only.
 	 */
 	teamInvites: boolean;
+	/**
+	 * Whether the viewer picks which platforms a brand is tracked on. False in
+	 * whitelabel (the agency picks, and pays the provider bills) and demo.
+	 *
+	 * Matches `canCreateBrands` in every mode today, but kept separate: creating a
+	 * brand and choosing what it costs to run are sold as different things.
+	 */
+	platformPicksEditable: boolean;
 }
 
 export interface AnalyticsConfig {

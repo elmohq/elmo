@@ -21,7 +21,13 @@ import { defaultPlatformPicks, resolveBrandPicks } from "@workspace/lib/run-poli
 import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess, requireOrgAccess } from "@/lib/auth/helpers";
+import {
+	canEditPlatformPicks,
+	requireAuthSession,
+	requireBrandAccess,
+	requireOrgAccess,
+	requirePlatformPicksEditable,
+} from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { addedPlatforms } from "@/lib/run-config-changes";
@@ -51,8 +57,12 @@ export type PlatformOption = {
 export type ModelPickerState = {
 	/** Models this brand may choose from, with target metadata for display. */
 	available: PlatformOption[];
-	/** The brand's stored picks; null = follow deployment configuration. */
-	enabledModels: string[] | null;
+	/** Whether the page offers checkboxes and a save bar. The one answer to "can
+	 *  this be changed" — the page renders it, it does not re-derive it. */
+	editable: boolean;
+	/** The resolved list, never the raw `brands.enabledModels` column — null there
+	 *  means "use the default", which the page once showed as "all platforms". */
+	enabledModels: string[];
 	/** Cloud plan constraints; null outside cloud (no pick limit). */
 	planLimits: { platformPicks: number; platformMenu: string[] } | null;
 	/**
@@ -171,6 +181,18 @@ function unconfiguredPlatforms(configs: ModelConfig[]): ModelPickerState["unconf
 	return suggestions;
 }
 
+/**
+ * Whether the viewer decides this brand's picks. Beyond the deployment gate,
+ * "editable" also means there is something to change: a plan that pays for one
+ * platform and offers one has nothing to offer, and unticking it would leave
+ * zero, which the save bar refuses anyway.
+ */
+function picksEditable(available: PlatformOption[], picks: number | null): boolean {
+	if (!canEditPlatformPicks()) return false;
+	if (available.length === 0) return false;
+	return !(picks === 1 && available.length === 1);
+}
+
 export const getModelPickerStateFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }): Promise<ModelPickerState> => {
@@ -187,12 +209,11 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 		// there is no pool to reserve it for.
 		if (entitlements.unlimited) {
 			const selfHosted = await selfHostedCostBasis(brand);
+			const available = optionsByModel(configs, { forOperator: selfHosted !== null, excludePremium: false });
 			return {
-				available: optionsByModel(configs, {
-					forOperator: selfHosted !== null,
-					excludePremium: false,
-				}),
-				enabledModels: brand.enabledModels,
+				available,
+				editable: picksEditable(available, null),
+				enabledModels: brand.enabledModels ?? available.map((option) => option.model),
 				planLimits: null,
 				upgradeOptions: [],
 				costBasis: selfHosted,
@@ -203,15 +224,13 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 		const pickable = optionsByModel(configs, { forOperator: false, excludePremium: true });
 		const menu = new Set(entitlements.platformMenu ?? []);
 		const available = pickable.filter((option) => menu.has(option.model));
+		const picks = entitlements.platformPicks ?? available.length;
 		return {
 			available,
-			// What the brand is actually tracked on, resolved the same way the run
-			// policy resolves it. Reporting the raw column and letting the page read
-			// null as "everything configured" is what showed a Pro brand 10 of 4
-			// platforms selected.
+			editable: picksEditable(available, picks),
 			enabledModels: resolveBrandPicks(entitlements, brand, configs),
 			planLimits: {
-				platformPicks: entitlements.platformPicks ?? available.length,
+				platformPicks: picks,
 				platformMenu: entitlements.platformMenu ?? [],
 			},
 			upgradeOptions: pickable.filter((option) => !menu.has(option.model)),
@@ -261,6 +280,8 @@ export const updateEnabledModelsFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
+
+		requirePlatformPicksEditable();
 
 		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
 		if (!brand) throw new Error("Brand not found");
