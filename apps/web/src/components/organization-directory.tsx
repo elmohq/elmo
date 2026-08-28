@@ -1,4 +1,4 @@
-import { IconBriefcase, IconChevronRight, IconPlus, IconSettings } from "@tabler/icons-react";
+import { IconChevronRight, IconPlus, IconSettings } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
 import { brandParams, orgParams } from "@workspace/lib/app-urls";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
@@ -37,9 +37,6 @@ function OrganizationCard({ organization }: { organization: OrganizationSummary 
 	return (
 		<div className="overflow-hidden rounded-xl border bg-background">
 			<div className="flex items-center gap-3 border-b bg-muted/30 px-4 py-3">
-				<span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-					<IconBriefcase className="size-5" />
-				</span>
 				<p className="min-w-0 flex-1 truncate font-medium">{organization.name}</p>
 				<Button
 					variant="ghost"
