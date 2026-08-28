@@ -217,10 +217,11 @@ function OrganizationSection({
 				</DropdownMenuItem>
 			</div>
 
-			{/* `mb-1` so the gap under the last brand reads like the one over the
-			    heading: the rule running down the list makes it look tighter. */}
+			{/* The rule runs to the bottom of the last row's padding, so it ends
+			    close to the separator and reads tighter than the open space above
+			    the heading. The margin is measured from where the rule stops. */}
 			{hasChildren && (
-				<div className="mb-1 ml-4 border-l pl-1">
+				<div className="mb-2 ml-4 border-l pl-1">
 					{organization.brands.map((brand) => (
 						<DropdownMenuItem
 							key={brand.id}
