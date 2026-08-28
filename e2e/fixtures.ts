@@ -55,6 +55,14 @@ export const TEST_BRAND_NAME = "Test Organization";
 export const SLUGGED_BRAND_ID = "seeded-slug-brand";
 export const SLUGGED_BRAND_SLUG = "labs";
 export const SLUGGED_BRAND_NAME = "Test Labs";
+
+/**
+ * A brand no other spec addresses, so the one spec that moves a slug can move
+ * it for real. Everything else is reached by a slug the suite holds constant.
+ */
+export const RENAMEABLE_BRAND_ID = "seeded-rename-brand";
+export const RENAMEABLE_BRAND_SLUG = "rename-me";
+export const RENAMEABLE_BRAND_NAME = "Test Rename";
 export const TEST_BRAND_WEBSITE = "https://example.com";
 
 export const PROMPT_IDS = {

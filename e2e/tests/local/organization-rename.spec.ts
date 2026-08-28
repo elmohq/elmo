@@ -6,7 +6,12 @@
  * name is ours to change.
  */
 import { expect, test } from "@playwright/test";
-import { TEST_BRAND_NAME, TEST_ORG_SLUG } from "../../fixtures";
+import {
+  RENAMEABLE_BRAND_ID,
+  RENAMEABLE_BRAND_SLUG,
+  TEST_BRAND_NAME,
+  TEST_ORG_SLUG,
+} from "../../fixtures";
 
 test.describe("Organization rename", () => {
   // Doesn't commit a new slug: the suite shares one seeded organization, and a
@@ -53,5 +58,34 @@ test.describe("Organization rename", () => {
 
     await nameField.fill("   ");
     await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  });
+});
+
+test.describe("Brand rename", () => {
+  test("moving a brand's slug moves the page, and the new address resolves", async ({ page }) => {
+    const moved = `${RENAMEABLE_BRAND_SLUG}-moved`;
+    const settingsAt = (slug: string) => `/app/org/${TEST_ORG_SLUG}/brand/${slug}/settings/brand`;
+
+    await page.goto(settingsAt(RENAMEABLE_BRAND_SLUG));
+
+    const slugField = page.getByLabel("Brand Slug", { exact: true });
+    await expect(slugField).toHaveValue(RENAMEABLE_BRAND_SLUG, { timeout: 30_000 });
+
+    await slugField.fill(moved);
+    await page.getByRole("button", { name: "Save Changes" }).click();
+
+    // The address the form is on is the one that just moved.
+    await page.waitForURL(new RegExp(`${settingsAt(moved)}$`), { timeout: 30_000 });
+    await expect(page.getByLabel("Brand Slug", { exact: true })).toHaveValue(moved);
+
+    // The id still reaches it, and canonicalizes to where it now lives.
+    await page.goto(`/app/org/${TEST_ORG_SLUG}/brand/${RENAMEABLE_BRAND_ID}`);
+    await expect(page).toHaveURL(new RegExp(`/app/org/${TEST_ORG_SLUG}/brand/${moved}$`), { timeout: 30_000 });
+
+    // Put it back, so a re-run starts where the seed left off.
+    await page.goto(settingsAt(moved));
+    await page.getByLabel("Brand Slug", { exact: true }).fill(RENAMEABLE_BRAND_SLUG);
+    await page.getByRole("button", { name: "Save Changes" }).click();
+    await page.waitForURL(new RegExp(`${settingsAt(RENAMEABLE_BRAND_SLUG)}$`), { timeout: 30_000 });
   });
 });

@@ -197,18 +197,18 @@ function OrganizationSection({
 
 	return (
 		<DropdownMenuGroup>
-			<DropdownMenuLabel className="flex items-center justify-between gap-2 py-0 pr-0 text-muted-foreground">
-				<span className="truncate">{title}</span>
-				<Link
-					to="/app/org/$org/settings"
-					params={orgParams(organization)}
-					onClick={onNavigate}
+			{/* A menu item, not a bare link: only items join the menu's roving focus,
+			    so anything else here would be reachable by pointer alone. */}
+			<div className="flex items-center justify-between gap-2">
+				<DropdownMenuLabel className="min-w-0 flex-1 truncate pr-0 text-muted-foreground">{title}</DropdownMenuLabel>
+				<DropdownMenuItem
+					render={<Link to="/app/org/$org/settings" params={orgParams(organization)} onClick={onNavigate} />}
 					aria-label={`${title} settings`}
-					className="rounded-sm p-1.5 hover:bg-accent hover:text-accent-foreground"
+					className="mr-1 size-7 shrink-0 cursor-pointer justify-center p-0"
 				>
 					<IconSettings className="size-4" />
-				</Link>
-			</DropdownMenuLabel>
+				</DropdownMenuItem>
+			</div>
 
 			{organization.brands.map((brand) => (
 				<DropdownMenuItem

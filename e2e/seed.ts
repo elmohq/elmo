@@ -19,6 +19,9 @@ import {
   NIKE_PROMPT_IDS,
   PROMPT_IDS,
   REPORT_IDS,
+  RENAMEABLE_BRAND_ID,
+  RENAMEABLE_BRAND_NAME,
+  RENAMEABLE_BRAND_SLUG,
   SLUGGED_BRAND_ID,
   SLUGGED_BRAND_NAME,
   SLUGGED_BRAND_SLUG,
@@ -80,6 +83,15 @@ async function seed() {
       [SLUGGED_BRAND_ID, TEST_BRAND_ID, SLUGGED_BRAND_SLUG, SLUGGED_BRAND_NAME]
     );
     console.log("  Created brand:", SLUGGED_BRAND_ID, `(/brand/${SLUGGED_BRAND_SLUG})`);
+
+    // Reserved for the spec that renames a slug, which needs a brand nothing
+    // else addresses by one.
+    await client.query(
+      `INSERT INTO brands (id, organization_id, slug, name, website, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 'https://rename.example.com', true, true, NOW(), NOW())`,
+      [RENAMEABLE_BRAND_ID, TEST_BRAND_ID, RENAMEABLE_BRAND_SLUG, RENAMEABLE_BRAND_NAME]
+    );
+    console.log("  Created brand:", RENAMEABLE_BRAND_ID, `(/brand/${RENAMEABLE_BRAND_SLUG})`);
 
     // -----------------------------------------------------------------------
     // 2. Prompts
