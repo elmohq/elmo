@@ -13,7 +13,6 @@ import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent } from "@workspace/ui/components/card";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
-import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { ExternalLink } from "lucide-react";
@@ -44,6 +43,7 @@ const checkReportAccess = createServerFn({ method: "GET" }).handler(
 );
 
 export const Route = createFileRoute("/_authed/reports/")({
+	staticData: { crumb: "Reports" },
 	head: ({ match }) => {
 		const appName = getAppName(match);
 		return {

@@ -11,6 +11,7 @@ import { coercePromptOrder, DEFAULT_PROMPT_ORDER, type PromptOrder } from "@/lib
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/visibility")({
+	staticData: { crumb: "Visibility" },
 	// The prompts list's sort order (#60) is this route's own search key, on top
 	// of the brand-wide filter keys validated by the `$brand` layout route. The
 	// default order is omitted so default state keeps a clean URL.

@@ -19,6 +19,7 @@ import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { updateCompetitors } from "@/server/brands";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/competitors")({
+	staticData: { crumb: "Competitors" },
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);

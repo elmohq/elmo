@@ -255,6 +255,7 @@ function ActivityIndicator({ added, removed }: { added: number; removed: number 
 }
 
 export const Route = createFileRoute("/_authed/admin/")({
+	staticData: { crumb: "Brands" },
 	head: ({ match }) => {
 		const appName = getAppName(match);
 		return {

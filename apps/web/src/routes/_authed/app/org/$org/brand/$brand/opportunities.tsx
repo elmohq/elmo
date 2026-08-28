@@ -19,6 +19,7 @@ import { useOpportunities } from "@/hooks/use-opportunities";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/opportunities")({
+	staticData: { crumb: "Opportunities" },
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);

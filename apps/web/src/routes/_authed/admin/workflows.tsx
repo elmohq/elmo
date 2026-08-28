@@ -612,6 +612,7 @@ function BrandRow({
 // ============================================================================
 
 export const Route = createFileRoute("/_authed/admin/workflows")({
+	staticData: { crumb: "Workflows" },
 	head: ({ match }) => {
 		const appName = getAppName(match);
 		return {

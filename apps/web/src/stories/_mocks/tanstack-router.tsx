@@ -131,9 +131,40 @@ export function useMatch(_opts?: unknown) {
 	return { params: { org: "mock-workspace", brand: "mock-brand-id" } };
 }
 
+/**
+ * The matches a brand page would have, so the header's trail renders. Stories
+ * that care about a different page set their own.
+ */
+let _matches: Array<{ routeId: string; pathname: string; staticData: { crumb?: string } }> = [
+	{ routeId: "/_authed/app/org/$org", pathname: "/app/org/mock-workspace", staticData: {} },
+	{
+		routeId: "/_authed/app/org/$org/brand/$brand",
+		pathname: "/app/org/mock-workspace/brand/mock-brand-id",
+		staticData: {},
+	},
+];
+
+export function setMockMatches(matches: typeof _matches) {
+	_matches = matches;
+}
+
+export function useMatches() {
+	return _matches;
+}
+
+/** Fills `$param` placeholders the way the real router does, for link targets. */
+function buildLocation({ to, params }: { to?: string; params?: Record<string, string> }) {
+	const pathname = Object.entries(params ?? {}).reduce(
+		(path, [key, value]) => path.replace(`$${key}`, encodeURIComponent(value)),
+		to ?? "/",
+	);
+	return { pathname, search: "", searchStr: "", hash: "", href: pathname };
+}
+
 export function useRouter() {
 	return {
 		navigate: (_opts: unknown) => {},
+		buildLocation,
 		state: { location: { pathname: "/", search: "", hash: "" } },
 	};
 }

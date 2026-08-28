@@ -1,35 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
-import { listWorkspacesFn, type WorkspaceWithBrands } from "@/server/workspaces";
-
-export const workspaceKeys = {
-	all: ["workspaces"] as const,
-	list: () => [...workspaceKeys.all, "list"] as const,
-};
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLoaderData } from "@tanstack/react-router";
+import { invalidateWorkspaces, workspaceQueries } from "@/lib/workspaces/queries";
+import type { WorkspaceRouteContext, WorkspaceSummary } from "@/lib/workspaces/types";
 
 /**
- * Route params for linking to the current workspace, or null when the page sits
- * outside one (the picker itself, admin, the paywall).
+ * The workspace this page belongs to, as the `/app/org/$org` layout resolved it.
  *
- * Null rather than an empty string: a caller that can't build a link needs to
- * render something else, and `/app/org//…` is not that.
+ * Read from that layout's loader data rather than from route context: a
+ * `beforeLoad` re-runs on every navigation, and a component reading its result
+ * directly would see `undefined` for as long as that takes.
  */
-export function useWorkspaceParams(): { org: string } | null {
-	const org = useParams({ strict: false, select: (params) => params.org });
-	return org ? { org } : null;
-}
-
-/**
- * Route params for linking within the current brand, or null off a brand page.
- *
- * The `brand` value is the segment already in the address bar — the brand's slug
- * where it has one and its id otherwise — so navigation stays off the
- * canonicalizing redirect. For *identifying* a brand to the server, use
- * `useBrandId`.
- */
-export function useBrandParams(): { org: string; brand: string } | null {
-	const params = useParams({ strict: false, select: ({ org, brand }) => ({ org, brand }) });
-	return params.org && params.brand ? { org: params.org, brand: params.brand } : null;
+export function useWorkspaceRoute(): WorkspaceRouteContext {
+	return useLoaderData({ from: "/_authed/app/org/$org" });
 }
 
 /**
@@ -39,17 +21,19 @@ export function useBrandParams(): { org: string; brand: string } | null {
  * than letting a failed request empty the navigation.
  */
 export function useWorkspaces() {
-	const query = useQuery({
-		queryKey: workspaceKeys.list(),
-		queryFn: () => listWorkspacesFn(),
-		staleTime: 60_000,
-	});
+	const query = useQuery(workspaceQueries.list());
 
 	return {
-		workspaces: (query.data ?? []) as WorkspaceWithBrands[],
+		workspaces: (query.data ?? []) as WorkspaceSummary[],
 		isLoading: query.isLoading,
 		isError: query.isError,
 		isFetching: query.isFetching,
 		refetch: query.refetch,
 	};
+}
+
+/** Drop every cached answer about workspaces, after changing one. */
+export function useInvalidateWorkspaces(): () => Promise<void> {
+	const queryClient = useQueryClient();
+	return () => invalidateWorkspaces(queryClient);
 }

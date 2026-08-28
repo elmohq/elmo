@@ -52,6 +52,7 @@ function PromptsSettingsSkeleton() {
 }
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/prompts")({
+	staticData: { crumb: "Prompts" },
 	loader: async ({ context }) => {
 		const [brandPrompts, premiumPool] = await Promise.all([
 			getPromptsForEditing({ data: { brandId: context.brandId } }),

@@ -9,26 +9,37 @@
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { checkBrandCreate } from "@workspace/lib/entitlements";
-import { asc, count, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import type { UserOrganization } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 import type { WorkspaceBrand, WorkspaceSummary } from "@/lib/workspaces/types";
 
-/**
- * Whether each of these workspaces can take another brand. Deployments that
- * don't create brands from the UI at all answer no without asking the plan.
- *
- * Costs an entitlements read, so it is asked for by the pages that offer brand
- * creation rather than resolved with the workspace on every navigation.
- */
-export async function decideBrandCreation(orgIds: string[]): Promise<Map<string, boolean>> {
-	if (!getDeployment().features.canCreateBrands) return new Map(orgIds.map((orgId) => [orgId, false]));
-	const decisions = await checkBrandCreate(orgIds);
-	return new Map(orgIds.map((orgId) => [orgId, decisions.get(orgId)?.allowed ?? false]));
-}
+type BrandCreation = Pick<WorkspaceSummary, "canCreateBrand" | "brandLimit">;
 
-export async function canCreateBrandIn(organizationId: string): Promise<boolean> {
-	return (await decideBrandCreation([organizationId])).get(organizationId) ?? false;
+/** Deployments that don't create brands from the UI at all, with no limit to explain. */
+const NOT_OFFERED: BrandCreation = { canCreateBrand: false, brandLimit: null };
+
+/**
+ * Whether each of these workspaces can take another brand, and the plan's
+ * reason where it refuses.
+ */
+export async function resolveBrandCreation(orgIds: string[]): Promise<Map<string, BrandCreation>> {
+	if (!getDeployment().features.canCreateBrands) return new Map(orgIds.map((orgId) => [orgId, NOT_OFFERED]));
+
+	const decisions = await checkBrandCreate(orgIds);
+	return new Map(
+		orgIds.map((orgId) => {
+			const decision = decisions.get(orgId);
+			if (!decision) return [orgId, NOT_OFFERED];
+			return [
+				orgId,
+				{
+					canCreateBrand: decision.allowed,
+					brandLimit: decision.allowed ? null : { code: decision.code, message: decision.message },
+				},
+			];
+		}),
+	);
 }
 
 /** The brands a workspace owns, in the order every list of them uses. */
@@ -46,13 +57,11 @@ export async function listWorkspaceBrands(organizationId: string): Promise<Works
 		.orderBy(asc(brands.name));
 }
 
-/** How many brands a workspace owns, for the pages that only need the number. */
-export async function countWorkspaceBrands(organizationId: string): Promise<number> {
-	const [row] = await db.select({ value: count() }).from(brands).where(eq(brands.organizationId, organizationId));
-	return row?.value ?? 0;
-}
-
-/** A resolved workspace with the brands it owns. Two indexed reads, no more. */
+/** A resolved workspace with the brands it owns and its brand allowance. */
 export async function withBrands(workspace: UserOrganization): Promise<WorkspaceSummary> {
-	return { ...workspace, brands: await listWorkspaceBrands(workspace.id) };
+	const [brandList, creation] = await Promise.all([
+		listWorkspaceBrands(workspace.id),
+		resolveBrandCreation([workspace.id]),
+	]);
+	return { ...workspace, brands: brandList, ...(creation.get(workspace.id) ?? NOT_OFFERED) };
 }

@@ -31,6 +31,7 @@ import { buildTitle, getAppName } from "@/lib/route-head";
 import { type BillingState, getBillingStateFn, setPremiumAddonQuantityFn } from "@/server/billing";
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings/billing")({
+	staticData: { crumb: "Billing" },
 	loader: async ({ params, context }): Promise<BillingState> => {
 		if (!context.clientConfig?.features.billing) {
 			throw redirect({ to: "/app/org/$org", params: { org: params.org } });

@@ -34,7 +34,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { Inbox, ListPlus, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { useWorkspaceParams } from "@/hooks/use-workspaces";
+import { useWorkspaceParams } from "@/hooks/use-brand-id";
 
 export interface EditablePrompt {
 	id?: string;
@@ -84,6 +84,11 @@ function BillingLink({ children }: { children: ReactNode }) {
 	);
 }
 
+/**
+ * Which premium models a prompt is tracked on. A popover rather than a checkbox
+ * per model because the table has one narrow column for this and the list grows
+ * as more models ship a usable web-search tool.
+ */
 function PremiumModelsField({
 	selected,
 	promptEnabled,

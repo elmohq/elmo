@@ -226,6 +226,7 @@ function TagSection({ title, items }: { title: string; items: string[] }) {
 }
 
 export const Route = createFileRoute("/_authed/admin/tools")({
+	staticData: { crumb: "Tools" },
 	head: ({ match }) => {
 		const appName = getAppName(match);
 		return {

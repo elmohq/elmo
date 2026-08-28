@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { buttonVariants } from "@workspace/ui/components/button";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/$")({
+	staticData: { crumb: "Not found" },
 	component: BrandSubpathNotFound,
 });
 

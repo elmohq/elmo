@@ -44,7 +44,9 @@ const workspace = {
 	slug: "mock-workspace",
 	name: "Acme",
 	role: "admin",
-	brands: [{ id: "brand-1", slug: null, name: "Acme Corp", onboarded: true }],
+	canCreateBrand: true,
+	brandLimit: null,
+	brands: [{ id: "brand-1", slug: null, name: "Acme Corp", website: "https://acme.com", onboarded: true }],
 };
 
 const newBrand = {

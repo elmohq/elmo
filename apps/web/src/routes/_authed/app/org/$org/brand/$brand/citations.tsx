@@ -20,6 +20,7 @@ import { getDaysFromLookback } from "@/lib/chart-utils";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/citations")({
+	staticData: { crumb: "Citations" },
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);

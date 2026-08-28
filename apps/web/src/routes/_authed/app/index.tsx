@@ -16,9 +16,9 @@ import FullPageCard from "@/components/full-page-card";
 import { WorkspaceBrandList } from "@/components/workspace-brand-list";
 import { requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
-import { listWorkspacesFn, type WorkspaceWithBrands } from "@/server/workspaces";
+import { listWorkspacesFn, type WorkspaceSummary } from "@/server/workspaces";
 
-const getWorkspacePickerData = createServerFn({ method: "GET" }).handler(async (): Promise<WorkspaceWithBrands[]> => {
+const getWorkspacePickerData = createServerFn({ method: "GET" }).handler(async (): Promise<WorkspaceSummary[]> => {
 	const deployment = getDeployment();
 
 	if (deployment.mode === "whitelabel") {
@@ -48,7 +48,7 @@ function WorkspacePickerSkeleton() {
 
 export const Route = createFileRoute("/_authed/app/")({
 	pendingComponent: WorkspacePickerSkeleton,
-	loader: async (): Promise<WorkspaceWithBrands[]> => {
+	loader: async (): Promise<WorkspaceSummary[]> => {
 		const workspaces = await getWorkspacePickerData();
 
 		// One workspace is no choice at all — and it is the common case, so the

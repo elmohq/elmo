@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-	BRAND_SEGMENT_INDEX,
 	brandParams,
 	brandPath,
 	brandSegment,
-	canonicalHref,
-	ORG_SEGMENT_INDEX,
+	canonicalBrandHref,
+	canonicalOrgHref,
 	orgParams,
 	orgSegment,
 	parseStrandedAppPath,
@@ -48,40 +47,36 @@ describe("URL segments", () => {
 	});
 });
 
-describe("canonicalHref", () => {
+describe("canonical hrefs", () => {
 	it("swaps the workspace segment and leaves the rest of the path alone", () => {
-		expect(canonicalHref(location("/app/org/org_123/brand/nike/citations"), ORG_SEGMENT_INDEX, "acme")).toBe(
+		expect(canonicalOrgHref(location("/app/org/org_123/brand/nike/citations"), "acme")).toBe(
 			"/app/org/acme/brand/nike/citations",
 		);
 	});
 
 	it("swaps the brand segment", () => {
-		expect(canonicalHref(location("/app/org/acme/brand/nike/prompts"), BRAND_SEGMENT_INDEX, "nike-running")).toBe(
+		expect(canonicalBrandHref(location("/app/org/acme/brand/nike/prompts"), "nike-running")).toBe(
 			"/app/org/acme/brand/nike-running/prompts",
 		);
 	});
 
 	it("keeps the query string and the hash", () => {
-		expect(
-			canonicalHref(
-				location("/app/org/org_123/brand/nike", "?model=gpt-5&lookback=1m", "top"),
-				ORG_SEGMENT_INDEX,
-				"acme",
-			),
-		).toBe("/app/org/acme/brand/nike?model=gpt-5&lookback=1m#top");
+		expect(canonicalOrgHref(location("/app/org/org_123/brand/nike", "?model=gpt-5&lookback=1m", "top"), "acme")).toBe(
+			"/app/org/acme/brand/nike?model=gpt-5&lookback=1m#top",
+		);
 	});
 
 	// The segment in the address bar is encoded while the resolved value is not,
 	// so anything that measured an offset from the decoded value would land in the
 	// wrong place here and truncate the path.
 	it("survives an encoded segment ahead of the one being replaced", () => {
-		expect(canonicalHref(location("/app/org/a%20b%2Fc/brand/nike/citations"), ORG_SEGMENT_INDEX, "acme")).toBe(
+		expect(canonicalOrgHref(location("/app/org/a%20b%2Fc/brand/nike/citations"), "acme")).toBe(
 			"/app/org/acme/brand/nike/citations",
 		);
 	});
 
 	it("encodes the value it writes in", () => {
-		expect(canonicalHref(location("/app/org/org_123"), ORG_SEGMENT_INDEX, "a b")).toBe("/app/org/a%20b");
+		expect(canonicalOrgHref(location("/app/org/org_123"), "a b")).toBe("/app/org/a%20b");
 	});
 });
 

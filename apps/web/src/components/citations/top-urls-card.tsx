@@ -16,7 +16,7 @@ import {
 import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 import { SiteIcon } from "@/components/site-icon";
-import { useBrandParams } from "@/hooks/use-workspaces";
+import { useBrandParams } from "@/hooks/use-brand-id";
 
 export function TopUrlsCard({
 	urls,

@@ -37,6 +37,7 @@ import { getModelPickerStateFn, type ModelPickerState, updateEnabledModelsFn } f
 import { getPremiumPoolFn, type PremiumPool } from "@/server/premium-tracking";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/llms")({
+	staticData: { crumb: "LLMs" },
 	loader: async ({ context }): Promise<{ picker: ModelPickerState; premium: PremiumPool }> => {
 		const [picker, premium] = await Promise.all([
 			getModelPickerStateFn({ data: { brandId: context.brandId } }),

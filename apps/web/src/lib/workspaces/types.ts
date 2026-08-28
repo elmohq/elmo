@@ -6,6 +6,7 @@
  * switcher, and the header can name the type without pulling the database into
  * the client bundle.
  */
+import type { EntitlementDenialCode } from "@workspace/lib/entitlements";
 
 export interface WorkspaceBrand {
 	id: string;
@@ -21,12 +22,13 @@ export interface WorkspaceBrand {
 }
 
 /**
- * A workspace and the brands it owns, from two indexed reads.
+ * A workspace, the brands it owns, and whether it can take another.
  *
- * This is what the `/app/org/$org` layout resolves on every navigation into the
- * workspace, so it holds only what is cheap to fetch and what the URL itself
- * depends on: the brand list is how `$brand` resolves its segment without a
- * round trip.
+ * This is what `/app/org/$org` resolves for every page below it. It is read
+ * through the query cache rather than on every navigation, which is what lets
+ * the brand allowance live here: asking costs an entitlements read, and once
+ * per workspace per minute is a price the switcher, the workspace home and the
+ * create-brand page were each paying separately anyway.
  */
 export interface WorkspaceSummary {
 	id: string;
@@ -35,22 +37,19 @@ export interface WorkspaceSummary {
 	name: string;
 	role: string;
 	brands: WorkspaceBrand[];
-}
-
-/**
- * A workspace plus whether it can take another brand — the deployment feature
- * and the plan's brand allowance together.
- *
- * Separate from `WorkspaceSummary` because answering it costs an entitlements
- * read: only the pages that offer brand creation ask, and none of them is on
- * the dashboard's filter path.
- */
-export interface WorkspaceWithBrands extends WorkspaceSummary {
 	canCreateBrand: boolean;
+	/**
+	 * Why the plan refuses another brand, when it is the plan refusing. Null both
+	 * when creation is allowed and when this deployment doesn't create brands
+	 * from the UI at all — which is the difference between showing the customer a
+	 * limit and having no such page to show.
+	 */
+	brandLimit: { code: EntitlementDenialCode; message: string } | null;
 }
 
 /**
- * What `/app/org/$org` puts in route context for every page below it.
+ * What `/app/org/$org` puts in route context, and hands on through its loader,
+ * for every page below it.
  *
  * The two session facts ride along with the workspace because the rail needs
  * all three together and one round trip is enough for them.

@@ -19,7 +19,7 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
 import { useWorkspaces } from "@/hooks/use-workspaces";
-import type { WorkspaceSummary, WorkspaceWithBrands } from "@/lib/workspaces/types";
+import type { WorkspaceSummary } from "@/lib/workspaces/types";
 
 /** Two letters is enough to tell workspaces apart at a glance in the rail. */
 function initials(name: string): string {
@@ -38,31 +38,17 @@ function initials(name: string): string {
  * thing a user with more than one workspace has to keep straight.
  *
  * The workspace being viewed comes from the route layout, so its name, its
- * brands and its settings are on screen from the first paint and cannot be
- * emptied by a failing query. The all-workspaces query adds the workspaces this
- * page isn't in, and the one thing the layout deliberately doesn't carry:
- * whether a workspace can take another brand, which costs an entitlements read.
- * "New brand" therefore appears with the query rather than before it.
+ * brands, its settings and its brand allowance are on screen from the first
+ * paint and cannot be emptied by a failing query. The all-workspaces query only
+ * adds the workspaces this page isn't in.
  */
-export function WorkspaceSwitcher({
-	workspace,
-	brandName: resolvedBrandName,
-}: {
-	workspace: WorkspaceSummary;
-	brandName?: string;
-}) {
+export function WorkspaceSwitcher({ workspace, brandName }: { workspace: WorkspaceSummary; brandName?: string }) {
 	const { isMobile, setOpenMobile } = useSidebar();
 	const brandParam = useParams({ strict: false, select: (params) => params.brand });
 	const { workspaces, isLoading, isError, isFetching, refetch } = useWorkspaces();
 
-	// The query's copy of this workspace, when it has arrived, is the same
-	// workspace with the creation answer attached.
-	const fromQuery = workspaces.find((w) => w.id === workspace.id);
-	const current: WorkspaceWithBrands = fromQuery ?? { ...workspace, canCreateBrand: false };
+	const current = workspace;
 	const listed = [current, ...workspaces.filter((w) => w.id !== workspace.id)];
-
-	const currentBrand = current.brands.find((brand) => brandSegment(brand) === brandParam);
-	const brandName = resolvedBrandName ?? currentBrand?.name;
 	const close = () => setOpenMobile(false);
 
 	return (

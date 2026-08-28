@@ -19,6 +19,7 @@ import { buildTitle, getAppName } from "@/lib/route-head";
 import { cancelInvitationFn, inviteTeamMemberFn, listTeamFn, removeTeamMemberFn, type TeamData } from "@/server/team";
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings/members")({
+	staticData: { crumb: "Team" },
 	loader: async ({ params, context }): Promise<TeamData> => {
 		if (!context.clientConfig?.features.teamInvites) {
 			throw redirect({ to: "/app/org/$org", params: { org: params.org } });

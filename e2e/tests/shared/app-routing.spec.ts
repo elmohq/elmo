@@ -14,6 +14,7 @@ import {
 	TEST_BRAND_ID,
 	TEST_BRAND_NAME,
 	TEST_ORG_SLUG,
+	workspaceUrl,
 } from "../../fixtures";
 
 /** The seeded brand has no slug, so its segment is its id — the pre-slug state. */
@@ -90,5 +91,26 @@ test.describe("App routing", () => {
 	test("the workspace settings page states the workspace's URL", async ({ page }) => {
 		await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
 		await expect(page.getByLabel("URL", { exact: true })).toHaveValue(TEST_ORG_SLUG, { timeout: 30_000 });
+	});
+
+	// The trail is read off the routes that matched, so it says where the page
+	// sits without a second parser guessing at the pathname.
+	test("the breadcrumb trail names the workspace, the brand, and the page", async ({ page }) => {
+		await page.goto(`${BRAND_URL}/citations`);
+
+		const trail = page.getByRole("navigation", { name: "breadcrumb" });
+		await expect(trail.getByText(TEST_BRAND_NAME, { exact: true })).toBeVisible({ timeout: 30_000 });
+		await expect(trail.getByText("Citations", { exact: true })).toBeVisible();
+
+		// The workspace crumb leads back to the workspace, not to the brand.
+		await expect(trail.locator(`a[href="${workspaceUrl()}"]`)).toBeVisible();
+	});
+
+	test("a workspace page's trail leads with the workspace", async ({ page }) => {
+		await page.goto(`${workspaceUrl()}/settings`);
+
+		const trail = page.getByRole("navigation", { name: "breadcrumb" });
+		await expect(trail.locator(`a[href="${workspaceUrl()}"]`)).toBeVisible({ timeout: 30_000 });
+		await expect(trail.getByText("Settings", { exact: true })).toBeVisible();
 	});
 });

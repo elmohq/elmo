@@ -90,6 +90,7 @@ function formatRunFrequency(hours: number): string {
 }
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/")({
+	staticData: { crumb: "Overview" },
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);

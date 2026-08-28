@@ -39,6 +39,7 @@ const FANOUT_TABS = ["fanout", "top-queries", "words"] as const;
 type FanoutTab = (typeof FANOUT_TABS)[number];
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/query-fan-out")({
+	staticData: { crumb: "Query Fan-Out" },
 	validateSearch: (search: Record<string, unknown>): { tab?: FanoutTab } => ({
 		tab: FANOUT_TABS.includes(search.tab as FanoutTab) ? (search.tab as FanoutTab) : undefined,
 	}),

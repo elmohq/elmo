@@ -9,7 +9,7 @@
 
 import { createFileRoute, notFound, Outlet, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { BRAND_SEGMENT_INDEX, brandSegment, canonicalHref } from "@workspace/lib/app-urls";
+import { brandSegment, canonicalBrandHref } from "@workspace/lib/app-urls";
 import { db } from "@workspace/lib/db/db";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
@@ -21,24 +21,15 @@ import { AppShell, PageContent } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
+import { useWorkspaceRoute } from "@/hooks/use-workspaces";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { getAppName } from "@/lib/route-head";
-import type { WorkspaceRouteContext } from "@/lib/workspaces/types";
 
 interface BrandData {
 	brand: BrandWithPrompts;
 	/** The org that must be subscribed before this brand renders; null when nothing is owed. */
 	unpaidOrganizationId: string | null;
 }
-
-/**
- * What the layout renders from. The workspace and the two session facts come
- * from the route context the workspace layout resolved, but they are returned
- * through the loader rather than read from context in the component: a
- * `beforeLoad` re-runs on every navigation, so a component reading its result
- * directly sees `undefined` for as long as that round trip takes.
- */
-interface BrandRouteData extends BrandData, WorkspaceRouteContext {}
 
 const getBrandData = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string(), brandId: z.string() }))
@@ -129,12 +120,12 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 
 		const canonical = brandSegment(brand);
 		if (canonical !== params.brand) {
-			throw redirect({ href: canonicalHref(location, BRAND_SEGMENT_INDEX, canonical) });
+			throw redirect({ href: canonicalBrandHref(location, canonical) });
 		}
 
 		return { brandId: brand.id };
 	},
-	loader: async ({ context }): Promise<BrandRouteData> => {
+	loader: async ({ context }): Promise<BrandData> => {
 		const result = await getBrandData({
 			data: { organizationId: context.workspace.id, brandId: context.brandId },
 		});
@@ -146,16 +137,11 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 			throw redirect({ to: "/choose-plan", search: { org: result.unpaidOrganizationId } });
 		}
 
-		return {
-			...result,
-			workspace: context.workspace,
-			isAdmin: context.isAdmin,
-			hasReportAccess: context.hasReportAccess,
-		};
+		return result;
 	},
 	head: ({ match, loaderData }) => {
 		const appName = getAppName(match);
-		const brandName = (loaderData as BrandRouteData | undefined)?.brand?.name;
+		const brandName = (loaderData as BrandData | undefined)?.brand?.name;
 		return {
 			meta: [
 				{ title: brandName ? `${brandName} · ${appName}` : appName },
@@ -173,7 +159,8 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 });
 
 function BrandLayout() {
-	const { brand, workspace, isAdmin, hasReportAccess } = Route.useLoaderData();
+	const { brand } = Route.useLoaderData();
+	const { workspace, isAdmin, hasReportAccess } = useWorkspaceRoute();
 
 	return (
 		<AppShell
@@ -186,7 +173,7 @@ function BrandLayout() {
 					workspace={workspace}
 				/>
 			}
-			header={<SiteHeader workspaceName={workspace.name} />}
+			header={<SiteHeader workspaceName={workspace.name} brandName={brand.name} />}
 		>
 			<PageContent>
 				<Outlet />

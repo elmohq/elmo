@@ -4,7 +4,7 @@
  * The URL says which workspace the brand joins, so the page never has to ask —
  * and the answer, which decides who can see the brand and who is billed for it,
  * is the one the user navigated from. Gated by the canCreateBrands deployment
- * feature (local, cloud) at both the loader and the server function.
+ * feature (local, cloud) at the loader and again at the write.
  *
  * Where the plan meters platforms, a second step asks which ones to track:
  * this is the flow every cloud brand goes through, so accepting the defaults
@@ -16,58 +16,32 @@
  */
 
 import { createFileRoute, Link, redirect, useNavigate, useRouter } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
-import { checkBrandCreate, type EntitlementDenialCode } from "@workspace/lib/entitlements";
+import { orgSegment } from "@workspace/lib/app-urls";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
-import { z } from "zod";
 import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
-import { requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
+import { useInvalidateWorkspaces } from "@/hooks/use-workspaces";
 import { validateWebsiteUrl } from "@/lib/brand-website";
-import { getDeployment } from "@/lib/config/server";
 import { trackEvent } from "@/lib/posthog";
 import { buildTitle, getAppName } from "@/lib/route-head";
 import { createBrandInOrgFn } from "@/server/brands";
 import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
 
-interface NewBrandOptions {
-	canCreateBrands: boolean;
-	organizationId: string;
-	workspaceName: string;
-	/** Why this workspace can't take another brand; null when it can. */
-	blocked: { code: EntitlementDenialCode; message: string } | null;
-}
-
-const getNewBrandOptions = createServerFn({ method: "GET" })
-	.validator(z.object({ org: z.string() }))
-	.handler(async ({ data }): Promise<NewBrandOptions> => {
-		const session = await requireAuthSession();
-		const workspace = await requireOrganization(session.user.id, data.org);
-
-		if (!getDeployment().features.canCreateBrands) {
-			return { canCreateBrands: false, organizationId: workspace.id, workspaceName: workspace.name, blocked: null };
-		}
-
-		const decision = (await checkBrandCreate([workspace.id])).get(workspace.id);
-
-		return {
-			canCreateBrands: true,
-			organizationId: workspace.id,
-			workspaceName: workspace.name,
-			blocked: decision && !decision.allowed ? { code: decision.code, message: decision.message } : null,
-		};
-	});
-
 export const Route = createFileRoute("/_authed/app/org/$org/new")({
-	loader: async ({ params }): Promise<NewBrandOptions> => {
-		const options = await getNewBrandOptions({ data: { org: params.org } });
-		if (!options.canCreateBrands) {
-			throw redirect({ to: "/app/org/$org", params: { org: params.org } });
+	staticData: { crumb: "New brand" },
+	// The workspace above already resolved its brand allowance, so the page that
+	// offers creation reads the answer rather than asking for it again. A refusal
+	// with no reason to show is a deployment that doesn't create brands at all,
+	// which has no page here.
+	loader: ({ context }) => {
+		const { canCreateBrand, brandLimit, name, id } = context.workspace;
+		if (!canCreateBrand && !brandLimit) {
+			throw redirect({ to: "/app/org/$org", params: { org: orgSegment(context.workspace) } });
 		}
-		return options;
+		return { organizationId: id, workspaceName: name, blocked: brandLimit };
 	},
 	head: ({ match }) => ({
 		meta: [{ title: buildTitle("New brand", { appName: getAppName(match) }) }],
@@ -86,6 +60,7 @@ function NewBrandPage() {
 	const [error, setError] = useState("");
 	const navigate = useNavigate();
 	const router = useRouter();
+	const invalidateWorkspaces = useInvalidateWorkspaces();
 
 	const createBrand = async (brandName: string, website: string, enabledModels: string[] | null) => {
 		setIsLoading(true);
@@ -102,7 +77,10 @@ function NewBrandPage() {
 			});
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
-			await router.invalidate();
+			// The rail's switcher lists this workspace's brands, so it goes stale the
+			// moment one is created — invalidated alongside the route data, not left
+			// for its own timer.
+			await Promise.all([router.invalidate(), invalidateWorkspaces()]);
 			// The brand arrives with a slug, so land on it rather than on the id and
 			// a redirect.
 			await navigate({ to: "/app/org/$org/brand/$brand", params: { org, brand: brandSlug } });

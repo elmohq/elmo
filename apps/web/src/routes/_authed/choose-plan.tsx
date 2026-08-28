@@ -15,7 +15,6 @@ import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { Switch } from "@workspace/ui/components/switch";
 import { useEffect, useState } from "react";
@@ -38,6 +37,7 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute("/_authed/choose-plan")({
+	staticData: { crumb: "Choose a plan" },
 	validateSearch: searchSchema,
 	loaderDeps: ({ search }) => ({ status: search.status, org: search.org }),
 	// The explicit return type breaks the type-inference cycle created by this
@@ -76,7 +76,7 @@ function ChoosePlanPage() {
 	// account they are signed into, and how to sign out of it — most of all the
 	// non-admin who is told to go ask someone else.
 	return (
-		<AppShell sidebar={<AppSidebar scope="account" />} header={<SiteHeader title="Choose a plan" />}>
+		<AppShell sidebar={<AppSidebar scope="account" />} header={<SiteHeader />}>
 			{/* No `PageContent`: both bodies lay out and pad a full-height page of
 			    their own. */}
 			<div className="flex flex-1 flex-col">{body}</div>

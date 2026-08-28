@@ -9,22 +9,15 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { AppShell, PageContent } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import type { WorkspaceRouteContext } from "@/lib/workspaces/types";
+import { useWorkspaceRoute } from "@/hooks/use-workspaces";
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings")({
-	// Handed on from the context the workspace layout resolved rather than read
-	// from it in the component: a `beforeLoad` re-runs on every navigation, and a
-	// component reading its result directly sees `undefined` while it does.
-	loader: ({ context }): WorkspaceRouteContext => ({
-		workspace: context.workspace,
-		isAdmin: context.isAdmin,
-		hasReportAccess: context.hasReportAccess,
-	}),
+	staticData: { crumb: "Settings" },
 	component: WorkspaceSettingsLayout,
 });
 
 function WorkspaceSettingsLayout() {
-	const { workspace, isAdmin, hasReportAccess } = Route.useLoaderData();
+	const { workspace, isAdmin, hasReportAccess } = useWorkspaceRoute();
 
 	return (
 		<AppShell

@@ -64,6 +64,7 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/prompts/$promptId")({
+	staticData: { crumb: "Prompt History" },
 	// `tab` is part of the route's search schema so links can target a specific
 	// tab (e.g. View Details → web-queries). Absent means the default tab.
 	validateSearch: (search: Record<string, unknown>): { tab?: TabKey } => ({

@@ -7,6 +7,7 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { BRAND_URL_PREFIX } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -22,6 +23,7 @@ import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { setBrandSlugFn, updateBrandFn } from "@/server/brands";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/brand")({
+	staticData: { crumb: "Brand" },
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
@@ -222,7 +224,7 @@ function BrandUrlField({ brandId, slug }: { brandId: string; slug: string | null
 	return (
 		<SlugField
 			id="brand-url"
-			prefix="/brand/"
+			prefix={BRAND_URL_PREFIX}
 			current={slug ?? brandId}
 			subject="brand"
 			save={(next) => setBrandSlugFn({ data: { brandId, slug: next } })}

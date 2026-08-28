@@ -26,6 +26,7 @@ import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { shareOfVoiceColorMap } from "@/lib/share-of-voice-palette";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/share-of-voice")({
+	staticData: { crumb: "Share of Voice" },
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);

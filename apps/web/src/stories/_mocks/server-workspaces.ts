@@ -5,16 +5,24 @@
  */
 
 export type WorkspaceBrand = { id: string; slug: string | null; name: string; onboarded: boolean };
-export type WorkspaceSummary = { id: string; slug: string; name: string; role: string; brands: WorkspaceBrand[] };
-export type WorkspaceWithBrands = WorkspaceSummary & { canCreateBrand: boolean };
+export type WorkspaceSummary = {
+	id: string;
+	slug: string;
+	name: string;
+	role: string;
+	brands: WorkspaceBrand[];
+	canCreateBrand: boolean;
+	brandLimit: { code: string; message: string } | null;
+};
 
-let _workspaces: WorkspaceWithBrands[] = [
+let _workspaces: WorkspaceSummary[] = [
 	{
 		id: "org-1",
 		slug: "acme",
 		name: "Acme",
 		role: "admin",
 		canCreateBrand: true,
+		brandLimit: null,
 		brands: [
 			{ id: "brand-1", slug: "acme", name: "Acme", onboarded: true },
 			{ id: "brand-2", slug: "acme-labs", name: "Acme Labs", onboarded: true },
@@ -22,21 +30,17 @@ let _workspaces: WorkspaceWithBrands[] = [
 	},
 ];
 
-export function setMockWorkspaces(workspaces: WorkspaceWithBrands[]) {
+export function setMockWorkspaces(workspaces: WorkspaceSummary[]) {
 	_workspaces = workspaces;
 }
 
 export const listWorkspacesFn = async () => _workspaces;
-export const resolveWorkspaceFn = async () => {
-	const { canCreateBrand: _ignored, ...workspace } = _workspaces[0];
-	return { workspace, isAdmin: false, hasReportAccess: false };
-};
-export const getWorkspaceSettingsFn = async () => ({
+export const resolveWorkspaceFn = async () => ({
 	workspace: _workspaces[0],
-	brandCount: _workspaces[0].brands.length,
-	memberCount: 2,
-	canRename: true,
+	isAdmin: false,
+	hasReportAccess: false,
 });
+export const getWorkspaceSettingsFn = async () => ({ memberCount: 2, canRename: true });
 export const renameWorkspaceFn = async () => ({ success: true });
 export const setWorkspaceSlugFn = async () => ({ ok: true, slug: _workspaces[0].slug });
 export const getNotFoundContextFn = async () => ({ suggestion: null, workspaces: _workspaces });

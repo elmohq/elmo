@@ -6,7 +6,6 @@
  */
 import { createFileRoute, notFound, Outlet } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
 import { AppShell, PageContent } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
@@ -26,6 +25,7 @@ const checkAdminAccess = createServerFn({ method: "GET" }).handler(
 );
 
 export const Route = createFileRoute("/_authed/admin")({
+	staticData: { crumb: "Admin" },
 	beforeLoad: async () => {
 		const { isAdmin, hasReportAccess } = await checkAdminAccess();
 

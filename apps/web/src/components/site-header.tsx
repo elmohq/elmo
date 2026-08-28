@@ -1,5 +1,4 @@
-import { Link, useLocation, useParams } from "@tanstack/react-router";
-import { BRAND_PAGE_INDEX, BRAND_SUBPAGE_INDEX, pathSegments, WORKSPACE_SUBPAGE_INDEX } from "@workspace/lib/app-urls";
+import { Link } from "@tanstack/react-router";
 import {
 	Breadcrumb,
 	BreadcrumbItem,
@@ -10,202 +9,16 @@ import {
 } from "@workspace/ui/components/breadcrumb";
 import { Separator } from "@workspace/ui/components/separator";
 import { SidebarTrigger } from "@workspace/ui/components/sidebar";
-import { useBrand } from "@/hooks/use-brands";
-
-const PAGE_NAMES: Record<string, string> = {
-	visibility: "Visibility",
-	"share-of-voice": "Share of Voice",
-	"query-fan-out": "Query Fan-Out",
-	opportunities: "Opportunities",
-	prompts: "Prompts",
-	citations: "Citations",
-	brand: "Brand",
-	competitors: "Competitors",
-	llms: "LLMs",
-	workflows: "Workflows",
-	tools: "Tools",
-};
-
-function getPageDisplayName(segment: string): string {
-	return PAGE_NAMES[segment] || segment.charAt(0).toUpperCase() + segment.slice(1);
-}
-
-function AdminBreadcrumbs({ pathname }: { pathname: string }) {
-	const segments = pathname.split("/").filter(Boolean);
-
-	if (segments[0] === "reports") {
-		if (segments.length > 1) {
-			return (
-				<>
-					<BreadcrumbItem className="hidden md:block">
-						<BreadcrumbLink render={<Link to="/reports" />}>Reports</BreadcrumbLink>
-					</BreadcrumbItem>
-					<BreadcrumbSeparator className="hidden md:block" />
-					<BreadcrumbItem>
-						<BreadcrumbPage>View Report</BreadcrumbPage>
-					</BreadcrumbItem>
-				</>
-			);
-		}
-		return (
-			<>
-				<BreadcrumbItem className="hidden md:block">
-					<span className="text-muted-foreground">Admin</span>
-				</BreadcrumbItem>
-				<BreadcrumbSeparator className="hidden md:block" />
-				<BreadcrumbItem>
-					<BreadcrumbPage>Reports</BreadcrumbPage>
-				</BreadcrumbItem>
-			</>
-		);
-	}
-
-	if (segments.length === 1) {
-		return (
-			<>
-				<BreadcrumbItem className="hidden md:block">
-					<span className="text-muted-foreground">Admin</span>
-				</BreadcrumbItem>
-				<BreadcrumbSeparator className="hidden md:block" />
-				<BreadcrumbItem>
-					<BreadcrumbPage>Brands</BreadcrumbPage>
-				</BreadcrumbItem>
-			</>
-		);
-	}
-
-	const subPage = segments[1];
-	return (
-		<>
-			<BreadcrumbItem className="hidden md:block">
-				<span className="text-muted-foreground">Admin</span>
-			</BreadcrumbItem>
-			<BreadcrumbSeparator className="hidden md:block" />
-			<BreadcrumbItem>
-				<BreadcrumbPage>{getPageDisplayName(subPage)}</BreadcrumbPage>
-			</BreadcrumbItem>
-		</>
-	);
-}
-
-function BrandBreadcrumbs({
-	pathname,
-	org,
-	brand,
-	brandName,
-}: {
-	pathname: string;
-	org: string | undefined;
-	brand: string | undefined;
-	brandName: string;
-}) {
-	// Indexed with the same constants the router's redirects use, so the header
-	// and the URL never disagree about where the page name sits.
-	const segments = pathSegments(pathname);
-	const pageSegment = segments[BRAND_PAGE_INDEX] ?? "";
-	const subSegment = segments[BRAND_SUBPAGE_INDEX] ?? "";
-
-	const isPromptDetailPage =
-		pageSegment === "prompts" &&
-		subSegment &&
-		subSegment !== "edit" &&
-		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subSegment);
-
-	const isEditPage = pathname.endsWith("/edit");
-	const isSettingsSubPage = pageSegment === "settings" && subSegment;
-	const pageName = pageSegment ? getPageDisplayName(pageSegment) : "Overview";
-	const brandParams = org && brand ? { org, brand } : null;
-
-	return (
-		<>
-			<BreadcrumbItem className="hidden md:block">
-				<BreadcrumbLink render={brandParams ? <Link to="/app/org/$org/brand/$brand" params={brandParams} /> : <span />}>
-					{brandName}
-				</BreadcrumbLink>
-			</BreadcrumbItem>
-			<BreadcrumbSeparator className="hidden md:block" />
-			{isPromptDetailPage ? (
-				<>
-					<BreadcrumbItem className="hidden md:block">
-						<BreadcrumbLink
-							render={brandParams ? <Link to="/app/org/$org/brand/$brand/visibility" params={brandParams} /> : <span />}
-						>
-							Visibility
-						</BreadcrumbLink>
-					</BreadcrumbItem>
-					<BreadcrumbSeparator className="hidden md:block" />
-					<BreadcrumbItem>
-						<BreadcrumbPage>Prompt History</BreadcrumbPage>
-					</BreadcrumbItem>
-				</>
-			) : isSettingsSubPage ? (
-				<>
-					<BreadcrumbItem className="hidden md:block">
-						<span className="text-muted-foreground">Settings</span>
-					</BreadcrumbItem>
-					<BreadcrumbSeparator className="hidden md:block" />
-					<BreadcrumbItem>
-						<BreadcrumbPage>{getPageDisplayName(subSegment)}</BreadcrumbPage>
-					</BreadcrumbItem>
-				</>
-			) : isEditPage ? (
-				<>
-					<BreadcrumbItem className="hidden md:block">
-						<BreadcrumbLink render={<Link to={pathname.slice(0, -5)} />}>{pageName}</BreadcrumbLink>
-					</BreadcrumbItem>
-					<BreadcrumbSeparator className="hidden md:block" />
-					<BreadcrumbItem>
-						<BreadcrumbPage>Edit</BreadcrumbPage>
-					</BreadcrumbItem>
-				</>
-			) : (
-				<BreadcrumbItem>
-					<BreadcrumbPage>{pageName}</BreadcrumbPage>
-				</BreadcrumbItem>
-			)}
-		</>
-	);
-}
-
-/** Settings that belong to the workspace: /app/org/$org/settings[/sub]. */
-function WorkspaceSettingsBreadcrumbs({ pathname, org }: { pathname: string; org: string }) {
-	const sub = pathSegments(pathname)[WORKSPACE_SUBPAGE_INDEX];
-
-	if (!sub) {
-		return (
-			<BreadcrumbItem>
-				<BreadcrumbPage>Settings</BreadcrumbPage>
-			</BreadcrumbItem>
-		);
-	}
-
-	return (
-		<>
-			<BreadcrumbItem className="hidden md:block">
-				<BreadcrumbLink render={<Link to="/app/org/$org/settings" params={{ org }} />}>Settings</BreadcrumbLink>
-			</BreadcrumbItem>
-			<BreadcrumbSeparator className="hidden md:block" />
-			<BreadcrumbItem>
-				<BreadcrumbPage>{getPageDisplayName(sub)}</BreadcrumbPage>
-			</BreadcrumbItem>
-		</>
-	);
-}
+import { Fragment } from "react";
+import { useBreadcrumbs } from "@/lib/breadcrumbs";
 
 /**
- * `title` names a page that sits outside the brand and admin trees, where there
- * is no trail to derive — the breadcrumb becomes that one label.
- *
- * `workspaceName` comes from the layout that already resolved the workspace;
- * without it the trail falls back to the slug in the URL, which is readable but
- * isn't the name.
+ * The two names the trail can't get from a route: they come from the layouts
+ * that resolved them, so the header renders the finished trail on first paint
+ * instead of growing a crumb when a query lands.
  */
-export function SiteHeader({ title, workspaceName }: { title?: string; workspaceName?: string } = {}) {
-	const { brand } = useBrand();
-	const { pathname } = useLocation();
-	const params = useParams({ strict: false, select: ({ org, brand: brandSegment }) => ({ org, brand: brandSegment }) });
-
-	const isAdminPage = pathname.startsWith("/admin") || pathname.startsWith("/reports");
+export function SiteHeader({ workspaceName, brandName }: { workspaceName?: string; brandName?: string } = {}) {
+	const crumbs = useBreadcrumbs({ workspaceName, brandName });
 
 	return (
 		<header className="bg-background sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
@@ -214,34 +27,22 @@ export function SiteHeader({ title, workspaceName }: { title?: string; workspace
 				<Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
 				<Breadcrumb>
 					<BreadcrumbList>
-						{/* The workspace leads every trail inside it, so the answer to
-						    "whose data is this" is on screen without opening anything. */}
-						{params.org && !isAdminPage && (
-							<>
-								<BreadcrumbItem className="hidden md:block">
-									<BreadcrumbLink render={<Link to="/app/org/$org" params={{ org: params.org }} />}>
-										{workspaceName ?? params.org}
-									</BreadcrumbLink>
-								</BreadcrumbItem>
-								<BreadcrumbSeparator className="hidden md:block" />
-							</>
-						)}
-						{title ? (
-							<BreadcrumbItem>
-								<BreadcrumbPage>{title}</BreadcrumbPage>
-							</BreadcrumbItem>
-						) : isAdminPage ? (
-							<AdminBreadcrumbs pathname={pathname} />
-						) : params.org && !params.brand ? (
-							<WorkspaceSettingsBreadcrumbs pathname={pathname} org={params.org} />
-						) : (
-							<BrandBreadcrumbs
-								pathname={pathname}
-								org={params.org}
-								brand={params.brand}
-								brandName={brand?.name || "Dashboard"}
-							/>
-						)}
+						{crumbs.map((crumb, index) => {
+							const isLast = index === crumbs.length - 1;
+							return (
+								// Two routes never share a pathname, so the href identifies the crumb.
+								<Fragment key={crumb.href}>
+									{index > 0 && <BreadcrumbSeparator className="hidden md:block" />}
+									<BreadcrumbItem className={isLast ? undefined : "hidden md:block"}>
+										{isLast ? (
+											<BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+										) : (
+											<BreadcrumbLink render={<Link to={crumb.href} />}>{crumb.label}</BreadcrumbLink>
+										)}
+									</BreadcrumbItem>
+								</Fragment>
+							);
+						})}
 					</BreadcrumbList>
 				</Breadcrumb>
 			</div>

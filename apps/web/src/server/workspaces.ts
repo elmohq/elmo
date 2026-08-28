@@ -23,19 +23,13 @@ import {
 	requireAuthSession,
 	requireOrganization,
 	resolveOrganization,
-	type UserOrganization,
 } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 import type { SlugResult } from "@/lib/slugs";
-import { countWorkspaceBrands, decideBrandCreation, withBrands } from "@/lib/workspaces/server";
-import type { WorkspaceRouteContext, WorkspaceWithBrands } from "@/lib/workspaces/types";
+import { resolveBrandCreation, withBrands } from "@/lib/workspaces/server";
+import type { WorkspaceRouteContext, WorkspaceSummary } from "@/lib/workspaces/types";
 
-export type {
-	WorkspaceBrand,
-	WorkspaceRouteContext,
-	WorkspaceSummary,
-	WorkspaceWithBrands,
-} from "@/lib/workspaces/types";
+export type { WorkspaceBrand, WorkspaceRouteContext, WorkspaceSummary } from "@/lib/workspaces/types";
 
 /**
  * Everything the `/app/org/$org` layout puts in route context: the workspace the
@@ -47,9 +41,9 @@ export type {
  * themselves, because each is reachable without going through this route and
  * has to authorize on its own.
  *
- * `beforeLoad` re-runs on every navigation, filter changes included, so this
- * holds only indexed reads. Whether the workspace can take another brand costs
- * an entitlements lookup and is asked for by the pages that offer creation.
+ * Read through the query cache rather than on every navigation, so a filter
+ * change costs nothing and the brand allowance can be resolved here instead of
+ * again on each page that offers creation.
  */
 export const resolveWorkspaceFn = createServerFn({ method: "GET" })
 	.validator(z.object({ org: z.string() }))
@@ -70,7 +64,7 @@ export const resolveWorkspaceFn = createServerFn({ method: "GET" })
 /** What the 404 page renders: where the path was going, and where else to go. */
 export interface NotFoundContext {
 	suggestion: { href: string; name: string } | null;
-	workspaces: WorkspaceWithBrands[];
+	workspaces: WorkspaceSummary[];
 }
 
 /**
@@ -117,17 +111,17 @@ async function resolveStrandedPath(userId: string, pathname: string): Promise<{ 
  * Every workspace the user belongs to, each with its brands — what the switcher
  * and the `/app` picker render.
  */
-export const listWorkspacesFn = createServerFn({ method: "GET" }).handler(async (): Promise<WorkspaceWithBrands[]> => {
+export const listWorkspacesFn = createServerFn({ method: "GET" }).handler(async (): Promise<WorkspaceSummary[]> => {
 	const session = await requireAuthSession();
 	return listWorkspaces(session.user.id);
 });
 
-async function listWorkspaces(userId: string): Promise<WorkspaceWithBrands[]> {
+async function listWorkspaces(userId: string): Promise<WorkspaceSummary[]> {
 	const orgs = await listUserOrganizations(userId);
 	if (orgs.length === 0) return [];
 
 	const orgIds = orgs.map((org) => org.id);
-	const [rows, canCreate] = await Promise.all([
+	const [rows, creation] = await Promise.all([
 		db
 			.select({
 				id: brands.id,
@@ -140,7 +134,7 @@ async function listWorkspaces(userId: string): Promise<WorkspaceWithBrands[]> {
 			.from(brands)
 			.where(inArray(brands.organizationId, orgIds))
 			.orderBy(asc(brands.name)),
-		decideBrandCreation(orgIds),
+		resolveBrandCreation(orgIds),
 	]);
 
 	return orgs.map((org) => ({
@@ -148,14 +142,17 @@ async function listWorkspaces(userId: string): Promise<WorkspaceWithBrands[]> {
 		brands: rows
 			.filter((brand) => brand.organizationId === org.id)
 			.map(({ id, slug, name, website, onboarded }) => ({ id, slug, name, website, onboarded })),
-		canCreateBrand: canCreate.get(org.id) ?? false,
+		...(creation.get(org.id) ?? { canCreateBrand: false, brandLimit: null }),
 	}));
 }
 
+/**
+ * What the settings page needs that the route context doesn't already hold —
+ * the workspace itself, its name, its slug and its brands are all resolved by
+ * the layout above, so asking again here would be a second round trip for facts
+ * already on screen.
+ */
 export interface WorkspaceSettings {
-	/** Identity only — this page states what the workspace is, not what it holds. */
-	workspace: UserOrganization;
-	brandCount: number;
 	memberCount: number;
 	/** Whether this deployment lets the workspace be renamed from here. */
 	canRename: boolean;
@@ -167,17 +164,12 @@ export const getWorkspaceSettingsFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		const workspace = await requireOrganization(session.user.id, data.org);
 
-		const [brandCount, [memberCount]] = await Promise.all([
-			countWorkspaceBrands(workspace.id),
-			db.select({ value: count() }).from(member).where(eq(member.organizationId, workspace.id)),
-		]);
+		const [memberCount] = await db
+			.select({ value: count() })
+			.from(member)
+			.where(eq(member.organizationId, workspace.id));
 
-		return {
-			workspace,
-			brandCount,
-			memberCount: memberCount?.value ?? 0,
-			canRename: canEditWorkspace(workspace.role),
-		};
+		return { memberCount: memberCount?.value ?? 0, canRename: canEditWorkspace(workspace.role) };
 	});
 
 /**

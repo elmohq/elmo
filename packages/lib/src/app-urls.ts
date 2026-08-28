@@ -40,37 +40,25 @@ export function brandParams(org: SluggableOrg, brand: SluggableBrand): { org: st
 	return { org: orgSegment(org), brand: brandSegment(brand) };
 }
 
+/**
+ * What precedes each segment. Exported because the settings field that edits a
+ * segment shows the address around it, and a second copy of "/app/org/" typed
+ * into a component is a copy that stops matching the day the shape moves.
+ */
+export const WORKSPACE_URL_PREFIX = "/app/org/";
+export const BRAND_URL_PREFIX = "/brand/";
+
 /** The canonical URL for a workspace, for links minted outside the router. */
 export function workspacePath(org: SluggableOrg): string {
-	return `/app/org/${encodeURIComponent(orgSegment(org))}`;
+	return `${WORKSPACE_URL_PREFIX}${encodeURIComponent(orgSegment(org))}`;
 }
 
 export function brandPath(org: SluggableOrg, brand: SluggableBrand): string {
-	return `${workspacePath(org)}/brand/${encodeURIComponent(brandSegment(brand))}`;
+	return `${workspacePath(org)}${BRAND_URL_PREFIX}${encodeURIComponent(brandSegment(brand))}`;
 }
 
 export function workspaceSettingsPath(org: SluggableOrg, sub?: "members" | "billing"): string {
 	return sub ? `${workspacePath(org)}/settings/${sub}` : `${workspacePath(org)}/settings`;
-}
-
-/**
- * Where each identifier sits in a split `/app/org/$org/brand/$brand` pathname:
- * `["", "app", "org", "<org>", "brand", "<brand>", "<page>", "<sub>"]`.
- *
- * One convention, indexing `pathname.split("/")` with the leading empty string
- * kept — dropping it shifts every index by one, and two parts of the app reading
- * the same URL at different offsets is how breadcrumbs and redirects drift apart.
- */
-export const ORG_SEGMENT_INDEX = 3;
-export const BRAND_SEGMENT_INDEX = 5;
-export const BRAND_PAGE_INDEX = 6;
-export const BRAND_SUBPAGE_INDEX = 7;
-/** `/app/org/$org/settings/<sub>` — the workspace's own pages. */
-export const WORKSPACE_SUBPAGE_INDEX = 5;
-
-/** The segments of a pathname, indexed as the constants above describe. */
-export function pathSegments(pathname: string): string[] {
-	return pathname.split("/");
 }
 
 /**
@@ -80,15 +68,36 @@ export function pathSegments(pathname: string): string[] {
  * a serialized href: the segment in the address bar is percent-encoded while
  * the route param is not, so any offset computed from the decoded value lands
  * in the wrong place the moment a slug or id needs encoding.
+ *
+ * The offsets stay private. A caller names the segment it is canonicalizing —
+ * `canonicalOrgHref`, `canonicalBrandHref` — rather than passing an integer,
+ * because an integer is a thing two call sites can disagree about silently.
  */
-export function canonicalHref(
-	location: { pathname: string; searchStr: string; hash: string },
-	segmentIndex: number,
-	value: string,
-): string {
-	const segments = pathSegments(location.pathname);
+interface AppLocation {
+	pathname: string;
+	searchStr: string;
+	hash: string;
+}
+
+// ["", "app", "org", "<org>", "brand", "<brand>", ...]. The leading empty
+// string is kept, so these read as they do in the URL.
+const ORG_SEGMENT_INDEX = 3;
+const BRAND_SEGMENT_INDEX = 5;
+
+function canonicalHref(location: AppLocation, segmentIndex: number, value: string): string {
+	const segments = location.pathname.split("/");
 	segments[segmentIndex] = encodeURIComponent(value);
 	return `${segments.join("/")}${location.searchStr}${location.hash ? `#${location.hash}` : ""}`;
+}
+
+/** The current URL with the workspace segment replaced by its canonical form. */
+export function canonicalOrgHref(location: AppLocation, org: string): string {
+	return canonicalHref(location, ORG_SEGMENT_INDEX, org);
+}
+
+/** The current URL with the brand segment replaced by its canonical form. */
+export function canonicalBrandHref(location: AppLocation, brand: string): string {
+	return canonicalHref(location, BRAND_SEGMENT_INDEX, brand);
 }
 
 /**
@@ -105,7 +114,7 @@ export function canonicalHref(
  */
 export function parseStrandedAppPath(pathname: string): { candidate: string; rest: string } | null {
 	// ["", "app", "<candidate>", ...rest]
-	const segments = pathSegments(pathname);
+	const segments = pathname.split("/");
 	if (segments[1] !== "app" || !segments[2]) return null;
 	if (segments[2] === "org") return null;
 

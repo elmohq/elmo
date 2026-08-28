@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { useBrandParams } from "@/hooks/use-workspaces";
+import { useBrandParams } from "@/hooks/use-brand-id";
 
 /** Which tab of the prompt detail page to land on; the route's own search shape. */
 export type PromptDetailSearch = { tab: "mentions" | "web-queries" | "citations" | "responses" };

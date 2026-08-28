@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { brandParams, orgParams } from "@workspace/lib/app-urls";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { SiteIcon } from "@/components/site-icon";
-import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
+import type { WorkspaceSummary } from "@/lib/workspaces/types";
 
 /**
  * The ways into a workspace: its brands, and one call to action beneath them.
@@ -16,7 +16,7 @@ import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
  * with neither brands nor the right to create one still gets a way in, which is
  * how an un-onboarded whitelabel workspace is reachable from the picker.
  */
-export function WorkspaceBrandList({ workspace }: { workspace: WorkspaceWithBrands }) {
+export function WorkspaceBrandList({ workspace }: { workspace: WorkspaceSummary }) {
 	const { brands, canCreateBrand } = workspace;
 
 	return (
