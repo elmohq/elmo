@@ -1,6 +1,5 @@
 /** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
-import { selectPremiumModels } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import {
@@ -34,6 +33,7 @@ import {
 } from "@/lib/postgres-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { planPromptSave } from "@/server/prompt-save";
 // Server Functions
 // ============================================================================
 
@@ -551,65 +551,37 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		const existingIds = new Set(existingRows.map((p) => p.id));
 		const existingById = new Map(existingRows.map((p) => [p.id, p]));
 
-		// The editor submits the brand's whole list, so every row either updates
-		// one of the brand's own prompts or adds a new one. Anything else — an id
-		// from another brand, or the same id twice — is dropped rather than
-		// counted, which is what bounds the work below to the brand's own size and
-		// stops a padded list from inflating the pools the save is charged for.
-		const claimed = new Set<string>();
-		const toUpdate = data.prompts.filter((p): p is typeof p & { id: string } => {
-			if (!p.id || claimed.has(p.id) || !existingById.has(p.id)) return false;
-			claimed.add(p.id);
-			return true;
+		const { updates, inserts } = planPromptSave(data.prompts, existingRows, {
+			premiumMetered: !(await getOrgEntitlements(brand.organizationId)).unlimited,
 		});
-		const toInsert = data.prompts.filter((p) => !p.id);
 
 		// Nothing is deleted here — the editor retires a prompt by disabling it —
 		// so the rows being inserted are the whole of the brand's growth.
-		assertAllowed(decidePromptCap(existingRows.length, toInsert.length));
-
-		// Grounded models are metered per prompt/model pairing from a cloud pool.
-		// Where there is none the run policy never reads the column, so the field
-		// is not the editor's to set: each row keeps whatever it already stores.
-		// Refusing the save instead would freeze any database moved off cloud,
-		// which submits its stored assignments on every save.
-		const metered = !(await getOrgEntitlements(brand.organizationId)).unlimited;
-		const resolvePremiumModels = (requested: string[] | undefined, before?: { premiumModels: string[] }) =>
-			metered ? selectPremiumModels(requested) : (before?.premiumModels ?? []);
-
-		const updates = toUpdate.map((p) => {
-			const before = existingById.get(p.id);
-			return { p, before, after: { enabled: p.enabled, premiumModels: resolvePremiumModels(p.premiumModels, before) } };
-		});
-		const inserts = toInsert.map((p) => ({
-			p,
-			after: { enabled: p.enabled, premiumModels: resolvePremiumModels(p.premiumModels) },
-		}));
-
+		assertAllowed(decidePromptCap(existingRows.length, inserts.length));
 		await assertPromptSaveAllowed(brand.organizationId, promptSaveDelta([...updates, ...inserts]));
 
 		const saved = await db.transaction(async (tx) => {
-			for (const { p, after } of updates) {
+			for (const { id, prompt, after } of updates) {
 				await tx
 					.update(prompts)
 					.set({
-						value: p.value,
-						enabled: p.enabled,
-						tags: p.tags || [],
-						systemTags: computeSystemTags(p.value, brand.name, brand.website),
+						value: prompt.value,
+						enabled: prompt.enabled,
+						tags: prompt.tags || [],
+						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 						premiumModels: after.premiumModels,
 					})
-					.where(and(eq(prompts.id, p.id), eq(prompts.brandId, data.brandId)));
+					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
 			}
 
 			if (inserts.length > 0) {
 				await tx.insert(prompts).values(
-					inserts.map(({ p, after }) => ({
+					inserts.map(({ prompt, after }) => ({
 						brandId: data.brandId,
-						value: p.value,
-						enabled: p.enabled,
-						tags: p.tags || [],
-						systemTags: computeSystemTags(p.value, brand.name, brand.website),
+						value: prompt.value,
+						enabled: prompt.enabled,
+						tags: prompt.tags || [],
+						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 						premiumModels: after.premiumModels,
 					})),
 				);
