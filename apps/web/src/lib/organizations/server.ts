@@ -36,7 +36,7 @@ export async function resolveBrandCreation(orgIds: string[]): Promise<Map<string
 }
 
 /** The brands an organization owns, in the order every list of them uses. */
-export async function listOrganizationBrands(organizationId: string): Promise<OrganizationBrand[]> {
+async function listOrganizationBrands(organizationId: string): Promise<OrganizationBrand[]> {
 	return db
 		.select({
 			id: brands.id,

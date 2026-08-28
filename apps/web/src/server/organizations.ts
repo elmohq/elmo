@@ -23,7 +23,7 @@ import { resolveBrandCreation, withBrands } from "@/lib/organizations/server";
 import type { OrganizationRouteContext, OrganizationSummary } from "@/lib/organizations/types";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
-export type { OrganizationBrand, OrganizationRouteContext, OrganizationSummary } from "@/lib/organizations/types";
+export type { OrganizationRouteContext, OrganizationSummary } from "@/lib/organizations/types";
 
 /**
  * Read through the query cache rather than on every navigation, which is what

@@ -7,7 +7,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { listOrganizationsFn, resolveOrganizationFn } from "@/server/organizations";
 
-export const organizationKeys = {
+const organizationKeys = {
 	all: ["organizations"] as const,
 	list: () => [...organizationKeys.all, "list"] as const,
 	detail: (org: string) => [...organizationKeys.all, "detail", org] as const,
