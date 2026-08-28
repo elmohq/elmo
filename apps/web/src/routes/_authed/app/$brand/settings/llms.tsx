@@ -120,9 +120,6 @@ function PlatformTierCard({
 	return (
 		<Card className="gap-0 py-0">
 			{groups.map((group, index) => (
-				// Same vertical rhythm a Card gives its own header and content, so
-				// every tier sits the same distance from its description as the
-				// premium card below does.
 				<div key={group.id} className={cn("flex flex-col gap-6 py-6", index > 0 && "border-t")}>
 					<CardHeader>
 						<CardTitle>{group.title}</CardTitle>
