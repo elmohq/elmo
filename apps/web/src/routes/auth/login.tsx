@@ -22,6 +22,7 @@ import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { safeReturnTo } from "@/lib/return-to";
+import { buildTitle, getAppName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/auth/login")({
 	validateSearch: z.object({
@@ -33,6 +34,15 @@ export const Route = createFileRoute("/auth/login")({
 		 */
 		ref: z.string().optional(),
 	}),
+	head: ({ match }) => {
+		const appName = getAppName(match);
+		return {
+			meta: [
+				{ title: buildTitle("Sign in", { appName }) },
+				{ name: "description", content: "Sign in to your account." },
+			],
+		};
+	},
 	component: LoginPage,
 });
 
