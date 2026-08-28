@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/componen
 import { Separator } from "@workspace/ui/components/separator";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/logo";
+import { useAuth } from "@/hooks/use-auth";
 
 interface FullPageCardProps {
 	title?: string;
@@ -26,11 +27,23 @@ export default function FullPageCard({
 	customBackButton,
 	className = "w-md",
 }: FullPageCardProps) {
+	const { isAuthenticated } = useAuth();
+
 	return (
 		<div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
 			<div className={`mx-auto ${className}`}>
 				<div className="flex items-center justify-center space-x-3">
-					<Logo />
+					{/* The mark leads where the rail's does, but only once there is a
+					    session to lead anywhere — the login screen and the missing-env
+					    page have nothing to send anyone to. Decided here rather than
+					    passed in, so a new page inherits it instead of forgetting it. */}
+					{isAuthenticated ? (
+						<Link to="/app" aria-label="Go to your workspaces">
+							<Logo />
+						</Link>
+					) : (
+						<Logo />
+					)}
 				</div>
 				<Card className="my-8">
 					{(title || subtitle) && (

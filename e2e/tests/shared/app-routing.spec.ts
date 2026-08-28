@@ -63,6 +63,16 @@ test.describe("App routing", () => {
 		await expect(page.getByRole("link", { name: TEST_BRAND_NAME, exact: true }).first()).toBeVisible();
 	});
 
+	// The rail's mark leads to the directory, and so does this one — a full-page
+	// view has no rail, and a logo that goes nowhere reads as broken.
+	test("the mark on a full-page view leads to the directory", async ({ page }) => {
+		await page.goto("/app/org/not-a-workspace");
+
+		const mark = page.getByRole("link", { name: "Go to your workspaces" });
+		await expect(mark).toBeVisible({ timeout: 30_000 });
+		await expect(mark).toHaveAttribute("href", "/app");
+	});
+
 	test("a pre-workspace link lands on the same directory", async ({ page }) => {
 		await page.goto(`/app/${TEST_BRAND_ID}/citations`);
 
