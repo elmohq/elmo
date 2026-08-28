@@ -2,13 +2,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import {
-	assertAllowed,
-	assertPromptSaveAllowed,
-	decidePromptCap,
-	getOrgEntitlements,
-	promptSaveDelta,
-} from "@workspace/lib/entitlements";
+import { assertAllowed, assertPromptSaveAllowed, decidePromptCap, promptSaveDelta } from "@workspace/lib/entitlements";
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -551,13 +545,14 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		const existingIds = new Set(existingRows.map((p) => p.id));
 		const existingById = new Map(existingRows.map((p) => [p.id, p]));
 
-		const { updates, inserts } = planPromptSave(data.prompts, existingRows, {
-			premiumMetered: !(await getOrgEntitlements(brand.organizationId)).unlimited,
-		});
+		// Ahead of planning, so the cap bounds the work as well as the result:
+		// every id-less row becomes a planned insert, and a padded list should be
+		// refused rather than built first. Nothing is deleted here — the editor
+		// retires a prompt by disabling it — so the rows being inserted are the
+		// whole of the brand's growth.
+		assertAllowed(decidePromptCap(existingRows.length, data.prompts.filter((p) => !p.id).length));
 
-		// Nothing is deleted here — the editor retires a prompt by disabling it —
-		// so the rows being inserted are the whole of the brand's growth.
-		assertAllowed(decidePromptCap(existingRows.length, inserts.length));
+		const { updates, inserts } = planPromptSave(data.prompts, existingRows);
 		await assertPromptSaveAllowed(brand.organizationId, promptSaveDelta([...updates, ...inserts]));
 
 		const saved = await db.transaction(async (tx) => {
