@@ -60,7 +60,11 @@ function OrganizationCard({ organization }: { organization: OrganizationSummary 
 						>
 							<SiteIcon domain={brand.website} size="sm" />
 							<span className="flex-1 truncate">{brand.name}</span>
-							<IconChevronRight className="size-4 text-muted-foreground/60" />
+							{/* The same box the header's settings control occupies, so the two
+							    sit on one line down the card's right edge. */}
+							<span className="flex w-9 shrink-0 justify-center">
+								<IconChevronRight className="size-4 text-muted-foreground/60" />
+							</span>
 						</Link>
 					))}
 
