@@ -28,6 +28,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useBranding, useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import { useOrganizations } from "@/hooks/use-organizations";
 import { resetCrispSession } from "@/lib/crisp";
+import { organizationTree } from "@/lib/organizations/tree";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 import { resetPostHog } from "@/lib/posthog";
 
@@ -197,7 +198,7 @@ function OrganizationSection({
 	brandParam: string | undefined;
 	onNavigate: () => void;
 }) {
-	const hasChildren = organization.brands.length > 0 || organization.canCreateBrand;
+	const { settingsLabel, children } = organizationTree(organization);
 
 	return (
 		<DropdownMenuGroup aria-label={organization.name}>
@@ -206,7 +207,7 @@ function OrganizationSection({
 			    the menu's roving focus. */}
 			<DropdownMenuItem
 				render={<Link to="/app/org/$org/settings" params={orgParams(organization)} onClick={onNavigate} />}
-				aria-label={`${organization.name} organization settings`}
+				aria-label={settingsLabel}
 				className="cursor-pointer font-medium"
 			>
 				<IconBriefcase className="size-4 shrink-0 text-muted-foreground" />
@@ -219,36 +220,39 @@ function OrganizationSection({
 			{/* The rule runs to the bottom of the last row's padding, so it ends
 			    close to the separator and reads tighter than the open space above
 			    the heading. The margin is measured from where the rule stops. */}
-			{hasChildren && (
+			{children.length > 0 && (
 				<div className="mb-2 ml-4 border-l pl-1">
-					{organization.brands.map((brand) => (
-						<DropdownMenuItem
-							key={brand.id}
-							render={
-								<Link to="/app/org/$org/brand/$brand" params={brandParams(organization, brand)} onClick={onNavigate} />
-							}
-							className="cursor-pointer"
-						>
-							<SiteIcon domain={brand.website} size="xs" />
-							<span className="truncate">{brand.name}</span>
-							{brandSegment(brand) === brandParam && (
-								<span className="ml-auto flex w-7 shrink-0 justify-center">
-									<IconCheck className="size-3.5" />
-								</span>
-							)}
-						</DropdownMenuItem>
-					))}
-
-					{/* A plan's brand allowance is spent per organization, so the same menu
-					    can create in one and not another. */}
-					{organization.canCreateBrand && (
-						<DropdownMenuItem
-							render={<Link to="/app/org/$org/new" params={orgParams(organization)} onClick={onNavigate} />}
-							className="cursor-pointer text-muted-foreground"
-						>
-							<IconPlus className="size-3.5" />
-							New brand
-						</DropdownMenuItem>
+					{children.map((child) =>
+						child.kind === "brand" ? (
+							<DropdownMenuItem
+								key={child.brand.id}
+								render={
+									<Link
+										to="/app/org/$org/brand/$brand"
+										params={brandParams(organization, child.brand)}
+										onClick={onNavigate}
+									/>
+								}
+								className="cursor-pointer"
+							>
+								<SiteIcon domain={child.brand.website} size="xs" />
+								<span className="truncate">{child.brand.name}</span>
+								{brandSegment(child.brand) === brandParam && (
+									<span className="ml-auto flex w-7 shrink-0 justify-center">
+										<IconCheck className="size-3.5" />
+									</span>
+								)}
+							</DropdownMenuItem>
+						) : (
+							<DropdownMenuItem
+								key="new-brand"
+								render={<Link to="/app/org/$org/new" params={orgParams(organization)} onClick={onNavigate} />}
+								className="cursor-pointer text-muted-foreground"
+							>
+								<IconPlus className="size-3.5" />
+								{child.label}
+							</DropdownMenuItem>
+						),
 					)}
 				</div>
 			)}

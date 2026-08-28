@@ -1,8 +1,8 @@
 /**
  * An admin action, and only where this deployment owns the record: a whitelabel
- * organization belongs to Auth0 and demo writes nothing. There the fields are
- * read-only rather than hidden — the page still has to say which organization this
- * is.
+ * organization belongs to Auth0 and demo writes nothing. The fields stay live
+ * there and the save is what refuses, so the reason is on screen rather than
+ * left to be guessed from a dead form.
  */
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { ORG_URL_PREFIX } from "@workspace/lib/app-urls";

@@ -5,11 +5,12 @@
  * that change an organization something to invalidate.
  */
 import type { QueryClient } from "@tanstack/react-query";
-import { listOrganizationsFn, resolveOrganizationFn } from "@/server/organizations";
+import { listOrganizationsFn, listReachableOrganizationsFn, resolveOrganizationFn } from "@/server/organizations";
 
 const organizationKeys = {
 	all: ["organizations"] as const,
 	list: () => [...organizationKeys.all, "list"] as const,
+	reachable: () => [...organizationKeys.all, "reachable"] as const,
 	detail: (org: string) => [...organizationKeys.all, "detail", org] as const,
 };
 
@@ -21,6 +22,16 @@ export const organizationQueries = {
 		queryFn: () => listOrganizationsFn(),
 		staleTime: STALE_TIME,
 	}),
+	/**
+	 * The same list for a caller who may not be signed in, which is null rather
+	 * than empty. Under the same key prefix so one invalidation reaches it.
+	 */
+	reachable: () => ({
+		queryKey: organizationKeys.reachable(),
+		queryFn: () => listReachableOrganizationsFn(),
+		staleTime: STALE_TIME,
+		retry: false,
+	}),
 	/** Null when the user has no such organization. */
 	detail: (org: string) => ({
 		queryKey: organizationKeys.detail(org),
@@ -30,7 +41,7 @@ export const organizationQueries = {
 };
 
 /**
- * Both queries go, not just the one the caller changed: the account menu lists
+ * Every query goes, not just the one the caller changed: the account menu lists
  * every organization's brands, so a brand created in one is stale in the other.
  */
 export function invalidateOrganizations(queryClient: QueryClient): Promise<void> {

@@ -5,6 +5,7 @@ import { buttonVariants } from "@workspace/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { SiteIcon } from "@/components/site-icon";
 import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
+import { organizationTree } from "@/lib/organizations/tree";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
 const ROW = "flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground";
@@ -35,7 +36,7 @@ export function OrganizationDirectory({ organizations }: { organizations: Organi
 }
 
 function OrganizationBlock({ organization }: { organization: OrganizationSummary }) {
-	const hasRows = organization.brands.length > 0 || organization.canCreateBrand;
+	const { settingsLabel, children } = organizationTree(organization);
 
 	return (
 		<div>
@@ -47,7 +48,7 @@ function OrganizationBlock({ organization }: { organization: OrganizationSummary
 						<Link
 							to="/app/org/$org/settings"
 							params={orgParams(organization)}
-							aria-label={`${organization.name} organization settings`}
+							aria-label={settingsLabel}
 							className={`${ROW} justify-between`}
 						/>
 					}
@@ -62,27 +63,30 @@ function OrganizationBlock({ organization }: { organization: OrganizationSummary
 			</Tooltip>
 
 			{/* An organization with nothing in it and no way to add is its heading alone. */}
-			{hasRows && (
+			{children.length > 0 && (
 				<div className="ml-4 border-l pl-1">
-					{organization.brands.map((brand) => (
-						<Link
-							key={brand.id}
-							to="/app/org/$org/brand/$brand"
-							params={brandParams(organization, brand)}
-							className={ROW}
-						>
-							<SiteIcon domain={brand.website} size="xs" />
-							<span className="truncate">{brand.name}</span>
-						</Link>
-					))}
-
-					{/* A plan's brand allowance is spent per organization, so the same page
-					    can create in one and not another. */}
-					{organization.canCreateBrand && (
-						<Link to="/app/org/$org/new" params={orgParams(organization)} className={`${ROW} text-muted-foreground`}>
-							<IconPlus className="size-3.5" />
-							{organization.brands.length > 0 ? "New brand" : "Create your first brand"}
-						</Link>
+					{children.map((child) =>
+						child.kind === "brand" ? (
+							<Link
+								key={child.brand.id}
+								to="/app/org/$org/brand/$brand"
+								params={brandParams(organization, child.brand)}
+								className={ROW}
+							>
+								<SiteIcon domain={child.brand.website} size="xs" />
+								<span className="truncate">{child.brand.name}</span>
+							</Link>
+						) : (
+							<Link
+								key="new-brand"
+								to="/app/org/$org/new"
+								params={orgParams(organization)}
+								className={`${ROW} text-muted-foreground`}
+							>
+								<IconPlus className="size-3.5" />
+								{child.label}
+							</Link>
+						),
 					)}
 				</div>
 			)}

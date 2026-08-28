@@ -27,19 +27,24 @@ import { useInvalidateOrganizations } from "@/hooks/use-organizations";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
 import { buildTitle, getAppName } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { createBrandInOrgFn } from "@/server/brands";
 import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
 
 export const Route = createFileRoute("/_authed/app/org/$org/new")({
 	staticData: { crumb: "New brand" },
-	// A refusal with no reason to show is a deployment that doesn't create brands
-	// at all, which has no page here.
+	// A deployment that doesn't create brands at all has no page here; a plan
+	// that has run out has one, and something to say on it.
 	loader: ({ context }) => {
-		const { canCreateBrand, brandLimit, name, id } = context.organization;
-		if (!canCreateBrand && !brandLimit) {
+		const { brandCreation, name, id } = context.organization;
+		if (brandCreation.kind === "not-offered") {
 			throw redirect({ to: "/app/org/$org", params: { org: orgSegment(context.organization) } });
 		}
-		return { organizationId: id, organizationName: name, blocked: brandLimit };
+		return {
+			organizationId: id,
+			organizationName: name,
+			blocked: brandCreation.kind === "denied" ? brandCreation : null,
+		};
 	},
 	head: ({ match }) => ({
 		meta: [{ title: buildTitle("New brand", { appName: getAppName(match) }) }],
@@ -59,6 +64,7 @@ function NewBrandPage() {
 	const navigate = useNavigate();
 	const router = useRouter();
 	const invalidateOrganizations = useInvalidateOrganizations();
+	const writeError = useWriteErrorMessage();
 
 	const createBrand = async (brandName: string, website: string, enabledModels: string[] | null) => {
 		setIsLoading(true);
@@ -81,7 +87,7 @@ function NewBrandPage() {
 			// The brand arrives with a slug, so land on it rather than on a redirect.
 			await navigate({ to: "/app/org/$org/brand/$brand", params: { org, brand: brandSlug } });
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "An error occurred");
+			setError(writeError(err, "Could not create the brand."));
 		} finally {
 			setIsLoading(false);
 		}
@@ -112,7 +118,9 @@ function NewBrandPage() {
 			setSelected(new Set(state.defaultSelected));
 			setStep("platforms");
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "An error occurred");
+			// A read, so the deployment has nothing to say about it that the server
+			// hasn't already.
+			setError(err instanceof Error ? err.message : "Could not read this organization's platforms.");
 		} finally {
 			setIsLoading(false);
 		}

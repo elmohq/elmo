@@ -4,10 +4,12 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { isOrgAdminRole } from "@workspace/config/roles";
+import { isValidSlug, MAX_SLUG_LENGTH } from "@workspace/lib/app-urls";
 import { db } from "@workspace/lib/db/db";
-import { isOrgSlugAvailable, isValidSlug, MAX_SLUG_LENGTH, provisionUmbrellaOrg } from "@workspace/lib/db/provisioning";
-import { brands, organization } from "@workspace/lib/db/schema";
-import { asc, eq, inArray } from "drizzle-orm";
+import { isOrgSlugAvailable, provisionUmbrellaOrg } from "@workspace/lib/db/provisioning";
+import { organization } from "@workspace/lib/db/schema";
+import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
 	getAuthSession,
@@ -19,7 +21,7 @@ import {
 	resolveOrganization,
 } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
-import { resolveBrandCreation, withBrands } from "@/lib/organizations/server";
+import { summarizeOrganizations } from "@/lib/organizations/server";
 import type { OrganizationRouteContext, OrganizationSummary } from "@/lib/organizations/types";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
@@ -39,8 +41,9 @@ export const resolveOrganizationFn = createServerFn({ method: "GET" })
 		const org = await resolveOrganization(session.user.id, data.org);
 		if (!org) return null;
 
+		const [summary] = await summarizeOrganizations([org]);
 		return {
-			organization: await withBrands(org),
+			organization: summary,
 			isAdmin: isAdmin(session),
 			hasReportAccess: hasReportAccess(session),
 		};
@@ -54,48 +57,40 @@ export const resolveOrganizationFn = createServerFn({ method: "GET" })
 export const listReachableOrganizationsFn = createServerFn({ method: "GET" }).handler(
 	async (): Promise<OrganizationSummary[] | null> => {
 		const session = await getAuthSession();
-		return session ? listOrganizations(session.user.id) : null;
+		return session ? summarizeOrganizations(await listUserOrganizations(session.user.id)) : null;
 	},
 );
 
 export const listOrganizationsFn = createServerFn({ method: "GET" }).handler(
 	async (): Promise<OrganizationSummary[]> => {
 		const session = await requireAuthSession();
-		return listOrganizations(session.user.id);
+		return summarizeOrganizations(await listUserOrganizations(session.user.id));
 	},
 );
 
-async function listOrganizations(userId: string): Promise<OrganizationSummary[]> {
-	const orgs = await listUserOrganizations(userId);
-	if (orgs.length === 0) return [];
+/**
+ * Reconcile this user's memberships with Auth0, where those are the record, and
+ * report whether anything was re-read — so the caller knows whether what it has
+ * cached about them could have moved underneath it.
+ *
+ * A no-op everywhere else, and never fatal: an incident at the Management API
+ * would otherwise take out the one page that lists what a user can reach, when
+ * the memberships already in the database are a perfectly good answer.
+ *
+ * GET, because a read-only deployment refuses by method: this takes no input
+ * and has nothing to do there, and a refusal would take the page with it.
+ */
+export const syncOrganizationMembershipsFn = createServerFn({ method: "GET" }).handler(async (): Promise<boolean> => {
+	if (getDeployment().mode !== "whitelabel") return false;
 
-	const orgIds = orgs.map((org) => org.id);
-	const [rows, creation] = await Promise.all([
-		db
-			.select({
-				id: brands.id,
-				slug: brands.slug,
-				name: brands.name,
-				website: brands.website,
-				onboarded: brands.onboarded,
-				organizationId: brands.organizationId,
-			})
-			.from(brands)
-			.where(inArray(brands.organizationId, orgIds))
-			.orderBy(asc(brands.name)),
-		resolveBrandCreation(orgIds),
-	]);
-
-	return orgs.map((org) => ({
-		id: org.id,
-		slug: org.slug,
-		name: org.name,
-		brands: rows
-			.filter((brand) => brand.organizationId === org.id)
-			.map(({ id, slug, name, website, onboarded }) => ({ id, slug, name, website, onboarded })),
-		...(creation.get(org.id) ?? { canCreateBrand: false, brandLimit: null }),
-	}));
-}
+	const session = await requireAuthSession();
+	try {
+		await syncAuth0UserById(session.user.id);
+	} catch (error) {
+		console.error("[auth0-sync] Failed to sync user memberships; continuing with cached ones", error);
+	}
+	return true;
+});
 
 /**
  * Cloud only: local has one organization per install, whitelabel's arrive from
@@ -116,15 +111,13 @@ export const createOrganizationFn = createServerFn({ method: "POST" })
 	});
 
 /**
- * Organization-wide: every member's links and the billing mail's point at the
- * slug, so this is an admin action for the same reason managing the plan is.
- *
- * Whitelabel organizations are Auth0's records, and demo writes nothing; renaming
- * either here would be a change the source of truth undoes.
+ * Whether this deployment owns the organization record at all. Whitelabel
+ * organizations are Auth0's, and demo writes nothing; renaming either here
+ * would be a change the source of truth undoes.
  */
-function canEditOrganization(role: string): boolean {
+function organizationsAreEditable(): boolean {
 	const deployment = getDeployment();
-	return !deployment.features.readOnly && deployment.mode !== "whitelabel" && isOrgAdminRole(role);
+	return !deployment.features.readOnly && deployment.mode !== "whitelabel";
 }
 
 /**
@@ -133,6 +126,9 @@ function canEditOrganization(role: string): boolean {
  * One call because it is one edit: the form that carries the name carries the
  * slug beside it, and a save that took only half would leave the page telling
  * the customer something that isn't true yet.
+ *
+ * Organization-wide: every member's links and the billing mail's point at the
+ * slug, so this is an admin action for the same reason managing the plan is.
  *
  * Slug availability spans slugs *and* ids, because `/app/org/$org` resolves
  * either — a slug matching another organization's id would make one URL name two
@@ -155,7 +151,7 @@ export const updateOrganizationFn = createServerFn({ method: "POST" })
 		if (!isOrgAdminRole(org.role)) {
 			throw new Error("Only organization admins can change the organization name or URL Slug");
 		}
-		if (!canEditOrganization(org.role)) {
+		if (!organizationsAreEditable()) {
 			throw new Error("This organization cannot be renamed in this deployment");
 		}
 		if (!isValidSlug(data.slug)) throw new Error(INVALID_SLUG);

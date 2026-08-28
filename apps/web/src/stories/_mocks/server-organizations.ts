@@ -5,13 +5,16 @@
  */
 
 export type OrganizationBrand = { id: string; slug: string | null; name: string; onboarded: boolean };
+export type BrandCreation =
+	| { kind: "allowed" }
+	| { kind: "denied"; code: string; message: string }
+	| { kind: "not-offered" };
 export type OrganizationSummary = {
 	id: string;
 	slug: string;
 	name: string;
 	brands: OrganizationBrand[];
-	canCreateBrand: boolean;
-	brandLimit: { code: string; message: string } | null;
+	brandCreation: BrandCreation;
 };
 
 let _organizations: OrganizationSummary[] = [
@@ -19,8 +22,7 @@ let _organizations: OrganizationSummary[] = [
 		id: "org-1",
 		slug: "acme",
 		name: "Acme",
-		canCreateBrand: true,
-		brandLimit: null,
+		brandCreation: { kind: "allowed" },
 		brands: [
 			{ id: "brand-1", slug: "acme", name: "Acme", onboarded: true },
 			{ id: "brand-2", slug: "acme-labs", name: "Acme Labs", onboarded: true },

@@ -16,6 +16,20 @@ export interface OrganizationBrand {
 }
 
 /**
+ * Whether this organization can take another brand, and why not when it can't.
+ *
+ * Three answers rather than a boolean and a nullable message: "the plan says no
+ * right now" is waiting on billing and has something to show, while "this
+ * deployment doesn't create brands" has no page to offer at all. Callers that
+ * read those apart were spelling out combinations of the two fields, and one of
+ * them was reading a missing message as a deployment mode.
+ */
+export type BrandCreation =
+	| { kind: "allowed" }
+	| { kind: "denied"; code: WriteDenialCode; message: string }
+	| { kind: "not-offered" };
+
+/**
  * The brand allowance lives here because this is read through the query cache:
  * the entitlements it costs are paid once per organization per minute rather than
  * by each page that offers creation.
@@ -26,12 +40,7 @@ export interface OrganizationSummary {
 	slug: string;
 	name: string;
 	brands: OrganizationBrand[];
-	canCreateBrand: boolean;
-	/**
-	 * Null both when creation is allowed and when this deployment doesn't create
-	 * brands at all — the difference between showing a limit and having no page.
-	 */
-	brandLimit: { code: WriteDenialCode; message: string } | null;
+	brandCreation: BrandCreation;
 }
 
 /** The session facts ride along because the shell needs all three together. */

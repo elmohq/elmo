@@ -13,12 +13,12 @@ import type { OrganizationSummary } from "@/lib/organizations/types";
 import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
 
 /**
- * `brandLimit` separates "this deployment doesn't create brands" from "the plan
- * says not right now": the second is waiting on billing, not on setup, and the
- * wizard would be a dead end for it.
+ * An empty organization this deployment doesn't create brands in is one Auth0
+ * filled and nobody set up. A plan that says not right now is waiting on
+ * billing rather than on setup, and the wizard would be a dead end for it.
  */
 function needsOnboarding(organization: OrganizationSummary): boolean {
-	return organization.brands.length === 0 && !organization.canCreateBrand && !organization.brandLimit;
+	return organization.brands.length === 0 && organization.brandCreation.kind === "not-offered";
 }
 
 export const Route = createFileRoute("/_authed/app/org/$org/")({
