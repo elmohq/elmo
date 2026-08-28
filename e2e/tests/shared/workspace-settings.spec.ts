@@ -5,7 +5,7 @@
  * each brand, and renaming the workspace.
  */
 import { test, expect } from "@playwright/test";
-import { TEST_BRAND_ID, TEST_BRAND_NAME, TEST_ORG_SLUG } from "../fixtures";
+import { TEST_BRAND_ID, TEST_BRAND_NAME, TEST_ORG_SLUG } from "../../fixtures";
 
 test.describe("Workspace settings", () => {
   test("the sidebar links back to the workspace's brands", async ({ page }) => {

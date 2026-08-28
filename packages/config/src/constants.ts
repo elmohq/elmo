@@ -13,8 +13,15 @@ export const DEFAULT_APP_NAME = "Elmo";
 export const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
 export const DEFAULT_APP_URL = "http://localhost:3000/";
 
-/** Provider setup guide, linked from SCRAPE_TARGETS errors and the LLMs page. */
-export const PROVIDERS_DOCS_URL = "https://docs.elmohq.com/docs/user-guide/providers";
+/**
+ * Provider setup guide, linked from SCRAPE_TARGETS errors and the LLMs page.
+ * Per-provider anchors are appended to it, so it has to stay the page itself
+ * rather than the docs index.
+ */
+export const PROVIDERS_DOCS_URL = "https://www.elmohq.com/docs/user-guide/providers";
+
+/** Public identifier for the support chat, shared by the app and the marketing site. */
+export const CRISP_WEBSITE_ID = "2f79a110-4e29-41a8-b45d-4993df6ff487";
 
 /**
  * Elmo brand constants — used for icon generation, manifest, and the brand kit.
@@ -32,66 +39,71 @@ export const ELMO_BACKGROUND_COLOR = "#ffffff";
  * muted → deep. This keeps harmony (same hue families throughout) while
  * supporting charts with many series. Whitelabel deployments override
  * via VITE_CHART_COLORS.
+ *
+ * Hue order is load-bearing, not decorative. Charts assign colors by slot,
+ * so the earliest slots are the ones that end up side by side most often;
+ * the order below is the one that keeps the first four furthest apart under
+ * protanopia and deuteranopia. Reordering these is a visible change.
  */
 export const DEFAULT_CHART_COLORS = [
 	// Base
 	"#2563eb",
 	"#efb118",
-	"#3ca951",
-	"#ff725c",
-	"#a463f2",
 	"#ff8ab7",
-	"#38b2ac",
 	"#9c6b4e",
 	"#7cb342",
 	"#b07aa1",
+	"#a463f2",
+	"#3ca951",
 	"#9498a0",
+	"#ff725c",
+	"#38b2ac",
 	// Dark
 	"#0b43bc",
 	"#bb8807",
-	"#247a35",
-	"#f9381a",
-	"#7c1af4",
 	"#fa478c",
-	"#22817c",
 	"#714932",
 	"#58842a",
 	"#934d7f",
+	"#7c1af4",
+	"#247a35",
 	"#5e6d8d",
+	"#f9381a",
+	"#22817c",
 	// Light
 	"#6d94e8",
 	"#ebc566",
-	"#6fbe7f",
-	"#f88877",
-	"#b282ed",
 	"#f877a9",
-	"#6ec4c0",
 	"#b09382",
 	"#9fc17b",
 	"#c6a9be",
+	"#b282ed",
+	"#6fbe7f",
 	"#a9b3c6",
+	"#f88877",
+	"#6ec4c0",
 	// Muted
 	"#5178cd",
 	"#d0aa49",
-	"#62936c",
-	"#ea8e80",
-	"#ae87de",
 	"#eb84ac",
-	"#5f9b98",
 	"#967664",
 	"#839b69",
 	"#af88a4",
+	"#ae87de",
+	"#62936c",
 	"#8e9ab4",
+	"#ea8e80",
+	"#5f9b98",
 	// Deep
 	"#0e3486",
 	"#84620b",
-	"#1e5229",
-	"#db2206",
-	"#6513c9",
 	"#f9156d",
-	"#1c5451",
 	"#493327",
 	"#3e5822",
 	"#6b435f",
+	"#6513c9",
+	"#1e5229",
 	"#49566e",
+	"#db2206",
+	"#1c5451",
 ];

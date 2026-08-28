@@ -30,7 +30,7 @@ export interface NavGroup {
 }
 
 export function NavMain({ groups }: { groups: NavGroup[] }) {
-	const params = useParams({ strict: false }) as { org?: string; brand?: string };
+	const params = useParams({ strict: false, select: ({ org, brand }) => ({ org, brand }) });
 	const { setOpenMobile } = useSidebar();
 	const { pathname } = useLocation();
 
@@ -68,11 +68,13 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
 							const href = getHref(item);
 							return (
 								<SidebarMenuItem key={item.title}>
-									<SidebarMenuButton asChild tooltip={item.title} isActive={href === activeHref}>
-										<Link to={href} onClick={() => setOpenMobile(false)}>
-											{item.icon && <item.icon />}
-											<span>{item.title}</span>
-										</Link>
+									<SidebarMenuButton
+										render={<Link to={href} onClick={() => setOpenMobile(false)} />}
+										tooltip={item.title}
+										isActive={href === activeHref}
+									>
+										{item.icon && <item.icon />}
+										<span>{item.title}</span>
 									</SidebarMenuButton>
 								</SidebarMenuItem>
 							);

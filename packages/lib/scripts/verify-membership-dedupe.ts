@@ -4,12 +4,9 @@
  * can accumulate under the pre-0014 sync race), prove the dedupe keeps exactly
  * the right row and the new unique index then holds.
  *
- * This is deliberately narrow — it guards the one migration that mutates
- * existing auth data, not a whole-database rehearsal. Unlike the previous
- * version (which carried a hand-copied transcript of the migration), this
- * script reads the actual migration SQL from the migrations directory, splits
- * on --> statement-breakpoint, and executes the real statements. A change to
- * the migration is automatically exercised on the next run.
+ * This is deliberately narrow: it guards the one migration that mutates
+ * existing auth data, not a whole-database rehearsal. It reads the migration
+ * SQL directly so changes to the real statements are exercised automatically.
  *
  * Usage:
  *   DATABASE_URL=postgres://... pnpm -C packages/lib exec tsx scripts/verify-membership-dedupe.ts
@@ -62,7 +59,7 @@ async function main(): Promise<void> {
 	try {
 		await client.query("DELETE FROM member WHERE organization_id = $1", [ORG]);
 		await client.query("DELETE FROM organization WHERE id = $1", [ORG]);
-		await client.query("DELETE FROM \"user\" WHERE id = $1", [USER]);
+		await client.query(`DELETE FROM "user" WHERE id = $1`, [USER]);
 		await client.query(
 			`INSERT INTO organization (id, name, slug, created_at) VALUES ($1, 'Dedupe Verify', $1, NOW())`,
 			[ORG],
@@ -75,7 +72,7 @@ async function main(): Promise<void> {
 
 		// Drop the unique index so we can plant the duplicates a pre-0014 install
 		// would have, then re-create it after dedupe exactly as the migration does.
-		await client.query('DROP INDEX IF EXISTS "member_organization_id_user_id_uidx"');
+		await client.query(`DROP INDEX IF EXISTS "member_organization_id_user_id_uidx"`);
 		await client.query(
 			`INSERT INTO member (id, organization_id, user_id, role, created_at) VALUES
 			 ('m-member-newer', $1, $2, 'member', TIMESTAMPTZ '2026-03-01'),
@@ -111,7 +108,7 @@ async function main(): Promise<void> {
 
 		await client.query("DELETE FROM member WHERE organization_id = $1", [ORG]);
 		await client.query("DELETE FROM organization WHERE id = $1", [ORG]);
-		await client.query('DELETE FROM "user" WHERE id = $1', [USER]);
+		await client.query(`DELETE FROM "user" WHERE id = $1`, [USER]);
 	} finally {
 		await client.end();
 	}

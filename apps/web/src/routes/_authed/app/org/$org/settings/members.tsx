@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/members")({
 	},
 	head: ({ match, loaderData }) => {
 		const appName = getAppName(match);
-		const workspaceName = (loaderData as TeamData | undefined)?.organization.name;
+		const workspaceName = (loaderData as TeamData | undefined)?.organization?.name;
 		return {
 			meta: [
 				{ title: buildTitle("Team", { appName, subject: workspaceName }) },
@@ -114,7 +114,11 @@ function TeamSettingsPage() {
 				</div>
 				<div className="flex flex-col gap-2">
 					<Label htmlFor="invite-role">Role</Label>
-					<Select value={inviteRole} onValueChange={(value) => setInviteRole(value as "member" | "admin")}>
+					<Select
+						items={{ member: "Member", admin: "Admin" }}
+						value={inviteRole}
+						onValueChange={(value) => setInviteRole(value as "member" | "admin")}
+					>
 						<SelectTrigger id="invite-role" className="w-32">
 							<SelectValue />
 						</SelectTrigger>

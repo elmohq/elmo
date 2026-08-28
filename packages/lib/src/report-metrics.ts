@@ -149,90 +149,78 @@ export function computeCompetitorSoVs(runs: ReportPromptRun[], competitors: Repo
 
 // ---------- Prompt Selection ----------
 
+/** A report shows four prompts: two the brand wins, two it has room to win. */
+const MAX_SELECTED = 4;
+const MAX_PER_CATEGORY = 2;
+
+/** More than one prompt the brand is absent from makes it look invisible. */
+const MAX_ZERO_SOV = 1;
+
+const isZeroSoV = (prompt: PromptSoV): boolean => prompt.sov === null || prompt.sov === 0;
+
+/** Winning against nobody isn't compelling, so competitor activity ranks first. */
+const byStrength = (a: PromptSoV, b: PromptSoV): number =>
+	Number(b.totalCompetitorMentions > 0) - Number(a.totalCompetitorMentions > 0) || (b.sov ?? 0) - (a.sov ?? 0);
+
+/** Lowest brand SoV first (the most room to grow), then most competitor activity. */
+const byOpportunity = (a: PromptSoV, b: PromptSoV): number =>
+	(a.sov ?? 0) - (b.sov ?? 0) || b.totalCompetitorMentions - a.totalCompetitorMentions;
+
+const byCompetitorActivity = (a: PromptSoV, b: PromptSoV): number =>
+	b.totalCompetitorMentions - a.totalCompetitorMentions;
+
+/** The report's four slots, plus the caps a pick has to respect to claim one. */
+interface Selection {
+	selected: SelectedPrompt[];
+	used: Set<string>;
+	zeroSoVCount: number;
+}
+
+function take(selection: Selection, candidates: PromptSoV[], slots: number, category?: PromptCategory): void {
+	let remaining = slots;
+	for (const prompt of candidates) {
+		if (remaining === 0 || selection.selected.length >= MAX_SELECTED) return;
+		if (selection.used.has(prompt.promptId)) continue;
+		const zeroSoV = isZeroSoV(prompt);
+		if (zeroSoV && selection.zeroSoVCount >= MAX_ZERO_SOV) continue;
+		if (zeroSoV) selection.zeroSoVCount++;
+		selection.used.add(prompt.promptId);
+		selection.selected.push({
+			promptId: prompt.promptId,
+			category: category ?? (zeroSoV ? "opportunity" : "strength"),
+			sov: prompt.sov,
+		});
+		remaining--;
+	}
+}
+
 /**
- * Select a representative mix of prompts: 2 strengths + 2 opportunities.
- *
- * Strengths: highest SoV prompts (brand is performing well).
- * Opportunities: prompts where competitors are active and brand has room to grow.
- *   - Prefer non-zero SoV opportunities (brand has some presence but competitors lead).
- *   - At most 1 zero-SoV prompt to avoid making the brand look invisible.
- *
- * If fewer than 2 in either bucket, fills from the other.
+ * The four prompts a report leads with: the two the brand performs best on and
+ * the two where competitors lead and the brand has room to grow. When either
+ * bucket comes up short the remainder is filled from the other.
  */
 export function selectRepresentativePrompts(
 	promptSoVs: PromptSoV[],
 	isBrandedFn: (promptId: string) => boolean,
 ): SelectedPrompt[] {
-	// Prefer non-branded prompts as they're more representative of organic discovery
+	// Non-branded prompts are more representative of organic discovery, so they
+	// are the pool whenever there are enough of them to fill the report.
 	const nonBranded = promptSoVs.filter((p) => !isBrandedFn(p.promptId));
-	const pool = nonBranded.length >= 4 ? nonBranded : promptSoVs;
+	const pool = nonBranded.length >= MAX_SELECTED ? nonBranded : promptSoVs;
 
-	// Strengths: highest SoV, prefer prompts where competitors are also active (more compelling)
-	const strengths = pool
-		.filter((p) => p.sov !== null && p.sov > 0)
-		.sort((a, b) => {
-			// Prefer prompts with competitor activity — winning against nobody isn't compelling
-			const aHasComp = a.totalCompetitorMentions > 0 ? 1 : 0;
-			const bHasComp = b.totalCompetitorMentions > 0 ? 1 : 0;
-			if (bHasComp !== aHasComp) return bHasComp - aHasComp;
-			return (b.sov ?? 0) - (a.sov ?? 0);
-		});
+	const strengths = pool.filter((p) => !isZeroSoV(p)).sort(byStrength);
+	const contested = pool.filter((p) => p.totalCompetitorMentions > 0);
+	const opportunities = [
+		...contested.filter((p) => !isZeroSoV(p)).sort(byOpportunity),
+		...contested.filter(isZeroSoV).sort(byCompetitorActivity),
+	];
 
-	// Opportunities: have competitor mentions, sorted to prefer non-zero SoV first
-	const nonZeroOpportunities = pool
-		.filter((p) => p.totalCompetitorMentions > 0 && p.sov !== null && p.sov > 0)
-		.sort((a, b) => {
-			// Lowest brand SoV first (biggest room to grow), then most competitor activity
-			const sovDiff = (a.sov ?? 0) - (b.sov ?? 0);
-			if (sovDiff !== 0) return sovDiff;
-			return b.totalCompetitorMentions - a.totalCompetitorMentions;
-		});
+	const selection: Selection = { selected: [], used: new Set(), zeroSoVCount: 0 };
+	take(selection, strengths, MAX_PER_CATEGORY, "strength");
+	take(selection, opportunities, MAX_PER_CATEGORY, "opportunity");
+	take(selection, [...strengths, ...opportunities], MAX_SELECTED);
 
-	const zeroSovOpportunities = pool
-		.filter((p) => p.totalCompetitorMentions > 0 && (p.sov === null || p.sov === 0))
-		.sort((a, b) => b.totalCompetitorMentions - a.totalCompetitorMentions);
-
-	const selected: SelectedPrompt[] = [];
-	const usedIds = new Set<string>();
-
-	// Pick up to 2 strengths
-	for (const s of strengths) {
-		if (selected.length >= 2) break;
-		if (usedIds.has(s.promptId)) continue;
-		selected.push({ promptId: s.promptId, category: "strength", sov: s.sov });
-		usedIds.add(s.promptId);
-	}
-
-	// Pick opportunities: prefer non-zero SoV, allow at most 1 zero-SoV
-	let zeroSovCount = 0;
-	const opportunityCandidates = [...nonZeroOpportunities, ...zeroSovOpportunities];
-
-	for (const o of opportunityCandidates) {
-		if (selected.filter((s) => s.category === "opportunity").length >= 2) break;
-		if (usedIds.has(o.promptId)) continue;
-		const isZero = o.sov === null || o.sov === 0;
-		if (isZero && zeroSovCount >= 1) continue;
-		if (isZero) zeroSovCount++;
-		selected.push({ promptId: o.promptId, category: "opportunity", sov: o.sov });
-		usedIds.add(o.promptId);
-	}
-
-	// Fill remaining slots if we have fewer than 4
-	if (selected.length < 4) {
-		const remaining = [...strengths, ...nonZeroOpportunities, ...zeroSovOpportunities];
-		for (const r of remaining) {
-			if (selected.length >= 4) break;
-			if (usedIds.has(r.promptId)) continue;
-			const isZero = r.sov === null || r.sov === 0;
-			if (isZero && zeroSovCount >= 1) continue;
-			if (isZero) zeroSovCount++;
-			const category: PromptCategory = (r.sov ?? 0) > 0 ? "strength" : "opportunity";
-			selected.push({ promptId: r.promptId, category, sov: r.sov });
-			usedIds.add(r.promptId);
-		}
-	}
-
-	return selected.slice(0, 4);
+	return selection.selected;
 }
 
 // ---------- Rich Analysis ----------
@@ -266,7 +254,6 @@ export interface WebQueryInsight {
  * These are the highest-value opportunities for content creation.
  */
 export function findContentGaps(runs: FullPromptRun[], maxResults: number = 5): ContentGap[] {
-	// Group by promptId
 	const byPrompt = new Map<string, FullPromptRun[]>();
 	for (const run of runs) {
 		if (!byPrompt.has(run.promptId)) byPrompt.set(run.promptId, []);
@@ -382,7 +369,7 @@ export function analyzeByEngine(
 		if (run.brandMentioned) stats.mentions++;
 	}
 
-	// Legacy names from old reports, before model ids were normalized.
+	// Persisted reports may use provider names where current reports use model ids.
 	const legacyAliases: Record<string, string> = {
 		openai: "ChatGPT",
 		anthropic: "Claude",
@@ -448,7 +435,6 @@ export function computeReportUnstableStats(raw: ReportRawPromptRuns): ReportUnst
 	let totalPromptRuns = 0;
 	const promptsWithBrand = new Set<number>();
 
-	// Track per-competitor: which prompts and how many runs mention them
 	const competitorPrompts = new Map<string, Set<number>>();
 	const competitorRunCounts = new Map<string, number>();
 
@@ -471,7 +457,7 @@ export function computeReportUnstableStats(raw: ReportRawPromptRuns): ReportUnst
 		if (promptHasBrand) promptsWithBrand.add(promptIndex);
 	});
 
-	// Compute SoV directly as 0-1 floats (avoid intermediate integer rounding)
+	// Avoid an intermediate integer percentage so small shares are not rounded away.
 	const brandMentionCount = runs.filter((r) => r.brandMentioned).length;
 	let totalCompetitorMentions = 0;
 	for (const run of runs) {

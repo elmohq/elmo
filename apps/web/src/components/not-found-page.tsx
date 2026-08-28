@@ -14,7 +14,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "@tanstack/react-router";
 import { orgParams } from "@workspace/lib/app-urls";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import FullPageCard from "@/components/full-page-card";
 import { WorkspaceBrandList } from "@/components/workspace-brand-list";
@@ -59,9 +59,9 @@ export function NotFoundPage() {
 				<div className="flex min-w-[240px] flex-col space-y-3">
 					{/* A plain anchor: the target is a concrete resolved path, not a
 					    route pattern the router should try to fill params for. */}
-					<Button asChild>
-						<a href={`${suggestion.href}${suffix}`}>Go to {suggestion.name}</a>
-					</Button>
+					<a href={`${suggestion.href}${suffix}`} className={buttonVariants()}>
+						Go to {suggestion.name}
+					</a>
 					<p className="text-center text-xs text-muted-foreground">
 						Update any bookmarks or integrations pointing at the old address.
 					</p>

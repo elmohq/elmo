@@ -1,5 +1,9 @@
 /**
- * /auth/forgot-password - Request a password reset email (cloud only)
+ * /auth/forgot-password - Request a password reset email
+ *
+ * Cloud only: it is the only mode that wires a sendResetPassword mailer, so
+ * anywhere else the confirmation below would promise an email that never
+ * arrives. Demo and whitelabel have no password to reset either way.
  *
  * Always renders the same neutral confirmation whether or not the account
  * exists, to avoid account enumeration.
@@ -12,7 +16,8 @@ import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
-import FullPageCard from "@/components/full-page-card";
+import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
+import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 
 export const Route = createFileRoute("/auth/forgot-password")({
 	component: ForgotPasswordPage,
@@ -20,14 +25,20 @@ export const Route = createFileRoute("/auth/forgot-password")({
 
 function ForgotPasswordPage() {
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
-	const [email, setEmail] = useState("");
-	const [loading, setLoading] = useState(false);
-	const [submitted, setSubmitted] = useState(false);
 
 	if (context.clientConfig?.mode !== "cloud") {
 		window.location.href = "/auth/login";
 		return null;
 	}
+
+	return <ForgotPasswordForm isCloud />;
+}
+
+export function ForgotPasswordForm({ isCloud, submitted: initiallySubmitted = false }: ForgotPasswordFormProps) {
+	const [email, setEmail] = useState("");
+	const [loading, setLoading] = useState(false);
+	const [submitted, setSubmitted] = useState(initiallySubmitted);
+	const source = isCloud ? "cloud-signin" : "self-hosted-signin";
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -41,23 +52,30 @@ function ForgotPasswordPage() {
 		setLoading(false);
 	}
 
+	const panel = <SalesPanel variant={isCloud ? "cloud" : "self-hosted"} source={source} />;
+
 	if (submitted) {
 		return (
-			<FullPageCard
+			<AuthSplitLayout
 				title="Check your email"
-				subtitle={`If an account exists for ${email}, a reset link is on its way.`}
+				subtitle={
+					email ? `If an account exists for ${email}, a reset link is on its way.` : "A reset link is on its way."
+				}
+				pitch={panel}
+				footer={<SalesFooterLinks source={source} />}
 			>
-				<p className="text-center text-sm text-muted-foreground w-full">
-					<Link to="/auth/login" className="text-primary hover:underline font-medium">
-						Back to sign in
-					</Link>
-				</p>
-			</FullPageCard>
+				<BackToSignIn />
+			</AuthSplitLayout>
 		);
 	}
 
 	return (
-		<FullPageCard title="Reset your password" subtitle="Enter your email and we'll send you a reset link">
+		<AuthSplitLayout
+			title="Reset your password"
+			subtitle="Enter your email and we'll send you a reset link."
+			pitch={panel}
+			footer={<SalesFooterLinks source={source} />}
+		>
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
 				<div className="space-y-2">
 					<Label htmlFor="email">Email</Label>
@@ -76,11 +94,25 @@ function ForgotPasswordPage() {
 					{loading ? "Sending..." : "Send reset link"}
 				</Button>
 			</form>
-			<p className="text-center text-sm text-muted-foreground pt-4">
-				<Link to="/auth/login" className="text-primary hover:underline font-medium">
-					Back to sign in
-				</Link>
-			</p>
-		</FullPageCard>
+			<div className="pt-4">
+				<BackToSignIn />
+			</div>
+		</AuthSplitLayout>
+	);
+}
+
+interface ForgotPasswordFormProps {
+	isCloud?: boolean;
+	/** Starts on the confirmation screen. For stories; the page always starts on the form. */
+	submitted?: boolean;
+}
+
+export function BackToSignIn() {
+	return (
+		<p className="text-sm text-muted-foreground">
+			<Link to="/auth/login" className="text-primary hover:underline font-medium">
+				Back to sign in
+			</Link>
+		</p>
 	);
 }

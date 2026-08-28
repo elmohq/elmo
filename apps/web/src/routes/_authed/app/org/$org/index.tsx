@@ -15,7 +15,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { orgParams, orgSegment } from "@workspace/lib/app-urls";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { z } from "zod";
 import BrandOnboarding from "@/components/brand-onboarding";
 import FullPageCard from "@/components/full-page-card";
@@ -23,9 +23,10 @@ import { WorkspaceBrandList } from "@/components/workspace-brand-list";
 import { requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 import { buildTitle, getAppName } from "@/lib/route-head";
 import { canCreateBrandIn, countWorkspaceBrands } from "@/lib/workspaces/server";
+import type { WorkspaceSummary } from "@/lib/workspaces/types";
 import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
 
-interface WorkspaceHome {
+interface WorkspaceHomeData {
 	canCreateBrand: boolean;
 	/**
 	 * The wizard's platform picks, for the one state that needs them: a
@@ -36,7 +37,7 @@ interface WorkspaceHome {
 
 const getWorkspaceHome = createServerFn({ method: "GET" })
 	.validator(z.object({ org: z.string() }))
-	.handler(async ({ data }): Promise<WorkspaceHome> => {
+	.handler(async ({ data }): Promise<WorkspaceHomeData> => {
 		const session = await requireAuthSession();
 		const workspace = await requireOrganization(session.user.id, data.org);
 
@@ -54,7 +55,12 @@ const getWorkspaceHome = createServerFn({ method: "GET" })
 	});
 
 export const Route = createFileRoute("/_authed/app/org/$org/")({
-	loader: ({ params }): Promise<WorkspaceHome> => getWorkspaceHome({ data: { org: params.org } }),
+	loader: async ({ params, context }): Promise<WorkspaceHomeData & { workspace: WorkspaceSummary }> => ({
+		...(await getWorkspaceHome({ data: { org: params.org } })),
+		// From the context the layout resolved, but returned here so the component
+		// never renders against a `beforeLoad` that is mid-flight.
+		workspace: context.workspace,
+	}),
 	head: ({ match }) => ({
 		meta: [{ title: buildTitle("Workspace", { appName: getAppName(match) }) }],
 	}),
@@ -62,8 +68,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/")({
 });
 
 function WorkspaceHomePage() {
-	const { workspace } = Route.useRouteContext();
-	const { canCreateBrand, onboardingPlatformState } = Route.useLoaderData();
+	const { workspace, canCreateBrand, onboardingPlatformState } = Route.useLoaderData();
 
 	if (workspace.brands.length === 0 && !canCreateBrand) {
 		return (
@@ -83,11 +88,13 @@ function WorkspaceHomePage() {
 		>
 			<div className="min-w-[200px] space-y-3">
 				<WorkspaceBrandList workspace={{ ...workspace, canCreateBrand }} />
-				<Button asChild variant="ghost" size="sm" className="w-full">
-					<Link to="/app/org/$org/settings" params={orgParams(workspace)}>
-						Workspace settings
-					</Link>
-				</Button>
+				<Link
+					to="/app/org/$org/settings"
+					params={orgParams(workspace)}
+					className={buttonVariants({ variant: "ghost", size: "sm", className: "w-full" })}
+				>
+					Workspace settings
+				</Link>
 			</div>
 		</FullPageCard>
 	);

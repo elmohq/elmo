@@ -150,7 +150,7 @@ export const SetupPlatformStep: StoryObj = {
 		// Gemini is the fifth option on a 4-pick plan: unchecked and disabled.
 		const gemini = canvas.getByRole("checkbox", { name: /gemini/i });
 		expect(gemini).not.toBeChecked();
-		expect(gemini).toBeDisabled();
+		expect(gemini).toHaveAttribute("aria-disabled", "true");
 		expect(canvas.getByText("4 of 4 selected")).toBeInTheDocument();
 		expect(canvas.getByRole("button", { name: /complete setup/i })).toBeEnabled();
 	},
@@ -178,7 +178,7 @@ export const SetupSinglePlatformPlan: StoryObj = {
 
 		const checkbox = await canvas.findByRole("checkbox", { name: /chatgpt/i });
 		expect(checkbox).toBeChecked();
-		expect(checkbox).toBeDisabled();
+		expect(checkbox).toHaveAttribute("aria-disabled", "true");
 		expect(canvas.getByRole("button", { name: /complete setup/i })).toBeEnabled();
 	},
 };

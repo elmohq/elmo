@@ -1,29 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { IconExternalLink, IconChevronDown, IconLoader2 } from "@tabler/icons-react";
+import { IconChevronDown, IconExternalLink } from "@tabler/icons-react";
+import { labelForModelFilter } from "@workspace/config/model-filter";
+import type { OptimizeButtonProps } from "@workspace/config/types";
 import { Button } from "@workspace/ui/components/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuTrigger,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
-import type { OptimizeButtonProps } from "@workspace/config/types";
+import { Spinner } from "@workspace/ui/components/spinner";
+import { Fragment, useState } from "react";
 
 export type { OptimizeButtonProps };
 
-/**
- * Generate optimization URL for a prompt using template substitution
- *
- * Template placeholders:
- * - {brandId} - Organization/brand ID
- * - {prompt} - The prompt text (URL encoded)
- * - {webQuery} - The search query (URL encoded); callers pass the prompt
- *   itself when no genuine query is known
- */
 function generateOptimizationUrl(urlTemplate: string, promptValue: string, brandId: string, webQuery: string): string {
 	return urlTemplate
 		.replace("{brandId}", encodeURIComponent(brandId))
@@ -31,23 +25,10 @@ function generateOptimizationUrl(urlTemplate: string, promptValue: string, brand
 		.replace("{webQuery}", encodeURIComponent(webQuery));
 }
 
-function getModelDisplayName(model: string): string {
-	switch (model) {
-		case "openai":
-			return "ChatGPT";
-		case "anthropic":
-			return "Claude";
-		case "google":
-			return "Gemini";
-		default:
-			return model;
-	}
-}
-
 export function OptimizeButton({
 	brandId,
 	selectedModel = "all",
-	availableModels = ["openai", "anthropic", "google"],
+	availableModels,
 	lookback = "1m",
 	promptName,
 	promptId,
@@ -68,21 +49,13 @@ export function OptimizeButton({
 		setLoadingKey(key);
 
 		try {
-			let webQuery: string | null | undefined = null;
-
-			if (fetchWebQuery) {
-				const webQueryData = await fetchWebQuery(promptId, lookback ?? "1m", model);
-				webQuery = model ? webQueryData.modelWebQueries[model] : webQueryData.webQuery;
-			}
+			const modelWebQuery = await fetchWebQuery?.(promptId, lookback ?? "1m", model);
 
 			const url = generateOptimizationUrl(
 				optimizationUrlTemplate,
 				promptName,
 				brandId,
-				// No genuine search query known (the engine searched the prompt
-				// verbatim or doesn't expose its queries) — the prompt itself is
-				// the best stand-in.
-				webQuery || promptName,
+				modelWebQuery?.webQuery || promptName,
 			);
 
 			window.open(url, "_blank", "noopener,noreferrer");
@@ -109,7 +82,7 @@ export function OptimizeButton({
 				onClick={(e) => handleOptimizeClick(e, selectedModel)}
 				disabled={loading}
 			>
-				{loading && <IconLoader2 size={12} className="size-3 mr-0.5 animate-spin" />}
+				{loading && <Spinner className="mr-0.5 size-3" />}
 				Optimize with {parentName}
 				<IconExternalLink size={12} className="size-3 ml-0.5" />
 			</Button>
@@ -119,35 +92,37 @@ export function OptimizeButton({
 	// Dropdown for "all" model selection - shows options for each model
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6">
-					Optimize with {parentName}
-					<IconChevronDown size={12} className="size-3 ml-0.5" />
-				</Button>
+			<DropdownMenuTrigger render={<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6" />}>
+				Optimize with {parentName}
+				<IconChevronDown size={12} className="size-3 ml-0.5" />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-48">
 				{availableModels.map((model, index) => {
-					const modelName = getModelDisplayName(model);
+					const modelName = labelForModelFilter(model);
 					const loading = isLoading(model);
 					return (
-						<div key={model}>
+						<Fragment key={model}>
 							{index > 0 && <DropdownMenuSeparator />}
-							<DropdownMenuLabel>Optimize for {modelName}</DropdownMenuLabel>
-							<DropdownMenuItem
-								className="cursor-pointer"
-								onClick={(e) => handleOptimizeClick(e, model)}
-								disabled={loading}
-							>
-								<div className="flex items-center justify-between w-full text-xs">
-									<span>{promptName}</span>
-									{loading ? (
-										<IconLoader2 size={12} className="size-3 ml-2 animate-spin" />
-									) : (
-										<IconExternalLink size={12} className="size-3 ml-2" />
-									)}
-								</div>
-							</DropdownMenuItem>
-						</div>
+							{/* The label names the entry below it, and Base UI wires that
+							    association through the group, so it has to sit inside one. */}
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Optimize for {modelName}</DropdownMenuLabel>
+								<DropdownMenuItem
+									className="cursor-pointer"
+									onClick={(e) => handleOptimizeClick(e, model)}
+									disabled={loading}
+								>
+									<div className="flex items-center justify-between w-full text-xs">
+										<span>{promptName}</span>
+										{loading ? (
+											<Spinner className="ml-2 size-3" />
+										) : (
+											<IconExternalLink size={12} className="size-3 ml-2" />
+										)}
+									</div>
+								</DropdownMenuItem>
+							</DropdownMenuGroup>
+						</Fragment>
 					);
 				})}
 			</DropdownMenuContent>

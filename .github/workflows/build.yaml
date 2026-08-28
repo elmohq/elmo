@@ -1,5 +1,5 @@
-# Host-side checks: type check, unit + Storybook tests, and a real `pnpm build`
-# that must leave the working tree clean.
+# Host-side checks: format and lint, type check, unit + Storybook tests, and a
+# real `pnpm build` that must leave the working tree clean.
 #
 # The clean-tree check is the point of running a host build at all.
 # `routeTree.gen.ts` is committed because `tsc` needs it to resolve routes, so
@@ -52,6 +52,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Formatting, lint and import order in one pass, repo-wide. Runs first
+      # because it is the cheapest thing that can fail.
+      - name: Format and lint
+        run: pnpm lint
+
       # Redundant with `pnpm build` (turbo's build depends on check-types), but
       # it fails in a minute instead of after the whole build, and turbo caches
       # the result so the build step doesn't repeat it.
@@ -60,6 +65,10 @@ jobs:
 
       - name: Unit tests
         run: pnpm turbo test
+
+      # scripts/ is outside the workspace, so turbo does not reach it.
+      - name: Release script tests
+        run: pnpm test:scripts
 
       - name: Build
         run: pnpm build
@@ -84,7 +93,11 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Install Playwright browsers
-        run: pnpm -C apps/web exec playwright install chromium --with-deps
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 1
+          max_attempts: 3
+          command: pnpm -C apps/web exec playwright install chromium --with-deps
 
       - name: Storybook tests
         run: pnpm -C apps/web test:storybook

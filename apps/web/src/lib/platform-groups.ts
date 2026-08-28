@@ -24,7 +24,8 @@ export interface PlatformGroup {
 }
 
 const GROUP_DESCRIPTIONS: Record<PlanPlatformGroupId, string> = {
-	scraped: "Driven the way a person would, then read back from the answer they render. You see what a real visitor sees.",
+	scraped:
+		"Driven the way a person would, then read back from the answer they render. You see what a real visitor sees.",
 	api: "Called directly, with no web search.",
 	premium:
 		"Called directly with the model's own web-search tool switched on, so the answer is grounded in live sources and cites them.",

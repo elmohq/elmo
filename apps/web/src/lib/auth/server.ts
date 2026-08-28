@@ -44,9 +44,7 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 		case "whitelabel":
 			return getWhitelabelAuthOptions();
 		case "demo":
-			// Signup is disabled. Demo deployments reuse a database previously
-			// bootstrapped in local mode; visitors can only sign in as that
-			// pre-existing user.
+			// Demo deployments authenticate only the provisioned demo user.
 			return { disableSignUp: true };
 		case "cloud": {
 			// Full cloud auth stack (email verification, Google OAuth, Resend

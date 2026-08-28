@@ -118,3 +118,19 @@ export function parseStrandedAppPath(pathname: string): { candidate: string; res
 
 	return { candidate, rest: segments.slice(3).join("/") };
 }
+
+/**
+ * How long a slug may be, and what one may contain: lowercase alphanumerics and
+ * interior hyphens, bounded so a slug always reads as a URL segment rather than
+ * a paragraph.
+ *
+ * Here rather than beside the database helpers that check availability, because
+ * the field in the browser needs the same rules and must not import a module
+ * that opens a database connection to get them.
+ */
+export const MAX_SLUG_LENGTH = 48;
+
+export function isValidSlug(slug: string): boolean {
+	if (slug.length === 0 || slug.length > MAX_SLUG_LENGTH) return false;
+	return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
+}

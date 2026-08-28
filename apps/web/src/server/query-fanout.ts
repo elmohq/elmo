@@ -15,10 +15,10 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import type { LookbackPeriod } from "@/lib/chart-utils";
-import { LOOKBACK, resolveRange } from "@/server/analysis";
-import { getFanoutBreakdown, getFanoutModelTotals, getFanoutPromptTotals } from "@/lib/postgres-read";
-import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 import { computeFanoutAnalysis, type FanoutAnalysis } from "@/lib/fanout-analysis";
+import { getFanoutBreakdown, getFanoutModelTotals, getFanoutPromptTotals } from "@/lib/postgres-read";
+import { LOOKBACK, resolveRange } from "@/server/analysis";
+import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
 export interface QueryFanoutResponse extends FanoutAnalysis {
 	brandName: string;

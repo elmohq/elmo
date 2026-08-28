@@ -1,9 +1,7 @@
 export interface GlossaryTerm {
 	slug: string;
 	term: string;
-	/** Display synonyms, e.g. ["AEO"]. */
 	aka?: string[];
-	/** Thematic group for the index page. */
 	group: GlossaryGroup;
 	/** One-sentence definition. Used on the index, in meta, and in JSON-LD. */
 	short: string;

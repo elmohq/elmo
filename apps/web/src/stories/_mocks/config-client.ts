@@ -5,6 +5,8 @@
  * Stories call `setMockClientConfig()` before rendering to control values.
  */
 
+import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
+
 export type DeploymentMode = "whitelabel" | "local" | "demo" | "cloud";
 
 export interface FeaturesConfig {
@@ -32,6 +34,7 @@ export interface BrandingConfig {
 export interface AnalyticsConfig {
 	plausibleDomain?: string;
 	clarityProjectId?: string;
+	crispWebsiteId?: string;
 }
 
 export interface ClientConfig {
@@ -43,8 +46,6 @@ export interface ClientConfig {
 	canRegister: boolean;
 	hasUsers: boolean;
 }
-
-const DEFAULT_CHART_COLORS = ["#2563eb", "#efb118", "#3ca951", "#ff725c", "#a463f2", "#ff8ab7", "#38b2ac", "#9c6b4e"];
 
 // ---------------------------------------------------------------------------
 // Module-level config that stories can mutate

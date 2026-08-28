@@ -1,19 +1,13 @@
-/**
- * Citations Page E2E Tests
- *
- * Tests the citations page which shows citation statistics.
- * Tests that the citations page loads and displays citation data.
- */
 import { test, expect } from "@playwright/test";
 
 const BRAND_ID = "default";
+// The workspace now leads every dashboard URL; the seeded org's slug is its id.
 const ORG_SLUG = "default";
+const BRAND_URL = `/app/org/${ORG_SLUG}/brand/${BRAND_ID}`;
 
 test.describe("Citations Page", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/app/org/${ORG_SLUG}/brand/${BRAND_ID}/citations`);
-    // Wait for SSR streaming + hydration to complete — the heading appears once
-    // the route loaders finish and the page component renders.
+    await page.goto(`${BRAND_URL}/citations`);
     await expect(page.getByRole("heading", { name: /citations/i })).toBeVisible({ timeout: 30_000 });
   });
 
@@ -27,28 +21,24 @@ test.describe("Citations Page", () => {
   });
 
   test("page shows citations header or content", async ({ page }) => {
-    // Wait for loading to finish
     await expect(
       page.getByText(/no citations found|failed to load|citations are only|cited/i).first()
     ).toBeVisible({ timeout: 30_000 });
   });
 
   test("page has filter controls when loaded", async ({ page }) => {
-    // Wait for loading to finish
     await expect(
       page.getByText(/no citations found|failed to load|citations are only|cited/i).first()
     ).toBeVisible({ timeout: 30_000 });
 
-    // Should have the page content
     const pageContent = await page.textContent("body");
     expect(pageContent).toContain("Citations");
   });
 
   test("page is accessible via sidebar navigation", async ({ page }) => {
-    await page.goto(`/app/org/${ORG_SLUG}/brand/${BRAND_ID}`);
-    // Wait for sidebar to fully render (route loader must complete)
-    await expect(page.locator(`a[href="/app/org/${ORG_SLUG}/brand/${BRAND_ID}/citations"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
-    await page.locator(`a[href="/app/org/${ORG_SLUG}/brand/${BRAND_ID}/citations"][data-sidebar="menu-button"]`).click();
+    await page.goto(`${BRAND_URL}`);
+    await expect(page.locator(`a[href="${BRAND_URL}/citations"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
+    await page.locator(`a[href="${BRAND_URL}/citations"][data-sidebar="menu-button"]`).click();
     await page.waitForURL(/\/citations/);
 
     const pageContent = await page.textContent("body");

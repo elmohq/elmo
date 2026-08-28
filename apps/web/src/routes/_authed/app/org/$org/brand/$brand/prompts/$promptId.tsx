@@ -1,5 +1,5 @@
 /**
- * /app/$brand/prompts/$promptId - Prompt detail page
+ * /app/org/$org/brand/$brand/prompts/$promptId - Prompt detail page
  *
  * Shows prompt details with tabs: Mentions, Web Queries, Citations, LLM Responses.
  */
@@ -14,7 +14,6 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
 import { type CitationData, CitationsDisplay } from "@/components/citations-display";
 import {
 	InfoTip,
@@ -26,13 +25,17 @@ import {
 import { ListPagination } from "@/components/list-pagination";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
+import { ResponseMarkdown } from "@/components/response-markdown";
+import { SiteIcon } from "@/components/site-icon";
 import { useBrand } from "@/hooks/use-brands";
 import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
 import { usePromptStats } from "@/hooks/use-prompt-stats";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
+import { useSiteIcons } from "@/hooks/use-site-icons";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { promptKeywords } from "@/lib/fanout-analysis";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { skeletonRows } from "@/lib/skeleton-rows";
 import { getModelDisplayName } from "@/lib/utils";
 import { getPromptMetadataFn } from "@/server/prompts";
 
@@ -79,6 +82,124 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/prompts
 	component: PromptHistoryPage,
 });
 
+function usePromptMetadata(brandId: string, promptId: string) {
+	const [promptMeta, setPromptMeta] = useState<PromptMetadata | null>(null);
+	const [isMetaLoading, setIsMetaLoading] = useState(true);
+
+	useEffect(() => {
+		if (!brandId || !promptId) return;
+		setIsMetaLoading(true);
+		getPromptMetadataFn({ data: { brandId, promptId } })
+			.then((data) => {
+				if (data) setPromptMeta(data);
+			})
+			.catch(console.error)
+			.finally(() => setIsMetaLoading(false));
+	}, [brandId, promptId]);
+
+	return { promptMeta, isMetaLoading };
+}
+
+function PromptHeader({
+	brandId,
+	promptMeta,
+	isMetaLoading,
+	onLookbackChange,
+}: {
+	brandId: string;
+	promptMeta: PromptMetadata | null;
+	isMetaLoading: boolean;
+	onLookbackChange: () => void;
+}) {
+	const brandParams = Route.useParams();
+	const systemTags = promptMeta?.systemTags || [];
+	const userTags = promptMeta?.tags || [];
+	const hasTags = systemTags.length > 0 || userTags.length > 0;
+
+	return (
+		<div className="pb-6 space-y-3">
+			<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+				<div className="flex-1 min-w-0">
+					{isMetaLoading ? (
+						<Skeleton className="h-8 w-[28rem] max-w-full" />
+					) : (
+						<h1 className="text-2xl font-semibold tracking-tight leading-tight break-words">{promptMeta?.value}</h1>
+					)}
+				</div>
+				<div className="shrink-0">
+					<LookbackSelector onLookbackChange={onLookbackChange} />
+				</div>
+			</div>
+
+			{isMetaLoading ? (
+				<div className="flex items-center gap-3">
+					<Skeleton className="h-5 w-14" />
+					<Skeleton className="h-5 w-40" />
+				</div>
+			) : (
+				<div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+					{promptMeta?.enabled ? (
+						<span className="inline-flex items-center gap-1.5 text-green-700">
+							<span className="relative flex h-2 w-2">
+								<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+								<span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+							</span>
+							Active
+						</span>
+					) : (
+						<span className="text-muted-foreground">Disabled</span>
+					)}
+
+					{promptMeta?.nextRunAt && (
+						<>
+							<span className="text-border">|</span>
+							<span className="text-muted-foreground">
+								Next run:{" "}
+								<span className="text-foreground tabular-nums">
+									{new Date(promptMeta.nextRunAt).toLocaleString(undefined, {
+										month: "short",
+										day: "numeric",
+										hour: "numeric",
+										minute: "2-digit",
+									})}
+								</span>
+							</span>
+						</>
+					)}
+
+					{hasTags && <span className="text-border">|</span>}
+
+					{hasTags && (
+						<div className="flex items-center gap-1.5">
+							<span className="text-muted-foreground">Tags:</span>
+							{systemTags.map((tag) => (
+								<Badge key={`sys-${tag}`} variant="secondary" className="text-xs capitalize font-normal">
+									{tag}
+								</Badge>
+							))}
+							{userTags.map((tag) => (
+								<Badge key={`usr-${tag}`} variant="outline" className="text-xs capitalize font-normal">
+									{tag}
+								</Badge>
+							))}
+						</div>
+					)}
+
+					<span className="text-border">|</span>
+
+					<Link
+						to="/app/org/$org/brand/$brand/settings/prompts"
+						params={brandParams}
+						className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 decoration-muted-foreground/40 hover:decoration-foreground/40"
+					>
+						Edit prompts
+					</Link>
+				</div>
+			)}
+		</div>
+	);
+}
+
 function PromptHistoryPage() {
 	const { org, brand: brandParam, promptId } = Route.useParams();
 	const { brandId } = Route.useRouteContext();
@@ -99,10 +220,10 @@ function PromptHistoryPage() {
 	);
 	const [visitedTabs, setVisitedTabs] = useState<Set<TabKey>>(() => new Set([activeTab]));
 	const [currentPage, setCurrentPage] = useState(1);
-	const [promptMeta, setPromptMeta] = useState<PromptMetadata | null>(null);
-	const [isMetaLoading, setIsMetaLoading] = useState(true);
+	const { promptMeta, isMetaLoading } = usePromptMetadata(brandId, promptId);
 
 	const { brand } = useBrand(brandId);
+	const { domainFor } = useSiteIcons(brandId);
 
 	// Web Queries fetches its own data (useQueryFanout) — stats only back Mentions/Citations.
 	const shouldFetchStats = visitedTabs.has("mentions") || visitedTabs.has("citations");
@@ -123,20 +244,6 @@ function PromptHistoryPage() {
 		limit: 15,
 		days,
 	});
-
-	// Fetch prompt metadata
-	useEffect(() => {
-		if (!brandId || !promptId) return;
-		setIsMetaLoading(true);
-		getPromptMetadataFn({ data: { brandId, promptId } })
-			.then((data) => {
-				if (data) {
-					setPromptMeta(data);
-				}
-			})
-			.catch(console.error)
-			.finally(() => setIsMetaLoading(false));
-	}, [brandId, promptId]);
 
 	const handleTabChange = useCallback(
 		(tab: TabKey) => {
@@ -161,10 +268,6 @@ function PromptHistoryPage() {
 
 	const mentionStats = aggregations?.mentionStats || [];
 	const citationStats = aggregations?.citationStats;
-
-	const systemTags = promptMeta?.systemTags || [];
-	const userTags = promptMeta?.tags || [];
-	const hasTags = systemTags.length > 0 || userTags.length > 0;
 
 	if (isStatsError || isRunsError) {
 		return (
@@ -199,87 +302,12 @@ function PromptHistoryPage() {
 
 	return (
 		<div className="space-y-0">
-			{/* HEADER */}
-			<div className="pb-6 space-y-3">
-				<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-					<div className="flex-1 min-w-0">
-						{isMetaLoading ? (
-							<Skeleton className="h-8 w-[28rem] max-w-full" />
-						) : (
-							<h1 className="text-2xl font-semibold tracking-tight leading-tight break-words">{promptMeta?.value}</h1>
-						)}
-					</div>
-					<div className="shrink-0">
-						<LookbackSelector onLookbackChange={handleLookbackChange} />
-					</div>
-				</div>
-
-				{isMetaLoading ? (
-					<div className="flex items-center gap-3">
-						<Skeleton className="h-5 w-14" />
-						<Skeleton className="h-5 w-40" />
-					</div>
-				) : (
-					<div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-						{promptMeta?.enabled ? (
-							<span className="inline-flex items-center gap-1.5 text-green-700">
-								<span className="relative flex h-2 w-2">
-									<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-									<span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
-								</span>
-								Active
-							</span>
-						) : (
-							<span className="text-muted-foreground">Disabled</span>
-						)}
-
-						{promptMeta?.nextRunAt && (
-							<>
-								<span className="text-border">|</span>
-								<span className="text-muted-foreground">
-									Next run:{" "}
-									<span className="text-foreground tabular-nums">
-										{new Date(promptMeta.nextRunAt).toLocaleString(undefined, {
-											month: "short",
-											day: "numeric",
-											hour: "numeric",
-											minute: "2-digit",
-										})}
-									</span>
-								</span>
-							</>
-						)}
-
-						{hasTags && <span className="text-border">|</span>}
-
-						{hasTags && (
-							<div className="flex items-center gap-1.5">
-								<span className="text-muted-foreground">Tags:</span>
-								{systemTags.map((tag) => (
-									<Badge key={`sys-${tag}`} variant="secondary" className="text-xs capitalize font-normal">
-										{tag}
-									</Badge>
-								))}
-								{userTags.map((tag) => (
-									<Badge key={`usr-${tag}`} variant="outline" className="text-xs capitalize font-normal">
-										{tag}
-									</Badge>
-								))}
-							</div>
-						)}
-
-						<span className="text-border">|</span>
-
-						<Link
-							to="/app/org/$org/brand/$brand/settings/prompts"
-							params={{ org, brand: brandParam }}
-							className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 decoration-muted-foreground/40 hover:decoration-foreground/40"
-						>
-							Edit prompts
-						</Link>
-					</div>
-				)}
-			</div>
+			<PromptHeader
+				brandId={brandId}
+				promptMeta={promptMeta}
+				isMetaLoading={isMetaLoading}
+				onLookbackChange={handleLookbackChange}
+			/>
 
 			{/* TABS */}
 			<div className="border-b border-border">
@@ -317,6 +345,7 @@ function PromptHistoryPage() {
 						totalRuns={aggregations?.totalRuns || 0}
 						brandName={brand?.name}
 						brandId={brandId}
+						domainFor={domainFor}
 					/>
 				)}
 
@@ -346,6 +375,7 @@ function PromptHistoryPage() {
 						currentPage={currentPage}
 						onPageChange={handlePageChange}
 						brandName={brand?.name}
+						domainFor={domainFor}
 					/>
 				)}
 			</div>
@@ -366,8 +396,8 @@ function TabLoadingSkeleton({ lines = 3 }: { lines?: number }) {
 			</CardHeader>
 			<Separator />
 			<CardContent className="space-y-4 pt-6">
-				{Array.from({ length: lines }).map((_, i) => (
-					<Skeleton key={i} className="h-8 w-full" />
+				{skeletonRows(lines).map((row) => (
+					<Skeleton key={row} className="h-8 w-full" />
 				))}
 			</CardContent>
 		</Card>
@@ -380,12 +410,14 @@ function MentionsTab({
 	totalRuns,
 	brandName,
 	brandId,
+	domainFor,
 }: {
 	isLoading: boolean;
 	mentionStats: { name: string; count: number }[];
 	totalRuns: number;
 	brandName?: string;
 	brandId: string;
+	domainFor: (name: string) => string | undefined;
 }) {
 	const brandParams = Route.useParams();
 
@@ -409,9 +441,7 @@ function MentionsTab({
 				<CardTitle className="flex items-center gap-1.5 text-base">
 					Mentions
 					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-						</TooltipTrigger>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent className="max-w-xs text-sm font-normal">
 							<p>
 								Only competitors from your{" "}
@@ -432,7 +462,11 @@ function MentionsTab({
 			<Separator />
 			<CardContent>
 				<ProgressBarChart
-					items={mentionStats.map((stat) => ({ label: stat.name, count: stat.count }))}
+					items={mentionStats.map((stat) => ({
+						label: stat.name,
+						count: stat.count,
+						icon: <SiteIcon domain={domainFor(stat.name)} size="md" />,
+					}))}
 					defaultColor="#3b82f6"
 					customTotal={totalRuns || 1}
 					highlightLabel={brandName}
@@ -568,6 +602,7 @@ function ResponsesTab({
 	currentPage,
 	onPageChange,
 	brandName,
+	domainFor,
 }: {
 	runs: any[];
 	pagination: any;
@@ -575,6 +610,7 @@ function ResponsesTab({
 	currentPage: number;
 	onPageChange: (page: number) => void;
 	brandName?: string;
+	domainFor: (name: string) => string | undefined;
 }) {
 	const formatDate = (dateString: string) => new Date(dateString).toLocaleString(undefined, { timeZoneName: "short" });
 
@@ -584,8 +620,8 @@ function ResponsesTab({
 	if (isLoading && runs.length === 0) {
 		return (
 			<div className="space-y-4">
-				{Array.from({ length: 3 }).map((_, i) => (
-					<Card key={i}>
+				{skeletonRows(3).map((row) => (
+					<Card key={row}>
 						<CardHeader className="pb-0 gap-y-0">
 							<div className="grid grid-cols-3 gap-x-4">
 								<div>
@@ -646,8 +682,8 @@ function ResponsesTab({
 							<div>
 								<span className="text-xs text-muted-foreground block mb-1.5">Web Queries</span>
 								<div className="flex flex-wrap gap-1.5">
-									{run.webQueries.map((query: string, qIndex: number) => (
-										<Badge key={qIndex} variant="outline" className="text-xs font-normal">
+									{[...new Set<string>(run.webQueries)].map((query) => (
+										<Badge key={query} variant="outline" className="text-xs font-normal">
 											{query}
 										</Badge>
 									))}
@@ -658,9 +694,15 @@ function ResponsesTab({
 						<div>
 							<span className="text-xs text-muted-foreground block mb-1.5">Brands Mentioned</span>
 							<div className="flex flex-wrap gap-1.5">
-								{run.brandMentioned && brandName && <Badge className="text-xs font-normal">{brandName}</Badge>}
-								{run.competitorsMentioned?.map((competitor: string, cIndex: number) => (
-									<Badge key={cIndex} variant="outline" className="text-xs font-normal">
+								{run.brandMentioned && brandName && (
+									<Badge className="text-xs font-normal">
+										<SiteIcon domain={domainFor(brandName)} size="xs" />
+										{brandName}
+									</Badge>
+								)}
+								{[...new Set<string>(run.competitorsMentioned ?? [])].map((competitor) => (
+									<Badge key={competitor} variant="outline" className="text-xs font-normal">
+										<SiteIcon domain={domainFor(competitor)} size="xs" />
 										{competitor}
 									</Badge>
 								))}
@@ -672,8 +714,8 @@ function ResponsesTab({
 
 						<div>
 							<span className="text-xs text-muted-foreground block mb-1.5">LLM Response</span>
-							<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto prose prose-sm max-w-none">
-								<ReactMarkdown>{extractTextContent(run.rawOutput, run.provider ?? run.model)}</ReactMarkdown>
+							<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto">
+								<ResponseMarkdown>{extractTextContent(run.rawOutput, run.provider ?? run.model)}</ResponseMarkdown>
 							</div>
 						</div>
 

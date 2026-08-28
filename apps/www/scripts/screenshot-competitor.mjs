@@ -11,14 +11,13 @@
  *   BLOB_READ_WRITE_TOKEN
  */
 
-import { put } from "@vercel/blob";
 import { readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { put } from "@vercel/blob";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Load .env file
 const envPath = resolve(__dirname, "../.env");
 try {
 	const envContent = readFileSync(envPath, "utf-8");

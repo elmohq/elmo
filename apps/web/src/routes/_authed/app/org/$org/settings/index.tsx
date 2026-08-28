@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/")({
 	loader: ({ params }): Promise<WorkspaceSettings> => getWorkspaceSettingsFn({ data: { org: params.org } }),
 	head: ({ match, loaderData }) => {
 		const appName = getAppName(match);
-		const workspaceName = (loaderData as WorkspaceSettings | undefined)?.workspace.name;
+		const workspaceName = (loaderData as WorkspaceSettings | undefined)?.workspace?.name;
 		return {
 			meta: [
 				{ title: buildTitle("Workspace", { appName, subject: workspaceName }) },

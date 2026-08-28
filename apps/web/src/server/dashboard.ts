@@ -1,33 +1,30 @@
-/**
- * Server functions for dashboard data.
- * Replaces apps/web/src/app/api/brands/[id]/dashboard-summary/route.ts
- */
+/** Server functions for dashboard data. */
 import { createServerFn } from "@tanstack/react-start";
+import { db } from "@workspace/lib/db/db";
+import { brands, competitors, prompts } from "@workspace/lib/db/schema";
+import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import { db } from "@workspace/lib/db/db";
-import { prompts, competitors, brands } from "@workspace/lib/db/schema";
-import { eq, and, count } from "drizzle-orm";
 import {
-	generateDateRange,
-	applyPerPromptLVCF,
 	applyPerPromptCitationLVCF,
+	applyPerPromptLVCF,
+	generateDateRange,
 	type LookbackPeriod,
 } from "@/lib/chart-utils";
-import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
-import {
-	getDashboardSummary,
-	getPerPromptVisibilityTimeSeries,
-	getPerPromptDailyCitationStats,
-} from "@/lib/postgres-read";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import {
 	type CitationCategory,
+	emptyCategoryCounts,
 	extractDomain,
 	toRoundedPercentages,
-	emptyCategoryCounts,
 } from "@/lib/domain-categories";
 import { categorizeDomain } from "@/lib/domain-categories.server";
+import {
+	getDashboardSummary,
+	getPerPromptDailyCitationStats,
+	getPerPromptVisibilityTimeSeries,
+} from "@/lib/postgres-read";
+import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 
 export interface VisibilityTimeSeriesPoint {
 	date: string;
@@ -49,13 +46,6 @@ export interface DashboardSummaryResponse {
 	lastUpdatedAt: string | null;
 }
 
-// ============================================================================
-// Server Function
-// ============================================================================
-
-/**
- * Get dashboard summary with visibility and citation time series.
- */
 export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
@@ -78,7 +68,6 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			allStrategy: "1y",
 		}) as { fromDateStr: string; toDateStr: string };
 
-		// Get brand info, competitors, and prompts from PostgreSQL
 		const [brandResult, competitorsList, enabledPromptsResult, totalPromptsResult] = await Promise.all([
 			db
 				.select({
@@ -119,7 +108,6 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			getPerPromptDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),
 		]);
 
-		// Process summary
 		const summary = summaryResult[0];
 		const totalRuns = summary ? Number(summary.total_runs) : 0;
 		const lastUpdatedAt = summary?.last_updated || null;
@@ -128,7 +116,6 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		// smoothing and the emitted series cover exactly this date domain.
 		const dateRange = generateDateRange(new Date(fromDateStr), new Date(toDateStr));
 
-		// Process visibility via per-prompt LVCF smoothing
 		const {
 			dailyVisibilityMap,
 			totalBrandedRuns,
@@ -144,7 +131,6 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			totalNonBrandedRuns > 0 ? Math.round((totalNonBrandedMentioned / totalNonBrandedRuns) * 100) : 0;
 		const brandedVisibility = totalBrandedRuns > 0 ? Math.round((totalBrandedMentioned / totalBrandedRuns) * 100) : 100;
 
-		// Build visibility time series directly from LVCF-smoothed data (no rolling window needed)
 		const visibilityTimeSeries: VisibilityTimeSeriesPoint[] = dateRange.map((date) => {
 			const d = dailyVisibilityMap.get(date);
 			if (!d) return { date, overall: null, nonBranded: null, branded: null };

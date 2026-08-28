@@ -1,13 +1,13 @@
-import { useCallback, useMemo } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { type LookbackPeriod, getDefaultLookbackPeriod } from "@/lib/chart-utils";
+import { useCallback, useMemo } from "react";
 import { useBrand } from "@/hooks/use-brands";
+import { getDefaultLookbackPeriod, type LookbackPeriod } from "@/lib/chart-utils";
 import { ALL_MODELS_VALUE } from "@/lib/model-filter";
 
 /** The shared dashboard filter params. Validated once at the `$brand` layout
  *  route (`validateSearch: validateBrandFilterSearch`) so every child route
- *  inherits them and links/filtered views stay shareable. `tags` stays a
- *  comma-joined string in the URL (the format our old nuqs links used);
+ *  inherits them and links/filtered views stay shareable. `tags` remains a
+ *  comma-joined string so existing shared links continue to resolve;
  *  consumers split/join via `splitTags`/`joinTags`. */
 export type BrandFilterSearch = {
 	model?: string;

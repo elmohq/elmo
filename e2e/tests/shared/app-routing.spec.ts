@@ -14,7 +14,7 @@ import {
 	TEST_BRAND_ID,
 	TEST_BRAND_NAME,
 	TEST_ORG_SLUG,
-} from "../fixtures";
+} from "../../fixtures";
 
 /** The seeded brand has no slug, so its segment is its id — the pre-slug state. */
 const BRAND_URL = `/app/org/${TEST_ORG_SLUG}/brand/${TEST_BRAND_ID}`;

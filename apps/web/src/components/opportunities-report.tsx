@@ -4,7 +4,6 @@
  * each card leads with a plain-language "why", then three drill-downs — Prompts /
  * Your citations / Competitor citations — to explore the underlying data.
  */
-import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
 import type { CitedPage, OpportunitiesReport as OpportunitiesReportData, ReportPrompt } from "@/server/opportunities";
@@ -42,8 +41,8 @@ function Bullet() {
 function BulletList({ items }: { items: string[] }) {
 	return (
 		<ul className="space-y-2.5">
-			{items.map((item, i) => (
-				<li key={`${i}-${item}`} className="flex gap-2.5 text-pretty text-base">
+			{items.map((item) => (
+				<li key={item} className="flex gap-2.5 text-pretty text-base">
 					<Bullet />
 					<span>{item}</span>
 				</li>
@@ -107,7 +106,7 @@ function OpportunityCard({ o }: { o: Opportunity }) {
 						{o.relatedPrompts.length === 0 ? (
 							<p className="px-1.5 py-1 text-xs text-muted-foreground">No specific prompts linked.</p>
 						) : (
-							o.relatedPrompts.map((p, i) => <PromptLink key={`${i}-${p.text}`} prompt={p} />)
+							o.relatedPrompts.map((p) => <PromptLink key={p.text} prompt={p} />)
 						)}
 					</Panel>
 				)}
@@ -116,7 +115,7 @@ function OpportunityCard({ o }: { o: Opportunity }) {
 						{o.yourCitations.length === 0 ? (
 							<p className="px-1.5 py-1 text-xs text-muted-foreground">You're not cited for these prompts yet.</p>
 						) : (
-							o.yourCitations.map((c, i) => <CiteLink key={`${i}-${c.url}`} page={c} />)
+							o.yourCitations.map((c) => <CiteLink key={c.url} page={c} />)
 						)}
 					</Panel>
 				)}
@@ -125,7 +124,7 @@ function OpportunityCard({ o }: { o: Opportunity }) {
 						{o.competitorCitations.length === 0 ? (
 							<p className="px-1.5 py-1 text-xs text-muted-foreground">No competitor pages cited for these prompts.</p>
 						) : (
-							o.competitorCitations.map((c, i) => <CiteLink key={`${i}-${c.url}`} page={c} />)
+							o.competitorCitations.map((c) => <CiteLink key={c.url} page={c} />)
 						)}
 					</Panel>
 				)}
@@ -158,8 +157,8 @@ export function OpportunitiesReport({ report }: { report: OpportunitiesReportDat
 							<p className="text-pretty text-sm text-muted-foreground">{c.desc}</p>
 						</div>
 						<div className="space-y-3">
-							{opps.map((o, i) => (
-								<OpportunityCard key={`${i}-${o.title}`} o={o} />
+							{opps.map((o) => (
+								<OpportunityCard key={o.title} o={o} />
 							))}
 						</div>
 					</section>

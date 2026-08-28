@@ -6,15 +6,18 @@
  * callbacks. State helpers like expand/collapse and the "X/MAX competitors
  * configured" footer live here so both surfaces look identical.
  */
-import { useCallback } from "react";
+
+import { IconInfoCircle } from "@tabler/icons-react";
+import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { TagsInput } from "@workspace/ui/components/tags-input";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
-import { Plus, Pencil, Trash2 } from "lucide-react";
-import { IconInfoCircle } from "@tabler/icons-react";
-import { MAX_COMPETITORS } from "@workspace/lib/constants";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useCallback } from "react";
+import { v4 as uuidv4 } from "uuid";
+import { SiteIcon } from "@/components/site-icon";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
 export interface CompetitorEntry {
@@ -33,7 +36,7 @@ interface CompetitorsEditorProps {
 
 export function newCompetitorEntry(partial?: Partial<CompetitorEntry>): CompetitorEntry {
 	return {
-		_key: crypto.randomUUID(),
+		_key: uuidv4(),
 		name: partial?.name ?? "",
 		domains: partial?.domains ?? [],
 		aliases: partial?.aliases ?? [],
@@ -64,6 +67,7 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 			{competitors.map((competitor, index) => (
 				<div key={competitor._key} className="border rounded-lg overflow-hidden">
 					<div className="flex items-center gap-3 p-3">
+						<SiteIcon domain={competitor.domains.find(Boolean)} size="lg" />
 						<div className="flex-1 min-w-0">
 							{competitor.name ? (
 								<span className="text-sm font-medium">{competitor.name}</span>
@@ -102,9 +106,9 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 								<Label className="text-xs font-medium flex items-center gap-1.5">
 									Name
 									<Tooltip>
-										<TooltipTrigger asChild>
-											<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-										</TooltipTrigger>
+										<TooltipTrigger
+											render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />}
+										/>
 										<TooltipContent className="max-w-xs text-xs font-normal">
 											The primary name used to detect this competitor in AI responses. Mention detection applies to{" "}
 											<strong>future</strong> prompt runs only.
@@ -125,9 +129,9 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 								<Label className="text-xs font-medium flex items-center gap-1.5">
 									Domains
 									<Tooltip>
-										<TooltipTrigger asChild>
-											<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-										</TooltipTrigger>
+										<TooltipTrigger
+											render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />}
+										/>
 										<TooltipContent className="max-w-xs text-xs font-normal">
 											All domains owned by this competitor. Citation categorization updates retroactively &mdash;
 											existing citations from these domains will immediately be classified as &quot;competitor&quot;.
@@ -149,9 +153,9 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 								<Label className="text-xs font-medium flex items-center gap-1.5">
 									Aliases
 									<Tooltip>
-										<TooltipTrigger asChild>
-											<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-										</TooltipTrigger>
+										<TooltipTrigger
+											render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />}
+										/>
 										<TooltipContent className="max-w-xs text-xs font-normal">
 											Alternative names for this competitor (sub-brands, product names, abbreviations). Used for mention
 											detection in <strong>future</strong> prompt runs only &mdash; does not apply retroactively.

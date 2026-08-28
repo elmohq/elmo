@@ -1,7 +1,7 @@
-import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
 
 interface VisibilityTimeSeriesPoint {
 	date: string;
@@ -108,9 +108,7 @@ export function VisibilityBar({
 				)}
 
 				<Tooltip>
-					<TooltipTrigger asChild>
-						<IconInfoCircle className={`h-3.5 w-3.5 shrink-0 ${colors.muted} cursor-help`} />
-					</TooltipTrigger>
+					<TooltipTrigger render={<IconInfoCircle className={`h-3.5 w-3.5 shrink-0 ${colors.muted} cursor-help`} />} />
 					<TooltipContent side="bottom" className="max-w-xs text-sm">
 						AI visibility for the {totalPrompts.toLocaleString()} prompt{totalPrompts !== 1 ? "s" : ""} shown below,
 						calculated as the percentage of AI responses that mention your brand over the time period for the selected

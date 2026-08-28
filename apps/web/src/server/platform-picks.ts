@@ -291,8 +291,8 @@ export const updateEnabledModelsFn = createServerFn({ method: "POST" })
 			.returning({ id: brands.id, enabledModels: brands.enabledModels });
 		if (!updated) throw new Error("Brand not found");
 
-		// A newly picked platform is due immediately, but the prompts' next jobs
-		// are a whole cadence away — which is how long a new pick used to sit dark.
+		// A newly picked platform has no run history, so do not make it wait for
+		// each prompt's already-scheduled next job.
 		const added = addedPlatforms(
 			brand.enabledModels,
 			models,

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { ArrowRight } from "lucide-react";
 
 const LINK = "font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900";
@@ -150,17 +150,18 @@ export function AiVisibilitySoftwareHub() {
 							</p>
 						</div>
 						<div className="mt-8 flex flex-wrap gap-3">
-							<Button asChild size="sm">
-								<Link to="/docs">
-									Read the docs
-									<ArrowRight className="size-3.5" />
-								</Link>
-							</Button>
-							<Button asChild variant="outline" size="sm">
-								<a href="https://github.com/elmohq/elmo" target="_blank" rel="noopener noreferrer">
-									Star on GitHub
-								</a>
-							</Button>
+							<Link to="/docs" className={buttonVariants({ size: "sm" })}>
+								Read the docs
+								<ArrowRight className="size-3.5" />
+							</Link>
+							<a
+								href="https://github.com/elmohq/elmo"
+								target="_blank"
+								rel="noopener noreferrer"
+								className={buttonVariants({ variant: "outline", size: "sm" })}
+							>
+								Star on GitHub
+							</a>
 						</div>
 					</div>
 				</div>

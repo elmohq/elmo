@@ -285,7 +285,7 @@ function PlanCard({ plan }: { plan: OffSitePlan }) {
 
 				<p className="mt-6 text-sm font-medium text-zinc-950">{plan.posts} placements / month</p>
 				{/* Fixed height so the DR breakdown lines up across all plans. */}
-				<ul role="list" className="mt-3 min-h-[8rem] space-y-1.5">
+				<ul className="mt-3 min-h-[8rem] space-y-1.5">
 					{plan.buckets.map((b) => (
 						<li key={b.dr} className="flex items-center gap-2 text-sm text-zinc-700">
 							<span className="inline-flex min-w-7 justify-center rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] tabular-nums text-zinc-600">
@@ -296,7 +296,7 @@ function PlanCard({ plan }: { plan: OffSitePlan }) {
 					))}
 				</ul>
 
-				<ul role="list" className="mt-6 space-y-2.5 text-sm text-zinc-700">
+				<ul className="mt-6 space-y-2.5 text-sm text-zinc-700">
 					{plan.features.map((f) => (
 						<li key={f} className="flex items-start gap-2">
 							<Check className="mt-0.5 size-3.5 shrink-0 text-blue-600" strokeWidth={3} />
@@ -368,62 +368,6 @@ export function OffSiteCTA() {
 						Book a call
 						<ArrowRight className="size-3.5" />
 					</BookButton>
-				</div>
-			</div>
-		</section>
-	);
-}
-
-/* --------------------------------------------------- Home-page promo band --- */
-
-export function OffSiteAeoPromo() {
-	return (
-		<section className="border-b border-zinc-200 bg-zinc-50">
-			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
-				<div className="grid items-center gap-10 lg:grid-cols-12">
-					<div className="lg:col-span-7">
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ OFF-SITE AEO</p>
-						<h2 className="mt-4 max-w-[22ch] text-3xl font-semibold leading-[1.1] tracking-tight text-balance text-zinc-950 md:text-4xl">
-							Want us to do your off-site AEO for you?
-						</h2>
-						<p className="mt-5 max-w-[56ch] text-pretty text-zinc-600 md:text-lg">
-							Beyond tracking, we publish humanized guest posts on high-authority sites so AI answer engines can cite
-							you.
-						</p>
-						<div className="mt-7 flex flex-wrap items-center gap-2">
-							<Link
-								to="/off-site-aeo"
-								className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
-							>
-								Explore Off-Site AEO
-								<ArrowRight className="size-3.5" />
-							</Link>
-						</div>
-					</div>
-					<div className="lg:col-span-5">
-						<dl className="overflow-hidden rounded-lg border border-zinc-200 bg-white divide-y divide-zinc-200">
-							{[
-								{ name: "Starter", price: "$1,950", posts: "4 placements / mo" },
-								{ name: "Growth", price: "$4,950", posts: "8 placements / mo" },
-								{
-									name: "Authority",
-									price: "$9,950",
-									posts: "14 placements / mo",
-								},
-							].map((t) => (
-								<div key={t.name} className="flex items-center justify-between gap-4 px-5 py-4">
-									<div>
-										<dt className="text-sm font-semibold text-zinc-950">{t.name}</dt>
-										<dd className="text-xs text-zinc-500">{t.posts}</dd>
-									</div>
-									<span className="font-mono text-sm tabular-nums text-zinc-950">
-										{t.price}
-										<span className="text-zinc-400">/mo</span>
-									</span>
-								</div>
-							))}
-						</dl>
-					</div>
 				</div>
 			</div>
 		</section>

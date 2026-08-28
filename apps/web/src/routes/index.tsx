@@ -11,7 +11,7 @@
  * Shows sign-in for unauthenticated users in other modes.
  */
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import FullPageCard from "@/components/full-page-card";
 import { getSession } from "@/lib/auth/session";
 
@@ -53,9 +53,9 @@ function HomePage() {
 
 	return (
 		<FullPageCard className="">
-			<Button asChild>
-				<a href={signInUrl}>Sign In</a>
-			</Button>
+			<a href={signInUrl} className={buttonVariants({})}>
+				Sign In
+			</a>
 		</FullPageCard>
 	);
 }

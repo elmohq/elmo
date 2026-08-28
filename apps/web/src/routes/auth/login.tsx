@@ -1,7 +1,9 @@
 /**
  * /auth/login - Login page
  *
- * Local/cloud modes: email/password form.
+ * Local/cloud modes: email/password form beside the sales panel.
+ * Demo mode: the shared credentials on a plain card — a demo visitor is
+ * already looking, and has nothing to buy.
  * Whitelabel mode: auto-redirects to Auth0 SSO (no form shown).
  */
 
@@ -16,37 +18,57 @@ import { Label } from "@workspace/ui/components/label";
 import { Separator } from "@workspace/ui/components/separator";
 import { useEffect, useState } from "react";
 import { z } from "zod";
+import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
+import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
 import { safeReturnTo } from "@/lib/return-to";
 
 export const Route = createFileRoute("/auth/login")({
 	validateSearch: z.object({
 		returnTo: z.string().optional(),
+		/**
+		 * Attribution tag carried by links back to us (see
+		 * @workspace/config/referrals). Declared so the router keeps it in the URL
+		 * long enough for analytics to record the pageview it arrived on.
+		 */
+		ref: z.string().optional(),
 	}),
 	component: LoginPage,
 });
 
 function LoginPage() {
-	const { returnTo } = Route.useSearch();
+	const { returnTo, ref: incomingRef } = Route.useSearch();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const mode = context.clientConfig?.mode;
 	const canRegister = context.clientConfig?.canRegister ?? false;
+	const hasUsers = context.clientConfig?.hasUsers ?? false;
 
 	if (mode === "whitelabel") {
 		return <SSOLogin returnTo={returnTo} />;
 	}
 
+	if (mode === "demo") {
+		return <DemoLogin returnTo={returnTo} />;
+	}
+
+	// A fresh self-hosted instance has no account to sign in to, so the form
+	// could only ever fail. Send them to the one thing that can work.
+	if (mode === "local" && !hasUsers) {
+		window.location.href = "/auth/register";
+		return null;
+	}
+
 	return (
 		<EmailPasswordLogin
 			returnTo={returnTo}
-			isDemo={mode === "demo"}
+			incomingRef={incomingRef}
 			isCloud={mode === "cloud"}
 			canRegister={canRegister}
 		/>
 	);
 }
 
-function SSOLogin({ returnTo }: { returnTo?: string }) {
+export function SSOLogin({ returnTo }: { returnTo?: string }) {
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
@@ -74,12 +96,14 @@ function SSOLogin({ returnTo }: { returnTo?: string }) {
 	if (error) {
 		return (
 			<FullPageCard title="Sign in">
-				<Alert variant="destructive">
-					<AlertDescription>{error}</AlertDescription>
-				</Alert>
-				<Button className="w-full" onClick={() => window.location.reload()}>
-					Try Again
-				</Button>
+				<div className="w-full space-y-4">
+					<Alert variant="destructive">
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+					<Button className="w-full" onClick={() => window.location.reload()}>
+						Try Again
+					</Button>
+				</div>
 			</FullPageCard>
 		);
 	}
@@ -87,22 +111,66 @@ function SSOLogin({ returnTo }: { returnTo?: string }) {
 	return <FullPageCard title="Signing in..." subtitle="Redirecting to your identity provider" />;
 }
 
+/** Signs in the shared demo account, whose credentials are printed on the page. */
+export function DemoLogin({ returnTo }: { returnTo?: string }) {
+	const navigate = useNavigate();
+	const [error, setError] = useState<string | null>(null);
+	const [loading, setLoading] = useState(false);
+
+	async function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
+		setError(null);
+		setLoading(true);
+
+		try {
+			const result = await authClient.signIn.email({ email: "demo@elmohq.com", password: "demo" });
+			if (result.error) {
+				setError(result.error.message ?? "Invalid email or password");
+				setLoading(false);
+				return;
+			}
+			navigate({ to: safeReturnTo(returnTo) });
+		} catch {
+			setError("Something went wrong. Please try again.");
+			setLoading(false);
+		}
+	}
+
+	return (
+		<FullPageCard title="Sign in">
+			<form onSubmit={handleSubmit} className="space-y-4 w-full">
+				<DemoCredentialsCallout />
+				{error && (
+					<Alert variant="destructive">
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+				)}
+				<Button type="submit" className="w-full" disabled={loading}>
+					{loading ? "Signing in..." : "Sign in"}
+				</Button>
+			</form>
+		</FullPageCard>
+	);
+}
+
 export function EmailPasswordLogin({
 	returnTo,
-	isDemo,
+	incomingRef,
 	isCloud,
 	canRegister,
 }: {
 	returnTo?: string;
-	isDemo?: boolean;
+	/** The `ref` this page was reached with, kept on links that stay inside auth. */
+	incomingRef?: string;
 	isCloud?: boolean;
 	canRegister?: boolean;
 }) {
 	const navigate = useNavigate();
-	const [email, setEmail] = useState(isDemo ? "demo@elmohq.com" : "");
-	const [password, setPassword] = useState(isDemo ? "demo" : "");
+	const [email, setEmail] = useState("");
+	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
+	const source = isCloud ? "cloud-signin" : "self-hosted-signin";
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -133,7 +201,12 @@ export function EmailPasswordLogin({
 	}
 
 	return (
-		<FullPageCard title="Sign in" subtitle={isDemo ? undefined : "Enter your email and password to continue"}>
+		<AuthSplitLayout
+			title="Welcome back"
+			subtitle={isCloud ? "Check in on your AI visibility." : "Sign in to your Elmo instance."}
+			pitch={<SalesPanel variant={isCloud ? "cloud" : "self-hosted"} source={source} />}
+			footer={<SalesFooterLinks source={source} />}
+		>
 			{isCloud && (
 				<div className="space-y-4 w-full pb-4">
 					<Button
@@ -153,65 +226,60 @@ export function EmailPasswordLogin({
 				</div>
 			)}
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
-				{isDemo && <DemoCredentialsCallout />}
 				{error && (
 					<Alert variant="destructive">
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
 				)}
-				{!isDemo && (
-					<>
-						<div className="space-y-2">
-							<Label htmlFor="email">Email</Label>
-							<Input
-								id="email"
-								type="email"
-								placeholder="you@example.com"
-								value={email}
-								onChange={(e) => setEmail(e.target.value)}
-								required
-								autoComplete="email"
-								autoFocus
-							/>
-						</div>
-						<div className="space-y-2">
-							<div className="flex items-center justify-between">
-								<Label htmlFor="password">Password</Label>
-								{isCloud && (
-									<Link to="/auth/forgot-password" className="text-xs text-primary hover:underline">
-										Forgot password?
-									</Link>
-								)}
-							</div>
-							<Input
-								id="password"
-								type="password"
-								placeholder="Password"
-								value={password}
-								onChange={(e) => setPassword(e.target.value)}
-								required
-								autoComplete="current-password"
-							/>
-						</div>
-					</>
-				)}
+				<div className="space-y-2">
+					<Label htmlFor="email">Email</Label>
+					<Input
+						id="email"
+						type="email"
+						placeholder="you@example.com"
+						value={email}
+						onChange={(e) => setEmail(e.target.value)}
+						required
+						autoComplete="email"
+						autoFocus
+					/>
+				</div>
+				<div className="space-y-2">
+					<div className="flex items-center justify-between">
+						<Label htmlFor="password">Password</Label>
+						{isCloud && (
+							<Link to="/auth/forgot-password" className="text-xs text-primary hover:underline">
+								Forgot password?
+							</Link>
+						)}
+					</div>
+					<Input
+						id="password"
+						type="password"
+						placeholder="Password"
+						value={password}
+						onChange={(e) => setPassword(e.target.value)}
+						required
+						autoComplete="current-password"
+					/>
+				</div>
 				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? "Signing in..." : "Sign in"}
 				</Button>
 			</form>
 			{canRegister && (
-				<p className="text-center text-sm text-muted-foreground pt-4">
+				<p className="text-sm text-muted-foreground pt-4">
 					Don't have an account?{" "}
 					<Link
 						to="/auth/register"
-						search={returnTo ? { returnTo } : {}}
+						search={{ ...(returnTo ? { returnTo } : {}), ...(incomingRef ? { ref: incomingRef } : {}) }}
 						className="text-primary hover:underline font-medium"
 					>
 						Create one
 					</Link>
 				</p>
 			)}
-		</FullPageCard>
+		</AuthSplitLayout>
 	);
 }
 

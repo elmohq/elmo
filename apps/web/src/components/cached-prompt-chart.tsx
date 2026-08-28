@@ -1,15 +1,15 @@
-import { memo, useMemo, useCallback } from "react";
+import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
-import { Badge } from "@workspace/ui/components/badge";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { memo, useCallback, useMemo } from "react";
+import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
+import { useChartExport } from "@/hooks/use-chart-export";
+import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
+import { getBadgeClassName, getBadgeVariant } from "@/lib/chart-utils";
 import { BaseChart } from "./base-chart";
 import { ChartActionsFooter } from "./chart-actions-footer";
 import { TextHighlighter } from "./text-highlighter";
-import { useChartExport } from "@/hooks/use-chart-export";
-import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
-import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
-import { getBadgeVariant, getBadgeClassName } from "@/lib/chart-utils";
 
 const PLACEHOLDER_BARS_NO_DATA = [20, 35, 15, 45, 25, 40, 30, 50, 20, 35, 45, 28].map((h, i) => ({
 	key: String(i),
@@ -35,12 +35,11 @@ export interface CachedPromptChartProps {
 	lookback: LookbackPeriod;
 	/** Current model filter from the URL. "all" = no filter. */
 	selectedModel?: string;
-	/** Concrete model ids this brand runs — passed down so the export / optimize
-	 *  button can offer them; don't include the "all" sentinel here. */
-	availableModels?: string[];
+	/** The targets this brand runs, as filter values — passed down so the export /
+	 *  optimize button can offer them; don't include the "all" sentinel here. */
+	availableModels: string[];
 	searchHighlight?: string;
-	// Whether this prompt has ever been evaluated (all-time)
-	// Used to distinguish "never evaluated" vs "no data in selected window"
+	/** Distinguishes first evaluation from an empty selected time window. */
 	hasEverBeenEvaluated?: boolean;
 }
 
@@ -53,14 +52,12 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 	brandId,
 	lookback = "1m",
 	selectedModel = "all",
-	availableModels = [],
+	availableModels,
 	searchHighlight = "",
 	hasEverBeenEvaluated = false,
 }: CachedPromptChartProps) {
-	// Get data from context (pre-loaded)
 	const chartContext = useOptionalChartDataContext();
 
-	// Get processed chart data for this specific prompt
 	const chartData = useMemo(() => {
 		if (!chartContext) return null;
 		return chartContext.getChartDataForPrompt(promptId);

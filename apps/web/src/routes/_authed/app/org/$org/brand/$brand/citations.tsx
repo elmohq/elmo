@@ -44,7 +44,6 @@ function CitationsPage() {
 	const { brand } = useBrand(brandId);
 	const trackedTargets = brand?.trackedTargets ?? [];
 
-	// Get citation data with tag and model filter
 	const modelParam = filters.model === ALL_MODELS_VALUE ? undefined : filters.model;
 	const {
 		citations: citationData,

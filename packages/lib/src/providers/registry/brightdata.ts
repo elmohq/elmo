@@ -95,35 +95,6 @@ function normalizeAnswer(record: Record<string, any>): string {
 	return JSON.stringify(record).slice(0, 2000);
 }
 
-function extractSources(record: Record<string, any>): Citation[] {
-	const citations: Citation[] = [];
-	const seen = new Set<string>();
-	let idx = 0;
-
-	for (const field of ["citations", "links_attached", "sources"]) {
-		const arr = record[field];
-		if (!Array.isArray(arr)) continue;
-		for (const item of arr) {
-			const url = typeof item === "string" ? item : item?.url;
-			if (!url || typeof url !== "string" || !url.startsWith("http")) continue;
-			if (seen.has(url)) continue;
-			seen.add(url);
-			try {
-				const parsed = new URL(url);
-				citations.push({
-					url,
-					title: item?.title ?? undefined,
-					domain: parsed.hostname.replace(/^www\./, ""),
-					citationIndex: idx++,
-				});
-			} catch (e) {
-				console.warn(`BrightData: skipping invalid citation URL: ${url}`, e);
-			}
-		}
-	}
-	return citations;
-}
-
 /**
  * Exported for tests.
  *
@@ -202,30 +173,7 @@ export const brightdata: Provider = {
 		let snapshotId: string | undefined;
 		let consumed = false;
 		try {
-			const triggerRes = await fetch(
-				`https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
-				{
-					method: "POST",
-					headers: {
-						Authorization: `Bearer ${getCredential("BRIGHTDATA_API_TOKEN")}`,
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify([
-						{
-							url: BD_BASE_URL[model] ?? "",
-							prompt,
-							index: 1,
-							...(model === "chatgpt" ? { web_search: options?.webSearch ?? false } : {}),
-						},
-					]),
-				},
-			);
-
-			if (!triggerRes.ok) {
-				throw new Error(`BrightData trigger failed (${triggerRes.status}): ${await triggerRes.text()}`);
-			}
-
-			({ snapshot_id: snapshotId } = (await triggerRes.json()) as { snapshot_id: string });
+			snapshotId = await triggerSnapshot(datasetId, model, prompt, options?.webSearch ?? false);
 			await pollUntilReady(snapshotId);
 			const payload = await client.scrape.snapshot.fetch(snapshotId, { format: "json" });
 			consumed = true;
@@ -234,7 +182,7 @@ export const brightdata: Provider = {
 			const answer = normalizeAnswer(record);
 
 			const webQueries = extractWebQueries(record);
-			const citations = extractSources(record);
+			const citations = extractCitationsFromBrightdata(record);
 
 			// Drop large HTML fields that aren't used for extraction.
 			// Keeps all structured data (shopping, recommendations, citations, etc.)
@@ -244,16 +192,7 @@ export const brightdata: Provider = {
 			return {
 				rawOutput,
 				textContent: answer,
-				// Only mark web queries as "unavailable" when web search was enabled
-				// and citations exist but no query strings were exposed.
-				// When web search is disabled, webQueries is always empty.
-				webQueries: options?.webSearch
-					? webQueries.length > 0
-						? webQueries
-						: citations.length > 0
-							? [WEB_QUERIES_UNAVAILABLE]
-							: []
-					: [],
+				webQueries: reportedWebQueries(options?.webSearch ?? false, webQueries, citations),
 				citations,
 				modelVersion: record?.model ?? undefined,
 			};
@@ -269,6 +208,45 @@ export const brightdata: Provider = {
 		}
 	},
 };
+
+/**
+ * Queries are only reported as "unavailable" when web search was on and the
+ * answer cited sources but exposed no query strings. With web search off there
+ * are never any queries to report.
+ */
+function reportedWebQueries(webSearch: boolean, webQueries: string[], citations: Citation[]): string[] {
+	if (!webSearch) return [];
+	if (webQueries.length > 0) return webQueries;
+	return citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [];
+}
+
+async function triggerSnapshot(datasetId: string, model: string, prompt: string, webSearch: boolean): Promise<string> {
+	const response = await fetch(
+		`https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
+		{
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${getCredential("BRIGHTDATA_API_TOKEN")}`,
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify([
+				{
+					url: BD_BASE_URL[model] ?? "",
+					prompt,
+					index: 1,
+					// ChatGPT is the only chatbot with a web search toggle.
+					...(model === "chatgpt" ? { web_search: webSearch } : {}),
+				},
+			]),
+		},
+	);
+
+	if (!response.ok) {
+		throw new Error(`BrightData trigger failed (${response.status}): ${await response.text()}`);
+	}
+	const { snapshot_id } = (await response.json()) as { snapshot_id: string };
+	return snapshot_id;
+}
 
 /** Terminal failure statuses from datasets/v3/progress. Anything else —
  *  running, building, "starting", queued, or a status BrightData adds later —

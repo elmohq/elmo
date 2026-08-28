@@ -110,8 +110,15 @@
     {
       "idx": 15,
       "version": "7",
-      "when": 1787870079285,
-      "tag": "0015_brand_slugs",
+      "when": 1787854702417,
+      "tag": "0015_align_better_auth_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1787899237136,
+      "tag": "0016_brand_slugs",
       "breakpoints": true
     }
   ]

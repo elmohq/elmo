@@ -81,8 +81,7 @@ function Calendar({
             : "rounded-md pl-2 pr-1 flex items-center gap-1 text-sm h-8 [&>svg]:text-muted-foreground [&>svg]:size-3.5",
           defaultClassNames.caption_label
         ),
-        // react-day-picker renamed this key from `table` in v9; under v10 the
-        // old name was silently ignored, so these classes never applied.
+        // React Day Picker v10 reads grid classes from `month_grid`.
         month_grid: cn("w-full border-collapse", defaultClassNames.month_grid),
         weekdays: cn("flex", defaultClassNames.weekdays),
         weekday: cn(

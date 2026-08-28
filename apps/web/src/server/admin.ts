@@ -79,10 +79,9 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 	const thirtyDaysAgo = new Date();
 	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-	const orgSlugs = await organizationSlugs();
-
-	const [allBrands, brandsOverTime, promptsOverTime, runsOverTimeData, brandRunStats, activeBrandsData] =
+	const [orgSlugs, allBrands, brandsOverTime, promptsOverTime, runsOverTimeData, brandRunStats, activeBrandsData] =
 		await Promise.all([
+			organizationSlugs(),
 			db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
 
 			// Cumulative brand count over time (last 30 days)
@@ -317,6 +316,16 @@ async function getQueueStats() {
 	});
 }
 
+function failureReason(state: string, output: unknown): string | null {
+	if (state !== "failed" || !output) return null;
+	try {
+		const parsed = typeof output === "string" ? JSON.parse(output) : (output as Record<string, unknown>);
+		return (parsed?.message as string) || (parsed?.error as string) || "Unknown error";
+	} catch {
+		return "Unknown error";
+	}
+}
+
 async function getRecentJobs(limit = 50) {
 	const jobs = await withPgClient(async (client) => {
 		const [jobCheck, archiveCheck] = await Promise.all([
@@ -372,24 +381,12 @@ async function getRecentJobs(limit = 50) {
 	});
 
 	return sorted.slice(0, limit).map((row) => {
-		const data = parseJobData(row.data);
-		let failedReason: string | null = null;
-
-		if (row.state === "failed" && row.output) {
-			try {
-				const output = typeof row.output === "string" ? JSON.parse(row.output) : row.output;
-				failedReason = output?.message || output?.error || "Unknown error";
-			} catch {
-				failedReason = "Unknown error";
-			}
-		}
-
 		return {
 			id: row.id,
 			name: row.name,
-			data,
+			data: parseJobData(row.data),
 			status: row.state === "completed" ? ("completed" as const) : ("failed" as const),
-			failedReason,
+			failedReason: failureReason(row.state, row.output),
 			attemptsMade: row.retry_count || 0,
 			timestamp: row.created_on ? new Date(row.created_on).getTime() : 0,
 			processedOn: row.started_on ? new Date(row.started_on).getTime() : null,
@@ -398,66 +395,57 @@ async function getRecentJobs(limit = 50) {
 	});
 }
 
-function getNextRunFromCron(cron: string, now: Date): number | null {
-	const hourlyMatch = cron.match(/^0 \*\/(\d+) \* \* \*$/);
-	if (hourlyMatch) {
-		const interval = Number(hourlyMatch[1]);
-		if (!Number.isFinite(interval) || interval <= 0) return null;
+/**
+ * pg-boss schedules this job with one of two cron shapes; nothing here needs a
+ * general cron parser, and reading them in one place keeps the cadence the
+ * dashboard reports and the next-run it computes derived from the same match.
+ */
+type CronSchedule = { unit: "hours" | "days"; interval: number };
 
-		const nowMs = now.getTime();
-		const nowUtc = new Date(nowMs);
-		const year = nowUtc.getUTCFullYear();
-		const month = nowUtc.getUTCMonth();
-		const day = nowUtc.getUTCDate();
-		const hour = nowUtc.getUTCHours();
-		const minute = nowUtc.getUTCMinutes();
-		const second = nowUtc.getUTCSeconds();
-		const ms = nowUtc.getUTCMilliseconds();
-
-		let nextHour = hour;
-		if (minute > 0 || second > 0 || ms > 0) {
-			nextHour += 1;
-		}
-
-		for (let i = 0; i <= 48; i += 1) {
-			const h = nextHour + i;
-			if (h % interval === 0) {
-				const dayOffset = Math.floor(h / 24);
-				const hourOfDay = h % 24;
-				const baseMidnight = Date.UTC(year, month, day, 0, 0, 0, 0);
-				const candidateMs = baseMidnight + dayOffset * 24 * 60 * 60 * 1000 + hourOfDay * 60 * 60 * 1000;
-				if (candidateMs > nowMs) {
-					return candidateMs;
-				}
-			}
-		}
-
-		return null;
+function parseCron(cron: string): CronSchedule | null {
+	const hourly = cron.match(/^0 \*\/(\d+) \* \* \*$/);
+	if (hourly) {
+		const interval = Number(hourly[1]);
+		return Number.isFinite(interval) && interval > 0 ? { unit: "hours", interval } : null;
 	}
-
-	const dailyMatch = cron.match(/^0 0 (?:\*\/(\d+)|\*) \* \*$/);
-	if (dailyMatch) {
-		const dayInterval = dailyMatch[1] ? Number(dailyMatch[1]) : 1;
-		if (!Number.isFinite(dayInterval) || dayInterval <= 0) return null;
-
-		const nowMs = now.getTime();
-		const nowUtc = new Date(nowMs);
-
-		for (let i = 0; i <= 31; i += 1) {
-			const candidate = new Date(
-				Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate() + i, 0, 0, 0, 0),
-			);
-			const dayOfMonth = candidate.getUTCDate();
-			const matches = dayInterval === 1 || (dayOfMonth - 1) % dayInterval === 0;
-			if (matches && candidate.getTime() > nowMs) {
-				return candidate.getTime();
-			}
-		}
-
-		return null;
+	const daily = cron.match(/^0 0 (?:\*\/(\d+)|\*) \* \*$/);
+	if (daily) {
+		const interval = daily[1] ? Number(daily[1]) : 1;
+		return Number.isFinite(interval) && interval > 0 ? { unit: "days", interval } : null;
 	}
-
 	return null;
+}
+
+function nextHourlyRun(interval: number, now: Date): number | null {
+	const nowMs = now.getTime();
+	const midnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0);
+	// Part-way through an hour means that hour has already passed.
+	const startHour =
+		now.getUTCHours() + (now.getUTCMinutes() > 0 || now.getUTCSeconds() > 0 || now.getUTCMilliseconds() > 0 ? 1 : 0);
+
+	for (let hour = startHour; hour <= startHour + 48; hour += 1) {
+		if (hour % interval !== 0) continue;
+		const candidate = midnight + hour * 60 * 60 * 1000;
+		if (candidate > nowMs) return candidate;
+	}
+	return null;
+}
+
+function nextDailyRun(interval: number, now: Date): number | null {
+	const nowMs = now.getTime();
+	for (let offset = 0; offset <= 31; offset += 1) {
+		const candidate = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + offset, 0, 0, 0, 0);
+		const dayOfMonth = new Date(candidate).getUTCDate();
+		const onInterval = interval === 1 || (dayOfMonth - 1) % interval === 0;
+		if (onInterval && candidate > nowMs) return candidate;
+	}
+	return null;
+}
+
+function getNextRunFromCron(cron: string, now: Date): number | null {
+	const schedule = parseCron(cron);
+	if (!schedule) return null;
+	return schedule.unit === "hours" ? nextHourlyRun(schedule.interval, now) : nextDailyRun(schedule.interval, now);
 }
 
 async function getScheduleMap() {
@@ -481,23 +469,13 @@ async function getScheduleMap() {
 
 	for (const row of schedules) {
 		const promptId = row.key;
-		if (promptId) {
-			let cadenceHours: number | null = null;
-			let nextRunAt: number | null = null;
-			if (row.cron) {
-				const hourlyMatch = row.cron.match(/^0 \*\/(\d+) \* \* \*$/);
-				if (hourlyMatch) {
-					cadenceHours = Number(hourlyMatch[1]);
-				} else {
-					const dailyMatch = row.cron.match(/^0 0 (?:\*\/(\d+)|\*) \* \*$/);
-					if (dailyMatch) {
-						cadenceHours = dailyMatch[1] ? Number(dailyMatch[1]) * 24 : 24;
-					}
-				}
-				nextRunAt = getNextRunFromCron(row.cron, now);
-			}
-			map.set(promptId, { promptId, cadenceHours, nextRunAt });
-		}
+		if (!promptId) continue;
+		const schedule = row.cron ? parseCron(row.cron) : null;
+		map.set(promptId, {
+			promptId,
+			cadenceHours: schedule ? schedule.interval * (schedule.unit === "days" ? 24 : 1) : null,
+			nextRunAt: row.cron ? getNextRunFromCron(row.cron, now) : null,
+		});
 	}
 
 	return map;
@@ -623,12 +601,109 @@ function targetColumnsFor(plans: (PromptRunPlan | undefined)[]): { key: string; 
 /**
  * Get full workflow data: queue stats, recent jobs, brand schedule summaries.
  */
+interface WorkflowContext {
+	/** Workspace slug by org id, so brand links land on the canonical path. */
+	orgSlugs: Map<string, string>;
+	runPlans: Map<string, PromptRunPlan>;
+	lastRunsByPrompt: Map<string, Map<string, Date>>;
+	scheduleMap: Awaited<ReturnType<typeof getScheduleMap>>;
+	activeJobMap: Awaited<ReturnType<typeof getActiveJobMap>>;
+	failuresByPrompt: Map<string, number>;
+	now: number;
+}
+
+const NO_SCHEDULER = { exists: false, nextRunAt: null as number | null, cadenceHours: null as number | null };
+
+function targetFreshness(
+	prompt: { enabled: boolean; createdAt: Date },
+	targets: TargetPlan[],
+	lastRuns: Map<string, Date>,
+	now: number,
+): Record<string, TargetRunStatus> {
+	const byTarget: Record<string, TargetRunStatus> = {};
+	for (const target of targets) {
+		const key = targetKey(target.config);
+		const lastRunAt = lastRuns.get(key) ?? null;
+		// A disabled prompt is parked on purpose, so it is never overdue.
+		const { isOverdue, overdueByMs } = prompt.enabled
+			? targetOverdueStatus({ intervalHours: target.intervalHours, lastRunAt, promptCreatedAt: prompt.createdAt, now })
+			: { isOverdue: false, overdueByMs: null };
+		byTarget[key] = { lastRunAt, isOverdue, overdueByMs };
+	}
+	return byTarget;
+}
+
+function promptWorkflowStatus(
+	prompt: { id: string; value: string; enabled: boolean; createdAt: Date },
+	brand: { id: string; name: string },
+	context: WorkflowContext,
+) {
+	const targets = context.runPlans.get(prompt.id)?.targets ?? [];
+	const lastRunsByTarget = targetFreshness(
+		prompt,
+		targets,
+		context.lastRunsByPrompt.get(prompt.id) ?? new Map<string, Date>(),
+		context.now,
+	);
+	const scheduleInfo = context.scheduleMap.get(prompt.id);
+	const activeJob = context.activeJobMap.get(prompt.id);
+
+	return {
+		overdue: Object.values(lastRunsByTarget).some((target) => target.isOverdue),
+		scheduled: activeJob !== undefined,
+		row: {
+			promptId: prompt.id,
+			promptValue: prompt.value,
+			brandId: brand.id,
+			brandName: brand.name,
+			enabled: prompt.enabled,
+			// The chain's own cadence: its fastest target, which is what the
+			// scheduler reschedules on. Zero when the plan parks the prompt.
+			runFrequencyMs: intervalMsOf(targets),
+			lastRunsByTarget,
+			schedulerInfo: scheduleInfo
+				? { exists: true, nextRunAt: scheduleInfo.nextRunAt, cadenceHours: scheduleInfo.cadenceHours }
+				: NO_SCHEDULER,
+			recentFailures: context.failuresByPrompt.get(prompt.id) || 0,
+			jobStatus: (activeJob?.state ?? "none") as "active" | "created" | "retry" | "none",
+		},
+	};
+}
+
+function brandWorkflowSummary(
+	brand: { id: string; slug: string | null; organizationId: string; name: string; website: string; enabled: boolean },
+	brandPrompts: { id: string; value: string; enabled: boolean; createdAt: Date }[],
+	context: WorkflowContext,
+) {
+	const statuses = brandPrompts.map((prompt) => promptWorkflowStatus(prompt, brand, context));
+	const enabled = statuses.filter((status) => status.row.enabled);
+
+	return {
+		brandId: brand.id,
+		brandSlug: brand.slug,
+		organizationSlug: context.orgSlugs.get(brand.organizationId) ?? brand.organizationId,
+		brandName: brand.name,
+		website: brand.website,
+		enabled: brand.enabled,
+		totalPrompts: brandPrompts.length,
+		enabledPrompts: enabled.length,
+		// Prompts of one brand can run different targets (premium is per prompt),
+		// so the table's columns are the union rather than whatever the first row
+		// happens to have.
+		targetColumns: targetColumnsFor(brandPrompts.map((p) => context.runPlans.get(p.id))),
+		runFrequencyMs: fastestCadenceMs(statuses.map((status) => status.row.runFrequencyMs)),
+		overduePrompts: enabled.filter((status) => status.overdue).length,
+		onSchedulePrompts: enabled.filter((status) => !status.overdue).length,
+		schedulerCoverage: { scheduled: enabled.filter((status) => status.scheduled).length, total: enabled.length },
+		prompts: statuses.map((status) => status.row),
+	};
+}
+
 export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async () => {
 	await requireAdmin();
 
 	const allBrands = await db.query.brands.findMany({ orderBy: desc(brands.createdAt) });
 	const allPrompts = await db.query.prompts.findMany();
-	const orgSlugs = await organizationSlugs();
 
 	const promptsByBrand: Record<string, typeof allPrompts> = {};
 	for (const prompt of allPrompts) {
@@ -692,94 +767,16 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		}
 	}
 
-	const now = Date.now();
-	const defaultSchedulerInfo = { exists: false, nextRunAt: null as number | null, cadenceHours: null as number | null };
-
-	const brandSummaries = allBrands.map((brand) => {
-		const brandPrompts = promptsByBrand[brand.id] || [];
-
-		let overduePrompts = 0;
-		let onSchedulePrompts = 0;
-		let scheduledCount = 0;
-
-		const promptStatuses = brandPrompts.map((prompt) => {
-			const lastRuns = lastRunsByPrompt.get(prompt.id) ?? new Map<string, Date>();
-			const targets = runPlans.get(prompt.id)?.targets ?? [];
-			const lastRunsByTarget: Record<string, TargetRunStatus> = {};
-
-			let anyOverdue = false;
-			for (const target of targets) {
-				const key = targetKey(target.config);
-				const lastRunAt = lastRuns.get(key) ?? null;
-				// A disabled prompt is parked on purpose, so it is never overdue.
-				const { isOverdue, overdueByMs } = prompt.enabled
-					? targetOverdueStatus({
-							intervalHours: target.intervalHours,
-							lastRunAt,
-							promptCreatedAt: prompt.createdAt,
-							now,
-						})
-					: { isOverdue: false, overdueByMs: null };
-				if (isOverdue) anyOverdue = true;
-				lastRunsByTarget[key] = { lastRunAt, isOverdue, overdueByMs };
-			}
-
-			const scheduleInfo = scheduleMap.get(prompt.id);
-			const schedulerInfo = scheduleInfo
-				? { exists: true, nextRunAt: scheduleInfo.nextRunAt, cadenceHours: scheduleInfo.cadenceHours }
-				: defaultSchedulerInfo;
-
-			const activeJob = activeJobMap.get(prompt.id);
-			if (prompt.enabled && activeJob) scheduledCount++;
-
-			if (prompt.enabled) {
-				if (anyOverdue) {
-					overduePrompts++;
-				} else {
-					onSchedulePrompts++;
-				}
-			}
-
-			const jobStatus: "active" | "created" | "retry" | "none" = activeJob?.state ?? "none";
-
-			return {
-				promptId: prompt.id,
-				promptValue: prompt.value,
-				brandId: brand.id,
-				brandName: brand.name,
-				enabled: prompt.enabled,
-				// The chain's own cadence: its fastest target, which is what the
-				// scheduler reschedules on. Zero when the plan parks the prompt.
-				runFrequencyMs: intervalMsOf(targets),
-				lastRunsByTarget,
-				schedulerInfo,
-				recentFailures: failuresByPrompt.get(prompt.id) || 0,
-				jobStatus,
-			};
-		});
-
-		const enabledPrompts = brandPrompts.filter((p) => p.enabled).length;
-
-		return {
-			brandId: brand.id,
-			brandSlug: brand.slug,
-			brandName: brand.name,
-			organizationSlug: orgSlugs.get(brand.organizationId) ?? brand.organizationId,
-			website: brand.website,
-			enabled: brand.enabled,
-			totalPrompts: brandPrompts.length,
-			enabledPrompts,
-			// Prompts of one brand can run different targets (premium is per
-			// prompt), so the table's columns are the union rather than whatever
-			// the first row happens to have.
-			targetColumns: targetColumnsFor(brandPrompts.map((p) => runPlans.get(p.id))),
-			runFrequencyMs: fastestCadenceMs(promptStatuses.map((p) => p.runFrequencyMs)),
-			overduePrompts,
-			onSchedulePrompts,
-			schedulerCoverage: { scheduled: scheduledCount, total: enabledPrompts },
-			prompts: promptStatuses,
-		};
-	});
+	const context: WorkflowContext = {
+		orgSlugs: await organizationSlugs(),
+		runPlans,
+		lastRunsByPrompt,
+		scheduleMap,
+		activeJobMap,
+		failuresByPrompt,
+		now: Date.now(),
+	};
+	const brandSummaries = allBrands.map((brand) => brandWorkflowSummary(brand, promptsByBrand[brand.id] || [], context));
 
 	const totalOverdue = brandSummaries.reduce((sum, b) => sum + b.overduePrompts, 0);
 	const totalOnSchedule = brandSummaries.reduce((sum, b) => sum + b.onSchedulePrompts, 0);
@@ -843,6 +840,32 @@ export const retryJobFn = createServerFn({ method: "POST" })
 /**
  * Get logs for a specific job.
  */
+function formatJobLogs(job: Record<string, any>): string[] {
+	/** JSON columns arrive as text or as parsed objects depending on the driver. */
+	const pretty = (value: unknown) => {
+		try {
+			return JSON.stringify(typeof value === "string" ? JSON.parse(value) : value, null, 2);
+		} catch {
+			return String(value);
+		}
+	};
+	const timestamps: [string, unknown][] = [
+		["Created", job.created_on],
+		["Started", job.started_on],
+		["Completed", job.completed_on],
+	];
+
+	return [
+		`Job ID: ${job.id}`,
+		`Name: ${job.name}`,
+		`State: ${job.state}`,
+		`Retry count: ${job.retry_count || 0}`,
+		...timestamps.filter(([, at]) => at).map(([label, at]) => `${label}: ${new Date(at as string).toISOString()}`),
+		...(job.data ? [`Data: ${pretty(job.data)}`] : []),
+		...(job.output ? [`${job.state === "failed" ? "Error" : "Output"}: ${pretty(job.output)}`] : []),
+	];
+}
+
 export const getJobLogsFn = createServerFn({ method: "GET" })
 	.validator(z.object({ jobId: z.string() }))
 	.handler(async ({ data }) => {
@@ -876,37 +899,6 @@ export const getJobLogsFn = createServerFn({ method: "GET" })
 
 		if (!job) throw new Error("Job not found");
 
-		const logs: string[] = [];
-		logs.push(`Job ID: ${job.id}`);
-		logs.push(`Name: ${job.name}`);
-		logs.push(`State: ${job.state}`);
-		logs.push(`Retry count: ${job.retry_count || 0}`);
-
-		if (job.created_on) logs.push(`Created: ${new Date(job.created_on).toISOString()}`);
-		if (job.started_on) logs.push(`Started: ${new Date(job.started_on).toISOString()}`);
-		if (job.completed_on) logs.push(`Completed: ${new Date(job.completed_on).toISOString()}`);
-
-		if (job.data) {
-			try {
-				const d = typeof job.data === "string" ? JSON.parse(job.data) : job.data;
-				logs.push(`Data: ${JSON.stringify(d, null, 2)}`);
-			} catch {
-				logs.push(`Data: ${String(job.data)}`);
-			}
-		}
-
-		if (job.output) {
-			try {
-				const output = typeof job.output === "string" ? JSON.parse(job.output) : job.output;
-				logs.push(
-					job.state === "failed"
-						? `Error: ${JSON.stringify(output, null, 2)}`
-						: `Output: ${JSON.stringify(output, null, 2)}`,
-				);
-			} catch {
-				logs.push(`Output: ${String(job.output)}`);
-			}
-		}
-
+		const logs = formatJobLogs(job);
 		return { jobId: data.jobId, logs, count: logs.length };
 	});

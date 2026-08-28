@@ -1,23 +1,16 @@
-import { db } from "@workspace/lib/db/db";
-import { prompts, brands } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { db } from "@workspace/lib/db/db";
+import { brands, prompts } from "@workspace/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
 
-/**
- * Convert cadence hours to milliseconds.
- */
 export function hoursToMs(hours: number): number {
 	return hours * 60 * 60 * 1000;
 }
 
-/**
- * Gets the cadence (delay between runs) for a prompt based on its brand's delay override or the default
- */
 export async function getPromptCadenceHours(promptId: string): Promise<number> {
 	const defaultDelayHours = getDefaultDelayHours();
 	try {
-		// Get the prompt to find its brand
 		const prompt = await db.query.prompts.findFirst({
 			where: eq(prompts.id, promptId),
 		});
@@ -27,7 +20,6 @@ export async function getPromptCadenceHours(promptId: string): Promise<number> {
 			return defaultDelayHours;
 		}
 
-		// Get the brand to check for delay override
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, prompt.brandId),
 		});
@@ -37,7 +29,6 @@ export async function getPromptCadenceHours(promptId: string): Promise<number> {
 			return defaultDelayHours;
 		}
 
-		// Use override if set, otherwise use default
 		if (brand.delayOverrideHours !== null) {
 			console.log(`Using custom cadence for brand ${brand.name}: ${brand.delayOverrideHours}h`);
 			return brand.delayOverrideHours;
@@ -65,15 +56,14 @@ export async function createPromptJobScheduler(promptId: string, options: Schedu
 		const cadenceHours = await getPromptCadenceHours(promptId);
 		const sendImmediate = options.sendImmediate ?? true;
 
-		// Remove any old cron-based schedule (migration cleanup)
+		// Clear a cron schedule when converting the prompt to self-rescheduling jobs.
 		try {
 			await boss.unschedule("process-prompt", promptId);
 		} catch {
-			// Ignore errors - schedule may not exist
+			// Absence is equivalent to a successfully cleared schedule.
 		}
 
 		if (sendImmediate) {
-			// Send an immediate job
 			await boss.send(
 				"process-prompt",
 				{ promptId, cadenceHours },
@@ -87,7 +77,6 @@ export async function createPromptJobScheduler(promptId: string, options: Schedu
 				},
 			);
 		} else {
-			// Schedule the next run based on cadence
 			const startAfterSeconds = cadenceHours * 60 * 60;
 			await boss.send(
 				"process-prompt",
@@ -112,23 +101,16 @@ export async function createPromptJobScheduler(promptId: string, options: Schedu
 	}
 }
 
-/**
- * Removes any scheduled jobs for a prompt.
- */
 export async function removePromptJobScheduler(promptId: string): Promise<boolean> {
 	try {
 		const boss = await getBoss();
 
-		// Remove old cron-based schedule if exists
 		try {
 			await boss.unschedule("process-prompt", promptId);
 		} catch {
-			// Ignore - may not exist
+			// Absence is equivalent to a successfully removed schedule.
 		}
 
-		// Cancel any pending jobs for this prompt
-		// Note: pg-boss doesn't have a direct way to cancel by data,
-		// but the singletonKey prevents duplicates
 		console.log(`Removed schedule for prompt ${promptId}`);
 		return true;
 	} catch (error) {
@@ -137,10 +119,6 @@ export async function removePromptJobScheduler(promptId: string): Promise<boolea
 	}
 }
 
-/**
- * Creates schedules for multiple prompts.
- * Returns an array of results indicating success/failure for each prompt.
- */
 export async function createMultiplePromptJobSchedulers(
 	promptIds: string[],
 	options: SchedulerOptions = {},
@@ -150,25 +128,15 @@ export async function createMultiplePromptJobSchedulers(
 	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
 }
 
-/**
- * Removes schedules for multiple prompts.
- * Returns an array of results indicating success/failure for each prompt.
- */
 export async function removeMultiplePromptJobSchedulers(promptIds: string[]): Promise<boolean[]> {
 	const results = await Promise.allSettled(promptIds.map((promptId) => removePromptJobScheduler(promptId)));
 
 	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
 }
 
-/**
- * Recreates a schedule for a prompt (removes and creates).
- * Useful when cadence has changed or job needs to be reset.
- */
 export async function recreatePromptJobScheduler(promptId: string, options: SchedulerOptions = {}): Promise<boolean> {
 	try {
-		// Remove existing schedule if any (ignore errors if it doesn't exist)
 		await removePromptJobScheduler(promptId);
-		// Create new schedule
 		return await createPromptJobScheduler(promptId, options);
 	} catch (error) {
 		console.error(`Failed to recreate job scheduler for prompt ${promptId}:`, error);
@@ -204,10 +172,6 @@ export async function sendImmediatePromptJob(promptId: string): Promise<boolean>
 	}
 }
 
-/**
- * Schedules the next run for a prompt after a delay.
- * Called by the worker after successful job completion.
- */
 export async function scheduleNextPromptRun(promptId: string, cadenceHours: number): Promise<boolean> {
 	try {
 		const boss = await getBoss();
@@ -235,9 +199,6 @@ export async function scheduleNextPromptRun(promptId: string, cadenceHours: numb
 	}
 }
 
-/**
- * Sends a report generation job.
- */
 export async function sendReportJob(
 	reportId: string,
 	brandName: string,

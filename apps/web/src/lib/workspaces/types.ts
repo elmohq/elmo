@@ -15,6 +15,8 @@ export interface WorkspaceBrand {
 	 */
 	slug: string | null;
 	name: string;
+	/** For the site icon every brand list renders beside the name. */
+	website: string;
 	onboarded: boolean;
 }
 

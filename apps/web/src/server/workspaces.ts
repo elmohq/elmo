@@ -133,6 +133,7 @@ async function listWorkspaces(userId: string): Promise<WorkspaceWithBrands[]> {
 				id: brands.id,
 				slug: brands.slug,
 				name: brands.name,
+				website: brands.website,
 				onboarded: brands.onboarded,
 				organizationId: brands.organizationId,
 			})
@@ -146,7 +147,7 @@ async function listWorkspaces(userId: string): Promise<WorkspaceWithBrands[]> {
 		...org,
 		brands: rows
 			.filter((brand) => brand.organizationId === org.id)
-			.map(({ id, slug, name, onboarded }) => ({ id, slug, name, onboarded })),
+			.map(({ id, slug, name, website, onboarded }) => ({ id, slug, name, website, onboarded })),
 		canCreateBrand: canCreate.get(org.id) ?? false,
 	}));
 }

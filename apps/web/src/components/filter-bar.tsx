@@ -11,7 +11,7 @@ import {
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
-import { Input } from "@workspace/ui/components/input";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
@@ -26,8 +26,7 @@ export { ALL_MODELS_VALUE, getAvailableModels } from "@/lib/model-filter";
 // per-key `useSearch` selectors so one filter's click doesn't re-render the
 // others, and write through `useFilterNavigate` (replace, no scroll reset).
 // The router commits search updates synchronously within the interaction, so
-// no optimistic layer is needed (nuqs throttled URL writes, which is why the
-// old code wrapped every change in `useOptimistic` + `startTransition`).
+// the URL itself is the authoritative filter state.
 import { coerceLookback, joinTags, splitTags, useFilterNavigate } from "@/hooks/use-list-filters";
 import {
 	ALL_MODELS_VALUE,
@@ -79,9 +78,9 @@ type FilterTriggerButtonProps = {
 	badgeCount?: number;
 } & React.ComponentProps<"button">;
 
-// Props forward to the underlying Button so `<DropdownMenuTrigger asChild>` /
-// `<PopoverTrigger asChild>` can hand their ref + data-state directly to the
-// button element (wrapping in a div would make Slot target the div instead).
+// Props forward to the underlying Button so a trigger's `render` prop can hand
+// its ref and state straight to the button element (wrapping in a div would
+// leave the trigger targeting the div instead).
 // Exported so page-specific bar controls (e.g. the prompts sort dropdown)
 // share the same trigger look without re-implementing it.
 export function FilterTriggerButton({
@@ -141,9 +140,11 @@ export function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarge
 	const groups = groupTrackedTargets(trackedTargets);
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<FilterTriggerButton icon={iconForModel(selected)} label={labelForModel(selected)} active={isFiltered} />
-			</DropdownMenuTrigger>
+			<DropdownMenuTrigger
+				render={
+					<FilterTriggerButton icon={iconForModel(selected)} label={labelForModel(selected)} active={isFiltered} />
+				}
+			/>
 			<DropdownMenuContent align="start" className="w-56">
 				<DropdownMenuRadioGroup value={selected} onValueChange={handleChange}>
 					<DropdownMenuRadioItem value={ALL_MODELS_VALUE} className="cursor-pointer gap-2">
@@ -152,9 +153,7 @@ export function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarge
 					</DropdownMenuRadioItem>
 					{groups.map((group) => (
 						<DropdownMenuGroup key={group.tier}>
-							<DropdownMenuLabel className="text-muted-foreground text-xs font-medium">
-								{group.label}
-							</DropdownMenuLabel>
+							<DropdownMenuLabel className="text-muted-foreground text-xs font-medium">{group.label}</DropdownMenuLabel>
 							{group.values.map((value) => (
 								<DropdownMenuRadioItem key={value} value={value} className="cursor-pointer gap-2">
 									{iconForModel(value)}
@@ -186,9 +185,9 @@ export function LookbackDropdown() {
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<FilterTriggerButton icon={<Clock className="size-3.5" />} label={getLookbackLabel(selected)} />
-			</DropdownMenuTrigger>
+			<DropdownMenuTrigger
+				render={<FilterTriggerButton icon={<Clock className="size-3.5" />} label={getLookbackLabel(selected)} />}
+			/>
 			<DropdownMenuContent align="start" className="w-48">
 				<DropdownMenuRadioGroup value={selected} onValueChange={(v) => handleChange(v as LookbackPeriod)}>
 					{LOOKBACK_OPTIONS.map((opt) => (
@@ -224,15 +223,17 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 
 	return (
 		<Popover open={open} onOpenChange={setOpen} modal={false}>
-			<PopoverTrigger asChild>
-				<FilterTriggerButton
-					icon={<TagIcon className="size-3.5" />}
-					label="Tags"
-					active={selected.length > 0}
-					badgeCount={selected.length > 0 ? selected.length : undefined}
-				/>
-			</PopoverTrigger>
-			<PopoverContent align="start" className="w-64 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+			<PopoverTrigger
+				render={
+					<FilterTriggerButton
+						icon={<TagIcon className="size-3.5" />}
+						label="Tags"
+						active={selected.length > 0}
+						badgeCount={selected.length > 0 ? selected.length : undefined}
+					/>
+				}
+			/>
+			<PopoverContent align="start" className="w-64 p-0" initialFocus={false}>
 				<div className="flex items-center justify-between px-3 h-10 border-b">
 					<span className="font-medium text-sm">Tags</span>
 					{selected.length > 0 && (
@@ -252,28 +253,22 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 						{availableTags.map((tag) => {
 							const checked = selected.includes(tag);
 							return (
-								<div
+								<button
 									key={tag}
-									role="button"
-									tabIndex={0}
+									type="button"
 									onClick={(e) => {
+										// Keep the popover open so several tags can be picked at once.
 										e.preventDefault();
 										e.stopPropagation();
 										toggle(tag);
 									}}
-									onKeyDown={(e) => {
-										if (e.key === "Enter" || e.key === " ") {
-											e.preventDefault();
-											toggle(tag);
-										}
-									}}
-									className={`flex items-center gap-2.5 py-1.5 px-3 cursor-pointer text-left text-sm ${
+									className={`flex w-full items-center gap-2.5 py-1.5 px-3 cursor-pointer text-left text-sm ${
 										checked ? "bg-accent" : "hover:bg-muted"
 									}`}
 								>
 									<Checkbox checked={checked} className="pointer-events-none" />
 									<span className="capitalize flex-1">{tag}</span>
-								</div>
+								</button>
 							);
 						})}
 					</div>
@@ -295,12 +290,8 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 	const value = urlValue ?? "";
 
 	const [local, setLocal] = useState(value);
-	// `pendingTargetRef` holds the value we're currently pushing to the URL
-	// while the navigation commits. While set, the sync effect ignores the
-	// stale `value` — without this, a re-render that fires after
-	// `setLocal("")` but before the router commits would see `value='abc'`
-	// and snap `local` back to 'abc'. That's what caused the
-	// "empty → abc → empty" flash when clicking the X.
+	// Ignore the URL echo while a local value is being committed; otherwise an
+	// intervening render can restore stale text and make the input flash.
 	const pendingTargetRef = useRef<string | null>(null);
 
 	useEffect(() => {
@@ -315,8 +306,8 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 			setLocal(value);
 			return;
 		}
-		if (value !== local) setLocal(value);
-	}, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+		setLocal(value);
+	}, [value]);
 
 	useEffect(() => {
 		if (local === value) return;
@@ -339,25 +330,24 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 	};
 
 	return (
-		<div className="relative w-full sm:w-64">
-			<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-			<Input
+		<InputGroup className="h-8 sm:w-64">
+			<InputGroupInput
 				value={local}
 				onChange={(e) => setLocal(e.target.value)}
 				placeholder={placeholder}
-				className="h-8 pl-8 pr-8 text-sm"
+				className="h-8 text-sm"
 			/>
+			<InputGroupAddon className="pl-2.5">
+				<Search className="size-3.5" />
+			</InputGroupAddon>
 			{local && (
-				<button
-					type="button"
-					onClick={clear}
-					className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-					aria-label="Clear search"
-				>
-					<X className="h-3.5 w-3.5" />
-				</button>
+				<InputGroupAddon align="inline-end" className="pr-1.5">
+					<InputGroupButton size="icon-xs" onClick={clear} className="cursor-pointer" aria-label="Clear search">
+						<X className="size-3.5" />
+					</InputGroupButton>
+				</InputGroupAddon>
 			)}
-		</div>
+		</InputGroup>
 	);
 }
 

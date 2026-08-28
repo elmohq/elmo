@@ -11,7 +11,7 @@
  * state lives here. The redirect in the loader is UX only; the real gates are
  * the entitlement guards in the server functions.
  */
-import { IconExternalLink, IconLoader2 } from "@tabler/icons-react";
+import { IconExternalLink } from "@tabler/icons-react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { PREMIUM_ADDON_MONTHLY_USD, planDisplayName, summarizeSubscriptionCost } from "@workspace/config/plans";
@@ -24,6 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@work
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Progress } from "@workspace/ui/components/progress";
+import { Spinner } from "@workspace/ui/components/spinner";
 import { type ReactNode, useState } from "react";
 import { PlanComparison } from "@/components/plan-comparison";
 import { buildTitle, getAppName } from "@/lib/route-head";
@@ -38,7 +39,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/billing")({
 	},
 	head: ({ match, loaderData }) => {
 		const appName = getAppName(match);
-		const workspaceName = (loaderData as BillingState | undefined)?.organization.name;
+		const workspaceName = (loaderData as BillingState | undefined)?.organization?.name;
 		return {
 			meta: [
 				{ title: buildTitle("Billing", { appName, subject: workspaceName }) },
@@ -182,7 +183,7 @@ function BillingSettingsPage() {
 									disabled={!isAdmin || busy !== null}
 									onClick={openPortal}
 								>
-									{busy === "portal" ? <IconLoader2 className="h-4 w-4 animate-spin" /> : "Manage"}
+									{busy === "portal" ? <Spinner /> : "Manage"}
 								</Button>
 							) : (
 								<Button
@@ -195,7 +196,7 @@ function BillingSettingsPage() {
 									disabled={!isAdmin || busy !== null}
 									onClick={() => changePlan(plan.key)}
 								>
-									{busy === `plan-${plan.key}` ? <IconLoader2 className="h-4 w-4 animate-spin" /> : "Switch"}
+									{busy === `plan-${plan.key}` ? <Spinner /> : "Switch"}
 								</Button>
 							)
 						}
@@ -230,6 +231,62 @@ function BillingSettingsPage() {
 				</Section>
 			)}
 		</div>
+	);
+}
+
+/**
+ * The plan price is on its card; what is worth stating here is the total, which
+ * an add-on makes different from it.
+ */
+function SubscriptionCost({
+	cost,
+	annual,
+}: {
+	cost: NonNullable<ReturnType<typeof summarizeSubscriptionCost>>;
+	annual: boolean;
+}) {
+	return (
+		<>
+			{cost.lines.length > 1 && (
+				<span className="text-muted-foreground">
+					{cost.lines.map((line) => `${line.label} $${line.amountUsd.toLocaleString()}`).join(" · ")}
+				</span>
+			)}
+			<span>
+				<span className="text-xl font-bold tabular-nums">${cost.totalUsd.toLocaleString()}</span>
+				<span className="text-muted-foreground">{annual ? "/year" : "/month"}</span>
+			</span>
+		</>
+	);
+}
+
+function BillingAction({
+	hasSubscription,
+	isCustomPlan,
+	busy,
+	onOpenPortal,
+	onChoosePlan,
+}: {
+	hasSubscription: boolean;
+	isCustomPlan: boolean;
+	busy: string | null;
+	onOpenPortal: () => void;
+	onChoosePlan: () => void;
+}) {
+	if (hasSubscription) {
+		return (
+			<Button variant="outline" size="sm" onClick={onOpenPortal} disabled={busy !== null}>
+				{busy === "portal" ? <Spinner /> : <IconExternalLink className="h-4 w-4" />}
+				Manage billing
+			</Button>
+		);
+	}
+	// A custom agreement is billed outside self-serve, so there is nothing to buy.
+	if (isCustomPlan) return null;
+	return (
+		<Button size="sm" onClick={onChoosePlan}>
+			Choose a plan
+		</Button>
 	);
 }
 
@@ -292,41 +349,18 @@ function SubscriptionSummary({
 			</div>
 
 			<div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
-				{cost && (
-					<>
-						{/* The plan price is on its card; what is worth stating here is the
-						    total, which an add-on makes different from it. */}
-						{cost.lines.length > 1 && (
-							<span className="text-muted-foreground">
-								{cost.lines.map((line) => `${line.label} $${line.amountUsd.toLocaleString()}`).join(" · ")}
-							</span>
-						)}
-						<span>
-							<span className="text-xl font-bold tabular-nums">${cost.totalUsd.toLocaleString()}</span>
-							<span className="text-muted-foreground">{annual ? "/year" : "/month"}</span>
-						</span>
-					</>
-				)}
+				{cost && <SubscriptionCost cost={cost} annual={annual} />}
 
 				{/* Without the grid there is no current-plan card to hang these off. */}
-				{isAdmin &&
-					!showPlanGrid &&
-					(subscription ? (
-						<Button variant="outline" size="sm" onClick={onOpenPortal} disabled={busy !== null}>
-							{busy === "portal" ? (
-								<IconLoader2 className="h-4 w-4 animate-spin" />
-							) : (
-								<IconExternalLink className="h-4 w-4" />
-							)}
-							Manage billing
-						</Button>
-					) : (
-						entitlements.planKey !== "custom" && (
-							<Button size="sm" onClick={onChoosePlan}>
-								Choose a plan
-							</Button>
-						)
-					))}
+				{isAdmin && !showPlanGrid && (
+					<BillingAction
+						hasSubscription={subscription !== null && subscription !== undefined}
+						isCustomPlan={entitlements.planKey === "custom"}
+						busy={busy}
+						onOpenPortal={onOpenPortal}
+						onChoosePlan={onChoosePlan}
+					/>
+				)}
 
 				{!isAdmin && <span className="text-muted-foreground">Only workspace admins can change the plan.</span>}
 			</div>
@@ -452,7 +486,7 @@ function PremiumAddonCard({
 						/>
 					</div>
 					<Button onClick={save} disabled={!isAdmin || !hasSubscription || !changed || saving}>
-						{saving ? <IconLoader2 className="h-4 w-4 animate-spin" /> : "Update"}
+						{saving ? <Spinner /> : "Update"}
 					</Button>
 				</div>
 				{!hasSubscription && (

@@ -12,42 +12,54 @@
 // Text extraction by provider
 // ============================================================================
 
-export function extractTextFromOpenAI(rawOutput: any): string {
+/**
+ * Stored payloads carry the answer in different places depending on which
+ * provider — and which revision of it — produced the run, so a read probes the
+ * known locations in order. A probe returns null when its shape isn't present.
+ */
+function firstText(emptyMessage: string, probes: Array<() => string | null>): string {
 	try {
-		if (rawOutput?.output && Array.isArray(rawOutput.output)) {
-			const messageOutputs = rawOutput.output.filter((item: any) => item.type === "message");
-			if (messageOutputs.length > 0) {
-				const texts: string[] = [];
-				for (const messageOutput of messageOutputs) {
-					if (messageOutput.content && Array.isArray(messageOutput.content)) {
-						for (const c of messageOutput.content) {
-							if (c.type === "output_text" && c.text) texts.push(c.text);
-						}
-					}
-				}
-				if (texts.length > 0) return texts.join("\n");
-			}
+		for (const probe of probes) {
+			const text = probe();
+			if (text !== null) return text;
 		}
-		if (rawOutput?.choices?.[0]?.message?.content) return rawOutput.choices[0].message.content;
-		if (typeof rawOutput?.text === "string") return rawOutput.text;
-		return "No text content found in OpenAI output.";
+		return emptyMessage;
 	} catch (error) {
-		console.error("Error extracting text from OpenAI output:", error);
+		console.error("Error extracting text content:", error);
 		return "Error extracting text content.";
 	}
 }
 
+/** Non-empty string, or null so the caller falls through to its next probe. */
+function textOrNull(value: unknown): string | null {
+	return typeof value === "string" && value.trim() ? value : null;
+}
+
+function joinText(chunks: unknown[]): string | null {
+	return textOrNull(chunks.filter((chunk) => typeof chunk === "string" && chunk).join("\n"));
+}
+
+/** OpenAI-shaped `output`: message items whose content holds output_text chunks. */
+function openAiOutputText(output: unknown): string | null {
+	return joinText(
+		pluck(byType(asArray(output), "message"), "content")
+			.filter((c: any) => c?.type === "output_text")
+			.map((c: any) => c?.text),
+	);
+}
+
+export function extractTextFromOpenAI(rawOutput: any): string {
+	return firstText("No text content found in OpenAI output.", [
+		() => openAiOutputText(rawOutput?.output),
+		() => textOrNull(rawOutput?.choices?.[0]?.message?.content),
+		() => textOrNull(rawOutput?.text),
+	]);
+}
+
 export function extractTextFromAnthropic(rawOutput: any): string {
-	try {
-		if (rawOutput && Array.isArray(rawOutput.content)) {
-			const textBlocks = rawOutput.content.filter((block: any) => block.type === "text");
-			return textBlocks.map((block: any) => block.text).join("\n");
-		}
-		return "No text content found in Anthropic output.";
-	} catch (error) {
-		console.error("Error extracting text from Anthropic output:", error);
-		return "Error extracting text content.";
-	}
+	return firstText("No text content found in Anthropic output.", [
+		() => joinText(byType(asArray(rawOutput?.content), "text").map((block: any) => block?.text)),
+	]);
 }
 
 export function extractTextFromGoogle(rawOutput: any): string {
@@ -130,12 +142,15 @@ export function extractTextFromDataforseoScraper(rawOutput: any): string {
 		const result = rawOutput?.tasks?.[0]?.result?.[0];
 		const markdown = result?.markdown;
 		if (typeof markdown === "string" && markdown.trim()) return markdown;
-		// Older or partial responses may only populate the per-item blocks.
+		// Older or partial responses may only populate the per-item blocks. They
+		// are separate markdown blocks, so they are joined by a blank line; a
+		// single newline is a soft break, which would render consecutive blocks
+		// as one run-on paragraph.
 		const texts: string[] = [];
 		for (const item of result?.items ?? []) {
 			if (typeof item?.markdown === "string" && item.markdown.trim()) texts.push(item.markdown.trim());
 		}
-		if (texts.length) return texts.join("\n");
+		if (texts.length) return texts.join("\n\n");
 		return "No text content found in DataForSEO Scraper output.";
 	} catch (error) {
 		console.error("Error extracting text from DataForSEO Scraper output:", error);
@@ -151,79 +166,42 @@ export function extractTextFromDataforseoScraper(rawOutput: any): string {
  * cited.
  */
 export function extractCitationsFromDataforseoScraper(rawOutput: any): Citation[] {
-	try {
-		const citations: Citation[] = [];
-		const seen = new Set<string>();
-		let idx = 0;
+	return collectCitations((add) => {
 		const result = rawOutput?.tasks?.[0]?.result?.[0];
-		const sources = [...(result?.sources ?? []), ...(result?.items ?? []).flatMap((i: any) => i?.sources ?? [])];
-		for (const source of sources) {
-			const url = source?.url;
-			if (!url || typeof url !== "string" || !url.startsWith("http")) continue;
-			if (seen.has(url)) continue;
-			seen.add(url);
-			const c = parseCitationUrl(url, source.title, idx);
-			if (c) {
-				citations.push(c);
-				idx++;
-			}
-		}
-		return citations;
-	} catch {
-		return [];
-	}
+		const sources = [...asArray(result?.sources), ...asArray(result?.items).flatMap((i: any) => asArray(i?.sources))];
+		for (const source of sources) add(source?.url, source?.title);
+	});
 }
 
 export function extractTextFromMistral(rawOutput: any): string {
-	try {
+	return firstText("No text content found in Mistral output.", [
 		// Conversations API (web search enabled): outputs[].content[].text chunks.
-		if (Array.isArray(rawOutput?.outputs)) {
-			const texts: string[] = [];
-			for (const entry of rawOutput.outputs) {
-				for (const chunk of entry?.content ?? []) {
-					if (chunk?.type === "text" && typeof chunk.text === "string") texts.push(chunk.text);
-				}
-			}
-			if (texts.length) return texts.join("\n");
-		}
+		() => joinText(byType(pluck(asArray(rawOutput?.outputs), "content"), "text").map((chunk: any) => chunk?.text)),
 		// Chat Completions API (no web search): OpenAI-shaped.
-		if (rawOutput?.choices?.[0]?.message?.content) return rawOutput.choices[0].message.content;
-		return "No text content found in Mistral output.";
-	} catch {
-		return "Error extracting text content.";
-	}
+		() => textOrNull(rawOutput?.choices?.[0]?.message?.content),
+	]);
 }
 
 export function extractTextFromOpenRouter(rawOutput: any): string {
-	try {
-		if (rawOutput?.choices?.[0]?.message?.content) return rawOutput.choices[0].message.content;
-		if (rawOutput?.output && Array.isArray(rawOutput.output)) {
-			const texts: string[] = [];
-			for (const msg of rawOutput.output.filter((i: any) => i.type === "message")) {
-				for (const c of msg.content ?? []) {
-					if (c.type === "output_text" && c.text) texts.push(c.text);
-				}
-			}
-			if (texts.length) return texts.join("\n");
-		}
-		return "No text content found in OpenRouter output.";
-	} catch {
-		return "Error extracting text content.";
-	}
+	return firstText("No text content found in OpenRouter output.", [
+		() => textOrNull(rawOutput?.choices?.[0]?.message?.content),
+		() => openAiOutputText(rawOutput?.output),
+	]);
 }
 
 export function extractTextFromOlostep(rawOutput: any): string {
-	try {
-		const jsonStr = rawOutput?.json_content ?? rawOutput?.result?.json_content;
-		const parsed = typeof jsonStr === "string" ? JSON.parse(jsonStr) : rawOutput;
-		if (parsed?.result?.markdown_content) return parsed.result.markdown_content;
-		if (parsed?.answer_markdown) return parsed.answer_markdown;
-		if (parsed?.result?.text_content) return parsed.result.text_content;
-		if (typeof parsed?.answer === "string") return parsed.answer;
-		return "No text content found in Olostep output.";
-	} catch {
-		return "Error extracting text content.";
-	}
+	return firstText("No text content found in Olostep output.", [
+		() => {
+			const jsonStr = rawOutput?.json_content ?? rawOutput?.result?.json_content;
+			const parsed = typeof jsonStr === "string" ? JSON.parse(jsonStr) : rawOutput;
+			return (
+				textOrNull(parsed?.result?.markdown_content) ??
+				textOrNull(parsed?.answer_markdown) ??
+				textOrNull(parsed?.result?.text_content) ??
+				textOrNull(parsed?.answer)
+			);
+		},
+	]);
 }
 
 // BrightData's SERP `ai_overview.texts` is a tree: paragraph blocks carry a
@@ -231,20 +209,19 @@ export function extractTextFromOlostep(rawOutput: any): string {
 // nest), so walk it depth-first and collect snippets in reading order.
 function collectAioSnippets(node: any, out: string[], depth = 0): void {
 	if (node == null || depth > 8) return;
-	if (Array.isArray(node)) {
-		for (const child of node) collectAioSnippets(child, out, depth + 1);
-		return;
-	}
 	if (typeof node === "string") {
 		if (node.trim()) out.push(node.trim());
 		return;
 	}
-	if (typeof node === "object") {
-		if (typeof node.snippet === "string" && node.snippet.trim()) out.push(node.snippet.trim());
-		else if (typeof node.text === "string" && node.text.trim()) out.push(node.text.trim());
-		for (const key of ["list", "texts", "items", "blocks", "paragraphs"]) {
-			if (Array.isArray(node[key])) collectAioSnippets(node[key], out, depth + 1);
-		}
+	if (Array.isArray(node)) {
+		for (const child of node) collectAioSnippets(child, out, depth + 1);
+		return;
+	}
+	if (typeof node !== "object") return;
+	const snippet = textOrNull(node.snippet) ?? textOrNull(node.text);
+	if (snippet) out.push(snippet.trim());
+	for (const key of ["list", "texts", "items", "blocks", "paragraphs"]) {
+		collectAioSnippets(asArray(node[key]), out, depth + 1);
 	}
 }
 
@@ -260,7 +237,10 @@ function extractBrightdataAiOverviewText(record: any): string | null {
 		if (!Array.isArray(aio[listKey])) continue;
 		const snippets: string[] = [];
 		collectAioSnippets(aio[listKey], snippets);
-		if (snippets.length) return snippets.join("\n");
+		// Each snippet is its own block in the overview, so they are separated by
+		// a blank line; a single newline is a markdown soft break and would render
+		// the whole overview as one run-on paragraph.
+		if (snippets.length) return snippets.join("\n\n");
 	}
 	return null;
 }
@@ -351,7 +331,9 @@ export function extractTextFromCloro(rawOutput: any): string {
 	try {
 		const answer = cloroAnswer(rawOutput);
 		if (!answer) return "No content in Cloro output.";
-		for (const key of ["text", "markdown"]) {
+		// `markdown` first: the AI Overview task is asked for it explicitly, and
+		// `text` is the same answer with its formatting flattened away.
+		for (const key of ["markdown", "text"]) {
 			if (typeof answer[key] === "string" && answer[key].trim()) return answer[key].trim();
 		}
 		return "No text content found in Cloro output.";
@@ -363,7 +345,7 @@ export function extractTextFromCloro(rawOutput: any): string {
 /**
  * Extract text content from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
- * (for old data where provider column may be null).
+ * because persisted runs may not identify a provider.
  */
 export function extractTextContent(rawOutput: any, providerOrEngine: string): string {
 	switch (providerOrEngine) {
@@ -432,31 +414,59 @@ function parseCitationUrl(url: string, title: string | undefined, idx: number): 
 	}
 }
 
-export function extractCitationsFromOpenAI(rawOutput: any): Citation[] {
+type AddCitation = (url: unknown, title?: unknown) => void;
+
+/** Read a payload field that should hold a list but may be missing or malformed. */
+function asArray(value: unknown): any[] {
+	return Array.isArray(value) ? value : [];
+}
+
+function pluck(nodes: any[], ...fields: string[]): any[] {
+	return nodes.flatMap((node) => fields.flatMap((field) => asArray(node?.[field])));
+}
+
+function byType(nodes: any[], type: string): any[] {
+	return nodes.filter((node) => node?.type === type);
+}
+
+/** Source lists mix bare URL strings with objects that name the URL differently. */
+function sourceUrl(item: any, ...fields: string[]): unknown {
+	if (typeof item === "string") return item;
+	return fields.map((field) => item?.[field]).find((value) => typeof value === "string");
+}
+
+/**
+ * The provider extractors below differ only in where the URLs sit inside their
+ * payload — validating, de-duplicating and indexing them is the same work every
+ * time, so it lives here. `traverse` walks the payload and hands each candidate
+ * to `add`; a payload malformed enough to throw yields no citations rather than
+ * failing the run that produced it.
+ */
+function collectCitations(traverse: (add: AddCitation) => void): Citation[] {
+	const citations: Citation[] = [];
+	const seen = new Set<string>();
+	const add: AddCitation = (url, title) => {
+		if (typeof url !== "string" || !url.startsWith("http") || seen.has(url)) return;
+		seen.add(url);
+		const citation = parseCitationUrl(url, typeof title === "string" ? title : undefined, citations.length);
+		if (citation) citations.push(citation);
+	};
 	try {
-		const citations: Citation[] = [];
-		let idx = 0;
-		if (rawOutput?.output && Array.isArray(rawOutput.output)) {
-			for (const msg of rawOutput.output.filter((i: any) => i.type === "message")) {
-				for (const content of msg.content ?? []) {
-					if (content.type === "output_text" && Array.isArray(content.annotations)) {
-						for (const ann of content.annotations) {
-							if (ann.type === "url_citation" && ann.url) {
-								const c = parseCitationUrl(ann.url, ann.title, idx);
-								if (c) {
-									citations.push(c);
-									idx++;
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		return citations;
+		traverse(add);
 	} catch {
 		return [];
 	}
+	return citations;
+}
+
+export function extractCitationsFromOpenAI(rawOutput: any): Citation[] {
+	return collectCitations((add) => {
+		const messages = asArray(rawOutput?.output).filter((message: any) => message?.type === "message");
+		const texts = pluck(messages, "content").filter((content: any) => content?.type === "output_text");
+		for (const annotation of pluck(texts, "annotations")) {
+			if (annotation?.type === "url_citation") add(annotation.url, annotation.title);
+		}
+	});
 }
 
 export function extractCitationsFromGoogle(rawOutput: any): Citation[] {
@@ -464,34 +474,15 @@ export function extractCitationsFromGoogle(rawOutput: any): Citation[] {
 }
 
 export function extractCitationsFromDataforseo(rawOutput: any): Citation[] {
-	try {
-		const citations: Citation[] = [];
-		let idx = 0;
-		const result = rawOutput?.tasks?.[0]?.result?.[0];
-		if (isDataforseoScraperResult(result)) {
-			return extractCitationsFromDataforseoScraper(rawOutput);
-		}
-		const items = result?.items ?? [];
-		// AI Optimization LLM Responses (chatgpt/perplexity/gemini) carry
-		// citations in items[].sections[].annotations[]; delegate when present.
-		if (items.some((item: any) => Array.isArray(item?.sections))) {
-			return extractCitationsFromDataforseoLlm(rawOutput);
-		}
-		for (const aiOverview of items.filter((i: any) => i.type === "ai_overview")) {
-			for (const ref of aiOverview.references ?? []) {
-				if (ref.url) {
-					const c = parseCitationUrl(ref.url, ref.title, idx);
-					if (c) {
-						citations.push(c);
-						idx++;
-					}
-				}
-			}
-		}
-		return citations;
-	} catch {
-		return [];
-	}
+	const result = rawOutput?.tasks?.[0]?.result?.[0];
+	if (isDataforseoScraperResult(result)) return extractCitationsFromDataforseoScraper(rawOutput);
+	const items = asArray(result?.items);
+	// AI Optimization LLM Responses (chatgpt/perplexity/gemini) carry
+	// citations in items[].sections[].annotations[]; delegate when present.
+	if (items.some((item: any) => Array.isArray(item?.sections))) return extractCitationsFromDataforseoLlm(rawOutput);
+	return collectCitations((add) => {
+		for (const reference of pluck(byType(items, "ai_overview"), "references")) add(reference?.url, reference?.title);
+	});
 }
 
 /**
@@ -501,140 +492,52 @@ export function extractCitationsFromDataforseo(rawOutput: any): Citation[] {
  * search ran but cited nothing. Duplicate URLs are de-duped.
  */
 export function extractCitationsFromDataforseoLlm(rawOutput: any): Citation[] {
-	try {
-		const citations: Citation[] = [];
-		const seen = new Set<string>();
-		let idx = 0;
-		const result = rawOutput?.tasks?.[0]?.result?.[0];
-		for (const item of result?.items ?? []) {
-			for (const section of item?.sections ?? []) {
-				for (const ann of section?.annotations ?? []) {
-					const url = ann?.url;
-					if (!url || typeof url !== "string" || !url.startsWith("http")) continue;
-					if (seen.has(url)) continue;
-					seen.add(url);
-					const c = parseCitationUrl(url, ann.title, idx);
-					if (c) {
-						citations.push(c);
-						idx++;
-					}
-				}
-			}
-		}
-		return citations;
-	} catch {
-		return [];
-	}
+	return collectCitations((add) => {
+		const items = asArray(rawOutput?.tasks?.[0]?.result?.[0]?.items);
+		for (const annotation of pluck(pluck(items, "sections"), "annotations")) add(annotation?.url, annotation?.title);
+	});
 }
 
 export function extractCitationsFromMistral(rawOutput: any): Citation[] {
-	try {
-		const citations: Citation[] = [];
-		const seen = new Set<string>();
-		let idx = 0;
-		const outputs = Array.isArray(rawOutput?.outputs) ? rawOutput.outputs : [];
-		for (const entry of outputs) {
-			for (const chunk of entry?.content ?? []) {
-				if (chunk?.type !== "tool_reference" || typeof chunk.url !== "string") continue;
-				if (seen.has(chunk.url)) continue;
-				seen.add(chunk.url);
-				const c = parseCitationUrl(chunk.url, chunk.title, idx);
-				if (c) {
-					citations.push(c);
-					idx++;
-				}
-			}
+	return collectCitations((add) => {
+		for (const chunk of pluck(asArray(rawOutput?.outputs), "content")) {
+			if (chunk?.type === "tool_reference") add(chunk.url, chunk.title);
 		}
-		return citations;
-	} catch {
-		return [];
-	}
+	});
 }
 
 export function extractCitationsFromOpenRouter(rawOutput: any): Citation[] {
-	try {
-		const citations: Citation[] = [];
-		const seen = new Set<string>();
-		let idx = 0;
-		for (const ann of rawOutput?.choices?.[0]?.message?.annotations ?? []) {
-			if (ann?.type !== "url_citation") continue;
-			const cite = ann.url_citation ?? ann;
-			const url = cite.url;
-			if (!url || typeof url !== "string" || !url.startsWith("http")) continue;
-			if (seen.has(url)) continue;
-			seen.add(url);
-			const c = parseCitationUrl(url, cite.title, idx);
-			if (c) {
-				citations.push(c);
-				idx++;
-			}
+	return collectCitations((add) => {
+		for (const annotation of asArray(rawOutput?.choices?.[0]?.message?.annotations)) {
+			if (annotation?.type !== "url_citation") continue;
+			const cite = annotation.url_citation ?? annotation;
+			add(cite?.url, cite?.title);
 		}
-		return citations;
-	} catch {
-		return [];
-	}
+	});
 }
 
 export function extractCitationsFromOlostep(rawOutput: any): Citation[] {
-	try {
+	return collectCitations((add) => {
 		const jsonStr = rawOutput?.json_content ?? rawOutput?.result?.json_content;
 		const parsed = typeof jsonStr === "string" ? JSON.parse(jsonStr) : rawOutput;
-		const citations: Citation[] = [];
-		let idx = 0;
-		for (const source of parsed?.sources ?? parsed?.result?.links_on_page ?? parsed?.inline_references ?? []) {
-			const url = typeof source === "string" ? source : source?.url;
-			if (url && typeof url === "string") {
-				const c = parseCitationUrl(url, source?.title ?? source?.label, idx);
-				if (c) {
-					citations.push(c);
-					idx++;
-				}
-			}
+		const sources = parsed?.sources ?? parsed?.result?.links_on_page ?? parsed?.inline_references;
+		for (const source of asArray(sources)) {
+			if (typeof source === "string") add(source);
+			else add(source?.url, source?.title ?? source?.label);
 		}
-		return citations;
-	} catch {
-		return [];
-	}
+	});
 }
 
 export function extractCitationsFromAnthropic(rawOutput: any): Citation[] {
-	try {
-		const content = rawOutput?.content ?? [];
-		const seen = new Set<string>();
-		const citations: Citation[] = [];
-		let idx = 0;
-
-		for (const block of content) {
-			if (block.type === "text") {
-				for (const cit of block.citations ?? []) {
-					if (cit.type === "web_search_result_location" && cit.url && !seen.has(cit.url)) {
-						seen.add(cit.url);
-						const c = parseCitationUrl(cit.url, cit.title, idx);
-						if (c) {
-							citations.push(c);
-							idx++;
-						}
-					}
-				}
-			}
-			if (block.type === "web_search_tool_result") {
-				for (const result of block.content ?? []) {
-					if (result.type === "web_search_result" && result.url && !seen.has(result.url)) {
-						seen.add(result.url);
-						const c = parseCitationUrl(result.url, result.title, idx);
-						if (c) {
-							citations.push(c);
-							idx++;
-						}
-					}
-				}
-			}
+	return collectCitations((add) => {
+		const blocks = asArray(rawOutput?.content);
+		for (const cit of pluck(byType(blocks, "text"), "citations")) {
+			if (cit?.type === "web_search_result_location") add(cit.url, cit.title);
 		}
-
-		return citations;
-	} catch {
-		return [];
-	}
+		for (const result of pluck(byType(blocks, "web_search_tool_result"), "content")) {
+			if (result?.type === "web_search_result") add(result.url, result.title);
+		}
+	});
 }
 
 // BrightData suffixes AI Overview reference titles with UI noise like
@@ -650,126 +553,53 @@ function stripAioTitleNoise(title: string): string {
 }
 
 export function extractCitationsFromBrightdata(rawOutput: any): Citation[] {
-	try {
+	return collectCitations((add) => {
 		const record = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
-		if (!record) return [];
-		const citations: Citation[] = [];
-		const seen = new Set<string>();
-		let idx = 0;
-		const push = (url: any, title: any) => {
-			if (typeof url !== "string" || !url.startsWith("http") || seen.has(url)) return;
-			seen.add(url);
-			const c = parseCitationUrl(url, typeof title === "string" ? title : undefined, idx);
-			if (c) {
-				citations.push(c);
-				idx++;
-			}
-		};
-		// SERP API (Google AI Overview) lists its sources under `ai_overview`,
-		// where each reference carries the URL as `href` and a title suffixed with
-		// UI noise (". Opens in new tab.") that we trim off.
-		const aio = record.ai_overview;
-		if (aio && typeof aio === "object") {
-			for (const field of ["references", "source_links", "sources", "links"]) {
-				if (!Array.isArray(aio[field])) continue;
-				for (const item of aio[field]) {
-					const url = typeof item === "string" ? item : (item?.href ?? item?.url ?? item?.link);
-					const title = typeof item?.title === "string" ? stripAioTitleNoise(item.title) : item?.name;
-					push(url, title);
-				}
-			}
+		// SERP API (Google AI Overview) lists its sources under `ai_overview`, where
+		// each reference carries the URL as `href` and a title suffixed with UI noise
+		// (". Opens in new tab.") that we trim off.
+		for (const item of pluck([record?.ai_overview], "references", "source_links", "sources", "links")) {
+			const title = typeof item?.title === "string" ? stripAioTitleNoise(item.title) : item?.name;
+			add(sourceUrl(item, "href", "url", "link"), title);
 		}
 		// Chatbot dataset citation fields.
-		for (const field of ["citations", "links_attached", "sources"]) {
-			if (!Array.isArray(record[field])) continue;
-			for (const item of record[field]) {
-				push(typeof item === "string" ? item : item?.url, item?.title);
-			}
+		for (const item of pluck([record], "citations", "links_attached", "sources")) {
+			add(sourceUrl(item, "url"), item?.title);
 		}
-		return citations;
-	} catch {
-		return [];
-	}
+	});
 }
 
 export function extractCitationsFromOxylabs(rawOutput: any): Citation[] {
-	try {
+	return collectCitations((add) => {
 		const content = rawOutput?.results?.[0]?.content;
-		if (!content) return [];
-		const citations: Citation[] = [];
-		const seen = new Set<string>();
-		let idx = 0;
-
-		const pushUrl = (url: any, title: any) => {
-			if (typeof url !== "string" || !url.startsWith("http") || seen.has(url)) return;
-			seen.add(url);
-			const c = parseCitationUrl(url, typeof title === "string" ? title : undefined, idx);
-			if (c) {
-				citations.push(c);
-				idx++;
-			}
-		};
-
 		// Common citation fields across Oxylabs parsed AI sources.
 		// - ChatGPT: top-level `citations` with `{ url, title }`
 		// - Google AI Mode: top-level `citations` with `{ text, urls: [...] }`
 		// - Perplexity: nested under `additional_results.sources_results`
-		const sourceArrays: any[][] = [];
-		for (const field of ["citations", "external_links", "links", "sources"]) {
-			if (Array.isArray(content[field])) sourceArrays.push(content[field]);
-		}
-		const perpSources = content?.additional_results?.sources_results;
-		if (Array.isArray(perpSources)) sourceArrays.push(perpSources);
-
-		for (const arr of sourceArrays) {
-			for (const item of arr) {
-				if (typeof item === "string") {
-					pushUrl(item, undefined);
-				} else if (Array.isArray(item?.urls)) {
-					// Google AI Mode groups one or more source URLs under each citation.
-					for (const u of item.urls) pushUrl(u, item?.title ?? item?.name);
-				} else {
-					pushUrl(item?.url ?? item?.link, item?.title ?? item?.name);
-				}
-			}
+		const sources = pluck([content], "citations", "external_links", "links", "sources").concat(
+			pluck([content?.additional_results], "sources_results"),
+		);
+		for (const item of sources) {
+			const title = item?.title ?? item?.name;
+			// Google AI Mode groups one or more source URLs under each citation.
+			for (const url of asArray(item?.urls)) add(url, title);
+			if (!Array.isArray(item?.urls)) add(sourceUrl(item, "url", "link"), title);
 		}
 
 		// Google AI Overview references hang off each answer fragment, with any
 		// extra sources listed in the overview's source panel.
-		for (const overview of oxylabsAiOverviews(content)) {
-			for (const answer of overview?.answer_text ?? []) {
-				for (const fragment of answer?.fragments ?? []) {
-					for (const ref of fragment?.references ?? []) pushUrl(ref?.url, ref?.source);
-				}
-			}
-			for (const item of overview?.source_panel?.items ?? []) {
-				pushUrl(item?.url ?? item?.link, item?.title ?? item?.source);
-			}
+		const overviews = oxylabsAiOverviews(content);
+		for (const ref of pluck(pluck(pluck(overviews, "answer_text"), "fragments"), "references")) {
+			add(ref?.url, ref?.source);
 		}
-		return citations;
-	} catch {
-		return [];
-	}
+		for (const item of overviews.flatMap((o: any) => asArray(o?.source_panel?.items))) {
+			add(sourceUrl(item, "url", "link"), item?.title ?? item?.source);
+		}
+	});
 }
 
 export function extractCitationsFromCloro(rawOutput: any): Citation[] {
-	try {
-		const answer = cloroAnswer(rawOutput);
-		if (!answer) return [];
-		const citations: Citation[] = [];
-		const seen = new Set<string>();
-		let idx = 0;
-
-		const push = (url: any, title: any) => {
-			if (typeof url !== "string" || !url.startsWith("http") || seen.has(url)) return;
-			seen.add(url);
-			const c = parseCitationUrl(url, typeof title === "string" ? title : undefined, idx);
-			if (c) {
-				citations.push(c);
-				idx++;
-			}
-		};
-
+	return collectCitations((add) => {
 		// `sources` is the answer's reference panel and `citationPills` are the
 		// inline citations (a denormalized subset). Each entry exposes the source
 		// URL as `url` and its title as `label`. AI Overview's `relatedLinks` is
@@ -779,22 +609,16 @@ export function extractCitationsFromCloro(rawOutput: any): Citation[] {
 		// Google's own Shopping deep links do turn up inside these two fields, and
 		// they stay: the citations page splits them out of the source mix by URL
 		// and builds the Google Shopping module from them.
-		for (const field of ["sources", "citationPills"]) {
-			if (!Array.isArray(answer[field])) continue;
-			for (const item of answer[field]) {
-				push(item?.url ?? item?.link, item?.label ?? item?.title);
-			}
+		for (const item of pluck([cloroAnswer(rawOutput)], "sources", "citationPills")) {
+			add(sourceUrl(item, "url", "link"), item?.label ?? item?.title);
 		}
-		return citations;
-	} catch {
-		return [];
-	}
+	});
 }
 
 /**
  * Extract citations from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
- * (for old data where provider column may be null).
+ * because persisted runs may not identify a provider.
  */
 export function extractCitations(rawOutput: any, providerOrEngine: string): Citation[] {
 	switch (providerOrEngine) {

@@ -30,6 +30,7 @@ export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilt
 					webSearchEnabled: filters?.webSearchEnabled?.toString(),
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),
 		enabled: !!resolvedBrandId,

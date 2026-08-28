@@ -12,7 +12,6 @@ import { Separator } from "@workspace/ui/components/separator";
 import { SidebarTrigger } from "@workspace/ui/components/sidebar";
 import { useBrand } from "@/hooks/use-brands";
 
-/** Map of page segments to display names */
 const PAGE_NAMES: Record<string, string> = {
 	visibility: "Visibility",
 	"share-of-voice": "Share of Voice",
@@ -23,8 +22,6 @@ const PAGE_NAMES: Record<string, string> = {
 	brand: "Brand",
 	competitors: "Competitors",
 	llms: "LLMs",
-	members: "Team",
-	billing: "Billing",
 	workflows: "Workflows",
 	tools: "Tools",
 };
@@ -35,20 +32,13 @@ function getPageDisplayName(segment: string): string {
 
 function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 	const segments = pathname.split("/").filter(Boolean);
-	// /admin -> ["admin"]
-	// /admin/workflows -> ["admin", "workflows"]
-	// /admin/tools -> ["admin", "tools"]
-	// /reports -> ["reports"]
 
 	if (segments[0] === "reports") {
-		// /reports/render/[id] - keep existing behavior
 		if (segments.length > 1) {
 			return (
 				<>
 					<BreadcrumbItem className="hidden md:block">
-						<BreadcrumbLink asChild>
-							<Link to="/reports">Reports</Link>
-						</BreadcrumbLink>
+						<BreadcrumbLink render={<Link to="/reports" />}>Reports</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
 					<BreadcrumbItem>
@@ -57,7 +47,6 @@ function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 				</>
 			);
 		}
-		// /reports
 		return (
 			<>
 				<BreadcrumbItem className="hidden md:block">
@@ -71,7 +60,6 @@ function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 		);
 	}
 
-	// /admin - show Admin > Brands
 	if (segments.length === 1) {
 		return (
 			<>
@@ -86,7 +74,6 @@ function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 		);
 	}
 
-	// /admin/workflows, /admin/tools, etc.
 	const subPage = segments[1];
 	return (
 		<>
@@ -118,47 +105,32 @@ function BrandBreadcrumbs({
 	const pageSegment = segments[BRAND_PAGE_INDEX] ?? "";
 	const subSegment = segments[BRAND_SUBPAGE_INDEX] ?? "";
 
-	// Check if we're on a specific prompt detail page (e.g., .../prompts/uuid)
 	const isPromptDetailPage =
 		pageSegment === "prompts" &&
 		subSegment &&
 		subSegment !== "edit" &&
 		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subSegment);
 
-	// Check if we're on an edit page
 	const isEditPage = pathname.endsWith("/edit");
-
-	// Settings sub-pages: /app/org/$org/brand/$brand/settings/brand, .../settings/competitors, etc.
 	const isSettingsSubPage = pageSegment === "settings" && subSegment;
-
-	// Determine page name
 	const pageName = pageSegment ? getPageDisplayName(pageSegment) : "Overview";
+	const brandParams = org && brand ? { org, brand } : null;
 
 	return (
 		<>
 			<BreadcrumbItem className="hidden md:block">
-				<BreadcrumbLink asChild>
-					{org && brand ? (
-						<Link to="/app/org/$org/brand/$brand" params={{ org, brand }}>
-							{brandName}
-						</Link>
-					) : (
-						<span>{brandName}</span>
-					)}
+				<BreadcrumbLink render={brandParams ? <Link to="/app/org/$org/brand/$brand" params={brandParams} /> : <span />}>
+					{brandName}
 				</BreadcrumbLink>
 			</BreadcrumbItem>
 			<BreadcrumbSeparator className="hidden md:block" />
 			{isPromptDetailPage ? (
 				<>
 					<BreadcrumbItem className="hidden md:block">
-						<BreadcrumbLink asChild>
-							{org && brand ? (
-								<Link to="/app/org/$org/brand/$brand/visibility" params={{ org, brand }}>
-									Visibility
-								</Link>
-							) : (
-								<span>Visibility</span>
-							)}
+						<BreadcrumbLink
+							render={brandParams ? <Link to="/app/org/$org/brand/$brand/visibility" params={brandParams} /> : <span />}
+						>
+							Visibility
 						</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
@@ -179,9 +151,7 @@ function BrandBreadcrumbs({
 			) : isEditPage ? (
 				<>
 					<BreadcrumbItem className="hidden md:block">
-						<BreadcrumbLink asChild>
-							<Link to={pathname.slice(0, -5)}>{pageName}</Link>
-						</BreadcrumbLink>
+						<BreadcrumbLink render={<Link to={pathname.slice(0, -5)} />}>{pageName}</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
 					<BreadcrumbItem>
@@ -212,11 +182,7 @@ function WorkspaceSettingsBreadcrumbs({ pathname, org }: { pathname: string; org
 	return (
 		<>
 			<BreadcrumbItem className="hidden md:block">
-				<BreadcrumbLink asChild>
-					<Link to="/app/org/$org/settings" params={{ org }}>
-						Settings
-					</Link>
-				</BreadcrumbLink>
+				<BreadcrumbLink render={<Link to="/app/org/$org/settings" params={{ org }} />}>Settings</BreadcrumbLink>
 			</BreadcrumbItem>
 			<BreadcrumbSeparator className="hidden md:block" />
 			<BreadcrumbItem>
@@ -237,7 +203,7 @@ function WorkspaceSettingsBreadcrumbs({ pathname, org }: { pathname: string; org
 export function SiteHeader({ title, workspaceName }: { title?: string; workspaceName?: string } = {}) {
 	const { brand } = useBrand();
 	const { pathname } = useLocation();
-	const params = useParams({ strict: false }) as { org?: string; brand?: string };
+	const params = useParams({ strict: false, select: ({ org, brand: brandSegment }) => ({ org, brand: brandSegment }) });
 
 	const isAdminPage = pathname.startsWith("/admin") || pathname.startsWith("/reports");
 
@@ -253,10 +219,8 @@ export function SiteHeader({ title, workspaceName }: { title?: string; workspace
 						{params.org && !isAdminPage && (
 							<>
 								<BreadcrumbItem className="hidden md:block">
-									<BreadcrumbLink asChild>
-										<Link to="/app/org/$org" params={{ org: params.org }}>
-											{workspaceName ?? params.org}
-										</Link>
+									<BreadcrumbLink render={<Link to="/app/org/$org" params={{ org: params.org }} />}>
+										{workspaceName ?? params.org}
 									</BreadcrumbLink>
 								</BreadcrumbItem>
 								<BreadcrumbSeparator className="hidden md:block" />

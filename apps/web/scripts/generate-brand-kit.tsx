@@ -23,7 +23,7 @@
  * Usage:
  *   pnpm --filter @workspace/web generate-brand-kit
  */
-import { readFileSync, createWriteStream } from "node:fs";
+import { createWriteStream, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -68,10 +68,6 @@ const fonts = [
 		weight: 500 as const,
 	},
 ];
-
-// ---------------------------------------------------------------------------
-// Render helper
-// ---------------------------------------------------------------------------
 
 async function render(element: React.ReactElement, width: number, height: number): Promise<Buffer> {
 	return Buffer.from(await renderOgPng(element, { width, height, fonts }));
@@ -288,10 +284,6 @@ function OgImage({ title }: { title: string }) {
 		</div>
 	);
 }
-
-// ---------------------------------------------------------------------------
-// Generate all assets
-// ---------------------------------------------------------------------------
 
 const files: { name: string; data: Buffer }[] = [];
 

@@ -51,9 +51,8 @@ export const brands = pgTable(
 		enabledModels: text("enabled_models").array(),
 		// Hard tenancy scope. Every brand belongs to exactly one better-auth
 		// organization; org membership (the `member` table) is the access-control
-		// mechanism — see apps/web/src/lib/auth/helpers.ts. Historically `brand.id`
-		// equalled `organization.id`; the 0010 backfill makes that mapping explicit
-		// so cloud entitlements/metering/enforcement can join on it.
+		// mechanism. Brand and organization ids are independent, so billing and
+		// entitlement joins must use this key.
 		organizationId: text("organization_id")
 			.references(() => organization.id)
 			.notNull(),

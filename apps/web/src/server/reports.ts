@@ -1,14 +1,11 @@
-/**
- * Server functions for report operations.
- * Replaces apps/web/src/app/api/reports/route.ts
- */
+/** Server functions for report operations. */
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireAuthSession, hasReportAccess } from "@/lib/auth/helpers";
-import { cleanOnboardingUrl } from "@workspace/lib/onboarding";
 import { db } from "@workspace/lib/db/db";
-import { reports, type NewReport } from "@workspace/lib/db/schema";
+import { type NewReport, reports } from "@workspace/lib/db/schema";
+import { cleanOnboardingUrl } from "@workspace/lib/onboarding";
 import { desc, eq } from "drizzle-orm";
+import { z } from "zod";
+import { hasReportAccess, requireAuthSession } from "@/lib/auth/helpers";
 import { sendReportJob } from "@/lib/job-scheduler";
 
 async function requireReportAccess() {
@@ -16,9 +13,6 @@ async function requireReportAccess() {
 	if (!hasReportAccess(session)) throw new Error("Access denied. Report generator access required.");
 }
 
-/**
- * Get all reports
- */
 export const getReportsFn = createServerFn({ method: "GET" }).handler(async () => {
 	await requireReportAccess();
 
@@ -36,9 +30,6 @@ export const getReportsFn = createServerFn({ method: "GET" }).handler(async () =
 		.orderBy(desc(reports.createdAt));
 });
 
-/**
- * Get a single report by ID (includes rawOutput for rendering)
- */
 export const getReportByIdFn = createServerFn({ method: "GET" })
 	.validator(z.object({ reportId: z.string() }))
 	.handler(async ({ data }) => {
@@ -50,9 +41,6 @@ export const getReportByIdFn = createServerFn({ method: "GET" })
 		return { ...report, rawOutput: report.rawOutput as {} | null };
 	});
 
-/**
- * Create a new report and queue generation job
- */
 export const createReportFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -69,7 +57,6 @@ export const createReportFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		await requireReportAccess();
 
-		// Parse manual prompts
 		const parsedManualPrompts: string[] = [];
 		if (data.manualPrompts?.trim()) {
 			parsedManualPrompts.push(
@@ -80,7 +67,6 @@ export const createReportFn = createServerFn({ method: "POST" })
 			);
 		}
 
-		// Create report
 		const newReport: NewReport = {
 			brandName: data.brandName.trim(),
 			// Full path is kept — it's what the analysis reads — but credentials
@@ -93,7 +79,6 @@ export const createReportFn = createServerFn({ method: "POST" })
 		const createdReport = result[0];
 		if (!createdReport) throw new Error("Failed to create report");
 
-		// Queue job
 		try {
 			const success = await sendReportJob(
 				createdReport.id,

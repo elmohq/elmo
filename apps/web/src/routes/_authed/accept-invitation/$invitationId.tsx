@@ -8,7 +8,7 @@
  */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
-import { Button } from "@workspace/ui/components/button";
+import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { acceptInvitationFn, getInvitationFn } from "@/server/team";
@@ -45,9 +45,9 @@ function AcceptInvitationPage() {
 					<p className="text-sm text-muted-foreground text-center">
 						Make sure you're signed in with the email address that received this invitation.
 					</p>
-					<Button variant="outline" className="w-full" asChild>
-						<Link to="/auth/logout">Switch account</Link>
-					</Button>
+					<Link to="/auth/logout" className={buttonVariants({ variant: "outline", className: "w-full" })}>
+						Switch account
+					</Link>
 				</div>
 			</FullPageCard>
 		);

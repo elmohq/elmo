@@ -22,8 +22,8 @@ interface ChartActionsFooterProps {
 	// For optimization
 	/** Current model filter ("all" = no filter). */
 	selectedModel?: string;
-	/** Concrete model ids this brand runs — no "all" sentinel. */
-	availableModels?: string[];
+	/** The targets this brand runs, as filter values — no "all" sentinel. */
+	availableModels: string[];
 	lookback?: LookbackPeriod;
 }
 
@@ -34,7 +34,7 @@ export function ChartActionsFooter({
 	onDownload,
 	isDownloading = false,
 	selectedModel = "all",
-	availableModels = [],
+	availableModels,
 	lookback = "1m",
 }: ChartActionsFooterProps) {
 	const isSinglePrompt = Boolean(promptId && brandId);

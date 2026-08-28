@@ -34,7 +34,13 @@ export async function canCreateBrandIn(organizationId: string): Promise<boolean>
 /** The brands a workspace owns, in the order every list of them uses. */
 export async function listWorkspaceBrands(organizationId: string): Promise<WorkspaceBrand[]> {
 	return db
-		.select({ id: brands.id, slug: brands.slug, name: brands.name, onboarded: brands.onboarded })
+		.select({
+			id: brands.id,
+			slug: brands.slug,
+			name: brands.name,
+			website: brands.website,
+			onboarded: brands.onboarded,
+		})
 		.from(brands)
 		.where(eq(brands.organizationId, organizationId))
 		.orderBy(asc(brands.name));

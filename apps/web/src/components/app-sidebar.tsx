@@ -21,6 +21,7 @@ import { Link, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { brandPath } from "@workspace/lib/app-urls";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
+
 import {
 	Sidebar,
 	SidebarContent,
@@ -68,6 +69,149 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
 	hasReportAccess?: boolean;
 } & ScopeProps;
 
+function buildNavGroups(args: {
+	scope: SidebarScope;
+	brand: BrandWithPrompts | null;
+	workspace: WorkspaceSummary | null;
+	isAdmin: boolean;
+	showAdminSection: boolean;
+	reportsEnabled: boolean;
+	features?: ClientConfig["features"];
+}): NavGroup[] {
+	const { scope, brand, workspace, isAdmin, showAdminSection, reportsEnabled, features } = args;
+	return [
+		// Without a brand in scope, the brands themselves are the way back into
+		// the dashboard the user came from.
+		...(scope === "workspace" && workspace ? [workspaceBrandsGroup(workspace)] : []),
+		// Only a brand context has a dashboard; a gate page has no destinations.
+		...(scope === "brand" ? brandGroups(brand) : []),
+		...(workspace ? [workspaceGroup(workspace, features)] : []),
+		...(showAdminSection ? [adminGroup(isAdmin, reportsEnabled)] : []),
+	];
+}
+
+function workspaceBrandsGroup(workspace: WorkspaceSummary): NavGroup {
+	return {
+		label: "Brands",
+		items: workspace.brands.map((brand) => ({
+			title: brand.name,
+			url: brandPath(workspace, brand),
+			icon: IconDashboard,
+			base: "absolute" as const,
+		})),
+	};
+}
+
+/**
+ * What the brand belongs to rather than what it is, so its entries live apart
+ * from the brand's own and are labelled with the workspace's name.
+ */
+function workspaceGroup(workspace: WorkspaceSummary, features?: ClientConfig["features"]): NavGroup {
+	return {
+		label: `Workspace · ${workspace.name}`,
+		items: [
+			{ title: "General", url: "/settings", icon: IconBuildingSkyscraper, base: "workspace" },
+			...(features?.teamInvites
+				? [{ title: "Team", url: "/settings/members", icon: IconUsers, base: "workspace" as const }]
+				: []),
+			...(features?.billing
+				? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard, base: "workspace" as const }]
+				: []),
+		],
+	};
+}
+
+function brandGroups(brand: BrandWithPrompts | null): NavGroup[] {
+	const groups: NavGroup[] = [];
+	const dashboardItems = [
+		{
+			title: "Overview",
+			url: "/",
+			icon: IconDashboard,
+		},
+	];
+
+	if (brand?.onboarded) {
+		dashboardItems.push(
+			{
+				title: "Visibility",
+				url: "/visibility",
+				icon: IconChartBar,
+			},
+			{
+				title: "Share of Voice",
+				url: "/share-of-voice",
+				icon: IconSpeakerphone,
+			},
+			{
+				title: "Query Fan-Out",
+				url: "/query-fan-out",
+				icon: IconSitemap,
+			},
+			{
+				title: "Citations",
+				url: "/citations",
+				icon: IconLink,
+			},
+			{
+				title: "Opportunities",
+				url: "/opportunities",
+				icon: IconTarget,
+			},
+		);
+	}
+
+	groups.push({
+		label: "Dashboard",
+		items: dashboardItems,
+	});
+
+	if (brand?.onboarded) {
+		groups.push({
+			label: "Brand settings",
+			items: [
+				{
+					title: "Brand",
+					url: "/settings/brand",
+					icon: IconBuilding,
+				},
+				{
+					title: "Competitors",
+					url: "/settings/competitors",
+					icon: IconBuildings,
+				},
+				{
+					title: "Prompts",
+					url: "/settings/prompts",
+					icon: IconListDetails,
+				},
+				{
+					title: "LLMs",
+					url: "/settings/llms",
+					icon: IconCpu,
+				},
+			],
+		});
+	}
+
+	return groups;
+}
+
+function adminGroup(isAdmin: boolean, reportsEnabled: boolean): NavGroup {
+	const reportsItem: NavItem = { title: "Reports", url: "/reports", icon: IconReport, base: "absolute" };
+	if (!isAdmin) return { label: "Admin", items: [reportsItem] };
+
+	return {
+		label: "Admin",
+		items: [
+			{ title: "Brands", url: "/admin", icon: IconTable, base: "absolute" as const },
+			...(reportsEnabled ? [reportsItem] : []),
+			{ title: "Workflows", url: "/admin/workflows", icon: IconTimeline, base: "absolute" as const },
+			{ title: "Tools", url: "/admin/tools", icon: IconTool, base: "absolute" as const },
+		],
+	};
+}
+
 export function AppSidebar(props: AppSidebarProps) {
 	const { isAdmin = false, hasReportAccess = false, scope, ...sidebarProps } = props;
 	const { setOpenMobile } = useSidebar();
@@ -75,8 +219,8 @@ export function AppSidebar(props: AppSidebarProps) {
 	// Reports are disabled entirely in cloud; hide the nav entry there.
 	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
 
-	// Present exactly when the rail is inside a workspace, so it stands in for
-	// the old `inWorkspace` flag and carries the narrowing with it.
+	// Present exactly when the rail is inside a workspace, so it stands in for an
+	// `inWorkspace` flag and carries the narrowing with it.
 	const workspace = props.scope === "brand" || props.scope === "workspace" ? props.workspace : null;
 	const brand = props.scope === "brand" ? props.brand : null;
 
@@ -84,154 +228,15 @@ export function AppSidebar(props: AppSidebarProps) {
 	// the user straight back to the gate.
 	const showAdminSection = scope !== "account" && (isAdmin || (hasReportAccess && reportsEnabled));
 
-	const groups: NavGroup[] = [];
-
-	// Without a brand in scope, the brands themselves are the way back into the
-	// dashboard the user came from.
-	if (props.scope === "workspace") {
-		groups.push({
-			label: "Brands",
-			items: props.workspace.brands.map((b) => ({
-				title: b.name,
-				url: brandPath(props.workspace, b),
-				icon: IconDashboard,
-				base: "absolute" as const,
-			})),
-		});
-	}
-
-	// Dashboard section - only show if we have a brand context
-	if (scope === "brand") {
-		const dashboardItems = [
-			{
-				title: "Overview",
-				url: "/",
-				icon: IconDashboard,
-			},
-		];
-
-		// Only show Visibility and Citations if the brand is onboarded
-		if (brand?.onboarded) {
-			dashboardItems.push(
-				{
-					title: "Visibility",
-					url: "/visibility",
-					icon: IconChartBar,
-				},
-				{
-					title: "Share of Voice",
-					url: "/share-of-voice",
-					icon: IconSpeakerphone,
-				},
-				{
-					title: "Query Fan-Out",
-					url: "/query-fan-out",
-					icon: IconSitemap,
-				},
-				{
-					title: "Citations",
-					url: "/citations",
-					icon: IconLink,
-				},
-				{
-					title: "Opportunities",
-					url: "/opportunities",
-					icon: IconTarget,
-				},
-			);
-		}
-
-		groups.push({
-			label: "Dashboard",
-			items: dashboardItems,
-		});
-
-		// Settings section - only show if onboarded
-		if (brand?.onboarded) {
-			groups.push({
-				label: "Brand settings",
-				items: [
-					{
-						title: "Brand",
-						url: "/settings/brand",
-						icon: IconBuilding,
-					},
-					{
-						title: "Competitors",
-						url: "/settings/competitors",
-						icon: IconBuildings,
-					},
-					{
-						title: "Prompts",
-						url: "/settings/prompts",
-						icon: IconListDetails,
-					},
-					{
-						title: "LLMs",
-						url: "/settings/llms",
-						icon: IconCpu,
-					},
-				],
-			});
-		}
-	}
-
-	// Workspace section — what the brand belongs to rather than what it is, so
-	// its entries live apart from the brand's own and are labelled with the
-	// workspace's name.
-	if (workspace) {
-		groups.push({
-			label: `Workspace · ${workspace.name}`,
-			items: [
-				{ title: "General", url: "/settings", icon: IconBuildingSkyscraper, base: "workspace" as const },
-				...(context.clientConfig?.features.teamInvites
-					? [{ title: "Team", url: "/settings/members", icon: IconUsers, base: "workspace" as const }]
-					: []),
-				...(context.clientConfig?.features.billing
-					? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard, base: "workspace" as const }]
-					: []),
-			],
-		});
-	}
-
-	// Admin section
-	if (showAdminSection) {
-		const reportsItem: NavItem = {
-			title: "Reports",
-			url: "/reports",
-			icon: IconReport,
-			base: "absolute",
-		};
-		const adminItems = isAdmin
-			? [
-					{
-						title: "Brands",
-						url: "/admin",
-						icon: IconTable,
-						base: "absolute" as const,
-					},
-					...(reportsEnabled ? [reportsItem] : []),
-					{
-						title: "Workflows",
-						url: "/admin/workflows",
-						icon: IconTimeline,
-						base: "absolute" as const,
-					},
-					{
-						title: "Tools",
-						url: "/admin/tools",
-						icon: IconTool,
-						base: "absolute" as const,
-					},
-				]
-			: [reportsItem];
-
-		groups.push({
-			label: "Admin",
-			items: adminItems,
-		});
-	}
-
+	const groups = buildNavGroups({
+		scope,
+		brand,
+		workspace,
+		isAdmin,
+		showAdminSection,
+		reportsEnabled,
+		features: context.clientConfig?.features,
+	});
 	const brandmark = (
 		<>
 			<Logo iconClassName="!size-5" />
@@ -251,10 +256,8 @@ export function AppSidebar(props: AppSidebarProps) {
 						{scope === "account" ? (
 							<div className="flex items-center gap-2 p-2">{brandmark}</div>
 						) : (
-							<SidebarMenuButton asChild>
-								<Link to="/app" onClick={() => setOpenMobile(false)}>
-									{brandmark}
-								</Link>
+							<SidebarMenuButton size="lg" render={<Link to="/app" onClick={() => setOpenMobile(false)} />}>
+								{brandmark}
 							</SidebarMenuButton>
 						)}
 					</SidebarMenuItem>

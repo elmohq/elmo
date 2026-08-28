@@ -23,16 +23,26 @@ import { SiteHeader } from "@/components/site-header";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { getAppName } from "@/lib/route-head";
+import type { WorkspaceRouteContext } from "@/lib/workspaces/types";
 
-interface BrandRouteData {
+interface BrandData {
 	brand: BrandWithPrompts;
 	/** The org that must be subscribed before this brand renders; null when nothing is owed. */
 	unpaidOrganizationId: string | null;
 }
 
+/**
+ * What the layout renders from. The workspace and the two session facts come
+ * from the route context the workspace layout resolved, but they are returned
+ * through the loader rather than read from context in the component: a
+ * `beforeLoad` re-runs on every navigation, so a component reading its result
+ * directly sees `undefined` for as long as that round trip takes.
+ */
+interface BrandRouteData extends BrandData, WorkspaceRouteContext {}
+
 const getBrandData = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string(), brandId: z.string() }))
-	.handler(async ({ data }): Promise<BrandRouteData> => {
+	.handler(async ({ data }): Promise<BrandData> => {
 		const session = await requireAuthSession();
 		// The layout resolved this brand inside a workspace the caller belongs to,
 		// but a server function is reachable on its own — so membership is checked
@@ -136,11 +146,16 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 			throw redirect({ to: "/choose-plan", search: { org: result.unpaidOrganizationId } });
 		}
 
-		return result;
+		return {
+			...result,
+			workspace: context.workspace,
+			isAdmin: context.isAdmin,
+			hasReportAccess: context.hasReportAccess,
+		};
 	},
 	head: ({ match, loaderData }) => {
 		const appName = getAppName(match);
-		const brandName = (loaderData as BrandRouteData | undefined)?.brand.name;
+		const brandName = (loaderData as BrandRouteData | undefined)?.brand?.name;
 		return {
 			meta: [
 				{ title: brandName ? `${brandName} · ${appName}` : appName },
@@ -158,8 +173,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 });
 
 function BrandLayout() {
-	const { workspace, isAdmin, hasReportAccess } = Route.useRouteContext();
-	const { brand } = Route.useLoaderData();
+	const { brand, workspace, isAdmin, hasReportAccess } = Route.useLoaderData();
 
 	return (
 		<AppShell

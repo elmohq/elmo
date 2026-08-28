@@ -13,8 +13,8 @@
  */
 import { db } from "@workspace/lib/db/db";
 import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { eq, and } from "drizzle-orm";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { and, eq } from "drizzle-orm";
 
 export interface ResolvedPrompt {
 	id: string;
@@ -69,8 +69,6 @@ export async function resolveFilteredPrompts(
 				if (!tagFilter.some((t) => effectiveTags.includes(t))) return false;
 			}
 
-			// Search filter — previously applied in the browser against the
-			// prompt text (case-insensitive substring).
 			if (search && !p.value.toLowerCase().includes(search.toLowerCase())) return false;
 
 			return true;

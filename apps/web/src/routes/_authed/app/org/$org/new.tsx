@@ -18,7 +18,7 @@
 import { createFileRoute, Link, redirect, useNavigate, useRouter } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { checkBrandCreate, type EntitlementDenialCode } from "@workspace/lib/entitlements";
-import { Button } from "@workspace/ui/components/button";
+import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
@@ -153,11 +153,9 @@ function NewBrandPage() {
 				subtitle={blocked.message}
 				showBackButton
 			>
-				<Button asChild className="w-full">
-					<Link to="/app/org/$org/settings/billing" params={{ org }}>
-						Go to billing
-					</Link>
-				</Button>
+				<Link to="/app/org/$org/settings/billing" params={{ org }} className={buttonVariants({ className: "w-full" })}>
+					Go to billing
+				</Link>
 			</FullPageCard>
 		);
 	}

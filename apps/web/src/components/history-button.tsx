@@ -1,4 +1,5 @@
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
+import { cn } from "@workspace/ui/lib/utils";
 import { GoStack } from "react-icons/go";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
 import { useBrandParams } from "@/hooks/use-workspaces";
@@ -17,11 +18,16 @@ export function HistoryButton({ promptId, tab }: HistoryButtonProps) {
 	if (!brandParams || !promptId) return null;
 
 	return (
-		<Button size="sm" variant="secondary" className="text-xs cursor-pointer h-6 flex items-center px-2" asChild>
-			<BrandPromptLink promptId={promptId} search={tab ? { tab } : undefined}>
-				<GoStack className="size-3 mr-0.5" />
-				<span className="text-xs font-normal">View Details</span>
-			</BrandPromptLink>
-		</Button>
+		<BrandPromptLink
+			promptId={promptId}
+			search={tab ? { tab } : undefined}
+			className={cn(
+				buttonVariants({ variant: "secondary", size: "sm" }),
+				"text-xs cursor-pointer h-6 flex items-center px-2",
+			)}
+		>
+			<GoStack className="size-3 mr-0.5" />
+			<span className="text-xs font-normal">View Details</span>
+		</BrandPromptLink>
 	);
 }

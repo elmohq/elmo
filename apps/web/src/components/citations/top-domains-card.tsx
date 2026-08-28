@@ -1,6 +1,6 @@
 import { IconInfoCircle, IconSearch } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Input } from "@workspace/ui/components/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useMemo, useState } from "react";
@@ -9,6 +9,7 @@ import { TrackDomainPopover } from "@/components/citations/track-domain-popover"
 import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 import { DOMAIN_CATEGORY_COLORS, ProgressBarChart } from "@/components/progress-bar-chart";
+import { SiteIcon } from "@/components/site-icon";
 
 export function TopDomainsCard({
 	domains,
@@ -52,9 +53,7 @@ export function TopDomainsCard({
 						<CardTitle className="flex items-center gap-1.5">
 							Top Cited Domains
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-								</TooltipTrigger>
+								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-sm font-normal">
 									The most frequently cited domains across all prompt evaluations. Each domain is colored by its
 									category (brand, competitor, etc.).
@@ -63,18 +62,20 @@ export function TopDomainsCard({
 						</CardTitle>
 						<CardDescription>Which domains LLMs reference most when responding to your prompts</CardDescription>
 					</div>
-					<div className="relative w-full sm:w-48 shrink-0">
-						<IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-						<Input
+					<InputGroup className="h-8 shrink-0 sm:w-48">
+						<InputGroupInput
 							placeholder="Search domains..."
 							value={domainSearch}
 							onChange={(e) => {
 								setDomainSearch(e.target.value);
 								setPage(0);
 							}}
-							className="h-8 pl-8 text-xs"
+							className="h-8 text-xs"
 						/>
-					</div>
+						<InputGroupAddon className="pl-2.5">
+							<IconSearch className="size-3.5" />
+						</InputGroupAddon>
+					</InputGroup>
 				</div>
 			</CardHeader>
 			<Separator />
@@ -100,6 +101,7 @@ export function TopDomainsCard({
 							items={pageItems.map((domain) => ({
 								label: domain.domain,
 								count: domain.count,
+								icon: <SiteIcon domain={domain.domain} size="md" />,
 								category: domain.category || "other",
 								action:
 									domain.category === "other" && brandId && competitors ? (

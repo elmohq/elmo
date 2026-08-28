@@ -84,9 +84,7 @@ function WorkspacePickerPage() {
 							</Link>
 							<span className="text-xs text-muted-foreground">{workspacePath(workspace)}</span>
 						</div>
-						<div className="flex flex-col space-y-2">
-							<WorkspaceBrandList workspace={workspace} />
-						</div>
+						<WorkspaceBrandList workspace={workspace} />
 					</div>
 				))}
 			</div>

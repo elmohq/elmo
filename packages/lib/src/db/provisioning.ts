@@ -15,6 +15,7 @@
  * silently rewriting rows.
  */
 import { and, count, eq, or } from "drizzle-orm";
+import { MAX_SLUG_LENGTH } from "../app-urls";
 import { db } from "./db";
 import { brands, member, organization, user } from "./schema";
 
@@ -92,21 +93,6 @@ export function slugify(name: string): string {
 	while (end > start && cleaned[end - 1] === "-") end--;
 	const slug = cleaned.slice(start, end);
 	return slug || "brand";
-}
-
-/**
- * Whether a user-supplied slug is shaped like one `slugify` would produce:
- * lowercase alphanumerics and interior hyphens, bounded so a slug always reads
- * as a URL segment rather than a paragraph.
- *
- * Availability is a separate question — see `isOrgSlugAvailable` and
- * `isBrandSlugAvailable`, which is where the id namespace gets consulted.
- */
-export const MAX_SLUG_LENGTH = 48;
-
-export function isValidSlug(slug: string): boolean {
-	if (slug.length === 0 || slug.length > MAX_SLUG_LENGTH) return false;
-	return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
 }
 
 /**
@@ -263,3 +249,7 @@ export async function provisionUmbrellaOrg(input: { userId: string; name: string
 
 	return { orgId };
 }
+
+// Re-exported so the server-side slug helpers above and their callers keep one
+// import site; the rules themselves are pure and live with the URL shape.
+export { isValidSlug, MAX_SLUG_LENGTH } from "../app-urls";

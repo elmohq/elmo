@@ -108,7 +108,7 @@ function QueryFanoutPage() {
 		// Runs happened but none exposed fan-out — still show the KPIs (run counts)
 		// above the explanation rather than hiding everything.
 		content = (
-			<TooltipProvider delayDuration={150}>
+			<TooltipProvider delay={150}>
 				<div className="space-y-6">
 					<StatRow data={data} />
 					<EmptyState message="No web queries in this period — the engines you track didn't expose any searches for these prompts and filters." />
@@ -117,7 +117,7 @@ function QueryFanoutPage() {
 		);
 	} else {
 		content = (
-			<TooltipProvider delayDuration={150}>
+			<TooltipProvider delay={150}>
 				<div className="space-y-6">
 					<StatRow data={data} />
 					<Tabs value={tab} onValueChange={(v) => setTab(v as FanoutTab)} className="gap-4">

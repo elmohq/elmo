@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { isValidSlug, MAX_SLUG_LENGTH, slugify } from "./provisioning";
+import { isValidSlug, MAX_SLUG_LENGTH } from "../app-urls";
+import { slugify } from "./provisioning";
 
 describe("slugify", () => {
 	it("lowercases", () => {

@@ -20,7 +20,7 @@ import { PREMIUM_MODELS, PREMIUM_RUNS_PER_DAY, premiumModelLabel } from "@worksp
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { cn } from "@workspace/ui/lib/utils";
 import { useState } from "react";
@@ -256,12 +256,14 @@ function UpgradePanel({ options, org }: { options: ModelPickerState["upgradeOpti
 					</div>
 				))}
 			</div>
-			<Button asChild size="sm" variant="outline">
-				<Link to="/app/org/$org/settings/billing" params={{ org }}>
-					Compare plans
-					<IconArrowUpRight className="h-4 w-4" />
-				</Link>
-			</Button>
+			<Link
+				to="/app/org/$org/settings/billing"
+				params={{ org }}
+				className={buttonVariants({ variant: "outline", size: "sm" })}
+			>
+				Compare plans
+				<IconArrowUpRight className="h-4 w-4" />
+			</Link>
 		</div>
 	);
 }
@@ -338,17 +340,21 @@ function PremiumApiPool({ premium }: { premium: PremiumPool }) {
 				</p>
 
 				<div className="flex flex-wrap gap-2">
-					<Button asChild variant="outline" size="sm">
-						<Link to="/app/org/$org/brand/$brand/settings/prompts" params={{ org, brand: brandParam }}>
-							Choose prompts
-						</Link>
-					</Button>
-					<Button asChild variant="ghost" size="sm">
-						<Link to="/app/org/$org/settings/billing" params={{ org }}>
-							Change how many
-							<IconArrowUpRight className="h-4 w-4" />
-						</Link>
-					</Button>
+					<Link
+						to="/app/org/$org/brand/$brand/settings/prompts"
+						params={{ org, brand: brandParam }}
+						className={buttonVariants({ variant: "outline", size: "sm" })}
+					>
+						Choose prompts
+					</Link>
+					<Link
+						to="/app/org/$org/settings/billing"
+						params={{ org }}
+						className={buttonVariants({ variant: "ghost", size: "sm" })}
+					>
+						Change how many
+						<IconArrowUpRight className="h-4 w-4" />
+					</Link>
 				</div>
 			</CardContent>
 		</Card>
@@ -357,8 +363,7 @@ function PremiumApiPool({ premium }: { premium: PremiumPool }) {
 
 /**
  * Self-hosted only: what else Elmo can track, and which provider account each
- * one needs. Every suggestion comes from a combination the provider status
- * workflow exercises, so none of them is aspirational.
+ * one needs. The provider status workflow exercises every suggested combination.
  *
  * Scrapers and direct APIs are separate columns because they are not
  * interchangeable — Perplexity through BrightData returns the surface a visitor
@@ -406,12 +411,15 @@ function AddPlatformsCard({ platforms }: { platforms: ModelPickerState["unconfig
 						</div>
 					))}
 				</div>
-				<Button asChild variant="outline" size="sm">
-					<a href={PROVIDERS_DOCS_URL} target="_blank" rel="noopener noreferrer">
-						Provider setup guide
-						<IconExternalLink className="h-4 w-4" />
-					</a>
-				</Button>
+				<a
+					href={PROVIDERS_DOCS_URL}
+					target="_blank"
+					rel="noopener noreferrer"
+					className={buttonVariants({ variant: "outline", size: "sm" })}
+				>
+					Provider setup guide
+					<IconExternalLink className="h-4 w-4" />
+				</a>
 			</CardContent>
 		</Card>
 	);

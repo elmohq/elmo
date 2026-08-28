@@ -1,8 +1,3 @@
-/**
- * Helpers for building route head() meta tags.
- * Respects white-label / deployment branding configuration.
- */
-
 const DEFAULT_DESCRIPTION = "Track and optimize your brand's visibility across AI models.";
 
 interface RouteMatchContext {
@@ -13,10 +8,6 @@ interface RouteMatchContext {
 	};
 }
 
-/**
- * Get the app display name from route match context.
- * Returns the white-label branding name if configured, otherwise "Elmo".
- */
 export function getAppName(match: RouteMatchContext): string {
 	return match.context?.clientConfig?.branding?.name || "Elmo";
 }
@@ -30,10 +21,7 @@ export function getAppUrl(match: RouteMatchContext): string | undefined {
 	return url ? url.replace(/\/$/, "") : undefined;
 }
 
-/**
- * Get the brand name from the matched routes hierarchy.
- * Reads it off the brand the $brand layout loaded, so the name has one home.
- */
+/** Read off the brand the `$brand` layout loaded, so the name has one home. */
 export function getBrandName(matches: Array<{ loaderData?: Record<string, unknown> }>): string | undefined {
 	for (const m of matches) {
 		const brand = m.loaderData?.brand;

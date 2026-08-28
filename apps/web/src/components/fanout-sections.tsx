@@ -4,34 +4,33 @@
  * run counts, a per-model variations breakdown, and the Query Words section
  * (term cloud + Added/Preserved/Dropped word changes).
  */
-import { useState } from "react";
+
+import { IconInfoCircle } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Switch } from "@workspace/ui/components/switch";
 import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { IconInfoCircle } from "@tabler/icons-react";
-import { getModelDisplayName } from "@/lib/utils";
+import { useState } from "react";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
 import { WordCloud } from "@/components/word-cloud";
 import {
-	normTok,
 	type FanoutQueryStat,
 	type ModelFanoutStat,
+	normTok,
 	type TermStat,
-	type WordChanges,
 	type WordChangeStat,
+	type WordChanges,
 } from "@/lib/fanout-analysis";
+import { getModelDisplayName } from "@/lib/utils";
 
 export const FANOUT_PURPLE = "#8b5cf6";
 
 export function InfoTip({ children }: { children: React.ReactNode }) {
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>
-				<span className="cursor-help">
-					<IconInfoCircle className="text-muted-foreground/60 size-3.5" />
-				</span>
+			<TooltipTrigger render={<span className="cursor-help" />}>
+				<IconInfoCircle className="text-muted-foreground/60 size-3.5" />
 			</TooltipTrigger>
 			<TooltipContent className="max-w-xs text-sm font-normal">{children}</TooltipContent>
 		</Tooltip>

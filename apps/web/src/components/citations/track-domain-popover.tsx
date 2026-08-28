@@ -1,11 +1,13 @@
-import { useState } from "react";
-import { Input } from "@workspace/ui/components/input";
-import { Button } from "@workspace/ui/components/button";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
-import { Popover, PopoverTrigger, PopoverContent } from "@workspace/ui/components/popover";
-import { IconInfoCircle, IconPlus } from "@tabler/icons-react";
-import { Loader2 } from "lucide-react";
 import * as Sentry from "@sentry/tanstackstart-react";
+import { IconInfoCircle, IconPlus } from "@tabler/icons-react";
+import { Button } from "@workspace/ui/components/button";
+import { Input } from "@workspace/ui/components/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
+import { Spinner } from "@workspace/ui/components/spinner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useState } from "react";
+import { SiteIcon } from "@/components/site-icon";
+import { useBrand } from "@/hooks/use-brands";
 import { addDomainToBrandFn, addDomainToCompetitorFn, createCompetitorFromDomainFn } from "@/server/brands";
 
 export function TrackDomainPopover({
@@ -21,6 +23,7 @@ export function TrackDomainPopover({
 	competitors: Array<{ id: string; name: string; domains: string[] }>;
 	onAdded?: () => void;
 }) {
+	const { brand } = useBrand(brandId);
 	const [open, setOpen] = useState(false);
 	const [newName, setNewName] = useState("");
 	const [saving, setSaving] = useState(false);
@@ -79,21 +82,23 @@ export function TrackDomainPopover({
 	if (saved) {
 		return (
 			<span className="shrink-0 p-1 text-muted-foreground">
-				<Loader2 className="h-3.5 w-3.5 animate-spin" />
+				<Spinner className="size-3.5" />
 			</span>
 		);
 	}
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<button
-					type="button"
-					className="shrink-0 p-1 rounded hover:bg-muted cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
-					title={`Track ${domain}`}
-				>
-					<IconPlus className="h-3.5 w-3.5" />
-				</button>
+			<PopoverTrigger
+				render={
+					<button
+						type="button"
+						className="shrink-0 p-1 rounded hover:bg-muted cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+						title={`Track ${domain}`}
+					/>
+				}
+			>
+				<IconPlus className="h-3.5 w-3.5" />
 			</PopoverTrigger>
 			<PopoverContent className="w-72 p-3" align="end">
 				<div className="space-y-3">
@@ -107,9 +112,7 @@ export function TrackDomainPopover({
 						<div className="flex items-center gap-1">
 							<p className="text-[11px] text-muted-foreground">Add as brand domain</p>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-								</TooltipTrigger>
+								<TooltipTrigger render={<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-xs font-normal">
 									Applies <strong>retroactively</strong> &mdash; all existing and future citations from this domain will
 									be classified as your brand.
@@ -120,8 +123,9 @@ export function TrackDomainPopover({
 							type="button"
 							onClick={handleAddToBrand}
 							disabled={saving}
-							className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
+							className="flex w-full items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
 						>
+							<SiteIcon domain={brand?.website} size="sm" />
 							{brandName || "My brand"}
 						</button>
 					</div>
@@ -131,9 +135,7 @@ export function TrackDomainPopover({
 							<div className="flex items-center gap-1">
 								<p className="text-[11px] text-muted-foreground">Add to existing competitor</p>
 								<Tooltip>
-									<TooltipTrigger asChild>
-										<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-									</TooltipTrigger>
+									<TooltipTrigger render={<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />} />
 									<TooltipContent className="max-w-xs text-xs font-normal">
 										Applies <strong>retroactively</strong> &mdash; all existing and future citations from this domain
 										will be classified under the selected competitor.
@@ -147,8 +149,9 @@ export function TrackDomainPopover({
 										type="button"
 										onClick={() => handleAddToExisting(c.id)}
 										disabled={saving}
-										className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
+										className="flex w-full items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
 									>
+										<SiteIcon domain={c.domains.find(Boolean)} size="sm" />
 										{c.name}
 									</button>
 								))}

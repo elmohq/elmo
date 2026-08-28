@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
-import { ChevronRight, Search } from "lucide-react";
+import { Kbd } from "@workspace/ui/components/kbd";
 import { cn } from "@workspace/ui/lib/utils";
-import type { Root, Node, Item, Folder } from "fumadocs-core/page-tree";
+import type { Folder, Item, Node, Root } from "fumadocs-core/page-tree";
+import { ChevronRight, Search } from "lucide-react";
+import { useState } from "react";
 import { SearchDialog, useSearchDialog } from "./search-dialog";
 
 function SidebarItem({ item }: { item: Item }) {
@@ -98,7 +99,7 @@ export function DocsSidebar({ tree }: { tree: Root }) {
 			>
 				<Search className="size-3.5 shrink-0" />
 				<span className="flex-1 text-left">Search docs...</span>
-				<kbd className="rounded border bg-background px-1.5 py-0.5 text-[10px] font-medium">⌘K</kbd>
+				<Kbd className="border bg-background px-1.5 text-[10px]">⌘K</Kbd>
 			</button>
 			<SearchDialog open={open} onOpenChange={setOpen} />
 			<SidebarNodes nodes={tree.children} />

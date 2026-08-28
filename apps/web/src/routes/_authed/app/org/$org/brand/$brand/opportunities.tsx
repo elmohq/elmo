@@ -9,9 +9,10 @@
  * server-side and regenerated only when stale — see server/opportunities.ts.
  */
 
-import { IconClock, IconLoader2 } from "@tabler/icons-react";
+import { IconClock } from "@tabler/icons-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { Spinner } from "@workspace/ui/components/spinner";
 import { OpportunitiesReport } from "@/components/opportunities-report";
 import { PageHeader } from "@/components/page-header";
 import { useOpportunities } from "@/hooks/use-opportunities";
@@ -91,7 +92,7 @@ function LoadingState() {
 	return (
 		<div className="space-y-6">
 			<div className="flex items-center gap-2 text-sm text-muted-foreground">
-				<IconLoader2 className="size-4 animate-spin" />
+				<Spinner />
 				Analyzing your citation landscape and drafting your opportunities…
 			</div>
 			<div className="space-y-2">

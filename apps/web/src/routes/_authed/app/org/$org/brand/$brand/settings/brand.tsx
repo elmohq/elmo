@@ -44,12 +44,14 @@ function BrandSettingsPage() {
 	const [additionalDomains, setAdditionalDomains] = useState<string[]>([]);
 	const [aliases, setAliases] = useState<string[]>([]);
 
-	useEffect(() => {
-		if (brand) {
-			setAdditionalDomains(brand.additionalDomains || []);
-			setAliases(brand.aliases || []);
-		}
-	}, [brand?.updatedAt]);
+	// Reseed the fields when the brand changes server-side, without discarding
+	// whatever is being typed in between.
+	const [seededFrom, setSeededFrom] = useState<Date | null>(null);
+	if (brand && brand.updatedAt !== seededFrom) {
+		setSeededFrom(brand.updatedAt);
+		setAdditionalDomains(brand.additionalDomains || []);
+		setAliases(brand.aliases || []);
+	}
 
 	const validateDomain = useCallback((val: string): true | string => {
 		const cleaned = cleanAndValidateDomain(val);
@@ -155,9 +157,7 @@ function BrandSettingsPage() {
 						<Label className="flex items-center gap-1.5">
 							Additional Domains
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-								</TooltipTrigger>
+								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-xs font-normal">
 									Other domains your brand owns (e.g. blog.example.com, shop.example.com). Citations from these domains
 									will be counted as your brand&apos;s citations. <strong>Updates retroactively</strong> &mdash;
@@ -180,9 +180,7 @@ function BrandSettingsPage() {
 						<Label className="flex items-center gap-1.5">
 							Brand Aliases
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-								</TooltipTrigger>
+								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-xs font-normal">
 									Alternative names for your brand (sub-brands, product lines, abbreviations). Used for mention
 									detection in <strong>future</strong> prompt runs only &mdash; does not apply retroactively to past

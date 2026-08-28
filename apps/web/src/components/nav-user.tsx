@@ -1,5 +1,7 @@
-import { IconSelector, IconExternalLink, IconLogout, IconUser } from "@tabler/icons-react";
-
+import { IconExternalLink, IconLogout, IconSelector, IconUser } from "@tabler/icons-react";
+import { useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
+import { authClient } from "@workspace/lib/auth/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import {
 	DropdownMenu,
@@ -11,11 +13,8 @@ import {
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
-
-import { useRouteContext } from "@tanstack/react-router";
-import type { ClientConfig } from "@workspace/config/types";
-import { authClient } from "@workspace/lib/auth/client";
 import { useAuth } from "@/hooks/use-auth";
+import { resetCrispSession } from "@/lib/crisp";
 import { resetPostHog } from "@/lib/posthog";
 
 export function NavUser() {
@@ -38,55 +37,61 @@ export function NavUser() {
 		<SidebarMenu>
 			<SidebarMenuItem>
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<SidebarMenuButton
-							size="lg"
-							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
-						>
-							<Avatar className="h-8 w-8 rounded-lg">
-								<AvatarImage src={user.picture} alt={user.name} />
-								<AvatarFallback className="rounded-lg bg-primary/10 text-primary">
-									<IconUser className="size-4" />
-								</AvatarFallback>
-							</Avatar>
-							<div className="grid flex-1 text-left text-sm leading-tight">
-								<span className="truncate font-medium">{user.name}</span>
-								<span className="truncate text-xs">{isNameEmailSame ? "Your Account" : user.email}</span>
-							</div>
-							<IconSelector className="ml-auto size-4" />
-						</SidebarMenuButton>
+					<DropdownMenuTrigger
+						render={
+							<SidebarMenuButton
+								size="lg"
+								className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground cursor-pointer"
+							/>
+						}
+					>
+						<Avatar className="h-8 w-8 rounded-lg">
+							<AvatarImage src={user.picture} alt={user.name} />
+							<AvatarFallback className="rounded-lg bg-primary/10 text-primary">
+								<IconUser className="size-4" />
+							</AvatarFallback>
+						</Avatar>
+						<div className="grid flex-1 text-left text-sm leading-tight">
+							<span className="truncate font-medium">{user.name}</span>
+							<span className="truncate text-xs">{isNameEmailSame ? "Your Account" : user.email}</span>
+						</div>
+						<IconSelector className="ml-auto size-4" />
 					</DropdownMenuTrigger>
 					<DropdownMenuContent
-						className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+						className="w-(--anchor-width) min-w-56 rounded-lg"
 						side={isMobile ? "bottom" : "right"}
 						align="end"
 						sideOffset={4}
 					>
-						<DropdownMenuLabel className="p-0 font-normal">
-							<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-								<Avatar className="h-8 w-8 rounded-lg">
-									<AvatarImage src={user.picture} alt={user.name} />
-									<AvatarFallback className="rounded-lg bg-primary/10 text-primary">
-										<IconUser className="size-4" />
-									</AvatarFallback>
-								</Avatar>
-								<div className="grid flex-1 text-left text-sm leading-tight">
-									<span className="truncate font-medium">{user.name}</span>
-									<span className="truncate text-xs">{isNameEmailSame ? "Your Account" : user.email}</span>
+						{/* Base UI wires the label to its group, so it has to sit inside one. */}
+						<DropdownMenuGroup>
+							<DropdownMenuLabel className="p-0 font-normal">
+								<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+									<Avatar className="h-8 w-8 rounded-lg">
+										<AvatarImage src={user.picture} alt={user.name} />
+										<AvatarFallback className="rounded-lg bg-primary/10 text-primary">
+											<IconUser className="size-4" />
+										</AvatarFallback>
+									</Avatar>
+									<div className="grid flex-1 text-left text-sm leading-tight">
+										<span className="truncate font-medium">{user.name}</span>
+										<span className="truncate text-xs">{isNameEmailSame ? "Your Account" : user.email}</span>
+									</div>
 								</div>
-							</div>
-						</DropdownMenuLabel>
+							</DropdownMenuLabel>
+						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
 						{/* Switching workspace or brand is the switcher's job, up in the
 						    header; what is left here is the way out of the product. */}
 						{parentDashboard && (
 							<>
 								<DropdownMenuGroup>
-									<DropdownMenuItem asChild className="cursor-pointer">
-										<a href={parentDashboard.url} target="_blank" rel="noreferrer">
-											<IconExternalLink />
-											{parentDashboard.name} Dashboard
-										</a>
+									<DropdownMenuItem
+										render={<a href={parentDashboard.url} target="_blank" rel="noreferrer" />}
+										className="cursor-pointer"
+									>
+										<IconExternalLink />
+										{parentDashboard.name} Dashboard
 									</DropdownMenuItem>
 								</DropdownMenuGroup>
 								<DropdownMenuSeparator />
@@ -99,6 +104,7 @@ export function NavUser() {
 									fetchOptions: {
 										onSuccess: () => {
 											resetPostHog();
+											resetCrispSession();
 											window.location.href = "/auth/logout";
 										},
 									},

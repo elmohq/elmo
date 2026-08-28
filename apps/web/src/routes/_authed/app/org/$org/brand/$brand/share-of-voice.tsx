@@ -15,11 +15,13 @@ import { ColHead } from "@/components/col-head";
 import { ALL_MODELS_VALUE, FilterBar, getAvailableModels } from "@/components/filter-bar";
 import { FilterSection, PageHeader } from "@/components/page-header";
 import { ShareOfVoiceDonut } from "@/components/share-of-voice-donut";
+import { SiteIcon } from "@/components/site-icon";
 import { TrendChart } from "@/components/trend-chart";
 import { useBrand } from "@/hooks/use-brands";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
+import { useSiteIcons } from "@/hooks/use-site-icons";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { shareOfVoiceColorMap } from "@/lib/share-of-voice-palette";
 
@@ -59,6 +61,7 @@ function ShareOfVoicePage() {
 	const { model, lookback, tags } = useListFilters();
 
 	const { brand } = useBrand(brandId);
+	const { domainFor } = useSiteIcons(brandId);
 	const trackedTargets = brand?.trackedTargets ?? [];
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 
@@ -108,7 +111,7 @@ function ShareOfVoicePage() {
 		// The big number = the trend's last plotted point, so it matches the line beside it.
 		const currentShare = currentShareOf(data.shareTimeSeries);
 		content = (
-			<TooltipProvider delayDuration={150}>
+			<TooltipProvider delay={150}>
 				<div className="grid gap-6 lg:grid-cols-2">
 					<Card>
 						<CardHeader>
@@ -124,7 +127,7 @@ function ShareOfVoicePage() {
 									{data.entries.length > 1 ? ` and ${data.entries.length - 1} competitors` : ""}.
 								</p>
 							</div>
-							<ShareOfVoiceDonut entries={data.entries} />
+							<ShareOfVoiceDonut entries={data.entries} domainFor={domainFor} />
 						</CardContent>
 					</Card>
 
@@ -170,6 +173,7 @@ function ShareOfVoicePage() {
 										<TableCell className="text-muted-foreground tabular-nums">{i + 1}</TableCell>
 										<TableCell className="font-medium">
 											<span className="inline-flex items-center gap-2">
+												<SiteIcon domain={domainFor(e.name)} size="md" />
 												{e.name}
 												{e.isBrand && (
 													<Badge variant="secondary" className="text-xs">

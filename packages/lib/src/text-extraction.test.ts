@@ -10,6 +10,7 @@ import {
 	extractTextFromAnthropic,
 	extractTextFromBrightdata,
 	extractTextFromDataforseoLlm,
+	extractTextFromDataforseoScraper,
 	extractTextFromGoogle,
 	extractTextFromOpenAI,
 	extractTextFromOxylabs,
@@ -213,6 +214,29 @@ describe("text-extraction", () => {
 			const raw = dfsLlmResponse({});
 			expect(extractTextFromGoogle(raw)).toBe("The answer text.");
 			expect(extractTextContent(raw, "dataforseo")).toBe("The answer text.");
+		});
+	});
+
+	describe("extractTextFromDataforseoScraper", () => {
+		it("keeps per-item blocks separate when the top-level markdown is missing", () => {
+			const raw = {
+				tasks: [
+					{
+						result: [
+							{
+								sources: [],
+								items: [
+									{ type: "text", markdown: "Here are the top speakers." },
+									{ type: "table", markdown: "| Speaker | Price |\n| --- | --- |\n| Era 300 | $449 |" },
+								],
+							},
+						],
+					},
+				],
+			};
+			expect(extractTextFromDataforseoScraper(raw)).toBe(
+				"Here are the top speakers.\n\n| Speaker | Price |\n| --- | --- |\n| Era 300 | $449 |",
+			);
 		});
 	});
 
@@ -631,7 +655,7 @@ describe("text-extraction", () => {
 				},
 			};
 			expect(extractTextFromBrightdata(rawOutput)).toBe(
-				"The Sonos Era 300 is a well-reviewed speaker with spatial audio.\nBattery Life: 6 hours\nWater resistance: IP55",
+				"The Sonos Era 300 is a well-reviewed speaker with spatial audio.\n\nBattery Life: 6 hours\n\nWater resistance: IP55",
 			);
 		});
 
@@ -642,6 +666,22 @@ describe("text-extraction", () => {
 		it("still reads chatbot dataset answers and reports missing content", () => {
 			expect(extractTextFromBrightdata({ answer_text_markdown: "Dataset answer." })).toBe("Dataset answer.");
 			expect(extractTextFromBrightdata({})).toBe("No text content found in BrightData output.");
+		});
+	});
+
+	describe("extractTextFromCloro", () => {
+		it("reads the AI Overview's markdown rather than the flattened text beside it", () => {
+			const rawOutput = {
+				aioverview: {
+					text: "The Brooks Ghost is a well-reviewed beginner shoe.",
+					markdown: "The **Brooks Ghost** is a well-reviewed beginner shoe.",
+				},
+			};
+			expect(extractTextContent(rawOutput, "cloro")).toBe("The **Brooks Ghost** is a well-reviewed beginner shoe.");
+		});
+
+		it("falls back to text for the chatbot tasks, which carry no markdown field", () => {
+			expect(extractTextContent({ text: "Chatbot answer." }, "cloro")).toBe("Chatbot answer.");
 		});
 	});
 

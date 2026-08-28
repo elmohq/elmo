@@ -69,20 +69,22 @@ export function WorkspaceSwitcher({
 		<SidebarMenu>
 			<SidebarMenuItem>
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<SidebarMenuButton
-							size="lg"
-							className="cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-						>
-							<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
-								{initials(current.name)}
-							</div>
-							<div className="grid flex-1 text-left text-sm leading-tight">
-								<span className="truncate text-xs text-muted-foreground">{current.name}</span>
-								<span className="truncate font-medium">{brandName ?? "All brands"}</span>
-							</div>
-							<IconSelector className="ml-auto size-4" />
-						</SidebarMenuButton>
+					<DropdownMenuTrigger
+						render={
+							<SidebarMenuButton
+								size="lg"
+								className="cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+							/>
+						}
+					>
+						<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
+							{initials(current.name)}
+						</div>
+						<div className="grid flex-1 text-left text-sm leading-tight">
+							<span className="truncate text-xs text-muted-foreground">{current.name}</span>
+							<span className="truncate font-medium">{brandName ?? "All brands"}</span>
+						</div>
+						<IconSelector className="ml-auto size-4" />
 					</DropdownMenuTrigger>
 					<DropdownMenuContent
 						className="max-h-[70svh] w-(--radix-dropdown-menu-trigger-width) min-w-64 overflow-y-auto rounded-lg"
@@ -97,30 +99,34 @@ export function WorkspaceSwitcher({
 									{entry.id === current.id && <IconCheck className="size-3.5 shrink-0" />}
 								</DropdownMenuLabel>
 								{entry.brands.map((brand) => (
-									<DropdownMenuItem key={brand.id} asChild className="cursor-pointer">
-										<Link to="/app/org/$org/brand/$brand" params={brandParams(entry, brand)} onClick={close}>
-											<span className="truncate">{brand.name}</span>
-											{brandSegment(brand) === brandParam && entry.id === current.id && (
-												<IconCheck className="ml-auto size-3.5 shrink-0" />
-											)}
-										</Link>
+									<DropdownMenuItem
+										key={brand.id}
+										render={<Link to="/app/org/$org/brand/$brand" params={brandParams(entry, brand)} onClick={close} />}
+										className="cursor-pointer"
+									>
+										<span className="truncate">{brand.name}</span>
+										{brandSegment(brand) === brandParam && entry.id === current.id && (
+											<IconCheck className="ml-auto size-3.5 shrink-0" />
+										)}
 									</DropdownMenuItem>
 								))}
 								{entry.brands.length === 0 && (
-									<DropdownMenuItem asChild className="cursor-pointer">
-										<Link to="/app/org/$org" params={orgParams(entry)} onClick={close}>
-											<span className="text-muted-foreground">Set up this workspace</span>
-										</Link>
+									<DropdownMenuItem
+										render={<Link to="/app/org/$org" params={orgParams(entry)} onClick={close} />}
+										className="cursor-pointer"
+									>
+										<span className="text-muted-foreground">Set up this workspace</span>
 									</DropdownMenuItem>
 								)}
 								{/* Offered per workspace, because a plan's brand allowance is spent
 								    per workspace: the same menu can create in one and not another. */}
 								{entry.canCreateBrand && (
-									<DropdownMenuItem asChild className="cursor-pointer">
-										<Link to="/app/org/$org/new" params={orgParams(entry)} onClick={close}>
-											<IconPlus />
-											New brand
-										</Link>
+									<DropdownMenuItem
+										render={<Link to="/app/org/$org/new" params={orgParams(entry)} onClick={close} />}
+										className="cursor-pointer"
+									>
+										<IconPlus />
+										New brand
 									</DropdownMenuItem>
 								)}
 								<DropdownMenuSeparator />
@@ -145,18 +151,17 @@ export function WorkspaceSwitcher({
 								{isFetching ? "Retrying…" : "Couldn't load your other workspaces — retry"}
 							</DropdownMenuItem>
 						)}
-						<DropdownMenuItem asChild className="cursor-pointer">
-							<Link to="/app/org/$org/settings" params={orgParams(current)} onClick={close}>
-								<IconSettings />
-								Workspace settings
-							</Link>
+						<DropdownMenuItem
+							render={<Link to="/app/org/$org/settings" params={orgParams(current)} onClick={close} />}
+							className="cursor-pointer"
+						>
+							<IconSettings />
+							Workspace settings
 						</DropdownMenuItem>
 						{listed.length > 1 && (
-							<DropdownMenuItem asChild className="cursor-pointer">
-								<Link to="/app" onClick={close}>
-									<IconBuildingSkyscraper />
-									All workspaces
-								</Link>
+							<DropdownMenuItem render={<Link to="/app" onClick={close} />} className="cursor-pointer">
+								<IconBuildingSkyscraper />
+								All workspaces
 							</DropdownMenuItem>
 						)}
 					</DropdownMenuContent>

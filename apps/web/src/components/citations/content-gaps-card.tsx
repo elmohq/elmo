@@ -20,9 +20,7 @@ export function ContentGapsCard({
 				<CardTitle className="flex items-center gap-1.5">
 					Content Gaps
 					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-						</TooltipTrigger>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent className="max-w-xs text-sm font-normal">
 							Prompts where competitors are cited but your brand isn&apos;t — opportunities to improve your citation
 							presence.

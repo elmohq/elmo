@@ -1,4 +1,4 @@
-import { MAX_SLUG_LENGTH } from "@workspace/lib/db/provisioning";
+import { MAX_SLUG_LENGTH } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";

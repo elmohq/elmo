@@ -1,7 +1,7 @@
-import { memo, useRef, useMemo, useState, useCallback, useLayoutEffect, useEffect } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
-import { CachedPromptChart } from "./cached-prompt-chart";
+import { memo, useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
+import { CachedPromptChart } from "./cached-prompt-chart";
 
 interface PromptItem {
 	id: string;
@@ -42,35 +42,24 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
 
 	const orderedPrompts = prompts;
 
-	// Measure the offset of the list from the top of the page
 	useLayoutEffect(() => {
 		if (listRef.current) {
 			setScrollMargin(listRef.current.offsetTop);
 		}
 	}, []);
 
-	// Create a stable key that changes when the prompts list changes
-	const promptsKey = useMemo(() => {
-		return orderedPrompts.map((p) => p.id).join(",");
-	}, [orderedPrompts]);
-
 	// Uniform height estimate — all cards (loading, empty, full) have matching content areas
 	const estimateSize = useCallback(() => CHART_CARD_HEIGHT + CHART_GAP, []);
+
+	const getItemKey = useCallback((index: number) => orderedPrompts[index].id, [orderedPrompts]);
 
 	const virtualizer = useWindowVirtualizer({
 		count: orderedPrompts.length,
 		estimateSize,
+		getItemKey,
 		overscan: 3, // Render 3 extra items above and below viewport
 		scrollMargin,
 	});
-
-	// Force virtualizer to recalculate when prompts list changes (e.g., after filtering)
-	useEffect(() => {
-		const timer = setTimeout(() => {
-			virtualizer.measure();
-		}, 50);
-		return () => clearTimeout(timer);
-	}, [virtualizer, promptsKey]);
 
 	const virtualItems = virtualizer.getVirtualItems();
 

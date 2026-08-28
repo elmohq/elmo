@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { brandParams, orgParams } from "@workspace/lib/app-urls";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
+import { SiteIcon } from "@/components/site-icon";
 import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
 
 /**
@@ -21,25 +22,29 @@ export function WorkspaceBrandList({ workspace }: { workspace: WorkspaceWithBran
 	return (
 		<div className="flex flex-col space-y-2">
 			{brands.map((brand) => (
-				<Button key={brand.id} asChild variant="secondary">
-					<Link to="/app/org/$org/brand/$brand" params={brandParams(workspace, brand)}>
-						{brand.name}
-					</Link>
-				</Button>
+				<Link
+					key={brand.id}
+					to="/app/org/$org/brand/$brand"
+					params={brandParams(workspace, brand)}
+					className={buttonVariants({ variant: "secondary" })}
+				>
+					<SiteIcon domain={brand.website} size="md" />
+					{brand.name}
+				</Link>
 			))}
 			{canCreateBrand && (
-				<Button asChild variant={brands.length > 0 ? "outline" : "default"}>
-					<Link to="/app/org/$org/new" params={orgParams(workspace)}>
-						{brands.length > 0 ? "New brand" : "Create your first brand"}
-					</Link>
-				</Button>
+				<Link
+					to="/app/org/$org/new"
+					params={orgParams(workspace)}
+					className={buttonVariants({ variant: brands.length > 0 ? "outline" : "default" })}
+				>
+					{brands.length > 0 ? "New brand" : "Create your first brand"}
+				</Link>
 			)}
 			{brands.length === 0 && !canCreateBrand && (
-				<Button asChild variant="outline">
-					<Link to="/app/org/$org" params={orgParams(workspace)}>
-						Set up {workspace.name}
-					</Link>
-				</Button>
+				<Link to="/app/org/$org" params={orgParams(workspace)} className={buttonVariants({ variant: "outline" })}>
+					Set up {workspace.name}
+				</Link>
 			)}
 		</div>
 	);

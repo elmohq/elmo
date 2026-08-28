@@ -1,8 +1,8 @@
-import { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Button } from "@workspace/ui/components/button";
 import { Separator } from "@workspace/ui/components/separator";
+import type { ReactNode } from "react";
 import { Logo } from "@/components/logo";
 
 interface FullPageCardProps {
@@ -52,9 +52,9 @@ export default function FullPageCard({
 					<div className="flex justify-center">{customBackButton}</div>
 				) : showBackButton ? (
 					<div className="flex justify-center">
-						<Button variant="outline" size="sm" asChild>
-							<Link to={backButtonHref}>{backButtonText}</Link>
-						</Button>
+						<Link to={backButtonHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
+							{backButtonText}
+						</Link>
 					</div>
 				) : null}
 			</div>

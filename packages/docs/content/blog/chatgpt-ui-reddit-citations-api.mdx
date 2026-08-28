@@ -1,0 +1,168 @@
+---
+title: "ChatGPT UI now cites Reddit the same amount as the OpenAI API"
+description: "Reddit's share of citations in the ChatGPT UI fell by more than 90%. The surprising part is where it landed: near the level API web search was already returning."
+date: "2026-08-19"
+updated: "2026-08-27"
+author: ai
+metaTitle: "ChatGPT UI Reddit Citations Fell to API Levels"
+tags:
+  - ai-citations
+  - ai-search
+  - chatgpt
+  - reddit
+---
+
+**Reddit citations in the ChatGPT UI fell off a cliff this month. But the more interesting part is where they landed.**
+
+Before August 8, Reddit supplied between 4% and 5% of the citations in one of our continuously monitored ChatGPT UI datasets. During the same period, Reddit supplied about 0.4% of the citations in ChatGPT responses produced through the OpenAI API with web search.
+
+After the drop, the UI settled between roughly 0.3% and 0.5%. The API stayed in the same general band it was already in.
+
+In other words, this was not a universal collapse in Reddit citations across OpenAI. It was the disappearance of a large gap between two ways of reaching ChatGPT.
+
+<figure className="not-prose my-10">
+<svg viewBox="0 0 720 445" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Daily percentage of ChatGPT citations pointing to Reddit from July 7 through August 18, 2026. The ChatGPT UI line falls from roughly 4 to 5 percent before August 8 to below 1 percent after August 14, converging with the OpenAI API web search line.">
+  <g fontFamily="ui-sans-serif, system-ui, sans-serif">
+    <rect x="32" y="0" width="676" height="432" rx="10" fill="#f8fafc" />
+
+    <line x1="46" y1="24" x2="76" y2="24" stroke="#2563eb" strokeWidth="3" />
+    <text x="84" y="28" fontSize="11" fill="#172033" fontWeight="650">ChatGPT UI</text>
+    <line x1="172" y1="24" x2="202" y2="24" stroke="#7956c8" strokeWidth="3" />
+    <text x="210" y="28" fontSize="11" fill="#172033" fontWeight="650">OpenAI API web search</text>
+    <image href="/brand/logos/elmo-logo-xl.png" x="650" y="10" width="54" height="24" preserveAspectRatio="xMidYMid meet" />
+
+    <text x="45" y="50" fontSize="10.5" fill="#64748b">% of citations</text>
+
+    <g stroke="#dce4ee" strokeWidth="1" strokeDasharray="2 5">
+      <line x1="45" y1="60" x2="705" y2="60" />
+      <line x1="45" y1="116.7" x2="705" y2="116.7" />
+      <line x1="45" y1="173.3" x2="705" y2="173.3" />
+      <line x1="45" y1="230" x2="705" y2="230" />
+      <line x1="45" y1="286.7" x2="705" y2="286.7" />
+      <line x1="45" y1="343.3" x2="705" y2="343.3" />
+      <line x1="45" y1="400" x2="705" y2="400" />
+    </g>
+
+    <g fontSize="9.5" fill="#64748b" textAnchor="end">
+      <text x="39" y="63">6%</text>
+      <text x="39" y="119.7">5%</text>
+      <text x="39" y="176.3">4%</text>
+      <text x="39" y="233">3%</text>
+      <text x="39" y="289.7">2%</text>
+      <text x="39" y="346.3">1%</text>
+      <text x="39" y="403">0%</text>
+    </g>
+
+    <g stroke="#e8edf3" strokeWidth="1" strokeDasharray="2 7">
+      <line x1="45" y1="60" x2="45" y2="400" />
+      <line x1="170.7" y1="60" x2="170.7" y2="400" />
+      <line x1="296.4" y1="60" x2="296.4" y2="400" />
+      <line x1="422.1" y1="60" x2="422.1" y2="400" />
+      <line x1="547.9" y1="60" x2="547.9" y2="400" />
+      <line x1="642.1" y1="60" x2="642.1" y2="400" />
+      <line x1="705" y1="60" x2="705" y2="400" />
+    </g>
+
+    <line x1="45" y1="60" x2="45" y2="400" stroke="#64748b" strokeWidth="1" />
+    <line x1="45" y1="400" x2="705" y2="400" stroke="#64748b" strokeWidth="1" />
+
+    <g fontSize="9.5" fill="#64748b" textAnchor="middle">
+      <text x="45" y="419">Jul 7</text>
+      <text x="170.7" y="419">Jul 15</text>
+      <text x="296.4" y="419">Jul 23</text>
+      <text x="422.1" y="419">Jul 31</text>
+      <text x="547.9" y="419">Aug 8</text>
+      <text x="642.1" y="419">Aug 14</text>
+      <text x="705" y="419">Aug 18</text>
+    </g>
+
+    <line x1="547.9" y1="60" x2="547.9" y2="400" stroke="#dc2626" strokeWidth="1.25" strokeDasharray="4 4" />
+    <line x1="642.1" y1="60" x2="642.1" y2="400" stroke="#dc2626" strokeWidth="1.25" strokeDasharray="4 4" />
+    <text x="541" y="53" fontSize="9.5" fill="#dc2626" fontWeight="650" textAnchor="end">Aug 8 fanout change</text>
+    <text x="646" y="53" fontSize="9.5" fill="#dc2626" fontWeight="650">Aug 14 drop</text>
+
+    <path d="M 45.0 400.0 L 45.0 116.7 L 60.7 115.0 L 76.4 98.5 L 92.1 101.9 L 107.9 131.4 L 123.6 124.0 L 139.3 134.2 L 155.0 114.4 L 170.7 96.3 L 186.4 162.0 L 202.1 130.3 L 217.9 145.0 L 233.6 114.4 L 249.3 118.9 L 265.0 162.0 L 280.7 133.7 L 296.4 87.8 L 312.1 111.6 L 327.9 143.9 L 343.6 128.0 L 359.3 154.1 L 375.0 141.6 L 390.7 87.8 L 406.4 173.3 L 422.1 142.7 L 437.9 119.5 L 453.6 146.1 L 469.3 136.5 L 485.0 139.9 L 500.7 139.9 L 516.4 154.1 L 532.1 160.9 L 547.9 308.8 L 563.6 311.6 L 579.3 295.7 L 595.0 281.0 L 610.7 290.6 L 626.4 354.1 L 642.1 370.0 L 657.9 374.5 L 673.6 384.1 L 689.3 385.8 L 705.0 369.4 L 705.0 400.0 Z" fill="#dbeafe" opacity="0.7" />
+    <path d="M 45.0 116.7 L 60.7 115.0 L 76.4 98.5 L 92.1 101.9 L 107.9 131.4 L 123.6 124.0 L 139.3 134.2 L 155.0 114.4 L 170.7 96.3 L 186.4 162.0 L 202.1 130.3 L 217.9 145.0 L 233.6 114.4 L 249.3 118.9 L 265.0 162.0 L 280.7 133.7 L 296.4 87.8 L 312.1 111.6 L 327.9 143.9 L 343.6 128.0 L 359.3 154.1 L 375.0 141.6 L 390.7 87.8 L 406.4 173.3 L 422.1 142.7 L 437.9 119.5 L 453.6 146.1 L 469.3 136.5 L 485.0 139.9 L 500.7 139.9 L 516.4 154.1 L 532.1 160.9 L 547.9 308.8 L 563.6 311.6 L 579.3 295.7 L 595.0 281.0 L 610.7 290.6 L 626.4 354.1 L 642.1 370.0 L 657.9 374.5 L 673.6 384.1 L 689.3 385.8 L 705.0 369.4" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+    <path d="M 45.0 380.2 L 60.7 383.6 L 92.1 349.6 L 107.9 384.1 L 123.6 393.2 L 139.3 367.1 L 155.0 380.2 L 170.7 371.7 L 186.4 365.4 L 202.1 375.1 L 217.9 394.3 L 233.6 363.7 L 249.3 384.7 L 265.0 367.7 L 280.7 374.5 L 296.4 386.4 L 312.1 355.2 L 327.9 360.9 L 343.6 384.1 L 359.3 393.2 L 375.0 361.5 L 390.7 379.6 L 406.4 393.2 L 422.1 354.1 L 437.9 387.5 L 453.6 389.2 L 469.3 372.2 L 485.0 381.3 L 500.7 383.6 L 516.4 362.6 L 532.1 366.0 L 547.9 371.7 L 563.6 338.8 L 579.3 376.8 L 595.0 359.2 L 610.7 343.3 L 626.4 379.0 L 642.1 342.8 L 657.9 338.2 L 673.6 377.3 L 689.3 390.4 L 705.0 353.0" fill="none" stroke="#7956c8" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+  </g>
+</svg>
+<figcaption className="mt-3 text-sm leading-relaxed text-zinc-600">Reddit's daily share of all citations returned by a continuously monitored ChatGPT UI prompt set and by OpenAI API web-search runs, July 7–August 18, 2026. The series cover different prompt sets, so compare the direction and scale rather than treating them as paired responses.</figcaption>
+</figure>
+
+## The drop shows up in two UI datasets
+
+The original [Promptwatch analysis](https://promptwatch.com/data/reddit-citations-are-dropping-in-chatgpt) put Reddit at a 3.83% average share of ChatGPT Search citations from July 18 through August 7. From August 14 through August 17, that average was 0.52% — an 86.4% relative drop.
+
+Our UI data follows almost the same shape. Using those exact windows, Reddit moved from 4.67% of citations to 0.38%, a 91.9% decline. Our series moved below 1% on August 13, one day earlier, but the two independently collected UI datasets agree on both the timing and the magnitude.
+
+There are two visible steps. On August 8, the UI series fell from 4.22% to 1.61%, matching the date Promptwatch identified for a change in ChatGPT's query fanout behavior. The second move took it below 1% around August 14.
+
+That agreement makes a UI-side change much more plausible than a quirk in one prompt set. It does not tell us what caused the change. Source selection, retrieval behavior, and citation extraction are all still possible explanations.
+
+## It was not just a larger denominator
+
+A citation-share chart can fall because an engine returns more citations overall, even if the number of Reddit citations stays constant. That explains part of the August 8 move, but not the whole event.
+
+Across equal-length windows before and after August 14, total citation volume rose by about 10% while Reddit citation volume fell by about 75%.
+
+So the line did not collapse only because ChatGPT started citing more sources. It surfaced far fewer Reddit links at the same time.
+
+## The API was already at the new level
+
+The API series is what changes the interpretation.
+
+From July 18 through August 7, Reddit averaged 0.42% of citations returned by our OpenAI API web-search runs. The ChatGPT UI was at 4.67% over the same dates — about eleven times higher.
+
+Around the August 14 event, the API did not follow the UI down. Its daily average moved from 0.63% during August 10–13 to 0.67% during August 14–17. Given the daily variation in the API series, that is effectively flat compared with the UI's collapse.
+
+Afterward, the UI sat at 0.38% while the API sat at 0.67%. Those are not identical numbers, but they are the same order of magnitude. The roughly eleven-fold gap was gone.
+
+The cleanest reading is therefore not "OpenAI stopped citing Reddit." It is **"the ChatGPT UI stopped citing Reddit much more often than the API did."**
+
+## A week later, a mechanism surfaced
+
+*Updated August 27.* When we first published this analysis, the cause was an open question. Promptwatch has since published a [follow-up on the retrieval change](https://promptwatch.com/blog/chatgpt-stop-citing-reddit) behind the August 8 step, and it points at how ChatGPT searches rather than what it thinks of Reddit.
+
+On August 8, the share of ChatGPT's fanout queries using the `site:` operator jumped from 0.37% to 16.8% — a 46-fold increase in one day — while the number of search queries issued per response nearly doubled, from 1.08 to 1.83. ChatGPT did not stop searching the open web; it started asking specific, named websites for answers directly. Domain-scoped queries go to official sites and documentation, almost never to forums, so a retrieval mix that leans on them mechanically pushes discussion platforms down the citation list.
+
+That is a mechanism hypothesis, not a confirmed cause. Promptwatch says it cannot yet rule out a data-collection artifact on its own end, and OpenAI [did not respond to requests for comment](https://www.searchenginejournal.com/why-reddits-chatgpt-citation-drop-isnt-fully-explained/586479/). But it is consistent with what our two series show: a retrieval change on the consumer surface would move the UI without touching an API integration that runs its own web-search path.
+
+It also explains why the event is ChatGPT-shaped rather than web-wide. Over the same period, [Promptwatch measured](https://searchengineland.com/reddit-chatgpt-search-citations-fall-report-485473) Reddit citations falling only 11% in Google AI Overviews and 31% in Google AI Mode, with Facebook, LinkedIn, YouTube, and TikTok also dipping in ChatGPT by much smaller amounts than Reddit. One engine rewired its retrieval; the others kept citing Reddit at close to their prior rates.
+
+## This happened before, and it reversed
+
+The strongest reason not to write Reddit's obituary is that ChatGPT already ran this experiment once.
+
+In September 2025, Reddit's share of ChatGPT citations collapsed from roughly 7% to roughly 1%, according to [Profound's analysis of more than four billion AI citations](https://www.tryprofound.com/blog/the-data-on-reddit-and-ai-search). By late October it had rebounded to around 3%, in line with its spring 2025 levels, and Reddit held its position as ChatGPT's second most-cited domain, behind Wikipedia, through the entire episode.
+
+That drop also traced back to retrieval plumbing rather than source preference. [Kevin Indig's analysis](https://learn.g2.com/reddit-chatgpt-citations) tied the timing to Google removing the `num=100` search parameter around September 10, 2025, which cut the depth of search results available to the data providers OpenAI buys SERP data from. Ahrefs data in the same analysis put 57.8% of Reddit's ranking keywords outside the top 20 results — exactly the region that vanished from the data supply. When the pipeline adjusted, the citations came back.
+
+The parallel is not proof that the August 2026 drop will reverse the same way; a deliberate shift toward domain-scoped retrieval could prove stickier than a broken scraping parameter. But two collapses in eleven months, both explained by retrieval infrastructure rather than by anything Reddit did, are a strong argument against treating any single week of citation data as a verdict on a channel.
+
+## The product surface matters
+
+It is tempting to treat "ChatGPT" as one measurable thing. It is not.
+
+The consumer UI and an API model with web search can share a model family while involving different retrieval paths, prompts, product logic, and citation formatting. An API-based visibility check can therefore produce a valid answer that still does not represent what a user sees in ChatGPT.
+
+Before August, that distinction was enormous for Reddit. Someone measuring through the API would have seen a citation share near 0.4% while the UI was returning ten times as much. After the change, the API happens to be a much closer proxy for this one domain. That does not mean every other source, prompt, or metric has converged with it.
+
+This is why we separate scraped consumer surfaces from direct API targets in Elmo. The access method is not implementation trivia when it changes the result you are trying to measure.
+
+## What this does not mean
+
+This chart measures **visible citations**, not training data, licensing, or whether Reddit influenced an answer without receiving a link. A decline in citations does not show that OpenAI no longer uses Reddit content in any broader sense.
+
+The series also cover different prompt sets. Absolute percentages depend heavily on what was asked: shopping, software, health, and local prompts naturally draw on different source mixes. The useful signal here is the large change in one continuously monitored UI series, its agreement with another UI study, and the absence of that change in the API series.
+
+Finally, four or five post-change days are enough to identify a break, not enough to call it permanent. [AI citation sources are volatile](/blog/citation-volatility), and the September 2025 collapse-and-recovery above shows how quickly a drop this size can unwind. We will keep watching whether the UI remains near the API baseline or rebounds.
+
+## The interesting part is the convergence
+
+The dramatic headline is that Reddit lost more than 90% of its citation share in our ChatGPT UI sample. The more useful finding is that the API was already operating near the new level.
+
+For anyone measuring AI visibility, that leaves a simple rule: **measure the surface your customers actually use.** API calls are easier to automate and useful in their own right, but they are not automatically a substitute for the consumer product.
+
+And for anyone deciding whether to pull Reddit budget over this: the evidence argues for changing your measurement before your strategy. The drop is confined to one surface of one engine, other engines barely moved, and the last collapse of this size reversed within weeks once the retrieval pipeline behind it changed. A reasonable decision rule is to keep community work funded on the prompts where forums carry answers on other engines, and revisit only if the ChatGPT UI is still sitting at API levels a quarter from now. Reddit remains an important source — [mostly as one of the third-party surfaces that carry answers about you](/blog/where-ai-citations-come-from) — but its value is specific to the prompt, the surface, and the week you measured it.
+
+You can read our broader analysis of [Reddit's changing role in AI citations](/blog/reddit-ai-citations), or use [Elmo](https://www.elmohq.com/) to track the cited domains behind your own prompts across consumer AI surfaces and API models.

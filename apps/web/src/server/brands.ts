@@ -310,7 +310,8 @@ export const createBrandFn = createServerFn({ method: "POST" })
  * Attach a new brand to the current user's existing organization, with a
  * fresh id decoupled from the org id. Used by the multi-brand "create new
  * brand" flow on the brand switcher. Gated by the canCreateBrands deployment
- * feature so whitelabel (orgs come from Auth0) and demo (read-only) reject it.
+ * feature so whitelabel (brands come from the admin API) and demo (read-only)
+ * reject it.
  */
 export const createBrandInOrgFn = createServerFn({ method: "POST" })
 	.validator(
@@ -454,7 +455,6 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
 
-		// Validate and clean domains
 		const cleanedCompetitors = data.competitors.map((c) => {
 			const cleanedDomains = c.domains.map((d) => cleanAndValidateDomain(d));
 			const invalid = c.domains.filter((_, i) => !cleanedDomains[i]);

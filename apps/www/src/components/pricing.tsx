@@ -2,13 +2,9 @@ import { Link } from "@tanstack/react-router";
 import {
 	CLOUD_ENTRY_PRICE_USD,
 	CLOUD_SIGNUP_URL,
-	MAX_STANDARD_RUNS_PER_DAY,
 	PLAN_KEYS,
 	PLANS,
-	type PlanPlatformGroupId,
-	PREMIUM_ADDON_MONTHLY_USD,
 	planPlatformBreakdown,
-	platformTierMembers,
 } from "@workspace/config/plans";
 import { PlatformTier } from "@workspace/ui/brand/platform-tier";
 import { ArrowRight, Check } from "lucide-react";
@@ -22,6 +18,8 @@ interface Plan {
 	desc: string;
 	price: string;
 	priceLabel: string;
+	/** Draws the eye to the option we want picked; exactly one plan sets it. */
+	featured?: boolean;
 	features: string[];
 	cta:
 		| { type: "link"; text: string; href: string }
@@ -32,8 +30,26 @@ interface Plan {
 
 const plans: Plan[] = [
 	{
-		id: "self-hosted",
+		id: "cloud",
 		tag: "01",
+		name: "Cloud",
+		desc: "We host it, update it, and keep it running.",
+		price: `From $${CLOUD_ENTRY_PRICE_USD}`,
+		priceLabel: "/ mo",
+		featured: true,
+		features: [
+			"Managed hosting, automatic updates",
+			"Track ChatGPT, Google, Perplexity & more",
+			"Scraped surfaces sampled up to 4× daily",
+			"Premium grounded models on Pro & Business",
+			"API access on every plan",
+			"Unlimited seats",
+		],
+		cta: { type: "external", text: "Start with Cloud", href: CLOUD_SIGNUP_URL },
+	},
+	{
+		id: "self-hosted",
+		tag: "02",
 		name: "Self-Hosted",
 		desc: "Run on your own infra with full access.",
 		price: "$0",
@@ -46,24 +62,7 @@ const plans: Plan[] = [
 			"Full source code access",
 			"Community support",
 		],
-		cta: { type: "link", text: "Get started", href: "/docs" },
-	},
-	{
-		id: "cloud",
-		tag: "02",
-		name: "Cloud",
-		desc: "Managed hosting, no maintenance.",
-		price: `From $${CLOUD_ENTRY_PRICE_USD}`,
-		priceLabel: "/ mo",
-		features: [
-			"Managed hosting, automatic updates",
-			"Track ChatGPT, Google, Perplexity & more",
-			"Scraped surfaces sampled up to 4× daily",
-			"Premium grounded models on Pro & Business",
-			"API access on every plan",
-			"Unlimited seats",
-		],
-		cta: { type: "external", text: "View plans & sign up", href: CLOUD_SIGNUP_URL },
+		cta: { type: "link", text: "Self-host free", href: "/docs" },
 	},
 	{
 		id: "white-label",
@@ -84,24 +83,52 @@ const plans: Plan[] = [
 	},
 ];
 
-export function Pricing({ showPlatformNotes = true }: { showPlatformNotes?: boolean }) {
+/** Only the featured plan gets a filled button, so the row has one obvious next step. */
+function cardCtaClass(featured?: boolean): string {
+	const base =
+		"inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium leading-none";
+	return featured
+		? `${base} bg-blue-600 text-white ring-1 ring-blue-600 hover:bg-blue-700`
+		: `${base} bg-white text-zinc-900 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300`;
+}
+
+/** The same two treatments, reached through the buttons the embedded forms render. */
+function formButtonClass(featured?: boolean): string {
+	const base =
+		"[&_button]:!h-8 [&_button]:w-full [&_button]:rounded-md [&_button]:!px-3 [&_button]:!py-0 [&_button]:!text-sm [&_button]:font-medium [&_button]:!leading-none [&_button]:ring-1";
+	return featured
+		? `${base} [&_button]:bg-blue-600 [&_button]:text-white [&_button]:ring-blue-600 [&_button]:hover:bg-blue-700`
+		: `${base} [&_button]:bg-white [&_button]:text-zinc-900 [&_button]:ring-zinc-200 [&_button]:hover:bg-zinc-50 [&_button]:hover:ring-zinc-300`;
+}
+
+export function Pricing({ as: Heading = "h2" }: { as?: "h1" | "h2" } = {}) {
 	return (
 		<section id="pricing" className="border-b border-zinc-200 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
 				<div>
 					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ PRICING</p>
-					<h2 className="mt-4 max-w-[28ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-						Self-host it, run it in our cloud, or white-label it for your customers.
-					</h2>
+					<Heading className="mt-4 max-w-[28ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
+						Run it in our cloud, self-host it, or white-label it for your customers.
+					</Heading>
 				</div>
 
 				<div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 md:grid-cols-3">
 					{plans.map((plan) => (
-						<div key={plan.id} className="flex flex-col justify-between bg-white p-6 lg:p-8">
+						<div
+							key={plan.id}
+							className={`flex flex-col justify-between p-6 lg:p-8 ${plan.featured ? "bg-blue-50/50" : "bg-white"}`}
+						>
 							<div>
-								<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
-									{plan.tag}
-								</span>
+								<div className="flex items-center gap-2">
+									<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
+										{plan.tag}
+									</span>
+									{plan.featured && (
+										<span className="rounded-full bg-blue-600 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.15em] text-white">
+											Recommended
+										</span>
+									)}
+								</div>
 								<h3 className="mt-5 text-2xl font-semibold tracking-tight text-zinc-950">{plan.name}</h3>
 								<p className="mt-2 max-w-[36ch] text-pretty text-sm text-zinc-600">{plan.desc}</p>
 								<div className="mt-6 flex items-baseline gap-2 border-y border-zinc-200 py-4">
@@ -112,7 +139,7 @@ export function Pricing({ showPlatformNotes = true }: { showPlatformNotes?: bool
 										</span>
 									)}
 								</div>
-								<ul role="list" className="mt-6 space-y-2.5 text-sm text-zinc-700">
+								<ul className="mt-6 space-y-2.5 text-sm text-zinc-700">
 									{plan.features.map((f) => (
 										<li key={f} className="flex items-start gap-2">
 											<Check className="mt-0.5 size-3.5 shrink-0 text-blue-600" strokeWidth={3} />
@@ -121,21 +148,15 @@ export function Pricing({ showPlatformNotes = true }: { showPlatformNotes?: bool
 									))}
 								</ul>
 							</div>
-							<div className="mt-8 [&_button]:!h-8 [&_button]:w-full [&_button]:rounded-md [&_button]:bg-blue-600 [&_button]:!px-3 [&_button]:!py-0 [&_button]:!text-sm [&_button]:font-medium [&_button]:!leading-none [&_button]:text-white [&_button]:ring-1 [&_button]:ring-blue-600 [&_button]:hover:bg-blue-700">
+							<div className={`mt-8 ${formButtonClass(plan.featured)}`}>
 								{plan.cta.type === "link" && (
-									<Link
-										to={plan.cta.href}
-										className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
-									>
+									<Link to={plan.cta.href} className={cardCtaClass(plan.featured)}>
 										{plan.cta.text}
 										<ArrowRight className="size-3.5" />
 									</Link>
 								)}
 								{plan.cta.type === "external" && (
-									<a
-										href={plan.cta.href}
-										className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
-									>
+									<a href={plan.cta.href} className={cardCtaClass(plan.featured)}>
 										{plan.cta.text}
 										<ArrowRight className="size-3.5" />
 									</a>
@@ -147,35 +168,20 @@ export function Pricing({ showPlatformNotes = true }: { showPlatformNotes?: bool
 					))}
 				</div>
 
-				<CloudPlans showPlatformNotes={showPlatformNotes} />
+				<CloudPlans />
 			</div>
 		</section>
 	);
 }
 
-/**
- * A tier's platforms as a sentence fragment, read from the catalog so the prose
- * can't fall behind the tables above it when a platform is added.
- */
-function namePlatforms(tier: PlanPlatformGroupId, type: "conjunction" | "disjunction" = "conjunction"): string {
-	const names = platformTierMembers(tier).map((member) => member.label);
-	return new Intl.ListFormat("en", { style: "long", type }).format(names);
-}
-
-function CloudPlans({ showPlatformNotes }: { showPlatformNotes: boolean }) {
+function CloudPlans() {
 	return (
 		<div className="mt-16">
 			<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ CLOUD PLANS</p>
 			<h3 className="mt-3 max-w-[32ch] text-2xl font-semibold tracking-tight text-zinc-950 md:text-3xl">
 				Self-serve cloud, billed monthly or annually.
 			</h3>
-			<p className="mt-2 max-w-[52ch] text-sm text-zinc-600">
-				Annual billing saves two months. No trial — evaluate with the{" "}
-				<a href="https://demo.elmohq.com" className="text-blue-600 underline">
-					live demo
-				</a>{" "}
-				or self-host for free.
-			</p>
+			<p className="mt-2 max-w-[52ch] text-sm text-zinc-600">Annual billing saves two months.</p>
 
 			<div className="mt-8 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-2 lg:grid-cols-5">
 				{PLAN_KEYS.map((key) => {
@@ -234,35 +240,15 @@ function CloudPlans({ showPlatformNotes }: { showPlatformNotes: boolean }) {
 					<div className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Let&apos;s talk</div>
 					<p className="mt-1 text-xs text-zinc-500">Contract billing</p>
 					<ul className="mt-4 space-y-1.5 text-xs text-zinc-700">
-						<li>Multiple brands, custom prompt limits</li>
-						<li>Up to {MAX_STANDARD_RUNS_PER_DAY}×/day sampling</li>
-						<li>Any other models, white label</li>
+						<li>Multiple brands</li>
+						<li>Custom prompt limits</li>
+						<li>Higher daily sampling rates</li>
+						<li>Any models</li>
+						<li>White label</li>
 						<li>SSO</li>
 					</ul>
 				</div>
 			</div>
-
-			{showPlatformNotes && (
-				<div className="mt-6 grid gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-2">
-					<div className="bg-white p-5">
-						<p className="font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-500">/ SCRAPED SURFACES</p>
-						<p className="mt-2 text-sm text-zinc-700">
-							{namePlatforms("scraped")} are read the way a visitor sees them, so you get the answer <em>and</em> the
-							sources it cited — including the shopping and search modules alongside it. Sampled at your plan&apos;s rate.
-						</p>
-					</div>
-					<div className="bg-white p-5">
-						<p className="font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-500">/ MODEL APIS</p>
-						<p className="mt-2 text-sm text-zinc-700">
-							{namePlatforms("api")} are called directly, which shows how each model describes your brand from what it
-							already knows — nothing is searched, so nothing is cited. On Pro and Business you can also track a prompt on
-							a premium model with its own web search switched on — {namePlatforms("premium", "disjunction")} — for
-							grounded, cited answers, at ${PREMIUM_ADDON_MONTHLY_USD} per pairing per month beyond what your plan
-							includes.
-						</p>
-					</div>
-				</div>
-			)}
 
 			<div className="mt-6 flex flex-wrap gap-3">
 				<a

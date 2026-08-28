@@ -1,26 +1,30 @@
 /// <reference types="vite/client" />
-import { useEffect } from "react";
-import { HeadContent, Outlet, ScriptOnce, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
-import { NotFound } from "@/router-default-components";
-import { TanStackDevtools } from "@tanstack/react-devtools";
-import type { QueryClient } from "@tanstack/react-query";
-import { DEFAULT_APP_ICON, ELMO_THEME_COLOR } from "@workspace/config/constants";
-import type { DeploymentMode } from "@workspace/config/types";
-import type { MissingEnvVar } from "@workspace/config/env";
-import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
-import MissingEnvPage from "@/components/missing-env-page";
-import { usesWordmarkFont } from "@/components/logo";
-import queryDevtools from "@/integrations/tanstack-query/devtools";
-import { initPostHog } from "@/lib/posthog";
-import appCss from "../styles.css?url";
+
 // Preloaded so the wordmark font downloads in parallel with the CSS rather than
 // after it. Must resolve to the same emitted asset as the @font-face src.
 import titanOneFont from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
+import { TanStackDevtools } from "@tanstack/react-devtools";
+import type { QueryClient } from "@tanstack/react-query";
+import { createRootRouteWithContext, HeadContent, Outlet, ScriptOnce, Scripts } from "@tanstack/react-router";
+import { DEFAULT_APP_ICON, ELMO_THEME_COLOR } from "@workspace/config/constants";
+import type { MissingEnvVar } from "@workspace/config/env";
+import type { DeploymentMode } from "@workspace/config/types";
+import { useEffect } from "react";
+import { usesWordmarkFont } from "@/components/logo";
+import MissingEnvPage from "@/components/missing-env-page";
+import queryDevtools from "@/integrations/tanstack-query/devtools";
+import { initCrisp } from "@/lib/crisp";
+import { initPostHog } from "@/lib/posthog";
+import { NotFound } from "@/router-default-components";
+import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
+import appCss from "../styles.css?url";
 
+// clientConfig and envValidation are optional because the router renders against
+// its base context — which has neither — until this route's beforeLoad resolves.
 interface RouterContext {
 	queryClient: QueryClient;
-	clientConfig: PublicClientConfig;
-	envValidation: {
+	clientConfig?: PublicClientConfig;
+	envValidation?: {
 		mode: DeploymentMode;
 		missing: MissingEnvVar[];
 		isValid: boolean;
@@ -28,19 +32,22 @@ interface RouterContext {
 }
 
 // Client-side cache for config data — avoids HTTP round-trips on every SPA navigation.
-// Server-side (SSR) always fetches fresh (cachedRootData is reset per request).
+// The server deliberately doesn't cache: `hasUsers` (and with it `canRegister`)
+// flips the first time someone signs up, and a module-scope cache in a
+// long-lived server process would keep serving the pre-signup answer — leaving
+// /auth/register reachable on a bootstrapped instance until the next restart.
 let cachedRootData: {
 	clientConfig: PublicClientConfig;
 	envValidation: { mode: DeploymentMode; missing: MissingEnvVar[]; isValid: boolean };
-} | null = typeof window === "undefined" ? null : null;
+} | null = null;
 
 export const Route = createRootRouteWithContext<RouterContext>()({
 	notFoundComponent: NotFound,
 	beforeLoad: async () => {
 		if (cachedRootData) return cachedRootData;
 		const [clientConfig, envValidation] = await Promise.all([getClientConfig(), getEnvValidationStateFn()]);
-		cachedRootData = { clientConfig, envValidation };
-		return cachedRootData;
+		if (typeof window !== "undefined") cachedRootData = { clientConfig, envValidation };
+		return { clientConfig, envValidation };
 	},
 	head: ({ match }) => {
 		const branding = match.context?.clientConfig?.branding;
@@ -156,9 +163,16 @@ function RootComponent() {
 		if (key) initPostHog(key);
 	}, [clientConfig?.analytics?.posthogKey]);
 
+	useEffect(() => {
+		if (!clientConfig) return;
+		initCrisp(clientConfig.analytics?.crispWebsiteId, clientConfig.mode);
+	}, [clientConfig]);
+
 	const clarityQueueScript = `window.clarity=window.clarity||function(){(window.clarity.q=window.clarity.q||[]).push(arguments)};`;
 
-	if (!envValidation.isValid) {
+	// Only swap in the missing-env page once we actually know env is invalid —
+	// envValidation is absent while a navigation's root beforeLoad is in flight.
+	if (envValidation && !envValidation.isValid) {
 		return (
 			<html lang="en">
 				<head>

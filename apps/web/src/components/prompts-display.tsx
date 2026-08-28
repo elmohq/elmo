@@ -1,10 +1,11 @@
 import { IconEditCircle } from "@tabler/icons-react";
 import { Link, useSearch } from "@tanstack/react-router";
 import type { Brand, Competitor } from "@workspace/lib/db/schema";
-import { Button } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { cn } from "@workspace/ui/lib/utils";
 import { Inbox } from "lucide-react";
 import { useMemo } from "react";
 import { ALL_MODELS_VALUE } from "@/components/filter-bar";
@@ -20,6 +21,7 @@ import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import { coercePromptOrder, orderPrompts } from "@/lib/prompt-order";
+import { skeletonRows } from "@/lib/skeleton-rows";
 
 interface PromptsDisplayProps {
 	pageTitle: string;
@@ -122,12 +124,10 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 					<div className="text-center py-8 text-muted-foreground">
 						<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
 						<p className="mb-4">No prompts yet.</p>
-						<Button asChild size="sm" className="h-7 flex cursor-pointer">
-							<Link to={editLink}>
-								<IconEditCircle />
-								<span>Edit</span>
-							</Link>
-						</Button>
+						<Link to={editLink} className={cn(buttonVariants({ size: "sm" }), "h-7 flex cursor-pointer")}>
+							<IconEditCircle />
+							<span>Edit</span>
+						</Link>
 					</div>
 				</div>
 			}
@@ -240,8 +240,8 @@ function ChartSection({
 function ContentLoadingSkeleton() {
 	return (
 		<div className="space-y-6">
-			{[...Array(3)].map((_, i) => (
-				<Card key={i} className="py-3 gap-3">
+			{skeletonRows(3).map((row) => (
+				<Card key={row} className="py-3 gap-3">
 					<CardHeader className="flex justify-between items-center px-3">
 						<Skeleton className="h-4 w-48" />
 						<Skeleton className="h-5 w-24 rounded-full" />

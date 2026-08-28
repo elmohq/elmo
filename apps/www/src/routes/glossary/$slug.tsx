@@ -1,9 +1,9 @@
-import { createFileRoute, notFound, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
-import { getGlossaryTerm, glossaryTerms, type GlossaryTerm } from "@/data/glossary";
+import { Navbar } from "@/components/navbar";
+import { type GlossaryTerm, getGlossaryTerm, glossaryTerms } from "@/data/glossary";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/glossary/$slug")({
 	head: ({ params }) => {

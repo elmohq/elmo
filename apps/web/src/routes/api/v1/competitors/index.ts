@@ -7,13 +7,13 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { db } from "@workspace/lib/db/db";
-import { competitors, brands } from "@workspace/lib/db/schema";
-import { eq, count, desc } from "drizzle-orm";
-import { z } from "zod";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
-import { dedupeDomains, dedupeAliases } from "@/lib/domain-categories";
+import { db } from "@workspace/lib/db/db";
+import { brands, competitors } from "@workspace/lib/db/schema";
+import { count, desc, eq } from "drizzle-orm";
+import { z } from "zod";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 
 const createCompetitorBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),

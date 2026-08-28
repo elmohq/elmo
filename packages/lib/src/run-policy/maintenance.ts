@@ -3,8 +3,7 @@
  * gathers state (prompts, resolved run plans, last runs, pending pg-boss
  * jobs); this decides which chains to revive, which future jobs to expedite,
  * and how many prompts are overdue enough to alert on. Keeping it pure makes
- * the self-healing behavior — historically the most incident-prone part of
- * the scheduler — exhaustively unit-testable.
+ * the scheduler's self-healing behavior exhaustively unit-testable.
  */
 
 import { shouldExpediteJob } from "../expedite";
@@ -50,6 +49,42 @@ function isPromptOverdue(state: MaintenancePromptState, now: number, graceMs: nu
 	);
 }
 
+type MaintenanceAction =
+	| { kind: "none" }
+	| { kind: "schedule"; cadenceHours: number }
+	| { kind: "expedite"; jobId: string };
+
+function actionForPrompt(state: MaintenancePromptState, nowMs: number): MaintenanceAction {
+	// A job that is running or retrying is already being handled.
+	if (state.pendingJob && state.pendingJob.state !== "created") return { kind: "none" };
+
+	// A prompt with no recorded runs is inherently overdue: there is nothing
+	// fresh. This covers brand-new prompts and revived chains whose history
+	// (shifted or cleaned) fell outside the maintenance query window — the
+	// isPromptOverdue path alone would compare against promptCreatedAt and
+	// wrongly deem a just-created prompt "not overdue".
+	const hasAnyRun = state.lastRunAtByKey.size > 0;
+	if (hasAnyRun && !isPromptOverdue(state, nowMs, 0)) return { kind: "none" };
+
+	if (!state.pendingJob) {
+		// rescheduleHours is non-null for every state that reaches here.
+		return { kind: "schedule", cadenceHours: state.plan.rescheduleHours as number };
+	}
+
+	// A future job exists — drag it forward only if the prompt has genuinely
+	// stalled. `runFrequencyMs` is how often the prompt runs (its fastest
+	// target), which is the interval the pending job was scheduled against.
+	const runTimes = [...state.lastRunAtByKey.values()].map((d) => d.getTime());
+	const expedite = shouldExpediteJob({
+		jobConsecutiveFailures: state.pendingJob.consecutiveFailures,
+		lastRunAt: runTimes.length > 0 ? new Date(Math.max(...runTimes)) : null,
+		runFrequencyMs: Math.min(...state.plan.targets.map((t) => t.intervalHours)) * 3600 * 1000,
+		now: nowMs,
+		minIntervalMs: EXPEDITE_MIN_INTERVAL_MS,
+	});
+	return expedite ? { kind: "expedite", jobId: state.pendingJob.jobId } : { kind: "none" };
+}
+
 export function computeMaintenanceDecisions(promptStates: MaintenancePromptState[], now: Date): MaintenanceDecisions {
 	const nowMs = now.getTime();
 	const decisions: MaintenanceDecisions = { toSchedule: [], toExpedite: [], alertOverdueCount: 0 };
@@ -58,45 +93,13 @@ export function computeMaintenanceDecisions(promptStates: MaintenancePromptState
 		// No targets (unentitled org, no picks, outside the pool): the prompt is
 		// meant to be stopped. Not overdue, nothing to start, no alert noise.
 		if (state.plan.targets.length === 0 || state.plan.rescheduleHours === null) continue;
+		if (isPromptOverdue(state, nowMs, OVERDUE_ALERT_GRACE_MS)) decisions.alertOverdueCount++;
 
-		if (isPromptOverdue(state, nowMs, OVERDUE_ALERT_GRACE_MS)) {
-			decisions.alertOverdueCount++;
-		}
-
-		// A job that is running or retrying is already being handled.
-		if (state.pendingJob && state.pendingJob.state !== "created") continue;
-
-		// A prompt with no recorded runs is inherently overdue: there is nothing
-		// fresh. This covers brand-new prompts and revived chains whose history
-		// (shifted or cleaned) fell outside the maintenance query window — the
-		// isPromptOverdue path alone would compare against promptCreatedAt and
-		// wrongly deem a just-created prompt "not overdue".
-		const hasAnyRun = state.lastRunAtByKey.size > 0;
-		const isOverdue = !hasAnyRun || isPromptOverdue(state, nowMs, 0);
-		if (!isOverdue) continue;
-
-		const minIntervalMs = Math.min(...state.plan.targets.map((t) => t.intervalHours)) * 3600 * 1000;
-
-		if (state.pendingJob) {
-			// A future job exists — drag it forward only if the prompt has genuinely
-			// stalled. `runFrequencyMs` is how often the prompt runs (its fastest target),
-			// which is the interval the pending job was scheduled against.
-			const runTimes = [...state.lastRunAtByKey.values()].map((d) => d.getTime());
-			const mostRecentRunMs = runTimes.length > 0 ? Math.max(...runTimes) : null;
-			const expedite = shouldExpediteJob({
-				jobConsecutiveFailures: state.pendingJob.consecutiveFailures,
-				lastRunAt: mostRecentRunMs === null ? null : new Date(mostRecentRunMs),
-				runFrequencyMs: minIntervalMs,
-				now: nowMs,
-				minIntervalMs: EXPEDITE_MIN_INTERVAL_MS,
-			});
-			if (!expedite) continue;
-			decisions.toExpedite.push({ promptId: state.promptId, jobId: state.pendingJob.jobId });
-		} else {
-			decisions.toSchedule.push({
-				promptId: state.promptId,
-				cadenceHours: state.plan.rescheduleHours,
-			});
+		const action = actionForPrompt(state, nowMs);
+		if (action.kind === "schedule") {
+			decisions.toSchedule.push({ promptId: state.promptId, cadenceHours: action.cadenceHours });
+		} else if (action.kind === "expedite") {
+			decisions.toExpedite.push({ promptId: state.promptId, jobId: action.jobId });
 		}
 	}
 

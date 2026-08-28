@@ -3,6 +3,10 @@
  * Playwright specs agree on IDs and credentials. Unlike seed.ts this module
  * has no side effects, so specs can import from it freely.
  */
+import path from "node:path";
+
+/** Directory this file lives in, so paths don't depend on the caller's cwd. */
+const E2E_DIR = import.meta.dirname;
 
 // Defaults to localhost so the destructive seeder can never point at a
 // production database. The env override lets CI workflows pass their own
@@ -83,4 +87,63 @@ export const NIKE_PROMPT_IDS = {
 export const NIKE_COMPETITOR_IDS = {
   adidas: "00000000-0000-0000-0000-410000000001",
   puma: "00000000-0000-0000-0000-410000000002",
+} as const;
+
+// ---------------------------------------------------------------------------
+// Deployment modes
+// ---------------------------------------------------------------------------
+
+/**
+ * The deployment modes the E2E suite covers. Each one is a Playwright project
+ * that runs the shared specs plus its own; the stack serves one mode at a time,
+ * so CI recreates the web container between them (see e2e/modes/*.yaml).
+ */
+export const DEPLOYMENT_MODES = ["local", "cloud", "whitelabel", "demo"] as const;
+export type DeploymentMode = (typeof DEPLOYMENT_MODES)[number];
+
+export function isDeploymentMode(value: string): value is DeploymentMode {
+  return (DEPLOYMENT_MODES as readonly string[]).includes(value);
+}
+
+/** Where each mode's authenticated browser state is saved by auth.setup.ts. */
+export function authStatePath(mode: DeploymentMode): string {
+  return path.join(E2E_DIR, ".auth", `${mode}.json`);
+}
+
+/**
+ * The generated deployment config `elmo init --dev` writes. Read for the
+ * BETTER_AUTH_SECRET the whitelabel setup needs to mint a session cookie.
+ */
+export const GENERATED_ENV_PATH = path.join(E2E_DIR, ".elmo", ".env");
+
+/**
+ * Whitelabel branding, mirroring e2e/modes/whitelabel.yaml. Kept here so specs
+ * assert against the same values the container is configured with.
+ */
+export const WHITELABEL = {
+  appName: "Acme AI Search",
+  appIcon: "https://cdn.example.test/acme-icon.png",
+  parentName: "Acme",
+  optimizationUrlOrigin: "https://app.example.test",
+  /** Bogus by design: no E2E run may reach a real identity provider. */
+  auth0Domain: "e2e-idp.example.test",
+  auth0ClientId: "e2e-auth0-client-id",
+} as const;
+
+/**
+ * Cloud signup fixtures, mirroring CLOUD_SIGNUP_ALLOWLIST in
+ * e2e/modes/cloud.yaml. The allowlist admits `allowedDomain` and the disposable
+ * domain, so the disposable-address rejection is reached on its own merits
+ * rather than being masked by the invite-only gate.
+ */
+export const CLOUD_SIGNUP = {
+  allowedDomain: "e2e-allowed.test",
+  blockedDomain: "e2e-blocked.test",
+  disposableDomain: "mailinator.com",
+} as const;
+
+/** The shared credentials a demo deployment advertises on its login page. */
+export const DEMO_CREDENTIALS = {
+  email: "demo@elmohq.com",
+  password: "demo",
 } as const;

@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/al
 import { Button } from "@workspace/ui/components/button";
 import { AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 import { type CompetitorEntry, CompetitorsEditor } from "@/components/competitors-editor";
 import { useBrand, useCompetitors } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
@@ -44,7 +45,7 @@ function CompetitorsSettingsPage() {
 		if (existingCompetitors.length > 0) {
 			setCompetitors(
 				existingCompetitors.map((c) => ({
-					_key: crypto.randomUUID(),
+					_key: uuidv4(),
 					name: c.name,
 					domains: c.domains ?? [],
 					aliases: c.aliases || [],

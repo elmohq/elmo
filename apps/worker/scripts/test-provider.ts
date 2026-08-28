@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+
 /**
  * Integration test for scraping provider targets.
  * Exercises the same code paths as the worker against real provider APIs.
@@ -10,15 +11,10 @@
  *   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online" --output-json result.json
  */
 
-import {
-	parseScrapeTargets,
-	getProvider,
-	getModelMeta,
-	STATUS_TARGETS,
-	type ScrapeResult,
-} from "@workspace/lib/providers";
-import { extractTextContent, extractCitations } from "@workspace/lib/text-extraction";
-import { appendFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { getModelMeta } from "@workspace/config/models";
+import { getProvider, parseScrapeTargets, type ScrapeResult, STATUS_TARGETS } from "@workspace/lib/providers";
+import { extractCitations, extractTextContent } from "@workspace/lib/text-extraction";
 import { escapeGitHubSummaryTableCell } from "./github-summary";
 
 const colors = {
@@ -136,9 +132,10 @@ export interface TargetResult {
 	timestamp: string;
 }
 
-function validateResult(result: ScrapeResult, providerId: string, webSearch: boolean): ValidationIssue[] {
-	const issues: ValidationIssue[] = [];
+type ResultCheck = (result: ScrapeResult, providerId: string, webSearch: boolean) => ValidationIssue[];
 
+const checkTextContent: ResultCheck = (result) => {
+	const issues: ValidationIssue[] = [];
 	if (!result.textContent || result.textContent.length < MIN_TEXT_LENGTH) {
 		issues.push({
 			field: "textContent",
@@ -146,7 +143,6 @@ function validateResult(result: ScrapeResult, providerId: string, webSearch: boo
 			severity: "error",
 		});
 	}
-
 	if (result.textContent?.startsWith("No text content") || result.textContent?.startsWith("Error extracting")) {
 		issues.push({
 			field: "textContent",
@@ -154,35 +150,40 @@ function validateResult(result: ScrapeResult, providerId: string, webSearch: boo
 			severity: "error",
 		});
 	}
+	return issues;
+};
 
+/** The stored payload has to answer the same questions the live run did. */
+const checkRawOutput: ResultCheck = (result, providerId) => {
 	if (result.rawOutput == null) {
-		issues.push({ field: "rawOutput", message: "rawOutput is null", severity: "error" });
+		return [{ field: "rawOutput", message: "rawOutput is null", severity: "error" }];
 	}
 
-	if (result.rawOutput != null) {
-		const reExtracted = extractTextContent(result.rawOutput, providerId);
-		if (
-			reExtracted.startsWith("No text content") ||
-			reExtracted.startsWith("Unknown") ||
-			reExtracted.startsWith("Error")
-		) {
-			issues.push({
-				field: "rawOutput re-extraction",
-				message: `extractTextContent(rawOutput, "${providerId}") returned: "${reExtracted.slice(0, 80)}"`,
-				severity: "error",
-			});
-		}
-
-		const reExtractedCitations = extractCitations(result.rawOutput, providerId);
-		if (result.citations.length > 0 && reExtractedCitations.length === 0) {
-			issues.push({
-				field: "rawOutput citation re-extraction",
-				message: `Provider returned ${result.citations.length} citations but extractCitations(rawOutput, "${providerId}") found 0`,
-				severity: "warning",
-			});
-		}
+	const issues: ValidationIssue[] = [];
+	const reExtracted = extractTextContent(result.rawOutput, providerId);
+	if (
+		reExtracted.startsWith("No text content") ||
+		reExtracted.startsWith("Unknown") ||
+		reExtracted.startsWith("Error")
+	) {
+		issues.push({
+			field: "rawOutput re-extraction",
+			message: `extractTextContent(rawOutput, "${providerId}") returned: "${reExtracted.slice(0, 80)}"`,
+			severity: "error",
+		});
 	}
+	if (result.citations.length > 0 && extractCitations(result.rawOutput, providerId).length === 0) {
+		issues.push({
+			field: "rawOutput citation re-extraction",
+			message: `Provider returned ${result.citations.length} citations but extractCitations(rawOutput, "${providerId}") found 0`,
+			severity: "warning",
+		});
+	}
+	return issues;
+};
 
+const checkCitations: ResultCheck = (result, _providerId, webSearch) => {
+	const issues: ValidationIssue[] = [];
 	if (result.citations.length === 0) {
 		issues.push({
 			field: "citations",
@@ -192,28 +193,112 @@ function validateResult(result: ScrapeResult, providerId: string, webSearch: boo
 			severity: webSearch ? "error" : "warning",
 		});
 	}
+	for (const [index, citation] of result.citations.entries()) {
+		if (!citation.url?.startsWith("http")) {
+			issues.push({ field: `citations[${index}].url`, message: `Invalid URL: "${citation.url}"`, severity: "error" });
+		}
+		if (!citation.domain) {
+			issues.push({ field: `citations[${index}].domain`, message: "Missing domain", severity: "error" });
+		}
+	}
+	return issues;
+};
 
-	if (webSearch && !hasRealWebQueries(result.webQueries)) {
-		const isUnavailable = result.webQueries.some((q) => q === "unavailable");
-		issues.push({
+const checkWebQueries: ResultCheck = (result, _providerId, webSearch) => {
+	if (!webSearch || hasRealWebQueries(result.webQueries)) return [];
+	// Some providers never expose their queries; that is a warning, not a failure.
+	const isUnavailable = result.webQueries.some((query) => query === "unavailable");
+	return [
+		{
 			field: "webQueries",
 			message: isUnavailable
 				? "Web queries unavailable (not exposed by this provider)"
 				: "No web queries returned (expected when online)",
 			severity: isUnavailable ? "warning" : "error",
-		});
+		},
+	];
+};
+
+const RESULT_CHECKS: ResultCheck[] = [checkTextContent, checkRawOutput, checkCitations, checkWebQueries];
+
+function validateResult(result: ScrapeResult, providerId: string, webSearch: boolean): ValidationIssue[] {
+	return RESULT_CHECKS.flatMap((check) => check(result, providerId, webSearch));
+}
+
+type TargetLog = (message: string, color?: string) => void;
+
+/**
+ * A provider that returned nothing citable may just have disliked the prompt,
+ * so try the others before calling the target broken.
+ */
+async function retryForCitations(args: {
+	provider: ReturnType<typeof getProvider>;
+	config: ReturnType<typeof parseScrapeTargets>[number];
+	result: ScrapeResult;
+	attemptStart: number;
+	tlog: TargetLog;
+}): Promise<{ result: ScrapeResult; retries: number; attemptStart: number }> {
+	const { provider, config, tlog } = args;
+	let { result, attemptStart } = args;
+	if (!config.webSearch || result.citations.length > 0 || hasRealWebQueries(result.webQueries)) {
+		return { result, retries: 0, attemptStart };
 	}
 
-	for (const [i, cit] of result.citations.entries()) {
-		if (!cit.url || !cit.url.startsWith("http")) {
-			issues.push({ field: `citations[${i}].url`, message: `Invalid URL: "${cit.url}"`, severity: "error" });
+	let retries = 0;
+	for (let i = 1; i < TEST_PROMPTS.length; i++) {
+		tlog(
+			`No citations or web queries — retrying with prompt ${i + 1}/${TEST_PROMPTS.length}: "${TEST_PROMPTS[i]}"`,
+			colors.yellow,
+		);
+		retries++;
+		try {
+			attemptStart = Date.now();
+			const retry = await provider.run(config.model, TEST_PROMPTS[i], {
+				webSearch: config.webSearch,
+				version: config.version,
+			});
+			if (retry.citations.length > 0 || hasRealWebQueries(retry.webQueries)) {
+				result = retry;
+				break;
+			}
+		} catch {
+			// A failed retry leaves the best result so far in place.
 		}
-		if (!cit.domain) {
-			issues.push({ field: `citations[${i}].domain`, message: "Missing domain", severity: "error" });
+	}
+	return { result, retries, attemptStart };
+}
+
+function reportResult(args: {
+	result: ScrapeResult;
+	latency: number;
+	rawOutputBytes: number;
+	issues: ValidationIssue[];
+	hasErrors: boolean;
+	tlog: TargetLog;
+}): void {
+	const { result, latency, rawOutputBytes, issues, hasErrors, tlog } = args;
+
+	tlog(`Latency:      ${formatLatency(latency)}`, colors.dim);
+	tlog(`Text:         ${result.textContent?.length ?? 0} chars`, colors.dim);
+	tlog(`Raw output:   ${(rawOutputBytes / 1024).toFixed(1)} KB`, colors.dim);
+	tlog(`Citations:    ${result.citations.length}`, colors.blue);
+	tlog(`Web queries:  ${result.webQueries.length}`, colors.dim);
+
+	if (result.textContent) {
+		tlog("\nSample output:", colors.dim);
+		tlog(`  ${result.textContent.slice(0, 300).replace(/\n/g, "\n  ")}`, colors.dim);
+	}
+
+	if (issues.length > 0) {
+		tlog("\nIssues:", colors.bright);
+		for (const issue of issues) {
+			const isError = issue.severity === "error";
+			tlog(`  ${isError ? "ERROR" : "WARN"}: [${issue.field}] ${issue.message}`, isError ? colors.red : colors.yellow);
 		}
 	}
 
-	return issues;
+	tlog("");
+	tlog(hasErrors ? "FAIL" : "PASS", hasErrors ? colors.red : colors.green);
 }
 
 async function runTarget(target: string, dumpDir?: string): Promise<{ result: TargetResult; logs: string }> {
@@ -266,29 +351,10 @@ async function runTarget(target: string, dumpDir?: string): Promise<{ result: Ta
 		};
 	}
 
-	// Retry with different prompts if web search was expected but no citations/queries came back
-	if (config.webSearch && result.citations.length === 0 && !hasRealWebQueries(result.webQueries)) {
-		for (let i = 1; i < TEST_PROMPTS.length; i++) {
-			tlog(
-				`No citations or web queries — retrying with prompt ${i + 1}/${TEST_PROMPTS.length}: "${TEST_PROMPTS[i]}"`,
-				colors.yellow,
-			);
-			retries++;
-			try {
-				attemptStart = Date.now();
-				const retry = await provider.run(config.model, TEST_PROMPTS[i], {
-					webSearch: config.webSearch,
-					version: config.version,
-				});
-				if (retry.citations.length > 0 || hasRealWebQueries(retry.webQueries)) {
-					result = retry;
-					break;
-				}
-			} catch {
-				/* keep previous result */
-			}
-		}
-	}
+	const retried = await retryForCitations({ provider, config, result, attemptStart, tlog });
+	result = retried.result;
+	retries = retried.retries;
+	attemptStart = retried.attemptStart;
 
 	const latency = Date.now() - attemptStart;
 	const rawJson = JSON.stringify(result.rawOutput ?? null, null, 2);
@@ -303,33 +369,7 @@ async function runTarget(target: string, dumpDir?: string): Promise<{ result: Ta
 		tlog(`Dumped raw output to ${filename}`, colors.dim);
 	}
 
-	tlog(`Latency:      ${formatLatency(latency)}`, colors.dim);
-	tlog(`Text:         ${result.textContent?.length ?? 0} chars`, colors.dim);
-	tlog(`Raw output:   ${(rawOutputBytes / 1024).toFixed(1)} KB`, colors.dim);
-	tlog(`Citations:    ${result.citations.length}`, colors.blue);
-	tlog(`Web queries:  ${result.webQueries.length}`, colors.dim);
-
-	if (result.textContent) {
-		tlog("\nSample output:", colors.dim);
-		tlog(`  ${result.textContent.slice(0, 300).replace(/\n/g, "\n  ")}`, colors.dim);
-	}
-
-	if (issues.length > 0) {
-		tlog("\nIssues:", colors.bright);
-		for (const issue of issues) {
-			const color = issue.severity === "error" ? colors.red : colors.yellow;
-			const prefix = issue.severity === "error" ? "ERROR" : "WARN";
-			tlog(`  ${prefix}: [${issue.field}] ${issue.message}`, color);
-		}
-	}
-
-	tlog("");
-
-	if (hasErrors) {
-		tlog("FAIL", colors.red);
-	} else {
-		tlog("PASS", colors.green);
-	}
+	reportResult({ result, latency, rawOutputBytes, issues, hasErrors, tlog });
 
 	return {
 		result: {
