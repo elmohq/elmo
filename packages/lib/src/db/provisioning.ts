@@ -15,7 +15,6 @@
  * silently rewriting rows.
  */
 import { and, count, eq, or } from "drizzle-orm";
-import { MAX_SLUG_LENGTH } from "../app-urls";
 import { db } from "./db";
 import { brands, member, organization, user } from "./schema";
 
@@ -126,10 +125,9 @@ export async function findUniqueBrandId(baseSlug: string): Promise<string> {
  */
 export async function isOrgSlugAvailable(
 	slug: string,
-	options: { excludeOrgId?: string } = {},
-	conn: DbConnection = db,
+	options: { excludeOrgId?: string; conn?: DbConnection } = {},
 ): Promise<boolean> {
-	const [conflict] = await conn
+	const [conflict] = await (options.conn ?? db)
 		.select({ id: organization.id })
 		.from(organization)
 		.where(or(eq(organization.slug, slug), eq(organization.id, slug)))
@@ -144,7 +142,7 @@ async function findUniqueOrgSlug(baseSlug: string, conn: DbConnection = db): Pro
 	let candidate = baseSlug;
 	let suffix = 2;
 	for (;;) {
-		if (await isOrgSlugAvailable(candidate, {}, conn)) return candidate;
+		if (await isOrgSlugAvailable(candidate, { conn })) return candidate;
 		candidate = `${baseSlug}-${suffix}`;
 		suffix++;
 	}
@@ -161,10 +159,9 @@ async function findUniqueOrgSlug(baseSlug: string, conn: DbConnection = db): Pro
 export async function isBrandSlugAvailable(
 	organizationId: string,
 	slug: string,
-	options: { excludeBrandId?: string } = {},
-	conn: DbConnection = db,
+	options: { excludeBrandId?: string; conn?: DbConnection } = {},
 ): Promise<boolean> {
-	const [conflict] = await conn
+	const [conflict] = await (options.conn ?? db)
 		.select({ id: brands.id })
 		.from(brands)
 		.where(and(eq(brands.organizationId, organizationId), or(eq(brands.slug, slug), eq(brands.id, slug))))
@@ -185,7 +182,7 @@ export async function findUniqueBrandSlug(
 	let candidate = baseSlug;
 	let suffix = 2;
 	for (;;) {
-		if (await isBrandSlugAvailable(organizationId, candidate, {}, conn)) return candidate;
+		if (await isBrandSlugAvailable(organizationId, candidate, { conn })) return candidate;
 		candidate = `${baseSlug}-${suffix}`;
 		suffix++;
 	}
@@ -213,7 +210,7 @@ export async function ensureOrganization(input: { id: string; name: string }, co
 	// The caller supplies this id, and `/app/org/$org` resolves a segment as a
 	// slug or an id — so an id another organization answers to is refused here
 	// rather than silently making one URL name two.
-	if (!(await isOrgSlugAvailable(input.id, {}, conn))) {
+	if (!(await isOrgSlugAvailable(input.id, { conn }))) {
 		throw new Error(`Cannot create organization "${input.id}": another organization already answers to that name`);
 	}
 
@@ -241,16 +238,14 @@ export async function provisionUmbrellaOrg(input: {
 	name: string;
 }): Promise<{ orgId: string; slug: string }> {
 	const orgId = crypto.randomUUID();
-	let orgSlug = "";
 
-	await db.transaction(async (tx) => {
+	const slug = await db.transaction(async (tx) => {
 		// Resolve the slug inside the transaction so the uniqueness check and the
 		// insert it guards see the same snapshot. Two same-named signups can still
 		// collide on the slug unique index; that surfaces as a failed signup
 		// rather than a duplicate org.
-		const slug = await findUniqueOrgSlug(slugify(input.name), tx);
-		orgSlug = slug;
-		await tx.insert(organization).values({ id: orgId, name: input.name, slug, createdAt: new Date() });
+		const resolved = await findUniqueOrgSlug(slugify(input.name), tx);
+		await tx.insert(organization).values({ id: orgId, name: input.name, slug: resolved, createdAt: new Date() });
 		await tx.insert(member).values({
 			id: crypto.randomUUID(),
 			organizationId: orgId,
@@ -258,11 +253,8 @@ export async function provisionUmbrellaOrg(input: {
 			role: "admin",
 			createdAt: new Date(),
 		});
+		return resolved;
 	});
 
-	return { orgId, slug: orgSlug };
+	return { orgId, slug };
 }
-
-// Re-exported so the server-side slug helpers above and their callers keep one
-// import site; the rules themselves are pure and live with the URL shape.
-export { isValidSlug, MAX_SLUG_LENGTH } from "../app-urls";

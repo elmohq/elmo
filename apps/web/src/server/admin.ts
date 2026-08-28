@@ -19,7 +19,7 @@ import {
 	targetKey,
 	targetOverdueStatus,
 } from "@workspace/lib/run-policy";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import { Client } from "pg";
 import { z } from "zod";
 import { isAdmin, requireAuthSession } from "@/lib/auth/helpers";
@@ -38,12 +38,26 @@ async function requireAdmin() {
 }
 
 /**
- * Organization slug by org id, so admin's brand links land on the canonical
- * `/app/org/$org/brand/$brand` instead of bouncing through a redirect.
+ * Organization slug by org id, for the brands being listed, so admin's brand
+ * links land on the canonical `/app/org/$org/brand/$brand` rather than bouncing
+ * through a redirect. Asked of the organizations those brands name rather than
+ * of the whole table.
  */
-async function organizationSlugs(): Promise<Map<string, string>> {
-	const rows = await db.select({ id: organization.id, slug: organization.slug }).from(organization);
+async function organizationSlugs(organizationIds: string[]): Promise<Map<string, string>> {
+	if (organizationIds.length === 0) return new Map();
+	const rows = await db
+		.select({ id: organization.id, slug: organization.slug })
+		.from(organization)
+		.where(inArray(organization.id, [...new Set(organizationIds)]));
 	return new Map(rows.map((row) => [row.id, row.slug]));
+}
+
+/**
+ * The id is a working segment too — `/app/org/$org` resolves either — so a
+ * brand whose organization went away mid-request still gets a link that lands.
+ */
+function organizationSegment(slugs: Map<string, string>, organizationId: string): string {
+	return slugs.get(organizationId) ?? organizationId;
 }
 
 // ============================================================================
@@ -79,9 +93,8 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 	const thirtyDaysAgo = new Date();
 	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-	const [orgSlugs, allBrands, brandsOverTime, promptsOverTime, runsOverTimeData, brandRunStats, activeBrandsData] =
+	const [allBrands, brandsOverTime, promptsOverTime, runsOverTimeData, brandRunStats, activeBrandsData] =
 		await Promise.all([
-			organizationSlugs(),
 			db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
 
 			// Cumulative brand count over time (last 30 days)
@@ -124,6 +137,7 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 			getAdminActiveBrandsOverTime(),
 		]);
 
+	const orgSlugs = await organizationSlugs(allBrands.map((brand) => brand.organizationId));
 	const brandRunStatsMap = new Map(brandRunStats.map((stat) => [stat.brand_id, stat]));
 
 	const brandStats = await Promise.all(
@@ -150,7 +164,7 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 
 			return {
 				...brand,
-				organizationSlug: orgSlugs.get(brand.organizationId) ?? brand.organizationId,
+				organizationSlug: organizationSegment(orgSlugs, brand.organizationId),
 				totalPrompts: promptCounts[0]?.total || 0,
 				activePrompts: promptCounts[0]?.active || 0,
 				promptRuns7Days: runStats?.runs_7d || 0,
@@ -681,7 +695,7 @@ function brandWorkflowSummary(
 	return {
 		brandId: brand.id,
 		brandSlug: brand.slug,
-		organizationSlug: context.orgSlugs.get(brand.organizationId) ?? brand.organizationId,
+		organizationSlug: organizationSegment(context.orgSlugs, brand.organizationId),
 		brandName: brand.name,
 		website: brand.website,
 		enabled: brand.enabled,
@@ -768,7 +782,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 	}
 
 	const context: WorkflowContext = {
-		orgSlugs: await organizationSlugs(),
+		orgSlugs: await organizationSlugs(allBrands.map((brand) => brand.organizationId)),
 		runPlans,
 		lastRunsByPrompt,
 		scheduleMap,

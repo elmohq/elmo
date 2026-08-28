@@ -26,29 +26,36 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
 	const { setOpenMobile } = useSidebar();
 	const { pathname } = useLocation();
 
-	const items = groups.flatMap((group) => group.items);
-	// Resolved by the router, so nothing here has to know the URL shape.
-	const hrefs = new Map(items.map((item) => [item, router.buildLocation(item.link).pathname]));
+	// Each entry carries where it leads, resolved by the router so nothing here
+	// has to know the URL shape. Two entries can share a title — an organization's
+	// Brands and admin's — so the href is what identifies one.
+	const resolved = groups.map((group) => ({
+		label: group.label,
+		items: group.items.map((item) => ({ item, href: router.buildLocation(item.link).pathname })),
+	}));
 
 	// Longest match wins, so Overview doesn't light on every brand page and
 	// Organization doesn't light on Team — each is a prefix of the others.
-	const activeHref = items
-		.map((item) => hrefs.get(item) ?? "")
-		.filter((href) => pathname === href || pathname.startsWith(`${href}/`))
-		.reduce<string | null>((longest, href) => (longest && longest.length >= href.length ? longest : href), null);
+	let activeHref = "";
+	for (const group of resolved) {
+		for (const { href } of group.items) {
+			const onIt = pathname === href || pathname.startsWith(`${href}/`);
+			if (onIt && href.length > activeHref.length) activeHref = href;
+		}
+	}
 
 	return (
 		<>
-			{groups.map((group) => (
+			{resolved.map((group) => (
 				<SidebarGroup key={group.label}>
 					<SidebarGroupLabel>{group.label}</SidebarGroupLabel>
 					<SidebarMenu>
-						{group.items.map((item) => (
-							<SidebarMenuItem key={item.title}>
+						{group.items.map(({ item, href }) => (
+							<SidebarMenuItem key={href}>
 								<SidebarMenuButton
 									render={<Link {...item.link} onClick={() => setOpenMobile(false)} />}
 									tooltip={item.title}
-									isActive={hrefs.get(item) === activeHref}
+									isActive={href === activeHref}
 								>
 									{item.icon && <item.icon />}
 									<span>{item.title}</span>

@@ -23,7 +23,6 @@ export function TopUrlsCard({
 	sourceTabs,
 	pageTypeTabs,
 	maxUrls,
-	brandId,
 	brandName,
 	brandShare,
 	brandIsCited,
@@ -32,7 +31,6 @@ export function TopUrlsCard({
 	sourceTabs: { key: string; label: string }[];
 	pageTypeTabs: { key: string; label: string }[];
 	maxUrls: number;
-	brandId?: string;
 	brandName?: string;
 	brandShare: number;
 	brandIsCited: boolean;

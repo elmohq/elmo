@@ -115,7 +115,7 @@ export function CitationsDisplay({
 		useCitationSections(citationData);
 	const domainSourceTabs = urlSourceTabs; // identical by construction (same chart-category list)
 
-	const hasGaps = !!(citationData.competitorOnlyPrompts && citationData.competitorOnlyPrompts.length > 0 && brandId);
+	const hasGaps = !!citationData.competitorOnlyPrompts?.length;
 	const googleModule = citationData.googleModule;
 	const whatsChanged = citationData.whatsChanged;
 	const subredditData = useSubredditData(citationData.specificUrls, citationData.whatsChanged);
@@ -185,7 +185,6 @@ export function CitationsDisplay({
 					sourceTabs={urlSourceTabs}
 					pageTypeTabs={urlPageTypeTabs}
 					maxUrls={maxUrls}
-					brandId={brandId}
 					brandName={brandName}
 					brandShare={brandShare}
 					brandIsCited={citationData.categoryCounts.brand > 0}

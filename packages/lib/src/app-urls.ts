@@ -74,9 +74,13 @@ interface AppLocation {
 	hash: string;
 }
 
-// ["", "app", "org", "<org>", "brand", "<brand>", …] — leading "" kept.
-const ORG_SEGMENT_INDEX = 3;
-const BRAND_SEGMENT_INDEX = 5;
+// Which segment of a split pathname each name occupies — counted off the
+// prefixes above rather than written down a second time, so a prefix that moves
+// takes these with it. ["", "app", "org", "<org>", "brand", "<brand>", …], with
+// the leading "" kept.
+const segmentsIn = (prefix: string) => prefix.split("/").length - 1;
+const ORG_SEGMENT_INDEX = segmentsIn(ORG_URL_PREFIX);
+const BRAND_SEGMENT_INDEX = ORG_SEGMENT_INDEX + segmentsIn(BRAND_URL_PREFIX);
 
 function canonicalHref(location: AppLocation, segmentIndex: number, value: string): string {
 	const segments = location.pathname.split("/");
