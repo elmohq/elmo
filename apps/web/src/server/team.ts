@@ -35,7 +35,8 @@ export const listTeamFn = createServerFn({ method: "GET" })
 	// fn and route loaders that both consume it and redirect to typed routes
 	// (same pattern as getBrandSwitcherData in routes/_authed/app/index.tsx).
 	.handler(async ({ data }): Promise<TeamData> => {
-		requireTeamInvites();
+		// Deliberately not gated on `teamInvites`: every deployment has a member
+		// list worth looking at, and only changing it is cloud's alone.
 		const session = await requireAuthSession();
 		const org = await requireOrganization(session.user.id, data.org);
 

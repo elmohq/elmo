@@ -1,78 +1,61 @@
 /**
- * /app/org/$org - Workspace home
+ * /app/org/$org — the workspace itself, which is its settings.
  *
- * The brands this workspace owns. A workspace with none is a workspace that
- * hasn't been set up: where brands can be created from the UI that's a prompt to
- * create the first one, and where they can't (whitelabel, whose workspaces
- * arrive from Auth0 before anything is tracked) it's the onboarding wizard, with
- * the brand taking the workspace's own id as it always has.
+ * A workspace isn't a page you look at; it's the thing brands, a team, and a
+ * plan hang off. So this leads to what you can actually change about it, and
+ * the brands are listed under it rather than in a picker of their own — `/app`
+ * is where you pick.
  *
- * The workspace, its brands and its brand allowance all come from the layout
- * above, so the only thing this page fetches is the wizard's platform picks —
- * and only in the one state that shows the wizard.
+ * The exception is a workspace that has nothing in it and no way to add
+ * anything from here — whitelabel, whose workspaces arrive from Auth0 before
+ * anything is tracked. That one gets the onboarding wizard, with the brand
+ * taking the workspace's own id as it always has.
  */
 
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { orgParams, orgSegment } from "@workspace/lib/app-urls";
-import { buttonVariants } from "@workspace/ui/components/button";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { orgSegment } from "@workspace/lib/app-urls";
 import BrandOnboarding from "@/components/brand-onboarding";
-import FullPageCard from "@/components/full-page-card";
-import { WorkspaceBrandList } from "@/components/workspace-brand-list";
-import { buildTitle, getAppName } from "@/lib/route-head";
 import type { WorkspaceSummary } from "@/lib/workspaces/types";
 import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
 
-/** The workspace has nothing in it and no way to add one from here — the wizard's state. */
+/**
+ * Nothing in the workspace, and no way to put anything in it from here.
+ *
+ * `brandLimit` is what separates "this deployment doesn't create brands" from
+ * "the plan says not right now" — the second is a workspace waiting on billing,
+ * not one waiting to be set up, and sending it to the wizard would be a dead end.
+ */
 function needsOnboarding(workspace: WorkspaceSummary): boolean {
-	return workspace.brands.length === 0 && !workspace.canCreateBrand;
+	return workspace.brands.length === 0 && !workspace.canCreateBrand && !workspace.brandLimit;
 }
 
 export const Route = createFileRoute("/_authed/app/org/$org/")({
 	loader: async ({
 		context,
-	}): Promise<{ workspace: WorkspaceSummary; onboardingPlatformState: OnboardingPlatformState }> => ({
-		// From the context the layout resolved, but returned here so the component
-		// never renders against a `beforeLoad` that is mid-flight.
-		workspace: context.workspace,
-		onboardingPlatformState: needsOnboarding(context.workspace)
-			? await getOnboardingPlatformStateFn({ data: { organizationId: context.workspace.id } })
-			: null,
-	}),
-	head: ({ match }) => ({
-		meta: [{ title: buildTitle("Workspace", { appName: getAppName(match) }) }],
-	}),
-	component: WorkspaceHomePage,
+	}): Promise<{ workspace: WorkspaceSummary; onboardingPlatformState: OnboardingPlatformState }> => {
+		if (!needsOnboarding(context.workspace)) {
+			throw redirect({ to: "/app/org/$org/settings", params: { org: orgSegment(context.workspace) } });
+		}
+
+		return {
+			workspace: context.workspace,
+			onboardingPlatformState: await getOnboardingPlatformStateFn({
+				data: { organizationId: context.workspace.id },
+			}),
+		};
+	},
+	component: WorkspaceOnboardingPage,
 });
 
-function WorkspaceHomePage() {
+function WorkspaceOnboardingPage() {
 	const { workspace, onboardingPlatformState } = Route.useLoaderData();
 
-	if (needsOnboarding(workspace)) {
-		return (
-			<BrandOnboarding
-				workspaceSlug={orgSegment(workspace)}
-				brandId={workspace.id}
-				brandName={workspace.name}
-				platformState={onboardingPlatformState}
-			/>
-		);
-	}
-
 	return (
-		<FullPageCard
-			title={workspace.name}
-			subtitle={workspace.brands.length > 0 ? "Select a brand to get started" : "This workspace has no brands yet"}
-		>
-			<div className="min-w-[200px] space-y-3">
-				<WorkspaceBrandList workspace={workspace} />
-				<Link
-					to="/app/org/$org/settings"
-					params={orgParams(workspace)}
-					className={buttonVariants({ variant: "ghost", size: "sm", className: "w-full" })}
-				>
-					Workspace settings
-				</Link>
-			</div>
-		</FullPageCard>
+		<BrandOnboarding
+			workspaceSlug={orgSegment(workspace)}
+			brandId={workspace.id}
+			brandName={workspace.name}
+			platformState={onboardingPlatformState}
+		/>
 	);
 }

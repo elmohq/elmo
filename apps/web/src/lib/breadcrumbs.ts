@@ -11,6 +11,7 @@
  * only declare something static about itself.
  */
 import { useMatches } from "@tanstack/react-router";
+import { workspaceTitle } from "@/lib/workspaces/naming";
 
 declare module "@tanstack/react-router" {
 	interface StaticDataRouteOption {
@@ -44,7 +45,7 @@ export function useBreadcrumbs(subjects: { workspaceName?: string; brandName?: s
 	return matches.flatMap((match): Crumb[] => {
 		const label =
 			match.routeId === ORG_ROUTE_ID
-				? subjects.workspaceName
+				? subjects.workspaceName && workspaceTitle(subjects.workspaceName)
 				: match.routeId === BRAND_ROUTE_ID
 					? subjects.brandName
 					: match.staticData.crumb;

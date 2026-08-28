@@ -25,6 +25,7 @@ import { Route as AuthedAdminIndexRouteImport } from './routes/_authed/admin/ind
 import { Route as AuthedAdminToolsRouteImport } from './routes/_authed/admin/tools'
 import { Route as AuthedAdminWorkflowsRouteImport } from './routes/_authed/admin/workflows'
 import { Route as AuthedAppIndexRouteImport } from './routes/_authed/app/index'
+import { Route as AuthedAppNewRouteImport } from './routes/_authed/app/new'
 import { Route as AuthedReportsIndexRouteImport } from './routes/_authed/reports/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiManifestIndexRouteImport } from './routes/api/manifest/index'
@@ -51,6 +52,7 @@ import { Route as ApiV1PromptsPromptIdSnapshotRouteImport } from './routes/api/v
 import { Route as AuthedAppOrgOrgBrandBrandRouteImport } from './routes/_authed/app/org/$org/brand/$brand'
 import { Route as AuthedAppOrgOrgSettingsIndexRouteImport } from './routes/_authed/app/org/$org/settings/index'
 import { Route as AuthedAppOrgOrgSettingsBillingRouteImport } from './routes/_authed/app/org/$org/settings/billing'
+import { Route as AuthedAppOrgOrgSettingsBrandsRouteImport } from './routes/_authed/app/org/$org/settings/brands'
 import { Route as AuthedAppOrgOrgSettingsMembersRouteImport } from './routes/_authed/app/org/$org/settings/members'
 import { Route as AuthedAppOrgOrgBrandBrandIndexRouteImport } from './routes/_authed/app/org/$org/brand/$brand/index'
 import { Route as AuthedAppOrgOrgBrandBrandSplatRouteImport } from './routes/_authed/app/org/$org/brand/$brand/$'
@@ -148,6 +150,11 @@ const AuthedAdminWorkflowsRoute = AuthedAdminWorkflowsRouteImport.update({
 const AuthedAppIndexRoute = AuthedAppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthedAppRoute,
+} as any)
+const AuthedAppNewRoute = AuthedAppNewRouteImport.update({
+  id: '/new',
+  path: '/new',
   getParentRoute: () => AuthedAppRoute,
 } as any)
 const AuthedReportsIndexRoute = AuthedReportsIndexRouteImport.update({
@@ -287,6 +294,12 @@ const AuthedAppOrgOrgSettingsBillingRoute =
     path: '/billing',
     getParentRoute: () => AuthedAppOrgOrgSettingsRoute,
   } as any)
+const AuthedAppOrgOrgSettingsBrandsRoute =
+  AuthedAppOrgOrgSettingsBrandsRouteImport.update({
+    id: '/brands',
+    path: '/brands',
+    getParentRoute: () => AuthedAppOrgOrgSettingsRoute,
+  } as any)
 const AuthedAppOrgOrgSettingsMembersRoute =
   AuthedAppOrgOrgSettingsMembersRouteImport.update({
     id: '/members',
@@ -410,6 +423,7 @@ export interface FileRoutesByFullPath {
   '/accept-invitation/$invitationId': typeof AuthedAcceptInvitationInvitationIdRoute
   '/admin/tools': typeof AuthedAdminToolsRoute
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
+  '/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/admin/': typeof AuthedAdminIndexRoute
   '/app/': typeof AuthedAppIndexRoute
@@ -437,6 +451,7 @@ export interface FileRoutesByFullPath {
   '/api/plausible/js/script/': typeof ApiPlausibleJsScriptIndexRoute
   '/app/org/$org/brand/$brand': typeof AuthedAppOrgOrgBrandBrandRouteWithChildren
   '/app/org/$org/settings/billing': typeof AuthedAppOrgOrgSettingsBillingRoute
+  '/app/org/$org/settings/brands': typeof AuthedAppOrgOrgSettingsBrandsRoute
   '/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
   '/app/org/$org/settings/': typeof AuthedAppOrgOrgSettingsIndexRoute
   '/app/org/$org/brand/$brand/$': typeof AuthedAppOrgOrgBrandBrandSplatRoute
@@ -468,6 +483,7 @@ export interface FileRoutesByTo {
   '/accept-invitation/$invitationId': typeof AuthedAcceptInvitationInvitationIdRoute
   '/admin/tools': typeof AuthedAdminToolsRoute
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
+  '/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/admin': typeof AuthedAdminIndexRoute
   '/app': typeof AuthedAppIndexRoute
@@ -492,6 +508,7 @@ export interface FileRoutesByTo {
   '/app/org/$org': typeof AuthedAppOrgOrgIndexRoute
   '/api/plausible/js/script': typeof ApiPlausibleJsScriptIndexRoute
   '/app/org/$org/settings/billing': typeof AuthedAppOrgOrgSettingsBillingRoute
+  '/app/org/$org/settings/brands': typeof AuthedAppOrgOrgSettingsBrandsRoute
   '/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
   '/app/org/$org/settings': typeof AuthedAppOrgOrgSettingsIndexRoute
   '/app/org/$org/brand/$brand/$': typeof AuthedAppOrgOrgBrandBrandSplatRoute
@@ -528,6 +545,7 @@ export interface FileRoutesById {
   '/_authed/accept-invitation/$invitationId': typeof AuthedAcceptInvitationInvitationIdRoute
   '/_authed/admin/tools': typeof AuthedAdminToolsRoute
   '/_authed/admin/workflows': typeof AuthedAdminWorkflowsRoute
+  '/_authed/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_authed/admin/': typeof AuthedAdminIndexRoute
   '/_authed/app/': typeof AuthedAppIndexRoute
@@ -555,6 +573,7 @@ export interface FileRoutesById {
   '/api/plausible/js/script/': typeof ApiPlausibleJsScriptIndexRoute
   '/_authed/app/org/$org/brand/$brand': typeof AuthedAppOrgOrgBrandBrandRouteWithChildren
   '/_authed/app/org/$org/settings/billing': typeof AuthedAppOrgOrgSettingsBillingRoute
+  '/_authed/app/org/$org/settings/brands': typeof AuthedAppOrgOrgSettingsBrandsRoute
   '/_authed/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
   '/_authed/app/org/$org/settings/': typeof AuthedAppOrgOrgSettingsIndexRoute
   '/_authed/app/org/$org/brand/$brand/$': typeof AuthedAppOrgOrgBrandBrandSplatRoute
@@ -591,6 +610,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/admin/tools'
     | '/admin/workflows'
+    | '/app/new'
     | '/api/auth/$'
     | '/admin/'
     | '/app/'
@@ -618,6 +638,7 @@ export interface FileRouteTypes {
     | '/api/plausible/js/script/'
     | '/app/org/$org/brand/$brand'
     | '/app/org/$org/settings/billing'
+    | '/app/org/$org/settings/brands'
     | '/app/org/$org/settings/members'
     | '/app/org/$org/settings/'
     | '/app/org/$org/brand/$brand/$'
@@ -649,6 +670,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/admin/tools'
     | '/admin/workflows'
+    | '/app/new'
     | '/api/auth/$'
     | '/admin'
     | '/app'
@@ -673,6 +695,7 @@ export interface FileRouteTypes {
     | '/app/org/$org'
     | '/api/plausible/js/script'
     | '/app/org/$org/settings/billing'
+    | '/app/org/$org/settings/brands'
     | '/app/org/$org/settings/members'
     | '/app/org/$org/settings'
     | '/app/org/$org/brand/$brand/$'
@@ -708,6 +731,7 @@ export interface FileRouteTypes {
     | '/_authed/accept-invitation/$invitationId'
     | '/_authed/admin/tools'
     | '/_authed/admin/workflows'
+    | '/_authed/app/new'
     | '/api/auth/$'
     | '/_authed/admin/'
     | '/_authed/app/'
@@ -735,6 +759,7 @@ export interface FileRouteTypes {
     | '/api/plausible/js/script/'
     | '/_authed/app/org/$org/brand/$brand'
     | '/_authed/app/org/$org/settings/billing'
+    | '/_authed/app/org/$org/settings/brands'
     | '/_authed/app/org/$org/settings/members'
     | '/_authed/app/org/$org/settings/'
     | '/_authed/app/org/$org/brand/$brand/$'
@@ -894,6 +919,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AuthedAppIndexRouteImport
+      parentRoute: typeof AuthedAppRoute
+    }
+    '/_authed/app/new': {
+      id: '/_authed/app/new'
+      path: '/new'
+      fullPath: '/app/new'
+      preLoaderRoute: typeof AuthedAppNewRouteImport
       parentRoute: typeof AuthedAppRoute
     }
     '/_authed/reports/': {
@@ -1078,6 +1110,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAppOrgOrgSettingsBillingRouteImport
       parentRoute: typeof AuthedAppOrgOrgSettingsRoute
     }
+    '/_authed/app/org/$org/settings/brands': {
+      id: '/_authed/app/org/$org/settings/brands'
+      path: '/brands'
+      fullPath: '/app/org/$org/settings/brands'
+      preLoaderRoute: typeof AuthedAppOrgOrgSettingsBrandsRouteImport
+      parentRoute: typeof AuthedAppOrgOrgSettingsRoute
+    }
     '/_authed/app/org/$org/settings/members': {
       id: '/_authed/app/org/$org/settings/members'
       path: '/members'
@@ -1225,6 +1264,7 @@ const AuthedAdminRouteWithChildren = AuthedAdminRoute._addFileChildren(
 
 interface AuthedAppOrgOrgSettingsRouteChildren {
   AuthedAppOrgOrgSettingsBillingRoute: typeof AuthedAppOrgOrgSettingsBillingRoute
+  AuthedAppOrgOrgSettingsBrandsRoute: typeof AuthedAppOrgOrgSettingsBrandsRoute
   AuthedAppOrgOrgSettingsMembersRoute: typeof AuthedAppOrgOrgSettingsMembersRoute
   AuthedAppOrgOrgSettingsIndexRoute: typeof AuthedAppOrgOrgSettingsIndexRoute
 }
@@ -1232,6 +1272,7 @@ interface AuthedAppOrgOrgSettingsRouteChildren {
 const AuthedAppOrgOrgSettingsRouteChildren: AuthedAppOrgOrgSettingsRouteChildren =
   {
     AuthedAppOrgOrgSettingsBillingRoute: AuthedAppOrgOrgSettingsBillingRoute,
+    AuthedAppOrgOrgSettingsBrandsRoute: AuthedAppOrgOrgSettingsBrandsRoute,
     AuthedAppOrgOrgSettingsMembersRoute: AuthedAppOrgOrgSettingsMembersRoute,
     AuthedAppOrgOrgSettingsIndexRoute: AuthedAppOrgOrgSettingsIndexRoute,
   }
@@ -1321,11 +1362,13 @@ const AuthedAppOrgOrgRouteWithChildren = AuthedAppOrgOrgRoute._addFileChildren(
 )
 
 interface AuthedAppRouteChildren {
+  AuthedAppNewRoute: typeof AuthedAppNewRoute
   AuthedAppIndexRoute: typeof AuthedAppIndexRoute
   AuthedAppOrgOrgRoute: typeof AuthedAppOrgOrgRouteWithChildren
 }
 
 const AuthedAppRouteChildren: AuthedAppRouteChildren = {
+  AuthedAppNewRoute: AuthedAppNewRoute,
   AuthedAppIndexRoute: AuthedAppIndexRoute,
   AuthedAppOrgOrgRoute: AuthedAppOrgOrgRouteWithChildren,
 }

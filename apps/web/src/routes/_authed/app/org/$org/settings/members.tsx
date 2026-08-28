@@ -1,12 +1,13 @@
 /**
  * /app/org/$org/settings/members - Team settings page (cloud only)
  *
- * Invite teammates by email, list current members, and manage pending
- * invitations. Membership is of the workspace, not of any one brand. The
- * redirect in the loader is UX only — the security boundary is the teamInvites
- * guard inside every team server function.
+ * Who can reach every brand in the workspace. The list renders in every
+ * deployment — a member list is worth seeing wherever there is one — while
+ * inviting and removing are cloud's, since local is single-user, whitelabel's
+ * memberships come from Auth0, and demo writes nothing. Hiding those controls
+ * is UX; the boundary is the `teamInvites` guard inside each write.
  */
-import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
@@ -14,18 +15,14 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { useState } from "react";
+import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import { trackEvent } from "@/lib/posthog";
 import { buildTitle, getAppName } from "@/lib/route-head";
 import { cancelInvitationFn, inviteTeamMemberFn, listTeamFn, removeTeamMemberFn, type TeamData } from "@/server/team";
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings/members")({
 	staticData: { crumb: "Team" },
-	loader: async ({ params, context }): Promise<TeamData> => {
-		if (!context.clientConfig?.features.teamInvites) {
-			throw redirect({ to: "/app/org/$org", params: { org: params.org } });
-		}
-		return listTeamFn({ data: { org: params.org } });
-	},
+	loader: ({ params }): Promise<TeamData> => listTeamFn({ data: { org: params.org } }),
 	head: ({ match, loaderData }) => {
 		const appName = getAppName(match);
 		const workspaceName = (loaderData as TeamData | undefined)?.organization?.name;
@@ -42,6 +39,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/members")({
 function TeamSettingsPage() {
 	const { org } = Route.useParams();
 	const { members, invitations, currentUserId, organization } = Route.useLoaderData();
+	const canInvite = useDeploymentFeatures()?.teamInvites ?? false;
 	const router = useRouter();
 	const [inviteEmail, setInviteEmail] = useState("");
 	const [inviteRole, setInviteRole] = useState<"member" | "admin">("member");
@@ -100,39 +98,41 @@ function TeamSettingsPage() {
 				</Alert>
 			)}
 
-			<form onSubmit={handleInvite} className="flex flex-wrap items-end gap-3">
-				<div className="flex flex-col gap-2">
-					<Label htmlFor="invite-email">Email</Label>
-					<Input
-						id="invite-email"
-						type="email"
-						placeholder="teammate@example.com"
-						value={inviteEmail}
-						onChange={(e) => setInviteEmail(e.target.value)}
-						required
-						className="w-64"
-					/>
-				</div>
-				<div className="flex flex-col gap-2">
-					<Label htmlFor="invite-role">Role</Label>
-					<Select
-						items={{ member: "Member", admin: "Admin" }}
-						value={inviteRole}
-						onValueChange={(value) => setInviteRole(value as "member" | "admin")}
-					>
-						<SelectTrigger id="invite-role" className="w-32">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="member">Member</SelectItem>
-							<SelectItem value="admin">Admin</SelectItem>
-						</SelectContent>
-					</Select>
-				</div>
-				<Button type="submit" disabled={inviting}>
-					{inviting ? "Inviting..." : "Invite"}
-				</Button>
-			</form>
+			{canInvite && (
+				<form onSubmit={handleInvite} className="flex flex-wrap items-end gap-3">
+					<div className="flex flex-col gap-2">
+						<Label htmlFor="invite-email">Email</Label>
+						<Input
+							id="invite-email"
+							type="email"
+							placeholder="teammate@example.com"
+							value={inviteEmail}
+							onChange={(e) => setInviteEmail(e.target.value)}
+							required
+							className="w-64"
+						/>
+					</div>
+					<div className="flex flex-col gap-2">
+						<Label htmlFor="invite-role">Role</Label>
+						<Select
+							items={{ member: "Member", admin: "Admin" }}
+							value={inviteRole}
+							onValueChange={(value) => setInviteRole(value as "member" | "admin")}
+						>
+							<SelectTrigger id="invite-role" className="w-32">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="member">Member</SelectItem>
+								<SelectItem value="admin">Admin</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+					<Button type="submit" disabled={inviting}>
+						{inviting ? "Inviting..." : "Invite"}
+					</Button>
+				</form>
+			)}
 
 			<div className="space-y-3">
 				<h2 className="text-lg font-semibold">Members</h2>
@@ -145,7 +145,7 @@ function TeamSettingsPage() {
 							</div>
 							<div className="flex shrink-0 items-center gap-3">
 								<Badge variant="secondary">{m.role}</Badge>
-								{m.userId !== currentUserId && (
+								{canInvite && m.userId !== currentUserId && (
 									<Button type="button" variant="outline" size="sm" onClick={() => handleRemove(m.id)}>
 										Remove
 									</Button>
@@ -170,9 +170,11 @@ function TeamSettingsPage() {
 								</div>
 								<div className="flex shrink-0 items-center gap-3">
 									<Badge variant="secondary">{inv.role ?? "member"}</Badge>
-									<Button type="button" variant="outline" size="sm" onClick={() => handleCancel(inv.id)}>
-										Cancel
-									</Button>
+									{canInvite && (
+										<Button type="button" variant="outline" size="sm" onClick={() => handleCancel(inv.id)}>
+											Cancel
+										</Button>
+									)}
 								</div>
 							</div>
 						))}

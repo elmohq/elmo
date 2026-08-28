@@ -57,11 +57,23 @@ export async function listWorkspaceBrands(organizationId: string): Promise<Works
 		.orderBy(asc(brands.name));
 }
 
-/** A resolved workspace with the brands it owns and its brand allowance. */
+/**
+ * A resolved workspace with the brands it owns and its brand allowance.
+ *
+ * The caller's role stays server-side: it decides what the settings page offers,
+ * which the server answers for itself, and shipping it to every page would be a
+ * permission the client could be tempted to read.
+ */
 export async function withBrands(workspace: UserOrganization): Promise<WorkspaceSummary> {
 	const [brandList, creation] = await Promise.all([
 		listWorkspaceBrands(workspace.id),
 		resolveBrandCreation([workspace.id]),
 	]);
-	return { ...workspace, brands: brandList, ...(creation.get(workspace.id) ?? NOT_OFFERED) };
+	return {
+		id: workspace.id,
+		slug: workspace.slug,
+		name: workspace.name,
+		brands: brandList,
+		...(creation.get(workspace.id) ?? NOT_OFFERED),
+	};
 }

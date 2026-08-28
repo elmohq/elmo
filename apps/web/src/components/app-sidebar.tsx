@@ -38,15 +38,13 @@ import { Logo } from "@/components/logo";
 import { NavAppInfo } from "@/components/nav-app-info";
 import { type NavGroup, type NavItem, NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
-import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import type { WorkspaceSummary } from "@/lib/workspaces/types";
 
 /**
  * How much of the app the shell around this page can reach:
  *  - "brand":     a brand's own pages, its workspace's settings, plus admin for
  *                 those who have it
- *  - "workspace": the workspace's own pages — its settings and a way back into
- *                 each of its brands (there is no brand in scope)
+ *  - "workspace": the workspace's own pages (there is no brand in scope)
  *  - "admin":     the admin section only
  *  - "account":   nothing — the page is a gate the user has to clear first, so
  *                 the only things worth offering are who they are and how to leave
@@ -69,35 +67,27 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
 	hasReportAccess?: boolean;
 } & ScopeProps;
 
-function workspaceBrandsGroup(workspace: WorkspaceSummary): NavGroup {
-	return {
-		label: "Brands",
-		items: workspace.brands.map((brand) => ({
-			title: brand.name,
-			link: { to: "/app/org/$org/brand/$brand", params: brandParams(workspace, brand) },
-			icon: IconDashboard,
-		})),
-	};
-}
-
 /**
- * What the brand belongs to rather than what it is, so its entries live apart
- * from the brand's own and are labelled with the workspace's name.
+ * What the workspace is, rather than what this brand is — so its entries live
+ * apart from the brand's own. Which workspace is answered by the breadcrumb and
+ * the user menu, so the label doesn't repeat it.
+ *
+ * The team is listed wherever there is one to look at; only inviting and
+ * removing are a cloud feature, and the page says so itself.
  */
 function workspaceGroup(workspace: WorkspaceSummary, features?: ClientConfig["features"]): NavGroup {
 	const params = orgParams(workspace);
 	const items: NavItem[] = [
-		{ title: "General", link: { to: "/app/org/$org/settings", params }, icon: IconBuildingSkyscraper },
+		{ title: "Workspace", link: { to: "/app/org/$org/settings", params }, icon: IconBuildingSkyscraper },
+		{ title: "Brands", link: { to: "/app/org/$org/settings/brands", params }, icon: IconBuildings },
+		{ title: "Team", link: { to: "/app/org/$org/settings/members", params }, icon: IconUsers },
 	];
 
-	if (features?.teamInvites) {
-		items.push({ title: "Team", link: { to: "/app/org/$org/settings/members", params }, icon: IconUsers });
-	}
 	if (features?.billing) {
 		items.push({ title: "Billing", link: { to: "/app/org/$org/settings/billing", params }, icon: IconCreditCard });
 	}
 
-	return { label: `Workspace · ${workspace.name}`, items };
+	return { label: "Workspace Settings", items };
 }
 
 function brandGroups(workspace: WorkspaceSummary, brand: BrandWithPrompts): NavGroup[] {
@@ -172,16 +162,12 @@ export function AppSidebar(props: AppSidebarProps) {
 	// Present exactly when the rail is inside a workspace, so it stands in for an
 	// `inWorkspace` flag and carries the narrowing with it.
 	const workspace = props.scope === "brand" || props.scope === "workspace" ? props.workspace : null;
-	const brand = props.scope === "brand" ? props.brand : null;
 
 	// A gate page offers no destinations: every link would either 404 or bounce
 	// the user straight back to the gate.
 	const showAdminSection = scope !== "account" && (isAdmin || (hasReportAccess && reportsEnabled));
 
 	const groups: NavGroup[] = [
-		// Without a brand in scope, the brands themselves are the way back into
-		// the dashboard the user came from.
-		...(props.scope === "workspace" ? [workspaceBrandsGroup(props.workspace)] : []),
 		// Only a brand context has a dashboard; a gate page has no destinations.
 		...(props.scope === "brand" ? brandGroups(props.workspace, props.brand) : []),
 		...(workspace ? [workspaceGroup(workspace, context.clientConfig?.features)] : []),
@@ -212,7 +198,6 @@ export function AppSidebar(props: AppSidebarProps) {
 						)}
 					</SidebarMenuItem>
 				</SidebarMenu>
-				{workspace && <WorkspaceSwitcher workspace={workspace} brandName={brand?.name} />}
 			</SidebarHeader>
 			<SidebarContent>
 				<NavMain groups={groups} />

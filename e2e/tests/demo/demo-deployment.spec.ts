@@ -159,18 +159,19 @@ test.describe("Demo features", () => {
     await expect(page.getByText("Demo", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
   });
 
-  test("brands cannot be created", async ({ page }) => {
-    // One workspace, so /app steps aside to it and the workspace lists brands.
+  test("nothing can be created", async ({ page }) => {
     await page.goto("/app");
-    await page.waitForURL(new RegExp(`${workspaceUrl()}(?:/)?$`), { timeout: 30_000 });
     await expect(page.getByRole("link", { name: /create new brand|new brand/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /new workspace/i })).toHaveCount(0);
 
     await page.goto(`${workspaceUrl()}/new`);
-    await page.waitForURL(new RegExp(`${workspaceUrl()}(?:/)?$`), { timeout: 30_000 });
+    await page.waitForURL(new RegExp(`${workspaceUrl()}/settings$`), { timeout: 30_000 });
   });
 
-  test("team settings are unavailable", async ({ page }) => {
+  test("the team is listed, and nothing about it can be changed", async ({ page }) => {
     await page.goto(`${workspaceUrl()}/settings/members`);
-    await page.waitForURL(new RegExp(`${workspaceUrl()}$`), { timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: "Team" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Invite" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Remove" })).toHaveCount(0);
   });
 });

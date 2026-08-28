@@ -244,8 +244,12 @@ export async function ensureOrganization(input: { id: string; name: string }, co
  * user. The org id is decoupled from any brand (a random id), so brands can be
  * attached later with their own ids. Used by the cloud user.create.after hook.
  */
-export async function provisionUmbrellaOrg(input: { userId: string; name: string }): Promise<{ orgId: string }> {
+export async function provisionUmbrellaOrg(input: {
+	userId: string;
+	name: string;
+}): Promise<{ orgId: string; slug: string }> {
 	const orgId = crypto.randomUUID();
+	let orgSlug = "";
 
 	await db.transaction(async (tx) => {
 		// Resolve the slug inside the transaction so the uniqueness check and the
@@ -253,6 +257,7 @@ export async function provisionUmbrellaOrg(input: { userId: string; name: string
 		// collide on the slug unique index; that surfaces as a failed signup
 		// rather than a duplicate org.
 		const slug = await findUniqueOrgSlug(slugify(input.name), tx);
+		orgSlug = slug;
 		await tx.insert(organization).values({ id: orgId, name: input.name, slug, createdAt: new Date() });
 		await tx.insert(member).values({
 			id: crypto.randomUUID(),
@@ -263,7 +268,7 @@ export async function provisionUmbrellaOrg(input: { userId: string; name: string
 		});
 	});
 
-	return { orgId };
+	return { orgId, slug: orgSlug };
 }
 
 // Re-exported so the server-side slug helpers above and their callers keep one

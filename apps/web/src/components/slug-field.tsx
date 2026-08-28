@@ -63,7 +63,7 @@ export function SlugField({
 
 	return (
 		<form onSubmit={handleSave} className="space-y-2">
-			<Label htmlFor={id}>URL</Label>
+			<Label htmlFor={id}>URL slug</Label>
 			<div className="flex flex-wrap items-center gap-3">
 				<div className="flex items-center rounded-md border font-mono text-sm">
 					<span className="pl-3 text-muted-foreground">{prefix}</span>
@@ -82,13 +82,7 @@ export function SlugField({
 					</Button>
 				)}
 			</div>
-			{error ? (
-				<p className="text-sm text-destructive">{error}</p>
-			) : (
-				<p className="text-sm text-muted-foreground">
-					Changing this breaks existing links to this {subject}, including any bookmarks.
-				</p>
-			)}
+			{error && <p className="text-sm text-destructive">{error}</p>}
 		</form>
 	);
 }

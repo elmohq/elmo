@@ -1,19 +1,18 @@
 /**
- * /app - Workspace picker
+ * /app - Workspaces and brands
  *
- * Every workspace the user belongs to, each with its brands. Most deployments
- * give a user exactly one, so this page steps aside for them; whitelabel users
- * can belong to several Auth0-synced workspaces, and a cloud user picks up more
- * by accepting team invitations.
+ * Everything this account can reach, and where the logo leads back to. It
+ * renders for everyone, one-workspace deployments included: it is the only page
+ * that lists what exists, so stepping aside from it would leave the logo
+ * pointing at a workspace's settings rather than at a way to choose.
  */
 
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { orgParams, workspacePath } from "@workspace/lib/app-urls";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import FullPageCard from "@/components/full-page-card";
-import { WorkspaceBrandList } from "@/components/workspace-brand-list";
+import { WorkspaceDirectory } from "@/components/workspace-directory";
 import { requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 import { buildTitle, getAppName } from "@/lib/route-head";
@@ -49,26 +48,13 @@ function WorkspacePickerSkeleton() {
 
 export const Route = createFileRoute("/_authed/app/")({
 	pendingComponent: WorkspacePickerSkeleton,
-	loader: async (): Promise<WorkspaceSummary[]> => {
-		const workspaces = await getWorkspacePickerData();
-
-		// One workspace is no choice at all — and it is the common case, so the
-		// picker would be a page users click through on the way to their work.
-		if (workspaces.length === 1) {
-			throw redirect({ to: "/app/org/$org", params: orgParams(workspaces[0]) });
-		}
-
-		return workspaces;
-	},
-	head: ({ match }) => {
-		const appName = getAppName(match);
-		return {
-			meta: [
-				{ title: buildTitle("Your workspaces", { appName }) },
-				{ name: "description", content: "Pick a workspace, then a brand inside it." },
-			],
-		};
-	},
+	loader: (): Promise<WorkspaceSummary[]> => getWorkspacePickerData(),
+	head: ({ match }) => ({
+		meta: [
+			{ title: buildTitle("Workspaces and Brands", { appName: getAppName(match) }) },
+			{ name: "description", content: "Modify workspaces or navigate to brands." },
+		],
+	}),
 	component: WorkspacePickerPage,
 });
 
@@ -84,20 +70,8 @@ function WorkspacePickerPage() {
 	}
 
 	return (
-		<FullPageCard title="Your workspaces" subtitle="Pick a workspace, then a brand inside it">
-			<div className="flex min-w-[280px] flex-col gap-6">
-				{workspaces.map((workspace) => (
-					<div key={workspace.id} className="space-y-2">
-						<div className="flex items-baseline justify-between gap-3">
-							<Link to="/app/org/$org" params={orgParams(workspace)} className="font-medium hover:underline">
-								{workspace.name}
-							</Link>
-							<span className="text-xs text-muted-foreground">{workspacePath(workspace)}</span>
-						</div>
-						<WorkspaceBrandList workspace={workspace} />
-					</div>
-				))}
-			</div>
+		<FullPageCard title="Workspaces and Brands" subtitle="Modify workspaces or navigate to brands.">
+			<WorkspaceDirectory workspaces={workspaces} />
 		</FullPageCard>
 	);
 }

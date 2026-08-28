@@ -140,34 +140,3 @@ export async function requireOrganization(userId: string, slugOrId: string): Pro
 	if (!org) throw new Error("Forbidden: No access to this workspace");
 	return org;
 }
-
-/**
- * Where a brand lives, for a caller holding nothing but a name for it — the
- * `/app/$brand` links that predate workspace-scoped URLs, which the 404 page
- * resolves so a stale bookmark or a whitelabel parent dashboard still leads
- * somewhere. Null when the user can't reach the brand, which covers "no such
- * brand" too.
- */
-export async function findBrandLocation(
-	userId: string,
-	brandSlugOrId: string,
-): Promise<{ org: { id: string; slug: string }; brand: { id: string; slug: string | null; name: string } } | null> {
-	const [row] = await db
-		.select({
-			orgId: organization.id,
-			orgSlug: organization.slug,
-			brandId: brands.id,
-			brandSlug: brands.slug,
-			brandName: brands.name,
-		})
-		.from(brands)
-		.innerJoin(member, and(eq(member.organizationId, brands.organizationId), eq(member.userId, userId)))
-		.innerJoin(organization, eq(organization.id, brands.organizationId))
-		.where(or(eq(brands.id, brandSlugOrId), eq(brands.slug, brandSlugOrId)))
-		.limit(1);
-	if (!row) return null;
-	return {
-		org: { id: row.orgId, slug: row.orgSlug },
-		brand: { id: row.brandId, slug: row.brandSlug, name: row.brandName },
-	};
-}

@@ -9,7 +9,6 @@ export type WorkspaceSummary = {
 	id: string;
 	slug: string;
 	name: string;
-	role: string;
 	brands: WorkspaceBrand[];
 	canCreateBrand: boolean;
 	brandLimit: { code: string; message: string } | null;
@@ -20,7 +19,6 @@ let _workspaces: WorkspaceSummary[] = [
 		id: "org-1",
 		slug: "acme",
 		name: "Acme",
-		role: "admin",
 		canCreateBrand: true,
 		brandLimit: null,
 		brands: [

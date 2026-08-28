@@ -9,7 +9,6 @@ import { expect, test } from "@playwright/test";
 import {
 	NIKE_BRAND_ID,
 	SLUGGED_BRAND_ID,
-	SLUGGED_BRAND_NAME,
 	SLUGGED_BRAND_SLUG,
 	TEST_BRAND_ID,
 	TEST_BRAND_NAME,
@@ -49,36 +48,26 @@ test.describe("App routing", () => {
 		// to the workspace where they can't — either way it resolves as a route
 		// rather than being read as a workspace named "new".
 		await page.goto(`/app/org/${TEST_ORG_SLUG}/new`);
-		await expect(page).toHaveURL(new RegExp(`/app/org/${TEST_ORG_SLUG}(?:/new)?/?$`), { timeout: 30_000 });
+		await expect(page).toHaveURL(new RegExp(`/app/org/${TEST_ORG_SLUG}(?:/new|/settings)?/?$`), {
+			timeout: 30_000,
+		});
 	});
 
-	test("a link from before workspaces were in the URL is offered its new address", async ({ page }) => {
-		// The shape dunning mail and whitelabel parent dashboards used to mint.
-		// There is no compatibility route any more — the 404 resolves it instead,
-		// which is what makes the move visible to whoever is still minting them.
-		await page.goto(`/app/${TEST_BRAND_ID}/citations`);
-
-		const link = page.getByRole("link", { name: new RegExp(`Go to new location for ${TEST_BRAND_NAME}`, "i") });
-		await expect(link).toBeVisible({ timeout: 30_000 });
-		await expect(link).toHaveAttribute("href", `${BRAND_URL}/citations`);
-
-		await link.click();
-		await expect(page).toHaveURL(new RegExp(`${BRAND_URL}/citations$`), { timeout: 30_000 });
-	});
-
-	test("a stranded link to a slugged brand points at its slug, not its id", async ({ page }) => {
-		await page.goto(`/app/${SLUGGED_BRAND_ID}`);
-
-		const link = page.getByRole("link", { name: new RegExp(`Go to new location for ${SLUGGED_BRAND_NAME}`, "i") });
-		await expect(link).toBeVisible({ timeout: 30_000 });
-		await expect(link).toHaveAttribute("href", SLUGGED_BRAND_URL);
-	});
-
-	test("an unknown workspace offers the ones the user can reach", async ({ page }) => {
+	// The 404 answers "somewhere else" with the same directory /app renders, so a
+	// stale link — a bookmark from before the workspace was in the URL, or a page
+	// that never existed — still leads somewhere.
+	test("an unknown page offers everything the user can reach", async ({ page }) => {
 		await page.goto("/app/org/not-a-workspace");
 
-		await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
+		await expect(page.getByText("That page doesn't exist or moved.")).toBeVisible({ timeout: 30_000 });
 		await expect(page.getByRole("link", { name: TEST_BRAND_NAME, exact: true }).first()).toBeVisible();
+	});
+
+	test("a pre-workspace link lands on the same directory", async ({ page }) => {
+		await page.goto(`/app/${TEST_BRAND_ID}/citations`);
+
+		await expect(page.getByText("That page doesn't exist or moved.")).toBeVisible({ timeout: 30_000 });
+		await expect(page.locator(`a[href="${BRAND_URL}"]`).first()).toBeVisible();
 	});
 
 	// Membership in the workspace is what grants access, and the brand is looked
@@ -88,9 +77,9 @@ test.describe("App routing", () => {
 		await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
 	});
 
-	test("the workspace settings page states the workspace's URL", async ({ page }) => {
+	test("the workspace settings page states the workspace's URL slug", async ({ page }) => {
 		await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
-		await expect(page.getByLabel("URL", { exact: true })).toHaveValue(TEST_ORG_SLUG, { timeout: 30_000 });
+		await expect(page.getByLabel("URL slug", { exact: true })).toHaveValue(TEST_ORG_SLUG, { timeout: 30_000 });
 	});
 
 	// The trail is read off the routes that matched, so it says where the page
@@ -102,15 +91,18 @@ test.describe("App routing", () => {
 		await expect(trail.getByText(TEST_BRAND_NAME, { exact: true })).toBeVisible({ timeout: 30_000 });
 		await expect(trail.getByText("Citations", { exact: true })).toBeVisible();
 
+		// Named as a workspace, so the first crumb doesn't read as another brand.
+		await expect(trail.getByText(/Workspace$/)).toBeVisible();
 		// The workspace crumb leads back to the workspace, not to the brand.
 		await expect(trail.locator(`a[href="${workspaceUrl()}"]`)).toBeVisible();
 	});
 
 	test("a workspace page's trail leads with the workspace", async ({ page }) => {
-		await page.goto(`${workspaceUrl()}/settings`);
+		await page.goto(`${workspaceUrl()}/settings/brands`);
 
 		const trail = page.getByRole("navigation", { name: "breadcrumb" });
 		await expect(trail.locator(`a[href="${workspaceUrl()}"]`)).toBeVisible({ timeout: 30_000 });
 		await expect(trail.getByText("Settings", { exact: true })).toBeVisible();
+		await expect(trail.getByText("Brands", { exact: true })).toBeVisible();
 	});
 });

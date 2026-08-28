@@ -20,6 +20,7 @@ export function createLocalDeployment(env: Record<string, string | undefined> = 
 			showOptimizeButton: false,
 			canCreateBrands: !readOnly,
 			platformPicksEditable: !readOnly,
+			canCreateWorkspaces: false,
 			selfServeSignup: false,
 			billing: false,
 			reportGeneration: true,

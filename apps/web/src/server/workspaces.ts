@@ -8,14 +8,12 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { isOrgAdminRole } from "@workspace/config/roles";
-import { brandPath, parseStrandedAppPath, workspacePath } from "@workspace/lib/app-urls";
 import { db } from "@workspace/lib/db/db";
-import { isOrgSlugAvailable, isValidSlug, MAX_SLUG_LENGTH } from "@workspace/lib/db/provisioning";
-import { brands, member, organization } from "@workspace/lib/db/schema";
-import { asc, count, eq, inArray } from "drizzle-orm";
+import { isOrgSlugAvailable, isValidSlug, MAX_SLUG_LENGTH, provisionUmbrellaOrg } from "@workspace/lib/db/provisioning";
+import { brands, organization } from "@workspace/lib/db/schema";
+import { asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import {
-	findBrandLocation,
 	getAuthSession,
 	hasReportAccess,
 	isAdmin,
@@ -61,51 +59,16 @@ export const resolveWorkspaceFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/** What the 404 page renders: where the path was going, and where else to go. */
-export interface NotFoundContext {
-	suggestion: { href: string; name: string } | null;
-	workspaces: WorkspaceSummary[];
-}
-
 /**
- * `/app/$brand/…` was the shape before workspaces were in the URL, and those
- * links are still out there in bookmarks and in whitelabel parent dashboards
- * this deployment doesn't control. Rather than keep a compatibility route alive
- * in the tree forever, the 404 resolves them and offers the way across — which
- * gets the person where they were going and makes the move visible enough that
- * whoever mints those links updates them.
- *
- * Answers for a signed-out caller too, with nothing in it: the 404 is reachable
- * without a session and must not error there.
+ * The workspaces a 404 can offer, or nothing for a signed-out caller — the page
+ * is reachable without a session and must not error there.
  */
-export const getNotFoundContextFn = createServerFn({ method: "GET" })
-	.validator(z.object({ pathname: z.string() }))
-	.handler(async ({ data }): Promise<NotFoundContext> => {
+export const listReachableWorkspacesFn = createServerFn({ method: "GET" }).handler(
+	async (): Promise<WorkspaceSummary[]> => {
 		const session = await getAuthSession();
-		if (!session) return { suggestion: null, workspaces: [] };
-
-		const [suggestion, workspaces] = await Promise.all([
-			resolveStrandedPath(session.user.id, data.pathname),
-			listWorkspaces(session.user.id),
-		]);
-		return { suggestion, workspaces };
-	});
-
-async function resolveStrandedPath(userId: string, pathname: string): Promise<{ href: string; name: string } | null> {
-	const parsed = parseStrandedAppPath(pathname);
-	if (!parsed) return null;
-
-	// Brand first: `/app/$brand` is the shape these links actually have. A
-	// workspace answering to the same name is the rarer case and is tried after.
-	const location = await findBrandLocation(userId, parsed.candidate);
-	if (location) {
-		const base = brandPath(location.org, location.brand);
-		return { href: parsed.rest ? `${base}/${parsed.rest}` : base, name: location.brand.name };
-	}
-
-	const org = await resolveOrganization(userId, parsed.candidate);
-	return org ? { href: workspacePath(org), name: org.name } : null;
-}
+		return session ? listWorkspaces(session.user.id) : [];
+	},
+);
 
 /**
  * Every workspace the user belongs to, each with its brands — what the switcher
@@ -138,7 +101,9 @@ async function listWorkspaces(userId: string): Promise<WorkspaceSummary[]> {
 	]);
 
 	return orgs.map((org) => ({
-		...org,
+		id: org.id,
+		slug: org.slug,
+		name: org.name,
 		brands: rows
 			.filter((brand) => brand.organizationId === org.id)
 			.map(({ id, slug, name, website, onboarded }) => ({ id, slug, name, website, onboarded })),
@@ -152,8 +117,33 @@ async function listWorkspaces(userId: string): Promise<WorkspaceSummary[]> {
  * the layout above, so asking again here would be a second round trip for facts
  * already on screen.
  */
+/**
+ * Create another workspace for the signed-in user, who owns it.
+ *
+ * Cloud only: local has one workspace per install, whitelabel's arrive from
+ * Auth0, and demo writes nothing. A new workspace has no plan, so the first
+ * thing it offers is billing — `checkBrandCreate` refuses a brand until then,
+ * which is the same answer an existing workspace gets when its plan lapses.
+ */
+export const createWorkspaceFn = createServerFn({ method: "POST" })
+	.validator(z.object({ name: z.string().trim().min(1).max(100) }))
+	.handler(async ({ data }): Promise<{ slug: string }> => {
+		const session = await requireAuthSession();
+		if (!getDeployment().features.canCreateWorkspaces) {
+			throw new Error("This deployment does not create workspaces");
+		}
+
+		const { slug } = await provisionUmbrellaOrg({ userId: session.user.id, name: data.name });
+		return { slug };
+	});
+
+/**
+ * What the settings page needs that the route context doesn't already hold. The
+ * workspace, its name, its slug and its brands are all resolved by the layout
+ * above, so asking again here would be a second round trip for facts already on
+ * screen.
+ */
 export interface WorkspaceSettings {
-	memberCount: number;
 	/** Whether this deployment lets the workspace be renamed from here. */
 	canRename: boolean;
 }
@@ -163,13 +153,7 @@ export const getWorkspaceSettingsFn = createServerFn({ method: "GET" })
 	.handler(async ({ data }): Promise<WorkspaceSettings> => {
 		const session = await requireAuthSession();
 		const workspace = await requireOrganization(session.user.id, data.org);
-
-		const [memberCount] = await db
-			.select({ value: count() })
-			.from(member)
-			.where(eq(member.organizationId, workspace.id));
-
-		return { memberCount: memberCount?.value ?? 0, canRename: canEditWorkspace(workspace.role) };
+		return { canRename: canEditWorkspace(workspace.role) };
 	});
 
 /**

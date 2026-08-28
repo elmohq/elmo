@@ -59,29 +59,38 @@ test.describe("Local features", () => {
     await expect(page.getByRole("heading", { name: /reports/i }).first()).toBeVisible({ timeout: 30_000 });
   });
 
-  test("the sidebar offers reports and no team settings", async ({ page }) => {
+  test("the sidebar offers reports and the workspace's own pages", async ({ page }) => {
     await page.goto(`${brandUrl()}`);
     await expect(page.locator('a[href="/reports"][data-sidebar="menu-button"]')).toBeVisible({ timeout: 30_000 });
-    await expect(
-      page.locator(`a[href="${workspaceUrl()}/settings/members"][data-sidebar="menu-button"]`),
-    ).toHaveCount(0);
+    await expect(page.locator(`a[href="${workspaceUrl()}/settings/brands"][data-sidebar="menu-button"]`)).toBeVisible();
+    // Billing is cloud's; the rail says so by leaving it out.
+    await expect(page.locator(`a[href="${workspaceUrl()}/settings/billing"][data-sidebar="menu-button"]`)).toHaveCount(
+      0,
+    );
   });
 
-  test("team settings redirect away when invitations are unavailable", async ({ page }) => {
+  test("the team is listed, but there is no one to invite", async ({ page }) => {
     await page.goto(`${workspaceUrl()}/settings/members`);
-    await page.waitForURL(new RegExp(`${workspaceUrl()}$`), { timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: "Team" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Invite" })).toHaveCount(0);
   });
 
   test("brands can be created from the UI", async ({ page }) => {
-    // One workspace, so /app steps aside to it; the offer lives on the
-    // workspace, whose plan allowance is what it spends.
+    // The offer lives on the workspace, whose plan allowance is what it spends.
     await page.goto("/app");
-    await page.waitForURL(new RegExp(`${workspaceUrl()}(?:/)?$`), { timeout: 30_000 });
     await expect(page.getByRole("link", { name: /new brand/i })).toBeVisible({ timeout: 30_000 });
 
     await page.goto(`${workspaceUrl()}/new`);
     await expect(page.getByLabel("Brand name")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel("Website")).toBeVisible();
+  });
+
+  test("workspaces cannot be created — a local install has exactly one", async ({ page }) => {
+    await page.goto("/app");
+    await expect(page.getByRole("link", { name: /new workspace/i })).toHaveCount(0);
+
+    await page.goto("/app/new");
+    await page.waitForURL(/\/app$/, { timeout: 30_000 });
   });
 
   test("stock Elmo branding is used", async ({ page }) => {

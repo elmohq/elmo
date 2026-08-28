@@ -7,7 +7,7 @@ import type { ComponentType, ReactNode } from "react";
 import { expect, within } from "storybook/test";
 import { Route } from "@/routes/_authed/app/org/$org/settings/members";
 import { setMockTeam, type TeamData } from "./_mocks/server-team";
-import { setMockLoaderData } from "./_mocks/tanstack-router";
+import { setMockLoaderData, setMockRouteContext } from "./_mocks/tanstack-router";
 
 const MembersPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 
@@ -33,6 +33,8 @@ const meta = {
 		(Story) => {
 			setMockTeam(TEAM);
 			setMockLoaderData(TEAM);
+			// Inviting is cloud's; the list itself renders everywhere.
+			setMockRouteContext({ clientConfig: { features: { teamInvites: true } } });
 			return (
 				<Shell>
 					<Story />

@@ -7,7 +7,6 @@ import {
 	canonicalOrgHref,
 	orgParams,
 	orgSegment,
-	parseStrandedAppPath,
 	workspacePath,
 	workspaceSettingsPath,
 } from "./app-urls";
@@ -77,37 +76,5 @@ describe("canonical hrefs", () => {
 
 	it("encodes the value it writes in", () => {
 		expect(canonicalOrgHref(location("/app/org/org_123"), "a b")).toBe("/app/org/a%20b");
-	});
-});
-
-describe("parseStrandedAppPath", () => {
-	it("reads the identifier out of a pre-workspace link", () => {
-		expect(parseStrandedAppPath("/app/nike")).toEqual({ candidate: "nike", rest: "" });
-		expect(parseStrandedAppPath("/app/nike/citations")).toEqual({ candidate: "nike", rest: "citations" });
-		expect(parseStrandedAppPath("/app/nike/settings/billing")).toEqual({
-			candidate: "nike",
-			rest: "settings/billing",
-		});
-	});
-
-	it("decodes the identifier", () => {
-		expect(parseStrandedAppPath("/app/a%20b/citations")).toEqual({ candidate: "a b", rest: "citations" });
-	});
-
-	// A miss under the current shape is a genuinely unknown workspace, not a
-	// legacy link — retrying it as a brand name would resolve the wrong thing.
-	it("ignores paths already in the current shape", () => {
-		expect(parseStrandedAppPath("/app/org/acme/brand/nike")).toBeNull();
-	});
-
-	it("ignores anything that isn't an /app path", () => {
-		expect(parseStrandedAppPath("/app")).toBeNull();
-		expect(parseStrandedAppPath("/app/")).toBeNull();
-		expect(parseStrandedAppPath("/reports/render/abc")).toBeNull();
-		expect(parseStrandedAppPath("/")).toBeNull();
-	});
-
-	it("gives up on an undecodable segment rather than throwing", () => {
-		expect(parseStrandedAppPath("/app/%E0%A4%A")).toBeNull();
 	});
 });

@@ -101,34 +101,6 @@ export function canonicalBrandHref(location: AppLocation, brand: string): string
 }
 
 /**
- * The identifier a pre-workspace `/app/…` link was naming, and whatever
- * followed it.
- *
- * `/app/nike/citations` used to mean "the brand nike"; the same URL now has a
- * workspace where the brand is. Splitting that here — rather than in the server
- * function that looks the name up — keeps the URL arithmetic testable without a
- * database, and keeps `/app/org/…` (the current shape, whose misses are real
- * 404s) from being retried as a brand name.
- *
- * Null for anything that isn't an `/app/<something>` path.
- */
-export function parseStrandedAppPath(pathname: string): { candidate: string; rest: string } | null {
-	// ["", "app", "<candidate>", ...rest]
-	const segments = pathname.split("/");
-	if (segments[1] !== "app" || !segments[2]) return null;
-	if (segments[2] === "org") return null;
-
-	let candidate: string;
-	try {
-		candidate = decodeURIComponent(segments[2]);
-	} catch {
-		return null;
-	}
-
-	return { candidate, rest: segments.slice(3).join("/") };
-}
-
-/**
  * How long a slug may be, and what one may contain: lowercase alphanumerics and
  * interior hyphens, bounded so a slug always reads as a URL segment rather than
  * a paragraph.

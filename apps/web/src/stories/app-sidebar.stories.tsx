@@ -43,7 +43,6 @@ const workspace = {
 	id: "org-1",
 	slug: "mock-workspace",
 	name: "Acme",
-	role: "admin",
 	canCreateBrand: true,
 	brandLimit: null,
 	brands: [{ id: "brand-1", slug: null, name: "Acme Corp", website: "https://acme.com", onboarded: true }],

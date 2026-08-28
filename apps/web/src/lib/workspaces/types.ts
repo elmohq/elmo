@@ -35,7 +35,6 @@ export interface WorkspaceSummary {
 	/** What `/app/org/$org` carries. */
 	slug: string;
 	name: string;
-	role: string;
 	brands: WorkspaceBrand[];
 	canCreateBrand: boolean;
 	/**

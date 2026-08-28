@@ -6,11 +6,11 @@ const ORG_SLUG = "default";
 const BRAND_URL = `/app/org/${ORG_SLUG}/brand/${BRAND_ID}`;
 
 test.describe("Overview Page", () => {
-  test("home page lands on the brand switcher and the default brand is reachable", async ({ page }) => {
+  test("home page lands on the directory and the default brand is reachable", async ({ page }) => {
     await page.goto("/");
-    // One workspace, so /app steps aside to it; the workspace then lists its
-    // brands rather than entering one.
-    await page.waitForURL(new RegExp(`/app/org/${ORG_SLUG}(?:/)?$`), { timeout: 30_000 });
+    // /app lists everything this account can reach, however few workspaces that
+    // is — it is what the logo leads back to.
+    await page.waitForURL(/\/app$/, { timeout: 30_000 });
     const brandLink = page.locator(`a[href="${BRAND_URL}"]`).first();
     await expect(brandLink).toBeVisible({ timeout: 15_000 });
     await brandLink.click();
