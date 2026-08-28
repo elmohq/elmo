@@ -9,31 +9,26 @@ import {
 } from "@workspace/ui/components/breadcrumb";
 import { Separator } from "@workspace/ui/components/separator";
 import { SidebarTrigger } from "@workspace/ui/components/sidebar";
-import { ChevronRight } from "lucide-react";
-import { Fragment, type ReactNode } from "react";
+import { Fragment } from "react";
 import { type Crumb, useBreadcrumbs } from "@/lib/breadcrumbs";
 
 /**
- * The line above a crumb saying what it is — an organization and a brand are
- * often named the same thing.
+ * An organization and a brand are often named the same thing, so each says
+ * which it is.
  *
- * Every item in the trail reserves it, empty where there is nothing to say, so
- * the names all sit on one line and the whole trail centres in the header as a
- * block. Left to size itself the label would also be wider than a short name,
- * and would run into the crumb beside it.
+ * In the line rather than floating above it: left to size itself the label is
+ * wider than a short name and runs into the crumb beside it. Which makes a
+ * labelled crumb two lines tall, and the list centres everything else against
+ * it — the chevrons and the page name sit on its middle, not on its name.
  */
-function KindLine({ children }: { children?: ReactNode }) {
-	return (
-		<span className="block h-3 text-[10px] font-medium uppercase leading-none tracking-wider text-muted-foreground/70">
-			{children}
-		</span>
-	);
-}
-
 function CrumbLabel({ crumb }: { crumb: Crumb }) {
+	if (!crumb.kind) return <>{crumb.label}</>;
+
 	return (
 		<span className="block leading-tight">
-			<KindLine>{crumb.kind}</KindLine>
+			<span className="mb-0.5 block text-[10px] font-medium uppercase leading-none tracking-wider text-muted-foreground/70">
+				{crumb.kind}
+			</span>
 			{crumb.label}
 		</span>
 	);
@@ -59,14 +54,7 @@ export function SiteHeader({ organizationName, brandName }: { organizationName?:
 							return (
 								// Two routes never share a pathname, so the href identifies the crumb.
 								<Fragment key={crumb.href}>
-									{index > 0 && (
-										<BreadcrumbSeparator className="hidden md:block">
-											<span className="block">
-												<KindLine />
-												<ChevronRight className="size-3.5" />
-											</span>
-										</BreadcrumbSeparator>
-									)}
+									{index > 0 && <BreadcrumbSeparator className="hidden md:block" />}
 									<BreadcrumbItem className={isLast ? undefined : "hidden md:block"}>
 										{isLast ? (
 											<BreadcrumbPage>
