@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -15,7 +15,6 @@ import { parse as parseDotenv } from "dotenv";
 import pc from "picocolors";
 import semver from "semver";
 import { parseRenderedVersion, refreshHeaderVersion, renderedByHeader, repinImages } from "./compose-pin.js";
-import { assertDockerRunning } from "./docker.js";
 import { MIGRATIONS, type MigrationContext, planMigrations, runMigrations } from "./migrations/index.js";
 import { submitNewsletterSignup, trackCliEvent } from "./telemetry.js";
 
@@ -231,9 +230,6 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	printBanner();
 	p.intro(pc.bold("Setting up Elmo"));
 
-	// Before the wizard, not after it: every path through init ends in a Docker
-	// Compose stack, so an unusable Docker is worth finding out about before
-	// answering a screen of API key and model prompts.
 	assertDockerRunning();
 
 	// Said before the wizard asks for anything, not after: someone who would
@@ -1655,6 +1651,23 @@ function runDockerComposeCapture(configDir: string, args: string[]): Promise<str
 			}
 		});
 	});
+}
+
+function assertDockerRunning(): void {
+	const result = spawnSync("docker", ["info"], {
+		stdio: "ignore",
+	});
+	if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+		throw new Error(
+			"Docker does not appear to be installed. Install Docker Desktop or Docker Engine and try again: https://docs.docker.com/get-docker/",
+		);
+	}
+	if (result.error) {
+		throw new Error(`Could not run Docker: ${result.error.message}`);
+	}
+	if (result.status !== 0) {
+		throw new Error("Docker does not appear to be running. Start Docker and try again.");
+	}
 }
 
 // ── Docker Dir Resolution ────────────────────────────────────────────────────
