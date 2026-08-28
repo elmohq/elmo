@@ -100,11 +100,14 @@ function TrackedPlatforms({ picker }: { picker: ModelPickerState }) {
 	const { brand: brandId } = Route.useParams();
 	const tracked = new Set(picker.enabledModels);
 	const groups = groupPlatformOptions(picker.available.filter((option) => tracked.has(option.model)));
-	if (groups.length === 0) return <NoPlatformsCard />;
 
 	return (
 		<div className="space-y-4">
-			<PlatformTierCard groups={groups} renderGroup={(group) => <PlatformList options={group.options} />} />
+			{groups.length === 0 ? (
+				<NoPlatformsCard />
+			) : (
+				<PlatformTierCard groups={groups} renderGroup={(group) => <PlatformList options={group.options} />} />
+			)}
 			{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} brandId={brandId} />}
 		</div>
 	);
