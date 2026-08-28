@@ -105,12 +105,7 @@ function BillingSettingsPage() {
 	// Wide enough for the four plan cards, which the paywall gives the same room.
 	return (
 		<div className="max-w-6xl space-y-6">
-			<div>
-				<h1 className="text-3xl font-bold">Billing</h1>
-				<p className="text-muted-foreground">
-					Plan and usage for the <span className="font-medium">{state.organization.name}</span> workspace.
-				</p>
-			</div>
+			<h1 className="text-3xl font-bold">Billing</h1>
 
 			{entitlements.standing === "grace" && (
 				<Alert variant="destructive">

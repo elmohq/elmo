@@ -27,10 +27,7 @@ function WorkspaceBrandsPage() {
 
 	return (
 		<div className="max-w-2xl space-y-6">
-			<div>
-				<h1 className="text-3xl font-bold">Brands</h1>
-				<p className="text-muted-foreground">Each brand is tracked, reported, and billed under this workspace.</p>
-			</div>
+			<h1 className="text-3xl font-bold">Brands</h1>
 
 			<div className="flex flex-col gap-2">
 				{workspace.brands.map((brand) => (

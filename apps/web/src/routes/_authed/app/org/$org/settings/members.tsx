@@ -35,7 +35,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/members")({
 
 function TeamSettingsPage() {
 	const { org } = Route.useParams();
-	const { members, invitations, currentUserId, organization } = Route.useLoaderData();
+	const { members, invitations, currentUserId } = Route.useLoaderData();
 	const canInvite = useDeploymentFeatures()?.teamInvites ?? false;
 	const router = useRouter();
 	const [inviteEmail, setInviteEmail] = useState("");
@@ -82,12 +82,7 @@ function TeamSettingsPage() {
 
 	return (
 		<div className="space-y-6">
-			<div>
-				<h1 className="text-3xl font-bold">Team</h1>
-				<p className="text-muted-foreground">
-					Who can reach every brand in <span className="font-medium text-foreground">{organization.name}</span>.
-				</p>
-			</div>
+			<h1 className="text-3xl font-bold">Team</h1>
 
 			{error && (
 				<Alert variant="destructive">
