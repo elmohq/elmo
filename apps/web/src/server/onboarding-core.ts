@@ -242,7 +242,7 @@ async function insertCompetitors(args: {
 		.select({ count: count() })
 		.from(competitors)
 		.where(eq(competitors.brandId, args.brandId));
-	assertAllowed(decideCompetitorCap((currentCount || 0) + toInsert.length));
+	assertAllowed(decideCompetitorCap(currentCount + toInsert.length));
 
 	await db.insert(competitors).values(toInsert);
 	return toInsert.length;

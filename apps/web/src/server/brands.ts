@@ -566,11 +566,11 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
 
-		const [currentCount] = await db
+		const [{ count: currentCount }] = await db
 			.select({ count: count() })
 			.from(competitors)
 			.where(eq(competitors.brandId, data.brandId));
-		assertAllowed(decideCompetitorCap((currentCount?.count || 0) + 1));
+		assertAllowed(decideCompetitorCap(currentCount + 1));
 
 		const [result] = await db
 			.insert(competitors)

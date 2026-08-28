@@ -77,7 +77,7 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 						.select({ count: count() })
 						.from(competitors)
 						.where(eq(competitors.brandId, brandId));
-					assertAllowed(decideCompetitorCap((currentCount || 0) + 1));
+					assertAllowed(decideCompetitorCap(currentCount + 1));
 
 					const [inserted] = await db
 						.insert(competitors)

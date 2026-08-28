@@ -96,6 +96,8 @@ export function decidePromptCap(existing: number, adding: number): EntitlementDe
 	return deny("prompt-cap", `A brand may have at most ${MAX_PROMPTS} prompts (this one has ${existing}).`);
 }
 
+/** Takes the number of competitors the brand would end up with, so an add, a
+ *  bulk add and a whole-list replace all ask the same question. */
 export function decideCompetitorCap(resulting: number): EntitlementDecision {
 	if (resulting <= MAX_COMPETITORS) return ALLOWED;
 	return deny(
