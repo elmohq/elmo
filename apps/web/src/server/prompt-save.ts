@@ -1,5 +1,4 @@
 import { selectPremiumModels } from "@workspace/config/plans";
-import type { PromptSaveRow } from "@workspace/lib/entitlements";
 
 export interface SubmittedPrompt {
 	id?: string;
@@ -20,14 +19,14 @@ export interface PlannedState {
 	premiumModels: string[];
 }
 
-export interface PlannedUpdate extends PromptSaveRow {
+export interface PlannedUpdate {
 	id: string;
 	prompt: SubmittedPrompt;
 	before: StoredPrompt;
 	after: PlannedState;
 }
 
-export interface PlannedInsert extends PromptSaveRow {
+export interface PlannedInsert {
 	prompt: SubmittedPrompt;
 	after: PlannedState;
 }

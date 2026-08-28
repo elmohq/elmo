@@ -14,8 +14,8 @@ import {
 	decidePremiumAssign,
 	decidePromptAdd,
 	decidePromptCap,
-	type WriteDecision,
 	promptSaveDelta,
+	type WriteDecision,
 } from "./guards";
 
 const NOW = new Date("2026-08-05T12:00:00Z");
@@ -142,28 +142,40 @@ describe("promptSaveDelta", () => {
 	const grounded = { enabled: true, premiumModels: ["claude"] };
 
 	it("counts a deleted grounded prompt as a release", () => {
-		expect(promptSaveDelta([{ before: grounded, after: { enabled: false, premiumModels: [] } }])).toEqual({
+		expect(
+			promptSaveDelta({ updates: [{ before: grounded, after: { enabled: false, premiumModels: [] } }], inserts: [] }),
+		).toEqual({
 			prompts: -1,
 			premiumPairings: -1,
 		});
 	});
 
 	it("counts disabling a grounded prompt as a release", () => {
-		expect(promptSaveDelta([{ before: grounded, after: { enabled: false, premiumModels: ["claude"] } }])).toEqual({
+		expect(
+			promptSaveDelta({
+				updates: [{ before: grounded, after: { enabled: false, premiumModels: ["claude"] } }],
+				inserts: [],
+			}),
+		).toEqual({
 			prompts: -1,
 			premiumPairings: -1,
 		});
 	});
 
 	it("charges re-enabling a grounded prompt for the pairing it resumes, without calling it an assignment", () => {
-		expect(promptSaveDelta([{ before: { enabled: false, premiumModels: ["claude"] }, after: grounded }])).toEqual({
+		expect(
+			promptSaveDelta({
+				updates: [{ before: { enabled: false, premiumModels: ["claude"] }, after: grounded }],
+				inserts: [],
+			}),
+		).toEqual({
 			prompts: 1,
 			premiumPairings: 1,
 		});
 	});
 
 	it("carrying the same assignment back is not an assignment", () => {
-		expect(promptSaveDelta([{ before: grounded, after: grounded }])).toEqual({
+		expect(promptSaveDelta({ updates: [{ before: grounded, after: grounded }], inserts: [] })).toEqual({
 			prompts: 0,
 			premiumPairings: 0,
 		});
@@ -171,20 +183,33 @@ describe("promptSaveDelta", () => {
 
 	it("charges a second model on a row that already carries one, and calls it an assignment", () => {
 		expect(
-			promptSaveDelta([{ before: grounded, after: { enabled: true, premiumModels: ["claude", "grok"] } }]),
+			promptSaveDelta({
+				updates: [{ before: grounded, after: { enabled: true, premiumModels: ["claude", "grok"] } }],
+				inserts: [],
+			}),
 		).toEqual({ prompts: 0, premiumPairings: 1 });
 	});
 
 	it("counts a swap as one assignment, not two", () => {
-		expect(promptSaveDelta([{ before: grounded, after: { enabled: true, premiumModels: ["grok"] } }])).toEqual({
+		expect(
+			promptSaveDelta({
+				updates: [{ before: grounded, after: { enabled: true, premiumModels: ["grok"] } }],
+				inserts: [],
+			}),
+		).toEqual({
 			prompts: 0,
 			premiumPairings: 0,
 		});
 	});
 
-	it("treats a row with no before as an insert", () => {
-		expect(promptSaveDelta([{ after: grounded }])).toEqual({ prompts: 1, premiumPairings: 1 });
-		expect(promptSaveDelta([{ after: { enabled: false, premiumModels: ["claude"] } }])).toEqual({
+	it("charges an insert only when it lands enabled", () => {
+		expect(promptSaveDelta({ updates: [], inserts: [{ after: grounded }] })).toEqual({
+			prompts: 1,
+			premiumPairings: 1,
+		});
+		expect(
+			promptSaveDelta({ updates: [], inserts: [{ after: { enabled: false, premiumModels: ["claude"] } }] }),
+		).toEqual({
 			prompts: 0,
 			premiumPairings: 0,
 		});
@@ -192,10 +217,10 @@ describe("promptSaveDelta", () => {
 
 	it("nets a save that swaps one prompt for another to nothing", () => {
 		expect(
-			promptSaveDelta([
-				{ before: grounded, after: { enabled: false, premiumModels: [] } },
-				{ after: { enabled: true, premiumModels: [] } },
-			]),
+			promptSaveDelta({
+				updates: [{ before: grounded, after: { enabled: false, premiumModels: [] } }],
+				inserts: [{ after: { enabled: true, premiumModels: [] } }],
+			}),
 		).toEqual({ prompts: 0, premiumPairings: -1 });
 	});
 });

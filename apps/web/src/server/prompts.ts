@@ -548,7 +548,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		assertAllowed(decidePromptCap(existingRows.length, data.prompts.filter((p) => !p.id).length));
 
 		const { updates, inserts } = planPromptSave(data.prompts, existingRows);
-		await assertPromptSaveAllowed(brand.organizationId, promptSaveDelta([...updates, ...inserts]));
+		await assertPromptSaveAllowed(brand.organizationId, promptSaveDelta({ updates, inserts }));
 
 		const saved = await db.transaction(async (tx) => {
 			for (const { id, prompt, after } of updates) {

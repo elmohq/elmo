@@ -326,14 +326,15 @@ export interface PromptPoolState {
 	premiumModels: readonly string[];
 }
 
-export interface PromptSaveRow {
-	before?: PromptPoolState;
-	after: PromptPoolState;
+/** The pool-relevant shape of a planned save: an update knows what it replaces. */
+export interface PromptSavePools {
+	updates: readonly { before: PromptPoolState; after: PromptPoolState }[];
+	inserts: readonly { after: PromptPoolState }[];
 }
 
-export function promptSaveDelta(rows: readonly PromptSaveRow[]): PromptSaveDelta {
-	const before = rows.flatMap((row) => (row.before ? [row.before] : []));
-	const after = rows.map((row) => row.after);
+export function promptSaveDelta(plan: PromptSavePools): PromptSaveDelta {
+	const before = plan.updates.map((row) => row.before);
+	const after = [...plan.updates, ...plan.inserts].map((row) => row.after);
 	const enabled = (states: PromptPoolState[]) => states.filter((state) => state.enabled).length;
 	return {
 		prompts: enabled(after) - enabled(before),

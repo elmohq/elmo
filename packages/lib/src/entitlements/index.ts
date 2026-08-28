@@ -21,7 +21,7 @@ export {
 	decidePromptCap,
 	type PromptPoolState,
 	type PromptSaveDelta,
-	type PromptSaveRow,
+	type PromptSavePools,
 	promptSaveDelta,
 	type WriteDecision,
 	type WriteDenialCode,
