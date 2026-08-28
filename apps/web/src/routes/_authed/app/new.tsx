@@ -69,7 +69,7 @@ function NewWorkspacePage() {
 		>
 			<form onSubmit={handleSubmit} className="space-y-4">
 				<div className="space-y-2">
-					<Label htmlFor="workspace-name">Name</Label>
+					<Label htmlFor="workspace-name">Workspace Name</Label>
 					<Input
 						id="workspace-name"
 						value={name}

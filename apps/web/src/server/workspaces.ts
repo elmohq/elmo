@@ -23,7 +23,7 @@ import {
 	resolveOrganization,
 } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
-import type { SlugResult } from "@/lib/slugs";
+import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 import { resolveBrandCreation, withBrands } from "@/lib/workspaces/server";
 import type { WorkspaceRouteContext, WorkspaceSummary } from "@/lib/workspaces/types";
 
@@ -158,7 +158,7 @@ export const getWorkspaceSettingsFn = createServerFn({ method: "GET" })
 
 /**
  * Whether this caller may change what the workspace is called, by name or by
- * URL. Both are workspace-wide: every member's links and the billing mail's
+ * slug. Both are workspace-wide: every member's links and the billing mail's
  * links point at the slug, so this is an admin action for the same reason
  * managing the plan and the member list is.
  *
@@ -170,40 +170,42 @@ function canEditWorkspace(role: string): boolean {
 	return !deployment.features.readOnly && deployment.mode !== "whitelabel" && isOrgAdminRole(role);
 }
 
-function assertCanEditWorkspace(role: string): void {
-	if (!isOrgAdminRole(role)) throw new Error("Only workspace admins can change the workspace name or URL");
-	if (!canEditWorkspace(role)) throw new Error("This workspace cannot be renamed in this deployment");
-}
-
-export const renameWorkspaceFn = createServerFn({ method: "POST" })
+/**
+ * Rename a workspace, move it to a new slug, or both.
+ *
+ * One call because it is one edit: the form that carries the name carries the
+ * slug beside it, and a save that took only half would leave the page telling
+ * the customer something that isn't true yet.
+ *
+ * Slug availability spans slugs *and* ids, because `/app/org/$org` resolves
+ * either — a slug matching another workspace's id would make one URL name two
+ * of them.
+ */
+export const updateWorkspaceFn = createServerFn({ method: "POST" })
 	// Trimmed here rather than in the handler, so a name of nothing but spaces is
 	// rejected instead of stored as an empty one.
-	.validator(z.object({ org: z.string(), name: z.string().trim().min(1).max(100) }))
-	.handler(async ({ data }) => {
+	.validator(
+		z.object({
+			org: z.string(),
+			name: z.string().trim().min(1).max(100),
+			slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH),
+		}),
+	)
+	.handler(async ({ data }): Promise<{ slug: string }> => {
 		const session = await requireAuthSession();
 		const workspace = await requireOrganization(session.user.id, data.org);
-		assertCanEditWorkspace(workspace.role);
 
-		await db.update(organization).set({ name: data.name }).where(eq(organization.id, workspace.id));
-		return { success: true };
-	});
+		if (!isOrgAdminRole(workspace.role)) {
+			throw new Error("Only workspace admins can change the workspace name or URL slug");
+		}
+		if (!canEditWorkspace(workspace.role)) {
+			throw new Error("This workspace cannot be renamed in this deployment");
+		}
+		if (!isValidSlug(data.slug)) throw new Error(INVALID_SLUG);
+		if (!(await isOrgSlugAvailable(data.slug, { excludeOrgId: workspace.id }))) {
+			throw new Error(TAKEN_SLUG);
+		}
 
-/**
- * Set the workspace's URL segment.
- *
- * Availability spans slugs *and* ids, because `/app/org/$org` resolves either —
- * a slug matching another workspace's id would make one URL name two of them.
- */
-export const setWorkspaceSlugFn = createServerFn({ method: "POST" })
-	.validator(z.object({ org: z.string(), slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH) }))
-	.handler(async ({ data }): Promise<SlugResult> => {
-		const session = await requireAuthSession();
-		const workspace = await requireOrganization(session.user.id, data.org);
-		assertCanEditWorkspace(workspace.role);
-
-		if (!isValidSlug(data.slug)) return { ok: false, error: "invalid" };
-		if (!(await isOrgSlugAvailable(data.slug, { excludeOrgId: workspace.id }))) return { ok: false, error: "taken" };
-
-		await db.update(organization).set({ slug: data.slug }).where(eq(organization.id, workspace.id));
-		return { ok: true, slug: data.slug };
+		await db.update(organization).set({ name: data.name, slug: data.slug }).where(eq(organization.id, workspace.id));
+		return { slug: data.slug };
 	});

@@ -18,9 +18,10 @@ import { SlugField } from "@/components/slug-field";
 import { useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
+import { useInvalidateWorkspaces } from "@/hooks/use-workspaces";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
-import { setBrandSlugFn, updateBrandFn } from "@/server/brands";
+import { updateBrandFn } from "@/server/brands";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/brand")({
 	staticData: { crumb: "Brand" },
@@ -40,11 +41,17 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 function BrandSettingsPage() {
 	const { brand, isLoading, revalidate } = useBrand();
 	const queryClient = useQueryClient();
+	const router = useRouter();
+	const invalidateWorkspaces = useInvalidateWorkspaces();
+	const { org } = Route.useParams();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState("");
 	const [additionalDomains, setAdditionalDomains] = useState<string[]>([]);
 	const [aliases, setAliases] = useState<string[]>([]);
+	// A brand that predates slugs shows its id, which is what its URL already
+	// carries — saving is what turns that into a real slug.
+	const [slug, setSlug] = useState("");
 
 	// Reseed the fields when the brand changes server-side, without discarding
 	// whatever is being typed in between.
@@ -53,6 +60,7 @@ function BrandSettingsPage() {
 		setSeededFrom(brand.updatedAt);
 		setAdditionalDomains(brand.additionalDomains || []);
 		setAliases(brand.aliases || []);
+		setSlug(brand.slug ?? brand.id);
 	}
 
 	const validateDomain = useCallback((val: string): true | string => {
@@ -93,11 +101,13 @@ function BrandSettingsPage() {
 			const name = formData.get("name") as string;
 			const website = formData.get("website") as string;
 
+			const nextSlug = slug.trim().toLowerCase();
 			await updateBrandFn({
 				data: {
 					brandId: brand.id,
 					name,
 					website,
+					slug: nextSlug,
 					additionalDomains,
 					aliases,
 				},
@@ -109,6 +119,16 @@ function BrandSettingsPage() {
 
 			setSuccess("Brand details updated successfully!");
 			await revalidate();
+			// The rail's menu lists this brand by name, and if the slug moved so did
+			// the address this page is at.
+			await invalidateWorkspaces();
+			if (nextSlug !== (brand.slug ?? brand.id)) {
+				await router.navigate({
+					to: "/app/org/$org/brand/$brand/settings/brand",
+					params: { org, brand: nextSlug },
+					replace: true,
+				});
+			}
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "An error occurred");
 		} finally {
@@ -139,7 +159,14 @@ function BrandSettingsPage() {
 						<p className="text-xs text-muted-foreground">Enter your brand&apos;s name</p>
 					</div>
 
-					<BrandUrlField brandId={brand.id} slug={brand.slug} />
+					<SlugField
+						id="brand-slug"
+						label="Brand Slug"
+						prefix={BRAND_URL_PREFIX}
+						value={slug}
+						onChange={setSlug}
+						disabled={isSubmitting}
+					/>
 
 					<div className="space-y-2">
 						<Label htmlFor="website">Website</Label>
@@ -210,31 +237,5 @@ function BrandSettingsPage() {
 				</div>
 			</form>
 		</div>
-	);
-}
-
-/**
- * A brand that predates slugs shows its id, which is what its URL already
- * carries — saving is what turns that into a real slug.
- */
-function BrandUrlField({ brandId, slug }: { brandId: string; slug: string | null }) {
-	const router = useRouter();
-	const { org } = Route.useParams();
-
-	return (
-		<SlugField
-			id="brand-url"
-			prefix={BRAND_URL_PREFIX}
-			current={slug ?? brandId}
-			subject="brand"
-			save={(next) => setBrandSlugFn({ data: { brandId, slug: next } })}
-			onSaved={(next) =>
-				router.navigate({
-					to: "/app/org/$org/brand/$brand/settings/brand",
-					params: { org, brand: next },
-					replace: true,
-				})
-			}
-		/>
 	);
 }

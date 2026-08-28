@@ -48,7 +48,7 @@ import { validateWebsiteUrl } from "@/lib/brand-website";
 import { getDeployment } from "@/lib/config/server";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { type TrackedTarget, targetFilterValue } from "@/lib/model-filter";
-import type { SlugResult } from "@/lib/slugs";
+import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
 const BRAND_ORG_ERRORS = {
 	"no-organization": "No organization for the current user",
@@ -395,13 +395,28 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 			brandId: z.string(),
 			name: z.string().optional(),
 			website: z.string().optional(),
+			/**
+			 * Unique within the workspace rather than globally —
+			 * `/app/org/$org/brand/$brand` has already named the workspace by the
+			 * time this segment is read.
+			 */
+			slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH).optional(),
 			additionalDomains: z.array(z.string()).optional(),
 			aliases: z.array(z.string()).optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		const org = await requireBrandOrganization(session.user.id, data.brandId);
+
+		// Ids are checked alongside slugs because the segment resolves as either,
+		// so a slug matching a sibling's id would make one URL name two brands.
+		if (data.slug !== undefined) {
+			if (!isValidSlug(data.slug)) throw new Error(INVALID_SLUG);
+			if (!(await isBrandSlugAvailable(org.id, data.slug, { excludeBrandId: data.brandId }))) {
+				throw new Error(TAKEN_SLUG);
+			}
+		}
 
 		const normalized = normalizeBrandUpdate({
 			name: data.name,
@@ -416,7 +431,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 
 		const result = await db
 			.update(brands)
-			.set({ ...updateData, updatedAt: new Date() })
+			.set({ ...updateData, ...(data.slug !== undefined && { slug: data.slug }), updatedAt: new Date() })
 			.where(eq(brands.id, data.brandId))
 			.returning();
 
@@ -596,31 +611,4 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 			.returning();
 
 		return result;
-	});
-
-/**
- * Set the brand's URL segment.
- *
- * Membership is the bar, as it is for the brand's name and website beside it —
- * this is a brand setting, not a workspace-wide one. Read-only deployments are
- * refused by `readOnlyMiddleware`, which every server function goes through.
- *
- * Unique within the workspace rather than globally — `/app/org/$org/brand/$brand`
- * has already named the workspace by the time this segment is read. Ids are
- * checked alongside slugs because that segment resolves as either, so a slug
- * matching a sibling's id would make one URL name two brands.
- */
-export const setBrandSlugFn = createServerFn({ method: "POST" })
-	.validator(z.object({ brandId: z.string(), slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH) }))
-	.handler(async ({ data }): Promise<SlugResult> => {
-		const session = await requireAuthSession();
-		const org = await requireBrandOrganization(session.user.id, data.brandId);
-
-		if (!isValidSlug(data.slug)) return { ok: false, error: "invalid" };
-		if (!(await isBrandSlugAvailable(org.id, data.slug, { excludeBrandId: data.brandId }))) {
-			return { ok: false, error: "taken" };
-		}
-
-		await db.update(brands).set({ slug: data.slug }).where(eq(brands.id, data.brandId));
-		return { ok: true, slug: data.slug };
 	});

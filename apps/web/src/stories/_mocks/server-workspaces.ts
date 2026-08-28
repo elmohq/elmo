@@ -39,6 +39,5 @@ export const resolveWorkspaceFn = async () => ({
 	hasReportAccess: false,
 });
 export const getWorkspaceSettingsFn = async () => ({ memberCount: 2, canRename: true });
-export const renameWorkspaceFn = async () => ({ success: true });
-export const setWorkspaceSlugFn = async () => ({ ok: true, slug: _workspaces[0].slug });
+export const updateWorkspaceFn = async () => ({ slug: _workspaces[0].slug });
 export const getNotFoundContextFn = async () => ({ suggestion: null, workspaces: _workspaces });

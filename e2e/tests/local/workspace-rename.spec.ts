@@ -9,10 +9,28 @@ import { expect, test } from "@playwright/test";
 import { TEST_BRAND_NAME, TEST_ORG_SLUG } from "../../fixtures";
 
 test.describe("Workspace rename", () => {
+  // Deliberately doesn't commit a new slug: the suite shares one seeded
+  // workspace, and a spec that moved it and failed before moving it back would
+  // strand every spec that addresses it by slug.
+  test("the slug is a field of the same form, with no save of its own", async ({ page }) => {
+    await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
+
+    const slugField = page.getByLabel("Workspace Slug", { exact: true });
+    await expect(slugField).toHaveValue(TEST_ORG_SLUG, { timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Change URL" })).toHaveCount(0);
+
+    const save = page.getByRole("button", { name: "Save", exact: true });
+    await expect(save).toBeDisabled();
+
+    // Editing the slug alone arms the one Save the form has.
+    await slugField.fill(`${TEST_ORG_SLUG}-elsewhere`);
+    await expect(save).toBeEnabled();
+  });
+
   test("a name padded with spaces can still be saved, and settles trimmed", async ({ page }) => {
     await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
 
-    const nameField = page.getByLabel("Name", { exact: true });
+    const nameField = page.getByLabel("Workspace Name", { exact: true });
     await expect(nameField).toHaveValue(TEST_BRAND_NAME, { timeout: 30_000 });
 
     const save = page.getByRole("button", { name: "Save", exact: true });
@@ -32,7 +50,7 @@ test.describe("Workspace rename", () => {
   test("a name of nothing but spaces cannot be saved", async ({ page }) => {
     await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
 
-    const nameField = page.getByLabel("Name", { exact: true });
+    const nameField = page.getByLabel("Workspace Name", { exact: true });
     await expect(nameField).toHaveValue(TEST_BRAND_NAME, { timeout: 30_000 });
 
     await nameField.fill("   ");

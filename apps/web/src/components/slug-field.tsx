@@ -1,88 +1,52 @@
 import { MAX_SLUG_LENGTH } from "@workspace/lib/app-urls";
-import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
-import { useState } from "react";
-import { type SlugResult, slugErrorMessage } from "@/lib/slugs";
+import { cn } from "@workspace/ui/lib/utils";
 
 /**
- * The URL segment something is reachable at, edited on its own.
+ * The URL segment something is reachable at, as a field in the form that owns
+ * it rather than a form of its own.
  *
- * Saved apart from whatever form it sits in, because changing it moves the page
- * the form is on: `onSaved` is handed the slug that stuck so the caller can
- * navigate to the new address rather than leave the browser on one that no
- * longer resolves.
+ * It saves with the name beside it, because they are the same edit: a person
+ * renaming a brand means to rename the brand, not to file two changes. The
+ * page that submits it is the one that knows the address moved, so it is the
+ * page that navigates afterwards.
  *
- * A refused slug is reported under the field, so the caller's `save` returns a
- * `SlugResult` instead of throwing for the ordinary cases.
+ * The prefix is shown inside the field's border so the whole address reads, and
+ * the input carries no border of its own to keep that one box.
  */
 export function SlugField({
 	id,
+	label,
 	prefix,
-	current,
-	subject,
-	canEdit = true,
-	save,
-	onSaved,
+	value,
+	onChange,
+	disabled = false,
+	className,
 }: {
 	id: string;
+	label: string;
 	/** The part of the URL before the segment, shown so the whole address reads. */
 	prefix: string;
-	current: string;
-	/** What breaks if this changes — "workspace", "brand". */
-	subject: string;
-	canEdit?: boolean;
-	save: (slug: string) => Promise<SlugResult>;
-	onSaved: (slug: string) => Promise<unknown> | unknown;
+	value: string;
+	onChange: (value: string) => void;
+	disabled?: boolean;
+	className?: string;
 }) {
-	const [value, setValue] = useState(current);
-	const [saving, setSaving] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-
-	const next = value.trim().toLowerCase();
-	const isDirty = next !== current;
-
-	async function handleSave(e: React.FormEvent) {
-		e.preventDefault();
-		if (!isDirty || next.length === 0) return;
-		setError(null);
-		setSaving(true);
-		try {
-			const result = await save(next);
-			if (!result.ok) {
-				setError(slugErrorMessage(result.error));
-				return;
-			}
-			await onSaved(result.slug);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : `Failed to change the ${subject} URL`);
-		} finally {
-			setSaving(false);
-		}
-	}
-
 	return (
-		<form onSubmit={handleSave} className="space-y-2">
-			<Label htmlFor={id}>URL slug</Label>
-			<div className="flex flex-wrap items-center gap-3">
-				<div className="flex items-center rounded-md border font-mono text-sm">
-					<span className="pl-3 text-muted-foreground">{prefix}</span>
-					<Input
-						id={id}
-						value={value}
-						onChange={(e) => setValue(e.target.value)}
-						readOnly={!canEdit}
-						maxLength={MAX_SLUG_LENGTH}
-						className="w-52 border-0 pl-0 font-mono text-sm shadow-none focus-visible:ring-0"
-					/>
-				</div>
-				{canEdit && (
-					<Button type="submit" variant="outline" disabled={saving || !isDirty || next.length === 0}>
-						{saving ? "Saving..." : "Change URL"}
-					</Button>
-				)}
+		<div className="space-y-2">
+			<Label htmlFor={id}>{label}</Label>
+			<div className={cn("flex items-center rounded-md border font-mono text-sm", className)}>
+				<span className="pl-3 text-muted-foreground">{prefix}</span>
+				<Input
+					id={id}
+					value={value}
+					onChange={(e) => onChange(e.target.value)}
+					disabled={disabled}
+					maxLength={MAX_SLUG_LENGTH}
+					className="border-0 pl-0 font-mono text-sm shadow-none focus-visible:ring-0"
+				/>
 			</div>
-			{error && <p className="text-sm text-destructive">{error}</p>}
-		</form>
+		</div>
 	);
 }

@@ -87,13 +87,25 @@ test.describe("App routing", () => {
 		await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
 	});
 
-	test("the workspace settings page states the workspace's URL slug", async ({ page }) => {
+	test("the workspace settings page states the workspace's slug", async ({ page }) => {
 		await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
-		await expect(page.getByLabel("URL slug", { exact: true })).toHaveValue(TEST_ORG_SLUG, { timeout: 30_000 });
+		await expect(page.getByLabel("Workspace Slug", { exact: true })).toHaveValue(TEST_ORG_SLUG, {
+			timeout: 30_000,
+		});
 	});
 
 	// The trail is read off the routes that matched, so it says where the page
 	// sits without a second parser guessing at the pathname.
+	// A brand's slug saves with its name, the way a workspace's does.
+	test("the brand's slug is a field of the brand settings form", async ({ page }) => {
+		await page.goto(`${SLUGGED_BRAND_URL}/settings/brand`);
+
+		await expect(page.getByLabel("Brand Slug", { exact: true })).toHaveValue(SLUGGED_BRAND_SLUG, {
+			timeout: 30_000,
+		});
+		await expect(page.getByRole("button", { name: "Change URL" })).toHaveCount(0);
+	});
+
 	test("the breadcrumb trail names the workspace, the brand, and the page", async ({ page }) => {
 		await page.goto(`${BRAND_URL}/citations`);
 

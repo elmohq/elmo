@@ -159,7 +159,7 @@ function NewBrandPage() {
 		<FullPageCard title="Create a new brand" subtitle={`Start tracking a brand in ${workspaceName}`} showBackButton>
 			<form action={handleDetailsSubmit} className="space-y-4">
 				<div className="space-y-2">
-					<Label htmlFor="brandName">Brand name</Label>
+					<Label htmlFor="brandName">Brand Name</Label>
 					<Input
 						id="brandName"
 						name="brandName"
