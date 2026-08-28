@@ -42,8 +42,7 @@ import type { OrganizationSummary } from "@/lib/organizations/types";
 
 /**
  * How much of the app the shell around this page can reach:
- *  - "brand":     a brand's own pages, its organization's settings, plus admin for
- *                 those who have it
+ *  - "brand":     a brand's own pages, plus admin for those who have it
  *  - "organization": the organization's own pages (there is no brand in scope)
  *  - "admin":     the admin section only
  *  - "account":   nothing — the page is a gate the user has to clear first, so
@@ -110,7 +109,7 @@ function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts)
 
 	if (brand.onboarded) {
 		groups.push({
-			label: "Brand settings",
+			label: "Settings",
 			items: [
 				{ title: "Brand", link: { to: "/app/org/$org/brand/$brand/settings/brand", params }, icon: IconBuilding },
 				{
@@ -153,16 +152,15 @@ export function AppSidebar(props: AppSidebarProps) {
 	// Reports are disabled entirely in cloud; hide the nav entry there.
 	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
 
-	// Stands in for an `inOrganization` flag, and carries the narrowing with it.
-	const organization = props.scope === "brand" || props.scope === "organization" ? props.organization : null;
-
 	// A gate page offers no destinations: every link would either 404 or bounce
 	// the user straight back to the gate.
 	const showAdminSection = scope !== "account" && (isAdmin || (hasReportAccess && reportsEnabled));
 
 	const groups: NavGroup[] = [
 		...(props.scope === "brand" ? brandGroups(props.organization, props.brand) : []),
-		...(organization ? [organizationGroup(organization, context.clientConfig?.features)] : []),
+		// Only where the organization is the subject. On a brand page the rail is
+		// that brand's, and the account menu is how its organization is reached.
+		...(props.scope === "organization" ? [organizationGroup(props.organization, context.clientConfig?.features)] : []),
 		...(showAdminSection ? [adminGroup(isAdmin, reportsEnabled)] : []),
 	];
 	const brandmark = (

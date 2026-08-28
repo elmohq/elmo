@@ -1,7 +1,8 @@
 import { IconChevronRight, IconPlus, IconSettings } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
 import { brandParams, orgParams } from "@workspace/lib/app-urls";
-import { Button, buttonVariants } from "@workspace/ui/components/button";
+import { buttonVariants } from "@workspace/ui/components/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { SiteIcon } from "@/components/site-icon";
 import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import type { OrganizationSummary } from "@/lib/organizations/types";
@@ -36,17 +37,26 @@ function OrganizationCard({ organization }: { organization: OrganizationSummary 
 
 	return (
 		<div className="overflow-hidden rounded-xl border bg-background">
-			<div className="flex items-center gap-3 border-b bg-muted/30 px-4 py-3">
-				<p className="min-w-0 flex-1 truncate font-medium">{organization.name}</p>
-				<Button
-					variant="ghost"
-					size="icon"
-					aria-label={`${organization.name} settings`}
-					render={<Link to="/app/org/$org/settings" params={orgParams(organization)} />}
+			{/* The whole header, not just the gear: the header names the one thing it
+			    could lead to, so anything less is a smaller target for no reason. */}
+			<Tooltip>
+				<TooltipTrigger
+					render={
+						<Link
+							to="/app/org/$org/settings"
+							params={orgParams(organization)}
+							aria-label={`${organization.name} settings`}
+							className="flex items-center gap-3 border-b bg-muted/30 px-4 py-3 hover:bg-muted/60"
+						/>
+					}
 				>
-					<IconSettings className="size-4" />
-				</Button>
-			</div>
+					<span className="min-w-0 flex-1 truncate font-medium">{organization.name}</span>
+					<span className="flex w-9 shrink-0 justify-center">
+						<IconSettings className="size-4 text-muted-foreground" />
+					</span>
+				</TooltipTrigger>
+				<TooltipContent>Organization settings</TooltipContent>
+			</Tooltip>
 
 			{/* An organization with nothing in it and no way to add is its header alone. */}
 			{hasRows && (

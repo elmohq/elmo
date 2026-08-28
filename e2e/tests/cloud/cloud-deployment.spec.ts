@@ -113,10 +113,16 @@ test.describe("Cloud features", () => {
   });
 
   test("the sidebar offers team settings and no reports", async ({ page }) => {
-    await page.goto(`${brandUrl()}`);
+    // On the organization's own pages: a brand's rail is the brand's alone.
+    await page.goto(`${organizationUrl()}/settings`);
     await expect(
       page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),
     ).toBeVisible({ timeout: 30_000 });
+
+    await page.goto(`${brandUrl()}`);
+    await expect(
+      page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),
+    ).toHaveCount(0);
     // The admin section is present (this user is an admin) but has no Reports entry.
     await expect(page.locator('a[href="/admin"][data-sidebar="menu-button"]')).toBeVisible();
     await expect(page.locator('a[href="/reports"][data-sidebar="menu-button"]')).toHaveCount(0);

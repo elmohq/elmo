@@ -276,14 +276,14 @@ export const WhitelabelReportOnly = () => {
 	);
 };
 
-/** Cloud — settings nav gains Team and Billing; no report generation */
+/** Cloud — an organization's rail gains Billing; no report generation */
 export const Cloud: StoryObj = {
 	render: () => {
-		const brand = configureMocks(cloudConfig, onboardedBrand, authedUser("Dana Cloud", "dana@acme.com", "dana"));
+		configureMocks(cloudConfig, onboardedBrand, authedUser("Dana Cloud", "dana@acme.com", "dana"));
 
 		return (
-			<SidebarFrame label="Cloud — Billing and Team in settings">
-				<AppSidebar scope="brand" isAdmin={false} hasReportAccess={false} brand={brand} organization={organization} />
+			<SidebarFrame label="Cloud — Billing and Team on the organization's rail">
+				<AppSidebar scope="organization" isAdmin={false} hasReportAccess={false} organization={organization} />
 			</SidebarFrame>
 		);
 	},
@@ -298,20 +298,20 @@ export const Cloud: StoryObj = {
 	},
 };
 
-/** Whitelabel has no billing, so the settings nav stops at Team. */
+/** Whitelabel has no billing, so the organization's rail stops at Team. */
 export const WhitelabelHasNoBilling: StoryObj = {
 	render: () => {
-		const brand = configureMocks(whitelabelConfig, onboardedBrand, authedUser("Alice", "alice@agency.com", "alice2"));
+		configureMocks(whitelabelConfig, onboardedBrand, authedUser("Alice", "alice@agency.com", "alice2"));
 
 		return (
 			<SidebarFrame label="Whitelabel — no Billing item">
-				<AppSidebar scope="brand" isAdmin={false} hasReportAccess={false} brand={brand} organization={organization} />
+				<AppSidebar scope="organization" isAdmin={false} hasReportAccess={false} organization={organization} />
 			</SidebarFrame>
 		);
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText("LLMs")).toBeInTheDocument();
+		await expect(await canvas.findByText("Team")).toBeInTheDocument();
 		await expect(canvas.queryByText("Billing")).toBeNull();
 	},
 };

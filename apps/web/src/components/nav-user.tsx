@@ -211,7 +211,7 @@ function OrganizationSection({
 				<DropdownMenuItem
 					render={<Link to="/app/org/$org/settings" params={orgParams(organization)} onClick={onNavigate} />}
 					aria-label={`${organization.name} settings`}
-					className="mr-1 size-7 shrink-0 cursor-pointer justify-center p-0"
+					className="mr-2 size-7 shrink-0 cursor-pointer justify-center p-0"
 				>
 					<IconSettings className="size-4" />
 				</DropdownMenuItem>
@@ -229,7 +229,11 @@ function OrganizationSection({
 						>
 							<SiteIcon domain={brand.website} size="xs" />
 							<span className="truncate">{brand.name}</span>
-							{brandSegment(brand) === brandParam && <IconCheck className="ml-auto size-3.5 shrink-0" />}
+							{brandSegment(brand) === brandParam && (
+								<span className="ml-auto flex w-7 shrink-0 justify-center">
+									<IconCheck className="size-3.5" />
+								</span>
+							)}
 						</DropdownMenuItem>
 					))}
 

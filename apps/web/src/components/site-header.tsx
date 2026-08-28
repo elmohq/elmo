@@ -12,13 +12,20 @@ import { SidebarTrigger } from "@workspace/ui/components/sidebar";
 import { Fragment } from "react";
 import { type Crumb, useBreadcrumbs } from "@/lib/breadcrumbs";
 
-/** An organization and a brand are often named the same thing, so each says which it is. */
+/**
+ * An organization and a brand are often named the same thing, so each says
+ * which it is.
+ *
+ * The label sits out of the flow, above the name. In the line it would leave
+ * the labelled crumbs taller than the plain ones, and every separator and page
+ * name would need nudging to sit straight against them.
+ */
 function CrumbLabel({ crumb }: { crumb: Crumb }) {
 	if (!crumb.kind) return <>{crumb.label}</>;
 
 	return (
-		<span className="block leading-tight">
-			<span className="block text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
+		<span className="relative">
+			<span className="absolute bottom-full left-0 text-[10px] font-medium uppercase leading-none tracking-wider text-muted-foreground/70">
 				{crumb.kind}
 			</span>
 			{crumb.label}
@@ -40,14 +47,13 @@ export function SiteHeader({ organizationName, brandName }: { organizationName?:
 				<SidebarTrigger className="-ml-1 cursor-pointer" />
 				<Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
 				<Breadcrumb>
-					{/* `items-end` so a labelled crumb and a plain one sit on one baseline. */}
-					<BreadcrumbList className="items-end">
+					<BreadcrumbList>
 						{crumbs.map((crumb, index) => {
 							const isLast = index === crumbs.length - 1;
 							return (
 								// Two routes never share a pathname, so the href identifies the crumb.
 								<Fragment key={crumb.href}>
-									{index > 0 && <BreadcrumbSeparator className="hidden pb-0.5 md:block" />}
+									{index > 0 && <BreadcrumbSeparator className="hidden md:block" />}
 									<BreadcrumbItem className={isLast ? undefined : "hidden md:block"}>
 										{isLast ? (
 											<BreadcrumbPage>
