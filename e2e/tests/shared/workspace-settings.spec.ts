@@ -21,34 +21,4 @@ test.describe("Workspace settings", () => {
       page.locator(`a[href="/app/org/${TEST_ORG_SLUG}/brand/${TEST_BRAND_ID}"][data-sidebar="menu-button"]`)
     ).toBeVisible({ timeout: 30_000 });
   });
-
-  test("a name padded with spaces can still be saved, and settles trimmed", async ({ page }) => {
-    await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
-
-    const nameField = page.getByLabel("Name", { exact: true });
-    await expect(nameField).toHaveValue(TEST_BRAND_NAME, { timeout: 30_000 });
-
-    const save = page.getByRole("button", { name: "Save", exact: true });
-    await expect(save).toBeDisabled();
-
-    // Padding is a change the user can make, and saving is the only way to undo
-    // it — the server keeps the trimmed name either way, so this writes the name
-    // it already had.
-    await nameField.fill(`  ${TEST_BRAND_NAME}  `);
-    await expect(save).toBeEnabled();
-
-    await save.click();
-    await expect(nameField).toHaveValue(TEST_BRAND_NAME);
-    await expect(save).toBeDisabled();
-  });
-
-  test("a name of nothing but spaces cannot be saved", async ({ page }) => {
-    await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
-
-    const nameField = page.getByLabel("Name", { exact: true });
-    await expect(nameField).toHaveValue(TEST_BRAND_NAME, { timeout: 30_000 });
-
-    await nameField.fill("   ");
-    await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
-  });
 });

@@ -105,12 +105,14 @@ test.describe("Whitelabel branding", () => {
 
 test.describe("Whitelabel features", () => {
   test("brands are provisioned through the API, so the UI offers no way to create one", async ({ page }) => {
+    // /app steps aside to the workspace, which is where creation would be
+    // offered if this deployment allowed it.
     await page.goto("/app");
-    await expect(page.getByText("Brand Switcher", { exact: true })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("link", { name: /create new brand/i })).toHaveCount(0);
+    await page.waitForURL(new RegExp(`${workspaceUrl()}/?$`), { timeout: 30_000 });
+    await expect(page.getByRole("link", { name: /new brand/i })).toHaveCount(0);
 
     await page.goto(`${workspaceUrl()}/new`);
-    await page.waitForURL(/\/app(?:\/)?$/, { timeout: 30_000 });
+    await page.waitForURL(new RegExp(`${workspaceUrl()}/?$`), { timeout: 30_000 });
   });
 
   test("prompt charts offer the optimize hand-off to the parent app", async ({ page, context }) => {

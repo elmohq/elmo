@@ -44,8 +44,11 @@ test.describe("App routing", () => {
 		await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
 		await expect(page.getByRole("heading", { name: "Workspace" })).toBeVisible({ timeout: 30_000 });
 
+		// Reachable as a page wherever brands can be created, and redirected back
+		// to the workspace where they can't — either way it resolves as a route
+		// rather than being read as a workspace named "new".
 		await page.goto(`/app/org/${TEST_ORG_SLUG}/new`);
-		await expect(page).toHaveURL(/\/app\/org\/[^/]+\/(new|$)/, { timeout: 30_000 });
+		await expect(page).toHaveURL(new RegExp(`/app/org/${TEST_ORG_SLUG}(?:/new)?/?$`), { timeout: 30_000 });
 	});
 
 	test("a link from before workspaces were in the URL is offered its new address", async ({ page }) => {
