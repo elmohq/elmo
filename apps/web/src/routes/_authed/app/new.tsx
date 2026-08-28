@@ -32,6 +32,7 @@ import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { getDeployment } from "@/lib/config/server";
 import { trackEvent } from "@/lib/posthog";
+import { buildTitle, getAppName } from "@/lib/route-head";
 import { createBrandInOrgFn } from "@/server/brands";
 import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
 
@@ -90,6 +91,15 @@ export const Route = createFileRoute("/_authed/app/new")({
 			throw redirect({ to: "/app" });
 		}
 		return { organizations };
+	},
+	head: ({ match }) => {
+		const appName = getAppName(match);
+		return {
+			meta: [
+				{ title: buildTitle("Create a new brand", { appName }) },
+				{ name: "description", content: "Set up a brand to start tracking." },
+			],
+		};
 	},
 	component: NewBrandPage,
 });

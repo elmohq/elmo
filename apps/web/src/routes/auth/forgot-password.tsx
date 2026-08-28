@@ -18,8 +18,18 @@ import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
+import { buildTitle, getAppName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/auth/forgot-password")({
+	head: ({ match }) => {
+		const appName = getAppName(match);
+		return {
+			meta: [
+				{ title: buildTitle("Reset password", { appName }) },
+				{ name: "description", content: "Request a password reset link." },
+			],
+		};
+	},
 	component: ForgotPasswordPage,
 });
 

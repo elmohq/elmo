@@ -16,12 +16,22 @@ import { useState } from "react";
 import { z } from "zod";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
+import { buildTitle, getAppName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/auth/reset-password")({
 	validateSearch: z.object({
 		token: z.string().optional(),
 		error: z.string().optional(),
 	}),
+	head: ({ match }) => {
+		const appName = getAppName(match);
+		return {
+			meta: [
+				{ title: buildTitle("Choose a new password", { appName }) },
+				{ name: "description", content: "Set a new password for your account." },
+			],
+		};
+	},
 	component: ResetPasswordPage,
 });
 

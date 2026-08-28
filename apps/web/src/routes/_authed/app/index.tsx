@@ -19,6 +19,7 @@ import FullPageCard from "@/components/full-page-card";
 import { SiteIcon } from "@/components/site-icon";
 import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
+import { buildTitle, getAppName } from "@/lib/route-head";
 
 const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 	async (): Promise<{
@@ -96,6 +97,15 @@ export const Route = createFileRoute("/_authed/app/")({
 		canCreateBrands: boolean;
 	}> => {
 		return getBrandSwitcherData();
+	},
+	head: ({ match }) => {
+		const appName = getAppName(match);
+		return {
+			meta: [
+				{ title: buildTitle("Brand Switcher", { appName }) },
+				{ name: "description", content: "Select a brand to get started." },
+			],
+		};
 	},
 	component: BrandSwitcherPage,
 });
