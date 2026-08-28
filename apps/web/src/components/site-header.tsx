@@ -9,28 +9,33 @@ import {
 } from "@workspace/ui/components/breadcrumb";
 import { Separator } from "@workspace/ui/components/separator";
 import { SidebarTrigger } from "@workspace/ui/components/sidebar";
+import { cn } from "@workspace/ui/lib/utils";
 import { Fragment } from "react";
 import { type Crumb, useBreadcrumbs } from "@/lib/breadcrumbs";
 
 /**
+ * Each crumb is a box rather than bare text, so the whole of it takes the hover
+ * rather than the few pixels the letters cover, and so the trail has something
+ * of a height to be centred by — a labelled crumb is two lines tall, and the
+ * chevrons and the page name sit against its middle.
+ */
+const CRUMB = "block rounded-md px-2 py-1 leading-tight";
+
+/**
  * An organization and a brand are often named the same thing, so each says
- * which it is.
- *
- * In the line rather than floating above it: left to size itself the label is
- * wider than a short name and runs into the crumb beside it. Which makes a
- * labelled crumb two lines tall, and the list centres everything else against
- * it — the chevrons and the page name sit on its middle, not on its name.
+ * which it is. In the line rather than floating above it: left to size itself
+ * the label is wider than a short name and runs into the crumb beside it.
  */
 function CrumbLabel({ crumb }: { crumb: Crumb }) {
 	if (!crumb.kind) return <>{crumb.label}</>;
 
 	return (
-		<span className="block leading-tight">
+		<>
 			<span className="mb-0.5 block text-[10px] font-medium uppercase leading-none tracking-wider text-muted-foreground/70">
 				{crumb.kind}
 			</span>
 			{crumb.label}
-		</span>
+		</>
 	);
 }
 
@@ -47,8 +52,10 @@ export function SiteHeader({ organizationName, brandName }: { organizationName?:
 			<div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
 				<SidebarTrigger className="-ml-1 cursor-pointer" />
 				<Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
-				<Breadcrumb>
-					<BreadcrumbList>
+				{/* Pulled back by the box's own padding, so the trail starts where it
+				    would have without one. */}
+				<Breadcrumb className="-ml-2">
+					<BreadcrumbList className="gap-0.5 sm:gap-1">
 						{crumbs.map((crumb, index) => {
 							const isLast = index === crumbs.length - 1;
 							return (
@@ -57,11 +64,14 @@ export function SiteHeader({ organizationName, brandName }: { organizationName?:
 									{index > 0 && <BreadcrumbSeparator className="hidden md:block" />}
 									<BreadcrumbItem className={isLast ? undefined : "hidden md:block"}>
 										{isLast ? (
-											<BreadcrumbPage>
+											<BreadcrumbPage className={CRUMB}>
 												<CrumbLabel crumb={crumb} />
 											</BreadcrumbPage>
 										) : (
-											<BreadcrumbLink render={<Link to={crumb.href} />}>
+											<BreadcrumbLink
+												className={cn(CRUMB, "hover:bg-accent hover:text-accent-foreground")}
+												render={<Link to={crumb.href} />}
+											>
 												<CrumbLabel crumb={crumb} />
 											</BreadcrumbLink>
 										)}
