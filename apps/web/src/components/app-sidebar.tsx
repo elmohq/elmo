@@ -17,8 +17,8 @@ import {
 	IconTool,
 	IconUsers,
 } from "@tabler/icons-react";
-import { Link, useRouteContext } from "@tanstack/react-router";
-import type { ClientConfig } from "@workspace/config/types";
+import { Link } from "@tanstack/react-router";
+import type { FeaturesConfig } from "@workspace/config/types";
 import { brandParams, orgParams } from "@workspace/lib/app-urls";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 
@@ -32,12 +32,12 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@workspace/ui/components/sidebar";
-import type * as React from "react";
 import { DemoModePill } from "@/components/demo-mode-pill";
 import { Logo } from "@/components/logo";
 import { NavAppInfo } from "@/components/nav-app-info";
 import { type NavGroup, type NavItem, NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
+import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
 /**
@@ -59,7 +59,7 @@ type ScopeProps =
 	| { scope: "organization"; organization: OrganizationSummary }
 	| { scope: "admin" | "account" };
 
-type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
+type AppSidebarProps = {
 	isAdmin?: boolean;
 	hasReportAccess?: boolean;
 } & ScopeProps;
@@ -69,7 +69,7 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
  * both already do. Team is listed everywhere; only inviting and removing are a
  * cloud feature, which the page itself reflects.
  */
-function organizationGroup(organization: OrganizationSummary, features?: ClientConfig["features"]): NavGroup {
+function organizationGroup(organization: OrganizationSummary, features?: FeaturesConfig): NavGroup {
 	const params = orgParams(organization);
 	const items: NavItem[] = [
 		{ title: "Organization", link: { to: "/app/org/$org/settings", params }, icon: IconBriefcase },
@@ -146,11 +146,11 @@ function adminGroup(isAdmin: boolean, reportsEnabled: boolean): NavGroup {
 }
 
 export function AppSidebar(props: AppSidebarProps) {
-	const { isAdmin = false, hasReportAccess = false, scope, ...sidebarProps } = props;
+	const { isAdmin = false, hasReportAccess = false, scope } = props;
 	const { setOpenMobile } = useSidebar();
-	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const features = useDeploymentFeatures();
 	// Reports are disabled entirely in cloud; hide the nav entry there.
-	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
+	const reportsEnabled = features?.reportGeneration ?? true;
 
 	// A gate page offers no destinations: every link would either 404 or bounce
 	// the user straight back to the gate.
@@ -160,7 +160,7 @@ export function AppSidebar(props: AppSidebarProps) {
 		...(props.scope === "brand" ? brandGroups(props.organization, props.brand) : []),
 		// Only where the organization is the subject. On a brand page the rail is
 		// that brand's, and the account menu is how its organization is reached.
-		...(props.scope === "organization" ? [organizationGroup(props.organization, context.clientConfig?.features)] : []),
+		...(props.scope === "organization" ? [organizationGroup(props.organization, features)] : []),
 		...(showAdminSection ? [adminGroup(isAdmin, reportsEnabled)] : []),
 	];
 	const brandmark = (
@@ -173,7 +173,7 @@ export function AppSidebar(props: AppSidebarProps) {
 	);
 
 	return (
-		<Sidebar variant="inset" {...sidebarProps}>
+		<Sidebar variant="inset">
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
