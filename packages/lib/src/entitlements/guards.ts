@@ -364,8 +364,9 @@ export function promptSaveDelta(rows: readonly PromptSaveRow[]): PromptSaveDelta
  * Loads entitlements once and counts once, so every limit is judged against the
  * same snapshot.
  *
- * Does not use `withEntitlements` because that returns early for unlimited
- * deployments, and decideGroundedAssign still has to run for those.
+ * Does not use `withEntitlements`: that helper skips every decision when
+ * entitlements are unlimited, and unlimited is the only case
+ * decideGroundedAssign ever denies. Routing it through would make it dead code.
  */
 export async function assertPromptSaveAllowed(organizationId: string, delta: PromptSaveDelta): Promise<void> {
 	if (delta.prompts <= 0 && delta.premiumPairings <= 0 && delta.premiumAdded <= 0) return;
