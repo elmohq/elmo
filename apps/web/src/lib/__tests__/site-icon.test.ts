@@ -12,6 +12,12 @@ describe("faviconUrl", () => {
 		expect(new URL(faviconUrl("https://www.nike.com/golf?x=1")!).searchParams.get("url")).toBe("https://nike.com");
 	});
 
+	// Two sizes of the same site can be two different icons, so every surface
+	// asks for the same one — see REQUESTED_SIZE in site-icon.tsx.
+	it("asks for one size unless told otherwise", () => {
+		expect(new URL(faviconUrl("example.com")!).searchParams.get("size")).toBe("64");
+	});
+
 	it("rounds the requested size up to one the service renders", () => {
 		expect(new URL(faviconUrl("example.com", 20)!).searchParams.get("size")).toBe("32");
 		expect(new URL(faviconUrl("example.com", 64)!).searchParams.get("size")).toBe("64");
