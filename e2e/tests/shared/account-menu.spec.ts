@@ -8,7 +8,9 @@ test.describe("Account menu", () => {
 
     await page.getByRole("button", { name: "Account and organizations" }).click();
 
-    await expect(page.getByRole("menuitem", { name: TEST_BRAND_NAME })).toBeVisible({ timeout: 30_000 });
+    // The organization heading it sits under carries the same name, with what
+    // the heading leads to after it — so the brand is matched exactly.
+    await expect(page.getByRole("menuitem", { name: TEST_BRAND_NAME, exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("link", { name: `${TEST_ORGANIZATION_NAME} organization settings` })).toHaveAttribute(
       "href",
       `${organizationUrl()}/settings`,

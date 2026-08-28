@@ -12,6 +12,7 @@ import {
 	SLUGGED_BRAND_SLUG,
 	TEST_BRAND_ID,
 	TEST_BRAND_NAME,
+	TEST_ORGANIZATION_NAME,
 	TEST_ORG_SLUG,
 	organizationUrl,
 } from "../../fixtures";
@@ -111,14 +112,18 @@ test.describe("App routing", () => {
 		await page.goto(`${BRAND_URL}/citations`);
 
 		const trail = page.getByRole("navigation", { name: "breadcrumb" });
-		await expect(trail.getByText(TEST_BRAND_NAME, { exact: true })).toBeVisible({ timeout: 30_000 });
+		// The two carry the same name here, so each crumb is addressed by where it
+		// leads — the organization crumb back to the organization, not to the brand.
+		const organization = trail.locator(`a[href="${organizationUrl()}"]`);
+		const brand = trail.locator(`a[href="${BRAND_URL}"]`);
+
+		await expect(organization).toContainText(TEST_ORGANIZATION_NAME, { timeout: 30_000 });
+		await expect(brand).toContainText(TEST_BRAND_NAME);
 		await expect(trail.getByText("Citations", { exact: true })).toBeVisible();
 
 		// Each name says which of the two it is, since both are often the same word.
-		await expect(trail.getByText("Organization", { exact: true })).toBeVisible();
-		await expect(trail.getByText("Brand", { exact: true })).toBeVisible();
-		// The organization crumb leads back to the organization, not to the brand.
-		await expect(trail.locator(`a[href="${organizationUrl()}"]`)).toBeVisible();
+		await expect(organization.getByText("Organization", { exact: true })).toBeVisible();
+		await expect(brand.getByText("Brand", { exact: true })).toBeVisible();
 	});
 
 	test("an organization page's trail leads with the organization", async ({ page }) => {
