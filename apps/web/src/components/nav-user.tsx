@@ -200,22 +200,21 @@ function OrganizationSection({
 	const hasChildren = organization.brands.length > 0 || organization.canCreateBrand;
 
 	return (
-		<DropdownMenuGroup>
-			{/* A menu item, not a bare link: only items join the menu's roving focus,
-			    so anything else here would be reachable by pointer alone. */}
-			<div className="flex items-center justify-between gap-2">
-				<DropdownMenuLabel className="flex min-w-0 flex-1 items-center gap-2 pr-0 font-medium text-foreground">
-					<IconBriefcase className="size-4 shrink-0 text-muted-foreground" />
-					<span className="truncate">{organization.name}</span>
-				</DropdownMenuLabel>
-				<DropdownMenuItem
-					render={<Link to="/app/org/$org/settings" params={orgParams(organization)} onClick={onNavigate} />}
-					aria-label={`${organization.name} settings`}
-					className="mr-2 size-7 shrink-0 cursor-pointer justify-center p-0"
-				>
-					<IconSettings className="size-4" />
-				</DropdownMenuItem>
-			</div>
+		<DropdownMenuGroup aria-label={organization.name}>
+			{/* The whole line, as in the directory: it names the one thing it could
+			    lead to. A menu item rather than a bare link, because only items join
+			    the menu's roving focus. */}
+			<DropdownMenuItem
+				render={<Link to="/app/org/$org/settings" params={orgParams(organization)} onClick={onNavigate} />}
+				aria-label={`${organization.name} settings`}
+				className="cursor-pointer font-medium"
+			>
+				<IconBriefcase className="size-4 shrink-0 text-muted-foreground" />
+				<span className="truncate">{organization.name}</span>
+				<span className="ml-auto flex w-7 shrink-0 justify-center">
+					<IconSettings className="size-4 text-muted-foreground" />
+				</span>
+			</DropdownMenuItem>
 
 			{/* The rule runs to the bottom of the last row's padding, so it ends
 			    close to the separator and reads tighter than the open space above
