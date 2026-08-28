@@ -599,6 +599,10 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 /**
  * Set the brand's URL segment.
  *
+ * Membership is the bar, as it is for the brand's name and website beside it —
+ * this is a brand setting, not a workspace-wide one. Read-only deployments are
+ * refused by `readOnlyMiddleware`, which every server function goes through.
+ *
  * Unique within the workspace rather than globally — `/app/org/$org/brand/$brand`
  * has already named the workspace by the time this segment is read. Ids are
  * checked alongside slugs because that segment resolves as either, so a slug
@@ -610,7 +614,6 @@ export const setBrandSlugFn = createServerFn({ method: "POST" })
 		const session = await requireAuthSession();
 		const org = await requireBrandOrganization(session.user.id, data.brandId);
 
-		if (getDeployment().features.readOnly) throw new Error("This deployment is read-only");
 		if (!isValidSlug(data.slug)) return { ok: false, error: "invalid" };
 		if (!(await isBrandSlugAvailable(org.id, data.slug, { excludeBrandId: data.brandId }))) {
 			return { ok: false, error: "taken" };

@@ -96,19 +96,27 @@ export function slugify(name: string): string {
 }
 
 /**
- * Find a brand id that no other brand holds, appending -2, -3, … on collision.
+ * Find a brand id that no other brand holds *and* that no brand answers to by
+ * slug, appending -2, -3, … on collision.
  *
  * Brand ids are globally unique because they are the primary key and the admin
- * API's handle on a brand. Nothing reserves route names any more: brands live
- * under `/app/org/$org/brand/$brand`, so no brand can shadow a sibling route
- * however it is named.
+ * API's handle on a brand. The slug namespace is checked too because
+ * `/app/org/$org/brand/$brand` resolves a segment as either: an id equal to a
+ * sibling's slug would make one URL name two brands, with nothing to say which.
+ *
+ * Nothing reserves route names any more — brands live under a static `brand`
+ * segment, so no brand can shadow a sibling route however it is named.
  */
 export async function findUniqueBrandId(baseSlug: string): Promise<string> {
 	let candidate = baseSlug;
 	let suffix = 2;
 	for (;;) {
-		const conflict = await db.select({ id: brands.id }).from(brands).where(eq(brands.id, candidate)).limit(1);
-		if (conflict.length === 0) return candidate;
+		const [conflict] = await db
+			.select({ id: brands.id })
+			.from(brands)
+			.where(or(eq(brands.id, candidate), eq(brands.slug, candidate)))
+			.limit(1);
+		if (!conflict) return candidate;
 		candidate = `${baseSlug}-${suffix}`;
 		suffix++;
 	}
@@ -208,6 +216,14 @@ export async function ensureOrganization(input: { id: string; name: string }, co
 		.where(eq(organization.id, input.id))
 		.limit(1);
 	if (existing) return;
+
+	// `/app/org/$org` resolves a segment as a slug *or* an id, so an id that some
+	// other workspace already answers to by slug would make one URL name two of
+	// them. The caller supplies this id, so it is refused here rather than
+	// silently creating the ambiguity.
+	if (!(await isOrgSlugAvailable(input.id, {}, conn))) {
+		throw new Error(`Cannot create organization "${input.id}": another workspace already answers to that name`);
+	}
 
 	const baseSlug = slugify(input.name);
 	const slug = await findUniqueOrgSlug(baseSlug, conn);
