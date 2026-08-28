@@ -18,13 +18,13 @@ export {
 	decidePremiumAssign,
 	decidePromptAdd,
 	decidePromptCap,
-	type EntitlementDecision,
-	type EntitlementDenialCode,
-	EntitlementError,
 	type PromptPoolState,
 	type PromptSaveDelta,
 	type PromptSaveRow,
 	promptSaveDelta,
+	type WriteDecision,
+	type WriteDenialCode,
+	WriteDeniedError,
 } from "./guards";
 export {
 	getBrandOrganizationId,

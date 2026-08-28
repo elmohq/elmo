@@ -19,7 +19,7 @@ import { createFileRoute, Link, redirect, useNavigate, useRouter } from "@tansta
 import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
-import { checkBrandCreate, type EntitlementDenialCode } from "@workspace/lib/entitlements";
+import { checkBrandCreate, type WriteDenialCode } from "@workspace/lib/entitlements";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -39,7 +39,7 @@ type NewBrandOrganization = {
 	id: string;
 	name: string;
 	/** Why this workspace can't take another brand; null when it can. */
-	blocked: { code: EntitlementDenialCode; message: string } | null;
+	blocked: { code: WriteDenialCode; message: string } | null;
 	/** A brand to hang the (brand-scoped) billing link on; null when the org has none. */
 	billingBrandId: string | null;
 };

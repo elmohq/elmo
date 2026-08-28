@@ -2,10 +2,14 @@
  * Write-time enforcement, shared by the web server functions and the /api/v1
  * handlers so the two surfaces cannot drift.
  *
+ * Two kinds of limit share one vocabulary here. Plan limits answer to the org's
+ * entitlements and skip their queries when those are unlimited; the flat caps
+ * (MAX_PROMPTS, MAX_COMPETITORS) are product-wide and apply with no plan at all.
+ * Both speak in `WriteDecision`, so a caller refuses a write the same way
+ * whichever kind said no.
+ *
  * Shape: pure decide* functions (inputs → verdict) that the tests exercise
  * exhaustively, wrapped by assert* helpers that load what the decision needs.
- * Plan limits skip their queries when entitlements are unlimited. The flat caps
- * (MAX_PROMPTS, MAX_COMPETITORS) apply everywhere and need no entitlements.
  *
  * Downgrade policy: these guards only block *adding* beyond a limit. Anything
  * already over a limit is left alone — the worker's run policy stops running the
@@ -20,7 +24,7 @@ import { db } from "../db/db";
 import { brands, prompts } from "../db/schema";
 import { getOrgEntitlements, getOrgEntitlementsMap } from "./service";
 
-export type EntitlementDenialCode =
+export type WriteDenialCode =
 	| "no-active-plan"
 	| "brand-limit"
 	| "prompt-limit"
@@ -35,32 +39,32 @@ export type EntitlementDenialCode =
 /**
  * Thrown by the assert* helpers. `status`/`error` are the HTTP response /api/v1
  * renders; server functions surface `message` directly. Having no plan at all
- * is a payment problem; every other denial is a request that conflicts with
- * the limits of the plan the org does have.
+ * is a payment problem; every other denial is a request that conflicts with a
+ * limit the caller could satisfy by asking for less.
  */
-export class EntitlementError extends Error {
-	readonly code: EntitlementDenialCode;
+export class WriteDeniedError extends Error {
+	readonly code: WriteDenialCode;
 	readonly status: number;
 	readonly error: string;
 
-	constructor(code: EntitlementDenialCode, message: string) {
+	constructor(code: WriteDenialCode, message: string) {
 		super(message);
-		this.name = "EntitlementError";
+		this.name = "WriteDeniedError";
 		this.code = code;
 		this.status = code === "no-active-plan" ? 402 : 409;
 		this.error = code === "no-active-plan" ? "Payment Required" : "Conflict";
 	}
 }
 
-export type EntitlementDecision = { allowed: true } | { allowed: false; code: EntitlementDenialCode; message: string };
+export type WriteDecision = { allowed: true } | { allowed: false; code: WriteDenialCode; message: string };
 
-const ALLOWED: EntitlementDecision = { allowed: true };
+const ALLOWED: WriteDecision = { allowed: true };
 
-function deny(code: EntitlementDenialCode, message: string): EntitlementDecision {
+function deny(code: WriteDenialCode, message: string): WriteDecision {
 	return { allowed: false, code, message };
 }
 
-function requireActivePlan(entitlements: Entitlements): EntitlementDecision | null {
+function requireActivePlan(entitlements: Entitlements): WriteDecision | null {
 	if (entitlements.unlimited) return ALLOWED;
 	if (entitlements.standing === "none") {
 		return deny("no-active-plan", "An active subscription is required.");
@@ -68,7 +72,7 @@ function requireActivePlan(entitlements: Entitlements): EntitlementDecision | nu
 	return null;
 }
 
-export function decideBrandCreate(entitlements: Entitlements, currentBrandCount: number): EntitlementDecision {
+export function decideBrandCreate(entitlements: Entitlements, currentBrandCount: number): WriteDecision {
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
 	if (entitlements.maxBrands !== null && currentBrandCount >= entitlements.maxBrands) {
@@ -91,12 +95,12 @@ export function decideBrandCreate(entitlements: Entitlements, currentBrandCount:
  * the cap because the admin API ignores it, and the editor resubmits every row
  * on each save — blocking those saves would leave the brand uneditable.
  */
-export function decidePromptCap(existing: number, adding: number): EntitlementDecision {
+export function decidePromptCap(existing: number, adding: number): WriteDecision {
 	if (adding <= 0 || existing + adding <= MAX_PROMPTS) return ALLOWED;
 	return deny("prompt-cap", `A brand may have at most ${MAX_PROMPTS} prompts (this one has ${existing}).`);
 }
 
-export function decideCompetitorCap(resulting: number): EntitlementDecision {
+export function decideCompetitorCap(resulting: number): WriteDecision {
 	if (resulting <= MAX_COMPETITORS) return ALLOWED;
 	return deny(
 		"competitor-cap",
@@ -109,7 +113,7 @@ export function decidePromptAdd(
 	entitlements: Entitlements,
 	currentEnabledPrompts: number,
 	adding: number,
-): EntitlementDecision {
+): WriteDecision {
 	if (adding <= 0) return ALLOWED;
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
@@ -124,7 +128,7 @@ export function decidePromptAdd(
 }
 
 /** Brand platform picks: every model must be on the plan menu, within the pick count. */
-export function decideEnabledModels(entitlements: Entitlements, requestedModels: string[]): EntitlementDecision {
+export function decideEnabledModels(entitlements: Entitlements, requestedModels: string[]): WriteDecision {
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
 	if (entitlements.platformMenu !== null) {
@@ -152,7 +156,7 @@ export function decidePremiumAssign(
 	entitlements: Entitlements,
 	currentAssignedEnabled: number,
 	adding: number,
-): EntitlementDecision {
+): WriteDecision {
 	if (adding <= 0) return ALLOWED;
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
@@ -181,7 +185,7 @@ export function decidePremiumAssign(
 export function decideCadenceOverride(
 	entitlements: Entitlements,
 	requestedDelayHours: number | null,
-): EntitlementDecision {
+): WriteDecision {
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
 	if (requestedDelayHours === null) return ALLOWED;
@@ -200,8 +204,8 @@ export function decideCadenceOverride(
  * entitlements can use the pure decide* functions directly and still raise the
  * same error every other write path raises.
  */
-export function assertAllowed(decision: EntitlementDecision): void {
-	if (!decision.allowed) throw new EntitlementError(decision.code, decision.message);
+export function assertAllowed(decision: WriteDecision): void {
+	if (!decision.allowed) throw new WriteDeniedError(decision.code, decision.message);
 }
 
 // ---------------------------------------------------------------------------
@@ -256,7 +260,7 @@ export async function countOrgAssignedPremiumSlots(organizationId: string): Prom
  */
 async function withEntitlements(
 	organizationId: string,
-	decide: (entitlements: Entitlements) => EntitlementDecision[] | Promise<EntitlementDecision[]>,
+	decide: (entitlements: Entitlements) => WriteDecision[] | Promise<WriteDecision[]>,
 ): Promise<void> {
 	const entitlements = await getOrgEntitlements(organizationId);
 	if (entitlements.unlimited) return;
@@ -275,11 +279,11 @@ export async function assertCanCreateBrand(organizationId: string): Promise<void
  * customer meets the limit before filling in a form, rather than as an error on
  * the last step of one.
  */
-export async function checkBrandCreate(orgIds: string[]): Promise<Map<string, EntitlementDecision>> {
+export async function checkBrandCreate(orgIds: string[]): Promise<Map<string, WriteDecision>> {
 	const entitlementsByOrg = await getOrgEntitlementsMap(orgIds);
 	const limited = orgIds.filter((orgId) => !entitlementsByOrg.get(orgId)?.unlimited);
 	const counts = await countBrandsByOrg(limited);
-	const decisions = new Map<string, EntitlementDecision>();
+	const decisions = new Map<string, WriteDecision>();
 	for (const orgId of orgIds) {
 		const entitlements = entitlementsByOrg.get(orgId);
 		// getOrgEntitlementsMap answers for every requested id; the fallback narrows.

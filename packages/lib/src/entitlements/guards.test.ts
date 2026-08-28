@@ -14,14 +14,14 @@ import {
 	decidePremiumAssign,
 	decidePromptAdd,
 	decidePromptCap,
-	type EntitlementDecision,
+	type WriteDecision,
 	promptSaveDelta,
 } from "./guards";
 
 const NOW = new Date("2026-08-05T12:00:00Z");
 
 /** Assert the denial and hand back what it told the customer, in one step. */
-function denialMessage(decision: EntitlementDecision): string {
+function denialMessage(decision: WriteDecision): string {
 	if (decision.allowed) throw new Error("expected a denial, got an allow");
 	return decision.message;
 }
