@@ -47,13 +47,14 @@ export const resolveOrganizationFn = createServerFn({ method: "GET" })
 	});
 
 /**
- * Nothing for a signed-out caller: the 404 is reachable without a session and
- * must not error there.
+ * Null for a signed-out caller, which an empty list would not distinguish from
+ * a signed-in one with nothing in it. The 404 renders outside the layout that
+ * resolves a session, so this is where it learns there is one.
  */
 export const listReachableOrganizationsFn = createServerFn({ method: "GET" }).handler(
-	async (): Promise<OrganizationSummary[]> => {
+	async (): Promise<OrganizationSummary[] | null> => {
 		const session = await getAuthSession();
-		return session ? listOrganizations(session.user.id) : [];
+		return session ? listOrganizations(session.user.id) : null;
 	},
 );
 

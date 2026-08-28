@@ -68,6 +68,13 @@ test.describe("App routing", () => {
 		const mark = page.getByRole("link", { name: "Go to your organizations" });
 		await expect(mark).toBeVisible({ timeout: 30_000 });
 		await expect(mark).toHaveAttribute("href", "/app");
+
+		// Including a 404 outside /app, which renders without the layout that
+		// resolves a session and so has to ask for one itself.
+		await page.goto("/appadsf");
+		await expect(page.getByRole("link", { name: "Go to your organizations" })).toHaveAttribute("href", "/app", {
+			timeout: 30_000,
+		});
 	});
 
 	test("a pre-organization link lands on the same directory", async ({ page }) => {
