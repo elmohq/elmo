@@ -107,8 +107,9 @@ test.describe("App routing", () => {
 		await expect(trail.getByText(TEST_BRAND_NAME, { exact: true })).toBeVisible({ timeout: 30_000 });
 		await expect(trail.getByText("Citations", { exact: true })).toBeVisible();
 
-		// Named as an organization, so it doesn't read as another brand.
-		await expect(trail.getByText(/Organization$/)).toBeVisible();
+		// Each name says which of the two it is, since both are often the same word.
+		await expect(trail.getByText("Organization", { exact: true })).toBeVisible();
+		await expect(trail.getByText("Brand", { exact: true })).toBeVisible();
 		// The organization crumb leads back to the organization, not to the brand.
 		await expect(trail.locator(`a[href="${organizationUrl()}"]`)).toBeVisible();
 	});

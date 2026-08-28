@@ -3,7 +3,6 @@
  * parser is how the trail and the address bar drift apart when the URL moves.
  */
 import { useMatches } from "@tanstack/react-router";
-import { organizationTitle } from "@/lib/organizations/naming";
 
 declare module "@tanstack/react-router" {
 	interface StaticDataRouteOption {
@@ -15,6 +14,12 @@ declare module "@tanstack/react-router" {
 export interface Crumb {
 	label: string;
 	href: string;
+	/**
+	 * What the label names, for the two crumbs that name a thing rather than a
+	 * page. Rendered above the name, which is what tells an organization called
+	 * Nike apart from a brand called Nike.
+	 */
+	kind?: "Organization" | "Brand";
 }
 
 const ORG_ROUTE_ID = "/_authed/app/org/$org";
@@ -29,12 +34,14 @@ export function useBreadcrumbs(subjects: { organizationName?: string; brandName?
 	const matches = useMatches();
 
 	return matches.flatMap((match): Crumb[] => {
-		const label =
-			match.routeId === ORG_ROUTE_ID
-				? subjects.organizationName && organizationTitle(subjects.organizationName)
-				: match.routeId === BRAND_ROUTE_ID
-					? subjects.brandName
-					: match.staticData.crumb;
-		return label ? [{ label, href: match.pathname }] : [];
+		if (match.routeId === ORG_ROUTE_ID) {
+			const label = subjects.organizationName;
+			return label ? [{ label, href: match.pathname, kind: "Organization" }] : [];
+		}
+		if (match.routeId === BRAND_ROUTE_ID) {
+			const label = subjects.brandName;
+			return label ? [{ label, href: match.pathname, kind: "Brand" }] : [];
+		}
+		return match.staticData.crumb ? [{ label: match.staticData.crumb, href: match.pathname }] : [];
 	});
 }

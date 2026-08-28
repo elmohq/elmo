@@ -10,7 +10,21 @@ import {
 import { Separator } from "@workspace/ui/components/separator";
 import { SidebarTrigger } from "@workspace/ui/components/sidebar";
 import { Fragment } from "react";
-import { useBreadcrumbs } from "@/lib/breadcrumbs";
+import { type Crumb, useBreadcrumbs } from "@/lib/breadcrumbs";
+
+/** An organization and a brand are often named the same thing, so each says which it is. */
+function CrumbLabel({ crumb }: { crumb: Crumb }) {
+	if (!crumb.kind) return <>{crumb.label}</>;
+
+	return (
+		<span className="block leading-tight">
+			<span className="block text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
+				{crumb.kind}
+			</span>
+			{crumb.label}
+		</span>
+	);
+}
 
 /**
  * The two names the trail can't get from a route: they come from the layouts
@@ -26,18 +40,23 @@ export function SiteHeader({ organizationName, brandName }: { organizationName?:
 				<SidebarTrigger className="-ml-1 cursor-pointer" />
 				<Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
 				<Breadcrumb>
-					<BreadcrumbList>
+					{/* `items-end` so a labelled crumb and a plain one sit on one baseline. */}
+					<BreadcrumbList className="items-end">
 						{crumbs.map((crumb, index) => {
 							const isLast = index === crumbs.length - 1;
 							return (
 								// Two routes never share a pathname, so the href identifies the crumb.
 								<Fragment key={crumb.href}>
-									{index > 0 && <BreadcrumbSeparator className="hidden md:block" />}
+									{index > 0 && <BreadcrumbSeparator className="hidden pb-0.5 md:block" />}
 									<BreadcrumbItem className={isLast ? undefined : "hidden md:block"}>
 										{isLast ? (
-											<BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+											<BreadcrumbPage>
+												<CrumbLabel crumb={crumb} />
+											</BreadcrumbPage>
 										) : (
-											<BreadcrumbLink render={<Link to={crumb.href} />}>{crumb.label}</BreadcrumbLink>
+											<BreadcrumbLink render={<Link to={crumb.href} />}>
+												<CrumbLabel crumb={crumb} />
+											</BreadcrumbLink>
 										)}
 									</BreadcrumbItem>
 								</Fragment>

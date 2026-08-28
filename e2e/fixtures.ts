@@ -46,6 +46,13 @@ export function brandUrl(brand: string = TEST_BRAND_ID, org: string = TEST_ORG_S
 export const TEST_BRAND_NAME = "Test Organization";
 
 /**
+ * The seeded organization carries the same name as its first brand — which is
+ * exactly the collision the eyebrow labels exist to resolve, so specs name it
+ * separately rather than leaning on the two being equal.
+ */
+export const TEST_ORGANIZATION_NAME = TEST_BRAND_NAME;
+
+/**
  * A second brand in the same organization, seeded *with* a slug.
  *
  * The primary brand deliberately has none — that's the state every row was in

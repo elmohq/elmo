@@ -1,6 +1,6 @@
 import {
+	IconBriefcase,
 	IconBuilding,
-	IconBuildingSkyscraper,
 	IconBuildings,
 	IconChartBar,
 	IconCpu,
@@ -73,7 +73,7 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
 function organizationGroup(organization: OrganizationSummary, features?: ClientConfig["features"]): NavGroup {
 	const params = orgParams(organization);
 	const items: NavItem[] = [
-		{ title: "Organization", link: { to: "/app/org/$org/settings", params }, icon: IconBuildingSkyscraper },
+		{ title: "Organization", link: { to: "/app/org/$org/settings", params }, icon: IconBriefcase },
 		{ title: "Brands", link: { to: "/app/org/$org/settings/brands", params }, icon: IconBuildings },
 		{ title: "Team", link: { to: "/app/org/$org/settings/members", params }, icon: IconUsers },
 	];

@@ -1,4 +1,5 @@
 import {
+	IconBriefcase,
 	IconCheck,
 	IconExternalLink,
 	IconLogout,
@@ -22,11 +23,11 @@ import {
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
+import { SiteIcon } from "@/components/site-icon";
 import { useAuth } from "@/hooks/use-auth";
 import { useBranding, useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import { useOrganizations } from "@/hooks/use-organizations";
 import { resetCrispSession } from "@/lib/crisp";
-import { organizationTitle } from "@/lib/organizations/naming";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 import { resetPostHog } from "@/lib/posthog";
 
@@ -181,8 +182,11 @@ export function NavUser() {
 
 /**
  * The settings control sits on the heading rather than at the foot of the menu,
- * because "settings" with no organization beside it only answers for whichever one
- * you happen to be in.
+ * because "settings" with no organization beside it only answers for whichever
+ * one you happen to be in.
+ *
+ * An organization with nothing under it renders nothing under it — no rule, no
+ * empty-state line. The heading is the whole entry.
  */
 function OrganizationSection({
 	organization,
@@ -193,46 +197,54 @@ function OrganizationSection({
 	brandParam: string | undefined;
 	onNavigate: () => void;
 }) {
-	const title = organizationTitle(organization.name);
+	const hasChildren = organization.brands.length > 0 || organization.canCreateBrand;
 
 	return (
 		<DropdownMenuGroup>
 			{/* A menu item, not a bare link: only items join the menu's roving focus,
 			    so anything else here would be reachable by pointer alone. */}
 			<div className="flex items-center justify-between gap-2">
-				<DropdownMenuLabel className="min-w-0 flex-1 truncate pr-0 text-muted-foreground">{title}</DropdownMenuLabel>
+				<DropdownMenuLabel className="flex min-w-0 flex-1 items-center gap-2 pr-0 font-medium text-foreground">
+					<IconBriefcase className="size-4 shrink-0 text-muted-foreground" />
+					<span className="truncate">{organization.name}</span>
+				</DropdownMenuLabel>
 				<DropdownMenuItem
 					render={<Link to="/app/org/$org/settings" params={orgParams(organization)} onClick={onNavigate} />}
-					aria-label={`${title} settings`}
+					aria-label={`${organization.name} settings`}
 					className="mr-1 size-7 shrink-0 cursor-pointer justify-center p-0"
 				>
 					<IconSettings className="size-4" />
 				</DropdownMenuItem>
 			</div>
 
-			{organization.brands.map((brand) => (
-				<DropdownMenuItem
-					key={brand.id}
-					render={
-						<Link to="/app/org/$org/brand/$brand" params={brandParams(organization, brand)} onClick={onNavigate} />
-					}
-					className="cursor-pointer"
-				>
-					<span className="truncate">{brand.name}</span>
-					{brandSegment(brand) === brandParam && <IconCheck className="ml-auto size-3.5 shrink-0" />}
-				</DropdownMenuItem>
-			))}
+			{hasChildren && (
+				<div className="ml-4 border-l pl-1">
+					{organization.brands.map((brand) => (
+						<DropdownMenuItem
+							key={brand.id}
+							render={
+								<Link to="/app/org/$org/brand/$brand" params={brandParams(organization, brand)} onClick={onNavigate} />
+							}
+							className="cursor-pointer"
+						>
+							<SiteIcon domain={brand.website} size="xs" />
+							<span className="truncate">{brand.name}</span>
+							{brandSegment(brand) === brandParam && <IconCheck className="ml-auto size-3.5 shrink-0" />}
+						</DropdownMenuItem>
+					))}
 
-			{/* A plan's brand allowance is spent per organization, so the same menu can
-			    create in one and not another. */}
-			{organization.canCreateBrand && (
-				<DropdownMenuItem
-					render={<Link to="/app/org/$org/new" params={orgParams(organization)} onClick={onNavigate} />}
-					className="cursor-pointer"
-				>
-					<IconPlus />
-					New brand
-				</DropdownMenuItem>
+					{/* A plan's brand allowance is spent per organization, so the same menu
+					    can create in one and not another. */}
+					{organization.canCreateBrand && (
+						<DropdownMenuItem
+							render={<Link to="/app/org/$org/new" params={orgParams(organization)} onClick={onNavigate} />}
+							className="cursor-pointer text-muted-foreground"
+						>
+							<IconPlus className="size-3.5" />
+							New brand
+						</DropdownMenuItem>
+					)}
+				</div>
 			)}
 
 			<DropdownMenuSeparator />
