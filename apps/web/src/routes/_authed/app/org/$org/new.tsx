@@ -32,10 +32,8 @@ import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/se
 
 export const Route = createFileRoute("/_authed/app/org/$org/new")({
 	staticData: { crumb: "New brand" },
-	// The workspace above already resolved its brand allowance, so the page that
-	// offers creation reads the answer rather than asking for it again. A refusal
-	// with no reason to show is a deployment that doesn't create brands at all,
-	// which has no page here.
+	// A refusal with no reason to show is a deployment that doesn't create brands
+	// at all, which has no page here.
 	loader: ({ context }) => {
 		const { canCreateBrand, brandLimit, name, id } = context.workspace;
 		if (!canCreateBrand && !brandLimit) {
@@ -77,12 +75,10 @@ function NewBrandPage() {
 			});
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
-			// The rail's switcher lists this workspace's brands, so it goes stale the
-			// moment one is created — invalidated alongside the route data, not left
-			// for its own timer.
+			// The account menu lists this workspace's brands, so it goes stale the
+			// moment one is created.
 			await Promise.all([router.invalidate(), invalidateWorkspaces()]);
-			// The brand arrives with a slug, so land on it rather than on the id and
-			// a redirect.
+			// The brand arrives with a slug, so land on it rather than on a redirect.
 			await navigate({ to: "/app/org/$org/brand/$brand", params: { org, brand: brandSlug } });
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "An error occurred");

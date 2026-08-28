@@ -1,10 +1,7 @@
 /**
- * Server-side workspace reads shared by the route loaders.
- *
- * Kept out of `@/server/workspaces` because that module is imported by the
- * client for its server functions: anything it exports outright drags the
- * database into the client graph, while what these route handlers call is
- * stripped along with the handler bodies.
+ * Kept out of `@/server/workspaces`, which the client imports for its server
+ * functions: anything exported there outright drags the database into the
+ * client graph, while handler bodies are stripped.
  */
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
@@ -19,10 +16,6 @@ type BrandCreation = Pick<WorkspaceSummary, "canCreateBrand" | "brandLimit">;
 /** Deployments that don't create brands from the UI at all, with no limit to explain. */
 const NOT_OFFERED: BrandCreation = { canCreateBrand: false, brandLimit: null };
 
-/**
- * Whether each of these workspaces can take another brand, and the plan's
- * reason where it refuses.
- */
 export async function resolveBrandCreation(orgIds: string[]): Promise<Map<string, BrandCreation>> {
 	if (!getDeployment().features.canCreateBrands) return new Map(orgIds.map((orgId) => [orgId, NOT_OFFERED]));
 
@@ -58,11 +51,9 @@ export async function listWorkspaceBrands(organizationId: string): Promise<Works
 }
 
 /**
- * A resolved workspace with the brands it owns and its brand allowance.
- *
- * The caller's role stays server-side: it decides what the settings page offers,
- * which the server answers for itself, and shipping it to every page would be a
- * permission the client could be tempted to read.
+ * The caller's role stays server-side: the server answers for itself what the
+ * settings page may offer, and shipping the role would be a permission the
+ * client could be tempted to read.
  */
 export async function withBrands(workspace: UserOrganization): Promise<WorkspaceSummary> {
 	const [brandList, creation] = await Promise.all([

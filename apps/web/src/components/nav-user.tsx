@@ -31,17 +31,8 @@ import { workspaceTitle } from "@/lib/workspaces/naming";
 import type { WorkspaceSummary } from "@/lib/workspaces/types";
 
 /**
- * Who you are, and everything you can reach: each workspace, the brands inside
- * it, and the way to add either.
- *
- * One menu rather than two. A separate switcher above the nav said the same
- * things in different words, and the account it was switching for was in this
- * one — so a person had to learn both to know which workspace they were in and
- * how to leave it.
- *
- * The tick marks the brand, not the workspace: the workspace a brand belongs to
- * is already the heading it sits under, and ticking both said the same thing
- * twice.
+ * The tick marks the brand and not the workspace: the workspace is already the
+ * heading the brand sits under.
  */
 export function NavUser() {
 	const { user } = useAuth();
@@ -69,8 +60,6 @@ export function NavUser() {
 						render={
 							<SidebarMenuButton
 								size="lg"
-								// Named, because what it opens is no longer just the account:
-								// it is the way to every workspace and brand.
 								aria-label="Account and workspaces"
 								className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground cursor-pointer"
 							/>
@@ -186,12 +175,9 @@ export function NavUser() {
 }
 
 /**
- * One workspace: what it is called, the way into its settings, and the brands
- * inside it.
- *
- * The heading carries the settings control rather than a separate row at the
- * bottom of the menu, because "settings" without a workspace beside it only
- * answers for whichever workspace you happen to be in.
+ * The settings control sits on the heading rather than at the foot of the menu,
+ * because "settings" with no workspace beside it only answers for whichever one
+ * you happen to be in.
  */
 function WorkspaceSection({
 	workspace,
@@ -230,8 +216,8 @@ function WorkspaceSection({
 				</DropdownMenuItem>
 			))}
 
-			{/* Offered per workspace, because a plan's brand allowance is spent per
-			    workspace: the same menu can create in one and not another. */}
+			{/* A plan's brand allowance is spent per workspace, so the same menu can
+			    create in one and not another. */}
 			{workspace.canCreateBrand && (
 				<DropdownMenuItem
 					render={<Link to="/app/org/$org/new" params={orgParams(workspace)} onClick={onNavigate} />}

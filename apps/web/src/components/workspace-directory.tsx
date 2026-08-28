@@ -9,17 +9,11 @@ import { workspaceTitle } from "@/lib/workspaces/naming";
 import type { WorkspaceSummary } from "@/lib/workspaces/types";
 
 /**
- * Every workspace the user can reach and every brand inside it — the one place
- * that says what this account contains.
+ * Shared by `/app` and the 404, which answer the same question.
  *
- * Rendered by `/app` and by the 404, which needs to answer the same question.
- * The rail's user menu offers the same set in the same order, so a person who
- * learns one has learned the other.
- *
- * The workspace name is a heading, not a link: a workspace isn't a page you
- * visit, it's the thing brands and settings hang off, and the two things you
- * can actually do to it — open its settings, or go to one of its brands — are
- * each their own control.
+ * The workspace name is a heading rather than a link: a workspace isn't a page,
+ * it's what brands and settings hang off, and both of those are their own
+ * control here.
  */
 export function WorkspaceDirectory({ workspaces }: { workspaces: WorkspaceSummary[] }) {
 	const features = useDeploymentFeatures();
@@ -70,8 +64,8 @@ function WorkspaceSection({ workspace }: { workspace: WorkspaceSummary }) {
 					</Link>
 				))}
 
-				{/* Offered per workspace, because a plan's brand allowance is spent per
-				    workspace: the same page can create in one and not another. */}
+				{/* A plan's brand allowance is spent per workspace, so the same page
+				    can create in one and not another. */}
 				{workspace.canCreateBrand && (
 					<Link to="/app/org/$org/new" params={orgParams(workspace)} className={buttonVariants({ variant: "outline" })}>
 						<IconPlus />

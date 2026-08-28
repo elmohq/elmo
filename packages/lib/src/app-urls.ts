@@ -40,11 +40,7 @@ export function brandParams(org: SluggableOrg, brand: SluggableBrand): { org: st
 	return { org: orgSegment(org), brand: brandSegment(brand) };
 }
 
-/**
- * What precedes each segment. Exported because the settings field that edits a
- * segment shows the address around it, and a second copy of "/app/org/" typed
- * into a component is a copy that stops matching the day the shape moves.
- */
+/** Exported so the field that edits a segment shows the address around it. */
 export const WORKSPACE_URL_PREFIX = "/app/org/";
 export const BRAND_URL_PREFIX = "/brand/";
 
@@ -69,9 +65,8 @@ export function workspaceSettingsPath(org: SluggableOrg, sub?: "members" | "bill
  * the route param is not, so any offset computed from the decoded value lands
  * in the wrong place the moment a slug or id needs encoding.
  *
- * The offsets stay private. A caller names the segment it is canonicalizing —
- * `canonicalOrgHref`, `canonicalBrandHref` — rather than passing an integer,
- * because an integer is a thing two call sites can disagree about silently.
+ * Offsets stay private: callers name the segment they are canonicalizing rather
+ * than passing an integer two call sites could silently disagree about.
  */
 interface AppLocation {
 	pathname: string;
@@ -79,8 +74,7 @@ interface AppLocation {
 	hash: string;
 }
 
-// ["", "app", "org", "<org>", "brand", "<brand>", ...]. The leading empty
-// string is kept, so these read as they do in the URL.
+// ["", "app", "org", "<org>", "brand", "<brand>", …] — leading "" kept.
 const ORG_SEGMENT_INDEX = 3;
 const BRAND_SEGMENT_INDEX = 5;
 
@@ -90,12 +84,10 @@ function canonicalHref(location: AppLocation, segmentIndex: number, value: strin
 	return `${segments.join("/")}${location.searchStr}${location.hash ? `#${location.hash}` : ""}`;
 }
 
-/** The current URL with the workspace segment replaced by its canonical form. */
 export function canonicalOrgHref(location: AppLocation, org: string): string {
 	return canonicalHref(location, ORG_SEGMENT_INDEX, org);
 }
 
-/** The current URL with the brand segment replaced by its canonical form. */
 export function canonicalBrandHref(location: AppLocation, brand: string): string {
 	return canonicalHref(location, BRAND_SEGMENT_INDEX, brand);
 }

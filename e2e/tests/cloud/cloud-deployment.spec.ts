@@ -134,7 +134,17 @@ test.describe("Cloud features", () => {
 
   test("brands can be created from the UI", async ({ page }) => {
     await page.goto(`${workspaceUrl()}/new`);
-    await expect(page.getByLabel("Brand name")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByLabel("Brand Name")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel("Website")).toBeVisible();
+  });
+
+  // Stops at the form: creating one would leave a workspace behind every run.
+  test("another workspace can be created", async ({ page }) => {
+    await page.goto("/app");
+    await expect(page.getByRole("link", { name: /new workspace/i })).toBeVisible({ timeout: 30_000 });
+
+    await page.goto("/app/new");
+    await expect(page.getByLabel("Workspace Name")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Create workspace" })).toBeVisible();
   });
 });

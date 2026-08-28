@@ -8,8 +8,7 @@ const BRAND_URL = `/app/org/${ORG_SLUG}/brand/${BRAND_ID}`;
 test.describe("Overview Page", () => {
   test("home page lands on the directory and the default brand is reachable", async ({ page }) => {
     await page.goto("/");
-    // /app lists everything this account can reach, however few workspaces that
-    // is — it is what the logo leads back to.
+    // /app lists everything reachable, however few workspaces that is.
     await page.waitForURL(/\/app$/, { timeout: 30_000 });
     const brandLink = page.locator(`a[href="${BRAND_URL}"]`).first();
     await expect(brandLink).toBeVisible({ timeout: 15_000 });

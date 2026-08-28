@@ -1,10 +1,7 @@
 /**
- * /app - Workspaces and brands
- *
- * Everything this account can reach, and where the logo leads back to. It
- * renders for everyone, one-workspace deployments included: it is the only page
- * that lists what exists, so stepping aside from it would leave the logo
- * pointing at a workspace's settings rather than at a way to choose.
+ * Renders for everyone, one-workspace deployments included: it is the only page
+ * that lists what exists, so stepping aside would leave the mark that points
+ * here landing on a workspace's settings.
  */
 
 import { createFileRoute } from "@tanstack/react-router";

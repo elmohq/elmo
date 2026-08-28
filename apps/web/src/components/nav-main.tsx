@@ -27,15 +27,11 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
 	const { pathname } = useLocation();
 
 	const items = groups.flatMap((group) => group.items);
-	// Resolved by the router rather than assembled here, so nothing in the rail
-	// has to know the URL shape and every segment is encoded the way the address
-	// bar has it.
+	// Resolved by the router, so nothing here has to know the URL shape.
 	const hrefs = new Map(items.map((item) => [item, router.buildLocation(item.link).pathname]));
 
-	// Exactly one entry lights up: the longest href the path is inside. Prefix
-	// matching alone would light Overview on every brand page, and the
-	// workspace's General entry on Team and Billing, since each is a prefix of
-	// the others.
+	// Longest match wins, so Overview doesn't light on every brand page and
+	// Workspace doesn't light on Team — each is a prefix of the others.
 	const activeHref = items
 		.map((item) => hrefs.get(item) ?? "")
 		.filter((href) => pathname === href || pathname.startsWith(`${href}/`))

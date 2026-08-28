@@ -1,12 +1,7 @@
 /**
- * The 404.
- *
- * Rather than a dead end, it offers the same directory `/app` does — the
- * workspaces this account can reach and the brands inside them — because
- * "somewhere else" is the only useful answer to a page that isn't there.
- *
- * Answers for a signed-out caller too, with nothing in it: the 404 is reachable
- * without a session.
+ * Offers the same directory `/app` does, since "somewhere else" is the only
+ * useful answer to a page that isn't there. Reachable without a session, so it
+ * has to render with nothing in it too.
  */
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@workspace/ui/components/skeleton";

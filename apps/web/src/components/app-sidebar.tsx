@@ -52,10 +52,8 @@ import type { WorkspaceSummary } from "@/lib/workspaces/types";
 export type SidebarScope = "brand" | "workspace" | "admin" | "account";
 
 /**
- * Neither the workspace nor the brand is optional where the rail names one:
- * both come from the layouts that resolved them before any of this rendered.
- * Stating that as a union rather than nullable props is what keeps every entry
- * below from carrying a fallback for something that is always there.
+ * A union rather than nullable props, so nothing below carries a fallback for a
+ * workspace or brand the layout above has already resolved.
  */
 type ScopeProps =
 	| { scope: "brand"; workspace: WorkspaceSummary; brand: BrandWithPrompts }
@@ -68,12 +66,9 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
 } & ScopeProps;
 
 /**
- * What the workspace is, rather than what this brand is — so its entries live
- * apart from the brand's own. Which workspace is answered by the breadcrumb and
- * the user menu, so the label doesn't repeat it.
- *
- * The team is listed wherever there is one to look at; only inviting and
- * removing are a cloud feature, and the page says so itself.
+ * The label doesn't name the workspace — the breadcrumb and the account menu
+ * both already do. Team is listed everywhere; only inviting and removing are a
+ * cloud feature, which the page itself reflects.
  */
 function workspaceGroup(workspace: WorkspaceSummary, features?: ClientConfig["features"]): NavGroup {
 	const params = orgParams(workspace);
@@ -96,8 +91,7 @@ function brandGroups(workspace: WorkspaceSummary, brand: BrandWithPrompts): NavG
 		{ title: "Overview", link: { to: "/app/org/$org/brand/$brand", params }, icon: IconDashboard },
 	];
 
-	// Everything but the overview reads results the brand doesn't have until it
-	// has been through onboarding.
+	// Everything but the overview reads results a brand has only once onboarded.
 	if (brand.onboarded) {
 		dashboard.push(
 			{ title: "Visibility", link: { to: "/app/org/$org/brand/$brand/visibility", params }, icon: IconChartBar },
@@ -159,8 +153,7 @@ export function AppSidebar(props: AppSidebarProps) {
 	// Reports are disabled entirely in cloud; hide the nav entry there.
 	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
 
-	// Present exactly when the rail is inside a workspace, so it stands in for an
-	// `inWorkspace` flag and carries the narrowing with it.
+	// Stands in for an `inWorkspace` flag, and carries the narrowing with it.
 	const workspace = props.scope === "brand" || props.scope === "workspace" ? props.workspace : null;
 
 	// A gate page offers no destinations: every link would either 404 or bounce
@@ -168,7 +161,6 @@ export function AppSidebar(props: AppSidebarProps) {
 	const showAdminSection = scope !== "account" && (isAdmin || (hasReportAccess && reportsEnabled));
 
 	const groups: NavGroup[] = [
-		// Only a brand context has a dashboard; a gate page has no destinations.
 		...(props.scope === "brand" ? brandGroups(props.workspace, props.brand) : []),
 		...(workspace ? [workspaceGroup(workspace, context.clientConfig?.features)] : []),
 		...(showAdminSection ? [adminGroup(isAdmin, reportsEnabled)] : []),

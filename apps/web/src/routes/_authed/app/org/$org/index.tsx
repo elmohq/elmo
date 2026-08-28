@@ -1,15 +1,9 @@
 /**
- * /app/org/$org — the workspace itself, which is its settings.
+ * A workspace isn't a page you look at, so this leads to what you can change
+ * about it. `/app` is where you pick one.
  *
- * A workspace isn't a page you look at; it's the thing brands, a team, and a
- * plan hang off. So this leads to what you can actually change about it, and
- * the brands are listed under it rather than in a picker of their own — `/app`
- * is where you pick.
- *
- * The exception is a workspace that has nothing in it and no way to add
- * anything from here — whitelabel, whose workspaces arrive from Auth0 before
- * anything is tracked. That one gets the onboarding wizard, with the brand
- * taking the workspace's own id as it always has.
+ * The exception is a workspace Auth0 filled but nobody has set up, which gets
+ * the wizard — with the brand taking the workspace's own id, as it always has.
  */
 
 import { createFileRoute, redirect } from "@tanstack/react-router";
@@ -19,11 +13,9 @@ import type { WorkspaceSummary } from "@/lib/workspaces/types";
 import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
 
 /**
- * Nothing in the workspace, and no way to put anything in it from here.
- *
- * `brandLimit` is what separates "this deployment doesn't create brands" from
- * "the plan says not right now" — the second is a workspace waiting on billing,
- * not one waiting to be set up, and sending it to the wizard would be a dead end.
+ * `brandLimit` separates "this deployment doesn't create brands" from "the plan
+ * says not right now": the second is waiting on billing, not on setup, and the
+ * wizard would be a dead end for it.
  */
 function needsOnboarding(workspace: WorkspaceSummary): boolean {
 	return workspace.brands.length === 0 && !workspace.canCreateBrand && !workspace.brandLimit;

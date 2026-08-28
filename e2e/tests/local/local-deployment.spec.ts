@@ -63,7 +63,6 @@ test.describe("Local features", () => {
     await page.goto(`${brandUrl()}`);
     await expect(page.locator('a[href="/reports"][data-sidebar="menu-button"]')).toBeVisible({ timeout: 30_000 });
     await expect(page.locator(`a[href="${workspaceUrl()}/settings/brands"][data-sidebar="menu-button"]`)).toBeVisible();
-    // Billing is cloud's; the rail says so by leaving it out.
     await expect(page.locator(`a[href="${workspaceUrl()}/settings/billing"][data-sidebar="menu-button"]`)).toHaveCount(
       0,
     );
@@ -76,12 +75,11 @@ test.describe("Local features", () => {
   });
 
   test("brands can be created from the UI", async ({ page }) => {
-    // The offer lives on the workspace, whose plan allowance is what it spends.
     await page.goto("/app");
     await expect(page.getByRole("link", { name: /new brand/i })).toBeVisible({ timeout: 30_000 });
 
     await page.goto(`${workspaceUrl()}/new`);
-    await expect(page.getByLabel("Brand name")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByLabel("Brand Name")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel("Website")).toBeVisible();
   });
 

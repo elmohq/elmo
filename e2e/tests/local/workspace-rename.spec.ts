@@ -9,9 +9,8 @@ import { expect, test } from "@playwright/test";
 import { TEST_BRAND_NAME, TEST_ORG_SLUG } from "../../fixtures";
 
 test.describe("Workspace rename", () => {
-  // Deliberately doesn't commit a new slug: the suite shares one seeded
-  // workspace, and a spec that moved it and failed before moving it back would
-  // strand every spec that addresses it by slug.
+  // Doesn't commit a new slug: the suite shares one seeded workspace, and a
+  // spec that moved it and failed before restoring it would strand the rest.
   test("the slug is a field of the same form, with no save of its own", async ({ page }) => {
     await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
 
@@ -22,7 +21,6 @@ test.describe("Workspace rename", () => {
     const save = page.getByRole("button", { name: "Save", exact: true });
     await expect(save).toBeDisabled();
 
-    // Editing the slug alone arms the one Save the form has.
     await slugField.fill(`${TEST_ORG_SLUG}-elsewhere`);
     await expect(save).toBeEnabled();
   });

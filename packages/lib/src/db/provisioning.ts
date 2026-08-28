@@ -96,16 +96,9 @@ export function slugify(name: string): string {
 }
 
 /**
- * Find a brand id that no other brand holds *and* that no brand answers to by
- * slug, appending -2, -3, … on collision.
- *
- * Brand ids are globally unique because they are the primary key and the admin
- * API's handle on a brand. The slug namespace is checked too because
- * `/app/org/$org/brand/$brand` resolves a segment as either: an id equal to a
- * sibling's slug would make one URL name two brands, with nothing to say which.
- *
- * Nothing reserves route names any more — brands live under a static `brand`
- * segment, so no brand can shadow a sibling route however it is named.
+ * Appends -2, -3, … on collision. The slug namespace is checked alongside ids
+ * because `/app/org/$org/brand/$brand` resolves a segment as either, so an id
+ * equal to a sibling's slug would make one URL name two brands.
  */
 export async function findUniqueBrandId(baseSlug: string): Promise<string> {
 	let candidate = baseSlug;
@@ -217,10 +210,9 @@ export async function ensureOrganization(input: { id: string; name: string }, co
 		.limit(1);
 	if (existing) return;
 
-	// `/app/org/$org` resolves a segment as a slug *or* an id, so an id that some
-	// other workspace already answers to by slug would make one URL name two of
-	// them. The caller supplies this id, so it is refused here rather than
-	// silently creating the ambiguity.
+	// The caller supplies this id, and `/app/org/$org` resolves a segment as a
+	// slug or an id — so an id another workspace answers to is refused here
+	// rather than silently making one URL name two.
 	if (!(await isOrgSlugAvailable(input.id, {}, conn))) {
 		throw new Error(`Cannot create organization "${input.id}": another workspace already answers to that name`);
 	}

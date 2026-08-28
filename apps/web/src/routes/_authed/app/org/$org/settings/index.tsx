@@ -1,13 +1,8 @@
 /**
- * /app/org/$org/settings — what the workspace is called, and what it is called
- * in a URL.
- *
- * Both are an admin action, and only where this deployment owns the record: a
- * whitelabel workspace belongs to Auth0 and demo writes nothing. In those cases
- * the fields are shown read-only rather than hidden — the page still has to say
- * which workspace this is.
- *
- * What the workspace holds — brands, team, plan — each has its own page.
+ * An admin action, and only where this deployment owns the record: a whitelabel
+ * workspace belongs to Auth0 and demo writes nothing. There the fields are
+ * read-only rather than hidden — the page still has to say which workspace this
+ * is.
  */
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { WORKSPACE_URL_PREFIX } from "@workspace/lib/app-urls";
@@ -42,10 +37,8 @@ function WorkspaceSettingsPage() {
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	// The stored values are the trimmed ones, so saving " Acme " leaves the field
-	// showing something the server never kept. Comparing the raw value is what
-	// keeps the button live long enough to normalize it, and adopting the trimmed
-	// value afterwards is what settles the field instead of leaving it dirty.
+	// Compared raw so the button stays live long enough to normalize padding the
+	// server would have trimmed anyway.
 	const trimmedName = name.trim();
 	const trimmedSlug = slug.trim().toLowerCase();
 	const isDirty = name !== workspace.name || slug !== workspace.slug;
@@ -53,8 +46,7 @@ function WorkspaceSettingsPage() {
 
 	async function handleSave(e: React.FormEvent) {
 		e.preventDefault();
-		// Enter submits the form whatever the button is doing, and a value of only
-		// spaces would clear `required` on its way to a server-side rejection.
+		// Enter submits whatever the button is doing, and spaces clear `required`.
 		if (!isDirty || !isComplete) return;
 		setError(null);
 		setSaving(true);
@@ -62,8 +54,7 @@ function WorkspaceSettingsPage() {
 			await updateWorkspaceFn({ data: { org: workspace.slug, name: trimmedName, slug: trimmedSlug } });
 			setName(trimmedName);
 			setSlug(trimmedSlug);
-			// The name is on the rail and in the switcher, so both go with the route
-			// data — and if the slug moved, so did the address this page is at.
+			// If the slug moved, so did the address this page is at.
 			await invalidateWorkspaces();
 			await router.navigate({
 				to: "/app/org/$org/settings",

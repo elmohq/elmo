@@ -1,12 +1,6 @@
 /**
- * /app/new — Create a workspace.
- *
- * Cloud only: local has one workspace per install, whitelabel's arrive from
- * Auth0, and demo writes nothing. The redirect here is UX; the write refuses on
- * its own.
- *
- * A new workspace has no plan, so it opens on its own settings rather than a
- * dashboard — there is nothing in it yet, and billing is the first thing it
+ * The redirect is UX; `createWorkspaceFn` refuses on its own. A new workspace
+ * has no plan, so it opens on its own settings — billing is the first thing it
  * needs before a brand can go in.
  */
 

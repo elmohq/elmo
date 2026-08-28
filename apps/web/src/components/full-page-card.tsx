@@ -33,10 +33,8 @@ export default function FullPageCard({
 		<div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
 			<div className={`mx-auto ${className}`}>
 				<div className="flex items-center justify-center space-x-3">
-					{/* The mark leads where the rail's does, but only once there is a
-					    session to lead anywhere — the login screen and the missing-env
-					    page have nothing to send anyone to. Decided here rather than
-					    passed in, so a new page inherits it instead of forgetting it. */}
+					{/* Only once there is a session to lead anywhere. Decided here rather
+					    than passed in, so a new page inherits it instead of forgetting. */}
 					{isAuthenticated ? (
 						<Link to="/app" aria-label="Go to your workspaces">
 							<Logo />

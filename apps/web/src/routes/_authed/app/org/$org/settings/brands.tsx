@@ -1,9 +1,6 @@
 /**
- * /app/org/$org/settings/brands — the brands this workspace owns.
- *
- * A page rather than a rail section, so the brands sit beside the other things
- * the workspace holds — its team, its plan — instead of being a second nav tree
- * competing with the brand's own.
+ * A page rather than a rail section, so brands sit beside the other things the
+ * workspace holds instead of forming a second nav tree beside the brand's own.
  */
 
 import { IconPlus } from "@tabler/icons-react";
@@ -61,8 +58,7 @@ function WorkspaceBrandsPage() {
 					</Link>
 				)}
 
-				{/* The plan refused, and said why — worth repeating where the button
-				    would have been rather than leaving its absence unexplained. */}
+				{/* Said where the button would have been, so its absence is explained. */}
 				{!workspace.canCreateBrand && workspace.brandLimit && (
 					<p className="text-sm text-muted-foreground">{workspace.brandLimit.message}</p>
 				)}

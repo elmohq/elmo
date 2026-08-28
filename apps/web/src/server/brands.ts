@@ -395,11 +395,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 			brandId: z.string(),
 			name: z.string().optional(),
 			website: z.string().optional(),
-			/**
-			 * Unique within the workspace rather than globally —
-			 * `/app/org/$org/brand/$brand` has already named the workspace by the
-			 * time this segment is read.
-			 */
+			/** Unique within the workspace: the URL has already named that. */
 			slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH).optional(),
 			additionalDomains: z.array(z.string()).optional(),
 			aliases: z.array(z.string()).optional(),
@@ -409,8 +405,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 		const session = await requireAuthSession();
 		const org = await requireBrandOrganization(session.user.id, data.brandId);
 
-		// Ids are checked alongside slugs because the segment resolves as either,
-		// so a slug matching a sibling's id would make one URL name two brands.
+		// The segment resolves as a slug or an id, so both namespaces are checked.
 		if (data.slug !== undefined) {
 			if (!isValidSlug(data.slug)) throw new Error(INVALID_SLUG);
 			if (!(await isBrandSlugAvailable(org.id, data.slug, { excludeBrandId: data.brandId }))) {

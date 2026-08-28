@@ -1,10 +1,6 @@
 /**
- * Server functions for workspaces — the customer-facing name for an
- * organization, and the thing `/app/org/$org` names.
- *
- * Access is membership: everything here resolves the org through the caller's
- * `member` rows, so an unknown workspace and someone else's workspace are the
- * same answer.
+ * Access is membership: every read resolves the org through the caller's
+ * `member` rows, so an unknown workspace and someone else's are one answer.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { isOrgAdminRole } from "@workspace/config/roles";
@@ -30,18 +26,9 @@ import type { WorkspaceRouteContext, WorkspaceSummary } from "@/lib/workspaces/t
 export type { WorkspaceBrand, WorkspaceRouteContext, WorkspaceSummary } from "@/lib/workspaces/types";
 
 /**
- * Everything the `/app/org/$org` layout puts in route context: the workspace the
- * segment names, its brands, and the session facts the rail renders from.
- *
- * The route tree resolves the org here and nowhere else — pages below read it
- * from context instead of asking again, and the brand layout finds its brand in
- * `brands` without a round trip. Server functions still resolve it for
- * themselves, because each is reachable without going through this route and
- * has to authorize on its own.
- *
- * Read through the query cache rather than on every navigation, so a filter
- * change costs nothing and the brand allowance can be resolved here instead of
- * again on each page that offers creation.
+ * Read through the query cache rather than on every navigation, which is what
+ * lets the brand allowance be resolved once here instead of again on each page
+ * that offers creation.
  */
 export const resolveWorkspaceFn = createServerFn({ method: "GET" })
 	.validator(z.object({ org: z.string() }))
@@ -60,8 +47,8 @@ export const resolveWorkspaceFn = createServerFn({ method: "GET" })
 	});
 
 /**
- * The workspaces a 404 can offer, or nothing for a signed-out caller — the page
- * is reachable without a session and must not error there.
+ * Nothing for a signed-out caller: the 404 is reachable without a session and
+ * must not error there.
  */
 export const listReachableWorkspacesFn = createServerFn({ method: "GET" }).handler(
 	async (): Promise<WorkspaceSummary[]> => {
@@ -70,10 +57,6 @@ export const listReachableWorkspacesFn = createServerFn({ method: "GET" }).handl
 	},
 );
 
-/**
- * Every workspace the user belongs to, each with its brands — what the switcher
- * and the `/app` picker render.
- */
 export const listWorkspacesFn = createServerFn({ method: "GET" }).handler(async (): Promise<WorkspaceSummary[]> => {
 	const session = await requireAuthSession();
 	return listWorkspaces(session.user.id);
@@ -112,18 +95,10 @@ async function listWorkspaces(userId: string): Promise<WorkspaceSummary[]> {
 }
 
 /**
- * What the settings page needs that the route context doesn't already hold —
- * the workspace itself, its name, its slug and its brands are all resolved by
- * the layout above, so asking again here would be a second round trip for facts
- * already on screen.
- */
-/**
- * Create another workspace for the signed-in user, who owns it.
- *
  * Cloud only: local has one workspace per install, whitelabel's arrive from
- * Auth0, and demo writes nothing. A new workspace has no plan, so the first
- * thing it offers is billing — `checkBrandCreate` refuses a brand until then,
- * which is the same answer an existing workspace gets when its plan lapses.
+ * Auth0, demo writes nothing. The new workspace has no plan, so
+ * `checkBrandCreate` refuses a brand until it has one — the same answer an
+ * existing workspace gets when its plan lapses.
  */
 export const createWorkspaceFn = createServerFn({ method: "POST" })
 	.validator(z.object({ name: z.string().trim().min(1).max(100) }))
@@ -137,12 +112,7 @@ export const createWorkspaceFn = createServerFn({ method: "POST" })
 		return { slug };
 	});
 
-/**
- * What the settings page needs that the route context doesn't already hold. The
- * workspace, its name, its slug and its brands are all resolved by the layout
- * above, so asking again here would be a second round trip for facts already on
- * screen.
- */
+/** Only what the route context doesn't already hold. */
 export interface WorkspaceSettings {
 	/** Whether this deployment lets the workspace be renamed from here. */
 	canRename: boolean;
@@ -157,10 +127,8 @@ export const getWorkspaceSettingsFn = createServerFn({ method: "GET" })
 	});
 
 /**
- * Whether this caller may change what the workspace is called, by name or by
- * slug. Both are workspace-wide: every member's links and the billing mail's
- * links point at the slug, so this is an admin action for the same reason
- * managing the plan and the member list is.
+ * Workspace-wide: every member's links and the billing mail's point at the
+ * slug, so this is an admin action for the same reason managing the plan is.
  *
  * Whitelabel workspaces are Auth0's records, and demo writes nothing; renaming
  * either here would be a change the source of truth undoes.

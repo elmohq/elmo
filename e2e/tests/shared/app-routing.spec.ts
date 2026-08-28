@@ -53,9 +53,7 @@ test.describe("App routing", () => {
 		});
 	});
 
-	// The 404 answers "somewhere else" with the same directory /app renders, so a
-	// stale link — a bookmark from before the workspace was in the URL, or a page
-	// that never existed — still leads somewhere.
+	// A stale bookmark and a page that never existed get the same answer.
 	test("an unknown page offers everything the user can reach", async ({ page }) => {
 		await page.goto("/app/org/not-a-workspace");
 
@@ -63,8 +61,7 @@ test.describe("App routing", () => {
 		await expect(page.getByRole("link", { name: TEST_BRAND_NAME, exact: true }).first()).toBeVisible();
 	});
 
-	// The rail's mark leads to the directory, and so does this one — a full-page
-	// view has no rail, and a logo that goes nowhere reads as broken.
+	// A full-page view has no rail, and a mark that goes nowhere reads as broken.
 	test("the mark on a full-page view leads to the directory", async ({ page }) => {
 		await page.goto("/app/org/not-a-workspace");
 
@@ -94,9 +91,6 @@ test.describe("App routing", () => {
 		});
 	});
 
-	// The trail is read off the routes that matched, so it says where the page
-	// sits without a second parser guessing at the pathname.
-	// A brand's slug saves with its name, the way a workspace's does.
 	test("the brand's slug is a field of the brand settings form", async ({ page }) => {
 		await page.goto(`${SLUGGED_BRAND_URL}/settings/brand`);
 
@@ -113,7 +107,7 @@ test.describe("App routing", () => {
 		await expect(trail.getByText(TEST_BRAND_NAME, { exact: true })).toBeVisible({ timeout: 30_000 });
 		await expect(trail.getByText("Citations", { exact: true })).toBeVisible();
 
-		// Named as a workspace, so the first crumb doesn't read as another brand.
+		// Named as a workspace, so it doesn't read as another brand.
 		await expect(trail.getByText(/Workspace$/)).toBeVisible();
 		// The workspace crumb leads back to the workspace, not to the brand.
 		await expect(trail.locator(`a[href="${workspaceUrl()}"]`)).toBeVisible();

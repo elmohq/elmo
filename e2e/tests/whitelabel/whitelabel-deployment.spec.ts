@@ -105,8 +105,7 @@ test.describe("Whitelabel branding", () => {
 
 test.describe("Whitelabel features", () => {
   test("brands are provisioned through the API, so the UI offers no way to create one", async ({ page }) => {
-    // The directory is where creation would be offered if this deployment
-    // allowed it — for a brand, and for a workspace Auth0 owns either way.
+    // The directory is where creation would be offered if it were allowed.
     await page.goto("/app");
     await expect(page.getByRole("link", { name: /new brand/i })).toHaveCount(0);
     await expect(page.getByRole("link", { name: /new workspace/i })).toHaveCount(0);
@@ -157,8 +156,7 @@ test.describe("Whitelabel features", () => {
     await expect(page.getByRole("button", { name: "Remove" })).toHaveCount(0);
   });
 
-  // The workspace name and slug are Auth0's record; this deployment shows them
-  // rather than offering to change them.
+  // Auth0 owns the record, so this deployment shows it rather than edits it.
   test("the workspace's name and slug are read-only", async ({ page }) => {
     await page.goto(`${workspaceUrl()}/settings`);
 

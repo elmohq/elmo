@@ -4,16 +4,9 @@ import { Label } from "@workspace/ui/components/label";
 import { cn } from "@workspace/ui/lib/utils";
 
 /**
- * The URL segment something is reachable at, as a field in the form that owns
- * it rather than a form of its own.
- *
- * It saves with the name beside it, because they are the same edit: a person
- * renaming a brand means to rename the brand, not to file two changes. The
- * page that submits it is the one that knows the address moved, so it is the
- * page that navigates afterwards.
- *
- * The prefix is shown inside the field's border so the whole address reads, and
- * the input carries no border of its own to keep that one box.
+ * A field of the form that owns it, not a form of its own: renaming a thing and
+ * moving its URL are one edit. The submitting page is the one that knows the
+ * address moved, so it is the one that navigates afterwards.
  */
 export function SlugField({
 	id,
@@ -26,7 +19,7 @@ export function SlugField({
 }: {
 	id: string;
 	label: string;
-	/** The part of the URL before the segment, shown so the whole address reads. */
+	/** Rendered inside the field's border, so the whole address reads as one. */
 	prefix: string;
 	value: string;
 	onChange: (value: string) => void;
