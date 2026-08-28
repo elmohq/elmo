@@ -193,10 +193,6 @@ export function validateApiKeyFromRequest(request: Request): boolean {
 }
 
 // ============================================================================
-// Signup Allowlist
-// ============================================================================
-
-// ============================================================================
 // Auth Function-Level Policies
 // ============================================================================
 
@@ -244,9 +240,9 @@ export function evaluateReadOnly(readOnly: boolean): "allow" | "deny" {
 
 /**
  * Evaluate whether the deployment allows the user to create brands from the UI.
- * Used by the create-brand server function. Local mode is the only mode that
- * allows it — whitelabel brands are provisioned through the admin API, demo is
- * read-only.
+ * Used by the create-brand server function. True in local and cloud, which sells
+ * brands by the plan — whitelabel brands are provisioned through the admin API,
+ * demo is read-only.
  */
 export function evaluateRequireCanCreateBrands(canCreateBrands: boolean): "allow" | "deny" {
 	return canCreateBrands ? "allow" : "deny";

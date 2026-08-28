@@ -1,26 +1,30 @@
 /**
- * Write-time plan enforcement, shared by the web server functions and the
- * /api/v1 handlers so the two surfaces cannot drift.
+ * Write-time enforcement, shared by the web server functions and the /api/v1
+ * handlers so the two surfaces cannot drift.
  *
- * Shape: pure decide* functions (entitlements + usage counts → verdict) that
- * the tests exercise exhaustively, wrapped by assert* helpers that load
- * entitlements and counts. Every assert short-circuits before any query when
- * entitlements are unlimited — non-cloud deployments keep exactly their
- * current behavior, including their current absence of server-side limits.
+ * Two kinds of limit share one vocabulary here. Plan limits answer to the org's
+ * entitlements and skip their queries when those are unlimited; the flat caps
+ * (MAX_PROMPTS, MAX_COMPETITORS) are product-wide and apply with no plan at all.
+ * Both speak in `WriteDecision`, so a caller refuses a write the same way
+ * whichever kind said no.
  *
- * Downgrade policy: these guards only block *adding* beyond a limit. Resources
- * already over a limit (after a downgrade) are never deleted or mutated here —
- * the worker's run policy simply stops running the overage, oldest-first wins.
+ * Shape: pure decide* functions (inputs → verdict) that the tests exercise
+ * exhaustively, wrapped by assert* helpers that load what the decision needs.
+ *
+ * Downgrade policy: these guards only block *adding* beyond a limit. Anything
+ * already over a limit is left alone — the worker's run policy stops running the
+ * overage, oldest-first wins.
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
-import { MAX_SELF_SERVE_BRANDS, premiumPairings } from "@workspace/config/plans";
+import { MAX_SELF_SERVE_BRANDS, premiumPairings, premiumSlotsUsed } from "@workspace/config/plans";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
+import { MAX_COMPETITORS, MAX_PROMPTS } from "../constants";
 import { db } from "../db/db";
-import { brands, prompts } from "../db/schema";
+import { brands, competitors, prompts } from "../db/schema";
 import { getOrgEntitlements, getOrgEntitlementsMap } from "./service";
 
-export type EntitlementDenialCode =
+export type WriteDenialCode =
 	| "no-active-plan"
 	| "brand-limit"
 	| "prompt-limit"
@@ -28,37 +32,39 @@ export type EntitlementDenialCode =
 	| "platform-picks-exceeded"
 	| "premium-not-in-plan"
 	| "premium-pool-exhausted"
-	| "cadence-faster-than-plan";
+	| "cadence-faster-than-plan"
+	| "prompt-cap"
+	| "competitor-cap";
 
 /**
  * Thrown by the assert* helpers. `status`/`error` are the HTTP response /api/v1
  * renders; server functions surface `message` directly. Having no plan at all
- * is a payment problem; every other denial is a request that conflicts with
- * the limits of the plan the org does have.
+ * is a payment problem; every other denial is a request that conflicts with a
+ * limit the caller could satisfy by asking for less.
  */
-export class EntitlementError extends Error {
-	readonly code: EntitlementDenialCode;
+export class WriteDeniedError extends Error {
+	readonly code: WriteDenialCode;
 	readonly status: number;
 	readonly error: string;
 
-	constructor(code: EntitlementDenialCode, message: string) {
+	constructor(code: WriteDenialCode, message: string) {
 		super(message);
-		this.name = "EntitlementError";
+		this.name = "WriteDeniedError";
 		this.code = code;
 		this.status = code === "no-active-plan" ? 402 : 409;
 		this.error = code === "no-active-plan" ? "Payment Required" : "Conflict";
 	}
 }
 
-export type EntitlementDecision = { allowed: true } | { allowed: false; code: EntitlementDenialCode; message: string };
+export type WriteDecision = { allowed: true } | { allowed: false; code: WriteDenialCode; message: string };
 
-const ALLOWED: EntitlementDecision = { allowed: true };
+const ALLOWED: WriteDecision = { allowed: true };
 
-function deny(code: EntitlementDenialCode, message: string): EntitlementDecision {
+function deny(code: WriteDenialCode, message: string): WriteDecision {
 	return { allowed: false, code, message };
 }
 
-function requireActivePlan(entitlements: Entitlements): EntitlementDecision | null {
+function requireActivePlan(entitlements: Entitlements): WriteDecision | null {
 	if (entitlements.unlimited) return ALLOWED;
 	if (entitlements.standing === "none") {
 		return deny("no-active-plan", "An active subscription is required.");
@@ -66,7 +72,7 @@ function requireActivePlan(entitlements: Entitlements): EntitlementDecision | nu
 	return null;
 }
 
-export function decideBrandCreate(entitlements: Entitlements, currentBrandCount: number): EntitlementDecision {
+export function decideBrandCreate(entitlements: Entitlements, currentBrandCount: number): WriteDecision {
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
 	if (entitlements.maxBrands !== null && currentBrandCount >= entitlements.maxBrands) {
@@ -84,12 +90,30 @@ export function decideBrandCreate(entitlements: Entitlements, currentBrandCount:
 	return ALLOWED;
 }
 
+/**
+ * Blocks adding rows, not the brand's current size. Brands can already be over
+ * the cap because the admin API ignores it, and the editor resubmits every row
+ * on each save — blocking those saves would leave the brand uneditable.
+ */
+export function decidePromptCap(existing: number, adding: number): WriteDecision {
+	if (adding <= 0 || existing + adding <= MAX_PROMPTS) return ALLOWED;
+	return deny("prompt-cap", `A brand may have at most ${MAX_PROMPTS} prompts (this one has ${existing}).`);
+}
+
+export function decideCompetitorCap(resulting: number): WriteDecision {
+	if (resulting <= MAX_COMPETITORS) return ALLOWED;
+	return deny(
+		"competitor-cap",
+		`A brand may have at most ${MAX_COMPETITORS} competitors (this would leave ${resulting}).`,
+	);
+}
+
 /** Adding or re-enabling prompts consumes the org-wide tracked-prompt pool. */
 export function decidePromptAdd(
 	entitlements: Entitlements,
 	currentEnabledPrompts: number,
 	adding: number,
-): EntitlementDecision {
+): WriteDecision {
 	if (adding <= 0) return ALLOWED;
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
@@ -104,7 +128,7 @@ export function decidePromptAdd(
 }
 
 /** Brand platform picks: every model must be on the plan menu, within the pick count. */
-export function decideEnabledModels(entitlements: Entitlements, requestedModels: string[]): EntitlementDecision {
+export function decideEnabledModels(entitlements: Entitlements, requestedModels: string[]): WriteDecision {
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
 	if (entitlements.platformMenu !== null) {
@@ -132,7 +156,7 @@ export function decidePremiumAssign(
 	entitlements: Entitlements,
 	currentAssignedEnabled: number,
 	adding: number,
-): EntitlementDecision {
+): WriteDecision {
 	if (adding <= 0) return ALLOWED;
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
@@ -158,10 +182,7 @@ export function decidePremiumAssign(
  * standardRunsPerDay allow proportionally faster overrides). Null clears the
  * override back to the plan cadence.
  */
-export function decideCadenceOverride(
-	entitlements: Entitlements,
-	requestedDelayHours: number | null,
-): EntitlementDecision {
+export function decideCadenceOverride(entitlements: Entitlements, requestedDelayHours: number | null): WriteDecision {
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
 	if (requestedDelayHours === null) return ALLOWED;
@@ -180,8 +201,8 @@ export function decideCadenceOverride(
  * entitlements can use the pure decide* functions directly and still raise the
  * same error every other write path raises.
  */
-export function assertAllowed(decision: EntitlementDecision): void {
-	if (!decision.allowed) throw new EntitlementError(decision.code, decision.message);
+export function assertAllowed(decision: WriteDecision): void {
+	if (!decision.allowed) throw new WriteDeniedError(decision.code, decision.message);
 }
 
 // ---------------------------------------------------------------------------
@@ -236,7 +257,7 @@ export async function countOrgAssignedPremiumSlots(organizationId: string): Prom
  */
 async function withEntitlements(
 	organizationId: string,
-	decide: (entitlements: Entitlements) => EntitlementDecision[] | Promise<EntitlementDecision[]>,
+	decide: (entitlements: Entitlements) => WriteDecision[] | Promise<WriteDecision[]>,
 ): Promise<void> {
 	const entitlements = await getOrgEntitlements(organizationId);
 	if (entitlements.unlimited) return;
@@ -255,11 +276,11 @@ export async function assertCanCreateBrand(organizationId: string): Promise<void
  * customer meets the limit before filling in a form, rather than as an error on
  * the last step of one.
  */
-export async function checkBrandCreate(orgIds: string[]): Promise<Map<string, EntitlementDecision>> {
+export async function checkBrandCreate(orgIds: string[]): Promise<Map<string, WriteDecision>> {
 	const entitlementsByOrg = await getOrgEntitlementsMap(orgIds);
 	const limited = orgIds.filter((orgId) => !entitlementsByOrg.get(orgId)?.unlimited);
 	const counts = await countBrandsByOrg(limited);
-	const decisions = new Map<string, EntitlementDecision>();
+	const decisions = new Map<string, WriteDecision>();
 	for (const orgId of orgIds) {
 		const entitlements = entitlementsByOrg.get(orgId);
 		// getOrgEntitlementsMap answers for every requested id; the fallback narrows.
@@ -269,6 +290,12 @@ export async function checkBrandCreate(orgIds: string[]): Promise<Map<string, En
 }
 
 /** Guard creating `adding` new enabled prompts (or re-enabling that many). */
+export async function assertCompetitorCap(brandId: string, adding: number): Promise<void> {
+	if (adding <= 0) return;
+	const [row] = await db.select({ value: count() }).from(competitors).where(eq(competitors.brandId, brandId));
+	assertAllowed(decideCompetitorCap((row?.value ?? 0) + adding));
+}
+
 export async function assertCanAddPrompts(organizationId: string, adding: number): Promise<void> {
 	if (adding <= 0) return;
 	await withEntitlements(organizationId, async (entitlements) => [
@@ -278,13 +305,6 @@ export async function assertCanAddPrompts(organizationId: string, adding: number
 
 export async function assertEnabledModelsAllowed(organizationId: string, requestedModels: string[]): Promise<void> {
 	await withEntitlements(organizationId, (entitlements) => [decideEnabledModels(entitlements, requestedModels)]);
-}
-
-export async function assertCanAssignPremium(organizationId: string, adding: number): Promise<void> {
-	if (adding <= 0) return;
-	await withEntitlements(organizationId, async (entitlements) => [
-		decidePremiumAssign(entitlements, await countOrgAssignedPremiumSlots(organizationId), adding),
-	]);
 }
 
 export async function assertCadenceAllowed(organizationId: string, requestedDelayHours: number | null): Promise<void> {
@@ -301,13 +321,27 @@ export interface PromptSaveDelta {
 	premiumPairings: number;
 }
 
-/**
- * Guard a whole prompts save against both pools it can spend. One entitlement
- * load and one parallel round of counts, rather than the two of each that
- * calling the single-limit asserts back to back would cost — and the two limits
- * are decided against the same snapshot, so a save can't pass one against a
- * plan the other was denied under.
- */
+export interface PromptPoolState {
+	enabled: boolean;
+	premiumModels: readonly string[];
+}
+
+/** The pool-relevant shape of a planned save: an update knows what it replaces. */
+export interface PromptSavePools {
+	updates: readonly { before: PromptPoolState; after: PromptPoolState }[];
+	inserts: readonly { after: PromptPoolState }[];
+}
+
+export function promptSaveDelta(plan: PromptSavePools): PromptSaveDelta {
+	const before = plan.updates.map((row) => row.before);
+	const after = [...plan.updates, ...plan.inserts].map((row) => row.after);
+	const enabled = (states: PromptPoolState[]) => states.filter((state) => state.enabled).length;
+	return {
+		prompts: enabled(after) - enabled(before),
+		premiumPairings: premiumSlotsUsed(after) - premiumSlotsUsed(before),
+	};
+}
+
 export async function assertPromptSaveAllowed(organizationId: string, delta: PromptSaveDelta): Promise<void> {
 	if (delta.prompts <= 0 && delta.premiumPairings <= 0) return;
 	await withEntitlements(organizationId, async (entitlements) => {

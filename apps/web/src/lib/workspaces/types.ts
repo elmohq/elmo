@@ -6,7 +6,7 @@
  * switcher, and the header can name the type without pulling the database into
  * the client bundle.
  */
-import type { EntitlementDenialCode } from "@workspace/lib/entitlements";
+import type { WriteDenialCode } from "@workspace/lib/entitlements";
 
 export interface WorkspaceBrand {
 	id: string;
@@ -44,7 +44,7 @@ export interface WorkspaceSummary {
 	 * from the UI at all — which is the difference between showing the customer a
 	 * limit and having no such page to show.
 	 */
-	brandLimit: { code: EntitlementDenialCode; message: string } | null;
+	brandLimit: { code: WriteDenialCode; message: string } | null;
 }
 
 /**

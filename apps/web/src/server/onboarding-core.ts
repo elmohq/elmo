@@ -8,13 +8,12 @@
  * lives here.
  */
 
-import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { ensureOrganization, findUniqueBrandSlug, slugify } from "@workspace/lib/db/provisioning";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
-import { assertCanAddPrompts, getBrandOrganizationId } from "@workspace/lib/entitlements";
+import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { count, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
@@ -234,15 +233,7 @@ async function insertCompetitors(args: {
 	}
 	if (toInsert.length === 0) return 0;
 
-	const [{ count: currentCount }] = await db
-		.select({ count: count() })
-		.from(competitors)
-		.where(eq(competitors.brandId, args.brandId));
-	if ((currentCount || 0) + toInsert.length > MAX_COMPETITORS) {
-		throw new Error(
-			`Cannot add competitors. Would exceed maximum of ${MAX_COMPETITORS} (currently ${currentCount}, adding ${toInsert.length}).`,
-		);
-	}
+	await assertCompetitorCap(args.brandId, toInsert.length);
 
 	await db.insert(competitors).values(toInsert);
 	return toInsert.length;

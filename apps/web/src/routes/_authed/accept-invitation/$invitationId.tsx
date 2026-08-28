@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
+import { buildTitle, getAppName } from "@/lib/route-head";
 import { acceptInvitationFn, getInvitationFn } from "@/server/team";
 
 export const Route = createFileRoute("/_authed/accept-invitation/$invitationId")({
@@ -24,6 +25,15 @@ export const Route = createFileRoute("/_authed/accept-invitation/$invitationId")
 				error: err instanceof Error ? err.message : "This invitation could not be loaded",
 			};
 		}
+	},
+	head: ({ match }) => {
+		const appName = getAppName(match);
+		return {
+			meta: [
+				{ title: buildTitle("Accept invitation", { appName }) },
+				{ name: "description", content: "Join your team." },
+			],
+		};
 	},
 	component: AcceptInvitationPage,
 });

@@ -16,6 +16,7 @@ import FullPageCard from "@/components/full-page-card";
 import { WorkspaceBrandList } from "@/components/workspace-brand-list";
 import { requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
+import { buildTitle, getAppName } from "@/lib/route-head";
 import { listWorkspacesFn, type WorkspaceSummary } from "@/server/workspaces";
 
 const getWorkspacePickerData = createServerFn({ method: "GET" }).handler(async (): Promise<WorkspaceSummary[]> => {
@@ -58,6 +59,15 @@ export const Route = createFileRoute("/_authed/app/")({
 		}
 
 		return workspaces;
+	},
+	head: ({ match }) => {
+		const appName = getAppName(match);
+		return {
+			meta: [
+				{ title: buildTitle("Your workspaces", { appName }) },
+				{ name: "description", content: "Pick a workspace, then a brand inside it." },
+			],
+		};
 	},
 	component: WorkspacePickerPage,
 });
