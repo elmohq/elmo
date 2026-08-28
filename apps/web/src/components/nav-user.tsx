@@ -69,6 +69,9 @@ export function NavUser() {
 						render={
 							<SidebarMenuButton
 								size="lg"
+								// Named, because what it opens is no longer just the account:
+								// it is the way to every workspace and brand.
+								aria-label="Account and workspaces"
 								className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground cursor-pointer"
 							/>
 						}

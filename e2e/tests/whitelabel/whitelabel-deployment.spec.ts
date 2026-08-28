@@ -105,14 +105,14 @@ test.describe("Whitelabel branding", () => {
 
 test.describe("Whitelabel features", () => {
   test("brands are provisioned through the API, so the UI offers no way to create one", async ({ page }) => {
-    // /app steps aside to the workspace, which is where creation would be
-    // offered if this deployment allowed it.
+    // The directory is where creation would be offered if this deployment
+    // allowed it — for a brand, and for a workspace Auth0 owns either way.
     await page.goto("/app");
-    await page.waitForURL(new RegExp(`${workspaceUrl()}/?$`), { timeout: 30_000 });
     await expect(page.getByRole("link", { name: /new brand/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /new workspace/i })).toHaveCount(0);
 
     await page.goto(`${workspaceUrl()}/new`);
-    await page.waitForURL(new RegExp(`${workspaceUrl()}/?$`), { timeout: 30_000 });
+    await page.waitForURL(new RegExp(`${workspaceUrl()}/settings$`), { timeout: 30_000 });
   });
 
   test("prompt charts offer the optimize hand-off to the parent app", async ({ page, context }) => {
@@ -149,8 +149,21 @@ test.describe("Whitelabel features", () => {
     await expect(page.getByRole("heading", { name: /reports/i }).first()).toBeVisible({ timeout: 30_000 });
   });
 
-  test("team settings are unavailable", async ({ page }) => {
+  // Memberships are Auth0's, so they are shown and not edited.
+  test("the team is listed, and nothing about it can be changed", async ({ page }) => {
     await page.goto(`${workspaceUrl()}/settings/members`);
-    await page.waitForURL(new RegExp(`${workspaceUrl()}$`), { timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: "Team" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Invite" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Remove" })).toHaveCount(0);
+  });
+
+  // The workspace name and slug are Auth0's record; this deployment shows them
+  // rather than offering to change them.
+  test("the workspace's name and slug are read-only", async ({ page }) => {
+    await page.goto(`${workspaceUrl()}/settings`);
+
+    await expect(page.getByLabel("Workspace Name", { exact: true })).toBeDisabled({ timeout: 30_000 });
+    await expect(page.getByLabel("Workspace Slug", { exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
   });
 });
