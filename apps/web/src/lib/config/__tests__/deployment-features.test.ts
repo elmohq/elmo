@@ -1,8 +1,5 @@
-/**
- * The per-mode flags as they ship. The `*_FEATURES` fixtures in
- * `src/test/mocks/auth.ts` are a hand-maintained copy and cannot catch a factory
- * drifting.
- */
+/** Checks the real deployment factories. The `*_FEATURES` test fixtures are a
+ *  hand-written copy, so asserting against those would not catch a drift. */
 import { resetDeploymentCache } from "@workspace/deployment";
 import { beforeEach, describe, expect, it } from "vitest";
 import { getDeployment } from "@/lib/config/server";

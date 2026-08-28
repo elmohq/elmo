@@ -512,8 +512,8 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			// No .max(): a brand the admin API pushed past MAX_PROMPTS must stay
-			// editable, so decidePromptCap judges the handler's growth instead.
+			// No .max() here: brands can already be over MAX_PROMPTS. decidePromptCap
+			// checks how many rows the save adds instead.
 			prompts: z.array(
 				z.object({
 					id: z.string().optional(),
@@ -545,8 +545,8 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		const existingIds = new Set(existingRows.map((p) => p.id));
 		const existingById = new Map(existingRows.map((p) => [p.id, p]));
 
-		// Ahead of planning, so the cap bounds the work too. Nothing is deleted here
-		// — the editor retires a prompt by disabling it — so inserts are all growth.
+		// Checked before planning so a huge list is rejected before it is built.
+		// Deleting a prompt just disables it, so new rows are the only growth.
 		assertAllowed(decidePromptCap(existingRows.length, data.prompts.filter((p) => !p.id).length));
 
 		const { updates, inserts } = planPromptSave(data.prompts, existingRows);

@@ -58,11 +58,8 @@ export type ModelPickerState = {
 	/** Models this brand may choose from, with target metadata for display. */
 	available: PlatformOption[];
 	editable: boolean;
-	/**
-	 * What the brand is actually tracked on, never the raw column: reporting that
-	 * and letting the page read null as "everything configured" showed a Pro brand
-	 * 10 of 4 platforms selected.
-	 */
+	/** The resolved list, never the raw `brands.enabledModels` column — null there
+	 *  means "use the default", which the page once showed as "all platforms". */
 	enabledModels: string[];
 	/** Cloud plan constraints; null outside cloud (no pick limit). */
 	planLimits: { platformPicks: number; platformMenu: string[] } | null;

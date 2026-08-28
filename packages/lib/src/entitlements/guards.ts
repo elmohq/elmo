@@ -3,15 +3,13 @@
  * handlers so the two surfaces cannot drift.
  *
  * Shape: pure decide* functions (inputs → verdict) that the tests exercise
- * exhaustively, wrapped by assert* helpers that load whatever the decision
- * needs. The plan limits short-circuit before any query when entitlements are
- * unlimited; the flat caps (MAX_PROMPTS, MAX_COMPETITORS) need no entitlements
- * and bound one brand's list rather than the whole workspace.
+ * exhaustively, wrapped by assert* helpers that load what the decision needs.
+ * Plan limits skip their queries when entitlements are unlimited. The flat caps
+ * (MAX_PROMPTS, MAX_COMPETITORS) apply everywhere and need no entitlements.
  *
- * Downgrade policy: these guards only block *adding* beyond a limit. Resources
- * already over a limit — after a downgrade, or written by the admin API, which
- * the flat caps never consulted — are never deleted or mutated here. The
- * worker's run policy simply stops running the overage, oldest-first wins.
+ * Downgrade policy: these guards only block *adding* beyond a limit. Anything
+ * already over a limit is left alone — the worker's run policy stops running the
+ * overage, oldest-first wins.
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
@@ -89,9 +87,9 @@ export function decideBrandCreate(entitlements: Entitlements, currentBrandCount:
 }
 
 /**
- * Governs growth, not what a brand holds: the admin API adds prompts without
- * consulting the cap, and the editor submits the brand's whole list on every
- * save, so refusing an over-cap brand's saves would freeze it.
+ * Blocks adding rows, not the brand's current size. Brands can already be over
+ * the cap because the admin API ignores it, and the editor resubmits every row
+ * on each save — blocking those saves would leave the brand uneditable.
  */
 export function decidePromptCap(existing: number, adding: number): EntitlementDecision {
 	if (adding <= 0 || existing + adding <= MAX_PROMPTS) return ALLOWED;
@@ -146,13 +144,14 @@ export function decideEnabledModels(entitlements: Entitlements, requestedModels:
 }
 
 /**
- * An unlimited deployment has no pool and its run policy never reads a prompt's
- * grounded models, so an assignment made there would be inert.
+ * Self-hosted has no premium pool, and its run policy ignores a prompt's
+ * premiumModels, so assigning one there would have no effect. Refuse it.
  *
- * Introducing one, not spending: a database moved off cloud submits its stored
- * assignments on every save, and refusing those would freeze the brand. Keyed on
- * `unlimited` rather than `premiumPool > 0`, though the two coincide, so a
- * metered plan without a pool still hears decidePremiumAssign's upgrade line.
+ * Only blocks *new* assignments. A database moved off cloud still has models
+ * stored on its prompts, and the editor resubmits them on every save.
+ *
+ * Tests `unlimited` rather than `premiumPool > 0` so that cloud plans without a
+ * pool fall through to decidePremiumAssign and get its "upgrade" message.
  */
 export function decideGroundedAssign(entitlements: Entitlements, adding: number): EntitlementDecision {
 	if (adding <= 0 || !entitlements.unlimited) return ALLOWED;
@@ -331,11 +330,8 @@ export async function assertCadenceAllowed(organizationId: string, requestedDela
 export interface PromptSaveDelta {
 	prompts: number;
 	premiumPairings: number;
-	/**
-	 * Pairings introduced, which `premiumPairings` cannot stand in for: re-enabling
-	 * a grounded prompt spends one while introducing nothing, and assigning a model
-	 * to a disabled prompt introduces one while spending nothing.
-	 */
+	/** Models newly assigned to a row. Not the same as `premiumPairings`:
+	 *  re-enabling a prompt spends a pairing but assigns nothing new. */
 	premiumAdded: number;
 }
 
@@ -349,7 +345,6 @@ export interface PromptSaveRow {
 	after: PromptPoolState;
 }
 
-/** Net, so a save that disables or clears comes out negative and asks nothing. */
 export function promptSaveDelta(rows: readonly PromptSaveRow[]): PromptSaveDelta {
 	const before = rows.flatMap((row) => (row.before ? [row.before] : []));
 	const after = rows.map((row) => row.after);
@@ -366,10 +361,11 @@ export function promptSaveDelta(rows: readonly PromptSaveRow[]): PromptSaveDelta
 }
 
 /**
- * One entitlement load and one round of counts, so a save can't pass one limit
- * against a plan another was denied under. Written out rather than routed
- * through `withEntitlements` because decideGroundedAssign is the one rule that
- * must run ahead of the unlimited short-circuit.
+ * Loads entitlements once and counts once, so every limit is judged against the
+ * same snapshot.
+ *
+ * Does not use `withEntitlements` because that returns early for unlimited
+ * deployments, and decideGroundedAssign still has to run for those.
  */
 export async function assertPromptSaveAllowed(organizationId: string, delta: PromptSaveDelta): Promise<void> {
 	if (delta.prompts <= 0 && delta.premiumPairings <= 0 && delta.premiumAdded <= 0) return;

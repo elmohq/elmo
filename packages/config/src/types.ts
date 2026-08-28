@@ -32,11 +32,11 @@ export interface FeaturesConfig {
 	 */
 	teamInvites: boolean;
 	/**
-	 * Whether the viewer chooses which platforms a brand is tracked on — false in
-	 * whitelabel, where the picks and the provider bills behind them are the
-	 * agency's, and in demo. Deliberately not folded into `canCreateBrands`
-	 * despite matching it in all four modes today: provisioning a brand and
-	 * spending a provider budget are sold separately.
+	 * Whether the viewer picks which platforms a brand is tracked on. False in
+	 * whitelabel (the agency picks, and pays the provider bills) and demo.
+	 *
+	 * Matches `canCreateBrands` in every mode today, but kept separate: creating a
+	 * brand and choosing what it costs to run are sold as different things.
 	 */
 	platformPicksEditable: boolean;
 }

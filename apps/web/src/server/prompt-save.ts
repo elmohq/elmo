@@ -43,8 +43,8 @@ export function planPromptSave(
 ): PromptSavePlan {
 	const existingById = new Map(existing.map((row) => [row.id, row]));
 
-	// An id from another brand, or the same id twice, is dropped rather than
-	// written: a padded list must not inflate the pools the save is charged for.
+	// Skip ids the brand does not own, and the same id twice. Otherwise a padded
+	// list would be charged to the org's pools more than once.
 	const claimed = new Set<string>();
 	const updates: PlannedUpdate[] = [];
 	const inserts: PlannedInsert[] = [];
