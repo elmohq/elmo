@@ -241,7 +241,8 @@ export const StarterSinglePlatform: Story = {
 	render: () => {
 		loader({
 			available: menuOptions(["chatgpt"]),
-			editable: true,
+			// One pick, one platform: the server reports nothing to change.
+			editable: false,
 			enabledModels: ["chatgpt"],
 			planLimits: { platformPicks: 1, platformMenu: ["chatgpt"] },
 			upgradeOptions: PICKABLE.filter((option) => option.model !== "chatgpt"),
@@ -309,7 +310,7 @@ export const UnlimitedPicks: Story = {
 /** No targets configured at all: the page says so instead of an empty grid. */
 export const NoTargetsConfigured: Story = {
 	render: () => {
-		loader(unmeteredPicker([]));
+		loader(unmeteredPicker([], { editable: false }));
 		return <LlmsSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {

@@ -65,21 +65,12 @@ function LlmsSettingsPage() {
 				</p>
 			</div>
 
-			<PlatformSection picker={picker} />
+			{picker.editable ? <PlatformGroups picker={picker} /> : <TrackedPlatforms picker={picker} />}
 
 			{premium.available && <PremiumApiPool premium={premium} />}
 			{picker.unconfiguredPlatforms.length > 0 && <AddPlatformsCard platforms={picker.unconfiguredPlatforms} />}
 		</div>
 	);
-}
-
-function PlatformSection({ picker }: { picker: ModelPickerState }) {
-	if (picker.available.length === 0) return <NoPlatformsCard />;
-	// A one-pick plan with one platform cannot be changed either: unticking it
-	// leaves zero, which the save bar refuses.
-	const forced = picker.planLimits?.platformPicks === 1 && picker.available.length === 1;
-	if (!picker.editable || forced) return <TrackedPlatforms picker={picker} />;
-	return <PlatformGroups picker={picker} />;
 }
 
 function NoPlatformsCard() {
