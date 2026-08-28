@@ -17,26 +17,27 @@ describe("which rows a save may claim", () => {
 		expect(plan.inserts).toHaveLength(1);
 	});
 
-	it("drops an id the brand does not own rather than writing it", () => {
-		const plan = planPromptSave([submitted({ id: "someone-elses" })], [stored("own")]);
-
-		expect(plan).toEqual({ updates: [], inserts: [] });
-	});
-
-	it("claims a repeated id once, so a padded list cannot inflate what the save is charged for", () => {
-		const rows = Array.from({ length: 500 }, () => submitted({ id: "own", premiumModels: ["claude"] }));
-		const plan = planPromptSave(rows, [stored("own")]);
-
-		expect(plan.updates).toHaveLength(1);
-	});
-
-	it("keeps the last-writer-wins ordering out of it by taking the first claim", () => {
-		const plan = planPromptSave(
-			[submitted({ id: "own", value: "first" }), submitted({ id: "own", value: "second" })],
-			[stored("own")],
+	it("refuses an id the brand does not have", () => {
+		// Another brand's prompt, or one deleted through the admin API since the
+		// editor loaded. Skipping it would drop that edit and report success.
+		expect(() => planPromptSave([submitted({ id: "someone-elses" })], [stored("own")])).toThrow(
+			/not in this brand's list/,
 		);
+	});
 
-		expect(plan.updates.map((update) => update.prompt.value)).toEqual(["first"]);
+	it("refuses the same id twice, rather than guessing which edit was meant", () => {
+		expect(() =>
+			planPromptSave(
+				[submitted({ id: "own", value: "first" }), submitted({ id: "own", value: "second" })],
+				[stored("own")],
+			),
+		).toThrow(/appears twice/);
+	});
+
+	it("refuses a padded list before it can be charged to the org's pools", () => {
+		const rows = Array.from({ length: 500 }, () => submitted({ id: "own", premiumModels: ["claude"] }));
+
+		expect(() => planPromptSave(rows, [stored("own")])).toThrow(/appears twice/);
 	});
 });
 

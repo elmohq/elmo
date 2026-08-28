@@ -43,8 +43,6 @@ export function planPromptSave(
 ): PromptSavePlan {
 	const existingById = new Map(existing.map((row) => [row.id, row]));
 
-	// Skip ids the brand does not own, and the same id twice. Otherwise a padded
-	// list would be charged to the org's pools more than once.
 	const claimed = new Set<string>();
 	const updates: PlannedUpdate[] = [];
 	const inserts: PlannedInsert[] = [];
@@ -55,8 +53,16 @@ export function planPromptSave(
 			inserts.push({ prompt, after });
 			continue;
 		}
+		// The editor only ever submits ids it loaded from this brand, so both of
+		// these mean the caller and the database disagree about what exists.
+		// Guessing which row was meant would write one edit and drop another.
 		const before = existingById.get(prompt.id);
-		if (!before || claimed.has(prompt.id)) continue;
+		if (!before) {
+			throw new Error(`Prompt ${prompt.id} is not in this brand's list. Reload the page and try again.`);
+		}
+		if (claimed.has(prompt.id)) {
+			throw new Error(`Prompt ${prompt.id} appears twice in this save.`);
+		}
 		claimed.add(prompt.id);
 		updates.push({ id: prompt.id, prompt, before, after });
 	}
