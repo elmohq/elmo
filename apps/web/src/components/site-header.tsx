@@ -19,7 +19,10 @@ import { type Crumb, useBreadcrumbs } from "@/lib/breadcrumbs";
  * of a height to be centred by — a labelled crumb is two lines tall, and the
  * chevrons and the page name sit against its middle.
  */
-const CRUMB = "block rounded-md px-2 py-1 leading-tight";
+// `transition-none` overrides the link's own `transition-colors`: the rail's
+// buttons and the menu's items take their hover at once, and a crumb easing
+// into one beside them reads as lag.
+const CRUMB = "block rounded-md px-2 py-1 leading-tight transition-none";
 
 /**
  * An organization and a brand are often named the same thing, so each says
