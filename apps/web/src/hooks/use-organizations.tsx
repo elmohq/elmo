@@ -1,14 +1,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLoaderData } from "@tanstack/react-router";
-import { invalidateWorkspaces, workspaceQueries } from "@/lib/workspaces/queries";
-import type { WorkspaceRouteContext, WorkspaceSummary } from "@/lib/workspaces/types";
+import { invalidateOrganizations, organizationQueries } from "@/lib/organizations/queries";
+import type { OrganizationRouteContext, OrganizationSummary } from "@/lib/organizations/types";
 
 /**
  * Read from the layout's loader data rather than its route context: a
  * `beforeLoad` re-runs on every navigation, and a component reading that result
  * directly would see `undefined` for as long as it takes.
  */
-export function useWorkspaceRoute(): WorkspaceRouteContext {
+export function useOrganizationRoute(): OrganizationRouteContext {
 	return useLoaderData({ from: "/_authed/app/org/$org" });
 }
 
@@ -16,11 +16,11 @@ export function useWorkspaceRoute(): WorkspaceRouteContext {
  * Callers surface `isLoading` and `isError` rather than letting a failed
  * request empty the navigation.
  */
-export function useWorkspaces() {
-	const query = useQuery(workspaceQueries.list());
+export function useOrganizations() {
+	const query = useQuery(organizationQueries.list());
 
 	return {
-		workspaces: (query.data ?? []) as WorkspaceSummary[],
+		organizations: (query.data ?? []) as OrganizationSummary[],
 		isLoading: query.isLoading,
 		isError: query.isError,
 		isFetching: query.isFetching,
@@ -28,8 +28,8 @@ export function useWorkspaces() {
 	};
 }
 
-/** Drop every cached answer about workspaces, after changing one. */
-export function useInvalidateWorkspaces(): () => Promise<void> {
+/** Drop every cached answer about organizations, after changing one. */
+export function useInvalidateOrganizations(): () => Promise<void> {
 	const queryClient = useQueryClient();
-	return () => invalidateWorkspaces(queryClient);
+	return () => invalidateOrganizations(queryClient);
 }

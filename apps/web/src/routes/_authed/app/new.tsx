@@ -1,5 +1,5 @@
 /**
- * The redirect is UX; `createWorkspaceFn` refuses on its own. A new workspace
+ * The redirect is UX; `createOrganizationFn` refuses on its own. A new organization
  * has no plan, so it opens on its own settings — billing is the first thing it
  * needs before a brand can go in.
  */
@@ -10,30 +10,30 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
-import { useInvalidateWorkspaces } from "@/hooks/use-workspaces";
+import { useInvalidateOrganizations } from "@/hooks/use-organizations";
 import { buildTitle, getAppName } from "@/lib/route-head";
-import { createWorkspaceFn } from "@/server/workspaces";
+import { createOrganizationFn } from "@/server/organizations";
 
 export const Route = createFileRoute("/_authed/app/new")({
-	staticData: { crumb: "New workspace" },
+	staticData: { crumb: "New organization" },
 	beforeLoad: ({ context }) => {
-		if (!context.clientConfig?.features.canCreateWorkspaces) {
+		if (!context.clientConfig?.features.canCreateOrganizations) {
 			throw redirect({ to: "/app" });
 		}
 	},
 	head: ({ match }) => ({
 		meta: [
-			{ title: buildTitle("New workspace", { appName: getAppName(match) }) },
-			{ name: "description", content: "Create a workspace to hold its own brands, team, and plan." },
+			{ title: buildTitle("New organization", { appName: getAppName(match) }) },
+			{ name: "description", content: "Create an organization to hold its own brands, team, and plan." },
 		],
 	}),
-	component: NewWorkspacePage,
+	component: NewOrganizationPage,
 });
 
-function NewWorkspacePage() {
+function NewOrganizationPage() {
 	const navigate = useNavigate();
 	const router = useRouter();
-	const invalidateWorkspaces = useInvalidateWorkspaces();
+	const invalidateOrganizations = useInvalidateOrganizations();
 	const [name, setName] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
@@ -46,8 +46,8 @@ function NewWorkspacePage() {
 		setError("");
 		setIsLoading(true);
 		try {
-			const { slug } = await createWorkspaceFn({ data: { name: trimmed } });
-			await Promise.all([invalidateWorkspaces(), router.invalidate()]);
+			const { slug } = await createOrganizationFn({ data: { name: trimmed } });
+			await Promise.all([invalidateOrganizations(), router.invalidate()]);
 			await navigate({ to: "/app/org/$org/settings", params: { org: slug } });
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "An error occurred");
@@ -57,15 +57,15 @@ function NewWorkspacePage() {
 
 	return (
 		<FullPageCard
-			title="Create a workspace"
-			subtitle="A workspace holds its own brands, team, and plan."
+			title="Create an organization"
+			subtitle="An organization holds its own brands, team, and plan."
 			showBackButton
 		>
 			<form onSubmit={handleSubmit} className="space-y-4">
 				<div className="space-y-2">
-					<Label htmlFor="workspace-name">Workspace Name</Label>
+					<Label htmlFor="organization-name">Organization Name</Label>
 					<Input
-						id="workspace-name"
+						id="organization-name"
 						value={name}
 						onChange={(e) => setName(e.target.value)}
 						placeholder="Acme"
@@ -77,7 +77,7 @@ function NewWorkspacePage() {
 				{error && <p className="text-sm text-destructive">{error}</p>}
 
 				<Button type="submit" className="w-full" disabled={isLoading || trimmed.length === 0}>
-					{isLoading ? "Creating..." : "Create workspace"}
+					{isLoading ? "Creating..." : "Create organization"}
 				</Button>
 			</form>
 		</FullPageCard>

@@ -11,13 +11,13 @@ import { createBrandFn } from "@/server/brands";
 import type { OnboardingPlatformState } from "@/server/platform-picks";
 
 interface BrandOnboardingProps {
-	workspaceSlug: string;
+	organizationSlug: string;
 	brandId: string;
 	brandName: string;
 	platformState: OnboardingPlatformState;
 }
 
-export default function BrandOnboarding({ workspaceSlug, brandId, brandName, platformState }: BrandOnboardingProps) {
+export default function BrandOnboarding({ organizationSlug, brandId, brandName, platformState }: BrandOnboardingProps) {
 	const [step, setStep] = useState<"website" | "platforms">("website");
 	const [website, setWebsite] = useState("");
 	const [selected, setSelected] = useState<Set<string>>(
@@ -48,7 +48,7 @@ export default function BrandOnboarding({ workspaceSlug, brandId, brandName, pla
 			// a redirect.
 			await navigate({
 				to: "/app/org/$org/brand/$brand",
-				params: { org: workspaceSlug, brand: brand.slug ?? brandId },
+				params: { org: organizationSlug, brand: brand.slug ?? brandId },
 			});
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "An error occurred");

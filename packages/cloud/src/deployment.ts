@@ -25,7 +25,7 @@ export function createCloudDeployment(env: Record<string, string | undefined> = 
 			showOptimizeButton: false,
 			canCreateBrands: true,
 			platformPicksEditable: true,
-			canCreateWorkspaces: true,
+			canCreateOrganizations: true,
 			selfServeSignup: true,
 			billing: true,
 			reportGeneration: false,

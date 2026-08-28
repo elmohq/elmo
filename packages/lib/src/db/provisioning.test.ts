@@ -26,7 +26,7 @@ describe("slugify", () => {
 		expect(slugify("Acme 2")).toBe("acme-2");
 	});
 
-	// Workspaces and brands sit under static `org`/`brand` segments, so no name
+	// Organizations and brands sit under static `org`/`brand` segments, so no name
 	// can shadow a sibling route and nothing needs reserving.
 	it("leaves route names alone", () => {
 		expect(slugify("new")).toBe("new");

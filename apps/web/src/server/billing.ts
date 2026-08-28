@@ -90,14 +90,14 @@ export const getBillingStateFn = createServerFn({ method: "GET" })
  * The paywall decision, and the org it is about.
  *
  * Two questions, one answer shape, because the callers ask different ones:
- *  - with `organizationId` (a brand's owning org): is *this* workspace paid up?
+ *  - with `organizationId` (a brand's owning org): is *this* organization paid up?
  *  - without: does this user have anywhere at all to go? Any entitled org keeps
  *    the app usable; only a user whose every org is unsubscribed is stopped, and
- *    they are pointed at their own workspace.
+ *    they are pointed at their own organization.
  *
  * The org always comes back with the verdict. A paywall that says "pay" without
  * saying "for what" is how a member of a paid team and an unpaid one ends up at
- * checkout for the wrong workspace.
+ * checkout for the wrong organization.
  */
 export const getPaywallStateFn = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string().optional() }).optional())
@@ -118,7 +118,7 @@ export const getPaywallStateFn = createServerFn({ method: "GET" })
 		const entitlementsByOrg = await getOrgEntitlementsMap(orgs.map((org) => org.id));
 		const needsPlan = (org: { id: string }) => entitlementsByOrg.get(org.id)?.standing === "none";
 
-		// listUserOrganizations is oldest-first, so orgs[0] is the user's own workspace.
+		// listUserOrganizations is oldest-first, so orgs[0] is the user's own organization.
 		const subject = scoped ?? orgs[0];
 		if (scoped ? !needsPlan(scoped) : !orgs.every(needsPlan)) {
 			return { needsPlan: false };
@@ -141,7 +141,7 @@ export const setPremiumAddonQuantityFn = createServerFn({ method: "POST" })
 		const session = await requireAuthSession();
 		const org = await requireOrganization(session.user.id, data.org);
 		if (!isOrgAdminRole(org.role)) {
-			throw new Error("Only workspace admins can change billing");
+			throw new Error("Only organization admins can change billing");
 		}
 
 		const state = await getOrgBillingState(org.id);

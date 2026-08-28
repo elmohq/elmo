@@ -9,7 +9,7 @@
  * these up fails here.
  */
 import { expect, test } from "@playwright/test";
-import { NIKE_BRAND_ID, TEST_API_KEY, TEST_BRAND_ID, brandUrl, workspaceUrl } from "../../fixtures";
+import { NIKE_BRAND_ID, TEST_API_KEY, TEST_BRAND_ID, brandUrl, organizationUrl } from "../../fixtures";
 
 test.describe("Unauthenticated access", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
@@ -45,15 +45,15 @@ test.describe("Authenticated access", () => {
   test("a brand in another org is not found", async ({ page }) => {
     // Nike is seeded in an org the E2E user is not a member of. It is visible
     // to the admin API key above, so a 404 here is org scoping, not absence.
-    // Asked for inside the workspace the user *can* reach, which is where the
+    // Asked for inside the organization the user *can* reach, which is where the
     // brand segment is resolved.
-    await page.goto(`${workspaceUrl()}/brand/${NIKE_BRAND_ID}`);
+    await page.goto(`${organizationUrl()}/brand/${NIKE_BRAND_ID}`);
     await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
   });
 
   test("organizations cannot be created over HTTP", async ({ request }) => {
     // Orgs are provisioned server-side only (cloud signup and its create-
-    // workspace form, the admin brands API, or an Auth0 sync), so the
+    // organization form, the admin brands API, or an Auth0 sync), so the
     // better-auth org plugin's mutation endpoints are refused in every mode.
     const response = await request.post("/api/auth/organization/create", {
       data: { name: "Smuggled Org", slug: "smuggled-org" },

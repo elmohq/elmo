@@ -6,15 +6,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import FullPageCard from "@/components/full-page-card";
-import { WorkspaceDirectory } from "@/components/workspace-directory";
-import { listReachableWorkspacesFn } from "@/server/workspaces";
+import { OrganizationDirectory } from "@/components/organization-directory";
+import { listReachableOrganizationsFn } from "@/server/organizations";
 
 const TITLE = "404 Not Found";
 
 export function NotFoundPage() {
 	const { data, isLoading } = useQuery({
-		queryKey: ["reachable-workspaces"],
-		queryFn: () => listReachableWorkspacesFn(),
+		queryKey: ["reachable-organizations"],
+		queryFn: () => listReachableOrganizationsFn(),
 		staleTime: 60_000,
 		retry: false,
 	});
@@ -30,15 +30,15 @@ export function NotFoundPage() {
 		);
 	}
 
-	const workspaces = data ?? [];
+	const organizations = data ?? [];
 
-	if (workspaces.length === 0) {
+	if (organizations.length === 0) {
 		return <FullPageCard title={TITLE} subtitle="That page doesn't exist or moved." showBackButton={true} />;
 	}
 
 	return (
 		<FullPageCard title={TITLE} subtitle="That page doesn't exist or moved.">
-			<WorkspaceDirectory workspaces={workspaces} />
+			<OrganizationDirectory organizations={organizations} />
 		</FullPageCard>
 	);
 }

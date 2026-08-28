@@ -14,7 +14,7 @@ import { DEFAULT_APP_URL } from "@workspace/config/constants";
 import { getEnv } from "@workspace/config/env";
 import { PAST_DUE_GRACE_DAYS } from "@workspace/config/plans";
 import { ORG_ADMIN_ROLES } from "@workspace/config/roles";
-import { workspaceSettingsPath } from "@workspace/lib/app-urls";
+import { orgSettingsPath } from "@workspace/lib/app-urls";
 import { db } from "@workspace/lib/db/db";
 import { member, organization, user } from "@workspace/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
@@ -56,7 +56,7 @@ async function billingRecipients(organizationId: string): Promise<string[]> {
 }
 
 /**
- * The workspace's billing settings page. Emails need a stable link — Stripe
+ * The organization's billing settings page. Emails need a stable link — Stripe
  * portal sessions expire minutes after creation — and this page's "Manage
  * billing" button opens a fresh Customer Portal session.
  */
@@ -69,7 +69,7 @@ async function billingSettingsUrl(organizationId: string): Promise<string> {
 		.from(organization)
 		.where(eq(organization.id, organizationId))
 		.limit(1);
-	return org ? `${appUrl}${workspaceSettingsPath(org, "billing")}` : appUrl;
+	return org ? `${appUrl}${orgSettingsPath(org, "billing")}` : appUrl;
 }
 
 export async function sendDunningNotice(organizationId: string, notice: DunningNotice): Promise<void> {

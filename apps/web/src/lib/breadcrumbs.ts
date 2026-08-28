@@ -3,7 +3,7 @@
  * parser is how the trail and the address bar drift apart when the URL moves.
  */
 import { useMatches } from "@tanstack/react-router";
-import { workspaceTitle } from "@/lib/workspaces/naming";
+import { organizationTitle } from "@/lib/organizations/naming";
 
 declare module "@tanstack/react-router" {
 	interface StaticDataRouteOption {
@@ -25,13 +25,13 @@ const BRAND_ROUTE_ID = "/_authed/app/org/$org/brand/$brand";
  * something static about itself. Either may be absent mid-load, and its crumb
  * is left out until it arrives.
  */
-export function useBreadcrumbs(subjects: { workspaceName?: string; brandName?: string }): Crumb[] {
+export function useBreadcrumbs(subjects: { organizationName?: string; brandName?: string }): Crumb[] {
 	const matches = useMatches();
 
 	return matches.flatMap((match): Crumb[] => {
 		const label =
 			match.routeId === ORG_ROUTE_ID
-				? subjects.workspaceName && workspaceTitle(subjects.workspaceName)
+				? subjects.organizationName && organizationTitle(subjects.organizationName)
 				: match.routeId === BRAND_ROUTE_ID
 					? subjects.brandName
 					: match.staticData.crumb;

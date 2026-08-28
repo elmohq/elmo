@@ -36,7 +36,7 @@ export default function FullPageCard({
 					{/* Only once there is a session to lead anywhere. Decided here rather
 					    than passed in, so a new page inherits it instead of forgetting. */}
 					{isAuthenticated ? (
-						<Link to="/app" aria-label="Go to your workspaces">
+						<Link to="/app" aria-label="Go to your organizations">
 							<Logo />
 						</Link>
 					) : (

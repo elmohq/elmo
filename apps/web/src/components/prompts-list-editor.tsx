@@ -34,7 +34,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { Inbox, ListPlus, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { useWorkspaceParams } from "@/hooks/use-brand-id";
+import { useOrganizationParams } from "@/hooks/use-brand-id";
 
 export interface EditablePrompt {
 	id?: string;
@@ -44,14 +44,14 @@ export interface EditablePrompt {
 	tags: string[];
 	systemTags: string[];
 	/**
-	 * Premium models this prompt is tracked on, grounded — one of the workspace's
+	 * Premium models this prompt is tracked on, grounded — one of the organization's
 	 * premium pairings each, so two models cost two pairings.
 	 */
 	premiumModels: string[];
 }
 
 /**
- * The workspace's premium allowance, as this brand's editor sees it.
+ * The organization's premium allowance, as this brand's editor sees it.
  * `assignedElsewhere` covers the org's other brands, which the editor cannot see
  * but which still spend the pool — so the live count stays honest while rows are
  * changed here.
@@ -75,10 +75,10 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 
 /** Both places that offer more pairings send you to the same page. */
 function BillingLink({ children }: { children: ReactNode }) {
-	const workspaceParams = useWorkspaceParams();
-	if (!workspaceParams) return <>{children}</>;
+	const organizationParams = useOrganizationParams();
+	if (!organizationParams) return <>{children}</>;
 	return (
-		<Link to="/app/org/$org/settings/billing" params={workspaceParams} className="underline">
+		<Link to="/app/org/$org/settings/billing" params={organizationParams} className="underline">
 			{children}
 		</Link>
 	);
@@ -98,7 +98,7 @@ function PremiumModelsField({
 }: {
 	selected: string[];
 	promptEnabled: boolean;
-	/** The workspace has no pairings left, so only unticking is allowed. */
+	/** The organization has no pairings left, so only unticking is allowed. */
 	atCapacity: boolean;
 	onChange: (models: string[]) => void;
 	showLabel?: boolean;
@@ -319,9 +319,9 @@ function ColumnHeader({
 						<TooltipContent>
 							<p className="max-w-xs">
 								Also track this prompt on a model called directly with its own web search on, for a grounded answer with
-								citations — {PREMIUM_RUNS_PER_DAY}× a day. Each model you pick here spends one of the workspace&apos;s
-								premium pairings. This is on top of the platforms the brand tracks, which run on every prompt either
-								way.
+								citations — {PREMIUM_RUNS_PER_DAY}× a day. Each model you pick here spends one of the
+								organization&apos;s premium pairings. This is on top of the platforms the brand tracks, which run on
+								every prompt either way.
 							</p>
 						</TooltipContent>
 					</Tooltip>
@@ -572,7 +572,7 @@ export function PromptsListEditor({
 					<span className="font-medium text-foreground">
 						{premiumUsed} of {premium.total}
 					</span>{" "}
-					pairings in use across this workspace — one for each model a prompt is tracked on.
+					pairings in use across this organization — one for each model a prompt is tracked on.
 					{premiumAtCapacity && (
 						<>
 							{" "}

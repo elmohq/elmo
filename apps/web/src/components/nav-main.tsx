@@ -31,7 +31,7 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
 	const hrefs = new Map(items.map((item) => [item, router.buildLocation(item.link).pathname]));
 
 	// Longest match wins, so Overview doesn't light on every brand page and
-	// Workspace doesn't light on Team — each is a prefix of the others.
+	// Organization doesn't light on Team — each is a prefix of the others.
 	const activeHref = items
 		.map((item) => hrefs.get(item) ?? "")
 		.filter((href) => pathname === href || pathname.startsWith(`${href}/`))

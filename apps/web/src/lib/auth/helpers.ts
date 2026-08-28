@@ -106,7 +106,7 @@ export interface UserOrganization {
 }
 
 /**
- * Oldest membership first, so a user's own workspace precedes any they were
+ * Oldest membership first, so a user's own organization precedes any they were
  * invited into. `organization.id` breaks ties, which a batch Auth0 sync
  * produces by stamping every membership it creates with the same timestamp.
  */
@@ -121,7 +121,7 @@ export async function listUserOrganizations(userId: string): Promise<UserOrganiz
 
 /**
  * The organization behind an `/app/org/$org` segment, or null when the user has no
- * such workspace. Accepts the slug (what the URL carries) or the id, so links
+ * such organization. Accepts the slug (what the URL carries) or the id, so links
  * minted before an org was renamed — and anything built from an
  * `organizationId` in hand — still resolve.
  */
@@ -137,6 +137,6 @@ export async function resolveOrganization(userId: string, slugOrId: string): Pro
 
 export async function requireOrganization(userId: string, slugOrId: string): Promise<UserOrganization> {
 	const org = await resolveOrganization(userId, slugOrId);
-	if (!org) throw new Error("Forbidden: No access to this workspace");
+	if (!org) throw new Error("Forbidden: No access to this organization");
 	return org;
 }

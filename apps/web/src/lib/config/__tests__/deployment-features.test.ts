@@ -37,14 +37,14 @@ describe("platformPicksEditable", () => {
 	});
 });
 
-describe("canCreateWorkspaces", () => {
+describe("canCreateOrganizations", () => {
 	it("is cloud's alone — it is the only mode where a user signs up for another", () => {
-		expect(featuresFor("cloud").canCreateWorkspaces).toBe(true);
+		expect(featuresFor("cloud").canCreateOrganizations).toBe(true);
 	});
 
-	it("denies the modes whose workspaces come from somewhere else", () => {
-		expect(featuresFor("local").canCreateWorkspaces).toBe(false);
-		expect(featuresFor("demo").canCreateWorkspaces).toBe(false);
-		expect(featuresFor("whitelabel", WHITELABEL_ENV).canCreateWorkspaces).toBe(false);
+	it("denies the modes whose organizations come from somewhere else", () => {
+		expect(featuresFor("local").canCreateOrganizations).toBe(false);
+		expect(featuresFor("demo").canCreateOrganizations).toBe(false);
+		expect(featuresFor("whitelabel", WHITELABEL_ENV).canCreateOrganizations).toBe(false);
 	});
 });

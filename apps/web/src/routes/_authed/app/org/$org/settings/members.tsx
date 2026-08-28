@@ -22,10 +22,10 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/members")({
 	loader: ({ params }): Promise<TeamData> => listTeamFn({ data: { org: params.org } }),
 	head: ({ match, loaderData }) => {
 		const appName = getAppName(match);
-		const workspaceName = (loaderData as TeamData | undefined)?.organization?.name;
+		const organizationName = (loaderData as TeamData | undefined)?.organization?.name;
 		return {
 			meta: [
-				{ title: buildTitle("Team", { appName, subject: workspaceName }) },
+				{ title: buildTitle("Team", { appName, subject: organizationName }) },
 				{ name: "description", content: "Invite teammates and manage team members." },
 			],
 		};

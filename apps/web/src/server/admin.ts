@@ -38,7 +38,7 @@ async function requireAdmin() {
 }
 
 /**
- * Workspace slug by org id, so admin's brand links land on the canonical
+ * Organization slug by org id, so admin's brand links land on the canonical
  * `/app/org/$org/brand/$brand` instead of bouncing through a redirect.
  */
 async function organizationSlugs(): Promise<Map<string, string>> {
@@ -602,7 +602,7 @@ function targetColumnsFor(plans: (PromptRunPlan | undefined)[]): { key: string; 
  * Get full workflow data: queue stats, recent jobs, brand schedule summaries.
  */
 interface WorkflowContext {
-	/** Workspace slug by org id, so brand links land on the canonical path. */
+	/** Organization slug by org id, so brand links land on the canonical path. */
 	orgSlugs: Map<string, string>;
 	runPlans: Map<string, PromptRunPlan>;
 	lastRunsByPrompt: Map<string, Map<string, Date>>;

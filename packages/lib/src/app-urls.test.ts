@@ -6,9 +6,9 @@ import {
 	canonicalBrandHref,
 	canonicalOrgHref,
 	orgParams,
+	orgPath,
 	orgSegment,
-	workspacePath,
-	workspaceSettingsPath,
+	orgSettingsPath,
 } from "./app-urls";
 
 const ACME = { id: "org_123", slug: "acme" };
@@ -35,19 +35,19 @@ describe("URL segments", () => {
 	});
 
 	it("encodes segments in string paths", () => {
-		expect(workspacePath(ACME)).toBe("/app/org/acme");
+		expect(orgPath(ACME)).toBe("/app/org/acme");
 		expect(brandPath(ACME, NIKE)).toBe("/app/org/acme/brand/nike-running");
 		expect(brandPath({ slug: "a b" }, { id: "c/d", slug: null })).toBe("/app/org/a%20b/brand/c%2Fd");
 	});
 
-	it("names the workspace's own pages", () => {
-		expect(workspaceSettingsPath(ACME)).toBe("/app/org/acme/settings");
-		expect(workspaceSettingsPath(ACME, "billing")).toBe("/app/org/acme/settings/billing");
+	it("names the organization's own pages", () => {
+		expect(orgSettingsPath(ACME)).toBe("/app/org/acme/settings");
+		expect(orgSettingsPath(ACME, "billing")).toBe("/app/org/acme/settings/billing");
 	});
 });
 
 describe("canonical hrefs", () => {
-	it("swaps the workspace segment and leaves the rest of the path alone", () => {
+	it("swaps the organization segment and leaves the rest of the path alone", () => {
 		expect(canonicalOrgHref(location("/app/org/org_123/brand/nike/citations"), "acme")).toBe(
 			"/app/org/acme/brand/nike/citations",
 		);

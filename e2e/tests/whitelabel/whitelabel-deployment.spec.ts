@@ -13,7 +13,7 @@
  * e2e/session.ts).
  */
 import { expect, test } from "@playwright/test";
-import { TEST_BRAND_ID, WHITELABEL, brandUrl, workspaceUrl } from "../../fixtures";
+import { TEST_BRAND_ID, WHITELABEL, brandUrl, organizationUrl } from "../../fixtures";
 
 const isIdpRequest = (url: URL) => url.host === WHITELABEL.auth0Domain;
 
@@ -108,10 +108,10 @@ test.describe("Whitelabel features", () => {
     // The directory is where creation would be offered if it were allowed.
     await page.goto("/app");
     await expect(page.getByRole("link", { name: /new brand/i })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: /new workspace/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /new organization/i })).toHaveCount(0);
 
-    await page.goto(`${workspaceUrl()}/new`);
-    await page.waitForURL(new RegExp(`${workspaceUrl()}/settings$`), { timeout: 30_000 });
+    await page.goto(`${organizationUrl()}/new`);
+    await page.waitForURL(new RegExp(`${organizationUrl()}/settings$`), { timeout: 30_000 });
   });
 
   test("prompt charts offer the optimize hand-off to the parent app", async ({ page, context }) => {
@@ -150,18 +150,18 @@ test.describe("Whitelabel features", () => {
 
   // Memberships are Auth0's, so they are shown and not edited.
   test("the team is listed, and nothing about it can be changed", async ({ page }) => {
-    await page.goto(`${workspaceUrl()}/settings/members`);
+    await page.goto(`${organizationUrl()}/settings/members`);
     await expect(page.getByRole("heading", { name: "Team" })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("button", { name: "Invite" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Remove" })).toHaveCount(0);
   });
 
   // Auth0 owns the record, so this deployment shows it rather than edits it.
-  test("the workspace's name and slug are read-only", async ({ page }) => {
-    await page.goto(`${workspaceUrl()}/settings`);
+  test("the organization's name and slug are read-only", async ({ page }) => {
+    await page.goto(`${organizationUrl()}/settings`);
 
-    await expect(page.getByLabel("Workspace Name", { exact: true })).toBeDisabled({ timeout: 30_000 });
-    await expect(page.getByLabel("Workspace Slug", { exact: true })).toBeDisabled();
+    await expect(page.getByLabel("Organization Name", { exact: true })).toBeDisabled({ timeout: 30_000 });
+    await expect(page.getByLabel("Organization Slug", { exact: true })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
   });
 });

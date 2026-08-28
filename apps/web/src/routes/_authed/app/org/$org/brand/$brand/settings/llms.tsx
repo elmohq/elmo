@@ -318,7 +318,7 @@ function PremiumApiPool({ premium }: { premium: PremiumPool }) {
 
 				<p className="text-sm text-muted-foreground">
 					{remaining > 0
-						? `${remaining} of ${premium.total} pairings still available, shared across every brand in this workspace. A prompt spends one for each model you track it on.`
+						? `${remaining} of ${premium.total} pairings still available, shared across every brand in this organization. A prompt spends one for each model you track it on.`
 						: `All ${premium.total} pairings are in use. Free one up or buy more to add another.`}
 				</p>
 

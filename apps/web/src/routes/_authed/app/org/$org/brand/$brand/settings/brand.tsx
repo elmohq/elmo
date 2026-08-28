@@ -18,7 +18,7 @@ import { SlugField } from "@/components/slug-field";
 import { useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
-import { useInvalidateWorkspaces } from "@/hooks/use-workspaces";
+import { useInvalidateOrganizations } from "@/hooks/use-organizations";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { updateBrandFn } from "@/server/brands";
@@ -42,7 +42,7 @@ function BrandSettingsPage() {
 	const { brand, isLoading, revalidate } = useBrand();
 	const queryClient = useQueryClient();
 	const router = useRouter();
-	const invalidateWorkspaces = useInvalidateWorkspaces();
+	const invalidateOrganizations = useInvalidateOrganizations();
 	const { org } = Route.useParams();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState("");
@@ -121,7 +121,7 @@ function BrandSettingsPage() {
 			await revalidate();
 			// The rail's menu lists this brand by name, and if the slug moved so did
 			// the address this page is at.
-			await invalidateWorkspaces();
+			await invalidateOrganizations();
 			if (nextSlug !== (brand.slug ?? brand.id)) {
 				await router.navigate({
 					to: "/app/org/$org/brand/$brand/settings/brand",

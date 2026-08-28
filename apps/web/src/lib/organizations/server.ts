@@ -1,5 +1,5 @@
 /**
- * Kept out of `@/server/workspaces`, which the client imports for its server
+ * Kept out of `@/server/organizations`, which the client imports for its server
  * functions: anything exported there outright drags the database into the
  * client graph, while handler bodies are stripped.
  */
@@ -9,9 +9,9 @@ import { checkBrandCreate } from "@workspace/lib/entitlements";
 import { asc, eq } from "drizzle-orm";
 import type { UserOrganization } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
-import type { WorkspaceBrand, WorkspaceSummary } from "@/lib/workspaces/types";
+import type { OrganizationBrand, OrganizationSummary } from "@/lib/organizations/types";
 
-type BrandCreation = Pick<WorkspaceSummary, "canCreateBrand" | "brandLimit">;
+type BrandCreation = Pick<OrganizationSummary, "canCreateBrand" | "brandLimit">;
 
 /** Deployments that don't create brands from the UI at all, with no limit to explain. */
 const NOT_OFFERED: BrandCreation = { canCreateBrand: false, brandLimit: null };
@@ -35,8 +35,8 @@ export async function resolveBrandCreation(orgIds: string[]): Promise<Map<string
 	);
 }
 
-/** The brands a workspace owns, in the order every list of them uses. */
-export async function listWorkspaceBrands(organizationId: string): Promise<WorkspaceBrand[]> {
+/** The brands an organization owns, in the order every list of them uses. */
+export async function listOrganizationBrands(organizationId: string): Promise<OrganizationBrand[]> {
 	return db
 		.select({
 			id: brands.id,
@@ -55,16 +55,16 @@ export async function listWorkspaceBrands(organizationId: string): Promise<Works
  * settings page may offer, and shipping the role would be a permission the
  * client could be tempted to read.
  */
-export async function withBrands(workspace: UserOrganization): Promise<WorkspaceSummary> {
+export async function withBrands(organization: UserOrganization): Promise<OrganizationSummary> {
 	const [brandList, creation] = await Promise.all([
-		listWorkspaceBrands(workspace.id),
-		resolveBrandCreation([workspace.id]),
+		listOrganizationBrands(organization.id),
+		resolveBrandCreation([organization.id]),
 	]);
 	return {
-		id: workspace.id,
-		slug: workspace.slug,
-		name: workspace.name,
+		id: organization.id,
+		slug: organization.slug,
+		name: organization.name,
 		brands: brandList,
-		...(creation.get(workspace.id) ?? NOT_OFFERED),
+		...(creation.get(organization.id) ?? NOT_OFFERED),
 	};
 }

@@ -38,26 +38,26 @@ import { Logo } from "@/components/logo";
 import { NavAppInfo } from "@/components/nav-app-info";
 import { type NavGroup, type NavItem, NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
-import type { WorkspaceSummary } from "@/lib/workspaces/types";
+import type { OrganizationSummary } from "@/lib/organizations/types";
 
 /**
  * How much of the app the shell around this page can reach:
- *  - "brand":     a brand's own pages, its workspace's settings, plus admin for
+ *  - "brand":     a brand's own pages, its organization's settings, plus admin for
  *                 those who have it
- *  - "workspace": the workspace's own pages (there is no brand in scope)
+ *  - "organization": the organization's own pages (there is no brand in scope)
  *  - "admin":     the admin section only
  *  - "account":   nothing — the page is a gate the user has to clear first, so
  *                 the only things worth offering are who they are and how to leave
  */
-export type SidebarScope = "brand" | "workspace" | "admin" | "account";
+export type SidebarScope = "brand" | "organization" | "admin" | "account";
 
 /**
  * A union rather than nullable props, so nothing below carries a fallback for a
- * workspace or brand the layout above has already resolved.
+ * organization or brand the layout above has already resolved.
  */
 type ScopeProps =
-	| { scope: "brand"; workspace: WorkspaceSummary; brand: BrandWithPrompts }
-	| { scope: "workspace"; workspace: WorkspaceSummary }
+	| { scope: "brand"; organization: OrganizationSummary; brand: BrandWithPrompts }
+	| { scope: "organization"; organization: OrganizationSummary }
 	| { scope: "admin" | "account" };
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
@@ -66,14 +66,14 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
 } & ScopeProps;
 
 /**
- * The label doesn't name the workspace — the breadcrumb and the account menu
+ * The label doesn't name the organization — the breadcrumb and the account menu
  * both already do. Team is listed everywhere; only inviting and removing are a
  * cloud feature, which the page itself reflects.
  */
-function workspaceGroup(workspace: WorkspaceSummary, features?: ClientConfig["features"]): NavGroup {
-	const params = orgParams(workspace);
+function organizationGroup(organization: OrganizationSummary, features?: ClientConfig["features"]): NavGroup {
+	const params = orgParams(organization);
 	const items: NavItem[] = [
-		{ title: "Workspace", link: { to: "/app/org/$org/settings", params }, icon: IconBuildingSkyscraper },
+		{ title: "Organization", link: { to: "/app/org/$org/settings", params }, icon: IconBuildingSkyscraper },
 		{ title: "Brands", link: { to: "/app/org/$org/settings/brands", params }, icon: IconBuildings },
 		{ title: "Team", link: { to: "/app/org/$org/settings/members", params }, icon: IconUsers },
 	];
@@ -82,11 +82,11 @@ function workspaceGroup(workspace: WorkspaceSummary, features?: ClientConfig["fe
 		items.push({ title: "Billing", link: { to: "/app/org/$org/settings/billing", params }, icon: IconCreditCard });
 	}
 
-	return { label: "Workspace Settings", items };
+	return { label: "Organization Settings", items };
 }
 
-function brandGroups(workspace: WorkspaceSummary, brand: BrandWithPrompts): NavGroup[] {
-	const params = brandParams(workspace, brand);
+function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts): NavGroup[] {
+	const params = brandParams(organization, brand);
 	const dashboard: NavItem[] = [
 		{ title: "Overview", link: { to: "/app/org/$org/brand/$brand", params }, icon: IconDashboard },
 	];
@@ -153,16 +153,16 @@ export function AppSidebar(props: AppSidebarProps) {
 	// Reports are disabled entirely in cloud; hide the nav entry there.
 	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
 
-	// Stands in for an `inWorkspace` flag, and carries the narrowing with it.
-	const workspace = props.scope === "brand" || props.scope === "workspace" ? props.workspace : null;
+	// Stands in for an `inOrganization` flag, and carries the narrowing with it.
+	const organization = props.scope === "brand" || props.scope === "organization" ? props.organization : null;
 
 	// A gate page offers no destinations: every link would either 404 or bounce
 	// the user straight back to the gate.
 	const showAdminSection = scope !== "account" && (isAdmin || (hasReportAccess && reportsEnabled));
 
 	const groups: NavGroup[] = [
-		...(props.scope === "brand" ? brandGroups(props.workspace, props.brand) : []),
-		...(workspace ? [workspaceGroup(workspace, context.clientConfig?.features)] : []),
+		...(props.scope === "brand" ? brandGroups(props.organization, props.brand) : []),
+		...(organization ? [organizationGroup(organization, context.clientConfig?.features)] : []),
 		...(showAdminSection ? [adminGroup(isAdmin, reportsEnabled)] : []),
 	];
 	const brandmark = (

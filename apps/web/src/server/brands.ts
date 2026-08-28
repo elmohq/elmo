@@ -53,7 +53,7 @@ import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 const BRAND_ORG_ERRORS = {
 	"no-organization": "No organization for the current user",
 	forbidden: "Forbidden: No access to this organization",
-	ambiguous: "Choose a workspace for this brand",
+	ambiguous: "Choose an organization for this brand",
 } as const;
 
 /**
@@ -347,7 +347,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 			throw new Error("Brand name must be a non-empty string");
 		}
 
-		// Which workspace owns the brand is only ambiguous when the caller belongs
+		// Which organization owns the brand is only ambiguous when the caller belongs
 		// to more than one — a cloud user who accepted a team invite, or a local
 		// install from when creating a brand minted an org for it. /app/new asks
 		// in that case; picking for them would be a coin flip that decides who
@@ -366,7 +366,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 		const baseSlug = slugify(trimmedName);
 		const brandId = await findUniqueBrandId(baseSlug);
 		// The id is globally unique and may have picked up a suffix on the way;
-		// the slug only has to clear this workspace, so it usually keeps the plain
+		// the slug only has to clear this organization, so it usually keeps the plain
 		// name even when the id could not.
 		const slug = await findUniqueBrandSlug(orgId, baseSlug);
 		const defaultDomains = getDefaultBrandDomains();
@@ -395,7 +395,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 			brandId: z.string(),
 			name: z.string().optional(),
 			website: z.string().optional(),
-			/** Unique within the workspace: the URL has already named that. */
+			/** Unique within the organization: the URL has already named that. */
 			slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH).optional(),
 			additionalDomains: z.array(z.string()).optional(),
 			aliases: z.array(z.string()).optional(),

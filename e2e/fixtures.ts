@@ -25,28 +25,28 @@ export const TEST_USER = {
 } as const;
 
 export const TEST_BRAND_ID = "default";
-/** The seeded org's slug — the workspace segment of every dashboard URL. */
+/** The seeded org's slug — the organization segment of every dashboard URL. */
 export const TEST_ORG_SLUG = "default";
 
 /**
  * Dashboard URLs, built the way the app builds them.
  *
  * Both identifiers are static-segment-scoped (`/org/…/brand/…`), so nothing a
- * workspace or brand is named can collide with a route. The seeder gives brands
+ * organization or brand is named can collide with a route. The seeder gives brands
  * no slug, so the brand segment here is the id — which is the fallback every
  * pre-slug row relies on.
  */
-export function workspaceUrl(org: string = TEST_ORG_SLUG): string {
+export function organizationUrl(org: string = TEST_ORG_SLUG): string {
   return `/app/org/${org}`;
 }
 
 export function brandUrl(brand: string = TEST_BRAND_ID, org: string = TEST_ORG_SLUG): string {
-  return `${workspaceUrl(org)}/brand/${brand}`;
+  return `${organizationUrl(org)}/brand/${brand}`;
 }
 export const TEST_BRAND_NAME = "Test Organization";
 
 /**
- * A second brand in the same workspace, seeded *with* a slug.
+ * A second brand in the same organization, seeded *with* a slug.
  *
  * The primary brand deliberately has none — that's the state every row was in
  * before slugs existed, and the fallback that keeps its links working. This one

@@ -56,7 +56,7 @@ export function createFileRoute(_path: string) {
 		// Mirror the real Route shape so stories can render a route's component via
 		// Route.options.component (without the route file having to export it).
 		options: config,
-		useParams: () => ({ org: "mock-workspace", brand: "mock-brand-id" }),
+		useParams: () => ({ org: "mock-organization", brand: "mock-brand-id" }),
 		useSearch,
 		useNavigate,
 		useLoaderData,
@@ -88,7 +88,7 @@ export function createRootRouteWithContext<TContext>() {
 }
 
 export function useParams(_opts?: unknown) {
-	return { org: "mock-workspace", brand: "mock-brand-id" };
+	return { org: "mock-organization", brand: "mock-brand-id" };
 }
 
 export function useNavigate() {
@@ -98,7 +98,7 @@ export function useNavigate() {
 }
 
 export function useLocation() {
-	return { pathname: "/app/org/mock-workspace/brand/mock-brand-id", search: "", hash: "" };
+	return { pathname: "/app/org/mock-organization/brand/mock-brand-id", search: "", hash: "" };
 }
 
 // Stories never navigate, so the blocker is always idle.
@@ -128,7 +128,7 @@ export function useSearch(opts?: { select?: (search: Record<string, unknown>) =>
 }
 
 export function useMatch(_opts?: unknown) {
-	return { params: { org: "mock-workspace", brand: "mock-brand-id" } };
+	return { params: { org: "mock-organization", brand: "mock-brand-id" } };
 }
 
 /**
@@ -136,10 +136,10 @@ export function useMatch(_opts?: unknown) {
  * that care about a different page set their own.
  */
 let _matches: Array<{ routeId: string; pathname: string; staticData: { crumb?: string } }> = [
-	{ routeId: "/_authed/app/org/$org", pathname: "/app/org/mock-workspace", staticData: {} },
+	{ routeId: "/_authed/app/org/$org", pathname: "/app/org/mock-organization", staticData: {} },
 	{
 		routeId: "/_authed/app/org/$org/brand/$brand",
-		pathname: "/app/org/mock-workspace/brand/mock-brand-id",
+		pathname: "/app/org/mock-organization/brand/mock-brand-id",
 		staticData: {},
 	},
 ];

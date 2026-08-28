@@ -152,7 +152,7 @@ export const CheckoutError: Story = {
 
 /**
  * Only an org admin can put a card on file. A member who was invited into an
- * unsubscribed workspace is told who to ask instead of being given dead buttons.
+ * unsubscribed organization is told who to ask instead of being given dead buttons.
  */
 export const NonAdminMember: Story = {
 	render: () => {
@@ -161,7 +161,7 @@ export const NonAdminMember: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText(/only a workspace admin can choose a plan/i)).toBeVisible();
+		await expect(await canvas.findByText(/only an organization admin can choose a plan/i)).toBeVisible();
 		await expect(await canvas.findByRole("button", { name: "Subscribe to Pro" })).toBeDisabled();
 	},
 };
@@ -177,7 +177,7 @@ export const ActivatingAfterCheckout: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText(/activating your workspace/i)).toBeVisible();
+		await expect(await canvas.findByText(/activating your organization/i)).toBeVisible();
 		await expect(canvas.queryByRole("button", { name: "Subscribe to Pro" })).toBeNull();
 	},
 };

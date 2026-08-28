@@ -2,9 +2,9 @@
  * /app/org/$org/brand/$brand layout — the brand's own pages, and the rail and
  * header around them.
  *
- * The `$brand` segment resolves against the brand list the workspace layout
+ * The `$brand` segment resolves against the brand list the organization layout
  * already holds, so the id every page below speaks in costs no round trip. The
- * loader fetches the brand itself and the paywall verdict for its workspace.
+ * loader fetches the brand itself and the paywall verdict for its organization.
  */
 
 import { createFileRoute, notFound, Outlet, redirect } from "@tanstack/react-router";
@@ -21,7 +21,7 @@ import { AppShell, PageContent } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
-import { useWorkspaceRoute } from "@/hooks/use-workspaces";
+import { useOrganizationRoute } from "@/hooks/use-organizations";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { getAppName } from "@/lib/route-head";
 
@@ -35,7 +35,7 @@ const getBrandData = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string(), brandId: z.string() }))
 	.handler(async ({ data }): Promise<BrandData> => {
 		const session = await requireAuthSession();
-		// The layout resolved this brand inside a workspace the caller belongs to,
+		// The layout resolved this brand inside an organization the caller belongs to,
 		// but a server function is reachable on its own — so membership is checked
 		// again here rather than trusted from the caller. Independent of the brand
 		// read, so the two go together.
@@ -44,12 +44,12 @@ const getBrandData = createServerFn({ method: "GET" })
 			db.query.brands.findFirst({ where: eq(brands.id, data.brandId) }),
 		]);
 
-		// The layout already found this brand in the workspace, so reaching here
+		// The layout already found this brand in the organization, so reaching here
 		// means the caller came straight to the function or the brand went away
 		// underneath us — exceptional either way, and reported the way every other
 		// server function here reports one.
 		if (!brand || brand.organizationId !== data.organizationId) {
-			throw new Error("Not found: no such brand in this workspace");
+			throw new Error("Not found: no such brand in this organization");
 		}
 
 		const [brandPrompts, brandCompetitors, { entitlements }] = await Promise.all([
@@ -109,13 +109,13 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 	// once so every child route inherits them in its search schema. The loader
 	// has no `loaderDeps`, so filter-only navigations never re-run it.
 	validateSearch: validateBrandFilterSearch,
-	// The segment can be either the brand's slug or its id. The workspace layout
-	// above already listed every brand this workspace owns, so resolving it is a
+	// The segment can be either the brand's slug or its id. The organization layout
+	// above already listed every brand this organization owns, so resolving it is a
 	// lookup in memory rather than a round trip; putting the id in context is what
 	// lets everything below — loaders, hooks, query keys — go on speaking in ids
 	// without caring which form the URL took.
 	beforeLoad: ({ params, location, context }): { brandId: string } => {
-		const brand = context.workspace.brands.find((b) => b.slug === params.brand || b.id === params.brand);
+		const brand = context.organization.brands.find((b) => b.slug === params.brand || b.id === params.brand);
 		if (!brand) throw notFound();
 
 		const canonical = brandSegment(brand);
@@ -127,10 +127,10 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 	},
 	loader: async ({ context }): Promise<BrandData> => {
 		const result = await getBrandData({
-			data: { organizationId: context.workspace.id, brandId: context.brandId },
+			data: { organizationId: context.organization.id, brandId: context.brandId },
 		});
 
-		// Scoped to this brand's workspace, and says which one — the /app gate only
+		// Scoped to this brand's organization, and says which one — the /app gate only
 		// knows whether the user has *any* entitled org, which is a different
 		// question and would send a mixed-membership user to the wrong checkout.
 		if (result.unpaidOrganizationId) {
@@ -160,7 +160,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 
 function BrandLayout() {
 	const { brand } = Route.useLoaderData();
-	const { workspace, isAdmin, hasReportAccess } = useWorkspaceRoute();
+	const { organization, isAdmin, hasReportAccess } = useOrganizationRoute();
 
 	return (
 		<AppShell
@@ -170,10 +170,10 @@ function BrandLayout() {
 					isAdmin={isAdmin}
 					hasReportAccess={hasReportAccess}
 					brand={brand}
-					workspace={workspace}
+					organization={organization}
 				/>
 			}
-			header={<SiteHeader workspaceName={workspace.name} brandName={brand.name} />}
+			header={<SiteHeader organizationName={organization.name} brandName={brand.name} />}
 		>
 			<PageContent>
 				<Outlet />

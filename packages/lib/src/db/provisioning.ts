@@ -120,7 +120,7 @@ export async function findUniqueBrandId(baseSlug: string): Promise<string> {
  *
  * Both namespaces are checked, because `/app/org/$org` resolves a segment as a
  * slug *or* an id: a slug equal to another org's id would make that segment
- * name two workspaces. Ids here are not uniformly shaped — local mode uses
+ * name two organizations. Ids here are not uniformly shaped — local mode uses
  * `default`, cloud signup a uuid, the admin API the brand's own id — so no
  * shape test could stand in for the lookup.
  */
@@ -151,10 +151,10 @@ async function findUniqueOrgSlug(baseSlug: string, conn: DbConnection = db): Pro
 }
 
 /**
- * Whether a brand slug is free within its workspace.
+ * Whether a brand slug is free within its organization.
  *
  * Scoped to the org rather than global — `/app/org/$org/brand/$brand` has
- * already picked the workspace by the time the brand segment is read, so two
+ * already picked the organization by the time the brand segment is read, so two
  * customers can each own a `nike`. Ids are checked alongside slugs for the same
  * reason they are for orgs: the segment resolves as either.
  */
@@ -173,7 +173,7 @@ export async function isBrandSlugAvailable(
 }
 
 /**
- * A brand slug free within the workspace, appending -2, -3, … on collision. New
+ * A brand slug free within the organization, appending -2, -3, … on collision. New
  * brands get one at creation, so a brand arrives with a readable URL instead of
  * waiting for someone to open settings and name one.
  */
@@ -211,10 +211,10 @@ export async function ensureOrganization(input: { id: string; name: string }, co
 	if (existing) return;
 
 	// The caller supplies this id, and `/app/org/$org` resolves a segment as a
-	// slug or an id — so an id another workspace answers to is refused here
+	// slug or an id — so an id another organization answers to is refused here
 	// rather than silently making one URL name two.
 	if (!(await isOrgSlugAvailable(input.id, {}, conn))) {
-		throw new Error(`Cannot create organization "${input.id}": another workspace already answers to that name`);
+		throw new Error(`Cannot create organization "${input.id}": another organization already answers to that name`);
 	}
 
 	const baseSlug = slugify(input.name);

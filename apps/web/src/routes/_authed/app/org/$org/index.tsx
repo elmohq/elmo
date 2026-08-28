@@ -1,15 +1,15 @@
 /**
- * A workspace isn't a page you look at, so this leads to what you can change
+ * An organization isn't a page you look at, so this leads to what you can change
  * about it. `/app` is where you pick one.
  *
- * The exception is a workspace Auth0 filled but nobody has set up, which gets
- * the wizard — with the brand taking the workspace's own id, as it always has.
+ * The exception is an organization Auth0 filled but nobody has set up, which gets
+ * the wizard — with the brand taking the organization's own id, as it always has.
  */
 
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { orgSegment } from "@workspace/lib/app-urls";
 import BrandOnboarding from "@/components/brand-onboarding";
-import type { WorkspaceSummary } from "@/lib/workspaces/types";
+import type { OrganizationSummary } from "@/lib/organizations/types";
 import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
 
 /**
@@ -17,36 +17,36 @@ import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/se
  * says not right now": the second is waiting on billing, not on setup, and the
  * wizard would be a dead end for it.
  */
-function needsOnboarding(workspace: WorkspaceSummary): boolean {
-	return workspace.brands.length === 0 && !workspace.canCreateBrand && !workspace.brandLimit;
+function needsOnboarding(organization: OrganizationSummary): boolean {
+	return organization.brands.length === 0 && !organization.canCreateBrand && !organization.brandLimit;
 }
 
 export const Route = createFileRoute("/_authed/app/org/$org/")({
 	loader: async ({
 		context,
-	}): Promise<{ workspace: WorkspaceSummary; onboardingPlatformState: OnboardingPlatformState }> => {
-		if (!needsOnboarding(context.workspace)) {
-			throw redirect({ to: "/app/org/$org/settings", params: { org: orgSegment(context.workspace) } });
+	}): Promise<{ organization: OrganizationSummary; onboardingPlatformState: OnboardingPlatformState }> => {
+		if (!needsOnboarding(context.organization)) {
+			throw redirect({ to: "/app/org/$org/settings", params: { org: orgSegment(context.organization) } });
 		}
 
 		return {
-			workspace: context.workspace,
+			organization: context.organization,
 			onboardingPlatformState: await getOnboardingPlatformStateFn({
-				data: { organizationId: context.workspace.id },
+				data: { organizationId: context.organization.id },
 			}),
 		};
 	},
-	component: WorkspaceOnboardingPage,
+	component: OrganizationOnboardingPage,
 });
 
-function WorkspaceOnboardingPage() {
-	const { workspace, onboardingPlatformState } = Route.useLoaderData();
+function OrganizationOnboardingPage() {
+	const { organization, onboardingPlatformState } = Route.useLoaderData();
 
 	return (
 		<BrandOnboarding
-			workspaceSlug={orgSegment(workspace)}
-			brandId={workspace.id}
-			brandName={workspace.name}
+			organizationSlug={orgSegment(organization)}
+			brandId={organization.id}
+			brandName={organization.name}
 			platformState={onboardingPlatformState}
 		/>
 	);

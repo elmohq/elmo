@@ -18,7 +18,7 @@ import { requireAuthSession, requireBrandOrganization } from "@/lib/auth/helpers
 export type PremiumPool = {
 	/** Whether the plan grants any premium slots at all. */
 	available: boolean;
-	/** Prompt/model pairs across the whole workspace currently spending the pool. */
+	/** Prompt/model pairs across the whole organization currently spending the pool. */
 	assigned: number;
 	/** Plan included (or custom override) plus any purchased add-on. */
 	total: number;

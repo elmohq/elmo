@@ -121,7 +121,7 @@ export function decidePromptAdd(
 		const remaining = Math.max(0, entitlements.maxPrompts - currentEnabledPrompts);
 		return deny(
 			"prompt-limit",
-			`Your plan tracks up to ${entitlements.maxPrompts} prompts across this workspace (${remaining} remaining). Disable other prompts or upgrade.`,
+			`Your plan tracks up to ${entitlements.maxPrompts} prompts across this organization (${remaining} remaining). Disable other prompts or upgrade.`,
 		);
 	}
 	return ALLOWED;

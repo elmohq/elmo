@@ -71,7 +71,7 @@ async function seed() {
     );
     console.log("  Created brand:", TEST_BRAND_ID);
 
-    // A second brand in the same workspace, with a slug. The one above has none
+    // A second brand in the same organization, with a slug. The one above has none
     // on purpose — between them they cover both halves of the URL rule: a brand
     // that falls back to its id, and one whose id canonicalizes to its slug.
     await client.query(

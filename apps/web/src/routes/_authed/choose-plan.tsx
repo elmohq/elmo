@@ -29,8 +29,8 @@ import { getPaywallStateFn, type PaywallRequired, type PaywallState } from "@/se
 const searchSchema = z.object({
 	status: z.enum(["success"]).optional(),
 	/**
-	 * Which workspace is being subscribed. Carried by whichever gate redirected
-	 * here so checkout bills the workspace the user was actually blocked on,
+	 * Which organization is being subscribed. Carried by whichever gate redirected
+	 * here so checkout bills the organization the user was actually blocked on,
 	 * not whichever of their memberships happens to be oldest.
 	 */
 	org: z.string().optional(),
@@ -66,7 +66,7 @@ function ChoosePlanPage() {
 	// checkout, which the first branch handles.
 	const body =
 		status === "success" ? (
-			<ActivatingWorkspace organizationId={org} />
+			<ActivatingOrganization organizationId={org} />
 		) : paywall.needsPlan ? (
 			<PlanPicker paywall={paywall} />
 		) : null;
@@ -85,14 +85,14 @@ function ChoosePlanPage() {
 }
 
 /** Post-checkout: wait for the Stripe webhook to record the subscription. */
-function ActivatingWorkspace({ organizationId }: { organizationId?: string }) {
+function ActivatingOrganization({ organizationId }: { organizationId?: string }) {
 	const navigate = useNavigate();
 
 	useEffect(() => {
 		let cancelled = false;
 		const poll = async () => {
 			for (let i = 0; i < 30 && !cancelled; i++) {
-				// Poll the org that was just paid for: another unsubscribed workspace
+				// Poll the org that was just paid for: another unsubscribed organization
 				// would otherwise keep the user-level check saying "still needs a plan".
 				const state = await getPaywallStateFn({ data: { organizationId } });
 				if (!state.needsPlan) {
@@ -111,7 +111,7 @@ function ActivatingWorkspace({ organizationId }: { organizationId?: string }) {
 	return (
 		<div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
 			<Spinner className="size-8 text-muted-foreground" />
-			<h1 className="text-2xl font-bold">Activating your workspace…</h1>
+			<h1 className="text-2xl font-bold">Activating your organization…</h1>
 			<p className="text-muted-foreground">Payment received — finishing setup. This takes a few seconds.</p>
 		</div>
 	);
@@ -159,7 +159,7 @@ function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
 			{!isAdmin && (
 				<Alert>
 					<AlertDescription>
-						Only a workspace admin can choose a plan. Ask the person who created this workspace.
+						Only an organization admin can choose a plan. Ask the person who created this organization.
 					</AlertDescription>
 				</Alert>
 			)}

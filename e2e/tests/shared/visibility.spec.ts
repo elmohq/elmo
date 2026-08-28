@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 const BRAND_ID = "default";
-// The workspace now leads every dashboard URL; the seeded org's slug is its id.
+// The organization now leads every dashboard URL; the seeded org's slug is its id.
 const ORG_SLUG = "default";
 const BRAND_URL = `/app/org/${ORG_SLUG}/brand/${BRAND_ID}`;
 

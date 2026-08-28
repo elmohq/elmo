@@ -39,7 +39,7 @@ export const brands = pgTable(
 		 * moment one is chosen.
 		 *
 		 * Unique per organization, not globally: brand lookups are already scoped
-		 * to the workspace in the URL, so two customers can each own a `nike`.
+		 * to the organization in the URL, so two customers can each own a `nike`.
 		 */
 		slug: text("slug"),
 		website: text("website").notNull(),
@@ -65,7 +65,7 @@ export const brands = pgTable(
 	(table) => ({
 		organizationIdIdx: index("brands_organization_id_idx").on(table.organizationId),
 		// Postgres treats nulls as distinct in a unique index, which is what lets
-		// every un-slugged brand in a workspace coexist. Don't "fix" this with
+		// every un-slugged brand in an organization coexist. Don't "fix" this with
 		// NULLS NOT DISTINCT — it would allow only one.
 		organizationSlugIdx: uniqueIndex("brands_organization_id_slug_idx").on(table.organizationId, table.slug),
 	}),

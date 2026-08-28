@@ -34,7 +34,7 @@ export function getBrandName(matches: Array<{ loaderData?: Record<string, unknow
 
 /**
  * Build a page title following the convention:
- *   "PageName | Subject · AppName"  (with a brand or workspace in scope)
+ *   "PageName | Subject · AppName"  (with a brand or organization in scope)
  *   "PageName · AppName"            (without one)
  */
 export function buildTitle(pageName: string, opts: { appName: string; subject?: string }): string {

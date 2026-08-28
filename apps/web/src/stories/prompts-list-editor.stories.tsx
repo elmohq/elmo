@@ -130,7 +130,7 @@ async function openPremium(canvasElement: HTMLElement, says: RegExp) {
 }
 
 /**
- * The premium column, which only appears when the workspace has an allowance.
+ * The premium column, which only appears when the organization has an allowance.
  * The pool is org-wide, so the count includes prompts belonging to the org's
  * other brands — which this editor cannot show but which still spend it.
  */

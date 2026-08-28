@@ -1,6 +1,6 @@
 /**
  * Stories for /app/org/$org/settings/members — inviting teammates and managing
- * who has access to the workspace.
+ * who has access to the organization.
  */
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ComponentType, ReactNode } from "react";

@@ -1,14 +1,14 @@
 import { test, expect } from "@playwright/test";
 
 const BRAND_ID = "default";
-// The workspace now leads every dashboard URL; the seeded org's slug is its id.
+// The organization now leads every dashboard URL; the seeded org's slug is its id.
 const ORG_SLUG = "default";
 const BRAND_URL = `/app/org/${ORG_SLUG}/brand/${BRAND_ID}`;
 
 test.describe("Overview Page", () => {
   test("home page lands on the directory and the default brand is reachable", async ({ page }) => {
     await page.goto("/");
-    // /app lists everything reachable, however few workspaces that is.
+    // /app lists everything reachable, however few organizations that is.
     await page.waitForURL(/\/app$/, { timeout: 30_000 });
     const brandLink = page.locator(`a[href="${BRAND_URL}"]`).first();
     await expect(brandLink).toBeVisible({ timeout: 15_000 });

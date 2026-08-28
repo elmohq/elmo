@@ -2,11 +2,11 @@
  * The one place that decides what goes in a `/app/org/$org/brand/$brand` URL.
  *
  * In `@workspace/lib` rather than beside the router because the app is not the
- * only thing that mints these: dunning email links the workspace's billing page,
+ * only thing that mints these: dunning email links the organization's billing page,
  * and anything else outside the browser that names a page has to agree with what
  * the router resolves. Pure and dependency-free so both sides can import it.
  *
- * A workspace always has a slug (`organization.slug` is not null). A brand may
+ * An organization always has a slug (`organization.slug` is not null). A brand may
  * not: rows that predate slugs have none, and the segment falls back to the id
  * so their links keep working until someone names one.
  */
@@ -20,7 +20,7 @@ export interface SluggableBrand {
 	slug: string | null;
 }
 
-/** What the `$org` segment carries for this workspace. */
+/** What the `$org` segment carries for this organization. */
 export function orgSegment(org: SluggableOrg): string {
 	return org.slug;
 }
@@ -41,20 +41,20 @@ export function brandParams(org: SluggableOrg, brand: SluggableBrand): { org: st
 }
 
 /** Exported so the field that edits a segment shows the address around it. */
-export const WORKSPACE_URL_PREFIX = "/app/org/";
+export const ORG_URL_PREFIX = "/app/org/";
 export const BRAND_URL_PREFIX = "/brand/";
 
-/** The canonical URL for a workspace, for links minted outside the router. */
-export function workspacePath(org: SluggableOrg): string {
-	return `${WORKSPACE_URL_PREFIX}${encodeURIComponent(orgSegment(org))}`;
+/** The canonical URL for an organization, for links minted outside the router. */
+export function orgPath(org: SluggableOrg): string {
+	return `${ORG_URL_PREFIX}${encodeURIComponent(orgSegment(org))}`;
 }
 
 export function brandPath(org: SluggableOrg, brand: SluggableBrand): string {
-	return `${workspacePath(org)}${BRAND_URL_PREFIX}${encodeURIComponent(brandSegment(brand))}`;
+	return `${orgPath(org)}${BRAND_URL_PREFIX}${encodeURIComponent(brandSegment(brand))}`;
 }
 
-export function workspaceSettingsPath(org: SluggableOrg, sub?: "members" | "billing"): string {
-	return sub ? `${workspacePath(org)}/settings/${sub}` : `${workspacePath(org)}/settings`;
+export function orgSettingsPath(org: SluggableOrg, sub?: "members" | "billing"): string {
+	return sub ? `${orgPath(org)}/settings/${sub}` : `${orgPath(org)}/settings`;
 }
 
 /**

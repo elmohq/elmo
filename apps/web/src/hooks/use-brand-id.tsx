@@ -17,13 +17,13 @@ export function useBrandId(): string | undefined {
 }
 
 /**
- * Route params for linking to the current workspace, or null when the page sits
+ * Route params for linking to the current organization, or null when the page sits
  * outside one (the picker itself, admin, the paywall).
  *
  * Null rather than an empty string: a caller that can't build a link needs to
  * render something else, and `/app/org//…` is not that.
  */
-export function useWorkspaceParams(): { org: string } | null {
+export function useOrganizationParams(): { org: string } | null {
 	const org = useParams({ strict: false, select: (params) => params.org });
 	return org ? { org } : null;
 }

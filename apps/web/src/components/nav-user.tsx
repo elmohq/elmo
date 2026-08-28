@@ -24,14 +24,14 @@ import {
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { useBranding, useDeploymentFeatures } from "@/hooks/use-deployment-features";
-import { useWorkspaces } from "@/hooks/use-workspaces";
+import { useOrganizations } from "@/hooks/use-organizations";
 import { resetCrispSession } from "@/lib/crisp";
+import { organizationTitle } from "@/lib/organizations/naming";
+import type { OrganizationSummary } from "@/lib/organizations/types";
 import { resetPostHog } from "@/lib/posthog";
-import { workspaceTitle } from "@/lib/workspaces/naming";
-import type { WorkspaceSummary } from "@/lib/workspaces/types";
 
 /**
- * The tick marks the brand and not the workspace: the workspace is already the
+ * The tick marks the brand and not the organization: the organization is already the
  * heading the brand sits under.
  */
 export function NavUser() {
@@ -39,7 +39,7 @@ export function NavUser() {
 	const { isMobile, setOpenMobile } = useSidebar();
 	const branding = useBranding();
 	const features = useDeploymentFeatures();
-	const { workspaces, isLoading, isError, isFetching, refetch } = useWorkspaces();
+	const { organizations, isLoading, isError, isFetching, refetch } = useOrganizations();
 	const brandParam = useParams({ strict: false, select: (params) => params.brand });
 
 	// NavUser only renders inside _authed routes, which redirect to /auth/login
@@ -60,7 +60,7 @@ export function NavUser() {
 						render={
 							<SidebarMenuButton
 								size="lg"
-								aria-label="Account and workspaces"
+								aria-label="Account and organizations"
 								className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground cursor-pointer"
 							/>
 						}
@@ -102,13 +102,18 @@ export function NavUser() {
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
 
-						{workspaces.map((workspace) => (
-							<WorkspaceSection key={workspace.id} workspace={workspace} brandParam={brandParam} onNavigate={close} />
+						{organizations.map((organization) => (
+							<OrganizationSection
+								key={organization.id}
+								organization={organization}
+								brandParam={brandParam}
+								onNavigate={close}
+							/>
 						))}
 
 						{isLoading && (
 							<DropdownMenuItem disabled>
-								<span className="text-muted-foreground">Loading workspaces…</span>
+								<span className="text-muted-foreground">Loading organizations…</span>
 							</DropdownMenuItem>
 						)}
 						{isError && (
@@ -122,15 +127,15 @@ export function NavUser() {
 								}}
 							>
 								<IconRefresh className={isFetching ? "animate-spin" : undefined} />
-								{isFetching ? "Retrying…" : "Couldn't load your workspaces — retry"}
+								{isFetching ? "Retrying…" : "Couldn't load your organizations — retry"}
 							</DropdownMenuItem>
 						)}
 
-						{features?.canCreateWorkspaces && (
+						{features?.canCreateOrganizations && (
 							<>
 								<DropdownMenuItem render={<Link to="/app/new" onClick={close} />} className="cursor-pointer">
 									<IconPlus />
-									New workspace
+									New organization
 								</DropdownMenuItem>
 								<DropdownMenuSeparator />
 							</>
@@ -176,19 +181,19 @@ export function NavUser() {
 
 /**
  * The settings control sits on the heading rather than at the foot of the menu,
- * because "settings" with no workspace beside it only answers for whichever one
+ * because "settings" with no organization beside it only answers for whichever one
  * you happen to be in.
  */
-function WorkspaceSection({
-	workspace,
+function OrganizationSection({
+	organization,
 	brandParam,
 	onNavigate,
 }: {
-	workspace: WorkspaceSummary;
+	organization: OrganizationSummary;
 	brandParam: string | undefined;
 	onNavigate: () => void;
 }) {
-	const title = workspaceTitle(workspace.name);
+	const title = organizationTitle(organization.name);
 
 	return (
 		<DropdownMenuGroup>
@@ -196,7 +201,7 @@ function WorkspaceSection({
 				<span className="truncate">{title}</span>
 				<Link
 					to="/app/org/$org/settings"
-					params={orgParams(workspace)}
+					params={orgParams(organization)}
 					onClick={onNavigate}
 					aria-label={`${title} settings`}
 					className="rounded-sm p-1.5 hover:bg-accent hover:text-accent-foreground"
@@ -205,10 +210,12 @@ function WorkspaceSection({
 				</Link>
 			</DropdownMenuLabel>
 
-			{workspace.brands.map((brand) => (
+			{organization.brands.map((brand) => (
 				<DropdownMenuItem
 					key={brand.id}
-					render={<Link to="/app/org/$org/brand/$brand" params={brandParams(workspace, brand)} onClick={onNavigate} />}
+					render={
+						<Link to="/app/org/$org/brand/$brand" params={brandParams(organization, brand)} onClick={onNavigate} />
+					}
 					className="cursor-pointer"
 				>
 					<span className="truncate">{brand.name}</span>
@@ -216,11 +223,11 @@ function WorkspaceSection({
 				</DropdownMenuItem>
 			))}
 
-			{/* A plan's brand allowance is spent per workspace, so the same menu can
+			{/* A plan's brand allowance is spent per organization, so the same menu can
 			    create in one and not another. */}
-			{workspace.canCreateBrand && (
+			{organization.canCreateBrand && (
 				<DropdownMenuItem
-					render={<Link to="/app/org/$org/new" params={orgParams(workspace)} onClick={onNavigate} />}
+					render={<Link to="/app/org/$org/new" params={orgParams(organization)} onClick={onNavigate} />}
 					className="cursor-pointer"
 				>
 					<IconPlus />

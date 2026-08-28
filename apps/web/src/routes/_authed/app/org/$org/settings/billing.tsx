@@ -2,8 +2,8 @@
  * /app/org/$org/settings/billing — plan, usage meters, and the extra-premium-
  * prompts add-on (cloud only).
  *
- * The subscription is the workspace's: every brand inside it draws on the same
- * plan, so this sits beside the workspace's other settings rather than inside
+ * The subscription is the organization's: every brand inside it draws on the same
+ * plan, so this sits beside the organization's other settings rather than inside
  * whichever brand the user happened to be looking at.
  *
  * Card changes, invoices, plan switches, and cancellation go through the
@@ -40,10 +40,10 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/billing")({
 	},
 	head: ({ match, loaderData }) => {
 		const appName = getAppName(match);
-		const workspaceName = (loaderData as BillingState | undefined)?.organization?.name;
+		const organizationName = (loaderData as BillingState | undefined)?.organization?.name;
 		return {
 			meta: [
-				{ title: buildTitle("Billing", { appName, subject: workspaceName }) },
+				{ title: buildTitle("Billing", { appName, subject: organizationName }) },
 				{ name: "description", content: "Manage your plan, usage, and billing." },
 			],
 		};
@@ -150,7 +150,7 @@ function BillingSettingsPage() {
 				description={
 					showPlanGrid
 						? "Switching takes effect immediately; Stripe prorates the difference."
-						: "What your workspace is on, and what it costs."
+						: "What your organization is on, and what it costs."
 				}
 			>
 				<SubscriptionSummary
@@ -222,7 +222,7 @@ function BillingSettingsPage() {
 			)}
 
 			{showMeters(entitlements) && (
-				<Section title="Usage" description="What your workspace is using against its plan.">
+				<Section title="Usage" description="What your organization is using against its plan.">
 					<UsageCard state={state} />
 				</Section>
 			)}
@@ -358,7 +358,7 @@ function SubscriptionSummary({
 					/>
 				)}
 
-				{!isAdmin && <span className="text-muted-foreground">Only workspace admins can change the plan.</span>}
+				{!isAdmin && <span className="text-muted-foreground">Only organization admins can change the plan.</span>}
 			</div>
 		</div>
 	);
@@ -377,7 +377,7 @@ function Section({ title, description, children }: { title: string; description:
 	);
 }
 
-/** Metered plans only: an unlimited or unsubscribed workspace has nothing to measure. */
+/** Metered plans only: an unlimited or unsubscribed organization has nothing to measure. */
 function showMeters(entitlements: Entitlements): boolean {
 	return !entitlements.unlimited && entitlements.planKey !== null;
 }

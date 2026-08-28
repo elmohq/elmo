@@ -21,7 +21,7 @@ import {
   TEST_BRAND_NAME,
   TEST_USER,
   brandUrl,
-  workspaceUrl,
+  organizationUrl,
 } from "../../fixtures";
 import { withDb } from "../../session";
 
@@ -162,14 +162,14 @@ test.describe("Demo features", () => {
   test("nothing can be created", async ({ page }) => {
     await page.goto("/app");
     await expect(page.getByRole("link", { name: /create new brand|new brand/i })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: /new workspace/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /new organization/i })).toHaveCount(0);
 
-    await page.goto(`${workspaceUrl()}/new`);
-    await page.waitForURL(new RegExp(`${workspaceUrl()}/settings$`), { timeout: 30_000 });
+    await page.goto(`${organizationUrl()}/new`);
+    await page.waitForURL(new RegExp(`${organizationUrl()}/settings$`), { timeout: 30_000 });
   });
 
   test("the team is listed, and nothing about it can be changed", async ({ page }) => {
-    await page.goto(`${workspaceUrl()}/settings/members`);
+    await page.goto(`${organizationUrl()}/settings/members`);
     await expect(page.getByRole("heading", { name: "Team" })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("button", { name: "Invite" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Remove" })).toHaveCount(0);

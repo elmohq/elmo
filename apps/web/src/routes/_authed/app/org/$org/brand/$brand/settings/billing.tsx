@@ -1,5 +1,5 @@
 /**
- * Billing belongs to the workspace, not the brand. Kept as a redirect because
+ * Billing belongs to the organization, not the brand. Kept as a redirect because
  * dunning emails and bookmarks still point at the brand-scoped path.
  */
 import { createFileRoute, redirect } from "@tanstack/react-router";

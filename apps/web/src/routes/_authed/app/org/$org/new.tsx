@@ -1,7 +1,7 @@
 /**
- * /app/org/$org/new - Create a new brand in this workspace.
+ * /app/org/$org/new - Create a new brand in this organization.
  *
- * The URL says which workspace the brand joins, so the page never has to ask —
+ * The URL says which organization the brand joins, so the page never has to ask —
  * and the answer, which decides who can see the brand and who is billed for it,
  * is the one the user navigated from. Gated by the canCreateBrands deployment
  * feature (local, cloud) at the loader and again at the write.
@@ -10,7 +10,7 @@
  * this is the flow every cloud brand goes through, so accepting the defaults
  * silently would mean a brand's first cycle runs on platforms nobody chose.
  *
- * A workspace that has spent its plan's brands is told so here, before anything
+ * An organization that has spent its plan's brands is told so here, before anything
  * is filled in — the write guard would otherwise reject the finished form, and
  * a limit is not something to discover at the end of a wizard.
  */
@@ -23,7 +23,7 @@ import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
-import { useInvalidateWorkspaces } from "@/hooks/use-workspaces";
+import { useInvalidateOrganizations } from "@/hooks/use-organizations";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
 import { buildTitle, getAppName } from "@/lib/route-head";
@@ -35,11 +35,11 @@ export const Route = createFileRoute("/_authed/app/org/$org/new")({
 	// A refusal with no reason to show is a deployment that doesn't create brands
 	// at all, which has no page here.
 	loader: ({ context }) => {
-		const { canCreateBrand, brandLimit, name, id } = context.workspace;
+		const { canCreateBrand, brandLimit, name, id } = context.organization;
 		if (!canCreateBrand && !brandLimit) {
-			throw redirect({ to: "/app/org/$org", params: { org: orgSegment(context.workspace) } });
+			throw redirect({ to: "/app/org/$org", params: { org: orgSegment(context.organization) } });
 		}
-		return { organizationId: id, workspaceName: name, blocked: brandLimit };
+		return { organizationId: id, organizationName: name, blocked: brandLimit };
 	},
 	head: ({ match }) => ({
 		meta: [{ title: buildTitle("New brand", { appName: getAppName(match) }) }],
@@ -48,7 +48,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/new")({
 });
 
 function NewBrandPage() {
-	const { organizationId, workspaceName, blocked } = Route.useLoaderData();
+	const { organizationId, organizationName, blocked } = Route.useLoaderData();
 	const { org } = Route.useParams();
 	const [step, setStep] = useState<"details" | "platforms">("details");
 	const [details, setDetails] = useState({ brandName: "", website: "" });
@@ -58,7 +58,7 @@ function NewBrandPage() {
 	const [error, setError] = useState("");
 	const navigate = useNavigate();
 	const router = useRouter();
-	const invalidateWorkspaces = useInvalidateWorkspaces();
+	const invalidateOrganizations = useInvalidateOrganizations();
 
 	const createBrand = async (brandName: string, website: string, enabledModels: string[] | null) => {
 		setIsLoading(true);
@@ -75,9 +75,9 @@ function NewBrandPage() {
 			});
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
-			// The account menu lists this workspace's brands, so it goes stale the
+			// The account menu lists this organization's brands, so it goes stale the
 			// moment one is created.
-			await Promise.all([router.invalidate(), invalidateWorkspaces()]);
+			await Promise.all([router.invalidate(), invalidateOrganizations()]);
 			// The brand arrives with a slug, so land on it rather than on a redirect.
 			await navigate({ to: "/app/org/$org/brand/$brand", params: { org, brand: brandSlug } });
 		} catch (err) {
@@ -122,7 +122,7 @@ function NewBrandPage() {
 		return (
 			<FullPageCard
 				title={
-					blocked.code === "no-active-plan" ? "This workspace has no plan" : "You've used every brand on your plan"
+					blocked.code === "no-active-plan" ? "This organization has no plan" : "You've used every brand on your plan"
 				}
 				subtitle={blocked.message}
 				showBackButton
@@ -152,7 +152,7 @@ function NewBrandPage() {
 	}
 
 	return (
-		<FullPageCard title="Create a new brand" subtitle={`Start tracking a brand in ${workspaceName}`} showBackButton>
+		<FullPageCard title="Create a new brand" subtitle={`Start tracking a brand in ${organizationName}`} showBackButton>
 			<form action={handleDetailsSubmit} className="space-y-4">
 				<div className="space-y-2">
 					<Label htmlFor="brandName">Brand Name</Label>

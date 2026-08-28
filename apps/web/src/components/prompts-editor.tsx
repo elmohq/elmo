@@ -20,7 +20,7 @@ interface PromptsEditorProps {
 	pageTitle: string;
 	pageDescription: string;
 	/**
-	 * The workspace's premium allowance. Omit to hide the column — self-hosted, or
+	 * The organization's premium allowance. Omit to hide the column — self-hosted, or
 	 * a cloud plan whose pool is zero. Assignment lives here rather than on the LLM
 	 * settings page because it is per prompt.
 	 */

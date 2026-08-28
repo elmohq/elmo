@@ -1,11 +1,11 @@
 /**
- * "Workspace" is the customer-facing name for an organization. These live apart
+ * "Organization" is the customer-facing name for an organization. These live apart
  * from the server functions that produce them so the shell can name the type
  * without pulling the database into the client bundle.
  */
 import type { WriteDenialCode } from "@workspace/lib/entitlements";
 
-export interface WorkspaceBrand {
+export interface OrganizationBrand {
 	id: string;
 	/** Null for a brand never given one; `brandParams` falls back to the id. */
 	slug: string | null;
@@ -17,15 +17,15 @@ export interface WorkspaceBrand {
 
 /**
  * The brand allowance lives here because this is read through the query cache:
- * the entitlements it costs are paid once per workspace per minute rather than
+ * the entitlements it costs are paid once per organization per minute rather than
  * by each page that offers creation.
  */
-export interface WorkspaceSummary {
+export interface OrganizationSummary {
 	id: string;
 	/** What `/app/org/$org` carries. */
 	slug: string;
 	name: string;
-	brands: WorkspaceBrand[];
+	brands: OrganizationBrand[];
 	canCreateBrand: boolean;
 	/**
 	 * Null both when creation is allowed and when this deployment doesn't create
@@ -35,8 +35,8 @@ export interface WorkspaceSummary {
 }
 
 /** The session facts ride along because the shell needs all three together. */
-export interface WorkspaceRouteContext {
-	workspace: WorkspaceSummary;
+export interface OrganizationRouteContext {
+	organization: OrganizationSummary;
 	isAdmin: boolean;
 	hasReportAccess: boolean;
 }

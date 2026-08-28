@@ -1,6 +1,6 @@
 /**
  * Access is membership: every read resolves the org through the caller's
- * `member` rows, so an unknown workspace and someone else's are one answer.
+ * `member` rows, so an unknown organization and someone else's are one answer.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { isOrgAdminRole } from "@workspace/config/roles";
@@ -19,28 +19,28 @@ import {
 	resolveOrganization,
 } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
+import { resolveBrandCreation, withBrands } from "@/lib/organizations/server";
+import type { OrganizationRouteContext, OrganizationSummary } from "@/lib/organizations/types";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
-import { resolveBrandCreation, withBrands } from "@/lib/workspaces/server";
-import type { WorkspaceRouteContext, WorkspaceSummary } from "@/lib/workspaces/types";
 
-export type { WorkspaceBrand, WorkspaceRouteContext, WorkspaceSummary } from "@/lib/workspaces/types";
+export type { OrganizationBrand, OrganizationRouteContext, OrganizationSummary } from "@/lib/organizations/types";
 
 /**
  * Read through the query cache rather than on every navigation, which is what
  * lets the brand allowance be resolved once here instead of again on each page
  * that offers creation.
  */
-export const resolveWorkspaceFn = createServerFn({ method: "GET" })
+export const resolveOrganizationFn = createServerFn({ method: "GET" })
 	.validator(z.object({ org: z.string() }))
 	// The explicit return type breaks the type-inference cycle between this fn
 	// and the route loaders that both consume it and redirect to typed routes.
-	.handler(async ({ data }): Promise<WorkspaceRouteContext | null> => {
+	.handler(async ({ data }): Promise<OrganizationRouteContext | null> => {
 		const session = await requireAuthSession();
 		const org = await resolveOrganization(session.user.id, data.org);
 		if (!org) return null;
 
 		return {
-			workspace: await withBrands(org),
+			organization: await withBrands(org),
 			isAdmin: isAdmin(session),
 			hasReportAccess: hasReportAccess(session),
 		};
@@ -50,19 +50,21 @@ export const resolveWorkspaceFn = createServerFn({ method: "GET" })
  * Nothing for a signed-out caller: the 404 is reachable without a session and
  * must not error there.
  */
-export const listReachableWorkspacesFn = createServerFn({ method: "GET" }).handler(
-	async (): Promise<WorkspaceSummary[]> => {
+export const listReachableOrganizationsFn = createServerFn({ method: "GET" }).handler(
+	async (): Promise<OrganizationSummary[]> => {
 		const session = await getAuthSession();
-		return session ? listWorkspaces(session.user.id) : [];
+		return session ? listOrganizations(session.user.id) : [];
 	},
 );
 
-export const listWorkspacesFn = createServerFn({ method: "GET" }).handler(async (): Promise<WorkspaceSummary[]> => {
-	const session = await requireAuthSession();
-	return listWorkspaces(session.user.id);
-});
+export const listOrganizationsFn = createServerFn({ method: "GET" }).handler(
+	async (): Promise<OrganizationSummary[]> => {
+		const session = await requireAuthSession();
+		return listOrganizations(session.user.id);
+	},
+);
 
-async function listWorkspaces(userId: string): Promise<WorkspaceSummary[]> {
+async function listOrganizations(userId: string): Promise<OrganizationSummary[]> {
 	const orgs = await listUserOrganizations(userId);
 	if (orgs.length === 0) return [];
 
@@ -95,17 +97,17 @@ async function listWorkspaces(userId: string): Promise<WorkspaceSummary[]> {
 }
 
 /**
- * Cloud only: local has one workspace per install, whitelabel's arrive from
- * Auth0, demo writes nothing. The new workspace has no plan, so
+ * Cloud only: local has one organization per install, whitelabel's arrive from
+ * Auth0, demo writes nothing. The new organization has no plan, so
  * `checkBrandCreate` refuses a brand until it has one — the same answer an
- * existing workspace gets when its plan lapses.
+ * existing organization gets when its plan lapses.
  */
-export const createWorkspaceFn = createServerFn({ method: "POST" })
+export const createOrganizationFn = createServerFn({ method: "POST" })
 	.validator(z.object({ name: z.string().trim().min(1).max(100) }))
 	.handler(async ({ data }): Promise<{ slug: string }> => {
 		const session = await requireAuthSession();
-		if (!getDeployment().features.canCreateWorkspaces) {
-			throw new Error("This deployment does not create workspaces");
+		if (!getDeployment().features.canCreateOrganizations) {
+			throw new Error("This deployment does not create organizations");
 		}
 
 		const { slug } = await provisionUmbrellaOrg({ userId: session.user.id, name: data.name });
@@ -113,43 +115,43 @@ export const createWorkspaceFn = createServerFn({ method: "POST" })
 	});
 
 /** Only what the route context doesn't already hold. */
-export interface WorkspaceSettings {
-	/** Whether this deployment lets the workspace be renamed from here. */
+export interface OrganizationPermissions {
+	/** Whether this deployment lets the organization be renamed from here. */
 	canRename: boolean;
 }
 
-export const getWorkspaceSettingsFn = createServerFn({ method: "GET" })
+export const getOrganizationPermissionsFn = createServerFn({ method: "GET" })
 	.validator(z.object({ org: z.string() }))
-	.handler(async ({ data }): Promise<WorkspaceSettings> => {
+	.handler(async ({ data }): Promise<OrganizationPermissions> => {
 		const session = await requireAuthSession();
-		const workspace = await requireOrganization(session.user.id, data.org);
-		return { canRename: canEditWorkspace(workspace.role) };
+		const org = await requireOrganization(session.user.id, data.org);
+		return { canRename: canEditOrganization(org.role) };
 	});
 
 /**
- * Workspace-wide: every member's links and the billing mail's point at the
+ * Organization-wide: every member's links and the billing mail's point at the
  * slug, so this is an admin action for the same reason managing the plan is.
  *
- * Whitelabel workspaces are Auth0's records, and demo writes nothing; renaming
+ * Whitelabel organizations are Auth0's records, and demo writes nothing; renaming
  * either here would be a change the source of truth undoes.
  */
-function canEditWorkspace(role: string): boolean {
+function canEditOrganization(role: string): boolean {
 	const deployment = getDeployment();
 	return !deployment.features.readOnly && deployment.mode !== "whitelabel" && isOrgAdminRole(role);
 }
 
 /**
- * Rename a workspace, move it to a new slug, or both.
+ * Rename an organization, move it to a new slug, or both.
  *
  * One call because it is one edit: the form that carries the name carries the
  * slug beside it, and a save that took only half would leave the page telling
  * the customer something that isn't true yet.
  *
  * Slug availability spans slugs *and* ids, because `/app/org/$org` resolves
- * either — a slug matching another workspace's id would make one URL name two
+ * either — a slug matching another organization's id would make one URL name two
  * of them.
  */
-export const updateWorkspaceFn = createServerFn({ method: "POST" })
+export const updateOrganizationFn = createServerFn({ method: "POST" })
 	// Trimmed here rather than in the handler, so a name of nothing but spaces is
 	// rejected instead of stored as an empty one.
 	.validator(
@@ -161,19 +163,19 @@ export const updateWorkspaceFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }): Promise<{ slug: string }> => {
 		const session = await requireAuthSession();
-		const workspace = await requireOrganization(session.user.id, data.org);
+		const org = await requireOrganization(session.user.id, data.org);
 
-		if (!isOrgAdminRole(workspace.role)) {
-			throw new Error("Only workspace admins can change the workspace name or URL Slug");
+		if (!isOrgAdminRole(org.role)) {
+			throw new Error("Only organization admins can change the organization name or URL Slug");
 		}
-		if (!canEditWorkspace(workspace.role)) {
-			throw new Error("This workspace cannot be renamed in this deployment");
+		if (!canEditOrganization(org.role)) {
+			throw new Error("This organization cannot be renamed in this deployment");
 		}
 		if (!isValidSlug(data.slug)) throw new Error(INVALID_SLUG);
-		if (!(await isOrgSlugAvailable(data.slug, { excludeOrgId: workspace.id }))) {
+		if (!(await isOrgSlugAvailable(data.slug, { excludeOrgId: org.id }))) {
 			throw new Error(TAKEN_SLUG);
 		}
 
-		await db.update(organization).set({ name: data.name, slug: data.slug }).where(eq(organization.id, workspace.id));
+		await db.update(organization).set({ name: data.name, slug: data.slug }).where(eq(organization.id, org.id));
 		return { slug: data.slug };
 	});

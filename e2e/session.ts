@@ -135,7 +135,7 @@ export async function ensureOrgMembership(client: pg.Client, userId: string): Pr
   }
 }
 
-/** Give the seeded workspace a real cloud-plan shape without calling Stripe. */
+/** Give the seeded organization a real cloud-plan shape without calling Stripe. */
 export async function ensureActiveCloudPlan(client: pg.Client): Promise<void> {
   await client.query(
     `INSERT INTO subscription

@@ -9,11 +9,11 @@ export interface FeaturesConfig {
 	 */
 	canCreateBrands: boolean;
 	/**
-	 * Whether a signed-in user can create another workspace from the UI. True
-	 * only in cloud: local has exactly one workspace per install, whitelabel's
+	 * Whether a signed-in user can create another organization from the UI. True
+	 * only in cloud: local has exactly one organization per install, whitelabel's
 	 * come from Auth0, and demo writes nothing.
 	 */
-	canCreateWorkspaces: boolean;
+	canCreateOrganizations: boolean;
 	/**
 	 * Whether public self-serve registration is available. True only in cloud
 	 * mode. Local allows a single bootstrap signup (see ClientConfig.canRegister);

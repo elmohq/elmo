@@ -1,7 +1,7 @@
 /**
- * Renders for everyone, one-workspace deployments included: it is the only page
+ * Renders for everyone, one-organization deployments included: it is the only page
  * that lists what exists, so stepping aside would leave the mark that points
- * here landing on a workspace's settings.
+ * here landing on an organization's settings.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -9,29 +9,31 @@ import { createServerFn } from "@tanstack/react-start";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import FullPageCard from "@/components/full-page-card";
-import { WorkspaceDirectory } from "@/components/workspace-directory";
+import { OrganizationDirectory } from "@/components/organization-directory";
 import { requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 import { buildTitle, getAppName } from "@/lib/route-head";
-import { listWorkspacesFn, type WorkspaceSummary } from "@/server/workspaces";
+import { listOrganizationsFn, type OrganizationSummary } from "@/server/organizations";
 
-const getWorkspacePickerData = createServerFn({ method: "GET" }).handler(async (): Promise<WorkspaceSummary[]> => {
-	const deployment = getDeployment();
+const getOrganizationPickerData = createServerFn({ method: "GET" }).handler(
+	async (): Promise<OrganizationSummary[]> => {
+		const deployment = getDeployment();
 
-	if (deployment.mode === "whitelabel") {
-		const session = await requireAuthSession();
-		// Keep /app usable during Auth0 Management API incidents; background sync will reconcile memberships later.
-		try {
-			await syncAuth0UserById(session.user.id);
-		} catch (error) {
-			console.error("[auth0-sync] Failed to sync user on /app load; continuing with cached memberships", error);
+		if (deployment.mode === "whitelabel") {
+			const session = await requireAuthSession();
+			// Keep /app usable during Auth0 Management API incidents; background sync will reconcile memberships later.
+			try {
+				await syncAuth0UserById(session.user.id);
+			} catch (error) {
+				console.error("[auth0-sync] Failed to sync user on /app load; continuing with cached memberships", error);
+			}
 		}
-	}
 
-	return listWorkspacesFn();
-});
+		return listOrganizationsFn();
+	},
+);
 
-function WorkspacePickerSkeleton() {
+function OrganizationPickerSkeleton() {
 	return (
 		<FullPageCard title="" subtitle="">
 			<div className="flex min-w-[200px] flex-col space-y-3">
@@ -44,31 +46,31 @@ function WorkspacePickerSkeleton() {
 }
 
 export const Route = createFileRoute("/_authed/app/")({
-	pendingComponent: WorkspacePickerSkeleton,
-	loader: (): Promise<WorkspaceSummary[]> => getWorkspacePickerData(),
+	pendingComponent: OrganizationPickerSkeleton,
+	loader: (): Promise<OrganizationSummary[]> => getOrganizationPickerData(),
 	head: ({ match }) => ({
 		meta: [
-			{ title: buildTitle("Workspaces and Brands", { appName: getAppName(match) }) },
-			{ name: "description", content: "Modify workspaces or navigate to brands." },
+			{ title: buildTitle("Organizations and Brands", { appName: getAppName(match) }) },
+			{ name: "description", content: "Modify organizations or navigate to brands." },
 		],
 	}),
-	component: WorkspacePickerPage,
+	component: OrganizationPickerPage,
 });
 
-function WorkspacePickerPage() {
-	const workspaces = Route.useLoaderData();
+function OrganizationPickerPage() {
+	const organizations = Route.useLoaderData();
 
-	if (workspaces.length === 0) {
+	if (organizations.length === 0) {
 		return (
-			<FullPageCard title="No workspaces" subtitle="Your account isn't a member of a workspace yet.">
+			<FullPageCard title="No organizations" subtitle="Your account isn't a member of an organization yet.">
 				<p className="text-center text-muted-foreground">Ask an admin to invite you, then reload this page.</p>
 			</FullPageCard>
 		);
 	}
 
 	return (
-		<FullPageCard title="Workspaces and Brands" subtitle="Modify workspaces or navigate to brands.">
-			<WorkspaceDirectory workspaces={workspaces} />
+		<FullPageCard title="Organizations and Brands" subtitle="Modify organizations or navigate to brands.">
+			<OrganizationDirectory organizations={organizations} />
 		</FullPageCard>
 	);
 }
