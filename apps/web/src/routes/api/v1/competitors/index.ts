@@ -9,7 +9,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
-import { assertAllowed, decideCompetitorCap } from "@workspace/lib/entitlements";
+import { assertCompetitorCap } from "@workspace/lib/entitlements";
 import { count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
@@ -73,11 +73,7 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 						throw new ApiError(400, "Validation Error", `Brand with ID '${brandId}' not found`);
 					}
 
-					const [{ count: currentCount }] = await db
-						.select({ count: count() })
-						.from(competitors)
-						.where(eq(competitors.brandId, brandId));
-					assertAllowed(decideCompetitorCap((currentCount || 0) + 1));
+					await assertCompetitorCap(brandId, 1);
 
 					const [inserted] = await db
 						.insert(competitors)

@@ -10,6 +10,7 @@ import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from 
 import {
 	assertAllowed,
 	assertCanCreateBrand,
+	assertCompetitorCap,
 	assertEnabledModelsAllowed,
 	decideCompetitorCap,
 	type Entitlements,
@@ -24,7 +25,7 @@ import {
 	selectTargetsForBrand,
 } from "@workspace/lib/providers";
 import { defaultPlatformPicks, resolvePromptRunPlan } from "@workspace/lib/run-policy";
-import { and, count, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
 	listUserOrganizations,
@@ -566,11 +567,7 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
 
-		const [currentCount] = await db
-			.select({ count: count() })
-			.from(competitors)
-			.where(eq(competitors.brandId, data.brandId));
-		assertAllowed(decideCompetitorCap((currentCount?.count || 0) + 1));
+		await assertCompetitorCap(data.brandId, 1);
 
 		const [result] = await db
 			.insert(competitors)

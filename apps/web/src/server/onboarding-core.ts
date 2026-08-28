@@ -11,14 +11,9 @@
 import { db } from "@workspace/lib/db/db";
 import { ensureOrganization } from "@workspace/lib/db/provisioning";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
-import {
-	assertAllowed,
-	assertCanAddPrompts,
-	decideCompetitorCap,
-	getBrandOrganizationId,
-} from "@workspace/lib/entitlements";
+import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { count, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
@@ -238,11 +233,7 @@ async function insertCompetitors(args: {
 	}
 	if (toInsert.length === 0) return 0;
 
-	const [{ count: currentCount }] = await db
-		.select({ count: count() })
-		.from(competitors)
-		.where(eq(competitors.brandId, args.brandId));
-	assertAllowed(decideCompetitorCap((currentCount || 0) + toInsert.length));
+	await assertCompetitorCap(args.brandId, toInsert.length);
 
 	await db.insert(competitors).values(toInsert);
 	return toInsert.length;

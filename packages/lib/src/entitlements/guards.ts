@@ -21,7 +21,7 @@ import { MAX_SELF_SERVE_BRANDS, premiumPairings, premiumSlotsUsed } from "@works
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { MAX_COMPETITORS, MAX_PROMPTS } from "../constants";
 import { db } from "../db/db";
-import { brands, prompts } from "../db/schema";
+import { brands, competitors, prompts } from "../db/schema";
 import { getOrgEntitlements, getOrgEntitlementsMap } from "./service";
 
 export type WriteDenialCode =
@@ -182,10 +182,7 @@ export function decidePremiumAssign(
  * standardRunsPerDay allow proportionally faster overrides). Null clears the
  * override back to the plan cadence.
  */
-export function decideCadenceOverride(
-	entitlements: Entitlements,
-	requestedDelayHours: number | null,
-): WriteDecision {
+export function decideCadenceOverride(entitlements: Entitlements, requestedDelayHours: number | null): WriteDecision {
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
 	if (requestedDelayHours === null) return ALLOWED;
@@ -293,6 +290,12 @@ export async function checkBrandCreate(orgIds: string[]): Promise<Map<string, Wr
 }
 
 /** Guard creating `adding` new enabled prompts (or re-enabling that many). */
+export async function assertCompetitorCap(brandId: string, adding: number): Promise<void> {
+	if (adding <= 0) return;
+	const [row] = await db.select({ value: count() }).from(competitors).where(eq(competitors.brandId, brandId));
+	assertAllowed(decideCompetitorCap((row?.value ?? 0) + adding));
+}
+
 export async function assertCanAddPrompts(organizationId: string, adding: number): Promise<void> {
 	if (adding <= 0) return;
 	await withEntitlements(organizationId, async (entitlements) => [

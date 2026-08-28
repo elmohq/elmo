@@ -4,6 +4,7 @@ export {
 	assertCadenceAllowed,
 	assertCanAddPrompts,
 	assertCanCreateBrand,
+	assertCompetitorCap,
 	assertEnabledModelsAllowed,
 	assertPromptSaveAllowed,
 	checkBrandCreate,
