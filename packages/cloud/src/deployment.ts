@@ -24,11 +24,11 @@ export function createCloudDeployment(env: Record<string, string | undefined> = 
 			readOnly: false,
 			showOptimizeButton: false,
 			canCreateBrands: true,
+			platformPicksEditable: true,
 			selfServeSignup: true,
 			billing: true,
 			reportGeneration: false,
 			teamInvites: true,
-			platformPicksEditable: true,
 		},
 		branding: {
 			name: DEFAULT_APP_NAME,

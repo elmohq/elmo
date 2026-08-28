@@ -37,6 +37,13 @@ export interface FeaturesConfig {
 	 * deployment or buys the choice; false in whitelabel, where the picks and
 	 * the provider bills behind them are the agency's, and in demo, which
 	 * refuses every write.
+	 *
+	 * Carries the same value as `canCreateBrands` in all four modes today and is
+	 * still its own flag: they answer to different owners. Brand creation is
+	 * provisioning, which cloud sells per brand and an agency keeps to itself;
+	 * this is about spending a provider budget, which cloud sells as part of a
+	 * plan. A tier that provisioned brands without letting a customer retarget
+	 * them, or the reverse, would move one and not the other.
 	 */
 	platformPicksEditable: boolean;
 }
