@@ -545,8 +545,6 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		const existingIds = new Set(existingRows.map((p) => p.id));
 		const existingById = new Map(existingRows.map((p) => [p.id, p]));
 
-		// Checked before planning so a huge list is rejected before it is built.
-		// Deleting a prompt just disables it, so new rows are the only growth.
 		assertAllowed(decidePromptCap(existingRows.length, data.prompts.filter((p) => !p.id).length));
 
 		const { updates, inserts } = planPromptSave(data.prompts, existingRows);
