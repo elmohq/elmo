@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { getAppName } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { getJobLogsFn, getWorkflowDataFn, retryJobFn } from "@/server/admin";
 
 // ============================================================================
@@ -258,6 +259,7 @@ function TargetStatus({ status }: { status?: TargetRunStatus }) {
 
 function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: string; onSuccess: () => void }) {
 	const [isLoading, setIsLoading] = useState(false);
+	const writeError = useWriteErrorMessage();
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<"queued" | "recreated" | false>(false);
 
@@ -271,7 +273,7 @@ function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: strin
 			setSuccess("queued");
 			setTimeout(() => onSuccess(), 1000);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to retry");
+			setError(writeError(err, "Failed to retry"));
 		} finally {
 			setIsLoading(false);
 		}
@@ -300,6 +302,7 @@ function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: strin
 function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySuccess?: () => void }) {
 	const isFailed = job.status === "failed";
 	const [isOpen, setIsOpen] = useState(false);
+	const writeError = useWriteErrorMessage();
 	const [logs, setLogs] = useState<string[]>([]);
 	const [logsLoading, setLogsLoading] = useState(false);
 	const [logsError, setLogsError] = useState<string | null>(null);
@@ -331,7 +334,7 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 				onRetrySuccess?.();
 			}, 1000);
 		} catch (err) {
-			setRetryError(err instanceof Error ? err.message : "Unknown error");
+			setRetryError(writeError(err, "Could not retry this job"));
 		} finally {
 			setRetryLoading(false);
 		}

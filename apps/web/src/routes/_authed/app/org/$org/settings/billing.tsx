@@ -28,6 +28,7 @@ import { Spinner } from "@workspace/ui/components/spinner";
 import { type ReactNode, useState } from "react";
 import { PlanComparison } from "@/components/plan-comparison";
 import { buildTitle, getAppName } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { type BillingState, getBillingStateFn, setPremiumAddonQuantityFn } from "@/server/billing";
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings/billing")({
@@ -439,6 +440,7 @@ function PremiumAddonCard({
 }) {
 	const router = useRouter();
 	const [value, setValue] = useState(String(quantity));
+	const writeError = useWriteErrorMessage();
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -453,7 +455,7 @@ function PremiumAddonCard({
 			await setPremiumAddonQuantityFn({ data: { org, quantity: parsed } });
 			router.invalidate();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Could not update the add-on");
+			setError(writeError(err, "Could not update the add-on"));
 		} finally {
 			setSaving(false);
 		}

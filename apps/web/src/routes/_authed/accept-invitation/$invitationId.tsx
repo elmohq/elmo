@@ -12,6 +12,7 @@ import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { buildTitle, getAppName } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { acceptInvitationFn, getInvitationFn } from "@/server/team";
 
 export const Route = createFileRoute("/_authed/accept-invitation/$invitationId")({
@@ -43,6 +44,7 @@ function AcceptInvitationPage() {
 	const { invitation, error: loadError } = Route.useLoaderData();
 	const navigate = useNavigate();
 	const [accepting, setAccepting] = useState(false);
+	const writeError = useWriteErrorMessage();
 	const [acceptError, setAcceptError] = useState<string | null>(null);
 
 	if (loadError || !invitation) {
@@ -72,7 +74,7 @@ function AcceptInvitationPage() {
 			// them find it — the id resolves and the URL settles on its slug.
 			navigate({ to: "/app/org/$org", params: { org: orgId } });
 		} catch (err) {
-			setAcceptError(err instanceof Error ? err.message : "Failed to accept the invitation");
+			setAcceptError(writeError(err, "Failed to accept the invitation"));
 			setAccepting(false);
 		}
 	}

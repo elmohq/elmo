@@ -25,6 +25,7 @@ import { Settings, TrendingDown, TrendingUp } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { getAppName } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { getAdminStatsFn, updateDelayOverrideFn } from "@/server/admin";
 
 interface BrandStats {
@@ -81,6 +82,7 @@ function timeUnitsToHours(units: { weeks: number; days: number; hours: number })
 function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate: () => void }) {
 	const defaultDelayHours = useDefaultDelayHours();
 	const [open, setOpen] = useState(false);
+	const writeError = useWriteErrorMessage();
 	const [timeUnits, setTimeUnits] = useState({ weeks: 0, days: 0, hours: 0 });
 	const [isUpdating, setIsUpdating] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -115,7 +117,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 			onUpdate();
 			setOpen(false);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to update");
+			setError(writeError(err, "Failed to update"));
 		} finally {
 			setIsUpdating(false);
 		}
@@ -129,7 +131,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 			onUpdate();
 			setOpen(false);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to clear override");
+			setError(writeError(err, "Failed to clear override"));
 		} finally {
 			setIsUpdating(false);
 		}

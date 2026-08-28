@@ -22,6 +22,7 @@ import { Spinner } from "@workspace/ui/components/spinner";
 import { Check, Copy, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { getAppName } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { adminAnalyzeBrandFn } from "@/server/admin";
 
 function AnalyzeBrandDialog() {
@@ -32,6 +33,7 @@ function AnalyzeBrandDialog() {
 	const [error, setError] = useState<string | null>(null);
 	const [result, setResult] = useState<OnboardingSuggestion | null>(null);
 	const [copied, setCopied] = useState(false);
+	const writeError = useWriteErrorMessage();
 
 	const handleAnalyze = async () => {
 		if (!website.trim()) {
@@ -50,7 +52,7 @@ function AnalyzeBrandDialog() {
 			});
 			setResult(data);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "An error occurred");
+			setError(writeError(err, "An error occurred"));
 		} finally {
 			setIsLoading(false);
 		}

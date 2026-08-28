@@ -15,6 +15,7 @@ import { useState } from "react";
 import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import { trackEvent } from "@/lib/posthog";
 import { buildTitle, getAppName } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { cancelInvitationFn, inviteTeamMemberFn, listTeamFn, removeTeamMemberFn, type TeamData } from "@/server/team";
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings/members")({
@@ -37,6 +38,7 @@ function TeamSettingsPage() {
 	const { org } = Route.useParams();
 	const { members, invitations, currentUserId } = Route.useLoaderData();
 	const canInvite = useDeploymentFeatures()?.teamInvites ?? false;
+	const writeError = useWriteErrorMessage();
 	const router = useRouter();
 	const [inviteEmail, setInviteEmail] = useState("");
 	const [inviteRole, setInviteRole] = useState<"member" | "admin">("member");
@@ -54,7 +56,7 @@ function TeamSettingsPage() {
 			setInviteRole("member");
 			await router.invalidate();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to send invitation");
+			setError(writeError(err, "Failed to send invitation"));
 		} finally {
 			setInviting(false);
 		}
@@ -66,7 +68,7 @@ function TeamSettingsPage() {
 			await removeTeamMemberFn({ data: { org, memberId } });
 			await router.invalidate();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to remove member");
+			setError(writeError(err, "Failed to remove member"));
 		}
 	}
 
@@ -76,7 +78,7 @@ function TeamSettingsPage() {
 			await cancelInvitationFn({ data: { org, invitationId } });
 			await router.invalidate();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to cancel invitation");
+			setError(writeError(err, "Failed to cancel invitation"));
 		}
 	}
 

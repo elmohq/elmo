@@ -7,6 +7,7 @@ import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { createBrandFn } from "@/server/brands";
 import type { OnboardingPlatformState } from "@/server/platform-picks";
 
@@ -27,6 +28,7 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 	const [error, setError] = useState("");
 	const navigate = useNavigate();
 	const router = useRouter();
+	const writeError = useWriteErrorMessage();
 
 	const createBrand = async (enabledModels: string[] | null) => {
 		setIsLoading(true);
@@ -51,7 +53,7 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 				params: { org: organizationSlug, brand: brand.slug ?? brandId },
 			});
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "An error occurred");
+			setError(writeError(err, "Could not create the brand."));
 		} finally {
 			setIsLoading(false);
 		}

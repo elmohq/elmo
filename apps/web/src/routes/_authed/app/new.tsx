@@ -12,6 +12,7 @@ import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { useInvalidateOrganizations } from "@/hooks/use-organizations";
 import { buildTitle, getAppName } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { createOrganizationFn } from "@/server/organizations";
 
 export const Route = createFileRoute("/_authed/app/new")({
@@ -34,6 +35,7 @@ function NewOrganizationPage() {
 	const navigate = useNavigate();
 	const router = useRouter();
 	const invalidateOrganizations = useInvalidateOrganizations();
+	const writeError = useWriteErrorMessage();
 	const [name, setName] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
@@ -50,7 +52,7 @@ function NewOrganizationPage() {
 			await Promise.all([invalidateOrganizations(), router.invalidate()]);
 			await navigate({ to: "/app/org/$org/settings", params: { org: slug } });
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "An error occurred");
+			setError(writeError(err, "Could not create the organization."));
 			setIsLoading(false);
 		}
 	}

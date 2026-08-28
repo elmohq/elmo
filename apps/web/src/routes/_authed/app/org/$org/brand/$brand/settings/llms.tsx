@@ -28,6 +28,7 @@ import { formatUsd, PlatformList, PlatformPicker, projectSelectionCostUsd } from
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { groupPlatformOptions, type PlatformGroup, platformGroupCopy } from "@/lib/platform-groups";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { getModelPickerStateFn, type ModelPickerState, updateEnabledModelsFn } from "@/server/platform-picks";
 import { getPremiumPoolFn, type PremiumPool } from "@/server/premium-tracking";
 
@@ -131,6 +132,7 @@ function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 	const { org, brand: brandParam } = Route.useParams();
 	const { brandId } = Route.useRouteContext();
 	const router = useRouter();
+	const writeError = useWriteErrorMessage();
 
 	const stored = new Set(picker.enabledModels);
 	const [selected, setSelected] = useState<Set<string>>(stored);
@@ -156,7 +158,7 @@ function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 			await updateEnabledModelsFn({ data: { brandId, models: [...selected] } });
 			await router.invalidate();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Could not save platform picks");
+			setError(writeError(err, "Could not save platform picks"));
 		} finally {
 			setSaving(false);
 		}
