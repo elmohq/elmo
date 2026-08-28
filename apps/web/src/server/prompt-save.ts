@@ -3,7 +3,8 @@
  *
  * Pure, so the two rules that are easy to get wrong — which submitted rows a
  * brand may claim, and what grounded models a row ends up carrying — can be
- * stated in tests rather than inferred from the handler around them.
+ * stated in tests rather than inferred from the handler around them. Throws on a
+ * save the deployment has no way to honour, the way selectTargetsForBrand does.
  */
 
 import { selectPremiumModels } from "@workspace/config/plans";
@@ -61,12 +62,26 @@ export function planPromptSave(
 	const existingById = new Map(existing.map((row) => [row.id, row]));
 
 	// Grounded models are metered per prompt/model pairing from a cloud pool.
-	// Where there is none the run policy never reads the column, so the field is
-	// not the editor's to set: each row keeps whatever it already stores and a new
-	// row carries none. Refusing the save instead would freeze any database moved
-	// off cloud, which submits its stored assignments on every save.
-	const premiumModelsFor = (prompt: SubmittedPrompt, before?: StoredPrompt) =>
-		premiumMetered ? selectPremiumModels(prompt.premiumModels) : (before?.premiumModels ?? []);
+	// Where there is none the run policy never reads the column, so the assignment
+	// is not the editor's to make: a row asked to carry a model it does not
+	// already carry is refused.
+	//
+	// Only the addition. The editor submits every row's stored models on every
+	// save and clears them outright when a prompt is deleted, so refusing a
+	// non-empty value — or any change at all — would freeze a database moved off
+	// cloud, unable to delete a grounded prompt or fix a typo on one. Letting go
+	// of an assignment costs nobody anything; taking one on is the only move a
+	// deployment with no pool has no way to undo from the UI.
+	const premiumModelsFor = (prompt: SubmittedPrompt, before?: StoredPrompt): string[] => {
+		const requested = selectPremiumModels(prompt.premiumModels);
+		if (!premiumMetered) {
+			const stored = new Set(before?.premiumModels ?? []);
+			if (requested.some((model) => !stored.has(model))) {
+				throw new Error("Grounded models are tracked per brand on this deployment — pick them in LLM settings.");
+			}
+		}
+		return requested;
+	};
 
 	// The editor submits the brand's whole list, so every row either updates one
 	// of the brand's own prompts or adds a new one. Anything else — an id from

@@ -65,10 +65,13 @@ export type ModelPickerState = {
 	 */
 	editable: boolean;
 	/**
-	 * What the brand is actually tracked on, resolved the same way the run policy
-	 * resolves it. Never the raw column: reporting that and letting the page read
-	 * null as "everything configured" is what showed a Pro brand 10 of 4
-	 * platforms selected.
+	 * What the brand is actually tracked on — never the raw column. Reporting that
+	 * and letting the page read null as "everything configured" is what showed a
+	 * Pro brand 10 of 4 platforms selected.
+	 *
+	 * Each branch below resolves it the way that mode runs, which is not one rule:
+	 * in cloud `resolveBrandPicks` clamps the picks to the plan's menu and count,
+	 * and where nothing meters them every configured target is tracked.
 	 */
 	enabledModels: string[];
 	/** Cloud plan constraints; null outside cloud (no pick limit). */
