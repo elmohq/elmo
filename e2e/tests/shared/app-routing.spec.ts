@@ -58,7 +58,7 @@ test.describe("App routing", () => {
 		// which is what makes the move visible to whoever is still minting them.
 		await page.goto(`/app/${TEST_BRAND_ID}/citations`);
 
-		const link = page.getByRole("link", { name: new RegExp(`Go to ${TEST_BRAND_NAME}`, "i") });
+		const link = page.getByRole("link", { name: new RegExp(`Go to new location for ${TEST_BRAND_NAME}`, "i") });
 		await expect(link).toBeVisible({ timeout: 30_000 });
 		await expect(link).toHaveAttribute("href", `${BRAND_URL}/citations`);
 
@@ -69,7 +69,7 @@ test.describe("App routing", () => {
 	test("a stranded link to a slugged brand points at its slug, not its id", async ({ page }) => {
 		await page.goto(`/app/${SLUGGED_BRAND_ID}`);
 
-		const link = page.getByRole("link", { name: new RegExp(`Go to ${SLUGGED_BRAND_NAME}`, "i") });
+		const link = page.getByRole("link", { name: new RegExp(`Go to new location for ${SLUGGED_BRAND_NAME}`, "i") });
 		await expect(link).toBeVisible({ timeout: 30_000 });
 		await expect(link).toHaveAttribute("href", SLUGGED_BRAND_URL);
 	});

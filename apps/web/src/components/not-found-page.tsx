@@ -52,15 +52,12 @@ export function NotFoundPage() {
 
 	if (suggestion) {
 		return (
-			<FullPageCard
-				title="This link has moved"
-				subtitle={`${suggestion.name} lives at a new address — the workspace is now part of the URL.`}
-			>
+			<FullPageCard title="This link has moved" subtitle="The workspace is now part of the URL.">
 				<div className="flex min-w-[240px] flex-col space-y-3">
 					{/* A plain anchor: the target is a concrete resolved path, not a
 					    route pattern the router should try to fill params for. */}
 					<a href={`${suggestion.href}${suffix}`} className={buttonVariants()}>
-						Go to {suggestion.name}
+						Go to new location for {suggestion.name}
 					</a>
 					<p className="text-center text-xs text-muted-foreground">
 						Update any bookmarks or integrations pointing at the old address.
