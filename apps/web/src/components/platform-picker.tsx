@@ -147,8 +147,6 @@ function PlatformRowBody({ option }: { option: PlatformOption }) {
 	return (
 		<>
 			<ModelIcon iconId={getModelMeta(option.model).iconId} className="size-5 shrink-0" />
-			{/* The operator detail sits under the name rather than beside it, so a
-			    long provider string can't squeeze the platform it describes. */}
 			<span className="min-w-0 flex-1">
 				<span className="block truncate text-sm font-medium">{getModelMeta(option.model).label}</span>
 				<PlatformOperatorDetail option={option} />
