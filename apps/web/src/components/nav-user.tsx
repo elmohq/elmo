@@ -217,8 +217,10 @@ function OrganizationSection({
 				</DropdownMenuItem>
 			</div>
 
+			{/* `mb-1` so the gap under the last brand reads like the one over the
+			    heading: the rule running down the list makes it look tighter. */}
 			{hasChildren && (
-				<div className="ml-4 border-l pl-1">
+				<div className="mb-1 ml-4 border-l pl-1">
 					{organization.brands.map((brand) => (
 						<DropdownMenuItem
 							key={brand.id}
