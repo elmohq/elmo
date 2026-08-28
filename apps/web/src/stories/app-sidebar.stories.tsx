@@ -36,6 +36,18 @@ const onboardedBrand = {
 	updatedAt: new Date().toISOString(),
 };
 
+/**
+ * The workspace the `/app/org/$org` layout would have resolved. The rail names it
+ * and lists its brands from here, so every story hands one over.
+ */
+const workspace = {
+	id: "org-1",
+	slug: "mock-workspace",
+	name: "Acme",
+	role: "admin",
+	brands: [{ id: "brand-1", slug: null, name: "Acme Corp", onboarded: true }],
+};
+
 const newBrand = {
 	id: "brand-2",
 	name: "NewStartup",
@@ -201,7 +213,7 @@ export const Local = () => {
 
 	return (
 		<SidebarFrame label="Local — Self-hosted, full admin">
-			<AppSidebar isAdmin={true} hasReportAccess={true} brand={brand} />
+			<AppSidebar scope="brand" isAdmin={true} hasReportAccess={true} brand={brand} workspace={workspace} />
 		</SidebarFrame>
 	);
 };
@@ -214,7 +226,7 @@ export const Demo = () => {
 
 	return (
 		<SidebarFrame label="Demo — Read-only, seeded user">
-			<AppSidebar isAdmin={false} hasReportAccess={false} brand={brand} />
+			<AppSidebar scope="brand" isAdmin={false} hasReportAccess={false} brand={brand} workspace={workspace} />
 		</SidebarFrame>
 	);
 };
@@ -229,7 +241,7 @@ export const Whitelabel = () => {
 
 	return (
 		<SidebarFrame label="Whitelabel — Regular user, no admin section">
-			<AppSidebar isAdmin={false} hasReportAccess={false} brand={brand} />
+			<AppSidebar scope="brand" isAdmin={false} hasReportAccess={false} brand={brand} workspace={workspace} />
 		</SidebarFrame>
 	);
 };
@@ -244,7 +256,7 @@ export const WhitelabelAdmin = () => {
 
 	return (
 		<SidebarFrame label="Whitelabel Admin — Full admin section visible">
-			<AppSidebar isAdmin={true} hasReportAccess={true} brand={brand} />
+			<AppSidebar scope="brand" isAdmin={true} hasReportAccess={true} brand={brand} workspace={workspace} />
 		</SidebarFrame>
 	);
 };
@@ -259,7 +271,7 @@ export const WhitelabelReportOnly = () => {
 
 	return (
 		<SidebarFrame label="Whitelabel Report-only — Dashboard + Reports admin section">
-			<AppSidebar isAdmin={false} hasReportAccess={true} brand={brand} />
+			<AppSidebar scope="brand" isAdmin={false} hasReportAccess={true} brand={brand} workspace={workspace} />
 		</SidebarFrame>
 	);
 };
@@ -271,7 +283,7 @@ export const Cloud: StoryObj = {
 
 		return (
 			<SidebarFrame label="Cloud — Billing and Team in settings">
-				<AppSidebar isAdmin={false} hasReportAccess={false} brand={brand} />
+				<AppSidebar scope="brand" isAdmin={false} hasReportAccess={false} brand={brand} workspace={workspace} />
 			</SidebarFrame>
 		);
 	},
@@ -293,7 +305,7 @@ export const WhitelabelHasNoBilling: StoryObj = {
 
 		return (
 			<SidebarFrame label="Whitelabel — no Billing item">
-				<AppSidebar isAdmin={false} hasReportAccess={false} brand={brand} />
+				<AppSidebar scope="brand" isAdmin={false} hasReportAccess={false} brand={brand} workspace={workspace} />
 			</SidebarFrame>
 		);
 	},
@@ -310,7 +322,7 @@ export const WhitelabelOnboarding = () => {
 
 	return (
 		<SidebarFrame label="Whitelabel Onboarding — Brand not onboarded, minimal nav">
-			<AppSidebar isAdmin={false} hasReportAccess={false} brand={brand} />
+			<AppSidebar scope="brand" isAdmin={false} hasReportAccess={false} brand={brand} workspace={workspace} />
 		</SidebarFrame>
 	);
 };

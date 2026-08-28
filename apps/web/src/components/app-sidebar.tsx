@@ -38,7 +38,7 @@ import { NavAppInfo } from "@/components/nav-app-info";
 import { type NavGroup, type NavItem, NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
-import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
+import type { WorkspaceSummary } from "@/lib/workspaces/types";
 
 /**
  * How much of the app the shell around this page can reach:
@@ -52,48 +52,48 @@ import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
  */
 export type SidebarScope = "brand" | "workspace" | "admin" | "account";
 
-interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+/**
+ * The workspace is not optional where the rail names one — it comes from the
+ * `/app/org/$org` layout, which resolved it before any of this rendered. Stating
+ * that as a union rather than a nullable prop is what keeps the switcher from
+ * carrying a fallback for a workspace that is always there.
+ */
+type ScopeProps =
+	| { scope: "brand"; workspace: WorkspaceSummary; brand: BrandWithPrompts | null }
+	| { scope: "workspace"; workspace: WorkspaceSummary }
+	| { scope: "admin" | "account" };
+
+type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
 	isAdmin?: boolean;
 	hasReportAccess?: boolean;
-	scope?: SidebarScope;
-	/** Brand data from route loader — avoids a separate client-side fetch */
-	brand?: BrandWithPrompts | null;
-	/**
-	 * The workspace this page belongs to, from the route loader. The rail names
-	 * it and lists its brands from here, so neither waits on — nor can be emptied
-	 * by — the switcher's all-workspaces query.
-	 */
-	workspace?: WorkspaceWithBrands | null;
-}
+} & ScopeProps;
 
-export function AppSidebar({
-	isAdmin = false,
-	hasReportAccess = false,
-	scope = "brand",
-	brand,
-	workspace,
-	...props
-}: AppSidebarProps) {
+export function AppSidebar(props: AppSidebarProps) {
+	const { isAdmin = false, hasReportAccess = false, scope, ...sidebarProps } = props;
 	const { setOpenMobile } = useSidebar();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	// Reports are disabled entirely in cloud; hide the nav entry there.
 	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
 
+	// Present exactly when the rail is inside a workspace, so it stands in for
+	// the old `inWorkspace` flag and carries the narrowing with it.
+	const workspace = props.scope === "brand" || props.scope === "workspace" ? props.workspace : null;
+	const brand = props.scope === "brand" ? props.brand : null;
+
 	// A gate page offers no destinations: every link would either 404 or bounce
 	// the user straight back to the gate.
 	const showAdminSection = scope !== "account" && (isAdmin || (hasReportAccess && reportsEnabled));
-	const inWorkspace = scope === "brand" || scope === "workspace";
 
 	const groups: NavGroup[] = [];
 
 	// Without a brand in scope, the brands themselves are the way back into the
 	// dashboard the user came from.
-	if (scope === "workspace" && workspace) {
+	if (props.scope === "workspace") {
 		groups.push({
 			label: "Brands",
-			items: workspace.brands.map((b) => ({
+			items: props.workspace.brands.map((b) => ({
 				title: b.name,
-				url: brandPath(workspace, b),
+				url: brandPath(props.workspace, b),
 				icon: IconDashboard,
 				base: "absolute" as const,
 			})),
@@ -179,9 +179,9 @@ export function AppSidebar({
 	// Workspace section — what the brand belongs to rather than what it is, so
 	// its entries live apart from the brand's own and are labelled with the
 	// workspace's name.
-	if (inWorkspace) {
+	if (workspace) {
 		groups.push({
-			label: workspace ? `Workspace · ${workspace.name}` : "Workspace",
+			label: `Workspace · ${workspace.name}`,
 			items: [
 				{ title: "General", url: "/settings", icon: IconBuildingSkyscraper, base: "workspace" as const },
 				...(context.clientConfig?.features.teamInvites
@@ -242,7 +242,7 @@ export function AppSidebar({
 	);
 
 	return (
-		<Sidebar variant="inset" {...props}>
+		<Sidebar variant="inset" {...sidebarProps}>
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
@@ -259,7 +259,7 @@ export function AppSidebar({
 						)}
 					</SidebarMenuItem>
 				</SidebarMenu>
-				{inWorkspace && <WorkspaceSwitcher workspace={workspace} brandName={brand?.name} />}
+				{workspace && <WorkspaceSwitcher workspace={workspace} brandName={brand?.name} />}
 			</SidebarHeader>
 			<SidebarContent>
 				<NavMain groups={groups} />

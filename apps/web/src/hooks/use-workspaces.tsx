@@ -15,8 +15,8 @@ export const workspaceKeys = {
  * render something else, and `/app/org//…` is not that.
  */
 export function useWorkspaceParams(): { org: string } | null {
-	const params = useParams({ strict: false }) as { org?: string };
-	return params.org ? { org: params.org } : null;
+	const org = useParams({ strict: false, select: (params) => params.org });
+	return org ? { org } : null;
 }
 
 /**
@@ -28,7 +28,7 @@ export function useWorkspaceParams(): { org: string } | null {
  * `useBrandId`.
  */
 export function useBrandParams(): { org: string; brand: string } | null {
-	const params = useParams({ strict: false }) as { org?: string; brand?: string };
+	const params = useParams({ strict: false, select: ({ org, brand }) => ({ org, brand }) });
 	return params.org && params.brand ? { org: params.org, brand: params.brand } : null;
 }
 

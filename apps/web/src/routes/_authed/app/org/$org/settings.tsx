@@ -6,7 +6,7 @@
  * back into the dashboard rather than out to a picker.
  */
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { AppShell } from "@/components/app-shell";
+import { AppShell, PageContent } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 
@@ -24,7 +24,9 @@ function WorkspaceSettingsLayout() {
 			}
 			header={<SiteHeader workspaceName={workspace.name} />}
 		>
-			<Outlet />
+			<PageContent>
+				<Outlet />
+			</PageContent>
 		</AppShell>
 	);
 }

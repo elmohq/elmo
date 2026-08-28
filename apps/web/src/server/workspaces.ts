@@ -23,27 +23,39 @@ import {
 	requireAuthSession,
 	requireOrganization,
 	resolveOrganization,
+	type UserOrganization,
 } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 import type { SlugResult } from "@/lib/slugs";
-import { decideBrandCreation, withBrands } from "@/lib/workspaces/server";
-import type { Workspace, WorkspaceContext, WorkspaceWithBrands } from "@/lib/workspaces/types";
+import { countWorkspaceBrands, decideBrandCreation, withBrands } from "@/lib/workspaces/server";
+import type { WorkspaceRouteContext, WorkspaceWithBrands } from "@/lib/workspaces/types";
 
-export type { Workspace, WorkspaceBrand, WorkspaceContext, WorkspaceWithBrands } from "@/lib/workspaces/types";
+export type {
+	WorkspaceBrand,
+	WorkspaceRouteContext,
+	WorkspaceSummary,
+	WorkspaceWithBrands,
+} from "@/lib/workspaces/types";
 
 /**
  * Everything the `/app/org/$org` layout puts in route context: the workspace the
  * segment names, its brands, and the session facts the rail renders from.
  *
- * One call per navigation into the workspace, and the only place the org is
- * resolved — pages below read it from context instead of asking again, and the
- * brand layout finds its brand in `brands` without a second round trip.
+ * The route tree resolves the org here and nowhere else — pages below read it
+ * from context instead of asking again, and the brand layout finds its brand in
+ * `brands` without a round trip. Server functions still resolve it for
+ * themselves, because each is reachable without going through this route and
+ * has to authorize on its own.
+ *
+ * `beforeLoad` re-runs on every navigation, filter changes included, so this
+ * holds only indexed reads. Whether the workspace can take another brand costs
+ * an entitlements lookup and is asked for by the pages that offer creation.
  */
 export const resolveWorkspaceFn = createServerFn({ method: "GET" })
 	.validator(z.object({ org: z.string() }))
 	// The explicit return type breaks the type-inference cycle between this fn
 	// and the route loaders that both consume it and redirect to typed routes.
-	.handler(async ({ data }): Promise<WorkspaceContext | null> => {
+	.handler(async ({ data }): Promise<WorkspaceRouteContext | null> => {
 		const session = await requireAuthSession();
 		const org = await resolveOrganization(session.user.id, data.org);
 		if (!org) return null;
@@ -140,7 +152,8 @@ async function listWorkspaces(userId: string): Promise<WorkspaceWithBrands[]> {
 }
 
 export interface WorkspaceSettings {
-	workspace: Workspace;
+	/** Identity only — this page states what the workspace is, not what it holds. */
+	workspace: UserOrganization;
 	brandCount: number;
 	memberCount: number;
 	/** Whether this deployment lets the workspace be renamed from here. */
@@ -153,14 +166,14 @@ export const getWorkspaceSettingsFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		const workspace = await requireOrganization(session.user.id, data.org);
 
-		const [[brandCount], [memberCount]] = await Promise.all([
-			db.select({ value: count() }).from(brands).where(eq(brands.organizationId, workspace.id)),
+		const [brandCount, [memberCount]] = await Promise.all([
+			countWorkspaceBrands(workspace.id),
 			db.select({ value: count() }).from(member).where(eq(member.organizationId, workspace.id)),
 		]);
 
 		return {
 			workspace,
-			brandCount: brandCount?.value ?? 0,
+			brandCount,
 			memberCount: memberCount?.value ?? 0,
 			canRename: canEditWorkspace(workspace.role),
 		};

@@ -7,14 +7,6 @@
  * the client bundle.
  */
 
-export interface Workspace {
-	id: string;
-	/** What `/app/org/$org` carries. */
-	slug: string;
-	name: string;
-	role: string;
-}
-
 export interface WorkspaceBrand {
 	id: string;
 	/**
@@ -26,23 +18,43 @@ export interface WorkspaceBrand {
 	onboarded: boolean;
 }
 
-export interface WorkspaceWithBrands extends Workspace {
+/**
+ * A workspace and the brands it owns, from two indexed reads.
+ *
+ * This is what the `/app/org/$org` layout resolves on every navigation into the
+ * workspace, so it holds only what is cheap to fetch and what the URL itself
+ * depends on: the brand list is how `$brand` resolves its segment without a
+ * round trip.
+ */
+export interface WorkspaceSummary {
+	id: string;
+	/** What `/app/org/$org` carries. */
+	slug: string;
+	name: string;
+	role: string;
 	brands: WorkspaceBrand[];
-	/**
-	 * Whether this workspace can take another brand — the deployment feature and
-	 * the plan's brand allowance together. Navigation offers brand creation only
-	 * where the answer is yes, so the link never leads to a wall.
-	 */
+}
+
+/**
+ * A workspace plus whether it can take another brand — the deployment feature
+ * and the plan's brand allowance together.
+ *
+ * Separate from `WorkspaceSummary` because answering it costs an entitlements
+ * read: only the pages that offer brand creation ask, and none of them is on
+ * the dashboard's filter path.
+ */
+export interface WorkspaceWithBrands extends WorkspaceSummary {
 	canCreateBrand: boolean;
 }
 
 /**
- * Everything the `/app/org/$org` layout resolves once and every page below it
- * reads from route context: the workspace itself, plus the two session facts
- * the rail needs to decide what to offer.
+ * What `/app/org/$org` puts in route context for every page below it.
+ *
+ * The two session facts ride along with the workspace because the rail needs
+ * all three together and one round trip is enough for them.
  */
-export interface WorkspaceContext {
-	workspace: WorkspaceWithBrands;
+export interface WorkspaceRouteContext {
+	workspace: WorkspaceSummary;
 	isAdmin: boolean;
 	hasReportAccess: boolean;
 }

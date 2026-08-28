@@ -1,8 +1,10 @@
 /**
- * /app/org/$org/brand/$brand layout - Brand-specific layout with sidebar
+ * /app/org/$org/brand/$brand layout — the brand's own pages, and the rail and
+ * header around them.
  *
- * Fetches brand data and provides it to child routes.
- * Shows sidebar navigation, header, and optional demo banner.
+ * The `$brand` segment resolves against the brand list the workspace layout
+ * already holds, so the id every page below speaks in costs no round trip. The
+ * loader fetches the brand itself and the paywall verdict for its workspace.
  */
 
 import { createFileRoute, notFound, Outlet, redirect } from "@tanstack/react-router";
@@ -15,7 +17,7 @@ import { getOrgBillingState } from "@workspace/lib/entitlements";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { AppShell } from "@/components/app-shell";
+import { AppShell, PageContent } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
@@ -34,13 +36,20 @@ const getBrandData = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		// The layout resolved this brand inside a workspace the caller belongs to,
 		// but a server function is reachable on its own — so membership is checked
-		// again here rather than trusted from the caller.
-		await requireOrgAccess(session.user.id, data.organizationId);
+		// again here rather than trusted from the caller. Independent of the brand
+		// read, so the two go together.
+		const [, brand] = await Promise.all([
+			requireOrgAccess(session.user.id, data.organizationId),
+			db.query.brands.findFirst({ where: eq(brands.id, data.brandId) }),
+		]);
 
-		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
-		// A brand owned by a different workspace is as good as absent, including to
-		// a user who happens to belong to both.
-		if (!brand || brand.organizationId !== data.organizationId) throw notFound();
+		// The layout already found this brand in the workspace, so reaching here
+		// means the caller came straight to the function or the brand went away
+		// underneath us — exceptional either way, and reported the way every other
+		// server function here reports one.
+		if (!brand || brand.organizationId !== data.organizationId) {
+			throw new Error("Not found: no such brand in this workspace");
+		}
 
 		const [brandPrompts, brandCompetitors, { entitlements }] = await Promise.all([
 			db.query.prompts.findMany({ where: eq(prompts.brandId, brand.id) }),
@@ -79,15 +88,17 @@ function BrandLayoutSkeleton() {
 				</div>
 			}
 		>
-			<div className="space-y-2">
-				<Skeleton className="h-9 w-48" />
-				<Skeleton className="h-5 w-80" />
-			</div>
-			<div className="space-y-4">
-				<Skeleton className="h-10 w-full" />
-				<Skeleton className="h-64 w-full rounded-lg" />
-				<Skeleton className="h-64 w-full rounded-lg" />
-			</div>
+			<PageContent>
+				<div className="space-y-2">
+					<Skeleton className="h-9 w-48" />
+					<Skeleton className="h-5 w-80" />
+				</div>
+				<div className="space-y-4">
+					<Skeleton className="h-10 w-full" />
+					<Skeleton className="h-64 w-full rounded-lg" />
+					<Skeleton className="h-64 w-full rounded-lg" />
+				</div>
+			</PageContent>
 		</AppShell>
 	);
 }
@@ -152,10 +163,20 @@ function BrandLayout() {
 
 	return (
 		<AppShell
-			sidebar={<AppSidebar isAdmin={isAdmin} hasReportAccess={hasReportAccess} brand={brand} workspace={workspace} />}
+			sidebar={
+				<AppSidebar
+					scope="brand"
+					isAdmin={isAdmin}
+					hasReportAccess={hasReportAccess}
+					brand={brand}
+					workspace={workspace}
+				/>
+			}
 			header={<SiteHeader workspaceName={workspace.name} />}
 		>
-			<Outlet />
+			<PageContent>
+				<Outlet />
+			</PageContent>
 		</AppShell>
 	);
 }

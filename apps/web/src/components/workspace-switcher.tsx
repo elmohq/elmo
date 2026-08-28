@@ -19,7 +19,7 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
 import { useWorkspaces } from "@/hooks/use-workspaces";
-import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
+import type { WorkspaceSummary, WorkspaceWithBrands } from "@/lib/workspaces/types";
 
 /** Two letters is enough to tell workspaces apart at a glance in the rail. */
 function initials(name: string): string {
@@ -37,27 +37,31 @@ function initials(name: string): string {
  * decides who can see that page and who is billed for it, which is exactly the
  * thing a user with more than one workspace has to keep straight.
  *
- * The workspace being viewed comes from the route loader, so its brands and its
- * settings are reachable whatever the all-workspaces query is doing; that query
- * only ever adds the workspaces this page isn't in.
+ * The workspace being viewed comes from the route layout, so its name, its
+ * brands and its settings are on screen from the first paint and cannot be
+ * emptied by a failing query. The all-workspaces query adds the workspaces this
+ * page isn't in, and the one thing the layout deliberately doesn't carry:
+ * whether a workspace can take another brand, which costs an entitlements read.
+ * "New brand" therefore appears with the query rather than before it.
  */
 export function WorkspaceSwitcher({
 	workspace,
 	brandName: resolvedBrandName,
 }: {
-	workspace?: WorkspaceWithBrands | null;
+	workspace: WorkspaceSummary;
 	brandName?: string;
 }) {
 	const { isMobile, setOpenMobile } = useSidebar();
-	const params = useParams({ strict: false }) as { org?: string; brand?: string };
+	const brandParam = useParams({ strict: false, select: (params) => params.brand });
 	const { workspaces, isLoading, isError, isFetching, refetch } = useWorkspaces();
 
-	const current = workspace ?? workspaces.find((w) => w.slug === params.org || w.id === params.org) ?? null;
-	const others = workspaces.filter((w) => w.id !== current?.id);
-	const listed = current ? [current, ...others] : others;
+	// The query's copy of this workspace, when it has arrived, is the same
+	// workspace with the creation answer attached.
+	const fromQuery = workspaces.find((w) => w.id === workspace.id);
+	const current: WorkspaceWithBrands = fromQuery ?? { ...workspace, canCreateBrand: false };
+	const listed = [current, ...workspaces.filter((w) => w.id !== workspace.id)];
 
-	const currentBrand = current?.brands.find((brand) => brandSegment(brand) === params.brand);
-	const workspaceName = current?.name ?? params.org ?? "";
+	const currentBrand = current.brands.find((brand) => brandSegment(brand) === brandParam);
 	const brandName = resolvedBrandName ?? currentBrand?.name;
 	const close = () => setOpenMobile(false);
 
@@ -71,10 +75,10 @@ export function WorkspaceSwitcher({
 							className="cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 						>
 							<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
-								{workspaceName ? initials(workspaceName) : <IconBuildingSkyscraper className="size-4" />}
+								{initials(current.name)}
 							</div>
 							<div className="grid flex-1 text-left text-sm leading-tight">
-								<span className="truncate text-xs text-muted-foreground">{workspaceName}</span>
+								<span className="truncate text-xs text-muted-foreground">{current.name}</span>
 								<span className="truncate font-medium">{brandName ?? "All brands"}</span>
 							</div>
 							<IconSelector className="ml-auto size-4" />
@@ -90,13 +94,13 @@ export function WorkspaceSwitcher({
 							<DropdownMenuGroup key={entry.id}>
 								<DropdownMenuLabel className="flex items-center justify-between gap-2 text-muted-foreground">
 									<span className="truncate">{entry.name}</span>
-									{entry.id === current?.id && <IconCheck className="size-3.5 shrink-0" />}
+									{entry.id === current.id && <IconCheck className="size-3.5 shrink-0" />}
 								</DropdownMenuLabel>
 								{entry.brands.map((brand) => (
 									<DropdownMenuItem key={brand.id} asChild className="cursor-pointer">
 										<Link to="/app/org/$org/brand/$brand" params={brandParams(entry, brand)} onClick={close}>
 											<span className="truncate">{brand.name}</span>
-											{brandSegment(brand) === params.brand && entry.id === current?.id && (
+											{brandSegment(brand) === brandParam && entry.id === current.id && (
 												<IconCheck className="ml-auto size-3.5 shrink-0" />
 											)}
 										</Link>
@@ -141,14 +145,12 @@ export function WorkspaceSwitcher({
 								{isFetching ? "Retrying…" : "Couldn't load your other workspaces — retry"}
 							</DropdownMenuItem>
 						)}
-						{current && (
-							<DropdownMenuItem asChild className="cursor-pointer">
-								<Link to="/app/org/$org/settings" params={orgParams(current)} onClick={close}>
-									<IconSettings />
-									Workspace settings
-								</Link>
-							</DropdownMenuItem>
-						)}
+						<DropdownMenuItem asChild className="cursor-pointer">
+							<Link to="/app/org/$org/settings" params={orgParams(current)} onClick={close}>
+								<IconSettings />
+								Workspace settings
+							</Link>
+						</DropdownMenuItem>
 						{listed.length > 1 && (
 							<DropdownMenuItem asChild className="cursor-pointer">
 								<Link to="/app" onClick={close}>

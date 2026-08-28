@@ -8,7 +8,7 @@ import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
  *
  * The picker, the workspace home, and the 404 all offer the same list, so they
  * offer it in the same words — three copies of this drifted apart on the labels
- * before it was one.
+ * before it was one. The stacking is part of the list, not the caller's job.
  *
  * Creation is offered per workspace, because a plan's brand allowance is spent
  * per workspace: the same page can create in one and not another. A workspace
@@ -19,7 +19,7 @@ export function WorkspaceBrandList({ workspace }: { workspace: WorkspaceWithBran
 	const { brands, canCreateBrand } = workspace;
 
 	return (
-		<>
+		<div className="flex flex-col space-y-2">
 			{brands.map((brand) => (
 				<Button key={brand.id} asChild variant="secondary">
 					<Link to="/app/org/$org/brand/$brand" params={brandParams(workspace, brand)}>
@@ -41,6 +41,6 @@ export function WorkspaceBrandList({ workspace }: { workspace: WorkspaceWithBran
 					</Link>
 				</Button>
 			)}
-		</>
+		</div>
 	);
 }

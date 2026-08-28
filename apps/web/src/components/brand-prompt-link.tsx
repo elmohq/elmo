@@ -2,6 +2,9 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useBrandParams } from "@/hooks/use-workspaces";
 
+/** Which tab of the prompt detail page to land on; the route's own search shape. */
+export type PromptDetailSearch = { tab: "mentions" | "web-queries" | "citations" | "responses" };
+
 /**
  * A link to a prompt's detail page, from anywhere inside a brand.
  *
@@ -19,9 +22,13 @@ export function BrandPromptLink({
 	children,
 }: {
 	promptId: string;
-	search?: Record<string, unknown>;
+	search?: PromptDetailSearch;
 	className?: string;
-	/** Applied instead of `className` when there is nothing to link to. */
+	/**
+	 * Applied instead of `className` when there is nothing to link to — for the
+	 * one caller whose link class carries `group`, which on a plain span would
+	 * underline text that leads nowhere.
+	 */
 	fallbackClassName?: string;
 	children: ReactNode;
 }) {

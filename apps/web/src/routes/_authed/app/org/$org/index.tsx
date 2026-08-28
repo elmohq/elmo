@@ -6,34 +6,55 @@
  * create the first one, and where they can't (whitelabel, whose workspaces
  * arrive from Auth0 before anything is tracked) it's the onboarding wizard, with
  * the brand taking the workspace's own id as it always has.
+ *
+ * Whether another brand can be created costs an entitlements read, which the
+ * layout deliberately doesn't carry — so this page, one of the few that offers
+ * creation, asks for it here.
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import { orgParams, orgSegment } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
+import { z } from "zod";
 import BrandOnboarding from "@/components/brand-onboarding";
 import FullPageCard from "@/components/full-page-card";
 import { WorkspaceBrandList } from "@/components/workspace-brand-list";
+import { requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 import { buildTitle, getAppName } from "@/lib/route-head";
-import type { WorkspaceWithBrands } from "@/lib/workspaces/types";
+import { canCreateBrandIn, countWorkspaceBrands } from "@/lib/workspaces/server";
 import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
 
-export const Route = createFileRoute("/_authed/app/org/$org/")({
-	loader: async ({
-		context,
-	}): Promise<{ workspace: WorkspaceWithBrands; onboardingPlatformState: OnboardingPlatformState }> => {
-		const { workspace } = context;
-		// A workspace that can't create brands and hasn't got one is a whitelabel
-		// workspace waiting to be onboarded, which is the only state that needs the
-		// wizard's platform picks.
-		const needsFirstBrand = workspace.brands.length === 0 && !workspace.canCreateBrand;
+interface WorkspaceHome {
+	canCreateBrand: boolean;
+	/**
+	 * The wizard's platform picks, for the one state that needs them: a
+	 * workspace with no brands that cannot create one from the UI.
+	 */
+	onboardingPlatformState: OnboardingPlatformState;
+}
+
+const getWorkspaceHome = createServerFn({ method: "GET" })
+	.validator(z.object({ org: z.string() }))
+	.handler(async ({ data }): Promise<WorkspaceHome> => {
+		const session = await requireAuthSession();
+		const workspace = await requireOrganization(session.user.id, data.org);
+
+		const [canCreateBrand, brandCount] = await Promise.all([
+			canCreateBrandIn(workspace.id),
+			countWorkspaceBrands(workspace.id),
+		]);
 		return {
-			workspace,
-			onboardingPlatformState: needsFirstBrand
-				? await getOnboardingPlatformStateFn({ data: { organizationId: workspace.id } })
-				: null,
+			canCreateBrand,
+			onboardingPlatformState:
+				brandCount === 0 && !canCreateBrand
+					? await getOnboardingPlatformStateFn({ data: { organizationId: workspace.id } })
+					: null,
 		};
-	},
+	});
+
+export const Route = createFileRoute("/_authed/app/org/$org/")({
+	loader: ({ params }): Promise<WorkspaceHome> => getWorkspaceHome({ data: { org: params.org } }),
 	head: ({ match }) => ({
 		meta: [{ title: buildTitle("Workspace", { appName: getAppName(match) }) }],
 	}),
@@ -41,9 +62,10 @@ export const Route = createFileRoute("/_authed/app/org/$org/")({
 });
 
 function WorkspaceHomePage() {
-	const { workspace, onboardingPlatformState } = Route.useLoaderData();
+	const { workspace } = Route.useRouteContext();
+	const { canCreateBrand, onboardingPlatformState } = Route.useLoaderData();
 
-	if (workspace.brands.length === 0 && !workspace.canCreateBrand) {
+	if (workspace.brands.length === 0 && !canCreateBrand) {
 		return (
 			<BrandOnboarding
 				workspaceSlug={orgSegment(workspace)}
@@ -59,9 +81,9 @@ function WorkspaceHomePage() {
 			title={workspace.name}
 			subtitle={workspace.brands.length > 0 ? "Select a brand to get started" : "This workspace has no brands yet"}
 		>
-			<div className="flex min-w-[200px] flex-col space-y-3">
-				<WorkspaceBrandList workspace={workspace} />
-				<Button asChild variant="ghost" size="sm">
+			<div className="min-w-[200px] space-y-3">
+				<WorkspaceBrandList workspace={{ ...workspace, canCreateBrand }} />
+				<Button asChild variant="ghost" size="sm" className="w-full">
 					<Link to="/app/org/$org/settings" params={orgParams(workspace)}>
 						Workspace settings
 					</Link>

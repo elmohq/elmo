@@ -53,7 +53,7 @@ export function SlugField({
 				setError(slugErrorMessage(result.error));
 				return;
 			}
-			await onSaved(result.slug ?? next);
+			await onSaved(result.slug);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : `Failed to change the ${subject} URL`);
 		} finally {

@@ -16,10 +16,10 @@ import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
 import { Switch } from "@workspace/ui/components/switch";
 import { useEffect, useState } from "react";
 import { z } from "zod";
+import { AppShell } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { PlanComparison } from "@/components/plan-comparison";
 import { SiteHeader } from "@/components/site-header";
@@ -64,7 +64,9 @@ function ChoosePlanPage() {
 	// The loader redirects an entitled org away unless it is returning from
 	// checkout, which the first branch handles.
 	const body =
-		status === "success" ? <ActivatingWorkspace organizationId={org} /> : paywall.needsPlan ? (
+		status === "success" ? (
+			<ActivatingWorkspace organizationId={org} />
+		) : paywall.needsPlan ? (
 			<PlanPicker paywall={paywall} />
 		) : null;
 
@@ -73,13 +75,11 @@ function ChoosePlanPage() {
 	// account they are signed into, and how to sign out of it — most of all the
 	// non-admin who is told to go ask someone else.
 	return (
-		<SidebarProvider>
-			<AppSidebar scope="account" />
-			<SidebarInset className="md:border md:border-border/60 md:rounded-xl overflow-hidden">
-				<SiteHeader title="Choose a plan" />
-				<div className="flex flex-1 flex-col">{body}</div>
-			</SidebarInset>
-		</SidebarProvider>
+		<AppShell sidebar={<AppSidebar scope="account" />} header={<SiteHeader title="Choose a plan" />}>
+			{/* No `PageContent`: both bodies lay out and pad a full-height page of
+			    their own. */}
+			<div className="flex flex-1 flex-col">{body}</div>
+		</AppShell>
 	);
 }
 

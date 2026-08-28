@@ -9,14 +9,17 @@
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { checkBrandCreate } from "@workspace/lib/entitlements";
-import { asc, eq } from "drizzle-orm";
+import { asc, count, eq } from "drizzle-orm";
 import type { UserOrganization } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
-import type { WorkspaceBrand, WorkspaceWithBrands } from "@/lib/workspaces/types";
+import type { WorkspaceBrand, WorkspaceSummary } from "@/lib/workspaces/types";
 
 /**
  * Whether each of these workspaces can take another brand. Deployments that
  * don't create brands from the UI at all answer no without asking the plan.
+ *
+ * Costs an entitlements read, so it is asked for by the pages that offer brand
+ * creation rather than resolved with the workspace on every navigation.
  */
 export async function decideBrandCreation(orgIds: string[]): Promise<Map<string, boolean>> {
 	if (!getDeployment().features.canCreateBrands) return new Map(orgIds.map((orgId) => [orgId, false]));
@@ -24,8 +27,12 @@ export async function decideBrandCreation(orgIds: string[]): Promise<Map<string,
 	return new Map(orgIds.map((orgId) => [orgId, decisions.get(orgId)?.allowed ?? false]));
 }
 
+export async function canCreateBrandIn(organizationId: string): Promise<boolean> {
+	return (await decideBrandCreation([organizationId])).get(organizationId) ?? false;
+}
+
 /** The brands a workspace owns, in the order every list of them uses. */
-async function listWorkspaceBrands(organizationId: string): Promise<WorkspaceBrand[]> {
+export async function listWorkspaceBrands(organizationId: string): Promise<WorkspaceBrand[]> {
 	return db
 		.select({ id: brands.id, slug: brands.slug, name: brands.name, onboarded: brands.onboarded })
 		.from(brands)
@@ -33,14 +40,13 @@ async function listWorkspaceBrands(organizationId: string): Promise<WorkspaceBra
 		.orderBy(asc(brands.name));
 }
 
-/**
- * A resolved workspace with everything the shell around it renders: its brands,
- * and whether another brand can be added.
- */
-export async function withBrands(workspace: UserOrganization): Promise<WorkspaceWithBrands> {
-	const [workspaceBrands, canCreate] = await Promise.all([
-		listWorkspaceBrands(workspace.id),
-		decideBrandCreation([workspace.id]),
-	]);
-	return { ...workspace, brands: workspaceBrands, canCreateBrand: canCreate.get(workspace.id) ?? false };
+/** How many brands a workspace owns, for the pages that only need the number. */
+export async function countWorkspaceBrands(organizationId: string): Promise<number> {
+	const [row] = await db.select({ value: count() }).from(brands).where(eq(brands.organizationId, organizationId));
+	return row?.value ?? 0;
+}
+
+/** A resolved workspace with the brands it owns. Two indexed reads, no more. */
+export async function withBrands(workspace: UserOrganization): Promise<WorkspaceSummary> {
+	return { ...workspace, brands: await listWorkspaceBrands(workspace.id) };
 }
