@@ -334,8 +334,6 @@ export function promptSaveDelta(rows: readonly PromptSaveRow[]): PromptSaveDelta
 	};
 }
 
-/** Loads entitlements once and counts once, so both limits are judged against
- *  the same snapshot. */
 export async function assertPromptSaveAllowed(organizationId: string, delta: PromptSaveDelta): Promise<void> {
 	if (delta.prompts <= 0 && delta.premiumPairings <= 0) return;
 	await withEntitlements(organizationId, async (entitlements) => {
