@@ -206,7 +206,7 @@ function OrganizationSection({
 			    the menu's roving focus. */}
 			<DropdownMenuItem
 				render={<Link to="/app/org/$org/settings" params={orgParams(organization)} onClick={onNavigate} />}
-				aria-label={`${organization.name} settings`}
+				aria-label={`${organization.name} organization settings`}
 				className="cursor-pointer font-medium"
 			>
 				<IconBriefcase className="size-4 shrink-0 text-muted-foreground" />

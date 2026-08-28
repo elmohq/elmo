@@ -47,7 +47,7 @@ function OrganizationBlock({ organization }: { organization: OrganizationSummary
 						<Link
 							to="/app/org/$org/settings"
 							params={orgParams(organization)}
-							aria-label={`${organization.name} settings`}
+							aria-label={`${organization.name} organization settings`}
 							className={`${ROW} justify-between`}
 						/>
 					}

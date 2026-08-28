@@ -9,7 +9,7 @@ test.describe("Account menu", () => {
     await page.getByRole("button", { name: "Account and organizations" }).click();
 
     await expect(page.getByRole("menuitem", { name: TEST_BRAND_NAME })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("link", { name: `${TEST_ORGANIZATION_NAME} settings` })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: `${TEST_ORGANIZATION_NAME} organization settings` })).toHaveAttribute(
       "href",
       `${organizationUrl()}/settings`,
     );
