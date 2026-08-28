@@ -38,6 +38,5 @@ export const resolveOrganizationFn = async () => ({
 	isAdmin: false,
 	hasReportAccess: false,
 });
-export const getOrganizationPermissionsFn = async () => ({ canRename: true });
 export const updateOrganizationFn = async () => ({ slug: _organizations[0].slug });
 export const listReachableOrganizationsFn = async () => _organizations;

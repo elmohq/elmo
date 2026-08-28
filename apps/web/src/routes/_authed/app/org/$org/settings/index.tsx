@@ -14,14 +14,10 @@ import { useState } from "react";
 import { SlugField } from "@/components/slug-field";
 import { useInvalidateOrganizations, useOrganizationRoute } from "@/hooks/use-organizations";
 import { buildTitle, getAppName } from "@/lib/route-head";
-import {
-	getOrganizationPermissionsFn,
-	type OrganizationPermissions,
-	updateOrganizationFn,
-} from "@/server/organizations";
+import { useWriteErrorMessage } from "@/lib/write-errors";
+import { updateOrganizationFn } from "@/server/organizations";
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings/")({
-	loader: ({ params }): Promise<OrganizationPermissions> => getOrganizationPermissionsFn({ data: { org: params.org } }),
 	head: ({ match }) => ({
 		meta: [
 			{ title: buildTitle("Organization", { appName: getAppName(match) }) },
@@ -33,9 +29,9 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/")({
 
 function OrganizationSettingsPage() {
 	const { organization } = useOrganizationRoute();
-	const { canRename } = Route.useLoaderData();
 	const router = useRouter();
 	const invalidateOrganizations = useInvalidateOrganizations();
+	const writeError = useWriteErrorMessage();
 	const [name, setName] = useState(organization.name);
 	const [slug, setSlug] = useState(organization.slug);
 	const [saving, setSaving] = useState(false);
@@ -67,7 +63,7 @@ function OrganizationSettingsPage() {
 			});
 			await router.invalidate();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to save the organization");
+			setError(writeError(err, "Failed to save the organization."));
 		} finally {
 			setSaving(false);
 		}
@@ -91,7 +87,6 @@ function OrganizationSettingsPage() {
 						value={name}
 						onChange={(e) => setName(e.target.value)}
 						required
-						disabled={!canRename}
 						className="w-72"
 					/>
 				</div>
@@ -102,15 +97,12 @@ function OrganizationSettingsPage() {
 					prefix={ORG_URL_PREFIX}
 					value={slug}
 					onChange={setSlug}
-					disabled={!canRename}
 					className="w-72"
 				/>
 
-				{canRename && (
-					<Button type="submit" disabled={saving || !isDirty || !isComplete}>
-						{saving ? "Saving..." : "Save"}
-					</Button>
-				)}
+				<Button type="submit" disabled={saving || !isDirty || !isComplete}>
+					{saving ? "Saving..." : "Save"}
+				</Button>
 			</form>
 		</div>
 	);

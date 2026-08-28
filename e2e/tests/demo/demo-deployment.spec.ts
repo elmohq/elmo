@@ -97,6 +97,8 @@ test.describe("Demo refuses writes", () => {
     expect((await writeAttempt).status()).toBe(403);
 
     await expect(page.getByText("Brand details updated successfully!")).toHaveCount(0);
+    // A blocked write never reaches the handler, so the deployment is what says why.
+    await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible();
     expect(await countRows("brands", "id = $1 AND name = $2", [TEST_BRAND_ID, TEST_BRAND_NAME])).toBe(1);
   });
 });
@@ -166,6 +168,17 @@ test.describe("Demo features", () => {
 
     await page.goto(`${organizationUrl()}/new`);
     await page.waitForURL(new RegExp(`${organizationUrl()}/settings$`), { timeout: 30_000 });
+  });
+
+  test("saving organization settings fails and says why", async ({ page }) => {
+    await page.goto(`${organizationUrl()}/settings`);
+
+    const nameField = page.getByLabel("Organization Name", { exact: true });
+    await expect(nameField).toBeEnabled({ timeout: 30_000 });
+    await nameField.fill("Renamed In Demo");
+
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible({ timeout: 30_000 });
   });
 
   test("the team is listed, and nothing about it can be changed", async ({ page }) => {

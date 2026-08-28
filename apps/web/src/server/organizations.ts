@@ -114,20 +114,6 @@ export const createOrganizationFn = createServerFn({ method: "POST" })
 		return { slug };
 	});
 
-/** Only what the route context doesn't already hold. */
-export interface OrganizationPermissions {
-	/** Whether this deployment lets the organization be renamed from here. */
-	canRename: boolean;
-}
-
-export const getOrganizationPermissionsFn = createServerFn({ method: "GET" })
-	.validator(z.object({ org: z.string() }))
-	.handler(async ({ data }): Promise<OrganizationPermissions> => {
-		const session = await requireAuthSession();
-		const org = await requireOrganization(session.user.id, data.org);
-		return { canRename: canEditOrganization(org.role) };
-	});
-
 /**
  * Organization-wide: every member's links and the billing mail's point at the
  * slug, so this is an admin action for the same reason managing the plan is.

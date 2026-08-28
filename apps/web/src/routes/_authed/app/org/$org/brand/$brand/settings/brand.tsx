@@ -21,6 +21,7 @@ import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { useInvalidateOrganizations } from "@/hooks/use-organizations";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updateBrandFn } from "@/server/brands";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/brand")({
@@ -44,6 +45,7 @@ function BrandSettingsPage() {
 	const router = useRouter();
 	const invalidateOrganizations = useInvalidateOrganizations();
 	const { org } = Route.useParams();
+	const writeError = useWriteErrorMessage();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState("");
@@ -130,7 +132,7 @@ function BrandSettingsPage() {
 				});
 			}
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "An error occurred");
+			setError(writeError(err, "Failed to save the brand."));
 		} finally {
 			setIsSubmitting(false);
 		}

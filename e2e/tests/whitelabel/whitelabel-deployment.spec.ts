@@ -156,12 +156,16 @@ test.describe("Whitelabel features", () => {
     await expect(page.getByRole("button", { name: "Remove" })).toHaveCount(0);
   });
 
-  // Auth0 owns the record, so this deployment shows it rather than edits it.
-  test("the organization's name and slug are read-only", async ({ page }) => {
+  // Auth0 owns the record. The fields stay live and the save is what refuses,
+  // so the reason is on screen rather than left to be guessed from a dead form.
+  test("the organization's name and slug cannot be saved", async ({ page }) => {
     await page.goto(`${organizationUrl()}/settings`);
 
-    await expect(page.getByLabel("Organization Name", { exact: true })).toBeDisabled({ timeout: 30_000 });
-    await expect(page.getByLabel("Organization Slug", { exact: true })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
+    const nameField = page.getByLabel("Organization Name", { exact: true });
+    await expect(nameField).toBeEnabled({ timeout: 30_000 });
+    await nameField.fill("Renamed From The Settings Page");
+
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByText(/cannot be renamed in this deployment/i)).toBeVisible({ timeout: 30_000 });
   });
 });
