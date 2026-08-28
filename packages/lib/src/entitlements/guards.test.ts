@@ -103,17 +103,6 @@ describe("decidePromptAdd", () => {
 	});
 });
 
-/**
- * Two different prompt limits exist, and only one of them is a plan limit.
- *
- * `MAX_PROMPTS` is a flat per-brand cap the settings editor applies in every
- * mode. The plan limits let an unlimited deployment — local, demo,
- * whitelabel — add prompts through the admin API without limit. That asymmetry
- * predates cloud and is deliberate: an operator scripting against their own
- * instance is not a customer spending an allowance. It is pinned here because
- * nothing else states it, and a guard that quietly started enforcing
- * MAX_PROMPTS would break those scripts.
- */
 describe("decidePromptCap", () => {
 	it("allows a save that stays within the cap", () => {
 		expect(decidePromptCap(0, 1).allowed).toBe(true);
@@ -126,8 +115,6 @@ describe("decidePromptCap", () => {
 	});
 
 	it("keeps an over-cap brand editable as long as the save adds nothing", () => {
-		// What the admin API leaves behind: 150 prompts, no plan limit in the way.
-		// Disabling one, or fixing a typo, submits all 150 and must go through.
 		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, 150, 0).allowed).toBe(true);
 		expect(decidePromptCap(150, 0).allowed).toBe(true);
 		expect(decidePromptCap(150, 1).allowed).toBe(false);
@@ -139,8 +126,6 @@ describe("decidePromptCap", () => {
 	});
 });
 
-/** One bound for the bulk replace, the single add, and onboarding's bulk add:
- *  each asks about the list the brand would end up with. */
 describe("decideCompetitorCap", () => {
 	it("allows a brand up to the cap", () => {
 		expect(decideCompetitorCap(0).allowed).toBe(true);
@@ -148,25 +133,16 @@ describe("decideCompetitorCap", () => {
 	});
 
 	it("refuses the first competitor over it, and says how far over", () => {
-		// The caller knows the number the customer needs to act on; saying only the
-		// cap leaves them counting the list themselves.
 		const message = denialMessage(decideCompetitorCap(MAX_COMPETITORS + 3));
 		expect(message).toMatch(new RegExp(`at most ${MAX_COMPETITORS} competitors`));
 		expect(message).toMatch(new RegExp(`${MAX_COMPETITORS + 3}`));
 	});
 });
 
-/**
- * The prompts editor submits the brand's whole list on every save, so these
- * figures decide what the save is charged for. The pool counts are net — only
- * spending more than before needs anyone's permission — while `premiumAdded`
- * asks the separate question `decideGroundedAssign` turns on.
- */
 describe("promptSaveDelta", () => {
 	const grounded = { enabled: true, premiumModels: ["claude"] };
 
 	it("counts a deleted grounded prompt as a release", () => {
-		// The editor deletes by submitting the row disabled with its models cleared.
 		expect(promptSaveDelta([{ before: grounded, after: { enabled: false, premiumModels: [] } }])).toEqual({
 			prompts: -1,
 			premiumPairings: -1,
@@ -183,8 +159,6 @@ describe("promptSaveDelta", () => {
 	});
 
 	it("charges re-enabling a grounded prompt for the pairing it resumes, without calling it an assignment", () => {
-		// The distinction the no-pool rule turns on: nothing new is being asked
-		// for, so a deployment with no pool must let this through.
 		expect(promptSaveDelta([{ before: { enabled: false, premiumModels: ["claude"] }, after: grounded }])).toEqual({
 			prompts: 1,
 			premiumPairings: 1,
@@ -193,8 +167,6 @@ describe("promptSaveDelta", () => {
 	});
 
 	it("carrying the same assignment back is not an assignment", () => {
-		// The ordinary save on a database moved off cloud: the editor submits every
-		// row's stored models whether or not it can show them.
 		expect(promptSaveDelta([{ before: grounded, after: grounded }])).toEqual({
 			prompts: 0,
 			premiumPairings: 0,
@@ -218,8 +190,6 @@ describe("promptSaveDelta", () => {
 
 	it("treats a row with no before as an insert", () => {
 		expect(promptSaveDelta([{ after: grounded }])).toEqual({ prompts: 1, premiumPairings: 1, premiumAdded: 1 });
-		// Disabled, so it spends nothing whatever it is assigned — but it is still
-		// asking to carry one, which is the case the pairing count alone misses.
 		expect(promptSaveDelta([{ after: { enabled: false, premiumModels: ["claude"] } }])).toEqual({
 			prompts: 0,
 			premiumPairings: 0,
@@ -237,12 +207,6 @@ describe("promptSaveDelta", () => {
 	});
 });
 
-/**
- * The one rule that outlives the unlimited short-circuit. Grounded tracking is
- * charged per prompt/model pairing, and outside cloud there is no pool to charge
- * — self-hosted tracks the same models by picking their grounded targets on the
- * LLMs page instead, for the whole brand.
- */
 describe("decideGroundedAssign", () => {
 	it("refuses an unlimited deployment and points at the per-brand mechanism", () => {
 		const decision = decideGroundedAssign(UNLIMITED_ENTITLEMENTS, 1);
@@ -251,14 +215,10 @@ describe("decideGroundedAssign", () => {
 	});
 
 	it("leaves a save that introduces nothing alone, whatever it spends", () => {
-		// Deleting, disabling, and re-enabling all reach here with adding 0, and
-		// each must go through or the brand is frozen.
 		expect(decideGroundedAssign(UNLIMITED_ENTITLEMENTS, 0).allowed).toBe(true);
 	});
 
 	it("leaves the metered plans to decidePremiumAssign", () => {
-		// A cloud plan without a pool is being sold an upgrade, not told to use
-		// another mechanism, so this rule says nothing about it.
 		expect(decideGroundedAssign(STARTER, 1).allowed).toBe(true);
 		expect(decideGroundedAssign(PRO, 1).allowed).toBe(true);
 		expect(denialMessage(decidePremiumAssign(STARTER, 0, 1))).toMatch(/Pro and Business/);
@@ -313,9 +273,6 @@ describe("decideEnabledModels", () => {
 
 describe("decidePremiumAssign", () => {
 	it("reports a lapsed subscription as a payment problem, not an upsell", () => {
-		// The plan gate runs before the pool check, and the order matters: an org
-		// with no subscription has no pool either, and "buy Pro" is the wrong
-		// answer to "your plan lapsed".
 		expect(decidePremiumAssign(NO_PLAN_ENTITLEMENTS, 0, 1)).toMatchObject({ code: "no-active-plan" });
 		expect(denialMessage(decidePremiumAssign(NO_PLAN_ENTITLEMENTS, 0, 1))).not.toMatch(/Pro and Business/);
 	});

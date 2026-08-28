@@ -57,21 +57,11 @@ export type PlatformOption = {
 export type ModelPickerState = {
 	/** Models this brand may choose from, with target metadata for display. */
 	available: PlatformOption[];
-	/**
-	 * Whether the viewer decides the picks. False in demo, where every write is
-	 * refused, and in whitelabel, where the platforms a brand is tracked on are
-	 * the agency's decision rather than their customer's — in both, checkboxes
-	 * would offer a choice that does not exist.
-	 */
 	editable: boolean;
 	/**
-	 * What the brand is actually tracked on — never the raw column. Reporting that
-	 * and letting the page read null as "everything configured" is what showed a
-	 * Pro brand 10 of 4 platforms selected.
-	 *
-	 * Each branch below resolves it the way that mode runs, which is not one rule:
-	 * in cloud `resolveBrandPicks` clamps the picks to the plan's menu and count,
-	 * and where nothing meters them every configured target is tracked.
+	 * What the brand is actually tracked on, never the raw column: reporting that
+	 * and letting the page read null as "everything configured" showed a Pro brand
+	 * 10 of 4 platforms selected.
 	 */
 	enabledModels: string[];
 	/** Cloud plan constraints; null outside cloud (no pick limit). */
@@ -212,8 +202,6 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 			return {
 				available,
 				editable: canEditPlatformPicks(),
-				// Unmetered, so a brand that has never chosen is tracked on every
-				// target the deployment configures.
 				enabledModels: brand.enabledModels ?? available.map((option) => option.model),
 				planLimits: null,
 				upgradeOptions: [],
@@ -281,8 +269,6 @@ export const updateEnabledModelsFn = createServerFn({ method: "POST" })
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
 
-		// The page hides the picker in these modes; refusing here is what makes
-		// that a rule rather than a rendering decision.
 		requirePlatformPicksEditable();
 
 		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });

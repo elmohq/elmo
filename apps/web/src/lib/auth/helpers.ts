@@ -32,17 +32,10 @@ export function hasReportAccess(session: SessionLike): boolean {
 	return session.user.hasReportGeneratorAccess === true;
 }
 
-/**
- * Whether the person looking chooses which platforms a brand is tracked on, or
- * whoever runs the deployment for them does. Not a plan question — entitlements
- * read "unlimited" for local, demo and whitelabel alike — so the deployment
- * declares it, the same way it declares brand creation.
- */
 export function canEditPlatformPicks(): boolean {
 	return getDeployment().features.platformPicksEditable;
 }
 
-/** The one refusal, so the page, creation and editing all reject picks alike. */
 export function requirePlatformPicksEditable(): void {
 	if (!canEditPlatformPicks()) {
 		throw new Error("Platform picks are set by whoever runs this deployment.");

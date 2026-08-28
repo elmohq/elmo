@@ -1,11 +1,7 @@
 /**
- * The per-mode feature flags as they actually ship, through the same factories
- * the app builds its Deployment from.
- *
- * `policies.test.ts` covers what each evaluator does with a flag; this covers
- * which flag each mode hands it. The `*_FEATURES` fixtures in
- * `src/test/mocks/auth.ts` are a hand-maintained copy of these factories and
- * cannot catch one drifting.
+ * The per-mode flags as they ship. The `*_FEATURES` fixtures in
+ * `src/test/mocks/auth.ts` are a hand-maintained copy and cannot catch a factory
+ * drifting.
  */
 import { resetDeploymentCache } from "@workspace/deployment";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -38,8 +34,6 @@ describe("platformPicksEditable", () => {
 	});
 
 	it("denies whitelabel, where the picks and the provider bills are the agency's", () => {
-		// The reason it is declared per mode rather than derived: whitelabel is
-		// writable and its entitlements read "unlimited", exactly like local.
 		const features = featuresFor("whitelabel", WHITELABEL_ENV);
 		expect(features.readOnly).toBe(false);
 		expect(features.platformPicksEditable).toBe(false);

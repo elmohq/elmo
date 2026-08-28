@@ -73,8 +73,6 @@ function LlmsSettingsPage() {
 	);
 }
 
-/** Which of the three shapes this deployment and plan leave: a picker, or one of
- *  the two reports — nothing to show, or nothing for the viewer to decide. */
 function PlatformSection({ picker }: { picker: ModelPickerState }) {
 	if (!picker.editable) return <TrackedPlatforms picker={picker} />;
 	if (picker.available.length === 0) return <NoPlatformsCard />;
@@ -92,21 +90,12 @@ function NoPlatformsCard() {
 				<CardTitle>Tracked platforms</CardTitle>
 			</CardHeader>
 			<CardContent>
-				{/* Deliberately says nothing about how to fix it: the operator gets
-				    that from the card below, and for everyone else the deployment's
-				    configuration is not theirs to change. */}
 				<p className="text-sm text-muted-foreground">This brand is not tracked on any platform yet.</p>
 			</CardContent>
 		</Card>
 	);
 }
 
-/**
- * The same tiers with no checkboxes, for the modes where the picks are not the
- * viewer's to make: demo refuses every write, and in whitelabel the agency
- * decides what its customers are tracked on. Only the platforms actually tracked
- * are listed — the rest would read as an offer.
- */
 function TrackedPlatforms({ picker }: { picker: ModelPickerState }) {
 	const tracked = new Set(picker.enabledModels);
 	const groups = groupPlatformOptions(picker.available.filter((option) => tracked.has(option.model)));
@@ -144,10 +133,6 @@ function PlatformTierCard({
 	);
 }
 
-/**
- * The tiers as a choice: a buffered selection, what it would cost or spend of
- * the plan's budget, and the bar that commits it.
- */
 function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 	const { brand: brandId } = Route.useParams();
 	const router = useRouter();

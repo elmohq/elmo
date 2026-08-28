@@ -133,11 +133,7 @@ function standardPicker(overrides: Partial<ModelPickerState> = {}): ModelPickerS
 	};
 }
 
-/**
- * An unmetered deployment: no plan menu, no pick count, and — for a brand that
- * has never chosen — every configured target tracked, which is what the server
- * resolves `enabledModels` to there.
- */
+/** No plan menu, no pick count, and every configured target tracked. */
 function unmeteredPicker(available: PlatformOption[], overrides: Partial<ModelPickerState> = {}): ModelPickerState {
 	return {
 		available,
@@ -310,11 +306,7 @@ export const UnlimitedPicks: Story = {
 	},
 };
 
-/**
- * No targets configured at all: the page says so instead of an empty grid, and
- * says only that. How to configure them is the operator's business, and the
- * operator gets it from the "Track more platforms" card below.
- */
+/** No targets configured at all: the page says so instead of an empty grid. */
 export const NoTargetsConfigured: Story = {
 	render: () => {
 		loader(unmeteredPicker([]));
@@ -537,11 +529,8 @@ export const CloudHidesPlatformSuggestions: Story = {
 /**
  * Whitelabel is the case the mode gates exist for. It resolves the same
  * unlimited entitlements as local — but the person looking is the agency's
- * *customer*, not the operator. So the provider cost estimates (the agency's
- * margin) and the unconfigured-platform suggestions (the agency's
- * SCRAPE_TARGETS) both stay hidden, exactly as in cloud, and the picks are the
- * agency's to make: the page reports what the brand is tracked on instead of
- * offering checkboxes no save would accept.
+ * *customer*, not the operator. So the cost estimates, the platform suggestions
+ * and the picks themselves all stay the agency's.
  *
  * This pins the rendering half of that — it can't catch the server gates
  * themselves widening, since the server function is mocked here.
@@ -561,11 +550,8 @@ export const Whitelabel: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		// Nothing to pick, and nothing to save.
 		await expect(canvas.queryByRole("checkbox")).toBeNull();
 		await expect(canvas.queryByRole("button", { name: /save changes/i })).toBeNull();
-
-		// The tiers still explain what each kind of tracking means.
 		await expect(await canvas.findByText(CARD_TITLES.scraped)).toBeVisible();
 		await expect(await canvas.findByText("ChatGPT")).toBeVisible();
 
@@ -579,12 +565,7 @@ export const Whitelabel: Story = {
 	},
 };
 
-/**
- * Demo runs the local deployment with every write refused, so the page reports
- * the same way whitelabel does — a checkbox there would fail on save. Only the
- * platforms the brand is actually tracked on are listed; the configured-but-
- * unpicked ones would read as an offer.
- */
+/** Demo refuses every write, so the page reports the same way whitelabel does. */
 export const DemoIsNotEditable: Story = {
 	render: () => {
 		loader({

@@ -41,9 +41,7 @@ export function getDefaultDelayHours(): number {
 	return parsed;
 }
 
-// Flat per-brand caps. The rules that apply them — which is not simply "the
-// list must fit", see decidePromptCap — live with the other write guards in
-// src/entitlements/guards.ts.
+// Maximum limits for brand resources
 export const MAX_COMPETITORS = 500;
 export const MAX_PROMPTS = 100;
 

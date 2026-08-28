@@ -125,11 +125,6 @@ export function PlatformPicker({
 	);
 }
 
-/**
- * The same platforms without the choice: what a brand is tracked on where the
- * viewer doesn't decide it. Shares the picker's grid so switching between the
- * two doesn't reflow the page around it.
- */
 export function PlatformList({ options, className }: { options: PlatformOption[]; className?: string }) {
 	return (
 		<PlatformGrid className={className}>
@@ -142,7 +137,6 @@ export function PlatformList({ options, className }: { options: PlatformOption[]
 	);
 }
 
-/** Shared so a platform reads the same whether or not it can be toggled. */
 const PLATFORM_ROW = "flex items-center gap-3 rounded-md border p-3";
 
 function PlatformGrid({ children, className }: { children: ReactNode; className?: string }) {

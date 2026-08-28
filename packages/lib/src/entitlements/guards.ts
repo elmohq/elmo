@@ -4,25 +4,14 @@
  *
  * Shape: pure decide* functions (inputs → verdict) that the tests exercise
  * exhaustively, wrapped by assert* helpers that load whatever the decision
- * needs. Two families live here:
- *
- * - Plan limits, decided from entitlements plus a usage count. Every assert
- *   short-circuits before any query when entitlements are unlimited, so
- *   non-cloud deployments never pay for a count they have no limit to check.
- * - Flat caps (MAX_PROMPTS, MAX_COMPETITORS), which apply in every deployment
- *   mode and need no entitlements at all. They bound one brand's list; the
- *   plan limits bound the whole workspace.
- *
- * The one rule that is neither: introducing a grounded pairing needs a pool to
- * charge it to, and an unlimited deployment has none (see
- * `decideGroundedAssign`). It is the single decision that survives the unlimited
- * short-circuit, because there the answer is "never", not "no limit".
+ * needs. The plan limits short-circuit before any query when entitlements are
+ * unlimited; the flat caps (MAX_PROMPTS, MAX_COMPETITORS) need no entitlements
+ * and bound one brand's list rather than the whole workspace.
  *
  * Downgrade policy: these guards only block *adding* beyond a limit. Resources
  * already over a limit — after a downgrade, or written by the admin API, which
- * the flat caps never consulted — are never deleted or mutated here, and a save
- * that leaves the overage where it is still goes through. The worker's run
- * policy simply stops running the overage, oldest-first wins.
+ * the flat caps never consulted — are never deleted or mutated here. The
+ * worker's run policy simply stops running the overage, oldest-first wins.
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
@@ -100,24 +89,15 @@ export function decideBrandCreate(entitlements: Entitlements, currentBrandCount:
 }
 
 /**
- * The flat per-brand prompt cap, applied to what a save would leave behind.
- *
- * It governs growth, not what a brand holds: the admin API adds prompts without
- * consulting it, so brands over the cap exist, and the prompts editor submits
- * the brand's whole list on every save. Refusing those saves would freeze such
- * a brand — unable to disable a prompt or fix a typo — so only a save that adds
- * rows and lands over the cap is denied.
+ * Governs growth, not what a brand holds: the admin API adds prompts without
+ * consulting the cap, and the editor submits the brand's whole list on every
+ * save, so refusing an over-cap brand's saves would freeze it.
  */
 export function decidePromptCap(existing: number, adding: number): EntitlementDecision {
 	if (adding <= 0 || existing + adding <= MAX_PROMPTS) return ALLOWED;
 	return deny("prompt-cap", `A brand may have at most ${MAX_PROMPTS} prompts (this one has ${existing}).`);
 }
 
-/**
- * The flat per-brand competitor cap, applied to what a write would leave
- * behind — so the bulk replace the editor saves through, a single add, and a
- * bulk add from onboarding all answer the same question with the same number.
- */
 export function decideCompetitorCap(resulting: number): EntitlementDecision {
 	if (resulting <= MAX_COMPETITORS) return ALLOWED;
 	return deny(
@@ -166,25 +146,13 @@ export function decideEnabledModels(entitlements: Entitlements, requestedModels:
 }
 
 /**
- * Whether a save may introduce a grounded pairing at all, before any question
- * of how many. `adding` counts pairings a row does not already carry.
+ * An unlimited deployment has no pool and its run policy never reads a prompt's
+ * grounded models, so an assignment made there would be inert.
  *
- * Cloud meters them from a pool and `decidePremiumAssign` prices the spend. An
- * unlimited deployment has no pool, and its run policy never reads a prompt's
- * grounded models — self-hosted tracks the same models by picking their
- * grounded targets per brand on the LLMs page, where the operator sees what it
- * costs. An assignment made here would be inert, so the editor does not offer
- * one and the save refuses it.
- *
- * Introducing, not spending: re-enabling a grounded prompt spends a pairing
- * without asking for anything new, and a database moved off cloud submits its
- * stored assignments on every save. Refusing those would freeze the brand.
- * Letting go of one costs nobody anything.
- *
- * Keyed on `unlimited` rather than the run policy's `premiumPool > 0`, though
- * the two coincide, because the difference is which refusal a customer hears: a
- * metered plan without a pool is being sold an upgrade, not told to use another
- * mechanism.
+ * Introducing one, not spending: a database moved off cloud submits its stored
+ * assignments on every save, and refusing those would freeze the brand. Keyed on
+ * `unlimited` rather than `premiumPool > 0`, though the two coincide, so a
+ * metered plan without a pool still hears decidePremiumAssign's upgrade line.
  */
 export function decideGroundedAssign(entitlements: Entitlements, adding: number): EntitlementDecision {
 	if (adding <= 0 || !entitlements.unlimited) return ALLOWED;
@@ -364,38 +332,24 @@ export interface PromptSaveDelta {
 	prompts: number;
 	premiumPairings: number;
 	/**
-	 * Grounded pairings the save *introduces*: a row asked to carry a model it
-	 * does not already carry, whether or not it is enabled.
-	 *
-	 * A different question from a positive `premiumPairings`, and both are
-	 * needed. Re-enabling a grounded prompt spends a pairing while introducing
-	 * nothing; assigning a model to a disabled prompt introduces one while
-	 * spending nothing. The pool prices the first, `decideGroundedAssign` refuses
-	 * the second where there is no pool to price it against.
+	 * Pairings introduced, which `premiumPairings` cannot stand in for: re-enabling
+	 * a grounded prompt spends one while introducing nothing, and assigning a model
+	 * to a disabled prompt introduces one while spending nothing.
 	 */
 	premiumAdded: number;
 }
 
-/** A prompt row as the pools see it. `premiumModels` is what is (or will be)
- *  stored, so a disabled prompt spends nothing whatever it is assigned. */
 export interface PromptPoolState {
 	enabled: boolean;
 	premiumModels: readonly string[];
 }
 
-/** One row of a prompts save. `before` is absent for a row the save inserts. */
 export interface PromptSaveRow {
 	before?: PromptPoolState;
 	after: PromptPoolState;
 }
 
-/**
- * What a prompts save leaves behind, minus what was there.
- *
- * The pool counts are net, and that is the whole design: a save that disables a
- * prompt, clears its grounded models, or deletes it outright comes out negative
- * and asks nothing of anyone. Only spending more than before needs permission.
- */
+/** Net, so a save that disables or clears comes out negative and asks nothing. */
 export function promptSaveDelta(rows: readonly PromptSaveRow[]): PromptSaveDelta {
 	const before = rows.flatMap((row) => (row.before ? [row.before] : []));
 	const after = rows.map((row) => row.after);
@@ -412,16 +366,10 @@ export function promptSaveDelta(rows: readonly PromptSaveRow[]): PromptSaveDelta
 }
 
 /**
- * Guard a whole prompts save against everything it can ask for. One entitlement
- * load and one parallel round of counts, rather than the two of each that
- * calling the single-limit asserts back to back would cost — and the limits are
- * decided against the same snapshot, so a save can't pass one against a plan the
- * other was denied under.
- *
- * Written out rather than routed through `withEntitlements` for one line:
- * `decideGroundedAssign` is the only rule here whose answer for an unlimited
- * deployment is "never" rather than "no limit", so it has to run ahead of the
- * short-circuit that skips the counts nothing is going to check.
+ * One entitlement load and one round of counts, so a save can't pass one limit
+ * against a plan another was denied under. Written out rather than routed
+ * through `withEntitlements` because decideGroundedAssign is the one rule that
+ * must run ahead of the unlimited short-circuit.
  */
 export async function assertPromptSaveAllowed(organizationId: string, delta: PromptSaveDelta): Promise<void> {
 	if (delta.prompts <= 0 && delta.premiumPairings <= 0 && delta.premiumAdded <= 0) return;

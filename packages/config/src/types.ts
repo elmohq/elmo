@@ -32,18 +32,11 @@ export interface FeaturesConfig {
 	 */
 	teamInvites: boolean;
 	/**
-	 * Whether the person looking at a brand chooses which platforms it is
-	 * tracked on. True in local and cloud, where the viewer either runs the
-	 * deployment or buys the choice; false in whitelabel, where the picks and
-	 * the provider bills behind them are the agency's, and in demo, which
-	 * refuses every write.
-	 *
-	 * Carries the same value as `canCreateBrands` in all four modes today and is
-	 * still its own flag: they answer to different owners. Brand creation is
-	 * provisioning, which cloud sells per brand and an agency keeps to itself;
-	 * this is about spending a provider budget, which cloud sells as part of a
-	 * plan. A tier that provisioned brands without letting a customer retarget
-	 * them, or the reverse, would move one and not the other.
+	 * Whether the viewer chooses which platforms a brand is tracked on — false in
+	 * whitelabel, where the picks and the provider bills behind them are the
+	 * agency's, and in demo. Deliberately not folded into `canCreateBrands`
+	 * despite matching it in all four modes today: provisioning a brand and
+	 * spending a provider budget are sold separately.
 	 */
 	platformPicksEditable: boolean;
 }

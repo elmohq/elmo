@@ -512,8 +512,8 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			// The cap is applied in the handler, against what the brand already has:
-			// a brand the admin API pushed past MAX_PROMPTS must still be editable.
+			// No .max(): a brand the admin API pushed past MAX_PROMPTS must stay
+			// editable, so decidePromptCap judges the handler's growth instead.
 			prompts: z.array(
 				z.object({
 					id: z.string().optional(),
@@ -545,11 +545,8 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		const existingIds = new Set(existingRows.map((p) => p.id));
 		const existingById = new Map(existingRows.map((p) => [p.id, p]));
 
-		// Ahead of planning, so the cap bounds the work as well as the result:
-		// every id-less row becomes a planned insert, and a padded list should be
-		// refused rather than built first. Nothing is deleted here — the editor
-		// retires a prompt by disabling it — so the rows being inserted are the
-		// whole of the brand's growth.
+		// Ahead of planning, so the cap bounds the work too. Nothing is deleted here
+		// — the editor retires a prompt by disabling it — so inserts are all growth.
 		assertAllowed(decidePromptCap(existingRows.length, data.prompts.filter((p) => !p.id).length));
 
 		const { updates, inserts } = planPromptSave(data.prompts, existingRows);
