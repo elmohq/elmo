@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import { getTimezoneLookbackRange, resolveTimezone, shiftDateStr } from "@/lib/timezone-utils";
 
@@ -18,8 +18,30 @@ describe("resolveTimezone", () => {
 		},
 	);
 
-	it("uses UTC when no requested timezone or resolved fallback is available", () => {
+	it("uses UTC when the resolved fallback is empty", () => {
 		expect(resolveTimezone(undefined, "")).toBe("UTC");
+	});
+
+	describe("without a resolved fallback", () => {
+		afterEach(() => vi.unstubAllGlobals());
+
+		it("uses the system timezone", () => {
+			vi.stubGlobal("Intl", {
+				DateTimeFormat: () => ({ resolvedOptions: () => ({ timeZone: "Australia/Sydney" }) }),
+			});
+
+			expect(resolveTimezone(undefined, undefined)).toBe("Australia/Sydney");
+		});
+
+		it("uses UTC when the system timezone cannot be resolved", () => {
+			vi.stubGlobal("Intl", {
+				DateTimeFormat: () => {
+					throw new Error("timezone data unavailable");
+				},
+			});
+
+			expect(resolveTimezone(undefined, undefined)).toBe("UTC");
+		});
 	});
 });
 
@@ -93,6 +115,19 @@ describe("getTimezoneLookbackRange", () => {
 		const boundaryNow = new Date("2025-12-31T23:30:00Z");
 
 		expect(getTimezoneLookbackRange("1w", timezone, { now: boundaryNow })).toEqual({
+			fromDateStr,
+			toDateStr,
+		});
+	});
+
+	// New York switches to EDT on 2024-03-10 and back to EST on 2024-11-03, so local
+	// midnight lands at a different UTC instant on either side of each transition.
+	it.each<[string, string, string, string]>([
+		["before local midnight on the spring-forward day", "2024-03-10T04:59:00Z", "2024-03-03", "2024-03-09"],
+		["after the spring-forward transition", "2024-03-10T12:00:00Z", "2024-03-04", "2024-03-10"],
+		["before local midnight on the fall-back day", "2024-11-03T03:59:00Z", "2024-10-27", "2024-11-02"],
+	])("spans seven calendar days %s", (_label, nowIso, fromDateStr, toDateStr) => {
+		expect(getTimezoneLookbackRange("1w", "America/New_York", { now: new Date(nowIso) })).toEqual({
 			fromDateStr,
 			toDateStr,
 		});
