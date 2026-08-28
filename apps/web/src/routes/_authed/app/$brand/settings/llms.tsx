@@ -26,7 +26,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { type ReactNode, useState } from "react";
 import { formatUsd, PlatformList, PlatformPicker, projectSelectionCostUsd } from "@/components/platform-picker";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
-import { groupPlatformOptions, type PlatformGroup, platformGroupCopy, platformGroupId } from "@/lib/platform-groups";
+import { groupPlatformOptions, type PlatformGroup, platformGroupCopy } from "@/lib/platform-groups";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { getModelPickerStateFn, type ModelPickerState, updateEnabledModelsFn } from "@/server/platform-picks";
 import { getPremiumPoolFn, type PremiumPool } from "@/server/premium-tracking";
@@ -74,12 +74,11 @@ function LlmsSettingsPage() {
 }
 
 function PlatformSection({ picker }: { picker: ModelPickerState }) {
-	if (!picker.editable) return <TrackedPlatforms picker={picker} />;
 	if (picker.available.length === 0) return <NoPlatformsCard />;
-	// A one-platform plan has nothing to choose, so it reports instead.
-	if (picker.planLimits?.platformPicks === 1 && picker.available.length === 1) {
-		return <SinglePlatformSummary picker={picker} />;
-	}
+	// A one-pick plan with one platform cannot be changed either: unticking it
+	// leaves zero, which the save bar refuses.
+	const forced = picker.planLimits?.platformPicks === 1 && picker.available.length === 1;
+	if (!picker.editable || forced) return <TrackedPlatforms picker={picker} />;
 	return <PlatformGroups picker={picker} />;
 }
 
@@ -96,18 +95,21 @@ function NoPlatformsCard() {
 	);
 }
 
+/** The tiers with no checkboxes, for when there is nothing to decide. */
 function TrackedPlatforms({ picker }: { picker: ModelPickerState }) {
+	const { brand: brandId } = Route.useParams();
 	const tracked = new Set(picker.enabledModels);
 	const groups = groupPlatformOptions(picker.available.filter((option) => tracked.has(option.model)));
 	if (groups.length === 0) return <NoPlatformsCard />;
 
-	return <PlatformTierCard groups={groups} renderGroup={(group) => <PlatformList options={group.options} />} />;
+	return (
+		<div className="space-y-4">
+			<PlatformTierCard groups={groups} renderGroup={(group) => <PlatformList options={group.options} />} />
+			{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} brandId={brandId} />}
+		</div>
+	);
 }
 
-/**
- * One card, divided: the tiers answer different questions but spend the same
- * budget, and separate cards read as separate allowances.
- */
 function PlatformTierCard({
 	groups,
 	renderGroup,
@@ -282,31 +284,6 @@ function UpgradePanel({ options, brandId }: { options: ModelPickerState["upgrade
 				<IconArrowUpRight className="h-4 w-4" />
 			</Link>
 		</div>
-	);
-}
-
-/**
- * A plan with a single platform has nothing to choose, so it states what is
- * tracked and what an upgrade would add.
- */
-function SinglePlatformSummary({ picker }: { picker: ModelPickerState }) {
-	const { brand: brandId } = Route.useParams();
-	const option = picker.available[0];
-	const copy = platformGroupCopy(platformGroupId(option));
-
-	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>{copy.title}</CardTitle>
-				<CardDescription>{copy.description}</CardDescription>
-			</CardHeader>
-			<CardContent className="space-y-4">
-				<PlatformList options={[option]} />
-				<p className="text-sm text-muted-foreground">Your plan tracks one platform for this brand.</p>
-
-				{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} brandId={brandId} />}
-			</CardContent>
-		</Card>
 	);
 }
 

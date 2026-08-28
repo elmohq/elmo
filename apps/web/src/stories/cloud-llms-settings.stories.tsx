@@ -254,7 +254,7 @@ export const StarterSinglePlatform: Story = {
 		const canvas = within(canvasElement);
 		// The tier names the card and also groups the upgrade options below it.
 		await expect((await canvas.findAllByText(CARD_TITLES.scraped)).length).toBeGreaterThan(0);
-		await expect(await canvas.findByText(/your plan tracks one platform/i)).toBeVisible();
+		await expect(await canvas.findByText("ChatGPT")).toBeVisible();
 		await expect(canvas.queryByRole("checkbox")).toBeNull();
 		await expect(await canvas.findByText(/upgrade to track more platforms/i)).toBeVisible();
 		await expect(await canvas.findByRole("button", { name: /compare plans/i })).toBeVisible();
