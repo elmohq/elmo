@@ -58,7 +58,7 @@ function OrganizationBlock({ organization }: { organization: OrganizationSummary
 					</span>
 					<IconSettings className="size-4 shrink-0 text-muted-foreground" />
 				</TooltipTrigger>
-				<TooltipContent>Organization settings</TooltipContent>
+				<TooltipContent>Organization Settings</TooltipContent>
 			</Tooltip>
 
 			{/* An organization with nothing in it and no way to add is its heading alone. */}
