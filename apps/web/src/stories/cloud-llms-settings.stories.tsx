@@ -564,7 +564,6 @@ export const Whitelabel: Story = {
 		// Nothing to pick, and nothing to save.
 		await expect(canvas.queryByRole("checkbox")).toBeNull();
 		await expect(canvas.queryByRole("button", { name: /save changes/i })).toBeNull();
-		await expect(await canvas.findByText(/set by whoever runs this deployment/i)).toBeVisible();
 
 		// The tiers still explain what each kind of tracking means.
 		await expect(await canvas.findByText(CARD_TITLES.scraped)).toBeVisible();

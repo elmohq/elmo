@@ -112,14 +112,7 @@ function TrackedPlatforms({ picker }: { picker: ModelPickerState }) {
 	const groups = groupPlatformOptions(picker.available.filter((option) => tracked.has(option.model)));
 	if (groups.length === 0) return <NoPlatformsCard />;
 
-	return (
-		<div className="space-y-4">
-			<PlatformTierCard groups={groups} renderGroup={(group) => <PlatformList options={group.options} />} />
-			<p className="text-sm text-muted-foreground">
-				Which platforms this brand is tracked on is set by whoever runs this deployment.
-			</p>
-		</div>
-	);
+	return <PlatformTierCard groups={groups} renderGroup={(group) => <PlatformList options={group.options} />} />;
 }
 
 /**
