@@ -513,7 +513,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		z.object({
 			brandId: z.string(),
 			// No .max() here: brands can already be over MAX_PROMPTS. decidePromptCap
-			// checks how many rows the save adds instead.
+			// checks how many rows the save inserts instead.
 			prompts: z.array(
 				z.object({
 					id: z.string().optional(),
@@ -545,9 +545,8 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		const existingIds = new Set(existingRows.map((p) => p.id));
 		const existingById = new Map(existingRows.map((p) => [p.id, p]));
 
-		assertAllowed(decidePromptCap(existingRows.length, data.prompts.filter((p) => !p.id).length));
-
 		const { updates, inserts } = planPromptSave(data.prompts, existingRows);
+		assertAllowed(decidePromptCap(existingRows.length, inserts.length));
 		await assertPromptSaveAllowed(brand.organizationId, promptSaveDelta({ updates, inserts }));
 
 		const saved = await db.transaction(async (tx) => {
