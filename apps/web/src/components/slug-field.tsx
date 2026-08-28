@@ -37,7 +37,12 @@ export function SlugField({
 					onChange={(e) => onChange(e.target.value)}
 					disabled={disabled}
 					maxLength={MAX_SLUG_LENGTH}
-					className="border-0 pl-0 font-mono text-sm shadow-none focus-visible:ring-0"
+					className={cn(
+						"border-0 pl-0 font-mono text-sm shadow-none focus-visible:ring-0",
+						// Where it can't be edited the whole address is one static string, so
+						// the segment matches the prefix instead of reading as the live part.
+						disabled && "text-muted-foreground disabled:opacity-100",
+					)}
 				/>
 			</div>
 		</div>

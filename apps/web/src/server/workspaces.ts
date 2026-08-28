@@ -164,7 +164,7 @@ export const updateWorkspaceFn = createServerFn({ method: "POST" })
 		const workspace = await requireOrganization(session.user.id, data.org);
 
 		if (!isOrgAdminRole(workspace.role)) {
-			throw new Error("Only workspace admins can change the workspace name or URL slug");
+			throw new Error("Only workspace admins can change the workspace name or URL Slug");
 		}
 		if (!canEditWorkspace(workspace.role)) {
 			throw new Error("This workspace cannot be renamed in this deployment");
