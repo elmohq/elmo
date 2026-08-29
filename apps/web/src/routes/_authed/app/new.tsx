@@ -11,7 +11,7 @@ import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { useInvalidateOrganizations } from "@/hooks/use-organizations";
-import { buildTitle, getAppName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { createOrganizationFn } from "@/server/organizations";
 
@@ -22,11 +22,9 @@ export const Route = createFileRoute("/_authed/app/new")({
 			throw redirect({ to: "/app" });
 		}
 	},
-	head: ({ match }) => ({
-		meta: [
-			{ title: buildTitle("New organization", { appName: getAppName(match) }) },
-			{ name: "description", content: "Create an organization to hold its own brands, team, and plan." },
-		],
+	head: pageHead({
+		title: "New organization",
+		description: "Create an organization to hold its own brands, team, and plan.",
 	}),
 	component: NewOrganizationPage,
 });

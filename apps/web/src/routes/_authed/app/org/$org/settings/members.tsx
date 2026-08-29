@@ -14,23 +14,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import { trackEvent } from "@/lib/posthog";
-import { buildTitle, getAppName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { cancelInvitationFn, inviteTeamMemberFn, listTeamFn, removeTeamMemberFn, type TeamData } from "@/server/team";
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings/members")({
 	staticData: { crumb: "Team" },
 	loader: ({ params }): Promise<TeamData> => listTeamFn({ data: { org: params.org } }),
-	head: ({ match, loaderData }) => {
-		const appName = getAppName(match);
-		const organizationName = (loaderData as TeamData | undefined)?.organization?.name;
-		return {
-			meta: [
-				{ title: buildTitle("Team", { appName, subject: organizationName }) },
-				{ name: "description", content: "Invite teammates and manage team members." },
-			],
-		};
-	},
+	head: pageHead({ description: "Invite teammates and manage team members." }),
 	component: TeamSettingsPage,
 });
 

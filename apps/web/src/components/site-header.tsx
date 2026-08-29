@@ -42,13 +42,8 @@ function CrumbLabel({ crumb }: { crumb: Crumb }) {
 	);
 }
 
-/**
- * The two names the trail can't get from a route: they come from the layouts
- * that resolved them, so the header renders the finished trail on first paint
- * instead of growing a crumb when a query lands.
- */
-export function SiteHeader({ organizationName, brandName }: { organizationName?: string; brandName?: string } = {}) {
-	const crumbs = useBreadcrumbs({ organizationName, brandName });
+export function SiteHeader() {
+	const crumbs = useBreadcrumbs();
 
 	return (
 		<header className="bg-background sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">

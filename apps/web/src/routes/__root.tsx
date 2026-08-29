@@ -12,10 +12,10 @@ import type { DeploymentMode } from "@workspace/config/types";
 import { useEffect } from "react";
 import { usesWordmarkFont } from "@/components/logo";
 import MissingEnvPage from "@/components/missing-env-page";
+import { NotFoundPage } from "@/components/not-found-page";
 import queryDevtools from "@/integrations/tanstack-query/devtools";
 import { initCrisp } from "@/lib/crisp";
 import { initPostHog } from "@/lib/posthog";
-import { NotFound } from "@/router-default-components";
 import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
 import appCss from "../styles.css?url";
 
@@ -42,7 +42,7 @@ let cachedRootData: {
 } | null = null;
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-	notFoundComponent: NotFound,
+	notFoundComponent: NotFoundPage,
 	beforeLoad: async () => {
 		if (cachedRootData) return cachedRootData;
 		const [clientConfig, envValidation] = await Promise.all([getClientConfig(), getEnvValidationStateFn()]);

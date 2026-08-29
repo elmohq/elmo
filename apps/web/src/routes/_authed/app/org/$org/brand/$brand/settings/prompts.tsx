@@ -1,8 +1,3 @@
-/**
- * /app/$brand/settings/prompts - Prompt management page
- *
- * Editor to add/edit/remove prompts.
- */
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { premiumSlotsUsed } from "@workspace/config/plans";
@@ -13,7 +8,7 @@ import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { PromptsEditor } from "@/components/prompts-editor";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { getPremiumPoolFn } from "@/server/premium-tracking";
 
 const getPromptsForEditing = createServerFn({ method: "GET" })
@@ -72,16 +67,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 				: undefined,
 		};
 	},
-	head: ({ matches, match }) => {
-		const appName = getAppName(match);
-		const brandName = getBrandName(matches);
-		return {
-			meta: [
-				{ title: buildTitle("Prompts", { appName, subject: brandName }) },
-				{ name: "description", content: "Add, edit, or remove tracked prompts." },
-			],
-		};
-	},
+	head: pageHead({ description: "Add, edit, or remove tracked prompts." }),
 	pendingComponent: PromptsSettingsSkeleton,
 	component: PromptsSettingsPage,
 });

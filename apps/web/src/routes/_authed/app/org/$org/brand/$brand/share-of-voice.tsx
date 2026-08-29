@@ -1,6 +1,4 @@
 /**
- * /app/$brand/share-of-voice - Share of Voice
- *
  * "Who do the AI engines mention instead of you?" A leaderboard of competitor
  * mention rates next to the brand's own, with the brand's overall share, a
  * donut of top competitors, and share of voice over time.
@@ -22,21 +20,12 @@ import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
 import { useSiteIcons } from "@/hooks/use-site-icons";
-import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { shareOfVoiceColorMap } from "@/lib/share-of-voice-palette";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/share-of-voice")({
 	staticData: { crumb: "Share of Voice" },
-	head: ({ matches, match }) => {
-		const appName = getAppName(match);
-		const brandName = getBrandName(matches);
-		return {
-			meta: [
-				{ title: buildTitle("Share of Voice", { appName, subject: brandName }) },
-				{ name: "description", content: "See how often AI engines mention you versus your competitors." },
-			],
-		};
-	},
+	head: pageHead({ description: "See how often AI engines mention you versus your competitors." }),
 	component: ShareOfVoicePage,
 });
 

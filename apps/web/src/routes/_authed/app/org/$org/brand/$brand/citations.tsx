@@ -1,9 +1,3 @@
-/**
- * /app/$brand/citations - Citations tracking page
- *
- * Shows citation statistics with filtering by model, tags, and lookback period.
- */
-
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
@@ -17,20 +11,11 @@ import { useCitations } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { getDaysFromLookback } from "@/lib/chart-utils";
-import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/citations")({
 	staticData: { crumb: "Citations" },
-	head: ({ matches, match }) => {
-		const appName = getAppName(match);
-		const brandName = getBrandName(matches);
-		return {
-			meta: [
-				{ title: buildTitle("Citations", { appName, subject: brandName }) },
-				{ name: "description", content: "See which sources LLMs cite in responses to your prompts." },
-			],
-		};
-	},
+	head: pageHead({ description: "See which sources LLMs cite in responses to your prompts." }),
 	component: CitationsPage,
 });
 

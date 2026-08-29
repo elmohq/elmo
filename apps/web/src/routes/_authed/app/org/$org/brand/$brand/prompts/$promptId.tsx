@@ -34,7 +34,7 @@ import { useQueryFanout } from "@/hooks/use-query-fanout";
 import { useSiteIcons } from "@/hooks/use-site-icons";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { promptKeywords } from "@/lib/fanout-analysis";
-import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { skeletonRows } from "@/lib/skeleton-rows";
 import { getModelDisplayName } from "@/lib/utils";
 import { getPromptMetadataFn } from "@/server/prompts";
@@ -70,16 +70,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/prompts
 	validateSearch: (search: Record<string, unknown>): { tab?: TabKey } => ({
 		tab: TAB_KEYS.includes(search.tab as TabKey) ? (search.tab as TabKey) : undefined,
 	}),
-	head: ({ matches, match }) => {
-		const appName = getAppName(match);
-		const brandName = getBrandName(matches);
-		return {
-			meta: [
-				{ title: buildTitle("Prompt Details", { appName, subject: brandName }) },
-				{ name: "description", content: "Detailed analysis of a tracked prompt's performance." },
-			],
-		};
-	},
+	head: pageHead({ title: "Prompt Details", description: "Detailed analysis of a tracked prompt's performance." }),
 	component: PromptHistoryPage,
 });
 

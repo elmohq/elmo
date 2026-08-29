@@ -1,6 +1,4 @@
 /**
- * /app/$brand/opportunities — AI-generated opportunities.
- *
  * The page renders a structured opportunities report. We assemble a deterministic
  * digest of the brand's tracked citation data (per-query standing vs the leading
  * competitor over 7d + 30d, citation difficulty, where answers are sourced, and
@@ -16,20 +14,11 @@ import { Spinner } from "@workspace/ui/components/spinner";
 import { OpportunitiesReport } from "@/components/opportunities-report";
 import { PageHeader } from "@/components/page-header";
 import { useOpportunities } from "@/hooks/use-opportunities";
-import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/opportunities")({
 	staticData: { crumb: "Opportunities" },
-	head: ({ matches, match }) => {
-		const appName = getAppName(match);
-		const brandName = getBrandName(matches);
-		return {
-			meta: [
-				{ title: buildTitle("Opportunities", { appName, subject: brandName }) },
-				{ name: "description", content: "AI-generated opportunities to earn more AI citations." },
-			],
-		};
-	},
+	head: pageHead({ description: "AI-generated opportunities to earn more AI citations." }),
 	component: OpportunitiesPage,
 });
 

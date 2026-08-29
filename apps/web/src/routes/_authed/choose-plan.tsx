@@ -23,7 +23,7 @@ import { AppShell } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { PlanComparison } from "@/components/plan-comparison";
 import { SiteHeader } from "@/components/site-header";
-import { buildTitle, getAppName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { getPaywallStateFn, type PaywallRequired, type PaywallState } from "@/server/billing";
 
 const searchSchema = z.object({
@@ -52,9 +52,7 @@ export const Route = createFileRoute("/_authed/choose-plan")({
 		}
 		return paywall;
 	},
-	head: ({ match }) => ({
-		meta: [{ title: buildTitle("Choose a plan", { appName: getAppName(match) }) }],
-	}),
+	head: pageHead({}),
 	component: ChoosePlanPage,
 });
 

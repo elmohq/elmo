@@ -7,7 +7,6 @@
  */
 
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { orgSegment } from "@workspace/lib/app-urls";
 import BrandOnboarding from "@/components/brand-onboarding";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
@@ -26,7 +25,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/")({
 		context,
 	}): Promise<{ organization: OrganizationSummary; onboardingPlatformState: OnboardingPlatformState }> => {
 		if (!needsOnboarding(context.organization)) {
-			throw redirect({ to: "/app/org/$org/settings", params: { org: orgSegment(context.organization) } });
+			throw redirect({ to: "/app/org/$org/settings", params: { org: context.organization.slug } });
 		}
 
 		return {
@@ -44,7 +43,7 @@ function OrganizationOnboardingPage() {
 
 	return (
 		<BrandOnboarding
-			organizationSlug={orgSegment(organization)}
+			organizationSlug={organization.slug}
 			brandId={organization.id}
 			brandName={organization.name}
 			platformState={onboardingPlatformState}

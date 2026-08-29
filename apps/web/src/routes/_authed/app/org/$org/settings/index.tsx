@@ -12,23 +12,18 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import { SlugField } from "@/components/slug-field";
-import { useInvalidateOrganizations, useOrganizationRoute } from "@/hooks/use-organizations";
-import { buildTitle, getAppName } from "@/lib/route-head";
+import { useInvalidateOrganizations, useOrganization } from "@/hooks/use-organizations";
+import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updateOrganizationFn } from "@/server/organizations";
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings/")({
-	head: ({ match }) => ({
-		meta: [
-			{ title: buildTitle("Organization", { appName: getAppName(match) }) },
-			{ name: "description", content: "The organization's name and URL." },
-		],
-	}),
+	head: pageHead({ title: "Organization", description: "The organization's name and URL." }),
 	component: OrganizationSettingsPage,
 });
 
 function OrganizationSettingsPage() {
-	const { organization } = useOrganizationRoute();
+	const organization = useOrganization();
 	const router = useRouter();
 	const invalidateOrganizations = useInvalidateOrganizations();
 	const writeError = useWriteErrorMessage();
@@ -41,6 +36,7 @@ function OrganizationSettingsPage() {
 	// server would have trimmed anyway.
 	const trimmedName = name.trim();
 	const trimmedSlug = slug.trim().toLowerCase();
+	const slugMoved = trimmedSlug !== organization.slug;
 	const isDirty = name !== organization.name || slug !== organization.slug;
 	const isComplete = trimmedName.length > 0 && trimmedSlug.length > 0;
 
@@ -51,16 +47,16 @@ function OrganizationSettingsPage() {
 		setError(null);
 		setSaving(true);
 		try {
-			await updateOrganizationFn({ data: { org: organization.slug, name: trimmedName, slug: trimmedSlug } });
+			await updateOrganizationFn({
+				data: { org: organization.slug, name: trimmedName, ...(slugMoved && { slug: trimmedSlug }) },
+			});
 			setName(trimmedName);
 			setSlug(trimmedSlug);
-			// If the slug moved, so did the address this page is at.
 			await invalidateOrganizations();
-			await router.navigate({
-				to: "/app/org/$org/settings",
-				params: { org: trimmedSlug },
-				replace: true,
-			});
+			// If the slug moved, so did the address this page is at.
+			if (slugMoved) {
+				await router.navigate({ to: "/app/org/$org/settings", params: { org: trimmedSlug }, replace: true });
+			}
 			await router.invalidate();
 		} catch (err) {
 			setError(writeError(err, "Failed to save the organization."));

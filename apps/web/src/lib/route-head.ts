@@ -1,3 +1,5 @@
+import { routeSubjects } from "@/lib/route-subject";
+
 const DEFAULT_DESCRIPTION = "Track and optimize your brand's visibility across AI models.";
 
 interface RouteMatchContext {
@@ -21,17 +23,6 @@ export function getAppUrl(match: RouteMatchContext): string | undefined {
 	return url ? url.replace(/\/$/, "") : undefined;
 }
 
-/** Read off the brand the `$brand` layout loaded, so the name has one home. */
-export function getBrandName(matches: Array<{ loaderData?: Record<string, unknown> }>): string | undefined {
-	for (const m of matches) {
-		const brand = m.loaderData?.brand;
-		if (brand && typeof brand === "object" && "name" in brand && typeof brand.name === "string") {
-			return brand.name;
-		}
-	}
-	return undefined;
-}
-
 /**
  * Build a page title following the convention:
  *   "PageName | Subject · AppName"  (with a brand or organization in scope)
@@ -42,6 +33,35 @@ export function buildTitle(pageName: string, opts: { appName: string; subject?: 
 		return `${pageName} | ${opts.subject} · ${opts.appName}`;
 	}
 	return `${pageName} · ${opts.appName}`;
+}
+
+/** What a route's `head` is handed; narrower than the router's own argument. */
+interface HeadArgs {
+	match: RouteMatchContext & { staticData?: { crumb?: string } };
+	matches: Array<{ routeId: string; loaderData?: unknown }>;
+}
+
+/**
+ * The `head` every page inside the app shares: its own name, the subject it is
+ * about, and the deployment's.
+ *
+ * The name comes from the crumb, so the trail and the tab agree without the
+ * page saying it twice — `title` is for the few where they differ. The subject
+ * is the brand where there is one and the organization otherwise, which is what
+ * the breadcrumb reads too.
+ */
+export function pageHead(page: { title?: string; description?: string }) {
+	return ({ match, matches }: HeadArgs) => {
+		const { organizationName, brandName } = routeSubjects(matches);
+		const name = page.title ?? match.staticData?.crumb;
+		const appName = getAppName(match);
+		return {
+			meta: [
+				{ title: name ? buildTitle(name, { appName, subject: brandName ?? organizationName }) : appName },
+				...(page.description ? [{ name: "description", content: page.description }] : []),
+			],
+		};
+	};
 }
 
 function toAbsolute(appUrl: string | undefined, path: string): string {

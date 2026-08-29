@@ -29,7 +29,7 @@ import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
 import { describeTargetSchedule, labelForModelFilter, type TrackedTarget } from "@/lib/model-filter";
 import { setPersonProperties } from "@/lib/posthog";
-import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 
 function getVisibilityBgColor(value: number): string {
 	if (value > 75) return "bg-emerald-50 dark:bg-emerald-950/30";
@@ -91,16 +91,7 @@ function formatRunFrequency(hours: number): string {
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/")({
 	staticData: { crumb: "Overview" },
-	head: ({ matches, match }) => {
-		const appName = getAppName(match);
-		const brandName = getBrandName(matches);
-		return {
-			meta: [
-				{ title: buildTitle("Overview", { appName, subject: brandName }) },
-				{ name: "description", content: "Dashboard overview of AI visibility and citations." },
-			],
-		};
-	},
+	head: pageHead({ description: "Dashboard overview of AI visibility and citations." }),
 	component: DashboardPage,
 });
 

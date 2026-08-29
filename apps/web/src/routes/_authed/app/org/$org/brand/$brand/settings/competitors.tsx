@@ -15,22 +15,13 @@ import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { useBrand, useCompetitors } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
-import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updateCompetitors } from "@/server/brands";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/competitors")({
 	staticData: { crumb: "Competitors" },
-	head: ({ matches, match }) => {
-		const appName = getAppName(match);
-		const brandName = getBrandName(matches);
-		return {
-			meta: [
-				{ title: buildTitle("Competitors", { appName, subject: brandName }) },
-				{ name: "description", content: "Manage your tracked competitors." },
-			],
-		};
-	},
+	head: pageHead({ description: "Manage your tracked competitors." }),
 	component: CompetitorsSettingsPage,
 });
 

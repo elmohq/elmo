@@ -9,7 +9,6 @@
 import { createFileRoute, notFound, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authed/reports")({
-	staticData: { crumb: "Admin" },
 	beforeLoad: ({ context }) => {
 		if (context.clientConfig && !context.clientConfig.features.reportGeneration) {
 			throw notFound();

@@ -3,6 +3,7 @@
  * parser is how the trail and the address bar drift apart when the URL moves.
  */
 import { useMatches } from "@tanstack/react-router";
+import { BRAND_ROUTE_ID, ORG_ROUTE_ID, routeSubjects } from "@/lib/route-subject";
 
 declare module "@tanstack/react-router" {
 	interface StaticDataRouteOption {
@@ -22,16 +23,14 @@ export interface Crumb {
 	kind?: "Organization" | "Brand";
 }
 
-const ORG_ROUTE_ID = "/_authed/app/org/$org";
-const BRAND_ROUTE_ID = "/_authed/app/org/$org/brand/$brand";
-
 /**
- * The two dynamic crumbs come in as subjects because a route can only declare
- * something static about itself. Either may be absent mid-load, and its crumb
- * is left out until it arrives.
+ * The two dynamic crumbs name a thing rather than a page, so they come off the
+ * layouts that resolved them. Either may be absent mid-load, and its crumb is
+ * left out until it arrives.
  */
-export function useBreadcrumbs(subjects: { organizationName?: string; brandName?: string }): Crumb[] {
+export function useBreadcrumbs(): Crumb[] {
 	const matches = useMatches();
+	const subjects = routeSubjects(matches);
 
 	return matches.flatMap((match): Crumb[] => {
 		if (match.routeId === ORG_ROUTE_ID) {

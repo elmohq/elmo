@@ -27,7 +27,7 @@ import { Progress } from "@workspace/ui/components/progress";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { type ReactNode, useState } from "react";
 import { PlanComparison } from "@/components/plan-comparison";
-import { buildTitle, getAppName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { type BillingState, getBillingStateFn, setPremiumAddonQuantityFn } from "@/server/billing";
 
@@ -39,16 +39,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/billing")({
 		}
 		return getBillingStateFn({ data: { org: params.org } });
 	},
-	head: ({ match, loaderData }) => {
-		const appName = getAppName(match);
-		const organizationName = (loaderData as BillingState | undefined)?.organization?.name;
-		return {
-			meta: [
-				{ title: buildTitle("Billing", { appName, subject: organizationName }) },
-				{ name: "description", content: "Manage your plan, usage, and billing." },
-			],
-		};
-	},
+	head: pageHead({ description: "Manage your plan, usage, and billing." }),
 	component: BillingSettingsPage,
 });
 

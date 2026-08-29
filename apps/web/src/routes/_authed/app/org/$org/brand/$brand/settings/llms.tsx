@@ -1,6 +1,4 @@
 /**
- * /app/$brand/settings/llms - LLM configuration page
- *
  * Which platforms a brand is tracked against, grouped by what each group tells
  * you: a scraped engine shows what a visitor sees, an ungrounded API call shows
  * what a model already believes, and a grounded one shows what it finds and
@@ -27,7 +25,7 @@ import { type ReactNode, useState } from "react";
 import { formatUsd, PlatformList, PlatformPicker, projectSelectionCostUsd } from "@/components/platform-picker";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { groupPlatformOptions, type PlatformGroup, platformGroupCopy } from "@/lib/platform-groups";
-import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { getModelPickerStateFn, type ModelPickerState, updateEnabledModelsFn } from "@/server/platform-picks";
 import { getPremiumPoolFn, type PremiumPool } from "@/server/premium-tracking";
@@ -41,16 +39,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 		]);
 		return { picker, premium };
 	},
-	head: ({ matches, match }) => {
-		const appName = getAppName(match);
-		const brandName = getBrandName(matches);
-		return {
-			meta: [
-				{ title: buildTitle("LLMs", { appName, subject: brandName }) },
-				{ name: "description", content: "Choose which AI models this brand is tracked against." },
-			],
-		};
-	},
+	head: pageHead({ description: "Choose which AI models this brand is tracked against." }),
 	component: LlmsSettingsPage,
 });
 

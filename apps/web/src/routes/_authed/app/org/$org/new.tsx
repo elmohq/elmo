@@ -16,7 +16,6 @@
  */
 
 import { createFileRoute, Link, redirect, useNavigate, useRouter } from "@tanstack/react-router";
-import { orgSegment } from "@workspace/lib/app-urls";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -26,7 +25,7 @@ import { PlatformSelectionStep } from "@/components/platform-selection-step";
 import { useInvalidateOrganizations } from "@/hooks/use-organizations";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
-import { buildTitle, getAppName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { createBrandInOrgFn } from "@/server/brands";
 import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
@@ -38,7 +37,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/new")({
 	loader: ({ context }) => {
 		const { brandCreation, name, id } = context.organization;
 		if (brandCreation.kind === "not-offered") {
-			throw redirect({ to: "/app/org/$org", params: { org: orgSegment(context.organization) } });
+			throw redirect({ to: "/app/org/$org", params: { org: context.organization.slug } });
 		}
 		return {
 			organizationId: id,
@@ -46,9 +45,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/new")({
 			blocked: brandCreation.kind === "denied" ? brandCreation : null,
 		};
 	},
-	head: ({ match }) => ({
-		meta: [{ title: buildTitle("New brand", { appName: getAppName(match) }) }],
-	}),
+	head: pageHead({}),
 	component: NewBrandPage,
 });
 
