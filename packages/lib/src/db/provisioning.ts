@@ -106,10 +106,32 @@ export async function firstFreeName(base: string, isFree: (candidate: string) =>
 		const candidate = await withSuffix(String(suffix));
 		if (candidate) return candidate;
 	}
-	for (;;) {
+	// Random suffixes are near-certain to clear, so this only runs when the
+	// availability check is persistently wrong — bounded so that failure is
+	// loud instead of a request spinning while holding a transaction open.
+	for (let attempt = 0; attempt < SUFFIX_ATTEMPTS; attempt++) {
 		const candidate = await withSuffix(crypto.randomUUID().slice(0, 8));
 		if (candidate) return candidate;
 	}
+	throw new Error(`No free name found for "${base}"`);
+}
+
+/**
+ * Whether an error is a Postgres unique-violation, optionally on a named
+ * constraint. Availability checks and their writes can race under READ
+ * COMMITTED, so the unique index is the real guarantee — callers catch its
+ * violation here and translate it into the friendly error the check was
+ * supposed to produce. Drizzle wraps driver errors, so the cause chain is
+ * searched too.
+ */
+export function isUniqueViolation(error: unknown, constraint?: string): boolean {
+	let cause: unknown = error;
+	while (cause instanceof Error || (cause && typeof cause === "object")) {
+		const err = cause as { code?: string; constraint?: string; cause?: unknown };
+		if (err.code === "23505" && (!constraint || err.constraint === constraint)) return true;
+		cause = err.cause;
+	}
+	return false;
 }
 
 /**
@@ -223,23 +245,32 @@ export async function ensureOrganization(input: { id: string; name: string }, co
 
 	// The caller supplies this id, and `/app/org/$org` resolves a segment as a
 	// slug or an id — so an id another organization answers to is refused here
-	// rather than silently making one URL name two.
-	if (!(await isOrgSlugAvailable(input.id, { conn }))) {
-		throw new Error(`Cannot create organization "${input.id}": another organization already answers to that name`);
+	// rather than silently making one URL name two. The check can still race a
+	// concurrent insert; the slug unique index is the backstop, mapped to the
+	// same error.
+	try {
+		if (!(await isOrgSlugAvailable(input.id, { conn }))) {
+			throw new Error(`Cannot create organization "${input.id}": another organization already answers to that name`);
+		}
+
+		const baseSlug = slugify(input.name, "organization");
+		const slug = await findUniqueOrgSlug(baseSlug, conn);
+
+		// Target the id explicitly: the early-return above already handles "org
+		// exists", so this only guards a concurrent insert of the same id (no-op).
+		// An untargeted onConflictDoNothing would also swallow a slug-unique
+		// collision, silently skip the insert, and leave the caller's brand FK to
+		// fail with a confusing error instead.
+		await conn
+			.insert(organization)
+			.values({ id: input.id, name: input.name, slug, createdAt: new Date() })
+			.onConflictDoNothing({ target: organization.id });
+	} catch (error) {
+		if (isUniqueViolation(error, "organization_slug_unique")) {
+			throw new Error(`Cannot create organization "${input.id}": another organization already answers to that name`);
+		}
+		throw error;
 	}
-
-	const baseSlug = slugify(input.name, "organization");
-	const slug = await findUniqueOrgSlug(baseSlug, conn);
-
-	// Target the id explicitly: the early-return above already handles "org
-	// exists", so this only guards a concurrent insert of the same id (no-op).
-	// An untargeted onConflictDoNothing would also swallow a slug-unique
-	// collision, silently skip the insert, and leave the caller's brand FK to
-	// fail with a confusing error instead.
-	await conn
-		.insert(organization)
-		.values({ id: input.id, name: input.name, slug, createdAt: new Date() })
-		.onConflictDoNothing({ target: organization.id });
 }
 
 /**
@@ -255,9 +286,9 @@ export async function provisionUmbrellaOrg(input: {
 
 	const slug = await db.transaction(async (tx) => {
 		// Resolve the slug inside the transaction so the uniqueness check and the
-		// insert it guards see the same snapshot. Two same-named signups can still
-		// collide on the slug unique index; that surfaces as a failed signup
-		// rather than a duplicate org.
+		// insert it guards run on one connection. Two same-named signups can still
+		// collide on the slug unique index (the real guarantee); that surfaces as a
+		// failed signup rather than a duplicate org.
 		const resolved = await findUniqueOrgSlug(slugify(input.name, "organization"), tx);
 		await tx.insert(organization).values({ id: orgId, name: input.name, slug: resolved, createdAt: new Date() });
 		await tx.insert(member).values({
