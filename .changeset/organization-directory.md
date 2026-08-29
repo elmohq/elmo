@@ -5,4 +5,4 @@
 "@workspace/cloud": patch
 ---
 
-The account menu now lists every organization and its brands, with settings and creation in reach; an organization's brands, team, and plan each have their own settings page; and cloud customers can create another organization.
+The account menu lists every organization you belong to and the brands under each, and cloud customers can create another organization.

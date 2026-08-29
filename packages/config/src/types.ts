@@ -15,6 +15,12 @@ export interface FeaturesConfig {
 	 */
 	canCreateOrganizations: boolean;
 	/**
+	 * Whether an organization's own record — its name and its URL — is this
+	 * deployment's to change. False in whitelabel, where Auth0 owns it, and in
+	 * demo, which writes nothing.
+	 */
+	canEditOrganizations: boolean;
+	/**
 	 * Whether public self-serve registration is available. True only in cloud
 	 * mode. Local allows a single bootstrap signup (see ClientConfig.canRegister);
 	 * demo/whitelabel never expose signup.

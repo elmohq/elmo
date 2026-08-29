@@ -37,6 +37,18 @@ describe("platformPicksEditable", () => {
 	});
 });
 
+describe("canEditOrganizations", () => {
+	it("is the deployment's own record only where it owns it", () => {
+		expect(featuresFor("local").canEditOrganizations).toBe(true);
+		expect(featuresFor("cloud").canEditOrganizations).toBe(true);
+	});
+
+	it("is refused where another system owns the record, or nothing is written", () => {
+		expect(featuresFor("demo").canEditOrganizations).toBe(false);
+		expect(featuresFor("whitelabel", WHITELABEL_ENV).canEditOrganizations).toBe(false);
+	});
+});
+
 describe("canCreateOrganizations", () => {
 	it("is cloud's alone — it is the only mode where a user signs up for another", () => {
 		expect(featuresFor("cloud").canCreateOrganizations).toBe(true);

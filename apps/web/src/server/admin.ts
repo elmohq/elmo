@@ -137,8 +137,8 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 			getAdminActiveBrandsOverTime(),
 		]);
 
-	const orgSlugs = await organizationSlugs(allBrands.map((brand) => brand.organizationId));
 	const brandRunStatsMap = new Map(brandRunStats.map((stat) => [stat.brand_id, stat]));
+	const orgSlugs = await organizationSlugs(allBrands.map((brand) => brand.organizationId));
 
 	const brandStats = await Promise.all(
 		allBrands.map(async (brand) => {
@@ -754,7 +754,8 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		);
 	}
 
-	const [recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([
+	const [orgSlugs, recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([
+		organizationSlugs(allBrands.map((brand) => brand.organizationId)),
 		getRecentJobs(5000),
 		getScheduleMap(),
 		getActiveJobMap(),
@@ -782,7 +783,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 	}
 
 	const context: WorkflowContext = {
-		orgSlugs: await organizationSlugs(allBrands.map((brand) => brand.organizationId)),
+		orgSlugs,
 		runPlans,
 		lastRunsByPrompt,
 		scheduleMap,

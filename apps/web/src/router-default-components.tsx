@@ -3,11 +3,6 @@ import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { useEffect } from "react";
 import FullPageCard from "./components/full-page-card";
-import { NotFoundPage } from "./components/not-found-page";
-
-export function NotFound() {
-	return <NotFoundPage />;
-}
 
 export function DefaultPendingComponent() {
 	return (
