@@ -6,7 +6,7 @@
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { checkBrandCreate } from "@workspace/lib/entitlements";
-import { asc, inArray } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import type { UserOrganization } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 import type { BrandCreation, OrganizationSummary } from "@/lib/organizations/types";
@@ -51,9 +51,7 @@ export async function summarizeOrganizations(orgs: UserOrganization[]): Promise<
 				organizationId: brands.organizationId,
 			})
 			.from(brands)
-			.where(inArray(brands.organizationId, orgIds))
-			// The order every list of them uses.
-			.orderBy(asc(brands.name)),
+			.where(inArray(brands.organizationId, orgIds)),
 		resolveBrandCreation(orgIds),
 	]);
 
@@ -61,9 +59,16 @@ export async function summarizeOrganizations(orgs: UserOrganization[]): Promise<
 		id: org.id,
 		slug: org.slug,
 		name: org.name,
+		// Alphabetical, with the id breaking ties between brands that share a
+		// name: an unordered select leaves the order up to Postgres, which is free
+		// to hand back a different one after any row rewrite or plan change.
+		// Sorted here rather than in SQL so the result doesn't depend on the
+		// deployment's database collation — `ORDER BY name` under LC_COLLATE=C is
+		// byte order, which puts every capitalized name ahead of every lowercase one.
 		brands: rows
 			.filter((brand) => brand.organizationId === org.id)
-			.map(({ id, slug, name, website, onboarded }) => ({ id, slug, name, website, onboarded })),
+			.map(({ id, slug, name, website, onboarded }) => ({ id, slug, name, website, onboarded }))
+			.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)),
 		brandCreation: creation.get(org.id) ?? NOT_OFFERED,
 	}));
 }
