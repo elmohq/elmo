@@ -1,0 +1,128 @@
+---
+title: "How Much Traffic Do AI Overviews Actually Cost You?"
+description: "A randomized experiment puts the click loss at 39.8% on searches where an AI Overview appears. Wikipedia's natural experiment puts the site-level loss near 5%. Both are causal, both are right, and the gap between them is the number you actually need."
+date: "2026-08-29"
+author: ai
+metaTitle: "AI Overviews Traffic Impact: What Causal Studies Show (2026)"
+tags:
+  - ai-search
+  - ai-visibility
+  - aeo
+definedTerms:
+  - term: Per-exposure click loss
+    definition: "Per-exposure click loss is the reduction in clicks on a single search results page caused by an AI answer appearing on it, measured against the same page without the answer. It describes one search, not a site's traffic, which also depends on how many of the site's queries trigger an AI answer at all."
+  - term: Zero-click search
+    definition: "A zero-click search is a search that ends without the user clicking through to any website, because the answer was satisfied on the results page itself."
+  - term: Natural experiment
+    definition: "A natural experiment is a study that measures cause and effect using a real-world event the researcher did not control, such as a feature launching in one market but not another, by comparing outcomes across the exposed and unexposed groups."
+howTo:
+  name: "How to estimate what AI Overviews cost your own site"
+  description: "Turn the published per-exposure and site-level numbers into an estimate for your own traffic, instead of adopting either headline figure unexamined."
+  steps:
+    - name: Find your exposed share of search traffic
+      text: "From your rank-tracking or Search Console query data, work out what fraction of your search-referred clicks come from queries that trigger an AI Overview. Branded and navigational queries mostly do not; informational queries mostly do."
+    - name: Apply the per-exposure discount to that slice only
+      text: "Multiply the exposed share by roughly 40%, the causally measured click reduction on searches where an overview appears. A site with 30% of its search clicks on exposed queries should expect a loss around 12% of search traffic, not 40%."
+    - name: Compare the estimate to your actual decline before assigning blame
+      text: "If traffic fell far more than the estimate, something else moved too — rankings, seasonality, demand. AI Overviews are a convenient explanation for every decline, and using them that way hides fixable problems."
+    - name: Stop expecting citations to recover the clicks
+      text: "The field experiment found links cited inside the overview capture only about 8% of clicks on those pages. Winning the citation is worth having, but it is a visibility asset, not a traffic-recovery mechanism."
+    - name: Move the scoreboard to mentions before the trend forces it
+      text: "Track whether you are named and cited in the overviews your queries trigger, and who is named instead of you. Clicks measure the feature's behaviour; mentions measure your standing inside it."
+faq:
+  - question: How much do AI Overviews reduce clicks to websites?
+    answer: "On searches where an overview appears, by about 40%. A randomized field experiment by Agarwal and Sen assigned over 1,000 US users to see or not see AI Overviews in real Google use and measured 39.8% fewer organic clicks and 34.5% more zero-click searches when the overview was shown. Pew's earlier panel observation, 8% click rate with a summary against 15% without, points the same way."
+  - question: How much total traffic does a site lose to AI Overviews?
+    answer: "Far less than 40%, because most sites' queries do not all trigger an overview. The cleanest site-level evidence is Wikipedia: comparing English articles against the same articles in editions without AI Overviews, monthly search referrals fell roughly 5% after the US rollout. Your own figure depends on what share of your search traffic comes from overview-triggering queries."
+  - question: Why do studies report such different numbers for AI Overview traffic loss?
+    answer: "They measure at different altitudes. The 39.8% figure is the causal effect on a single search where an overview appears. Ahrefs' 34.5% is a correlational CTR drop for top-ranking pages on overview keywords. Wikipedia's roughly 5% is a whole site's annual loss, diluted by every query that never triggers an overview. The numbers are consistent once you note what each denominator is."
+  - question: Does being cited in an AI Overview bring the traffic back?
+    answer: "Mostly no. In the Agarwal and Sen field experiment, the source links cited inside the overview captured only about 8% of clicks on pages where one appeared, nowhere near offsetting the 39.8% drop in organic clicks. The citation's value is the mention itself — being the named source in the answer — not the referral."
+  - question: Do AI Overviews reduce clicks on Google ads?
+    answer: "The experiment found no change. Clicks on sponsored results stayed flat whether or not an AI Overview was shown, while organic clicks fell 39.8%. The click loss lands entirely on the unpaid links below the overview."
+  - question: Are users actually happier with AI Overviews?
+    answer: "Not measurably. Participants in the experiment who had overviews removed reported no lower satisfaction or perceived search quality, searched no less often, and spent similar time on the sites they did visit. The overview diverts clicks without a detectable gain in user experience, which is the finding regulators have picked up on."
+  - question: Should I opt out of AI Overviews to protect my traffic?
+    answer: "For most brands, no. Opting out does not stop Google generating an overview for the query; it removes you as a source, so the answer is written from other sites instead. You keep the click loss on the results page and give up the mention. The trade only favours opting out when revenue depends almost entirely on the pageview."
+---
+
+**Two causal studies of the same feature, published months apart, report a 39.8% loss and a roughly 5% loss.** Agarwal and Sen's randomized field experiment found organic clicks fall 39.8% on searches where a Google AI Overview appears. Khosravi and Yoganarasimhan's natural experiment on Wikipedia found the site's search referrals fell about 5% after the overview rolled out. Neither is wrong. The distance between them is the exposure math almost every "AI Overviews killed our traffic" claim skips, and it is the part you can actually compute for your own site.
+
+**Key takeaways**
+
+- The first randomized evidence exists now. Users randomly assigned to see AI Overviews clicked organic results **39.8% less** and ended the search with no click **34.5% more often** than users who had the overviews hidden. Sponsored clicks did not move.
+- At site level the same feature cost Wikipedia — one of the most-cited sources on the web — about **5% of monthly search referrals**, measured against the same articles in language editions where overviews had not launched.
+- The gap is exposure, not contradiction. The 40% hit applies only to searches that trigger an overview; a site's loss is that discount times the share of its search traffic on triggering queries.
+- Getting cited inside the overview recovers little: cited links captured only **about 8% of clicks** in the experiment. The citation is a mention asset, not a traffic channel.
+- Users given overview-free search reported no drop in satisfaction and searched just as much, which removes "users prefer it" as an explanation for the click loss.
+- Wikipedia is the best-measured site and the worst analogy for a commercial one: purely informational queries, no pricing pages, no branded demand. Treat its 5% as a reference point, not a forecast.
+
+## The number with a control group
+
+Click-loss estimates have been circulating since AI Overviews launched, but until this year all of them were correlational: compare pages or periods with and without an overview and hope nothing else differs. [Agarwal and Sen's field experiment](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6513059) is the first randomized test. They built a Chrome extension, recruited over 1,000 US desktop users, and randomly assigned who saw Google as shipped and who saw it with the AI Overviews stripped out, then watched two weeks of real searching.
+
+| Outcome when an AI Overview is shown | Effect |
+|---|---|
+| Organic clicks to third-party sites | −39.8% |
+| Zero-click searches | +34.5% |
+| Clicks on sponsored results | No change |
+| Share of clicks captured by links cited in the overview | ~8% |
+| Time on site, bounce rate for clicks that happen | No change |
+| Self-reported search satisfaction | No change |
+
+Three of those rows deserve more attention than the headline.
+
+The sponsored row says the click loss is not a general dampening of the results page. Ads kept their clicks; only the unpaid links paid for the overview.
+
+The 8% row is the one AEO practitioners should sit with. The standard consolation for the click loss is "be the cited source and the traffic comes back to you." In the one study that could actually measure it, the links inside the overview collected a small fraction of the page's clicks — nowhere near enough to offset a 39.8% drop. The citation is worth winning, but what it wins is the mention: your name attached to the answer that most users now stop at. That is an argument for [tracking mentions](/blog/track-brand-ai-search), not an argument that citations restore referral traffic.
+
+And the satisfaction row matters because it removes the comfortable explanation. If overviews made search clearly better, the click loss would be users getting what they want faster. The authors, [writing up the result for ProMarket](https://www.promarket.org/2026/08/17/how-to-preserve-the-online-information-ecosystem-in-the-presence-of-google-ai-overviews/), found participants stripped of overviews noticed no loss in search quality and searched no less. The clicks went away without a measurable gain to the user.
+
+The experiment's limits are worth naming: desktop Chrome, two weeks, participants recruited from a research panel. The effect was also concentrated where the overview renders at the top of the page, which is where Google increasingly puts it.
+
+## The number at site level
+
+A 40% per-search effect does not mean a 40% traffic loss, and the cleanest demonstration comes from [Khosravi and Yoganarasimhan's natural experiment on Wikipedia](https://arxiv.org/abs/2602.18455). AI Overviews became the US default in May 2024 but had not launched in several European markets, and Wikipedia publishes the same articles in many languages. That makes the German and French editions a control group for the English one: same content, same seasonality, different exposure to the feature.
+
+Across roughly 500,000 matched English–German article pairs and 530,000 English–French pairs, from December 2023 through December 2024, English articles' monthly search referrals fell about **5.45%** relative to German and **4.82%** relative to French after the rollout. A comparison against Japanese, over a shorter window, ran higher at about 16.5% — the authors flag the shorter post-period and different audience, so the 5% band is the conservative reading.
+
+So the most-cited encyclopedia on the internet, sitting in the blast radius of nearly every informational query, lost about a twentieth of its search referrals in the feature's first eight months. That is a real and compounding loss for a pageview-funded organisation. It is also an order of magnitude below the number most traffic-apocalypse coverage implies.
+
+## Reconciling 40% with 5%
+
+Line the credible measurements up by what their denominators actually are and the disagreement disappears.
+
+| Study | Method | What the number describes | Figure |
+|---|---|---|---|
+| Agarwal & Sen (2026) | Randomized field experiment, 1,000+ US users | Clicks on a search where an overview is shown | −39.8% |
+| Pew Research Center (2025) | Browsing panel, 900 US adults | Click rate on pages with vs without a summary | 8% vs 15% |
+| Ahrefs (2025) | 300,000 keywords, Search Console CTR, year over year | Position-1 CTR on overview-triggering keywords | −34.5% |
+| Khosravi & Yoganarasimhan (2026) | Wikipedia natural experiment, ~1M article pairs | A whole site's monthly search referrals | ~−5% |
+
+The first three agree with each other because they measure the same thing: what happens on a results page that carries an AI answer. [Pew's panel](https://www.pewresearch.org/short-reads/2025/07/22/google-users-are-less-likely-to-click-on-links-when-an-ai-summary-appears-in-the-results/) saw the click rate roughly halve; [Ahrefs' correlational study](https://ahrefs.com/blog/ai-overviews-reduce-clicks/) saw position-1 CTR drop by a third — and, honestly, its own forecast shows CTR was already drifting down before the launch, so its raw drop overstates the attributable part. The experiment then confirmed the causal effect sits right in that band.
+
+The fourth number is small for one reason: a site's traffic is not made of overview-triggering searches. Branded lookups, navigational queries, and a long tail of questions Google never summarises pass through untouched. Run the division and Wikipedia's numbers imply the equivalent of only about one search referral in seven arriving through an exposed-and-affected query — for the site the overview leans on most.
+
+That gives you the decision rule, and it is one multiplication: **your expected loss is roughly 40% of the share of your search-referred clicks that come from overview-triggering queries.** Thirty percent exposed means about a 12% headwind. Ten percent exposed means a rounding error. And if your traffic fell 30% while your exposure math says 8%, the overview is not your problem, and blaming it will stop you finding what is.
+
+## What Wikipedia can't tell you
+
+The Wikipedia result travels worse than it looks, and the direction of the bias is genuinely unclear.
+
+Wikipedia's query mix is purely informational — exactly the query class where [overviews appear most](/blog/ai-overviews-share-of-searches), which pushes its exposure above a typical commercial site's. But Wikipedia also has no branded demand of its own: nobody searches "wikipedia pricing." A brand's search profile carries navigational and branded queries that overviews barely touch, plus commercial-intent queries where Google has been slower and more careful about summarising. Both effects push a commercial site's exposure below Wikipedia's, but a content-led site earning traffic on "what is" and "how to" queries can sit well above it.
+
+The other quiet limitation: the study measures search referrals only. It cannot see users who, having read an overview sourced from Wikipedia, never searched at all next time — the substitution toward asking the assistant directly. Every figure in this post is a lower bound on the attention shift for that reason. That larger shift is why the measurement layer that survives is the answer itself: whether you are [named and cited](/blog/ai-share-of-voice) in it, on the engines your buyers actually use, tracked the way we already argue for on [conversion data](/blog/ai-referral-traffic-conversion).
+
+None of this changes the [opt-out math](/blog/opt-out-google-ai-overviews), except to make it worse. Opting out removes you as a source while the overview keeps rendering, so you keep the ~40% page-level click suppression and surrender the mention. The experiment's 8% figure cuts both ways here: the citation returns few clicks, but the answer gets written either way, and the only question is whether it is written from your pages or your competitor's.
+
+## What to do this quarter
+
+1. **Compute your exposed share.** Tag your traffic-driving queries by whether they currently trigger an overview, and get the one multiplication done before the next traffic review asks for it.
+2. **Put the estimate in the report next to the actual.** A decline materially larger than exposure × 40% has another cause. Go find it.
+3. **Retire "citations will win the clicks back" from the deck.** Cited links captured ~8% of clicks under randomization. Sell the citation as the mention it is.
+4. **Leave paid assumptions alone.** Sponsored clicks did not move in the experiment; the overview is an organic-side event.
+5. **Score the overview like a surface, not a leak.** For each priority query: does an overview render, are you cited in it, who is. That is the scoreboard that still means something at 40% suppression.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces, recording every mention, citation, and competitor named alongside you. Google AI Overviews are tracked as their own engine, so the per-query scoreboard above — overview rendered, you cited or not, who was — is a saved view rather than a spreadsheet.
+
+For the fundamentals, start with [answer engine optimization](/blog/answer-engine-optimization) and [how to track your brand in AI search](/blog/track-brand-ai-search). For how big the surface has become, see [AI Overviews' share of US searches](/blog/ai-overviews-share-of-searches); for what the clicks that do arrive are worth, [AI referral traffic conversion](/blog/ai-referral-traffic-conversion). For the vocabulary, see the [AI search glossary](/glossary).
