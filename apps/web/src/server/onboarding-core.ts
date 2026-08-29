@@ -330,7 +330,10 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 				enabled: true,
 				onboarded: true,
 			})
-			.onConflictDoNothing()
+			// Targeted: an untargeted clause would also swallow a slug-unique
+			// collision, and the caller would be told the id was taken when it
+			// wasn't.
+			.onConflictDoNothing({ target: brands.id })
 			.returning({ id: brands.id });
 		if (!inserted) throw new BrandConflictError(input.id);
 	});
