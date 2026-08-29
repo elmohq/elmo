@@ -35,8 +35,7 @@ export type TeamData = {
 export const listTeamFn = createServerFn({ method: "GET" })
 	.validator(z.object({ org: z.string() }))
 	// The explicit return type breaks the type-inference cycle between this
-	// fn and route loaders that both consume it and redirect to typed routes
-	// (same pattern as getBrandSwitcherData in routes/_authed/app/index.tsx).
+	// fn and route loaders that both consume it and redirect to typed routes.
 	.handler(async ({ data }): Promise<TeamData> => {
 		// Deliberately not gated on `teamInvites`: every deployment has a member
 		// list worth looking at, and only changing it is cloud's alone.
