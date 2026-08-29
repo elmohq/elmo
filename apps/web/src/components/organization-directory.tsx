@@ -65,29 +65,32 @@ function OrganizationBlock({ organization }: { organization: OrganizationSummary
 			{/* An organization with nothing in it and no way to add is its heading alone. */}
 			{children.length > 0 && (
 				<div className="ml-4 border-l pl-1">
-					{children.map((child) =>
-						child.kind === "brand" ? (
+					{children.map((child) => {
+						if (child.kind === "brand") {
+							return (
+								<Link
+									key={child.brand.id}
+									to="/app/org/$org/brand/$brand"
+									params={brandParams(organization, child.brand)}
+									className={ROW}
+								>
+									<SiteIcon domain={child.brand.website} size="xs" />
+									<span className="truncate">{child.brand.name}</span>
+								</Link>
+							);
+						}
+						return (
 							<Link
-								key={child.brand.id}
-								to="/app/org/$org/brand/$brand"
-								params={brandParams(organization, child.brand)}
-								className={ROW}
-							>
-								<SiteIcon domain={child.brand.website} size="xs" />
-								<span className="truncate">{child.brand.name}</span>
-							</Link>
-						) : (
-							<Link
-								key="new-brand"
-								to="/app/org/$org/new"
+								key={child.to}
+								to={child.to}
 								params={orgParams(organization)}
 								className={`${ROW} text-muted-foreground`}
 							>
 								<IconPlus className="size-3.5" />
 								{child.label}
 							</Link>
-						),
-					)}
+						);
+					})}
 				</div>
 			)}
 		</div>
