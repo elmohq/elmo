@@ -3,11 +3,16 @@
  *
  * The member list is every deployment's; inviting, removing, and cancelling are
  * cloud's alone and say so at the top of each handler.
+ *
+ * Mutations go through better-auth's org plugin API in-process (auth.api.*),
+ * which enforces the caller's member role and triggers sendInvitationEmail —
+ * the org plugin's HTTP endpoints stay blocked for every mode (see
+ * lib/auth/policies.ts).
  */
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { db } from "@workspace/lib/db/db";
-import { invitation, member, user } from "@workspace/lib/db/schema";
+import { invitation, member, organization, user } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
@@ -38,28 +43,30 @@ export const listTeamFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		const org = await requireOrganization(session.user.id, data.org);
 
-		const members = await db
-			.select({
-				id: member.id,
-				role: member.role,
-				userId: member.userId,
-				name: user.name,
-				email: user.email,
-				createdAt: member.createdAt,
-			})
-			.from(member)
-			.innerJoin(user, eq(member.userId, user.id))
-			.where(eq(member.organizationId, org.id));
+		const [members, invitations] = await Promise.all([
+			db
+				.select({
+					id: member.id,
+					role: member.role,
+					userId: member.userId,
+					name: user.name,
+					email: user.email,
+					createdAt: member.createdAt,
+				})
+				.from(member)
+				.innerJoin(user, eq(member.userId, user.id))
+				.where(eq(member.organizationId, org.id)),
 
-		const invitations = await db
-			.select({
-				id: invitation.id,
-				email: invitation.email,
-				role: invitation.role,
-				expiresAt: invitation.expiresAt,
-			})
-			.from(invitation)
-			.where(and(eq(invitation.organizationId, org.id), eq(invitation.status, "pending")));
+			db
+				.select({
+					id: invitation.id,
+					email: invitation.email,
+					role: invitation.role,
+					expiresAt: invitation.expiresAt,
+				})
+				.from(invitation)
+				.where(and(eq(invitation.organizationId, org.id), eq(invitation.status, "pending"))),
+		]);
 
 		return {
 			members,
@@ -95,7 +102,17 @@ export const cancelInvitationFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		await requireOrganization(session.user.id, data.org);
+		const org = await requireOrganization(session.user.id, data.org);
+
+		// Scoped to the organization the caller named, so the parameter is the
+		// check it reads as. better-auth checks the role against the invitation's
+		// own organization; this is what makes the two the same one.
+		const [row] = await db
+			.select({ id: invitation.id })
+			.from(invitation)
+			.where(and(eq(invitation.id, data.invitationId), eq(invitation.organizationId, org.id)))
+			.limit(1);
+		if (!row) throw new Error("Not found: no such invitation in this organization");
 
 		await auth.api.cancelInvitation({
 			body: { invitationId: data.invitationId },
@@ -143,7 +160,7 @@ export const getInvitationFn = createServerFn({ method: "GET" })
 
 export const acceptInvitationFn = createServerFn({ method: "POST" })
 	.validator(z.object({ invitationId: z.string() }))
-	.handler(async ({ data }) => {
+	.handler(async ({ data }): Promise<{ orgSlug: string }> => {
 		requireTeamInvites();
 		await requireAuthSession();
 
@@ -152,5 +169,12 @@ export const acceptInvitationFn = createServerFn({ method: "POST" })
 			headers: getRequestHeaders(),
 		});
 
-		return { orgId: result.invitation.organizationId };
+		// The slug, not the id: the caller navigates straight into the
+		// organization, and the id would only get there through a redirect.
+		const [org] = await db
+			.select({ slug: organization.slug })
+			.from(organization)
+			.where(eq(organization.id, result.invitation.organizationId))
+			.limit(1);
+		return { orgSlug: org.slug };
 	});

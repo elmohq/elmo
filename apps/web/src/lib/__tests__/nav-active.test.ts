@@ -33,9 +33,11 @@ describe("activeNavHref", () => {
 		expect(activeNavHref(brandRail, "/admin")).toBe("");
 	});
 
-	// Two groups can hold entries with the same title, so nothing keys off one.
-	it("tells apart two entries that share a title", () => {
+	// An organization's Brands and admin's are both "Brands", and neither is a
+	// prefix of the other — so the answer is the href, not a shared name.
+	it("lights the right one of two entries that share a title", () => {
 		const rail = [{ href: "/app/org/acme/settings/brands" }, { href: "/admin" }];
 		expect(activeNavHref(rail, "/admin")).toBe("/admin");
+		expect(activeNavHref(rail, "/app/org/acme/settings/brands")).toBe("/app/org/acme/settings/brands");
 	});
 });

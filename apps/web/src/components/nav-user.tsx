@@ -9,8 +9,8 @@ import {
 	IconSettings,
 	IconUser,
 } from "@tabler/icons-react";
-import { Link, useParams } from "@tanstack/react-router";
-import { brandParams, brandSegment, orgParams } from "@workspace/lib/app-urls";
+import { Link } from "@tanstack/react-router";
+import { brandParams, orgParams } from "@workspace/lib/app-urls";
 import { authClient } from "@workspace/lib/auth/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import {
@@ -25,6 +25,7 @@ import {
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
 import { SiteIcon } from "@/components/site-icon";
 import { useAuth } from "@/hooks/use-auth";
+import { useBrandId } from "@/hooks/use-brand-id";
 import { useBranding, useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import { useOrganizations } from "@/hooks/use-organizations";
 import { resetCrispSession } from "@/lib/crisp";
@@ -42,7 +43,9 @@ export function NavUser() {
 	const branding = useBranding();
 	const features = useDeploymentFeatures();
 	const { organizations, isLoading, isError, isFetching, refetch } = useOrganizations();
-	const brandParam = useParams({ strict: false, select: (params) => params.brand });
+	// The id, not the segment: brand slugs are unique within an organization, and
+	// this menu lists several.
+	const currentBrandId = useBrandId();
 
 	// NavUser only renders inside _authed routes, which redirect to /auth/login
 	// when there's no session — so `user` is always present at this point.
@@ -108,7 +111,7 @@ export function NavUser() {
 							<OrganizationSection
 								key={organization.id}
 								organization={organization}
-								brandParam={brandParam}
+								currentBrandId={currentBrandId}
 								onNavigate={close}
 							/>
 						))}
@@ -191,11 +194,11 @@ export function NavUser() {
  */
 function OrganizationSection({
 	organization,
-	brandParam,
+	currentBrandId,
 	onNavigate,
 }: {
 	organization: OrganizationSummary;
-	brandParam: string | undefined;
+	currentBrandId: string | undefined;
 	onNavigate: () => void;
 }) {
 	const { settingsLabel, children } = organizationTree(organization);
@@ -238,7 +241,7 @@ function OrganizationSection({
 								>
 									<SiteIcon domain={child.brand.website} size="xs" />
 									<span className="truncate">{child.brand.name}</span>
-									{brandSegment(child.brand) === brandParam && (
+									{child.brand.id === currentBrandId && (
 										<span className="ml-auto flex w-7 shrink-0 justify-center">
 											<IconCheck className="size-3.5" />
 										</span>

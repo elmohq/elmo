@@ -16,7 +16,16 @@ export const organizationsQuery = {
 	retry: false,
 };
 
-/** After changing an organization or one of its brands. */
+/**
+ * After changing an organization or one of its brands.
+ *
+ * `refetchType: "all"`, not the default: `/app/org/$org` resolves its segment
+ * against this cache in `beforeLoad`, and the pages that create an organization
+ * or a brand render outside the shell — so nothing is observing the query when
+ * they navigate, and the default would mark it stale without re-reading it.
+ * `ensureQueryData` hands back retained data whatever its age, so the caller
+ * would land on a list that predates its own write and get a 404.
+ */
 export function invalidateOrganizations(queryClient: QueryClient): Promise<void> {
-	return queryClient.invalidateQueries({ queryKey: organizationsQuery.queryKey });
+	return queryClient.invalidateQueries({ queryKey: organizationsQuery.queryKey, refetchType: "all" });
 }

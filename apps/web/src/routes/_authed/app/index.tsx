@@ -8,7 +8,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import FullPageCard from "@/components/full-page-card";
 import { OrganizationDirectory } from "@/components/organization-directory";
-import { organizationsQuery } from "@/lib/organizations/queries";
+import { invalidateOrganizations, organizationsQuery } from "@/lib/organizations/queries";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 import { pageHead } from "@/lib/route-head";
 import { syncOrganizationMembershipsFn } from "@/server/organizations";
@@ -32,7 +32,7 @@ export const Route = createFileRoute("/_authed/app/")({
 	// from Auth0 they may no longer be what was cached, so that answer goes.
 	loader: async ({ context }): Promise<OrganizationSummary[]> => {
 		if (await syncOrganizationMembershipsFn()) {
-			await context.queryClient.invalidateQueries({ queryKey: organizationsQuery.queryKey });
+			await invalidateOrganizations(context.queryClient);
 		}
 		return (await context.queryClient.ensureQueryData(organizationsQuery)) ?? [];
 	},

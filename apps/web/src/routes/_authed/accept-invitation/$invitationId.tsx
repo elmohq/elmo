@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
+import { useInvalidateOrganizations } from "@/hooks/use-organizations";
 import { buildTitle, getAppName } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { acceptInvitationFn, getInvitationFn } from "@/server/team";
@@ -43,6 +44,7 @@ function AcceptInvitationPage() {
 	const { invitationId } = Route.useParams();
 	const { invitation, error: loadError } = Route.useLoaderData();
 	const navigate = useNavigate();
+	const invalidateOrganizations = useInvalidateOrganizations();
 	const [accepting, setAccepting] = useState(false);
 	const writeError = useWriteErrorMessage();
 	const [acceptError, setAcceptError] = useState<string | null>(null);
@@ -69,10 +71,13 @@ function AcceptInvitationPage() {
 		setAcceptError(null);
 		setAccepting(true);
 		try {
-			const { orgId } = await acceptInvitationFn({ data: { invitationId } });
-			// Into the organization they just joined, rather than a picker that makes
-			// them find it — the id resolves and the URL settles on its slug.
-			navigate({ to: "/app/org/$org", params: { org: orgId } });
+			const { orgSlug } = await acceptInvitationFn({ data: { invitationId } });
+			// The list of what this user can reach is what the organization layout
+			// resolves against, and accepting just changed it.
+			await invalidateOrganizations();
+			// Into the organization they just joined, rather than a picker that
+			// makes them find it.
+			navigate({ to: "/app/org/$org", params: { org: orgSlug } });
 		} catch (err) {
 			setAcceptError(writeError(err, "Failed to accept the invitation"));
 			setAccepting(false);

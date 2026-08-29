@@ -5,6 +5,7 @@ import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
+import { useInvalidateOrganizations } from "@/hooks/use-organizations";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
 import { useWriteErrorMessage } from "@/lib/write-errors";
@@ -29,6 +30,7 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 	const navigate = useNavigate();
 	const router = useRouter();
 	const writeError = useWriteErrorMessage();
+	const invalidateOrganizations = useInvalidateOrganizations();
 
 	const createBrand = async (enabledModels: string[] | null) => {
 		setIsLoading(true);
@@ -45,6 +47,9 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 			});
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
+			// The brand layout resolves this brand against the organization's list,
+			// which does not have it until this lands.
+			await invalidateOrganizations();
 			await router.invalidate();
 			// The brand arrives with a slug, so land on it rather than on the id and
 			// a redirect.
