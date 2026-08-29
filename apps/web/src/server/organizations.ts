@@ -6,7 +6,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { isOrgAdminRole } from "@workspace/config/roles";
 import { isValidSlug, MAX_SLUG_LENGTH } from "@workspace/lib/app-urls";
 import { db } from "@workspace/lib/db/db";
-import { isOrgSlugAvailable, isUniqueViolation, provisionUmbrellaOrg } from "@workspace/lib/db/provisioning";
+import { claimSlug, isOrgSlugAvailable, provisionUmbrellaOrg } from "@workspace/lib/db/provisioning";
 import { organization } from "@workspace/lib/db/schema";
 import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import { eq } from "drizzle-orm";
@@ -120,23 +120,24 @@ export const updateOrganizationFn = createServerFn({ method: "POST" })
 		if (data.slug !== undefined && !isValidSlug(data.slug)) throw new Error(INVALID_SLUG);
 
 		// The availability check gives the friendly path, and the slug unique
-		// index is the real guarantee: two renames can both pass the check, so
-		// the loser's 23505 is mapped to the same TAKEN_SLUG error the form
-		// expects rather than surfacing as a raw 500.
-		try {
-			const slug = await db.transaction(async (tx) => {
-				if (data.slug !== undefined && !(await isOrgSlugAvailable(data.slug, { excludeOrgId: org.id, conn: tx }))) {
-					throw new Error(TAKEN_SLUG);
-				}
-				await tx
-					.update(organization)
-					.set({ name: data.name, ...(data.slug !== undefined && { slug: data.slug }) })
-					.where(eq(organization.id, org.id));
-				return data.slug ?? org.slug;
-			});
-			return { slug };
-		} catch (error) {
-			if (isUniqueViolation(error, "organization_slug_unique")) throw new Error(TAKEN_SLUG);
-			throw error;
-		}
+		// index is the real guarantee — claimSlug maps the loser's violation to
+		// the same TAKEN_SLUG error the form expects rather than a raw 500.
+		const slug = await claimSlug(
+			() =>
+				db.transaction(async (tx) => {
+					if (data.slug !== undefined && !(await isOrgSlugAvailable(data.slug, { excludeOrgId: org.id, conn: tx }))) {
+						throw new Error(TAKEN_SLUG);
+					}
+					await tx
+						.update(organization)
+						.set({ name: data.name, ...(data.slug !== undefined && { slug: data.slug }) })
+						.where(eq(organization.id, org.id));
+					return data.slug ?? org.slug;
+				}),
+			"organization_slug_unique",
+			() => {
+				throw new Error(TAKEN_SLUG);
+			},
+		);
+		return { slug };
 	});

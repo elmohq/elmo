@@ -175,5 +175,6 @@ export const acceptInvitationFn = createServerFn({ method: "POST" })
 			.from(organization)
 			.where(eq(organization.id, result.invitation.organizationId))
 			.limit(1);
+		if (!org) throw new Error("The organization for this invitation no longer exists");
 		return { orgSlug: org.slug };
 	});

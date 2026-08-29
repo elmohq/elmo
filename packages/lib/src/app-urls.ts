@@ -25,6 +25,16 @@ export function brandSegment(brand: SluggableBrand): string {
 	return brand.slug ?? brand.id;
 }
 
+/**
+ * Resolve a URL segment against a list the caller already holds: slug first,
+ * then id. An id and another row's slug can both be the segment, and which one
+ * the URL names must not depend on row order — the same rule `resolveOrganization`
+ * encodes in SQL for callers that must go to the database.
+ */
+export function resolveSegment<T extends SluggableBrand>(items: readonly T[], segment: string): T | undefined {
+	return items.find((item) => item.slug === segment) ?? items.find((item) => item.id === segment);
+}
+
 /** Route params for `/app/org/$org`, so the router still type-checks the target. */
 export function orgParams(org: SluggableOrg): { org: string } {
 	return { org: org.slug };

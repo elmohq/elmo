@@ -126,12 +126,27 @@ export async function firstFreeName(base: string, isFree: (candidate: string) =>
  */
 export function isUniqueViolation(error: unknown, constraint?: string): boolean {
 	let cause: unknown = error;
-	while (cause instanceof Error || (cause && typeof cause === "object")) {
+	for (let depth = 0; depth < 10 && (cause instanceof Error || (cause && typeof cause === "object")); depth++) {
 		const err = cause as { code?: string; constraint?: string; cause?: unknown };
 		if (err.code === "23505" && (!constraint || err.constraint === constraint)) return true;
 		cause = err.cause;
 	}
 	return false;
+}
+
+/**
+ * Run the write a slug availability check guards, mapping the unique index's
+ * violation — the real guarantee, since two writers can pass any check — to
+ * the caller's friendly error. Keeps "check gives the friendly path, the
+ * index is the backstop" in one place.
+ */
+export async function claimSlug<T>(write: () => Promise<T>, constraint: string, onTaken: () => never): Promise<T> {
+	try {
+		return await write();
+	} catch (error) {
+		if (isUniqueViolation(error, constraint)) onTaken();
+		throw error;
+	}
 }
 
 /**
@@ -245,32 +260,30 @@ export async function ensureOrganization(input: { id: string; name: string }, co
 
 	// The caller supplies this id, and `/app/org/$org` resolves a segment as a
 	// slug or an id — so an id another organization answers to is refused here
-	// rather than silently making one URL name two. The check can still race a
-	// concurrent insert; the slug unique index is the backstop, mapped to the
-	// same error.
-	try {
-		if (!(await isOrgSlugAvailable(input.id, { conn }))) {
-			throw new Error(`Cannot create organization "${input.id}": another organization already answers to that name`);
-		}
-
-		const baseSlug = slugify(input.name, "organization");
-		const slug = await findUniqueOrgSlug(baseSlug, conn);
-
-		// Target the id explicitly: the early-return above already handles "org
-		// exists", so this only guards a concurrent insert of the same id (no-op).
-		// An untargeted onConflictDoNothing would also swallow a slug-unique
-		// collision, silently skip the insert, and leave the caller's brand FK to
-		// fail with a confusing error instead.
-		await conn
-			.insert(organization)
-			.values({ id: input.id, name: input.name, slug, createdAt: new Date() })
-			.onConflictDoNothing({ target: organization.id });
-	} catch (error) {
-		if (isUniqueViolation(error, "organization_slug_unique")) {
-			throw new Error(`Cannot create organization "${input.id}": another organization already answers to that name`);
-		}
-		throw error;
+	// rather than silently making one URL name two.
+	if (!(await isOrgSlugAvailable(input.id, { conn }))) {
+		throw new Error(`Cannot create organization "${input.id}": another organization already answers to that name`);
 	}
+
+	const baseSlug = slugify(input.name, "organization");
+	const slug = await findUniqueOrgSlug(baseSlug, conn);
+
+	// Target the id explicitly: the early-return above already handles "org
+	// exists", so this only guards a concurrent insert of the same id (no-op).
+	// An untargeted onConflictDoNothing would also swallow a slug-unique
+	// collision, silently skip the insert, and leave the caller's brand FK to
+	// fail with a confusing error instead.
+	await claimSlug(
+		() =>
+			conn
+				.insert(organization)
+				.values({ id: input.id, name: input.name, slug, createdAt: new Date() })
+				.onConflictDoNothing({ target: organization.id }),
+		"organization_slug_unique",
+		() => {
+			throw new Error(`Cannot create organization "${input.id}": another organization already answers to that name`);
+		},
+	);
 }
 
 /**

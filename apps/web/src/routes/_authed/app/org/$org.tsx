@@ -15,7 +15,7 @@
  */
 
 import { createFileRoute, notFound, Outlet, redirect } from "@tanstack/react-router";
-import { canonicalOrgHref } from "@workspace/lib/app-urls";
+import { canonicalOrgHref, resolveSegment } from "@workspace/lib/app-urls";
 import { organizationsQuery } from "@/lib/organizations/queries";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
@@ -24,11 +24,7 @@ export const Route = createFileRoute("/_authed/app/org/$org")({
 		// `_authed` above has already redirected a signed-out caller, so a null
 		// list here is a session that went away mid-navigation.
 		const organizations = (await context.queryClient.ensureQueryData(organizationsQuery)) ?? [];
-
-		// Slug first: an organization's id and another's slug can both be the
-		// segment, and which one the URL names should not depend on row order.
-		const organization =
-			organizations.find((org) => org.slug === params.org) ?? organizations.find((org) => org.id === params.org);
+		const organization = resolveSegment(organizations, params.org);
 		if (!organization) throw notFound();
 
 		const canonical = organization.slug;

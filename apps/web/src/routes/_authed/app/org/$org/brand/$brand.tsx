@@ -9,7 +9,7 @@
 
 import { createFileRoute, notFound, Outlet, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { brandSegment, canonicalBrandHref } from "@workspace/lib/app-urls";
+import { brandSegment, canonicalBrandHref, resolveSegment } from "@workspace/lib/app-urls";
 import { db } from "@workspace/lib/db/db";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
@@ -118,7 +118,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 		// Slug first: a brand's id and another brand's slug can both be the segment,
 		// and which one the URL names should not depend on the order brands sort in.
 		const { brands: owned } = context.organization;
-		const brand = owned.find((b) => b.slug === params.brand) ?? owned.find((b) => b.id === params.brand);
+		const brand = resolveSegment(owned, params.brand);
 		if (!brand) throw notFound();
 
 		const canonical = brandSegment(brand);

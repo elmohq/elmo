@@ -7,10 +7,10 @@ import { isValidSlug, MAX_SLUG_LENGTH, slugify } from "@workspace/lib/app-urls";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import {
+	claimSlug,
 	findUniqueBrandId,
 	findUniqueBrandSlug,
 	isBrandSlugAvailable,
-	isUniqueViolation,
 } from "@workspace/lib/db/provisioning";
 import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
 import {
@@ -282,48 +282,48 @@ export const createBrandFn = createServerFn({ method: "POST" })
 		// Slug resolution and the insert it guards share one transaction, like
 		// createBrandInOrgFn below — the slug unique index is the backstop if a
 		// concurrent create slips past the check, mapped to a retryable failure.
-		try {
-			const created = await db.transaction(async (tx) => {
-				const slug = await findUniqueBrandSlug(data.brandId, slugify(data.brandName, "brand"), tx);
-				return (
-					tx
-						.insert(brands)
-						.values({
-							id: data.brandId,
-							// brandId is the org id from the URL (access verified above); the
-							// brand belongs to that org.
-							organizationId: data.brandId,
-							name: data.brandName,
-							slug,
-							website: urlValidation.formattedUrl,
-							enabled: true,
-							...(enabledModels && { enabledModels }),
-							...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
-						})
-						// Targeted: the fallback below reads back by id, so swallowing a slug
-						// conflict here would find nothing and report a failure that isn't one.
-						.onConflictDoNothing({ target: brands.id })
-						.returning()
-				);
-			});
-
-			const brand =
-				created[0] ??
-				(await db.query.brands.findFirst({
-					where: eq(brands.id, data.brandId),
-				}));
-
-			if (!brand) {
-				throw new Error("Failed to create brand");
-			}
-
-			return { success: true, brand };
-		} catch (error) {
-			if (isUniqueViolation(error, "brands_organization_id_slug_idx")) {
+		const created = await claimSlug(
+			() =>
+				db.transaction(async (tx) => {
+					const slug = await findUniqueBrandSlug(data.brandId, slugify(data.brandName, "brand"), tx);
+					return (
+						tx
+							.insert(brands)
+							.values({
+								id: data.brandId,
+								// brandId is the org id from the URL (access verified above); the
+								// brand belongs to that org.
+								organizationId: data.brandId,
+								name: data.brandName,
+								slug,
+								website: urlValidation.formattedUrl,
+								enabled: true,
+								...(enabledModels && { enabledModels }),
+								...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
+							})
+							// Targeted: the fallback below reads back by id, so swallowing a slug
+							// conflict here would find nothing and report a failure that isn't one.
+							.onConflictDoNothing({ target: brands.id })
+							.returning()
+					);
+				}),
+			"brands_organization_id_slug_idx",
+			() => {
 				throw new Error("Brand creation failed due to a concurrent create — please retry");
-			}
-			throw error;
+			},
+		);
+
+		const brand =
+			created[0] ??
+			(await db.query.brands.findFirst({
+				where: eq(brands.id, data.brandId),
+			}));
+
+		if (!brand) {
+			throw new Error("Failed to create brand");
 		}
+
+		return { success: true, brand };
 	});
 
 /**
@@ -384,30 +384,37 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 		// Both names are resolved inside the transaction that uses them, so the
 		// checks and the insert they guard run on one connection — the same shape
 		// provisionUmbrellaOrg uses. Two creates racing on a name still collide on
-		// the unique index (the real guarantee), which surfaces as a failed create
-		// rather than a duplicate row.
-		return db.transaction(async (tx) => {
-			// The id is globally unique and may have picked up a suffix on the way;
-			// the slug only has to clear this organization, so it usually keeps the
-			// plain name even when the id could not.
-			const [brandId, slug] = await Promise.all([
-				findUniqueBrandId(baseSlug, tx),
-				findUniqueBrandSlug(orgId, baseSlug, tx),
-			]);
+		// the unique index (the real guarantee), which claimSlug maps to a
+		// retryable failure rather than a raw 500 or a duplicate row.
+		return claimSlug(
+			() =>
+				db.transaction(async (tx) => {
+					// The id is globally unique and may have picked up a suffix on the way;
+					// the slug only has to clear this organization, so it usually keeps the
+					// plain name even when the id could not.
+					const [brandId, slug] = await Promise.all([
+						findUniqueBrandId(baseSlug, tx),
+						findUniqueBrandSlug(orgId, baseSlug, tx),
+					]);
 
-			await tx.insert(brands).values({
-				id: brandId,
-				organizationId: orgId,
-				name: trimmedName,
-				slug,
-				website: urlValidation.formattedUrl,
-				enabled: true,
-				...(enabledModels && { enabledModels }),
-				...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
-			});
+					await tx.insert(brands).values({
+						id: brandId,
+						organizationId: orgId,
+						name: trimmedName,
+						slug,
+						website: urlValidation.formattedUrl,
+						enabled: true,
+						...(enabledModels && { enabledModels }),
+						...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
+					});
 
-			return { brandId, brandSlug: slug };
-		});
+					return { brandId, brandSlug: slug };
+				}),
+			"brands_organization_id_slug_idx",
+			() => {
+				throw new Error("Brand creation failed due to a concurrent create — please retry");
+			},
+		);
 	});
 
 /**
@@ -443,33 +450,35 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 		const updateData = normalized.updates;
 
 		// The segment resolves as a slug or an id, so both namespaces are checked.
-		// The check gives the friendly path and the slug unique index is the real
-		// guarantee — a rename racing another write maps its 23505 to the same
-		// TAKEN_SLUG error the form expects rather than a raw 500.
-		try {
-			const result = await db.transaction(async (tx) => {
-				if (
-					data.slug !== undefined &&
-					!(await isBrandSlugAvailable(org.id, data.slug, { excludeBrandId: data.brandId, conn: tx }))
-				) {
-					throw new Error(TAKEN_SLUG);
-				}
-				return tx
-					.update(brands)
-					.set({ ...updateData, ...(data.slug !== undefined && { slug: data.slug }), updatedAt: new Date() })
-					.where(eq(brands.id, data.brandId))
-					.returning();
-			});
+		// The check gives the friendly path, and the slug unique index is the real
+		// guarantee — claimSlug maps the loser's violation to the same TAKEN_SLUG
+		// error the form expects rather than a raw 500.
+		const result = await claimSlug(
+			() =>
+				db.transaction(async (tx) => {
+					if (
+						data.slug !== undefined &&
+						!(await isBrandSlugAvailable(org.id, data.slug, { excludeBrandId: data.brandId, conn: tx }))
+					) {
+						throw new Error(TAKEN_SLUG);
+					}
+					return tx
+						.update(brands)
+						.set({ ...updateData, ...(data.slug !== undefined && { slug: data.slug }), updatedAt: new Date() })
+						.where(eq(brands.id, data.brandId))
+						.returning();
+				}),
+			"brands_organization_id_slug_idx",
+			() => {
+				throw new Error(TAKEN_SLUG);
+			},
+		);
 
-			if (!result[0]) {
-				throw new Error("Failed to update brand");
-			}
-
-			return result[0];
-		} catch (error) {
-			if (isUniqueViolation(error, "brands_organization_id_slug_idx")) throw new Error(TAKEN_SLUG);
-			throw error;
+		if (!result[0]) {
+			throw new Error("Failed to update brand");
 		}
+
+		return result[0];
 	});
 
 /**
