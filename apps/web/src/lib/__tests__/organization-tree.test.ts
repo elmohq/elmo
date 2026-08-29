@@ -38,17 +38,19 @@ describe("organizationTree", () => {
 		]);
 	});
 
-	// A brand row carries what a surface needs to draw it as one; the rows that
-	// lead into the organization carry nothing to draw an icon from.
-	it("says which rows are brands", () => {
+	// Every row says which kind it is, so a surface draws it from what it is
+	// rather than from a field it happens to be missing.
+	it("says what each row is", () => {
 		const { children } = organizationTree(organization({ kind: "allowed" }, ["nike"]));
-		expect(children.map((row) => row.brand)).toEqual([{ id: "nike", website: "https://nike.com" }, undefined]);
+		expect(children.map((row) => row.kind)).toEqual(["brand", "new-brand"]);
+		expect(children[0]).toMatchObject({ id: "nike", website: "https://nike.com" });
 	});
 
 	it("asks for the first brand differently from the next one", () => {
 		const { children } = organizationTree(organization({ kind: "allowed" }));
 		expect(children).toEqual([
 			{
+				kind: "new-brand",
 				key: "new-brand",
 				link: { to: "/app/org/$org/new", params: { org: "acme" } },
 				label: "Create your first brand",
@@ -68,7 +70,7 @@ describe("organizationTree", () => {
 	// wizard at /app/org/$org has nothing linking to it.
 	it("leads an empty organization to its setup, where brands aren't created here", () => {
 		expect(organizationTree(organization({ kind: "not-offered" })).children).toEqual([
-			{ key: "set-up", link: { to: "/app/org/$org", params: { org: "acme" } }, label: "Set up Acme" },
+			{ kind: "set-up", key: "set-up", link: { to: "/app/org/$org", params: { org: "acme" } }, label: "Set up Acme" },
 		]);
 	});
 

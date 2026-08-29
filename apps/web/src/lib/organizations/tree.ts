@@ -16,19 +16,23 @@ import type { LinkProps } from "@tanstack/react-router";
 import { brandParams, orgParams } from "@workspace/lib/app-urls";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
-export interface OrganizationRow {
+interface RowBase {
 	/** Distinguishes rows within one organization, and is the React key. */
 	key: string;
 	/** Where the row goes, as the router's own link props — typed, params encoded by it. */
 	link: LinkProps;
 	label: string;
-	/**
-	 * The brand this row is, when it is one: its site, for the icon, and its id,
-	 * so a surface that marks the brand in scope can find it. Absent on the rows
-	 * that lead into the organization itself rather than into one of its brands.
-	 */
-	brand?: { id: string; website: string };
 }
+
+/**
+ * Tagged, because the three kinds do not lead to the same sort of place and a
+ * surface reading "no brand here" as "this row adds one" is how the setup row
+ * ends up wearing a plus.
+ */
+export type OrganizationRow =
+	| (RowBase & { kind: "brand"; id: string; website: string })
+	| (RowBase & { kind: "new-brand" })
+	| (RowBase & { kind: "set-up" });
 
 export interface OrganizationTree {
 	/** The heading names the organization and leads to the one thing it could. */
@@ -39,10 +43,12 @@ export interface OrganizationTree {
 
 export function organizationTree(organization: OrganizationSummary): OrganizationTree {
 	const children: OrganizationRow[] = organization.brands.map((brand) => ({
+		kind: "brand",
 		key: brand.id,
 		link: { to: "/app/org/$org/brand/$brand", params: brandParams(organization, brand) },
 		label: brand.name,
-		brand: { id: brand.id, website: brand.website },
+		id: brand.id,
+		website: brand.website,
 	}));
 
 	const params = orgParams(organization);
@@ -51,6 +57,7 @@ export function organizationTree(organization: OrganizationSummary): Organizatio
 	// offer creation in one and not another.
 	if (organization.brandCreation.kind === "allowed") {
 		children.push({
+			kind: "new-brand",
 			key: "new-brand",
 			link: { to: "/app/org/$org/new", params },
 			label: organization.brands.length > 0 ? "New brand" : "Create your first brand",
@@ -60,6 +67,7 @@ export function organizationTree(organization: OrganizationSummary): Organizatio
 		// `/app/org/$org` is the only way in, so every list of what an
 		// organization holds has to offer it.
 		children.push({
+			kind: "set-up",
 			key: "set-up",
 			link: { to: "/app/org/$org", params },
 			label: `Set up ${organization.name}`,

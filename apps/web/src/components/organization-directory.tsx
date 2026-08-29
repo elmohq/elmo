@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { orgParams } from "@workspace/lib/app-urls";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { SiteIcon } from "@/components/site-icon";
+import { OrganizationRowIcon } from "@/components/organization-row-icon";
 import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import { organizationTree } from "@/lib/organizations/tree";
 import type { OrganizationSummary } from "@/lib/organizations/types";
@@ -66,8 +66,8 @@ function OrganizationBlock({ organization }: { organization: OrganizationSummary
 			{children.length > 0 && (
 				<div className="ml-4 border-l pl-1">
 					{children.map((row) => (
-						<Link key={row.key} {...row.link} className={row.brand ? ROW : `${ROW} text-muted-foreground`}>
-							{row.brand ? <SiteIcon domain={row.brand.website} size="xs" /> : <IconPlus className="size-3.5" />}
+						<Link key={row.key} {...row.link} className={row.kind === "brand" ? ROW : `${ROW} text-muted-foreground`}>
+							<OrganizationRowIcon row={row} size="xs" />
 							<span className="truncate">{row.label}</span>
 						</Link>
 					))}

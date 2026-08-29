@@ -23,7 +23,7 @@ import {
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
-import { SiteIcon } from "@/components/site-icon";
+import { OrganizationRowIcon } from "@/components/organization-row-icon";
 import { useAuth } from "@/hooks/use-auth";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBranding, useDeploymentFeatures } from "@/hooks/use-deployment-features";
@@ -229,11 +229,11 @@ function OrganizationSection({
 						<DropdownMenuItem
 							key={row.key}
 							render={<Link {...row.link} onClick={onNavigate} />}
-							className={row.brand ? "cursor-pointer" : "cursor-pointer text-muted-foreground"}
+							className={row.kind === "brand" ? "cursor-pointer" : "cursor-pointer text-muted-foreground"}
 						>
-							{row.brand ? <SiteIcon domain={row.brand.website} size="xs" /> : <IconPlus className="size-3.5" />}
+							<OrganizationRowIcon row={row} size="xs" />
 							<span className="truncate">{row.label}</span>
-							{row.brand?.id === currentBrandId && (
+							{row.kind === "brand" && row.id === currentBrandId && (
 								<span className="ml-auto flex w-7 shrink-0 justify-center">
 									<IconCheck className="size-3.5" />
 								</span>

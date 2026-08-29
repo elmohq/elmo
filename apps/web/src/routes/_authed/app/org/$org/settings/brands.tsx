@@ -3,10 +3,9 @@
  * organization holds instead of forming a second nav tree beside the brand's own.
  */
 
-import { IconPlus } from "@tabler/icons-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { buttonVariants } from "@workspace/ui/components/button";
-import { SiteIcon } from "@/components/site-icon";
+import { OrganizationRowIcon } from "@/components/organization-row-icon";
 import { useOrganization } from "@/hooks/use-organizations";
 import { organizationTree } from "@/lib/organizations/tree";
 import { pageHead } from "@/lib/route-head";
@@ -33,11 +32,11 @@ function OrganizationBrandsPage() {
 						key={row.key}
 						{...row.link}
 						className={buttonVariants({
-							variant: row.brand ? "secondary" : "outline",
+							variant: row.kind === "brand" ? "secondary" : "outline",
 							className: "justify-start",
 						})}
 					>
-						{row.brand ? <SiteIcon domain={row.brand.website} size="md" /> : <IconPlus />}
+						<OrganizationRowIcon row={row} size="md" />
 						{row.label}
 					</Link>
 				))}
