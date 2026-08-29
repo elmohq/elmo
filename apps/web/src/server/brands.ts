@@ -411,13 +411,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 		const session = await requireAuthSession();
 		const org = await requireBrandOrganization(session.user.id, data.brandId);
 
-		// The segment resolves as a slug or an id, so both namespaces are checked.
-		if (data.slug !== undefined) {
-			if (!isValidSlug(data.slug)) throw new Error(INVALID_SLUG);
-			if (!(await isBrandSlugAvailable(org.id, data.slug, { excludeBrandId: data.brandId }))) {
-				throw new Error(TAKEN_SLUG);
-			}
-		}
+		if (data.slug !== undefined && !isValidSlug(data.slug)) throw new Error(INVALID_SLUG);
 
 		const normalized = normalizeBrandUpdate({
 			name: data.name,
@@ -430,11 +424,23 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 		}
 		const updateData = normalized.updates;
 
-		const result = await db
-			.update(brands)
-			.set({ ...updateData, ...(data.slug !== undefined && { slug: data.slug }), updatedAt: new Date() })
-			.where(eq(brands.id, data.brandId))
-			.returning();
+		// The segment resolves as a slug or an id, so both namespaces are checked.
+		// Check and write share one transaction, like the create paths: a rename
+		// racing another write would otherwise hit the slug unique index as a raw
+		// 500 instead of the TAKEN_SLUG error the form expects.
+		const result = await db.transaction(async (tx) => {
+			if (
+				data.slug !== undefined &&
+				!(await isBrandSlugAvailable(org.id, data.slug, { excludeBrandId: data.brandId, conn: tx }))
+			) {
+				throw new Error(TAKEN_SLUG);
+			}
+			return tx
+				.update(brands)
+				.set({ ...updateData, ...(data.slug !== undefined && { slug: data.slug }), updatedAt: new Date() })
+				.where(eq(brands.id, data.brandId))
+				.returning();
+		});
 
 		if (!result[0]) {
 			throw new Error("Failed to update brand");

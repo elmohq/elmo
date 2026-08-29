@@ -33,7 +33,7 @@ interface BrandData {
 
 const getBrandData = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string(), brandId: z.string() }))
-	.handler(async ({ data }): Promise<BrandData> => {
+	.handler(async ({ data }): Promise<BrandData | null> => {
 		const session = await requireAuthSession();
 		// The layout resolved this brand inside an organization the caller belongs to,
 		// but a server function is reachable on its own — so membership is checked
@@ -46,10 +46,10 @@ const getBrandData = createServerFn({ method: "GET" })
 
 		// The layout already found this brand in the organization, so reaching here
 		// means the caller came straight to the function or the brand went away
-		// underneath us — exceptional either way, and reported the way every other
-		// server function here reports one.
+		// underneath us. Reported as null so the loader turns it into a 404 —
+		// the server function can't throw the router's notFound payload itself.
 		if (!brand || brand.organizationId !== data.organizationId) {
-			throw new Error("Not found: no such brand in this organization");
+			return null;
 		}
 
 		const [brandPrompts, brandCompetitors, { entitlements }] = await Promise.all([
@@ -132,6 +132,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 		const result = await getBrandData({
 			data: { organizationId: context.organization.id, brandId: context.brandId },
 		});
+		if (!result) throw notFound();
 
 		// Scoped to this brand's organization, and says which one — the /app gate only
 		// knows whether the user has *any* entitled org, which is a different

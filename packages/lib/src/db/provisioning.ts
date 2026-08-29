@@ -58,19 +58,23 @@ const LOCAL_ORG = {
  * rights.
  */
 export async function provisionLocalOrg(input: { userId: string }): Promise<{ orgId: string }> {
-	await db.insert(organization).values({
-		id: LOCAL_ORG.id,
-		name: LOCAL_ORG.name,
-		slug: LOCAL_ORG.slug,
-		createdAt: new Date(),
-	});
+	// One transaction, like provisionUmbrellaOrg below: a failure between the
+	// two inserts would otherwise leave an organization with no admin.
+	await db.transaction(async (tx) => {
+		await tx.insert(organization).values({
+			id: LOCAL_ORG.id,
+			name: LOCAL_ORG.name,
+			slug: LOCAL_ORG.slug,
+			createdAt: new Date(),
+		});
 
-	await db.insert(member).values({
-		id: crypto.randomUUID(),
-		organizationId: LOCAL_ORG.id,
-		userId: input.userId,
-		role: "admin",
-		createdAt: new Date(),
+		await tx.insert(member).values({
+			id: crypto.randomUUID(),
+			organizationId: LOCAL_ORG.id,
+			userId: input.userId,
+			role: "admin",
+			createdAt: new Date(),
+		});
 	});
 
 	return { orgId: LOCAL_ORG.id };

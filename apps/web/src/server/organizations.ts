@@ -117,16 +117,20 @@ export const updateOrganizationFn = createServerFn({ method: "POST" })
 		if (!getDeployment().features.canEditOrganizations) {
 			throw new Error("This organization cannot be renamed in this deployment");
 		}
-		if (data.slug !== undefined) {
-			if (!isValidSlug(data.slug)) throw new Error(INVALID_SLUG);
-			if (!(await isOrgSlugAvailable(data.slug, { excludeOrgId: org.id }))) {
+		if (data.slug !== undefined && !isValidSlug(data.slug)) throw new Error(INVALID_SLUG);
+
+		// Check and write share one transaction, like the create paths: two
+		// renames racing would otherwise hit the slug unique index as a raw
+		// 500 instead of the TAKEN_SLUG error the form expects.
+		const slug = await db.transaction(async (tx) => {
+			if (data.slug !== undefined && !(await isOrgSlugAvailable(data.slug, { excludeOrgId: org.id, conn: tx }))) {
 				throw new Error(TAKEN_SLUG);
 			}
-		}
-
-		await db
-			.update(organization)
-			.set({ name: data.name, ...(data.slug !== undefined && { slug: data.slug }) })
-			.where(eq(organization.id, org.id));
-		return { slug: data.slug ?? org.slug };
+			await tx
+				.update(organization)
+				.set({ name: data.name, ...(data.slug !== undefined && { slug: data.slug }) })
+				.where(eq(organization.id, org.id));
+			return data.slug ?? org.slug;
+		});
+		return { slug };
 	});
