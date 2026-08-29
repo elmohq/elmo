@@ -373,7 +373,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 			// the slug only has to clear this organization, so it usually keeps the
 			// plain name even when the id could not.
 			const [brandId, slug] = await Promise.all([
-				findUniqueBrandId(baseSlug),
+				findUniqueBrandId(baseSlug, tx),
 				findUniqueBrandSlug(orgId, baseSlug, tx),
 			]);
 

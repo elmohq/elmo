@@ -113,9 +113,9 @@ export async function firstFreeName(base: string, isFree: (candidate: string) =>
  * because `/app/org/$org/brand/$brand` resolves a segment as either, so an id
  * equal to another brand's slug would make one URL name two brands.
  */
-export async function findUniqueBrandId(baseSlug: string): Promise<string> {
+export async function findUniqueBrandId(baseSlug: string, conn: DbConnection = db): Promise<string> {
 	return firstFreeName(baseSlug, async (candidate) => {
-		const [conflict] = await db
+		const [conflict] = await conn
 			.select({ id: brands.id })
 			.from(brands)
 			.where(or(eq(brands.id, candidate), eq(brands.slug, candidate)))
