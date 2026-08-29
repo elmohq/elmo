@@ -16,7 +16,11 @@ const TITLE = "404 Not Found";
 const SUBTITLE = "That page doesn't exist or moved.";
 
 export function NotFoundPage() {
-	const { data: organizations, isLoading } = useQuery(organizationsQuery);
+	// One attempt, unlike everywhere else this query is read: this page renders
+	// for signed-out callers too, and retrying tells them nothing. The default
+	// policy stays on the query itself, which `/app/org/$org` awaits in
+	// `beforeLoad` — a retry there is what keeps a blip off the error boundary.
+	const { data: organizations, isLoading } = useQuery({ ...organizationsQuery, retry: false });
 
 	if (isLoading) {
 		return (

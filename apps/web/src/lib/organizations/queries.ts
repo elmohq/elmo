@@ -12,8 +12,6 @@ export const organizationsQuery = {
 	queryKey: ["organizations"] as const,
 	queryFn: () => listOrganizationsFn(),
 	staleTime: 60_000,
-	// The 404 renders for signed-out callers too, and retrying tells them nothing.
-	retry: false,
 };
 
 /**
