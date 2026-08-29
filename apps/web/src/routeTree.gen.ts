@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as AuthedAdminRouteImport } from './routes/_authed/admin'
 import { Route as AuthedAppRouteImport } from './routes/_authed/app'
+import { Route as AuthedChangePasswordRouteImport } from './routes/_authed/change-password'
 import { Route as AuthedChoosePlanRouteImport } from './routes/_authed/choose-plan'
 import { Route as AuthedReportsRouteImport } from './routes/_authed/reports'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
@@ -81,6 +82,11 @@ const AuthedAdminRoute = AuthedAdminRouteImport.update({
 const AuthedAppRoute = AuthedAppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedChangePasswordRoute = AuthedChangePasswordRouteImport.update({
+  id: '/change-password',
+  path: '/change-password',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedChoosePlanRoute = AuthedChoosePlanRouteImport.update({
@@ -357,6 +363,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AuthedAdminRouteWithChildren
   '/app': typeof AuthedAppRouteWithChildren
+  '/change-password': typeof AuthedChangePasswordRoute
   '/choose-plan': typeof AuthedChoosePlanRoute
   '/reports': typeof AuthedReportsRouteWithChildren
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -410,6 +417,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/change-password': typeof AuthedChangePasswordRoute
   '/choose-plan': typeof AuthedChoosePlanRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -465,6 +473,7 @@ export interface FileRoutesById {
   '/_authed': typeof AuthedRouteWithChildren
   '/_authed/admin': typeof AuthedAdminRouteWithChildren
   '/_authed/app': typeof AuthedAppRouteWithChildren
+  '/_authed/change-password': typeof AuthedChangePasswordRoute
   '/_authed/choose-plan': typeof AuthedChoosePlanRoute
   '/_authed/reports': typeof AuthedReportsRouteWithChildren
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -522,6 +531,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/app'
+    | '/change-password'
     | '/choose-plan'
     | '/reports'
     | '/auth/forgot-password'
@@ -575,6 +585,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/change-password'
     | '/choose-plan'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -629,6 +640,7 @@ export interface FileRouteTypes {
     | '/_authed'
     | '/_authed/admin'
     | '/_authed/app'
+    | '/_authed/change-password'
     | '/_authed/choose-plan'
     | '/_authed/reports'
     | '/auth/forgot-password'
@@ -735,6 +747,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AuthedAppRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/change-password': {
+      id: '/_authed/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof AuthedChangePasswordRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/choose-plan': {
@@ -1184,6 +1203,7 @@ const AuthedReportsRouteWithChildren = AuthedReportsRoute._addFileChildren(
 interface AuthedRouteChildren {
   AuthedAdminRoute: typeof AuthedAdminRouteWithChildren
   AuthedAppRoute: typeof AuthedAppRouteWithChildren
+  AuthedChangePasswordRoute: typeof AuthedChangePasswordRoute
   AuthedChoosePlanRoute: typeof AuthedChoosePlanRoute
   AuthedReportsRoute: typeof AuthedReportsRouteWithChildren
   AuthedAcceptInvitationInvitationIdRoute: typeof AuthedAcceptInvitationInvitationIdRoute
@@ -1192,6 +1212,7 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAdminRoute: AuthedAdminRouteWithChildren,
   AuthedAppRoute: AuthedAppRouteWithChildren,
+  AuthedChangePasswordRoute: AuthedChangePasswordRoute,
   AuthedChoosePlanRoute: AuthedChoosePlanRoute,
   AuthedReportsRoute: AuthedReportsRouteWithChildren,
   AuthedAcceptInvitationInvitationIdRoute:

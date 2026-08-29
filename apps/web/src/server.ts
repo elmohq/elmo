@@ -2,6 +2,7 @@ import "../instrument.server.mjs";
 import { wrapFetchWithSentry } from "@sentry/tanstackstart-react";
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
+import { handleWellKnownChangePasswordGet } from "./lib/well-known-change-password";
 
 // Not awaited: the app has to serve sign-in and settings whether or not the
 // credential store is reachable.
@@ -52,6 +53,12 @@ function addSecurityHeaders(response: Response): Response {
 export default createServerEntry(
 	wrapFetchWithSentry({
 		async fetch(request: Request) {
+			const pathname = new URL(request.url).pathname;
+			// Password-manager probes hit this exact path. Intercept here so a
+			// leading-dot well-known segment cannot 404 in file-based routing.
+			if ((request.method === "GET" || request.method === "HEAD") && pathname === "/.well-known/change-password") {
+				return addSecurityHeaders(handleWellKnownChangePasswordGet({ request }));
+			}
 			const response = await handler.fetch(request);
 			return addSecurityHeaders(response);
 		},
