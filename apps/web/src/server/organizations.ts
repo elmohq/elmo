@@ -11,60 +11,32 @@ import { organization } from "@workspace/lib/db/schema";
 import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import {
-	getAuthSession,
-	hasReportAccess,
-	isAdmin,
-	listUserOrganizations,
-	requireAuthSession,
-	requireOrganization,
-	resolveOrganization,
-} from "@/lib/auth/helpers";
+import { getAuthSession, listUserOrganizations, requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 import { summarizeOrganizations } from "@/lib/organizations/server";
-import type { OrganizationRouteContext, OrganizationSummary } from "@/lib/organizations/types";
+import type { OrganizationSummary } from "@/lib/organizations/types";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
-export type { OrganizationRouteContext, OrganizationSummary } from "@/lib/organizations/types";
+export type { OrganizationSummary } from "@/lib/organizations/types";
 
 /**
- * Read through the query cache rather than on every navigation, which is what
- * lets the brand allowance be resolved once here instead of again on each page
- * that offers creation.
- */
-export const resolveOrganizationFn = createServerFn({ method: "GET" })
-	.validator(z.object({ org: z.string() }))
-	// The explicit return type breaks the type-inference cycle between this fn
-	// and the route loaders that both consume it and redirect to typed routes.
-	.handler(async ({ data }): Promise<OrganizationRouteContext | null> => {
-		const session = await requireAuthSession();
-		const org = await resolveOrganization(session.user.id, data.org);
-		if (!org) return null;
-
-		const [summary] = await summarizeOrganizations([org]);
-		return {
-			organization: summary,
-			isAdmin: isAdmin(session),
-			hasReportAccess: hasReportAccess(session),
-		};
-	});
-
-/**
+ * Every organization this user can reach, with its brands and its brand
+ * allowance — the only organization read there is.
+ *
+ * The account menu lists all of them on every page, so a per-organization read
+ * beside it would fetch a subset of what is already in hand. `/app/org/$org`
+ * resolves its segment against this list for the same reason the brand layout
+ * resolves its own against the organization's brands: in memory, off one
+ * answer, with nothing to drift.
+ *
  * Null for a signed-out caller, which an empty list would not distinguish from
- * a signed-in one with nothing in it. The 404 renders outside the layout that
+ * a signed-in one with nothing in it — the 404 renders outside the layout that
  * resolves a session, so this is where it learns there is one.
  */
-export const listReachableOrganizationsFn = createServerFn({ method: "GET" }).handler(
+export const listOrganizationsFn = createServerFn({ method: "GET" }).handler(
 	async (): Promise<OrganizationSummary[] | null> => {
 		const session = await getAuthSession();
 		return session ? summarizeOrganizations(await listUserOrganizations(session.user.id)) : null;
-	},
-);
-
-export const listOrganizationsFn = createServerFn({ method: "GET" }).handler(
-	async (): Promise<OrganizationSummary[]> => {
-		const session = await requireAuthSession();
-		return summarizeOrganizations(await listUserOrganizations(session.user.id));
 	},
 );
 
@@ -111,16 +83,6 @@ export const createOrganizationFn = createServerFn({ method: "POST" })
 	});
 
 /**
- * Whether this deployment owns the organization record at all. Whitelabel
- * organizations are Auth0's, and demo writes nothing; renaming either here
- * would be a change the source of truth undoes.
- */
-function organizationsAreEditable(): boolean {
-	const deployment = getDeployment();
-	return !deployment.features.readOnly && deployment.mode !== "whitelabel";
-}
-
-/**
  * Rename an organization, move it to a new slug, or both.
  *
  * One call because it is one edit: the form that carries the name carries the
@@ -141,7 +103,8 @@ export const updateOrganizationFn = createServerFn({ method: "POST" })
 		z.object({
 			org: z.string(),
 			name: z.string().trim().min(1).max(100),
-			slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH),
+			/** Absent when only the name changed, so an untouched slug is never re-validated. */
+			slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH).optional(),
 		}),
 	)
 	.handler(async ({ data }): Promise<{ slug: string }> => {
@@ -151,14 +114,19 @@ export const updateOrganizationFn = createServerFn({ method: "POST" })
 		if (!isOrgAdminRole(org.role)) {
 			throw new Error("Only organization admins can change the organization name or URL Slug");
 		}
-		if (!organizationsAreEditable()) {
+		if (!getDeployment().features.canEditOrganizations) {
 			throw new Error("This organization cannot be renamed in this deployment");
 		}
-		if (!isValidSlug(data.slug)) throw new Error(INVALID_SLUG);
-		if (!(await isOrgSlugAvailable(data.slug, { excludeOrgId: org.id }))) {
-			throw new Error(TAKEN_SLUG);
+		if (data.slug !== undefined) {
+			if (!isValidSlug(data.slug)) throw new Error(INVALID_SLUG);
+			if (!(await isOrgSlugAvailable(data.slug, { excludeOrgId: org.id }))) {
+				throw new Error(TAKEN_SLUG);
+			}
 		}
 
-		await db.update(organization).set({ name: data.name, slug: data.slug }).where(eq(organization.id, org.id));
-		return { slug: data.slug };
+		await db
+			.update(organization)
+			.set({ name: data.name, ...(data.slug !== undefined && { slug: data.slug }) })
+			.where(eq(organization.id, org.id));
+		return { slug: data.slug ?? org.slug };
 	});

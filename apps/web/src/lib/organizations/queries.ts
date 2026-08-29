@@ -1,49 +1,22 @@
-/**
- * The `/app/org/$org` layout resolves the organization in `beforeLoad`, which
- * re-runs on every navigation — filter changes included. The cache is what
- * keeps that from being a round trip each time, and what gives the mutations
- * that change an organization something to invalidate.
- */
 import type { QueryClient } from "@tanstack/react-query";
-import { listOrganizationsFn, listReachableOrganizationsFn, resolveOrganizationFn } from "@/server/organizations";
-
-const organizationKeys = {
-	all: ["organizations"] as const,
-	list: () => [...organizationKeys.all, "list"] as const,
-	reachable: () => [...organizationKeys.all, "reachable"] as const,
-	detail: (org: string) => [...organizationKeys.all, "detail", org] as const,
-};
-
-const STALE_TIME = 60_000;
-
-export const organizationQueries = {
-	list: () => ({
-		queryKey: organizationKeys.list(),
-		queryFn: () => listOrganizationsFn(),
-		staleTime: STALE_TIME,
-	}),
-	/**
-	 * The same list for a caller who may not be signed in, which is null rather
-	 * than empty. Under the same key prefix so one invalidation reaches it.
-	 */
-	reachable: () => ({
-		queryKey: organizationKeys.reachable(),
-		queryFn: () => listReachableOrganizationsFn(),
-		staleTime: STALE_TIME,
-		retry: false,
-	}),
-	/** Null when the user has no such organization. */
-	detail: (org: string) => ({
-		queryKey: organizationKeys.detail(org),
-		queryFn: () => resolveOrganizationFn({ data: { org } }),
-		staleTime: STALE_TIME,
-	}),
-};
+import { listOrganizationsFn } from "@/server/organizations";
 
 /**
- * Every query goes, not just the one the caller changed: the account menu lists
- * every organization's brands, so a brand created in one is stale in the other.
+ * One query for every organization surface: the account menu, the directory,
+ * the 404's directory, and the `/app/org/$org` layout that resolves its segment
+ * against it. `beforeLoad` re-runs on every navigation — filter changes
+ * included — and the cache is what keeps that from being a round trip each
+ * time.
  */
+export const organizationsQuery = {
+	queryKey: ["organizations"] as const,
+	queryFn: () => listOrganizationsFn(),
+	staleTime: 60_000,
+	// The 404 renders for signed-out callers too, and retrying tells them nothing.
+	retry: false,
+};
+
+/** After changing an organization or one of its brands. */
 export function invalidateOrganizations(queryClient: QueryClient): Promise<void> {
-	return queryClient.invalidateQueries({ queryKey: organizationKeys.all });
+	return queryClient.invalidateQueries({ queryKey: organizationsQuery.queryKey });
 }

@@ -1,4 +1,5 @@
-import { useParams, useRouteContext } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
+import { useLooseRouteContext } from "@/hooks/use-deployment-features";
 
 /**
  * The brand the page is about, as an id.
@@ -12,8 +13,19 @@ import { useParams, useRouteContext } from "@tanstack/react-router";
  * places take an explicit id and fall back to this.
  */
 export function useBrandId(): string | undefined {
-	const context = useRouteContext({ strict: false }) as { brandId?: string };
-	return context.brandId;
+	return useLooseRouteContext().brandId;
+}
+
+/**
+ * The brand a data hook is about: the one it was handed, or the page's.
+ *
+ * Every brand-scoped hook takes an optional id so a caller outside the brand's
+ * own pages — the report viewer — can name one; inside them it comes from the
+ * route.
+ */
+export function useResolvedBrandId(brandId?: string): string | undefined {
+	const routeBrandId = useBrandId();
+	return brandId || routeBrandId;
 }
 
 /**

@@ -37,7 +37,7 @@ import { Logo } from "@/components/logo";
 import { NavAppInfo } from "@/components/nav-app-info";
 import { type NavGroup, type NavItem, NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
-import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
+import { useDeploymentFeatures, useViewer } from "@/hooks/use-deployment-features";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
 /**
@@ -59,11 +59,6 @@ type ScopeProps =
 	| { scope: "organization"; organization: OrganizationSummary }
 	| { scope: "admin" | "account" };
 
-type AppSidebarProps = {
-	isAdmin?: boolean;
-	hasReportAccess?: boolean;
-} & ScopeProps;
-
 /**
  * The label doesn't name the organization — the breadcrumb and the account menu
  * both already do. Team is listed everywhere; only inviting and removing are a
@@ -72,7 +67,7 @@ type AppSidebarProps = {
 function organizationGroup(organization: OrganizationSummary, features?: FeaturesConfig): NavGroup {
 	const params = orgParams(organization);
 	const items: NavItem[] = [
-		{ title: "Organization", link: { to: "/app/org/$org/settings", params }, icon: IconBriefcase },
+		{ title: "Organization", link: { to: "/app/org/$org/settings", params }, icon: IconBriefcase, exact: true },
 		{ title: "Brands", link: { to: "/app/org/$org/settings/brands", params }, icon: IconBuildings },
 		{ title: "Team", link: { to: "/app/org/$org/settings/members", params }, icon: IconUsers },
 	];
@@ -87,7 +82,7 @@ function organizationGroup(organization: OrganizationSummary, features?: Feature
 function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts): NavGroup[] {
 	const params = brandParams(organization, brand);
 	const dashboard: NavItem[] = [
-		{ title: "Overview", link: { to: "/app/org/$org/brand/$brand", params }, icon: IconDashboard },
+		{ title: "Overview", link: { to: "/app/org/$org/brand/$brand", params }, icon: IconDashboard, exact: true },
 	];
 
 	// Everything but the overview reads results a brand has only once onboarded.
@@ -145,9 +140,12 @@ function adminGroup(isAdmin: boolean, reportsEnabled: boolean): NavGroup {
 	};
 }
 
-export function AppSidebar(props: AppSidebarProps) {
-	const { isAdmin = false, hasReportAccess = false, scope } = props;
+export function AppSidebar(props: ScopeProps) {
+	const { scope } = props;
 	const { setOpenMobile } = useSidebar();
+	// Facts about the viewer, not about this page's subject, so they come from
+	// the layout that resolved the session rather than from four call sites.
+	const { isAdmin, hasReportAccess } = useViewer();
 	const features = useDeploymentFeatures();
 	// Reports are disabled entirely in cloud; hide the nav entry there.
 	const reportsEnabled = features?.reportGeneration ?? true;

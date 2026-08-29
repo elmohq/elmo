@@ -42,10 +42,3 @@ export interface OrganizationSummary {
 	brands: OrganizationBrand[];
 	brandCreation: BrandCreation;
 }
-
-/** The session facts ride along because the shell needs all three together. */
-export interface OrganizationRouteContext {
-	organization: OrganizationSummary;
-	isAdmin: boolean;
-	hasReportAccess: boolean;
-}

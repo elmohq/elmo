@@ -13,7 +13,6 @@ import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent } from "@workspace/ui/components/card";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
-import { Spinner } from "@workspace/ui/components/spinner";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { ExternalLink } from "lucide-react";
 import { useState } from "react";
@@ -62,7 +61,6 @@ export const Route = createFileRoute("/_authed/reports/")({
 });
 
 function ReportsPage() {
-	const { isAdmin, hasReportAccess } = Route.useRouteContext();
 	const queryClient = useQueryClient();
 
 	const {
@@ -126,10 +124,7 @@ function ReportsPage() {
 	};
 
 	return (
-		<AppShell
-			sidebar={<AppSidebar scope="admin" isAdmin={isAdmin} hasReportAccess={hasReportAccess} />}
-			header={<SiteHeader />}
-		>
+		<AppShell sidebar={<AppSidebar scope="admin" />} header={<SiteHeader />}>
 			<PageContent>
 				<div className="space-y-8">
 					<div className="space-y-2">

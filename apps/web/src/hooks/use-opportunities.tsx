@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useBrandId } from "@/hooks/use-brand-id";
+import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import { getOpportunitiesFn } from "@/server/opportunities";
 
 export const opportunitiesKeys = {
@@ -13,8 +13,7 @@ export const opportunitiesKeys = {
  * Infinity, no refetch-on-focus) rather than refetched.
  */
 export function useOpportunities(brandId?: string) {
-	const routeBrandId = useBrandId();
-	const resolvedBrandId = brandId || routeBrandId;
+	const resolvedBrandId = useResolvedBrandId(brandId);
 
 	const query = useQuery({
 		queryKey: opportunitiesKeys.detail(resolvedBrandId || ""),

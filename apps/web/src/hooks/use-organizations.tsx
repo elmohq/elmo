@@ -1,14 +1,15 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLoaderData } from "@tanstack/react-router";
-import { invalidateOrganizations, organizationQueries } from "@/lib/organizations/queries";
-import type { OrganizationRouteContext, OrganizationSummary } from "@/lib/organizations/types";
+import { invalidateOrganizations, organizationsQuery } from "@/lib/organizations/queries";
+import type { OrganizationSummary } from "@/lib/organizations/types";
 
 /**
- * Read from the layout's loader data rather than its route context: a
- * `beforeLoad` re-runs on every navigation, and a component reading that result
- * directly would see `undefined` for as long as it takes.
+ * The organization the page is inside, as the `/app/org/$org` layout resolved
+ * it. Read from loader data rather than route context: a `beforeLoad` re-runs
+ * on every navigation, and a component reading that result directly would see
+ * `undefined` for as long as it takes.
  */
-export function useOrganizationRoute(): OrganizationRouteContext {
+export function useOrganization(): OrganizationSummary {
 	return useLoaderData({ from: "/_authed/app/org/$org" });
 }
 
@@ -17,10 +18,10 @@ export function useOrganizationRoute(): OrganizationRouteContext {
  * request empty the navigation.
  */
 export function useOrganizations() {
-	const query = useQuery(organizationQueries.list());
+	const query = useQuery(organizationsQuery);
 
 	return {
-		organizations: (query.data ?? []) as OrganizationSummary[],
+		organizations: query.data ?? [],
 		isLoading: query.isLoading,
 		isError: query.isError,
 		isFetching: query.isFetching,

@@ -39,13 +39,8 @@ export const Route = createFileRoute("/_authed/admin")({
 });
 
 function AdminLayout() {
-	const { isAdmin, hasReportAccess } = Route.useRouteContext();
-
 	return (
-		<AppShell
-			sidebar={<AppSidebar scope="admin" isAdmin={isAdmin} hasReportAccess={hasReportAccess} />}
-			header={<SiteHeader />}
-		>
+		<AppShell sidebar={<AppSidebar scope="admin" />} header={<SiteHeader />}>
 			<PageContent>
 				<Outlet />
 			</PageContent>

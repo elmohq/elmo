@@ -2,18 +2,36 @@ import { useRouteContext } from "@tanstack/react-router";
 import type { PublicClientConfig } from "@/server/config";
 
 /**
- * `strict: false` can't infer the context type, so it is named here once rather
- * than cast at every component that asks about a feature.
+ * What a component can read off the router without knowing which route it is
+ * under. `strict: false` can't infer this, so it is named here once rather than
+ * cast at each caller.
  *
- * Undefined until the root's `beforeLoad` settles, so callers decide what a
- * missing answer means instead of being handed a default.
+ * Every field is optional because a component may render above the route that
+ * provides it — `clientConfig` before the root's `beforeLoad` settles, the
+ * viewer facts outside `_authed`, `brandId` outside a brand page. Callers
+ * decide what a missing answer means rather than being handed a default.
  */
+export interface LooseRouteContext {
+	clientConfig?: PublicClientConfig;
+	isAdmin?: boolean;
+	hasReportAccess?: boolean;
+	brandId?: string;
+}
+
+export function useLooseRouteContext(): LooseRouteContext {
+	return useRouteContext({ strict: false }) as LooseRouteContext;
+}
+
 export function useDeploymentFeatures(): PublicClientConfig["features"] | undefined {
-	const context = useRouteContext({ strict: false }) as { clientConfig?: PublicClientConfig };
-	return context.clientConfig?.features;
+	return useLooseRouteContext().clientConfig?.features;
 }
 
 export function useBranding(): PublicClientConfig["branding"] | undefined {
-	const context = useRouteContext({ strict: false }) as { clientConfig?: PublicClientConfig };
-	return context.clientConfig?.branding;
+	return useLooseRouteContext().clientConfig?.branding;
+}
+
+/** The two facts about the signed-in user every shell asks about, from `_authed`. */
+export function useViewer(): { isAdmin: boolean; hasReportAccess: boolean } {
+	const context = useLooseRouteContext();
+	return { isAdmin: context.isAdmin ?? false, hasReportAccess: context.hasReportAccess ?? false };
 }

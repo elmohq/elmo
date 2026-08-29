@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useBrandId } from "@/hooks/use-brand-id";
+import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import { getPromptChartDataFn } from "@/server/prompts";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
@@ -34,8 +34,7 @@ export function usePromptChartData(
 	filters?: PromptChartDataFilters,
 	enabled: boolean = true,
 ) {
-	const routeBrandId = useBrandId();
-	const resolvedBrandId = brandId || routeBrandId;
+	const resolvedBrandId = useResolvedBrandId(brandId);
 
 	const { data, error, isLoading, refetch } = useQuery({
 		queryKey: ["promptChartData", resolvedBrandId, promptId, filters],

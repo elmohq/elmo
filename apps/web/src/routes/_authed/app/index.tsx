@@ -8,9 +8,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import FullPageCard from "@/components/full-page-card";
 import { OrganizationDirectory } from "@/components/organization-directory";
-import { organizationQueries } from "@/lib/organizations/queries";
+import { organizationsQuery } from "@/lib/organizations/queries";
 import type { OrganizationSummary } from "@/lib/organizations/types";
-import { buildTitle, getAppName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { syncOrganizationMembershipsFn } from "@/server/organizations";
 
 function OrganizationPickerSkeleton() {
@@ -32,16 +32,11 @@ export const Route = createFileRoute("/_authed/app/")({
 	// from Auth0 they may no longer be what was cached, so that answer goes.
 	loader: async ({ context }): Promise<OrganizationSummary[]> => {
 		if (await syncOrganizationMembershipsFn()) {
-			await context.queryClient.invalidateQueries({ queryKey: organizationQueries.list().queryKey });
+			await context.queryClient.invalidateQueries({ queryKey: organizationsQuery.queryKey });
 		}
-		return context.queryClient.ensureQueryData(organizationQueries.list());
+		return (await context.queryClient.ensureQueryData(organizationsQuery)) ?? [];
 	},
-	head: ({ match }) => ({
-		meta: [
-			{ title: buildTitle("Organizations and Brands", { appName: getAppName(match) }) },
-			{ name: "description", content: "Modify organizations or navigate to brands." },
-		],
-	}),
+	head: pageHead({ title: "Organizations and Brands", description: "Modify organizations or navigate to brands." }),
 	component: OrganizationPickerPage,
 });
 

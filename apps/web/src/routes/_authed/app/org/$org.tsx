@@ -2,8 +2,11 @@
  * The segment resolves as a slug or an id, and canonicalizes to the slug, so
  * anything holding an `organizationId` can link here without looking one up.
  *
- * The org resolves here and nowhere else, but server functions still resolve it
- * for themselves: each is reachable without passing through this route.
+ * Resolved against the list the account menu already holds — a lookup in memory
+ * rather than a round trip — the way the brand layout below resolves its own
+ * segment against this organization's brands. Server functions still resolve
+ * the organization for themselves: each is reachable without passing through
+ * this route.
  *
  * `beforeLoad` rather than `loader` because the brand layout needs the
  * organization during its own `beforeLoad`, and sibling loaders run in parallel.
@@ -12,26 +15,29 @@
  */
 
 import { createFileRoute, notFound, Outlet, redirect } from "@tanstack/react-router";
-import { canonicalOrgHref, orgSegment } from "@workspace/lib/app-urls";
-import { organizationQueries } from "@/lib/organizations/queries";
-import type { OrganizationRouteContext } from "@/lib/organizations/types";
+import { canonicalOrgHref } from "@workspace/lib/app-urls";
+import { organizationsQuery } from "@/lib/organizations/queries";
+import type { OrganizationSummary } from "@/lib/organizations/types";
 
 export const Route = createFileRoute("/_authed/app/org/$org")({
-	beforeLoad: async ({ params, location, context }): Promise<OrganizationRouteContext> => {
-		const resolved = await context.queryClient.ensureQueryData(organizationQueries.detail(params.org));
-		if (!resolved) throw notFound();
+	beforeLoad: async ({ params, location, context }): Promise<{ organization: OrganizationSummary }> => {
+		// `_authed` above has already redirected a signed-out caller, so a null
+		// list here is a session that went away mid-navigation.
+		const organizations = (await context.queryClient.ensureQueryData(organizationsQuery)) ?? [];
 
-		const canonical = orgSegment(resolved.organization);
+		// Slug first: an organization's id and another's slug can both be the
+		// segment, and which one the URL names should not depend on row order.
+		const organization =
+			organizations.find((org) => org.slug === params.org) ?? organizations.find((org) => org.id === params.org);
+		if (!organization) throw notFound();
+
+		const canonical = organization.slug;
 		if (canonical !== params.org) {
 			throw redirect({ href: canonicalOrgHref(location, canonical) });
 		}
 
-		return resolved;
+		return { organization };
 	},
-	loader: ({ context }): OrganizationRouteContext => ({
-		organization: context.organization,
-		isAdmin: context.isAdmin,
-		hasReportAccess: context.hasReportAccess,
-	}),
+	loader: ({ context }): OrganizationSummary => context.organization,
 	component: () => <Outlet />,
 });
