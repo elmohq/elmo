@@ -7,47 +7,28 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent } from "@workspace/ui/components/card";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
+import { Spinner } from "@workspace/ui/components/spinner";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { AppShell, PageContent } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import { hasReportAccess, isAdmin, requireAuthSession } from "@/lib/auth/helpers";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import { createReportFn, getReportsFn } from "@/server/reports";
 
-const checkReportAccess = createServerFn({ method: "GET" }).handler(
-	async (): Promise<{
-		hasAccess: boolean;
-		isAdmin: boolean;
-		hasReportAccess: boolean;
-	}> => {
-		const session = await requireAuthSession();
-		const admin = isAdmin(session);
-		const reportAccess = hasReportAccess(session);
-		return {
-			hasAccess: admin || reportAccess,
-			isAdmin: admin,
-			hasReportAccess: reportAccess,
-		};
-	},
-);
-
 export const Route = createFileRoute("/_authed/reports/")({
 	staticData: { crumb: "Reports" },
 	head: pageHead({ description: "Generate and view one-time brand reports." }),
-	beforeLoad: async () => {
-		const { hasAccess, isAdmin, hasReportAccess } = await checkReportAccess();
-		if (!hasAccess) throw notFound();
-		return { isAdmin, hasReportAccess };
+	// From `_authed`'s viewer, for the reason the admin layout gives.
+	beforeLoad: ({ context }) => {
+		if (!context.isAdmin && !context.hasReportAccess) throw notFound();
 	},
 	component: ReportsPage,
 });
@@ -220,7 +201,7 @@ function ReportsPage() {
 							{isLoading ? (
 								<div className="flex items-center justify-center py-8">
 									<div className="flex items-center space-x-2">
-										<div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+										<Spinner className="size-6 text-primary" />
 										<span>Loading reports...</span>
 									</div>
 								</div>
