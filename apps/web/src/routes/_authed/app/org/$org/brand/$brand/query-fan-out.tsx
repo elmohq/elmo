@@ -1,5 +1,5 @@
 /**
- * /app/$brand/query-fan-out - Query Fan-Out
+ * Query Fan-Out
  *
  * "What are the answer engines really searching for?" When an engine answers a
  * tracked prompt it may run several web searches first. KPIs summarize how much
@@ -13,7 +13,7 @@
  */
 
 import { IconChevronDown, IconChevronRight, IconSearch } from "@tabler/icons-react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Input } from "@workspace/ui/components/input";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -31,7 +31,7 @@ import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
 import { type PromptFanoutStat, promptKeywords, type TopQueryStat } from "@/lib/fanout-analysis";
-import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { getModelDisplayName } from "@/lib/utils";
 
 /** The active tab lives in `?tab=` so each tab is directly linkable. */
@@ -43,25 +43,11 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/query-f
 	validateSearch: (search: Record<string, unknown>): { tab?: FanoutTab } => ({
 		tab: FANOUT_TABS.includes(search.tab as FanoutTab) ? (search.tab as FanoutTab) : undefined,
 	}),
-	head: ({ matches, match }) => {
-		const appName = getAppName(match);
-		const brandName = getBrandName(matches);
-		return {
-			meta: [
-				{ title: buildTitle("Query Fan-Out", { appName, subject: brandName }) },
-				{
-					name: "description",
-					content:
-						"See the web searches AI engines run when answering your prompts, and how they rewrite your wording.",
-				},
-			],
-		};
-	},
+	head: pageHead({}),
 	component: QueryFanoutPage,
 });
 
 function QueryFanoutPage() {
-	const { org, brand: brandParam } = Route.useParams();
 	const { brandId } = Route.useRouteContext();
 	const { model, lookback, tags } = useListFilters();
 	const tab = Route.useSearch({ select: (s) => s.tab ?? "fanout" });

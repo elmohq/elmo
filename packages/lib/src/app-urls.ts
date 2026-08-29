@@ -20,11 +20,6 @@ export interface SluggableBrand {
 	slug: string | null;
 }
 
-/** What the `$org` segment carries for this organization. */
-export function orgSegment(org: SluggableOrg): string {
-	return org.slug;
-}
-
 /** What the `$brand` segment carries for this brand. */
 export function brandSegment(brand: SluggableBrand): string {
 	return brand.slug ?? brand.id;
@@ -32,29 +27,26 @@ export function brandSegment(brand: SluggableBrand): string {
 
 /** Route params for `/app/org/$org`, so the router still type-checks the target. */
 export function orgParams(org: SluggableOrg): { org: string } {
-	return { org: orgSegment(org) };
+	return { org: org.slug };
 }
 
 /** Route params for `/app/org/$org/brand/$brand`. */
 export function brandParams(org: SluggableOrg, brand: SluggableBrand): { org: string; brand: string } {
-	return { org: orgSegment(org), brand: brandSegment(brand) };
+	return { org: org.slug, brand: brandSegment(brand) };
 }
 
 /** Exported so the field that edits a segment shows the address around it. */
 export const ORG_URL_PREFIX = "/app/org/";
 export const BRAND_URL_PREFIX = "/brand/";
 
-/** The canonical URL for an organization, for links minted outside the router. */
-export function orgPath(org: SluggableOrg): string {
-	return `${ORG_URL_PREFIX}${encodeURIComponent(orgSegment(org))}`;
-}
-
-export function brandPath(org: SluggableOrg, brand: SluggableBrand): string {
-	return `${orgPath(org)}${BRAND_URL_PREFIX}${encodeURIComponent(brandSegment(brand))}`;
-}
-
+/**
+ * An organization's settings page as a string, for the one caller that mints a
+ * link outside the router: the dunning mailer. Everything inside the app links
+ * through route params, which the router encodes itself.
+ */
 export function orgSettingsPath(org: SluggableOrg, sub?: "members" | "billing"): string {
-	return sub ? `${orgPath(org)}/settings/${sub}` : `${orgPath(org)}/settings`;
+	const base = `${ORG_URL_PREFIX}${encodeURIComponent(org.slug)}/settings`;
+	return sub ? `${base}/${sub}` : base;
 }
 
 /**
@@ -110,4 +102,25 @@ export const MAX_SLUG_LENGTH = 48;
 export function isValidSlug(slug: string): boolean {
 	if (slug.length === 0 || slug.length > MAX_SLUG_LENGTH) return false;
 	return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
+}
+
+/**
+ * A name as a slug. Beside `isValidSlug` because it is the only producer of
+ * one, and the two have to agree: a slug this returns that the validator would
+ * refuse is a record that can be created and then never saved again.
+ *
+ * Leading/trailing hyphens are trimmed by index walks rather than an
+ * `^-+|-+$` alternation regex — the alternation form trips ReDoS scanners on
+ * inputs like `"---"` even though the JS engine handles it linearly.
+ */
+export function slugify(name: string): string {
+	const cleaned = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+	let start = 0;
+	while (start < cleaned.length && cleaned[start] === "-") start++;
+	// Bounded here rather than by the caller: a name is as long as someone
+	// wants it, and the segment it becomes is not.
+	let end = Math.min(cleaned.length, start + MAX_SLUG_LENGTH);
+	while (end > start && cleaned[end - 1] === "-") end--;
+	const slug = cleaned.slice(start, end);
+	return slug || "brand";
 }

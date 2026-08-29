@@ -8,8 +8,9 @@
  * lives here.
  */
 
+import { slugify } from "@workspace/lib/app-urls";
 import { db } from "@workspace/lib/db/db";
-import { ensureOrganization, findUniqueBrandSlug, slugify } from "@workspace/lib/db/provisioning";
+import { ensureOrganization, findUniqueBrandSlug } from "@workspace/lib/db/provisioning";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";

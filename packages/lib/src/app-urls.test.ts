@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
 	brandParams,
-	brandPath,
 	brandSegment,
 	canonicalBrandHref,
 	canonicalOrgHref,
+	isValidSlug,
+	MAX_SLUG_LENGTH,
 	orgParams,
-	orgPath,
-	orgSegment,
 	orgSettingsPath,
+	slugify,
 } from "./app-urls";
 
 const ACME = { id: "org_123", slug: "acme" };
@@ -21,7 +21,7 @@ function location(pathname: string, searchStr = "", hash = "") {
 
 describe("URL segments", () => {
 	it("prefers the slug", () => {
-		expect(orgSegment(ACME)).toBe("acme");
+		expect(ACME.slug).toBe("acme");
 		expect(brandSegment(NIKE)).toBe("nike-running");
 	});
 
@@ -34,15 +34,10 @@ describe("URL segments", () => {
 		expect(brandParams(ACME, UNSLUGGED_BRAND)).toEqual({ org: "acme", brand: "nike" });
 	});
 
-	it("encodes segments in string paths", () => {
-		expect(orgPath(ACME)).toBe("/app/org/acme");
-		expect(brandPath(ACME, NIKE)).toBe("/app/org/acme/brand/nike-running");
-		expect(brandPath({ slug: "a b" }, { id: "c/d", slug: null })).toBe("/app/org/a%20b/brand/c%2Fd");
-	});
-
-	it("names the organization's own pages", () => {
+	it("names the organization's own pages, encoding the segment", () => {
 		expect(orgSettingsPath(ACME)).toBe("/app/org/acme/settings");
 		expect(orgSettingsPath(ACME, "billing")).toBe("/app/org/acme/settings/billing");
+		expect(orgSettingsPath({ slug: "a b" })).toBe("/app/org/a%20b/settings");
 	});
 });
 
@@ -76,5 +71,88 @@ describe("canonical hrefs", () => {
 
 	it("encodes the value it writes in", () => {
 		expect(canonicalOrgHref(location("/app/org/org_123"), "a b")).toBe("/app/org/a%20b");
+	});
+});
+
+describe("slugify", () => {
+	it("lowercases", () => {
+		expect(slugify("Acme")).toBe("acme");
+	});
+
+	it("replaces runs of non-alphanumerics with single hyphens", () => {
+		expect(slugify("Acme Co!")).toBe("acme-co");
+		expect(slugify("Foo   Bar")).toBe("foo-bar");
+	});
+
+	it("trims leading and trailing hyphens", () => {
+		expect(slugify("  hello world  ")).toBe("hello-world");
+		expect(slugify("!!!brand!!!")).toBe("brand");
+	});
+
+	it("falls back to 'brand' for empty / non-alphanumeric input", () => {
+		expect(slugify("")).toBe("brand");
+		expect(slugify("!!!")).toBe("brand");
+	});
+
+	it("preserves digits", () => {
+		expect(slugify("Acme 2")).toBe("acme-2");
+	});
+
+	// A name is as long as someone wants it; the URL segment it becomes is not.
+	it("bounds the length, without leaving a trailing hyphen behind", () => {
+		expect(slugify("a".repeat(MAX_SLUG_LENGTH + 20))).toHaveLength(MAX_SLUG_LENGTH);
+		expect(slugify(`${"a".repeat(MAX_SLUG_LENGTH - 1)} tail`)).toBe("a".repeat(MAX_SLUG_LENGTH - 1));
+	});
+
+	// Organizations and brands sit under static `org`/`brand` segments, so no name
+	// can shadow a sibling route and nothing needs reserving.
+	it("leaves route names alone", () => {
+		expect(slugify("new")).toBe("new");
+		expect(slugify("Settings")).toBe("settings");
+	});
+});
+
+describe("isValidSlug", () => {
+	// The two have to agree: a slug the producer emits and the validator refuses
+	// is a record that can be created and then never saved again.
+	it("accepts everything slugify produces", () => {
+		const names = [
+			"Acme",
+			"Acme Co!",
+			"  hello world  ",
+			"!!!",
+			"Acme 2",
+			"The Very Long Brand Name For Enterprise Customers Incorporated",
+			"Alexandra Christina Featherstonehaugh-Wellington's organization",
+			"—".repeat(80),
+			`${"a".repeat(MAX_SLUG_LENGTH)} tail`,
+		];
+		for (const name of names) {
+			expect(isValidSlug(slugify(name)), name).toBe(true);
+		}
+	});
+
+	it("rejects anything that wouldn't read as one URL segment", () => {
+		expect(isValidSlug("")).toBe(false);
+		expect(isValidSlug("Acme")).toBe(false);
+		expect(isValidSlug("acme co")).toBe(false);
+		expect(isValidSlug("acme/co")).toBe(false);
+		expect(isValidSlug("-acme")).toBe(false);
+		expect(isValidSlug("acme-")).toBe(false);
+		expect(isValidSlug("acme--co")).toBe(false);
+	});
+
+	it("bounds the length", () => {
+		expect(isValidSlug("a".repeat(MAX_SLUG_LENGTH))).toBe(true);
+		expect(isValidSlug("a".repeat(MAX_SLUG_LENGTH + 1))).toBe(false);
+	});
+
+	// Route names are ordinary slugs now; the only thing that could make one
+	// ambiguous is colliding with an id, which is an availability question.
+	it("has no opinion about route names", () => {
+		expect(isValidSlug("new")).toBe(true);
+		expect(isValidSlug("settings")).toBe(true);
+		expect(isValidSlug("org")).toBe(true);
+		expect(isValidSlug("brand")).toBe(true);
 	});
 });

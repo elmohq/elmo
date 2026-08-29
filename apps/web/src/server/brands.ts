@@ -3,10 +3,10 @@
  * Replaces apps/web/src/app/api/brands/* API routes.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { isValidSlug, MAX_SLUG_LENGTH } from "@workspace/lib/app-urls";
+import { isValidSlug, MAX_SLUG_LENGTH, slugify } from "@workspace/lib/app-urls";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { findUniqueBrandId, findUniqueBrandSlug, isBrandSlugAvailable, slugify } from "@workspace/lib/db/provisioning";
+import { findUniqueBrandId, findUniqueBrandSlug, isBrandSlugAvailable } from "@workspace/lib/db/provisioning";
 import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
 import {
 	assertAllowed,

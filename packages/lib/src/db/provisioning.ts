@@ -15,6 +15,7 @@
  * silently rewriting rows.
  */
 import { and, count, eq, or } from "drizzle-orm";
+import { MAX_SLUG_LENGTH, slugify } from "../app-urls";
 import { db } from "./db";
 import { brands, member, organization, user } from "./schema";
 
@@ -76,42 +77,36 @@ export async function provisionLocalOrg(input: { userId: string }): Promise<{ or
 }
 
 /**
- * Slugify a brand or org name into the URL/id form used for brand ids and
- * org ids/slugs. Exported so the slug rules can be unit-tested directly
- * without a database.
+ * The first name in `base`, `base-2`, `base-3`, … that nothing answers to.
  *
- * Note: leading/trailing hyphens are trimmed via index walks instead of an
- * `^-+|-+$` alternation regex — the alternation form trips ReDoS scanners
- * on inputs like `"---"` even though the JS engine handles it linearly.
+ * The suffix is fitted inside `MAX_SLUG_LENGTH` rather than appended past it,
+ * so a long name that collides still produces a segment `isValidSlug` accepts
+ * — a slug the settings form would then refuse to save is worse than a
+ * slightly shorter one.
  */
-export function slugify(name: string): string {
-	const cleaned = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-	let start = 0;
-	while (start < cleaned.length && cleaned[start] === "-") start++;
-	let end = cleaned.length;
-	while (end > start && cleaned[end - 1] === "-") end--;
-	const slug = cleaned.slice(start, end);
-	return slug || "brand";
+async function firstFreeName(base: string, isFree: (candidate: string) => Promise<boolean>): Promise<string> {
+	if (await isFree(base)) return base;
+	for (let suffix = 2; ; suffix++) {
+		const room = MAX_SLUG_LENGTH - `-${suffix}`.length;
+		const candidate = `${base.slice(0, room).replace(/-+$/, "")}-${suffix}`;
+		if (await isFree(candidate)) return candidate;
+	}
 }
 
 /**
- * Appends -2, -3, … on collision. The slug namespace is checked alongside ids
+ * A brand id nothing answers to. The slug namespace is checked alongside ids
  * because `/app/org/$org/brand/$brand` resolves a segment as either, so an id
- * equal to a sibling's slug would make one URL name two brands.
+ * equal to another brand's slug would make one URL name two brands.
  */
 export async function findUniqueBrandId(baseSlug: string): Promise<string> {
-	let candidate = baseSlug;
-	let suffix = 2;
-	for (;;) {
+	return firstFreeName(baseSlug, async (candidate) => {
 		const [conflict] = await db
 			.select({ id: brands.id })
 			.from(brands)
 			.where(or(eq(brands.id, candidate), eq(brands.slug, candidate)))
 			.limit(1);
-		if (!conflict) return candidate;
-		candidate = `${baseSlug}-${suffix}`;
-		suffix++;
-	}
+		return !conflict;
+	});
 }
 
 /**
@@ -135,17 +130,8 @@ export async function isOrgSlugAvailable(
 	return !conflict || conflict.id === options.excludeOrgId;
 }
 
-/**
- * An org slug nothing else answers to, appending -2, -3, … on collision.
- */
 async function findUniqueOrgSlug(baseSlug: string, conn: DbConnection = db): Promise<string> {
-	let candidate = baseSlug;
-	let suffix = 2;
-	for (;;) {
-		if (await isOrgSlugAvailable(candidate, { conn })) return candidate;
-		candidate = `${baseSlug}-${suffix}`;
-		suffix++;
-	}
+	return firstFreeName(baseSlug, (candidate) => isOrgSlugAvailable(candidate, { conn }));
 }
 
 /**
@@ -170,22 +156,16 @@ export async function isBrandSlugAvailable(
 }
 
 /**
- * A brand slug free within the organization, appending -2, -3, … on collision. New
- * brands get one at creation, so a brand arrives with a readable URL instead of
- * waiting for someone to open settings and name one.
+ * A brand slug free within the organization. New brands get one at creation, so
+ * a brand arrives with a readable URL instead of waiting for someone to open
+ * settings and name one.
  */
 export async function findUniqueBrandSlug(
 	organizationId: string,
 	baseSlug: string,
 	conn: DbConnection = db,
 ): Promise<string> {
-	let candidate = baseSlug;
-	let suffix = 2;
-	for (;;) {
-		if (await isBrandSlugAvailable(organizationId, candidate, { conn })) return candidate;
-		candidate = `${baseSlug}-${suffix}`;
-		suffix++;
-	}
+	return firstFreeName(baseSlug, (candidate) => isBrandSlugAvailable(organizationId, candidate, { conn }));
 }
 
 /**

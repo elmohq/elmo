@@ -20,22 +20,13 @@ import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { useInvalidateOrganizations } from "@/hooks/use-organizations";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
-import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updateBrandFn } from "@/server/brands";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/brand")({
 	staticData: { crumb: "Brand" },
-	head: ({ matches, match }) => {
-		const appName = getAppName(match);
-		const brandName = getBrandName(matches);
-		return {
-			meta: [
-				{ title: buildTitle("Brand Settings", { appName, subject: brandName }) },
-				{ name: "description", content: "Manage your brand name and website." },
-			],
-		};
-	},
+	head: pageHead({ title: "Brand Settings", description: "Manage your brand name and website." }),
 	component: BrandSettingsPage,
 });
 
@@ -94,6 +85,8 @@ function BrandSettingsPage() {
 		);
 	}
 
+	const currentSlug = brand.slug ?? brand.id;
+
 	const handleSubmit = async (formData: FormData) => {
 		setIsSubmitting(true);
 		setError("");
@@ -103,13 +96,17 @@ function BrandSettingsPage() {
 			const name = formData.get("name") as string;
 			const website = formData.get("website") as string;
 
+			// Only when it moved. A brand that predates slugs shows its id here, and
+			// an id is not held to the slug rules — sending it unchanged would make
+			// every other edit on this page hostage to a legacy identifier.
 			const nextSlug = slug.trim().toLowerCase();
+			const slugMoved = nextSlug !== currentSlug;
 			await updateBrandFn({
 				data: {
 					brandId: brand.id,
 					name,
 					website,
-					slug: nextSlug,
+					...(slugMoved && { slug: nextSlug }),
 					additionalDomains,
 					aliases,
 				},
@@ -124,7 +121,7 @@ function BrandSettingsPage() {
 			// The rail's menu lists this brand by name, and if the slug moved so did
 			// the address this page is at.
 			await invalidateOrganizations();
-			if (nextSlug !== (brand.slug ?? brand.id)) {
+			if (slugMoved) {
 				await router.navigate({
 					to: "/app/org/$org/brand/$brand/settings/brand",
 					params: { org, brand: nextSlug },

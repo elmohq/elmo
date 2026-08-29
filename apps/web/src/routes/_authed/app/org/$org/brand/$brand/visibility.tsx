@@ -1,14 +1,11 @@
 /**
- * /app/$brand/visibility - Visibility charts page
- *
- * Shows prompts with visibility scores and trend charts.
- * Data is fetched client-side via TanStack Query hooks in PromptsDisplay,
- * so no route loader is needed (allows immediate rendering with skeletons).
+ * Data is fetched client-side via TanStack Query hooks in PromptsDisplay, so no
+ * route loader is needed — the page renders skeletons immediately.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PromptsDisplay } from "@/components/prompts-display";
 import { coercePromptOrder, DEFAULT_PROMPT_ORDER, type PromptOrder } from "@/lib/prompt-order";
-import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/visibility")({
 	staticData: { crumb: "Visibility" },
@@ -19,22 +16,12 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/visibil
 		const order = coercePromptOrder(search.order);
 		return order === DEFAULT_PROMPT_ORDER ? {} : { order };
 	},
-	head: ({ matches, match }) => {
-		const appName = getAppName(match);
-		const brandName = getBrandName(matches);
-		return {
-			meta: [
-				{ title: buildTitle("Visibility", { appName, subject: brandName }) },
-				{ name: "description", content: "Track how LLMs respond to prompts about your brand." },
-			],
-		};
-	},
+	head: pageHead({ description: "Track how LLMs respond to prompts about your brand." }),
 	component: VisibilityPage,
 });
 
 function VisibilityPage() {
 	const { org, brand: brandParam } = Route.useParams();
-	const { brandId } = Route.useRouteContext();
 
 	const infoContent = (
 		<>
@@ -55,7 +42,6 @@ function VisibilityPage() {
 			pageTitle="Visibility"
 			pageDescription="See how LLMs are evaluating prompts related to your brand."
 			pageInfoContent={infoContent}
-			editLink={`/app/${org}/${brandId}/settings/prompts`}
 		/>
 	);
 }

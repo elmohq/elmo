@@ -16,6 +16,7 @@ import { VirtualizedPromptList } from "@/components/virtualized-prompt-list";
 import { VisibilityBarSection } from "@/components/visibility-bar-section";
 import { ChartDataProvider } from "@/contexts/chart-data-context";
 import { useBatchChartData } from "@/hooks/use-batch-chart-data";
+import { useBrandParams } from "@/hooks/use-brand-id";
 import { useBrand } from "@/hooks/use-brands";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
@@ -27,18 +28,17 @@ interface PromptsDisplayProps {
 	pageTitle: string;
 	pageDescription: string;
 	pageInfoContent?: React.ReactNode;
-	editLink: string;
 }
 
 /** Host component: renders the page shell (title, sticky bar, content)
  *  and composes independent sub-sections. It doesn't subscribe to any
  *  filter state itself — each section reads the URL keys it cares about
  *  so a filter change only re-renders the sections that depend on it. */
-export function PromptsDisplay({ pageTitle, pageDescription, pageInfoContent, editLink }: PromptsDisplayProps) {
+export function PromptsDisplay({ pageTitle, pageDescription, pageInfoContent }: PromptsDisplayProps) {
 	const { brand } = useBrand();
 	return (
 		<PageHeader title={pageTitle} subtitle={pageDescription} infoContent={pageInfoContent}>
-			<PromptsContent brandId={brand?.id} editLink={editLink} />
+			<PromptsContent brandId={brand?.id} />
 		</PageHeader>
 	);
 }
@@ -49,8 +49,11 @@ export function PromptsDisplay({ pageTitle, pageDescription, pageInfoContent, ed
  *  components still hold their own subscriptions to whichever URL keys
  *  they need, so a click on "Lookback" only invalidates the data users
  *  and not `FilterBar` itself. */
-function PromptsContent({ brandId, editLink }: { brandId: string | undefined; editLink: string }) {
+function PromptsContent({ brandId }: { brandId: string | undefined }) {
 	const { brand } = useBrand(brandId);
+	// The route knows where the prompts are edited; a caller passing a string
+	// could — and did — pass one that no longer matches the URL shape.
+	const brandParams = useBrandParams();
 	const filters = useListFilters();
 	const { model, lookback, tags, search } = filters;
 	// `order` is this route's own search key (not a narrowing filter), so it
@@ -124,10 +127,16 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 					<div className="text-center py-8 text-muted-foreground">
 						<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
 						<p className="mb-4">No prompts yet.</p>
-						<Link to={editLink} className={cn(buttonVariants({ size: "sm" }), "h-7 flex cursor-pointer")}>
-							<IconEditCircle />
-							<span>Edit</span>
-						</Link>
+						{brandParams && (
+							<Link
+								to="/app/org/$org/brand/$brand/settings/prompts"
+								params={brandParams}
+								className={cn(buttonVariants({ size: "sm" }), "h-7 flex cursor-pointer")}
+							>
+								<IconEditCircle />
+								<span>Edit</span>
+							</Link>
+						)}
 					</div>
 				</div>
 			}
