@@ -62,10 +62,21 @@ test.describe("Organization rename", () => {
 });
 
 test.describe("Brand rename", () => {
-  test("moving a brand's slug moves the page, and the new address resolves", async ({ page }) => {
-    const moved = `${RENAMEABLE_BRAND_SLUG}-moved`;
-    const settingsAt = (slug: string) => `/app/org/${TEST_ORG_SLUG}/brand/${slug}/settings/brand`;
+  const moved = `${RENAMEABLE_BRAND_SLUG}-moved`;
+  const settingsAt = (slug: string) => `/app/org/${TEST_ORG_SLUG}/brand/${slug}/settings/brand`;
 
+  // CI retries once, so a failure part-way through would otherwise leave the
+  // brand at the moved slug and guarantee the retry fails too.
+  test.afterEach(async ({ page }) => {
+    await page.goto(settingsAt(moved));
+    const field = page.getByLabel("Brand Slug", { exact: true });
+    if (!(await field.isVisible().catch(() => false))) return;
+    await field.fill(RENAMEABLE_BRAND_SLUG);
+    await page.getByRole("button", { name: "Save Changes" }).click();
+    await page.waitForURL(new RegExp(`${settingsAt(RENAMEABLE_BRAND_SLUG)}$`), { timeout: 30_000 });
+  });
+
+  test("moving a brand's slug moves the page, and the new address resolves", async ({ page }) => {
     await page.goto(settingsAt(RENAMEABLE_BRAND_SLUG));
 
     const slugField = page.getByLabel("Brand Slug", { exact: true });
@@ -81,11 +92,5 @@ test.describe("Brand rename", () => {
     // The id still reaches it, and canonicalizes to where it now lives.
     await page.goto(`/app/org/${TEST_ORG_SLUG}/brand/${RENAMEABLE_BRAND_ID}`);
     await expect(page).toHaveURL(new RegExp(`/app/org/${TEST_ORG_SLUG}/brand/${moved}$`), { timeout: 30_000 });
-
-    // Put it back, so a re-run starts where the seed left off.
-    await page.goto(settingsAt(moved));
-    await page.getByLabel("Brand Slug", { exact: true }).fill(RENAMEABLE_BRAND_SLUG);
-    await page.getByRole("button", { name: "Save Changes" }).click();
-    await page.waitForURL(new RegExp(`${settingsAt(RENAMEABLE_BRAND_SLUG)}$`), { timeout: 30_000 });
   });
 });

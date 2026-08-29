@@ -4,19 +4,10 @@
  * organization it is in and what it holds.
  */
 
-export type OrganizationBrand = { id: string; slug: string | null; name: string; onboarded: boolean };
-export type BrandCreation =
-	| { kind: "allowed" }
-	| { kind: "denied"; code: string; message: string }
-	| { kind: "not-offered" };
-export type OrganizationSummary = {
-	id: string;
-	slug: string;
-	name: string;
-	brands: OrganizationBrand[];
-	brandCreation: BrandCreation;
-};
+import type { OrganizationSummary } from "@/lib/organizations/types";
 
+// The real types, not a copy: a fixture that drifts from them is a story that
+// renders something the app cannot produce.
 let _organizations: OrganizationSummary[] = [
 	{
 		id: "org-1",
@@ -24,8 +15,8 @@ let _organizations: OrganizationSummary[] = [
 		name: "Acme",
 		brandCreation: { kind: "allowed" },
 		brands: [
-			{ id: "brand-1", slug: "acme", name: "Acme", onboarded: true },
-			{ id: "brand-2", slug: "acme-labs", name: "Acme Labs", onboarded: true },
+			{ id: "brand-1", slug: "acme", name: "Acme", website: "https://acme.com", onboarded: true },
+			{ id: "brand-2", slug: "acme-labs", name: "Acme Labs", website: "https://labs.acme.com", onboarded: true },
 		],
 	},
 ];

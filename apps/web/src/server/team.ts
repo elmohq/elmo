@@ -1,10 +1,8 @@
 /**
- * Server functions for team membership and invitations (cloud only).
+ * Server functions for team membership and invitations.
  *
- * Mutations go through better-auth's org plugin API in-process
- * (auth.api.*), which enforces the caller's member role and triggers
- * sendInvitationEmail — the org plugin's HTTP endpoints stay blocked
- * for every mode (see lib/auth/policies.ts).
+ * The member list is every deployment's; inviting, removing, and cancelling are
+ * cloud's alone and say so at the top of each handler.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";

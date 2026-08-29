@@ -30,7 +30,6 @@ import {
   TEST_BRAND_WEBSITE,
 } from "./fixtures";
 
-// Prompt run IDs (for prompt detail page testing)
 const RUN_IDS = [
   "00000000-0000-0000-0000-200000000001",
   "00000000-0000-0000-0000-200000000002",
@@ -49,7 +48,6 @@ async function seed() {
   try {
     console.log("Seeding E2E test database...");
 
-    // Clear existing data (in reverse FK order)
     await client.query("DELETE FROM citations");
     await client.query("DELETE FROM prompt_runs");
     await client.query("DELETE FROM prompts");
@@ -57,9 +55,6 @@ async function seed() {
     await client.query("DELETE FROM reports");
     await client.query("DELETE FROM brands");
 
-    // -----------------------------------------------------------------------
-    // 1. Brand (scoped to an organization that shares its id)
-    // -----------------------------------------------------------------------
     // Signup provisions the "default" org as well, but the seed re-creates the
     // brand independently — ensure the org exists for the NOT NULL FK.
     await client.query(
@@ -93,9 +88,6 @@ async function seed() {
     );
     console.log("  Created brand:", RENAMEABLE_BRAND_ID, `(/brand/${RENAMEABLE_BRAND_SLUG})`);
 
-    // -----------------------------------------------------------------------
-    // 2. Prompts
-    // -----------------------------------------------------------------------
     const promptData = [
       {
         id: PROMPT_IDS.branded1,
@@ -138,9 +130,6 @@ async function seed() {
     }
     console.log(`  Created ${promptData.length} prompts`);
 
-    // -----------------------------------------------------------------------
-    // 3. Competitors
-    // -----------------------------------------------------------------------
     const competitorData = [
       { id: COMPETITOR_IDS.competitorA, name: "Competitor Alpha", domains: ["competitor-alpha.com"] },
       { id: COMPETITOR_IDS.competitorB, name: "Competitor Beta", domains: ["competitor-beta.com"] },
@@ -155,10 +144,6 @@ async function seed() {
     }
     console.log(`  Created ${competitorData.length} competitors`);
 
-    // -----------------------------------------------------------------------
-    // 4. Prompt Runs (realistic data for prompt detail pages)
-    //    Includes citation URLs for some runs to test citation analytics.
-    // -----------------------------------------------------------------------
     const now = new Date();
     const promptRuns = [
       {
@@ -348,9 +333,6 @@ async function seed() {
     }
     console.log(`  Created ${promptRuns.length} prompt runs (Postgres)`);
 
-    // -----------------------------------------------------------------------
-    // 5. Insert citations into Postgres
-    // -----------------------------------------------------------------------
     let citationCount = 0;
     for (const run of promptRuns) {
       for (let i = 0; i < run.citations.length; i++) {
@@ -375,9 +357,6 @@ async function seed() {
     }
     console.log(`  Created ${citationCount} citations (Postgres)`);
 
-    // -----------------------------------------------------------------------
-    // 6. Reports (mocked worker output — the worker itself is never invoked)
-    // -----------------------------------------------------------------------
     const completedReportRawOutput = {
       competitors: [
         { name: "Competitor Alpha", domain: "competitor-alpha.com" },
@@ -425,11 +404,8 @@ async function seed() {
     }
     console.log("  Created 4 reports (1 completed, 1 pending, 1 processing, 1 failed)");
 
-    // -----------------------------------------------------------------------
-    // 7. Second tenant (Nike) — a brand in an org the E2E user is NOT a
-    //    member of. Invisible to the org-scoped dashboard; still visible to
-    //    the admin API key (Plan 004 uses this for access-control tests).
-    // -----------------------------------------------------------------------
+    // The E2E user is not a member of this tenant. It must remain hidden from
+    // org-scoped views while still being visible through the admin API key.
     await client.query(
       `INSERT INTO organization (id, name, slug, created_at)
        VALUES ($1, 'Nike', $1, NOW()) ON CONFLICT (id) DO NOTHING`,
@@ -465,7 +441,6 @@ async function seed() {
       );
     }
 
-    // A couple of realistic prompt runs + citations for the training prompt.
     const nikeRunId = "00000000-0000-0000-0000-420000000001";
     await client.query(
       `INSERT INTO prompt_runs (id, prompt_id, brand_id, model, provider, version, web_search_enabled, raw_output, web_queries, brand_mentioned, competitors_mentioned, created_at)

@@ -4,7 +4,7 @@
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { db } from "@workspace/lib/db/db";
 import { brands, member, organization } from "@workspace/lib/db/schema";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import { getDeployment } from "@/lib/config/server";
 import { auth } from "./server";
 
@@ -131,6 +131,10 @@ export async function resolveOrganization(userId: string, slugOrId: string): Pro
 		.from(organization)
 		.innerJoin(member, and(eq(member.organizationId, organization.id), eq(member.userId, userId)))
 		.where(or(eq(organization.slug, slugOrId), eq(organization.id, slugOrId)))
+		// The two namespaces can overlap in data that predates the availability
+		// check — org ids are human-readable here — so the slug wins by rule
+		// rather than by whichever row Postgres happens to hand back first.
+		.orderBy(sql`case when ${organization.slug} = ${slugOrId} then 0 else 1 end`)
 		.limit(1);
 	return row ?? null;
 }

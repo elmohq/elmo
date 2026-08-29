@@ -21,7 +21,7 @@ import { AppShell, PageContent } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
-import { useOrganizationRoute } from "@/hooks/use-organizations";
+import { useOrganization } from "@/hooks/use-organizations";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { getAppName } from "@/lib/route-head";
 
@@ -115,7 +115,10 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 	// lets everything below — loaders, hooks, query keys — go on speaking in ids
 	// without caring which form the URL took.
 	beforeLoad: ({ params, location, context }): { brandId: string } => {
-		const brand = context.organization.brands.find((b) => b.slug === params.brand || b.id === params.brand);
+		// Slug first: a brand's id and another brand's slug can both be the segment,
+		// and which one the URL names should not depend on the order brands sort in.
+		const { brands: owned } = context.organization;
+		const brand = owned.find((b) => b.slug === params.brand) ?? owned.find((b) => b.id === params.brand);
 		if (!brand) throw notFound();
 
 		const canonical = brandSegment(brand);
@@ -160,21 +163,10 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 
 function BrandLayout() {
 	const { brand } = Route.useLoaderData();
-	const { organization, isAdmin, hasReportAccess } = useOrganizationRoute();
+	const organization = useOrganization();
 
 	return (
-		<AppShell
-			sidebar={
-				<AppSidebar
-					scope="brand"
-					isAdmin={isAdmin}
-					hasReportAccess={hasReportAccess}
-					brand={brand}
-					organization={organization}
-				/>
-			}
-			header={<SiteHeader organizationName={organization.name} brandName={brand.name} />}
-		>
+		<AppShell sidebar={<AppSidebar scope="brand" brand={brand} organization={organization} />} header={<SiteHeader />}>
 			<PageContent>
 				<Outlet />
 			</PageContent>

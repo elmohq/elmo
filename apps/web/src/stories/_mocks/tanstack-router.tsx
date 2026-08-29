@@ -132,15 +132,23 @@ export function useMatch(_opts?: unknown) {
 }
 
 /**
- * The matches a brand page would have, so the header's trail renders. Stories
- * that care about a different page set their own.
+ * The matches a brand page would have, so the header's trail renders. The two
+ * layouts carry their loader data because that is where the trail and the tab
+ * title read the organization's and the brand's names from. Stories that care
+ * about a different page set their own.
  */
-let _matches: Array<{ routeId: string; pathname: string; staticData: { crumb?: string } }> = [
-	{ routeId: "/_authed/app/org/$org", pathname: "/app/org/mock-organization", staticData: {} },
+let _matches: Array<{ routeId: string; pathname: string; staticData: { crumb?: string }; loaderData?: unknown }> = [
+	{
+		routeId: "/_authed/app/org/$org",
+		pathname: "/app/org/mock-organization",
+		staticData: {},
+		loaderData: { name: "Acme" },
+	},
 	{
 		routeId: "/_authed/app/org/$org/brand/$brand",
 		pathname: "/app/org/mock-organization/brand/mock-brand-id",
 		staticData: {},
+		loaderData: { brand: { name: "Acme Corp" } },
 	},
 ];
 
