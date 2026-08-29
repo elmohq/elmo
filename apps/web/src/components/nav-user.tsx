@@ -10,7 +10,7 @@ import {
 	IconUser,
 } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
-import { brandParams, orgParams } from "@workspace/lib/app-urls";
+import { orgParams } from "@workspace/lib/app-urls";
 import { authClient } from "@workspace/lib/auth/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import {
@@ -225,41 +225,21 @@ function OrganizationSection({
 			    the heading. The margin is measured from where the rule stops. */}
 			{children.length > 0 && (
 				<div className="mb-2 ml-4 border-l pl-1">
-					{children.map((child) => {
-						if (child.kind === "brand") {
-							return (
-								<DropdownMenuItem
-									key={child.brand.id}
-									render={
-										<Link
-											to="/app/org/$org/brand/$brand"
-											params={brandParams(organization, child.brand)}
-											onClick={onNavigate}
-										/>
-									}
-									className="cursor-pointer"
-								>
-									<SiteIcon domain={child.brand.website} size="xs" />
-									<span className="truncate">{child.brand.name}</span>
-									{child.brand.id === currentBrandId && (
-										<span className="ml-auto flex w-7 shrink-0 justify-center">
-											<IconCheck className="size-3.5" />
-										</span>
-									)}
-								</DropdownMenuItem>
-							);
-						}
-						return (
-							<DropdownMenuItem
-								key={child.to}
-								render={<Link to={child.to} params={orgParams(organization)} onClick={onNavigate} />}
-								className="cursor-pointer text-muted-foreground"
-							>
-								<IconPlus className="size-3.5" />
-								{child.label}
-							</DropdownMenuItem>
-						);
-					})}
+					{children.map((row) => (
+						<DropdownMenuItem
+							key={row.key}
+							render={<Link {...row.link} onClick={onNavigate} />}
+							className={row.brand ? "cursor-pointer" : "cursor-pointer text-muted-foreground"}
+						>
+							{row.brand ? <SiteIcon domain={row.brand.website} size="xs" /> : <IconPlus className="size-3.5" />}
+							<span className="truncate">{row.label}</span>
+							{row.brand?.id === currentBrandId && (
+								<span className="ml-auto flex w-7 shrink-0 justify-center">
+									<IconCheck className="size-3.5" />
+								</span>
+							)}
+						</DropdownMenuItem>
+					))}
 				</div>
 			)}
 

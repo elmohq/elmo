@@ -1,6 +1,6 @@
 import { IconBriefcase, IconPlus, IconSettings } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
-import { brandParams, orgParams } from "@workspace/lib/app-urls";
+import { orgParams } from "@workspace/lib/app-urls";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { SiteIcon } from "@/components/site-icon";
@@ -65,32 +65,12 @@ function OrganizationBlock({ organization }: { organization: OrganizationSummary
 			{/* An organization with nothing in it and no way to add is its heading alone. */}
 			{children.length > 0 && (
 				<div className="ml-4 border-l pl-1">
-					{children.map((child) => {
-						if (child.kind === "brand") {
-							return (
-								<Link
-									key={child.brand.id}
-									to="/app/org/$org/brand/$brand"
-									params={brandParams(organization, child.brand)}
-									className={ROW}
-								>
-									<SiteIcon domain={child.brand.website} size="xs" />
-									<span className="truncate">{child.brand.name}</span>
-								</Link>
-							);
-						}
-						return (
-							<Link
-								key={child.to}
-								to={child.to}
-								params={orgParams(organization)}
-								className={`${ROW} text-muted-foreground`}
-							>
-								<IconPlus className="size-3.5" />
-								{child.label}
-							</Link>
-						);
-					})}
+					{children.map((row) => (
+						<Link key={row.key} {...row.link} className={row.brand ? ROW : `${ROW} text-muted-foreground`}>
+							{row.brand ? <SiteIcon domain={row.brand.website} size="xs" /> : <IconPlus className="size-3.5" />}
+							<span className="truncate">{row.label}</span>
+						</Link>
+					))}
 				</div>
 			)}
 		</div>
