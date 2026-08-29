@@ -2,8 +2,8 @@
  * Renaming an organization, which only some deployments allow.
  *
  * Not in `shared/`: a whitelabel organization is Auth0's record and demo writes
- * nothing, so both show these fields read-only. This is the behaviour where the
- * name is ours to change.
+ * nothing, so in those the save is refused — each has its own spec for that.
+ * This is the behaviour where the name is ours to change.
  */
 import { expect, test } from "@playwright/test";
 import {

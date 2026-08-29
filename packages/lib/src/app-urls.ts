@@ -109,11 +109,15 @@ export function isValidSlug(slug: string): boolean {
  * one, and the two have to agree: a slug this returns that the validator would
  * refuse is a record that can be created and then never saved again.
  *
+ * The fallback is for a name with no ASCII alphanumerics at all, which has no
+ * segment to make: the caller names what it is minting, since "brand" on an
+ * organization would read as one.
+ *
  * Leading/trailing hyphens are trimmed by index walks rather than an
  * `^-+|-+$` alternation regex — the alternation form trips ReDoS scanners on
  * inputs like `"---"` even though the JS engine handles it linearly.
  */
-export function slugify(name: string): string {
+export function slugify(name: string, fallback: string): string {
 	const cleaned = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 	let start = 0;
 	while (start < cleaned.length && cleaned[start] === "-") start++;
@@ -122,5 +126,5 @@ export function slugify(name: string): string {
 	let end = Math.min(cleaned.length, start + MAX_SLUG_LENGTH);
 	while (end > start && cleaned[end - 1] === "-") end--;
 	const slug = cleaned.slice(start, end);
-	return slug || "brand";
+	return slug || fallback;
 }

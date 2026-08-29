@@ -21,7 +21,7 @@ import { Label } from "@workspace/ui/components/label";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { Check, Copy, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { getAppName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { adminAnalyzeBrandFn } from "@/server/admin";
 
@@ -229,12 +229,7 @@ function TagSection({ title, items }: { title: string; items: string[] }) {
 
 export const Route = createFileRoute("/_authed/admin/tools")({
 	staticData: { crumb: "Tools" },
-	head: ({ match }) => {
-		const appName = getAppName(match);
-		return {
-			meta: [{ title: `Tools · ${appName}` }, { name: "description", content: "Brand onboarding analysis." }],
-		};
-	},
+	head: pageHead({ description: "Brand onboarding analysis." }),
 	component: ToolsPage,
 });
 

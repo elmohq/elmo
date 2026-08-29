@@ -21,7 +21,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { hasReportAccess, isAdmin, requireAuthSession } from "@/lib/auth/helpers";
 import { trackEvent } from "@/lib/posthog";
-import { getAppName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { createReportFn, getReportsFn } from "@/server/reports";
 
 const checkReportAccess = createServerFn({ method: "GET" }).handler(
@@ -43,15 +43,7 @@ const checkReportAccess = createServerFn({ method: "GET" }).handler(
 
 export const Route = createFileRoute("/_authed/reports/")({
 	staticData: { crumb: "Reports" },
-	head: ({ match }) => {
-		const appName = getAppName(match);
-		return {
-			meta: [
-				{ title: `Reports · ${appName}` },
-				{ name: "description", content: "Generate and view one-time brand reports." },
-			],
-		};
-	},
+	head: pageHead({ description: "Generate and view one-time brand reports." }),
 	beforeLoad: async () => {
 		const { hasAccess, isAdmin, hasReportAccess } = await checkReportAccess();
 		if (!hasAccess) throw notFound();

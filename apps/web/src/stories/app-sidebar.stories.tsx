@@ -132,11 +132,20 @@ const cloudConfig: ClientConfig = {
  * Returns the brand so stories can pass it to AppSidebar: the Settings nav is
  * gated on `brand.onboarded`, and it comes from the route loader as a prop
  * rather than from the useBrand hook.
+ *
+ * Who is looking goes into route context, which is where the rail reads it —
+ * passing it as a prop would be ignored, and every story would render the rail
+ * of someone with no admin access.
  */
-function configureMocks(config: ClientConfig, brand: any, auth?: Parameters<typeof setMockAuth>[0]) {
+function configureMocks(
+	config: ClientConfig,
+	brand: any,
+	auth?: Parameters<typeof setMockAuth>[0],
+	viewer: { isAdmin: boolean; hasReportAccess: boolean } = { isAdmin: false, hasReportAccess: false },
+) {
 	setMockClientConfig(config);
 	setMockBrand(brand);
-	setMockRouteContext({ clientConfig: config });
+	setMockRouteContext({ clientConfig: config, ...viewer });
 	if (auth) setMockAuth(auth);
 	return brand;
 }
@@ -203,18 +212,28 @@ export default {
 } satisfies Meta;
 
 /** Local (self-hosted) — all nav visible, admin access, self-registered user */
-export const Local = () => {
-	const brand = configureMocks(
-		localConfig,
-		onboardedBrand,
-		authedUser("Local Admin", "admin@localhost", "local-admin"),
-	);
+export const Local: StoryObj = {
+	render: () => {
+		const brand = configureMocks(
+			localConfig,
+			onboardedBrand,
+			authedUser("Local Admin", "admin@localhost", "local-admin"),
+			{ isAdmin: true, hasReportAccess: true },
+		);
 
-	return (
-		<SidebarFrame label="Local — Self-hosted, full admin">
-			<AppSidebar scope="brand" isAdmin={true} hasReportAccess={true} brand={brand} organization={organization} />
-		</SidebarFrame>
-	);
+		return (
+			<SidebarFrame label="Local — Self-hosted, full admin">
+				<AppSidebar scope="brand" brand={brand} organization={organization} />
+			</SidebarFrame>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		// What an admin is offered comes from the viewer, not from a prop — so the
+		// story that says "full admin" is where that has to be asserted.
+		await expect(await canvas.findByText("Workflows")).toBeInTheDocument();
+		await expect(await canvas.findByText("Tools")).toBeInTheDocument();
+	},
 };
 
 /** Demo — read-only preview, seeded user, no admin */
@@ -225,7 +244,7 @@ export const Demo = () => {
 
 	return (
 		<SidebarFrame label="Demo — Read-only, seeded user">
-			<AppSidebar scope="brand" isAdmin={false} hasReportAccess={false} brand={brand} organization={organization} />
+			<AppSidebar scope="brand" brand={brand} organization={organization} />
 		</SidebarFrame>
 	);
 };
@@ -240,7 +259,7 @@ export const Whitelabel = () => {
 
 	return (
 		<SidebarFrame label="Whitelabel — Regular user, no admin section">
-			<AppSidebar scope="brand" isAdmin={false} hasReportAccess={false} brand={brand} organization={organization} />
+			<AppSidebar scope="brand" brand={brand} organization={organization} />
 		</SidebarFrame>
 	);
 };
@@ -251,11 +270,12 @@ export const WhitelabelAdmin = () => {
 		whitelabelAdminConfig,
 		onboardedBrand,
 		authedUser("Jane Admin", "jane@agency.com", "jane"),
+		{ isAdmin: true, hasReportAccess: true },
 	);
 
 	return (
 		<SidebarFrame label="Whitelabel Admin — Full admin section visible">
-			<AppSidebar scope="brand" isAdmin={true} hasReportAccess={true} brand={brand} organization={organization} />
+			<AppSidebar scope="brand" brand={brand} organization={organization} />
 		</SidebarFrame>
 	);
 };
@@ -266,11 +286,12 @@ export const WhitelabelReportOnly = () => {
 		whitelabelAdminConfig,
 		onboardedBrand,
 		authedUser("Report Viewer", "reports@client.com", "reports"),
+		{ isAdmin: false, hasReportAccess: true },
 	);
 
 	return (
 		<SidebarFrame label="Whitelabel Report-only — Dashboard + Reports admin section">
-			<AppSidebar scope="brand" isAdmin={false} hasReportAccess={true} brand={brand} organization={organization} />
+			<AppSidebar scope="brand" brand={brand} organization={organization} />
 		</SidebarFrame>
 	);
 };
@@ -278,11 +299,14 @@ export const WhitelabelReportOnly = () => {
 /** Cloud — an organization's rail gains Billing; no report generation */
 export const Cloud: StoryObj = {
 	render: () => {
-		configureMocks(cloudConfig, onboardedBrand, authedUser("Dana Cloud", "dana@acme.com", "dana"));
+		configureMocks(cloudConfig, onboardedBrand, authedUser("Dana Cloud", "dana@acme.com", "dana"), {
+			isAdmin: true,
+			hasReportAccess: true,
+		});
 
 		return (
 			<SidebarFrame label="Cloud — Billing and Team on the organization's rail">
-				<AppSidebar scope="organization" isAdmin={false} hasReportAccess={false} organization={organization} />
+				<AppSidebar scope="organization" organization={organization} />
 			</SidebarFrame>
 		);
 	},
@@ -292,7 +316,9 @@ export const Cloud: StoryObj = {
 		// below the fold of this frame — assert it rather than eyeballing it.
 		await expect(await canvas.findByText("Billing")).toBeInTheDocument();
 		await expect(await canvas.findByText("Team")).toBeInTheDocument();
-		// Reports are disabled in cloud even for a user with report access.
+		// This viewer is an admin with report access, so Reports is absent because
+		// cloud disables report generation and for no other reason.
+		await expect(await canvas.findByText("Workflows")).toBeInTheDocument();
 		await expect(canvas.queryByText("Reports")).toBeNull();
 	},
 };
@@ -304,7 +330,7 @@ export const WhitelabelHasNoBilling: StoryObj = {
 
 		return (
 			<SidebarFrame label="Whitelabel — no Billing item">
-				<AppSidebar scope="organization" isAdmin={false} hasReportAccess={false} organization={organization} />
+				<AppSidebar scope="organization" organization={organization} />
 			</SidebarFrame>
 		);
 	},
@@ -321,7 +347,7 @@ export const WhitelabelOnboarding = () => {
 
 	return (
 		<SidebarFrame label="Whitelabel Onboarding — Brand not onboarded, minimal nav">
-			<AppSidebar scope="brand" isAdmin={false} hasReportAccess={false} brand={brand} organization={organization} />
+			<AppSidebar scope="brand" brand={brand} organization={organization} />
 		</SidebarFrame>
 	);
 };

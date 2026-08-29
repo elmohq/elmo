@@ -31,7 +31,7 @@ import {
 	XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { getAppName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { getJobLogsFn, getWorkflowDataFn, retryJobFn } from "@/server/admin";
 
@@ -616,15 +616,7 @@ function BrandRow({
 
 export const Route = createFileRoute("/_authed/admin/workflows")({
 	staticData: { crumb: "Workflows" },
-	head: ({ match }) => {
-		const appName = getAppName(match);
-		return {
-			meta: [
-				{ title: `Workflows · ${appName}` },
-				{ name: "description", content: "Monitor prompt scheduling and job execution." },
-			],
-		};
-	},
+	head: pageHead({ description: "Monitor prompt scheduling and job execution." }),
 	component: WorkflowsPage,
 });
 

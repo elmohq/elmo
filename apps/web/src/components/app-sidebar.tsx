@@ -41,18 +41,16 @@ import { useDeploymentFeatures, useViewer } from "@/hooks/use-deployment-feature
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
 /**
- * How much of the app the shell around this page can reach:
- *  - "brand":     a brand's own pages, plus admin for those who have it
+ * How much of the app the shell around this page can reach, as a union rather
+ * than nullable props — so nothing below carries a fallback for an organization
+ * or brand the layout above has already resolved.
+ *
+ *  - "brand":        a brand's own pages, plus admin for those who have it
  *  - "organization": the organization's own pages (there is no brand in scope)
- *  - "admin":     the admin section only
- *  - "account":   nothing — the page is a gate the user has to clear first, so
- *                 the only things worth offering are who they are and how to leave
- */
-export type SidebarScope = "brand" | "organization" | "admin" | "account";
-
-/**
- * A union rather than nullable props, so nothing below carries a fallback for a
- * organization or brand the layout above has already resolved.
+ *  - "admin":        the admin section only
+ *  - "account":      nothing — the page is a gate the user has to clear first,
+ *                    so the only things worth offering are who they are and how
+ *                    to leave
  */
 type ScopeProps =
 	| { scope: "brand"; organization: OrganizationSummary; brand: BrandWithPrompts }

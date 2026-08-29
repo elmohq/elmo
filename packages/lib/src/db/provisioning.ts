@@ -14,7 +14,7 @@
  * call is a bug and should fail at the database layer rather than
  * silently rewriting rows.
  */
-import { and, count, eq, or } from "drizzle-orm";
+import { and, count, eq, ne, or } from "drizzle-orm";
 import { MAX_SLUG_LENGTH, slugify } from "../app-urls";
 import { db } from "./db";
 import { brands, member, organization, user } from "./schema";
@@ -76,6 +76,8 @@ export async function provisionLocalOrg(input: { userId: string }): Promise<{ or
 	return { orgId: LOCAL_ORG.id };
 }
 
+const SUFFIX_ATTEMPTS = 50;
+
 /**
  * The first name in `base`, `base-2`, `base-3`, … that nothing answers to.
  *
@@ -84,12 +86,25 @@ export async function provisionLocalOrg(input: { userId: string }): Promise<{ or
  * — a slug the settings form would then refuse to save is worse than a
  * slightly shorter one.
  */
-async function firstFreeName(base: string, isFree: (candidate: string) => Promise<boolean>): Promise<string> {
+export async function firstFreeName(base: string, isFree: (candidate: string) => Promise<boolean>): Promise<string> {
 	if (await isFree(base)) return base;
-	for (let suffix = 2; ; suffix++) {
-		const room = MAX_SLUG_LENGTH - `-${suffix}`.length;
+
+	const withSuffix = async (suffix: string) => {
+		const room = MAX_SLUG_LENGTH - suffix.length - 1;
 		const candidate = `${base.slice(0, room).replace(/-+$/, "")}-${suffix}`;
-		if (await isFree(candidate)) return candidate;
+		return (await isFree(candidate)) ? candidate : null;
+	};
+
+	// Counted suffixes read well and cover every realistic collision. Past that
+	// something is wrong with the base, and a random suffix ends the loop rather
+	// than letting one request walk the namespace a row at a time.
+	for (let suffix = 2; suffix <= SUFFIX_ATTEMPTS; suffix++) {
+		const candidate = await withSuffix(String(suffix));
+		if (candidate) return candidate;
+	}
+	for (;;) {
+		const candidate = await withSuffix(crypto.randomUUID().slice(0, 8));
+		if (candidate) return candidate;
 	}
 }
 
@@ -122,12 +137,20 @@ export async function isOrgSlugAvailable(
 	slug: string,
 	options: { excludeOrgId?: string; conn?: DbConnection } = {},
 ): Promise<boolean> {
+	// The organization being renamed is excluded in the query rather than after
+	// it: `limit(1)` could otherwise return that row while another one also
+	// answers to the name, and the check would call it free.
 	const [conflict] = await (options.conn ?? db)
 		.select({ id: organization.id })
 		.from(organization)
-		.where(or(eq(organization.slug, slug), eq(organization.id, slug)))
+		.where(
+			and(
+				or(eq(organization.slug, slug), eq(organization.id, slug)),
+				options.excludeOrgId ? ne(organization.id, options.excludeOrgId) : undefined,
+			),
+		)
 		.limit(1);
-	return !conflict || conflict.id === options.excludeOrgId;
+	return !conflict;
 }
 
 async function findUniqueOrgSlug(baseSlug: string, conn: DbConnection = db): Promise<string> {
@@ -147,12 +170,19 @@ export async function isBrandSlugAvailable(
 	slug: string,
 	options: { excludeBrandId?: string; conn?: DbConnection } = {},
 ): Promise<boolean> {
+	// Excluded in the query, not after it — see `isOrgSlugAvailable`.
 	const [conflict] = await (options.conn ?? db)
 		.select({ id: brands.id })
 		.from(brands)
-		.where(and(eq(brands.organizationId, organizationId), or(eq(brands.slug, slug), eq(brands.id, slug))))
+		.where(
+			and(
+				eq(brands.organizationId, organizationId),
+				or(eq(brands.slug, slug), eq(brands.id, slug)),
+				options.excludeBrandId ? ne(brands.id, options.excludeBrandId) : undefined,
+			),
+		)
 		.limit(1);
-	return !conflict || conflict.id === options.excludeBrandId;
+	return !conflict;
 }
 
 /**
@@ -194,7 +224,7 @@ export async function ensureOrganization(input: { id: string; name: string }, co
 		throw new Error(`Cannot create organization "${input.id}": another organization already answers to that name`);
 	}
 
-	const baseSlug = slugify(input.name);
+	const baseSlug = slugify(input.name, "organization");
 	const slug = await findUniqueOrgSlug(baseSlug, conn);
 
 	// Target the id explicitly: the early-return above already handles "org
@@ -224,7 +254,7 @@ export async function provisionUmbrellaOrg(input: {
 		// insert it guards see the same snapshot. Two same-named signups can still
 		// collide on the slug unique index; that surfaces as a failed signup
 		// rather than a duplicate org.
-		const resolved = await findUniqueOrgSlug(slugify(input.name), tx);
+		const resolved = await findUniqueOrgSlug(slugify(input.name, "organization"), tx);
 		await tx.insert(organization).values({ id: orgId, name: input.name, slug: resolved, createdAt: new Date() });
 		await tx.insert(member).values({
 			id: crypto.randomUUID(),

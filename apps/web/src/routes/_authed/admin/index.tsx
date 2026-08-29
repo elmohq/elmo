@@ -24,7 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Settings, TrendingDown, TrendingUp } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
-import { getAppName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { getAdminStatsFn, updateDelayOverrideFn } from "@/server/admin";
 
@@ -258,15 +258,7 @@ function ActivityIndicator({ added, removed }: { added: number; removed: number 
 
 export const Route = createFileRoute("/_authed/admin/")({
 	staticData: { crumb: "Brands" },
-	head: ({ match }) => {
-		const appName = getAppName(match);
-		return {
-			meta: [
-				{ title: `Admin · ${appName}` },
-				{ name: "description", content: "Monitor and manage brands, prompts, and scheduling." },
-			],
-		};
-	},
+	head: pageHead({ title: "Admin", description: "Monitor and manage brands, prompts, and scheduling." }),
 	component: AdminDashboard,
 });
 

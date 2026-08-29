@@ -274,7 +274,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 
 		const defaultDomains = getDefaultBrandDomains();
 		const enabledModels = await resolveCreateEnabledModels(data.brandId, data.enabledModels);
-		const slug = await findUniqueBrandSlug(data.brandId, slugify(data.brandName));
+		const slug = await findUniqueBrandSlug(data.brandId, slugify(data.brandName, "brand"));
 
 		const result = await db
 			.insert(brands)
@@ -290,7 +290,9 @@ export const createBrandFn = createServerFn({ method: "POST" })
 				...(enabledModels && { enabledModels }),
 				...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
 			})
-			.onConflictDoNothing()
+			// Targeted: the fallback below reads back by id, so swallowing a slug
+			// conflict here would find nothing and report a failure that isn't one.
+			.onConflictDoNothing({ target: brands.id })
 			.returning();
 
 		const brand =
@@ -357,27 +359,37 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 		const orgId = choice.organizationId;
 		await assertCanCreateBrand(orgId);
 
-		const baseSlug = slugify(trimmedName);
-		const brandId = await findUniqueBrandId(baseSlug);
-		// The id is globally unique and may have picked up a suffix on the way;
-		// the slug only has to clear this organization, so it usually keeps the plain
-		// name even when the id could not.
-		const slug = await findUniqueBrandSlug(orgId, baseSlug);
+		const baseSlug = slugify(trimmedName, "brand");
 		const defaultDomains = getDefaultBrandDomains();
 		const enabledModels = await resolveCreateEnabledModels(orgId, data.enabledModels);
 
-		await db.insert(brands).values({
-			id: brandId,
-			organizationId: orgId,
-			name: trimmedName,
-			slug,
-			website: urlValidation.formattedUrl,
-			enabled: true,
-			...(enabledModels && { enabledModels }),
-			...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
-		});
+		// Both names are resolved inside the transaction that uses them, so the
+		// checks and the insert they guard see one snapshot — the same reason
+		// provisionUmbrellaOrg does. Two creates racing on a name still collide on
+		// the unique index, which surfaces as a failed create rather than a
+		// duplicate row.
+		return db.transaction(async (tx) => {
+			// The id is globally unique and may have picked up a suffix on the way;
+			// the slug only has to clear this organization, so it usually keeps the
+			// plain name even when the id could not.
+			const [brandId, slug] = await Promise.all([
+				findUniqueBrandId(baseSlug),
+				findUniqueBrandSlug(orgId, baseSlug, tx),
+			]);
 
-		return { brandId, brandSlug: slug };
+			await tx.insert(brands).values({
+				id: brandId,
+				organizationId: orgId,
+				name: trimmedName,
+				slug,
+				website: urlValidation.formattedUrl,
+				enabled: true,
+				...(enabledModels && { enabledModels }),
+				...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
+			});
+
+			return { brandId, brandSlug: slug };
+		});
 	});
 
 /**

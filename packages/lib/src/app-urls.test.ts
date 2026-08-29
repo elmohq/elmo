@@ -76,39 +76,42 @@ describe("canonical hrefs", () => {
 
 describe("slugify", () => {
 	it("lowercases", () => {
-		expect(slugify("Acme")).toBe("acme");
+		expect(slugify("Acme", "brand")).toBe("acme");
 	});
 
 	it("replaces runs of non-alphanumerics with single hyphens", () => {
-		expect(slugify("Acme Co!")).toBe("acme-co");
-		expect(slugify("Foo   Bar")).toBe("foo-bar");
+		expect(slugify("Acme Co!", "brand")).toBe("acme-co");
+		expect(slugify("Foo   Bar", "brand")).toBe("foo-bar");
 	});
 
 	it("trims leading and trailing hyphens", () => {
-		expect(slugify("  hello world  ")).toBe("hello-world");
-		expect(slugify("!!!brand!!!")).toBe("brand");
+		expect(slugify("  hello world  ", "brand")).toBe("hello-world");
+		expect(slugify("!!!brand!!!", "brand")).toBe("brand");
 	});
 
-	it("falls back to 'brand' for empty / non-alphanumeric input", () => {
-		expect(slugify("")).toBe("brand");
-		expect(slugify("!!!")).toBe("brand");
+	// A name in a script with no ASCII alphanumerics has no segment to make, and
+	// what to call it instead is the caller's to say.
+	it("falls back to what the caller is minting", () => {
+		expect(slugify("", "brand")).toBe("brand");
+		expect(slugify("!!!", "organization")).toBe("organization");
+		expect(slugify("会社", "organization")).toBe("organization");
 	});
 
 	it("preserves digits", () => {
-		expect(slugify("Acme 2")).toBe("acme-2");
+		expect(slugify("Acme 2", "brand")).toBe("acme-2");
 	});
 
 	// A name is as long as someone wants it; the URL segment it becomes is not.
 	it("bounds the length, without leaving a trailing hyphen behind", () => {
-		expect(slugify("a".repeat(MAX_SLUG_LENGTH + 20))).toHaveLength(MAX_SLUG_LENGTH);
-		expect(slugify(`${"a".repeat(MAX_SLUG_LENGTH - 1)} tail`)).toBe("a".repeat(MAX_SLUG_LENGTH - 1));
+		expect(slugify("a".repeat(MAX_SLUG_LENGTH + 20), "brand")).toHaveLength(MAX_SLUG_LENGTH);
+		expect(slugify(`${"a".repeat(MAX_SLUG_LENGTH - 1)} tail`, "brand")).toBe("a".repeat(MAX_SLUG_LENGTH - 1));
 	});
 
 	// Organizations and brands sit under static `org`/`brand` segments, so no name
 	// can shadow a sibling route and nothing needs reserving.
 	it("leaves route names alone", () => {
-		expect(slugify("new")).toBe("new");
-		expect(slugify("Settings")).toBe("settings");
+		expect(slugify("new", "brand")).toBe("new");
+		expect(slugify("Settings", "brand")).toBe("settings");
 	});
 });
 
@@ -128,7 +131,7 @@ describe("isValidSlug", () => {
 			`${"a".repeat(MAX_SLUG_LENGTH)} tail`,
 		];
 		for (const name of names) {
-			expect(isValidSlug(slugify(name)), name).toBe(true);
+			expect(isValidSlug(slugify(name, "brand")), name).toBe(true);
 		}
 	});
 

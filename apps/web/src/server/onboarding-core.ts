@@ -315,7 +315,7 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 		// here even when the org's own slug had to take a suffix to clear the
 		// global namespace — `/app/org/nike-2/brand/nike` rather than dragging the
 		// suffix down both segments.
-		const slug = await findUniqueBrandSlug(input.id, slugify(input.name), tx);
+		const slug = await findUniqueBrandSlug(input.id, slugify(input.name, "brand"), tx);
 
 		const [inserted] = await tx
 			.insert(brands)

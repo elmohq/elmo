@@ -1,7 +1,6 @@
 /**
- * "Organization" is the customer-facing name for an organization. These live apart
- * from the server functions that produce them so the shell can name the type
- * without pulling the database into the client bundle.
+ * These live apart from the server functions that produce them so the shell can
+ * name the type without pulling the database into the client bundle.
  */
 import type { WriteDenialCode } from "@workspace/lib/entitlements";
 

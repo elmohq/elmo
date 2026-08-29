@@ -1,9 +1,7 @@
 import { test, expect } from "@playwright/test";
+import { brandUrl } from "../../fixtures";
 
-const BRAND_ID = "default";
-// The organization now leads every dashboard URL; the seeded org's slug is its id.
-const ORG_SLUG = "default";
-const BRAND_URL = `/app/org/${ORG_SLUG}/brand/${BRAND_ID}`;
+const BRAND_URL = brandUrl();
 
 test.describe("Overview Page", () => {
   test("home page lands on the directory and the default brand is reachable", async ({ page }) => {

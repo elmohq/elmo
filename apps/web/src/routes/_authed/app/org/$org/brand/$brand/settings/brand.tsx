@@ -13,7 +13,7 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { SlugField } from "@/components/slug-field";
 import { useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
