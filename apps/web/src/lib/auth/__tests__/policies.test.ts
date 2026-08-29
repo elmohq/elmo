@@ -17,7 +17,6 @@ import {
 	evaluateAdminRouteGuard,
 	evaluateApiKeyAuth,
 	evaluateAuthedRouteGuard,
-	evaluateBrandRouteGuard,
 	evaluateDeploymentPolicy,
 	evaluateReadOnly,
 	evaluateRequireAdmin,
@@ -481,16 +480,6 @@ describe("evaluateAdminRouteGuard", () => {
 	});
 });
 
-describe("evaluateBrandRouteGuard", () => {
-	it("returns not-found when user has no org access", () => {
-		expect(evaluateBrandRouteGuard(false)).toBe("not-found");
-	});
-
-	it("allows when user has org access", () => {
-		expect(evaluateBrandRouteGuard(true)).toBe("allow");
-	});
-});
-
 // ============================================================================
 // 4. API Key Authentication
 // ============================================================================
@@ -603,7 +592,6 @@ describe("full access-control scenarios", () => {
 			// Route guards: all pass
 			expect(evaluateAuthedRouteGuard(session)).toBe("allow");
 			expect(evaluateAdminRouteGuard(true)).toBe("allow");
-			expect(evaluateBrandRouteGuard(true)).toBe("allow");
 		});
 	});
 
@@ -612,10 +600,6 @@ describe("full access-control scenarios", () => {
 			// Admin denied
 			expect(evaluateRequireAdmin(false)).toBe("deny");
 			expect(evaluateAdminRouteGuard(false)).toBe("not-found");
-
-			// Org access depends on membership
-			expect(evaluateBrandRouteGuard(true)).toBe("allow");
-			expect(evaluateBrandRouteGuard(false)).toBe("not-found");
 		});
 	});
 });
