@@ -34,7 +34,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { Inbox, ListPlus, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { useOrganizationParams } from "@/hooks/use-brand-id";
+import { useOrganizationParams } from "@/hooks/use-route-params";
 
 export interface EditablePrompt {
 	id?: string;

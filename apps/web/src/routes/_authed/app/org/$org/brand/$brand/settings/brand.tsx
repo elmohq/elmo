@@ -118,9 +118,8 @@ function BrandSettingsPage() {
 
 			setSuccess("Brand details updated successfully!");
 			await revalidate();
-			// The rail's menu lists this brand by name, and if the slug moved so did
-			// the address this page is at.
 			await invalidateOrganizations();
+			// If the slug moved, so did the address this page is at.
 			if (slugMoved) {
 				await router.navigate({
 					to: "/app/org/$org/brand/$brand/settings/brand",
@@ -128,6 +127,9 @@ function BrandSettingsPage() {
 					replace: true,
 				});
 			}
+			// The breadcrumb and the tab title read the name off this layout's
+			// loader, which is cached for five minutes.
+			await router.invalidate();
 		} catch (err) {
 			setError(writeError(err, "Failed to save the brand."));
 		} finally {

@@ -13,7 +13,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getAuthSession, hasReportAccess, isAdmin } from "@/lib/auth/helpers";
 
 export interface Viewer {
-	session: Awaited<ReturnType<typeof getAuthSession>>;
+	session: NonNullable<Awaited<ReturnType<typeof getAuthSession>>>;
 	isAdmin: boolean;
 	hasReportAccess: boolean;
 }

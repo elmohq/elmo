@@ -392,10 +392,8 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 					// The id is globally unique and may have picked up a suffix on the way;
 					// the slug only has to clear this organization, so it usually keeps the
 					// plain name even when the id could not.
-					const [brandId, slug] = await Promise.all([
-						findUniqueBrandId(baseSlug, tx),
-						findUniqueBrandSlug(orgId, baseSlug, tx),
-					]);
+					const brandId = await findUniqueBrandId(baseSlug, tx);
+					const slug = await findUniqueBrandSlug(orgId, baseSlug, tx);
 
 					await tx.insert(brands).values({
 						id: brandId,

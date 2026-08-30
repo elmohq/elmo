@@ -20,7 +20,7 @@ function organization(brandCreation: BrandCreation, brandNames: string[] = []): 
 
 describe("organizationTree", () => {
 	it("names the heading for what it leads to, so every surface says it the same way", () => {
-		expect(organizationTree(organization({ kind: "allowed" })).settingsLabel).toBe("Acme organization settings");
+		expect(organizationTree(organization({ kind: "allowed" })).heading.ariaLabel).toBe("Acme organization settings");
 	});
 
 	it("lists the brands, then the way to add one", () => {

@@ -2,7 +2,7 @@ import { buttonVariants } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
 import { GoStack } from "react-icons/go";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
-import { useBrandParams } from "@/hooks/use-brand-id";
+import { useBrandParams } from "@/hooks/use-route-params";
 
 interface HistoryButtonProps {
 	promptId?: string;

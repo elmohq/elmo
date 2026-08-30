@@ -35,8 +35,8 @@ export type OrganizationRow =
 	| (RowBase & { kind: "set-up" });
 
 export interface OrganizationTree {
-	/** The heading names the organization and leads to the one thing it could. */
-	settingsLabel: string;
+	/** Addressable like the rows, so neither surface decides where the name leads. */
+	heading: RowBase & { ariaLabel: string };
 	/** Rendered under a rule. Empty means the heading is the whole entry. */
 	children: OrganizationRow[];
 }
@@ -74,7 +74,15 @@ export function organizationTree(organization: OrganizationSummary): Organizatio
 		});
 	}
 
-	return { settingsLabel: `${organization.name} organization settings`, children };
+	return {
+		heading: {
+			key: organization.id,
+			link: { to: "/app/org/$org/settings", params },
+			label: organization.name,
+			ariaLabel: `${organization.name} organization settings`,
+		},
+		children,
+	};
 }
 
 /**

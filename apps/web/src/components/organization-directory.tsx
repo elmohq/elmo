@@ -1,6 +1,5 @@
 import { IconBriefcase, IconPlus, IconSettings } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
-import { orgParams } from "@workspace/lib/app-urls";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { OrganizationRowIcon } from "@/components/organization-row-icon";
@@ -36,7 +35,7 @@ export function OrganizationDirectory({ organizations }: { organizations: Organi
 }
 
 function OrganizationBlock({ organization }: { organization: OrganizationSummary }) {
-	const { settingsLabel, children } = organizationTree(organization);
+	const { heading, children } = organizationTree(organization);
 
 	return (
 		<div>
@@ -44,18 +43,11 @@ function OrganizationBlock({ organization }: { organization: OrganizationSummary
 			    lead to, so anything less is a smaller target for no reason. */}
 			<Tooltip>
 				<TooltipTrigger
-					render={
-						<Link
-							to="/app/org/$org/settings"
-							params={orgParams(organization)}
-							aria-label={settingsLabel}
-							className={`${ROW} justify-between`}
-						/>
-					}
+					render={<Link {...heading.link} aria-label={heading.ariaLabel} className={`${ROW} justify-between`} />}
 				>
 					<span className="flex min-w-0 items-center gap-2">
 						<IconBriefcase className="size-4 shrink-0 text-muted-foreground" />
-						<span className="truncate font-medium">{organization.name}</span>
+						<span className="truncate font-medium">{heading.label}</span>
 					</span>
 					<IconSettings className="size-4 shrink-0 text-muted-foreground" />
 				</TooltipTrigger>

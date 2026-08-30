@@ -27,11 +27,12 @@ function OrganizationPickerSkeleton() {
 
 export const Route = createFileRoute("/_authed/app/")({
 	pendingComponent: OrganizationPickerSkeleton,
-	// Through the same cache the account menu reads, so what a mutation
-	// invalidates is what this page shows. Where memberships were just re-read
-	// from Auth0 they may no longer be what was cached, so that answer goes.
+	// The same cache the account menu reads, so a mutation invalidates what this
+	// page shows.
 	loader: async ({ context }): Promise<OrganizationSummary[]> => {
-		if (await syncOrganizationMembershipsFn()) {
+		// Only whitelabel keeps memberships anywhere else, and asking elsewhere is
+		// a round trip that returns false in front of this page's only real read.
+		if (context.clientConfig?.mode === "whitelabel" && (await syncOrganizationMembershipsFn())) {
 			await invalidateOrganizations(context.queryClient);
 		}
 		return (await context.queryClient.ensureQueryData(organizationsQuery)) ?? [];

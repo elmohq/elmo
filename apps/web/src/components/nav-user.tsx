@@ -10,7 +10,6 @@ import {
 	IconUser,
 } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
-import { orgParams } from "@workspace/lib/app-urls";
 import { authClient } from "@workspace/lib/auth/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import {
@@ -201,7 +200,7 @@ function OrganizationSection({
 	currentBrandId: string | undefined;
 	onNavigate: () => void;
 }) {
-	const { settingsLabel, children } = organizationTree(organization);
+	const { heading, children } = organizationTree(organization);
 
 	return (
 		<DropdownMenuGroup aria-label={organization.name}>
@@ -209,12 +208,12 @@ function OrganizationSection({
 			    lead to. A menu item rather than a bare link, because only items join
 			    the menu's roving focus. */}
 			<DropdownMenuItem
-				render={<Link to="/app/org/$org/settings" params={orgParams(organization)} onClick={onNavigate} />}
-				aria-label={settingsLabel}
+				render={<Link {...heading.link} onClick={onNavigate} />}
+				aria-label={heading.ariaLabel}
 				className="cursor-pointer font-medium"
 			>
 				<IconBriefcase className="size-4 shrink-0 text-muted-foreground" />
-				<span className="truncate">{organization.name}</span>
+				<span className="truncate">{heading.label}</span>
 				<span className="ml-auto flex w-7 shrink-0 justify-center">
 					<IconSettings className="size-4 text-muted-foreground" />
 				</span>

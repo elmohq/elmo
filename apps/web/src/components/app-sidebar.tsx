@@ -37,7 +37,8 @@ import { Logo } from "@/components/logo";
 import { NavAppInfo } from "@/components/nav-app-info";
 import { type NavGroup, type NavItem, NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
-import { useDeploymentFeatures, useViewer } from "@/hooks/use-deployment-features";
+import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
+import { useViewer } from "@/hooks/use-route-context";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
 /**
