@@ -6,6 +6,7 @@ import {
 	getDaysFromLookback,
 	getDefaultLookbackPeriod,
 	type LookbackPeriod,
+	resolveDefaultLookback,
 } from "@/lib/chart-utils";
 import { toRoundedPercentages } from "@/lib/domain-categories";
 
@@ -19,6 +20,29 @@ describe("getDaysFromLookback", () => {
 		["all", 365 * 2],
 	])("maps %s to %i days", (lookback, days) => {
 		expect(getDaysFromLookback(lookback)).toBe(days);
+	});
+});
+
+describe("resolveDefaultLookback", () => {
+	const BRAND_ROUTE = "/_authed/app/org/$org/brand/$brand";
+	const FANOUT_ROUTE = `${BRAND_ROUTE}/query-fan-out`;
+	const lastWeek = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+
+	it("opens Query Fan-out on 3 months so sparse engine searches still read", () => {
+		expect(resolveDefaultLookback([BRAND_ROUTE, FANOUT_ROUTE], "2020-01-01")).toBe("3m");
+	});
+
+	it("keeps the wider window for a brand too new for the usual default", () => {
+		expect(resolveDefaultLookback([BRAND_ROUTE, FANOUT_ROUTE], lastWeek)).toBe("3m");
+	});
+
+	it("leaves other pages on the brand-history default", () => {
+		expect(resolveDefaultLookback([BRAND_ROUTE, `${BRAND_ROUTE}/citations`], "2020-01-01")).toBe("1m");
+		expect(resolveDefaultLookback([BRAND_ROUTE], lastWeek)).toBe("1w");
+	});
+
+	it("falls back to the brand-history default with no matched routes", () => {
+		expect(resolveDefaultLookback([], "2020-01-01")).toBe("1m");
 	});
 });
 

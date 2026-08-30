@@ -1,6 +1,7 @@
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { CITATION_CATEGORIES, type CitationCategory } from "@/lib/domain-categories";
 import type { PerPromptDailyCitationStats, PerPromptVisibilityPoint } from "@/lib/postgres-read";
+import { QUERY_FANOUT_ROUTE_ID } from "@/lib/route-subject";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
@@ -22,6 +23,27 @@ export function getDefaultLookbackPeriod(earliestDataDate: string | null | undef
 	const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
 
 	return diffInDays > 7 ? "1m" : "1w";
+}
+
+/** Pages that want a different window than the brand-history default. Query
+ *  Fan-out reads a wider one: engines expose their searches unevenly, so a
+ *  month of runs often holds too few queries to see a pattern in. */
+const ROUTE_LOOKBACK_DEFAULTS: Partial<Record<string, LookbackPeriod>> = {
+	[QUERY_FANOUT_ROUTE_ID]: "3m",
+};
+
+/** The window a page starts on before the URL overrides it: a route's own
+ *  default if it declares one, otherwise the brand-history default. Matched
+ *  routes come in outermost-first, so the deepest declaration wins. */
+export function resolveDefaultLookback(
+	routeIds: readonly string[],
+	earliestDataDate: string | null | undefined,
+): LookbackPeriod {
+	for (const routeId of [...routeIds].reverse()) {
+		const override = ROUTE_LOOKBACK_DEFAULTS[routeId];
+		if (override) return override;
+	}
+	return getDefaultLookbackPeriod(earliestDataDate);
 }
 
 export function getDaysFromLookback(lookback: LookbackPeriod): number {
