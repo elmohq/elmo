@@ -17,6 +17,7 @@ import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar"
 import { expect, screen, userEvent, within } from "storybook/test";
 import { AppSidebar } from "@/components/app-sidebar";
 import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
+import { setMockOrganizations } from "./_mocks/server-organizations";
 import { setMockRouteContext } from "./_mocks/tanstack-router";
 import { setMockAuth } from "./_mocks/use-auth";
 import { setMockBrand } from "./_mocks/use-brands";
@@ -129,9 +130,11 @@ function configureMocks(
 	brand: any,
 	auth?: Parameters<typeof setMockAuth>[0],
 	viewer: { isAdmin: boolean; hasReportAccess: boolean } = { isAdmin: false, hasReportAccess: false },
+	organizations: Parameters<typeof setMockOrganizations>[0] = [organization],
 ) {
 	setMockClientConfig(config);
 	setMockBrand(brand);
+	setMockOrganizations(organizations);
 	setMockRouteContext({ clientConfig: config, ...viewer });
 	if (auth) setMockAuth(auth);
 	return brand;
@@ -342,6 +345,38 @@ export const ChoosePlanGate: StoryObj = {
 
 		await userEvent.click(await canvas.findByRole("button", { name: "Account" }));
 		await expect(await screen.findByText("Log out")).toBeInTheDocument();
+	},
+};
+
+/** Many organizations — the account menu collapses to a single switcher link */
+export const ManyOrganizations: StoryObj = {
+	render: () => {
+		const brand = configureMocks(
+			cloudConfig,
+			onboardedBrand,
+			authedUser("Multi Org", "multi@acme.com", "multi"),
+			undefined,
+			Array.from({ length: 5 }, (_, index) => ({
+				id: `org-${index + 1}`,
+				slug: `org-${index + 1}`,
+				name: `Organization ${index + 1}`,
+				brandCreation: { kind: "allowed" as const },
+				brands: [],
+			})),
+		);
+
+		return (
+			<SidebarFrame label="Many organizations — account menu links to the switcher">
+				<AppSidebar scope="brand" brand={brand} organization={organization} />
+			</SidebarFrame>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
+
+		await expect(await screen.findByText("Switch Brand")).toBeInTheDocument();
+		await expect(screen.queryByText("Organization 1")).toBeNull();
 	},
 };
 

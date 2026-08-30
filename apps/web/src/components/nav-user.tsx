@@ -7,6 +7,7 @@ import {
 	IconRefresh,
 	IconSelector,
 	IconSettings,
+	IconStatusChange,
 	IconUser,
 } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
@@ -31,6 +32,8 @@ import { resetCrispSession } from "@/lib/crisp";
 import { organizationTree } from "@/lib/organizations/tree";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 import { resetPostHog } from "@/lib/posthog";
+
+const INLINE_ORGANIZATION_LIMIT = 3;
 
 export function NavUser({ showOrganizations = true }: { showOrganizations?: boolean } = {}) {
 	const { user } = useAuth();
@@ -154,6 +157,18 @@ export function NavUser({ showOrganizations = true }: { showOrganizations?: bool
 function OrganizationSwitcher({ onNavigate }: { onNavigate: () => void }) {
 	const { organizations, isLoading, isError, isFetching, refetch } = useOrganizations();
 	const currentBrandId = useBrandId();
+
+	if (organizations.length > INLINE_ORGANIZATION_LIMIT) {
+		return (
+			<>
+				<DropdownMenuItem render={<Link to="/app" onClick={onNavigate} />} className="cursor-pointer">
+					<IconStatusChange />
+					Switch Brand
+				</DropdownMenuItem>
+				<DropdownMenuSeparator />
+			</>
+		);
+	}
 
 	return (
 		<>
