@@ -1,0 +1,42 @@
+name: Audit Providers
+
+# Reads the history the provider test already recorded — no provider calls, no
+# inference spend. Scheduled after the 00:00 UTC test run so the day's results
+# are in before the audit reads them.
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Days of recorded history to audit (default 7)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Audit Providers
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --no-frozen-lockfile
+      - name: Audit recorded provider results
+        env:
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          DAYS_OVERRIDE: ${{ inputs.days }}
+        run: |
+          if [ -n "$DAYS_OVERRIDE" ]; then
+            pnpm tsx apps/worker/scripts/audit-providers.ts --days "$DAYS_OVERRIDE"
+          else
+            pnpm tsx apps/worker/scripts/audit-providers.ts
+          fi

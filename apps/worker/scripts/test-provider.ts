@@ -126,6 +126,14 @@ export interface TargetResult {
 	rawOutputBytes: number;
 	citations: number;
 	webQueries: number;
+	/** Reported queries excluding the `unavailable` sentinel. */
+	genuineWebQueries: number;
+	/**
+	 * Whether every genuine query appears in the stored payload. Provider-
+	 * agnostic stand-in for re-extraction: a query we reported but did not store
+	 * is one that can never be re-derived from the row.
+	 */
+	queriesInRawOutput: boolean;
 	webSearch: boolean;
 	sampleOutput: string;
 	issues: ValidationIssue[];
@@ -342,6 +350,8 @@ async function runTarget(target: string, dumpDir?: string): Promise<{ result: Ta
 				rawOutputBytes: 0,
 				citations: 0,
 				webQueries: 0,
+				genuineWebQueries: 0,
+				queriesInRawOutput: true,
 				webSearch: config.webSearch,
 				sampleOutput: "",
 				issues: [],
@@ -359,6 +369,7 @@ async function runTarget(target: string, dumpDir?: string): Promise<{ result: Ta
 	const latency = Date.now() - attemptStart;
 	const rawJson = JSON.stringify(result.rawOutput ?? null, null, 2);
 	const rawOutputBytes = Buffer.byteLength(rawJson);
+	const genuineQueries = result.webQueries.filter((query) => query !== "unavailable" && query.trim().length > 0);
 	const issues = validateResult(result, providerId, config.webSearch);
 	const hasErrors = issues.some((i) => i.severity === "error");
 
@@ -381,6 +392,8 @@ async function runTarget(target: string, dumpDir?: string): Promise<{ result: Ta
 			rawOutputBytes,
 			citations: result.citations.length,
 			webQueries: result.webQueries.length,
+			genuineWebQueries: genuineQueries.length,
+			queriesInRawOutput: genuineQueries.every((query) => rawJson.includes(query)),
 			webSearch: config.webSearch,
 			sampleOutput: result.textContent?.slice(0, 500) ?? "",
 			issues,

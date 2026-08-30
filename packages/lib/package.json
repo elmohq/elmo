@@ -21,6 +21,7 @@
 		"./auth/permissions": "./src/auth/permissions.ts",
 		"./constants": "./src/constants.ts",
 		"./fanout-health": "./src/fanout-health.ts",
+		"./provider-audit": "./src/provider-audit.ts",
 		"./app-urls": "./src/app-urls.ts",
 		"./expedite": "./src/expedite.ts",
 		"./run-backoff": "./src/run-backoff.ts",

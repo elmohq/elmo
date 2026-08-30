@@ -11,6 +11,7 @@
 	},
 	"dependencies": {
 		"@sentry/node": "^10.70.0",
+		"@upstash/redis": "^1.38.2",
 		"@workspace/config": "workspace:*",
 		"@workspace/deployment": "workspace:*",
 		"@workspace/lib": "workspace:*",

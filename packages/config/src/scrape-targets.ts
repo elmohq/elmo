@@ -135,3 +135,120 @@ export function providersByModel(): Map<string, string[]> {
 	}
 	return new Map([...byModel].map(([model, providers]) => [model, [...providers].sort()]));
 }
+
+/**
+ * What a monitored target is expected to return, asserted independently of the
+ * code that extracts it.
+ *
+ * This is the point of the table: every other check in the repo asks "did our
+ * extractor produce something?", so a broken extractor and a provider that
+ * genuinely exposes nothing look identical, and the charitable reading always
+ * wins. Declaring the expectation separately makes the two distinguishable —
+ * when reality and this table disagree, exactly one of them is wrong, and
+ * either way somebody needs to look.
+ */
+export interface TargetExpectation {
+	/**
+	 * Whether this target reports the searches it ran.
+	 *
+	 * Checked in BOTH directions. "no" is not "ignore this target": if a target
+	 * marked "no" starts producing queries, the vendor has moved ahead of our
+	 * extractor and we are silently dropping data.
+	 */
+	webQueries: "yes" | "no";
+	/** Whether answers are expected to cite sources. */
+	citations: "yes" | "no";
+	/**
+	 * False marks a row as an informed guess rather than something confirmed
+	 * against a vendor schema or a real payload. A failing guess most likely
+	 * means this table is wrong; a failing verified row means the code is.
+	 */
+	verified: boolean;
+}
+
+const NO_SEARCH: TargetExpectation = { webQueries: "no", citations: "no", verified: true };
+
+/**
+ * Expected output per monitored target. Keyed by the same strings as
+ * STATUS_TARGETS, which `scrape-targets.test.ts` holds to a 1:1 match so a new
+ * target can't be monitored without someone stating what it should return.
+ */
+export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
+	// --- Scrapers driving consumer surfaces -----------------------------------
+	// Queries follow what the product itself shows: Perplexity and Copilot list
+	// their searches, Google AI Mode exposes its fan-out, and Gemini and AI
+	// Overviews show none. Guesses — the scrapers' own field names are known but
+	// which surfaces populate them is not.
+	"chatgpt:olostep:online": { webQueries: "yes", citations: "yes", verified: false },
+	"google-ai-mode:olostep:online": { webQueries: "yes", citations: "yes", verified: false },
+	"google-ai-overview:olostep:online": { webQueries: "no", citations: "yes", verified: false },
+	"gemini:olostep:online": { webQueries: "no", citations: "yes", verified: false },
+	"copilot:olostep:online": { webQueries: "yes", citations: "yes", verified: false },
+	"perplexity:olostep:online": { webQueries: "yes", citations: "yes", verified: false },
+
+	"chatgpt:brightdata": NO_SEARCH,
+	// Confirmed in production: this pair backs a live deployment's fan-out.
+	"chatgpt:brightdata:online": { webQueries: "yes", citations: "yes", verified: true },
+	"google-ai-mode:brightdata:online": { webQueries: "yes", citations: "yes", verified: true },
+	"gemini:brightdata:online": { webQueries: "no", citations: "yes", verified: false },
+	"perplexity:brightdata:online": { webQueries: "yes", citations: "yes", verified: false },
+	"copilot:brightdata:online": { webQueries: "yes", citations: "yes", verified: false },
+	"google-ai-overview:brightdata:online": { webQueries: "no", citations: "yes", verified: false },
+
+	"chatgpt:oxylabs": NO_SEARCH,
+	"chatgpt:oxylabs:online": { webQueries: "yes", citations: "yes", verified: false },
+	"google-ai-mode:oxylabs:online": { webQueries: "yes", citations: "yes", verified: false },
+	"google-ai-overview:oxylabs:online": { webQueries: "no", citations: "yes", verified: false },
+	"perplexity:oxylabs:online": { webQueries: "yes", citations: "yes", verified: false },
+
+	"chatgpt:cloro:online": { webQueries: "yes", citations: "yes", verified: false },
+	"perplexity:cloro:online": { webQueries: "yes", citations: "yes", verified: false },
+	"copilot:cloro:online": { webQueries: "yes", citations: "yes", verified: false },
+	"gemini:cloro:online": { webQueries: "no", citations: "yes", verified: false },
+	"google-ai-mode:cloro:online": { webQueries: "yes", citations: "yes", verified: false },
+	"google-ai-overview:cloro:online": { webQueries: "no", citations: "yes", verified: false },
+
+	// --- DataForSEO -----------------------------------------------------------
+	// Verified against the client's own types: no SerpGoogleAiMode* or AiMode*
+	// model carries a query field, while the AI Optimization results carry
+	// `fan_out_queries`. The Gemini scraper is the exception with no equivalent.
+	"google-ai-mode:dataforseo:online": { webQueries: "no", citations: "yes", verified: true },
+	"google-ai-overview:dataforseo:online": { webQueries: "no", citations: "yes", verified: true },
+	"chatgpt:dataforseo:online": { webQueries: "yes", citations: "yes", verified: true },
+	"gemini:dataforseo:online": { webQueries: "no", citations: "yes", verified: true },
+	"perplexity:dataforseo:online": { webQueries: "yes", citations: "yes", verified: true },
+	// A pinned model_name routes to LLM Responses, which returns fan_out_queries
+	// for every model — including the Gemini that has none via the scraper.
+	"chatgpt:dataforseo:gpt-5.5:online": { webQueries: "yes", citations: "yes", verified: true },
+	"gemini:dataforseo:gemini-2.5-flash:online": { webQueries: "yes", citations: "yes", verified: true },
+
+	// --- Direct model APIs ----------------------------------------------------
+	// Search is opt-in here, so the offline variants must report nothing at all —
+	// queries appearing without `:online` would mean a target is searching (and
+	// being billed for it) when it was configured not to.
+	"chatgpt:openai-api:gpt-5-mini": NO_SEARCH,
+	"chatgpt:openai-api:gpt-5-mini:online": { webQueries: "yes", citations: "yes", verified: true },
+	"claude:anthropic-api:claude-sonnet-5": NO_SEARCH,
+	"claude:anthropic-api:claude-sonnet-5:online": { webQueries: "yes", citations: "yes", verified: true },
+	"mistral:mistral-api:mistral-medium-latest": NO_SEARCH,
+	"mistral:mistral-api:mistral-medium-latest:online": { webQueries: "yes", citations: "yes", verified: false },
+
+	// --- OpenRouter -----------------------------------------------------------
+	// `:online` routes to the model's own search where it has one, so these are
+	// expected to report queries. They do not today: the provider writes the
+	// `unavailable` sentinel without ever inspecting the payload, so these rows
+	// are the ones meant to fail until that extractor exists.
+	"claude:openrouter:anthropic/claude-sonnet-5": NO_SEARCH,
+	"claude:openrouter:anthropic/claude-sonnet-5:online": { webQueries: "yes", citations: "yes", verified: false },
+	"chatgpt:openrouter:openai/gpt-5-mini": NO_SEARCH,
+	"chatgpt:openrouter:openai/gpt-5-mini:online": { webQueries: "yes", citations: "yes", verified: false },
+	"gemini:openrouter:google/gemini-2.5-flash": NO_SEARCH,
+	"gemini:openrouter:google/gemini-2.5-flash:online": { webQueries: "yes", citations: "yes", verified: false },
+	"grok:openrouter:x-ai/grok-4.5": NO_SEARCH,
+	"grok:openrouter:x-ai/grok-4.5:online": { webQueries: "yes", citations: "yes", verified: false },
+	"perplexity:openrouter:perplexity/sonar:online": { webQueries: "yes", citations: "yes", verified: false },
+	"deepseek:openrouter:deepseek/deepseek-v3.2": NO_SEARCH,
+	"qwen:openrouter:qwen/qwen3-235b-a22b": NO_SEARCH,
+	"kimi:openrouter:moonshotai/kimi-k3": NO_SEARCH,
+	"mistral:openrouter:mistralai/mistral-medium-3.1": NO_SEARCH,
+};

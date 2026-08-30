@@ -80,6 +80,8 @@ jobs:
                 rawOutputBytes: r.rawOutputBytes,
                 citations: r.citations,
                 webQueries: r.webQueries,
+                genuineWebQueries: r.genuineWebQueries,
+                queriesInRawOutput: r.queriesInRawOutput,
                 webSearch: r.webSearch,
                 error: r.error || null,
               });
