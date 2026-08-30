@@ -36,10 +36,15 @@ describe("resolveDefaultLookback", () => {
 		expect(resolveDefaultLookback([BRAND_ROUTE, FANOUT_ROUTE], lastWeek)).toBe("3m");
 	});
 
-	it("leaves other pages on the brand-history default", () => {
-		expect(resolveDefaultLookback([BRAND_ROUTE, `${BRAND_ROUTE}/citations`], "2020-01-01")).toBe("1m");
-		expect(resolveDefaultLookback([BRAND_ROUTE], lastWeek)).toBe("1w");
-	});
+	// Named individually: the wider window is meant for Query Fan-out alone, so
+	// every sibling dashboard is pinned against picking it up.
+	it.each(["", "/visibility", "/citations", "/share-of-voice", "/opportunities", "/prompts", "/prompts/$promptId"])(
+		"leaves %s on the brand-history default",
+		(suffix) => {
+			expect(resolveDefaultLookback([BRAND_ROUTE, `${BRAND_ROUTE}${suffix}`], "2020-01-01")).toBe("1m");
+			expect(resolveDefaultLookback([BRAND_ROUTE, `${BRAND_ROUTE}${suffix}`], lastWeek)).toBe("1w");
+		},
+	);
 
 	it("falls back to the brand-history default with no matched routes", () => {
 		expect(resolveDefaultLookback([], "2020-01-01")).toBe("1m");
