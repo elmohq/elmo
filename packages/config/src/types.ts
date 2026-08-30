@@ -28,9 +28,9 @@ export interface FeaturesConfig {
 	 */
 	reportGeneration: boolean;
 	/**
-	 * Whether org admins can invite teammates by email. True only in cloud —
-	 * local is single-user by design, whitelabel memberships come from Auth0,
-	 * demo is read-only.
+	 * Whether the deployment owns its own team roster, which gates the team page
+	 * and every membership write. True only in cloud — local is single-user by
+	 * design, whitelabel memberships come from Auth0, demo is read-only.
 	 */
 	teamInvites: boolean;
 	/**

@@ -24,8 +24,7 @@ export type TeamData = {
 export const listTeamFn = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string() }))
 	.handler(async ({ data }): Promise<TeamData> => {
-		// Not gated on `teamInvites`: every deployment has a member list worth
-		// looking at, and only changing it is cloud's.
+		requireTeamInvites();
 		const session = await requireAuthSession();
 		const org = await requireOrganization(session.user.id, data.organizationId);
 

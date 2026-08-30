@@ -75,10 +75,14 @@ test.describe("Local features", () => {
     );
   });
 
-  test("the team is listed, but there is no one to invite", async ({ page }) => {
+  test("the team page is not offered and not reachable — a local install is one user", async ({ page }) => {
+    await page.goto(`${organizationUrl()}/settings`);
+    await expect(
+      page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),
+    ).toHaveCount(0);
+
     await page.goto(`${organizationUrl()}/settings/members`);
-    await expect(page.getByRole("heading", { name: "Team" })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("button", { name: "Invite" })).toHaveCount(0);
+    await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
   });
 
   test("brands can be created from the UI", async ({ page }) => {

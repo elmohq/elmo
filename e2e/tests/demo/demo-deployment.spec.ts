@@ -180,10 +180,13 @@ test.describe("Demo features", () => {
     await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible({ timeout: 30_000 });
   });
 
-  test("the team is listed, and nothing about it can be changed", async ({ page }) => {
+  test("the team page is not offered and not reachable", async ({ page }) => {
+    await page.goto(`${organizationUrl()}/settings`);
+    await expect(
+      page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),
+    ).toHaveCount(0);
+
     await page.goto(`${organizationUrl()}/settings/members`);
-    await expect(page.getByRole("heading", { name: "Team" })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("button", { name: "Invite" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Remove" })).toHaveCount(0);
+    await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
   });
 });
