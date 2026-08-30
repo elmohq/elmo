@@ -83,6 +83,12 @@ The database schema is defined with Drizzle ORM in `packages/lib/src/db/`. Key t
 
 Migrations are generated with `drizzle-kit generate` and applied with `drizzle-kit migrate`.
 
+Never use `drizzle-kit push` against a deployment. It diffs the live database
+against the schema files rather than replaying migrations, so it drops any index
+a migration created that the schema cannot express — `INCLUDE` indexes, and
+anything on the generated better-auth tables. It also records nothing in
+`drizzle.__drizzle_migrations`, leaving `migrate` unable to tell what has run.
+
 ## Provider Abstraction
 
 All AI scraping flows through a single `Provider` interface in `packages/lib/src/providers/`. The runtime wiring:
