@@ -86,10 +86,15 @@ function auditField(
 	kinds: { missing: ViolationKind; unexpected: ViolationKind },
 ): Violation[] {
 	const withData = passing.filter((r) => count(r) > 0).length;
-	const expected = input.expectation[field] === "yes";
+	const declared = input.expectation[field];
 	const expectationVerified = input.expectation.verified;
 
-	if (expected && withData === 0 && passing.length >= AUDIT_MIN_RUNS) {
+	// Neither state makes a claim a window can falsify: "intermittent" is too
+	// rare to expect in any given window, and "unknown" is the absence of a
+	// claim. Both stay silent rather than reporting a finding nobody can act on.
+	if (declared === "intermittent" || declared === "unknown") return [];
+
+	if (declared === "yes" && withData === 0 && passing.length >= AUDIT_MIN_RUNS) {
 		return [
 			{
 				target: input.target,
@@ -99,7 +104,7 @@ function auditField(
 			},
 		];
 	}
-	if (!expected && withData > 0) {
+	if (declared === "no" && withData > 0) {
 		return [
 			{
 				target: input.target,

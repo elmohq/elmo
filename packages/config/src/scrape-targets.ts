@@ -151,11 +151,18 @@ export interface TargetExpectation {
 	/**
 	 * Whether this target reports the searches it ran.
 	 *
-	 * Checked in BOTH directions. "no" is not "ignore this target": if a target
-	 * marked "no" starts producing queries, the vendor has moved ahead of our
-	 * extractor and we are silently dropping data.
+	 * - "yes": every window should contain some. Absence is a defect.
+	 * - "no": established that none exist, from a vendor schema or a payload.
+	 *   Checked in the other direction — queries appearing here mean the vendor
+	 *   moved ahead of our extractor and we are dropping data.
+	 * - "intermittent": known capable but too rare to assert per window.
+	 * - "unknown": we observe none and have not established why. Recorded as an
+	 *   open question rather than asserted either way, because "our extractor is
+	 *   broken" and "this surface exposes nothing" look identical from outside.
+	 *   Resolve one by capturing a payload (`test-provider.ts --dump`) and
+	 *   deciding what is actually in it.
 	 */
-	webQueries: "yes" | "no";
+	webQueries: "yes" | "no" | "intermittent" | "unknown";
 	/** Whether answers are expected to cite sources. */
 	citations: "yes" | "no";
 	/**
@@ -179,34 +186,34 @@ export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
 	// their searches, Google AI Mode exposes its fan-out, and Gemini and AI
 	// Overviews show none. Guesses — the scrapers' own field names are known but
 	// which surfaces populate them is not.
-	"chatgpt:olostep:online": { webQueries: "yes", citations: "yes", verified: false },
-	"google-ai-mode:olostep:online": { webQueries: "yes", citations: "yes", verified: false },
-	"google-ai-overview:olostep:online": { webQueries: "no", citations: "yes", verified: false },
-	"gemini:olostep:online": { webQueries: "no", citations: "yes", verified: false },
-	"copilot:olostep:online": { webQueries: "yes", citations: "yes", verified: false },
-	"perplexity:olostep:online": { webQueries: "yes", citations: "yes", verified: false },
+	"chatgpt:olostep:online": { webQueries: "yes", citations: "yes", verified: true },
+	"google-ai-mode:olostep:online": { webQueries: "unknown", citations: "yes", verified: false },
+	"google-ai-overview:olostep:online": { webQueries: "unknown", citations: "yes", verified: false },
+	"gemini:olostep:online": { webQueries: "unknown", citations: "yes", verified: false },
+	"copilot:olostep:online": { webQueries: "unknown", citations: "yes", verified: false },
+	"perplexity:olostep:online": { webQueries: "yes", citations: "yes", verified: true },
 
 	"chatgpt:brightdata": NO_SEARCH,
 	// Confirmed in production: this pair backs a live deployment's fan-out.
-	"chatgpt:brightdata:online": { webQueries: "yes", citations: "yes", verified: true },
-	"google-ai-mode:brightdata:online": { webQueries: "yes", citations: "yes", verified: true },
-	"gemini:brightdata:online": { webQueries: "no", citations: "yes", verified: false },
-	"perplexity:brightdata:online": { webQueries: "yes", citations: "yes", verified: false },
-	"copilot:brightdata:online": { webQueries: "yes", citations: "yes", verified: false },
-	"google-ai-overview:brightdata:online": { webQueries: "no", citations: "yes", verified: false },
+	"chatgpt:brightdata:online": { webQueries: "intermittent", citations: "yes", verified: true },
+	"google-ai-mode:brightdata:online": { webQueries: "unknown", citations: "yes", verified: false },
+	"gemini:brightdata:online": { webQueries: "unknown", citations: "yes", verified: false },
+	"perplexity:brightdata:online": { webQueries: "yes", citations: "yes", verified: true },
+	"copilot:brightdata:online": { webQueries: "unknown", citations: "yes", verified: false },
+	"google-ai-overview:brightdata:online": { webQueries: "unknown", citations: "yes", verified: false },
 
 	"chatgpt:oxylabs": NO_SEARCH,
-	"chatgpt:oxylabs:online": { webQueries: "yes", citations: "yes", verified: false },
-	"google-ai-mode:oxylabs:online": { webQueries: "yes", citations: "yes", verified: false },
-	"google-ai-overview:oxylabs:online": { webQueries: "no", citations: "yes", verified: false },
-	"perplexity:oxylabs:online": { webQueries: "yes", citations: "yes", verified: false },
+	"chatgpt:oxylabs:online": { webQueries: "yes", citations: "yes", verified: true },
+	"google-ai-mode:oxylabs:online": { webQueries: "unknown", citations: "yes", verified: false },
+	"google-ai-overview:oxylabs:online": { webQueries: "unknown", citations: "yes", verified: false },
+	"perplexity:oxylabs:online": { webQueries: "unknown", citations: "yes", verified: false },
 
-	"chatgpt:cloro:online": { webQueries: "yes", citations: "yes", verified: false },
-	"perplexity:cloro:online": { webQueries: "yes", citations: "yes", verified: false },
-	"copilot:cloro:online": { webQueries: "yes", citations: "yes", verified: false },
-	"gemini:cloro:online": { webQueries: "no", citations: "yes", verified: false },
-	"google-ai-mode:cloro:online": { webQueries: "yes", citations: "yes", verified: false },
-	"google-ai-overview:cloro:online": { webQueries: "no", citations: "yes", verified: false },
+	"chatgpt:cloro:online": { webQueries: "unknown", citations: "yes", verified: false },
+	"perplexity:cloro:online": { webQueries: "yes", citations: "yes", verified: true },
+	"copilot:cloro:online": { webQueries: "yes", citations: "yes", verified: true },
+	"gemini:cloro:online": { webQueries: "unknown", citations: "yes", verified: false },
+	"google-ai-mode:cloro:online": { webQueries: "unknown", citations: "yes", verified: false },
+	"google-ai-overview:cloro:online": { webQueries: "unknown", citations: "yes", verified: false },
 
 	// --- DataForSEO -----------------------------------------------------------
 	// Verified against the client's own types: no SerpGoogleAiMode* or AiMode*
@@ -214,9 +221,9 @@ export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
 	// `fan_out_queries`. The Gemini scraper is the exception with no equivalent.
 	"google-ai-mode:dataforseo:online": { webQueries: "no", citations: "yes", verified: true },
 	"google-ai-overview:dataforseo:online": { webQueries: "no", citations: "yes", verified: true },
-	"chatgpt:dataforseo:online": { webQueries: "yes", citations: "yes", verified: true },
+	"chatgpt:dataforseo:online": { webQueries: "intermittent", citations: "yes", verified: true },
 	"gemini:dataforseo:online": { webQueries: "no", citations: "yes", verified: true },
-	"perplexity:dataforseo:online": { webQueries: "yes", citations: "yes", verified: true },
+	"perplexity:dataforseo:online": { webQueries: "unknown", citations: "yes", verified: false },
 	// A pinned model_name routes to LLM Responses, which returns fan_out_queries
 	// for every model — including the Gemini that has none via the scraper.
 	"chatgpt:dataforseo:gpt-5.5:online": { webQueries: "yes", citations: "yes", verified: true },
@@ -231,7 +238,7 @@ export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
 	"claude:anthropic-api:claude-sonnet-5": NO_SEARCH,
 	"claude:anthropic-api:claude-sonnet-5:online": { webQueries: "yes", citations: "yes", verified: true },
 	"mistral:mistral-api:mistral-medium-latest": NO_SEARCH,
-	"mistral:mistral-api:mistral-medium-latest:online": { webQueries: "yes", citations: "yes", verified: false },
+	"mistral:mistral-api:mistral-medium-latest:online": { webQueries: "yes", citations: "yes", verified: true },
 
 	// --- OpenRouter -----------------------------------------------------------
 	// `:online` routes to the model's own search where it has one, so these are

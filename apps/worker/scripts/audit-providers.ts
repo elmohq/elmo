@@ -96,6 +96,23 @@ function report(violations: Violation[], targetCount: number, days: number): voi
 	);
 }
 
+/**
+ * Targets we get nothing from and cannot yet say why. Not failures — nobody can
+ * act on a finding that might equally be the provider or our own extractor — but
+ * they are the backlog, so they stay visible rather than passing silently.
+ */
+function reportOpenQuestions(inputs: AuditInput[]): void {
+	const open = inputs.filter((i) => i.expectation.webQueries === "unknown").map((i) => i.target);
+	if (open.length === 0) return;
+	console.log(`\n${open.length} target(s) report no web queries for reasons not yet established:`);
+	for (const target of open) console.log(`  ${target}`);
+	console.log(
+		"Capture one payload each (test-provider.ts --dump <dir>) and set webQueries to yes or no in\n" +
+			"STATUS_TARGET_EXPECTATIONS. Until then a broken extractor here is indistinguishable from a\n" +
+			"provider that exposes nothing.",
+	);
+}
+
 async function main() {
 	const days = parseDays();
 	const sinceMs = Date.now() - days * 24 * 60 * 60 * 1000;
@@ -111,6 +128,7 @@ async function main() {
 
 	const violations = auditTargets(inputs);
 	report(violations, STATUS_TARGETS.length, days);
+	reportOpenQuestions(inputs);
 	process.exit(violations.length > 0 ? 1 : 0);
 }
 

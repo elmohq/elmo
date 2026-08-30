@@ -59,6 +59,25 @@ describe("auditTarget", () => {
 		expect(kinds("t", offline, [run({ citations: 5, genuineWebQueries: 0 })])).toEqual(["unexpected-citations"]);
 	});
 
+	// Capability is established but too rare to expect in any one window, so
+	// asserting it would just generate noise.
+	it("makes no claim about an intermittent target", () => {
+		expect(kinds("t", expects({ webQueries: "intermittent" }), runs(20, { genuineWebQueries: 0 }))).toEqual([]);
+		expect(kinds("t", expects({ webQueries: "intermittent" }), runs(20))).toEqual([]);
+	});
+
+	// "unknown" is the absence of a claim: a broken extractor and a provider that
+	// exposes nothing look the same, so neither direction can be asserted.
+	it("makes no claim in either direction about an unknown target", () => {
+		expect(kinds("t", expects({ webQueries: "unknown" }), runs(20, { genuineWebQueries: 0 }))).toEqual([]);
+		expect(kinds("t", expects({ webQueries: "unknown" }), runs(20))).toEqual([]);
+	});
+
+	it("still requires unknown targets to store what they report", () => {
+		const records = runs(20, { queriesInRawOutput: false });
+		expect(kinds("t", expects({ webQueries: "unknown" }), records)).toEqual(["queries-not-in-raw-output"]);
+	});
+
 	it("fails when reported queries are missing from the stored payload", () => {
 		const records = runs(AUDIT_MIN_RUNS, { queriesInRawOutput: false });
 		expect(kinds("t", expects(), records)).toEqual(["queries-not-in-raw-output"]);
