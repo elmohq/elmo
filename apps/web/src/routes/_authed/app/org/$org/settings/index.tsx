@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { normalizeSlug, ORG_URL_PREFIX } from "@workspace/lib/app-urls";
-import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -59,12 +58,6 @@ function OrganizationSettingsPage() {
 		<div className="max-w-2xl space-y-6">
 			<h1 className="text-3xl font-bold">Organization</h1>
 
-			{error && (
-				<Alert variant="destructive">
-					<AlertDescription>{error}</AlertDescription>
-				</Alert>
-			)}
-
 			<form onSubmit={handleSave} className="space-y-4">
 				<div className="space-y-2">
 					<Label htmlFor="organization-name">Organization Name</Label>
@@ -85,6 +78,8 @@ function OrganizationSettingsPage() {
 					onChange={setSlug}
 					className="w-72"
 				/>
+
+				{error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
 
 				<Button type="submit" disabled={saving || !isDirty || !isComplete}>
 					{saving ? "Saving..." : "Save"}
