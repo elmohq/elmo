@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isValidSlug, MAX_SLUG_LENGTH } from "../app-urls";
 import { firstFreeName } from "./provisioning";
 
-/** Stands in for the availability query, so the rule is testable without a database. */
+/** Stands in for the availability query. */
 const taken = (...names: string[]) => {
 	const set = new Set(names);
 	return async (candidate: string) => !set.has(candidate);
@@ -18,8 +18,7 @@ describe("firstFreeName", () => {
 		expect(await firstFreeName("nike", taken("nike", "nike-2", "nike-3"))).toBe("nike-4");
 	});
 
-	// The whole point of fitting rather than appending: a suffixed name that runs
-	// past the bound is one the settings form would refuse to save back.
+	// A suffixed name past the bound is one the settings form would refuse to save.
 	it("fits the suffix inside the bound, and the result is still a valid slug", async () => {
 		const base = "a".repeat(MAX_SLUG_LENGTH);
 		const name = await firstFreeName(base, taken(base));
@@ -34,8 +33,6 @@ describe("firstFreeName", () => {
 		expect(isValidSlug(name)).toBe(true);
 	});
 
-	// Past the counted suffixes something is wrong with the base; the loop ends
-	// rather than walking the namespace a row at a time.
 	it("ends on a base whose every counted suffix is taken", async () => {
 		const everyCountedSuffix = ["nike", ...Array.from({ length: 60 }, (_, i) => `nike-${i + 2}`)];
 		const name = await firstFreeName("nike", taken(...everyCountedSuffix));

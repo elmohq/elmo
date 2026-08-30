@@ -1,9 +1,7 @@
 /**
- * /app/org/$org/settings layout — the app shell around the organization's own pages.
- *
- * Same shell as a brand's pages, minus the brand: the rail lists what the
- * organization holds instead of one brand's sections, so leaving settings goes
- * back into the dashboard rather than out to a picker.
+ * The app shell around the organization's own pages: the same one a brand's
+ * pages get, with the rail listing what the organization holds instead of one
+ * brand's sections.
  */
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { AppShell, PageContent } from "@/components/app-shell";

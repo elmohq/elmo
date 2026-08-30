@@ -25,16 +25,12 @@ export const TEST_USER = {
 } as const;
 
 export const TEST_BRAND_ID = "default";
-/** The seeded org's slug — the organization segment of every dashboard URL. */
+/** The organization segment of every dashboard URL. */
 export const TEST_ORG_SLUG = "default";
 
 /**
- * Dashboard URLs, built the way the app builds them.
- *
- * Both identifiers are static-segment-scoped (`/org/…/brand/…`), so nothing a
- * organization or brand is named can collide with a route. The seeder gives brands
- * no slug, so the brand segment here is the id — which is the fallback every
- * pre-slug row relies on.
+ * The seeder gives the primary brand no slug, so its segment is the id — the
+ * fallback every pre-slug row relies on.
  */
 export function organizationUrl(org: string = TEST_ORG_SLUG): string {
   return `/app/org/${org}`;
@@ -46,27 +42,22 @@ export function brandUrl(brand: string = TEST_BRAND_ID, org: string = TEST_ORG_S
 export const TEST_BRAND_NAME = "Test Organization";
 
 /**
- * The seeded organization carries the same name as its first brand — which is
- * exactly the collision the eyebrow labels exist to resolve, so specs name it
- * separately rather than leaning on the two being equal.
+ * The seeded organization shares its first brand's name — the collision the
+ * eyebrow labels exist to resolve — so specs name it separately rather than
+ * leaning on the two being equal.
  */
 export const TEST_ORGANIZATION_NAME = TEST_BRAND_NAME;
 
 /**
- * A second brand in the same organization, seeded *with* a slug.
- *
- * The primary brand deliberately has none — that's the state every row was in
- * before slugs existed, and the fallback that keeps its links working. This one
- * covers the other half: a slug in the URL, and the id canonicalizing to it.
+ * A second brand in the same organization, seeded *with* a slug, so between the
+ * two the suite covers both halves of the rule: a brand that falls back to its
+ * id, and one whose id canonicalizes to its slug.
  */
 export const SLUGGED_BRAND_ID = "seeded-slug-brand";
 export const SLUGGED_BRAND_SLUG = "labs";
 export const SLUGGED_BRAND_NAME = "Test Labs";
 
-/**
- * A brand no other spec addresses, so the one spec that moves a slug can move
- * it for real. Everything else is reached by a slug the suite holds constant.
- */
+/** Addressed by no other spec, so the slug-rename spec can move it for real. */
 export const RENAMEABLE_BRAND_ID = "seeded-rename-brand";
 export const RENAMEABLE_BRAND_SLUG = "rename-me";
 export const RENAMEABLE_BRAND_NAME = "Test Rename";

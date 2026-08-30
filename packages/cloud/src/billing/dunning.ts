@@ -56,9 +56,9 @@ async function billingRecipients(organizationId: string): Promise<string[]> {
 }
 
 /**
- * The organization's billing settings page. Emails need a stable link — Stripe
- * portal sessions expire minutes after creation — and this page's "Manage
- * billing" button opens a fresh Customer Portal session.
+ * The organization's billing settings page rather than a Stripe portal link,
+ * which expires minutes after creation. Its "Manage billing" button opens a
+ * fresh Customer Portal session.
  */
 export async function sendDunningNotice(organizationId: string, notice: DunningNotice): Promise<void> {
 	// Same total accessor createCloudDeployment uses, so a missing APP_URL

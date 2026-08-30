@@ -11,10 +11,8 @@ import { SiteHeader } from "@/components/site-header";
 
 export const Route = createFileRoute("/_authed/admin")({
 	staticData: { crumb: "Admin" },
-	// `_authed` already asked who is looking, so this reads the answer rather
-	// than paying a second round trip for the same two booleans. It hides the
-	// section; what actually refuses is `requireAdmin()` inside each admin
-	// server function.
+	// Reads what `_authed` already resolved. This only hides the section; what
+	// refuses is `requireAdmin()` inside each admin server function.
 	beforeLoad: ({ context }) => {
 		if (!context.isAdmin) throw notFound();
 	},

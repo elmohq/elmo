@@ -11,14 +11,9 @@ import {
 
 export interface NavItem {
 	title: string;
-	/** Where the entry goes, as the router's own link props — typed, and params encoded by it. */
 	link: LinkProps;
 	icon?: Icon;
-	/**
-	 * Lights only on its own page. For the two entries whose href is a prefix of
-	 * every sibling's — a brand's Overview, an organization's Organization — where
-	 * matching the prefix would light them on every page below.
-	 */
+	/** See `activeNavHref`. */
 	exact?: boolean;
 }
 
@@ -28,12 +23,10 @@ export interface NavGroup {
 }
 
 /**
- * Which entry the current path belongs to, as its href.
- *
  * Longest match wins, so a brand's Prompts doesn't lose to its Settings. An
- * `exact` entry lights only on its own page: a brand's Overview and an
+ * `exact` entry lights only on its own page — a brand's Overview and an
  * organization's Organization are prefixes of every sibling, and matching the
- * prefix would light them on every page below.
+ * prefix would light them everywhere below.
  */
 export function activeNavHref(entries: Array<{ href: string; exact?: boolean }>, pathname: string): string {
 	let active = "";
@@ -49,9 +42,9 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
 	const { setOpenMobile } = useSidebar();
 	const { pathname } = useLocation();
 
-	// Each entry carries where it leads, resolved by the router so nothing here
-	// has to know the URL shape. Two entries can share a title — an organization's
-	// Brands and admin's — so the href is what identifies one.
+	// Resolved by the router, so nothing here knows the URL shape. Two entries
+	// can share a title — an organization's Brands and admin's — so the href is
+	// what identifies one.
 	const resolved = groups.map((group) => ({
 		label: group.label,
 		items: group.items.map((item) => ({ item, href: router.buildLocation(item.link).pathname })),

@@ -1,10 +1,7 @@
 /**
- * /app/org/$org/settings/billing — plan, usage meters, and the extra-premium-
- * prompts add-on (cloud only).
- *
- * The subscription is the organization's: every brand inside it draws on the same
- * plan, so this sits beside the organization's other settings rather than inside
- * whichever brand the user happened to be looking at.
+ * The subscription is the organization's: every brand inside it draws on the
+ * same plan, so this sits beside the organization's other settings rather than
+ * inside whichever brand the user happened to be looking at.
  *
  * Card changes, invoices, plan switches, and cancellation go through the
  * Stripe Customer Portal / Checkout via better-auth — no card data or payment

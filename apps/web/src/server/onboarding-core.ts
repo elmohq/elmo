@@ -300,24 +300,18 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	const additionalDomains = dedupeDomains(input.additionalDomains ?? []).filter((d) => d !== websiteHost);
 	const aliases = dedupeAliases(input.aliases ?? []);
 
-	// Brands are hard-scoped to an org via a NOT NULL FK. This create path (the
-	// admin API) supplies the brand id directly and historically created brands
-	// whose id == the org id, so materialize that org first. No-op when it
-	// already exists (e.g. a whitelabel org already synced from Auth0).
-	//
-	// Both writes share a transaction so a conflicting brand id doesn't strand
-	// the org we just made: brand ids and org ids are independent now, so a
-	// taken brand id no longer implies the org already exists. claimSlug maps
-	// a slug race on the unique index to a retryable failure.
+	// Brands are hard-scoped to an org by a NOT NULL FK, so the org is
+	// materialized first — this path (the admin API) supplies the brand id and
+	// the org takes it. One transaction, because a brand id that turns out to be
+	// taken would otherwise strand the org just made.
 	await claimSlug(
 		() =>
 			db.transaction(async (tx) => {
 				await ensureOrganization({ id: input.id, name: input.name }, tx);
 
-				// The org was just minted from this same brand, so the plain name is free
-				// here even when the org's own slug had to take a suffix to clear the
-				// global namespace — `/app/org/nike-2/brand/nike` rather than dragging the
-				// suffix down both segments.
+				// The org was just minted from this brand, so the plain name is free
+				// here even where the org's own slug took a suffix to clear the global
+				// namespace: `/app/org/nike-2/brand/nike`, not the suffix twice.
 				const slug = await findUniqueBrandSlug(input.id, slugify(input.name, "brand"), tx);
 
 				const [inserted] = await tx
@@ -333,9 +327,8 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 						enabled: true,
 						onboarded: true,
 					})
-					// Targeted: an untargeted clause would also swallow a slug-unique
-					// collision, and the caller would be told the id was taken when it
-					// wasn't.
+					// Targeted at the id: untargeted, this would also swallow a slug
+					// collision and report the id as taken when it wasn't.
 					.onConflictDoNothing({ target: brands.id })
 					.returning({ id: brands.id });
 				if (!inserted) throw new BrandConflictError(input.id);

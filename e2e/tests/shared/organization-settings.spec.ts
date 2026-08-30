@@ -1,6 +1,4 @@
 /**
- * Organization Settings E2E Tests
- *
  * The organization's own page and the shell around it: the rail's way back into
  * each brand, and renaming the organization.
  */
@@ -9,9 +7,9 @@ import { TEST_BRAND_ID, TEST_BRAND_NAME, TEST_ORG_SLUG } from "../../fixtures";
 
 test.describe("Organization settings", () => {
   test("the organization's brands are a page of its own", async ({ page }) => {
-    // Checked against the HTML the server sends, not just the settled DOM: the
-    // list comes from the layout the route already resolved, so the way back
-    // into a brand is there before any client-side query could have supplied it.
+    // Against the HTML the server sends, not the settled DOM: the list comes
+    // from the layout the route resolved, so the way back into a brand is there
+    // before any client-side query could supply it.
     const response = await page.request.get(`/app/org/${TEST_ORG_SLUG}/settings/brands`);
     expect(response.ok()).toBe(true);
     expect(await response.text()).toContain(`/app/org/${TEST_ORG_SLUG}/brand/${TEST_BRAND_ID}`);

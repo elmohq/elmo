@@ -156,8 +156,7 @@ test.describe("Whitelabel features", () => {
     await expect(page.getByRole("button", { name: "Remove" })).toHaveCount(0);
   });
 
-  // Auth0 owns the record. The fields stay live and the save is what refuses,
-  // so the reason is on screen rather than left to be guessed from a dead form.
+  // Auth0 owns the record, so the save is what refuses.
   test("the organization's name and slug cannot be saved", async ({ page }) => {
     await page.goto(`${organizationUrl()}/settings`);
 

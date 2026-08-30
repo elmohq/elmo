@@ -14,20 +14,18 @@ import { Fragment } from "react";
 import { type Crumb, useBreadcrumbs } from "@/lib/breadcrumbs";
 
 /**
- * Each crumb is a box rather than bare text, so the whole of it takes the hover
- * rather than the few pixels the letters cover, and so the trail has something
- * of a height to be centred by — a labelled crumb is two lines tall, and the
- * chevrons and the page name sit against its middle.
+ * A box rather than bare text, so the whole crumb takes the hover and the trail
+ * has a height to centre against — a labelled crumb is two lines tall, and the
+ * chevrons sit against its middle.
  */
-// `transition-none` overrides the link's own `transition-colors`: the rail's
-// buttons and the menu's items take their hover at once, and a crumb easing
-// into one beside them reads as lag.
+// `transition-none` overrides the link's own `transition-colors`: the rail and
+// the menu take their hover at once, and a crumb easing into one reads as lag.
 const CRUMB = "block rounded-md px-2 py-1 leading-tight transition-none";
 
 /**
- * An organization and a brand are often named the same thing, so each says
- * which it is. In the line rather than floating above it: left to size itself
- * the label is wider than a short name and runs into the crumb beside it.
+ * An organization and a brand are often named the same thing, so each says which
+ * it is. In the line rather than above it: left to size itself the label is
+ * wider than a short name and runs into the crumb beside it.
  */
 function CrumbLabel({ crumb }: { crumb: Crumb }) {
 	if (!crumb.kind) return <>{crumb.label}</>;
@@ -57,7 +55,7 @@ export function SiteHeader() {
 						{crumbs.map((crumb, index) => {
 							const isLast = index === crumbs.length - 1;
 							return (
-								// Two routes never share a pathname, so the href identifies the crumb.
+								// Two routes never share a pathname, so the href is a stable key.
 								<Fragment key={crumb.href}>
 									{index > 0 && <BreadcrumbSeparator className="hidden md:block" />}
 									<BreadcrumbItem className={isLast ? undefined : "hidden md:block"}>

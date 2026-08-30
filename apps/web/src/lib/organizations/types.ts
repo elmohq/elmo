@@ -1,6 +1,6 @@
 /**
- * These live apart from the server functions that produce them so the shell can
- * name the type without pulling the database into the client bundle.
+ * Apart from the server functions that produce them, so the shell can name the
+ * type without pulling the database into the client bundle.
  */
 import type { WriteDenialCode } from "@workspace/lib/entitlements";
 
@@ -15,13 +15,9 @@ export interface OrganizationBrand {
 }
 
 /**
- * Whether this organization can take another brand, and why not when it can't.
- *
  * Three answers rather than a boolean and a nullable message: "the plan says no
- * right now" is waiting on billing and has something to show, while "this
- * deployment doesn't create brands" has no page to offer at all. Callers that
- * read those apart were spelling out combinations of the two fields, and one of
- * them was reading a missing message as a deployment mode.
+ * right now" is waiting on billing and has a page to show, while "this
+ * deployment doesn't create brands" has none at all.
  */
 export type BrandCreation =
 	| { kind: "allowed" }
@@ -29,9 +25,9 @@ export type BrandCreation =
 	| { kind: "not-offered" };
 
 /**
- * The brand allowance lives here because this is read through the query cache:
- * the entitlements it costs are paid once per organization per minute rather than
- * by each page that offers creation.
+ * The brand allowance rides along because this is read through the query cache,
+ * so the entitlements it costs are paid once a minute rather than by each page
+ * that offers creation.
  */
 export interface OrganizationSummary {
 	id: string;

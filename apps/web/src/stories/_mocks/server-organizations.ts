@@ -1,13 +1,12 @@
 /**
- * Mock for @/server/organizations used in Storybook stories. The real module reads
- * the organization/member tables; stories only need the shell to know which
- * organization it is in and what it holds.
+ * The real module reads the organization/member tables; stories only need the
+ * shell to know which organization it is in and what it holds.
  */
 
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
-// The real types, not a copy: a fixture that drifts from them is a story that
-// renders something the app cannot produce.
+// The real types, not a copy, so a fixture can't render what the app cannot
+// produce.
 let _organizations: OrganizationSummary[] = [
 	{
 		id: "org-1",

@@ -15,11 +15,7 @@ declare module "@tanstack/react-router" {
 export interface Crumb {
 	label: string;
 	href: string;
-	/**
-	 * What the label names, for the two crumbs that name a thing rather than a
-	 * page. Rendered above the name, which is what tells an organization called
-	 * Nike apart from a brand called Nike.
-	 */
+	/** Rendered above the name, which tells an organization called Nike from a brand called Nike. */
 	kind?: "Organization" | "Brand";
 }
 

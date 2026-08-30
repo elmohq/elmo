@@ -2,11 +2,9 @@ import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar"
 import type { ReactNode } from "react";
 
 /**
- * The frame every signed-in page renders in: the rail on the left, the header
- * and the page to the right of it.
- *
- * One copy, so no page can drift on the inset's geometry — which is easy to get
- * wrong in a way nothing tells you about, see the note on `overflow-clip` below.
+ * The frame every signed-in page renders in. One copy, so no page drifts on the
+ * inset's geometry — see the note on `overflow-clip` below for how quietly that
+ * goes wrong.
  */
 export function AppShell({
 	sidebar,
@@ -32,9 +30,8 @@ export function AppShell({
 }
 
 /**
- * The padded content region inside the shell, which most pages want and a gate
- * page — laying out its own full-height card — does not. Separate from
- * `AppShell` so opting out means leaving it off rather than passing a flag.
+ * Separate from `AppShell` so a gate page, which lays out its own full-height
+ * card, opts out by leaving it off rather than passing a flag.
  */
 export function PageContent({ children }: { children: ReactNode }) {
 	return (

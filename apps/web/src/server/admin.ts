@@ -38,8 +38,7 @@ async function requireAdmin() {
 }
 
 /**
- * Organization slug by org id, for the brands being listed, so admin's brand
- * links land on the canonical `/app/org/$org/brand/$brand` rather than bouncing
+ * So admin's brand links land on the canonical path rather than bouncing
  * through a redirect. Asked of the organizations those brands name rather than
  * of the whole table.
  */
@@ -52,10 +51,7 @@ async function organizationSlugs(organizationIds: string[]): Promise<Map<string,
 	return new Map(rows.map((row) => [row.id, row.slug]));
 }
 
-/**
- * The id is a working segment too — `/app/org/$org` resolves either — so a
- * brand whose organization went away mid-request still gets a link that lands.
- */
+/** The id is a working segment too, so a brand whose org went away still links somewhere. */
 function organizationSegment(slugs: Map<string, string>, organizationId: string): string {
 	return slugs.get(organizationId) ?? organizationId;
 }

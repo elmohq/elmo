@@ -1,9 +1,3 @@
-/**
- * /app/org/$org/brand/$brand/settings/brand - Brand settings page
- *
- * Form to edit brand name, URL, website, additional domains, and aliases.
- */
-
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
@@ -42,8 +36,8 @@ function BrandSettingsPage() {
 	const [success, setSuccess] = useState("");
 	const [additionalDomains, setAdditionalDomains] = useState<string[]>([]);
 	const [aliases, setAliases] = useState<string[]>([]);
-	// A brand that predates slugs shows its id, which is what its URL already
-	// carries — saving is what turns that into a real slug.
+	// A brand that predates slugs shows the id its URL already carries; saving
+	// turns that into a real slug.
 	const [slug, setSlug] = useState("");
 
 	// Reseed the fields when the brand changes server-side, without discarding
@@ -96,9 +90,8 @@ function BrandSettingsPage() {
 			const name = formData.get("name") as string;
 			const website = formData.get("website") as string;
 
-			// Only when it moved. A brand that predates slugs shows its id here, and
-			// an id is not held to the slug rules — sending it unchanged would make
-			// every other edit on this page hostage to a legacy identifier.
+			// Only when it moved: an id is not held to the slug rules, so sending an
+			// untouched one would make every other edit on this page hostage to it.
 			const nextSlug = slug.trim().toLowerCase();
 			const slugMoved = nextSlug !== currentSlug;
 			await updateBrandFn({

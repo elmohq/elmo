@@ -1,10 +1,7 @@
 /**
- * The organization and brand a page is about, read off the two layouts that
- * resolved them.
- *
- * Looked up by route id rather than sniffed out of whichever match happens to
- * carry a likely-looking field: a second parser is how the trail, the tab
- * title, and the address bar drift apart. One lookup answers for all of them.
+ * The organization and brand a page is about, looked up by route id rather than
+ * sniffed out of whichever match carries a likely-looking field. The trail and
+ * the tab title read the one answer.
  */
 import type { FileRoutesById } from "@/routeTree.gen";
 
@@ -26,9 +23,8 @@ export interface RouteSubjects {
 }
 
 /**
- * Either may be absent mid-load, when the layout that resolves it hasn't
- * finished — the trail leaves that crumb out, and a title falls back to the app
- * name until it arrives.
+ * Either may be absent mid-load — the trail leaves that crumb out, and a title
+ * falls back to the app name until it arrives.
  */
 export function routeSubjects(matches: SubjectMatch[]): RouteSubjects {
 	const subjects: RouteSubjects = {};

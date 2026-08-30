@@ -33,10 +33,8 @@ export const brands = pgTable(
 		id: text("id").primaryKey().notNull(),
 		name: text("name").notNull(),
 		/**
-		 * What `/app/org/$org/brand/$brand` carries when it's set. Null means the
-		 * brand has never been given one and its URL falls back to the id, so
-		 * existing rows keep resolving without a backfill and adopt the slug the
-		 * moment one is chosen.
+		 * Null for a brand never given one, whose URL falls back to the id — so
+		 * rows that predate slugs keep resolving without a backfill.
 		 *
 		 * Unique per organization, not globally: brand lookups are already scoped
 		 * to the organization in the URL, so two customers can each own a `nike`.
@@ -64,9 +62,9 @@ export const brands = pgTable(
 	},
 	(table) => ({
 		organizationIdIdx: index("brands_organization_id_idx").on(table.organizationId),
-		// Postgres treats nulls as distinct in a unique index, which is what lets
-		// every un-slugged brand in an organization coexist. Don't "fix" this with
-		// NULLS NOT DISTINCT — it would allow only one.
+		// Postgres treats nulls as distinct here, which is what lets every
+		// un-slugged brand in an organization coexist. NULLS NOT DISTINCT would
+		// allow only one.
 		organizationSlugIdx: uniqueIndex("brands_organization_id_slug_idx").on(table.organizationId, table.slug),
 	}),
 ).enableRLS();

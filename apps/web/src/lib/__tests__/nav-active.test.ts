@@ -18,12 +18,11 @@ describe("activeNavHref", () => {
 		expect(activeNavHref(brandRail, `${BRAND}/visibility/anything`)).toBe(`${BRAND}/visibility`);
 	});
 
-	// Both are prefixes of the path; the one that names it wins.
 	it("prefers the longest match", () => {
 		expect(activeNavHref(brandRail, `${BRAND}/settings/prompts`)).toBe(`${BRAND}/settings/prompts`);
 	});
 
-	// The whole reason for `exact`: Overview's href prefixes every page below it.
+	// Overview's href prefixes every page below it.
 	it("lights an exact entry only on its own page", () => {
 		expect(activeNavHref(brandRail, BRAND)).toBe(BRAND);
 		expect(activeNavHref(brandRail, `${BRAND}/prompts/abc`)).toBe("");
@@ -33,8 +32,7 @@ describe("activeNavHref", () => {
 		expect(activeNavHref(brandRail, "/admin")).toBe("");
 	});
 
-	// An organization's Brands and admin's are both "Brands", and neither is a
-	// prefix of the other — so the answer is the href, not a shared name.
+	// Two entries can share a title, so the answer is the href.
 	it("lights the right one of two entries that share a title", () => {
 		const rail = [{ href: "/app/org/acme/settings/brands" }, { href: "/admin" }];
 		expect(activeNavHref(rail, "/admin")).toBe("/admin");

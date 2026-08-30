@@ -28,8 +28,7 @@ describe("organizationTree", () => {
 		expect(children.map((row) => row.label)).toEqual(["nike", "adidas", "New brand"]);
 	});
 
-	// Every surface renders the row it is handed rather than deciding where it
-	// goes, so the target travelling with the row is the contract.
+	// The target travels with the row; no surface decides where it goes.
 	it("hands each row its own address", () => {
 		const { children } = organizationTree(organization({ kind: "allowed" }, ["nike"]));
 		expect(children.map((row) => row.link)).toEqual([
@@ -38,8 +37,6 @@ describe("organizationTree", () => {
 		]);
 	});
 
-	// Every row says which kind it is, so a surface draws it from what it is
-	// rather than from a field it happens to be missing.
 	it("says what each row is", () => {
 		const { children } = organizationTree(organization({ kind: "allowed" }, ["nike"]));
 		expect(children.map((row) => row.kind)).toEqual(["brand", "new-brand"]);
@@ -58,16 +55,15 @@ describe("organizationTree", () => {
 		]);
 	});
 
-	// The plan has run out. The page that would explain it says so; the tree
-	// doesn't offer a button that leads to a refusal.
+	// The billing page explains a spent plan; the tree doesn't offer a button
+	// that leads to a refusal.
 	it("offers nothing when the plan refuses another brand", () => {
 		expect(
 			organizationTree(organization({ kind: "denied", code: "brand-limit", message: "No" }, ["nike"])).children,
 		).toHaveLength(1);
 	});
 
-	// Auth0 filled this organization and nobody set it up. Without this row the
-	// wizard at /app/org/$org has nothing linking to it.
+	// Without this row the wizard at /app/org/$org has nothing linking to it.
 	it("leads an empty organization to its setup, where brands aren't created here", () => {
 		expect(organizationTree(organization({ kind: "not-offered" })).children).toEqual([
 			{ kind: "set-up", key: "set-up", link: { to: "/app/org/$org", params: { org: "acme" } }, label: "Set up Acme" },
@@ -79,8 +75,8 @@ describe("organizationTree", () => {
 	});
 });
 
-// The row that leads to the wizard and the route that decides whether there is
-// one read the same fact, so a link that bounces off a redirect can't happen.
+// The row and the route that decides whether there is a wizard read the same
+// fact, so the link can't bounce off a redirect.
 describe("needsSetup", () => {
 	it("is true only for an empty organization this deployment doesn't create brands in", () => {
 		expect(needsSetup(organization({ kind: "not-offered" }))).toBe(true);

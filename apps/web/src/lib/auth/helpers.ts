@@ -120,10 +120,9 @@ export async function listUserOrganizations(userId: string): Promise<UserOrganiz
 }
 
 /**
- * The organization behind an `/app/org/$org` segment, or null when the user has no
- * such organization. Accepts the slug (what the URL carries) or the id, so links
- * minted before an org was renamed — and anything built from an
- * `organizationId` in hand — still resolve.
+ * The organization behind an `/app/org/$org` segment, by slug or by id, so a
+ * link minted before a rename and anything holding an `organizationId` both
+ * resolve. Null when the user has no such organization.
  */
 export async function resolveOrganization(userId: string, slugOrId: string): Promise<UserOrganization | null> {
 	const [row] = await db
@@ -132,8 +131,8 @@ export async function resolveOrganization(userId: string, slugOrId: string): Pro
 		.innerJoin(member, and(eq(member.organizationId, organization.id), eq(member.userId, userId)))
 		.where(or(eq(organization.slug, slugOrId), eq(organization.id, slugOrId)))
 		// The two namespaces can overlap in data that predates the availability
-		// check — org ids are human-readable here — so the slug wins by rule
-		// rather than by whichever row Postgres happens to hand back first.
+		// check, so the slug wins by rule rather than by whichever row Postgres
+		// hands back first. Same precedence as `resolveSegment`.
 		.orderBy(sql`case when ${organization.slug} = ${slugOrId} then 0 else 1 end`)
 		.limit(1);
 	return row ?? null;

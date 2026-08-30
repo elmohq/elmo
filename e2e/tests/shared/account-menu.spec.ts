@@ -8,11 +8,9 @@ test.describe("Account menu", () => {
 
     await page.getByRole("button", { name: "Account and organizations" }).click();
 
-    // The organization heading it sits under carries the same name, with what
-    // the heading leads to after it — so the brand is matched exactly.
+    // The heading above carries the same name, so the brand is matched exactly.
     await expect(page.getByRole("menuitem", { name: TEST_BRAND_NAME, exact: true })).toBeVisible({ timeout: 30_000 });
-    // A menu item rather than a link: the heading joins the menu's roving focus,
-    // so its explicit role is what it answers to.
+    // The heading joins the menu's roving focus, so it answers to its item role.
     await expect(
       page.getByRole("menuitem", { name: `${TEST_ORGANIZATION_NAME} organization settings` }),
     ).toHaveAttribute("href", `${organizationUrl()}/settings`);

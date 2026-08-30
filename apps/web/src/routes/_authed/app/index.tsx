@@ -1,7 +1,7 @@
 /**
- * Renders for everyone, one-organization deployments included: it is the only page
- * that lists what exists, so stepping aside would leave the mark that points
- * here landing on an organization's settings.
+ * Renders for everyone, one-organization deployments included: it is the only
+ * page that lists what exists, so stepping aside would leave the mark that
+ * points here landing on an organization's settings.
  */
 
 import { createFileRoute } from "@tanstack/react-router";

@@ -3,8 +3,8 @@
  * useful answer to a page that isn't there.
  *
  * Renders outside `_authed`, so there is no session in context: the query is
- * what says whether there is one, and null is a signed-out caller rather than a
- * signed-in one with nothing to their name.
+ * what says whether there is one, and null means signed out rather than signed
+ * in with nothing to their name.
  */
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -16,10 +16,9 @@ const TITLE = "404 Not Found";
 const SUBTITLE = "That page doesn't exist or moved.";
 
 export function NotFoundPage() {
-	// One attempt, unlike everywhere else this query is read: this page renders
-	// for signed-out callers too, and retrying tells them nothing. The default
-	// policy stays on the query itself, which `/app/org/$org` awaits in
-	// `beforeLoad` — a retry there is what keeps a blip off the error boundary.
+	// One attempt: this page renders for signed-out callers too, and retrying
+	// tells them nothing. Everywhere else keeps the query's own retry, which is
+	// what holds a blip off `/app/org/$org`'s error boundary.
 	const { data: organizations, isLoading } = useQuery({ ...organizationsQuery, retry: false });
 
 	if (isLoading) {
@@ -38,7 +37,7 @@ export function NotFoundPage() {
 	}
 
 	// Signed in, so the mark leads back to the directory as it does everywhere
-	// else — even where this account has nothing in it yet.
+	// else, even for an account with nothing in it yet.
 	return (
 		<FullPageCard logoHref="/app" title={TITLE} subtitle={SUBTITLE} showBackButton={organizations.length === 0}>
 			{organizations.length > 0 ? <OrganizationDirectory organizations={organizations} /> : undefined}

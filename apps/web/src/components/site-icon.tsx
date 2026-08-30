@@ -20,14 +20,10 @@ const SIZES: Record<SiteIconSize, string> = {
 };
 
 /**
- * One request size for every box, rather than one scaled to each.
- *
- * The service can answer two sizes for a site with two different icons, so a
- * brand asked for at 32 in one place and 64 in another shows up as two marks
- * for the same thing. Asking once also means one URL per domain, which the
- * browser then caches across every surface that renders it.
- *
- * 64 is 2x the largest box, so nothing is upscaled.
+ * One request size for every box: the service can answer two sizes with two
+ * different icons, so a brand asked for at 32 in one place and 64 in another
+ * shows up as two marks for the same thing. One URL per domain also caches
+ * across every surface. 64 is 2x the largest box, so nothing is upscaled.
  */
 const REQUESTED_SIZE = 64;
 

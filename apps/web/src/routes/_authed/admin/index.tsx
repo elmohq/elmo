@@ -30,7 +30,7 @@ import { getAdminStatsFn, updateDelayOverrideFn } from "@/server/admin";
 
 interface BrandStats {
 	id: string;
-	/** Both halves of the canonical brand URL — null falls back to the id. */
+	/** Null falls back to the id, which is a working segment too. */
 	slug: string | null;
 	name: string;
 	organizationSlug: string;

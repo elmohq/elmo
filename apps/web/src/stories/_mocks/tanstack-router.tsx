@@ -14,9 +14,8 @@ import React, { createContext, type ReactNode, useContext } from "react";
 const RouteCtx = createContext<Record<string, unknown>>({});
 
 /**
- * What the real `$brand` layout always puts in context. Stories that set their
- * own context are naming what they care about, not clearing this — a component
- * that resolves its brand through context would otherwise render empty.
+ * What the real `$brand` layout puts in context. A story setting its own context
+ * is naming what it cares about, not clearing this.
  */
 const BASE_ROUTE_CONTEXT: Record<string, unknown> = { brandId: "mock-brand-id" };
 
@@ -132,10 +131,8 @@ export function useMatch(_opts?: unknown) {
 }
 
 /**
- * The matches a brand page would have, so the header's trail renders. The two
- * layouts carry their loader data because that is where the trail and the tab
- * title read the organization's and the brand's names from. Stories that care
- * about a different page set their own.
+ * The matches a brand page would have, so the header's trail renders. Both
+ * layouts carry loader data, which is where the trail reads the names from.
  */
 let _matches: Array<{ routeId: string; pathname: string; staticData: { crumb?: string }; loaderData?: unknown }> = [
 	{
@@ -160,7 +157,7 @@ export function useMatches() {
 	return _matches;
 }
 
-/** Fills `$param` placeholders the way the real router does, for link targets. */
+/** Fills `$param` placeholders the way the real router does. */
 function buildLocation({ to, params }: { to?: string; params?: Record<string, string> }) {
 	const pathname = Object.entries(params ?? {}).reduce(
 		(path, [key, value]) => path.replace(`$${key}`, encodeURIComponent(value)),

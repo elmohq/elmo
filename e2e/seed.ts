@@ -69,9 +69,7 @@ async function seed() {
     );
     console.log("  Created brand:", TEST_BRAND_ID);
 
-    // A second brand in the same organization, with a slug. The one above has none
-    // on purpose — between them they cover both halves of the URL rule: a brand
-    // that falls back to its id, and one whose id canonicalizes to its slug.
+    // With a slug; the one above has none on purpose. See e2e/fixtures.ts.
     await client.query(
       `INSERT INTO brands (id, organization_id, slug, name, website, enabled, onboarded, created_at, updated_at)
        VALUES ($1, $2, $3, $4, 'https://labs.example.com', true, true, NOW(), NOW())`,
@@ -79,8 +77,7 @@ async function seed() {
     );
     console.log("  Created brand:", SLUGGED_BRAND_ID, `(/brand/${SLUGGED_BRAND_SLUG})`);
 
-    // Reserved for the spec that renames a slug, which needs a brand nothing
-    // else addresses by one.
+    // Reserved for the spec that renames a slug.
     await client.query(
       `INSERT INTO brands (id, organization_id, slug, name, website, enabled, onboarded, created_at, updated_at)
        VALUES ($1, $2, $3, $4, 'https://rename.example.com', true, true, NOW(), NOW())`,

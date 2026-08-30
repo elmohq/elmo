@@ -1,13 +1,10 @@
 /**
- * Server functions for team membership and invitations.
- *
  * The member list is every deployment's; inviting, removing, and cancelling are
- * cloud's alone and say so at the top of each handler.
+ * cloud's alone.
  *
  * Mutations go through better-auth's org plugin API in-process (auth.api.*),
- * which enforces the caller's member role and triggers sendInvitationEmail —
- * the org plugin's HTTP endpoints stay blocked for every mode (see
- * lib/auth/policies.ts).
+ * which enforces the caller's member role and triggers sendInvitationEmail. The
+ * plugin's HTTP endpoints stay blocked for every mode (see lib/auth/policies.ts).
  */
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
@@ -37,8 +34,8 @@ export const listTeamFn = createServerFn({ method: "GET" })
 	// The explicit return type breaks the type-inference cycle between this
 	// fn and route loaders that both consume it and redirect to typed routes.
 	.handler(async ({ data }): Promise<TeamData> => {
-		// Deliberately not gated on `teamInvites`: every deployment has a member
-		// list worth looking at, and only changing it is cloud's alone.
+		// Not gated on `teamInvites`: every deployment has a member list worth
+		// looking at, and only changing it is cloud's.
 		const session = await requireAuthSession();
 		const org = await requireOrganization(session.user.id, data.org);
 
@@ -103,9 +100,8 @@ export const cancelInvitationFn = createServerFn({ method: "POST" })
 		const session = await requireAuthSession();
 		const org = await requireOrganization(session.user.id, data.org);
 
-		// Scoped to the organization the caller named, so the parameter is the
-		// check it reads as. better-auth checks the role against the invitation's
-		// own organization; this is what makes the two the same one.
+		// better-auth checks the role against the invitation's own organization, so
+		// this is what makes that the organization the caller named.
 		const [row] = await db
 			.select({ id: invitation.id })
 			.from(invitation)
@@ -168,8 +164,8 @@ export const acceptInvitationFn = createServerFn({ method: "POST" })
 			headers: getRequestHeaders(),
 		});
 
-		// The slug, not the id: the caller navigates straight into the
-		// organization, and the id would only get there through a redirect.
+		// The slug, not the id: the caller navigates straight in rather than
+		// through the canonicalizing redirect.
 		const [org] = await db
 			.select({ slug: organization.slug })
 			.from(organization)

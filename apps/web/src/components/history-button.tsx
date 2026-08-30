@@ -13,8 +13,7 @@ interface HistoryButtonProps {
 export function HistoryButton({ promptId, tab }: HistoryButtonProps) {
 	const brandParams = useBrandParams();
 
-	// A button labelled "View Details" with nowhere to go is worse than no
-	// button, so this one is absent rather than inert off a brand page.
+	// Absent rather than inert off a brand page.
 	if (!brandParams || !promptId) return null;
 
 	return (

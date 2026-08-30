@@ -42,27 +42,18 @@ import { useViewer } from "@/hooks/use-route-context";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
 /**
- * How much of the app the shell around this page can reach, as a union rather
- * than nullable props — so nothing below carries a fallback for an organization
- * or brand the layout above has already resolved.
+ * A union rather than nullable props, so nothing below carries a fallback for an
+ * organization or brand the layout above already resolved.
  *
- *  - "brand":        a brand's own pages, plus admin for those who have it
- *  - "organization": the organization's own pages (there is no brand in scope)
- *  - "admin":        the admin section only
- *  - "account":      nothing — the page is a gate the user has to clear first,
- *                    so the only things worth offering are who they are and how
- *                    to leave
+ * "account" is a gate the user has to clear first, so it offers nothing but who
+ * they are and how to leave.
  */
 type ScopeProps =
 	| { scope: "brand"; organization: OrganizationSummary; brand: BrandWithPrompts }
 	| { scope: "organization"; organization: OrganizationSummary }
 	| { scope: "admin" | "account" };
 
-/**
- * The label doesn't name the organization — the breadcrumb and the account menu
- * both already do. Team is listed everywhere; only inviting and removing are a
- * cloud feature, which the page itself reflects.
- */
+/** The label doesn't name the organization; the breadcrumb and account menu do. */
 function organizationGroup(organization: OrganizationSummary, features?: FeaturesConfig): NavGroup {
 	const params = orgParams(organization);
 	const items: NavItem[] = [
@@ -142,8 +133,8 @@ function adminGroup(isAdmin: boolean, reportsEnabled: boolean): NavGroup {
 export function AppSidebar(props: ScopeProps) {
 	const { scope } = props;
 	const { setOpenMobile } = useSidebar();
-	// Facts about the viewer, not about this page's subject, so they come from
-	// the layout that resolved the session rather than from four call sites.
+	// Facts about the viewer, not this page's subject, so they come from the
+	// layout that resolved the session.
 	const { isAdmin, hasReportAccess } = useViewer();
 	const features = useDeploymentFeatures();
 	// Reports are disabled entirely in cloud; hide the nav entry there.
@@ -155,8 +146,8 @@ export function AppSidebar(props: ScopeProps) {
 
 	const groups: NavGroup[] = [
 		...(props.scope === "brand" ? brandGroups(props.organization, props.brand) : []),
-		// Only where the organization is the subject. On a brand page the rail is
-		// that brand's, and the account menu is how its organization is reached.
+		// On a brand page the rail is that brand's, and the account menu is how its
+		// organization is reached.
 		...(props.scope === "organization" ? [organizationGroup(props.organization, features)] : []),
 		...(showAdminSection ? [adminGroup(isAdmin, reportsEnabled)] : []),
 	];

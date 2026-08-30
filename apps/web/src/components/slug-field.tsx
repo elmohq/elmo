@@ -5,8 +5,7 @@ import { cn } from "@workspace/ui/lib/utils";
 
 /**
  * A field of the form that owns it, not a form of its own: renaming a thing and
- * moving its URL are one edit. The submitting page is the one that knows the
- * address moved, so it is the one that navigates afterwards.
+ * moving its URL are one edit, and the submitting page is what navigates after.
  */
 export function SlugField({
 	id,
@@ -39,8 +38,8 @@ export function SlugField({
 					maxLength={MAX_SLUG_LENGTH}
 					className={cn(
 						"border-0 pl-0 font-mono text-sm shadow-none focus-visible:ring-0",
-						// Where it can't be edited the whole address is one static string, so
-						// the segment matches the prefix instead of reading as the live part.
+						// Read-only, so the segment matches the prefix instead of standing out
+						// as the editable part.
 						disabled && "text-muted-foreground disabled:opacity-100",
 					)}
 				/>

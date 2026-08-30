@@ -1,8 +1,7 @@
 /**
- * The list renders in every deployment; inviting and removing are cloud's,
- * since local is single-user, whitelabel's memberships come from Auth0, and
- * demo writes nothing. Hiding those controls is UX — the boundary is the
- * `teamInvites` guard inside each write.
+ * The list renders in every deployment; inviting and removing are cloud's.
+ * Hiding those controls is UX — the boundary is the `teamInvites` guard inside
+ * each write.
  */
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";

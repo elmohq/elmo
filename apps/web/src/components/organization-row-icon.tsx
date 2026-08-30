@@ -3,10 +3,8 @@ import { SiteIcon } from "@/components/site-icon";
 import type { OrganizationRow } from "@/lib/organizations/tree";
 
 /**
- * What a row of `organizationTree` looks like, for the three surfaces that draw
- * one. They pick their own element and their own emphasis; which mark a row
- * carries is the tree's answer, so a new kind of row can't mean one thing in
- * the menu and another in the directory.
+ * Which mark a row carries, so a new kind can't mean one thing in the menu and
+ * another in the directory. Each surface still picks its own element.
  */
 export function OrganizationRowIcon({ row, size }: { row: OrganizationRow; size: "xs" | "md" }) {
 	const className = size === "xs" ? "size-3.5" : undefined;

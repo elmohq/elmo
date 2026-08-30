@@ -1,9 +1,7 @@
 /**
- * Renaming an organization, which only some deployments allow.
- *
- * Not in `shared/`: a whitelabel organization is Auth0's record and demo writes
- * nothing, so in those the save is refused — each has its own spec for that.
- * This is the behaviour where the name is ours to change.
+ * Not in `shared/`: where the record isn't the deployment's, the save is
+ * refused and each mode has its own spec for that. This is the behaviour where
+ * the name is ours to change.
  */
 import { expect, test } from "@playwright/test";
 import {
@@ -14,8 +12,8 @@ import {
 } from "../../fixtures";
 
 test.describe("Organization rename", () => {
-  // Doesn't commit a new slug: the suite shares one seeded organization, and a
-  // spec that moved it and failed before restoring it would strand the rest.
+  // Doesn't commit a new slug: the suite shares one seeded organization, and
+  // moving it without restoring would strand every other spec.
   test("the slug is a field of the same form, with no save of its own", async ({ page }) => {
     await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
 
@@ -39,9 +37,7 @@ test.describe("Organization rename", () => {
     const save = page.getByRole("button", { name: "Save", exact: true });
     await expect(save).toBeDisabled();
 
-    // Padding is a change the user can make, and saving is the only way to undo
-    // it — the server keeps the trimmed name either way, so this writes the name
-    // it already had.
+    // The server trims either way, so this writes the name it already had.
     await nameField.fill(`  ${TEST_BRAND_NAME}  `);
     await expect(save).toBeEnabled();
 
@@ -65,8 +61,8 @@ test.describe("Brand rename", () => {
   const moved = `${RENAMEABLE_BRAND_SLUG}-moved`;
   const settingsAt = (slug: string) => `/app/org/${TEST_ORG_SLUG}/brand/${slug}/settings/brand`;
 
-  // CI retries once, so a failure part-way through would otherwise leave the
-  // brand at the moved slug and guarantee the retry fails too.
+  // CI retries once, so a failure part-way through would leave the brand at the
+  // moved slug and guarantee the retry fails too.
   test.afterEach(async ({ page }) => {
     await page.goto(settingsAt(moved));
     const field = page.getByLabel("Brand Slug", { exact: true });

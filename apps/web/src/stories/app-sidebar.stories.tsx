@@ -35,10 +35,7 @@ const onboardedBrand = {
 	updatedAt: new Date().toISOString(),
 };
 
-/**
- * The organization the `/app/org/$org` layout would have resolved. The rail names it
- * and lists its brands from here, so every story hands one over.
- */
+/** What the `/app/org/$org` layout would have resolved. */
 const organization = {
 	id: "org-1",
 	slug: "mock-organization",
@@ -229,8 +226,7 @@ export const Local: StoryObj = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		// What an admin is offered comes from the viewer, not from a prop — so the
-		// story that says "full admin" is where that has to be asserted.
+		// What an admin is offered comes from the viewer, not a prop.
 		await expect(await canvas.findByText("Workflows")).toBeInTheDocument();
 		await expect(await canvas.findByText("Tools")).toBeInTheDocument();
 	},
@@ -316,8 +312,8 @@ export const Cloud: StoryObj = {
 		// below the fold of this frame — assert it rather than eyeballing it.
 		await expect(await canvas.findByText("Billing")).toBeInTheDocument();
 		await expect(await canvas.findByText("Team")).toBeInTheDocument();
-		// This viewer is an admin with report access, so Reports is absent because
-		// cloud disables report generation and for no other reason.
+		// An admin with report access, so Reports is absent for one reason only:
+		// cloud disables report generation.
 		await expect(await canvas.findByText("Workflows")).toBeInTheDocument();
 		await expect(canvas.queryByText("Reports")).toBeNull();
 	},

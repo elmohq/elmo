@@ -1,8 +1,7 @@
 /**
- * An admin action, and only where this deployment owns the record: a whitelabel
- * organization belongs to Auth0 and demo writes nothing. The fields stay live
- * there and the save is what refuses, so the reason is on screen rather than
- * left to be guessed from a dead form.
+ * An admin action, and only where this deployment owns the record. Where it
+ * doesn't, the fields stay live and the save is what refuses — so the reason is
+ * on screen rather than guessed from a dead form.
  */
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { ORG_URL_PREFIX } from "@workspace/lib/app-urls";
@@ -32,7 +31,7 @@ function OrganizationSettingsPage() {
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	// Compared raw so the button stays live long enough to normalize padding the
+	// Compared raw, so the button stays live long enough to save away padding the
 	// server would have trimmed anyway.
 	const trimmedName = name.trim();
 	const trimmedSlug = slug.trim().toLowerCase();

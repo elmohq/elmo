@@ -1,9 +1,3 @@
-/**
- * /app/org/$org/brand/$brand/prompts/$promptId - Prompt detail page
- *
- * Shows prompt details with tabs: Mentions, Web Queries, Citations, LLM Responses.
- */
-
 import { IconInfoCircle } from "@tabler/icons-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { extractTextContent } from "@workspace/lib/text-extraction";

@@ -1,9 +1,6 @@
 /**
- * App routing E2E tests
- *
- * The URL shape itself: `/app/org/$org/brand/$brand`, what resolves in each
- * segment, what canonicalizes, and what a link minted before this shape gets
- * instead of a dead end.
+ * The URL shape itself: what resolves in each segment, what canonicalizes, and
+ * what a link minted before this shape gets instead of a dead end.
  */
 import { expect, test } from "@playwright/test";
 import {
@@ -17,7 +14,7 @@ import {
 	organizationUrl,
 } from "../../fixtures";
 
-/** The seeded brand has no slug, so its segment is its id — the pre-slug state. */
+/** No slug, so the segment is the id. */
 const BRAND_URL = `/app/org/${TEST_ORG_SLUG}/brand/${TEST_BRAND_ID}`;
 const SLUGGED_BRAND_URL = `/app/org/${TEST_ORG_SLUG}/brand/${SLUGGED_BRAND_SLUG}`;
 
@@ -32,22 +29,18 @@ test.describe("App routing", () => {
 		await page.goto(SLUGGED_BRAND_URL);
 		await expect(page).toHaveURL(new RegExp(`${SLUGGED_BRAND_URL}$`), { timeout: 30_000 });
 
-		// Two live URLs for one page is exactly what naming things was meant to
-		// end, so the id is a way in but not a place to stay.
+		// The id is a way in, not a place to stay.
 		await page.goto(`/app/org/${TEST_ORG_SLUG}/brand/${SLUGGED_BRAND_ID}/citations`);
 		await expect(page).toHaveURL(new RegExp(`${SLUGGED_BRAND_URL}/citations$`), { timeout: 30_000 });
 	});
 
-	// Nothing an organization or brand is named can shadow a sibling route now that
-	// both sit under a static segment, so these are ordinary pages rather than
-	// names the app has to reserve.
+	// Both sit under a static segment, so no name shadows a sibling route and
+	// nothing has to be reserved.
 	test("route names are reachable as organization pages", async ({ page }) => {
 		await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
 		await expect(page.getByRole("heading", { name: "Organization" })).toBeVisible({ timeout: 30_000 });
 
-		// Reachable as a page wherever brands can be created, and redirected back
-		// to the organization where they can't — either way it resolves as a route
-		// rather than being read as an organization named "new".
+		// Either way it resolves as a route rather than an organization named "new".
 		await page.goto(`/app/org/${TEST_ORG_SLUG}/new`);
 		await expect(page).toHaveURL(new RegExp(`/app/org/${TEST_ORG_SLUG}(?:/new|/settings)?/?$`), {
 			timeout: 30_000,
@@ -62,7 +55,7 @@ test.describe("App routing", () => {
 		await expect(page.getByRole("link", { name: TEST_BRAND_NAME, exact: true }).first()).toBeVisible();
 	});
 
-	// A full-page view has no rail, and a mark that goes nowhere reads as broken.
+	// A full-page view has no rail, so the mark is the only way out.
 	test("the mark on a full-page view leads to the directory", async ({ page }) => {
 		await page.goto("/app/org/not-a-organization");
 
@@ -70,8 +63,8 @@ test.describe("App routing", () => {
 		await expect(mark).toBeVisible({ timeout: 30_000 });
 		await expect(mark).toHaveAttribute("href", "/app");
 
-		// Including a 404 outside /app, which renders without the layout that
-		// resolves a session and so has to ask for one itself.
+		// Including outside /app, which renders without the layout that resolves a
+		// session and so has to ask for one itself.
 		await page.goto("/appadsf");
 		await expect(page.getByRole("link", { name: "Go to your organizations" })).toHaveAttribute("href", "/app", {
 			timeout: 30_000,
@@ -85,8 +78,8 @@ test.describe("App routing", () => {
 		await expect(page.locator(`a[href="${BRAND_URL}"]`).first()).toBeVisible();
 	});
 
-	// Membership in the organization is what grants access, and the brand is looked
-	// up inside it — so another tenant's brand is absent here, not forbidden.
+	// The brand is looked up inside an organization the caller belongs to, so
+	// another tenant's is absent rather than forbidden.
 	test("a brand from another organization does not resolve under this one", async ({ page }) => {
 		await page.goto(`/app/org/${TEST_ORG_SLUG}/brand/${NIKE_BRAND_ID}`);
 		await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
@@ -112,8 +105,7 @@ test.describe("App routing", () => {
 		await page.goto(`${BRAND_URL}/citations`);
 
 		const trail = page.getByRole("navigation", { name: "breadcrumb" });
-		// The two carry the same name here, so each crumb is addressed by where it
-		// leads — the organization crumb back to the organization, not to the brand.
+		// Both carry the same name, so each crumb is addressed by where it leads.
 		const organization = trail.locator(`a[href="${organizationUrl()}"]`);
 		const brand = trail.locator(`a[href="${BRAND_URL}"]`);
 
@@ -121,7 +113,7 @@ test.describe("App routing", () => {
 		await expect(brand).toContainText(TEST_BRAND_NAME);
 		await expect(trail.getByText("Citations", { exact: true })).toBeVisible();
 
-		// Each name says which of the two it is, since both are often the same word.
+		// Each name says which of the two it is.
 		await expect(organization.getByText("Organization", { exact: true })).toBeVisible();
 		await expect(brand.getByText("Brand", { exact: true })).toBeVisible();
 	});
@@ -130,7 +122,7 @@ test.describe("App routing", () => {
 		await page.goto(`${organizationUrl()}/settings/brands`);
 
 		const trail = page.getByRole("navigation", { name: "breadcrumb" });
-		// The organization crumb leads to the settings, so the trail doesn't say it too.
+		// The organization crumb already leads to the settings.
 		await expect(trail.locator(`a[href="${organizationUrl()}"]`)).toBeVisible({ timeout: 30_000 });
 		await expect(trail.getByText("Brands", { exact: true })).toBeVisible();
 		await expect(trail.getByText("Settings", { exact: true })).toHaveCount(0);

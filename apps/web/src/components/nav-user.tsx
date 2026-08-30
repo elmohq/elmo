@@ -32,18 +32,14 @@ import { organizationTree } from "@/lib/organizations/tree";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 import { resetPostHog } from "@/lib/posthog";
 
-/**
- * The tick marks the brand and not the organization: the organization is already the
- * heading the brand sits under.
- */
 export function NavUser() {
 	const { user } = useAuth();
 	const { isMobile, setOpenMobile } = useSidebar();
 	const branding = useBranding();
 	const features = useDeploymentFeatures();
 	const { organizations, isLoading, isError, isFetching, refetch } = useOrganizations();
-	// The id, not the segment: brand slugs are unique within an organization, and
-	// this menu lists several.
+	// The id, not the segment: brand slugs are only unique within an
+	// organization, and this menu lists several.
 	const currentBrandId = useBrandId();
 
 	// NavUser only renders inside _authed routes, which redirect to /auth/login
@@ -123,8 +119,7 @@ export function NavUser() {
 						{isError && (
 							<DropdownMenuItem
 								className="cursor-pointer"
-								// Keep the menu open: the point of the item is to watch the retry
-								// land, and closing would hide whatever it turns up.
+								// Keep the menu open, so the retry's result is visible.
 								onSelect={(event) => {
 									event.preventDefault();
 									refetch();
@@ -186,10 +181,8 @@ export function NavUser() {
 /**
  * The settings control sits on the heading rather than at the foot of the menu,
  * because "settings" with no organization beside it only answers for whichever
- * one you happen to be in.
- *
- * An organization with nothing under it renders nothing under it — no rule, no
- * empty-state line. The heading is the whole entry.
+ * one you happen to be in. The tick marks the brand, since the organization is
+ * already the heading it sits under.
  */
 function OrganizationSection({
 	organization,

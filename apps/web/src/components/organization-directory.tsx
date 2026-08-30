@@ -10,11 +10,9 @@ import type { OrganizationSummary } from "@/lib/organizations/types";
 const ROW = "flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground";
 
 /**
- * Shared by `/app` and the 404, which answer the same question.
- *
- * The same tree the account menu draws, so a person who has opened one has read
- * the other. Without the separators: nothing follows the last organization
- * here, so the space between them is enough to tell them apart.
+ * Shared by `/app` and the 404, which answer the same question, and drawn from
+ * the same tree as the account menu. Without the menu's separators: nothing
+ * follows the last organization here, so the spacing is enough.
  */
 export function OrganizationDirectory({ organizations }: { organizations: OrganizationSummary[] }) {
 	const features = useDeploymentFeatures();

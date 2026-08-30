@@ -42,13 +42,9 @@ interface HeadArgs {
 }
 
 /**
- * The `head` every page inside the app shares: its own name, the subject it is
- * about, and the deployment's.
- *
- * The name comes from the crumb, so the trail and the tab agree without the
- * page saying it twice — `title` is for the few where they differ. The subject
- * is the brand where there is one and the organization otherwise, which is what
- * the breadcrumb reads too.
+ * The name comes from the crumb, so the trail and the tab agree without the page
+ * saying it twice; `title` is for the few where they differ. The subject is the
+ * brand where there is one and the organization otherwise.
  */
 export function pageHead(page: { title?: string; description?: string }) {
 	return ({ match, matches }: HeadArgs) => {

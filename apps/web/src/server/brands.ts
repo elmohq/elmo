@@ -1,7 +1,3 @@
-/**
- * Server functions for brand operations.
- * Replaces apps/web/src/app/api/brands/* API routes.
- */
 import { createServerFn } from "@tanstack/react-start";
 import { isValidSlug, MAX_SLUG_LENGTH, slugify } from "@workspace/lib/app-urls";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
@@ -279,9 +275,8 @@ export const createBrandFn = createServerFn({ method: "POST" })
 
 		const defaultDomains = getDefaultBrandDomains();
 		const enabledModels = await resolveCreateEnabledModels(data.brandId, data.enabledModels);
-		// Slug resolution and the insert it guards share one transaction, like
-		// createBrandInOrgFn below — the slug unique index is the backstop if a
-		// concurrent create slips past the check, mapped to a retryable failure.
+		// One transaction, so the slug resolution and the insert it guards run on
+		// one connection.
 		const created = await claimSlug(
 			() =>
 				db.transaction(async (tx) => {
@@ -291,8 +286,6 @@ export const createBrandFn = createServerFn({ method: "POST" })
 							.insert(brands)
 							.values({
 								id: data.brandId,
-								// brandId is the org id from the URL (access verified above); the
-								// brand belongs to that org.
 								organizationId: data.brandId,
 								name: data.brandName,
 								slug,
@@ -301,8 +294,9 @@ export const createBrandFn = createServerFn({ method: "POST" })
 								...(enabledModels && { enabledModels }),
 								...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
 							})
-							// Targeted: the fallback below reads back by id, so swallowing a slug
-							// conflict here would find nothing and report a failure that isn't one.
+							// Targeted at the id: the fallback below reads back by id, so
+							// swallowing a slug conflict would find nothing and report a failure
+							// that isn't one.
 							.onConflictDoNothing({ target: brands.id })
 							.returning()
 					);
@@ -361,11 +355,9 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 			throw new Error("Brand name must be a non-empty string");
 		}
 
-		// Which organization owns the brand is only ambiguous when the caller belongs
-		// to more than one — a cloud user who accepted a team invite, or a local
-		// install from when creating a brand minted an org for it. /app/new asks
-		// in that case; picking for them would be a coin flip that decides who
-		// can see the brand and, later, who gets billed for it.
+		// Only ambiguous when the caller belongs to more than one organization.
+		// Picking for them would decide who can see the brand and who is billed
+		// for it, so an ambiguous call is refused rather than guessed.
 		const orgs = await listUserOrganizations(session.user.id);
 		const choice = resolveBrandOrganization(
 			orgs.map((o) => o.id),
@@ -382,16 +374,12 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 		const enabledModels = await resolveCreateEnabledModels(orgId, data.enabledModels);
 
 		// Both names are resolved inside the transaction that uses them, so the
-		// checks and the insert they guard run on one connection — the same shape
-		// provisionUmbrellaOrg uses. Two creates racing on a name still collide on
-		// the unique index (the real guarantee), which claimSlug maps to a
-		// retryable failure rather than a raw 500 or a duplicate row.
+		// checks and the insert they guard run on one connection.
 		return claimSlug(
 			() =>
 				db.transaction(async (tx) => {
-					// The id is globally unique and may have picked up a suffix on the way;
-					// the slug only has to clear this organization, so it usually keeps the
-					// plain name even when the id could not.
+					// The id is globally unique and may pick up a suffix; the slug only has
+					// to clear this organization, so it usually keeps the plain name.
 					const brandId = await findUniqueBrandId(baseSlug, tx);
 					const slug = await findUniqueBrandSlug(orgId, baseSlug, tx);
 
@@ -424,7 +412,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 			brandId: z.string(),
 			name: z.string().optional(),
 			website: z.string().optional(),
-			/** Unique within the organization: the URL has already named that. */
+			/** Unique within the organization, which the URL has already named. */
 			slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH).optional(),
 			additionalDomains: z.array(z.string()).optional(),
 			aliases: z.array(z.string()).optional(),
@@ -447,10 +435,6 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 		}
 		const updateData = normalized.updates;
 
-		// The segment resolves as a slug or an id, so both namespaces are checked.
-		// The check gives the friendly path, and the slug unique index is the real
-		// guarantee — claimSlug maps the loser's violation to the same TAKEN_SLUG
-		// error the form expects rather than a raw 500.
 		const result = await claimSlug(
 			() =>
 				db.transaction(async (tx) => {

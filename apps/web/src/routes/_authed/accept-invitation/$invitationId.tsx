@@ -72,11 +72,10 @@ function AcceptInvitationPage() {
 		setAccepting(true);
 		try {
 			const { orgSlug } = await acceptInvitationFn({ data: { invitationId } });
-			// The list of what this user can reach is what the organization layout
-			// resolves against, and accepting just changed it.
+			// The organization layout resolves against this list, and accepting just
+			// changed it.
 			await invalidateOrganizations();
-			// Into the organization they just joined, rather than a picker that
-			// makes them find it.
+			// Into the organization they just joined, not a picker.
 			navigate({ to: "/app/org/$org", params: { org: orgSlug } });
 		} catch (err) {
 			setAcceptError(writeError(err, "Failed to accept the invitation"));

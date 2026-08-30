@@ -2,17 +2,15 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useBrandParams } from "@/hooks/use-route-params";
 
-/** Which tab of the prompt detail page to land on; the route's own search shape. */
+/** Which tab of the prompt detail page to land on. */
 export type PromptDetailSearch = { tab: "mentions" | "web-queries" | "citations" | "responses" };
 
 /**
- * A link to a prompt's detail page, from anywhere inside a brand.
+ * A link to a prompt's detail page, for the five places that offer one.
  *
- * Five places link here, and each used to decide for itself whether it could —
- * usually by testing a `brandId` prop while building the URL out of the route,
- * so the test and the target could disagree. The route is the only thing that
- * knows, so it answers here once: outside a brand page there is no such page to
- * link to, and the content renders as plain text instead.
+ * Whether there is a page to link to is the route's answer, not the caller's,
+ * so it is made here once: outside a brand page the content renders as plain
+ * text instead.
  */
 export function BrandPromptLink({
 	promptId,
@@ -25,9 +23,9 @@ export function BrandPromptLink({
 	search?: PromptDetailSearch;
 	className?: string;
 	/**
-	 * Applied instead of `className` when there is nothing to link to — for the
-	 * one caller whose link class carries `group`, which on a plain span would
-	 * underline text that leads nowhere.
+	 * Used instead of `className` when there is nothing to link to, for the one
+	 * caller whose link class carries `group` — on a plain span that would
+	 * underline text leading nowhere.
 	 */
 	fallbackClassName?: string;
 	children: ReactNode;

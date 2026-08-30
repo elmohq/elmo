@@ -1,6 +1,6 @@
 /**
  * A page rather than a rail section, so brands sit beside the other things the
- * organization holds instead of forming a second nav tree beside the brand's own.
+ * organization holds instead of forming a second nav tree.
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";

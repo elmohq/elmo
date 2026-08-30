@@ -1,7 +1,7 @@
 /**
  * Kept out of `@/server/organizations`, which the client imports for its server
- * functions: anything exported there outright drags the database into the
- * client graph, while handler bodies are stripped.
+ * functions: handler bodies are stripped from that module, but anything
+ * exported outright would drag the database into the client graph.
  */
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
@@ -28,12 +28,10 @@ async function resolveBrandCreation(orgIds: string[]): Promise<Map<string, Brand
 }
 
 /**
- * The summaries every organization surface renders, for one organization or for
- * all of a user's — the two lists are the same shape, so they are one query and
- * one shaper rather than a pair that can drift.
+ * One organization or all of a user's: the two lists are the same shape, so one
+ * query and one shaper rather than a pair that can drift.
  *
- * The caller's role stays server-side: the server answers for itself what the
- * settings page may offer, and shipping the role would be a permission the
+ * The caller's role stays server-side — shipping it would be a permission the
  * client could be tempted to read.
  */
 export async function summarizeOrganizations(orgs: UserOrganization[]): Promise<OrganizationSummary[]> {
@@ -59,12 +57,11 @@ export async function summarizeOrganizations(orgs: UserOrganization[]): Promise<
 		id: org.id,
 		slug: org.slug,
 		name: org.name,
-		// Alphabetical, with the id breaking ties between brands that share a
-		// name: an unordered select leaves the order up to Postgres, which is free
-		// to hand back a different one after any row rewrite or plan change.
-		// Sorted here rather than in SQL so the result doesn't depend on the
-		// deployment's database collation — `ORDER BY name` under LC_COLLATE=C is
-		// byte order, which puts every capitalized name ahead of every lowercase one.
+		// Alphabetical, with the id breaking ties between brands that share a name,
+		// since an unordered select leaves the order up to Postgres. Sorted here
+		// rather than in SQL so it doesn't depend on the deployment's collation —
+		// `ORDER BY name` under LC_COLLATE=C is byte order, which puts every
+		// capitalized name ahead of every lowercase one.
 		brands: rows
 			.filter((brand) => brand.organizationId === org.id)
 			.map(({ id, slug, name, website, onboarded }) => ({ id, slug, name, website, onboarded }))

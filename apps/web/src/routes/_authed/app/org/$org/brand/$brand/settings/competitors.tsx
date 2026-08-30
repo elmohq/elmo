@@ -1,7 +1,6 @@
 /**
- * The brand's competitors, buffered until an explicit save — the same bar the
- * prompts page uses, since both edit a whole list at once and both can lose a
- * page of work to a stray navigation.
+ * Buffered until an explicit save, like the prompts page: both edit a whole list
+ * at once, and both can lose a page of work to a stray navigation.
  */
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -47,8 +46,7 @@ function CompetitorsSettingsPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [competitors, setCompetitors] = useState<CompetitorEntry[]>([]);
 
-	// Reseed when the server's list changes, without discarding what is being
-	// typed in between.
+	// Reseed when the server's list changes, without discarding edits in flight.
 	const [seededFrom, setSeededFrom] = useState<unknown>(null);
 	if (!competitorsLoading && existingCompetitors !== seededFrom) {
 		setSeededFrom(existingCompetitors);

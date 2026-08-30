@@ -9,9 +9,8 @@ import { pageHead } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/visibility")({
 	staticData: { crumb: "Visibility" },
-	// The prompts list's sort order (#60) is this route's own search key, on top
-	// of the brand-wide filter keys validated by the `$brand` layout route. The
-	// default order is omitted so default state keeps a clean URL.
+	// This route's own search key, on top of the brand-wide filters the `$brand`
+	// layout validates. The default order is omitted so it keeps a clean URL.
 	validateSearch: (search: Record<string, unknown>): { order?: PromptOrder } => {
 		const order = coercePromptOrder(search.order);
 		return order === DEFAULT_PROMPT_ORDER ? {} : { order };

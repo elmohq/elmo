@@ -60,9 +60,7 @@ describe("canonical hrefs", () => {
 		);
 	});
 
-	// The segment in the address bar is encoded while the resolved value is not,
-	// so anything that measured an offset from the decoded value would land in the
-	// wrong place here and truncate the path.
+	// An offset measured from the decoded value would land wrong here.
 	it("survives an encoded segment ahead of the one being replaced", () => {
 		expect(canonicalOrgHref(location("/app/org/a%20b%2Fc/brand/nike/citations"), "acme")).toBe(
 			"/app/org/acme/brand/nike/citations",
@@ -89,8 +87,7 @@ describe("slugify", () => {
 		expect(slugify("!!!brand!!!", "brand")).toBe("brand");
 	});
 
-	// A name in a script with no ASCII alphanumerics has no segment to make, and
-	// what to call it instead is the caller's to say.
+	// No ASCII alphanumerics means no segment to make.
 	it("falls back to what the caller is minting", () => {
 		expect(slugify("", "brand")).toBe("brand");
 		expect(slugify("!!!", "organization")).toBe("organization");
@@ -101,14 +98,12 @@ describe("slugify", () => {
 		expect(slugify("Acme 2", "brand")).toBe("acme-2");
 	});
 
-	// A name is as long as someone wants it; the URL segment it becomes is not.
 	it("bounds the length, without leaving a trailing hyphen behind", () => {
 		expect(slugify("a".repeat(MAX_SLUG_LENGTH + 20), "brand")).toHaveLength(MAX_SLUG_LENGTH);
 		expect(slugify(`${"a".repeat(MAX_SLUG_LENGTH - 1)} tail`, "brand")).toBe("a".repeat(MAX_SLUG_LENGTH - 1));
 	});
 
-	// Organizations and brands sit under static `org`/`brand` segments, so no name
-	// can shadow a sibling route and nothing needs reserving.
+	// Both sit under static segments, so no name shadows a sibling route.
 	it("leaves route names alone", () => {
 		expect(slugify("new", "brand")).toBe("new");
 		expect(slugify("Settings", "brand")).toBe("settings");
@@ -116,8 +111,8 @@ describe("slugify", () => {
 });
 
 describe("isValidSlug", () => {
-	// The two have to agree: a slug the producer emits and the validator refuses
-	// is a record that can be created and then never saved again.
+	// A slug the producer emits and the validator refuses is a record that can be
+	// created and then never saved again.
 	it("accepts everything slugify produces", () => {
 		const names = [
 			"Acme",
@@ -150,8 +145,8 @@ describe("isValidSlug", () => {
 		expect(isValidSlug("a".repeat(MAX_SLUG_LENGTH + 1))).toBe(false);
 	});
 
-	// Route names are ordinary slugs now; the only thing that could make one
-	// ambiguous is colliding with an id, which is an availability question.
+	// Route names are ordinary slugs; colliding with an id is an availability
+	// question, not a validity one.
 	it("has no opinion about route names", () => {
 		expect(isValidSlug("new")).toBe(true);
 		expect(isValidSlug("settings")).toBe(true);

@@ -1,10 +1,3 @@
-/**
- * /app/org/$org/brand/$brand - Dashboard overview page
- *
- * Shows visibility charts, citation trends, and stats.
- * Displays onboarding wizard if brand is not yet onboarded.
- */
-
 import {
 	IconActivity,
 	IconArrowRight,
