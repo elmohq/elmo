@@ -8,9 +8,7 @@ export interface FeaturesConfig {
 	 * cloud modes — whitelabel brands come from the admin API, demo is read-only.
 	 */
 	canCreateBrands: boolean;
-	/** Cloud only: local has one organization per install, and whitelabel's come from Auth0. */
 	canCreateOrganizations: boolean;
-	/** Whether an organization's name and URL are this deployment's to change. */
 	canEditOrganizations: boolean;
 	/**
 	 * Whether public self-serve registration is available. True only in cloud

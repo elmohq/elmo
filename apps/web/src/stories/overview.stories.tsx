@@ -1,8 +1,3 @@
-/**
- * Stories for the brand Overview page (/app/org/$org/brand/$brand). Renders the real
- * DashboardPage with mocked brand + dashboard/share-of-voice data so the page
- * can be viewed without auth or a database.
- */
 import type { Meta, StoryObj } from "@storybook/react";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";

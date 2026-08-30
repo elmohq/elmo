@@ -1,17 +1,3 @@
-/**
- * Query Fan-Out
- *
- * "What are the answer engines really searching for?" When an engine answers a
- * tracked prompt it may run several web searches first. KPIs summarize how much
- * prompts expand, then three tabs: Prompt Fan-Out (each prompt's searches, with
- * its keywords bolded), Query Words (the cloud + which words engines add/drop/keep),
- * and Query Visibility (searches you're missing vs win).
- *
- * Read-only from `prompt_runs.web_queries`; engines that don't expose their
- * searches contribute runs but no queries. See `server/query-fanout.ts` and
- * `lib/fanout-analysis.ts`.
- */
-
 import { IconChevronDown, IconChevronRight, IconSearch } from "@tabler/icons-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";

@@ -129,11 +129,6 @@ async function openPremium(canvasElement: HTMLElement, says: RegExp) {
 	await userEvent.click(await premiumTrigger(canvasElement, says));
 }
 
-/**
- * The premium column, which only appears when the organization has an allowance.
- * The pool is org-wide, so the count includes prompts belonging to the org's
- * other brands — which this editor cannot show but which still spend it.
- */
 export const PremiumColumn: StoryObj = {
 	render: () => (
 		<Harness

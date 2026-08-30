@@ -26,7 +26,6 @@ import { createReportFn, getReportsFn } from "@/server/reports";
 export const Route = createFileRoute("/_authed/reports/")({
 	staticData: { crumb: "Reports" },
 	head: pageHead({ description: "Generate and view one-time brand reports." }),
-	// From `_authed`'s viewer, for the reason the admin layout gives.
 	beforeLoad: ({ context }) => {
 		if (!context.isAdmin && !context.hasReportAccess) throw notFound();
 	},
@@ -105,7 +104,6 @@ function ReportsPage() {
 						<p className="text-muted-foreground">Generate one-time brand reports.</p>
 					</div>
 					<div className="space-y-6 max-w-4xl">
-						{/* Report Creation Form */}
 						<div className="space-y-4">
 							<h2 className="text-2xl font-semibold">Create New Report</h2>
 
@@ -184,7 +182,6 @@ function ReportsPage() {
 							</form>
 						</div>
 
-						{/* Reports List */}
 						<div className="space-y-4">
 							<h2 className="text-2xl font-semibold">Report History</h2>
 

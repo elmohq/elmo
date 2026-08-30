@@ -1,8 +1,3 @@
-/**
- * The organization and brand a page is about, looked up by route id rather than
- * sniffed out of whichever match carries a likely-looking field. The trail and
- * the tab title read the one answer.
- */
 import type { FileRoutesById } from "@/routeTree.gen";
 
 // `satisfies` so a layout that moves is a compile error rather than a crumb
@@ -22,10 +17,6 @@ export interface RouteSubjects {
 	brandName?: string;
 }
 
-/**
- * Either may be absent mid-load — the trail leaves that crumb out, and a title
- * falls back to the app name until it arrives.
- */
 export function routeSubjects(matches: SubjectMatch[]): RouteSubjects {
 	const subjects: RouteSubjects = {};
 	for (const match of matches) {

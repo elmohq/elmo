@@ -67,7 +67,6 @@ interface PromptScheduleStatus {
 
 interface BrandScheduleSummary {
 	brandId: string;
-	/** Null falls back to the id, which is a working segment too. */
 	brandSlug: string | null;
 	brandName: string;
 	organizationSlug: string;

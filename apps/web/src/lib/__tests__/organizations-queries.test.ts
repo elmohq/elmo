@@ -5,8 +5,6 @@ import { invalidateOrganizations, organizationsQuery } from "@/lib/organizations
 vi.mock("@/server/organizations", () => ({ listOrganizationsFn: vi.fn() }));
 
 describe("invalidateOrganizations", () => {
-	// React Query's default only refetches observed queries — see
-	// `invalidateOrganizations` for why that 404s a caller after its own write.
 	it("re-reads the list even with nothing observing it", async () => {
 		const queryClient = new QueryClient();
 		let answer = ["before"];

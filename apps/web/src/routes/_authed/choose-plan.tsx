@@ -28,11 +28,6 @@ import { getPaywallStateFn, type PaywallRequired, type PaywallState } from "@/se
 
 const searchSchema = z.object({
 	status: z.enum(["success"]).optional(),
-	/**
-	 * Which organization is being subscribed. Carried by whichever gate redirected
-	 * here so checkout bills the organization the user was actually blocked on,
-	 * not whichever of their memberships happens to be oldest.
-	 */
 	org: z.string().optional(),
 });
 
@@ -75,8 +70,6 @@ function ChoosePlanPage() {
 	// non-admin who is told to go ask someone else.
 	return (
 		<AppShell sidebar={<AppSidebar scope="account" />} header={<SiteHeader />}>
-			{/* No `PageContent`: both bodies lay out and pad a full-height page of
-			    their own. */}
 			<div className="flex flex-1 flex-col">{body}</div>
 		</AppShell>
 	);
@@ -90,8 +83,6 @@ function ActivatingOrganization({ organizationId }: { organizationId?: string })
 		let cancelled = false;
 		const poll = async () => {
 			for (let i = 0; i < 30 && !cancelled; i++) {
-				// Poll the org that was just paid for: another unsubscribed organization
-				// would otherwise keep the user-level check saying "still needs a plan".
 				const state = await getPaywallStateFn({ data: { organizationId } });
 				if (!state.needsPlan) {
 					navigate({ to: "/app" });

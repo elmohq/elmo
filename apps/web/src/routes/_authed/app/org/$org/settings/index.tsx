@@ -1,8 +1,3 @@
-/**
- * An admin action, and only where this deployment owns the record. Where it
- * doesn't, the fields stay live and the save is what refuses — so the reason is
- * on screen rather than guessed from a dead form.
- */
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { ORG_URL_PREFIX } from "@workspace/lib/app-urls";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
@@ -31,8 +26,6 @@ function OrganizationSettingsPage() {
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	// Compared raw, so the button stays live long enough to save away padding the
-	// server would have trimmed anyway.
 	const trimmedName = name.trim();
 	const trimmedSlug = slug.trim().toLowerCase();
 	const slugMoved = trimmedSlug !== organization.slug;
@@ -41,7 +34,6 @@ function OrganizationSettingsPage() {
 
 	async function handleSave(e: React.FormEvent) {
 		e.preventDefault();
-		// Enter submits whatever the button is doing, and spaces clear `required`.
 		if (!isDirty || !isComplete) return;
 		setError(null);
 		setSaving(true);
@@ -52,7 +44,6 @@ function OrganizationSettingsPage() {
 			setName(trimmedName);
 			setSlug(trimmedSlug);
 			await invalidateOrganizations();
-			// If the slug moved, so did the address this page is at.
 			if (slugMoved) {
 				await router.navigate({ to: "/app/org/$org/settings", params: { org: trimmedSlug }, replace: true });
 			}

@@ -105,11 +105,6 @@ export interface UserOrganization {
 	role: string;
 }
 
-/**
- * Oldest membership first, so a user's own organization precedes any they were
- * invited into. `organization.id` breaks ties, which a batch Auth0 sync
- * produces by stamping every membership it creates with the same timestamp.
- */
 export async function listUserOrganizations(userId: string): Promise<UserOrganization[]> {
 	return db
 		.select({ id: organization.id, slug: organization.slug, name: organization.name, role: member.role })
@@ -119,11 +114,6 @@ export async function listUserOrganizations(userId: string): Promise<UserOrganiz
 		.orderBy(member.createdAt, organization.id);
 }
 
-/**
- * The organization behind an `/app/org/$org` segment, by slug or by id, so a
- * link minted before a rename and anything holding an `organizationId` both
- * resolve. Null when the user has no such organization.
- */
 export async function resolveOrganization(userId: string, slugOrId: string): Promise<UserOrganization | null> {
 	const [row] = await db
 		.select({ id: organization.id, slug: organization.slug, name: organization.name, role: member.role })

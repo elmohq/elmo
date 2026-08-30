@@ -37,11 +37,6 @@ async function requireAdmin() {
 	return session;
 }
 
-/**
- * So admin's brand links land on the canonical path rather than bouncing
- * through a redirect. Asked of the organizations those brands name rather than
- * of the whole table.
- */
 async function organizationSlugs(organizationIds: string[]): Promise<Map<string, string>> {
 	if (organizationIds.length === 0) return new Map();
 	const rows = await db
@@ -51,7 +46,6 @@ async function organizationSlugs(organizationIds: string[]): Promise<Map<string,
 	return new Map(rows.map((row) => [row.id, row.slug]));
 }
 
-/** The id is a working segment too, so a brand whose org went away still links somewhere. */
 function organizationSegment(slugs: Map<string, string>, organizationId: string): string {
 	return slugs.get(organizationId) ?? organizationId;
 }
@@ -612,7 +606,6 @@ function targetColumnsFor(plans: (PromptRunPlan | undefined)[]): { key: string; 
  * Get full workflow data: queue stats, recent jobs, brand schedule summaries.
  */
 interface WorkflowContext {
-	/** Organization slug by org id, so brand links land on the canonical path. */
 	orgSlugs: Map<string, string>;
 	runPlans: Map<string, PromptRunPlan>;
 	lastRunsByPrompt: Map<string, Map<string, Date>>;

@@ -1,8 +1,3 @@
-/**
- * A page rather than a rail section, so brands sit beside the other things the
- * organization holds instead of forming a second nav tree.
- */
-
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { OrganizationRowIcon } from "@/components/organization-row-icon";
@@ -41,7 +36,6 @@ function OrganizationBrandsPage() {
 					</Link>
 				))}
 
-				{/* Said where the button would have been, so its absence is explained. */}
 				{organization.brandCreation.kind === "denied" && (
 					<p className="text-sm text-muted-foreground">{organization.brandCreation.message}</p>
 				)}

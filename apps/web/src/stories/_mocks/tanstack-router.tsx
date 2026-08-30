@@ -13,10 +13,6 @@ import React, { createContext, type ReactNode, useContext } from "react";
 
 const RouteCtx = createContext<Record<string, unknown>>({});
 
-/**
- * What the real `$brand` layout puts in context. A story setting its own context
- * is naming what it cares about, not clearing this.
- */
 const BASE_ROUTE_CONTEXT: Record<string, unknown> = { brandId: "mock-brand-id" };
 
 let _routeContext: Record<string, unknown> = {};
@@ -130,10 +126,6 @@ export function useMatch(_opts?: unknown) {
 	return { params: { org: "mock-organization", brand: "mock-brand-id" } };
 }
 
-/**
- * The matches a brand page would have, so the header's trail renders. Both
- * layouts carry loader data, which is where the trail reads the names from.
- */
 let _matches: Array<{ routeId: string; pathname: string; staticData: { crumb?: string }; loaderData?: unknown }> = [
 	{
 		routeId: "/_authed/app/org/$org",
@@ -157,7 +149,6 @@ export function useMatches() {
 	return _matches;
 }
 
-/** Fills `$param` placeholders the way the real router does. */
 function buildLocation({ to, params }: { to?: string; params?: Record<string, string> }) {
 	const pathname = Object.entries(params ?? {}).reduce(
 		(path, [key, value]) => path.replace(`$${key}`, encodeURIComponent(value)),

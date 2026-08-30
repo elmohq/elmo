@@ -20,11 +20,6 @@ interface PromptsEditorProps {
 	brandId: string;
 	pageTitle: string;
 	pageDescription: string;
-	/**
-	 * The organization's premium allowance. Omit to hide the column — self-hosted, or
-	 * a cloud plan whose pool is zero. Assignment lives here rather than on the LLM
-	 * settings page because it is per prompt.
-	 */
 	premium?: PremiumAllowance;
 }
 

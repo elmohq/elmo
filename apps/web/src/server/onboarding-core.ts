@@ -300,18 +300,11 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	const additionalDomains = dedupeDomains(input.additionalDomains ?? []).filter((d) => d !== websiteHost);
 	const aliases = dedupeAliases(input.aliases ?? []);
 
-	// Brands are hard-scoped to an org by a NOT NULL FK, so the org is
-	// materialized first — this path (the admin API) supplies the brand id and
-	// the org takes it. One transaction, because a brand id that turns out to be
-	// taken would otherwise strand the org just made.
 	await claimSlug(
 		() =>
 			db.transaction(async (tx) => {
 				await ensureOrganization({ id: input.id, name: input.name }, tx);
 
-				// The org was just minted from this brand, so the plain name is free
-				// here even where the org's own slug took a suffix to clear the global
-				// namespace: `/app/org/nike-047/brand/nike`, not the suffix twice.
 				const slug = await findUnusedBrandSlug(input.id, slugify(input.name, "brand"), tx);
 
 				const [inserted] = await tx

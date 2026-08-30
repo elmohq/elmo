@@ -35,7 +35,6 @@ const onboardedBrand = {
 	updatedAt: new Date().toISOString(),
 };
 
-/** What the `/app/org/$org` layout would have resolved. */
 const organization = {
 	id: "org-1",
 	slug: "mock-organization",
@@ -125,15 +124,6 @@ const cloudConfig: ClientConfig = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Returns the brand so stories can pass it to AppSidebar: the Settings nav is
- * gated on `brand.onboarded`, and it comes from the route loader as a prop
- * rather than from the useBrand hook.
- *
- * Who is looking goes into route context, which is where the rail reads it —
- * passing it as a prop would be ignored, and every story would render the rail
- * of someone with no admin access.
- */
 function configureMocks(
 	config: ClientConfig,
 	brand: any,
@@ -226,7 +216,6 @@ export const Local: StoryObj = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		// What an admin is offered comes from the viewer, not a prop.
 		await expect(await canvas.findByText("Workflows")).toBeInTheDocument();
 		await expect(await canvas.findByText("Tools")).toBeInTheDocument();
 	},
@@ -292,7 +281,6 @@ export const WhitelabelReportOnly = () => {
 	);
 };
 
-/** Cloud — an organization's rail gains Billing; no report generation */
 export const Cloud: StoryObj = {
 	render: () => {
 		configureMocks(cloudConfig, onboardedBrand, authedUser("Dana Cloud", "dana@acme.com", "dana"), {
@@ -312,14 +300,11 @@ export const Cloud: StoryObj = {
 		// below the fold of this frame — assert it rather than eyeballing it.
 		await expect(await canvas.findByText("Billing")).toBeInTheDocument();
 		await expect(await canvas.findByText("Team")).toBeInTheDocument();
-		// An admin with report access, so Reports is absent for one reason only:
-		// cloud disables report generation.
 		await expect(await canvas.findByText("Workflows")).toBeInTheDocument();
 		await expect(canvas.queryByText("Reports")).toBeNull();
 	},
 };
 
-/** Whitelabel has no billing, so the organization's rail stops at Team. */
 export const WhitelabelHasNoBilling: StoryObj = {
 	render: () => {
 		configureMocks(whitelabelConfig, onboardedBrand, authedUser("Alice", "alice@agency.com", "alice2"));

@@ -1,13 +1,3 @@
-/**
- * The subscription is the organization's: every brand inside it draws on the
- * same plan, so this sits beside the organization's other settings rather than
- * inside whichever brand the user happened to be looking at.
- *
- * Card changes, invoices, plan switches, and cancellation go through the
- * Stripe Customer Portal / Checkout via better-auth — no card data or payment
- * state lives here. The redirect in the loader is UX only; the real gates are
- * the entitlement guards in the server functions.
- */
 import { IconExternalLink } from "@tabler/icons-react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import type { Entitlements } from "@workspace/config/entitlements";
@@ -366,7 +356,6 @@ function Section({ title, description, children }: { title: string; description:
 	);
 }
 
-/** Metered plans only: an unlimited or unsubscribed organization has nothing to measure. */
 function showMeters(entitlements: Entitlements): boolean {
 	return !entitlements.unlimited && entitlements.planKey !== null;
 }

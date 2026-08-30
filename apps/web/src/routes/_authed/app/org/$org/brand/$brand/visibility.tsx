@@ -1,7 +1,3 @@
-/**
- * Data is fetched client-side via TanStack Query hooks in PromptsDisplay, so no
- * route loader is needed — the page renders skeletons immediately.
- */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PromptsDisplay } from "@/components/prompts-display";
 import { coercePromptOrder, DEFAULT_PROMPT_ORDER, type PromptOrder } from "@/lib/prompt-order";
@@ -9,8 +5,6 @@ import { pageHead } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/visibility")({
 	staticData: { crumb: "Visibility" },
-	// This route's own search key, on top of the brand-wide filters the `$brand`
-	// layout validates. The default order is omitted so it keeps a clean URL.
 	validateSearch: (search: Record<string, unknown>): { order?: PromptOrder } => {
 		const order = coercePromptOrder(search.order);
 		return order === DEFAULT_PROMPT_ORDER ? {} : { order };

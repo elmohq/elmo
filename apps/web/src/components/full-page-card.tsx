@@ -7,11 +7,6 @@ import { Logo } from "@/components/logo";
 import { useAuth } from "@/hooks/use-auth";
 
 interface FullPageCardProps {
-	/**
-	 * Where the mark leads, for the pages that render outside `_authed` and so
-	 * have no session in context to infer it from. Everywhere else it is the
-	 * session that decides.
-	 */
 	logoHref?: string;
 	title?: string;
 	subtitle?: string;
@@ -41,8 +36,6 @@ export default function FullPageCard({
 		<div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
 			<div className={`mx-auto ${className}`}>
 				<div className="flex items-center justify-center space-x-3">
-					{/* Only once there is somewhere to lead. Inferred from the session so
-					    a new page inherits it rather than forgetting the prop. */}
 					{markHref ? (
 						<Link to={markHref} aria-label="Go to your organizations">
 							<Logo />

@@ -32,13 +32,6 @@ export const brands = pgTable(
 	{
 		id: text("id").primaryKey().notNull(),
 		name: text("name").notNull(),
-		/**
-		 * Null for a brand never given one, whose URL falls back to the id — so
-		 * rows that predate slugs keep resolving without a backfill.
-		 *
-		 * Unique per organization, not globally: brand lookups are already scoped
-		 * to the organization in the URL, so two customers can each own a `nike`.
-		 */
 		slug: text("slug"),
 		website: text("website").notNull(),
 		additionalDomains: text("additional_domains").array().notNull().default([]),

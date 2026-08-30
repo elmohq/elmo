@@ -47,11 +47,8 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 			});
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
-			// The brand layout resolves against the organization's list, which does
-			// not have this brand until the invalidation lands.
 			await invalidateOrganizations();
 			await router.invalidate();
-			// The brand arrives with a slug, so land on it rather than on a redirect.
 			await navigate({
 				to: "/app/org/$org/brand/$brand",
 				params: { org: organizationSlug, brand: brand.slug ?? brandId },

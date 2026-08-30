@@ -51,8 +51,6 @@ export function PromptsDisplay({ pageTitle, pageDescription, pageInfoContent }: 
  *  and not `FilterBar` itself. */
 function PromptsContent({ brandId }: { brandId: string | undefined }) {
 	const { brand } = useBrand(brandId);
-	// The route knows where the prompts are edited, so a caller can't name a
-	// path that has since moved.
 	const brandParams = useBrandParams();
 	const filters = useListFilters();
 	const { model, lookback, tags, search } = filters;

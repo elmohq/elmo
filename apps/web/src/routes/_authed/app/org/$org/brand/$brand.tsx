@@ -1,10 +1,3 @@
-/**
- * The brand's own pages, and the rail and header around them.
- *
- * The `$brand` segment resolves against the brand list the organization layout
- * already holds, so the id every page below speaks in costs no round trip.
- */
-
 import { createFileRoute, notFound, Outlet, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { brandSegment, canonicalBrandHref, resolveSegment } from "@workspace/lib/app-urls";
@@ -25,7 +18,6 @@ import { getAppName } from "@/lib/route-head";
 
 interface BrandData {
 	brand: BrandWithPrompts;
-	/** The org that must be subscribed before this brand renders; null when nothing is owed. */
 	unpaidOrganizationId: string | null;
 }
 
@@ -33,15 +25,11 @@ const getBrandData = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string(), brandId: z.string() }))
 	.handler(async ({ data }): Promise<BrandData | null> => {
 		const session = await requireAuthSession();
-		// A server function is reachable on its own, so membership is checked here
-		// rather than trusted from the caller. Independent of the brand read.
 		const [, brand] = await Promise.all([
 			requireOrgAccess(session.user.id, data.organizationId),
 			db.query.brands.findFirst({ where: eq(brands.id, data.brandId) }),
 		]);
 
-		// Null rather than a throw, because a server function can't carry the
-		// router's notFound payload — the loader turns this into the 404.
 		if (!brand || brand.organizationId !== data.organizationId) {
 			return null;
 		}
@@ -49,7 +37,6 @@ const getBrandData = createServerFn({ method: "GET" })
 		const [brandPrompts, brandCompetitors, { entitlements }] = await Promise.all([
 			db.query.prompts.findMany({ where: eq(prompts.brandId, brand.id) }),
 			db.query.competitors.findMany({ where: eq(competitors.brandId, brand.id) }),
-			// Outside cloud this resolves without touching the database.
 			getOrgBillingState(brand.organizationId),
 		]);
 
@@ -98,13 +85,8 @@ function BrandLayoutSkeleton() {
 }
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
-	// Validated once here, so every child route inherits them. The loader has no
-	// `loaderDeps`, so filter-only navigations never re-run it.
 	validateSearch: validateBrandFilterSearch,
-	// Putting the id in context is what lets everything below — loaders, hooks,
-	// query keys — speak in ids without caring which form the URL took.
 	beforeLoad: ({ params, location, context }): { brandId: string } => {
-		// Slug-first precedence lives in `resolveSegment`.
 		const { brands: owned } = context.organization;
 		const brand = resolveSegment(owned, params.brand);
 		if (!brand) throw notFound();
@@ -122,9 +104,6 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 		});
 		if (!result) throw notFound();
 
-		// Names the organization, because the /app gate only knows whether the user
-		// has *any* entitled org — a different question, and one that would send a
-		// mixed-membership user to the wrong checkout.
 		if (result.unpaidOrganizationId) {
 			throw redirect({ to: "/choose-plan", search: { org: result.unpaidOrganizationId } });
 		}
@@ -144,8 +123,6 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 			],
 		};
 	},
-	// Brand data rarely changes, and the hooks re-fetch it. Writes that move the
-	// name or slug call `router.invalidate()` so the crumb and title keep up.
 	staleTime: 5 * 60 * 1000,
 	pendingComponent: BrandLayoutSkeleton,
 	component: BrandLayout,

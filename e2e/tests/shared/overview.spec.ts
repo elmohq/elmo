@@ -6,7 +6,6 @@ const BRAND_URL = brandUrl();
 test.describe("Overview Page", () => {
   test("home page lands on the directory and the default brand is reachable", async ({ page }) => {
     await page.goto("/");
-    // /app lists everything reachable, however few organizations that is.
     await page.waitForURL(/\/app$/, { timeout: 30_000 });
     const brandLink = page.locator(`a[href="${BRAND_URL}"]`).first();
     await expect(brandLink).toBeVisible({ timeout: 15_000 });

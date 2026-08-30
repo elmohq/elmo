@@ -1,12 +1,5 @@
-/**
- * The real module reads the organization/member tables; stories only need the
- * shell to know which organization it is in and what it holds.
- */
-
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
-// The real types, not a copy, so a fixture can't render what the app cannot
-// produce.
 let _organizations: OrganizationSummary[] = [
 	{
 		id: "org-1",

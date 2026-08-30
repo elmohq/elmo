@@ -36,8 +36,6 @@ function BrandSettingsPage() {
 	const [success, setSuccess] = useState("");
 	const [additionalDomains, setAdditionalDomains] = useState<string[]>([]);
 	const [aliases, setAliases] = useState<string[]>([]);
-	// A brand that predates slugs shows the id its URL already carries; saving
-	// turns that into a real slug.
 	const [slug, setSlug] = useState("");
 
 	// Reseed the fields when the brand changes server-side, without discarding
@@ -90,8 +88,6 @@ function BrandSettingsPage() {
 			const name = formData.get("name") as string;
 			const website = formData.get("website") as string;
 
-			// Only when it moved: an id is not held to the slug rules, so sending an
-			// untouched one would make every other edit on this page hostage to it.
 			const nextSlug = slug.trim().toLowerCase();
 			const slugMoved = nextSlug !== currentSlug;
 			await updateBrandFn({
@@ -112,7 +108,6 @@ function BrandSettingsPage() {
 			setSuccess("Brand details updated successfully!");
 			await revalidate();
 			await invalidateOrganizations();
-			// If the slug moved, so did the address this page is at.
 			if (slugMoved) {
 				await router.navigate({
 					to: "/app/org/$org/brand/$brand/settings/brand",

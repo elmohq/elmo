@@ -1,7 +1,3 @@
-/**
- * Stories for /app/org/$org/settings/members — inviting teammates and managing
- * who has access to the organization.
- */
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ComponentType, ReactNode } from "react";
 import { expect, within } from "storybook/test";
@@ -33,7 +29,6 @@ const meta = {
 		(Story) => {
 			setMockTeam(TEAM);
 			setMockLoaderData(TEAM);
-			// Inviting is cloud's; the list itself renders everywhere.
 			setMockRouteContext({ clientConfig: { features: { teamInvites: true } } });
 			return (
 				<Shell>

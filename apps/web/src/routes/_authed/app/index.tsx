@@ -1,9 +1,3 @@
-/**
- * Renders for everyone, one-organization deployments included: it is the only
- * page that lists what exists, so stepping aside would leave the mark that
- * points here landing on an organization's settings.
- */
-
 import { createFileRoute } from "@tanstack/react-router";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import FullPageCard from "@/components/full-page-card";
@@ -27,8 +21,6 @@ function OrganizationPickerSkeleton() {
 
 export const Route = createFileRoute("/_authed/app/")({
 	pendingComponent: OrganizationPickerSkeleton,
-	// The same cache the account menu reads, so a mutation invalidates what this
-	// page shows.
 	loader: async ({ context }): Promise<OrganizationSummary[]> => {
 		// Only whitelabel keeps memberships anywhere else, and asking elsewhere is
 		// a round trip that returns false in front of this page's only real read.

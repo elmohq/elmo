@@ -69,7 +69,6 @@ async function seed() {
     );
     console.log("  Created brand:", TEST_BRAND_ID);
 
-    // With a slug; the one above has none on purpose. See e2e/fixtures.ts.
     await client.query(
       `INSERT INTO brands (id, organization_id, slug, name, website, enabled, onboarded, created_at, updated_at)
        VALUES ($1, $2, $3, $4, 'https://labs.example.com', true, true, NOW(), NOW())`,
@@ -77,7 +76,6 @@ async function seed() {
     );
     console.log("  Created brand:", SLUGGED_BRAND_ID, `(/brand/${SLUGGED_BRAND_SLUG})`);
 
-    // Reserved for the spec that renames a slug.
     await client.query(
       `INSERT INTO brands (id, organization_id, slug, name, website, enabled, onboarded, created_at, updated_at)
        VALUES ($1, $2, $3, $4, 'https://rename.example.com', true, true, NOW(), NOW())`,

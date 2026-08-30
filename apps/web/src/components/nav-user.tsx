@@ -38,8 +38,6 @@ export function NavUser() {
 	const branding = useBranding();
 	const features = useDeploymentFeatures();
 	const { organizations, isLoading, isError, isFetching, refetch } = useOrganizations();
-	// The id, not the segment: brand slugs are only unique within an
-	// organization, and this menu lists several.
 	const currentBrandId = useBrandId();
 
 	// NavUser only renders inside _authed routes, which redirect to /auth/login
@@ -119,7 +117,6 @@ export function NavUser() {
 						{isError && (
 							<DropdownMenuItem
 								className="cursor-pointer"
-								// Keep the menu open, so the retry's result is visible.
 								onSelect={(event) => {
 									event.preventDefault();
 									refetch();
@@ -178,12 +175,6 @@ export function NavUser() {
 	);
 }
 
-/**
- * The settings control sits on the heading rather than at the foot of the menu,
- * because "settings" with no organization beside it only answers for whichever
- * one you happen to be in. The tick marks the brand, since the organization is
- * already the heading it sits under.
- */
 function OrganizationSection({
 	organization,
 	currentBrandId,
@@ -197,9 +188,6 @@ function OrganizationSection({
 
 	return (
 		<DropdownMenuGroup aria-label={organization.name}>
-			{/* The whole line, as in the directory: it names the one thing it could
-			    lead to. A menu item rather than a bare link, because only items join
-			    the menu's roving focus. */}
 			<DropdownMenuItem
 				render={<Link {...heading.link} onClick={onNavigate} />}
 				aria-label={heading.ariaLabel}
@@ -212,9 +200,6 @@ function OrganizationSection({
 				</span>
 			</DropdownMenuItem>
 
-			{/* The rule runs to the bottom of the last row's padding, so it ends
-			    close to the separator and reads tighter than the open space above
-			    the heading. The margin is measured from where the rule stops. */}
 			{children.length > 0 && (
 				<div className="mb-2 ml-4 border-l pl-1">
 					{children.map((row) => (

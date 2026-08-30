@@ -1,9 +1,3 @@
-/**
- * An organization isn't a page you look at, so this leads to what you can change
- * about it — except for one Auth0 filled and nobody set up, which gets the
- * wizard, with the brand taking the organization's own id.
- */
-
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import BrandOnboarding from "@/components/brand-onboarding";
 import { needsSetup } from "@/lib/organizations/tree";

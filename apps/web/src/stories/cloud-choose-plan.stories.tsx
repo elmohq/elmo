@@ -150,10 +150,6 @@ export const CheckoutError: Story = {
 	},
 };
 
-/**
- * Only an org admin can put a card on file. A member who was invited into an
- * unsubscribed organization is told who to ask instead of being given dead buttons.
- */
 export const NonAdminMember: Story = {
 	render: () => {
 		setMockLoaderData({ ...NEEDS_PLAN, isOrgAdmin: false });

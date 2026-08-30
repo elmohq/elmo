@@ -97,7 +97,6 @@ test.describe("Demo refuses writes", () => {
     expect((await writeAttempt).status()).toBe(403);
 
     await expect(page.getByText("Brand details updated successfully!")).toHaveCount(0);
-    // A blocked write never reaches the handler, so the deployment is what says why.
     await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible();
     expect(await countRows("brands", "id = $1 AND name = $2", [TEST_BRAND_ID, TEST_BRAND_NAME])).toBe(1);
   });

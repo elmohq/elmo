@@ -1,12 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { listOrganizationsFn } from "@/server/organizations";
 
-/**
- * One query for every organization surface, including the `/app/org/$org`
- * layout that resolves its segment against it. That `beforeLoad` re-runs on
- * every navigation, filter changes included, so the cache is what keeps it from
- * being a round trip each time.
- */
 export const organizationsQuery = {
 	queryKey: ["organizations"] as const,
 	queryFn: () => listOrganizationsFn(),

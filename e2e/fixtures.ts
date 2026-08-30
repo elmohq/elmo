@@ -25,13 +25,8 @@ export const TEST_USER = {
 } as const;
 
 export const TEST_BRAND_ID = "default";
-/** The organization segment of every dashboard URL. */
 export const TEST_ORG_SLUG = "default";
 
-/**
- * The seeder gives the primary brand no slug, so its segment is the id — the
- * fallback every pre-slug row relies on.
- */
 export function organizationUrl(org: string = TEST_ORG_SLUG): string {
   return `/app/org/${org}`;
 }
@@ -41,23 +36,12 @@ export function brandUrl(brand: string = TEST_BRAND_ID, org: string = TEST_ORG_S
 }
 export const TEST_BRAND_NAME = "Test Organization";
 
-/**
- * The seeded organization shares its first brand's name — the collision the
- * eyebrow labels exist to resolve — so specs name it separately rather than
- * leaning on the two being equal.
- */
 export const TEST_ORGANIZATION_NAME = TEST_BRAND_NAME;
 
-/**
- * A second brand in the same organization, seeded *with* a slug, so between the
- * two the suite covers both halves of the rule: a brand that falls back to its
- * id, and one whose id canonicalizes to its slug.
- */
 export const SLUGGED_BRAND_ID = "seeded-slug-brand";
 export const SLUGGED_BRAND_SLUG = "labs";
 export const SLUGGED_BRAND_NAME = "Test Labs";
 
-/** Addressed by no other spec, so the slug-rename spec can move it for real. */
 export const RENAMEABLE_BRAND_ID = "seeded-rename-brand";
 export const RENAMEABLE_BRAND_SLUG = "rename-me";
 export const RENAMEABLE_BRAND_NAME = "Test Rename";

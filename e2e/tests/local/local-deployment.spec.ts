@@ -62,8 +62,6 @@ test.describe("Local features", () => {
   test("the sidebar offers reports on a brand, and the organization's pages on its own", async ({ page }) => {
     await page.goto(`${brandUrl()}`);
     await expect(page.locator('a[href="/reports"][data-sidebar="menu-button"]')).toBeVisible({ timeout: 30_000 });
-    // A brand's rail is the brand's alone; its organization is reached from the
-    // account menu.
     await expect(page.locator(`a[href="${organizationUrl()}/settings/brands"][data-sidebar="menu-button"]`)).toHaveCount(
       0,
     );

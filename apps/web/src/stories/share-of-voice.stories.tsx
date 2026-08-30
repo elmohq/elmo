@@ -1,8 +1,3 @@
-/**
- * Stories for the Share of Voice page (/app/org/$org/brand/$brand/share-of-voice). Renders the
- * real page with mocked brand + share-of-voice data. The page reads filters from
- * the URL search params via the mocked router hooks (empty search = defaults).
- */
 import type { Meta, StoryObj } from "@storybook/react";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";

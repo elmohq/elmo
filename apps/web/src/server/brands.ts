@@ -275,8 +275,6 @@ export const createBrandFn = createServerFn({ method: "POST" })
 
 		const defaultDomains = getDefaultBrandDomains();
 		const enabledModels = await resolveCreateEnabledModels(data.brandId, data.enabledModels);
-		// One transaction, so the slug resolution and the insert it guards run on
-		// one connection.
 		const created = await claimSlug(
 			() =>
 				db.transaction(async (tx) => {
@@ -373,13 +371,9 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 		const defaultDomains = getDefaultBrandDomains();
 		const enabledModels = await resolveCreateEnabledModels(orgId, data.enabledModels);
 
-		// Both names are resolved inside the transaction that uses them, so the
-		// checks and the insert they guard run on one connection.
 		return claimSlug(
 			() =>
 				db.transaction(async (tx) => {
-					// The id is globally unique and may pick up a suffix; the slug only has
-					// to clear this organization, so it usually keeps the plain name.
 					const brandId = await findUnusedBrandId(baseSlug, tx);
 					const slug = await findUnusedBrandSlug(orgId, baseSlug, tx);
 
@@ -412,7 +406,6 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 			brandId: z.string(),
 			name: z.string().optional(),
 			website: z.string().optional(),
-			/** Unique within the organization, which the URL has already named. */
 			slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH).optional(),
 			additionalDomains: z.array(z.string()).optional(),
 			aliases: z.array(z.string()).optional(),

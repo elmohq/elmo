@@ -1,7 +1,7 @@
 /**
- * Kept out of `@/server/organizations`, which the client imports for its server
- * functions: handler bodies are stripped from that module, but anything
- * exported outright would drag the database into the client graph.
+ * Kept out of `@/server/organizations`, which the client imports: handler bodies
+ * are stripped from that module, but anything exported outright would drag the
+ * database into the client graph.
  */
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
@@ -27,13 +27,6 @@ async function resolveBrandCreation(orgIds: string[]): Promise<Map<string, Brand
 	);
 }
 
-/**
- * One organization or all of a user's: the two lists are the same shape, so one
- * query and one shaper rather than a pair that can drift.
- *
- * The caller's role stays server-side — shipping it would be a permission the
- * client could be tempted to read.
- */
 export async function summarizeOrganizations(orgs: UserOrganization[]): Promise<OrganizationSummary[]> {
 	if (orgs.length === 0) return [];
 	const orgIds = orgs.map((org) => org.id);
@@ -57,11 +50,9 @@ export async function summarizeOrganizations(orgs: UserOrganization[]): Promise<
 		id: org.id,
 		slug: org.slug,
 		name: org.name,
-		// Alphabetical, with the id breaking ties between brands that share a name,
-		// since an unordered select leaves the order up to Postgres. Sorted here
-		// rather than in SQL so it doesn't depend on the deployment's collation —
-		// `ORDER BY name` under LC_COLLATE=C is byte order, which puts every
-		// capitalized name ahead of every lowercase one.
+		// Sorted here rather than in SQL so it doesn't depend on the deployment's
+		// collation — `ORDER BY name` under LC_COLLATE=C is byte order, which puts
+		// every capitalized name ahead of every lowercase one.
 		brands: rows
 			.filter((brand) => brand.organizationId === org.id)
 			.map(({ id, slug, name, website, onboarded }) => ({ id, slug, name, website, onboarded }))

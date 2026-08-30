@@ -1,8 +1,3 @@
-/**
- * Not in `shared/`: where the record isn't the deployment's, the save is
- * refused and each mode has its own spec for that. This is the behaviour where
- * the name is ours to change.
- */
 import { expect, test } from "@playwright/test";
 import {
   RENAMEABLE_BRAND_ID,
@@ -12,8 +7,6 @@ import {
 } from "../../fixtures";
 
 test.describe("Organization rename", () => {
-  // Doesn't commit a new slug: the suite shares one seeded organization, and
-  // moving it without restoring would strand every other spec.
   test("the slug is a field of the same form, with no save of its own", async ({ page }) => {
     await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
 
@@ -37,7 +30,6 @@ test.describe("Organization rename", () => {
     const save = page.getByRole("button", { name: "Save", exact: true });
     await expect(save).toBeDisabled();
 
-    // The server trims either way, so this writes the name it already had.
     await nameField.fill(`  ${TEST_BRAND_NAME}  `);
     await expect(save).toBeEnabled();
 
@@ -61,8 +53,6 @@ test.describe("Brand rename", () => {
   const moved = `${RENAMEABLE_BRAND_SLUG}-moved`;
   const settingsAt = (slug: string) => `/app/org/${TEST_ORG_SLUG}/brand/${slug}/settings/brand`;
 
-  // CI retries once, so a failure part-way through would leave the brand at the
-  // moved slug and guarantee the retry fails too.
   test.afterEach(async ({ page }) => {
     await page.goto(settingsAt(moved));
     const field = page.getByLabel("Brand Slug", { exact: true });
@@ -81,11 +71,9 @@ test.describe("Brand rename", () => {
     await slugField.fill(moved);
     await page.getByRole("button", { name: "Save Changes" }).click();
 
-    // The address the form is on is the one that just moved.
     await page.waitForURL(new RegExp(`${settingsAt(moved)}$`), { timeout: 30_000 });
     await expect(page.getByLabel("Brand Slug", { exact: true })).toHaveValue(moved);
 
-    // The id still reaches it, and canonicalizes to where it now lives.
     await page.goto(`/app/org/${TEST_ORG_SLUG}/brand/${RENAMEABLE_BRAND_ID}`);
     await expect(page).toHaveURL(new RegExp(`/app/org/${TEST_ORG_SLUG}/brand/${moved}$`), { timeout: 30_000 });
   });

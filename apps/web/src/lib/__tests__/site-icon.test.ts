@@ -12,7 +12,6 @@ describe("faviconUrl", () => {
 		expect(new URL(faviconUrl("https://www.nike.com/golf?x=1")!).searchParams.get("url")).toBe("https://nike.com");
 	});
 
-	// See REQUESTED_SIZE in site-icon.tsx.
 	it("asks for one size unless told otherwise", () => {
 		expect(new URL(faviconUrl("example.com")!).searchParams.get("size")).toBe("64");
 	});

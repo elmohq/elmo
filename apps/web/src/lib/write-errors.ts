@@ -8,12 +8,6 @@ import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
  */
 const READ_ONLY_REFUSED = "Edits are not allowed in demo mode.";
 
-/**
- * The server's own message is the specific one — a plan limit, a name already
- * taken — so `fallback` only covers what isn't an Error at all.
- *
- * Stable, so a handler wrapped in `useCallback` can depend on it.
- */
 export function useWriteErrorMessage(): (error: unknown, fallback: string) => string {
 	const readOnly = useDeploymentFeatures()?.readOnly ?? false;
 

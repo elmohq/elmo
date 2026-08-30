@@ -1,17 +1,3 @@
-/**
- * Create a brand in this organization.
- *
- * The URL says which organization it joins, so the page never has to ask — and
- * that answer decides who can see the brand and who is billed for it. Gated at
- * the loader and again at the write.
- *
- * Where the plan meters platforms, a second step asks which ones to track,
- * rather than letting a brand's first cycle run on platforms nobody chose.
- *
- * An organization that has spent its plan's brands is told so before anything
- * is filled in, not at the end of the wizard.
- */
-
 import { createFileRoute, Link, redirect, useNavigate, useRouter } from "@tanstack/react-router";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -29,8 +15,6 @@ import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/se
 
 export const Route = createFileRoute("/_authed/app/org/$org/new")({
 	staticData: { crumb: "New brand" },
-	// A deployment that doesn't create brands has no page here; a plan that has
-	// run out has one, and something to say on it.
 	loader: ({ context }) => {
 		const { brandCreation, name, id } = context.organization;
 		if (brandCreation.kind === "not-offered") {
@@ -75,9 +59,7 @@ function NewBrandPage() {
 			});
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
-			// The account menu lists this organization's brands.
 			await Promise.all([router.invalidate(), invalidateOrganizations()]);
-			// The brand arrives with a slug, so land on it rather than on a redirect.
 			await navigate({ to: "/app/org/$org/brand/$brand", params: { org, brand: brandSlug } });
 		} catch (err) {
 			setError(writeError(err, "Could not create the brand."));
@@ -91,8 +73,6 @@ function NewBrandPage() {
 		const website = (formData.get("website") as string)?.trim() ?? "";
 		setError("");
 
-		// Before the platform step, so a typo in the URL doesn't cost the user
-		// their platform picks.
 		const validation = validateWebsiteUrl(website);
 		if (!validation.isValid) {
 			setError(validation.error);
@@ -111,7 +91,6 @@ function NewBrandPage() {
 			setSelected(new Set(state.defaultSelected));
 			setStep("platforms");
 		} catch (err) {
-			// A read, so there is no deployment write guard to consult.
 			setError(err instanceof Error ? err.message : "Could not read this organization's platforms.");
 		} finally {
 			setIsLoading(false);

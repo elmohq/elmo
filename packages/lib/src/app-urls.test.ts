@@ -60,7 +60,6 @@ describe("canonical hrefs", () => {
 		);
 	});
 
-	// An offset measured from the decoded value would land wrong here.
 	it("survives an encoded segment ahead of the one being replaced", () => {
 		expect(canonicalOrgHref(location("/app/org/a%20b%2Fc/brand/nike/citations"), "acme")).toBe(
 			"/app/org/acme/brand/nike/citations",
@@ -87,7 +86,6 @@ describe("slugify", () => {
 		expect(slugify("!!!brand!!!", "brand")).toBe("brand");
 	});
 
-	// No ASCII alphanumerics means no segment to make.
 	it("falls back to what the caller is minting", () => {
 		expect(slugify("", "brand")).toBe("brand");
 		expect(slugify("!!!", "organization")).toBe("organization");
@@ -103,7 +101,6 @@ describe("slugify", () => {
 		expect(slugify(`${"a".repeat(MAX_SLUG_LENGTH - 1)} tail`, "brand")).toBe("a".repeat(MAX_SLUG_LENGTH - 1));
 	});
 
-	// Both sit under static segments, so no name shadows a sibling route.
 	it("leaves route names alone", () => {
 		expect(slugify("new", "brand")).toBe("new");
 		expect(slugify("Settings", "brand")).toBe("settings");
@@ -111,8 +108,6 @@ describe("slugify", () => {
 });
 
 describe("isValidSlug", () => {
-	// A slug the producer emits and the validator refuses is a record that can be
-	// created and then never saved again.
 	it("accepts everything slugify produces", () => {
 		const names = [
 			"Acme",
@@ -145,8 +140,6 @@ describe("isValidSlug", () => {
 		expect(isValidSlug("a".repeat(MAX_SLUG_LENGTH + 1))).toBe(false);
 	});
 
-	// Route names are ordinary slugs; colliding with an id is an availability
-	// question, not a validity one.
 	it("has no opinion about route names", () => {
 		expect(isValidSlug("new")).toBe(true);
 		expect(isValidSlug("settings")).toBe(true);

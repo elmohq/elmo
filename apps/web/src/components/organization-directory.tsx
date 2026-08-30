@@ -9,11 +9,6 @@ import type { OrganizationSummary } from "@/lib/organizations/types";
 
 const ROW = "flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground";
 
-/**
- * Shared by `/app` and the 404, which answer the same question, and drawn from
- * the same tree as the account menu. Without the menu's separators: nothing
- * follows the last organization here, so the spacing is enough.
- */
 export function OrganizationDirectory({ organizations }: { organizations: OrganizationSummary[] }) {
 	const features = useDeploymentFeatures();
 
@@ -37,8 +32,6 @@ function OrganizationBlock({ organization }: { organization: OrganizationSummary
 
 	return (
 		<div>
-			{/* The whole heading, not just the gear: it names the one thing it could
-			    lead to, so anything less is a smaller target for no reason. */}
 			<Tooltip>
 				<TooltipTrigger
 					render={<Link {...heading.link} aria-label={heading.ariaLabel} className={`${ROW} justify-between`} />}
@@ -52,7 +45,6 @@ function OrganizationBlock({ organization }: { organization: OrganizationSummary
 				<TooltipContent>Organization Settings</TooltipContent>
 			</Tooltip>
 
-			{/* An organization with nothing in it and no way to add is its heading alone. */}
 			{children.length > 0 && (
 				<div className="ml-4 border-l pl-1">
 					{children.map((row) => (

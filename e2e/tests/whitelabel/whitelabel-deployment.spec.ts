@@ -105,7 +105,6 @@ test.describe("Whitelabel branding", () => {
 
 test.describe("Whitelabel features", () => {
   test("brands are provisioned through the API, so the UI offers no way to create one", async ({ page }) => {
-    // The directory is where creation would be offered if it were allowed.
     await page.goto("/app");
     await expect(page.getByRole("link", { name: /new brand/i })).toHaveCount(0);
     await expect(page.getByRole("link", { name: /new organization/i })).toHaveCount(0);
@@ -148,7 +147,6 @@ test.describe("Whitelabel features", () => {
     await expect(page.getByRole("heading", { name: /reports/i }).first()).toBeVisible({ timeout: 30_000 });
   });
 
-  // Memberships are Auth0's, so they are shown and not edited.
   test("the team is listed, and nothing about it can be changed", async ({ page }) => {
     await page.goto(`${organizationUrl()}/settings/members`);
     await expect(page.getByRole("heading", { name: "Team" })).toBeVisible({ timeout: 30_000 });
@@ -156,7 +154,6 @@ test.describe("Whitelabel features", () => {
     await expect(page.getByRole("button", { name: "Remove" })).toHaveCount(0);
   });
 
-  // Auth0 owns the record, so the save is what refuses.
   test("the organization's name and slug cannot be saved", async ({ page }) => {
     await page.goto(`${organizationUrl()}/settings`);
 

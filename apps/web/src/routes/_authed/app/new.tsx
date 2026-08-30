@@ -1,9 +1,3 @@
-/**
- * The redirect is UX; `createOrganizationFn` refuses on its own. A new organization
- * has no plan, so it opens on its own settings — billing is the first thing it
- * needs before a brand can go in.
- */
-
 import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";

@@ -13,7 +13,6 @@ interface HistoryButtonProps {
 export function HistoryButton({ promptId, tab }: HistoryButtonProps) {
 	const brandParams = useBrandParams();
 
-	// Absent rather than inert off a brand page.
 	if (!brandParams || !promptId) return null;
 
 	return (

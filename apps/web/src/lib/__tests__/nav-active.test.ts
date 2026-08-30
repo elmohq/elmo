@@ -22,7 +22,6 @@ describe("activeNavHref", () => {
 		expect(activeNavHref(brandRail, `${BRAND}/settings/prompts`)).toBe(`${BRAND}/settings/prompts`);
 	});
 
-	// Overview's href prefixes every page below it.
 	it("lights an exact entry only on its own page", () => {
 		expect(activeNavHref(brandRail, BRAND)).toBe(BRAND);
 		expect(activeNavHref(brandRail, `${BRAND}/prompts/abc`)).toBe("");
@@ -32,7 +31,6 @@ describe("activeNavHref", () => {
 		expect(activeNavHref(brandRail, "/admin")).toBe("");
 	});
 
-	// Two entries can share a title, so the answer is the href.
 	it("lights the right one of two entries that share a title", () => {
 		const rail = [{ href: "/app/org/acme/settings/brands" }, { href: "/admin" }];
 		expect(activeNavHref(rail, "/admin")).toBe("/admin");

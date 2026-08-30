@@ -43,19 +43,9 @@ export interface EditablePrompt {
 	enabled: boolean;
 	tags: string[];
 	systemTags: string[];
-	/**
-	 * Premium models this prompt is tracked on, grounded — one of the organization's
-	 * premium pairings each, so two models cost two pairings.
-	 */
 	premiumModels: string[];
 }
 
-/**
- * The organization's premium allowance, as this brand's editor sees it.
- * `assignedElsewhere` covers the org's other brands, which the editor cannot see
- * but which still spend the pool — so the live count stays honest while rows are
- * changed here.
- */
 export interface PremiumAllowance {
 	total: number;
 	assignedElsewhere: number;
@@ -98,7 +88,6 @@ function PremiumModelsField({
 }: {
 	selected: string[];
 	promptEnabled: boolean;
-	/** The organization has no pairings left, so only unticking is allowed. */
 	atCapacity: boolean;
 	onChange: (models: string[]) => void;
 	showLabel?: boolean;

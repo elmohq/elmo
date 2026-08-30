@@ -1,7 +1,3 @@
-/**
- * The URL shape itself: what resolves in each segment, what canonicalizes, and
- * what a link minted before this shape gets instead of a dead end.
- */
 import { expect, test } from "@playwright/test";
 import {
 	NIKE_BRAND_ID,
@@ -14,7 +10,6 @@ import {
 	organizationUrl,
 } from "../../fixtures";
 
-/** No slug, so the segment is the id. */
 const BRAND_URL = `/app/org/${TEST_ORG_SLUG}/brand/${TEST_BRAND_ID}`;
 const SLUGGED_BRAND_URL = `/app/org/${TEST_ORG_SLUG}/brand/${SLUGGED_BRAND_SLUG}`;
 
@@ -29,25 +24,20 @@ test.describe("App routing", () => {
 		await page.goto(SLUGGED_BRAND_URL);
 		await expect(page).toHaveURL(new RegExp(`${SLUGGED_BRAND_URL}$`), { timeout: 30_000 });
 
-		// The id is a way in, not a place to stay.
 		await page.goto(`/app/org/${TEST_ORG_SLUG}/brand/${SLUGGED_BRAND_ID}/citations`);
 		await expect(page).toHaveURL(new RegExp(`${SLUGGED_BRAND_URL}/citations$`), { timeout: 30_000 });
 	});
 
-	// Both sit under a static segment, so no name shadows a sibling route and
-	// nothing has to be reserved.
 	test("route names are reachable as organization pages", async ({ page }) => {
 		await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
 		await expect(page.getByRole("heading", { name: "Organization" })).toBeVisible({ timeout: 30_000 });
 
-		// Either way it resolves as a route rather than an organization named "new".
 		await page.goto(`/app/org/${TEST_ORG_SLUG}/new`);
 		await expect(page).toHaveURL(new RegExp(`/app/org/${TEST_ORG_SLUG}(?:/new|/settings)?/?$`), {
 			timeout: 30_000,
 		});
 	});
 
-	// A stale bookmark and a page that never existed get the same answer.
 	test("an unknown page offers everything the user can reach", async ({ page }) => {
 		await page.goto("/app/org/not-a-organization");
 
@@ -55,7 +45,6 @@ test.describe("App routing", () => {
 		await expect(page.getByRole("link", { name: TEST_BRAND_NAME, exact: true }).first()).toBeVisible();
 	});
 
-	// A full-page view has no rail, so the mark is the only way out.
 	test("the mark on a full-page view leads to the directory", async ({ page }) => {
 		await page.goto("/app/org/not-a-organization");
 
@@ -63,8 +52,6 @@ test.describe("App routing", () => {
 		await expect(mark).toBeVisible({ timeout: 30_000 });
 		await expect(mark).toHaveAttribute("href", "/app");
 
-		// Including outside /app, which renders without the layout that resolves a
-		// session and so has to ask for one itself.
 		await page.goto("/appadsf");
 		await expect(page.getByRole("link", { name: "Go to your organizations" })).toHaveAttribute("href", "/app", {
 			timeout: 30_000,
@@ -78,8 +65,6 @@ test.describe("App routing", () => {
 		await expect(page.locator(`a[href="${BRAND_URL}"]`).first()).toBeVisible();
 	});
 
-	// The brand is looked up inside an organization the caller belongs to, so
-	// another tenant's is absent rather than forbidden.
 	test("a brand from another organization does not resolve under this one", async ({ page }) => {
 		await page.goto(`/app/org/${TEST_ORG_SLUG}/brand/${NIKE_BRAND_ID}`);
 		await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
@@ -105,7 +90,6 @@ test.describe("App routing", () => {
 		await page.goto(`${BRAND_URL}/citations`);
 
 		const trail = page.getByRole("navigation", { name: "breadcrumb" });
-		// Both carry the same name, so each crumb is addressed by where it leads.
 		const organization = trail.locator(`a[href="${organizationUrl()}"]`);
 		const brand = trail.locator(`a[href="${BRAND_URL}"]`);
 
@@ -113,7 +97,6 @@ test.describe("App routing", () => {
 		await expect(brand).toContainText(TEST_BRAND_NAME);
 		await expect(trail.getByText("Citations", { exact: true })).toBeVisible();
 
-		// Each name says which of the two it is.
 		await expect(organization.getByText("Organization", { exact: true })).toBeVisible();
 		await expect(brand.getByText("Brand", { exact: true })).toBeVisible();
 	});
@@ -122,7 +105,6 @@ test.describe("App routing", () => {
 		await page.goto(`${organizationUrl()}/settings/brands`);
 
 		const trail = page.getByRole("navigation", { name: "breadcrumb" });
-		// The organization crumb already leads to the settings.
 		await expect(trail.locator(`a[href="${organizationUrl()}"]`)).toBeVisible({ timeout: 30_000 });
 		await expect(trail.getByText("Brands", { exact: true })).toBeVisible();
 		await expect(trail.getByText("Settings", { exact: true })).toHaveCount(0);

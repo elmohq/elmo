@@ -13,7 +13,6 @@ export interface NavItem {
 	title: string;
 	link: LinkProps;
 	icon?: Icon;
-	/** See `activeNavHref`. */
 	exact?: boolean;
 }
 
@@ -42,9 +41,6 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
 	const { setOpenMobile } = useSidebar();
 	const { pathname } = useLocation();
 
-	// Resolved by the router, so nothing here knows the URL shape. Two entries
-	// can share a title — an organization's Brands and admin's — so the href is
-	// what identifies one.
 	const resolved = groups.map((group) => ({
 		label: group.label,
 		items: group.items.map((item) => ({ item, href: router.buildLocation(item.link).pathname })),

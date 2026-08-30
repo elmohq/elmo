@@ -41,19 +41,11 @@ import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import { useViewer } from "@/hooks/use-route-context";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
-/**
- * A union rather than nullable props, so nothing below carries a fallback for an
- * organization or brand the layout above already resolved.
- *
- * "account" is a gate the user has to clear first, so it offers nothing but who
- * they are and how to leave.
- */
 type ScopeProps =
 	| { scope: "brand"; organization: OrganizationSummary; brand: BrandWithPrompts }
 	| { scope: "organization"; organization: OrganizationSummary }
 	| { scope: "admin" | "account" };
 
-/** The label doesn't name the organization; the breadcrumb and account menu do. */
 function organizationGroup(organization: OrganizationSummary, features?: FeaturesConfig): NavGroup {
 	const params = orgParams(organization);
 	const items: NavItem[] = [
@@ -75,7 +67,6 @@ function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts)
 		{ title: "Overview", link: { to: "/app/org/$org/brand/$brand", params }, icon: IconDashboard, exact: true },
 	];
 
-	// Everything but the overview reads results a brand has only once onboarded.
 	if (brand.onboarded) {
 		dashboard.push(
 			{ title: "Visibility", link: { to: "/app/org/$org/brand/$brand/visibility", params }, icon: IconChartBar },
@@ -133,8 +124,6 @@ function adminGroup(isAdmin: boolean, reportsEnabled: boolean): NavGroup {
 export function AppSidebar(props: ScopeProps) {
 	const { scope } = props;
 	const { setOpenMobile } = useSidebar();
-	// Facts about the viewer, not this page's subject, so they come from the
-	// layout that resolved the session.
 	const { isAdmin, hasReportAccess } = useViewer();
 	const features = useDeploymentFeatures();
 	// Reports are disabled entirely in cloud; hide the nav entry there.
@@ -146,8 +135,6 @@ export function AppSidebar(props: ScopeProps) {
 
 	const groups: NavGroup[] = [
 		...(props.scope === "brand" ? brandGroups(props.organization, props.brand) : []),
-		// On a brand page the rail is that brand's, and the account menu is how its
-		// organization is reached.
 		...(props.scope === "organization" ? [organizationGroup(props.organization, features)] : []),
 		...(showAdminSection ? [adminGroup(isAdmin, reportsEnabled)] : []),
 	];

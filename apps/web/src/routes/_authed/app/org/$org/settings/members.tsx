@@ -1,8 +1,3 @@
-/**
- * The list renders in every deployment; inviting and removing are cloud's.
- * Hiding those controls is UX — the boundary is the `teamInvites` guard inside
- * each write.
- */
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";

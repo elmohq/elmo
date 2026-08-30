@@ -1,16 +1,3 @@
-/**
- * Stories for the cloud Billing settings page (/app/org/$org/settings/billing).
- *
- * Covers the states an operator can't easily reach on demand: a failed payment
- * inside the dunning window, tracking paused once that window closes, a
- * organization over its limits after a downgrade, and a contract ("custom") plan
- * billed outside self-serve.
- *
- * Every fixture goes through the real entitlement resolver and the real plan
- * catalog, so the meters and the add-on card can't drift from what the plans
- * actually grant — one story says "pro with 5 extra Claude prompts" and the
- * pool, the limits and the add-on availability all follow from that.
- */
 import type { Meta, StoryObj } from "@storybook/react";
 import { type EntitlementOverrides, resolveEntitlements } from "@workspace/config/entitlements";
 import { isPremiumAddonAvailable, type PlanKey } from "@workspace/config/plans";
@@ -111,7 +98,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Healthy Pro organization: meters under the plan, add-on purchasable. */
 export const ProPlan: Story = {
 	render: () => renderWith({ addonQuantity: 5 }),
 	play: async ({ canvasElement }) => {

@@ -43,17 +43,11 @@ test.describe("Unauthenticated access", () => {
 
 test.describe("Authenticated access", () => {
   test("a brand in another org is not found", async ({ page }) => {
-    // Nike is seeded in an org the E2E user is not a member of. It is visible
-    // to the admin API key above, so a 404 here is org scoping, not absence.
-    // Inside the organization the user *can* reach, which is where the brand
-    // segment is resolved.
     await page.goto(`${organizationUrl()}/brand/${NIKE_BRAND_ID}`);
     await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
   });
 
   test("organizations cannot be created over HTTP", async ({ request }) => {
-    // Orgs are provisioned server-side only, so the better-auth org plugin's
-    // mutation endpoints are refused in every mode.
     const response = await request.post("/api/auth/organization/create", {
       data: { name: "Smuggled Org", slug: "smuggled-org" },
       failOnStatusCode: false,

@@ -1,8 +1,3 @@
-/**
- * Buffered until an explicit save, like the prompts page: both edit a whole list
- * at once, and both can lose a page of work to a stray navigation.
- */
-
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
@@ -24,7 +19,6 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 	component: CompetitorsSettingsPage,
 });
 
-/** What the server keeps, so reordering or a blank row isn't a change. */
 function saveable(competitors: CompetitorEntry[]) {
 	return competitors
 		.filter((c) => c.name.trim() && c.domains.some((d) => d.trim()))
@@ -46,7 +40,6 @@ function CompetitorsSettingsPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [competitors, setCompetitors] = useState<CompetitorEntry[]>([]);
 
-	// Reseed when the server's list changes, without discarding edits in flight.
 	const [seededFrom, setSeededFrom] = useState<unknown>(null);
 	if (!competitorsLoading && existingCompetitors !== seededFrom) {
 		setSeededFrom(existingCompetitors);
@@ -97,7 +90,6 @@ function CompetitorsSettingsPage() {
 		try {
 			await updateCompetitors({ data: { brandId: brand.id, competitors: pending } });
 
-			// Domain changes affect citation categorization retroactively.
 			queryClient.invalidateQueries({ queryKey: citationKeys.all });
 			queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 			await revalidate();

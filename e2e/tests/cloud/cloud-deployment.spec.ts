@@ -75,7 +75,6 @@ test.describe("Cloud self-serve signup", () => {
     await page.getByLabel("Password").fill(NEW_USER.password);
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    // An organization is provisioned on signup, but access waits for a plan.
     await page.waitForURL(/\/choose-plan(?:\?.*)?$/, { timeout: 30_000 });
     await expect(page.getByRole("heading", { name: "Choose your plan" })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("button", { name: "Subscribe to Starter" })).toBeVisible();
@@ -112,7 +111,6 @@ test.describe("Cloud features", () => {
   });
 
   test("the sidebar offers team settings and no reports", async ({ page }) => {
-    // On the organization's own pages: a brand's rail is the brand's alone.
     await page.goto(`${organizationUrl()}/settings`);
     await expect(
       page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),
@@ -143,7 +141,6 @@ test.describe("Cloud features", () => {
     await expect(page.getByLabel("Website")).toBeVisible();
   });
 
-  // Stops at the form: creating one would leave an organization behind each run.
   test("another organization can be created", async ({ page }) => {
     await page.goto("/app");
     await expect(page.getByRole("link", { name: /new organization/i })).toBeVisible({ timeout: 30_000 });

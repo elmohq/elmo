@@ -86,19 +86,6 @@ export const getBillingStateFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/**
- * The paywall decision, and the org it is about.
- *
- * Two questions, one answer shape, because the callers ask different ones:
- *  - with `organizationId` (a brand's owning org): is *this* organization paid up?
- *  - without: does this user have anywhere at all to go? Any entitled org keeps
- *    the app usable; only a user whose every org is unsubscribed is stopped, and
- *    they are pointed at their own organization.
- *
- * The org always comes back with the verdict. A paywall that says "pay" without
- * saying "for what" is how a member of a paid team and an unpaid one ends up at
- * checkout for the wrong organization.
- */
 export const getPaywallStateFn = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string().optional() }).optional())
 	.handler(async ({ data }): Promise<PaywallState> => {
@@ -118,7 +105,6 @@ export const getPaywallStateFn = createServerFn({ method: "GET" })
 		const entitlementsByOrg = await getOrgEntitlementsMap(orgs.map((org) => org.id));
 		const needsPlan = (org: { id: string }) => entitlementsByOrg.get(org.id)?.standing === "none";
 
-		// listUserOrganizations is oldest-first, so orgs[0] is the user's own organization.
 		const subject = scoped ?? orgs[0];
 		if (scoped ? !needsPlan(scoped) : !orgs.every(needsPlan)) {
 			return { needsPlan: false };
