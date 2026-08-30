@@ -20,6 +20,7 @@
 		"./auth/client": "./src/auth/client.ts",
 		"./auth/permissions": "./src/auth/permissions.ts",
 		"./constants": "./src/constants.ts",
+		"./mentions": "./src/mentions.ts",
 		"./app-urls": "./src/app-urls.ts",
 		"./expedite": "./src/expedite.ts",
 		"./run-backoff": "./src/run-backoff.ts",
