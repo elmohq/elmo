@@ -47,6 +47,7 @@ export function createWhitelabelDeployment(options: CreateWhitelabelDeploymentOp
 			billing: false,
 			reportGeneration: true,
 			teamInvites: false,
+			teamManagement: false,
 		},
 		branding: {
 			name: requiredEnv.VITE_APP_NAME,

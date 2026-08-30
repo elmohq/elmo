@@ -51,8 +51,11 @@ function organizationGroup(organization: OrganizationSummary, features?: Feature
 	const items: NavItem[] = [
 		{ title: "Organization", link: { to: "/app/org/$org/settings", params }, icon: IconBriefcase, exact: true },
 		{ title: "Brands", link: { to: "/app/org/$org/settings/brands", params }, icon: IconBuildings },
-		{ title: "Team", link: { to: "/app/org/$org/settings/members", params }, icon: IconUsers },
 	];
+
+	if (features?.teamManagement ?? true) {
+		items.push({ title: "Team", link: { to: "/app/org/$org/settings/members", params }, icon: IconUsers });
+	}
 
 	if (features?.billing) {
 		items.push({ title: "Billing", link: { to: "/app/org/$org/settings/billing", params }, icon: IconCreditCard });

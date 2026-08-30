@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, notFound, useRouter } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
@@ -15,6 +15,11 @@ import { cancelInvitationFn, inviteTeamMemberFn, listTeamFn, removeTeamMemberFn,
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings/members")({
 	staticData: { crumb: "Team" },
+	beforeLoad: ({ context }) => {
+		if (context.clientConfig && !context.clientConfig.features.teamManagement) {
+			throw notFound();
+		}
+	},
 	loader: ({ context }): Promise<TeamData> => listTeamFn({ data: { organizationId: context.organization.id } }),
 	head: pageHead({ description: "Invite teammates and manage team members." }),
 	component: TeamSettingsPage,

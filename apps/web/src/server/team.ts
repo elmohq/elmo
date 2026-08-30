@@ -8,6 +8,12 @@ import { requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 import { auth } from "@/lib/auth/server";
 import { getDeployment } from "@/lib/config/server";
 
+function requireTeamManagement(): void {
+	if (!getDeployment().features.teamManagement) {
+		throw new Error("Team management is not available in this deployment");
+	}
+}
+
 function requireTeamInvites(): void {
 	if (!getDeployment().features.teamInvites) {
 		throw new Error("Team invitations are not available in this deployment");
@@ -24,8 +30,9 @@ export type TeamData = {
 export const listTeamFn = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string() }))
 	.handler(async ({ data }): Promise<TeamData> => {
-		// Not gated on `teamInvites`: every deployment has a member list worth
-		// looking at, and only changing it is cloud's.
+		// Not gated on `teamInvites`: every deployment that shows the team page has
+		// a member list worth looking at, and only changing it is cloud's.
+		requireTeamManagement();
 		const session = await requireAuthSession();
 		const org = await requireOrganization(session.user.id, data.organizationId);
 

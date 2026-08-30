@@ -33,6 +33,7 @@ export interface FeaturesConfig {
 	 * demo is read-only.
 	 */
 	teamInvites: boolean;
+	teamManagement: boolean;
 	/**
 	 * Whether the viewer picks which platforms a brand is tracked on. False in
 	 * whitelabel (the agency picks, and pays the provider bills) and demo.

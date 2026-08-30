@@ -60,3 +60,15 @@ describe("canCreateOrganizations", () => {
 		expect(featuresFor("whitelabel", WHITELABEL_ENV).canCreateOrganizations).toBe(false);
 	});
 });
+
+describe("teamManagement", () => {
+	it("is refused in whitelabel, where memberships come from the identity provider", () => {
+		expect(featuresFor("whitelabel", WHITELABEL_ENV).teamManagement).toBe(false);
+	});
+
+	it("is offered everywhere the deployment owns its own memberships", () => {
+		expect(featuresFor("local").teamManagement).toBe(true);
+		expect(featuresFor("demo").teamManagement).toBe(true);
+		expect(featuresFor("cloud").teamManagement).toBe(true);
+	});
+});

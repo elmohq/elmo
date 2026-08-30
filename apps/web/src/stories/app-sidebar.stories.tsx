@@ -85,6 +85,7 @@ const whitelabelConfig: ClientConfig = {
 		readOnly: false,
 		showOptimizeButton: true,
 		canCreateBrands: false,
+		teamManagement: false,
 	},
 	branding: {
 		name: "BrandMonitor Pro",
@@ -306,19 +307,20 @@ export const Cloud: StoryObj = {
 	},
 };
 
-export const WhitelabelHasNoBilling: StoryObj = {
+export const WhitelabelHasNoBillingOrTeam: StoryObj = {
 	render: () => {
 		configureMocks(whitelabelConfig, onboardedBrand, authedUser("Alice", "alice@agency.com", "alice2"));
 
 		return (
-			<SidebarFrame label="Whitelabel — no Billing item">
+			<SidebarFrame label="Whitelabel — no Billing or Team item">
 				<AppSidebar scope="organization" organization={organization} />
 			</SidebarFrame>
 		);
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText("Team")).toBeInTheDocument();
+		await expect(await canvas.findByText("Brands")).toBeInTheDocument();
+		await expect(canvas.queryByText("Team")).toBeNull();
 		await expect(canvas.queryByText("Billing")).toBeNull();
 	},
 };

@@ -23,6 +23,7 @@ export const LOCAL_FEATURES: FeaturesConfig = {
 	billing: false,
 	reportGeneration: true,
 	teamInvites: false,
+	teamManagement: true,
 	platformPicksEditable: true,
 };
 
@@ -36,6 +37,7 @@ export const DEMO_FEATURES: FeaturesConfig = {
 	billing: false,
 	reportGeneration: true,
 	teamInvites: false,
+	teamManagement: true,
 	platformPicksEditable: false,
 };
 
@@ -49,6 +51,7 @@ export const WHITELABEL_FEATURES: FeaturesConfig = {
 	billing: false,
 	reportGeneration: true,
 	teamInvites: false,
+	teamManagement: false,
 	platformPicksEditable: false,
 };
 
@@ -62,6 +65,7 @@ export const CLOUD_FEATURES: FeaturesConfig = {
 	billing: true,
 	reportGeneration: false,
 	teamInvites: true,
+	teamManagement: true,
 	platformPicksEditable: true,
 };
 
