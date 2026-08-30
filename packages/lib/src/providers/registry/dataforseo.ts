@@ -93,6 +93,18 @@ function dataforseoAccess({ model, version }: ModelConfig): ProviderAccess {
 	return !version && model in SCRAPER_CALLS ? "scraped" : "api";
 }
 
+/**
+ * Which routes report their expanded queries, mirroring `run()`'s dispatch.
+ * The Google SERP surfaces carry no query strings anywhere in the response, and
+ * neither does the Gemini scraper; the LLM Responses API and the ChatGPT
+ * scraper both return `fan_out_queries`.
+ */
+function dataforseoExposesWebQueries({ model, version }: ModelConfig): boolean {
+	if (SERP_MODELS.has(model) || model === AI_OVERVIEW_MODEL) return false;
+	if (!version && model in SCRAPER_CALLS) return model === "chatgpt";
+	return model in LLM_MODELS;
+}
+
 interface DataForSeoLlmRequest {
 	user_prompt: string;
 	model_name: string;
@@ -323,6 +335,7 @@ export const dataforseo: Provider = {
 	access: "scraped",
 	// A pinned version routes to LLM Responses; without one the surface is scraped.
 	accessFor: dataforseoAccess,
+	exposesWebQueries: dataforseoExposesWebQueries,
 	docsAnchor: "dataforseo",
 
 	isConfigured: isDataforseoConfigured,

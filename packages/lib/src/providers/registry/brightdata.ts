@@ -132,6 +132,8 @@ export const brightdata: Provider = {
 	access: "scraped",
 	docsAnchor: "brightdata",
 
+	/** Always — the scraped record carries the search queries. */
+	exposesWebQueries: () => true,
 	isConfigured() {
 		return !!getCredential("BRIGHTDATA_API_TOKEN");
 	},

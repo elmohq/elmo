@@ -102,6 +102,8 @@ export const anthropicApi: Provider = {
 	access: "api",
 	docsAnchor: "direct-model-apis",
 
+	/** Always — server_tool_use blocks carry the query. */
+	exposesWebQueries: () => true,
 	isConfigured() {
 		return !!getCredential("ANTHROPIC_API_KEY");
 	},

@@ -130,6 +130,8 @@ export const openaiApi: Provider = {
 	access: "api",
 	docsAnchor: "direct-model-apis",
 
+	/** Always — web_search_call items in the Responses payload. */
+	exposesWebQueries: () => true,
 	isConfigured() {
 		return !!getCredential("OPENAI_API_KEY");
 	},

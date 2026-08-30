@@ -163,6 +163,8 @@ export const oxylabs: Provider = {
 	access: "scraped",
 	docsAnchor: "oxylabs",
 
+	/** Always — the scraped content carries the search queries. */
+	exposesWebQueries: () => true,
 	isConfigured() {
 		return !!getCredential("OXYLABS_USERNAME") && !!getCredential("OXYLABS_PASSWORD");
 	},

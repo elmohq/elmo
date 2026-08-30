@@ -1,10 +1,11 @@
 import * as Sentry from "@sentry/node";
 import { getDeployment } from "@workspace/deployment";
-import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { getDefaultDelayHours, WEB_QUERIES_UNAVAILABLE } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { getOrgEntitlementsMap } from "@workspace/lib/entitlements";
-import { parseScrapeTargets } from "@workspace/lib/providers";
+import { type FanoutRunCounts, findSilentFanoutTargets } from "@workspace/lib/fanout-health";
+import { getProvider, parseScrapeTargets } from "@workspace/lib/providers";
 import {
 	computeMaintenanceDecisions,
 	lastRunQueryWindowMs,
@@ -25,6 +26,12 @@ export interface ScheduleMaintenanceData {
 // Don't re-emit the Sentry error more often than this while an outage persists.
 const OVERDUE_ALERT_THROTTLE_MS = 30 * 60 * 1000;
 let lastOverdueAlertMs = 0;
+
+// Fan-out health moves far slower than the 5-minute maintenance tick, and its
+// query scans a day of runs, so it runs on its own much longer interval.
+const FANOUT_HEALTH_INTERVAL_MS = 60 * 60 * 1000;
+const FANOUT_HEALTH_WINDOW_HOURS = 24;
+let lastFanoutHealthCheckMs = 0;
 
 /**
  * Maintenance job that ensures all enabled prompts have scheduled jobs.
@@ -246,6 +253,7 @@ async function runMaintenanceCheck(): Promise<void> {
 
 	const decisions = computeMaintenanceDecisions(promptStates, new Date());
 	reportOverduePrompts(decisions.alertOverdueCount);
+	await checkFanoutHealth();
 
 	if (decisions.toSchedule.length === 0 && decisions.toExpedite.length === 0) {
 		console.log("[schedule-maintenance] All prompts are on schedule or have pending jobs");
@@ -279,6 +287,78 @@ function reportOverduePrompts(overduePrompts: number): void {
 		scope.setFingerprint(["scheduler-overdue-prompts"]);
 		Sentry.captureMessage(`Scheduler: ${overduePrompts} prompt(s) overdue by >30m`, "error");
 	});
+}
+
+/**
+ * Recent web-search runs per (provider, model), and how many of them reported a
+ * real query. The sentinel and empty strings don't count — those are exactly
+ * what a broken extractor leaves behind.
+ */
+async function getFanoutRunCounts(): Promise<FanoutRunCounts[]> {
+	const result = await db.execute<{
+		provider: string;
+		model: string;
+		runs: number;
+		runs_with_queries: number;
+	}>(sql`
+		SELECT
+			provider,
+			model,
+			count(*)::int AS runs,
+			count(*) FILTER (WHERE EXISTS (
+				SELECT 1 FROM unnest(web_queries) AS wq
+				WHERE length(btrim(wq)) > 0 AND lower(btrim(wq)) <> ${WEB_QUERIES_UNAVAILABLE}
+			))::int AS runs_with_queries
+		FROM prompt_runs
+		WHERE web_search_enabled
+			AND provider IS NOT NULL
+			AND created_at >= now() - make_interval(hours => ${FANOUT_HEALTH_WINDOW_HOURS})
+		GROUP BY provider, model
+	`);
+	return result.rows.map((r) => ({
+		provider: r.provider,
+		model: r.model,
+		runs: r.runs,
+		runsWithQueries: r.runs_with_queries,
+	}));
+}
+
+/**
+ * Report to Sentry when a target that reports its searches by design has gone a
+ * whole window without reporting one. That is what a broken extractor looks
+ * like from the outside: every run still succeeds, with text and citations
+ * intact, and only the queries quietly become the `unavailable` sentinel.
+ *
+ * Fingerprinted per target so a single provider breaking is one issue that
+ * keeps accruing events, not a new alert every hour.
+ */
+async function checkFanoutHealth(): Promise<void> {
+	const now = Date.now();
+	if (now - lastFanoutHealthCheckMs < FANOUT_HEALTH_INTERVAL_MS) return;
+	lastFanoutHealthCheckMs = now;
+
+	const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+	const silent = findSilentFanoutTargets(configs, await getFanoutRunCounts(), (config) => {
+		const provider = getProvider(config.provider);
+		return provider?.exposesWebQueries?.(config) ?? false;
+	});
+
+	for (const target of silent) {
+		console.warn(
+			`[schedule-maintenance] ${target.target} reported no web queries across ${target.runs} runs — reporting to Sentry`,
+		);
+		Sentry.withScope((scope) => {
+			scope.setLevel("error");
+			scope.setTag("provider", target.provider);
+			scope.setTag("model", target.model);
+			scope.setContext("fanout", { target: target.target, runs: target.runs, windowHours: FANOUT_HEALTH_WINDOW_HOURS });
+			scope.setFingerprint(["fanout-no-web-queries", target.provider, target.model]);
+			Sentry.captureMessage(
+				`Fan-out: ${target.target} reported no web queries across ${target.runs} runs in ${FANOUT_HEALTH_WINDOW_HOURS}h`,
+				"error",
+			);
+		});
+	}
 }
 
 /**
