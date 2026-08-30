@@ -73,9 +73,12 @@ describe("olostep run", () => {
 
 		await olostep.run("google-ai-mode", "best running shoes");
 
-		expect(sdk.batchesCreate).toHaveBeenCalledWith([{ url: expect.stringContaining("google.com/aimode"), customId: "1" }], {
-			parser: { id: "@olostep/google-aimode-results" },
-		});
+		expect(sdk.batchesCreate).toHaveBeenCalledWith(
+			[{ url: expect.stringContaining("google.com/aimode"), customId: "1" }],
+			{
+				parser: { id: "@olostep/google-aimode-results" },
+			},
+		);
 	});
 
 	// The payload is stored so a row can be re-read later; queries reported from
