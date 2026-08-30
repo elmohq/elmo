@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { brandSegment } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -29,6 +30,7 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 	const [error, setError] = useState("");
 	const writeError = useWriteErrorMessage();
 	const organizationsChanged = useOrganizationsChanged();
+	const navigate = useNavigate();
 
 	const createBrand = async (enabledModels: string[] | null) => {
 		setIsLoading(true);
@@ -45,10 +47,12 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 			});
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
-			await organizationsChanged({
-				to: "/app/org/$org/brand/$brand",
-				params: { org: organizationSlug, brand: brandSegment(brand) },
-			});
+			await organizationsChanged(() =>
+				navigate({
+					to: "/app/org/$org/brand/$brand",
+					params: { org: organizationSlug, brand: brandSegment(brand) },
+				}),
+			);
 		} catch (err) {
 			setError(writeError(err, "Could not create the brand."));
 		} finally {

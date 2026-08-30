@@ -1,6 +1,6 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { brandSegment, brandSlugPrefix, normalizeSlug } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -31,6 +31,7 @@ function BrandSettingsPage() {
 	const organization = useOrganization();
 	const organizationsChanged = useOrganizationsChanged();
 	const brandParams = useBrandParams();
+	const navigate = useNavigate();
 	const writeError = useWriteErrorMessage();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState("");
@@ -110,11 +111,12 @@ function BrandSettingsPage() {
 			await revalidate();
 			await organizationsChanged(
 				slugMoved
-					? {
-							to: "/app/org/$org/brand/$brand/settings/brand",
-							params: { ...brandParams, brand: nextSlug },
-							replace: true,
-						}
+					? () =>
+							navigate({
+								to: "/app/org/$org/brand/$brand/settings/brand",
+								params: { ...brandParams, brand: nextSlug },
+								replace: true,
+							})
 					: undefined,
 			);
 		} catch (err) {

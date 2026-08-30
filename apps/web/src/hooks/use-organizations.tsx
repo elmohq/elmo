@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type NavigateOptions, useRouteContext, useRouter } from "@tanstack/react-router";
+import { useRouteContext, useRouter } from "@tanstack/react-router";
 import { useCallback } from "react";
 import { invalidateOrganizations, organizationsQuery } from "@/lib/organizations/queries";
 import type { OrganizationSummary } from "@/lib/organizations/types";
@@ -26,14 +26,14 @@ export function useOrganizations() {
  * changes what exists has to drop both or the next navigation reads a list that
  * predates it.
  */
-export function useOrganizationsChanged(): (movedTo?: NavigateOptions) => Promise<void> {
+export function useOrganizationsChanged(): (moveTo?: () => Promise<unknown>) => Promise<void> {
 	const queryClient = useQueryClient();
 	const router = useRouter();
 
 	return useCallback(
-		async (movedTo?: NavigateOptions) => {
+		async (moveTo?: () => Promise<unknown>) => {
 			await invalidateOrganizations(queryClient);
-			if (movedTo) await router.navigate(movedTo);
+			await moveTo?.();
 			await router.invalidate();
 		},
 		[queryClient, router],

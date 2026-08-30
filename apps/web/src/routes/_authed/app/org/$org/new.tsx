@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -41,6 +41,7 @@ function NewBrandPage() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
 	const organizationsChanged = useOrganizationsChanged();
+	const navigate = useNavigate();
 	const writeError = useWriteErrorMessage();
 
 	const createBrand = async (brandName: string, website: string, enabledModels: string[] | null) => {
@@ -58,10 +59,9 @@ function NewBrandPage() {
 			});
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
-			await organizationsChanged({
-				to: "/app/org/$org/brand/$brand",
-				params: { ...organizationParams, brand: brandSlug },
-			});
+			await organizationsChanged(() =>
+				navigate({ to: "/app/org/$org/brand/$brand", params: { ...organizationParams, brand: brandSlug } }),
+			);
 		} catch (err) {
 			setError(writeError(err, "Could not create the brand."));
 		} finally {

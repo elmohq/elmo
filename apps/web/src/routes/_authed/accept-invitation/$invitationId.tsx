@@ -6,7 +6,7 @@
  * Better-auth requires the session email to match the invited email
  * (case-insensitively) and rejects expired or already-handled invitations.
  */
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { useState } from "react";
@@ -44,6 +44,7 @@ function AcceptInvitationPage() {
 	const { invitationId } = Route.useParams();
 	const { invitation, error: loadError } = Route.useLoaderData();
 	const organizationsChanged = useOrganizationsChanged();
+	const navigate = useNavigate();
 	const [accepting, setAccepting] = useState(false);
 	const writeError = useWriteErrorMessage();
 	const [acceptError, setAcceptError] = useState<string | null>(null);
@@ -71,7 +72,7 @@ function AcceptInvitationPage() {
 		setAccepting(true);
 		try {
 			const { orgSlug } = await acceptInvitationFn({ data: { invitationId } });
-			await organizationsChanged({ to: "/app/org/$org", params: { org: orgSlug } });
+			await organizationsChanged(() => navigate({ to: "/app/org/$org", params: { org: orgSlug } }));
 		} catch (err) {
 			setAcceptError(writeError(err, "Failed to accept the invitation"));
 			setAccepting(false);

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { normalizeSlug, ORG_URL_PREFIX } from "@workspace/lib/app-urls";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button } from "@workspace/ui/components/button";
@@ -19,6 +19,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/")({
 function OrganizationSettingsPage() {
 	const organization = useOrganization();
 	const organizationsChanged = useOrganizationsChanged();
+	const navigate = useNavigate();
 	const writeError = useWriteErrorMessage();
 	const [name, setName] = useState(organization.name);
 	const [slug, setSlug] = useState(organization.slug);
@@ -43,7 +44,9 @@ function OrganizationSettingsPage() {
 			setName(trimmedName);
 			setSlug(trimmedSlug);
 			await organizationsChanged(
-				slugMoved ? { to: "/app/org/$org/settings", params: { org: trimmedSlug }, replace: true } : undefined,
+				slugMoved
+					? () => navigate({ to: "/app/org/$org/settings", params: { org: trimmedSlug }, replace: true })
+					: undefined,
 			);
 		} catch (err) {
 			setError(writeError(err, "Failed to save the organization."));
