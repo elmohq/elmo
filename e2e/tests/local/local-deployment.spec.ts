@@ -59,12 +59,15 @@ test.describe("Local features", () => {
     await expect(page.getByRole("heading", { name: /reports/i }).first()).toBeVisible({ timeout: 30_000 });
   });
 
-  test("the sidebar offers reports on a brand, and the organization's pages on its own", async ({ page }) => {
+  test("reports are in the account menu on a brand, and the organization's pages are its own", async ({ page }) => {
     await page.goto(`${brandUrl()}`);
-    await expect(page.locator('a[href="/reports"][data-sidebar="menu-button"]')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator(`a[href="${brandUrl()}"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 30_000 });
     await expect(page.locator(`a[href="${organizationUrl()}/settings/brands"][data-sidebar="menu-button"]`)).toHaveCount(
       0,
     );
+
+    await page.getByRole("button", { name: "Account and organizations" }).click();
+    await expect(page.getByRole("menu").locator('a[href="/reports"]')).toBeVisible({ timeout: 30_000 });
 
     await page.goto(`${organizationUrl()}/settings`);
     await expect(
