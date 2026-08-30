@@ -8,13 +8,9 @@ import {
 	IconDashboard,
 	IconLink,
 	IconListDetails,
-	IconReport,
 	IconSitemap,
 	IconSpeakerphone,
-	IconTable,
 	IconTarget,
-	IconTimeline,
-	IconTool,
 	IconUsers,
 } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
@@ -39,6 +35,7 @@ import { type NavGroup, type NavItem, NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import { useViewer } from "@/hooks/use-route-context";
+import { adminNavItems } from "@/lib/admin-nav";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
 type ScopeProps =
@@ -106,21 +103,6 @@ function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts)
 	return groups;
 }
 
-function adminGroup(isAdmin: boolean, reportsEnabled: boolean): NavGroup {
-	const reportsItem: NavItem = { title: "Reports", link: { to: "/reports" }, icon: IconReport };
-	if (!isAdmin) return { label: "Admin", items: [reportsItem] };
-
-	return {
-		label: "Admin",
-		items: [
-			{ title: "Brands", link: { to: "/admin" }, icon: IconTable },
-			...(reportsEnabled ? [reportsItem] : []),
-			{ title: "Workflows", link: { to: "/admin/workflows" }, icon: IconTimeline },
-			{ title: "Tools", link: { to: "/admin/tools" }, icon: IconTool },
-		],
-	};
-}
-
 export function AppSidebar(props: ScopeProps) {
 	const { scope } = props;
 	const { setOpenMobile } = useSidebar();
@@ -131,12 +113,14 @@ export function AppSidebar(props: ScopeProps) {
 
 	// A gate page offers no destinations: every link would either 404 or bounce
 	// the user straight back to the gate.
-	const showAdminSection = scope !== "account" && (isAdmin || (hasReportAccess && reportsEnabled));
+	const adminItems = scope === "account" ? [] : adminNavItems({ isAdmin, hasReportAccess, reportsEnabled });
 
+	// The rail stays scoped to wherever you are, so admin links only earn a spot
+	// on admin routes; everywhere else they hang off the account menu.
 	const groups: NavGroup[] = [
 		...(props.scope === "brand" ? brandGroups(props.organization, props.brand) : []),
 		...(props.scope === "organization" ? [organizationGroup(props.organization, features)] : []),
-		...(showAdminSection ? [adminGroup(isAdmin, reportsEnabled)] : []),
+		...(scope === "admin" && adminItems.length > 0 ? [{ label: "Admin", items: adminItems }] : []),
 	];
 	const brandmark = (
 		<>
@@ -168,7 +152,7 @@ export function AppSidebar(props: ScopeProps) {
 				<NavMain groups={groups} />
 			</SidebarContent>
 			<SidebarFooter>
-				<NavUser showOrganizations={scope !== "account"} />
+				<NavUser showOrganizations={scope !== "account"} adminItems={scope === "admin" ? [] : adminItems} />
 				<NavAppInfo />
 			</SidebarFooter>
 		</Sidebar>

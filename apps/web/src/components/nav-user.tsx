@@ -23,6 +23,7 @@ import {
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
+import type { NavItem } from "@/components/nav-main";
 import { OrganizationRowIcon } from "@/components/organization-row-icon";
 import { useAuth } from "@/hooks/use-auth";
 import { useBrandId } from "@/hooks/use-brand-id";
@@ -35,7 +36,13 @@ import { resetPostHog } from "@/lib/posthog";
 
 const INLINE_ORGANIZATION_LIMIT = 3;
 
-export function NavUser({ showOrganizations = true }: { showOrganizations?: boolean } = {}) {
+export function NavUser({
+	showOrganizations = true,
+	adminItems = [],
+}: {
+	showOrganizations?: boolean;
+	adminItems?: NavItem[];
+} = {}) {
 	const { user } = useAuth();
 	const { isMobile, setOpenMobile } = useSidebar();
 	const branding = useBranding();
@@ -113,6 +120,25 @@ export function NavUser({ showOrganizations = true }: { showOrganizations?: bool
 										<DropdownMenuSeparator />
 									</>
 								)}
+							</>
+						)}
+
+						{adminItems.length > 0 && (
+							<>
+								<DropdownMenuGroup>
+									<DropdownMenuLabel className="text-muted-foreground text-xs">Admin</DropdownMenuLabel>
+									{adminItems.map((item) => (
+										<DropdownMenuItem
+											key={item.title}
+											render={<Link {...item.link} onClick={close} />}
+											className="cursor-pointer"
+										>
+											{item.icon && <item.icon />}
+											{item.title}
+										</DropdownMenuItem>
+									))}
+								</DropdownMenuGroup>
+								<DropdownMenuSeparator />
 							</>
 						)}
 

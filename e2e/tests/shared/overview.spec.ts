@@ -51,15 +51,23 @@ test.describe("Overview Page", () => {
     await page.waitForURL(new RegExp(`${BRAND_URL}$`));
   });
 
-  test("an admin can reach the admin brand list", async ({ page }) => {
+  test("an admin can reach the admin brand list from the account menu", async ({ page }) => {
     await page.goto(`${BRAND_URL}`);
 
     await expect(page.locator(`a[href="${BRAND_URL}"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
+    // The rail only carries brand nav here; admin links hang off the account menu.
+    await expect(page.locator('a[href="/admin"][data-sidebar="menu-button"]')).toHaveCount(0);
 
-    const adminLink = page.locator('a[href="/admin"][data-sidebar="menu-button"]');
+    await page.getByRole("button", { name: "Account and organizations" }).click();
+    const adminLink = page.getByRole("menu").locator('a[href="/admin"]');
     await expect(adminLink).toBeVisible({ timeout: 15_000 });
     await adminLink.click();
     await page.waitForURL(/\/admin$/);
+
+    // On an admin route the rail takes the admin links back over.
+    await expect(page.locator('a[href="/admin/workflows"][data-sidebar="menu-button"]')).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test("settings pages are accessible", async ({ page }) => {
