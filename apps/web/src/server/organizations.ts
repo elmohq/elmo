@@ -10,18 +10,17 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getAuthSession, listUserOrganizations, requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
-import { summarizeOrganizations } from "@/lib/organizations/server";
-import type { OrganizationSummary } from "@/lib/organizations/types";
+import { summarizeOrganizations } from "@/lib/organizations/summarize";
+import type { OrganizationSummary, OrganizationsView } from "@/lib/organizations/types";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
-export type { OrganizationSummary } from "@/lib/organizations/types";
+export type { OrganizationSummary, OrganizationsView } from "@/lib/organizations/types";
 
-export const listOrganizationsFn = createServerFn({ method: "GET" }).handler(
-	async (): Promise<OrganizationSummary[] | null> => {
-		const session = await getAuthSession();
-		return session ? summarizeOrganizations(await listUserOrganizations(session.user.id)) : null;
-	},
-);
+export const listOrganizationsFn = createServerFn({ method: "GET" }).handler(async (): Promise<OrganizationsView> => {
+	const session = await getAuthSession();
+	if (!session) return { signedIn: false, organizations: [] };
+	return { signedIn: true, organizations: await summarizeOrganizations(await listUserOrganizations(session.user.id)) };
+});
 
 export const syncOrganizationMembershipsFn = createServerFn({ method: "GET" }).handler(async (): Promise<boolean> => {
 	if (getDeployment().mode !== "whitelabel") return false;
@@ -79,9 +78,7 @@ export const updateOrganizationFn = createServerFn({ method: "POST" })
 						.where(eq(organization.id, org.id));
 					return data.slug ?? org.slug;
 				}),
-			() => {
-				throw new Error(TAKEN_SLUG);
-			},
+			TAKEN_SLUG,
 		);
 		return { slug };
 	});

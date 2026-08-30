@@ -10,6 +10,7 @@ import { brandKeys, useBrand } from "@/hooks/use-brands";
 import { useCitations } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { useListFilters } from "@/hooks/use-list-filters";
+import { useBrandParams } from "@/hooks/use-route-params";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { pageHead } from "@/lib/route-head";
 
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/citatio
 });
 
 function CitationsPage() {
-	const { org, brand: brandParam } = Route.useParams();
+	const brandParams = useBrandParams();
 	const { brandId } = Route.useRouteContext();
 	const queryClient = useQueryClient();
 
@@ -50,11 +51,7 @@ function CitationsPage() {
 			</p>
 			<p>
 				<strong>Competitor</strong> domains are only those you&apos;ve added to your{" "}
-				<Link
-					to="/app/org/$org/brand/$brand/settings/competitors"
-					params={{ org, brand: brandParam }}
-					className="underline"
-				>
+				<Link to="/app/org/$org/brand/$brand/settings/competitors" params={brandParams} className="underline">
 					tracked competitors list
 				</Link>
 				. Other domains appear under their detected category (Google, Social Media, Institutional, or Other).

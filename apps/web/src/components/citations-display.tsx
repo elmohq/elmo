@@ -115,7 +115,8 @@ export function CitationsDisplay({
 		useCitationSections(citationData);
 	const domainSourceTabs = urlSourceTabs; // identical by construction (same chart-category list)
 
-	const hasGaps = !!citationData.competitorOnlyPrompts?.length;
+	const contentGaps = citationData.competitorOnlyPrompts ?? [];
+	const hasGaps = contentGaps.length > 0;
 	const googleModule = citationData.googleModule;
 	const whatsChanged = citationData.whatsChanged;
 	const subredditData = useSubredditData(citationData.specificUrls, citationData.whatsChanged);
@@ -161,7 +162,7 @@ export function CitationsDisplay({
 					className={totalChanges > 0 && hasGaps ? "grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch" : "contents"}
 				>
 					{totalChanges > 0 && whatsChanged && <RecentChangesCard whatsChanged={whatsChanged} days={days} />}
-					{hasGaps && <ContentGapsCard prompts={citationData.competitorOnlyPrompts!} />}
+					{hasGaps && <ContentGapsCard prompts={contentGaps} />}
 				</div>
 			)}
 

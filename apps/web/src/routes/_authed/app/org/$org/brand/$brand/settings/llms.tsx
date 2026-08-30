@@ -24,6 +24,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { type ReactNode, useState } from "react";
 import { formatUsd, PlatformList, PlatformPicker, projectSelectionCostUsd } from "@/components/platform-picker";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
+import { useBrandParams, useOrganizationParams } from "@/hooks/use-route-params";
 import { groupPlatformOptions, type PlatformGroup, platformGroupCopy } from "@/lib/platform-groups";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
@@ -79,7 +80,6 @@ function NoPlatformsCard() {
 
 /** The tiers with no checkboxes, for when there is nothing to decide. */
 function TrackedPlatforms({ picker }: { picker: ModelPickerState }) {
-	const { org } = Route.useParams();
 	const tracked = new Set(picker.enabledModels);
 	const groups = groupPlatformOptions(picker.available.filter((option) => tracked.has(option.model)));
 
@@ -90,7 +90,7 @@ function TrackedPlatforms({ picker }: { picker: ModelPickerState }) {
 			) : (
 				<PlatformTierCard groups={groups} renderGroup={(group) => <PlatformList options={group.options} />} />
 			)}
-			{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} org={org} />}
+			{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} />}
 		</div>
 	);
 }
@@ -118,7 +118,6 @@ function PlatformTierCard({
 }
 
 function PlatformGroups({ picker }: { picker: ModelPickerState }) {
-	const { org, brand: brandParam } = Route.useParams();
 	const { brandId } = Route.useRouteContext();
 	const router = useRouter();
 	const writeError = useWriteErrorMessage();
@@ -194,7 +193,7 @@ function PlatformGroups({ picker }: { picker: ModelPickerState }) {
 				)}
 			/>
 
-			{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} org={org} />}
+			{picker.upgradeOptions.length > 0 && <UpgradePanel options={picker.upgradeOptions} />}
 
 			{selected.size === 0 && (
 				<Alert variant="destructive">
@@ -237,7 +236,8 @@ function summarizeSelection(count: number, spend: { saved: number; next: number 
  * wrapped sentence of platform names was unreadable once a plan was missing more
  * than a couple, so each name is its own chip and each tier its own row.
  */
-function UpgradePanel({ options, org }: { options: ModelPickerState["upgradeOptions"]; org: string }) {
+function UpgradePanel({ options }: { options: ModelPickerState["upgradeOptions"] }) {
+	const organizationParams = useOrganizationParams();
 	return (
 		<div className="space-y-3 rounded-md border border-dashed p-4">
 			<p className="text-sm font-medium">Upgrade to track more platforms</p>
@@ -261,7 +261,7 @@ function UpgradePanel({ options, org }: { options: ModelPickerState["upgradeOpti
 			</div>
 			<Link
 				to="/app/org/$org/settings/billing"
-				params={{ org }}
+				params={organizationParams}
 				className={buttonVariants({ variant: "outline", size: "sm" })}
 			>
 				Compare plans
@@ -278,7 +278,8 @@ function UpgradePanel({ options, org }: { options: ModelPickerState["upgradeOpti
  * spend them.
  */
 function PremiumApiPool({ premium }: { premium: PremiumPool }) {
-	const { org, brand: brandParam } = Route.useParams();
+	const brandParams = useBrandParams();
+	const organizationParams = useOrganizationParams();
 	const { brandId } = Route.useRouteContext();
 	const copy = platformGroupCopy("premium");
 	const remaining = Math.max(0, premium.total - premium.assigned);
@@ -316,14 +317,14 @@ function PremiumApiPool({ premium }: { premium: PremiumPool }) {
 				<div className="flex flex-wrap gap-2">
 					<Link
 						to="/app/org/$org/brand/$brand/settings/prompts"
-						params={{ org, brand: brandParam }}
+						params={brandParams}
 						className={buttonVariants({ variant: "outline", size: "sm" })}
 					>
 						Choose prompts
 					</Link>
 					<Link
 						to="/app/org/$org/settings/billing"
-						params={{ org }}
+						params={organizationParams}
 						className={buttonVariants({ variant: "ghost", size: "sm" })}
 					>
 						Change how many

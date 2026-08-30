@@ -1,10 +1,10 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
-import { useInvalidateOrganizations } from "@/hooks/use-organizations";
+import { useOrganizationsChanged } from "@/hooks/use-organizations";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { createOrganizationFn } from "@/server/organizations";
@@ -24,8 +24,7 @@ export const Route = createFileRoute("/_authed/app/new")({
 });
 
 function NewOrganizationPage() {
-	const navigate = useNavigate();
-	const invalidateOrganizations = useInvalidateOrganizations();
+	const organizationsChanged = useOrganizationsChanged();
 	const writeError = useWriteErrorMessage();
 	const [name, setName] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
@@ -40,8 +39,7 @@ function NewOrganizationPage() {
 		setIsLoading(true);
 		try {
 			const { slug } = await createOrganizationFn({ data: { name: trimmed } });
-			await invalidateOrganizations();
-			await navigate({ to: "/app/org/$org/settings", params: { org: slug } });
+			await organizationsChanged({ to: "/app/org/$org/settings", params: { org: slug } });
 		} catch (err) {
 			setError(writeError(err, "Could not create the organization."));
 			setIsLoading(false);

@@ -1,7 +1,7 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { BRAND_URL_PREFIX } from "@workspace/lib/app-urls";
+import { createFileRoute } from "@tanstack/react-router";
+import { brandSegment, brandSlugPrefix, normalizeSlug } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -12,7 +12,8 @@ import { SlugField } from "@/components/slug-field";
 import { useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
-import { useInvalidateOrganizations } from "@/hooks/use-organizations";
+import { useOrganization, useOrganizationsChanged } from "@/hooks/use-organizations";
+import { useBrandParams } from "@/hooks/use-route-params";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
@@ -27,9 +28,9 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 function BrandSettingsPage() {
 	const { brand, isLoading, revalidate } = useBrand();
 	const queryClient = useQueryClient();
-	const router = useRouter();
-	const invalidateOrganizations = useInvalidateOrganizations();
-	const { org } = Route.useParams();
+	const organization = useOrganization();
+	const organizationsChanged = useOrganizationsChanged();
+	const brandParams = useBrandParams();
 	const writeError = useWriteErrorMessage();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState("");
@@ -45,7 +46,7 @@ function BrandSettingsPage() {
 		setSeededFrom(brand.updatedAt);
 		setAdditionalDomains(brand.additionalDomains || []);
 		setAliases(brand.aliases || []);
-		setSlug(brand.slug ?? brand.id);
+		setSlug(brandSegment(brand));
 	}
 
 	const validateDomain = useCallback((val: string): true | string => {
@@ -77,7 +78,7 @@ function BrandSettingsPage() {
 		);
 	}
 
-	const currentSlug = brand.slug ?? brand.id;
+	const currentSlug = brandSegment(brand);
 
 	const handleSubmit = async (formData: FormData) => {
 		setIsSubmitting(true);
@@ -88,7 +89,7 @@ function BrandSettingsPage() {
 			const name = formData.get("name") as string;
 			const website = formData.get("website") as string;
 
-			const nextSlug = slug.trim().toLowerCase();
+			const nextSlug = normalizeSlug(slug);
 			const slugMoved = nextSlug !== currentSlug;
 			await updateBrandFn({
 				data: {
@@ -107,14 +108,15 @@ function BrandSettingsPage() {
 
 			setSuccess("Brand details updated successfully!");
 			await revalidate();
-			await invalidateOrganizations();
-			if (slugMoved) {
-				await router.navigate({
-					to: "/app/org/$org/brand/$brand/settings/brand",
-					params: { org, brand: nextSlug },
-					replace: true,
-				});
-			}
+			await organizationsChanged(
+				slugMoved
+					? {
+							to: "/app/org/$org/brand/$brand/settings/brand",
+							params: { ...brandParams, brand: nextSlug },
+							replace: true,
+						}
+					: undefined,
+			);
 		} catch (err) {
 			setError(writeError(err, "Failed to save the brand."));
 		} finally {
@@ -148,7 +150,7 @@ function BrandSettingsPage() {
 					<SlugField
 						id="brand-slug"
 						label="Brand Slug"
-						prefix={BRAND_URL_PREFIX}
+						prefix={brandSlugPrefix(organization)}
 						value={slug}
 						onChange={setSlug}
 						disabled={isSubmitting}

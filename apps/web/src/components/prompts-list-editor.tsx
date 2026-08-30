@@ -65,10 +65,9 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 
 /** Both places that offer more pairings send you to the same page. */
 function BillingLink({ children }: { children: ReactNode }) {
-	const organizationParams = useOrganizationParams();
-	if (!organizationParams) return <>{children}</>;
+	const params = useOrganizationParams();
 	return (
-		<Link to="/app/org/$org/settings/billing" params={organizationParams} className="underline">
+		<Link to="/app/org/$org/settings/billing" params={params} className="underline">
 			{children}
 		</Link>
 	);

@@ -1,5 +1,5 @@
 import type { LinkProps } from "@tanstack/react-router";
-import { brandParams, orgParams } from "@workspace/lib/app-urls";
+import { brandLinkParams, orgLinkParams } from "@workspace/lib/app-urls";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
 interface RowBase {
@@ -22,13 +22,13 @@ export function organizationTree(organization: OrganizationSummary): Organizatio
 	const children: OrganizationRow[] = organization.brands.map((brand) => ({
 		kind: "brand",
 		key: brand.id,
-		link: { to: "/app/org/$org/brand/$brand", params: brandParams(organization, brand) },
+		link: { to: "/app/org/$org/brand/$brand", params: brandLinkParams(organization, brand) },
 		label: brand.name,
 		id: brand.id,
 		website: brand.website,
 	}));
 
-	const params = orgParams(organization);
+	const params = orgLinkParams(organization);
 
 	if (organization.brandCreation.kind === "allowed") {
 		children.push({

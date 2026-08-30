@@ -1,8 +1,3 @@
-/**
- * Renders outside `_authed`, so there is no session in context: the query is
- * what says whether there is one, and null means signed out rather than signed
- * in with nothing to their name.
- */
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import FullPageCard from "@/components/full-page-card";
@@ -13,7 +8,7 @@ const TITLE = "404 Not Found";
 const SUBTITLE = "That page doesn't exist or moved.";
 
 export function NotFoundPage() {
-	const { data: organizations, isLoading } = useQuery({ ...organizationsQuery, retry: false });
+	const { data, isLoading } = useQuery(organizationsQuery);
 
 	if (isLoading) {
 		return (
@@ -26,13 +21,13 @@ export function NotFoundPage() {
 		);
 	}
 
-	if (!organizations) {
+	if (!data?.signedIn) {
 		return <FullPageCard title={TITLE} subtitle={SUBTITLE} showBackButton={true} />;
 	}
 
 	return (
-		<FullPageCard logoHref="/app" title={TITLE} subtitle={SUBTITLE} showBackButton={organizations.length === 0}>
-			{organizations.length > 0 ? <OrganizationDirectory organizations={organizations} /> : undefined}
+		<FullPageCard logoHref="/app" title={TITLE} subtitle={SUBTITLE} showBackButton={data.organizations.length === 0}>
+			{data.organizations.length > 0 ? <OrganizationDirectory organizations={data.organizations} /> : undefined}
 		</FullPageCard>
 	);
 }

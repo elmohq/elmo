@@ -386,9 +386,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 						.where(eq(brands.id, data.brandId))
 						.returning();
 				}),
-			() => {
-				throw new Error(TAKEN_SLUG);
-			},
+			TAKEN_SLUG,
 		);
 
 		if (!result[0]) {

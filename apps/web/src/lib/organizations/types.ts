@@ -20,3 +20,8 @@ export interface OrganizationSummary {
 	brands: OrganizationBrand[];
 	brandCreation: BrandCreation;
 }
+
+export interface OrganizationsView {
+	signedIn: boolean;
+	organizations: OrganizationSummary[];
+}

@@ -13,27 +13,33 @@ export function brandSegment(brand: SluggableBrand): string {
 
 /**
  * Slug first, then id: an id and another row's slug can both be the segment, so
- * which one the URL names must not depend on row order. `resolveOrganization`
- * encodes the same precedence in SQL.
+ * which one the URL names must not depend on row order.
  */
 export function resolveSegment<T extends SluggableBrand>(items: readonly T[], segment: string): T | undefined {
 	return items.find((item) => item.slug === segment) ?? items.find((item) => item.id === segment);
 }
 
-export function orgParams(org: SluggableOrg): { org: string } {
+export function orgLinkParams(org: SluggableOrg): { org: string } {
 	return { org: org.slug };
 }
 
-export function brandParams(org: SluggableOrg, brand: SluggableBrand): { org: string; brand: string } {
+export function brandLinkParams(org: SluggableOrg, brand: SluggableBrand): { org: string; brand: string } {
 	return { org: org.slug, brand: brandSegment(brand) };
 }
 
 export const ORG_URL_PREFIX = "/app/org/";
 export const BRAND_URL_PREFIX = "/brand/";
 
-export function orgSettingsPath(org: SluggableOrg, sub?: "members" | "billing"): string {
+export const ORG_SETTINGS_PAGES = ["brands", "members", "billing"] as const;
+export type OrgSettingsPage = (typeof ORG_SETTINGS_PAGES)[number];
+
+export function orgSettingsPath(org: SluggableOrg, sub?: OrgSettingsPage): string {
 	const base = `${ORG_URL_PREFIX}${encodeURIComponent(org.slug)}/settings`;
 	return sub ? `${base}/${sub}` : base;
+}
+
+export function brandSlugPrefix(org: SluggableOrg): string {
+	return `${ORG_URL_PREFIX}${org.slug}${BRAND_URL_PREFIX}`;
 }
 
 interface AppLocation {
@@ -66,6 +72,10 @@ export function canonicalBrandHref(location: AppLocation, brand: string): string
 }
 
 export const MAX_SLUG_LENGTH = 48;
+
+export function normalizeSlug(value: string): string {
+	return value.trim().toLowerCase();
+}
 
 export function isValidSlug(slug: string): boolean {
 	if (slug.length === 0 || slug.length > MAX_SLUG_LENGTH) return false;

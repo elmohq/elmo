@@ -7,11 +7,12 @@ import {
 	TEST_BRAND_NAME,
 	TEST_ORGANIZATION_NAME,
 	TEST_ORG_SLUG,
+	brandUrl,
 	organizationUrl,
 } from "../../fixtures";
 
-const BRAND_URL = `/app/org/${TEST_ORG_SLUG}/brand/${TEST_BRAND_ID}`;
-const SLUGGED_BRAND_URL = `/app/org/${TEST_ORG_SLUG}/brand/${SLUGGED_BRAND_SLUG}`;
+const BRAND_URL = brandUrl();
+const SLUGGED_BRAND_URL = brandUrl(SLUGGED_BRAND_SLUG);
 
 test.describe("App routing", () => {
 	test("a brand with no slug resolves by id", async ({ page }) => {
@@ -24,16 +25,16 @@ test.describe("App routing", () => {
 		await page.goto(SLUGGED_BRAND_URL);
 		await expect(page).toHaveURL(new RegExp(`${SLUGGED_BRAND_URL}$`), { timeout: 30_000 });
 
-		await page.goto(`/app/org/${TEST_ORG_SLUG}/brand/${SLUGGED_BRAND_ID}/citations`);
+		await page.goto(`${brandUrl(SLUGGED_BRAND_ID)}/citations`);
 		await expect(page).toHaveURL(new RegExp(`${SLUGGED_BRAND_URL}/citations$`), { timeout: 30_000 });
 	});
 
 	test("route names are reachable as organization pages", async ({ page }) => {
-		await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
+		await page.goto(`${organizationUrl()}/settings`);
 		await expect(page.getByRole("heading", { name: "Organization" })).toBeVisible({ timeout: 30_000 });
 
-		await page.goto(`/app/org/${TEST_ORG_SLUG}/new`);
-		await expect(page).toHaveURL(new RegExp(`/app/org/${TEST_ORG_SLUG}(?:/new|/settings)?/?$`), {
+		await page.goto(`${organizationUrl()}/new`);
+		await expect(page).toHaveURL(new RegExp(`${organizationUrl()}(?:/new|/settings)?/?$`), {
 			timeout: 30_000,
 		});
 	});
@@ -66,12 +67,12 @@ test.describe("App routing", () => {
 	});
 
 	test("a brand from another organization does not resolve under this one", async ({ page }) => {
-		await page.goto(`/app/org/${TEST_ORG_SLUG}/brand/${NIKE_BRAND_ID}`);
+		await page.goto(brandUrl(NIKE_BRAND_ID));
 		await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
 	});
 
 	test("the organization settings page states the organization's slug", async ({ page }) => {
-		await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
+		await page.goto(`${organizationUrl()}/settings`);
 		await expect(page.getByLabel("Organization Slug", { exact: true })).toHaveValue(TEST_ORG_SLUG, {
 			timeout: 30_000,
 		});

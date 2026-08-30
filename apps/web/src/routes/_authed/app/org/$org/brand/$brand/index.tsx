@@ -19,6 +19,7 @@ import PromptWizard from "@/components/prompt-wizard";
 import { TrendChart, type TrendPoint } from "@/components/trend-chart";
 import { useBrand } from "@/hooks/use-brands";
 import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
+import { useBrandParams } from "@/hooks/use-route-params";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
 import { describeTargetSchedule, labelForModelFilter, type TrackedTarget } from "@/lib/model-filter";
 import { setPersonProperties } from "@/lib/posthog";
@@ -148,7 +149,6 @@ function TrendSection({
 	title,
 	linkTo,
 	linkLabel,
-	brandParams,
 	chartTitle,
 	chartLabel,
 	tooltip,
@@ -160,7 +160,6 @@ function TrendSection({
 	title: string;
 	linkTo: "/app/org/$org/brand/$brand/visibility" | "/app/org/$org/brand/$brand/share-of-voice";
 	linkLabel: string;
-	brandParams: { org: string; brand: string };
 	chartTitle: string;
 	chartLabel: string;
 	tooltip?: string;
@@ -168,6 +167,7 @@ function TrendSection({
 	series: TrendPoint[];
 	loading: boolean;
 }) {
+	const params = useBrandParams();
 	const heroTone = value === null ? "" : `${getVisibilityBgColor(value)} ${getVisibilityBorderColor(value)}`;
 	return (
 		<section className="space-y-2">
@@ -178,7 +178,7 @@ function TrendSection({
 				</h2>
 				<Link
 					to={linkTo}
-					params={brandParams}
+					params={params}
 					className={buttonVariants({ variant: "ghost", size: "sm", className: "h-8" })}
 				>
 					{linkLabel} <IconArrowRight className="h-4 w-4 ml-1" />
@@ -308,15 +308,8 @@ function TrackingStats({
  * Shown until the first evaluation lands. What to do next depends on whether
  * any prompt is configured, and whether any of them are enabled.
  */
-function AwaitingFirstEvaluation({
-	brandParams,
-	totalPrompts,
-	hasPrompts,
-}: {
-	brandParams: { org: string; brand: string };
-	totalPrompts: number;
-	hasPrompts: boolean;
-}) {
+function AwaitingFirstEvaluation({ totalPrompts, hasPrompts }: { totalPrompts: number; hasPrompts: boolean }) {
+	const params = useBrandParams();
 	const hasEnabledPrompts = totalPrompts > 0;
 	const message = hasEnabledPrompts
 		? "You are ready to track your AI visibility. We're currently running the first evaluation against AI models. This usually takes a few minutes."
@@ -343,7 +336,7 @@ function AwaitingFirstEvaluation({
 				)}
 				<Link
 					to="/app/org/$org/brand/$brand/settings/prompts"
-					params={brandParams}
+					params={params}
 					className={buttonVariants({ variant: "outline", className: "w-full" })}
 				>
 					{hasEnabledPrompts ? "View Your Prompts" : hasPrompts ? "Edit Prompts" : "Set Up Prompts"}{" "}
@@ -394,7 +387,6 @@ function HeroStat({ value, loading }: { value: number | null; loading: boolean }
 }
 
 function DashboardPage() {
-	const { org, brand: brandParam } = Route.useParams();
 	const { brandId } = Route.useRouteContext();
 	const { brand, isLoading: isLoadingBrand } = useBrand();
 	// The footer reports what this brand actually runs, resolved server-side.
@@ -430,13 +422,7 @@ function DashboardPage() {
 
 	// No runs yet: the dashboard has nothing to plot, so point at what to do next.
 	if (!isLoadingBrand && !isLoadingSummary && totalRuns === 0) {
-		return (
-			<AwaitingFirstEvaluation
-				brandParams={{ org, brand: brandParam }}
-				totalPrompts={totalPrompts}
-				hasPrompts={(brand?.prompts?.length ?? 0) > 0}
-			/>
-		);
+		return <AwaitingFirstEvaluation totalPrompts={totalPrompts} hasPrompts={(brand?.prompts?.length ?? 0) > 0} />;
 	}
 
 	return (
@@ -447,7 +433,6 @@ function DashboardPage() {
 					title="AI Visibility"
 					linkTo="/app/org/$org/brand/$brand/visibility"
 					linkLabel="View Visibility"
-					brandParams={{ org, brand: brandParam }}
 					chartTitle="Visibility Trends (30d)"
 					chartLabel="AI Visibility (7d avg)"
 					tooltip={visibilityTooltip}
@@ -464,7 +449,6 @@ function DashboardPage() {
 					title="Share of Voice"
 					linkTo="/app/org/$org/brand/$brand/share-of-voice"
 					linkLabel="View Share of Voice"
-					brandParams={{ org, brand: brandParam }}
 					chartTitle="Share of Voice Trends (30d)"
 					chartLabel="Share of Voice"
 					tooltip={sovTooltip}

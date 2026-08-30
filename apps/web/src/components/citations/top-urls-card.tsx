@@ -76,17 +76,13 @@ export function TopUrlsCard({
 									</p>
 									<p>
 										<strong>Competitor</strong> domains are only those in your{" "}
-										{brandParams ? (
-											<Link
-												to="/app/org/$org/brand/$brand/settings/competitors"
-												params={brandParams}
-												className="underline"
-											>
-												tracked competitors list
-											</Link>
-										) : (
-											"tracked competitors list"
-										)}
+										<Link
+											to="/app/org/$org/brand/$brand/settings/competitors"
+											params={brandParams}
+											className="underline"
+										>
+											tracked competitors list
+										</Link>
 										.
 									</p>
 								</TooltipContent>

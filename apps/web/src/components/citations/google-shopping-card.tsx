@@ -14,12 +14,7 @@ function PromptCountList({ prompts }: { prompts: { id: string; value: string; co
 	return (
 		<div className="pl-5 pb-2 space-y-0.5">
 			{prompts.map((p) => (
-				<BrandPromptLink
-					key={p.id}
-					promptId={p.id}
-					className="flex items-center justify-between py-1 group text-xs"
-					fallbackClassName="flex items-center justify-between py-1 text-xs"
-				>
+				<BrandPromptLink key={p.id} promptId={p.id} className="flex items-center justify-between py-1 group text-xs">
 					<span className="text-muted-foreground group-hover:text-foreground group-hover:underline truncate min-w-0">
 						{p.value}
 					</span>

@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
-	brandParams,
+	brandLinkParams,
 	brandSegment,
 	canonicalBrandHref,
 	canonicalOrgHref,
 	isValidSlug,
 	MAX_SLUG_LENGTH,
-	orgParams,
+	orgLinkParams,
 	orgSettingsPath,
 	slugify,
 } from "./app-urls";
@@ -30,13 +30,14 @@ describe("URL segments", () => {
 	});
 
 	it("builds route params from either form", () => {
-		expect(orgParams(ACME)).toEqual({ org: "acme" });
-		expect(brandParams(ACME, UNSLUGGED_BRAND)).toEqual({ org: "acme", brand: "nike" });
+		expect(orgLinkParams(ACME)).toEqual({ org: "acme" });
+		expect(brandLinkParams(ACME, UNSLUGGED_BRAND)).toEqual({ org: "acme", brand: "nike" });
 	});
 
 	it("names the organization's own pages, encoding the segment", () => {
 		expect(orgSettingsPath(ACME)).toBe("/app/org/acme/settings");
 		expect(orgSettingsPath(ACME, "billing")).toBe("/app/org/acme/settings/billing");
+		expect(orgSettingsPath(ACME, "brands")).toBe("/app/org/acme/settings/brands");
 		expect(orgSettingsPath({ slug: "a b" })).toBe("/app/org/a%20b/settings");
 	});
 });

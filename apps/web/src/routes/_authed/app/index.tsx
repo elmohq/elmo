@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authed/app/")({
 		if (context.clientConfig?.mode === "whitelabel" && (await syncOrganizationMembershipsFn())) {
 			await invalidateOrganizations(context.queryClient);
 		}
-		return (await context.queryClient.ensureQueryData(organizationsQuery)) ?? [];
+		return (await context.queryClient.ensureQueryData(organizationsQuery)).organizations;
 	},
 	head: pageHead({ title: "Organizations and Brands", description: "Modify organizations or navigate to brands." }),
 	component: OrganizationPickerPage,

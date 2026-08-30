@@ -2,7 +2,6 @@ import { buttonVariants } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
 import { GoStack } from "react-icons/go";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
-import { useBrandParams } from "@/hooks/use-route-params";
 import type { PromptDetailTab } from "@/lib/prompt-detail-tabs";
 
 interface HistoryButtonProps {
@@ -12,9 +11,7 @@ interface HistoryButtonProps {
 }
 
 export function HistoryButton({ promptId, tab }: HistoryButtonProps) {
-	const brandParams = useBrandParams();
-
-	if (!brandParams || !promptId) return null;
+	if (!promptId) return null;
 
 	return (
 		<BrandPromptLink

@@ -89,28 +89,26 @@ export function isUniqueViolation(error: unknown, constraint?: string): boolean 
  * and this maps the loser's violation to the error that check would have
  * produced. Every slug write goes through here rather than repeating the pair.
  */
-async function claimSlug<T>(write: () => Promise<T>, constraint: string, onTaken: () => never): Promise<T> {
+async function claimSlug<T>(write: () => Promise<T>, constraint: string, takenMessage: string): Promise<T> {
 	try {
 		return await write();
 	} catch (error) {
-		if (isUniqueViolation(error, constraint)) onTaken();
+		if (isUniqueViolation(error, constraint)) throw new Error(takenMessage);
 		throw error;
 	}
 }
 
 // Bound here rather than at each write: a constraint name that doesn't match the
 // index is a mapping that silently never fires.
-export const claimOrgSlug = <T>(write: () => Promise<T>, onTaken: () => never): Promise<T> =>
-	claimSlug(write, "organization_slug_unique", onTaken);
+export const claimOrgSlug = <T>(write: () => Promise<T>, takenMessage: string): Promise<T> =>
+	claimSlug(write, "organization_slug_unique", takenMessage);
 
-export const claimBrandSlug = <T>(write: () => Promise<T>, onTaken: () => never): Promise<T> =>
-	claimSlug(write, "brands_organization_id_slug_idx", onTaken);
+export const claimBrandSlug = <T>(write: () => Promise<T>, takenMessage: string): Promise<T> =>
+	claimSlug(write, "brands_organization_id_slug_idx", takenMessage);
 
 /** The three brand-create paths refuse a lost race the same way. */
 export const claimNewBrandSlug = <T>(write: () => Promise<T>): Promise<T> =>
-	claimBrandSlug(write, () => {
-		throw new Error("Brand creation failed due to a concurrent create — please retry");
-	});
+	claimBrandSlug(write, "Brand creation failed due to a concurrent create — please retry");
 
 export async function findUnusedBrandId(baseSlug: string, conn: DbConnection = db): Promise<string> {
 	const candidates = nameCandidates(baseSlug);

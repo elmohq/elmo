@@ -32,13 +32,11 @@ import { organizationTree } from "@/lib/organizations/tree";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 import { resetPostHog } from "@/lib/posthog";
 
-export function NavUser() {
+export function NavUser({ showOrganizations = true }: { showOrganizations?: boolean } = {}) {
 	const { user } = useAuth();
 	const { isMobile, setOpenMobile } = useSidebar();
 	const branding = useBranding();
 	const features = useDeploymentFeatures();
-	const { organizations, isLoading, isError, isFetching, refetch } = useOrganizations();
-	const currentBrandId = useBrandId();
 
 	// NavUser only renders inside _authed routes, which redirect to /auth/login
 	// when there's no session — so `user` is always present at this point.
@@ -100,40 +98,18 @@ export function NavUser() {
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
 
-						{organizations.map((organization) => (
-							<OrganizationSection
-								key={organization.id}
-								organization={organization}
-								currentBrandId={currentBrandId}
-								onNavigate={close}
-							/>
-						))}
-
-						{isLoading && (
-							<DropdownMenuItem disabled>
-								<span className="text-muted-foreground">Loading organizations…</span>
-							</DropdownMenuItem>
-						)}
-						{isError && (
-							<DropdownMenuItem
-								className="cursor-pointer"
-								onSelect={(event) => {
-									event.preventDefault();
-									refetch();
-								}}
-							>
-								<IconRefresh className={isFetching ? "animate-spin" : undefined} />
-								{isFetching ? "Retrying…" : "Couldn't load your organizations — retry"}
-							</DropdownMenuItem>
-						)}
-
-						{features?.canCreateOrganizations && (
+						{showOrganizations && (
 							<>
-								<DropdownMenuItem render={<Link to="/app/new" onClick={close} />} className="cursor-pointer">
-									<IconPlus />
-									New organization
-								</DropdownMenuItem>
-								<DropdownMenuSeparator />
+								<OrganizationSwitcher onNavigate={close} />
+								{features?.canCreateOrganizations && (
+									<>
+										<DropdownMenuItem render={<Link to="/app/new" onClick={close} />} className="cursor-pointer">
+											<IconPlus />
+											New organization
+										</DropdownMenuItem>
+										<DropdownMenuSeparator />
+									</>
+								)}
 							</>
 						)}
 
@@ -172,6 +148,42 @@ export function NavUser() {
 				</DropdownMenu>
 			</SidebarMenuItem>
 		</SidebarMenu>
+	);
+}
+
+function OrganizationSwitcher({ onNavigate }: { onNavigate: () => void }) {
+	const { organizations, isLoading, isError, isFetching, refetch } = useOrganizations();
+	const currentBrandId = useBrandId();
+
+	return (
+		<>
+			{organizations.map((organization) => (
+				<OrganizationSection
+					key={organization.id}
+					organization={organization}
+					currentBrandId={currentBrandId}
+					onNavigate={onNavigate}
+				/>
+			))}
+
+			{isLoading && (
+				<DropdownMenuItem disabled>
+					<span className="text-muted-foreground">Loading organizations…</span>
+				</DropdownMenuItem>
+			)}
+			{isError && (
+				<DropdownMenuItem
+					className="cursor-pointer"
+					onSelect={(event) => {
+						event.preventDefault();
+						refetch();
+					}}
+				>
+					<IconRefresh className={isFetching ? "animate-spin" : undefined} />
+					{isFetching ? "Retrying…" : "Couldn't load your organizations — retry"}
+				</DropdownMenuItem>
+			)}
+		</>
 	);
 }
 

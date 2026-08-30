@@ -7,14 +7,14 @@ vi.mock("@/server/organizations", () => ({ listOrganizationsFn: vi.fn() }));
 describe("invalidateOrganizations", () => {
 	it("re-reads the list even with nothing observing it", async () => {
 		const queryClient = new QueryClient();
-		let answer = ["before"];
+		let answer = { signedIn: true, organizations: ["before"] };
 		const query = { ...organizationsQuery, queryFn: async () => answer };
 
 		await queryClient.ensureQueryData(query);
-		answer = ["after"];
+		answer = { signedIn: true, organizations: ["after"] };
 
 		await invalidateOrganizations(queryClient);
 
-		expect(await queryClient.ensureQueryData(query)).toEqual(["after"]);
+		expect(await queryClient.ensureQueryData(query)).toEqual({ signedIn: true, organizations: ["after"] });
 	});
 });

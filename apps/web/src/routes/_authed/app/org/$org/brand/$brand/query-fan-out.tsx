@@ -29,7 +29,9 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/query-f
 	validateSearch: (search: Record<string, unknown>): { tab?: FanoutTab } => ({
 		tab: FANOUT_TABS.includes(search.tab as FanoutTab) ? (search.tab as FanoutTab) : undefined,
 	}),
-	head: pageHead({}),
+	head: pageHead({
+		description: "See the web searches AI engines run when answering your prompts, and how they rewrite your wording.",
+	}),
 	component: QueryFanoutPage,
 });
 

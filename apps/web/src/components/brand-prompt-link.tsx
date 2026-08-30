@@ -9,18 +9,14 @@ export function BrandPromptLink({
 	promptId,
 	search,
 	className,
-	fallbackClassName,
 	children,
 }: {
 	promptId: string;
 	search?: PromptDetailSearch;
 	className?: string;
-	fallbackClassName?: string;
 	children: ReactNode;
 }) {
 	const params = useBrandParams();
-
-	if (!params) return <span className={fallbackClassName ?? className}>{children}</span>;
 
 	return (
 		<Link

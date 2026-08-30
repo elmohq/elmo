@@ -1,11 +1,11 @@
-import { useNavigate } from "@tanstack/react-router";
+import { brandSegment } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
-import { useInvalidateOrganizations } from "@/hooks/use-organizations";
+import { useOrganizationsChanged } from "@/hooks/use-organizations";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
 import { useWriteErrorMessage } from "@/lib/write-errors";
@@ -27,9 +27,8 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 	);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
-	const navigate = useNavigate();
 	const writeError = useWriteErrorMessage();
-	const invalidateOrganizations = useInvalidateOrganizations();
+	const organizationsChanged = useOrganizationsChanged();
 
 	const createBrand = async (enabledModels: string[] | null) => {
 		setIsLoading(true);
@@ -46,10 +45,9 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 			});
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
-			await invalidateOrganizations();
-			await navigate({
+			await organizationsChanged({
 				to: "/app/org/$org/brand/$brand",
-				params: { org: organizationSlug, brand: brand.slug ?? brandId },
+				params: { org: organizationSlug, brand: brandSegment(brand) },
 			});
 		} catch (err) {
 			setError(writeError(err, "Could not create the brand."));

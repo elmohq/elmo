@@ -19,7 +19,7 @@ import {
 } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
 import type { FeaturesConfig } from "@workspace/config/types";
-import { brandParams, orgParams } from "@workspace/lib/app-urls";
+import { brandLinkParams, orgLinkParams } from "@workspace/lib/app-urls";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 
 import {
@@ -47,7 +47,7 @@ type ScopeProps =
 	| { scope: "admin" | "account" };
 
 function organizationGroup(organization: OrganizationSummary, features?: FeaturesConfig): NavGroup {
-	const params = orgParams(organization);
+	const params = orgLinkParams(organization);
 	const items: NavItem[] = [
 		{ title: "Organization", link: { to: "/app/org/$org/settings", params }, icon: IconBriefcase, exact: true },
 		{ title: "Brands", link: { to: "/app/org/$org/settings/brands", params }, icon: IconBuildings },
@@ -62,7 +62,7 @@ function organizationGroup(organization: OrganizationSummary, features?: Feature
 }
 
 function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts): NavGroup[] {
-	const params = brandParams(organization, brand);
+	const params = brandLinkParams(organization, brand);
 	const dashboard: NavItem[] = [
 		{ title: "Overview", link: { to: "/app/org/$org/brand/$brand", params }, icon: IconDashboard, exact: true },
 	];
@@ -168,7 +168,7 @@ export function AppSidebar(props: ScopeProps) {
 				<NavMain groups={groups} />
 			</SidebarContent>
 			<SidebarFooter>
-				<NavUser />
+				<NavUser showOrganizations={scope !== "account"} />
 				<NavAppInfo />
 			</SidebarFooter>
 		</Sidebar>

@@ -25,6 +25,7 @@ import { useBrand } from "@/hooks/use-brands";
 import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
 import { usePromptStats } from "@/hooks/use-prompt-stats";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
+import { useBrandParams } from "@/hooks/use-route-params";
 import { useSiteIcons } from "@/hooks/use-site-icons";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { promptKeywords } from "@/lib/fanout-analysis";
@@ -95,7 +96,7 @@ function PromptHeader({
 	isMetaLoading: boolean;
 	onLookbackChange: () => void;
 }) {
-	const brandParams = Route.useParams();
+	const brandParams = useBrandParams();
 	const systemTags = promptMeta?.systemTags || [];
 	const userTags = promptMeta?.tags || [];
 	const hasTags = systemTags.length > 0 || userTags.length > 0;
@@ -185,7 +186,7 @@ function PromptHeader({
 }
 
 function PromptHistoryPage() {
-	const { org, brand: brandParam, promptId } = Route.useParams();
+	const { promptId } = Route.useParams();
 	const { brandId } = Route.useRouteContext();
 
 	const lookback = useLookbackPeriod();
@@ -403,7 +404,7 @@ function MentionsTab({
 	brandId: string;
 	domainFor: (name: string) => string | undefined;
 }) {
-	const brandParams = Route.useParams();
+	const brandParams = useBrandParams();
 
 	if (isLoading) return <TabLoadingSkeleton lines={5} />;
 

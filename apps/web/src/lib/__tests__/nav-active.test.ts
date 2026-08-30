@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeNavHref } from "@/components/nav-main";
+import { activeNavHref } from "@/lib/nav-active";
 
 const BRAND = "/app/org/acme/brand/nike";
 const brandRail = [

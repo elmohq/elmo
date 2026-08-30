@@ -125,16 +125,14 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 					<div className="text-center py-8 text-muted-foreground">
 						<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
 						<p className="mb-4">No prompts yet.</p>
-						{brandParams && (
-							<Link
-								to="/app/org/$org/brand/$brand/settings/prompts"
-								params={brandParams}
-								className={cn(buttonVariants({ size: "sm" }), "h-7 flex cursor-pointer")}
-							>
-								<IconEditCircle />
-								<span>Edit</span>
-							</Link>
-						)}
+						<Link
+							to="/app/org/$org/brand/$brand/settings/prompts"
+							params={brandParams}
+							className={cn(buttonVariants({ size: "sm" }), "h-7 flex cursor-pointer")}
+						>
+							<IconEditCircle />
+							<span>Edit</span>
+						</Link>
 					</div>
 				</div>
 			}

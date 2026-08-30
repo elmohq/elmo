@@ -17,7 +17,7 @@ export function setMockOrganizations(organizations: OrganizationSummary[]) {
 	_organizations = organizations;
 }
 
-export const listOrganizationsFn = async () => _organizations;
+export const listOrganizationsFn = async () => ({ signedIn: true, organizations: _organizations });
 export const updateOrganizationFn = async () => ({ slug: _organizations[0].slug });
 export const syncOrganizationMembershipsFn = async () => false;
 export const createOrganizationFn = async () => ({ slug: _organizations[0].slug });

@@ -1,14 +1,9 @@
 import { expect, test } from "@playwright/test";
-import {
-  RENAMEABLE_BRAND_ID,
-  RENAMEABLE_BRAND_SLUG,
-  TEST_BRAND_NAME,
-  TEST_ORG_SLUG,
-} from "../../fixtures";
+import { RENAMEABLE_BRAND_ID, RENAMEABLE_BRAND_SLUG, TEST_BRAND_NAME, TEST_ORG_SLUG, brandUrl, organizationUrl } from "../../fixtures";
 
 test.describe("Organization rename", () => {
   test("the slug is a field of the same form, with no save of its own", async ({ page }) => {
-    await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
+    await page.goto(`${organizationUrl()}/settings`);
 
     const slugField = page.getByLabel("Organization Slug", { exact: true });
     await expect(slugField).toHaveValue(TEST_ORG_SLUG, { timeout: 30_000 });
@@ -22,7 +17,7 @@ test.describe("Organization rename", () => {
   });
 
   test("a name padded with spaces can still be saved, and settles trimmed", async ({ page }) => {
-    await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
+    await page.goto(`${organizationUrl()}/settings`);
 
     const nameField = page.getByLabel("Organization Name", { exact: true });
     await expect(nameField).toHaveValue(TEST_BRAND_NAME, { timeout: 30_000 });
@@ -39,7 +34,7 @@ test.describe("Organization rename", () => {
   });
 
   test("a name of nothing but spaces cannot be saved", async ({ page }) => {
-    await page.goto(`/app/org/${TEST_ORG_SLUG}/settings`);
+    await page.goto(`${organizationUrl()}/settings`);
 
     const nameField = page.getByLabel("Organization Name", { exact: true });
     await expect(nameField).toHaveValue(TEST_BRAND_NAME, { timeout: 30_000 });
@@ -51,7 +46,7 @@ test.describe("Organization rename", () => {
 
 test.describe("Brand rename", () => {
   const moved = `${RENAMEABLE_BRAND_SLUG}-moved`;
-  const settingsAt = (slug: string) => `/app/org/${TEST_ORG_SLUG}/brand/${slug}/settings/brand`;
+  const settingsAt = (slug: string) => `${brandUrl(slug)}/settings/brand`;
 
   test.afterEach(async ({ page }) => {
     await page.goto(settingsAt(moved));
@@ -74,7 +69,7 @@ test.describe("Brand rename", () => {
     await page.waitForURL(new RegExp(`${settingsAt(moved)}$`), { timeout: 30_000 });
     await expect(page.getByLabel("Brand Slug", { exact: true })).toHaveValue(moved);
 
-    await page.goto(`/app/org/${TEST_ORG_SLUG}/brand/${RENAMEABLE_BRAND_ID}`);
-    await expect(page).toHaveURL(new RegExp(`/app/org/${TEST_ORG_SLUG}/brand/${moved}$`), { timeout: 30_000 });
+    await page.goto(brandUrl(RENAMEABLE_BRAND_ID));
+    await expect(page).toHaveURL(new RegExp(`${brandUrl(moved)}$`), { timeout: 30_000 });
   });
 });

@@ -5,7 +5,7 @@ import type { OrganizationSummary } from "@/lib/organizations/types";
 
 export const Route = createFileRoute("/_authed/app/org/$org")({
 	beforeLoad: async ({ params, location, context }): Promise<{ organization: OrganizationSummary }> => {
-		const organizations = (await context.queryClient.ensureQueryData(organizationsQuery)) ?? [];
+		const { organizations } = await context.queryClient.ensureQueryData(organizationsQuery);
 		const organization = resolveSegment(organizations, params.org);
 		if (!organization) throw notFound();
 
@@ -16,6 +16,5 @@ export const Route = createFileRoute("/_authed/app/org/$org")({
 
 		return { organization };
 	},
-	loader: ({ context }): OrganizationSummary => context.organization,
 	component: () => <Outlet />,
 });

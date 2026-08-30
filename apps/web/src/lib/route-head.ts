@@ -32,7 +32,7 @@ export function buildTitle(pageName: string, opts: { appName: string; subject?: 
 
 interface HeadArgs {
 	match: RouteMatchContext & { staticData?: { crumb?: string } };
-	matches: Array<{ routeId: string; loaderData?: unknown }>;
+	matches: Array<{ routeId: string; context?: unknown; loaderData?: unknown }>;
 }
 
 export function pageHead(page: { title?: string; description?: string }) {

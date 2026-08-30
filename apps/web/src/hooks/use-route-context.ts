@@ -1,15 +1,7 @@
 import { useRouteContext } from "@tanstack/react-router";
-import type { PublicClientConfig } from "@/server/config";
 
-export interface LooseRouteContext {
-	clientConfig?: PublicClientConfig;
-	isAdmin?: boolean;
-	hasReportAccess?: boolean;
-	brandId?: string;
-}
-
-export function useLooseRouteContext(): LooseRouteContext {
-	return useRouteContext({ strict: false }) as LooseRouteContext;
+export function useLooseRouteContext() {
+	return useRouteContext({ strict: false });
 }
 
 export function useViewer(): { isAdmin: boolean; hasReportAccess: boolean } {

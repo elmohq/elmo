@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { buttonVariants } from "@workspace/ui/components/button";
+import { useBrandParams } from "@/hooks/use-route-params";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/$")({
 	staticData: { crumb: "Not found" },
@@ -7,7 +8,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/$")({
 });
 
 function BrandSubpathNotFound() {
-	const { org, brand: brandParam } = Route.useParams();
+	const params = useBrandParams();
 
 	return (
 		<div className="space-y-0">
@@ -17,11 +18,7 @@ function BrandSubpathNotFound() {
 			</div>
 
 			<div className="pt-2">
-				<Link
-					to="/app/org/$org/brand/$brand"
-					params={{ org, brand: brandParam }}
-					className={buttonVariants({ variant: "outline" })}
-				>
+				<Link to="/app/org/$org/brand/$brand" params={params} className={buttonVariants({ variant: "outline" })}>
 					Go Back
 				</Link>
 			</div>

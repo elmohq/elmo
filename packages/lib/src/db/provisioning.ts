@@ -61,9 +61,7 @@ export async function ensureOrganization(input: { id: string; name: string }, co
 				.insert(organization)
 				.values({ id: input.id, name: input.name, slug, createdAt: new Date() })
 				.onConflictDoNothing({ target: organization.id }),
-		() => {
-			throw new Error(`Organization "${input.id}" lost a race for its URL slug — please retry`);
-		},
+		`Organization "${input.id}" lost a race for its URL slug — please retry`,
 	);
 }
 

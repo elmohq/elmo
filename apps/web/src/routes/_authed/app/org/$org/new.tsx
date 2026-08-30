@@ -1,11 +1,12 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
-import { useInvalidateOrganizations } from "@/hooks/use-organizations";
+import { useOrganizationsChanged } from "@/hooks/use-organizations";
+import { useOrganizationParams } from "@/hooks/use-route-params";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
@@ -26,21 +27,20 @@ export const Route = createFileRoute("/_authed/app/org/$org/new")({
 			blocked: brandCreation.kind === "denied" ? brandCreation : null,
 		};
 	},
-	head: pageHead({}),
+	head: pageHead({ description: "Start tracking a new brand in this organization." }),
 	component: NewBrandPage,
 });
 
 function NewBrandPage() {
 	const { organizationId, organizationName, blocked } = Route.useLoaderData();
-	const { org } = Route.useParams();
+	const organizationParams = useOrganizationParams();
 	const [step, setStep] = useState<"details" | "platforms">("details");
 	const [details, setDetails] = useState({ brandName: "", website: "" });
 	const [platformState, setPlatformState] = useState<NonNullable<OnboardingPlatformState> | null>(null);
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
-	const navigate = useNavigate();
-	const invalidateOrganizations = useInvalidateOrganizations();
+	const organizationsChanged = useOrganizationsChanged();
 	const writeError = useWriteErrorMessage();
 
 	const createBrand = async (brandName: string, website: string, enabledModels: string[] | null) => {
@@ -58,8 +58,10 @@ function NewBrandPage() {
 			});
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
-			await invalidateOrganizations();
-			await navigate({ to: "/app/org/$org/brand/$brand", params: { org, brand: brandSlug } });
+			await organizationsChanged({
+				to: "/app/org/$org/brand/$brand",
+				params: { ...organizationParams, brand: brandSlug },
+			});
 		} catch (err) {
 			setError(writeError(err, "Could not create the brand."));
 		} finally {
@@ -105,7 +107,11 @@ function NewBrandPage() {
 				subtitle={blocked.message}
 				showBackButton
 			>
-				<Link to="/app/org/$org/settings/billing" params={{ org }} className={buttonVariants({ className: "w-full" })}>
+				<Link
+					to="/app/org/$org/settings/billing"
+					params={organizationParams}
+					className={buttonVariants({ className: "w-full" })}
+				>
 					Go to billing
 				</Link>
 			</FullPageCard>

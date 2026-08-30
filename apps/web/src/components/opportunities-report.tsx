@@ -56,7 +56,7 @@ const ROW = "block truncate rounded px-1.5 py-1 text-xs hover:bg-muted hover:tex
 function PromptLink({ prompt }: { prompt: ReportPrompt }) {
 	if (!prompt.promptId) return <span className={`${ROW} text-muted-foreground`}>{prompt.text}</span>;
 	return (
-		<BrandPromptLink promptId={prompt.promptId} className={ROW} fallbackClassName={`${ROW} text-muted-foreground`}>
+		<BrandPromptLink promptId={prompt.promptId} className={ROW}>
 			{prompt.text}
 		</BrandPromptLink>
 	);

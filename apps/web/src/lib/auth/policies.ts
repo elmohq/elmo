@@ -57,6 +57,9 @@ export interface RequestInfo {
  * 3. OpenAPI spec serving
  * 4. API v1 key authentication
  */
+export const READ_ONLY_ERROR = "Demo Mode";
+export const READ_ONLY_MESSAGE = "Write operations are disabled in demo mode";
+
 export function evaluateDeploymentPolicy(
 	features: FeaturesConfig,
 	request: RequestInfo,
@@ -93,8 +96,8 @@ export function evaluateDeploymentPolicy(
 			return {
 				action: "block",
 				status: 403,
-				error: "Demo Mode",
-				message: "Write operations are disabled in demo mode",
+				error: READ_ONLY_ERROR,
+				message: READ_ONLY_MESSAGE,
 			};
 		}
 	}
