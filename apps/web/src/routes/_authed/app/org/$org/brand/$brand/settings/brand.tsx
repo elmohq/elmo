@@ -127,7 +127,7 @@ function BrandSettingsPage() {
 	};
 
 	return (
-		<div className="space-y-6 max-w-3xl">
+		<div className="space-y-6 max-w-2xl">
 			<div>
 				<h1 className="text-3xl font-bold">Brand</h1>
 				<p className="text-muted-foreground">Manage your brand name and website</p>
