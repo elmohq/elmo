@@ -10,7 +10,7 @@
 
 import { slugify } from "@workspace/lib/app-urls";
 import { db } from "@workspace/lib/db/db";
-import { claimSlug, ensureOrganization, findUniqueBrandSlug } from "@workspace/lib/db/provisioning";
+import { claimSlug, ensureOrganization, findUnusedBrandSlug } from "@workspace/lib/db/provisioning";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
@@ -311,8 +311,8 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 
 				// The org was just minted from this brand, so the plain name is free
 				// here even where the org's own slug took a suffix to clear the global
-				// namespace: `/app/org/nike-2/brand/nike`, not the suffix twice.
-				const slug = await findUniqueBrandSlug(input.id, slugify(input.name, "brand"), tx);
+				// namespace: `/app/org/nike-047/brand/nike`, not the suffix twice.
+				const slug = await findUnusedBrandSlug(input.id, slugify(input.name, "brand"), tx);
 
 				const [inserted] = await tx
 					.insert(brands)

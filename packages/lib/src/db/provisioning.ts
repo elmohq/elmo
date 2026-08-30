@@ -12,7 +12,7 @@
  * silently rewrite rows. `ensureOrganization` is the exception — it serves the
  * admin API, which can be called repeatedly for the same id.
  */
-import { and, count, eq, ne, or } from "drizzle-orm";
+import { and, count, eq, inArray, ne, or } from "drizzle-orm";
 import { MAX_SLUG_LENGTH, slugify } from "../app-urls";
 import { db } from "./db";
 import { brands, member, organization, user } from "./schema";
@@ -63,38 +63,81 @@ export async function provisionLocalOrg(input: { userId: string }): Promise<{ or
 	return { orgId: LOCAL_ORG.id };
 }
 
-const SUFFIX_ATTEMPTS = 50;
+const SUFFIX_ATTEMPTS = 3;
+const SUFFIX_DIGITS = 3;
+
+const randomSuffix = () =>
+	Math.floor(Math.random() * 10 ** SUFFIX_DIGITS)
+		.toString()
+		.padStart(SUFFIX_DIGITS, "0");
 
 /**
- * The first of `base`, `base-2`, `base-3`, … that nothing answers to.
+ * The plain name, then a few `base-047` fallbacks, all offered at once so a
+ * single query settles which of them is free.
  *
- * The suffix is fitted inside `MAX_SLUG_LENGTH` rather than appended past it: a
- * slug the settings form would then refuse to save is worse than a short one.
+ * Random rather than counted, so two concurrent creates of the same name are
+ * unlikely to pick the same fallback. The suffix is fitted inside
+ * `MAX_SLUG_LENGTH` rather than appended past it: a slug the settings form
+ * would refuse to save back is worse than a short one.
  */
-export async function firstFreeName(base: string, isFree: (candidate: string) => Promise<boolean>): Promise<string> {
-	if (await isFree(base)) return base;
+export function nameCandidates(base: string): string[] {
+	const stem = base.slice(0, MAX_SLUG_LENGTH - SUFFIX_DIGITS - 1).replace(/-+$/, "");
+	return [base, ...Array.from({ length: SUFFIX_ATTEMPTS }, () => `${stem}-${randomSuffix()}`)];
+}
 
-	const withSuffix = async (suffix: string) => {
-		const room = MAX_SLUG_LENGTH - suffix.length - 1;
-		const candidate = `${base.slice(0, room).replace(/-+$/, "")}-${suffix}`;
-		return (await isFree(candidate)) ? candidate : null;
-	};
+/** Throws rather than widening the search: every candidate taken means something is wrong with the base. */
+export function firstUnused(candidates: string[], taken: Set<string>): string {
+	const unused = candidates.find((candidate) => !taken.has(candidate));
+	if (!unused) throw new Error(`No unused name found for "${candidates[0]}"`);
+	return unused;
+}
 
-	// Counted suffixes cover every realistic collision. Past that something is
-	// wrong with the base, and one request should not walk the namespace a row
-	// at a time.
-	for (let suffix = 2; suffix <= SUFFIX_ATTEMPTS; suffix++) {
-		const candidate = await withSuffix(String(suffix));
-		if (candidate) return candidate;
-	}
-	// A random suffix is near-certain to clear, so reaching here means the
-	// availability check is persistently wrong. Bounded, so that fails loudly
-	// instead of spinning while holding a transaction open.
-	for (let attempt = 0; attempt < SUFFIX_ATTEMPTS; attempt++) {
-		const candidate = await withSuffix(crypto.randomUUID().slice(0, 8));
-		if (candidate) return candidate;
-	}
-	throw new Error(`No free name found for "${base}"`);
+/**
+ * Which of `candidates` an organization already answers to.
+ *
+ * Slugs and ids are one namespace, because `/app/org/$org` resolves a segment as
+ * either: a slug equal to another org's id would make one segment name two
+ * organizations. Ids are not uniformly shaped — `default` in local, a uuid in
+ * cloud signup, the brand's own id from the admin API — so no shape test could
+ * stand in for the lookup.
+ *
+ * `excludeOrgId` is applied in the query rather than to the result, so a rename
+ * can't mask another row that answers to the same name.
+ */
+async function takenOrgNames(candidates: string[], conn: DbConnection, excludeOrgId?: string): Promise<Set<string>> {
+	const rows = await conn
+		.select({ id: organization.id, slug: organization.slug })
+		.from(organization)
+		.where(
+			and(
+				or(inArray(organization.slug, candidates), inArray(organization.id, candidates)),
+				excludeOrgId ? ne(organization.id, excludeOrgId) : undefined,
+			),
+		);
+	return new Set(rows.flatMap((row) => [row.id, row.slug]));
+}
+
+/**
+ * Which of `candidates` a brand already answers to, in one organization or
+ * across all of them. Same two namespaces as `takenOrgNames`, for the same
+ * reason.
+ */
+async function takenBrandNames(
+	candidates: string[],
+	conn: DbConnection,
+	scope: { organizationId?: string; excludeBrandId?: string } = {},
+): Promise<Set<string>> {
+	const rows = await conn
+		.select({ id: brands.id, slug: brands.slug })
+		.from(brands)
+		.where(
+			and(
+				or(inArray(brands.slug, candidates), inArray(brands.id, candidates)),
+				scope.organizationId ? eq(brands.organizationId, scope.organizationId) : undefined,
+				scope.excludeBrandId ? ne(brands.id, scope.excludeBrandId) : undefined,
+			),
+		);
+	return new Set(rows.flatMap((row) => (row.slug === null ? [row.id] : [row.id, row.slug])));
 }
 
 /** Drizzle wraps driver errors, so the cause chain is searched too. */
@@ -123,47 +166,22 @@ export async function claimSlug<T>(write: () => Promise<T>, constraint: string, 
 	}
 }
 
-/** A brand id nothing answers to — see `isOrgSlugAvailable` for why slugs count. */
-export async function findUniqueBrandId(baseSlug: string, conn: DbConnection = db): Promise<string> {
-	return firstFreeName(baseSlug, async (candidate) => {
-		const [conflict] = await conn
-			.select({ id: brands.id })
-			.from(brands)
-			.where(or(eq(brands.id, candidate), eq(brands.slug, candidate)))
-			.limit(1);
-		return !conflict;
-	});
+/** Global, unlike a brand's slug: a brand id has to clear every organization. */
+export async function findUnusedBrandId(baseSlug: string, conn: DbConnection = db): Promise<string> {
+	const candidates = nameCandidates(baseSlug);
+	return firstUnused(candidates, await takenBrandNames(candidates, conn));
 }
 
-/**
- * Slugs and ids are one namespace here, because `/app/org/$org` resolves a
- * segment as either: a slug equal to another org's id would make one segment
- * name two organizations. Ids are not uniformly shaped — `default` in local, a
- * uuid in cloud signup, the brand's own id from the admin API — so no shape
- * test could stand in for the lookup.
- */
 export async function isOrgSlugAvailable(
 	slug: string,
 	options: { excludeOrgId?: string; conn?: DbConnection } = {},
 ): Promise<boolean> {
-	// Excluded in the query, not after it: `limit(1)` could otherwise return the
-	// renamed row while another one also answers to the name, and the check
-	// would call it free.
-	const [conflict] = await (options.conn ?? db)
-		.select({ id: organization.id })
-		.from(organization)
-		.where(
-			and(
-				or(eq(organization.slug, slug), eq(organization.id, slug)),
-				options.excludeOrgId ? ne(organization.id, options.excludeOrgId) : undefined,
-			),
-		)
-		.limit(1);
-	return !conflict;
+	return !(await takenOrgNames([slug], options.conn ?? db, options.excludeOrgId)).has(slug);
 }
 
-async function findUniqueOrgSlug(baseSlug: string, conn: DbConnection = db): Promise<string> {
-	return firstFreeName(baseSlug, (candidate) => isOrgSlugAvailable(candidate, { conn }));
+async function findUnusedOrgSlug(baseSlug: string, conn: DbConnection = db): Promise<string> {
+	const candidates = nameCandidates(baseSlug);
+	return firstUnused(candidates, await takenOrgNames(candidates, conn));
 }
 
 /**
@@ -176,28 +194,21 @@ export async function isBrandSlugAvailable(
 	slug: string,
 	options: { excludeBrandId?: string; conn?: DbConnection } = {},
 ): Promise<boolean> {
-	// Excluded in the query, not after it — see `isOrgSlugAvailable`.
-	const [conflict] = await (options.conn ?? db)
-		.select({ id: brands.id })
-		.from(brands)
-		.where(
-			and(
-				eq(brands.organizationId, organizationId),
-				or(eq(brands.slug, slug), eq(brands.id, slug)),
-				options.excludeBrandId ? ne(brands.id, options.excludeBrandId) : undefined,
-			),
-		)
-		.limit(1);
-	return !conflict;
+	const taken = await takenBrandNames([slug], options.conn ?? db, {
+		organizationId,
+		excludeBrandId: options.excludeBrandId,
+	});
+	return !taken.has(slug);
 }
 
 /** Called at creation, so a brand arrives with a readable URL. */
-export async function findUniqueBrandSlug(
+export async function findUnusedBrandSlug(
 	organizationId: string,
 	baseSlug: string,
 	conn: DbConnection = db,
 ): Promise<string> {
-	return firstFreeName(baseSlug, (candidate) => isBrandSlugAvailable(organizationId, candidate, { conn }));
+	const candidates = nameCandidates(baseSlug);
+	return firstUnused(candidates, await takenBrandNames(candidates, conn, { organizationId }));
 }
 
 /**
@@ -224,7 +235,7 @@ export async function ensureOrganization(input: { id: string; name: string }, co
 	}
 
 	const baseSlug = slugify(input.name, "organization");
-	const slug = await findUniqueOrgSlug(baseSlug, conn);
+	const slug = await findUnusedOrgSlug(baseSlug, conn);
 
 	// Targeted at the id: the early return above already handles "org exists", so
 	// this only absorbs a concurrent insert of the same id. Untargeted, it would
@@ -256,7 +267,7 @@ export async function provisionUmbrellaOrg(input: {
 		// Inside the transaction, so the check and the insert it guards run on one
 		// connection. Two same-named signups still collide on the unique index,
 		// which surfaces as a failed signup rather than a duplicate org.
-		const resolved = await findUniqueOrgSlug(slugify(input.name, "organization"), tx);
+		const resolved = await findUnusedOrgSlug(slugify(input.name, "organization"), tx);
 		await tx.insert(organization).values({ id: orgId, name: input.name, slug: resolved, createdAt: new Date() });
 		await tx.insert(member).values({
 			id: crypto.randomUUID(),

@@ -4,8 +4,8 @@ import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import {
 	claimSlug,
-	findUniqueBrandId,
-	findUniqueBrandSlug,
+	findUnusedBrandId,
+	findUnusedBrandSlug,
 	isBrandSlugAvailable,
 } from "@workspace/lib/db/provisioning";
 import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
@@ -280,7 +280,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 		const created = await claimSlug(
 			() =>
 				db.transaction(async (tx) => {
-					const slug = await findUniqueBrandSlug(data.brandId, slugify(data.brandName, "brand"), tx);
+					const slug = await findUnusedBrandSlug(data.brandId, slugify(data.brandName, "brand"), tx);
 					return (
 						tx
 							.insert(brands)
@@ -380,8 +380,8 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 				db.transaction(async (tx) => {
 					// The id is globally unique and may pick up a suffix; the slug only has
 					// to clear this organization, so it usually keeps the plain name.
-					const brandId = await findUniqueBrandId(baseSlug, tx);
-					const slug = await findUniqueBrandSlug(orgId, baseSlug, tx);
+					const brandId = await findUnusedBrandId(baseSlug, tx);
+					const slug = await findUnusedBrandSlug(orgId, baseSlug, tx);
 
 					await tx.insert(brands).values({
 						id: brandId,
