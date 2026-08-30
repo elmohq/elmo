@@ -121,8 +121,7 @@ test.describe("Cloud features", () => {
       page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),
     ).toHaveCount(0);
 
-    // Off an admin route the admin links sit in the account menu — and even
-    // there this admin gets no Reports entry, because cloud has it switched off.
+    // The admin section is present (this user is an admin) but has no Reports entry.
     await page.getByRole("button", { name: "Account and organizations" }).click();
     const menu = page.getByRole("menu");
     await expect(menu.locator('a[href="/admin"]')).toBeVisible();

@@ -115,8 +115,6 @@ export function AppSidebar(props: ScopeProps) {
 	// the user straight back to the gate.
 	const adminItems = scope === "account" ? [] : adminNavItems({ isAdmin, hasReportAccess, reportsEnabled });
 
-	// The rail stays scoped to wherever you are, so admin links only earn a spot
-	// on admin routes; everywhere else they hang off the account menu.
 	const groups: NavGroup[] = [
 		...(props.scope === "brand" ? brandGroups(props.organization, props.brand) : []),
 		...(props.scope === "organization" ? [organizationGroup(props.organization, features)] : []),

@@ -220,7 +220,6 @@ export const Local: StoryObj = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		// Off an admin route the rail carries brand nav only; admin lives in the account menu.
 		await expect(canvas.queryByText("Workflows")).toBeNull();
 
 		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));

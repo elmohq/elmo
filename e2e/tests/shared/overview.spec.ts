@@ -55,7 +55,6 @@ test.describe("Overview Page", () => {
     await page.goto(`${BRAND_URL}`);
 
     await expect(page.locator(`a[href="${BRAND_URL}"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
-    // The rail only carries brand nav here; admin links hang off the account menu.
     await expect(page.locator('a[href="/admin"][data-sidebar="menu-button"]')).toHaveCount(0);
 
     await page.getByRole("button", { name: "Account and organizations" }).click();
@@ -64,7 +63,6 @@ test.describe("Overview Page", () => {
     await adminLink.click();
     await page.waitForURL(/\/admin$/);
 
-    // On an admin route the rail takes the admin links back over.
     await expect(page.locator('a[href="/admin/workflows"][data-sidebar="menu-button"]')).toBeVisible({
       timeout: 15_000,
     });
