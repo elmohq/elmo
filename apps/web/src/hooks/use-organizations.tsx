@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLoaderData } from "@tanstack/react-router";
+import { useLoaderData, useRouter } from "@tanstack/react-router";
 import { invalidateOrganizations, organizationsQuery } from "@/lib/organizations/queries";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
@@ -19,7 +19,16 @@ export function useOrganizations() {
 	};
 }
 
+/**
+ * The router resolves `/app/org/$org` against this cache, so a write that
+ * changes what exists has to drop both or the next navigation reads a list that
+ * predates it.
+ */
 export function useInvalidateOrganizations(): () => Promise<void> {
 	const queryClient = useQueryClient();
-	return () => invalidateOrganizations(queryClient);
+	const router = useRouter();
+	return async () => {
+		await invalidateOrganizations(queryClient);
+		await router.invalidate();
+	};
 }

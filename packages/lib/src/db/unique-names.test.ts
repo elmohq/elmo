@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isValidSlug, MAX_SLUG_LENGTH } from "../app-urls";
-import { firstUnused, nameCandidates } from "./provisioning";
+import { firstUnused, nameCandidates } from "./unique-names";
 
 describe("nameCandidates", () => {
 	it("offers the plain name first, so a free one is what a new record gets", () => {

@@ -14,6 +14,7 @@ import { Progress } from "@workspace/ui/components/progress";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { type ReactNode, useState } from "react";
 import { PlanComparison } from "@/components/plan-comparison";
+import { useOrganization } from "@/hooks/use-organizations";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { type BillingState, getBillingStateFn, setPremiumAddonQuantityFn } from "@/server/billing";
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/billing")({
 		if (!context.clientConfig?.features.billing) {
 			throw redirect({ to: "/app/org/$org", params: { org: params.org } });
 		}
-		return getBillingStateFn({ data: { org: params.org } });
+		return getBillingStateFn({ data: { organizationId: context.organization.id } });
 	},
 	head: pageHead({ description: "Manage your plan, usage, and billing." }),
 	component: BillingSettingsPage,
@@ -37,7 +38,7 @@ function formatDate(iso: string | null): string {
 
 function BillingSettingsPage() {
 	const state = Route.useLoaderData();
-	const { org } = Route.useParams();
+	const { id: organizationId } = useOrganization();
 	const router = useRouter();
 	const isAdmin = isOrgAdminRole(state.organization.role);
 	const { entitlements } = state;
@@ -192,7 +193,7 @@ function BillingSettingsPage() {
 					description={`Beyond what your plan includes, at $${PREMIUM_ADDON_MONTHLY_USD} per pairing per month.`}
 				>
 					<PremiumAddonCard
-						org={org}
+						organizationId={organizationId}
 						quantity={state.premiumAddonQuantity}
 						isAdmin={isAdmin}
 						hasSubscription={state.subscription !== null}
@@ -405,12 +406,12 @@ function UsageMeter({ label, used, limit }: { label: string; used: number; limit
 }
 
 function PremiumAddonCard({
-	org,
+	organizationId,
 	quantity,
 	isAdmin,
 	hasSubscription,
 }: {
-	org: string;
+	organizationId: string;
 	quantity: number;
 	isAdmin: boolean;
 	hasSubscription: boolean;
@@ -429,7 +430,7 @@ function PremiumAddonCard({
 		setSaving(true);
 		setError(null);
 		try {
-			await setPremiumAddonQuantityFn({ data: { org, quantity: parsed } });
+			await setPremiumAddonQuantityFn({ data: { organizationId, quantity: parsed } });
 			router.invalidate();
 		} catch (err) {
 			setError(writeError(err, "Could not update the add-on"));

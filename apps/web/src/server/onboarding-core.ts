@@ -10,8 +10,9 @@
 
 import { slugify } from "@workspace/lib/app-urls";
 import { db } from "@workspace/lib/db/db";
-import { claimSlug, ensureOrganization, findUnusedBrandSlug } from "@workspace/lib/db/provisioning";
+import { ensureOrganization } from "@workspace/lib/db/provisioning";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
+import { claimNewBrandSlug, findUnusedBrandSlug } from "@workspace/lib/db/unique-names";
 import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
@@ -300,36 +301,31 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	const additionalDomains = dedupeDomains(input.additionalDomains ?? []).filter((d) => d !== websiteHost);
 	const aliases = dedupeAliases(input.aliases ?? []);
 
-	await claimSlug(
-		() =>
-			db.transaction(async (tx) => {
-				await ensureOrganization({ id: input.id, name: input.name }, tx);
+	await claimNewBrandSlug(() =>
+		db.transaction(async (tx) => {
+			await ensureOrganization({ id: input.id, name: input.name }, tx);
 
-				const slug = await findUnusedBrandSlug(input.id, slugify(input.name, "brand"), tx);
+			const slug = await findUnusedBrandSlug(input.id, slugify(input.name, "brand"), tx);
 
-				const [inserted] = await tx
-					.insert(brands)
-					.values({
-						id: input.id,
-						organizationId: input.id,
-						name: input.name,
-						slug,
-						website: formattedWebsite,
-						additionalDomains,
-						aliases,
-						enabled: true,
-						onboarded: true,
-					})
-					// Targeted at the id: untargeted, this would also swallow a slug
-					// collision and report the id as taken when it wasn't.
-					.onConflictDoNothing({ target: brands.id })
-					.returning({ id: brands.id });
-				if (!inserted) throw new BrandConflictError(input.id);
-			}),
-		"brands_organization_id_slug_idx",
-		() => {
-			throw new Error("Brand creation failed due to a concurrent create — please retry");
-		},
+			const [inserted] = await tx
+				.insert(brands)
+				.values({
+					id: input.id,
+					organizationId: input.id,
+					name: input.name,
+					slug,
+					website: formattedWebsite,
+					additionalDomains,
+					aliases,
+					enabled: true,
+					onboarded: true,
+				})
+				// Targeted at the id: untargeted, this would also swallow a slug
+				// collision and report the id as taken when it wasn't.
+				.onConflictDoNothing({ target: brands.id })
+				.returning({ id: brands.id });
+			if (!inserted) throw new BrandConflictError(input.id);
+		}),
 	);
 
 	await insertCompetitors({

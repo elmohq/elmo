@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -25,7 +25,6 @@ export const Route = createFileRoute("/_authed/app/new")({
 
 function NewOrganizationPage() {
 	const navigate = useNavigate();
-	const router = useRouter();
 	const invalidateOrganizations = useInvalidateOrganizations();
 	const writeError = useWriteErrorMessage();
 	const [name, setName] = useState("");
@@ -41,7 +40,7 @@ function NewOrganizationPage() {
 		setIsLoading(true);
 		try {
 			const { slug } = await createOrganizationFn({ data: { name: trimmed } });
-			await Promise.all([invalidateOrganizations(), router.invalidate()]);
+			await invalidateOrganizations();
 			await navigate({ to: "/app/org/$org/settings", params: { org: slug } });
 		} catch (err) {
 			setError(writeError(err, "Could not create the organization."));

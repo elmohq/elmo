@@ -39,7 +39,7 @@ function OrganizationSettingsPage() {
 		setSaving(true);
 		try {
 			await updateOrganizationFn({
-				data: { org: organization.slug, name: trimmedName, ...(slugMoved && { slug: trimmedSlug }) },
+				data: { organizationId: organization.id, name: trimmedName, ...(slugMoved && { slug: trimmedSlug }) },
 			});
 			setName(trimmedName);
 			setSlug(trimmedSlug);
@@ -47,7 +47,6 @@ function OrganizationSettingsPage() {
 			if (slugMoved) {
 				await router.navigate({ to: "/app/org/$org/settings", params: { org: trimmedSlug }, replace: true });
 			}
-			await router.invalidate();
 		} catch (err) {
 			setError(writeError(err, "Failed to save the organization."));
 		} finally {

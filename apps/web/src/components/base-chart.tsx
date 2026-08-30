@@ -7,6 +7,7 @@ import * as React from "react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import {
 	type ChartDataPoint,
+	type ChartSubject,
 	extendLinesToChartEdges,
 	filterAndCompleteChartData,
 	getBadgeClassName,
@@ -86,7 +87,7 @@ interface BaseChartProps {
 	visibility?: number | null;
 	showTitle?: boolean;
 	showBadge?: boolean;
-	brand: Brand;
+	brand: ChartSubject;
 	competitors: Competitor[];
 	isAnimationActive?: boolean;
 	chartType?: "bar" | "line";

@@ -115,9 +115,6 @@ function BrandSettingsPage() {
 					replace: true,
 				});
 			}
-			// The breadcrumb and the tab title read the name off this layout's
-			// loader, which is cached for five minutes.
-			await router.invalidate();
 		} catch (err) {
 			setError(writeError(err, "Failed to save the brand."));
 		} finally {

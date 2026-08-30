@@ -22,12 +22,12 @@ export type TeamData = {
 };
 
 export const listTeamFn = createServerFn({ method: "GET" })
-	.validator(z.object({ org: z.string() }))
+	.validator(z.object({ organizationId: z.string() }))
 	.handler(async ({ data }): Promise<TeamData> => {
 		// Not gated on `teamInvites`: every deployment has a member list worth
 		// looking at, and only changing it is cloud's.
 		const session = await requireAuthSession();
-		const org = await requireOrganization(session.user.id, data.org);
+		const org = await requireOrganization(session.user.id, data.organizationId);
 
 		const [members, invitations] = await Promise.all([
 			db
@@ -65,7 +65,7 @@ export const listTeamFn = createServerFn({ method: "GET" })
 export const inviteTeamMemberFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
-			org: z.string(),
+			organizationId: z.string(),
 			email: z.string().email(),
 			role: z.enum(["member", "admin"]),
 		}),
@@ -73,7 +73,7 @@ export const inviteTeamMemberFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		const org = await requireOrganization(session.user.id, data.org);
+		const org = await requireOrganization(session.user.id, data.organizationId);
 
 		await auth.api.createInvitation({
 			body: { email: data.email, role: data.role, organizationId: org.id },
@@ -84,11 +84,11 @@ export const inviteTeamMemberFn = createServerFn({ method: "POST" })
 	});
 
 export const cancelInvitationFn = createServerFn({ method: "POST" })
-	.validator(z.object({ org: z.string(), invitationId: z.string() }))
+	.validator(z.object({ organizationId: z.string(), invitationId: z.string() }))
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		const org = await requireOrganization(session.user.id, data.org);
+		const org = await requireOrganization(session.user.id, data.organizationId);
 
 		const [row] = await db
 			.select({ id: invitation.id })
@@ -106,11 +106,11 @@ export const cancelInvitationFn = createServerFn({ method: "POST" })
 	});
 
 export const removeTeamMemberFn = createServerFn({ method: "POST" })
-	.validator(z.object({ org: z.string(), memberId: z.string() }))
+	.validator(z.object({ organizationId: z.string(), memberId: z.string() }))
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		const org = await requireOrganization(session.user.id, data.org);
+		const org = await requireOrganization(session.user.id, data.organizationId);
 
 		const [row] = await db
 			.select({ userId: member.userId })

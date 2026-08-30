@@ -2,13 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { isValidSlug, MAX_SLUG_LENGTH, slugify } from "@workspace/lib/app-urls";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
+import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
 import {
-	claimSlug,
+	claimBrandSlug,
+	claimNewBrandSlug,
 	findUnusedBrandId,
 	findUnusedBrandSlug,
 	isBrandSlugAvailable,
-} from "@workspace/lib/db/provisioning";
-import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
+} from "@workspace/lib/db/unique-names";
 import {
 	assertAllowed,
 	assertCanCreateBrand,
@@ -37,19 +38,13 @@ import {
 	requireOrgAccess,
 	requirePlatformPicksEditable,
 } from "@/lib/auth/helpers";
-import { evaluateRequireCanCreateBrands, resolveBrandOrganization } from "@/lib/auth/policies";
+import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { getDeployment } from "@/lib/config/server";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { type TrackedTarget, targetFilterValue } from "@/lib/model-filter";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
-
-const BRAND_ORG_ERRORS = {
-	"no-organization": "No organization for the current user",
-	forbidden: "Forbidden: No access to this organization",
-	ambiguous: "Choose an organization for this brand",
-} as const;
 
 /**
  * What this brand's results can be broken down by: the standard platforms it
@@ -200,38 +195,6 @@ async function getBrandWithPromptsFromDb(
 // ============================================================================
 
 /**
- * Get all brands the current user has access to.
- *
- * Org scoping is the access-control mechanism: we resolve the orgs the user is
- * a member of and return only brands owned by those orgs (`brands.organization_id
- * IN (...)`). A user in org A never sees org B's brands.
- */
-export const getBrands = createServerFn({ method: "GET" }).handler(async () => {
-	const session = await requireAuthSession();
-	const userOrgs = await listUserOrganizations(session.user.id);
-	const orgIds = userOrgs.map((o) => o.id);
-
-	if (orgIds.length === 0) {
-		return [];
-	}
-
-	const scopedBrands = await db.query.brands.findMany({
-		where: inArray(brands.organizationId, orgIds),
-	});
-
-	// Every brand needs its org's entitlements to say what it tracks; resolve
-	// them for all the orgs at once rather than per brand.
-	const entitlementsByOrg = await getOrgEntitlementsMap(orgIds);
-	const brandsData = await Promise.all(
-		scopedBrands.map((brand) => getBrandWithPromptsFromDb(brand.id, entitlementsByOrg.get(brand.organizationId))),
-	);
-
-	return brandsData.filter(
-		(brand): brand is BrandWithPrompts & { trackedTargets: TrackedTarget[] } => brand !== undefined,
-	);
-});
-
-/**
  * Get a single brand by ID
  */
 export const getBrand = createServerFn({ method: "GET" })
@@ -275,34 +238,29 @@ export const createBrandFn = createServerFn({ method: "POST" })
 
 		const defaultDomains = getDefaultBrandDomains();
 		const enabledModels = await resolveCreateEnabledModels(data.brandId, data.enabledModels);
-		const created = await claimSlug(
-			() =>
-				db.transaction(async (tx) => {
-					const slug = await findUnusedBrandSlug(data.brandId, slugify(data.brandName, "brand"), tx);
-					return (
-						tx
-							.insert(brands)
-							.values({
-								id: data.brandId,
-								organizationId: data.brandId,
-								name: data.brandName,
-								slug,
-								website: urlValidation.formattedUrl,
-								enabled: true,
-								...(enabledModels && { enabledModels }),
-								...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
-							})
-							// Targeted at the id: the fallback below reads back by id, so
-							// swallowing a slug conflict would find nothing and report a failure
-							// that isn't one.
-							.onConflictDoNothing({ target: brands.id })
-							.returning()
-					);
-				}),
-			"brands_organization_id_slug_idx",
-			() => {
-				throw new Error("Brand creation failed due to a concurrent create — please retry");
-			},
+		const created = await claimNewBrandSlug(() =>
+			db.transaction(async (tx) => {
+				const slug = await findUnusedBrandSlug(data.brandId, slugify(data.brandName, "brand"), tx);
+				return (
+					tx
+						.insert(brands)
+						.values({
+							id: data.brandId,
+							organizationId: data.brandId,
+							name: data.brandName,
+							slug,
+							website: urlValidation.formattedUrl,
+							enabled: true,
+							...(enabledModels && { enabledModels }),
+							...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
+						})
+						// Targeted at the id: the fallback below reads back by id, so
+						// swallowing a slug conflict would find nothing and report a failure
+						// that isn't one.
+						.onConflictDoNothing({ target: brands.id })
+						.returning()
+				);
+			}),
 		);
 
 		const brand =
@@ -330,7 +288,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 		z.object({
 			brandName: z.string().min(1).max(100),
 			website: z.string().min(1),
-			organizationId: z.string().optional(),
+			organizationId: z.string(),
 			/** Platform picks from the creation wizard; omitted → plan defaults. */
 			enabledModels: z.array(z.string().min(1)).max(50).optional(),
 		}),
@@ -353,47 +311,32 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 			throw new Error("Brand name must be a non-empty string");
 		}
 
-		// Only ambiguous when the caller belongs to more than one organization.
-		// Picking for them would decide who can see the brand and who is billed
-		// for it, so an ambiguous call is refused rather than guessed.
-		const orgs = await listUserOrganizations(session.user.id);
-		const choice = resolveBrandOrganization(
-			orgs.map((o) => o.id),
-			data.organizationId,
-		);
-		if (!choice.ok) {
-			throw new Error(BRAND_ORG_ERRORS[choice.reason]);
-		}
-		const orgId = choice.organizationId;
+		const orgId = data.organizationId;
+		await requireOrgAccess(session.user.id, orgId);
 		await assertCanCreateBrand(orgId);
 
 		const baseSlug = slugify(trimmedName, "brand");
 		const defaultDomains = getDefaultBrandDomains();
 		const enabledModels = await resolveCreateEnabledModels(orgId, data.enabledModels);
 
-		return claimSlug(
-			() =>
-				db.transaction(async (tx) => {
-					const brandId = await findUnusedBrandId(baseSlug, tx);
-					const slug = await findUnusedBrandSlug(orgId, baseSlug, tx);
+		return claimNewBrandSlug(() =>
+			db.transaction(async (tx) => {
+				const brandId = await findUnusedBrandId(baseSlug, tx);
+				const slug = await findUnusedBrandSlug(orgId, baseSlug, tx);
 
-					await tx.insert(brands).values({
-						id: brandId,
-						organizationId: orgId,
-						name: trimmedName,
-						slug,
-						website: urlValidation.formattedUrl,
-						enabled: true,
-						...(enabledModels && { enabledModels }),
-						...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
-					});
+				await tx.insert(brands).values({
+					id: brandId,
+					organizationId: orgId,
+					name: trimmedName,
+					slug,
+					website: urlValidation.formattedUrl,
+					enabled: true,
+					...(enabledModels && { enabledModels }),
+					...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
+				});
 
-					return { brandId, brandSlug: slug };
-				}),
-			"brands_organization_id_slug_idx",
-			() => {
-				throw new Error("Brand creation failed due to a concurrent create — please retry");
-			},
+				return { brandId, brandSlug: slug };
+			}),
 		);
 	});
 
@@ -428,7 +371,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 		}
 		const updateData = normalized.updates;
 
-		const result = await claimSlug(
+		const result = await claimBrandSlug(
 			() =>
 				db.transaction(async (tx) => {
 					if (
@@ -443,7 +386,6 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 						.where(eq(brands.id, data.brandId))
 						.returning();
 				}),
-			"brands_organization_id_slug_idx",
 			() => {
 				throw new Error(TAKEN_SLUG);
 			},

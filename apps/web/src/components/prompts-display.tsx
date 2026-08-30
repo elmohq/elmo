@@ -20,7 +20,7 @@ import { useBrand } from "@/hooks/use-brands";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrandParams } from "@/hooks/use-route-params";
-import type { LookbackPeriod } from "@/lib/chart-utils";
+import type { ChartSubject, LookbackPeriod } from "@/lib/chart-utils";
 import { coercePromptOrder, orderPrompts } from "@/lib/prompt-order";
 import { skeletonRows } from "@/lib/skeleton-rows";
 
@@ -194,22 +194,8 @@ function ChartSection({
 		};
 	}, [batchChartData?.dateRange]);
 
-	const brandForProvider: Brand | null = batchChartData?.brand
-		? {
-				id: batchChartData.brand.id,
-				slug: null,
-				organizationId: batchChartData.brand.id,
-				name: batchChartData.brand.name,
-				website: "",
-				additionalDomains: [],
-				aliases: [],
-				enabled: true,
-				onboarded: true,
-				delayOverrideHours: null,
-				enabledModels: null,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			}
+	const brandForProvider: ChartSubject | null = batchChartData?.brand
+		? { id: batchChartData.brand.id, name: batchChartData.brand.name }
 		: null;
 
 	const competitorsForProvider: Competitor[] =

@@ -1,4 +1,4 @@
-import { useNavigate, useRouter } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -28,7 +28,6 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
 	const navigate = useNavigate();
-	const router = useRouter();
 	const writeError = useWriteErrorMessage();
 	const invalidateOrganizations = useInvalidateOrganizations();
 
@@ -48,7 +47,6 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
 			await invalidateOrganizations();
-			await router.invalidate();
 			await navigate({
 				to: "/app/org/$org/brand/$brand",
 				params: { org: organizationSlug, brand: brand.slug ?? brandId },

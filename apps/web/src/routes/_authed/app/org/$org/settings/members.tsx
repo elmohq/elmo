@@ -7,6 +7,7 @@ import { Label } from "@workspace/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { useState } from "react";
 import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
+import { useOrganization } from "@/hooks/use-organizations";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
@@ -14,13 +15,13 @@ import { cancelInvitationFn, inviteTeamMemberFn, listTeamFn, removeTeamMemberFn,
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings/members")({
 	staticData: { crumb: "Team" },
-	loader: ({ params }): Promise<TeamData> => listTeamFn({ data: { org: params.org } }),
+	loader: ({ context }): Promise<TeamData> => listTeamFn({ data: { organizationId: context.organization.id } }),
 	head: pageHead({ description: "Invite teammates and manage team members." }),
 	component: TeamSettingsPage,
 });
 
 function TeamSettingsPage() {
-	const { org } = Route.useParams();
+	const { id: organizationId } = useOrganization();
 	const { members, invitations, currentUserId } = Route.useLoaderData();
 	const canInvite = useDeploymentFeatures()?.teamInvites ?? false;
 	const writeError = useWriteErrorMessage();
@@ -35,7 +36,7 @@ function TeamSettingsPage() {
 		setError(null);
 		setInviting(true);
 		try {
-			await inviteTeamMemberFn({ data: { org, email: inviteEmail, role: inviteRole } });
+			await inviteTeamMemberFn({ data: { organizationId, email: inviteEmail, role: inviteRole } });
 			trackEvent("team_member_invited", { role: inviteRole });
 			setInviteEmail("");
 			setInviteRole("member");
@@ -50,7 +51,7 @@ function TeamSettingsPage() {
 	async function handleRemove(memberId: string) {
 		setError(null);
 		try {
-			await removeTeamMemberFn({ data: { org, memberId } });
+			await removeTeamMemberFn({ data: { organizationId, memberId } });
 			await router.invalidate();
 		} catch (err) {
 			setError(writeError(err, "Failed to remove member"));
@@ -60,7 +61,7 @@ function TeamSettingsPage() {
 	async function handleCancel(invitationId: string) {
 		setError(null);
 		try {
-			await cancelInvitationFn({ data: { org, invitationId } });
+			await cancelInvitationFn({ data: { organizationId, invitationId } });
 			await router.invalidate();
 		} catch (err) {
 			setError(writeError(err, "Failed to cancel invitation"));

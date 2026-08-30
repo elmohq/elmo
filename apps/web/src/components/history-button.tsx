@@ -3,11 +3,12 @@ import { cn } from "@workspace/ui/lib/utils";
 import { GoStack } from "react-icons/go";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
 import { useBrandParams } from "@/hooks/use-route-params";
+import type { PromptDetailTab } from "@/lib/prompt-detail-tabs";
 
 interface HistoryButtonProps {
 	promptId?: string;
-	/** Prompt-details tab to land on (e.g. "web-queries"); defaults to the first tab. */
-	tab?: "mentions" | "web-queries" | "citations" | "responses";
+	/** Defaults to the first tab. */
+	tab?: PromptDetailTab;
 }
 
 export function HistoryButton({ promptId, tab }: HistoryButtonProps) {

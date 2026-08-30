@@ -28,6 +28,7 @@ import { useQueryFanout } from "@/hooks/use-query-fanout";
 import { useSiteIcons } from "@/hooks/use-site-icons";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { promptKeywords } from "@/lib/fanout-analysis";
+import { PROMPT_DETAIL_TABS, type PromptDetailTab } from "@/lib/prompt-detail-tabs";
 import { pageHead } from "@/lib/route-head";
 import { skeletonRows } from "@/lib/skeleton-rows";
 import { getModelDisplayName } from "@/lib/utils";
@@ -47,10 +48,7 @@ type PromptMetadata = {
 	nextRunAt?: string | null;
 };
 
-const TAB_KEYS = ["mentions", "web-queries", "citations", "responses"] as const;
-type TabKey = (typeof TAB_KEYS)[number];
-
-const TABS: { key: TabKey; label: string }[] = [
+const TABS: { key: PromptDetailTab; label: string }[] = [
 	{ key: "mentions", label: "Mentions" },
 	{ key: "web-queries", label: "Web Queries" },
 	{ key: "citations", label: "Citations" },
@@ -61,8 +59,8 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/prompts
 	staticData: { crumb: "Prompt History" },
 	// `tab` is part of the route's search schema so links can target a specific
 	// tab (e.g. View Details → web-queries). Absent means the default tab.
-	validateSearch: (search: Record<string, unknown>): { tab?: TabKey } => ({
-		tab: TAB_KEYS.includes(search.tab as TabKey) ? (search.tab as TabKey) : undefined,
+	validateSearch: (search: Record<string, unknown>): { tab?: PromptDetailTab } => ({
+		tab: PROMPT_DETAIL_TABS.includes(search.tab as PromptDetailTab) ? (search.tab as PromptDetailTab) : undefined,
 	}),
 	head: pageHead({ title: "Prompt Details", description: "Detailed analysis of a tracked prompt's performance." }),
 	component: PromptHistoryPage,
@@ -196,7 +194,7 @@ function PromptHistoryPage() {
 	const activeTab = Route.useSearch({ select: (s) => s.tab ?? "mentions" });
 	const navigate = Route.useNavigate();
 	const setActiveTab = useCallback(
-		(tab: TabKey) =>
+		(tab: PromptDetailTab) =>
 			navigate({
 				search: (prev) => ({ ...prev, tab: tab === "mentions" ? undefined : tab }),
 				replace: true,
@@ -204,7 +202,7 @@ function PromptHistoryPage() {
 			}),
 		[navigate],
 	);
-	const [visitedTabs, setVisitedTabs] = useState<Set<TabKey>>(() => new Set([activeTab]));
+	const [visitedTabs, setVisitedTabs] = useState<Set<PromptDetailTab>>(() => new Set([activeTab]));
 	const [currentPage, setCurrentPage] = useState(1);
 	const { promptMeta, isMetaLoading } = usePromptMetadata(brandId, promptId);
 
@@ -232,7 +230,7 @@ function PromptHistoryPage() {
 	});
 
 	const handleTabChange = useCallback(
-		(tab: TabKey) => {
+		(tab: PromptDetailTab) => {
 			setActiveTab(tab);
 			setVisitedTabs((prev) => {
 				if (prev.has(tab)) return prev;
