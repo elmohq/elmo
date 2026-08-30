@@ -7,6 +7,7 @@ import {
 	IconRefresh,
 	IconSelector,
 	IconSettings,
+	IconStatusChange,
 	IconUser,
 } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
@@ -160,10 +161,9 @@ function OrganizationSwitcher({ onNavigate }: { onNavigate: () => void }) {
 	if (organizations.length > INLINE_ORGANIZATION_LIMIT) {
 		return (
 			<>
-				<DropdownMenuItem render={<Link to="/app" onClick={onNavigate} />} className="cursor-pointer font-medium">
-					<IconBriefcase className="size-4 shrink-0 text-muted-foreground" />
-					<span className="truncate">All organizations</span>
-					<span className="ml-auto shrink-0 text-muted-foreground text-xs">{organizations.length}</span>
+				<DropdownMenuItem render={<Link to="/app" onClick={onNavigate} />} className="cursor-pointer">
+					<IconStatusChange />
+					Switch Brand
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 			</>

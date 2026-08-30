@@ -2,4 +2,4 @@
 "@workspace/web": patch
 ---
 
-The account menu links to the organization switcher instead of listing every organization once you belong to more than three.
+The account menu offers a single Switch Brand link instead of listing every organization once you belong to more than three.

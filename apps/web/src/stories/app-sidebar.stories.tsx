@@ -375,7 +375,7 @@ export const ManyOrganizations: StoryObj = {
 		const canvas = within(canvasElement);
 		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
 
-		await expect(await screen.findByText("All organizations")).toBeInTheDocument();
+		await expect(await screen.findByText("Switch Brand")).toBeInTheDocument();
 		await expect(screen.queryByText("Organization 1")).toBeNull();
 	},
 };
