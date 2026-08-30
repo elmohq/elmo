@@ -163,10 +163,11 @@ export const citations = pgTable(
 		brandAnalyticsIdx: index("citations_brand_created_analytics_idx").on(
 			table.brandId,
 			table.createdAt,
-			table.promptId,
 			table.url,
 			table.domain,
 			table.title,
+			table.promptId,
+			table.model,
 			table.citationIndex,
 		),
 		promptCreatedIdx: index("citations_prompt_id_created_at_idx").on(table.promptId, table.createdAt),

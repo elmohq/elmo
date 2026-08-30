@@ -7,7 +7,7 @@ SET lock_timeout = '5s';
 --> statement-breakpoint
 SET statement_timeout = '60min';
 --> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "citations_brand_created_analytics_idx" ON "citations" USING btree ("brand_id","created_at","prompt_id","url","domain","title","citation_index");
+CREATE INDEX IF NOT EXISTS "citations_brand_created_analytics_idx" ON "citations" USING btree ("brand_id","created_at","url","domain","title","prompt_id","model","citation_index");
 --> statement-breakpoint
 DROP INDEX IF EXISTS "idx_citations_brand_analytics";
 --> statement-breakpoint

@@ -1,5 +1,5 @@
 {
-  "id": "0e3dd119-ebc3-47a4-a9c0-4c5f57d13a35",
+  "id": "6a9c6af6-dc7a-4415-a822-f807ca82146c",
   "prevId": "354e4d84-42d3-4f8d-afe9-a75beaa3674f",
   "version": "7",
   "dialect": "postgresql",
@@ -316,12 +316,6 @@
               "nulls": "last"
             },
             {
-              "expression": "prompt_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
               "expression": "url",
               "isExpression": false,
               "asc": true,
@@ -335,6 +329,18 @@
             },
             {
               "expression": "title",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "prompt_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "model",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
