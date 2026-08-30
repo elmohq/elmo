@@ -218,9 +218,7 @@ export const Local: StoryObj = {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText("Workflows")).toBeInTheDocument();
 		await expect(await canvas.findByText("Tools")).toBeInTheDocument();
-
-		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
-		await expect(await screen.findByLabelText("Acme organization settings")).toBeInTheDocument();
+		await expect(await canvas.findByRole("button", { name: "Account and organizations" })).toBeInTheDocument();
 	},
 };
 

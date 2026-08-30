@@ -13,7 +13,16 @@ import React, { createContext, type ReactNode, useContext } from "react";
 
 const RouteCtx = createContext<Record<string, unknown>>({});
 
-const BASE_ROUTE_CONTEXT: Record<string, unknown> = { brandId: "mock-brand-id" };
+const BASE_ROUTE_CONTEXT: Record<string, unknown> = {
+	brandId: "mock-brand-id",
+	organization: {
+		id: "org-1",
+		slug: "mock-organization",
+		name: "Acme",
+		brandCreation: { kind: "allowed" },
+		brands: [{ id: "mock-brand-id", slug: null, name: "Acme Corp", website: "https://acme.com", onboarded: true }],
+	},
+};
 
 let _routeContext: Record<string, unknown> = {};
 
@@ -32,10 +41,11 @@ export function MockRouteContextProvider({ value, children }: { value: Record<st
 // Stubs for @tanstack/react-router exports used by app components
 // ---------------------------------------------------------------------------
 
-export function useRouteContext(_opts?: unknown) {
+export function useRouteContext(opts?: { select?: (context: Record<string, unknown>) => unknown }) {
 	const ctx = useContext(RouteCtx);
 	// Merge with module-level context so both approaches work
-	return { ...BASE_ROUTE_CONTEXT, ..._routeContext, ...ctx };
+	const merged = { ...BASE_ROUTE_CONTEXT, ..._routeContext, ...ctx };
+	return opts?.select ? opts.select(merged) : merged;
 }
 
 export function createRouter(_opts?: unknown) {
