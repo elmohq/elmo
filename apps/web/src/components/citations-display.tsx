@@ -115,7 +115,8 @@ export function CitationsDisplay({
 		useCitationSections(citationData);
 	const domainSourceTabs = urlSourceTabs; // identical by construction (same chart-category list)
 
-	const hasGaps = !!(citationData.competitorOnlyPrompts && citationData.competitorOnlyPrompts.length > 0 && brandId);
+	const contentGaps = citationData.competitorOnlyPrompts ?? [];
+	const hasGaps = contentGaps.length > 0;
 	const googleModule = citationData.googleModule;
 	const whatsChanged = citationData.whatsChanged;
 	const subredditData = useSubredditData(citationData.specificUrls, citationData.whatsChanged);
@@ -161,7 +162,7 @@ export function CitationsDisplay({
 					className={totalChanges > 0 && hasGaps ? "grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch" : "contents"}
 				>
 					{totalChanges > 0 && whatsChanged && <RecentChangesCard whatsChanged={whatsChanged} days={days} />}
-					{hasGaps && <ContentGapsCard prompts={citationData.competitorOnlyPrompts!} brandId={brandId!} />}
+					{hasGaps && <ContentGapsCard prompts={contentGaps} />}
 				</div>
 			)}
 
@@ -185,7 +186,6 @@ export function CitationsDisplay({
 					sourceTabs={urlSourceTabs}
 					pageTypeTabs={urlPageTypeTabs}
 					maxUrls={maxUrls}
-					brandId={brandId}
 					brandName={brandName}
 					brandShare={brandShare}
 					brandIsCited={citationData.categoryCounts.brand > 0}
@@ -193,9 +193,7 @@ export function CitationsDisplay({
 			)}
 
 			{/* Google Shopping */}
-			{googleModule && googleModule.shopping.products.length > 0 && (
-				<GoogleShoppingCard googleModule={googleModule} brandId={brandId} />
-			)}
+			{googleModule && googleModule.shopping.products.length > 0 && <GoogleShoppingCard googleModule={googleModule} />}
 
 			{/* Top Cited Subreddits */}
 			{subredditData.length > 0 && <RedditCard subreddits={subredditData} />}

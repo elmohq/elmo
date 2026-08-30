@@ -17,13 +17,11 @@ import {
 	evaluateAdminRouteGuard,
 	evaluateApiKeyAuth,
 	evaluateAuthedRouteGuard,
-	evaluateBrandRouteGuard,
 	evaluateDeploymentPolicy,
 	evaluateReadOnly,
 	evaluateRequireAdmin,
 	evaluateRequireCanCreateBrands,
 	type RequestInfo,
-	resolveBrandOrganization,
 } from "@/lib/auth/policies";
 import { createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
 
@@ -403,31 +401,6 @@ describe("evaluateRequireAdmin", () => {
 	});
 });
 
-describe("resolveBrandOrganization", () => {
-	const ORG_A = "org-a";
-	const ORG_B = "org-b";
-
-	it("uses the sole membership when no org is requested", () => {
-		expect(resolveBrandOrganization([ORG_A], undefined)).toEqual({ ok: true, organizationId: ORG_A });
-	});
-
-	it("refuses to pick when the user belongs to several orgs", () => {
-		expect(resolveBrandOrganization([ORG_A, ORG_B], undefined)).toEqual({ ok: false, reason: "ambiguous" });
-	});
-
-	it("honors an explicit choice among several orgs", () => {
-		expect(resolveBrandOrganization([ORG_A, ORG_B], ORG_B)).toEqual({ ok: true, organizationId: ORG_B });
-	});
-
-	it("rejects an org the user does not belong to", () => {
-		expect(resolveBrandOrganization([ORG_A], ORG_B)).toEqual({ ok: false, reason: "forbidden" });
-	});
-
-	it("reports no membership before considering the request", () => {
-		expect(resolveBrandOrganization([], ORG_A)).toEqual({ ok: false, reason: "no-organization" });
-	});
-});
-
 describe("evaluateReadOnly", () => {
 	it("denies writes when read-only is enabled", () => {
 		expect(evaluateReadOnly(true)).toBe("deny");
@@ -478,16 +451,6 @@ describe("evaluateAdminRouteGuard", () => {
 
 	it("allows admin users", () => {
 		expect(evaluateAdminRouteGuard(true)).toBe("allow");
-	});
-});
-
-describe("evaluateBrandRouteGuard", () => {
-	it("returns not-found when user has no org access", () => {
-		expect(evaluateBrandRouteGuard(false)).toBe("not-found");
-	});
-
-	it("allows when user has org access", () => {
-		expect(evaluateBrandRouteGuard(true)).toBe("allow");
 	});
 });
 
@@ -603,7 +566,6 @@ describe("full access-control scenarios", () => {
 			// Route guards: all pass
 			expect(evaluateAuthedRouteGuard(session)).toBe("allow");
 			expect(evaluateAdminRouteGuard(true)).toBe("allow");
-			expect(evaluateBrandRouteGuard(true)).toBe("allow");
 		});
 	});
 
@@ -612,10 +574,6 @@ describe("full access-control scenarios", () => {
 			// Admin denied
 			expect(evaluateRequireAdmin(false)).toBe("deny");
 			expect(evaluateAdminRouteGuard(false)).toBe("not-found");
-
-			// Org access depends on membership
-			expect(evaluateBrandRouteGuard(true)).toBe("allow");
-			expect(evaluateBrandRouteGuard(false)).toBe("not-found");
 		});
 	});
 });

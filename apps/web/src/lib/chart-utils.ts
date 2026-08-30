@@ -4,6 +4,12 @@ import type { PerPromptDailyCitationStats, PerPromptVisibilityPoint } from "@/li
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
+/** Charts key a series by id and label it by name; nothing else about a brand is read. */
+export interface ChartSubject {
+	id: string;
+	name: string;
+}
+
 /** Use a stable one-month default while history loads, then shorten it for brands with less than a week of data. */
 export function getDefaultLookbackPeriod(earliestDataDate: string | null | undefined): LookbackPeriod {
 	if (!earliestDataDate) {
@@ -259,11 +265,11 @@ export interface ChartDataPoint {
 	[key: string]: number | string | boolean | null;
 }
 
-import type { Brand, Competitor, PromptRun } from "@workspace/lib/db/schema";
+import type { Competitor, PromptRun } from "@workspace/lib/db/schema";
 
 export function calculateVisibilityPercentages(
 	promptRuns: PromptRun[],
-	brand: Brand,
+	brand: ChartSubject,
 	competitors: Competitor[],
 	lookback: LookbackPeriod,
 	userTimezone: string = Intl.DateTimeFormat().resolvedOptions().timeZone,

@@ -5,10 +5,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { getModelMeta } from "@workspace/config/models";
-import type { DeploymentMode } from "@workspace/config/types";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { type Brand, brands, type Prompt, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { type Brand, brands, organization, type Prompt, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { assertCadenceAllowed, getBrandOrganizationId, getOrgEntitlementsMap } from "@workspace/lib/entitlements";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { type ModelConfig, parseScrapeTargets } from "@workspace/lib/providers";
@@ -19,11 +18,10 @@ import {
 	targetKey,
 	targetOverdueStatus,
 } from "@workspace/lib/run-policy";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import { Client } from "pg";
 import { z } from "zod";
 import { isAdmin, requireAuthSession } from "@/lib/auth/helpers";
-import { getDeployment } from "@/lib/config/server";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
 import { getAdminActiveBrandsOverTime, getAdminBrandRunStats, getAdminRunsOverTime } from "@/lib/postgres-read";
 
@@ -35,6 +33,19 @@ async function requireAdmin() {
 	const session = await requireAuthSession();
 	if (!isAdmin(session)) throw new Error("Unauthorized: Admin access required");
 	return session;
+}
+
+async function organizationSlugs(organizationIds: string[]): Promise<Map<string, string>> {
+	if (organizationIds.length === 0) return new Map();
+	const rows = await db
+		.select({ id: organization.id, slug: organization.slug })
+		.from(organization)
+		.where(inArray(organization.id, [...new Set(organizationIds)]));
+	return new Map(rows.map((row) => [row.id, row.slug]));
+}
+
+function organizationSegment(slugs: Map<string, string>, organizationId: string): string {
+	return slugs.get(organizationId) ?? organizationId;
 }
 
 // ============================================================================
@@ -115,6 +126,7 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 		]);
 
 	const brandRunStatsMap = new Map(brandRunStats.map((stat) => [stat.brand_id, stat]));
+	const orgSlugs = await organizationSlugs(allBrands.map((brand) => brand.organizationId));
 
 	const brandStats = await Promise.all(
 		allBrands.map(async (brand) => {
@@ -140,6 +152,7 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 
 			return {
 				...brand,
+				organizationSlug: organizationSegment(orgSlugs, brand.organizationId),
 				totalPrompts: promptCounts[0]?.total || 0,
 				activePrompts: promptCounts[0]?.active || 0,
 				promptRuns7Days: runStats?.runs_7d || 0,
@@ -591,6 +604,7 @@ function targetColumnsFor(plans: (PromptRunPlan | undefined)[]): { key: string; 
  * Get full workflow data: queue stats, recent jobs, brand schedule summaries.
  */
 interface WorkflowContext {
+	orgSlugs: Map<string, string>;
 	runPlans: Map<string, PromptRunPlan>;
 	lastRunsByPrompt: Map<string, Map<string, Date>>;
 	scheduleMap: Awaited<ReturnType<typeof getScheduleMap>>;
@@ -658,7 +672,7 @@ function promptWorkflowStatus(
 }
 
 function brandWorkflowSummary(
-	brand: { id: string; name: string; website: string; enabled: boolean },
+	brand: { id: string; slug: string | null; organizationId: string; name: string; website: string; enabled: boolean },
 	brandPrompts: { id: string; value: string; enabled: boolean; createdAt: Date }[],
 	context: WorkflowContext,
 ) {
@@ -667,6 +681,8 @@ function brandWorkflowSummary(
 
 	return {
 		brandId: brand.id,
+		brandSlug: brand.slug,
+		organizationSlug: organizationSegment(context.orgSlugs, brand.organizationId),
 		brandName: brand.name,
 		website: brand.website,
 		enabled: brand.enabled,
@@ -725,7 +741,8 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		);
 	}
 
-	const [recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([
+	const [orgSlugs, recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([
+		organizationSlugs(allBrands.map((brand) => brand.organizationId)),
 		getRecentJobs(5000),
 		getScheduleMap(),
 		getActiveJobMap(),
@@ -753,6 +770,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 	}
 
 	const context: WorkflowContext = {
+		orgSlugs,
 		runPlans,
 		lastRunsByPrompt,
 		scheduleMap,

@@ -25,7 +25,26 @@ export const TEST_USER = {
 } as const;
 
 export const TEST_BRAND_ID = "default";
+export const TEST_ORG_SLUG = "default";
+
+export function organizationUrl(org: string = TEST_ORG_SLUG): string {
+  return `/app/org/${org}`;
+}
+
+export function brandUrl(brand: string = TEST_BRAND_ID, org: string = TEST_ORG_SLUG): string {
+  return `${organizationUrl(org)}/brand/${brand}`;
+}
 export const TEST_BRAND_NAME = "Test Organization";
+
+export const TEST_ORGANIZATION_NAME = TEST_BRAND_NAME;
+
+export const SLUGGED_BRAND_ID = "seeded-slug-brand";
+export const SLUGGED_BRAND_SLUG = "labs";
+export const SLUGGED_BRAND_NAME = "Test Labs";
+
+export const RENAMEABLE_BRAND_ID = "seeded-rename-brand";
+export const RENAMEABLE_BRAND_SLUG = "rename-me";
+export const RENAMEABLE_BRAND_NAME = "Test Rename";
 export const TEST_BRAND_WEBSITE = "https://example.com";
 
 export const PROMPT_IDS = {

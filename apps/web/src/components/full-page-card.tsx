@@ -4,8 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/componen
 import { Separator } from "@workspace/ui/components/separator";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/logo";
+import { useAuth } from "@/hooks/use-auth";
 
 interface FullPageCardProps {
+	logoHref?: string;
 	title?: string;
 	subtitle?: string;
 	children?: ReactNode;
@@ -17,6 +19,7 @@ interface FullPageCardProps {
 }
 
 export default function FullPageCard({
+	logoHref,
 	title,
 	subtitle,
 	children = undefined,
@@ -26,11 +29,20 @@ export default function FullPageCard({
 	customBackButton,
 	className = "w-md",
 }: FullPageCardProps) {
+	const { isAuthenticated } = useAuth();
+	const markHref = logoHref ?? (isAuthenticated ? "/app" : null);
+
 	return (
 		<div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
 			<div className={`mx-auto ${className}`}>
 				<div className="flex items-center justify-center space-x-3">
-					<Logo />
+					{markHref ? (
+						<Link to={markHref} aria-label="Go to your organizations">
+							<Logo />
+						</Link>
+					) : (
+						<Logo />
+					)}
 				</div>
 				<Card className="my-8">
 					{(title || subtitle) && (

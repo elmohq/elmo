@@ -1,12 +1,13 @@
 import { test, expect } from "@playwright/test";
+import { brandUrl } from "../../fixtures";
 
-const BRAND_ID = "default";
+const BRAND_URL = brandUrl();
 const PROMPT_ID = "00000000-0000-0000-0000-000000000001";
 const PROMPT_TEXT = "What is the best AI monitoring tool";
 
 test.describe("Prompt Details Page", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/app/${BRAND_ID}/prompts/${PROMPT_ID}`);
+    await page.goto(`${BRAND_URL}/prompts/${PROMPT_ID}`);
     await expect(page.getByText(PROMPT_TEXT)).toBeVisible({ timeout: 30_000 });
   });
 
@@ -59,7 +60,7 @@ test.describe("Prompt Details Page", () => {
   });
 
   test("has back navigation", async ({ page }) => {
-    const backNav = page.locator("a[href*='/app/default']").first();
+    const backNav = page.locator(`a[href*="${BRAND_URL}"]`).first();
     await expect(backNav).toBeVisible();
   });
 });

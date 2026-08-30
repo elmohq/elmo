@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
+import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import { type DashboardSummaryResponse, getDashboardSummaryFn } from "@/server/dashboard";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
@@ -11,8 +11,7 @@ export const dashboardKeys = {
 };
 
 export function useDashboardSummary(brandId?: string, lookback: LookbackPeriod = "1m") {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+	const resolvedBrandId = useResolvedBrandId(brandId);
 
 	const query = useQuery({
 		queryKey: dashboardKeys.summary(resolvedBrandId || "", lookback),

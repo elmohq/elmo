@@ -10,6 +10,7 @@ import {
 	smallint,
 	text,
 	timestamp,
+	uniqueIndex,
 	uuid,
 } from "drizzle-orm/pg-core";
 // `organization` is referenced by the brands FK below; the re-export makes it
@@ -31,6 +32,7 @@ export const brands = pgTable(
 	{
 		id: text("id").primaryKey().notNull(),
 		name: text("name").notNull(),
+		slug: text("slug"),
 		website: text("website").notNull(),
 		additionalDomains: text("additional_domains").array().notNull().default([]),
 		aliases: text("aliases").array().notNull().default([]),
@@ -53,6 +55,10 @@ export const brands = pgTable(
 	},
 	(table) => ({
 		organizationIdIdx: index("brands_organization_id_idx").on(table.organizationId),
+		// Postgres treats nulls as distinct here, which is what lets every
+		// un-slugged brand in an organization coexist. NULLS NOT DISTINCT would
+		// allow only one.
+		organizationSlugIdx: uniqueIndex("brands_organization_id_slug_idx").on(table.organizationId, table.slug),
 	}),
 ).enableRLS();
 

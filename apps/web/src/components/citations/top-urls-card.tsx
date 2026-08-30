@@ -16,13 +16,13 @@ import {
 import type { CitationData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 import { SiteIcon } from "@/components/site-icon";
+import { useBrandParams } from "@/hooks/use-route-params";
 
 export function TopUrlsCard({
 	urls,
 	sourceTabs,
 	pageTypeTabs,
 	maxUrls,
-	brandId,
 	brandName,
 	brandShare,
 	brandIsCited,
@@ -31,11 +31,11 @@ export function TopUrlsCard({
 	sourceTabs: { key: string; label: string }[];
 	pageTypeTabs: { key: string; label: string }[];
 	maxUrls: number;
-	brandId?: string;
 	brandName?: string;
 	brandShare: number;
 	brandIsCited: boolean;
 }) {
+	const brandParams = useBrandParams();
 	const [urlSearch, setUrlSearch] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string>("all");
 	const [selectedPageType, setSelectedPageType] = useState<string>("all");
@@ -76,13 +76,13 @@ export function TopUrlsCard({
 									</p>
 									<p>
 										<strong>Competitor</strong> domains are only those in your{" "}
-										{brandId ? (
-											<Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">
-												tracked competitors list
-											</Link>
-										) : (
-											"tracked competitors list"
-										)}
+										<Link
+											to="/app/org/$org/brand/$brand/settings/competitors"
+											params={brandParams}
+											className="underline"
+										>
+											tracked competitors list
+										</Link>
 										.
 									</p>
 								</TooltipContent>

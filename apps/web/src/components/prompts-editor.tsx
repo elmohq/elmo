@@ -3,6 +3,7 @@ import { type EditablePrompt, type PremiumAllowance, PromptsListEditor } from "@
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
 import { trackEvent } from "@/lib/posthog";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updatePromptsFn } from "@/server/prompts";
 
 interface PromptRow {
@@ -19,11 +20,6 @@ interface PromptsEditorProps {
 	brandId: string;
 	pageTitle: string;
 	pageDescription: string;
-	/**
-	 * The workspace's premium allowance. Omit to hide the column — self-hosted, or
-	 * a cloud plan whose pool is zero. Assignment lives here rather than on the LLM
-	 * settings page because it is per prompt.
-	 */
 	premium?: PremiumAllowance;
 }
 
@@ -63,6 +59,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	const [error, setError] = useState<string | null>(null);
 	const saveInProgress = useRef(false);
 	const invalidatePromptsSummary = useInvalidatePromptsSummary();
+	const writeError = useWriteErrorMessage();
 
 	const { changedKeys, removedCount, addedCount, editedCount } = useMemo(() => {
 		const before = new Map(baseline.map((p) => [p.id, p]));
@@ -152,7 +149,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 			invalidatePromptsSummary(brandId);
 		} catch (err) {
 			console.error("Error saving prompts:", err);
-			setError(`Failed to save prompts: ${err instanceof Error ? err.message : "Unknown error"}`);
+			setError(writeError(err, "Failed to save prompts."));
 		} finally {
 			setIsSaving(false);
 			saveInProgress.current = false;

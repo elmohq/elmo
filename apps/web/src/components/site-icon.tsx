@@ -12,23 +12,29 @@ import { faviconUrl } from "@/lib/site-icon";
 
 export type SiteIconSize = "xs" | "sm" | "md" | "lg";
 
-// `request` is the pixel size asked of the favicon service — 2x the rendered
-// box, so the icon stays sharp on retina displays.
-const SIZES: Record<SiteIconSize, { box: string; request: number }> = {
-	xs: { box: "size-4", request: 32 },
-	sm: { box: "size-5", request: 64 },
-	md: { box: "size-6", request: 64 },
-	lg: { box: "size-8", request: 64 },
+const SIZES: Record<SiteIconSize, string> = {
+	xs: "size-4",
+	sm: "size-5",
+	md: "size-6",
+	lg: "size-8",
 };
+
+/**
+ * One request size for every box: the service can answer two sizes with two
+ * different icons, so a brand asked for at 32 in one place and 64 in another
+ * shows up as two marks for the same thing. One URL per domain also caches
+ * across every surface. 64 is 2x the largest box, so nothing is upscaled.
+ */
+const REQUESTED_SIZE = 64;
 
 /** Share of the box the fallback glyph fills, so it reads at every size. */
 const GLYPH_SCALE = "size-[75%]";
 
 // The service answers a domain it has no icon for with a 404 whose body is a
 // generic globe — and a 404 body renders like any other image, so it never
-// reaches the error path. That placeholder is always 16px square, while every
-// `request` above asks for more, so an image that comes back this small is the
-// one signal we get that the icon is missing.
+// reaches the error path. That placeholder is always 16px square, well under
+// what we ask for, so an image that comes back this small is the one signal we
+// get that the icon is missing.
 const PLACEHOLDER_SIZE = 16;
 
 export function SiteIcon({
@@ -41,8 +47,8 @@ export function SiteIcon({
 	size?: SiteIconSize;
 	className?: string;
 }) {
-	const { box, request } = SIZES[size];
-	const src = faviconUrl(domain, request);
+	const box = SIZES[size];
+	const src = faviconUrl(domain, REQUESTED_SIZE);
 
 	const [checkedSrc, setCheckedSrc] = useState<string | null>(null);
 	const [isPlaceholder, setIsPlaceholder] = useState(false);

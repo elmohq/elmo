@@ -6,7 +6,7 @@
  * Requests to Crisp are aborted in the browser, so CI never reaches them.
  */
 import { expect, test } from "@playwright/test";
-import { isDeploymentMode, TEST_BRAND_ID } from "../../fixtures";
+import { TEST_BRAND_ID, brandUrl, isDeploymentMode } from "../../fixtures";
 
 const CRISP_HOSTS = "**://*.crisp.chat/**";
 
@@ -23,10 +23,10 @@ test.describe("Support chat", () => {
       return route.abort();
     });
 
-    await page.goto(`/app/${TEST_BRAND_ID}`);
+    await page.goto(`${brandUrl()}`);
     // The loader runs in the root route's effect, so a hydrated dashboard means
     // it has either run or never will.
-    await expect(page.locator(`a[href="/app/${TEST_BRAND_ID}"][data-sidebar="menu-button"]`)).toBeVisible({
+    await expect(page.locator(`a[href="${brandUrl()}"][data-sidebar="menu-button"]`)).toBeVisible({
       timeout: 30_000,
     });
 

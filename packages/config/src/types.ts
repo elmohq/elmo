@@ -8,6 +8,8 @@ export interface FeaturesConfig {
 	 * cloud modes — whitelabel brands come from the admin API, demo is read-only.
 	 */
 	canCreateBrands: boolean;
+	canCreateOrganizations: boolean;
+	canEditOrganizations: boolean;
 	/**
 	 * Whether public self-serve registration is available. True only in cloud
 	 * mode. Local allows a single bootstrap signup (see ClientConfig.canRegister);

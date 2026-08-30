@@ -1,13 +1,3 @@
-/**
- * Stories for /app/$brand/settings/llms — where a customer chooses which AI
- * platforms a brand is tracked against.
- *
- * The same page serves self-hosted and cloud, and the difference is the point:
- * self-hosted offers every configured target with no cap, while cloud offers
- * only the plan menu, stops at the plan's pick count, and says what an upgrade
- * would add. The Scraped/API pill is why a customer can tell what a platform's
- * numbers mean; grounded Claude is reported here but assigned per prompt.
- */
 import type { Meta, StoryObj } from "@storybook/react";
 import { PROVIDERS_DOCS_URL } from "@workspace/config/constants";
 import { PLATFORM_TIER_LABELS, STANDARD_PLATFORM_MENU } from "@workspace/config/plans";
@@ -16,7 +6,7 @@ import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import { platformGroupCopy } from "@/lib/platform-groups";
-import { Route } from "@/routes/_authed/app/$brand/settings/llms";
+import { Route } from "@/routes/_authed/app/org/$org/brand/$brand/settings/llms";
 import type { ModelPickerState, PlatformOption } from "@/server/platform-picks";
 import type { PremiumPool } from "@/server/premium-tracking";
 import { setMockLoaderData } from "./_mocks/tanstack-router";

@@ -31,7 +31,8 @@ import {
 	XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { getAppName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { getJobLogsFn, getWorkflowDataFn, retryJobFn } from "@/server/admin";
 
 // ============================================================================
@@ -66,7 +67,9 @@ interface PromptScheduleStatus {
 
 interface BrandScheduleSummary {
 	brandId: string;
+	brandSlug: string | null;
 	brandName: string;
+	organizationSlug: string;
 	website: string;
 	enabled: boolean;
 	totalPrompts: number;
@@ -255,6 +258,7 @@ function TargetStatus({ status }: { status?: TargetRunStatus }) {
 
 function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: string; onSuccess: () => void }) {
 	const [isLoading, setIsLoading] = useState(false);
+	const writeError = useWriteErrorMessage();
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<"queued" | "recreated" | false>(false);
 
@@ -268,7 +272,7 @@ function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: strin
 			setSuccess("queued");
 			setTimeout(() => onSuccess(), 1000);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to retry");
+			setError(writeError(err, "Failed to retry"));
 		} finally {
 			setIsLoading(false);
 		}
@@ -297,6 +301,7 @@ function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: strin
 function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySuccess?: () => void }) {
 	const isFailed = job.status === "failed";
 	const [isOpen, setIsOpen] = useState(false);
+	const writeError = useWriteErrorMessage();
 	const [logs, setLogs] = useState<string[]>([]);
 	const [logsLoading, setLogsLoading] = useState(false);
 	const [logsError, setLogsError] = useState<string | null>(null);
@@ -328,7 +333,7 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 				onRetrySuccess?.();
 			}, 1000);
 		} catch (err) {
-			setRetryError(err instanceof Error ? err.message : "Unknown error");
+			setRetryError(writeError(err, "Could not retry this job"));
 		} finally {
 			setRetryLoading(false);
 		}
@@ -454,8 +459,8 @@ function BrandRow({
 						)}
 						<div>
 							<Link
-								to="/app/$brand"
-								params={{ brand: brand.brandId }}
+								to="/app/org/$org/brand/$brand"
+								params={{ org: brand.organizationSlug, brand: brand.brandSlug ?? brand.brandId }}
 								className="font-medium text-primary hover:underline"
 								onClick={(e) => e.stopPropagation()}
 							>
@@ -609,15 +614,8 @@ function BrandRow({
 // ============================================================================
 
 export const Route = createFileRoute("/_authed/admin/workflows")({
-	head: ({ match }) => {
-		const appName = getAppName(match);
-		return {
-			meta: [
-				{ title: `Workflows · ${appName}` },
-				{ name: "description", content: "Monitor prompt scheduling and job execution." },
-			],
-		};
-	},
+	staticData: { crumb: "Workflows" },
+	head: pageHead({ description: "Monitor prompt scheduling and job execution." }),
 	component: WorkflowsPage,
 });
 

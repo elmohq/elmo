@@ -86,12 +86,9 @@ export async function requireBrandAccess(userId: string, brandId: string): Promi
  * A missing brand and a brand in someone else's org are deliberately the same
  * error: the caller has no business distinguishing them.
  */
-export async function requireBrandOrganization(
-	userId: string,
-	brandId: string,
-): Promise<{ id: string; name: string; role: string }> {
+export async function requireBrandOrganization(userId: string, brandId: string): Promise<UserOrganization> {
 	const [row] = await db
-		.select({ id: organization.id, name: organization.name, role: member.role })
+		.select({ id: organization.id, slug: organization.slug, name: organization.name, role: member.role })
 		.from(brands)
 		.innerJoin(member, and(eq(member.organizationId, brands.organizationId), eq(member.userId, userId)))
 		.innerJoin(organization, eq(organization.id, brands.organizationId))
@@ -101,16 +98,33 @@ export async function requireBrandOrganization(
 	return row;
 }
 
-/**
- * Oldest membership first, so a user's own workspace precedes any they were
- * invited into. `organization.id` breaks ties, which a batch Auth0 sync
- * produces by stamping every membership it creates with the same timestamp.
- */
-export async function listUserOrganizations(userId: string): Promise<{ id: string; name: string; role: string }[]> {
+export interface UserOrganization {
+	id: string;
+	slug: string;
+	name: string;
+	role: string;
+}
+
+export async function listUserOrganizations(userId: string): Promise<UserOrganization[]> {
 	return db
-		.select({ id: organization.id, name: organization.name, role: member.role })
+		.select({ id: organization.id, slug: organization.slug, name: organization.name, role: member.role })
 		.from(member)
 		.innerJoin(organization, eq(member.organizationId, organization.id))
 		.where(eq(member.userId, userId))
 		.orderBy(member.createdAt, organization.id);
+}
+
+/**
+ * By id, not by URL segment: resolving a segment is the layout's job, and doing
+ * it here too would put the slug-or-id precedence rule in a second place.
+ */
+export async function requireOrganization(userId: string, organizationId: string): Promise<UserOrganization> {
+	const [row] = await db
+		.select({ id: organization.id, slug: organization.slug, name: organization.name, role: member.role })
+		.from(organization)
+		.innerJoin(member, and(eq(member.organizationId, organization.id), eq(member.userId, userId)))
+		.where(eq(organization.id, organizationId))
+		.limit(1);
+	if (!row) throw new Error("Forbidden: No access to this organization");
+	return row;
 }

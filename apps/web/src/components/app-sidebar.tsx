@@ -1,4 +1,5 @@
 import {
+	IconBriefcase,
 	IconBuilding,
 	IconBuildings,
 	IconChartBar,
@@ -16,8 +17,9 @@ import {
 	IconTool,
 	IconUsers,
 } from "@tabler/icons-react";
-import { Link, useRouteContext } from "@tanstack/react-router";
-import type { ClientConfig } from "@workspace/config/types";
+import { Link } from "@tanstack/react-router";
+import type { FeaturesConfig } from "@workspace/config/types";
+import { brandLinkParams, orgLinkParams } from "@workspace/lib/app-urls";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 
 import {
@@ -30,117 +32,73 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@workspace/ui/components/sidebar";
-import type * as React from "react";
 import { DemoModePill } from "@/components/demo-mode-pill";
 import { Logo } from "@/components/logo";
 import { NavAppInfo } from "@/components/nav-app-info";
-import { type NavGroup, NavMain } from "@/components/nav-main";
+import { type NavGroup, type NavItem, NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
+import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
+import { useViewer } from "@/hooks/use-route-context";
+import type { OrganizationSummary } from "@/lib/organizations/types";
 
-/**
- * How much of the app the shell around this page can reach:
- *  - "brand":   a brand's own pages, plus admin for those who have it
- *  - "admin":   the admin section only (there is no brand in scope)
- *  - "account": nothing — the page is a gate the user has to clear first, so the
- *               only things worth offering are who they are and how to leave
- */
-export type SidebarScope = "brand" | "admin" | "account";
+type ScopeProps =
+	| { scope: "brand"; organization: OrganizationSummary; brand: BrandWithPrompts }
+	| { scope: "organization"; organization: OrganizationSummary }
+	| { scope: "admin" | "account" };
 
-interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-	isAdmin?: boolean;
-	hasReportAccess?: boolean;
-	scope?: SidebarScope;
-	/** Brand data from route loader — avoids a separate client-side fetch */
-	brand?: BrandWithPrompts | null;
-}
-
-function buildNavGroups(args: {
-	scope: SidebarScope;
-	brand?: BrandWithPrompts | null;
-	isAdmin: boolean;
-	showAdminSection: boolean;
-	reportsEnabled: boolean;
-	features?: ClientConfig["features"];
-}): NavGroup[] {
-	const { scope, brand, isAdmin, showAdminSection, reportsEnabled, features } = args;
-	return [
-		// Only a brand context has a dashboard; a gate page has no destinations.
-		...(scope === "brand" ? brandGroups(brand, features) : []),
-		...(showAdminSection ? [adminGroup(isAdmin, reportsEnabled)] : []),
-	];
-}
-
-function brandGroups(brand: BrandWithPrompts | null | undefined, features?: ClientConfig["features"]): NavGroup[] {
-	const groups: NavGroup[] = [];
-	const dashboardItems = [
-		{
-			title: "Overview",
-			url: "/",
-			icon: IconDashboard,
-		},
+function organizationGroup(organization: OrganizationSummary, features?: FeaturesConfig): NavGroup {
+	const params = orgLinkParams(organization);
+	const items: NavItem[] = [
+		{ title: "Organization", link: { to: "/app/org/$org/settings", params }, icon: IconBriefcase, exact: true },
+		{ title: "Brands", link: { to: "/app/org/$org/settings/brands", params }, icon: IconBuildings },
+		{ title: "Team", link: { to: "/app/org/$org/settings/members", params }, icon: IconUsers },
 	];
 
-	if (brand?.onboarded) {
-		dashboardItems.push(
-			{
-				title: "Visibility",
-				url: "/visibility",
-				icon: IconChartBar,
-			},
+	if (features?.billing) {
+		items.push({ title: "Billing", link: { to: "/app/org/$org/settings/billing", params }, icon: IconCreditCard });
+	}
+
+	return { label: "Organization Settings", items };
+}
+
+function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts): NavGroup[] {
+	const params = brandLinkParams(organization, brand);
+	const dashboard: NavItem[] = [
+		{ title: "Overview", link: { to: "/app/org/$org/brand/$brand", params }, icon: IconDashboard, exact: true },
+	];
+
+	if (brand.onboarded) {
+		dashboard.push(
+			{ title: "Visibility", link: { to: "/app/org/$org/brand/$brand/visibility", params }, icon: IconChartBar },
 			{
 				title: "Share of Voice",
-				url: "/share-of-voice",
+				link: { to: "/app/org/$org/brand/$brand/share-of-voice", params },
 				icon: IconSpeakerphone,
 			},
-			{
-				title: "Query Fan-Out",
-				url: "/query-fan-out",
-				icon: IconSitemap,
-			},
-			{
-				title: "Citations",
-				url: "/citations",
-				icon: IconLink,
-			},
-			{
-				title: "Opportunities",
-				url: "/opportunities",
-				icon: IconTarget,
-			},
+			{ title: "Query Fan-Out", link: { to: "/app/org/$org/brand/$brand/query-fan-out", params }, icon: IconSitemap },
+			{ title: "Citations", link: { to: "/app/org/$org/brand/$brand/citations", params }, icon: IconLink },
+			{ title: "Opportunities", link: { to: "/app/org/$org/brand/$brand/opportunities", params }, icon: IconTarget },
 		);
 	}
 
-	groups.push({
-		label: "Dashboard",
-		items: dashboardItems,
-	});
+	const groups: NavGroup[] = [{ label: "Dashboard", items: dashboard }];
 
-	if (brand?.onboarded) {
+	if (brand.onboarded) {
 		groups.push({
 			label: "Settings",
 			items: [
-				{
-					title: "Brand",
-					url: "/settings/brand",
-					icon: IconBuilding,
-				},
+				{ title: "Brand", link: { to: "/app/org/$org/brand/$brand/settings/brand", params }, icon: IconBuilding },
 				{
 					title: "Competitors",
-					url: "/settings/competitors",
+					link: { to: "/app/org/$org/brand/$brand/settings/competitors", params },
 					icon: IconBuildings,
 				},
 				{
 					title: "Prompts",
-					url: "/settings/prompts",
+					link: { to: "/app/org/$org/brand/$brand/settings/prompts", params },
 					icon: IconListDetails,
 				},
-				{
-					title: "LLMs",
-					url: "/settings/llms",
-					icon: IconCpu,
-				},
-				...(features?.teamInvites ? [{ title: "Team", url: "/settings/members", icon: IconUsers }] : []),
-				...(features?.billing ? [{ title: "Billing", url: "/settings/billing", icon: IconCreditCard }] : []),
+				{ title: "LLMs", link: { to: "/app/org/$org/brand/$brand/settings/llms", params }, icon: IconCpu },
 			],
 		});
 	}
@@ -149,44 +107,37 @@ function brandGroups(brand: BrandWithPrompts | null | undefined, features?: Clie
 }
 
 function adminGroup(isAdmin: boolean, reportsEnabled: boolean): NavGroup {
-	const reportsItem = { title: "Reports", url: "/reports", icon: IconReport, absolute: true };
+	const reportsItem: NavItem = { title: "Reports", link: { to: "/reports" }, icon: IconReport };
 	if (!isAdmin) return { label: "Admin", items: [reportsItem] };
 
 	return {
 		label: "Admin",
 		items: [
-			{ title: "Brands", url: "/admin", icon: IconTable, absolute: true },
+			{ title: "Brands", link: { to: "/admin" }, icon: IconTable },
 			...(reportsEnabled ? [reportsItem] : []),
-			{ title: "Workflows", url: "/admin/workflows", icon: IconTimeline, absolute: true },
-			{ title: "Tools", url: "/admin/tools", icon: IconTool, absolute: true },
+			{ title: "Workflows", link: { to: "/admin/workflows" }, icon: IconTimeline },
+			{ title: "Tools", link: { to: "/admin/tools" }, icon: IconTool },
 		],
 	};
 }
 
-export function AppSidebar({
-	isAdmin = false,
-	hasReportAccess = false,
-	scope = "brand",
-	brand,
-	...props
-}: AppSidebarProps) {
+export function AppSidebar(props: ScopeProps) {
+	const { scope } = props;
 	const { setOpenMobile } = useSidebar();
-	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const { isAdmin, hasReportAccess } = useViewer();
+	const features = useDeploymentFeatures();
 	// Reports are disabled entirely in cloud; hide the nav entry there.
-	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
+	const reportsEnabled = features?.reportGeneration ?? true;
 
 	// A gate page offers no destinations: every link would either 404 or bounce
 	// the user straight back to the gate.
 	const showAdminSection = scope !== "account" && (isAdmin || (hasReportAccess && reportsEnabled));
 
-	const groups = buildNavGroups({
-		scope,
-		brand,
-		isAdmin,
-		showAdminSection,
-		reportsEnabled,
-		features: context.clientConfig?.features,
-	});
+	const groups: NavGroup[] = [
+		...(props.scope === "brand" ? brandGroups(props.organization, props.brand) : []),
+		...(props.scope === "organization" ? [organizationGroup(props.organization, features)] : []),
+		...(showAdminSection ? [adminGroup(isAdmin, reportsEnabled)] : []),
+	];
 	const brandmark = (
 		<>
 			<Logo iconClassName="!size-5" />
@@ -197,7 +148,7 @@ export function AppSidebar({
 	);
 
 	return (
-		<Sidebar variant="inset" {...props}>
+		<Sidebar variant="inset">
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
@@ -217,7 +168,7 @@ export function AppSidebar({
 				<NavMain groups={groups} />
 			</SidebarContent>
 			<SidebarFooter>
-				<NavUser canSwitchBrand={scope !== "account"} />
+				<NavUser showOrganizations={scope !== "account"} />
 				<NavAppInfo />
 			</SidebarFooter>
 		</Sidebar>

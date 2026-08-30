@@ -14,9 +14,10 @@ import { DEFAULT_APP_URL } from "@workspace/config/constants";
 import { getEnv } from "@workspace/config/env";
 import { PAST_DUE_GRACE_DAYS } from "@workspace/config/plans";
 import { ORG_ADMIN_ROLES } from "@workspace/config/roles";
+import { orgSettingsPath } from "@workspace/lib/app-urls";
 import { db } from "@workspace/lib/db/db";
-import { brands, member, organization, user } from "@workspace/lib/db/schema";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { member, organization, user } from "@workspace/lib/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { sendEmail } from "../email";
 import {
 	type EmailContent,
@@ -54,36 +55,21 @@ async function billingRecipients(organizationId: string): Promise<string[]> {
 	return [...new Set(rows.map((row) => row.email))];
 }
 
-/**
- * The billing settings page of the org's oldest brand. Emails need a stable
- * link — Stripe portal sessions expire minutes after creation — and this
- * page's "Manage billing" button opens a fresh Customer Portal session.
- */
-async function billingSettingsUrl(organizationId: string): Promise<string> {
+export async function sendDunningNotice(organizationId: string, notice: DunningNotice): Promise<void> {
 	// Same total accessor createCloudDeployment uses, so a missing APP_URL
 	// surfaces on the env-validation page instead of emailing "undefined/app/…".
 	const appUrl = getEnv("APP_URL", DEFAULT_APP_URL).replace(/\/+$/, "");
-	const [brand] = await db
-		.select({ id: brands.id })
-		.from(brands)
-		.where(eq(brands.organizationId, organizationId))
-		.orderBy(asc(brands.createdAt))
-		.limit(1);
-	return brand ? `${appUrl}/app/${brand.id}/settings/billing` : appUrl;
-}
+	const [[org], recipients] = await Promise.all([
+		db
+			.select({ name: organization.name, slug: organization.slug })
+			.from(organization)
+			.where(eq(organization.id, organizationId))
+			.limit(1),
+		billingRecipients(organizationId),
+	]);
+	if (!org || recipients.length === 0) return;
 
-export async function sendDunningNotice(organizationId: string, notice: DunningNotice): Promise<void> {
-	const [org] = await db
-		.select({ name: organization.name })
-		.from(organization)
-		.where(eq(organization.id, organizationId))
-		.limit(1);
-	if (!org) return;
-
-	const recipients = await billingRecipients(organizationId);
-	if (recipients.length === 0) return;
-
-	const url = await billingSettingsUrl(organizationId);
+	const url = `${appUrl}${orgSettingsPath(org, "billing")}`;
 	const content: EmailContent =
 		notice === "payment-failed"
 			? paymentFailedEmail({ orgName: org.name, graceDays: PAST_DUE_GRACE_DAYS, url })

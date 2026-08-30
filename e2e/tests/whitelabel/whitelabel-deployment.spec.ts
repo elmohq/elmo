@@ -13,7 +13,7 @@
  * e2e/session.ts).
  */
 import { expect, test } from "@playwright/test";
-import { TEST_BRAND_ID, WHITELABEL } from "../../fixtures";
+import { TEST_BRAND_ID, WHITELABEL, brandUrl, organizationUrl } from "../../fixtures";
 
 const isIdpRequest = (url: URL) => url.host === WHITELABEL.auth0Domain;
 
@@ -74,7 +74,7 @@ test.describe("Whitelabel sign-in is SSO only", () => {
 
 test.describe("Whitelabel branding", () => {
   test("the partner name and icon replace the Elmo wordmark", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}`);
+    await page.goto(`${brandUrl()}`);
 
     await expect(page.getByText(WHITELABEL.appName).first()).toBeVisible({ timeout: 30_000 });
     await expect(page.locator(`img[alt="${WHITELABEL.appName} logo"]`).first()).toHaveAttribute(
@@ -85,8 +85,8 @@ test.describe("Whitelabel branding", () => {
   });
 
   test("Elmo's version and project links are hidden", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}`);
-    await expect(page.locator(`a[href="/app/${TEST_BRAND_ID}"][data-sidebar="menu-button"]`)).toBeVisible({
+    await page.goto(`${brandUrl()}`);
+    await expect(page.locator(`a[href="${brandUrl()}"][data-sidebar="menu-button"]`)).toBeVisible({
       timeout: 30_000,
     });
     await expect(page.locator('a[href="https://github.com/elmohq/elmo"]')).toHaveCount(0);
@@ -106,11 +106,11 @@ test.describe("Whitelabel branding", () => {
 test.describe("Whitelabel features", () => {
   test("brands are provisioned through the API, so the UI offers no way to create one", async ({ page }) => {
     await page.goto("/app");
-    await expect(page.getByText("Brand Switcher", { exact: true })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("link", { name: /create new brand/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /new brand/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /new organization/i })).toHaveCount(0);
 
-    await page.goto("/app/new");
-    await page.waitForURL(/\/app(?:\/)?$/, { timeout: 30_000 });
+    await page.goto(`${organizationUrl()}/new`);
+    await page.waitForURL(new RegExp(`${organizationUrl()}/settings$`), { timeout: 30_000 });
   });
 
   test("prompt charts offer the optimize hand-off to the parent app", async ({ page, context }) => {
@@ -123,7 +123,7 @@ test.describe("Whitelabel features", () => {
       },
     );
 
-    await page.goto(`/app/${TEST_BRAND_ID}/visibility`);
+    await page.goto(`${brandUrl()}/visibility`);
 
     const optimize = page.getByRole("button", { name: `Optimize with ${WHITELABEL.parentName}` }).first();
     await expect(optimize).toBeVisible({ timeout: 30_000 });
@@ -147,8 +147,21 @@ test.describe("Whitelabel features", () => {
     await expect(page.getByRole("heading", { name: /reports/i }).first()).toBeVisible({ timeout: 30_000 });
   });
 
-  test("team settings are unavailable", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}/settings/members`);
-    await page.waitForURL(new RegExp(`/app/${TEST_BRAND_ID}$`), { timeout: 30_000 });
+  test("the team is listed, and nothing about it can be changed", async ({ page }) => {
+    await page.goto(`${organizationUrl()}/settings/members`);
+    await expect(page.getByRole("heading", { name: "Team" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Invite" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Remove" })).toHaveCount(0);
+  });
+
+  test("the organization's name and slug cannot be saved", async ({ page }) => {
+    await page.goto(`${organizationUrl()}/settings`);
+
+    const nameField = page.getByLabel("Organization Name", { exact: true });
+    await expect(nameField).toBeEnabled({ timeout: 30_000 });
+    await nameField.fill("Renamed From The Settings Page");
+
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByText(/cannot be renamed in this deployment/i)).toBeVisible({ timeout: 30_000 });
   });
 });

@@ -1,23 +1,10 @@
-/**
- * Stories for the cloud Billing settings page (/app/$brand/settings/billing).
- *
- * Covers the states an operator can't easily reach on demand: a failed payment
- * inside the dunning window, tracking paused once that window closes, a
- * workspace over its limits after a downgrade, and a contract ("custom") plan
- * billed outside self-serve.
- *
- * Every fixture goes through the real entitlement resolver and the real plan
- * catalog, so the meters and the add-on card can't drift from what the plans
- * actually grant — one story says "pro with 5 extra Claude prompts" and the
- * pool, the limits and the add-on availability all follow from that.
- */
 import type { Meta, StoryObj } from "@storybook/react";
 import { type EntitlementOverrides, resolveEntitlements } from "@workspace/config/entitlements";
 import { isPremiumAddonAvailable, type PlanKey } from "@workspace/config/plans";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
-import { Route } from "@/routes/_authed/app/$brand/settings/billing";
+import { Route } from "@/routes/_authed/app/org/$org/settings/billing";
 import type { BillingState } from "@/server/billing";
 import { resetMockAuthClient, setMockSubscriptionDelay } from "./_mocks/auth-client";
 import { setMockAddonError } from "./_mocks/server-billing";
@@ -111,7 +98,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Healthy Pro workspace: meters under the plan, add-on purchasable. */
 export const ProPlan: Story = {
 	render: () => renderWith({ addonQuantity: 5 }),
 	play: async ({ canvasElement }) => {
@@ -221,7 +207,7 @@ export const NonAdminMember: Story = {
 	render: () => renderWith({ role: "member" }),
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText(/only workspace admins can change the plan/i)).toBeVisible();
+		await expect(await canvas.findByText(/only organization admins can change the plan/i)).toBeVisible();
 		await expect(canvas.queryByRole("button", { name: /manage billing/i })).toBeNull();
 		// A member sees the plan and the total but is offered no way to change it.
 		await expect(await canvas.findByText("$299")).toBeVisible();

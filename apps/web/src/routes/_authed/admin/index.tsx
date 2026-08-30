@@ -4,6 +4,7 @@
 
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
+import { brandSegment } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
@@ -23,12 +24,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Settings, TrendingDown, TrendingUp } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
-import { getAppName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { getAdminStatsFn, updateDelayOverrideFn } from "@/server/admin";
 
 interface BrandStats {
 	id: string;
+	slug: string | null;
 	name: string;
+	organizationSlug: string;
 	website: string;
 	enabled: boolean;
 	onboarded: boolean;
@@ -77,6 +81,7 @@ function timeUnitsToHours(units: { weeks: number; days: number; hours: number })
 function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate: () => void }) {
 	const defaultDelayHours = useDefaultDelayHours();
 	const [open, setOpen] = useState(false);
+	const writeError = useWriteErrorMessage();
 	const [timeUnits, setTimeUnits] = useState({ weeks: 0, days: 0, hours: 0 });
 	const [isUpdating, setIsUpdating] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -111,7 +116,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 			onUpdate();
 			setOpen(false);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to update");
+			setError(writeError(err, "Failed to update"));
 		} finally {
 			setIsUpdating(false);
 		}
@@ -125,7 +130,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 			onUpdate();
 			setOpen(false);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to clear override");
+			setError(writeError(err, "Failed to clear override"));
 		} finally {
 			setIsUpdating(false);
 		}
@@ -251,15 +256,8 @@ function ActivityIndicator({ added, removed }: { added: number; removed: number 
 }
 
 export const Route = createFileRoute("/_authed/admin/")({
-	head: ({ match }) => {
-		const appName = getAppName(match);
-		return {
-			meta: [
-				{ title: `Admin · ${appName}` },
-				{ name: "description", content: "Monitor and manage brands, prompts, and scheduling." },
-			],
-		};
-	},
+	staticData: { crumb: "Brands" },
+	head: pageHead({ title: "Admin", description: "Monitor and manage brands, prompts, and scheduling." }),
 	component: AdminDashboard,
 });
 
@@ -597,7 +595,11 @@ function AdminDashboard() {
 										<TableRow key={brand.id}>
 											<TableCell className="font-medium">
 												<div className="space-y-1">
-													<Link to="/app/$brand" params={{ brand: brand.id }} className="hover:underline text-primary">
+													<Link
+														to="/app/org/$org/brand/$brand"
+														params={{ org: brand.organizationSlug, brand: brandSegment(brand) }}
+														className="hover:underline text-primary"
+													>
 														{brand.name}
 													</Link>
 													<div className="text-xs text-muted-foreground">{brand.website}</div>

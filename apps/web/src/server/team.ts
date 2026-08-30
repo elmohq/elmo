@@ -1,19 +1,10 @@
-/**
- * Server functions for team membership and invitations (cloud only).
- *
- * Mutations go through better-auth's org plugin API in-process
- * (auth.api.*), which enforces the caller's member role and triggers
- * sendInvitationEmail — the org plugin's HTTP endpoints stay blocked
- * for every mode (see lib/auth/policies.ts).
- */
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
-import { isOrgAdminRole } from "@workspace/config/roles";
 import { db } from "@workspace/lib/db/db";
 import { invitation, member, organization, user } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess, requireBrandOrganization } from "@/lib/auth/helpers";
+import { requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 import { auth } from "@/lib/auth/server";
 import { getDeployment } from "@/lib/config/server";
 
@@ -31,37 +22,37 @@ export type TeamData = {
 };
 
 export const listTeamFn = createServerFn({ method: "GET" })
-	.validator(z.object({ brandId: z.string() }))
-	// The explicit return type breaks the type-inference cycle between this
-	// fn and route loaders that both consume it and redirect to typed routes
-	// (same pattern as getBrandSwitcherData in routes/_authed/app/index.tsx).
+	.validator(z.object({ organizationId: z.string() }))
 	.handler(async ({ data }): Promise<TeamData> => {
-		requireTeamInvites();
+		// Not gated on `teamInvites`: every deployment has a member list worth
+		// looking at, and only changing it is cloud's.
 		const session = await requireAuthSession();
-		const org = await requireBrandOrganization(session.user.id, data.brandId);
+		const org = await requireOrganization(session.user.id, data.organizationId);
 
-		const members = await db
-			.select({
-				id: member.id,
-				role: member.role,
-				userId: member.userId,
-				name: user.name,
-				email: user.email,
-				createdAt: member.createdAt,
-			})
-			.from(member)
-			.innerJoin(user, eq(member.userId, user.id))
-			.where(eq(member.organizationId, org.id));
+		const [members, invitations] = await Promise.all([
+			db
+				.select({
+					id: member.id,
+					role: member.role,
+					userId: member.userId,
+					name: user.name,
+					email: user.email,
+					createdAt: member.createdAt,
+				})
+				.from(member)
+				.innerJoin(user, eq(member.userId, user.id))
+				.where(eq(member.organizationId, org.id)),
 
-		const invitations = await db
-			.select({
-				id: invitation.id,
-				email: invitation.email,
-				role: invitation.role,
-				expiresAt: invitation.expiresAt,
-			})
-			.from(invitation)
-			.where(and(eq(invitation.organizationId, org.id), eq(invitation.status, "pending")));
+			db
+				.select({
+					id: invitation.id,
+					email: invitation.email,
+					role: invitation.role,
+					expiresAt: invitation.expiresAt,
+				})
+				.from(invitation)
+				.where(and(eq(invitation.organizationId, org.id), eq(invitation.status, "pending"))),
+		]);
 
 		return {
 			members,
@@ -71,24 +62,10 @@ export const listTeamFn = createServerFn({ method: "GET" })
 		};
 	});
 
-export const updateOrganizationFn = createServerFn({ method: "POST" })
-	.validator(z.object({ brandId: z.string(), name: z.string().min(1).max(100) }))
-	.handler(async ({ data }) => {
-		requireTeamInvites();
-		const session = await requireAuthSession();
-		const org = await requireBrandOrganization(session.user.id, data.brandId);
-
-		// Org rename is an admin action.
-		if (!isOrgAdminRole(org.role)) throw new Error("Only admins can rename the workspace");
-
-		await db.update(organization).set({ name: data.name.trim() }).where(eq(organization.id, org.id));
-		return { success: true };
-	});
-
 export const inviteTeamMemberFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
-			brandId: z.string(),
+			organizationId: z.string(),
 			email: z.string().email(),
 			role: z.enum(["member", "admin"]),
 		}),
@@ -96,7 +73,7 @@ export const inviteTeamMemberFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		const org = await requireBrandOrganization(session.user.id, data.brandId);
+		const org = await requireOrganization(session.user.id, data.organizationId);
 
 		await auth.api.createInvitation({
 			body: { email: data.email, role: data.role, organizationId: org.id },
@@ -107,11 +84,18 @@ export const inviteTeamMemberFn = createServerFn({ method: "POST" })
 	});
 
 export const cancelInvitationFn = createServerFn({ method: "POST" })
-	.validator(z.object({ brandId: z.string(), invitationId: z.string() }))
+	.validator(z.object({ organizationId: z.string(), invitationId: z.string() }))
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		const org = await requireOrganization(session.user.id, data.organizationId);
+
+		const [row] = await db
+			.select({ id: invitation.id })
+			.from(invitation)
+			.where(and(eq(invitation.id, data.invitationId), eq(invitation.organizationId, org.id)))
+			.limit(1);
+		if (!row) throw new Error("Not found: no such invitation in this organization");
 
 		await auth.api.cancelInvitation({
 			body: { invitationId: data.invitationId },
@@ -122,11 +106,11 @@ export const cancelInvitationFn = createServerFn({ method: "POST" })
 	});
 
 export const removeTeamMemberFn = createServerFn({ method: "POST" })
-	.validator(z.object({ brandId: z.string(), memberId: z.string() }))
+	.validator(z.object({ organizationId: z.string(), memberId: z.string() }))
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		const org = await requireBrandOrganization(session.user.id, data.brandId);
+		const org = await requireOrganization(session.user.id, data.organizationId);
 
 		const [row] = await db
 			.select({ userId: member.userId })
@@ -159,7 +143,7 @@ export const getInvitationFn = createServerFn({ method: "GET" })
 
 export const acceptInvitationFn = createServerFn({ method: "POST" })
 	.validator(z.object({ invitationId: z.string() }))
-	.handler(async ({ data }) => {
+	.handler(async ({ data }): Promise<{ orgSlug: string }> => {
 		requireTeamInvites();
 		await requireAuthSession();
 
@@ -168,5 +152,11 @@ export const acceptInvitationFn = createServerFn({ method: "POST" })
 			headers: getRequestHeaders(),
 		});
 
-		return { orgId: result.invitation.organizationId };
+		const [org] = await db
+			.select({ slug: organization.slug })
+			.from(organization)
+			.where(eq(organization.id, result.invitation.organizationId))
+			.limit(1);
+		if (!org) throw new Error("The organization for this invitation no longer exists");
+		return { orgSlug: org.slug };
 	});

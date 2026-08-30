@@ -1,5 +1,5 @@
 import type { Icon } from "@tabler/icons-react";
-import { Link, useLocation, useParams } from "@tanstack/react-router";
+import { Link, type LinkProps, useLocation, useRouter } from "@tanstack/react-router";
 import {
 	SidebarGroup,
 	SidebarGroupLabel,
@@ -8,12 +8,13 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@workspace/ui/components/sidebar";
+import { activeNavHref } from "@/lib/nav-active";
 
 export interface NavItem {
 	title: string;
-	url: string;
+	link: LinkProps;
 	icon?: Icon;
-	absolute?: boolean;
+	exact?: boolean;
 }
 
 export interface NavGroup {
@@ -22,36 +23,32 @@ export interface NavGroup {
 }
 
 export function NavMain({ groups }: { groups: NavGroup[] }) {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const brandId = params.brand;
+	const router = useRouter();
 	const { setOpenMobile } = useSidebar();
-	const location = useLocation();
-	const pathname = location.pathname;
+	const { pathname } = useLocation();
 
-	const getHref = (url: string, absolute?: boolean) => {
-		return absolute ? url : `/app/${brandId}${url}`;
-	};
+	const resolved = groups.map((group) => ({
+		label: group.label,
+		items: group.items.map((item) => ({ item, href: router.buildLocation(item.link).pathname })),
+	}));
 
-	const isActive = (url: string, absolute?: boolean) => {
-		const href = getHref(url, absolute);
-		if (href === `/app/${brandId}` || href === `/app/${brandId}/`) {
-			return pathname === `/app/${brandId}` || pathname === `/app/${brandId}/`;
-		}
-		return pathname.startsWith(href);
-	};
+	const activeHref = activeNavHref(
+		resolved.flatMap((group) => group.items.map(({ item, href }) => ({ href, exact: item.exact }))),
+		pathname,
+	);
 
 	return (
 		<>
-			{groups.map((group) => (
+			{resolved.map((group) => (
 				<SidebarGroup key={group.label}>
 					<SidebarGroupLabel>{group.label}</SidebarGroupLabel>
 					<SidebarMenu>
-						{group.items.map((item) => (
-							<SidebarMenuItem key={item.title}>
+						{group.items.map(({ item, href }) => (
+							<SidebarMenuItem key={href}>
 								<SidebarMenuButton
-									render={<Link to={getHref(item.url, item.absolute)} onClick={() => setOpenMobile(false)} />}
+									render={<Link {...item.link} onClick={() => setOpenMobile(false)} />}
 									tooltip={item.title}
-									isActive={isActive(item.url, item.absolute)}
+									isActive={href === activeHref}
 								>
 									{item.icon && <item.icon />}
 									<span>{item.title}</span>

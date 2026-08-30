@@ -1,12 +1,13 @@
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
-import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import type { Competitor } from "@workspace/lib/db/schema";
 import { Badge } from "@workspace/ui/components/badge";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import * as React from "react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import {
 	type ChartDataPoint,
+	type ChartSubject,
 	extendLinesToChartEdges,
 	filterAndCompleteChartData,
 	getBadgeClassName,
@@ -86,7 +87,7 @@ interface BaseChartProps {
 	visibility?: number | null;
 	showTitle?: boolean;
 	showBadge?: boolean;
-	brand: Brand;
+	brand: ChartSubject;
 	competitors: Competitor[];
 	isAnimationActive?: boolean;
 	chartType?: "bar" | "line";

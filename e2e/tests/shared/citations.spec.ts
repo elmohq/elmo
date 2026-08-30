@@ -1,10 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { brandUrl } from "../../fixtures";
 
-const BRAND_ID = "default";
+const BRAND_URL = brandUrl();
 
 test.describe("Citations Page", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/app/${BRAND_ID}/citations`);
+    await page.goto(`${BRAND_URL}/citations`);
     await expect(page.getByRole("heading", { name: /citations/i })).toBeVisible({ timeout: 30_000 });
   });
 
@@ -33,9 +34,9 @@ test.describe("Citations Page", () => {
   });
 
   test("page is accessible via sidebar navigation", async ({ page }) => {
-    await page.goto(`/app/${BRAND_ID}`);
-    await expect(page.locator(`a[href="/app/${BRAND_ID}/citations"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
-    await page.locator(`a[href="/app/${BRAND_ID}/citations"][data-sidebar="menu-button"]`).click();
+    await page.goto(`${BRAND_URL}`);
+    await expect(page.locator(`a[href="${BRAND_URL}/citations"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
+    await page.locator(`a[href="${BRAND_URL}/citations"][data-sidebar="menu-button"]`).click();
     await page.waitForURL(/\/citations/);
 
     const pageContent = await page.textContent("body");

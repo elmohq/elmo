@@ -1,6 +1,15 @@
-import { IconExternalLink, IconLogout, IconSelector, IconStatusChange, IconUser } from "@tabler/icons-react";
-import { Link, useRouteContext } from "@tanstack/react-router";
-import type { ClientConfig } from "@workspace/config/types";
+import {
+	IconBriefcase,
+	IconCheck,
+	IconExternalLink,
+	IconLogout,
+	IconPlus,
+	IconRefresh,
+	IconSelector,
+	IconSettings,
+	IconUser,
+} from "@tabler/icons-react";
+import { Link } from "@tanstack/react-router";
 import { authClient } from "@workspace/lib/auth/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import {
@@ -13,16 +22,21 @@ import {
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
+import { OrganizationRowIcon } from "@/components/organization-row-icon";
 import { useAuth } from "@/hooks/use-auth";
+import { useBrandId } from "@/hooks/use-brand-id";
+import { useBranding, useDeploymentFeatures } from "@/hooks/use-deployment-features";
+import { useOrganizations } from "@/hooks/use-organizations";
 import { resetCrispSession } from "@/lib/crisp";
+import { organizationTree } from "@/lib/organizations/tree";
+import type { OrganizationSummary } from "@/lib/organizations/types";
 import { resetPostHog } from "@/lib/posthog";
 
-/** `canSwitchBrand` is false on gate pages, where /app just redirects back. */
-export function NavUser({ canSwitchBrand = true }: { canSwitchBrand?: boolean } = {}) {
+export function NavUser({ showOrganizations = true }: { showOrganizations?: boolean } = {}) {
 	const { user } = useAuth();
 	const { isMobile, setOpenMobile } = useSidebar();
-	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
-	const clientConfig = context.clientConfig;
+	const branding = useBranding();
+	const features = useDeploymentFeatures();
 
 	// NavUser only renders inside _authed routes, which redirect to /auth/login
 	// when there's no session — so `user` is always present at this point.
@@ -30,10 +44,9 @@ export function NavUser({ canSwitchBrand = true }: { canSwitchBrand?: boolean } 
 
 	const isNameEmailSame = user.name?.trim().toLowerCase() === user.email?.trim().toLowerCase();
 
-	const branding = clientConfig?.branding;
 	const parentDashboard =
 		branding?.parentUrl && branding?.parentName ? { url: branding.parentUrl, name: branding.parentName } : null;
-	const hasDestinations = canSwitchBrand || parentDashboard !== null;
+	const close = () => setOpenMobile(false);
 
 	return (
 		<SidebarMenu>
@@ -43,6 +56,7 @@ export function NavUser({ canSwitchBrand = true }: { canSwitchBrand?: boolean } 
 						render={
 							<SidebarMenuButton
 								size="lg"
+								aria-label={showOrganizations ? "Account and organizations" : "Account"}
 								className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground cursor-pointer"
 							/>
 						}
@@ -83,31 +97,32 @@ export function NavUser({ canSwitchBrand = true }: { canSwitchBrand?: boolean } 
 							</DropdownMenuLabel>
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
-						{/* The group and the rule under it come and go together: a
-						    deployment with no parent dashboard, on a page that cannot
-						    switch brand, would otherwise draw two rules with nothing
-						    between them. */}
-						{hasDestinations && (
+
+						{showOrganizations && (
+							<>
+								<OrganizationSwitcher onNavigate={close} />
+								{features?.canCreateOrganizations && (
+									<>
+										<DropdownMenuItem render={<Link to="/app/new" onClick={close} />} className="cursor-pointer">
+											<IconPlus />
+											New organization
+										</DropdownMenuItem>
+										<DropdownMenuSeparator />
+									</>
+								)}
+							</>
+						)}
+
+						{parentDashboard && (
 							<>
 								<DropdownMenuGroup>
-									{canSwitchBrand && (
-										<DropdownMenuItem
-											render={<Link to="/app" onClick={() => setOpenMobile(false)} />}
-											className="cursor-pointer"
-										>
-											<IconStatusChange />
-											Switch Brand
-										</DropdownMenuItem>
-									)}
-									{parentDashboard && (
-										<DropdownMenuItem
-											render={<a href={parentDashboard.url} target="_blank" rel="noreferrer" />}
-											className="cursor-pointer"
-										>
-											<IconExternalLink />
-											{parentDashboard.name} Dashboard
-										</DropdownMenuItem>
-									)}
+									<DropdownMenuItem
+										render={<a href={parentDashboard.url} target="_blank" rel="noreferrer" />}
+										className="cursor-pointer"
+									>
+										<IconExternalLink />
+										{parentDashboard.name} Dashboard
+									</DropdownMenuItem>
 								</DropdownMenuGroup>
 								<DropdownMenuSeparator />
 							</>
@@ -133,5 +148,91 @@ export function NavUser({ canSwitchBrand = true }: { canSwitchBrand?: boolean } 
 				</DropdownMenu>
 			</SidebarMenuItem>
 		</SidebarMenu>
+	);
+}
+
+function OrganizationSwitcher({ onNavigate }: { onNavigate: () => void }) {
+	const { organizations, isLoading, isError, isFetching, refetch } = useOrganizations();
+	const currentBrandId = useBrandId();
+
+	return (
+		<>
+			{organizations.map((organization) => (
+				<OrganizationSection
+					key={organization.id}
+					organization={organization}
+					currentBrandId={currentBrandId}
+					onNavigate={onNavigate}
+				/>
+			))}
+
+			{isLoading && (
+				<DropdownMenuItem disabled>
+					<span className="text-muted-foreground">Loading organizations…</span>
+				</DropdownMenuItem>
+			)}
+			{isError && (
+				<DropdownMenuItem
+					className="cursor-pointer"
+					onSelect={(event) => {
+						event.preventDefault();
+						refetch();
+					}}
+				>
+					<IconRefresh className={isFetching ? "animate-spin" : undefined} />
+					{isFetching ? "Retrying…" : "Couldn't load your organizations — retry"}
+				</DropdownMenuItem>
+			)}
+		</>
+	);
+}
+
+function OrganizationSection({
+	organization,
+	currentBrandId,
+	onNavigate,
+}: {
+	organization: OrganizationSummary;
+	currentBrandId: string | undefined;
+	onNavigate: () => void;
+}) {
+	const { heading, children } = organizationTree(organization);
+
+	return (
+		<DropdownMenuGroup aria-label={organization.name}>
+			<DropdownMenuItem
+				render={<Link {...heading.link} onClick={onNavigate} />}
+				aria-label={heading.ariaLabel}
+				className="cursor-pointer font-medium"
+			>
+				<IconBriefcase className="size-4 shrink-0 text-muted-foreground" />
+				<span className="truncate">{heading.label}</span>
+				<span className="ml-auto flex w-7 shrink-0 justify-center">
+					<IconSettings className="size-4 text-muted-foreground" />
+				</span>
+			</DropdownMenuItem>
+
+			{children.length > 0 && (
+				<div className="mb-2 ml-4 border-l pl-1">
+					{children.map((row) => (
+						<DropdownMenuItem
+							key={row.key}
+							render={<Link {...row.link} onClick={onNavigate} />}
+							className={row.kind === "brand" ? "cursor-pointer" : "cursor-pointer text-muted-foreground"}
+						>
+							<OrganizationRowIcon row={row} size="xs" />
+							<span className="truncate">{row.label}</span>
+							{row.kind === "brand" && row.id === currentBrandId && (
+								<span className="ml-auto flex w-7 shrink-0 justify-center">
+									<IconCheck className="size-3.5" />
+								</span>
+							)}
+						</DropdownMenuItem>
+					))}
+				</div>
+			)}
+
+			<DropdownMenuSeparator />
+		</DropdownMenuGroup>
 	);
 }

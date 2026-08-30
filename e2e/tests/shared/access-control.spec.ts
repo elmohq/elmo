@@ -9,13 +9,13 @@
  * these up fails here.
  */
 import { expect, test } from "@playwright/test";
-import { NIKE_BRAND_ID, TEST_API_KEY, TEST_BRAND_ID } from "../../fixtures";
+import { NIKE_BRAND_ID, TEST_API_KEY, TEST_BRAND_ID, brandUrl, organizationUrl } from "../../fixtures";
 
 test.describe("Unauthenticated access", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
   test("the dashboard redirects to login", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}`);
+    await page.goto(`${brandUrl()}`);
     await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
     expect(page.url()).toContain("returnTo");
   });
@@ -43,16 +43,11 @@ test.describe("Unauthenticated access", () => {
 
 test.describe("Authenticated access", () => {
   test("a brand in another org is not found", async ({ page }) => {
-    // Nike is seeded in an org the E2E user is not a member of. It is visible
-    // to the admin API key above, so a 404 here is org scoping, not absence.
-    await page.goto(`/app/${NIKE_BRAND_ID}`);
+    await page.goto(`${organizationUrl()}/brand/${NIKE_BRAND_ID}`);
     await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
   });
 
   test("organizations cannot be created over HTTP", async ({ request }) => {
-    // Orgs are provisioned server-side only (create-brand flow, the admin
-    // brands API, or cloud invitations), so the better-auth org plugin's
-    // mutation endpoints are refused in every mode.
     const response = await request.post("/api/auth/organization/create", {
       data: { name: "Smuggled Org", slug: "smuggled-org" },
       failOnStatusCode: false,

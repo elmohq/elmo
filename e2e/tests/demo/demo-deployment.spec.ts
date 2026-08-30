@@ -20,6 +20,8 @@ import {
   TEST_BRAND_ID,
   TEST_BRAND_NAME,
   TEST_USER,
+  brandUrl,
+  organizationUrl,
 } from "../../fixtures";
 import { withDb } from "../../session";
 
@@ -80,7 +82,7 @@ test.describe("Demo refuses writes", () => {
   });
 
   test("saving brand settings from the UI fails and writes nothing", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}/settings/brand`);
+    await page.goto(`${brandUrl()}/settings/brand`);
 
     const nameInput = page.getByLabel("Brand Name");
     await expect(nameInput).toBeVisible({ timeout: 30_000 });
@@ -95,6 +97,7 @@ test.describe("Demo refuses writes", () => {
     expect((await writeAttempt).status()).toBe(403);
 
     await expect(page.getByText("Brand details updated successfully!")).toHaveCount(0);
+    await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible();
     expect(await countRows("brands", "id = $1 AND name = $2", [TEST_BRAND_ID, TEST_BRAND_NAME])).toBe(1);
   });
 });
@@ -153,21 +156,34 @@ test.describe("Demo auth is sign-in only", () => {
 
 test.describe("Demo features", () => {
   test("the demo pill is shown", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}`);
+    await page.goto(`${brandUrl()}`);
     await expect(page.getByText("Demo", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
   });
 
-  test("brands cannot be created", async ({ page }) => {
+  test("nothing can be created", async ({ page }) => {
     await page.goto("/app");
-    await expect(page.getByText("Brand Switcher", { exact: true })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("link", { name: /create new brand/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /create new brand|new brand/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /new organization/i })).toHaveCount(0);
 
-    await page.goto("/app/new");
-    await page.waitForURL(/\/app(?:\/)?$/, { timeout: 30_000 });
+    await page.goto(`${organizationUrl()}/new`);
+    await page.waitForURL(new RegExp(`${organizationUrl()}/settings$`), { timeout: 30_000 });
   });
 
-  test("team settings are unavailable", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}/settings/members`);
-    await page.waitForURL(new RegExp(`/app/${TEST_BRAND_ID}$`), { timeout: 30_000 });
+  test("saving organization settings fails and says why", async ({ page }) => {
+    await page.goto(`${organizationUrl()}/settings`);
+
+    const nameField = page.getByLabel("Organization Name", { exact: true });
+    await expect(nameField).toBeEnabled({ timeout: 30_000 });
+    await nameField.fill("Renamed In Demo");
+
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible({ timeout: 30_000 });
+  });
+
+  test("the team is listed, and nothing about it can be changed", async ({ page }) => {
+    await page.goto(`${organizationUrl()}/settings/members`);
+    await expect(page.getByRole("heading", { name: "Team" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Invite" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Remove" })).toHaveCount(0);
   });
 });

@@ -1,8 +1,9 @@
 import * as Sentry from "@sentry/tanstackstart-react";
 import { createRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
+import { NotFoundPage } from "./components/not-found-page";
 import * as TanstackQuery from "./integrations/tanstack-query/root-provider";
-import { DefaultErrorComponent, DefaultPendingComponent, NotFound } from "./router-default-components";
+import { DefaultErrorComponent, DefaultPendingComponent } from "./router-default-components";
 import { routeTree } from "./routeTree.gen";
 
 export const getRouter = () => {
@@ -13,10 +14,13 @@ export const getRouter = () => {
 		// clientConfig and envValidation are provided by __root.tsx's beforeLoad
 		context: rqContext,
 		defaultPreload: "intent",
-		defaultNotFoundComponent: NotFound,
+		defaultNotFoundComponent: NotFoundPage,
 		defaultErrorComponent: DefaultErrorComponent,
 		defaultPendingComponent: DefaultPendingComponent,
-		defaultPendingMs: 0,
+		// A pending component replaces the whole page, chrome included, and once
+		// shown it is pinned for `defaultPendingMinMs`. Wait long enough that a
+		// 30ms navigation doesn't become a 200ms blank.
+		defaultPendingMs: 250,
 		defaultPendingMinMs: 200,
 		defaultStaleTime: 30_000, // Cache loader data for 30s to avoid re-fetching on navigations
 	});

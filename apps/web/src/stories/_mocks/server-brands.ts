@@ -26,8 +26,6 @@ export function setMockOnboardingPlatformState(state: typeof _platformState) {
 
 export const getOnboardingPlatformStateFn = async (_args: { data: unknown }) => _platformState;
 
-export const getBrands = async () => [];
-
 export const getBrand = async (_args: { data: unknown }) => null;
 
 /** Stub re-exported by server-platform-picks.ts */

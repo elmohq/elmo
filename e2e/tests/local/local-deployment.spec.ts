@@ -7,7 +7,7 @@
  * operator create as many brands as they like.
  */
 import { expect, test } from "@playwright/test";
-import { TEST_BRAND_ID, TEST_USER } from "../../fixtures";
+import { TEST_BRAND_ID, TEST_USER, brandUrl, organizationUrl } from "../../fixtures";
 import { userExists } from "../../session";
 
 const SECOND_USER = {
@@ -59,30 +59,47 @@ test.describe("Local features", () => {
     await expect(page.getByRole("heading", { name: /reports/i }).first()).toBeVisible({ timeout: 30_000 });
   });
 
-  test("the sidebar offers reports and no team settings", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}`);
+  test("the sidebar offers reports on a brand, and the organization's pages on its own", async ({ page }) => {
+    await page.goto(`${brandUrl()}`);
     await expect(page.locator('a[href="/reports"][data-sidebar="menu-button"]')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator(`a[href="${organizationUrl()}/settings/brands"][data-sidebar="menu-button"]`)).toHaveCount(
+      0,
+    );
+
+    await page.goto(`${organizationUrl()}/settings`);
     await expect(
-      page.locator(`a[href="/app/${TEST_BRAND_ID}/settings/members"][data-sidebar="menu-button"]`),
-    ).toHaveCount(0);
+      page.locator(`a[href="${organizationUrl()}/settings/brands"][data-sidebar="menu-button"]`),
+    ).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator(`a[href="${organizationUrl()}/settings/billing"][data-sidebar="menu-button"]`)).toHaveCount(
+      0,
+    );
   });
 
-  test("team settings redirect away when invitations are unavailable", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}/settings/members`);
-    await page.waitForURL(new RegExp(`/app/${TEST_BRAND_ID}$`), { timeout: 30_000 });
+  test("the team is listed, but there is no one to invite", async ({ page }) => {
+    await page.goto(`${organizationUrl()}/settings/members`);
+    await expect(page.getByRole("heading", { name: "Team" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Invite" })).toHaveCount(0);
   });
 
   test("brands can be created from the UI", async ({ page }) => {
     await page.goto("/app");
-    await expect(page.getByRole("link", { name: /create new brand/i })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("link", { name: /new brand/i })).toBeVisible({ timeout: 30_000 });
 
-    await page.goto("/app/new");
-    await expect(page.getByLabel("Brand name")).toBeVisible({ timeout: 30_000 });
+    await page.goto(`${organizationUrl()}/new`);
+    await expect(page.getByLabel("Brand Name")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel("Website")).toBeVisible();
   });
 
+  test("organizations cannot be created — a local install has exactly one", async ({ page }) => {
+    await page.goto("/app");
+    await expect(page.getByRole("link", { name: /new organization/i })).toHaveCount(0);
+
+    await page.goto("/app/new");
+    await page.waitForURL(/\/app$/, { timeout: 30_000 });
+  });
+
   test("stock Elmo branding is used", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}`);
+    await page.goto(`${brandUrl()}`);
 
     // The Elmo wordmark, not a whitelabel icon + name.
     await expect(page.getByText("elmo", { exact: true }).first()).toBeVisible({ timeout: 30_000 });

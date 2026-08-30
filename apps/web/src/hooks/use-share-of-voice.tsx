@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
+import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import { getShareOfVoiceFn } from "@/server/analysis";
 
@@ -16,8 +16,7 @@ export const shareOfVoiceKeys = {
 };
 
 export function useShareOfVoice(brandId?: string, filters?: ShareOfVoiceFilters) {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+	const resolvedBrandId = useResolvedBrandId(brandId);
 
 	const query = useQuery({
 		queryKey: shareOfVoiceKeys.list(resolvedBrandId || "", filters),

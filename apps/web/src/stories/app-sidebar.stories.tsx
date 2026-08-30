@@ -14,7 +14,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
-import { expect, within } from "storybook/test";
+import { expect, screen, userEvent, within } from "storybook/test";
 import { AppSidebar } from "@/components/app-sidebar";
 import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
 import { setMockRouteContext } from "./_mocks/tanstack-router";
@@ -33,6 +33,14 @@ const onboardedBrand = {
 	onboarded: true,
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
+};
+
+const organization = {
+	id: "org-1",
+	slug: "mock-organization",
+	name: "Acme",
+	brandCreation: { kind: "allowed" as const },
+	brands: [{ id: "brand-1", slug: null, name: "Acme Corp", website: "https://acme.com", onboarded: true }],
 };
 
 const newBrand = {
@@ -116,15 +124,15 @@ const cloudConfig: ClientConfig = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Returns the brand so stories can pass it to AppSidebar: the Settings nav is
- * gated on `brand.onboarded`, and it comes from the route loader as a prop
- * rather than from the useBrand hook.
- */
-function configureMocks(config: ClientConfig, brand: any, auth?: Parameters<typeof setMockAuth>[0]) {
+function configureMocks(
+	config: ClientConfig,
+	brand: any,
+	auth?: Parameters<typeof setMockAuth>[0],
+	viewer: { isAdmin: boolean; hasReportAccess: boolean } = { isAdmin: false, hasReportAccess: false },
+) {
 	setMockClientConfig(config);
 	setMockBrand(brand);
-	setMockRouteContext({ clientConfig: config });
+	setMockRouteContext({ clientConfig: config, ...viewer });
 	if (auth) setMockAuth(auth);
 	return brand;
 }
@@ -191,18 +199,27 @@ export default {
 } satisfies Meta;
 
 /** Local (self-hosted) — all nav visible, admin access, self-registered user */
-export const Local = () => {
-	const brand = configureMocks(
-		localConfig,
-		onboardedBrand,
-		authedUser("Local Admin", "admin@localhost", "local-admin"),
-	);
+export const Local: StoryObj = {
+	render: () => {
+		const brand = configureMocks(
+			localConfig,
+			onboardedBrand,
+			authedUser("Local Admin", "admin@localhost", "local-admin"),
+			{ isAdmin: true, hasReportAccess: true },
+		);
 
-	return (
-		<SidebarFrame label="Local — Self-hosted, full admin">
-			<AppSidebar isAdmin={true} hasReportAccess={true} brand={brand} />
-		</SidebarFrame>
-	);
+		return (
+			<SidebarFrame label="Local — Self-hosted, full admin">
+				<AppSidebar scope="brand" brand={brand} organization={organization} />
+			</SidebarFrame>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText("Workflows")).toBeInTheDocument();
+		await expect(await canvas.findByText("Tools")).toBeInTheDocument();
+		await expect(await canvas.findByRole("button", { name: "Account and organizations" })).toBeInTheDocument();
+	},
 };
 
 /** Demo — read-only preview, seeded user, no admin */
@@ -213,7 +230,7 @@ export const Demo = () => {
 
 	return (
 		<SidebarFrame label="Demo — Read-only, seeded user">
-			<AppSidebar isAdmin={false} hasReportAccess={false} brand={brand} />
+			<AppSidebar scope="brand" brand={brand} organization={organization} />
 		</SidebarFrame>
 	);
 };
@@ -228,7 +245,7 @@ export const Whitelabel = () => {
 
 	return (
 		<SidebarFrame label="Whitelabel — Regular user, no admin section">
-			<AppSidebar isAdmin={false} hasReportAccess={false} brand={brand} />
+			<AppSidebar scope="brand" brand={brand} organization={organization} />
 		</SidebarFrame>
 	);
 };
@@ -239,11 +256,12 @@ export const WhitelabelAdmin = () => {
 		whitelabelAdminConfig,
 		onboardedBrand,
 		authedUser("Jane Admin", "jane@agency.com", "jane"),
+		{ isAdmin: true, hasReportAccess: true },
 	);
 
 	return (
 		<SidebarFrame label="Whitelabel Admin — Full admin section visible">
-			<AppSidebar isAdmin={true} hasReportAccess={true} brand={brand} />
+			<AppSidebar scope="brand" brand={brand} organization={organization} />
 		</SidebarFrame>
 	);
 };
@@ -254,23 +272,26 @@ export const WhitelabelReportOnly = () => {
 		whitelabelAdminConfig,
 		onboardedBrand,
 		authedUser("Report Viewer", "reports@client.com", "reports"),
+		{ isAdmin: false, hasReportAccess: true },
 	);
 
 	return (
 		<SidebarFrame label="Whitelabel Report-only — Dashboard + Reports admin section">
-			<AppSidebar isAdmin={false} hasReportAccess={true} brand={brand} />
+			<AppSidebar scope="brand" brand={brand} organization={organization} />
 		</SidebarFrame>
 	);
 };
 
-/** Cloud — settings nav gains Team and Billing; no report generation */
 export const Cloud: StoryObj = {
 	render: () => {
-		const brand = configureMocks(cloudConfig, onboardedBrand, authedUser("Dana Cloud", "dana@acme.com", "dana"));
+		configureMocks(cloudConfig, onboardedBrand, authedUser("Dana Cloud", "dana@acme.com", "dana"), {
+			isAdmin: true,
+			hasReportAccess: true,
+		});
 
 		return (
-			<SidebarFrame label="Cloud — Billing and Team in settings">
-				<AppSidebar isAdmin={false} hasReportAccess={false} brand={brand} />
+			<SidebarFrame label="Cloud — Billing and Team on the organization's rail">
+				<AppSidebar scope="organization" organization={organization} />
 			</SidebarFrame>
 		);
 	},
@@ -280,26 +301,47 @@ export const Cloud: StoryObj = {
 		// below the fold of this frame — assert it rather than eyeballing it.
 		await expect(await canvas.findByText("Billing")).toBeInTheDocument();
 		await expect(await canvas.findByText("Team")).toBeInTheDocument();
-		// Reports are disabled in cloud even for a user with report access.
+		await expect(await canvas.findByText("Workflows")).toBeInTheDocument();
 		await expect(canvas.queryByText("Reports")).toBeNull();
 	},
 };
 
-/** Whitelabel has no billing, so the settings nav stops at Team. */
 export const WhitelabelHasNoBilling: StoryObj = {
 	render: () => {
-		const brand = configureMocks(whitelabelConfig, onboardedBrand, authedUser("Alice", "alice@agency.com", "alice2"));
+		configureMocks(whitelabelConfig, onboardedBrand, authedUser("Alice", "alice@agency.com", "alice2"));
 
 		return (
 			<SidebarFrame label="Whitelabel — no Billing item">
-				<AppSidebar isAdmin={false} hasReportAccess={false} brand={brand} />
+				<AppSidebar scope="organization" organization={organization} />
 			</SidebarFrame>
 		);
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText("LLMs")).toBeInTheDocument();
+		await expect(await canvas.findByText("Team")).toBeInTheDocument();
 		await expect(canvas.queryByText("Billing")).toBeNull();
+	},
+};
+
+export const ChoosePlanGate: StoryObj = {
+	render: () => {
+		configureMocks(cloudConfig, onboardedBrand, authedUser("Gated User", "gated@acme.com", "gated"), {
+			isAdmin: true,
+			hasReportAccess: true,
+		});
+
+		return (
+			<SidebarFrame label="Cloud gate — nothing to navigate to yet">
+				<AppSidebar scope="account" />
+			</SidebarFrame>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.queryByRole("button", { name: "Account and organizations" })).toBeNull();
+
+		await userEvent.click(await canvas.findByRole("button", { name: "Account" }));
+		await expect(await screen.findByText("Log out")).toBeInTheDocument();
 	},
 };
 
@@ -309,7 +351,7 @@ export const WhitelabelOnboarding = () => {
 
 	return (
 		<SidebarFrame label="Whitelabel Onboarding — Brand not onboarded, minimal nav">
-			<AppSidebar isAdmin={false} hasReportAccess={false} brand={brand} />
+			<AppSidebar scope="brand" brand={brand} organization={organization} />
 		</SidebarFrame>
 	);
 };

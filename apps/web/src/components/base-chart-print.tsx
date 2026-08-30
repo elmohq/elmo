@@ -1,9 +1,9 @@
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
-import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import type { Competitor } from "@workspace/lib/db/schema";
 import { Badge } from "@workspace/ui/components/badge";
 import { Bar, BarChart, Cell, ResponsiveContainer, XAxis, YAxis } from "recharts";
-import { type ChartDataPoint, getBadgeClassName, getBadgeVariant } from "@/lib/chart-utils";
+import { type ChartDataPoint, type ChartSubject, getBadgeClassName, getBadgeVariant } from "@/lib/chart-utils";
 
 interface BaseChartPrintProps {
 	data: ChartDataPoint[];
@@ -11,7 +11,7 @@ interface BaseChartPrintProps {
 	visibility?: number | null;
 	showTitle?: boolean;
 	showBadge?: boolean;
-	brand: Brand;
+	brand: ChartSubject;
 	competitors: Competitor[];
 }
 

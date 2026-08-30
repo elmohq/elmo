@@ -92,7 +92,7 @@ export function getCloudAuthOptions(): CreateAuthOptions {
 					after: async (user) => {
 						await provisionUmbrellaOrg({
 							userId: user.id,
-							name: user.name?.trim() ? `${user.name.trim()}'s workspace` : "My workspace",
+							name: user.name?.trim() ? `${user.name.trim()}'s organization` : "My organization",
 						});
 					},
 				},

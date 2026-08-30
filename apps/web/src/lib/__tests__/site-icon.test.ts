@@ -12,6 +12,10 @@ describe("faviconUrl", () => {
 		expect(new URL(faviconUrl("https://www.nike.com/golf?x=1")!).searchParams.get("url")).toBe("https://nike.com");
 	});
 
+	it("asks for one size unless told otherwise", () => {
+		expect(new URL(faviconUrl("example.com")!).searchParams.get("size")).toBe("64");
+	});
+
 	it("rounds the requested size up to one the service renders", () => {
 		expect(new URL(faviconUrl("example.com", 20)!).searchParams.get("size")).toBe("32");
 		expect(new URL(faviconUrl("example.com", 64)!).searchParams.get("size")).toBe("64");

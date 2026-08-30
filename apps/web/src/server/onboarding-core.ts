@@ -8,9 +8,11 @@
  * lives here.
  */
 
+import { slugify } from "@workspace/lib/app-urls";
 import { db } from "@workspace/lib/db/db";
 import { ensureOrganization } from "@workspace/lib/db/provisioning";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
+import { claimNewBrandSlug, findUnusedBrandSlug } from "@workspace/lib/db/unique-names";
 import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
@@ -299,32 +301,32 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	const additionalDomains = dedupeDomains(input.additionalDomains ?? []).filter((d) => d !== websiteHost);
 	const aliases = dedupeAliases(input.aliases ?? []);
 
-	// Brands are hard-scoped to an org via a NOT NULL FK. The admin API uses the
-	// supplied id for both records, so materialize the org first. This is a no-op
-	// when an earlier call already created it.
-	//
-	// Both writes share a transaction so a conflicting brand id doesn't strand
-	// the org we just made: brand ids and org ids are independent now, so a
-	// taken brand id no longer implies the org already exists.
-	await db.transaction(async (tx) => {
-		await ensureOrganization({ id: input.id, name: input.name }, tx);
+	await claimNewBrandSlug(() =>
+		db.transaction(async (tx) => {
+			await ensureOrganization({ id: input.id, name: input.name }, tx);
 
-		const [inserted] = await tx
-			.insert(brands)
-			.values({
-				id: input.id,
-				organizationId: input.id,
-				name: input.name,
-				website: formattedWebsite,
-				additionalDomains,
-				aliases,
-				enabled: true,
-				onboarded: true,
-			})
-			.onConflictDoNothing()
-			.returning({ id: brands.id });
-		if (!inserted) throw new BrandConflictError(input.id);
-	});
+			const slug = await findUnusedBrandSlug(input.id, slugify(input.name, "brand"), tx);
+
+			const [inserted] = await tx
+				.insert(brands)
+				.values({
+					id: input.id,
+					organizationId: input.id,
+					name: input.name,
+					slug,
+					website: formattedWebsite,
+					additionalDomains,
+					aliases,
+					enabled: true,
+					onboarded: true,
+				})
+				// Targeted at the id: untargeted, this would also swallow a slug
+				// collision and report the id as taken when it wasn't.
+				.onConflictDoNothing({ target: brands.id })
+				.returning({ id: brands.id });
+			if (!inserted) throw new BrandConflictError(input.id);
+		}),
+	);
 
 	await insertCompetitors({
 		brandId: input.id,

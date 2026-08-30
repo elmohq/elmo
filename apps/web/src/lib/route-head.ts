@@ -1,3 +1,5 @@
+import { routeSubjects } from "@/lib/route-subject";
+
 const DEFAULT_DESCRIPTION = "Track and optimize your brand's visibility across AI models.";
 
 interface RouteMatchContext {
@@ -21,25 +23,30 @@ export function getAppUrl(match: RouteMatchContext): string | undefined {
 	return url ? url.replace(/\/$/, "") : undefined;
 }
 
-export function getBrandName(matches: Array<{ loaderData?: Record<string, unknown> }>): string | undefined {
-	for (const m of matches) {
-		if (m.loaderData && typeof m.loaderData.brandName === "string") {
-			return m.loaderData.brandName;
-		}
-	}
-	return undefined;
-}
-
-/**
- * Build a page title following the convention:
- *   "PageName | BrandName · AppName"  (with brand context)
- *   "PageName · AppName"              (without brand context)
- */
-export function buildTitle(pageName: string, opts: { appName: string; brandName?: string }): string {
-	if (opts.brandName) {
-		return `${pageName} | ${opts.brandName} · ${opts.appName}`;
+export function buildTitle(pageName: string, opts: { appName: string; subject?: string }): string {
+	if (opts.subject) {
+		return `${pageName} | ${opts.subject} · ${opts.appName}`;
 	}
 	return `${pageName} · ${opts.appName}`;
+}
+
+interface HeadArgs {
+	match: RouteMatchContext & { staticData?: { crumb?: string } };
+	matches: Array<{ routeId: string; context?: unknown; loaderData?: unknown }>;
+}
+
+export function pageHead(page: { title?: string; description?: string }) {
+	return ({ match, matches }: HeadArgs) => {
+		const { organizationName, brandName } = routeSubjects(matches);
+		const name = page.title ?? match.staticData?.crumb;
+		const appName = getAppName(match);
+		return {
+			meta: [
+				{ title: name ? buildTitle(name, { appName, subject: brandName ?? organizationName }) : appName },
+				...(page.description ? [{ name: "description", content: page.description }] : []),
+			],
+		};
+	};
 }
 
 function toAbsolute(appUrl: string | undefined, path: string): string {

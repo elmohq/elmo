@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
+import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import { getQueryFanoutFn } from "@/server/query-fanout";
 
@@ -18,8 +18,7 @@ export const queryFanoutKeys = {
 };
 
 export function useQueryFanout(brandId?: string, filters?: QueryFanoutFilters) {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+	const resolvedBrandId = useResolvedBrandId(brandId);
 
 	const query = useQuery({
 		queryKey: queryFanoutKeys.list(resolvedBrandId || "", filters),

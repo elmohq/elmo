@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
-import type { BrandWithPrompts, Competitor } from "@workspace/lib/db/schema";
+import type { BrandWithPrompts } from "@workspace/lib/db/schema";
+import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { TrackedTarget } from "@/lib/model-filter";
-import { getBrand, getBrands, getCompetitors } from "@/server/brands";
+import { getBrand, getCompetitors } from "@/server/brands";
 
 export type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	earliestDataDate?: string | null;
@@ -20,7 +20,6 @@ export type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 
 export const brandKeys = {
 	all: ["brands"] as const,
-	list: () => [...brandKeys.all, "list"] as const,
 	detail: (brandId: string) => [...brandKeys.all, "detail", brandId] as const,
 	competitors: (brandId: string) => [...brandKeys.all, "competitors", brandId] as const,
 };
@@ -30,33 +29,11 @@ export const brandKeys = {
 // ============================================================================
 
 /**
- * Get all brands the user has access to
- */
-export function useBrands() {
-	const query = useQuery({
-		queryKey: brandKeys.list(),
-		queryFn: () => getBrands(),
-		staleTime: 30_000, // 30 seconds
-		refetchOnWindowFocus: true,
-		refetchOnReconnect: true,
-	});
-
-	return {
-		brands: query.data,
-		isLoading: query.isLoading,
-		isError: query.error,
-		revalidate: query.refetch,
-	};
-}
-
-/**
  * Get a single brand by ID.
  * If no brandId provided, extracts from route params.
  */
 export function useBrand(brandId?: string) {
-	// Try to get brandId from route params if not provided
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+	const resolvedBrandId = useResolvedBrandId(brandId);
 	const queryClient = useQueryClient();
 
 	const query = useQuery({
@@ -70,8 +47,7 @@ export function useBrand(brandId?: string) {
 
 	const revalidate = async () => {
 		await query.refetch();
-		// Also invalidate the brands list
-		queryClient.invalidateQueries({ queryKey: brandKeys.list() });
+		queryClient.invalidateQueries({ queryKey: brandKeys.all });
 	};
 
 	return {
@@ -87,8 +63,7 @@ export function useBrand(brandId?: string) {
  * Get competitors for a brand
  */
 export function useCompetitors(brandId?: string) {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+	const resolvedBrandId = useResolvedBrandId(brandId);
 
 	const query = useQuery({
 		queryKey: brandKeys.competitors(resolvedBrandId || ""),
@@ -105,17 +80,4 @@ export function useCompetitors(brandId?: string) {
 		isError: query.error,
 		revalidate: query.refetch,
 	};
-}
-
-/**
- * Utility for invalidating all brand-related queries
- */
-export function useBrandsRevalidation() {
-	const queryClient = useQueryClient();
-
-	const revalidateAll = () => {
-		queryClient.invalidateQueries({ queryKey: brandKeys.all });
-	};
-
-	return { revalidateAll };
 }

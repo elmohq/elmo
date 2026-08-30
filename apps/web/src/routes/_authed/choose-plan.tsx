@@ -15,28 +15,24 @@ import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { Switch } from "@workspace/ui/components/switch";
 import { useEffect, useState } from "react";
 import { z } from "zod";
+import { AppShell } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { PlanComparison } from "@/components/plan-comparison";
 import { SiteHeader } from "@/components/site-header";
-import { buildTitle, getAppName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
 import { getPaywallStateFn, type PaywallRequired, type PaywallState } from "@/server/billing";
 
 const searchSchema = z.object({
 	status: z.enum(["success"]).optional(),
-	/**
-	 * Which workspace is being subscribed. Carried by whichever gate redirected
-	 * here so checkout bills the workspace the user was actually blocked on,
-	 * not whichever of their memberships happens to be oldest.
-	 */
 	org: z.string().optional(),
 });
 
 export const Route = createFileRoute("/_authed/choose-plan")({
+	staticData: { crumb: "Choose a plan" },
 	validateSearch: searchSchema,
 	loaderDeps: ({ search }) => ({ status: search.status, org: search.org }),
 	// The explicit return type breaks the type-inference cycle created by this
@@ -51,9 +47,7 @@ export const Route = createFileRoute("/_authed/choose-plan")({
 		}
 		return paywall;
 	},
-	head: ({ match }) => ({
-		meta: [{ title: buildTitle("Choose a plan", { appName: getAppName(match) }) }],
-	}),
+	head: pageHead({ description: "Pick a plan to start tracking how AI answer engines talk about your brand." }),
 	component: ChoosePlanPage,
 });
 
@@ -65,7 +59,7 @@ function ChoosePlanPage() {
 	// checkout, which the first branch handles.
 	const body =
 		status === "success" ? (
-			<ActivatingWorkspace organizationId={org} />
+			<ActivatingOrganization organizationId={org} />
 		) : paywall.needsPlan ? (
 			<PlanPicker paywall={paywall} />
 		) : null;
@@ -75,26 +69,20 @@ function ChoosePlanPage() {
 	// account they are signed into, and how to sign out of it — most of all the
 	// non-admin who is told to go ask someone else.
 	return (
-		<SidebarProvider>
-			<AppSidebar scope="account" />
-			<SidebarInset className="md:border md:border-border/60 md:rounded-xl overflow-hidden">
-				<SiteHeader title="Choose a plan" />
-				<div className="flex flex-1 flex-col">{body}</div>
-			</SidebarInset>
-		</SidebarProvider>
+		<AppShell sidebar={<AppSidebar scope="account" />} header={<SiteHeader />}>
+			<div className="flex flex-1 flex-col">{body}</div>
+		</AppShell>
 	);
 }
 
 /** Post-checkout: wait for the Stripe webhook to record the subscription. */
-function ActivatingWorkspace({ organizationId }: { organizationId?: string }) {
+function ActivatingOrganization({ organizationId }: { organizationId?: string }) {
 	const navigate = useNavigate();
 
 	useEffect(() => {
 		let cancelled = false;
 		const poll = async () => {
 			for (let i = 0; i < 30 && !cancelled; i++) {
-				// Poll the org that was just paid for: another unsubscribed workspace
-				// would otherwise keep the user-level check saying "still needs a plan".
 				const state = await getPaywallStateFn({ data: { organizationId } });
 				if (!state.needsPlan) {
 					navigate({ to: "/app" });
@@ -112,7 +100,7 @@ function ActivatingWorkspace({ organizationId }: { organizationId?: string }) {
 	return (
 		<div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
 			<Spinner className="size-8 text-muted-foreground" />
-			<h1 className="text-2xl font-bold">Activating your workspace…</h1>
+			<h1 className="text-2xl font-bold">Activating your organization…</h1>
 			<p className="text-muted-foreground">Payment received — finishing setup. This takes a few seconds.</p>
 		</div>
 	);
@@ -160,7 +148,7 @@ function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
 			{!isAdmin && (
 				<Alert>
 					<AlertDescription>
-						Only a workspace admin can choose a plan. Ask the person who created this workspace.
+						Only an organization admin can choose a plan. Ask the person who created this organization.
 					</AlertDescription>
 				</Alert>
 			)}

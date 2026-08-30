@@ -1,6 +1,6 @@
 import { IconEditCircle } from "@tabler/icons-react";
 import { Link, useSearch } from "@tanstack/react-router";
-import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import type { Competitor } from "@workspace/lib/db/schema";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -19,7 +19,8 @@ import { useBatchChartData } from "@/hooks/use-batch-chart-data";
 import { useBrand } from "@/hooks/use-brands";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
-import type { LookbackPeriod } from "@/lib/chart-utils";
+import { useBrandParams } from "@/hooks/use-route-params";
+import type { ChartSubject, LookbackPeriod } from "@/lib/chart-utils";
 import { coercePromptOrder, orderPrompts } from "@/lib/prompt-order";
 import { skeletonRows } from "@/lib/skeleton-rows";
 
@@ -27,18 +28,17 @@ interface PromptsDisplayProps {
 	pageTitle: string;
 	pageDescription: string;
 	pageInfoContent?: React.ReactNode;
-	editLink: string;
 }
 
 /** Host component: renders the page shell (title, sticky bar, content)
  *  and composes independent sub-sections. It doesn't subscribe to any
  *  filter state itself — each section reads the URL keys it cares about
  *  so a filter change only re-renders the sections that depend on it. */
-export function PromptsDisplay({ pageTitle, pageDescription, pageInfoContent, editLink }: PromptsDisplayProps) {
+export function PromptsDisplay({ pageTitle, pageDescription, pageInfoContent }: PromptsDisplayProps) {
 	const { brand } = useBrand();
 	return (
 		<PageHeader title={pageTitle} subtitle={pageDescription} infoContent={pageInfoContent}>
-			<PromptsContent brandId={brand?.id} editLink={editLink} />
+			<PromptsContent brandId={brand?.id} />
 		</PageHeader>
 	);
 }
@@ -49,8 +49,9 @@ export function PromptsDisplay({ pageTitle, pageDescription, pageInfoContent, ed
  *  components still hold their own subscriptions to whichever URL keys
  *  they need, so a click on "Lookback" only invalidates the data users
  *  and not `FilterBar` itself. */
-function PromptsContent({ brandId, editLink }: { brandId: string | undefined; editLink: string }) {
+function PromptsContent({ brandId }: { brandId: string | undefined }) {
 	const { brand } = useBrand(brandId);
+	const brandParams = useBrandParams();
 	const filters = useListFilters();
 	const { model, lookback, tags, search } = filters;
 	// `order` is this route's own search key (not a narrowing filter), so it
@@ -124,7 +125,11 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 					<div className="text-center py-8 text-muted-foreground">
 						<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
 						<p className="mb-4">No prompts yet.</p>
-						<Link to={editLink} className={cn(buttonVariants({ size: "sm" }), "h-7 flex cursor-pointer")}>
+						<Link
+							to="/app/org/$org/brand/$brand/settings/prompts"
+							params={brandParams}
+							className={cn(buttonVariants({ size: "sm" }), "h-7 flex cursor-pointer")}
+						>
 							<IconEditCircle />
 							<span>Edit</span>
 						</Link>
@@ -187,21 +192,8 @@ function ChartSection({
 		};
 	}, [batchChartData?.dateRange]);
 
-	const brandForProvider: Brand | null = batchChartData?.brand
-		? {
-				id: batchChartData.brand.id,
-				organizationId: batchChartData.brand.id,
-				name: batchChartData.brand.name,
-				website: "",
-				additionalDomains: [],
-				aliases: [],
-				enabled: true,
-				onboarded: true,
-				delayOverrideHours: null,
-				enabledModels: null,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			}
+	const brandForProvider: ChartSubject | null = batchChartData?.brand
+		? { id: batchChartData.brand.id, name: batchChartData.brand.name }
 		: null;
 
 	const competitorsForProvider: Competitor[] =

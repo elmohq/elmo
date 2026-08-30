@@ -41,6 +41,8 @@ export function createWhitelabelDeployment(options: CreateWhitelabelDeploymentOp
 			showOptimizeButton: true,
 			canCreateBrands: false,
 			platformPicksEditable: false,
+			canEditOrganizations: false,
+			canCreateOrganizations: false,
 			selfServeSignup: false,
 			billing: false,
 			reportGeneration: true,

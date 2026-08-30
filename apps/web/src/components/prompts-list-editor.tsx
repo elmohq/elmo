@@ -34,6 +34,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { Inbox, ListPlus, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { useOrganizationParams } from "@/hooks/use-route-params";
 
 export interface EditablePrompt {
 	id?: string;
@@ -42,24 +43,12 @@ export interface EditablePrompt {
 	enabled: boolean;
 	tags: string[];
 	systemTags: string[];
-	/**
-	 * Premium models this prompt is tracked on, grounded — one of the workspace's
-	 * premium pairings each, so two models cost two pairings.
-	 */
 	premiumModels: string[];
 }
 
-/**
- * The workspace's premium allowance, as this brand's editor sees it.
- * `assignedElsewhere` covers the org's other brands, which the editor cannot see
- * but which still spend the pool — so the live count stays honest while rows are
- * changed here.
- */
 export interface PremiumAllowance {
 	total: number;
 	assignedElsewhere: number;
-	/** Where buying more happens, so the two places that say so can link there. */
-	brandId: string;
 }
 
 export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePrompt {
@@ -75,9 +64,10 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 }
 
 /** Both places that offer more pairings send you to the same page. */
-function BillingLink({ brandId, children }: { brandId: string; children: ReactNode }) {
+function BillingLink({ children }: { children: ReactNode }) {
+	const params = useOrganizationParams();
 	return (
-		<Link to="/app/$brand/settings/billing" params={{ brand: brandId }} className="underline">
+		<Link to="/app/org/$org/settings/billing" params={params} className="underline">
 			{children}
 		</Link>
 	);
@@ -92,15 +82,12 @@ function PremiumModelsField({
 	selected,
 	promptEnabled,
 	atCapacity,
-	brandId,
 	onChange,
 	showLabel,
 }: {
 	selected: string[];
 	promptEnabled: boolean;
-	/** The workspace has no pairings left, so only unticking is allowed. */
 	atCapacity: boolean;
-	brandId: string;
 	onChange: (models: string[]) => void;
 	showLabel?: boolean;
 }) {
@@ -158,7 +145,7 @@ function PremiumModelsField({
 				})}
 				{atCapacity && (
 					<p className="px-2 pt-1 text-xs text-muted-foreground">
-						No premium pairings left. Untick one, or <BillingLink brandId={brandId}>buy more</BillingLink>.
+						No premium pairings left. Untick one, or <BillingLink>buy more</BillingLink>.
 					</p>
 				)}
 			</PopoverContent>
@@ -320,9 +307,9 @@ function ColumnHeader({
 						<TooltipContent>
 							<p className="max-w-xs">
 								Also track this prompt on a model called directly with its own web search on, for a grounded answer with
-								citations — {PREMIUM_RUNS_PER_DAY}× a day. Each model you pick here spends one of the workspace&apos;s
-								premium pairings. This is on top of the platforms the brand tracks, which run on every prompt either
-								way.
+								citations — {PREMIUM_RUNS_PER_DAY}× a day. Each model you pick here spends one of the
+								organization&apos;s premium pairings. This is on top of the platforms the brand tracks, which run on
+								every prompt either way.
 							</p>
 						</TooltipContent>
 					</Tooltip>
@@ -401,7 +388,6 @@ function PromptRow({
 						selected={prompt.premiumModels}
 						promptEnabled={prompt.enabled}
 						atCapacity={premiumAtCapacity}
-						brandId={premium.brandId}
 						onChange={(premiumModels) => update(index, { premiumModels })}
 						showLabel
 					/>
@@ -434,7 +420,6 @@ function PromptRow({
 							selected={prompt.premiumModels}
 							promptEnabled={prompt.enabled}
 							atCapacity={premiumAtCapacity}
-							brandId={premium.brandId}
 							onChange={(premiumModels) => update(index, { premiumModels })}
 						/>
 					</div>
@@ -575,11 +560,11 @@ export function PromptsListEditor({
 					<span className="font-medium text-foreground">
 						{premiumUsed} of {premium.total}
 					</span>{" "}
-					pairings in use across this workspace — one for each model a prompt is tracked on.
+					pairings in use across this organization — one for each model a prompt is tracked on.
 					{premiumAtCapacity && (
 						<>
 							{" "}
-							Unassign one to free it up, or <BillingLink brandId={premium.brandId}>buy more</BillingLink>.
+							Unassign one to free it up, or <BillingLink>buy more</BillingLink>.
 						</>
 					)}
 				</p>

@@ -82,11 +82,11 @@ export function paymentFailedEmail(input: { orgName: string; graceDays: number; 
 		subject: `Payment failed for ${orgName} on Elmo`,
 		html: wrapHtml(
 			"Payment failed",
-			`We couldn't renew the subscription for the ${safeOrgName} workspace. Tracking continues while Stripe retries, but it pauses after ${graceDays} days unless a payment succeeds — update your card in the billing portal to avoid an interruption.`,
+			`We couldn't renew the subscription for the ${safeOrgName} organization. Tracking continues while Stripe retries, but it pauses after ${graceDays} days unless a payment succeeds — update your card in the billing portal to avoid an interruption.`,
 			url,
 			"Update payment method",
 		),
-		text: `We couldn't renew the subscription for the ${orgName} workspace. Update your card within ${graceDays} days to keep tracking running: ${url}`,
+		text: `We couldn't renew the subscription for the ${orgName} organization. Update your card within ${graceDays} days to keep tracking running: ${url}`,
 	};
 }
 
@@ -97,11 +97,11 @@ export function paymentRecoveredEmail(input: { orgName: string; url: string }): 
 		subject: `Payment received for ${orgName} on Elmo`,
 		html: wrapHtml(
 			"You're all set",
-			`Payment for the ${safeOrgName} workspace went through and the subscription is active again. No further action is needed.`,
+			`Payment for the ${safeOrgName} organization went through and the subscription is active again. No further action is needed.`,
 			url,
 			"View billing",
 		),
-		text: `Payment for the ${orgName} workspace went through and the subscription is active again. No further action is needed. View billing: ${url}`,
+		text: `Payment for the ${orgName} organization went through and the subscription is active again. No further action is needed. View billing: ${url}`,
 	};
 }
 
@@ -112,10 +112,10 @@ export function subscriptionEndedEmail(input: { orgName: string; url: string }):
 		subject: `Your Elmo subscription for ${orgName} has ended`,
 		html: wrapHtml(
 			"Subscription ended",
-			`The subscription for the ${safeOrgName} workspace has ended, so prompt tracking is stopped. Your existing data stays viewable, and choosing a plan restarts tracking.`,
+			`The subscription for the ${safeOrgName} organization has ended, so prompt tracking is stopped. Your existing data stays viewable, and choosing a plan restarts tracking.`,
 			url,
 			"View billing",
 		),
-		text: `The subscription for the ${orgName} workspace has ended, so prompt tracking is stopped. Your existing data stays viewable, and choosing a plan restarts tracking. View billing: ${url}`,
+		text: `The subscription for the ${orgName} organization has ended, so prompt tracking is stopped. Your existing data stays viewable, and choosing a plan restarts tracking. View billing: ${url}`,
 	};
 }

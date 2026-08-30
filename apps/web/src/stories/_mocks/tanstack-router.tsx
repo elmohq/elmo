@@ -13,6 +13,17 @@ import React, { createContext, type ReactNode, useContext } from "react";
 
 const RouteCtx = createContext<Record<string, unknown>>({});
 
+const BASE_ROUTE_CONTEXT: Record<string, unknown> = {
+	brandId: "mock-brand-id",
+	organization: {
+		id: "org-1",
+		slug: "mock-organization",
+		name: "Acme",
+		brandCreation: { kind: "allowed" },
+		brands: [{ id: "mock-brand-id", slug: null, name: "Acme Corp", website: "https://acme.com", onboarded: true }],
+	},
+};
+
 let _routeContext: Record<string, unknown> = {};
 
 export function setMockRouteContext(ctx: Record<string, unknown>) {
@@ -30,10 +41,11 @@ export function MockRouteContextProvider({ value, children }: { value: Record<st
 // Stubs for @tanstack/react-router exports used by app components
 // ---------------------------------------------------------------------------
 
-export function useRouteContext(_opts?: unknown) {
+export function useRouteContext(opts?: { select?: (context: Record<string, unknown>) => unknown }) {
 	const ctx = useContext(RouteCtx);
 	// Merge with module-level context so both approaches work
-	return { ..._routeContext, ...ctx };
+	const merged = { ...BASE_ROUTE_CONTEXT, ..._routeContext, ...ctx };
+	return opts?.select ? opts.select(merged) : merged;
 }
 
 export function createRouter(_opts?: unknown) {
@@ -49,7 +61,7 @@ export function createFileRoute(_path: string) {
 		// Mirror the real Route shape so stories can render a route's component via
 		// Route.options.component (without the route file having to export it).
 		options: config,
-		useParams: () => ({ brand: "mock-brand-id" }),
+		useParams: () => ({ org: "mock-organization", brand: "mock-brand-id" }),
 		useSearch,
 		useNavigate,
 		useLoaderData,
@@ -81,7 +93,7 @@ export function createRootRouteWithContext<TContext>() {
 }
 
 export function useParams(_opts?: unknown) {
-	return { brand: "mock-brand-id" };
+	return { org: "mock-organization", brand: "mock-brand-id" };
 }
 
 export function useNavigate() {
@@ -91,7 +103,7 @@ export function useNavigate() {
 }
 
 export function useLocation() {
-	return { pathname: "/app/mock-brand-id", search: "", hash: "" };
+	return { pathname: "/app/org/mock-organization/brand/mock-brand-id", search: "", hash: "" };
 }
 
 // Stories never navigate, so the blocker is always idle.
@@ -121,12 +133,50 @@ export function useSearch(opts?: { select?: (search: Record<string, unknown>) =>
 }
 
 export function useMatch(_opts?: unknown) {
-	return { params: { brand: "mock-brand-id" } };
+	return { params: { org: "mock-organization", brand: "mock-brand-id" } };
+}
+
+let _matches: Array<{
+	routeId: string;
+	pathname: string;
+	staticData: { crumb?: string };
+	context?: unknown;
+	loaderData?: unknown;
+}> = [
+	{
+		routeId: "/_authed/app/org/$org",
+		pathname: "/app/org/mock-organization",
+		staticData: {},
+		context: { organization: { name: "Acme" } },
+	},
+	{
+		routeId: "/_authed/app/org/$org/brand/$brand",
+		pathname: "/app/org/mock-organization/brand/mock-brand-id",
+		staticData: {},
+		loaderData: { brand: { name: "Acme Corp" } },
+	},
+];
+
+export function setMockMatches(matches: typeof _matches) {
+	_matches = matches;
+}
+
+export function useMatches() {
+	return _matches;
+}
+
+function buildLocation({ to, params }: { to?: string; params?: Record<string, string> }) {
+	const pathname = Object.entries(params ?? {}).reduce(
+		(path, [key, value]) => path.replace(`$${key}`, encodeURIComponent(value)),
+		to ?? "/",
+	);
+	return { pathname, search: "", searchStr: "", hash: "", href: pathname };
 }
 
 export function useRouter() {
 	return {
 		navigate: (_opts: unknown) => {},
+		buildLocation,
 		state: { location: { pathname: "/", search: "", hash: "" } },
 	};
 }
