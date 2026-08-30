@@ -23,8 +23,8 @@ export function SlugField({
 	return (
 		<div className="space-y-2">
 			<Label htmlFor={id}>{label}</Label>
-			<div className={cn("flex items-center rounded-md border font-mono text-sm", className)}>
-				<span className="pl-3 text-muted-foreground">{prefix}</span>
+			<div className={cn("flex w-full items-center overflow-hidden rounded-md border font-mono text-sm", className)}>
+				<span className="shrink-0 whitespace-nowrap pl-3 text-muted-foreground">{prefix}</span>
 				<Input
 					id={id}
 					value={value}
