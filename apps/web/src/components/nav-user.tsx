@@ -32,6 +32,8 @@ import { organizationTree } from "@/lib/organizations/tree";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 import { resetPostHog } from "@/lib/posthog";
 
+const INLINE_ORGANIZATION_LIMIT = 3;
+
 export function NavUser({ showOrganizations = true }: { showOrganizations?: boolean } = {}) {
 	const { user } = useAuth();
 	const { isMobile, setOpenMobile } = useSidebar();
@@ -154,6 +156,19 @@ export function NavUser({ showOrganizations = true }: { showOrganizations?: bool
 function OrganizationSwitcher({ onNavigate }: { onNavigate: () => void }) {
 	const { organizations, isLoading, isError, isFetching, refetch } = useOrganizations();
 	const currentBrandId = useBrandId();
+
+	if (organizations.length > INLINE_ORGANIZATION_LIMIT) {
+		return (
+			<>
+				<DropdownMenuItem render={<Link to="/app" onClick={onNavigate} />} className="cursor-pointer font-medium">
+					<IconBriefcase className="size-4 shrink-0 text-muted-foreground" />
+					<span className="truncate">All organizations</span>
+					<span className="ml-auto shrink-0 text-muted-foreground text-xs">{organizations.length}</span>
+				</DropdownMenuItem>
+				<DropdownMenuSeparator />
+			</>
+		);
+	}
 
 	return (
 		<>
