@@ -29,7 +29,7 @@ const meta = {
 		(Story) => {
 			setMockTeam(TEAM);
 			setMockLoaderData(TEAM);
-			setMockRouteContext({ clientConfig: { features: { teamInvites: true } } });
+			setMockRouteContext({});
 			return (
 				<Shell>
 					<Story />

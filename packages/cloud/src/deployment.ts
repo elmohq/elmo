@@ -31,7 +31,6 @@ export function createCloudDeployment(env: Record<string, string | undefined> = 
 			billing: true,
 			reportGeneration: false,
 			teamInvites: true,
-			teamManagement: true,
 		},
 		branding: {
 			name: DEFAULT_APP_NAME,

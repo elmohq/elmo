@@ -53,7 +53,7 @@ function organizationGroup(organization: OrganizationSummary, features?: Feature
 		{ title: "Brands", link: { to: "/app/org/$org/settings/brands", params }, icon: IconBuildings },
 	];
 
-	if (features?.teamManagement ?? true) {
+	if (features?.teamInvites) {
 		items.push({ title: "Team", link: { to: "/app/org/$org/settings/members", params }, icon: IconUsers });
 	}
 

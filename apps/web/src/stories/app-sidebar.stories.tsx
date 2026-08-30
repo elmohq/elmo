@@ -85,7 +85,6 @@ const whitelabelConfig: ClientConfig = {
 		readOnly: false,
 		showOptimizeButton: true,
 		canCreateBrands: false,
-		teamManagement: false,
 	},
 	branding: {
 		name: "BrandMonitor Pro",

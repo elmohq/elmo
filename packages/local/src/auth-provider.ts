@@ -26,7 +26,6 @@ export function createLocalDeployment(env: Record<string, string | undefined> = 
 			billing: false,
 			reportGeneration: true,
 			teamInvites: false,
-			teamManagement: true,
 		},
 		branding: {
 			name: getEnv("APP_NAME", DEFAULT_APP_NAME, env),

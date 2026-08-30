@@ -61,14 +61,14 @@ describe("canCreateOrganizations", () => {
 	});
 });
 
-describe("teamManagement", () => {
-	it("is refused in whitelabel, where memberships come from the identity provider", () => {
-		expect(featuresFor("whitelabel", WHITELABEL_ENV).teamManagement).toBe(false);
+describe("teamInvites", () => {
+	it("is cloud's alone — it is the only mode that owns its own roster", () => {
+		expect(featuresFor("cloud").teamInvites).toBe(true);
 	});
 
-	it("is offered everywhere the deployment owns its own memberships", () => {
-		expect(featuresFor("local").teamManagement).toBe(true);
-		expect(featuresFor("demo").teamManagement).toBe(true);
-		expect(featuresFor("cloud").teamManagement).toBe(true);
+	it("denies the modes whose memberships come from somewhere else, or are one user", () => {
+		expect(featuresFor("local").teamInvites).toBe(false);
+		expect(featuresFor("demo").teamInvites).toBe(false);
+		expect(featuresFor("whitelabel", WHITELABEL_ENV).teamInvites).toBe(false);
 	});
 });
