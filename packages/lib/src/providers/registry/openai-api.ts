@@ -27,22 +27,54 @@ function getOpenAIResponsesModel(model: string) {
 	return provider.responses(model);
 }
 
+function pushSearchQueries(action: any, queries: string[]): void {
+	if (action?.type !== "search") return;
+	for (const query of Array.isArray(action.queries) ? action.queries : [action.query]) {
+		if (typeof query === "string" && query.trim().length > 0) queries.push(query);
+	}
+}
+
 /**
- * Search queries the model ran. The Responses API reports them on the
- * web_search tool's *result* part (the matching call part carries an empty
- * input), as a `queries` list with a legacy single `query` on older responses.
+ * Search queries the model ran, read from the stored Responses payload —
+ * `output[]` carries a `web_search_call` per search, whose `action` lists the
+ * `queries` it issued (older responses report a single `query` instead).
+ * Reading them from rawOutput rather than the live result is what lets a stored
+ * row be re-extracted later.
  */
-function extractWebQueries(content: unknown): string[] {
+export function extractWebQueriesFromOpenAI(rawOutput: any): string[] {
 	const queries: string[] = [];
-	for (const part of (content as any[]) ?? []) {
-		if (part?.type !== "tool-result") continue;
-		const action = part.output?.action;
-		if (action?.type !== "search") continue;
-		for (const query of Array.isArray(action.queries) ? action.queries : [action.query]) {
-			if (typeof query === "string" && query.trim().length > 0) queries.push(query);
-		}
+	for (const item of Array.isArray(rawOutput?.output) ? rawOutput.output : []) {
+		if (item?.type === "web_search_call") pushSearchQueries(item.action, queries);
 	}
 	return queries;
+}
+
+/**
+ * The same queries off the live result, for the rebuilt-payload fallback below:
+ * the SDK reports each search on the web_search tool's *result* part (the
+ * matching call part carries an empty input).
+ */
+function webQueriesFromContent(content: unknown): string[] {
+	const queries: string[] = [];
+	for (const part of (content as any[]) ?? []) {
+		if (part?.type === "tool-result") pushSearchQueries(part.output?.action, queries);
+	}
+	return queries;
+}
+
+/** Whether the SDK handed back a real Responses payload rather than nothing. */
+function isResponsesPayload(body: unknown): body is { output: unknown[] } {
+	return Array.isArray((body as any)?.output);
+}
+
+/** The answer and its citations in the "output" shape the OpenAI extractors read. */
+function rebuildRawOutput(result: { text: string; sources?: unknown[] }) {
+	const annotations = (result.sources ?? [])
+		.filter((s: any) => s.sourceType === "url" && s.url)
+		.map((s: any) => ({ type: "url_citation", url: s.url, title: s.title }));
+	return {
+		output: [{ type: "message", content: [{ type: "output_text", text: result.text, annotations }] }],
+	};
 }
 
 async function runOpenAI(prompt: string, model: string, options?: ProviderOptions): Promise<ScrapeResult> {
@@ -68,22 +100,19 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 
 	warnIfOutputCapped("openai-api", model, result.finishReason);
 
-	// The AI SDK doesn't populate result.response.body for the Responses API, so
-	// rebuild the raw output from the parsed result (text + web-search sources)
-	// in the "output" shape the OpenAI extractors expect.
-	const annotations = (result.sources ?? [])
-		.filter((s: any) => s.sourceType === "url" && s.url)
-		.map((s: any) => ({ type: "url_citation", url: s.url, title: s.title }));
-	const rawOutput = {
-		output: [
-			{
-				type: "message",
-				content: [{ type: "output_text", text: result.text, annotations }],
-			},
-		],
-	};
+	// Store the Responses payload itself. It holds the web_search_call items, so
+	// everything reported here can be re-derived from the stored row later.
+	//
+	// Older SDK versions left `response.body` unset, which is what the rebuild
+	// below covers: an "output" shape carrying just the answer and its citation
+	// annotations. It has no web_search_call items, so a row written from it can
+	// never yield queries — hence reading those from the live result instead.
+	const body = result.response?.body;
+	const rawOutput = isResponsesPayload(body) ? body : rebuildRawOutput(result);
 
-	const webQueries = extractWebQueries(result.content);
+	const webQueries = isResponsesPayload(body)
+		? extractWebQueriesFromOpenAI(body)
+		: webQueriesFromContent(result.content);
 	if (options?.webSearch && webQueries.length === 0) webQueries.push(WEB_QUERIES_UNAVAILABLE);
 
 	return {

@@ -47,7 +47,54 @@ describe("openai-api run", () => {
 		expect(args).not.toHaveProperty("providerOptions");
 	});
 
-	it("reports the queries the model actually searched", async () => {
+	it("stores the Responses payload and reads its searches back out", async () => {
+		// Shaped like a real gpt-5-mini response: reasoning and web_search_call
+		// items around the message, annotations on the output_text.
+		const body = {
+			id: "resp_1",
+			object: "response",
+			output: [
+				{ id: "rs_1", type: "reasoning", summary: [] },
+				{
+					id: "ws_1",
+					type: "web_search_call",
+					status: "completed",
+					action: {
+						type: "search",
+						queries: ["best crm 2026", "crm pricing"],
+						query: "best crm 2026",
+						sources: [{ type: "url", url: "https://example.com/a" }],
+					},
+				},
+				{
+					id: "ws_2",
+					type: "web_search_call",
+					action: { type: "search", query: "crm reviews" },
+				},
+				{
+					id: "msg_1",
+					type: "message",
+					content: [
+						{
+							type: "output_text",
+							text: "answer",
+							annotations: [{ type: "url_citation", url: "https://example.com/a", title: "A" }],
+						},
+					],
+				},
+			],
+		};
+		aiMock.generateText.mockResolvedValue({ text: "answer", response: { body } });
+
+		const result = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
+
+		expect(result.rawOutput).toBe(body);
+		expect(result.webQueries).toEqual(["best crm 2026", "crm pricing", "crm reviews"]);
+		expect(result.textContent).toBe("answer");
+		expect(result.citations.map((c) => c.url)).toEqual(["https://example.com/a"]);
+	});
+
+	it("falls back to the rebuilt payload when the SDK reports no response body", async () => {
 		aiMock.generateText.mockResolvedValue({
 			text: "answer",
 			content: [
@@ -65,6 +112,11 @@ describe("openai-api run", () => {
 		const result = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
 
 		expect(result.webQueries).toEqual(["best crm 2026", "crm pricing", "crm reviews"]);
+		// The rebuilt payload carries no web_search_call items, so re-extracting
+		// from this stored shape can never recover the queries above.
+		expect(result.rawOutput).toEqual({
+			output: [{ type: "message", content: [{ type: "output_text", text: "answer", annotations: [] }] }],
+		});
 	});
 
 	it("ignores non-search web_search actions", async () => {
