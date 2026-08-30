@@ -160,14 +160,14 @@ export const citations = pgTable(
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 	},
 	(table) => ({
-		brandAnalyticsIdx: index("idx_citations_brand_analytics").on(
+		brandAnalyticsIdx: index("citations_brand_created_analytics_idx").on(
 			table.brandId,
 			table.createdAt,
+			table.promptId,
 			table.url,
 			table.domain,
 			table.title,
-			table.promptId,
-			table.model,
+			table.citationIndex,
 		),
 		promptCreatedIdx: index("citations_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		domainIdx: index("citations_domain_idx").on(table.domain),
