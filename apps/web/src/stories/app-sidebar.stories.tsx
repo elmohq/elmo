@@ -14,7 +14,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
-import { expect, within } from "storybook/test";
+import { expect, screen, userEvent, within } from "storybook/test";
 import { AppSidebar } from "@/components/app-sidebar";
 import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
 import { setMockRouteContext } from "./_mocks/tanstack-router";
@@ -218,6 +218,9 @@ export const Local: StoryObj = {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText("Workflows")).toBeInTheDocument();
 		await expect(await canvas.findByText("Tools")).toBeInTheDocument();
+
+		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
+		await expect(await screen.findByLabelText("Acme organization settings")).toBeInTheDocument();
 	},
 };
 
@@ -319,6 +322,28 @@ export const WhitelabelHasNoBilling: StoryObj = {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText("Team")).toBeInTheDocument();
 		await expect(canvas.queryByText("Billing")).toBeNull();
+	},
+};
+
+export const ChoosePlanGate: StoryObj = {
+	render: () => {
+		configureMocks(cloudConfig, onboardedBrand, authedUser("Gated User", "gated@acme.com", "gated"), {
+			isAdmin: true,
+			hasReportAccess: true,
+		});
+
+		return (
+			<SidebarFrame label="Cloud gate — nothing to navigate to yet">
+				<AppSidebar scope="account" />
+			</SidebarFrame>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.queryByRole("button", { name: "Account and organizations" })).toBeNull();
+
+		await userEvent.click(await canvas.findByRole("button", { name: "Account" }));
+		await expect(await screen.findByText("Log out")).toBeInTheDocument();
 	},
 };
 

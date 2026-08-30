@@ -47,7 +47,7 @@ export const Route = createFileRoute("/_authed/choose-plan")({
 		}
 		return paywall;
 	},
-	head: pageHead({}),
+	head: pageHead({ description: "Pick a plan to start tracking how AI answer engines talk about your brand." }),
 	component: ChoosePlanPage,
 });
 

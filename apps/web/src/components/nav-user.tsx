@@ -56,7 +56,7 @@ export function NavUser({ showOrganizations = true }: { showOrganizations?: bool
 						render={
 							<SidebarMenuButton
 								size="lg"
-								aria-label="Account and organizations"
+								aria-label={showOrganizations ? "Account and organizations" : "Account"}
 								className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground cursor-pointer"
 							/>
 						}

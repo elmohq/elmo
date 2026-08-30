@@ -1,8 +1,6 @@
 import { useCallback } from "react";
 import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
-import { READ_ONLY_ERROR, READ_ONLY_MESSAGE } from "@/lib/auth/policies";
-
-const READ_ONLY_REFUSED = "Edits are not allowed in demo mode.";
+import { READ_ONLY_ERROR, READ_ONLY_MESSAGE, READ_ONLY_REFUSED } from "@/lib/read-only-errors";
 
 function isReadOnlyRefusal(message: string): boolean {
 	return message.includes(READ_ONLY_MESSAGE) || message.includes(READ_ONLY_ERROR);

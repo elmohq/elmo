@@ -10,6 +10,7 @@
  */
 import { timingSafeEqual } from "node:crypto";
 import type { FeaturesConfig } from "@workspace/config/types";
+import { READ_ONLY_ERROR, READ_ONLY_MESSAGE } from "@/lib/read-only-errors";
 
 // ============================================================================
 // Deployment Request Policy
@@ -57,9 +58,6 @@ export interface RequestInfo {
  * 3. OpenAPI spec serving
  * 4. API v1 key authentication
  */
-export const READ_ONLY_ERROR = "Demo Mode";
-export const READ_ONLY_MESSAGE = "Write operations are disabled in demo mode";
-
 export function evaluateDeploymentPolicy(
 	features: FeaturesConfig,
 	request: RequestInfo,

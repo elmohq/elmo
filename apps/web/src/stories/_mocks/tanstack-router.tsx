@@ -126,12 +126,18 @@ export function useMatch(_opts?: unknown) {
 	return { params: { org: "mock-organization", brand: "mock-brand-id" } };
 }
 
-let _matches: Array<{ routeId: string; pathname: string; staticData: { crumb?: string }; loaderData?: unknown }> = [
+let _matches: Array<{
+	routeId: string;
+	pathname: string;
+	staticData: { crumb?: string };
+	context?: unknown;
+	loaderData?: unknown;
+}> = [
 	{
 		routeId: "/_authed/app/org/$org",
 		pathname: "/app/org/mock-organization",
 		staticData: {},
-		loaderData: { name: "Acme" },
+		context: { organization: { name: "Acme" } },
 	},
 	{
 		routeId: "/_authed/app/org/$org/brand/$brand",
