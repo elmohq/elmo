@@ -6,6 +6,7 @@
  *  - Demo (read-only preview)
  *  - Whitelabel, plus admin, report-only and pre-onboarding variants
  *  - Cloud, the only mode whose settings nav carries Billing
+ *  - Admin routes, where the admin links move from the account menu to the rail
  *
  * Every story passes `brand`, because the Settings group is gated on
  * `brand.onboarded` and the sidebar takes it as a prop from the route loader
@@ -219,9 +220,11 @@ export const Local: StoryObj = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText("Workflows")).toBeInTheDocument();
-		await expect(await canvas.findByText("Tools")).toBeInTheDocument();
-		await expect(await canvas.findByRole("button", { name: "Account and organizations" })).toBeInTheDocument();
+		await expect(canvas.queryByText("Workflows")).toBeNull();
+
+		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
+		await expect(await screen.findByText("Workflows")).toBeInTheDocument();
+		await expect(await screen.findByText("Tools")).toBeInTheDocument();
 	},
 };
 
@@ -253,7 +256,7 @@ export const Whitelabel = () => {
 	);
 };
 
-/** Whitelabel (Admin) — admin section with Brands, Reports, Workflows, Tools */
+/** Whitelabel (Admin) — Brands, Reports, Workflows and Tools under the account menu */
 export const WhitelabelAdmin = () => {
 	const brand = configureMocks(
 		whitelabelAdminConfig,
@@ -263,26 +266,60 @@ export const WhitelabelAdmin = () => {
 	);
 
 	return (
-		<SidebarFrame label="Whitelabel Admin — Full admin section visible">
+		<SidebarFrame label="Whitelabel Admin — Admin links live in the account menu">
 			<AppSidebar scope="brand" brand={brand} organization={organization} />
 		</SidebarFrame>
 	);
 };
 
 /** Whitelabel (Report-only) — limited admin access, only reports visible */
-export const WhitelabelReportOnly = () => {
-	const brand = configureMocks(
-		whitelabelAdminConfig,
-		onboardedBrand,
-		authedUser("Report Viewer", "reports@client.com", "reports"),
-		{ isAdmin: false, hasReportAccess: true },
-	);
+export const WhitelabelReportOnly: StoryObj = {
+	render: () => {
+		const brand = configureMocks(
+			whitelabelAdminConfig,
+			onboardedBrand,
+			authedUser("Report Viewer", "reports@client.com", "reports"),
+			{ isAdmin: false, hasReportAccess: true },
+		);
 
-	return (
-		<SidebarFrame label="Whitelabel Report-only — Dashboard + Reports admin section">
-			<AppSidebar scope="brand" brand={brand} organization={organization} />
-		</SidebarFrame>
-	);
+		return (
+			<SidebarFrame label="Whitelabel Report-only — Reports is the only admin entry">
+				<AppSidebar scope="brand" brand={brand} organization={organization} />
+			</SidebarFrame>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
+
+		await expect(await screen.findByText("Reports")).toBeInTheDocument();
+		await expect(screen.queryByText("Workflows")).toBeNull();
+	},
+};
+
+/** Admin route — the rail switches over to admin nav, and the account menu drops it */
+export const AdminRoute: StoryObj = {
+	render: () => {
+		configureMocks(whitelabelAdminConfig, onboardedBrand, authedUser("Jane Admin", "jane@agency.com", "jane"), {
+			isAdmin: true,
+			hasReportAccess: true,
+		});
+
+		return (
+			<SidebarFrame label="Admin route — admin nav on the rail">
+				<AppSidebar scope="admin" />
+			</SidebarFrame>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText("Workflows")).toBeInTheDocument();
+		await expect(await canvas.findByText("Tools")).toBeInTheDocument();
+
+		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
+		const menu = within(await screen.findByRole("menu"));
+		await expect(menu.queryByText("Tools")).toBeNull();
+	},
 };
 
 export const Cloud: StoryObj = {
@@ -304,8 +341,10 @@ export const Cloud: StoryObj = {
 		// below the fold of this frame — assert it rather than eyeballing it.
 		await expect(await canvas.findByText("Billing")).toBeInTheDocument();
 		await expect(await canvas.findByText("Team")).toBeInTheDocument();
-		await expect(await canvas.findByText("Workflows")).toBeInTheDocument();
-		await expect(canvas.queryByText("Reports")).toBeNull();
+
+		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
+		await expect(await screen.findByText("Workflows")).toBeInTheDocument();
+		await expect(screen.queryByText("Reports")).toBeNull();
 	},
 };
 
