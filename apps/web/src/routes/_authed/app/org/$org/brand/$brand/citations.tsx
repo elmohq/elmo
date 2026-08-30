@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { CitationsDisplay } from "@/components/citations-display";
-import { ALL_MODELS_VALUE, getAvailableModels } from "@/components/filter-bar";
+import { ALL_MODELS_VALUE } from "@/components/filter-bar";
 import { FilteredListShell } from "@/components/filtered-list-shell";
 import { PageHeader } from "@/components/page-header";
 import { brandKeys, useBrand } from "@/hooks/use-brands";

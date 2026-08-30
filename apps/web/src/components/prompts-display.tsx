@@ -1,6 +1,6 @@
 import { IconEditCircle } from "@tabler/icons-react";
 import { Link, useSearch } from "@tanstack/react-router";
-import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import type { Competitor } from "@workspace/lib/db/schema";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";

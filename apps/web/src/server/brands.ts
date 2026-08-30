@@ -18,9 +18,7 @@ import {
 	decideCompetitorCap,
 	type Entitlements,
 	getOrgEntitlements,
-	getOrgEntitlementsMap,
 } from "@workspace/lib/entitlements";
-import type { ModelConfig } from "@workspace/lib/providers";
 import {
 	isGroundedApiTarget,
 	parseScrapeTargets,
@@ -28,10 +26,9 @@ import {
 	selectTargetsForBrand,
 } from "@workspace/lib/providers";
 import { defaultPlatformPicks, resolvePromptRunPlan } from "@workspace/lib/run-policy";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
-	listUserOrganizations,
 	requireAuthSession,
 	requireBrandAccess,
 	requireBrandOrganization,

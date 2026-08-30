@@ -10,7 +10,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import { ColHead } from "@/components/col-head";
-import { ALL_MODELS_VALUE, FilterBar, getAvailableModels } from "@/components/filter-bar";
+import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
 import { FilterSection, PageHeader } from "@/components/page-header";
 import { ShareOfVoiceDonut } from "@/components/share-of-voice-donut";
 import { SiteIcon } from "@/components/site-icon";

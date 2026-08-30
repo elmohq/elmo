@@ -1,4 +1,4 @@
-import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import type { Competitor } from "@workspace/lib/db/schema";
 import { getSoVBadgeClasses, type PromptCategory } from "@workspace/lib/report-metrics";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";

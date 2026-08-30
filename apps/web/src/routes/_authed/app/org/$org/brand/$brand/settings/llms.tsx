@@ -280,7 +280,6 @@ function UpgradePanel({ options }: { options: ModelPickerState["upgradeOptions"]
 function PremiumApiPool({ premium }: { premium: PremiumPool }) {
 	const brandParams = useBrandParams();
 	const organizationParams = useOrganizationParams();
-	const { brandId } = Route.useRouteContext();
 	const copy = platformGroupCopy("premium");
 	const remaining = Math.max(0, premium.total - premium.assigned);
 

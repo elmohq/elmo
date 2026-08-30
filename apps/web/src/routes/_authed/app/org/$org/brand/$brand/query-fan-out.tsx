@@ -9,7 +9,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { useMemo, useState } from "react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
 import { InfoTip, QueryWordsSection, VariationLine } from "@/components/fanout-sections";
-import { ALL_MODELS_VALUE, FilterBar, getAvailableModels } from "@/components/filter-bar";
+import { ALL_MODELS_VALUE, FilterBar } from "@/components/filter-bar";
 import { HistoryButton } from "@/components/history-button";
 import { FilterSection, PageHeader } from "@/components/page-header";
 import { useBrand } from "@/hooks/use-brands";
@@ -102,10 +102,10 @@ function QueryFanoutPage() {
 							<TabsTrigger value="words">Query Words</TabsTrigger>
 						</TabsList>
 						<TabsContent value="fanout">
-							<Prompts prompts={data.byPrompt} brandId={brandId} />
+							<Prompts prompts={data.byPrompt} />
 						</TabsContent>
 						<TabsContent value="top-queries">
-							<TopQueries data={data} brandId={brandId} />
+							<TopQueries data={data} />
 						</TabsContent>
 						<TabsContent value="words">
 							<QueryWordsSection terms={data.terms} wordChanges={data.wordChanges} />
@@ -297,7 +297,7 @@ function SortHead<K extends string>({
 
 const GRID = "grid grid-cols-[1.25rem_1fr_4.5rem_7rem] items-center gap-3";
 
-function Prompts({ prompts, brandId }: { prompts: PromptFanoutStat[]; brandId: string }) {
+function Prompts({ prompts }: { prompts: PromptFanoutStat[] }) {
 	const [expanded, setExpanded] = useState<Set<string>>(
 		() => new Set(prompts.length === 1 ? [prompts[0].promptId] : []),
 	);
@@ -417,7 +417,7 @@ type TopSort = "prompts" | "runs";
 
 const TOP_GRID = "grid grid-cols-[1.25rem_1fr_5rem_5.5rem] items-center gap-3";
 
-function TopQueries({ data, brandId }: { data: FanoutData; brandId: string }) {
+function TopQueries({ data }: { data: FanoutData }) {
 	const [sort, setSort] = useState<TopSort>("prompts");
 	const [expanded, setExpanded] = useState<Set<string>>(new Set());
 

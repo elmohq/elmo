@@ -11,7 +11,7 @@ import { z } from "zod";
 import { getAuthSession, listUserOrganizations, requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 import { summarizeOrganizations } from "@/lib/organizations/summarize";
-import type { OrganizationSummary, OrganizationsView } from "@/lib/organizations/types";
+import type { OrganizationsView } from "@/lib/organizations/types";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
 export type { OrganizationSummary, OrganizationsView } from "@/lib/organizations/types";

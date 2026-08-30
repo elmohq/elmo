@@ -265,7 +265,7 @@ export interface ChartDataPoint {
 	[key: string]: number | string | boolean | null;
 }
 
-import type { Brand, Competitor, PromptRun } from "@workspace/lib/db/schema";
+import type { Competitor, PromptRun } from "@workspace/lib/db/schema";
 
 export function calculateVisibilityPercentages(
 	promptRuns: PromptRun[],

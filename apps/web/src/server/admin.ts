@@ -5,7 +5,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { getModelMeta } from "@workspace/config/models";
-import type { DeploymentMode } from "@workspace/config/types";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { type Brand, brands, organization, type Prompt, promptRuns, prompts } from "@workspace/lib/db/schema";
@@ -23,7 +22,6 @@ import { desc, eq, inArray, sql } from "drizzle-orm";
 import { Client } from "pg";
 import { z } from "zod";
 import { isAdmin, requireAuthSession } from "@/lib/auth/helpers";
-import { getDeployment } from "@/lib/config/server";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
 import { getAdminActiveBrandsOverTime, getAdminBrandRunStats, getAdminRunsOverTime } from "@/lib/postgres-read";
 

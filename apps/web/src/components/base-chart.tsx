@@ -1,6 +1,6 @@
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
-import type { Brand, Competitor } from "@workspace/lib/db/schema";
+import type { Competitor } from "@workspace/lib/db/schema";
 import { Badge } from "@workspace/ui/components/badge";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import * as React from "react";

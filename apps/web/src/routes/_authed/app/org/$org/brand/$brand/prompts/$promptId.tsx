@@ -86,12 +86,10 @@ function usePromptMetadata(brandId: string, promptId: string) {
 }
 
 function PromptHeader({
-	brandId,
 	promptMeta,
 	isMetaLoading,
 	onLookbackChange,
 }: {
-	brandId: string;
 	promptMeta: PromptMetadata | null;
 	isMetaLoading: boolean;
 	onLookbackChange: () => void;
@@ -287,12 +285,7 @@ function PromptHistoryPage() {
 
 	return (
 		<div className="space-y-0">
-			<PromptHeader
-				brandId={brandId}
-				promptMeta={promptMeta}
-				isMetaLoading={isMetaLoading}
-				onLookbackChange={handleLookbackChange}
-			/>
+			<PromptHeader promptMeta={promptMeta} isMetaLoading={isMetaLoading} onLookbackChange={handleLookbackChange} />
 
 			{/* TABS */}
 			<div className="border-b border-border">
@@ -329,7 +322,6 @@ function PromptHistoryPage() {
 						mentionStats={mentionStats}
 						totalRuns={aggregations?.totalRuns || 0}
 						brandName={brand?.name}
-						brandId={brandId}
 						domainFor={domainFor}
 					/>
 				)}
@@ -394,14 +386,12 @@ function MentionsTab({
 	mentionStats,
 	totalRuns,
 	brandName,
-	brandId,
 	domainFor,
 }: {
 	isLoading: boolean;
 	mentionStats: { name: string; count: number }[];
 	totalRuns: number;
 	brandName?: string;
-	brandId: string;
 	domainFor: (name: string) => string | undefined;
 }) {
 	const brandParams = useBrandParams();
