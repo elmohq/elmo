@@ -11,13 +11,17 @@
  * Usage:
  *   pnpm tsx apps/worker/scripts/audit-providers.ts
  *   pnpm tsx apps/worker/scripts/audit-providers.ts --days 7
+ *   pnpm tsx apps/worker/scripts/audit-providers.ts --payloads ./dumps
  */
 
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Redis } from "@upstash/redis";
 import { STATUS_TARGET_EXPECTATIONS, STATUS_TARGETS } from "@workspace/config/scrape-targets";
 import {
 	AUDIT_MIN_RUNS,
 	type AuditInput,
+	auditPayload,
 	auditTargets,
 	type ProviderRunRecord,
 	type Violation,
@@ -38,10 +42,31 @@ interface RedisEntry {
 	queriesInRawOutput?: boolean;
 }
 
+/**
+ * Payloads written by `test-provider.ts --dump`, keyed back to their target.
+ * The dump encodes a target as a filename, so the mapping is rebuilt from the
+ * target list rather than by parsing names back apart.
+ */
+function loadPayloads(dir: string): Map<string, unknown> {
+	const byFilename = new Map(STATUS_TARGETS.map((t) => [`${t.replace(/[/:]/g, "-")}.json`, t]));
+	const payloads = new Map<string, unknown>();
+	for (const filename of readdirSync(dir)) {
+		const target = byFilename.get(filename);
+		if (!target) continue;
+		payloads.set(target, JSON.parse(readFileSync(join(dir, filename), "utf8")));
+	}
+	return payloads;
+}
+
+function parseFlag(name: string): string | undefined {
+	const index = process.argv.indexOf(name);
+	return index === -1 ? undefined : process.argv[index + 1];
+}
+
 function parseDays(): number {
-	const index = process.argv.indexOf("--days");
-	if (index === -1) return DEFAULT_DAYS;
-	const days = Number(process.argv[index + 1]);
+	const raw = parseFlag("--days");
+	if (raw === undefined) return DEFAULT_DAYS;
+	const days = Number(raw);
 	if (!Number.isFinite(days) || days <= 0) throw new Error("--days must be a positive number");
 	return days;
 }
@@ -127,6 +152,22 @@ async function main() {
 	);
 
 	const violations = auditTargets(inputs);
+
+	// Checking the payloads themselves is what turns an open question into an
+	// answer: a provider carrying searches we never read is a defect no amount of
+	// watching our own output would surface.
+	const payloadDir = parseFlag("--payloads");
+	if (payloadDir && existsSync(payloadDir)) {
+		const payloads = loadPayloads(payloadDir);
+		console.log(`Scanning ${payloads.size} payload(s) for searches we are not extracting.`);
+		for (const [target, payload] of payloads) {
+			const latest = inputs.find((i) => i.target === target)?.records.at(-1);
+			violations.push(...auditPayload(target, payload, latest?.genuineWebQueries ?? 0));
+		}
+	} else if (payloadDir) {
+		console.warn(`No payloads at ${payloadDir} — skipping the payload scan.`);
+	}
+
 	report(violations, STATUS_TARGETS.length, days);
 	reportOpenQuestions(inputs);
 	process.exit(violations.length > 0 ? 1 : 0);

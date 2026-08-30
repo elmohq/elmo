@@ -1,6 +1,6 @@
 import { STATUS_TARGET_EXPECTATIONS, type TargetExpectation } from "@workspace/config/scrape-targets";
 import { describe, expect, it } from "vitest";
-import { AUDIT_MIN_RUNS, auditTarget, type ProviderRunRecord } from "./provider-audit";
+import { AUDIT_MIN_RUNS, auditPayload, auditTarget, findQueryFields, type ProviderRunRecord } from "./provider-audit";
 
 const run = (over: Partial<ProviderRunRecord> = {}): ProviderRunRecord => ({
 	status: "pass",
@@ -115,5 +115,63 @@ describe("the declared expectations", () => {
 
 	it("requires fan-out from OpenRouter's native search", () => {
 		expect(STATUS_TARGET_EXPECTATIONS["perplexity:openrouter:perplexity/sonar:online"].webQueries).toBe("yes");
+	});
+});
+
+describe("findQueryFields", () => {
+	it("finds the searches OpenAI reports on its web_search_call items", () => {
+		const payload = {
+			output: [
+				{ type: "web_search_call", action: { type: "search", queries: ["best crm 2026", "crm pricing"] } },
+				{ type: "message", content: [{ type: "output_text", text: "answer" }] },
+			],
+		};
+
+		expect(findQueryFields(payload)).toEqual([
+			{ path: "$.output[0].action.queries", values: ["best crm 2026", "crm pricing"] },
+		]);
+	});
+
+	it.each([
+		["fan_out_queries", { tasks: [{ result: [{ fan_out_queries: ["a", "b"] }] }] }],
+		["search_queries", { search_queries: ["a", "b"] }],
+		["search_model_queries", { search_model_queries: [{ query: "a" }, { query: "b" }] }],
+		["searchQueries", { searchQueries: ["a", "b"] }],
+	])("finds %s wherever a provider nests it", (_label, payload) => {
+		expect(findQueryFields(payload).flatMap((f) => f.values)).toEqual(["a", "b"]);
+	});
+
+	// Documented as the follow-ups an engine suggests below its answer, not
+	// searches it ran — the extractors already skip these by name.
+	it("ignores suggested follow-ups, which are not searches", () => {
+		expect(findQueryFields({ related_queries: ["what about X", "and Y"] })).toEqual([]);
+	});
+
+	it("ignores empty and blank values", () => {
+		expect(findQueryFields({ search_queries: ["", "   "], query: "" })).toEqual([]);
+	});
+});
+
+describe("auditPayload", () => {
+	// The whole reason payloads are kept: this is a defect no amount of watching
+	// our own output could reveal.
+	it("flags a payload carrying searches the run never reported", () => {
+		const violations = auditPayload("t", { search_queries: ["a search"] }, 0);
+
+		expect(violations.map((v) => v.kind)).toEqual(["unextracted-queries"]);
+		expect(violations[0].message).toContain("a search");
+	});
+
+	it("stays quiet when the run already reported queries", () => {
+		expect(auditPayload("t", { search_queries: ["a search"] }, 2)).toEqual([]);
+	});
+
+	it("stays quiet for a payload that genuinely carries no searches", () => {
+		expect(auditPayload("t", { items: [{ type: "ai_overview", text: "answer" }] }, 0)).toEqual([]);
+	});
+
+	// A provider echoing the keyword back is not a search it chose to run.
+	it("ignores a query field that is just the prompt echoed back", () => {
+		expect(auditPayload("t", { keyword: "best crm", query: "best crm" }, 0, "best crm")).toEqual([]);
 	});
 });

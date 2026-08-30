@@ -33,6 +33,7 @@ export interface ProviderRunRecord {
 }
 
 export type ViolationKind =
+	| "unextracted-queries"
 	| "no-runs"
 	| "all-failing"
 	| "missing-web-queries"
@@ -152,6 +153,84 @@ export function auditTarget(input: AuditInput): Violation[] {
 			missing: "missing-citations",
 			unexpected: "unexpected-citations",
 		}),
+	];
+}
+
+/**
+ * Keys that read like searches but aren't. Both providers document these as the
+ * follow-up questions an engine suggests below its answer, so counting them
+ * would report searches that never ran — the same mistake the Oxylabs and Cloro
+ * extractors already avoid by name.
+ */
+const NOT_SEARCHES = new Set(["related_queries", "relatedqueries", "suggested_queries", "suggestedqueries"]);
+
+/** A query-shaped field found in a payload, as a JSON path plus what it held. */
+export interface QueryField {
+	path: string;
+	values: string[];
+}
+
+function isQueryKey(key: string): boolean {
+	return /quer/i.test(key) && !NOT_SEARCHES.has(key.toLowerCase());
+}
+
+function asQueryValues(value: unknown): string[] {
+	if (typeof value === "string") return value.trim() ? [value] : [];
+	if (Array.isArray(value)) {
+		return value
+			.map((item) => (typeof item === "string" ? item : (item as any)?.query))
+			.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+	}
+	return [];
+}
+
+/**
+ * Query-shaped fields anywhere in a stored payload.
+ *
+ * This is what makes a payload worth keeping: it answers what a provider *could*
+ * give us, independently of what our extractor happened to take. A payload
+ * carrying searches while the run reported none is a defect on our side, and no
+ * amount of watching our own output would ever reveal it.
+ */
+export function findQueryFields(payload: unknown, path = "$"): QueryField[] {
+	if (payload === null || typeof payload !== "object") return [];
+	if (Array.isArray(payload)) return payload.flatMap((item, i) => findQueryFields(item, `${path}[${i}]`));
+
+	const found: QueryField[] = [];
+	for (const [key, value] of Object.entries(payload)) {
+		const here = `${path}.${key}`;
+		const values = isQueryKey(key) ? asQueryValues(value) : [];
+		if (values.length > 0) {
+			// Its contents are the queries themselves, so descending would report
+			// the same strings a second time under a deeper path.
+			found.push({ path: here, values });
+			continue;
+		}
+		found.push(...findQueryFields(value, here));
+	}
+	return found;
+}
+
+/**
+ * Flags a payload that carries searches the run did not report. Values matching
+ * the prompt are ignored: engines do search a prompt verbatim, and a provider
+ * echoing the keyword back is not a search it chose to run.
+ */
+export function auditPayload(target: string, payload: unknown, reportedQueries: number, prompt?: string): Violation[] {
+	if (reportedQueries > 0) return [];
+	const fields = findQueryFields(payload).filter((f) =>
+		f.values.some((v) => !prompt || v.trim().toLowerCase() !== prompt.trim().toLowerCase()),
+	);
+	if (fields.length === 0) return [];
+
+	const shown = fields.slice(0, 3).map((f) => `${f.path} = ${JSON.stringify(f.values.slice(0, 2))}`);
+	return [
+		{
+			target,
+			kind: "unextracted-queries",
+			message: `payload carries searches the run did not report: ${shown.join("; ")}`,
+			expectationVerified: true,
+		},
 	];
 }
 

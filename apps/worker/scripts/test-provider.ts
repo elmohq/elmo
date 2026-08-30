@@ -13,7 +13,6 @@
 
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { getModelMeta } from "@workspace/config/models";
-import { STATUS_TARGET_EXPECTATIONS } from "@workspace/config/scrape-targets";
 import { getProvider, parseScrapeTargets, type ScrapeResult, STATUS_TARGETS } from "@workspace/lib/providers";
 import { extractCitations, extractTextContent } from "@workspace/lib/text-extraction";
 import { escapeGitHubSummaryTableCell } from "./github-summary";
@@ -37,7 +36,6 @@ interface ParsedArgs {
 	target: string;
 	outputJson?: string;
 	dump?: string;
-	dumpUnresolved?: string;
 }
 
 function parseArgs(): ParsedArgs {
@@ -45,7 +43,6 @@ function parseArgs(): ParsedArgs {
 	let target: string | undefined;
 	let outputJson: string | undefined;
 	let dump: string | undefined;
-	let dumpUnresolved: string | undefined;
 
 	for (let i = 0; i < argv.length; i++) {
 		if (argv[i] === "--target" && argv[i + 1]) {
@@ -54,10 +51,6 @@ function parseArgs(): ParsedArgs {
 		}
 		if (argv[i] === "--output-json" && argv[i + 1]) {
 			outputJson = argv[++i];
-			continue;
-		}
-		if (argv[i] === "--dump-unresolved" && argv[i + 1]) {
-			dumpUnresolved = argv[++i];
 			continue;
 		}
 		if (argv[i] === "--dump" && argv[i + 1]) {
@@ -73,8 +66,6 @@ Usage: pnpm tsx --env-file=.env scripts/test-provider.ts --target <scrape-target
                     Omit --target to test the full monitored set (STATUS_TARGETS).
   --output-json     Write results as JSON to the given path (for CI artifact collection)
   --dump            Write full raw output for each target to the given directory
-  --dump-unresolved Same, but only for targets whose expected web queries are
-                    still "unknown" — the payloads needed to settle them
 
 Examples:
   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online"
@@ -88,7 +79,7 @@ Examples:
 	}
 	// No --target means the scheduled run: test the full monitored set.
 	if (!target) target = STATUS_TARGETS.join(",");
-	return { target, outputJson, dump, dumpUnresolved };
+	return { target, outputJson, dump };
 }
 
 function formatLatency(ms: number): string {
@@ -318,18 +309,6 @@ function reportResult(args: {
 	tlog(hasErrors ? "FAIL" : "PASS", hasErrors ? colors.red : colors.green);
 }
 
-/**
- * Where a target's raw payload should be written, if anywhere. `--dump-unresolved`
- * narrows the dump to targets whose `webQueries` expectation is still "unknown",
- * which is the only reason a scheduled run needs payloads at all — and means the
- * dump shrinks to nothing as those get settled.
- */
-function dumpDirFor(target: string, dump?: string, dumpUnresolved?: string): string | undefined {
-	if (dump) return dump;
-	if (!dumpUnresolved) return undefined;
-	return STATUS_TARGET_EXPECTATIONS[target]?.webQueries === "unknown" ? dumpUnresolved : undefined;
-}
-
 async function runTarget(target: string, dumpDir?: string): Promise<{ result: TargetResult; logs: string }> {
 	const buffered: string[] = [];
 	const tlog = (message: string, color?: string) => {
@@ -470,7 +449,7 @@ function writeGitHubSummary(results: TargetResult[]) {
 }
 
 async function main() {
-	const { target: targetArg, outputJson, dump, dumpUnresolved } = parseArgs();
+	const { target: targetArg, outputJson, dump } = parseArgs();
 	const targets = targetArg
 		.split(",")
 		.map((t) => t.trim())
@@ -481,7 +460,7 @@ async function main() {
 	// and flushed as a coherent block when that target finishes, so output from
 	// concurrent targets doesn't interleave.
 	const pending = targets.map(async (target) => {
-		const { result, logs } = await runTarget(target, dumpDirFor(target, dump, dumpUnresolved));
+		const { result, logs } = await runTarget(target, dump);
 		process.stdout.write(`${logs}\n`);
 		return result;
 	});

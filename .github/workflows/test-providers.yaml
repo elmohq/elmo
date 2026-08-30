@@ -49,9 +49,9 @@ jobs:
           TARGET_OVERRIDE: ${{ inputs.target }}
         run: |
           if [ -n "$TARGET_OVERRIDE" ]; then
-            pnpm tsx apps/worker/scripts/test-provider.ts --target "$TARGET_OVERRIDE" --output-json result.json --dump-unresolved dumps
+            pnpm tsx apps/worker/scripts/test-provider.ts --target "$TARGET_OVERRIDE" --output-json result.json --dump dumps
           else
-            pnpm tsx apps/worker/scripts/test-provider.ts --output-json result.json --dump-unresolved dumps
+            pnpm tsx apps/worker/scripts/test-provider.ts --output-json result.json --dump dumps
           fi
       - name: Push results to Upstash Redis
         if: always() && hashFiles('result.json') != ''
@@ -108,18 +108,16 @@ jobs:
           name: provider-results
           path: result.json
           retention-days: 7
-      # Payloads for the targets whose expected web queries are still "unknown",
-      # so someone can read one and settle whether the provider exposes queries
-      # at all or our extractor is dropping them. Short retention and no
-      # payloads once every target is settled — this repo is public, so these
-      # artifacts are too.
-      - name: Upload payloads for unresolved targets
+      # Every target's raw payload, so the audit can check what a provider could
+      # give us rather than only what we took from it. Note this repo is public,
+      # so these artifacts are downloadable by anyone.
+      - name: Upload raw payloads
         if: always() && hashFiles('dumps/*.json') != ''
         uses: actions/upload-artifact@v7
         with:
-          name: unresolved-payloads
+          name: provider-payloads
           path: dumps/
-          retention-days: 3
+          retention-days: 7
       - name: Fail job if any target failed
         if: always() && steps.test.outcome == 'failure'
         run: |
