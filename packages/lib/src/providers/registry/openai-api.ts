@@ -1,5 +1,6 @@
 import { createOpenAI, openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
+import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
 import { extractCitationsFromOpenAI, extractTextFromOpenAI } from "../../text-extraction";
 import {
@@ -24,6 +25,24 @@ function getOpenAIResponsesModel(model: string) {
 	const apiKey = getCredential("OPENAI_API_KEY");
 	const provider = apiKey ? createOpenAI({ apiKey }) : openai;
 	return provider.responses(model);
+}
+
+/**
+ * Search queries the model ran. The Responses API reports them on the
+ * web_search tool's *result* part (the matching call part carries an empty
+ * input), as a `queries` list with a legacy single `query` on older responses.
+ */
+function extractWebQueries(content: unknown): string[] {
+	const queries: string[] = [];
+	for (const part of (content as any[]) ?? []) {
+		if (part?.type !== "tool-result") continue;
+		const action = part.output?.action;
+		if (action?.type !== "search") continue;
+		for (const query of Array.isArray(action.queries) ? action.queries : [action.query]) {
+			if (typeof query === "string" && query.trim().length > 0) queries.push(query);
+		}
+	}
+	return queries;
 }
 
 async function runOpenAI(prompt: string, model: string, options?: ProviderOptions): Promise<ScrapeResult> {
@@ -64,14 +83,8 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 		],
 	};
 
-	// Search queries, when the model ran web search. The SDK doesn't reliably
-	// surface the raw query, so fall back to "unavailable" (a soft signal).
-	const webQueries: string[] = [];
-	for (const part of result.content ?? []) {
-		const q = (part as any)?.input?.query ?? (part as any)?.action?.query;
-		if (typeof q === "string") webQueries.push(q);
-	}
-	if (options?.webSearch && webQueries.length === 0) webQueries.push("unavailable");
+	const webQueries = extractWebQueries(result.content);
+	if (options?.webSearch && webQueries.length === 0) webQueries.push(WEB_QUERIES_UNAVAILABLE);
 
 	return {
 		rawOutput,

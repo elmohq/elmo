@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS, OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } from "../config";
 
 const aiMock = vi.hoisted(() => ({ generateText: vi.fn() }));
@@ -44,6 +45,55 @@ describe("openai-api run", () => {
 		expect(args.toolChoice).toBe("none");
 		expect(args).not.toHaveProperty("tools");
 		expect(args).not.toHaveProperty("providerOptions");
+	});
+
+	it("reports the queries the model actually searched", async () => {
+		aiMock.generateText.mockResolvedValue({
+			text: "answer",
+			content: [
+				{ type: "tool-call", toolName: "web_search", input: {} },
+				{
+					type: "tool-result",
+					toolName: "web_search",
+					output: { action: { type: "search", queries: ["best crm 2026", "crm pricing"] } },
+				},
+				{ type: "tool-result", toolName: "web_search", output: { action: { type: "search", query: "crm reviews" } } },
+				{ type: "text", text: "answer" },
+			],
+		});
+
+		const result = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
+
+		expect(result.webQueries).toEqual(["best crm 2026", "crm pricing", "crm reviews"]);
+	});
+
+	it("ignores non-search web_search actions", async () => {
+		aiMock.generateText.mockResolvedValue({
+			text: "answer",
+			content: [
+				{
+					type: "tool-result",
+					toolName: "web_search",
+					output: { action: { type: "openPage", url: "https://example.com" } },
+				},
+			],
+		});
+
+		const result = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
+
+		expect(result.webQueries).toEqual([WEB_QUERIES_UNAVAILABLE]);
+	});
+
+	it("marks queries unavailable when web search ran but exposed no query strings", async () => {
+		const result = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
+
+		expect(result.webQueries).toEqual([WEB_QUERIES_UNAVAILABLE]);
+	});
+
+	it("reports no queries when web search is off", async () => {
+		const result = await openaiApi.run("chatgpt", "prompt", { webSearch: false, version: "gpt-5-mini" });
+
+		expect(result.webQueries).toEqual([]);
 	});
 
 	it("logs a warning when the response stops on the output cap", async () => {
