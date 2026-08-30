@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	CITATION_TITLE_MAX_LENGTH,
 	extractCitations,
 	extractCitationsFromBrightdata,
 	extractCitationsFromDataforseoLlm,
@@ -14,6 +15,7 @@ import {
 	extractTextFromGoogle,
 	extractTextFromOpenAI,
 	extractTextFromOxylabs,
+	normalizeCitationTitle,
 } from "./text-extraction";
 
 /** A minimal DataForSEO AI Optimization "LLM Responses" payload. */
@@ -742,6 +744,47 @@ describe("text-extraction", () => {
 
 		it("should return empty array for unknown model group", () => {
 			expect(extractCitations({}, "unknown")).toEqual([]);
+		});
+	});
+
+	describe("citation titles", () => {
+		it("keeps titles that are already a sensible length", () => {
+			expect(normalizeCitationTitle("A perfectly normal page title")).toBe("A perfectly normal page title");
+		});
+
+		it("treats a missing or empty title as absent", () => {
+			expect(normalizeCitationTitle(undefined)).toBeUndefined();
+			expect(normalizeCitationTitle("")).toBeUndefined();
+			expect(normalizeCitationTitle(12345)).toBeUndefined();
+		});
+
+		it("bounds titles so an oversized one cannot fail the citation insert", () => {
+			const bodyText = "x".repeat(11_325);
+			expect(normalizeCitationTitle(bodyText)).toHaveLength(CITATION_TITLE_MAX_LENGTH);
+		});
+
+		it("truncates on whole characters so multi-byte titles stay valid", () => {
+			const truncated = normalizeCitationTitle("\u{1D518}".repeat(CITATION_TITLE_MAX_LENGTH + 50));
+			expect(truncated).toBe("\u{1D518}".repeat(CITATION_TITLE_MAX_LENGTH));
+		});
+
+		it("bounds titles arriving from a provider payload", () => {
+			const citations = extractCitationsFromOpenAI({
+				output: [
+					{
+						type: "message",
+						content: [
+							{
+								type: "output_text",
+								text: "answer",
+								annotations: [{ type: "url_citation", url: "https://example.com/manual.pdf", title: "y".repeat(8000) }],
+							},
+						],
+					},
+				],
+			});
+			expect(citations).toHaveLength(1);
+			expect(citations[0].title).toHaveLength(CITATION_TITLE_MAX_LENGTH);
 		});
 	});
 });

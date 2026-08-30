@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
-import type { Citation } from "../../text-extraction";
+import { type Citation, normalizeCitationTitle } from "../../text-extraction";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
 import type {
 	Provider,
@@ -60,7 +60,7 @@ function extractCitationsFromOpenRouterResponse(data: any): Citation[] {
 			const parsed = new URL(url);
 			citations.push({
 				url,
-				title: cite.title ?? undefined,
+				title: normalizeCitationTitle(cite.title),
 				domain: parsed.hostname.replace(/^www\./, ""),
 				citationIndex: idx++,
 			});

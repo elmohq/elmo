@@ -400,12 +400,32 @@ export type Citation = {
 	citationIndex: number;
 };
 
+/**
+ * Providers report whatever their upstream model calls the citation's title. When
+ * a URL has no usable title — PDFs and other non-HTML documents especially — some
+ * return kilobytes of the document's body text in that field instead.
+ *
+ * `title` is a key column of idx_citations_brand_analytics, and Postgres rejects
+ * any btree tuple over ~2704 bytes. Citations are written as one multi-row insert
+ * per run, so a single oversized title fails the whole batch rather than its own
+ * row. This bound is well above any real title and leaves room for the url and
+ * domain sharing the tuple.
+ */
+export const CITATION_TITLE_MAX_LENGTH = 256;
+
+/** Slices by code point so a truncation can't split a surrogate pair. */
+export function normalizeCitationTitle(title: unknown): string | undefined {
+	if (typeof title !== "string" || !title) return undefined;
+	const chars = Array.from(title);
+	return chars.length > CITATION_TITLE_MAX_LENGTH ? chars.slice(0, CITATION_TITLE_MAX_LENGTH).join("") : title;
+}
+
 function parseCitationUrl(url: string, title: string | undefined, idx: number): Citation | null {
 	try {
 		const parsed = new URL(url);
 		return {
 			url,
-			title: title || undefined,
+			title: normalizeCitationTitle(title),
 			domain: parsed.hostname.replace(/^www\./, ""),
 			citationIndex: idx,
 		};

@@ -1,7 +1,7 @@
 import Olostep from "olostep";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
-import type { Citation } from "../../text-extraction";
+import { type Citation, normalizeCitationTitle } from "../../text-extraction";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 
 const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: string) => string; credits: number }> = {
@@ -69,7 +69,7 @@ function extractCitationsFromOlostep(data: any): Citation[] {
 			const parsed = new URL(url);
 			citations.push({
 				url,
-				title: source?.title ?? source?.label ?? undefined,
+				title: normalizeCitationTitle(source?.title ?? source?.label),
 				domain: parsed.hostname.replace(/^www\./, ""),
 				citationIndex: idx++,
 			});
