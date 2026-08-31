@@ -1,26 +1,41 @@
 /**
  * Turning "who is calling" into "which brands they may see".
  *
- * Every `/api/v1` read and write funnels through one of these, so there is a
- * single answer to what a key can reach and a single place to change it.
+ * Every `/api/v1` read and write funnels through one of these, and so does
+ * every MCP tool, so there is a single answer to what a caller can reach and a
+ * single place to change it. The three kinds of caller differ only in where the
+ * set of organizations comes from: an admin key reaches every one, an
+ * organization key the one it is bound to, and an OAuth session whichever the
+ * person is a member of right now.
  *
  * A brand outside the caller's reach is reported exactly as one that does not
- * exist. That is deliberate: the alternative tells a key which ids belong to
+ * exist. That is deliberate: the alternative tells a caller which ids belong to
  * other tenants.
  */
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { eq, inArray, type SQL, sql } from "drizzle-orm";
-import type { ApiAuth } from "@/lib/auth/api-auth";
+import type { Principal } from "@/lib/auth/api-auth";
 import { ApiError } from "./handler";
 
 type Brand = typeof brands.$inferSelect;
 
-/** Every brand the caller may reach, or null when that is "all of them". */
-async function scopedBrandIds(auth: ApiAuth): Promise<string[] | null> {
+/** The organizations a caller's data is drawn from, or null for "every one". */
+function scopedOrganizationIds(auth: Principal): string[] | null {
 	if (auth.kind === "admin") return null;
-	if (auth.brandIds) return auth.brandIds;
-	const rows = await db.select({ id: brands.id }).from(brands).where(eq(brands.organizationId, auth.organizationId));
+	return auth.kind === "user" ? auth.organizationIds : [auth.organizationId];
+}
+
+/** Every brand the caller may reach, or null when that is "all of them". */
+async function scopedBrandIds(auth: Principal): Promise<string[] | null> {
+	const organizationIds = scopedOrganizationIds(auth);
+	if (organizationIds === null) return null;
+	if (auth.kind === "organization" && auth.brandIds) return auth.brandIds;
+	if (organizationIds.length === 0) return [];
+	const rows = await db
+		.select({ id: brands.id })
+		.from(brands)
+		.where(inArray(brands.organizationId, organizationIds));
 	return rows.map((row) => row.id);
 }
 
@@ -30,7 +45,7 @@ async function scopedBrandIds(auth: ApiAuth): Promise<string[] | null> {
  * drizzle's "no condition".
  */
 export async function brandScopeCondition(
-	auth: ApiAuth,
+	auth: Principal,
 	column: Parameters<typeof inArray>[0],
 ): Promise<SQL | undefined> {
 	const ids = await scopedBrandIds(auth);
@@ -49,12 +64,13 @@ export async function brandScopeCondition(
  * Both public helpers below wrap this rather than restating it — a second copy
  * of a tenancy check is a second thing to get wrong.
  */
-async function loadBrandInScope(auth: ApiAuth, brandId: string): Promise<Brand | null> {
+async function loadBrandInScope(auth: Principal, brandId: string): Promise<Brand | null> {
 	const [brand] = await db.select().from(brands).where(eq(brands.id, brandId)).limit(1);
 	if (!brand) return null;
-	if (auth.kind === "admin") return brand;
-	if (brand.organizationId !== auth.organizationId) return null;
-	if (auth.brandIds && !auth.brandIds.includes(brand.id)) return null;
+	const organizationIds = scopedOrganizationIds(auth);
+	if (organizationIds === null) return brand;
+	if (!organizationIds.includes(brand.organizationId)) return null;
+	if (auth.kind === "organization" && auth.brandIds && !auth.brandIds.includes(brand.id)) return null;
 	return brand;
 }
 
@@ -69,7 +85,7 @@ async function loadBrandInScope(auth: ApiAuth, brandId: string): Promise<Brand |
  * keeps one tenant from probing for another.
  */
 export async function requireBrandInScope(
-	auth: ApiAuth,
+	auth: Principal,
 	brandId: string,
 	via: "path" | "body" = "path",
 ): Promise<Brand> {
@@ -81,26 +97,30 @@ export async function requireBrandInScope(
 }
 
 /** The same rule, for routes that need only the verdict. */
-export async function isBrandInScope(auth: ApiAuth, brandId: string): Promise<boolean> {
+export async function isBrandInScope(auth: Principal, brandId: string): Promise<boolean> {
 	return (await loadBrandInScope(auth, brandId)) !== null;
 }
 
 /**
- * The organization-level counterpart, for the handful of routes scoped to a
- * workspace rather than to a brand.
+ * The organization-level counterpart, for the handful of routes and tools
+ * scoped to a workspace rather than to a brand.
  *
- * An organization key sees exactly one, so the comparison is against the id it
- * is bound to and the named workspace is never looked up — a key cannot learn
- * that another tenant exists by asking about it.
+ * The named workspace is never looked up — the check is against the ids the
+ * caller already reaches, so nobody can learn that another tenant exists by
+ * asking about it.
  */
-export function requireOrganizationInScope(auth: ApiAuth, organizationId: string): void {
-	if (auth.kind === "organization" && auth.organizationId !== organizationId) {
+export function requireOrganizationInScope(auth: Principal, organizationId: string): void {
+	const organizationIds = scopedOrganizationIds(auth);
+	if (organizationIds === null) return;
+	if (!organizationIds.includes(organizationId)) {
 		throw new ApiError(404, "Not Found", `Organization "${organizationId}" not found.`);
 	}
 }
 
-/** The listing counterpart: one workspace for an organization key, every one for an admin. */
-export function organizationScopeCondition(auth: ApiAuth, column: Parameters<typeof eq>[0]): SQL | undefined {
-	if (auth.kind === "admin") return undefined;
-	return eq(column, auth.organizationId);
+/** The listing counterpart: the caller's workspaces, or every one for an admin. */
+export function organizationScopeCondition(auth: Principal, column: Parameters<typeof eq>[0]): SQL | undefined {
+	const organizationIds = scopedOrganizationIds(auth);
+	if (organizationIds === null) return undefined;
+	if (organizationIds.length === 0) return sql`false`;
+	return inArray(column, organizationIds);
 }

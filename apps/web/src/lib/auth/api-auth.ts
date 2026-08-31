@@ -50,6 +50,37 @@ export interface OrganizationAuth {
 
 export type ApiAuth = AdminAuth | OrganizationAuth;
 
+/**
+ * A person, reached through an OAuth token rather than a key.
+ *
+ * Only `/api/mcp` mints one of these: an MCP client runs the OAuth flow against
+ * the better-auth `mcp` plugin and leaves holding a token that stands for a
+ * user, not for an organization. `ApiAuth` deliberately does not include it, so
+ * a `/api/v1` route cannot be handed one by accident.
+ *
+ * What it reaches is re-derived from live membership on every request, which is
+ * the property that makes it safe for a token to outlive a team change: revoke
+ * someone's membership and the token stops seeing that workspace on the next
+ * call, with nothing to expire or clean up.
+ */
+export interface UserAuth {
+	kind: "user";
+	userId: string;
+	email: string | null;
+	name: string | null;
+	/** Every organization the user is currently a member of. */
+	organizationIds: string[];
+	/** The OAuth client that holds the token, for `whoami` and for logs. */
+	clientId: string;
+	expiresAt: Date | null;
+}
+
+/**
+ * Everything the brand- and organization-scoping helpers know how to answer
+ * for. `/api/v1` only ever sees the `ApiAuth` half; MCP sees all three.
+ */
+export type Principal = ApiAuth | UserAuth;
+
 export interface ApiAuthFailure {
 	status: 401 | 429;
 	error: string;

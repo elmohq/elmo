@@ -7,76 +7,20 @@
  * leaves the caller guessing how far it got.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { selectPremiumModels } from "@workspace/config/plans";
-import { db } from "@workspace/lib/db/db";
-import { prompts } from "@workspace/lib/db/schema";
-import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
-import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { z } from "zod";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
-import { createPromptJobScheduler } from "@/lib/job-scheduler";
-
-const MAX_BATCH = 100;
-
-const bulkBody = z.object({
-	brandId: z.string().trim().min(1, "brandId is required"),
-	prompts: z
-		.array(
-			z.object({
-				value: z.string().trim().min(1, "value must be a non-empty string"),
-				tags: z.array(z.string()).optional(),
-				enabled: z.boolean().optional(),
-				premiumModels: z.array(z.string()).optional(),
-			}),
-		)
-		.min(1, "prompts must contain at least one entry")
-		.max(MAX_BATCH, `prompts may contain at most ${MAX_BATCH} entries`),
-});
+import { bulkPromptInputSchema, createPrompts } from "@/server/prompts-core";
 
 export const Route = createFileRoute("/api/v1/prompts/bulk")({
 	server: {
 		handlers: withMethodGuard({
 			POST: createApiHandler({
-				body: bulkBody,
+				body: bulkPromptInputSchema,
 				status: 201,
 				scopes: ["prompts:write"],
 				handle: async ({ body, auth }) => {
 					const brand = await requireBrandInScope(auth, body.brandId, "body");
-
-					const rows = body.prompts.map((prompt) => ({
-						brandId: brand.id,
-						value: prompt.value,
-						enabled: prompt.enabled ?? true,
-						tags: sanitizeUserTags(prompt.tags ?? []),
-						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
-						premiumModels: selectPremiumModels(prompt.premiumModels),
-					}));
-
-					// One decision for the whole batch, against both pools it can spend,
-					// and the insert under the same lock so two batches can't both
-					// spend the last slot.
-					const enabled = rows.filter((row) => row.enabled);
-					const created = await withQuotaLock(brand.organizationId, async (tx) => {
-						await assertPromptSaveAllowed(
-							brand.organizationId,
-							{
-								prompts: enabled.length,
-								premiumPairings: enabled.reduce((sum, row) => sum + row.premiumModels.length, 0),
-							},
-							tx,
-						);
-						return tx.insert(prompts).values(rows).returning();
-					});
-
-					// Scheduling is deliberately outside the transaction: a queue hiccup
-					// must not roll back prompts the customer can see, and the worker's
-					// self-healing scheduler picks up anything that failed to enqueue.
-					for (const prompt of created) {
-						if (prompt.enabled) await createPromptJobScheduler(prompt.id);
-					}
-
-					return { data: created };
+					return { data: await createPrompts(brand, { prompts: body.prompts }) };
 				},
 			}),
 		}),
