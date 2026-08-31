@@ -1,5 +1,5 @@
 meta {
-  name: me describes the deployment
+  name: me does not describe the deployment
   type: http
   seq: 6
 }
@@ -16,8 +16,11 @@ headers {
 
 assert {
   res.status: eq 200
-  res.body.deployment.mode: isString
-  res.body.deployment.billingEnabled: isBoolean
-  res.body.deployment.readOnly: isFalsy
   res.body.rateLimit.limit: isNumber
+}
+
+tests {
+  test("nothing about the instance leaks through a tenant's key", function() {
+    expect(res.getBody().deployment).to.be.undefined;
+  });
 }

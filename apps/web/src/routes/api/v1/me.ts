@@ -7,22 +7,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { API_SCOPES } from "@/lib/api/scopes";
-import { getDeployment } from "@/lib/config/server";
 
 export const Route = createFileRoute("/api/v1/me")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
 				handle: async ({ auth }) => {
-					const deployment = getDeployment();
-					const shared = {
-						deployment: {
-							mode: deployment.mode,
-							billingEnabled: deployment.features.billing,
-							readOnly: deployment.features.readOnly,
-						},
-					};
-
 					if (auth.kind === "admin") {
 						return {
 							keyType: "admin",
@@ -35,7 +25,6 @@ export const Route = createFileRoute("/api/v1/me")({
 							lastUsedAt: null,
 							expiresAt: null,
 							rateLimit: null,
-							...shared,
 						};
 					}
 
@@ -50,7 +39,6 @@ export const Route = createFileRoute("/api/v1/me")({
 						lastUsedAt: auth.lastUsedAt,
 						expiresAt: auth.expiresAt,
 						rateLimit: auth.rateLimit,
-						...shared,
 					};
 				},
 			}),

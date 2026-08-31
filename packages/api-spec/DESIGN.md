@@ -293,10 +293,17 @@ What this key is, so an integrator can debug in one call.
   "createdBy": "Dana",
   "lastUsedAt": "2026-08-26T11:04:00Z",
   "expiresAt": null,
-  "rateLimit": { "limit": 1000, "window": "minute" },
-  "deployment": { "mode": "cloud", "billingEnabled": true, "readOnly": false }
+  "rateLimit": { "limit": 1000, "window": "minute" }
 }
 ```
+
+It describes the *key*, and nothing else. An earlier draft also reported the
+deployment's mode, whether billing was on, and whether it was read-only. That
+is the operator's configuration, not the tenant's: a customer's integration has
+no decision to make with it, `GET /organizations/{id}/billing` already answers
+"do plan limits apply here" for the one organization that asks, and a write
+refused in read-only mode says so in its own `403`. Publishing it made every
+instance's posture readable by anyone holding any key, forever.
 
 `brandIds` is **`null` when the key reaches every brand in its organization**
 and a non-empty list when it is narrowed. An empty array is rejected at

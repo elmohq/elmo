@@ -875,24 +875,6 @@
 						"nullable": true,
 						"required": ["limit", "window"]
 					},
-					"deployment": {
-						"type": "object",
-						"properties": {
-							"mode": {
-								"type": "string",
-								"enum": ["local", "cloud", "whitelabel", "demo"]
-							},
-							"billingEnabled": {
-								"type": "boolean",
-								"description": "Whether plan limits and the billing endpoints apply."
-							},
-							"readOnly": {
-								"type": "boolean",
-								"description": "When true, every write answers `403`."
-							}
-						},
-						"required": ["mode", "billingEnabled", "readOnly"]
-					},
 					"createdBy": {
 						"description": "Name of the member who issued the key. Null for admin keys.",
 						"type": "string",
@@ -913,7 +895,6 @@
 					"createdAt",
 					"expiresAt",
 					"rateLimit",
-					"deployment",
 					"createdBy",
 					"lastUsedAt"
 				]
@@ -3518,7 +3499,7 @@
 		"/me": {
 			"get": {
 				"summary": "Describe the calling key",
-				"description": "What this key is, which organization and brands it reaches, which scopes it holds, and what kind of deployment answered. Requires no scope, so it is always safe to call first when wiring up an integration.",
+				"description": "What this key is, which organization and brands it reaches, and which scopes it holds. Requires no scope, so it is always safe to call first when wiring up an integration.",
 				"operationId": "getMe",
 				"tags": ["Identity"],
 				"x-elmo-scopes": [],
