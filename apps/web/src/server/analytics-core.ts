@@ -236,7 +236,7 @@ export async function getBrandPlatformBreakdown(
 	if (promptIds.length === 0) return [];
 	const { startDate, endDate, timezone } = window;
 
-	const rows = await getBrandMentionRateByModel(brandId, startDate, endDate, timezone, promptIds);
+	const rows = await getBrandMentionRateByModel(brandId, startDate, endDate, timezone, promptIds, filters.model);
 
 	// One citation total per model, rather than the URL roll-up, which has no
 	// model column to group by.
@@ -297,10 +297,11 @@ export async function getBrandCitations(brandId: string, window: AnalyticsWindow
 	const previousStart = new Date(previousEnd.getTime() - (spanDays - 1) * 86_400_000);
 	const iso = (date: Date) => date.toISOString().slice(0, 10);
 
-	const [{ brandDomains, competitorDomains }, current, previous] = await Promise.all([
+	const [{ brandDomains, competitorDomains }, current, previous, promptsByDomain] = await Promise.all([
 		citationContext(brandId),
 		getCitationUrlStats(brandId, startDate, endDate, timezone, promptIds, filters.model),
 		getCitationUrlStats(brandId, iso(previousStart), iso(previousEnd), timezone, promptIds, filters.model),
+		getCitationDomainPromptCounts(brandId, startDate, endDate, timezone, promptIds, filters.model),
 	]);
 
 	const classify = (domain: string, url: string, title?: string | null) =>
@@ -312,14 +313,14 @@ export async function getBrandCitations(brandId: string, window: AnalyticsWindow
 		previousDomainCounts.set(stat.domain, (previousDomainCounts.get(stat.domain) ?? 0) + Number(stat.count));
 	}
 
+	// Per URL the largest count is the right one — the rows folded into a single
+	// normalized URL describe the same page. A domain is different: its URLs can
+	// be cited by disjoint prompts, so the distinct count has to come from the
+	// database rather than from the largest of its parts.
 	const promptCounts = new Map<string, number>();
 	for (const stat of current) {
 		const url = normalizeUrl(stat.url);
 		promptCounts.set(url, Math.max(promptCounts.get(url) ?? 0, Number(stat.prompt_count)));
-	}
-	const promptsByDomain = new Map<string, number>();
-	for (const stat of current) {
-		promptsByDomain.set(stat.domain, Math.max(promptsByDomain.get(stat.domain) ?? 0, Number(stat.prompt_count)));
 	}
 
 	const rolled = rollUpCitationUrls(current, classify);
