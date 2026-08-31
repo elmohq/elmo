@@ -40,10 +40,20 @@ export async function delayDataRequests(page: Page, delayMs = 400): Promise<Slow
 
 	return {
 		async settled() {
-			// A loader that lands can start the next one, so a single moment at
-			// zero is not the same as being done.
+			// The quiet window runs from this call, not from the last response:
+			// the navigation being waited on has not necessarily issued its
+			// requests yet, and `lastActivity` is already stale from the previous
+			// wait, so measuring from there would report "settled" before the
+			// transition had even started. Waiting out a full `delayMs` of quiet
+			// covers the gap between a click and the request it provokes, and a
+			// loader that lands and starts the next one keeps pushing the window
+			// out — a single moment at zero is not the same as being done.
+			const calledAt = Date.now();
 			await expect
-				.poll(() => inFlight === 0 && Date.now() - lastActivity > delayMs / 2, { intervals: [50], timeout: 30_000 })
+				.poll(() => inFlight === 0 && Date.now() - Math.max(lastActivity, calledAt) > delayMs, {
+					intervals: [50],
+					timeout: 30_000,
+				})
 				.toBe(true);
 		},
 	};

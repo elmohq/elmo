@@ -83,7 +83,7 @@ test.describe("Local features", () => {
     page,
     consoleErrors,
   }) => {
-    consoleErrors.allow(failedResource(404));
+    consoleErrors.allow(failedResource(404, `${organizationUrl()}/settings/members`));
     await page.goto(`${organizationUrl()}/settings`);
     await expect(
       page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),

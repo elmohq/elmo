@@ -13,7 +13,7 @@ const CRISP_HOSTS = "**://*.crisp.chat/**";
 test.describe("Support chat", () => {
   test("loads on the deployments we operate, and only those", async ({ page, consoleErrors }, testInfo) => {
     // Aborting the loader below is what makes it fail to load.
-    consoleErrors.allow("Failed to load resource: net::ERR_FAILED");
+    consoleErrors.allow(/Failed to load resource: net::ERR_FAILED.*crisp\.chat/);
 
     const mode = testInfo.project.name;
     if (!isDeploymentMode(mode)) {

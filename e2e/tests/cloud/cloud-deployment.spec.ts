@@ -106,7 +106,7 @@ test.describe("Cloud self-serve signup", () => {
 
 test.describe("Cloud features", () => {
   test("report generation is switched off", async ({ page, consoleErrors }) => {
-    consoleErrors.allow(failedResource(404));
+    consoleErrors.allow(failedResource(404, "/reports"));
     await page.goto("/reports");
     await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
   });

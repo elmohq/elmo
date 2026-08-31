@@ -82,7 +82,7 @@ test.describe("Demo refuses writes", () => {
   });
 
   test("saving brand settings from the UI fails and writes nothing", async ({ page, consoleErrors }) => {
-    consoleErrors.allow(failedResource(403));
+    consoleErrors.allow(failedResource(403, "/_serverFn/"));
     await page.goto(`${brandUrl()}/settings/brand`);
 
     const nameInput = page.getByLabel("Brand Name");
@@ -172,7 +172,7 @@ test.describe("Demo features", () => {
   });
 
   test("saving organization settings fails and says why", async ({ page, consoleErrors }) => {
-    consoleErrors.allow(failedResource(403));
+    consoleErrors.allow(failedResource(403, "/_serverFn/"));
     await page.goto(`${organizationUrl()}/settings`);
 
     const nameField = page.getByLabel("Organization Name", { exact: true });
@@ -184,7 +184,7 @@ test.describe("Demo features", () => {
   });
 
   test("the team page is not offered and not reachable", async ({ page, consoleErrors }) => {
-    consoleErrors.allow(failedResource(404));
+    consoleErrors.allow(failedResource(404, `${organizationUrl()}/settings/members`));
     await page.goto(`${organizationUrl()}/settings`);
     await expect(
       page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),

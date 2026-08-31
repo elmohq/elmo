@@ -148,7 +148,7 @@ test.describe("Whitelabel features", () => {
   });
 
   test("the team page is not offered and not reachable", async ({ page, consoleErrors }) => {
-    consoleErrors.allow(failedResource(404));
+    consoleErrors.allow(failedResource(404, `${organizationUrl()}/settings/members`));
     await page.goto(`${organizationUrl()}/settings`);
     await expect(
       page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),

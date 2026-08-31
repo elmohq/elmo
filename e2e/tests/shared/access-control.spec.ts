@@ -43,7 +43,7 @@ test.describe("Unauthenticated access", () => {
 
 test.describe("Authenticated access", () => {
   test("a brand in another org is not found", async ({ page, consoleErrors }) => {
-    consoleErrors.allow(failedResource(404));
+    consoleErrors.allow(failedResource(404, `${organizationUrl()}/brand/${NIKE_BRAND_ID}`));
     await page.goto(`${organizationUrl()}/brand/${NIKE_BRAND_ID}`);
     await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
   });

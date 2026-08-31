@@ -13,8 +13,11 @@
  *   test.use({ allowedConsoleErrors: [/quota exceeded/] });   // file or describe
  *
  *   test("...", async ({ page, consoleErrors }) => {
- *     consoleErrors.allow(failedResource(404));               // this test only
+ *     consoleErrors.allow(failedResource(404, "/reports"));   // this test only
  *   });
+ *
+ * New shared fixtures belong here rather than in fixtures.ts, which stays a
+ * side-effect-free bag of constants the seeder can import too.
  */
 import { type ConsoleMessage, type Page, expect, test as base } from "@playwright/test";
 
@@ -32,12 +35,18 @@ const ALWAYS_ALLOWED: ConsoleErrorPattern[] = [
 ];
 
 /**
- * What Chromium logs when a request comes back with an error status. Specs that
- * provoke one on purpose allow the status they expect; nothing allows a status
- * globally, so a refusal nobody asked for still fails.
+ * What Chromium logs when a request comes back with an error status, tied to
+ * where the spec expects it from — `from` is matched against the failing
+ * request's URL. A spec that provokes one refusal on purpose should not thereby
+ * excuse every other refusal of that status on the page, which is the whole
+ * point of allowing narrowly.
  */
-export const failedResource = (status: number): string =>
-	`Failed to load resource: the server responded with a status of ${status}`;
+export const failedResource = (status: number, from: string): RegExp =>
+	new RegExp(`Failed to load resource: the server responded with a status of ${status}\\D.*${escapeRegExp(from)}`);
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 /**
  * React's code for an SSR stream that ended early. A route that answers with a
@@ -47,7 +56,11 @@ export const failedResource = (status: number): string =>
 export const ABORTED_SSR_STREAM = /Minified React error #419/;
 
 export interface ConsoleErrorCollector {
-	/** Permit further errors matching these patterns, for this test only. */
+	/**
+	 * Permit errors matching these patterns for this test, wherever in it they
+	 * occur — the recorded entries are matched once, after the test body, so
+	 * where the call sits does not change what it covers.
+	 */
 	allow(...patterns: ConsoleErrorPattern[]): void;
 	/** Everything recorded so far, allowed or not, in order. */
 	recorded(): string[];
