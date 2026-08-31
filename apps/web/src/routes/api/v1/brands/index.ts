@@ -10,7 +10,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { brands, organization } from "@workspace/lib/db/schema";
 import { assertCanCreateBrand, withQuotaLock } from "@workspace/lib/entitlements";
-import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, type SQL } from "drizzle-orm";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandScopeCondition } from "@/lib/api/scope";
 import {
@@ -37,10 +37,6 @@ export const Route = createFileRoute("/api/v1/brands/")({
 					const enabled = searchParams.get("enabled");
 					if (enabled === "true" || enabled === "false") {
 						filters.push(eq(brands.enabled, enabled === "true"));
-					}
-					const query = searchParams.get("q")?.trim();
-					if (query) {
-						filters.push(or(ilike(brands.name, `%${query}%`), ilike(brands.id, `%${query}%`)));
 					}
 					const where = and(...filters.filter(Boolean));
 

@@ -2170,15 +2170,6 @@
 						"schema": {
 							"type": "boolean"
 						}
-					},
-					{
-						"name": "q",
-						"in": "query",
-						"description": "Case-insensitive substring match on brand name or id.",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
 					}
 				],
 				"responses": {
@@ -2950,15 +2941,6 @@
 							"default": 20
 						},
 						"description": "Items per page. Values above the maximum are clamped, not rejected."
-					},
-					{
-						"name": "q",
-						"in": "query",
-						"description": "Case-insensitive substring match on competitor name.",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
 					}
 				],
 				"responses": {

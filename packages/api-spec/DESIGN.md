@@ -392,7 +392,7 @@ Existing `GET/POST /v1/brands`, `GET/PATCH /v1/brands/{brandId}` keep their exac
 shapes, now scope-checked (`brands:read` / `brands:write`) and, for org keys,
 filtered to the key's brands. Additions:
 
-- `GET /v1/brands` gains `enabled` and `q` filters.
+- `GET /v1/brands` gains an `enabled` filter.
 - The brand object gains `organizationId`, `enabledModels`, and
   `delayOverrideHours` (all already stored; additive fields).
 - **`POST /v1/brands` needs an owning organization before it needs a limit
