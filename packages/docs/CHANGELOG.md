@@ -1,5 +1,13 @@
 # @workspace/docs
 
+## 0.3.0
+
+### Patch Changes
+
+- da87272: Rebuilt the interface on Base UI, so menus, dialogs, tooltips and form controls behave more consistently across keyboard and assistive tech.
+- Updated dependencies [da87272]
+  - @workspace/ui@0.3.0
+
 ## 0.2.19
 
 ### Patch Changes

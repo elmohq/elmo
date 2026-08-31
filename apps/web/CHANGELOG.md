@@ -1,5 +1,64 @@
 # @workspace/web
 
+## 0.3.0
+
+### Minor Changes
+
+- 78593b9: Adds support for [Elmo Cloud](https://app.elmohq.com/).
+
+### Patch Changes
+
+- cf0caf0: Moved the admin links into the account menu so the sidebar only shows nav for where you are; admin routes keep them on the sidebar.
+- 1f32756: Fixed citation position calculation bug for Claude.
+- da87272: Rebuilt the interface on Base UI, so menus, dialogs, tooltips and form controls behave more consistently across keyboard and assistive tech.
+- 3ba2e5a: Added a "book a demo" call to action to the sign-in and sign-up pages and to the get-started section of the site.
+- 1f32756: Prevent the citations page from showing citations from disabled prompts.
+- 8ed9ef3: The sign-up page now closes as soon as a self-hosted instance has its first account, instead of staying reachable until the server restarts.
+- d8a37e5: The account menu offers a single Switch Brand link instead of listing every organization once you belong to more than three.
+- 1f32756: Track up to 500 competitors per brand.
+- 1f32756: AI citations are now de-duplicated by URL for a specific answer, so pages cited more than once count only one time.
+- 78593b9: Choose which AI platforms a brand tracks directly from the LLMs settings page.
+- f4f7ef2: Improve visibility chart accessibility for colorblind users. Your brand's lines are emphasized and you can click on an entry in the legend to isolate a competitor's line in the graph.
+- 78593b9: The account menu lists every organization (not just brands) you belong to.
+- f87d2e2: Dashboard URLs now include the organization and the brand — `/app/org/{organization}/brand/{brand}`.
+- f87d2e2: An organization's brands, team, and plan each have their own settings page, and its name and URL can be changed there.
+- 3ba2e5a: The password reset pages now match the sign-in and sign-up layout.
+- 58ff775: Keep a brand's prompts editable when it already holds more than the prompt limit.
+- 1f46b62: Fix broken docs link in `elmo init` and the LLMs settings page.
+- 3358b9f: Fix a crash in the onboarding wizard and competitor/prompt editors on deployments served over plain HTTP, where `crypto.randomUUID` is unavailable.
+- 1c4d39c: Support "GitHub Flavored Markdown" on prompt detail pages. LLM responses now render tables, strikethroughs, and URL autolinks more correctly.
+- 41545b6: Authentication and organization entry pages now show descriptive, deployment-aware browser tab titles.
+- 3ba2e5a: The sign-in and sign-up pages now explain what Elmo does, which engines it tracks, and who already uses it — with self-hosted instances also shown what the managed cloud offers.
+- 78593b9: Self-hosted deployments now show each tracked platform's estimated cost on the LLMs settings page, plus which providers to configure for the platforms they aren't tracking yet.
+- c596f61: Show brand and competitor icons across the dashboard.
+- Updated dependencies [1f32756]
+- Updated dependencies [d4e5db4]
+- Updated dependencies [da87272]
+- Updated dependencies [3ba2e5a]
+- Updated dependencies [9633ca2]
+- Updated dependencies [78593b9]
+- Updated dependencies [1f32756]
+- Updated dependencies [1f32756]
+- Updated dependencies [78593b9]
+- Updated dependencies [f4f7ef2]
+- Updated dependencies [78593b9]
+- Updated dependencies [f87d2e2]
+- Updated dependencies [f87d2e2]
+- Updated dependencies [58ff775]
+- Updated dependencies [1f46b62]
+- Updated dependencies [1c4d39c]
+- Updated dependencies [78593b9]
+- Updated dependencies [78593b9]
+- Updated dependencies [78593b9]
+  - @workspace/lib@0.3.0
+  - @workspace/whitelabel@0.3.0
+  - @workspace/ui@0.3.0
+  - @workspace/config@0.3.0
+  - @workspace/cloud@0.3.0
+  - @workspace/deployment@0.3.0
+  - @workspace/og@0.3.0
+  - @workspace/api-spec@0.3.0
+
 ## 0.2.19
 
 ### Patch Changes

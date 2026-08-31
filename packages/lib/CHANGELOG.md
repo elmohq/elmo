@@ -1,5 +1,36 @@
 # @workspace/lib
 
+## 0.3.0
+
+### Minor Changes
+
+- 78593b9: Adds support for [Elmo Cloud](https://app.elmohq.com/).
+
+### Patch Changes
+
+- 1f32756: Fixed citation position calculation bug for Claude.
+- d4e5db4: Whitelabel sign-in no longer creates organizations from Auth0 `app_metadata`; it only grants membership in organizations that already exist, which are provisioned through the admin brands API.
+- 9633ca2: Truncates excessively long citation titles when stored in the database.
+- 1f32756: Track up to 500 competitors per brand.
+- 1f32756: AI citations are now de-duplicated by URL for a specific answer, so pages cited more than once count only one time.
+- 78593b9: Choose which AI platforms a brand tracks directly from the LLMs settings page.
+- 78593b9: The account menu lists every organization (not just brands) you belong to.
+- f87d2e2: Dashboard URLs now include the organization and the brand — `/app/org/{organization}/brand/{brand}`.
+- 58ff775: Keep a brand's prompts editable when it already holds more than the prompt limit.
+- 1f46b62: Fix broken docs link in `elmo init` and the LLMs settings page.
+- 1c4d39c: Support "GitHub Flavored Markdown" on prompt detail pages. LLM responses now render tables, strikethroughs, and URL autolinks more correctly.
+- 78593b9: Self-hosted deployments can set `RUNS_PER_PROMPT` to change how many times each run samples a platform, trading sampling confidence against provider spend.
+- 78593b9: Self-hosted deployments now show each tracked platform's estimated cost on the LLMs settings page, plus which providers to configure for the platforms they aren't tracking yet.
+- 78593b9: Recovering from a provider failure now re-runs only the models that missed their sample instead of re-sampling every model.
+- Updated dependencies [3ba2e5a]
+- Updated dependencies [78593b9]
+- Updated dependencies [f4f7ef2]
+- Updated dependencies [78593b9]
+- Updated dependencies [f87d2e2]
+- Updated dependencies [1f46b62]
+- Updated dependencies [78593b9]
+  - @workspace/config@0.3.0
+
 ## 0.2.19
 
 ### Patch Changes
