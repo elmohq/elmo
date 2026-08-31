@@ -2,7 +2,7 @@
 	"openapi": "3.0.3",
 	"info": {
 		"title": "Elmo API",
-		"description": "Read and manage the brands, prompts, competitors, and AI-visibility analytics of an Elmo deployment.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header. Two kinds of token are accepted.\n\n**Instance admin keys** come from the operator's `ADMIN_API_KEYS` environment variable. They reach every organization and every endpoint, including the admin-only ones, and are not subject to plan limits or rate limits.\n\n**Organization keys** (`elmo_…`) are issued from the dashboard. A key acts inside exactly one organization, carries an explicit set of scopes, and may be narrowed further to a subset of that organization's brands. Plan limits, read-only mode, and per-key rate limits all apply.\n\n## Scopes\n\nEach operation lists the scope it requires in `x-elmo-scopes`. Admin keys hold every scope implicitly.\n\n| Scope | Grants |\n| --- | --- |\n| `brands:read` / `brands:write` | Read or manage brands |\n| `prompts:read` / `prompts:write` | Read or manage prompts |\n| `competitors:read` / `competitors:write` / `competitors:delete` | Read, manage, or delete competitors |\n| `analytics:read` | Read aggregated visibility, share of voice, citations, and fan-out |\n| `runs:read` | Read individual model answers and their citations |\n| `billing:read` | Read the organization's plan, limits, and usage |\n\nDeleting a competitor is a scope of its own, so a key that syncs competitors cannot erase them by accident. Deleting a *prompt* has no scope at all: it takes every run and citation with it, the dashboard offers no such action, and `PATCH /prompts/{promptId}` with `enabled: false` stops the tracking without losing the history. It is reachable with an instance admin key only.\n\nThere is deliberately no billing write scope: the API cannot change a subscription, an add-on quantity, or a payment method under any key, including an admin key. Operations marked `x-elmo-admin-only` are reachable with an instance admin key only; no scope grants them. Report generation and brand analysis spend provider budget with no organization to bill it to; deleting a prompt destroys tracked history the dashboard itself will not.\n\n## Access and errors\n\nA brand outside the calling key's reach answers `404` with the same body a brand that does not exist would, so a key can never probe another tenant's data. A key that is valid but lacks the scope an operation requires answers `403` naming the missing scope.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Lists take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object. Analytics endpoints take either `startDate` + `endDate` (with an optional `timezone`) or the `lookback` shorthand — one form or the other, never both.\n\n## Stability\n\nAn operation whose response shape may still change carries `x-stability: experimental`, and says so in the first line of its description. Everything else is stable: its shape will only ever gain fields. The absence of the marker is the promise.",
+		"description": "Read and manage the brands, prompts, competitors, and AI-visibility analytics of an Elmo deployment.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header. Two kinds of token are accepted.\n\n**Instance admin keys** come from the operator's `ADMIN_API_KEYS` environment variable. They reach every organization and every endpoint, including the admin-only ones, and are not subject to plan limits or rate limits.\n\n**Organization keys** (`elmo_…`) are issued from the dashboard. A key acts inside exactly one organization, carries an explicit set of scopes, and may be narrowed further to a subset of that organization's brands. Plan limits, read-only mode, and per-key rate limits all apply.\n\n## Scopes\n\nEach operation lists the scope it requires in `x-elmo-scopes`. Admin keys hold every scope implicitly.\n\n| Scope | Grants |\n| --- | --- |\n| `brands:read` / `brands:write` | Read or manage brands |\n| `prompts:read` / `prompts:write` | Read or manage prompts |\n| `competitors:read` / `competitors:write` / `competitors:delete` | Read, manage, or delete competitors |\n| `analytics:read` | Read aggregated visibility, share of voice, citations, and fan-out |\n| `runs:read` | Read individual model answers and their citations |\n| `billing:read` | Read the organization's plan, limits, and usage |\n\nDeleting a competitor is a scope of its own, so a key that syncs competitors cannot erase them by accident. Deleting a *prompt* has no scope at all: it takes every run and citation with it, the dashboard offers no such action, and `PATCH /prompts/{promptId}` with `enabled: false` stops the tracking without losing the history. It is reachable with an instance admin key only.\n\nThere is deliberately no billing write scope: the API cannot change a subscription, an add-on quantity, or a payment method under any key, including an admin key. Operations marked `x-elmo-admin-only` are reachable with an instance admin key only; no scope grants them. Report generation and brand analysis spend provider budget with no organization to bill it to; deleting a prompt destroys tracked history the dashboard itself will not. For the same reason a single *field* can be admin-only: `enabled` on `PATCH /brands/{brandId}` stops a brand being sampled at all, so setting it with an organization key is a `403`.\n\n## Access and errors\n\nA brand outside the calling key's reach answers `404` with the same body a brand that does not exist would, so a key can never probe another tenant's data. A key that is valid but lacks the scope an operation requires answers `403` naming the missing scope.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Lists take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object. Analytics endpoints take either `startDate` + `endDate` (with an optional `timezone`) or the `lookback` shorthand — one form or the other, never both.\n\n## Stability\n\nAn operation whose response shape may still change carries `x-stability: experimental`, and says so in the first line of its description. Everything else is stable: its shape will only ever gain fields. The absence of the marker is the promise.",
 		"version": "1.1.0",
 		"contact": {
 			"name": "Elmo",
@@ -82,7 +82,7 @@
 						"items": {
 							"type": "string"
 						},
-						"description": "Platforms this prompt is tracked on grounded. Each entry spends one premium pairing."
+						"description": "Models this prompt is tracked on grounded. Each entry spends one premium pairing."
 					}
 				},
 				"required": [
@@ -144,7 +144,7 @@
 						"items": {
 							"type": "string"
 						},
-						"description": "Replaces the prompt's grounded platforms. Checked against the organization's premium pool."
+						"description": "Replaces the prompt's grounded models. Checked against the organization's premium pool."
 					}
 				}
 			},
@@ -161,7 +161,7 @@
 					},
 					"code": {
 						"type": "string",
-						"description": "Stable machine-readable code. Deliberately not an enum: new values are added without a version bump, so treat an unrecognized one as its HTTP status implies. Currently: `unauthorized`, `insufficient_scope`, `forbidden`, `not_found`, `validation_error`, `conflict`, `rate_limited`, `method_not_allowed`, `read_only`, `no_active_plan`, `brand_limit`, `prompt_limit`, `platform_not_in_plan`, `platform_picks_exceeded`, `premium_not_in_plan`, `premium_pool_exhausted`, `cadence_faster_than_plan`, `system_tag_immutable`, `internal_error`."
+						"description": "Stable machine-readable code. Deliberately not an enum: new values are added without a version bump, so treat an unrecognized one as its HTTP status implies. Currently: `unauthorized`, `insufficient_scope`, `forbidden`, `not_found`, `validation_error`, `conflict`, `rate_limited`, `method_not_allowed`, `read_only`, `no_active_plan`, `brand_limit`, `prompt_limit`, `model_not_in_plan`, `model_picks_exceeded`, `premium_not_in_plan`, `premium_pool_exhausted`, `cadence_faster_than_plan`, `system_tag_immutable`, `internal_error`."
 					}
 				},
 				"required": ["error"]
@@ -486,8 +486,8 @@
 						}
 					},
 					"organizationId": {
-						"description": "Workspace to create the brand in.\n\nAn organization key may name its own workspace, and nothing else: any other value is a `400`. The check compares against the key's own organization and never looks the named one up, so the refusal cannot reveal whether another tenant exists.\n\nAn admin key may name any workspace. Omitted, an admin key provisions a new organization named after the brand id, exactly as it does today.",
-						"type": "string"
+						"type": "string",
+						"description": "Organization to create the brand in.\n\n| | Omitted | Present |\n| --- | --- | --- |\n| **Organization key** | creates in the key's own organization | must name the key's own organization; any other value is a `400` |\n| **Admin key** | provisions a new organization named after the brand id | creates in the named organization, which must already exist — `404` if it does not |\n\nAn admin key omitting this field is currently the only way to create an organization over the API."
 					}
 				},
 				"required": ["id", "name", "domains"]
@@ -516,7 +516,8 @@
 						}
 					},
 					"enabled": {
-						"type": "boolean"
+						"type": "boolean",
+						"description": "Whether the brand is sampled at all. **Modifiable only with an instance admin key**: setting it with an organization key is a `403`, because disabling ends tracking silently while the plan keeps being billed and no dashboard control does it at any role."
 					}
 				}
 			},
@@ -559,10 +560,10 @@
 					},
 					"organizationId": {
 						"type": "string",
-						"description": "The workspace that owns this brand and is billed for it."
+						"description": "The organization that owns this brand and is billed for it."
 					},
 					"enabledModels": {
-						"description": "Platforms this brand is tracked on. Null means the deployment default.",
+						"description": "Models this brand is tracked on. Null means the deployment default.",
 						"type": "array",
 						"items": {
 							"type": "string"
@@ -899,28 +900,6 @@
 					"lastUsedAt"
 				]
 			},
-			"Platform": {
-				"type": "object",
-				"properties": {
-					"id": {
-						"type": "string",
-						"description": "Model identifier used by the `model` filter, e.g. `chatgpt`."
-					},
-					"label": {
-						"type": "string",
-						"description": "Human-readable name."
-					},
-					"premiumCapable": {
-						"type": "boolean",
-						"description": "Whether this platform can be tracked grounded, spending a premium pairing."
-					},
-					"configured": {
-						"type": "boolean",
-						"description": "Whether this deployment is actually wired to reach the platform."
-					}
-				},
-				"required": ["id", "label", "premiumCapable", "configured"]
-			},
 			"Organization": {
 				"type": "object",
 				"properties": {
@@ -957,13 +936,13 @@
 						"description": "Enabled prompts across the whole organization. Null means no limit.",
 						"nullable": true
 					},
-					"platformPicks": {
+					"modelPicks": {
 						"type": "integer",
-						"description": "Platforms trackable per brand.",
+						"description": "Models trackable per brand.",
 						"nullable": true
 					},
-					"platformMenu": {
-						"description": "Platforms the plan may pick from. Null means any.",
+					"modelMenu": {
+						"description": "Models the plan may pick from. Null means any.",
 						"type": "array",
 						"items": {
 							"type": "string"
@@ -985,8 +964,8 @@
 				"required": [
 					"maxBrands",
 					"maxPrompts",
-					"platformPicks",
-					"platformMenu",
+					"modelPicks",
+					"modelMenu",
 					"standardRunsPerDay",
 					"premiumPool",
 					"premiumRunsPerDay"
@@ -1075,67 +1054,6 @@
 				},
 				"required": ["key", "name", "standing", "cancelAtPeriodEnd", "trackingActive"]
 			},
-			"BrandSummary": {
-				"description": "Every headline figure the dashboard shows for a brand, in one request.",
-				"type": "object",
-				"properties": {
-					"brandId": {
-						"type": "string"
-					},
-					"brandName": {
-						"type": "string"
-					},
-					"range": {
-						"$ref": "#/components/schemas/DateRange"
-					},
-					"visibility": {
-						"type": "number",
-						"minimum": 0,
-						"maximum": 1,
-						"description": "Share of runs mentioning the brand at the end of the window. Ratio 0–1; multiply by 100 for a percentage.",
-						"nullable": true
-					},
-					"shareOfVoice": {
-						"type": "number",
-						"minimum": 0,
-						"maximum": 1,
-						"description": "The brand's share of all brand and competitor mentions. Ratio 0–1; multiply by 100 for a percentage.",
-						"nullable": true
-					},
-					"totalRuns": {
-						"type": "integer"
-					},
-					"totalPrompts": {
-						"type": "integer",
-						"description": "Enabled prompts counted in the window."
-					},
-					"totalCitations": {
-						"type": "integer"
-					},
-					"uniqueDomains": {
-						"type": "integer"
-					},
-					"platforms": {
-						"type": "array",
-						"items": {
-							"type": "string"
-						},
-						"description": "Platforms that produced at least one run in the window."
-					}
-				},
-				"required": [
-					"brandId",
-					"brandName",
-					"range",
-					"visibility",
-					"shareOfVoice",
-					"totalRuns",
-					"totalPrompts",
-					"totalCitations",
-					"uniqueDomains",
-					"platforms"
-				]
-			},
 			"VisibilityPoint": {
 				"type": "object",
 				"properties": {
@@ -1152,40 +1070,6 @@
 					}
 				},
 				"required": ["date", "visibility"]
-			},
-			"BrandVisibility": {
-				"type": "object",
-				"properties": {
-					"brandId": {
-						"type": "string"
-					},
-					"range": {
-						"$ref": "#/components/schemas/DateRange"
-					},
-					"currentVisibility": {
-						"type": "number",
-						"minimum": 0,
-						"maximum": 1,
-						"description": "The last plotted point — the number the dashboard hero shows. Ratio 0–1; multiply by 100 for a percentage.",
-						"nullable": true
-					},
-					"totalRuns": {
-						"type": "integer"
-					},
-					"totalPrompts": {
-						"type": "integer"
-					},
-					"totalCitations": {
-						"type": "integer"
-					},
-					"series": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/VisibilityPoint"
-						}
-					}
-				},
-				"required": ["brandId", "range", "currentVisibility", "totalRuns", "totalPrompts", "totalCitations", "series"]
 			},
 			"ShareOfVoiceEntry": {
 				"type": "object",
@@ -1230,91 +1114,6 @@
 					}
 				},
 				"required": ["date", "share"]
-			},
-			"BrandShareOfVoice": {
-				"type": "object",
-				"properties": {
-					"brandId": {
-						"type": "string"
-					},
-					"brandName": {
-						"type": "string"
-					},
-					"range": {
-						"$ref": "#/components/schemas/DateRange"
-					},
-					"brandShare": {
-						"type": "number",
-						"minimum": 0,
-						"maximum": 1,
-						"description": "The brand's own share at the end of the window. Ratio 0–1; multiply by 100 for a percentage.",
-						"nullable": true
-					},
-					"totalRuns": {
-						"type": "integer"
-					},
-					"entries": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/ShareOfVoiceEntry"
-						},
-						"description": "Leaderboard, highest share first."
-					},
-					"series": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/ShareOfVoicePoint"
-						},
-						"description": "The brand's share over time."
-					}
-				},
-				"required": ["brandId", "brandName", "range", "brandShare", "totalRuns", "entries", "series"]
-			},
-			"PlatformVisibility": {
-				"type": "object",
-				"properties": {
-					"model": {
-						"type": "string"
-					},
-					"label": {
-						"type": "string"
-					},
-					"runs": {
-						"type": "integer"
-					},
-					"brandMentions": {
-						"type": "integer"
-					},
-					"visibility": {
-						"type": "number",
-						"minimum": 0,
-						"maximum": 1,
-						"description": "Share of this platform's runs that mentioned the brand. Ratio 0–1; multiply by 100 for a percentage.",
-						"nullable": true
-					},
-					"citations": {
-						"type": "integer"
-					}
-				},
-				"required": ["model", "label", "runs", "brandMentions", "visibility", "citations"]
-			},
-			"BrandPlatformBreakdown": {
-				"type": "object",
-				"properties": {
-					"brandId": {
-						"type": "string"
-					},
-					"range": {
-						"$ref": "#/components/schemas/DateRange"
-					},
-					"data": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/PlatformVisibility"
-						}
-					}
-				},
-				"required": ["brandId", "range", "data"]
 			},
 			"CitationDomain": {
 				"type": "object",
@@ -1779,72 +1578,6 @@
 				},
 				"required": ["data", "pagination"]
 			},
-			"BulkCreatePromptsRequest": {
-				"description": "All-or-nothing: the whole batch is checked against the plan as one delta and either every prompt is created or none is.",
-				"type": "object",
-				"properties": {
-					"brandId": {
-						"type": "string"
-					},
-					"prompts": {
-						"type": "array",
-						"minItems": 1,
-						"maxItems": 100,
-						"items": {
-							"type": "object",
-							"properties": {
-								"value": {
-									"type": "string",
-									"minLength": 1
-								},
-								"tags": {
-									"type": "array",
-									"items": {
-										"type": "string"
-									}
-								},
-								"enabled": {
-									"type": "boolean",
-									"default": true
-								},
-								"premiumModels": {
-									"type": "array",
-									"items": {
-										"type": "string"
-									},
-									"description": "Platforms to track this prompt on grounded. Each entry spends one premium pairing."
-								}
-							},
-							"required": ["value"]
-						}
-					}
-				},
-				"required": ["brandId", "prompts"]
-			},
-			"BulkCreatePromptsResponse": {
-				"type": "object",
-				"properties": {
-					"data": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/Prompt"
-						}
-					}
-				},
-				"required": ["data"]
-			},
-			"PlatformList": {
-				"type": "object",
-				"properties": {
-					"data": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/Platform"
-						}
-					}
-				},
-				"required": ["data"]
-			},
 			"OrganizationList": {
 				"type": "object",
 				"properties": {
@@ -2006,12 +1739,8 @@
 					},
 					"status": {
 						"type": "string",
-						"description": "`ready` when a report is present. `insufficient-data` when the brand hasn't accumulated enough tracked answers to say anything useful yet. `not-generated` when none has been produced for this brand at all. The lists are empty for anything but `ready`.",
-						"enum": ["ready", "insufficient-data", "not-generated"]
-					},
-					"stale": {
-						"type": "boolean",
-						"description": "Whether the next dashboard view of this brand would produce a newer report. `true` when nothing has been generated yet, or when the stored report has aged past its refresh window.\n\nThis is the answer to “should I check back?”. Generation runs on a dashboard page load and nowhere else — nothing is ever queued, so there is no in-flight state to poll and no way to start one over the API."
+						"description": "`ready` when a report is present. `insufficient-data` when the brand hasn't accumulated enough tracked answers to say anything useful yet, in which case the lists are empty.",
+						"enum": ["ready", "insufficient-data"]
 					},
 					"generatedAt": {
 						"type": "string",
@@ -2045,7 +1774,162 @@
 						"description": "Caveats: hard-to-win areas, or tactics to avoid."
 					}
 				},
-				"required": ["brandId", "status", "stale", "generatedAt", "model", "summary", "opportunities", "risks"]
+				"required": ["brandId", "status", "generatedAt", "model", "summary", "opportunities", "risks"]
+			},
+			"ModelVisibility": {
+				"type": "object",
+				"properties": {
+					"model": {
+						"type": "string"
+					},
+					"label": {
+						"type": "string"
+					},
+					"runs": {
+						"type": "integer"
+					},
+					"brandMentions": {
+						"type": "integer"
+					},
+					"visibility": {
+						"type": "number",
+						"minimum": 0,
+						"maximum": 1,
+						"description": "Share of this model's runs that mentioned the brand. Ratio 0–1; multiply by 100 for a percentage.",
+						"nullable": true
+					},
+					"citations": {
+						"type": "integer"
+					}
+				},
+				"required": ["model", "label", "runs", "brandMentions", "visibility", "citations"]
+			},
+			"BrandAnalytics": {
+				"description": "Every non-paginated figure for a brand over one window. There is no parameter for selecting a subset: the four computations behind this share one scope resolution and run concurrently, so a subset would save a caller a fraction of one request and cost everyone a parameter to reason about.",
+				"type": "object",
+				"properties": {
+					"brandId": {
+						"type": "string"
+					},
+					"brandName": {
+						"type": "string"
+					},
+					"range": {
+						"$ref": "#/components/schemas/DateRange"
+					},
+					"visibility": {
+						"type": "object",
+						"description": "How often the brand is mentioned at all.",
+						"properties": {
+							"current": {
+								"type": "number",
+								"minimum": 0,
+								"maximum": 1,
+								"description": "The last plotted point — the number the dashboard hero shows. Ratio 0–1; multiply by 100 for a percentage.",
+								"nullable": true
+							},
+							"series": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/VisibilityPoint"
+								}
+							}
+						},
+						"required": ["current", "series"]
+					},
+					"shareOfVoice": {
+						"type": "object",
+						"description": "The brand against its tracked competitors.",
+						"properties": {
+							"brand": {
+								"type": "number",
+								"minimum": 0,
+								"maximum": 1,
+								"description": "The brand's own share at the end of the window. Ratio 0–1; multiply by 100 for a percentage.",
+								"nullable": true
+							},
+							"entries": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/ShareOfVoiceEntry"
+								},
+								"description": "Leaderboard, highest share first."
+							},
+							"series": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/ShareOfVoicePoint"
+								},
+								"description": "The brand's share over time."
+							}
+						},
+						"required": ["brand", "entries", "series"]
+					},
+					"models": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/ModelVisibility"
+						},
+						"description": "Per-model visibility and run counts. Only models that produced a run in the window appear."
+					},
+					"totals": {
+						"type": "object",
+						"properties": {
+							"runs": {
+								"type": "integer"
+							},
+							"prompts": {
+								"type": "integer",
+								"description": "Enabled prompts counted in the window."
+							},
+							"citations": {
+								"type": "integer"
+							},
+							"uniqueDomains": {
+								"type": "integer"
+							},
+							"uniqueUrls": {
+								"type": "integer"
+							}
+						},
+						"required": ["runs", "prompts", "citations", "uniqueDomains", "uniqueUrls"]
+					}
+				},
+				"required": ["brandId", "brandName", "range", "visibility", "shareOfVoice", "models", "totals"]
+			},
+			"ModelList": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/Model"
+						}
+					}
+				},
+				"required": ["data"]
+			},
+			"Model": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "Identifier used by the `model` filter, e.g. `chatgpt`."
+					},
+					"label": {
+						"type": "string",
+						"description": "Human-readable name."
+					},
+					"premiumCapable": {
+						"type": "boolean",
+						"description": "Whether this model can be tracked grounded, spending a premium pairing."
+					},
+					"configured": {
+						"type": "boolean",
+						"description": "Whether this deployment is actually wired to reach it."
+					}
+				},
+				"required": ["id", "label", "premiumCapable", "configured"]
 			}
 		},
 		"responses": {
@@ -2232,7 +2116,7 @@
 			"ModelFilter": {
 				"name": "model",
 				"in": "query",
-				"description": "Restrict to one platform, e.g. `chatgpt`. See `GET /platforms`.",
+				"description": "Restrict to one model, e.g. `chatgpt`. See `GET /models`.",
 				"required": false,
 				"schema": {
 					"type": "string"
@@ -2488,6 +2372,68 @@
 				"description": ""
 			}
 		},
+		"/brands/{brandId}/analytics": {
+			"get": {
+				"summary": "Get a brand's analytics",
+				"description": "Visibility, share of voice, the per-model breakdown and the citation totals for one window, in one request.\n\nThe lists that can grow without bound — cited domains and URLs, sub-queries, per-prompt results — are paginated endpoints of their own. Everything else is always included.",
+				"operationId": "getBrandAnalytics",
+				"tags": ["Analytics"],
+				"x-elmo-scopes": ["analytics:read"],
+				"parameters": [
+					{
+						"$ref": "#/components/parameters/BrandIdPath"
+					},
+					{
+						"$ref": "#/components/parameters/StartDate"
+					},
+					{
+						"$ref": "#/components/parameters/EndDate"
+					},
+					{
+						"$ref": "#/components/parameters/Lookback"
+					},
+					{
+						"$ref": "#/components/parameters/Timezone"
+					},
+					{
+						"$ref": "#/components/parameters/ModelFilter"
+					},
+					{
+						"$ref": "#/components/parameters/TagsFilter"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Get a brand's analytics",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BrandAnalytics"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
 		"/brands/{brandId}/citations/domains": {
 			"get": {
 				"summary": "List cited domains",
@@ -2627,13 +2573,22 @@
 		"/brands/{brandId}/opportunities": {
 			"get": {
 				"summary": "Get the latest opportunities report",
-				"description": "**Experimental — the response shape may still change.**\n\nThe brand’s most recent Opportunities report: a prioritized set of ways to get cited more often, with the tracked prompts and cited pages behind each one. The same analysis the dashboard shows.\n\nRead-only, and there is no way to trigger generation over the API: it spends provider budget with nothing metering it per call. A report is produced when someone opens the brand’s Opportunities page and the stored one has aged out, so `stale` tells a caller whether the next such view would replace what it just read. `status` says why the lists are empty when they are.",
+				"description": "**Experimental — the response shape may still change.**\n\nThe brand's Opportunities report: a prioritized set of ways to get cited more often, with the tracked prompts and cited pages behind each one. The same analysis the dashboard shows, from the same code.\n\nGeneration is inline and synchronous. A stored report is served while it is fresh and regenerated when it is not, so there is nothing to poll for and no way to be handed a stale one — but a request that triggers a generation waits for it. The freshness window bounds the cost: however many callers ask, one generation per brand per window. There is deliberately no `POST`, which would spend provider budget with nothing metering it per call.",
 				"operationId": "getBrandOpportunities",
 				"tags": ["Opportunities"],
 				"x-elmo-scopes": ["analytics:read"],
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
+					},
+					{
+						"name": "timezone",
+						"in": "query",
+						"required": false,
+						"description": "IANA time zone the underlying digest is bucketed by. Defaults to `UTC`.",
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"responses": {
@@ -2664,65 +2619,6 @@
 					}
 				},
 				"x-stability": "experimental"
-			}
-		},
-		"/brands/{brandId}/platforms": {
-			"get": {
-				"summary": "Get visibility by platform",
-				"description": "Runs, mentions, and visibility broken down by answer engine, so a customer can see where they are strong and where they are invisible.",
-				"operationId": "getBrandPlatformBreakdown",
-				"tags": ["Analytics"],
-				"x-elmo-scopes": ["analytics:read"],
-				"parameters": [
-					{
-						"$ref": "#/components/parameters/BrandIdPath"
-					},
-					{
-						"$ref": "#/components/parameters/StartDate"
-					},
-					{
-						"$ref": "#/components/parameters/EndDate"
-					},
-					{
-						"$ref": "#/components/parameters/Lookback"
-					},
-					{
-						"$ref": "#/components/parameters/Timezone"
-					},
-					{
-						"$ref": "#/components/parameters/TagsFilter"
-					}
-				],
-				"responses": {
-					"200": {
-						"description": "Get visibility by platform",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/BrandPlatformBreakdown"
-								}
-							}
-						}
-					},
-					"400": {
-						"$ref": "#/components/responses/ValidationError"
-					},
-					"401": {
-						"$ref": "#/components/responses/UnauthorizedError"
-					},
-					"403": {
-						"$ref": "#/components/responses/ForbiddenError"
-					},
-					"404": {
-						"$ref": "#/components/responses/NotFoundError"
-					},
-					"429": {
-						"$ref": "#/components/responses/RateLimitError"
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalServerError"
-					}
-				}
 			}
 		},
 		"/brands/{brandId}/prompt-performance": {
@@ -2836,130 +2732,6 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/BrandQueryFanout"
-								}
-							}
-						}
-					},
-					"400": {
-						"$ref": "#/components/responses/ValidationError"
-					},
-					"401": {
-						"$ref": "#/components/responses/UnauthorizedError"
-					},
-					"403": {
-						"$ref": "#/components/responses/ForbiddenError"
-					},
-					"404": {
-						"$ref": "#/components/responses/NotFoundError"
-					},
-					"429": {
-						"$ref": "#/components/responses/RateLimitError"
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalServerError"
-					}
-				}
-			}
-		},
-		"/brands/{brandId}/share-of-voice": {
-			"get": {
-				"summary": "Get share of voice",
-				"description": "The brand against its tracked competitors: a leaderboard of mention counts and shares, plus the brand's own share over time.",
-				"operationId": "getBrandShareOfVoice",
-				"tags": ["Analytics"],
-				"x-elmo-scopes": ["analytics:read"],
-				"parameters": [
-					{
-						"$ref": "#/components/parameters/BrandIdPath"
-					},
-					{
-						"$ref": "#/components/parameters/StartDate"
-					},
-					{
-						"$ref": "#/components/parameters/EndDate"
-					},
-					{
-						"$ref": "#/components/parameters/Lookback"
-					},
-					{
-						"$ref": "#/components/parameters/Timezone"
-					},
-					{
-						"$ref": "#/components/parameters/ModelFilter"
-					},
-					{
-						"$ref": "#/components/parameters/TagsFilter"
-					}
-				],
-				"responses": {
-					"200": {
-						"description": "Get share of voice",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/BrandShareOfVoice"
-								}
-							}
-						}
-					},
-					"400": {
-						"$ref": "#/components/responses/ValidationError"
-					},
-					"401": {
-						"$ref": "#/components/responses/UnauthorizedError"
-					},
-					"403": {
-						"$ref": "#/components/responses/ForbiddenError"
-					},
-					"404": {
-						"$ref": "#/components/responses/NotFoundError"
-					},
-					"429": {
-						"$ref": "#/components/responses/RateLimitError"
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalServerError"
-					}
-				}
-			}
-		},
-		"/brands/{brandId}/summary": {
-			"get": {
-				"summary": "Get a brand summary",
-				"description": "Every headline figure the dashboard shows for a brand — visibility, share of voice, and period totals — in a single request.",
-				"operationId": "getBrandSummary",
-				"tags": ["Analytics"],
-				"x-elmo-scopes": ["analytics:read"],
-				"parameters": [
-					{
-						"$ref": "#/components/parameters/BrandIdPath"
-					},
-					{
-						"$ref": "#/components/parameters/StartDate"
-					},
-					{
-						"$ref": "#/components/parameters/EndDate"
-					},
-					{
-						"$ref": "#/components/parameters/Lookback"
-					},
-					{
-						"$ref": "#/components/parameters/Timezone"
-					},
-					{
-						"$ref": "#/components/parameters/ModelFilter"
-					},
-					{
-						"$ref": "#/components/parameters/TagsFilter"
-					}
-				],
-				"responses": {
-					"200": {
-						"description": "Get a brand summary",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/BrandSummary"
 								}
 							}
 						}
@@ -3133,68 +2905,6 @@
 					},
 					"409": {
 						"$ref": "#/components/responses/ConflictError"
-					},
-					"429": {
-						"$ref": "#/components/responses/RateLimitError"
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalServerError"
-					}
-				}
-			}
-		},
-		"/brands/{brandId}/visibility": {
-			"get": {
-				"summary": "Get visibility over time",
-				"description": "A daily series of the share of runs that mentioned the brand, plus period totals. Days with no runs to plot carry `null` rather than zero, so a gap in sampling never reads as a collapse in visibility.",
-				"operationId": "getBrandVisibility",
-				"tags": ["Analytics"],
-				"x-elmo-scopes": ["analytics:read"],
-				"parameters": [
-					{
-						"$ref": "#/components/parameters/BrandIdPath"
-					},
-					{
-						"$ref": "#/components/parameters/StartDate"
-					},
-					{
-						"$ref": "#/components/parameters/EndDate"
-					},
-					{
-						"$ref": "#/components/parameters/Lookback"
-					},
-					{
-						"$ref": "#/components/parameters/Timezone"
-					},
-					{
-						"$ref": "#/components/parameters/ModelFilter"
-					},
-					{
-						"$ref": "#/components/parameters/TagsFilter"
-					}
-				],
-				"responses": {
-					"200": {
-						"description": "Get visibility over time",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/BrandVisibility"
-								}
-							}
-						}
-					},
-					"400": {
-						"$ref": "#/components/responses/ValidationError"
-					},
-					"401": {
-						"$ref": "#/components/responses/UnauthorizedError"
-					},
-					"403": {
-						"$ref": "#/components/responses/ForbiddenError"
-					},
-					"404": {
-						"$ref": "#/components/responses/NotFoundError"
 					},
 					"429": {
 						"$ref": "#/components/responses/RateLimitError"
@@ -3533,10 +3243,43 @@
 				}
 			}
 		},
+		"/models": {
+			"get": {
+				"summary": "List trackable models",
+				"description": "The answer engines this deployment can track, so a client can build a model filter without hardcoding ids that differ between deployments.\n\nRequires no scope.",
+				"operationId": "listModels",
+				"tags": ["Models"],
+				"x-elmo-scopes": [],
+				"responses": {
+					"200": {
+						"description": "List trackable models",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ModelList"
+								}
+							}
+						}
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
 		"/organizations": {
 			"get": {
 				"summary": "List organizations",
-				"description": "One entry for an organization key — the one it acts inside. Every organization for an instance admin key. No scope required: a key can only ever see the workspace it is already bound to.",
+				"description": "One entry for an organization key — the one it acts inside. Every organization for an instance admin key. No scope required: a key can only ever see the organization it is already bound to.",
 				"operationId": "listOrganizations",
 				"tags": ["Organizations"],
 				"x-elmo-scopes": [],
@@ -3666,39 +3409,6 @@
 				}
 			}
 		},
-		"/platforms": {
-			"get": {
-				"summary": "List trackable platforms",
-				"description": "The answer engines this deployment can track, with the identifiers accepted by every `model` filter. Lets a client build a platform picker without hardcoding names.",
-				"operationId": "listPlatforms",
-				"tags": ["Platforms"],
-				"x-elmo-scopes": [],
-				"responses": {
-					"200": {
-						"description": "List trackable platforms",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/PlatformList"
-								}
-							}
-						}
-					},
-					"401": {
-						"$ref": "#/components/responses/UnauthorizedError"
-					},
-					"403": {
-						"$ref": "#/components/responses/ForbiddenError"
-					},
-					"429": {
-						"$ref": "#/components/responses/RateLimitError"
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalServerError"
-					}
-				}
-			}
-		},
 		"/prompts": {
 			"get": {
 				"summary": "List all prompts",
@@ -3729,12 +3439,12 @@
 					{
 						"name": "limit",
 						"in": "query",
-						"description": "Items per page. Values above the maximum are clamped, not rejected.",
+						"description": "Items per page. Values above the maximum are clamped, not rejected. This list had no ceiling before, so the maximum is set to bound a runaway query rather than to change what an existing caller gets back.",
 						"required": false,
 						"schema": {
 							"type": "integer",
 							"minimum": 1,
-							"maximum": 100,
+							"maximum": 1000,
 							"default": 20
 						}
 					},
@@ -3877,61 +3587,6 @@
 					}
 				},
 				"x-elmo-scopes": ["prompts:write"]
-			}
-		},
-		"/prompts/bulk": {
-			"post": {
-				"summary": "Create prompts in bulk",
-				"description": "Create up to 100 prompts for one brand in a single request. The batch is checked against the organization's prompt and premium limits as one delta and applied all-or-nothing, so a batch that would overrun a limit creates nothing rather than part of itself.",
-				"operationId": "createPromptsBulk",
-				"tags": ["Prompts"],
-				"x-elmo-scopes": ["prompts:write"],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/BulkCreatePromptsRequest"
-							}
-						}
-					}
-				},
-				"responses": {
-					"201": {
-						"description": "Prompts created",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/BulkCreatePromptsResponse"
-								}
-							}
-						}
-					},
-					"400": {
-						"$ref": "#/components/responses/ValidationError"
-					},
-					"401": {
-						"$ref": "#/components/responses/UnauthorizedError"
-					},
-					"402": {
-						"$ref": "#/components/responses/PaymentRequiredError"
-					},
-					"403": {
-						"$ref": "#/components/responses/ForbiddenError"
-					},
-					"404": {
-						"$ref": "#/components/responses/NotFoundError"
-					},
-					"409": {
-						"$ref": "#/components/responses/ConflictError"
-					},
-					"429": {
-						"$ref": "#/components/responses/RateLimitError"
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalServerError"
-					}
-				}
 			}
 		},
 		"/prompts/{promptId}": {
@@ -4866,12 +4521,12 @@
 			"description": "What the calling key is and what it may reach"
 		},
 		{
-			"name": "Platforms",
+			"name": "Models",
 			"description": "The answer engines this deployment can track"
 		},
 		{
 			"name": "Organizations",
-			"description": "Workspaces, their plan limits, and their usage"
+			"description": "Organizations, their plan limits, and their usage"
 		},
 		{
 			"name": "Analytics",

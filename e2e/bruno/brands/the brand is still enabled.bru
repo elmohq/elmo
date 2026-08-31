@@ -1,7 +1,7 @@
 meta {
-  name: a brand names the organization that owns it
+  name: the brand survived the refused disable
   type: http
-  seq: 12
+  seq: 26
 }
 
 get {
@@ -16,5 +16,5 @@ headers {
 
 assert {
   res.status: eq 200
-  res.body.organizationId: eq default
+  res.body.enabled: isTruthy
 }

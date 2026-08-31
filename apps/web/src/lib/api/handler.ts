@@ -43,8 +43,8 @@ export type ApiErrorCode =
 	| "no_active_plan"
 	| "brand_limit"
 	| "prompt_limit"
-	| "platform_not_in_plan"
-	| "platform_picks_exceeded"
+	| "model_not_in_plan"
+	| "model_picks_exceeded"
 	| "premium_not_in_plan"
 	| "premium_pool_exhausted"
 	| "cadence_faster_than_plan"
@@ -52,16 +52,17 @@ export type ApiErrorCode =
 	| "internal_error";
 
 /**
- * The entitlement guards spell their codes with hyphens internally. The wire
- * spells every code with underscores. One mapping, here, rather than two
- * conventions leaking into each other.
+ * The entitlement guards spell their codes with hyphens internally, and call an
+ * answer engine a "platform"; the wire spells every code with underscores and
+ * calls it a model, which is the word the rest of this API uses. One mapping,
+ * here, rather than two conventions leaking into each other.
  */
 const ENTITLEMENT_CODES: Record<string, ApiErrorCode> = {
 	"no-active-plan": "no_active_plan",
 	"brand-limit": "brand_limit",
 	"prompt-limit": "prompt_limit",
-	"platform-not-in-plan": "platform_not_in_plan",
-	"platform-picks-exceeded": "platform_picks_exceeded",
+	"platform-not-in-plan": "model_not_in_plan",
+	"platform-picks-exceeded": "model_picks_exceeded",
 	"premium-not-in-plan": "premium_not_in_plan",
 	"premium-pool-exhausted": "premium_pool_exhausted",
 	"cadence-faster-than-plan": "cadence_faster_than_plan",

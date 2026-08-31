@@ -73,9 +73,10 @@ export const createBrandInputSchema = z.object({
 	competitors: z.array(competitorInputSchema).optional(),
 	prompts: z.array(promptInputSchema).optional(),
 	/**
-	 * Workspace to create the brand in. Honoured only for instance admin keys;
-	 * an organization key always creates inside its own, so the route overrides
-	 * whatever is here.
+	 * Organization to create the brand in. An organization key may only name its
+	 * own; an admin key may name any that already exists. Omitted, an
+	 * organization key creates inside its own and an admin key provisions a new
+	 * organization for the brand — the only way to create one over the API.
 	 */
 	organizationId: z.string().min(1).optional(),
 });

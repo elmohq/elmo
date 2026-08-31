@@ -8,7 +8,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
-import { brands } from "@workspace/lib/db/schema";
+import { brands, organization } from "@workspace/lib/db/schema";
 import { assertCanCreateBrand, withQuotaLock } from "@workspace/lib/entitlements";
 import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
@@ -84,14 +84,10 @@ export const Route = createFileRoute("/api/v1/brands/")({
 					}
 				},
 				handle: async ({ body, auth }) => {
-					// An organization key creates inside its own workspace. Naming that
-					// same workspace is fine — a client that fills the field in from
-					// `GET /me` shouldn't be punished for it — but naming another is a
-					// mistake worth reporting rather than silently ignoring.
-					//
-					// The check compares against the key's own org id and never looks
-					// the named one up, so the refusal cannot reveal whether some other
-					// tenant exists.
+					// An organization key creates inside its own organization. Naming
+					// that same organization is fine — a client that fills the field in
+					// from `GET /me` shouldn't be punished for it — but naming another
+					// is a mistake worth reporting rather than silently ignoring.
 					if (auth.kind === "organization" && body.organizationId && body.organizationId !== auth.organizationId) {
 						throw new ApiError(
 							400,
@@ -100,6 +96,20 @@ export const Route = createFileRoute("/api/v1/brands/")({
 						);
 					}
 					const organizationId = auth.kind === "organization" ? auth.organizationId : (body.organizationId ?? null);
+					// An admin key naming an organization is adding a brand to a tenant
+					// that already exists; provisioning one is what omitting the field
+					// means. Without this the miss surfaces as a foreign-key violation
+					// and a 500.
+					if (auth.kind === "admin" && organizationId) {
+						const [row] = await db
+							.select({ id: organization.id })
+							.from(organization)
+							.where(eq(organization.id, organizationId))
+							.limit(1);
+						if (!row) {
+							throw new ApiError(404, "Not Found", `Organization "${organizationId}" not found.`);
+						}
+					}
 					const internal = apiCreateInputToInternal(body);
 					if (!organizationId) return await createBrand({ ...internal, organizationId });
 					// Check and create under one lock: otherwise two requests on an

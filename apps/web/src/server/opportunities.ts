@@ -16,13 +16,11 @@
  * the brand_opportunities table (append-only) and served as-is until the latest
  * is older than REFRESH_AFTER_DAYS, so a normal page load doesn't trigger an LLM call.
  */
-import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
 import { brandOpportunities, brands, competitors } from "@workspace/lib/db/schema";
 import { runStructuredCompletionPrompt } from "@workspace/lib/onboarding";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import { type CitationCategory, extractDomain } from "@/lib/domain-categories";
 import { categorizeDomain } from "@/lib/domain-categories.server";
 import {
@@ -111,6 +109,8 @@ export interface OpportunitiesResponse {
 	reason: OpportunitiesReason;
 	generatedFor: { brandName: string } | null;
 	lastEvaluatedAt: string | null;
+	/** Model/provider behind the report being served, when one is stored. */
+	model: string | null;
 }
 
 // ============================================================================
@@ -501,19 +501,7 @@ function citationsForPrompts(
 
 /** Regenerate at most this often; stored generations newer than this are served
  * from cache. Surfaced as "Refreshed weekly" on the page — kept a touch under 7 days. */
-export const REFRESH_AFTER_DAYS = 6;
-
-/**
- * Whether the next dashboard view of this brand would generate a new report.
- *
- * Generation happens on a page load and nowhere else, so this is the only
- * honest answer the API can give a caller asking "is a newer one coming?" —
- * there is no queue to report a position in.
- */
-export function opportunitiesAreStale(generatedAt: Date | null): boolean {
-	if (!generatedAt) return true;
-	return Date.now() - generatedAt.getTime() >= REFRESH_AFTER_DAYS * 86_400_000;
-}
+const REFRESH_AFTER_DAYS = 6;
 const MAX_GENERATION_ATTEMPTS = 3;
 
 /** Resolve the LLM output's prompt strings to tracked IDs (for deep-linking) and
@@ -550,71 +538,63 @@ async function generateValidReport(prompt: string): Promise<{ report: RawReport;
 	return null;
 }
 
-// ============================================================================
-// Server function
-// ============================================================================
-
-export const getOpportunitiesFn = createServerFn({ method: "GET" })
-	.validator(z.object({ brandId: z.string(), timezone: z.string().default("UTC") }))
-	.handler(async ({ data }): Promise<OpportunitiesResponse> => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
-
-		// Serve the most recent stored report while it's fresh. Every generation is
-		// kept (append-only); we regenerate only when the latest is stale.
-		const [latest] = await db
-			.select()
-			.from(brandOpportunities)
-			.where(eq(brandOpportunities.brandId, data.brandId))
-			.orderBy(desc(brandOpportunities.createdAt))
-			.limit(1);
-		const lastEvaluatedAt = latest?.createdAt.toISOString() ?? null;
-		const isFresh = latest && !opportunitiesAreStale(new Date(latest.createdAt));
-		if (latest && isFresh) {
-			return {
-				report: withoutRepeats(latest.report as OpportunitiesReport),
-				reason: null,
-				generatedFor: null,
-				lastEvaluatedAt,
-			};
-		}
-
-		const digest = await buildDigest(data.brandId, data.timezone);
-		if (!digest) {
-			if (latest)
-				return {
-					report: withoutRepeats(latest.report as OpportunitiesReport),
-					reason: null,
-					generatedFor: null,
-					lastEvaluatedAt,
-				};
-			return { report: null, reason: "insufficient-data", generatedFor: null, lastEvaluatedAt };
-		}
-
-		const prompt = `${GUIDANCE}\n\n=== BRAND DATA ===\n${digest.text}\n\n=== TASK ===\n${TASK}`;
-		const generated = await generateValidReport(prompt);
-		if (!generated) {
-			// Couldn't get a schema-valid report — serve the last good one if we have it.
-			if (latest)
-				return {
-					report: withoutRepeats(latest.report as OpportunitiesReport),
-					reason: null,
-					generatedFor: null,
-					lastEvaluatedAt,
-				};
-			throw new Error("Failed to generate a valid opportunities report");
-		}
-
-		const report = enrichReport(generated.report, digest);
-		const [savedReport] = await db
-			.insert(brandOpportunities)
-			.values({ brandId: data.brandId, report, model: generated.model })
-			.returning({ createdAt: brandOpportunities.createdAt });
-
-		return {
-			report,
-			reason: null,
-			generatedFor: { brandName: digest.brandName },
-			lastEvaluatedAt: savedReport?.createdAt.toISOString() ?? null,
-		};
+/**
+ * The brand's current report, generating one if the stored one has aged out.
+ *
+ * Edge-agnostic — no session, no Request — so the dashboard and `/api/v1` are
+ * both thin wrappers over it and cannot answer differently. Generation is
+ * inline and synchronous: there is no queue, so a caller either gets the
+ * current report or waits for the one it just caused.
+ *
+ * The freshness gate is what bounds the spend. However many callers ask, at
+ * most one generation happens per brand per REFRESH_AFTER_DAYS.
+ */
+export async function resolveOpportunities(brandId: string, timezone = "UTC"): Promise<OpportunitiesResponse> {
+	// Every generation is kept (append-only); we regenerate only when the latest
+	// is stale.
+	const [latest] = await db
+		.select()
+		.from(brandOpportunities)
+		.where(eq(brandOpportunities.brandId, brandId))
+		.orderBy(desc(brandOpportunities.createdAt))
+		.limit(1);
+	const lastEvaluatedAt = latest?.createdAt.toISOString() ?? null;
+	const servedModel = latest?.model ?? null;
+	const isFresh = latest && Date.now() - new Date(latest.createdAt).getTime() < REFRESH_AFTER_DAYS * 86_400_000;
+	const serveStored = () => ({
+		report: withoutRepeats(latest.report as OpportunitiesReport),
+		reason: null,
+		generatedFor: null,
+		lastEvaluatedAt,
+		model: servedModel,
 	});
+	if (latest && isFresh) return serveStored();
+
+	const digest = await buildDigest(brandId, timezone);
+	if (!digest) {
+		if (latest) return serveStored();
+		return { report: null, reason: "insufficient-data", generatedFor: null, lastEvaluatedAt, model: null };
+	}
+
+	const prompt = `${GUIDANCE}\n\n=== BRAND DATA ===\n${digest.text}\n\n=== TASK ===\n${TASK}`;
+	const generated = await generateValidReport(prompt);
+	if (!generated) {
+		// Couldn't get a schema-valid report — serve the last good one if we have it.
+		if (latest) return serveStored();
+		throw new Error("Failed to generate a valid opportunities report");
+	}
+
+	const report = enrichReport(generated.report, digest);
+	const [savedReport] = await db
+		.insert(brandOpportunities)
+		.values({ brandId, report, model: generated.model })
+		.returning({ createdAt: brandOpportunities.createdAt });
+
+	return {
+		report,
+		reason: null,
+		generatedFor: { brandName: digest.brandName },
+		lastEvaluatedAt: savedReport?.createdAt.toISOString() ?? null,
+		model: generated.model,
+	};
+}

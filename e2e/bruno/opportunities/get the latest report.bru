@@ -18,7 +18,6 @@ assert {
   res.status: eq 200
   res.body.brandId: eq default
   res.body.status: eq ready
-  res.body.stale: eq false
   res.body.generatedAt: isString
   res.body.model: isString
   res.body.summary: isNotEmpty
@@ -27,7 +26,7 @@ assert {
 }
 
 tests {
-  test("the stored report is returned, not regenerated", function() {
+  test("the stored report is served while it is fresh, not regenerated", function() {
     const body = res.getBody();
     expect(body.opportunities[0].category).to.equal("creation");
     expect(body.opportunities[1].category).to.equal("outreach");

@@ -1,0 +1,26 @@
+meta {
+  name: a window cannot be given twice
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/analytics?lookback=1m&startDate={{startDate}}&endDate={{endDate}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  lookback: 1m
+  startDate: {{startDate}}
+  endDate: {{endDate}}
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq validation_error
+}

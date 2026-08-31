@@ -217,7 +217,7 @@ export async function getBrandShareOfVoice(
 	};
 }
 
-export interface PlatformVisibility {
+export interface ModelVisibility {
 	model: string;
 	label: string;
 	runs: number;
@@ -227,11 +227,11 @@ export interface PlatformVisibility {
 }
 
 /** Where the brand is strong and where it is invisible, per answer engine. */
-export async function getBrandPlatformBreakdown(
+export async function getBrandModelBreakdown(
 	brandId: string,
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters = {},
-): Promise<PlatformVisibility[]> {
+): Promise<ModelVisibility[]> {
 	const { promptIds } = await resolveScope(brandId, filters);
 	if (promptIds.length === 0) return [];
 	const { startDate, endDate, timezone } = window;
@@ -497,22 +497,34 @@ export async function getBrandPromptPerformance(
 }
 
 /** Every headline figure the dashboard shows for a brand, in one request. */
-export async function getBrandSummary(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters = {}) {
-	const [visibility, shareOfVoice, platforms, citations] = await Promise.all([
+/**
+ * Every non-paginated figure for a brand over one window, in one answer.
+ *
+ * There is no `include` parameter: the four computations behind this share a
+ * scope resolution and run concurrently, so asking for a subset saves a caller
+ * a fraction of one request and costs everyone a parameter to reason about.
+ * The lists that can grow without bound — cited domains and URLs, sub-queries,
+ * per-prompt results — are paginated endpoints of their own instead.
+ */
+export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters = {}) {
+	const [visibility, shareOfVoice, models, citations] = await Promise.all([
 		getBrandVisibility(brandId, window, filters),
 		getBrandShareOfVoice(brandId, window, filters),
-		getBrandPlatformBreakdown(brandId, window, filters),
+		getBrandModelBreakdown(brandId, window, filters),
 		getBrandCitations(brandId, window, filters),
 	]);
 
 	return {
 		brandName: shareOfVoice.brandName,
-		visibility: visibility.currentVisibility,
-		shareOfVoice: shareOfVoice.brandShare,
-		totalRuns: visibility.totalRuns,
-		totalPrompts: visibility.totalPrompts,
-		totalCitations: visibility.totalCitations,
-		uniqueDomains: citations.totals.uniqueDomains,
-		platforms: platforms.map((platform) => platform.model),
+		visibility: { current: visibility.currentVisibility, series: visibility.series },
+		shareOfVoice: { brand: shareOfVoice.brandShare, entries: shareOfVoice.entries, series: shareOfVoice.series },
+		models,
+		totals: {
+			runs: visibility.totalRuns,
+			prompts: visibility.totalPrompts,
+			citations: visibility.totalCitations,
+			uniqueDomains: citations.totals.uniqueDomains,
+			uniqueUrls: citations.totals.uniqueUrls,
+		},
 	};
 }

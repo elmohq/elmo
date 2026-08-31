@@ -28,9 +28,10 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 					const { searchParams } = new URL(request.url);
 					const brandId = searchParams.get("brandId");
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-					// Clamped rather than rejected, so an existing caller asking for
-					// more keeps working instead of starting to 400.
-					const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20")));
+					// This list had no ceiling at all, so the cap is set where it bounds
+					// a runaway query rather than where it would change what an existing
+					// caller gets back. Clamped rather than rejected for the same reason.
+					const limit = Math.max(1, Math.min(1000, parseInt(searchParams.get("limit") || "20")));
 					const offset = (page - 1) * limit;
 
 					const filters: (SQL | undefined)[] = [await brandScopeCondition(auth, prompts.brandId)];

@@ -16,7 +16,7 @@ import { TEST_API_KEY, TEST_BRAND_ID, brandUrl } from "../../fixtures";
 const AUTH = { Authorization: `Bearer ${TEST_API_KEY}` };
 
 test.describe("dashboard and API parity", () => {
-  test("the visibility hero and GET /visibility report the same number", async ({ page, request }) => {
+  test("the visibility hero and GET /analytics report the same number", async ({ page, request }) => {
     // The overview's default window is the one-month lookback.
     await page.goto(brandUrl());
 
@@ -26,7 +26,7 @@ test.describe("dashboard and API parity", () => {
     await expect(hero).toBeVisible({ timeout: 30_000 });
     const rendered = Number((await hero.textContent())?.match(/(\d+)%/)?.[1]);
 
-    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/visibility?lookback=1m`, { headers: AUTH });
+    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/analytics?lookback=1m`, { headers: AUTH });
     expect(response.status()).toBe(200);
     const body = await response.json();
 
@@ -34,16 +34,16 @@ test.describe("dashboard and API parity", () => {
     // the same shared number once, at their own edge. The page shows 0 where the
     // API says "nothing to plot" — that difference is deliberate and also lives
     // at the edges, not in the computation they share.
-    expect(Math.round((body.currentVisibility ?? 0) * 100)).toBe(rendered);
+    expect(Math.round((body.visibility.current ?? 0) * 100)).toBe(rendered);
   });
 
   test("share of voice agrees between the page and the API", async ({ page, request }) => {
     await page.goto(`${brandUrl()}/share-of-voice`);
     await expect(page.getByRole("heading", { name: /share of voice/i }).first()).toBeVisible({ timeout: 30_000 });
 
-    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/share-of-voice?lookback=1m`, { headers: AUTH });
+    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/analytics?lookback=1m`, { headers: AUTH });
     expect(response.status()).toBe(200);
-    const body = await response.json();
+    const body = (await response.json()).shareOfVoice;
 
     // Exactly one row is the tracked brand, and every share is the exact ratio
     // the leaderboard rounds for display.

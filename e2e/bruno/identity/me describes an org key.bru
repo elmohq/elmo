@@ -19,6 +19,8 @@ assert {
   res.body.keyType: eq organization
   res.body.organizationId: eq default
   res.body.brandIds: isNull
+  res.body.rateLimit.limit: isNumber
+  res.body.rateLimit.window: eq minute
 }
 
 tests {

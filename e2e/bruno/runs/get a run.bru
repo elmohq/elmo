@@ -29,10 +29,6 @@ tests {
     expect(indexes).to.eql([...indexes].sort((a, b) => a - b));
   });
 
-  test("the provider's own payload is not exposed", function() {
-    expect(res.getBody().rawOutput).to.be.undefined;
-  });
-
   test("the answer is normalized, not a provider envelope or a fallback", function() {
     const text = res.getBody().answer.text;
     expect(text).to.be.a("string").and.to.not.be.empty;

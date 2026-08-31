@@ -1,21 +1,17 @@
 meta {
-  name: analytics:read alone is enough
+  name: models need no scope
   type: http
-  seq: 10
+  seq: 3
 }
 
 get {
-  url: {{baseUrl}}/api/v1/brands/{{brandId}}/analytics?lookback=1y
+  url: {{baseUrl}}/api/v1/models
   body: none
   auth: none
 }
 
 headers {
   Authorization: Bearer {{orgAnalyticsOnlyKey}}
-}
-
-params:query {
-  lookback: 1y
 }
 
 assert {

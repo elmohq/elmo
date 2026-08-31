@@ -1,68 +1,43 @@
 /**
- * GET /api/v1/brands/:brandId/opportunities — the latest report.
+ * GET /api/v1/brands/:brandId/opportunities — the brand's Opportunities report.
  *
- * Read-only, and deliberately no POST to regenerate: producing a report spends
- * provider budget with nothing metering it per call, the same reason
- * /tools/analyze stays admin-only. This returns the newest row of an
- * append-only history.
+ * Generation is inline and synchronous, exactly as it is for the dashboard:
+ * both call `resolveOpportunities`, which serves the stored report while it is
+ * fresh and produces a new one when it isn't. So there is nothing to poll for
+ * and no "processing" state to report — a caller either gets the current report
+ * or waits for the one its own request caused. The freshness window is what
+ * bounds the spend: however many callers ask, one generation per brand per
+ * window.
+ *
+ * There is deliberately no POST. Regeneration on demand would spend provider
+ * budget with nothing metering it per call, which is the same reason
+ * /tools/analyze stays admin-only.
  *
  * `status` says why the lists are empty when they are, so a caller never has to
- * tell "no opportunities" from "not enough data yet" from "never generated".
- *
- * `stale` is the answer to "should I check back?". Generation happens on a
- * dashboard page load and nowhere else — there is no queue, so no request is
- * ever in flight to report a position in, and a "processing" state would be a
- * state that cannot occur. What a caller can act on is whether the next view
- * of this brand would produce a newer report, which is what `stale` says.
+ * tell "no opportunities" from "not enough data yet".
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { db } from "@workspace/lib/db/db";
-import { brandOpportunities } from "@workspace/lib/db/schema";
-import { desc, eq } from "drizzle-orm";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
-import { type OpportunitiesReport, opportunitiesAreStale } from "@/server/opportunities";
+import { resolveOpportunities } from "@/server/opportunities";
 
 export const Route = createFileRoute("/api/v1/brands/$brandId/opportunities")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
 				scopes: ["analytics:read"],
-				handle: async ({ params, auth }) => {
+				handle: async ({ params, request, auth }) => {
 					const brand = await requireBrandInScope(auth, params.brandId);
-
-					const [row] = await db
-						.select()
-						.from(brandOpportunities)
-						.where(eq(brandOpportunities.brandId, brand.id))
-						.orderBy(desc(brandOpportunities.createdAt))
-						.limit(1);
-
-					if (!row) {
-						return {
-							brandId: brand.id,
-							status: "not-generated",
-							stale: true,
-							generatedAt: null,
-							model: null,
-							summary: [],
-							opportunities: [],
-							risks: [],
-						};
-					}
-
-					const report = row.report as OpportunitiesReport;
-					const opportunities = report.opportunities ?? [];
+					const timezone = new URL(request.url).searchParams.get("timezone") ?? "UTC";
+					const result = await resolveOpportunities(brand.id, timezone);
+					const opportunities = result.report?.opportunities ?? [];
 
 					return {
 						brandId: brand.id,
-						// A stored report with nothing in it is what "not enough tracked
-						// answers yet" looks like on disk.
 						status: opportunities.length > 0 ? "ready" : "insufficient-data",
-						stale: opportunitiesAreStale(row.createdAt),
-						generatedAt: row.createdAt,
-						model: row.model,
-						summary: report.summary ?? [],
+						generatedAt: result.lastEvaluatedAt,
+						model: result.model,
+						summary: result.report?.summary ?? [],
 						opportunities: opportunities.map((item) => ({
 							category: item.category,
 							title: item.title,
@@ -74,7 +49,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/opportunities")({
 							yourCitations: item.yourCitations ?? [],
 							competitorCitations: item.competitorCitations ?? [],
 						})),
-						risks: report.risks ?? [],
+						risks: result.report?.risks ?? [],
 					};
 				},
 			}),

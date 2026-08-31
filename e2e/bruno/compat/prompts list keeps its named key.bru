@@ -1,0 +1,30 @@
+meta {
+  name: the prompt list still answers under `prompts`
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?brandId={{brandId}}&page=1&limit=20
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.prompts: isArray
+  res.body.pagination.page: eq 1
+}
+
+tests {
+  test("a prompt carries every field the shipped schema required", function() {
+    const prompt = res.getBody().prompts[0];
+    for (const field of ["id", "brandId", "value", "enabled", "tags", "systemTags", "createdAt", "updatedAt"]) {
+      expect(prompt, `Prompt.${field}`).to.have.property(field);
+    }
+  });
+}

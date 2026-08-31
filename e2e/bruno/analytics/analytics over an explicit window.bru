@@ -1,0 +1,26 @@
+meta {
+  name: analytics over an explicit window
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/analytics?startDate={{startDate}}&endDate={{endDate}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  startDate: {{startDate}}
+  endDate: {{endDate}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.range.startDate: eq 2000-01-01
+  res.body.range.endDate: eq 2100-01-01
+}

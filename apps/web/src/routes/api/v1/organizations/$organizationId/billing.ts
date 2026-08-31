@@ -76,8 +76,12 @@ export const Route = createFileRoute("/api/v1/organizations/$organizationId/bill
 							? {
 									maxBrands: entitlements.maxBrands,
 									maxPrompts: entitlements.maxPrompts,
-									platformPicks: entitlements.platformPicks,
-									platformMenu: entitlements.platformMenu,
+									// The entitlement layer says "platform"; the wire says "model",
+									// which is what every other field in this API calls an answer
+									// engine. Renamed here rather than in the plan config, which
+									// prices and labels them for a reader who already knows the word.
+									modelPicks: entitlements.platformPicks,
+									modelMenu: entitlements.platformMenu,
 									standardRunsPerDay: entitlements.standardRunsPerDay,
 									premiumPool: entitlements.premiumPool,
 									premiumRunsPerDay: entitlements.premiumRunsPerDay,
