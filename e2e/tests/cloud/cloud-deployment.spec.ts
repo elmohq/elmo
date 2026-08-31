@@ -9,7 +9,7 @@
  * transactional-email provider — so the specs verify addresses in the database
  * and assert on everything around it.
  */
-import { expect, test } from "@playwright/test";
+import { expect, failedResource, test } from "../../test";
 import { CLOUD_SIGNUP, TEST_BRAND_ID, TEST_USER, brandUrl, organizationUrl } from "../../fixtures";
 import { deleteUsers, userExists, verifyEmail } from "../../session";
 
@@ -105,7 +105,8 @@ test.describe("Cloud self-serve signup", () => {
 });
 
 test.describe("Cloud features", () => {
-  test("report generation is switched off", async ({ page }) => {
+  test("report generation is switched off", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(404, "/reports"));
     await page.goto("/reports");
     await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
   });
