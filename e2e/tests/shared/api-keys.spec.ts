@@ -79,7 +79,11 @@ test.describe("API keys", () => {
     const other = await request.get(`/api/v1/brands/${NIKE_BRAND_ID}`, { headers: auth, failOnStatusCode: false });
     expect(other.status()).toBe(404);
 
-    // Revoking takes effect on the next request, not on the next deploy.
+    // Revoking takes effect on the next request, not on the next deploy. The
+    // button asks for confirmation first, and Playwright dismisses dialogs
+    // unless something is listening — without this the click is a no-op and the
+    // key stays live.
+    page.on("dialog", (dialog) => dialog.accept());
     await page.reload({ waitUntil: "networkidle" });
     const row = page.locator("div.p-3").filter({ hasText: name });
     await expect(async () => {

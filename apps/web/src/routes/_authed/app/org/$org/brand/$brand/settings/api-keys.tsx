@@ -1,5 +1,5 @@
 /**
- * /app/$brand/settings/api-keys — issue and revoke the workspace's API keys.
+ * /app/$org/brand/$brand/settings/api-keys — issue and revoke the workspace's API keys.
  *
  * The role check here is UX only. The security boundary is in the server
  * functions, and behind them the api-key plugin's own membership check — this
