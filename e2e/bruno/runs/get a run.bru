@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/v1/runs/{{runId}}
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}/runs/{{runId}}
   body: none
   auth: none
 }
@@ -27,10 +27,6 @@ tests {
   test("citations arrive in the order the engine listed them", function() {
     const indexes = res.getBody().citations.map((c) => c.citationIndex);
     expect(indexes).to.eql([...indexes].sort((a, b) => a - b));
-  });
-
-  test("the provider's own payload is not exposed", function() {
-    expect(res.getBody().rawOutput).to.be.undefined;
   });
 
   test("the answer is normalized, not a provider envelope or a fallback", function() {

@@ -1,0 +1,26 @@
+meta {
+  name: disable the seeded prompt
+  type: http
+  seq: 22
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/prompts/{{disabledPromptId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+body:json {
+  {
+    "enabled": false
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.enabled: isFalsy
+}

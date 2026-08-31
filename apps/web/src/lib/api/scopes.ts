@@ -5,10 +5,12 @@
  * the key's `permissions` column as `{ resource: [action] }`, so the two
  * conversions below are the only places that spelling is bridged.
  *
- * There is deliberately no `billing:write` and no `reports:*`. Billing is
- * read-only by construction rather than by a check somewhere, and report
- * generation spends provider budget with no organization to attribute it to,
- * so it stays admin-only.
+ * There is deliberately no `billing:write`, no `reports:*`, and no
+ * `prompts:delete`. Billing is read-only by construction rather than by a check
+ * somewhere; report generation spends provider budget with no organization to
+ * attribute it to; and deleting a prompt destroys tracked history that the
+ * dashboard itself will not. All three are admin-only, which is a property of
+ * the endpoint rather than a scope somebody could tick.
  */
 
 export const API_SCOPES = [
@@ -16,7 +18,6 @@ export const API_SCOPES = [
 	"brands:write",
 	"prompts:read",
 	"prompts:write",
-	"prompts:delete",
 	"competitors:read",
 	"competitors:write",
 	"competitors:delete",

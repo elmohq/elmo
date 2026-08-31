@@ -22,14 +22,14 @@ export const MCP_SERVER_INFO = {
 } as const;
 
 const INSTRUCTIONS = [
-	"Elmo tracks how AI answer engines — ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews — mention and cite brands.",
+	"Elmo tracks how AI models — ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews — mention and cite brands.",
 	"",
 	"Start with list_brands to find a brand id; every other brand tool takes one.",
-	"get_visibility answers 'how is this brand doing'; get_citations and get_query_fanout answer 'why', and are where an",
-	"optimization plan comes from — the pages the engines actually read and the searches they actually ran.",
+	"get_analytics answers 'how is this brand doing'; get_citations and get_query_fanout answer 'why', and are where an",
+	"optimization plan comes from — the pages the models actually read and the searches they actually ran.",
 	"",
-	"Analytics tools need a window: pass lookback (1w/1m/3m/6m/1y/all) unless you are comparing fixed periods.",
-	"Shares and rates are fractions of 1, not percentages.",
+	"Analytics tools need a window: start and end as ISO 8601 timestamps, half-open, e.g. 2026-01-01T00:00:00Z.",
+	"Rates and shares are fractions of 1, not percentages.",
 	"",
 	"Only the tools this connection is permitted appear in tools/list. Call whoami to see what it is and what it holds.",
 ].join("\n");
@@ -82,9 +82,10 @@ export function createMcpServer(auth: Principal, tools: readonly McpTool[]): Mcp
 				annotations: {
 					title: tool.title,
 					readOnlyHint: tool.readOnly,
-					destructiveHint: tool.destructive === true,
-					// Nothing here is safe to retry blindly: creating the same prompts
-					// twice creates them twice.
+					// Nothing here deletes anything, so nothing is destructive. Creating
+					// the same prompts twice does create them twice, though, so a write
+					// is not safe to retry blindly.
+					destructiveHint: false,
 					idempotentHint: tool.readOnly,
 					openWorldHint: false,
 				},

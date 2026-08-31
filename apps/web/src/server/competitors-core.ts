@@ -6,7 +6,7 @@
  */
 import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
-import { and, count, desc, eq, ilike, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, type SQL } from "drizzle-orm";
 
 const COMPETITOR_COLUMNS = {
 	id: competitors.id,
@@ -25,8 +25,6 @@ export type CompetitorSummary = {
 export interface ListCompetitorsFilters {
 	/** Restricts to one brand; combine with `scope` for the tenancy rule. */
 	brandId?: string;
-	/** Substring match on the competitor name. */
-	q?: string;
 	limit: number;
 	offset: number;
 	/** The caller's tenancy condition, from `brandScopeCondition`. */
@@ -38,7 +36,6 @@ export async function listCompetitors(
 ): Promise<{ data: CompetitorSummary[]; total: number }> {
 	const conditions: (SQL | undefined)[] = [filters.scope];
 	if (filters.brandId) conditions.push(eq(competitors.brandId, filters.brandId));
-	if (filters.q?.trim()) conditions.push(ilike(competitors.name, `%${filters.q.trim()}%`));
 
 	const where = and(...conditions.filter(Boolean));
 	const [totals] = await db.select({ count: count() }).from(competitors).where(where);

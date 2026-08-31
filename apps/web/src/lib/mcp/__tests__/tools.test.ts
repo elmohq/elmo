@@ -16,10 +16,9 @@ import { API_SCOPES, type ApiScope } from "@/lib/api/scopes";
 import type { AdminAuth, OrganizationAuth, UserAuth } from "@/lib/auth/api-auth";
 import { MCP_TOOLS, TOOL_SCOPES, toolsFor } from "../tools";
 
-const WRITE_TOOLS = ["create_prompts", "update_prompt", "delete_prompt"];
-const DESTRUCTIVE_TOOLS = ["delete_prompt"];
+const WRITE_TOOLS = ["create_prompts", "update_prompt"];
 /** Reachable by any connection, however little it holds. */
-const UNSCOPED_TOOLS = ["whoami", "list_platforms"];
+const UNSCOPED_TOOLS = ["whoami", "list_models"];
 
 const adminKey: AdminAuth = { kind: "admin", scopes: null, organizationId: null };
 
@@ -84,24 +83,34 @@ describe("the tool registry", () => {
 		expect(writers.sort()).toEqual([...WRITE_TOOLS].sort());
 	});
 
-	it("marks as destructive only what cannot be undone", () => {
-		const destructive = MCP_TOOLS.filter((tool) => tool.destructive).map((tool) => tool.name);
-		expect(destructive.sort()).toEqual([...DESTRUCTIVE_TOOLS].sort());
-		// Something irreversible that claimed to be read-only would be offered to
-		// a read-only deployment.
-		for (const tool of MCP_TOOLS.filter((t) => t.destructive)) expect(tool.readOnly).toBe(false);
+	it("offers nothing that deletes and nothing that creates a brand or workspace", () => {
+		// Deleting a prompt takes its runs and citations with it, no dashboard role
+		// can do it, and /api/v1 gates it behind an instance key. Creating a brand
+		// or an organization provisions billable state. None of the three is a
+		// decision to hand to a model, and none has a tool here.
+		const names = MCP_TOOLS.map((tool) => tool.name);
+		for (const forbidden of ["delete_prompt", "delete_brand", "create_brand", "create_organization"]) {
+			expect(names).not.toContain(forbidden);
+		}
+		for (const name of names) expect(name).not.toMatch(/^delete_/);
 	});
 
-	it("reports the scopes its tools actually ask for", () => {
-		expect(TOOL_SCOPES).toContain("prompts:delete");
-		// Nothing here touches billing, and no tool should quietly start to.
-		expect(TOOL_SCOPES).not.toContain("billing:read");
+	it("asks for no scope the API no longer issues", () => {
+		// `prompts:delete` was removed from the API; a tool still asking for it
+		// would be offered to nobody and look like a permissions bug.
+		for (const tool of MCP_TOOLS) {
+			for (const scope of tool.scopes) expect(API_SCOPES).toContain(scope);
+		}
+		expect(TOOL_SCOPES).toContain("billing:read");
 	});
 });
 
 describe("which tools a connection is offered", () => {
-	it("gives an admin key everything", () => {
-		expect(names(adminKey).sort()).toEqual(MCP_TOOLS.map((tool) => tool.name).sort());
+	it("gives an admin key the same tools as a fully scoped organization key, and no more", () => {
+		// An instance key reaches every workspace, but this surface offers it no
+		// capability an organization key lacks. If that ever stops being true, the
+		// product has an operation a model can perform and a person cannot.
+		expect(names(adminKey).sort()).toEqual(names(orgKey([...API_SCOPES])).sort());
 	});
 
 	it("gives an OAuth session everything, because it is the person", () => {
@@ -118,15 +127,15 @@ describe("which tools a connection is offered", () => {
 		expect(names(readOnlyKey)).toContain("list_prompts");
 	});
 
-	it("offers deleting only to a key issued the delete scope", () => {
-		expect(names(orgKey(["prompts:read", "prompts:write"]))).not.toContain("delete_prompt");
-		expect(names(orgKey(["prompts:read", "prompts:write", "prompts:delete"]))).toContain("delete_prompt");
+	it("offers billing only to a key issued the billing scope", () => {
+		expect(names(orgKey(["brands:read"]))).not.toContain("get_billing");
+		expect(names(orgKey(["billing:read"]))).toContain("get_billing");
 	});
 
 	it("does not offer analytics to a key that only reads prompts", () => {
 		const offered = names(orgKey(["prompts:read"]));
 		expect(offered).toContain("list_prompts");
-		expect(offered).not.toContain("get_visibility");
+		expect(offered).not.toContain("get_analytics");
 		expect(offered).not.toContain("get_citations");
 	});
 
@@ -135,12 +144,13 @@ describe("which tools a connection is offered", () => {
 		const offered = names(orgKey([...API_SCOPES]));
 		for (const write of WRITE_TOOLS) expect(offered).not.toContain(write);
 		// The reads survive: a demo instance is still worth connecting to.
-		expect(offered).toContain("get_visibility");
+		expect(offered).toContain("get_analytics");
 		expect(offered).toContain("list_prompts");
 	});
 
 	it("drops every writer in a read-only deployment even for an admin key", () => {
 		setMode("demo");
-		expect(names(adminKey)).not.toContain("delete_prompt");
+		expect(names(adminKey)).not.toContain("create_prompts");
+		expect(names(adminKey)).not.toContain("update_prompt");
 	});
 });

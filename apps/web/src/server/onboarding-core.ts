@@ -16,7 +16,7 @@ import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { claimNewBrandSlug, findUnusedBrandSlug } from "@workspace/lib/db/unique-names";
 import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
+import { count, desc, eq, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
@@ -73,9 +73,10 @@ export const createBrandInputSchema = z.object({
 	competitors: z.array(competitorInputSchema).optional(),
 	prompts: z.array(promptInputSchema).optional(),
 	/**
-	 * Workspace to create the brand in. Honoured only for instance admin keys;
-	 * an organization key always creates inside its own, so the route overrides
-	 * whatever is here.
+	 * Organization to create the brand in. An organization key may only name its
+	 * own; an admin key may name any that already exists. Omitted, an
+	 * organization key creates inside its own and an admin key provisions a new
+	 * organization for the brand — the only way to create one over the API.
 	 */
 	organizationId: z.string().min(1).optional(),
 });
@@ -494,9 +495,6 @@ export async function saveWizardOnboarding(input: WizardOnboardingInput): Promis
 // ============================================================================
 
 export interface ListBrandsFilters {
-	/** Substring match on the brand's name or its id. */
-	q?: string;
-	enabled?: boolean;
 	limit: number;
 	offset: number;
 	/** The caller's tenancy condition, from `brandScopeCondition`. */
@@ -509,12 +507,7 @@ export interface ListBrandsFilters {
  * asking.
  */
 export async function listBrands(filters: ListBrandsFilters): Promise<{ data: BrandResult[]; total: number }> {
-	const conditions: (SQL | undefined)[] = [filters.scope];
-	if (filters.enabled !== undefined) conditions.push(eq(brands.enabled, filters.enabled));
-	const query = filters.q?.trim();
-	if (query) conditions.push(or(ilike(brands.name, `%${query}%`), ilike(brands.id, `%${query}%`)));
-
-	const where = and(...conditions.filter(Boolean));
+	const where = filters.scope;
 	const [totals] = await db.select({ count: count() }).from(brands).where(where);
 	const rows = await db
 		.select()

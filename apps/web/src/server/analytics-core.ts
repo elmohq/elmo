@@ -36,14 +36,38 @@ import {
 	getPromptsFirstEvaluatedAt,
 	getPromptsSummary,
 	getVisibilityDailyAggregate,
+	isCalendarDay,
 } from "@/lib/postgres-read";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
 export interface AnalyticsWindow {
-	startDate: string;
-	endDate: string;
+	/**
+	 * The window's bounds, in one of two spellings. The dashboard passes
+	 * calendar days (`YYYY-MM-DD`, read in `timezone`, `to` covering the whole
+	 * of its last day); `/api/v1` passes ISO 8601 instants and `to` is
+	 * exclusive. `postgres-read` resolves both to the same half-open SQL bound,
+	 * and `windowInstants` below does the same for the arithmetic on this side.
+	 */
+	from: string;
+	to: string;
+	/** The zone the daily buckets are labelled in. */
 	timezone: string;
+}
+
+/**
+ * The window as absolute instants, `[start, end)`, whichever spelling built it.
+ *
+ * Resolved the same way `postgres-read` resolves it for SQL — same predicate,
+ * same day-to-instant rule — because the series domain and the comparison
+ * window below have to describe exactly the rows the queries returned.
+ */
+function windowInstants(window: AnalyticsWindow): { start: Date; end: Date } {
+	const start = new Date(isCalendarDay(window.from) ? `${window.from}T00:00:00Z` : window.from);
+	const end = isCalendarDay(window.to)
+		? new Date(new Date(`${window.to}T00:00:00Z`).getTime() + 86_400_000)
+		: new Date(window.to);
+	return { start, end };
 }
 
 export interface AnalyticsFilters {
@@ -95,10 +119,10 @@ export async function getBrandVisibility(
 		return { currentVisibility: null, totalRuns: 0, totalPrompts: 0, totalCitations: 0, series: [] };
 	}
 
-	const { startDate, endDate, timezone } = window;
+	const { from, to, timezone } = window;
 	const [daily, totalCitations] = await Promise.all([
-		getVisibilityDailyAggregate(brandId, startDate, endDate, timezone, promptIds, brandedPromptIds, filters.model),
-		getCitationsTotalCount(brandId, startDate, endDate, timezone, promptIds, filters.model),
+		getVisibilityDailyAggregate(brandId, from, to, timezone, promptIds, brandedPromptIds, filters.model),
+		getCitationsTotalCount(brandId, from, to, timezone, promptIds, filters.model),
 	]);
 
 	let totalRuns = 0;
@@ -106,7 +130,7 @@ export async function getBrandVisibility(
 		totalRuns += row.actual_branded_runs + row.actual_nonbranded_runs;
 		const plotted = row.lvcf_branded_runs + row.lvcf_nonbranded_runs;
 		const mentioned = row.lvcf_branded_mentioned + row.lvcf_nonbranded_mentioned;
-		return { date: row.date, visibility: plotted === 0 ? null : Math.round((mentioned / plotted) * 100) };
+		return { date: row.date, visibility: plotted === 0 ? null : mentioned / plotted };
 	});
 
 	let currentVisibility: number | null = null;
@@ -150,7 +174,7 @@ export async function getBrandShareOfVoice(
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters = {},
 ): Promise<BrandShareOfVoice> {
-	const { startDate, endDate, timezone } = window;
+	const { from, to, timezone } = window;
 	const [brandRow, scope] = await Promise.all([
 		db.select({ name: brands.name }).from(brands).where(eq(brands.id, brandId)).limit(1),
 		resolveScope(brandId, filters),
@@ -160,11 +184,12 @@ export async function getBrandShareOfVoice(
 		return { brandName, brandShare: null, totalRuns: 0, entries: [], series: [] };
 	}
 
-	const dateRange = generateDateRange(new Date(startDate), new Date(endDate));
+	const bounds = windowInstants(window);
+	const dateRange = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
 	const [totals, perPromptDaily, perPromptCompetitorDaily] = await Promise.all([
-		getBrandMentionTotals(brandId, startDate, endDate, timezone, scope.promptIds, filters.model),
-		getPerPromptDailyMentions(brandId, startDate, endDate, timezone, scope.promptIds, filters.model),
-		getPerPromptDailyCompetitorMentions(brandId, startDate, endDate, timezone, scope.promptIds, filters.model),
+		getBrandMentionTotals(brandId, from, to, timezone, scope.promptIds, filters.model),
+		getPerPromptDailyMentions(brandId, from, to, timezone, scope.promptIds, filters.model),
+		getPerPromptDailyCompetitorMentions(brandId, from, to, timezone, scope.promptIds, filters.model),
 	]);
 
 	const standings = shareOfVoiceLeaderboardLVCF(
@@ -198,10 +223,10 @@ export async function getBrandShareOfVoice(
 		dateRange,
 	);
 
-	// `share` and `brandShare` stay exact 0..1 ratios, deliberately unrounded:
-	// the dashboard rounds once at the point of display so its table, donut, and
-	// trend never disagree by a point, and the API rounds once on the way out.
-	// Rounding here would double-round for one of them.
+	// `share` and `brandShare` stay exact 0..1 ratios. Every rate this module
+	// produces is one: the API publishes ratios directly, and the dashboard's
+	// server functions turn them into percentages at their own edge. Rounding to
+	// a percentage here would double-round for whichever surface rounds again.
 	return {
 		brandName,
 		brandShare,
@@ -217,7 +242,7 @@ export async function getBrandShareOfVoice(
 	};
 }
 
-export interface PlatformVisibility {
+export interface ModelVisibility {
 	model: string;
 	label: string;
 	runs: number;
@@ -227,26 +252,23 @@ export interface PlatformVisibility {
 }
 
 /** Where the brand is strong and where it is invisible, per answer engine. */
-export async function getBrandPlatformBreakdown(
+export async function getBrandModelBreakdown(
 	brandId: string,
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters = {},
-): Promise<PlatformVisibility[]> {
+): Promise<ModelVisibility[]> {
 	const { promptIds } = await resolveScope(brandId, filters);
 	if (promptIds.length === 0) return [];
-	const { startDate, endDate, timezone } = window;
+	const { from, to, timezone } = window;
 
-	const rows = await getBrandMentionRateByModel(brandId, startDate, endDate, timezone, promptIds);
+	const rows = await getBrandMentionRateByModel(brandId, from, to, timezone, promptIds, filters.model);
 
 	// One citation total per model, rather than the URL roll-up, which has no
 	// model column to group by.
 	const citationsByModel = new Map<string, number>();
 	await Promise.all(
 		rows.map(async (row) => {
-			citationsByModel.set(
-				row.model,
-				await getCitationsTotalCount(brandId, startDate, endDate, timezone, promptIds, row.model),
-			);
+			citationsByModel.set(row.model, await getCitationsTotalCount(brandId, from, to, timezone, promptIds, row.model));
 		}),
 	);
 
@@ -258,7 +280,7 @@ export async function getBrandPlatformBreakdown(
 			label: getModelMeta(row.model).label,
 			runs,
 			brandMentions: mentions,
-			visibility: runs === 0 ? null : Math.round((mentions / runs) * 100),
+			visibility: runs === 0 ? null : mentions / runs,
 			citations: citationsByModel.get(row.model) ?? 0,
 		};
 	});
@@ -284,23 +306,23 @@ async function citationContext(brandId: string) {
  */
 export async function getBrandCitations(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters = {}) {
 	const { promptIds } = await resolveScope(brandId, filters);
-	const { startDate, endDate, timezone } = window;
+	const { from, to, timezone } = window;
 	if (promptIds.length === 0) {
 		return { urls: [], domains: [], totals: { citations: 0, uniqueDomains: 0, uniqueUrls: 0 } };
 	}
 
-	const spanDays = Math.max(
-		1,
-		Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86_400_000) + 1,
-	);
-	const previousEnd = new Date(new Date(startDate).getTime() - 86_400_000);
-	const previousStart = new Date(previousEnd.getTime() - (spanDays - 1) * 86_400_000);
-	const iso = (date: Date) => date.toISOString().slice(0, 10);
+	// The comparison window is the same length, ending where this one begins.
+	// Expressed as instants so it lands exactly there whichever spelling the
+	// caller used, rather than rounding outward to whole days.
+	const { start, end } = windowInstants(window);
+	const previousStart = new Date(start.getTime() - (end.getTime() - start.getTime())).toISOString();
+	const previousEnd = start.toISOString();
 
-	const [{ brandDomains, competitorDomains }, current, previous] = await Promise.all([
+	const [{ brandDomains, competitorDomains }, current, previous, promptsByDomain] = await Promise.all([
 		citationContext(brandId),
-		getCitationUrlStats(brandId, startDate, endDate, timezone, promptIds, filters.model),
-		getCitationUrlStats(brandId, iso(previousStart), iso(previousEnd), timezone, promptIds, filters.model),
+		getCitationUrlStats(brandId, from, to, timezone, promptIds, filters.model),
+		getCitationUrlStats(brandId, previousStart, previousEnd, timezone, promptIds, filters.model),
+		getCitationDomainPromptCounts(brandId, from, to, timezone, promptIds, filters.model),
 	]);
 
 	const classify = (domain: string, url: string, title?: string | null) =>
@@ -312,14 +334,14 @@ export async function getBrandCitations(brandId: string, window: AnalyticsWindow
 		previousDomainCounts.set(stat.domain, (previousDomainCounts.get(stat.domain) ?? 0) + Number(stat.count));
 	}
 
+	// Per URL the largest count is the right one — the rows folded into a single
+	// normalized URL describe the same page. A domain is different: its URLs can
+	// be cited by disjoint prompts, so the distinct count has to come from the
+	// database rather than from the largest of its parts.
 	const promptCounts = new Map<string, number>();
 	for (const stat of current) {
 		const url = normalizeUrl(stat.url);
 		promptCounts.set(url, Math.max(promptCounts.get(url) ?? 0, Number(stat.prompt_count)));
-	}
-	const promptsByDomain = new Map<string, number>();
-	for (const stat of current) {
-		promptsByDomain.set(stat.domain, Math.max(promptsByDomain.get(stat.domain) ?? 0, Number(stat.prompt_count)));
 	}
 
 	const rolled = rollUpCitationUrls(current, classify);
@@ -342,10 +364,10 @@ export async function getBrandCitations(brandId: string, window: AnalyticsWindow
 			domain: row.domain,
 			category: row.category,
 			count: row.count,
-			share: totalCitations === 0 ? 0 : Math.round((row.count / totalCitations) * 1000) / 10,
+			share: totalCitations === 0 ? 0 : row.count / totalCitations,
 			promptCount: promptsByDomain.get(row.domain) ?? 0,
 			previousCount,
-			changePercent: previousCount > 0 ? Math.round(((row.count - previousCount) / previousCount) * 100) : null,
+			changeFactor: previousCount > 0 ? row.count / previousCount : null,
 		};
 	});
 
@@ -374,7 +396,7 @@ export async function getBrandQueryFanout(
 		uncapped?: boolean;
 	} = {},
 ): Promise<FanoutAnalysis & { brandName: string }> {
-	const { startDate, endDate, timezone } = window;
+	const { from, to, timezone } = window;
 	const [brandRow, scope] = await Promise.all([
 		db.select({ name: brands.name }).from(brands).where(eq(brands.id, brandId)).limit(1),
 		resolveScope(brandId, filters),
@@ -387,9 +409,9 @@ export async function getBrandQueryFanout(
 	if (promptIds.length === 0) return { brandName, ...emptyFanout() };
 
 	const [breakdown, modelTotals, promptTotals] = await Promise.all([
-		getFanoutBreakdown(brandId, startDate, endDate, timezone, promptIds, filters.model),
-		getFanoutModelTotals(brandId, startDate, endDate, timezone, promptIds, filters.model),
-		getFanoutPromptTotals(brandId, startDate, endDate, timezone, promptIds, filters.model),
+		getFanoutBreakdown(brandId, from, to, timezone, promptIds, filters.model),
+		getFanoutModelTotals(brandId, from, to, timezone, promptIds, filters.model),
+		getFanoutPromptTotals(brandId, from, to, timezone, promptIds, filters.model),
 	]);
 
 	const promptValues = new Map(
@@ -458,9 +480,9 @@ export interface PromptPerformance {
  * Per-prompt results over the window — the analytics counterpart to listing
  * prompts.
  *
- * Enabled prompts only: a disabled prompt isn't sampled, so it has no results
- * to report. There is deliberately no `enabled` field rather than one that
- * could only ever say `true`.
+ * A prompt the brand stopped tracking isn't sampled, so it has no results to
+ * report and doesn't appear. Every row here is one that ran, which is why there
+ * is no flag on it that could only ever say the same thing.
  */
 export async function getBrandPromptPerformance(
 	brandId: string,
@@ -469,10 +491,10 @@ export async function getBrandPromptPerformance(
 ): Promise<PromptPerformance[]> {
 	const scope = await resolveScope(brandId, filters);
 	if (scope.promptIds.length === 0) return [];
-	const { startDate, endDate, timezone } = window;
+	const { from, to, timezone } = window;
 
 	const [summary, firstEvaluated] = await Promise.all([
-		getPromptsSummary(brandId, startDate, endDate, timezone, undefined, filters.model, scope.promptIds),
+		getPromptsSummary(brandId, from, to, timezone, undefined, filters.model, scope.promptIds),
 		getPromptsFirstEvaluatedAt(brandId, scope.promptIds),
 	]);
 
@@ -487,31 +509,43 @@ export async function getBrandPromptPerformance(
 			value: prompt.value,
 			tags: prompt.tags ?? [],
 			totalRuns: Number(stats?.total_runs ?? 0),
-			brandMentionRate: Math.round(Number(stats?.brand_mention_rate ?? 0)),
-			competitorMentionRate: Math.round(Number(stats?.competitor_mention_rate ?? 0)),
+			brandMentionRate: Number(stats?.brand_mention_rate ?? 0),
+			competitorMentionRate: Number(stats?.competitor_mention_rate ?? 0),
 			lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date).toISOString() : null,
 			firstEvaluatedAt: first ? new Date(first).toISOString() : null,
 		};
 	});
 }
 
-/** Every headline figure the dashboard shows for a brand, in one request. */
-export async function getBrandSummary(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters = {}) {
-	const [visibility, shareOfVoice, platforms, citations] = await Promise.all([
+/**
+ * Every headline figure the dashboard shows for a brand, over one window, in
+ * one answer.
+ *
+ * There is no `include` parameter: the four computations behind this share a
+ * scope resolution and run concurrently, so asking for a subset saves a caller
+ * a fraction of one request and costs everyone a parameter to reason about.
+ * The long lists — cited domains and URLs, sub-queries, per-prompt results —
+ * are endpoints of their own instead.
+ */
+export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters = {}) {
+	const [visibility, shareOfVoice, models, citations] = await Promise.all([
 		getBrandVisibility(brandId, window, filters),
 		getBrandShareOfVoice(brandId, window, filters),
-		getBrandPlatformBreakdown(brandId, window, filters),
+		getBrandModelBreakdown(brandId, window, filters),
 		getBrandCitations(brandId, window, filters),
 	]);
 
 	return {
 		brandName: shareOfVoice.brandName,
-		visibility: visibility.currentVisibility,
-		shareOfVoice: shareOfVoice.brandShare,
-		totalRuns: visibility.totalRuns,
-		totalPrompts: visibility.totalPrompts,
-		totalCitations: visibility.totalCitations,
-		uniqueDomains: citations.totals.uniqueDomains,
-		platforms: platforms.map((platform) => platform.model),
+		visibility: { current: visibility.currentVisibility, series: visibility.series },
+		shareOfVoice: { brand: shareOfVoice.brandShare, entries: shareOfVoice.entries, series: shareOfVoice.series },
+		models,
+		totals: {
+			runs: visibility.totalRuns,
+			prompts: visibility.totalPrompts,
+			citations: visibility.totalCitations,
+			uniqueDomains: citations.totals.uniqueDomains,
+			uniqueUrls: citations.totals.uniqueUrls,
+		},
 	};
 }

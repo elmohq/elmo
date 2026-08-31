@@ -43,25 +43,25 @@ export type ApiErrorCode =
 	| "no_active_plan"
 	| "brand_limit"
 	| "prompt_limit"
-	| "platform_not_in_plan"
-	| "platform_picks_exceeded"
+	| "model_not_in_plan"
+	| "model_picks_exceeded"
 	| "premium_not_in_plan"
 	| "premium_pool_exhausted"
 	| "cadence_faster_than_plan"
-	| "system_tag_immutable"
 	| "internal_error";
 
 /**
- * The entitlement guards spell their codes with hyphens internally. The wire
- * spells every code with underscores. One mapping, here, rather than two
- * conventions leaking into each other.
+ * The entitlement guards spell their codes with hyphens internally, and call an
+ * answer engine a "platform"; the wire spells every code with underscores and
+ * calls it a model, which is the word the rest of this API uses. One mapping,
+ * here, rather than two conventions leaking into each other.
  */
 const ENTITLEMENT_CODES: Record<string, ApiErrorCode> = {
 	"no-active-plan": "no_active_plan",
 	"brand-limit": "brand_limit",
 	"prompt-limit": "prompt_limit",
-	"platform-not-in-plan": "platform_not_in_plan",
-	"platform-picks-exceeded": "platform_picks_exceeded",
+	"platform-not-in-plan": "model_not_in_plan",
+	"platform-picks-exceeded": "model_picks_exceeded",
 	"premium-not-in-plan": "premium_not_in_plan",
 	"premium-pool-exhausted": "premium_pool_exhausted",
 	"cadence-faster-than-plan": "cadence_faster_than_plan",
@@ -166,6 +166,13 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 	scopes?: ApiScope[];
 	/** Reachable only with an instance admin key; no scope grants it. */
 	adminOnly?: boolean;
+	/**
+	 * Appended to the `403` an admin-only endpoint answers a tenant key with.
+	 * Where a caller has a supported way to get what they wanted, the refusal is
+	 * the one place they are certainly reading — an integration that discovers
+	 * the alternative there needs no second round trip.
+	 */
+	adminOnlyHint?: string;
 	/** Translate domain errors thrown by `handle` into `ApiError` before the generic 500. */
 	mapError?: (err: unknown) => ApiError | undefined;
 	handle: (ctx: ApiHandlerContext<P, B>) => Promise<Response | object>;
@@ -257,12 +264,19 @@ function authFailureResponse(failure: ApiAuthFailure): Response {
 function refuseRequest(
 	auth: ApiAuth,
 	request: Request,
-	opts: { scopes?: ApiScope[]; adminOnly?: boolean },
+	opts: { scopes?: ApiScope[]; adminOnly?: boolean; adminOnlyHint?: string },
 ): Response | null {
 	const headers = rateLimitHeaders(auth);
 
 	if (opts.adminOnly && auth.kind !== "admin") {
-		return errorResponse(403, "Forbidden", "This endpoint requires an instance admin key", "forbidden", headers);
+		const hint = opts.adminOnlyHint ? ` ${opts.adminOnlyHint}` : "";
+		return errorResponse(
+			403,
+			"Forbidden",
+			`This endpoint requires an instance admin key.${hint}`,
+			"forbidden",
+			headers,
+		);
 	}
 
 	// Asked of the principal rather than of its kind: an admin key holds every

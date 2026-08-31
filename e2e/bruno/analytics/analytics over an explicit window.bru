@@ -1,0 +1,26 @@
+meta {
+  name: the window comes back as the instants it resolved to
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/analytics?start={{windowStart}}&end={{windowEnd}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  start: {{windowStart}}
+  end: {{windowEnd}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.range.start: eq 2000-01-01T00:00:00.000Z
+  res.body.range.end: eq 2100-01-01T00:00:00.000Z
+}

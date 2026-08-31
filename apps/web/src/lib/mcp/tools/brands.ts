@@ -1,41 +1,39 @@
-/** Brands and the competitors measured against them. */
+/**
+ * Brands, the competitors measured against them, and what the workspace is
+ * paying for.
+ *
+ * None of these paginate. A workspace has a handful of brands and a handful of
+ * competitors per brand, so a page argument would be a knob every caller has to
+ * think about to get back what one call already returns.
+ */
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { z } from "zod";
-import { pageEnvelope } from "@/lib/api/analytics-range";
-import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
+import { brandScopeCondition, requireBrandInScope, requireOrganizationInScope } from "@/lib/api/scope";
+import { organizationBilling } from "@/server/billing-core";
 import { listCompetitors } from "@/server/competitors-core";
 import { buildBrandResult, listBrands } from "@/server/onboarding-core";
-import { brandIdArg, defineTool, pagingArgs, pagingFrom } from "./define";
+import { brandIdArg, defineTool } from "./define";
+
+/** Bounded by what a workspace can hold, not by what a caller asks for. */
+const ALL_ROWS = { limit: 1000, offset: 0 };
 
 export const listBrandsTool = defineTool({
 	name: "list_brands",
 	title: "List brands",
-	description:
-		"The brands this connection tracks. Start here: every other brand-scoped tool takes an id from this list.",
+	description: "Every brand this connection tracks. Start here: the other brand tools take an id from this list.",
 	scopes: ["brands:read"],
 	readOnly: true,
-	input: {
-		q: z.string().optional().describe("Substring match on brand name or id."),
-		enabled: z.boolean().optional().describe("Restrict to brands that are or aren't being tracked."),
-		...pagingArgs,
-	},
-	run: async ({ auth }, args) => {
-		const { limit, offset, page } = pagingFrom(args);
-		const { data, total } = await listBrands({
-			scope: await brandScopeCondition(auth, brands.id),
-			q: args.q,
-			enabled: args.enabled,
-			limit,
-			offset,
-		});
-		return { data, pagination: pageEnvelope(page, limit, total) };
+	input: {},
+	run: async ({ auth }) => {
+		const { data } = await listBrands({ scope: await brandScopeCondition(auth, brands.id), ...ALL_ROWS });
+		return { data };
 	},
 });
 
 export const getBrand = defineTool({
 	name: "get_brand",
 	title: "Get one brand",
-	description: "One brand's configuration: its domains, aliases, tracked platforms, and cadence.",
+	description: "One brand's configuration: its domains, aliases, tracked models, and cadence.",
 	scopes: ["brands:read"],
 	readOnly: true,
 	input: { brandId: brandIdArg },
@@ -49,21 +47,30 @@ export const listCompetitorsTool = defineTool({
 		"The competitors tracked against a brand, with the domains and aliases a mention is matched on. These are what share of voice is measured against.",
 	scopes: ["competitors:read"],
 	readOnly: true,
-	input: {
-		brandId: brandIdArg,
-		q: z.string().optional().describe("Substring match on the competitor name."),
-		...pagingArgs,
-	},
+	input: { brandId: brandIdArg },
 	run: async ({ auth }, args) => {
 		const brand = await requireBrandInScope(auth, args.brandId);
-		const { limit, offset, page } = pagingFrom(args);
-		const { data, total } = await listCompetitors({
+		const { data } = await listCompetitors({
 			scope: await brandScopeCondition(auth, competitors.brandId),
 			brandId: brand.id,
-			q: args.q,
-			limit,
-			offset,
+			...ALL_ROWS,
 		});
-		return { brandId: brand.id, data, pagination: pageEnvelope(page, limit, total) };
+		return { brandId: brand.id, data };
+	},
+});
+
+export const getBilling = defineTool({
+	name: "get_billing",
+	title: "Get plan and usage",
+	description:
+		"A workspace's plan, its limits, and how much of each is used. Read-only — there is no tool that changes a subscription.",
+	scopes: ["billing:read"],
+	readOnly: true,
+	input: {
+		organizationId: z.string().describe("Organization id, from the organizationIds whoami reports."),
+	},
+	run: async ({ auth }, args) => {
+		requireOrganizationInScope(auth, args.organizationId);
+		return organizationBilling(args.organizationId);
 	},
 });

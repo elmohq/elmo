@@ -1,11 +1,11 @@
 meta {
   name: the searches engines ran while answering
   type: http
-  seq: 18
+  seq: 11
 }
 
 get {
-  url: {{baseUrl}}/api/v1/brands/{{brandId}}/query-fanout?lookback=1y
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/query-fanout?start={{windowStart}}&end={{windowEnd}}
   body: none
   auth: none
 }
@@ -15,7 +15,8 @@ headers {
 }
 
 params:query {
-  lookback: 1y
+  start: {{windowStart}}
+  end: {{windowEnd}}
 }
 
 assert {
@@ -30,7 +31,7 @@ tests {
     const body = res.getBody();
     expect(body.fanoutRuns).to.be.at.most(body.totalRuns);
     expect(body.coverageRate).to.be.at.least(0);
-    expect(body.coverageRate).to.be.at.most(100);
+    expect(body.coverageRate).to.be.at.most(1);
   });
 
   test("a seeded web query is reported", function() {

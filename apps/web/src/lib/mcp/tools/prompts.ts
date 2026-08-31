@@ -1,21 +1,25 @@
 /**
- * Prompts: the questions asked of the answer engines, and the tags they carry.
+ * Prompts: the questions asked of the models, and the tags they carry.
  *
  * The write tools take their argument shapes from the schemas `prompts-core`
  * exports rather than restating them, so a value MCP accepts is a value
  * `/api/v1` accepts. Retyping them is how the two surfaces come to disagree
  * about what a prompt is.
+ *
+ * There is no delete tool. Deleting takes a prompt's runs and citations with
+ * it, no dashboard role can do it, and `/api/v1` gates it behind an instance
+ * key — so offering it here would be the one place a model could do something
+ * no person in the product can. Disabling a prompt is the reversible way to
+ * stop it costing runs, and it keeps the history.
  */
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
-import { pageEnvelope } from "@/lib/api/analytics-range";
 import { ApiError } from "@/lib/api/handler";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
 import type { Principal } from "@/lib/auth/api-auth";
 import {
 	bulkPromptInputSchema,
 	createPrompts,
-	deletePrompt,
 	listPrompts,
 	MAX_PROMPT_BATCH,
 	promptUpdateFields,
@@ -23,7 +27,7 @@ import {
 	updatePrompt,
 } from "@/server/prompts-core";
 import { listBrandTags } from "@/server/tags-core";
-import { brandIdArg, defineTool, pagingArgs, pagingFrom, promptIdArg } from "./define";
+import { brandIdArg, defineTool, promptIdArg } from "./define";
 
 /**
  * The brand a prompt belongs to, if the caller reaches it. A prompt in another
@@ -44,7 +48,7 @@ export const listPromptsTool = defineTool({
 	name: "list_prompts",
 	title: "List prompts",
 	description:
-		"The prompts asked of the answer engines on a brand's behalf. `enabled` is what decides whether a prompt is still being sampled.",
+		"The prompts asked of the models on a brand's behalf. `enabled` is what decides whether a prompt is still being sampled. This is the one list that can get long, so it pages.",
 	scopes: ["prompts:read"],
 	readOnly: true,
 	input: {
@@ -52,11 +56,13 @@ export const listPromptsTool = defineTool({
 		enabled: z.boolean().optional().describe("Restrict to prompts that are or aren't being sampled."),
 		tags: z.string().optional().describe("Comma-separated tags; a prompt carrying any of them matches."),
 		q: z.string().optional().describe("Substring match on the prompt text."),
-		...pagingArgs,
+		page: z.number().int().min(1).optional().describe("1-based page number. Defaults to 1."),
+		limit: z.number().int().min(1).max(1000).optional().describe("Prompts per page. Defaults to 100."),
 	},
 	run: async ({ auth }, args) => {
 		if (args.brandId) await requireBrandInScope(auth, args.brandId);
-		const { limit, offset, page } = pagingFrom(args);
+		const page = args.page ?? 1;
+		const limit = args.limit ?? 100;
 		const { data, total } = await listPrompts({
 			scope: await brandScopeCondition(auth, prompts.brandId),
 			brandId: args.brandId,
@@ -64,9 +70,9 @@ export const listPromptsTool = defineTool({
 			tags: (args.tags ?? "").split(","),
 			q: args.q,
 			limit,
-			offset,
+			offset: (page - 1) * limit,
 		});
-		return { data, pagination: pageEnvelope(page, limit, total) };
+		return { data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
 	},
 });
 
@@ -90,10 +96,7 @@ export const createPromptsTool = defineTool({
 	description: `Add up to ${MAX_PROMPT_BATCH} prompts to a brand in one call. All-or-nothing: a batch that would exceed the organization's plan creates none of it.`,
 	scopes: ["prompts:write"],
 	readOnly: false,
-	input: {
-		brandId: brandIdArg,
-		prompts: bulkPromptInputSchema.shape.prompts,
-	},
+	input: { brandId: brandIdArg, prompts: bulkPromptInputSchema.shape.prompts },
 	run: async ({ auth }, args) => {
 		const brand = await requireBrandInScope(auth, args.brandId, "body");
 		return { data: await createPrompts(brand, { prompts: args.prompts }) };
@@ -104,11 +107,11 @@ export const updatePromptTool = defineTool({
 	name: "update_prompt",
 	title: "Update a prompt",
 	description:
-		"Change a prompt's text, tags, or whether it is being sampled. Disabling is the reversible way to stop tracking one — history is kept.",
+		"Change a prompt's text, tags, or whether it is being sampled. Setting `enabled: false` is how you stop a prompt costing runs — it keeps every answer already recorded.",
 	scopes: ["prompts:write"],
 	readOnly: false,
 	// `premiumModels` is deliberately absent: pairing a prompt with a premium
-	// engine spends a metered pool, which is a billing decision rather than
+	// model spends a metered pool, which is a billing decision rather than
 	// something an agent should make on someone's behalf.
 	input: {
 		promptId: promptIdArg,
@@ -120,21 +123,5 @@ export const updatePromptTool = defineTool({
 		const brand = await brandForPrompt(auth, args.promptId);
 		const { promptId, ...changes } = args;
 		return updatePrompt(brand, promptId, changes);
-	},
-});
-
-export const deletePromptTool = defineTool({
-	name: "delete_prompt",
-	title: "Delete a prompt",
-	description:
-		"Permanently remove a prompt and every answer and citation recorded for it. This cannot be undone — to stop tracking a prompt while keeping its history, call update_prompt with enabled: false instead.",
-	scopes: ["prompts:delete"],
-	readOnly: false,
-	destructive: true,
-	input: { promptId: promptIdArg },
-	run: async ({ auth }, args) => {
-		await brandForPrompt(auth, args.promptId);
-		const { prompt, deletedRunsCount } = await deletePrompt(args.promptId);
-		return { ...prompt, deletedRunsCount };
 	},
 });

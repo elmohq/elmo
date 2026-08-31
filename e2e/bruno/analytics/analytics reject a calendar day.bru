@@ -1,0 +1,34 @@
+meta {
+  name: a bare date is not a window here
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/analytics?start=2000-01-01&end=2100-01-01
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  start: 2000-01-01
+  end: 2100-01-01
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq validation_error
+}
+
+tests {
+  test("the refusal says which spelling this endpoint takes", function() {
+    // `YYYY-MM-DD` means a local calendar day on /prompts/{id}/snapshot. Reading
+    // it as midnight UTC here would put one string in two endpoints meaning two
+    // different moments, so it is refused rather than guessed at.
+    expect(res.getBody().message).to.contain("ISO 8601 timestamp");
+  });
+}

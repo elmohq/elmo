@@ -8,7 +8,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/v1/brands/{{cappedBrandId}}/summary?lookback=1y
+  url: {{baseUrl}}/api/v1/brands/{{cappedBrandId}}/analytics?start={{windowStart}}&end={{windowEnd}}
   body: none
   auth: none
 }
@@ -18,7 +18,8 @@ headers {
 }
 
 params:query {
-  lookback: 1y
+  start: {{windowStart}}
+  end: {{windowEnd}}
 }
 
 assert {

@@ -33,6 +33,9 @@ vi.mock("@/lib/api/scope", () => ({
 	organizationScopeCondition: vi.fn(() => {
 		throw REFUSED;
 	}),
+	requireOrganizationInScope: vi.fn(() => {
+		throw REFUSED;
+	}),
 }));
 
 /**
@@ -68,6 +71,7 @@ const SCOPE_CHECKS = [
 	scope.isBrandInScope,
 	scope.brandScopeCondition,
 	scope.organizationScopeCondition,
+	scope.requireOrganizationInScope,
 ] as unknown as Array<{ mock: { calls: unknown[] } }>;
 
 /**
@@ -75,28 +79,28 @@ const SCOPE_CHECKS = [
  * so a new tool has to be added here, which is the point: the alternative
  * fabricates arguments and silently skips whatever it fabricates wrong.
  */
+const WINDOW = { start: "2026-01-01T00:00:00Z", end: "2026-02-01T00:00:00Z" };
+
 const CALLS: Record<string, Record<string, unknown>> = {
 	list_brands: {},
 	get_brand: { brandId: "brand_1" },
 	list_competitors: { brandId: "brand_1" },
+	get_billing: { organizationId: "org_1" },
 	list_prompts: { brandId: "brand_1" },
 	list_prompt_tags: { brandId: "brand_1" },
 	create_prompts: { brandId: "brand_1", prompts: [{ value: "who makes the best widgets?" }] },
 	update_prompt: { promptId: "prompt_1", enabled: false },
-	delete_prompt: { promptId: "prompt_1" },
-	get_visibility: { brandId: "brand_1", lookback: "1m" },
-	get_share_of_voice: { brandId: "brand_1", lookback: "1m" },
-	get_platform_breakdown: { brandId: "brand_1", lookback: "1m" },
-	get_prompt_performance: { brandId: "brand_1", lookback: "1m" },
-	get_citations: { brandId: "brand_1", lookback: "1m" },
-	get_query_fanout: { brandId: "brand_1", lookback: "1m" },
+	get_analytics: { brandId: "brand_1", ...WINDOW },
+	get_prompt_performance: { brandId: "brand_1", ...WINDOW },
+	get_citations: { brandId: "brand_1", ...WINDOW },
+	get_query_fanout: { brandId: "brand_1", ...WINDOW },
 	get_opportunities: { brandId: "brand_1" },
-	list_runs: { promptId: "prompt_1", lookback: "1m" },
-	get_run: { runId: "run_1" },
+	list_runs: { promptId: "prompt_1", ...WINDOW },
+	get_run: { promptId: "prompt_1", runId: "run_1" },
 };
 
 /** Tools that read no tenant data at all, and so have nothing to scope. */
-const NO_TENANT_DATA = ["whoami", "list_platforms"];
+const NO_TENANT_DATA = ["whoami", "list_models"];
 
 beforeEach(() => {
 	vi.stubEnv("DEPLOYMENT_MODE", "local");

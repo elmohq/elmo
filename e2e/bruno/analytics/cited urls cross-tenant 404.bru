@@ -1,11 +1,11 @@
 meta {
   name: another tenant's cited URLs are not found
   type: http
-  seq: 17
+  seq: 10
 }
 
 get {
-  url: {{baseUrl}}/api/v1/brands/{{nikeBrandId}}/citations/urls?lookback=1y
+  url: {{baseUrl}}/api/v1/brands/{{nikeBrandId}}/citations/urls?start={{windowStart}}&end={{windowEnd}}
   body: none
   auth: none
 }
@@ -15,7 +15,8 @@ headers {
 }
 
 params:query {
-  lookback: 1y
+  start: {{windowStart}}
+  end: {{windowEnd}}
 }
 
 assert {

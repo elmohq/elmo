@@ -1,99 +1,72 @@
 /**
- * The date window every analytics endpoint accepts.
+ * The time window every `/api/v1` analytics endpoint takes.
  *
- * Two spellings, one meaning: explicit `startDate` + `endDate`, or the
- * `lookback` shorthand the dashboard is built on. Exactly one form per request
- * — supplying both is a `400` rather than a silent precedence rule nobody can
- * remember. Both resolve to the same concrete bounds before anything queries.
+ * `start` and `end` are ISO 8601 timestamps and the window is half-open,
+ * `[start, end)`. A timestamp names an instant and carries its own offset, so
+ * there is nothing else for a caller to send and nothing to agree on out of
+ * band — which is why there is no `timezone` parameter beside it.
  *
- * The rules live in `resolve*` functions that take plain values, so the MCP
- * tools get the same window and the same refusals as the REST routes without
- * either side restating them. Reading those values off a `URL` is the only part
- * that belongs to HTTP.
+ * `/prompts/{promptId}/snapshot` keeps the `startDate`/`endDate` calendar days
+ * it shipped with. That is a published contract, so it stays exactly as it is;
+ * these endpoints are new and take the spelling that doesn't need a second
+ * parameter to mean anything.
  */
-import type { LookbackPeriod } from "@/lib/chart-utils";
-import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import type { AnalyticsWindow } from "@/server/analytics-core";
 import { ApiError } from "./handler";
 
-export interface AnalyticsWindow {
-	startDate: string;
-	endDate: string;
-	timezone: string;
-}
+/**
+ * Days are labelled in UTC and there is no parameter to change that. A bucket
+ * label is the one part of the answer a caller can recompute from the runs it
+ * already has, so it isn't worth a value everyone has to keep sending.
+ */
+const BUCKET_ZONE = "UTC";
 
-const LOOKBACKS: LookbackPeriod[] = ["1w", "1m", "3m", "6m", "1y", "all"];
-
-function isIsoDate(value: string): boolean {
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-	const date = new Date(`${value}T00:00:00Z`);
-	// Rejects rollovers like 2026-13-01, which Date happily accepts.
-	return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+/** What a caller sees of the window: the two instants it asked with, in UTC. */
+export function publicRange(window: AnalyticsWindow): { start: string; end: string } {
+	return { start: window.from, end: window.to };
 }
 
 function invalid(message: string): never {
 	throw new ApiError(400, "Validation Error", message, "validation_error");
 }
 
-/** The window arguments, however the caller spelled them. */
-export interface AnalyticsWindowInput {
-	startDate?: string | null;
-	endDate?: string | null;
-	lookback?: string | null;
-	timezone?: string | null;
+/**
+ * A bare `YYYY-MM-DD` is rejected rather than read as midnight UTC. It is the
+ * legacy endpoint's spelling, it means a *local* day there, and accepting it
+ * here would put the same string in two endpoints meaning two things.
+ */
+function parseInstant(name: string, raw: string): string {
+	if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+		invalid(`${name} must be an ISO 8601 timestamp, e.g. 2026-01-01T00:00:00Z — a bare date is not accepted`);
+	}
+	const parsed = new Date(raw);
+	if (Number.isNaN(parsed.getTime())) {
+		invalid(`${name} must be an ISO 8601 timestamp, e.g. 2026-01-01T00:00:00Z`);
+	}
+	return parsed.toISOString();
 }
 
-export function resolveAnalyticsWindow(input: AnalyticsWindowInput): AnalyticsWindow {
-	const startDate = input.startDate ?? null;
-	const endDate = input.endDate ?? null;
-	const lookback = input.lookback ?? null;
-	const requestedTimezone = input.timezone ?? null;
-	if (requestedTimezone) {
-		try {
-			new Intl.DateTimeFormat("en-US", { timeZone: requestedTimezone }).format();
-		} catch {
-			invalid("timezone must be a valid IANA time zone");
-		}
+/**
+ * The window rules, over plain values. `parseAnalyticsWindow` reads them off a
+ * `URL`; the MCP tools pass them straight in, so both refuse a bad window the
+ * same way rather than each restating what a window is.
+ */
+export function resolveAnalyticsWindow(rawStart: string | null, rawEnd: string | null): AnalyticsWindow {
+	if (!rawStart || !rawEnd) {
+		invalid("A window is required: both start and end, as ISO 8601 timestamps");
 	}
-	const timezone = resolveTimezone(requestedTimezone ?? undefined, "UTC");
-
-	const hasExplicit = startDate !== null || endDate !== null;
-	if (lookback !== null && hasExplicit) {
-		invalid("Provide either lookback or startDate and endDate, not both");
+	const start = parseInstant("start", rawStart);
+	const end = parseInstant("end", rawEnd);
+	// The window is half-open, so an empty one is a request that can only ever
+	// answer with nothing — worth reporting rather than serving.
+	if (start >= end) {
+		invalid("start must be before end");
 	}
-
-	if (lookback !== null) {
-		if (!LOOKBACKS.includes(lookback as LookbackPeriod)) {
-			invalid(`lookback must be one of ${LOOKBACKS.join(", ")}`);
-		}
-		// `allStrategy: "1y"` caps the open-ended window the same way the
-		// dashboard does, so the API can't quietly return a wider range.
-		const range = getTimezoneLookbackRange(lookback as LookbackPeriod, timezone, { allStrategy: "1y" }) as {
-			fromDateStr: string;
-			toDateStr: string;
-		};
-		return { startDate: range.fromDateStr, endDate: range.toDateStr, timezone };
-	}
-
-	if (!startDate || !endDate) {
-		invalid("A window is required: either lookback, or both startDate and endDate (YYYY-MM-DD)");
-	}
-	if (!isIsoDate(startDate) || !isIsoDate(endDate)) {
-		invalid("startDate and endDate must be valid dates in YYYY-MM-DD format");
-	}
-	if (startDate > endDate) {
-		invalid("startDate must be before or equal to endDate");
-	}
-	return { startDate, endDate, timezone };
+	return { from: start, to: end, timezone: BUCKET_ZONE };
 }
 
 export function parseAnalyticsWindow(url: URL): AnalyticsWindow {
-	const params = url.searchParams;
-	return resolveAnalyticsWindow({
-		startDate: params.get("startDate"),
-		endDate: params.get("endDate"),
-		lookback: params.get("lookback"),
-		timezone: params.get("timezone"),
-	});
+	return resolveAnalyticsWindow(url.searchParams.get("start"), url.searchParams.get("end"));
 }
 
 /** The `model` and `tags` filters every analytics endpoint shares. */
@@ -109,47 +82,14 @@ export function parseAnalyticsFilters(url: URL): AnalyticsFilters {
 	};
 }
 
-export interface Paging {
-	page: number;
-	limit: number;
-	offset: number;
-}
-
-/**
- * Arithmetic only. A caller that reached here with a schema — the MCP tools
- * declare `page` and `limit` as bounded integers — has already been validated,
- * and stringifying those numbers so a regex could re-derive them would be the
- * refactor moving complexity rather than deleting it.
- */
-export function resolvePaging(page = 1, limit = 20): Paging {
-	return { page, limit, offset: (page - 1) * limit };
-}
-
-/** The same window, read off a query string, where the values really are text. */
-export function parsePaging(url: URL, defaultLimit = 20): Paging {
+export function parsePaging(url: URL, defaultLimit = 20): { page: number; limit: number; offset: number } {
 	const rawPage = url.searchParams.get("page") ?? "1";
 	const rawLimit = url.searchParams.get("limit") ?? String(defaultLimit);
 	if (!/^\d+$/.test(rawPage) || Number(rawPage) < 1) invalid("page must be a positive integer");
 	if (!/^\d+$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 100) {
 		invalid("limit must be an integer between 1 and 100");
 	}
-	return resolvePaging(Number(rawPage), Number(rawLimit));
-}
-
-/**
- * The one pagination envelope every list answers with.
- *
- * `totalPages` is 0 for an empty result, not 1: "how many pages are there" has
- * the answer "none" when there is nothing, and a caller looping `page <=
- * totalPages` should not be sent to fetch an empty first page.
- */
-export function pageEnvelope(page: number, limit: number, total: number) {
-	return { page, limit, total, totalPages: Math.ceil(total / limit) };
-}
-
-export function paginate<T>(rows: T[], page: number, limit: number) {
-	return {
-		data: rows.slice((page - 1) * limit, page * limit),
-		pagination: pageEnvelope(page, limit, rows.length),
-	};
+	const page = Number(rawPage);
+	const limit = Number(rawLimit);
+	return { page, limit, offset: (page - 1) * limit };
 }

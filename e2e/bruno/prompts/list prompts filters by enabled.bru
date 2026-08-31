@@ -25,8 +25,13 @@ assert {
 
 tests {
   test("only disabled prompts come back", function() {
-    const prompts = res.getBody().prompts;
-    expect(prompts.length, "the bulk case seeded one disabled prompt").to.be.at.least(1);
+    const prompts = res.getBody().data;
+    expect(prompts.length, "the previous case disabled one").to.be.at.least(1);
     for (const prompt of prompts) expect(prompt.enabled).to.equal(false);
+  });
+
+  test("the prompt disabled a moment ago is one of them", function() {
+    const ids = res.getBody().data.map((prompt) => prompt.id);
+    expect(ids).to.include(bru.getVar("disabledPromptId"));
   });
 }

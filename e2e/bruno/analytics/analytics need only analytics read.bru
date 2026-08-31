@@ -1,11 +1,11 @@
 meta {
   name: analytics:read alone is enough
   type: http
-  seq: 10
+  seq: 7
 }
 
 get {
-  url: {{baseUrl}}/api/v1/brands/{{brandId}}/visibility?lookback=1y
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/analytics?start={{windowStart}}&end={{windowEnd}}
   body: none
   auth: none
 }
@@ -15,7 +15,8 @@ headers {
 }
 
 params:query {
-  lookback: 1y
+  start: {{windowStart}}
+  end: {{windowEnd}}
 }
 
 assert {

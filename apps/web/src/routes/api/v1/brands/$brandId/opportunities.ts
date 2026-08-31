@@ -7,12 +7,12 @@
  * the newest row of an append-only history.
  *
  * `status` says why the lists are empty when they are, so a caller never has to
- * tell "no opportunities" from "not enough data yet" from "never generated".
+ * tell "no opportunities" from "not enough data yet".
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
-import { latestOpportunities } from "@/server/opportunities-core";
+import { publishedOpportunities } from "@/server/opportunities-core";
 
 export const Route = createFileRoute("/api/v1/brands/$brandId/opportunities")({
 	server: {
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/opportunities")({
 				scopes: ["analytics:read"],
 				handle: async ({ params, auth }) => {
 					const brand = await requireBrandInScope(auth, params.brandId);
-					return latestOpportunities(brand.id);
+					return publishedOpportunities(brand.id);
 				},
 			}),
 		}),

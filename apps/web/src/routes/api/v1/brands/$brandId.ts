@@ -45,6 +45,13 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 				},
 				scopes: ["brands:write"],
 				handle: async ({ params, body, auth }) => {
+					// `enabled: false` stops the worker sampling the brand entirely —
+					// tracking silently ends while the customer keeps paying — and no
+					// dashboard control does it at any role. Refused rather than
+					// ignored, so a caller that meant it learns the field did nothing.
+					if (body.enabled !== undefined && auth.kind !== "admin") {
+						throw new ApiError(403, "Forbidden", "Changing a brand's enabled state requires an instance admin key.");
+					}
 					// Out of scope reads as not-found, so a key can't discover another
 					// tenant's brand by trying to write to it.
 					await requireBrandInScope(auth, params.brandId);

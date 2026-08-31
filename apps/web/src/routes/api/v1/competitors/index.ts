@@ -10,7 +10,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { assertCompetitorCap } from "@workspace/lib/entitlements";
-import { and, count, desc, eq, ilike, type SQL } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
@@ -35,11 +35,8 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 					const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20")));
 					const offset = (page - 1) * limit;
 
-					const filters: (SQL | undefined)[] = [await brandScopeCondition(auth, competitors.brandId)];
-					if (brandId) filters.push(eq(competitors.brandId, brandId));
-					const query = searchParams.get("q")?.trim();
-					if (query) filters.push(ilike(competitors.name, `%${query}%`));
-					const where = and(...filters.filter(Boolean));
+					const scope = await brandScopeCondition(auth, competitors.brandId);
+					const where = brandId ? and(scope, eq(competitors.brandId, brandId)) : scope;
 
 					const [totalCountResult] = await db.select({ count: count() }).from(competitors).where(where);
 					const totalCount = totalCountResult?.count || 0;

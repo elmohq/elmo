@@ -70,16 +70,13 @@ describe("the MCP server", () => {
 	it("advertises exactly the tools it was given, with their annotations", async () => {
 		const { client, close } = await connect([
 			stubTool({ name: "reader", run: async () => ({}) }),
-			stubTool({ name: "wrecker", readOnly: false, destructive: true, run: async () => ({}) }),
+			stubTool({ name: "writer", readOnly: false, run: async () => ({}) }),
 		]);
 
 		const { tools } = await client.listTools();
-		expect(tools.map((tool) => tool.name).sort()).toEqual(["reader", "wrecker"]);
+		expect(tools.map((tool) => tool.name).sort()).toEqual(["reader", "writer"]);
 		expect(tools.find((tool) => tool.name === "reader")?.annotations).toMatchObject({ readOnlyHint: true });
-		expect(tools.find((tool) => tool.name === "wrecker")?.annotations).toMatchObject({
-			readOnlyHint: false,
-			destructiveHint: true,
-		});
+		expect(tools.find((tool) => tool.name === "writer")?.annotations).toMatchObject({ readOnlyHint: false });
 		await close();
 	});
 

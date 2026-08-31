@@ -12,9 +12,9 @@
 import { db } from "@workspace/lib/db/db";
 import { citations, promptRuns } from "@workspace/lib/db/schema";
 import { extractTextContent } from "@workspace/lib/text-extraction";
-import { asc, eq } from "drizzle-orm";
-import type { AnalyticsWindow } from "@/lib/api/analytics-range";
+import { and, asc, eq } from "drizzle-orm";
 import { countPromptRuns, getPromptRuns } from "@/lib/postgres-read";
+import type { AnalyticsWindow } from "@/server/analytics-core";
 
 export interface RunSummary {
 	id: string;
@@ -53,14 +53,13 @@ export interface ListRunsOptions {
 
 export async function listPromptRuns(options: ListRunsOptions): Promise<{ data: RunSummary[]; total: number }> {
 	const { promptId, window, limit, offset, model } = options;
-	const { startDate, endDate, timezone } = window;
+	const { from, to, timezone } = window;
 
-	// Both go through the read layer's timezone-aware, half-open window, so a run
-	// just after local midnight lands on the day the caller asked about rather
-	// than the day UTC happens to be on.
+	// Both go through the read layer's half-open window, so a run at the very end
+	// of the window lands inside it rather than after it.
 	const [rows, total] = await Promise.all([
-		getPromptRuns(promptId, startDate, endDate, timezone, limit, offset, model),
-		countPromptRuns(promptId, startDate, endDate, timezone, model),
+		getPromptRuns(promptId, from, to, timezone, limit, offset, model),
+		countPromptRuns(promptId, from, to, timezone, model),
 	]);
 
 	return {
@@ -81,9 +80,18 @@ export async function listPromptRuns(options: ListRunsOptions): Promise<{ data: 
 	};
 }
 
-/** One run with its answer text and citations, or null if there is no such run. */
-export async function findRunDetail(runId: string): Promise<RunDetail | null> {
-	const [run] = await db.select().from(promptRuns).where(eq(promptRuns.id, runId)).limit(1);
+/**
+ * One run with its answer text and citations, or null if there is no such run.
+ *
+ * Addressed through the prompt that produced it, so a run id from one prompt
+ * cannot be read under another.
+ */
+export async function findRunDetail(promptId: string, runId: string): Promise<RunDetail | null> {
+	const [run] = await db
+		.select()
+		.from(promptRuns)
+		.where(and(eq(promptRuns.id, runId), eq(promptRuns.promptId, promptId)))
+		.limit(1);
 	if (!run) return null;
 
 	const cited = await db

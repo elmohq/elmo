@@ -1,7 +1,7 @@
 /**
  * What a tool is, and the argument shapes they share.
  *
- * Two properties on `McpTool` are load-bearing:
+ * Three properties on `McpTool` are load-bearing:
  *
  *  - **`scopes` decides what a connection can even see.** The server registers
  *    only the tools the caller holds every scope for, so `tools/list` *is* the
@@ -11,11 +11,19 @@
  *    every tool that declares `false`, and a test pins the exact partition — so
  *    adding a tool that writes is a deliberate act with a test to update, never
  *    an accident of forgetting a flag.
+ *  - **Every tool is reachable with an organization key.** There is no
+ *    `adminOnly` here and there must never be one: `/api/mcp` offers the
+ *    product as a workspace member has it, so an instance-wide key connecting
+ *    to it gets the same tools and no others. Operator-only verbs — deleting a
+ *    prompt, generating a report, running an analysis — stay on `/api/v1`,
+ *    where the caller is a person who typed the request rather than a model
+ *    that decided to make it.
  */
 import { z } from "zod";
-import { type AnalyticsFilters, resolveAnalyticsWindow, resolvePaging } from "@/lib/api/analytics-range";
+import { type AnalyticsFilters, resolveAnalyticsWindow } from "@/lib/api/analytics-range";
 import type { ApiScope } from "@/lib/api/scopes";
 import type { Principal } from "@/lib/auth/api-auth";
+import type { AnalyticsWindow } from "@/server/analytics-core";
 
 export interface McpToolContext {
 	auth: Principal;
@@ -35,8 +43,6 @@ export interface McpTool {
 	scopes: readonly ApiScope[];
 	/** False for anything that changes data. Also what a read-only deployment drops. */
 	readOnly: boolean;
-	/** Set where the effect cannot be undone, so a client can confirm before calling. */
-	destructive?: boolean;
 	input: z.ZodRawShape;
 	/**
 	 * Arguments the MCP SDK has already validated against `input`. Typed as the
@@ -60,7 +66,6 @@ export function defineTool<S extends z.ZodRawShape>(tool: {
 	description: string;
 	scopes?: readonly ApiScope[];
 	readOnly: boolean;
-	destructive?: boolean;
 	input: S;
 	run(ctx: McpToolContext, args: z.output<z.ZodObject<S>>): Promise<unknown>;
 }): McpTool {
@@ -79,44 +84,28 @@ export const brandIdArg = z.string().describe("Brand id, from list_brands.");
 
 export const promptIdArg = z.string().describe("Prompt id, from list_prompts.");
 
-export const modelArg = z.string().optional().describe("Restrict to one answer engine, by id from list_platforms.");
+export const modelArg = z.string().optional().describe("Restrict to one model, by id from list_models.");
 
 /**
- * The window every analytics tool takes, worded for a model rather than for a
- * query string: `lookback` is the one an agent should reach for, and the
- * explicit pair is there for when it is comparing against a fixed period.
+ * The window every analytics tool takes: two instants, half-open `[start, end)`.
+ *
+ * A timestamp carries its own offset, so there is nothing to agree on out of
+ * band and no time zone to pass beside it — the same reason `/api/v1` spells it
+ * this way.
  */
-export const dateWindowArgs = {
-	lookback: z
-		.enum(["1w", "1m", "3m", "6m", "1y", "all"])
-		.optional()
-		.describe("Relative window ending today. Defaults to none — pass this or startDate+endDate."),
-	startDate: z.string().optional().describe("Window start, YYYY-MM-DD. Use with endDate instead of lookback."),
-	endDate: z.string().optional().describe("Window end, YYYY-MM-DD."),
-	timezone: z.string().optional().describe("IANA time zone the day boundaries are drawn in. Defaults to UTC."),
-};
-
-/** The window plus the two filters every brand-level analytics tool shares. */
 export const windowArgs = {
-	...dateWindowArgs,
+	start: z.string().describe("Start of the window, an ISO 8601 timestamp, e.g. 2026-01-01T00:00:00Z. Inclusive."),
+	end: z.string().describe("End of the window, an ISO 8601 timestamp. Exclusive."),
 	model: modelArg,
 	tags: z.string().optional().describe("Comma-separated prompt tags; only prompts carrying one are counted."),
 };
 
-export const pagingArgs = {
-	page: z.number().int().min(1).optional().describe("1-based page number."),
-	limit: z.number().int().min(1).max(100).optional().describe("Rows per page, up to 100."),
-};
-
 export type WindowArgs = z.output<z.ZodObject<typeof windowArgs>>;
-export type PagingArgs = z.output<z.ZodObject<typeof pagingArgs>>;
+
+export function windowFor(args: WindowArgs): AnalyticsWindow {
+	return resolveAnalyticsWindow(args.start, args.end);
+}
 
 export function filtersFrom(args: WindowArgs): AnalyticsFilters {
 	return { model: args.model, tags: args.tags };
 }
-
-export function pagingFrom(args: PagingArgs, defaultLimit = 20) {
-	return resolvePaging(args.page, args.limit ?? defaultLimit);
-}
-
-export { resolveAnalyticsWindow };

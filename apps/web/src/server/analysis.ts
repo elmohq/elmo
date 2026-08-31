@@ -70,7 +70,7 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 		const { timezone, fromDateStr, toDateStr } = resolveRange(data.lookback as LookbackPeriod, data.timezone);
 		const result = await getBrandShareOfVoice(
 			data.brandId,
-			{ startDate: fromDateStr, endDate: toDateStr, timezone },
+			{ from: fromDateStr, to: toDateStr, timezone },
 			{ model: data.model, tags: data.tags, search: data.search },
 		);
 
@@ -81,7 +81,13 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 			brandShare: result.brandShare,
 			totalRuns: result.totalRuns,
 			model: data.model ?? null,
-			shareTimeSeries: result.series,
+			// The trend is the one figure this response carries as a percentage;
+			// `brandShare` and `entries` stay ratios because the leaderboard, donut,
+			// and headline each round the same ratio once at the point of display.
+			shareTimeSeries: result.series.map((point) => ({
+				...point,
+				share: point.share === null ? null : Math.round(point.share * 100),
+			})),
 			entries: result.entries,
 		};
 	});

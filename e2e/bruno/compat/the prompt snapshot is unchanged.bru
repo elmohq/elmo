@@ -1,0 +1,37 @@
+meta {
+  name: the prompt snapshot answers exactly what it shipped with
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}/snapshot?startDate={{startDate}}&endDate={{endDate}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+params:query {
+  startDate: {{startDate}}
+  endDate: {{endDate}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.brandId: eq default
+  res.body.promptId: eq {{promptId}}
+  res.body.promptValue: isString
+  res.body.startDate: eq 2000-01-01
+  res.body.endDate: eq 2100-01-01
+  res.body.mentions.mentionsTotal: isNumber
+  res.body.mentions.brandMentionsTotal: isNumber
+  res.body.mentions.competitorMentionsTotal: isNumber
+  res.body.mentions.mentionsTopK: isArray
+  res.body.citations.citationsTotal: isNumber
+  res.body.citations.brandCitationsTotal: isNumber
+  res.body.citations.competitorCitationsTotal: isNumber
+  res.body.citations.citedUrlsTopK: isArray
+}

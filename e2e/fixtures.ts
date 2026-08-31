@@ -129,7 +129,6 @@ export const API_SCOPES = [
   "brands:write",
   "prompts:read",
   "prompts:write",
-  "prompts:delete",
   "competitors:read",
   "competitors:write",
   "competitors:delete",
@@ -144,6 +143,7 @@ export const READ_SCOPES = API_SCOPES.filter((scope) => scope.endsWith(":read"))
 
 /** Everything short of destroying data — the preset most integrations want. */
 export const NON_DESTRUCTIVE_SCOPES = API_SCOPES.filter((scope) => !scope.endsWith(":delete"));
+
 
 export interface ApiKeyFixture {
   /** The plaintext token a request sends. Hashed on the way into the table. */

@@ -3,10 +3,21 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { db } from "@workspace/lib/db/db";
 import { prompts } from "@workspace/lib/db/schema";
+import { assertCanAddPrompts, withQuotaLock } from "@workspace/lib/entitlements";
+import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
+import { and, arrayOverlaps, count, desc, eq, ilike, type SQL } from "drizzle-orm";
+import { z } from "zod";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
-import { createPrompt, createPromptInputSchema, listPrompts } from "@/server/prompts-core";
+import { createPromptJobScheduler } from "@/lib/job-scheduler";
+
+const createPromptBody = z.object({
+	brandId: z.string().trim().min(1, "brandId is required"),
+	value: z.string().trim().min(1, "value must be a non-empty string"),
+	tags: z.array(z.string()).optional(),
+});
 
 export const Route = createFileRoute("/api/v1/prompts/")({
 	server: {
@@ -15,40 +26,85 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 				scopes: ["prompts:read"],
 				handle: async ({ request, auth }) => {
 					const { searchParams } = new URL(request.url);
+					const brandId = searchParams.get("brandId");
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-					// Clamped rather than rejected, so an existing caller asking for
-					// more keeps working instead of starting to 400.
-					const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20")));
-					const enabled = searchParams.get("enabled");
+					// This list had no ceiling at all, so the cap is set where it bounds
+					// a runaway query rather than where it would change what an existing
+					// caller gets back. Clamped rather than rejected for the same reason.
+					const limit = Math.max(1, Math.min(1000, parseInt(searchParams.get("limit") || "20")));
+					const offset = (page - 1) * limit;
 
-					const { data, total } = await listPrompts({
-						scope: await brandScopeCondition(auth, prompts.brandId),
-						brandId: searchParams.get("brandId") ?? undefined,
-						enabled: enabled === "true" || enabled === "false" ? enabled === "true" : undefined,
-						tags: (searchParams.get("tags") ?? "").split(","),
-						q: searchParams.get("q") ?? undefined,
-						limit,
-						offset: (page - 1) * limit,
-					});
+					const filters: (SQL | undefined)[] = [await brandScopeCondition(auth, prompts.brandId)];
+					if (brandId) filters.push(eq(prompts.brandId, brandId));
+					const enabled = searchParams.get("enabled");
+					if (enabled === "true" || enabled === "false") {
+						filters.push(eq(prompts.enabled, enabled === "true"));
+					}
+					const tags = (searchParams.get("tags") ?? "")
+						.split(",")
+						.map((tag) => tag.trim().toLowerCase())
+						.filter(Boolean);
+					if (tags.length > 0) filters.push(arrayOverlaps(prompts.tags, tags));
+					const query = searchParams.get("q")?.trim();
+					if (query) filters.push(ilike(prompts.value, `%${query}%`));
+
+					const whereConditions = and(...filters.filter(Boolean));
+
+					const [totalCountResult] = await db.select({ count: count() }).from(prompts).where(whereConditions);
+					const totalCount = totalCountResult?.count || 0;
+					const totalPages = Math.ceil(totalCount / limit);
+
+					const promptsList = await db
+						.select({
+							id: prompts.id,
+							brandId: prompts.brandId,
+							value: prompts.value,
+							enabled: prompts.enabled,
+							tags: prompts.tags,
+							systemTags: prompts.systemTags,
+							premiumModels: prompts.premiumModels,
+							createdAt: prompts.createdAt,
+							updatedAt: prompts.updatedAt,
+						})
+						.from(prompts)
+						.where(whereConditions)
+						.orderBy(desc(prompts.createdAt))
+						.limit(limit)
+						.offset(offset);
 
 					// Both keys hold the same array while callers move to `data`, which
 					// every list in this API answers with. `prompts` is documented as
 					// deprecated and goes in a later release.
 					return {
-						data,
-						prompts: data,
-						pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+						data: promptsList,
+						prompts: promptsList,
+						pagination: { page, limit, total: totalCount, totalPages },
 					};
 				},
 			}),
 
 			POST: createApiHandler({
-				body: createPromptInputSchema,
+				body: createPromptBody,
 				status: 201,
 				scopes: ["prompts:write"],
 				handle: async ({ body, auth }) => {
-					const brand = await requireBrandInScope(auth, body.brandId, "body");
-					return createPrompt(brand, { value: body.value, tags: body.tags });
+					const { brandId, value, tags } = body;
+
+					const brand = await requireBrandInScope(auth, brandId, "body");
+					const userTags = tags ? sanitizeUserTags(tags) : [];
+					const systemTags = computeSystemTags(value, brand.name, brand.website);
+
+					const newPrompt = await withQuotaLock(brand.organizationId, async (tx, afterCommit) => {
+						await assertCanAddPrompts(brand.organizationId, 1, tx);
+						const [created] = await tx
+							.insert(prompts)
+							.values({ brandId, value, tags: userTags, systemTags, enabled: true })
+							.returning();
+						afterCommit(() => createPromptJobScheduler(created.id));
+						return created;
+					});
+
+					return newPrompt;
 				},
 			}),
 		}),

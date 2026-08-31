@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import { getOpportunitiesFn } from "@/server/opportunities";
+import { getOpportunitiesFn } from "@/server/opportunities-fn";
 
 export const opportunitiesKeys = {
 	all: ["opportunities-report"] as const,

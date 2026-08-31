@@ -11,14 +11,37 @@
  * thing it is for.
  */
 import { expect, test } from "@playwright/test";
-import { TEST_API_KEY, TEST_BRAND_ID } from "../../fixtures";
+import { TEST_API_KEY, TEST_BRAND_ID, brandUrl } from "../../fixtures";
 
 const AUTH = { Authorization: `Bearer ${TEST_API_KEY}` };
 
+/**
+ * The dashboard's one-month preset, as the instants the API takes.
+ *
+ * The dashboard's window is a run of calendar days ending today, so the API's
+ * half-open equivalent runs to the *start of tomorrow* — anything less would
+ * drop today's runs and the two sides would disagree for that reason alone.
+ */
+function lastMonth(): string {
+  const today = new Date();
+  const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
+  // Clamp the day the way the dashboard's own shift does, so the two windows
+  // stay identical on the 31st of a month the previous one doesn't have.
+  const lastDay = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0)).getUTCDate();
+  start.setUTCDate(Math.min(today.getUTCDate(), lastDay));
+  const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 1));
+  return `start=${dayStart(start)}&end=${end.toISOString()}`;
+}
+
+/** Midnight UTC on the day this instant falls in. */
+function dayStart(date: Date): string {
+  return `${date.toISOString().slice(0, 10)}T00:00:00.000Z`;
+}
+
 test.describe("dashboard and API parity", () => {
-  test("the visibility hero and GET /visibility report the same number", async ({ page, request }) => {
-    // The overview's default window is the one-month lookback.
-    await page.goto(`/app/${TEST_BRAND_ID}`);
+  test("the visibility hero and GET /analytics report the same number", async ({ page, request }) => {
+    // The overview's default window is the one-month preset.
+    await page.goto(brandUrl());
 
     // The hero reads "<n>% Visibility"; the sibling card reads "<n>% Share of
     // Voice", so the trailing word is what tells them apart.
@@ -26,29 +49,31 @@ test.describe("dashboard and API parity", () => {
     await expect(hero).toBeVisible({ timeout: 30_000 });
     const rendered = Number((await hero.textContent())?.match(/(\d+)%/)?.[1]);
 
-    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/visibility?lookback=1m`, { headers: AUTH });
+    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/analytics?${lastMonth()}`, { headers: AUTH });
     expect(response.status()).toBe(200);
     const body = await response.json();
 
-    // The page shows 0 where the API says "nothing to plot"; that difference is
-    // deliberate and lives at the edges, not in the shared computation.
-    expect(body.currentVisibility ?? 0).toBe(rendered);
+    // The API answers in ratios and the page renders a percentage; both round
+    // the same shared number once, at their own edge. The page shows 0 where the
+    // API says "nothing to plot" — that difference is deliberate and also lives
+    // at the edges, not in the computation they share.
+    expect(Math.round((body.visibility.current ?? 0) * 100)).toBe(rendered);
   });
 
   test("share of voice agrees between the page and the API", async ({ page, request }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}/share-of-voice`);
+    await page.goto(`${brandUrl()}/share-of-voice`);
     await expect(page.getByRole("heading", { name: /share of voice/i }).first()).toBeVisible({ timeout: 30_000 });
 
-    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/share-of-voice?lookback=1m`, { headers: AUTH });
+    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/analytics?${lastMonth()}`, { headers: AUTH });
     expect(response.status()).toBe(200);
-    const body = await response.json();
+    const body = (await response.json()).shareOfVoice;
 
-    // Exactly one row is the tracked brand, and the shares are the percentages
-    // the leaderboard renders — the API rounds the same ratio the page does.
+    // Exactly one row is the tracked brand, and every share is the exact ratio
+    // the leaderboard rounds for display.
     expect(body.entries.filter((entry: { isBrand: boolean }) => entry.isBrand)).toHaveLength(1);
     for (const entry of body.entries) {
       expect(entry.share).toBeGreaterThanOrEqual(0);
-      expect(entry.share).toBeLessThanOrEqual(100);
+      expect(entry.share).toBeLessThanOrEqual(1);
       // Every competitor the page lists is a competitor the API lists.
       if (!entry.isBrand) await expect(page.getByText(entry.name).first()).toBeVisible();
     }
@@ -59,26 +84,27 @@ test.describe("dashboard and API parity", () => {
     // more than the API publishes (the Google module, what's-changed, page-type
     // distribution), so it isn't a wrapper. Two implementations are fine; two
     // answers are not. This pins the fields they both produce.
-    await page.goto(`/app/${TEST_BRAND_ID}/citations`, { waitUntil: "networkidle" });
+    await page.goto(`${brandUrl()}/citations`, { waitUntil: "networkidle" });
     await expect(page.getByText("Total Citations")).toBeVisible({ timeout: 30_000 });
 
     // The page's default window is the last 30 days, ending today, which is what
-    // `citationDateWindow` builds. The API takes it explicitly.
+    // `citationDateWindow` builds. The API takes the same span as instants, so
+    // the end is the start of tomorrow rather than the start of today.
     const today = new Date();
-    const iso = (date: Date) => date.toISOString().slice(0, 10);
     const from = new Date(today);
     from.setUTCDate(from.getUTCDate() - 29);
-    const window = `startDate=${iso(from)}&endDate=${iso(today)}`;
+    const tomorrow = new Date(today);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const window = `start=${dayStart(from)}&end=${dayStart(tomorrow)}`;
 
     const numberUnder = async (label: string) => {
       const value = page.locator("div", { has: page.getByText(label, { exact: true }) }).last();
       return Number((await value.innerText()).match(/(\d+)/)?.[1]);
     };
 
-    const domains = await request.get(
-      `/api/v1/brands/${TEST_BRAND_ID}/citations/domains?${window}&limit=100`,
-      { headers: AUTH },
-    );
+    const domains = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/citations/domains?${window}`, {
+      headers: AUTH,
+    });
     expect(domains.status()).toBe(200);
     const domainBody = await domains.json();
 
@@ -105,7 +131,7 @@ test.describe("dashboard and API parity", () => {
 
     // Categorization is the likeliest place for two implementations to drift,
     // so check it per URL rather than trusting the totals to catch it.
-    const urls = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/citations/urls?${window}&limit=100`, {
+    const urls = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/citations/urls?${window}`, {
       headers: AUTH,
     });
     expect(urls.status()).toBe(200);
@@ -144,10 +170,10 @@ test.describe("dashboard and API parity", () => {
   });
 
   test("query fan-out totals agree between the page and the API", async ({ page, request }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}/query-fan-out`);
+    await page.goto(`${brandUrl()}/query-fan-out`);
     await expect(page.getByRole("heading", { name: /fan.?out/i }).first()).toBeVisible({ timeout: 30_000 });
 
-    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/query-fanout?lookback=1m`, { headers: AUTH });
+    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/query-fanout?${lastMonth()}`, { headers: AUTH });
     expect(response.status()).toBe(200);
     const body = await response.json();
 
@@ -155,8 +181,8 @@ test.describe("dashboard and API parity", () => {
     // engines that don't expose their searches still contribute runs.
     expect(body.fanoutRuns).toBeLessThanOrEqual(body.totalRuns);
     expect(body.uniqueQueries).toBeLessThanOrEqual(body.totalQueries);
-    // The API pages its own list, so it must not arrive pre-truncated by the
-    // caps the dashboard applies for display.
-    expect(body.pagination.total).toBe(body.uniqueQueries);
+    // The API answers with the whole list, so it must not arrive pre-truncated
+    // by the caps the dashboard applies for display.
+    expect(body.data.length).toBe(body.uniqueQueries);
   });
 });

@@ -96,7 +96,7 @@ ambiguous.
 
 ```
 brands:read        brands:write
-prompts:read       prompts:write       prompts:delete
+prompts:read       prompts:write
 competitors:read   competitors:write   competitors:delete
 analytics:read
 runs:read
@@ -108,11 +108,16 @@ billing:read
 - `billing:read` is opt-in and has **no `:write` counterpart** — that is the
   structural guarantee that the API cannot touch billing, not a policy check
   somewhere that could be forgotten.
-- **Destructive verbs get their own scope** where one exists. Deleting a prompt
-  cascades its runs and citations; a reporting integration that syncs prompts
-  has no business erasing history. Splitting `:delete` out costs one scope now
-  and is impossible to add later without breaking every key that holds
-  `:write`.
+- **Destructive verbs get their own scope** where one exists. Splitting
+  `:delete` out costs one scope now and is impossible to add later without
+  breaking every key that holds `:write`.
+- **Deleting a prompt has no scope at all.** It cascades its runs and citations,
+  and the dashboard offers no such action to anyone — so a scope for it would
+  put an operation in the API that the product does not have. Disabling
+  (`PATCH` with `enabled: false`) is the supported way to stop tracking a
+  prompt: it keeps the history and frees the plan slot just the same. The verb
+  stays reachable with an admin key, for an operator cleaning up an instance
+  they own (§3.11).
 - There is deliberately **no `reports:*`**. Report generation and brand analysis
   spend provider budget immediately, with no organization to attribute it to —
   the `reports` table has no org column at all — so they stay admin-only (§3.11)
@@ -146,7 +151,7 @@ tenant-scoped brand ids, a schema change with no other motivation.
 The rate limit is deliberately generous: it is there to stop a runaway loop from
 saturating the database, not to meter normal use. A nightly analytics pull over
 ten brands costs under a hundred requests; exporting a brand's answer text costs
-one per run, which is hundreds of thousands for a large workspace. A few hundred
+one per run, which is hundreds of thousands for a large organization. A few hundred
 per minute would turn that export into a day-long job — a limit shaping the
 product rather than protecting it.
 
@@ -174,7 +179,6 @@ spends:
 | --- | --- |
 | `POST /v1/brands` | `assertCanCreateBrand` |
 | `POST /v1/prompts` | `assertCanAddPrompts` |
-| `POST /v1/prompts/bulk` | `assertPromptSaveAllowed` — one decision for the whole batch, against both pools it can spend |
 | `PATCH /v1/prompts/{id}` — `enabled` and/or `premiumModels` | `assertPromptSaveAllowed` with the net delta |
 | `POST /v1/competitors` | `MAX_COMPETITORS`, already enforced |
 
@@ -193,7 +197,7 @@ Three gaps to close:
   maximum of 100, **clamped rather than rejected**, matching `/brands` — an
   existing caller asking for 1000 keeps working and gets 100.
 
-The two limits with no write path — a brand's platform picks
+The two limits with no write path — a brand's model picks
 (`assertEnabledModelsAllowed`) and its sampling cadence
 (`assertCadenceAllowed`) — stay that way for now: `enabledModels` and
 `delayOverrideHours` are readable on the brand and not writable. Opening either
@@ -211,15 +215,30 @@ kebab-case in path segments — matches what already ships.
 
 **Timestamps** ISO-8601 UTC strings. **Dates** `YYYY-MM-DD`.
 
-**Date windows.** Every analytics endpoint takes either
-`startDate` + `endDate` (+ optional `timezone`, default `UTC`) or the shorthand
-`lookback` ∈ `1w|1m|3m|6m|1y|all`. Exactly one form per request; supplying both
-is a `400`. `startDate`/`endDate` is the shipped spelling on
-`/prompts/{id}/snapshot` and stays the canonical one.
+**Date windows.** Every analytics endpoint added here takes `start` + `end` as
+ISO 8601 timestamps, half-open: `created_at >= start AND created_at < end`. A
+timestamp names an instant and carries its own offset, so the window means one
+thing without anything else agreed out of band — which is why there is no
+`timezone` beside it. A caller that wants "the last month" subtracts a month.
+
+A bare `YYYY-MM-DD` is refused rather than read as midnight UTC. It is
+`/prompts/{id}/snapshot`'s spelling, where it means a *local* calendar day
+resolved against the caller's zone; accepting it here would put one string in
+two endpoints meaning two different moments.
+
+`/prompts/{id}/snapshot` itself is untouched. It is published, `startDate` and
+`endDate` are what it answers to, and a shipped contract doesn't get respelled
+for consistency with endpoints that didn't exist when it was written.
+
+Daily series are labelled in UTC, with no parameter to change it. A bucket label
+is the one part of the answer a caller can recompute from the instants it was
+handed, so it isn't worth a value everyone has to keep sending.
 
 **Pagination.** `page` (1-based) + `limit` (default 20, max 100), answered with
 `{ page, limit, total, totalPages }`. Offset paging everywhere, for one paging
-model rather than two.
+model rather than two — but only where the page is what gets fetched. An
+aggregate computed over the whole window answers with the whole list: slicing it
+afterwards would make a caller pay for the same computation once per page.
 
 **List envelopes.** Every list answers `{ data: [...], pagination: {...} }`.
 
@@ -230,7 +249,7 @@ are marked `deprecated` in the spec, `data` is documented as the field to read,
 and a later release removes them. Both are emitted unconditionally, so both stay
 `required` while the old one lives.
 
-**Filtering.** One spelling everywhere: `model` takes a single platform id,
+**Filtering.** One spelling everywhere: `model` takes a single model id,
 `tags` takes a comma-separated list and matches a resource carrying any of them.
 Unknown query params are ignored; unknown body fields are stripped.
 
@@ -244,9 +263,9 @@ machine code:
 `code` values: `unauthorized`, `insufficient_scope`, `forbidden`, `not_found`,
 `validation_error`, `conflict`, `rate_limited`, `method_not_allowed`, `read_only`,
 `no_active_plan`,
-`brand_limit`, `prompt_limit`, `platform_not_in_plan`, `platform_picks_exceeded`,
+`brand_limit`, `prompt_limit`, `model_not_in_plan`, `model_picks_exceeded`,
 `premium_not_in_plan`, `premium_pool_exhausted`, `cadence_faster_than_plan`,
-`system_tag_immutable`, `internal_error`.
+`internal_error`.
 
 Adding a value is not a breaking change, so `code` is **not** an `enum` in the
 spec — a generated client would turn one into a closed type that throws on the
@@ -293,10 +312,17 @@ What this key is, so an integrator can debug in one call.
   "createdBy": "Dana",
   "lastUsedAt": "2026-08-26T11:04:00Z",
   "expiresAt": null,
-  "rateLimit": { "limit": 1000, "window": "minute" },
-  "deployment": { "mode": "cloud", "billingEnabled": true, "readOnly": false }
+  "rateLimit": { "limit": 1000, "window": "minute" }
 }
 ```
+
+It describes the *key*, and nothing else. An earlier draft also reported the
+deployment's mode, whether billing was on, and whether it was read-only. That
+is the operator's configuration, not the tenant's: a customer's integration has
+no decision to make with it, `GET /organizations/{id}/billing` already answers
+"do plan limits apply here" for the one organization that asks, and a write
+refused in read-only mode says so in its own `403`. Publishing it made every
+instance's posture readable by anyone holding any key, forever.
 
 `brandIds` is **`null` when the key reaches every brand in its organization**
 and a non-empty list when it is narrowed. An empty array is rejected at
@@ -306,7 +332,7 @@ a key restricted to no brands is not a thing anyone means to make.
 Admin keys answer `keyType: "admin"` with `organizationId: null` and every
 scope.
 
-### 3.2 Platforms — `GET /v1/platforms`  *(no scope required)*
+### 3.2 Models — `GET /v1/models`  *(no scope required)*
 
 The answer engines this deployment can track, so a client can build a model
 filter without hardcoding strings.
@@ -314,6 +340,22 @@ filter without hardcoding strings.
 ```json
 { "data": [ { "id": "chatgpt", "label": "ChatGPT", "premiumCapable": true, "configured": true } ] }
 ```
+
+**One word for an answer engine, and it is "model."** The codebase currently has
+three: the plan config and the picker call one a *platform*
+(`platformPicks`, `platformMenu`), every database column and every filter calls
+it a *model*, and `SCRAPE_TARGETS` calls the tuple of model-plus-provider-plus-
+version a *target*. Two of those are worth keeping — a target is genuinely a
+different thing from the engine it reaches — but *platform* and *model* are the
+same thing said twice, and a caller who reads `GET /platforms` and then filters
+by `?model=` has been handed the confusion.
+
+Nothing published before this used either word as a field name, so the API
+settles on **model** at no cost: the resource, the filter, the per-engine rows,
+the plan limits (`modelPicks`, `modelMenu`), and the entitlement error codes.
+*Target* keeps its meaning and stays operator-facing. The internal `platform*`
+names in `packages/config/src/plans.ts` and the picker components are a separate
+rename with no user-visible payoff, and are deliberately left alone.
 
 ### 3.3 Organizations
 
@@ -326,7 +368,7 @@ filter without hardcoding strings.
 The first two need no scope because an org key can only ever see the
 organization it is already bound to, and its name and brand count tell a caller
 nothing it couldn't get from `/me`. Gating them behind `brands:read` would only
-mean an analytics-only key can't name the workspace its numbers belong to.
+mean an analytics-only key can't name the organization its numbers belong to.
 
 ```json
 {
@@ -337,8 +379,8 @@ mean an analytics-only key can't name the workspace its numbers belong to.
     "interval": "monthly", "periodEnd": "2026-09-01T00:00:00Z", "cancelAtPeriodEnd": false
   },
   "limits": {
-    "maxBrands": 3, "maxPrompts": 200, "platformPicks": 4,
-    "platformMenu": ["chatgpt", "perplexity", "…"],
+    "maxBrands": 3, "maxPrompts": 200, "modelPicks": 4,
+    "modelMenu": ["chatgpt", "perplexity", "…"],
     "standardRunsPerDay": 4, "premiumPool": 50, "premiumRunsPerDay": 1
   },
   "usage": { "brands": 2, "enabledPrompts": 140, "premiumPairingsAssigned": 12 }
@@ -365,7 +407,6 @@ Existing `GET/POST /v1/brands`, `GET/PATCH /v1/brands/{brandId}` keep their exac
 shapes, now scope-checked (`brands:read` / `brands:write`) and, for org keys,
 filtered to the key's brands. Additions:
 
-- `GET /v1/brands` gains `enabled` and `q` filters.
 - The brand object gains `organizationId`, `enabledModels`, and
   `delayOverrideHours` (all already stored; additive fields).
 - **`POST /v1/brands` needs an owning organization before it needs a limit
@@ -378,74 +419,100 @@ filtered to the key's brands. Additions:
   brand-new org, which on cloud has no subscription — so any brand created with
   prompts would `402`.
 
-  The fix is org attachment, not the limit check:
+  The fix is org attachment, not the limit check. `CreateBrandRequest` gains an
+  optional `organizationId`, read four ways:
 
-  | Caller | Owning organization |
-  | --- | --- |
-  | Organization key | its own. Naming that same organization is accepted; naming any other is a `400` |
-  | Admin key | `organizationId` in the body when given; today's provisioning when not, so existing admin integrations are unchanged |
+  | Caller | `organizationId` omitted | `organizationId` present |
+  | --- | --- | --- |
+  | Organization key | creates in the key's own organization | must name the key's own organization; any other value is a `400` |
+  | Admin key | provisions a new organization named after the brand id, exactly as it does today | creates in the named organization, which must already exist — `404` if it does not |
 
-  `CreateBrandRequest` gains that optional `organizationId`. An organization key
-  naming its own workspace is fine — a client filling the field in from
-  `GET /me` shouldn't be punished for it — but naming another is a mistake worth
-  reporting rather than silently ignoring. The check compares against the key's
-  own organization id and never looks the named one up, so the refusal can't
-  become an existence oracle for another tenant.
+  An organization key naming its own organization is fine — a client filling the
+  field in from `GET /me` shouldn't be punished for it — but naming another is a
+  mistake worth reporting rather than silently ignoring.
+
+  The admin row's bottom-left cell is worth naming: **omitting the field on an
+  admin key is currently the only way to create an organization over the API.**
+  There is no organization endpoint that writes. That is a side effect rather
+  than a design, and it is the reason the admin key's other cell insists the
+  named organization already exists: a typo that quietly provisioned a tenant
+  would be the same operation with none of the intent.
 
   `assertCanCreateBrand` then runs against whichever org was resolved — it's the
   easy part, and it's meaningless until the attachment is right.
+- **`enabled` on `PATCH /v1/brands/{brandId}` is admin-only.** The field
+  predates this and was unreachable without an admin key, because no other kind
+  of key existed. Setting it `false` is what the worker's scheduler reads to
+  stop sampling a brand altogether, so an organization key could end a
+  customer's tracking silently while the plan kept being billed — and no
+  dashboard control does it at any role, so the API would have been strictly
+  more permissive than the product. Setting it with an organization key is a
+  `403` rather than being ignored, so a caller who meant it learns the field did
+  nothing. Everything else in the body stays writable with `brands:write`.
 - **No** `DELETE /v1/brands/{brandId}`. Brand deletion cascades across runs,
   citations, and an organization; an irreversible cascade behind a leaked key is
-  exactly the thing we would regret. Deletion stays a dashboard action.
+  exactly the thing we would regret. Nothing in the product deletes a brand
+  today — not the dashboard either — so the API adding one would be inventing
+  the operation, not exposing it.
 
 ### 3.5 Prompts — extend
 
-`GET/POST /v1/prompts`, `GET/PATCH/DELETE /v1/prompts/{promptId}` unchanged,
-scope-checked, org-filtered, with `limit` capped at 100. Additions:
+`GET/POST /v1/prompts` and `GET/PATCH /v1/prompts/{promptId}` unchanged,
+scope-checked, org-filtered, with `limit` capped at 100.
+`DELETE /v1/prompts/{promptId}` keeps its exact behaviour and becomes
+**admin-only** (§1.3, §3.11). Additions:
 
-- List filters: `enabled`, `tag` (repeatable), `q`.
+- List filters: `enabled`, `tags` (comma-separated), and `q`. `enabled` earns
+  its place here and nowhere else: which prompts are actually being sampled is
+  the first thing an integration syncing a prompt set needs to know.
 - Prompt object gains `premiumModels`.
 - `PATCH` accepts `premiumModels`. It and `enabled` are guarded together as one
   delta (§1.4) — they spend two different pools and a save can move both.
-- `POST /v1/prompts/bulk` — create up to 100 prompts for one brand in one call.
-  All-or-nothing: the batch is checked against the plan as a single delta and
-  either every prompt is created or none is, so a batch that would overrun a
-  limit can't leave the caller guessing how far it got. Every comparable API has
-  this shape (Profound's `POST /prompts`, Peec's per-project create); the
-  all-or-nothing part is what keeps it from becoming a partial-failure protocol
-  we'd have to keep supporting.
+**No bulk create.** An earlier draft added `POST /v1/prompts/bulk` alongside the
+single create, which immediately produced the problem two endpoints for one
+operation always produce: they drifted. Bulk accepted `enabled` and
+`premiumModels`; the shipped single create did not, so what a caller could set
+depended on how many prompts they were creating. And the two spent the plan
+through different guards.
+
+The alternative — one endpoint accepting either a prompt or a list — costs a
+response shape that changes with the request, which is a union return type in
+every generated client. So neither: `POST /v1/prompts` creates one prompt, and a
+caller creating fifty calls it fifty times. That is a real cost at the margins
+(fifty round trips, and a partial failure the caller has to reconcile), and it
+is the one option that adds no surface we would have to keep. If batch creation
+turns out to matter, it comes back as a deliberate addition rather than as a
+second way to do what already works.
 
 ### 3.6 Competitors — unchanged surface
 
 `GET/POST /v1/competitors`, `GET/PATCH/DELETE /v1/competitors/{competitorId}`,
 now scope-checked and org-filtered. `MAX_COMPETITORS` already applies.
 
-### 3.7 Tags — `prompts:read` / `prompts:write`
+### 3.7 Tags — `prompts:read`
 
 - `GET /v1/brands/{brandId}/tags` — every tag in use on the brand's prompts,
   with how many carry each.
-- `PATCH /v1/brands/{brandId}/tags/{tag}` — rename it across the brand.
-  Renaming onto an existing tag merges them.
-- `DELETE /v1/brands/{brandId}/tags/{tag}` — remove it from every prompt.
 
 **Derived, not a resource.** There is no tag table: a tag is a string in
-`prompts.tags`, and it exists exactly as long as some prompt carries it. These
-endpoints are a view over that and a bulk edit of it — which is the whole reason
-they're safe to add. A `POST /v1/tags` that created a tag nothing carries would
-be promising a model we don't have, and we'd have to keep it.
+`prompts.tags`, and it exists exactly as long as some prompt carries it. This is
+a view over that and nothing more — which is the whole reason it's safe to add.
+A `POST /v1/tags` that created a tag nothing carries would be promising a model
+we don't have, and we'd have to keep it.
 
 What the list buys a caller is real: today, building the filter the dashboard
 shows means paging every prompt in the brand and deduplicating client-side.
 
-`branded` and `unbranded` are computed from the prompt text. They always appear
-in the list, marked `system: true`, and cannot be renamed or removed
-(`409 system_tag_immutable`) — applying one to a prompt as a user tag overrides
-the computed classification, which is a prompt edit, not a tag edit.
+**Read-only, because the product is.** An earlier draft renamed and removed a
+tag across a brand in one call. Nothing in the dashboard does that — tags are
+edited one prompt at a time — so the API would have been inventing the
+operation, not exposing it, and a caller holding `prompts:write` can already
+reach the same end one `PATCH /v1/prompts/{promptId}` at a time. If brand-wide
+relabelling becomes a thing the product does, it comes back alongside it.
 
-Both mutations need `prompts:write`, not `prompts:delete`: they relabel prompts
-and destroy no tracked data, and a caller with `prompts:write` could already do
-the same thing one `PATCH /v1/prompts/{promptId}` at a time. Neither touches an
-entitlement pool — a relabel changes no count.
+`branded` and `unbranded` are computed from the prompt text, so they always
+appear in the list, marked `system: true`; applying one to a prompt as a user
+tag overrides the computed classification.
 
 ### 3.8 Opportunities — `analytics:read`
 
@@ -459,14 +526,29 @@ beats withholding it: the analysis is the most useful thing in the product to
 pipe somewhere else, and a caller who reads the label knows what they're
 pinning.
 
-Read-only, and deliberately no `POST` to regenerate. Elmo decides when a report
-is stale; generation spends provider budget with nothing metering it per call,
-the same reason `/tools/analyze` stays admin-only (§3.11). What the API returns
-is the newest row of an append-only history.
+**Generated inline, exactly as the dashboard generates it.** There is no job and
+no queue: `resolveOpportunities` serves the stored report while it is fresh and
+produces a new one when it isn't, and both the dashboard and this endpoint are
+wrappers over it. So there is nothing for a caller to poll, no `processing`
+status, and no way to be handed a report the dashboard would have replaced — at
+the cost that the request which finds a stale report waits for the generation it
+caused.
 
-`status` (`ready` / `insufficient-data` / `not-generated`) says why the lists
-are empty when they are, so a caller never has to distinguish "no opportunities"
-from "not enough data yet" from "never generated".
+An earlier draft had the API read the newest stored row and never generate,
+which meant a brand nobody had opened the dashboard for answered
+`status: "not-generated"` forever — a state an API caller could neither cause
+nor clear. Adding a `stale` flag to describe it was documenting the gap rather
+than closing it.
+
+The freshness window is the meter, which is what makes generating from a request
+acceptable here when `/tools/analyze` and report generation are admin-only:
+however many callers ask, at most one generation happens per brand per window.
+There is still deliberately no `POST` — an explicit "regenerate now" has no such
+gate.
+
+`status` is `ready` or `insufficient-data`; the latter means the brand hasn't
+accumulated enough tracked answers to say anything useful, and the lists are
+empty.
 
 ### 3.9 Analytics — `/v1/brands/{brandId}/…`  *(`analytics:read`)*
 
@@ -474,18 +556,50 @@ Brand-nested rather than a `/reports/*` family, because `reports` already means
 the one-shot generator in this product. Every endpoint takes the standard date
 window plus optional `model` and `tags`.
 
+**Units.** Every rate, share, and visibility figure here is an exact ratio in
+`[0,1]`, unrounded — a client multiplies by 100 if it wants a percentage. The
+alternative, whole-number percentages, throws away precision the computation
+already has: at seven runs a brand moves in 14-point steps, and rounding makes
+genuinely different values collide. It also forces a per-field note about
+whether a given number is an integer percent or carries a decimal. One rule
+with no exceptions is worth more than numbers that read nicely in a console.
+
+The one number that is not a ratio is `CitationDomain.changeFactor`, which is a
+multiplier against the previous window rather than a share: `2` is twice as many
+citations, `0.5` is half, `1` is unchanged. It is deliberately not a percentage
+change — "+150%" and "1.5x" are different numbers, and the multiplier is the one
+that cannot be misread.
+
+`GET /v1/reports/{id}` predates all of this and nothing here changes it. It
+mixes both spellings and always has: the per-prompt `sov` under `prompts` is a
+whole-number percentage, while everything under `unstable` is a 0–1 ratio. The
+new endpoints have one rule because they could; that one keeps what it shipped
+with.
+
 | Endpoint | Returns |
 | --- | --- |
-| `GET …/summary` | The dashboard hero in one call: visibility, share of voice, totals for runs, prompts, citations. |
-| `GET …/visibility` | Daily mention-rate series (0–100, `null` on days with no runs) + period totals. |
-| `GET …/share-of-voice` | Brand vs. competitor leaderboard, brand share, and a daily share series. |
-| `GET …/platforms` | Per-model visibility and run counts. |
+| `GET …/analytics` | Visibility (headline + daily series), share of voice (brand share, leaderboard, daily series), per-model visibility and run counts, and the run/prompt/citation totals. |
 | `GET …/citations/domains` | Cited domains with counts, category, and period-over-period change. Paginated. |
 | `GET …/citations/urls` | Cited URLs with counts, titles, page type, and category. Paginated. |
 | `GET …/query-fanout` | Sub-queries the engines ran: totals, coverage rate, and top queries. |
 | `GET …/prompt-performance` | Per-prompt results over the window: run count, brand and competitor mention rates, last run. Paginated. Named apart from `/brands/{id}/prompts` so that path stays free if we ever want nested prompt CRUD. |
 
-`GET /v1/prompts/{promptId}/snapshot` stays exactly as it is.
+**One aggregate endpoint, not five.** The first draft had `summary`,
+`visibility`, `share-of-voice` and `platforms` as separate operations, and every
+scalar `summary` returned was already in one of the other three — while costing
+all four computations to produce, including a full citation aggregation for a
+single integer. Assembling one brand's picture meant four requests carrying an
+identical window and filter set.
+
+They are one endpoint now. There is deliberately **no `include` parameter**: the
+four computations share a scope resolution and run concurrently, so selecting a
+subset saves a caller a fraction of one request and costs every caller a
+parameter to reason about and us a combinatorial response shape to document. The
+things that can grow without bound — cited domains and URLs, sub-queries,
+per-prompt rows — stay endpoints of their own, because those are lists.
+
+`GET /v1/prompts/{promptId}/snapshot` stays exactly as it is, `startDate` and
+`endDate` included (§2).
 
 Every one of these is a thin route over a shared analytics function that the
 dashboard's server function also calls, so the API physically cannot report
@@ -497,21 +611,37 @@ different numbers than the UI (see §5).
   `provider`, `webSearchEnabled`, `brandMentioned`, `competitorsMentioned`,
   `webQueries`, `citationCount`, `createdAt`. **No answer text** — keeps the list
   payload bounded.
-- `GET /v1/runs/{runId}` — one run, plus `answer: { text }` and the full
-  `citations` array.
+- `GET /v1/prompts/{promptId}/runs/{runId}` — one run, plus `answer: { text }`
+  and the full `citations` array.
+
+**Nested, not a top-level `/v1/runs`.** A run is one answer to one prompt and
+has no meaning apart from it; every way a caller arrives at a run id is by
+listing that prompt's runs, so the prompt is always in hand. Nesting makes the
+detail path the list path plus an id, which is the shape a reader guesses, and
+it makes "this run belongs to that prompt" something the URL states and the
+handler checks — a run addressed under the wrong prompt answers `404` rather
+than quietly succeeding.
 
 `answer.text` is the normalized extraction (`extractTextContent`), never the
 provider's `rawOutput` blob. Exposing provider-shaped JSON would hand our
 callers a contract we don't control.
 
-### 3.11 Reports and tools — unchanged, and admin-only
+### 3.11 Reports, tools, and prompt deletion — admin-only
 
-`POST/GET /v1/reports`, `GET /v1/reports/{reportId}`, and `POST /v1/tools/analyze`
-keep their exact current behavior and are reachable **only with an admin key**.
-No scope grants them; they carry `x-elmo-admin-only` in the spec instead of an
-`x-elmo-scopes` list, so there is nothing to accidentally include in a preset.
+`POST/GET /v1/reports`, `GET /v1/reports/{reportId}`, `POST /v1/tools/analyze`,
+and `DELETE /v1/prompts/{promptId}` keep their exact current behavior and are
+reachable **only with an admin key**. No scope grants them; they carry
+`x-elmo-admin-only` in the spec and an empty `x-elmo-scopes`, so there is
+nothing to accidentally include in a preset.
 
-Two reasons, and the second is the harder one:
+`DELETE /v1/prompts/{promptId}` is here for a different reason from the other
+three: it spends nothing, but it destroys tracked history, and no user of the
+dashboard can do it at any role. An API that is strictly more permissive than
+the product is a surface nobody designed. Its `403` names the alternative —
+`PATCH` with `enabled: false` — because the refusal is the one place an
+integration that hit it is certainly reading.
+
+For reports and tools, two reasons, and the second is the harder one:
 
 - Both spend provider budget the moment they're called, and neither writes a
   `usage_events` row. Every other cost in the system is metered per organization
@@ -533,7 +663,7 @@ would have to take back.
 | --- | --- |
 | Any billing write | Structural guarantee; no scope exists. |
 | Org / member / invitation mutations | Already blocked at the middleware for every caller. |
-| `DELETE /v1/brands/{id}` | Irreversible cascade; dashboard-only. |
+| `DELETE /v1/brands/{id}` | Irreversible cascade, and no surface in the product performs it (§3.4). |
 | Creating a tag that no prompt carries | Tags are derived from `prompts.tags`; a standalone tag would promise a table we don't have (§3.7). |
 | Triggering an Opportunities generation | Spends provider budget with nothing metering it per call (§3.8). |
 | Opportunities history | Only the latest report. The table is append-only, so a `generatedBefore` filter can be added the day someone wants one. |
@@ -619,22 +749,22 @@ this plan got wrong.
    lives inside it and wraps these functions in place.
 
    The CRUD and read halves are shared now too, in `apps/web/src/server/*-core.ts`:
-   `prompts-core` (create / update / delete, with the plan limits they spend and
-   the scheduler they start), `runs-core`, `opportunities-core`,
-   `competitors-core`, `platforms-core`, and `listBrands` in `onboarding-core`.
-   Every `/api/v1` route and every MCP tool over those resources is a wrapper.
-   The rule that keeps it that way: **a second edge is not allowed to be a
-   second implementation.** Adding one means extracting first — the alternative
-   is two queries that answer the same question and drift, which is what the
-   first draft of the MCP tools did and what `e2e/tests/shared/mcp.spec.ts`
-   now pins against.
-5. **Read surface.** `/v1/me`, `/v1/platforms`, `/v1/organizations*`, including
+   `prompts-core` (create / update, with the plan limits they spend and the
+   scheduler they start), `runs-core`, `opportunities-core`, `competitors-core`,
+   `models-core`, and `listBrands` in `onboarding-core`. Every `/api/v1` route
+   and every MCP tool over those resources is a wrapper. The rule that keeps it
+   that way: **a second edge is not allowed to be a second implementation.**
+   Adding one means extracting first — the alternative is two queries that
+   answer the same question and drift, which is what the first draft of the MCP
+   tools did and what `e2e/tests/shared/mcp.spec.ts` now pins against.
+5. **Read surface.** `/v1/me`, `/v1/models`, `/v1/organizations*`, including
    billing.
 6. **Analytics endpoints**, one shared analytics function each.
 7. **Runs endpoints.**
 8. **Tags and opportunities.** Both are thin: tags read and rewrite
    `prompts.tags`, opportunities reads the newest `brand_opportunities` row.
-9. **Prompt bulk create**, plus the additive list filters.
+9. **Additive prompt list filters.** A bulk create shipped here first and was
+   removed again; §3.5 records why.
 10. **Docs + SDK.** Every operation is `beta` and rendered. **Still to do:**
    publish a typed client. Follow-up: derive `openapi.json` from
    the zod schemas rather than hand-editing (the second half of #331).
@@ -656,10 +786,10 @@ as-is.
   parts worth keeping are its shape, not its model: the single-gate
   `createApiHandler`, the route-conformance test, and the settings page.
 - **#408 — `GET /brands/{id}/visibility`.** The right endpoint with the wrong
-  parameter names: it takes `from`/`to`, this spec takes
-  `startDate`/`endDate`/`lookback` to match the snapshot endpoint already
-  public. Merging it as-is ships a second date-window spelling we would then be
-  stuck with. Rebase it onto the settled convention, or fold it into step 6.
+  window: it takes `from`/`to` as calendar days, this spec takes `start`/`end`
+  as ISO 8601 instants (§2). Merging it as-is ships a second window spelling we
+  would then be stuck with. Rebase it onto the settled convention, or fold it
+  into step 6.
 
 ## 6. Testing
 

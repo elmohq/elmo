@@ -11,9 +11,9 @@
  * that would show up if the page ever bypassed the server function.
  */
 import { expect, test } from "@playwright/test";
-import { NIKE_BRAND_ID, TEST_BRAND_ID } from "../../fixtures";
+import { NIKE_BRAND_ID, TEST_BRAND_ID, brandUrl } from "../../fixtures";
 
-const KEYS_PAGE = `/app/${TEST_BRAND_ID}/settings/api-keys`;
+const KEYS_PAGE = `${brandUrl()}/settings/api-keys`;
 
 type Page = import("@playwright/test").Page;
 
@@ -62,24 +62,37 @@ test.describe("API keys", () => {
     expect(identity.keyType).toBe("organization");
     expect(identity.brandIds).toEqual([TEST_BRAND_ID]);
     expect(identity.scopes).toContain("prompts:write");
-    expect(identity.scopes).not.toContain("prompts:delete");
+    expect(identity.scopes).not.toContain("competitors:delete");
 
     // A scope it holds, and one it doesn't.
-    const allowed = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/summary?lookback=1y`, { headers: auth });
+    const allowed = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/analytics?start=2000-01-01T00:00:00Z&end=2100-01-01T00:00:00Z`, { headers: auth });
     expect(allowed.status()).toBe(200);
 
-    const refused = await request.delete("/api/v1/prompts/00000000-0000-0000-0000-000000000001", {
+    const refused = await request.delete("/api/v1/competitors/00000000-0000-0000-0000-999999999999", {
       headers: auth,
       failOnStatusCode: false,
     });
     expect(refused.status()).toBe(403);
     expect((await refused.json()).code).toBe("insufficient_scope");
 
+    // Deleting a prompt is refused for a different reason: no scope reaches it
+    // at all, so a key ticking every box would read the same way.
+    const deletePrompt = await request.delete("/api/v1/prompts/00000000-0000-0000-0000-000000000001", {
+      headers: auth,
+      failOnStatusCode: false,
+    });
+    expect(deletePrompt.status()).toBe(403);
+    expect((await deletePrompt.json()).code).toBe("forbidden");
+
     // The other tenant is invisible, not forbidden.
     const other = await request.get(`/api/v1/brands/${NIKE_BRAND_ID}`, { headers: auth, failOnStatusCode: false });
     expect(other.status()).toBe(404);
 
-    // Revoking takes effect on the next request, not on the next deploy.
+    // Revoking takes effect on the next request, not on the next deploy. The
+    // button asks for confirmation first, and Playwright dismisses dialogs
+    // unless something is listening — without this the click is a no-op and the
+    // key stays live.
+    page.on("dialog", (dialog) => dialog.accept());
     await page.reload({ waitUntil: "networkidle" });
     const row = page.locator("div.p-3").filter({ hasText: name });
     await expect(async () => {
