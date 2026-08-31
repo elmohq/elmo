@@ -5,7 +5,6 @@ import { useLooseRouteContext } from "@/hooks/use-route-context";
 import { invalidateOrganizations, organizationsQuery } from "@/lib/organizations/queries";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
-/** The organization the rendered page belongs to — see `useLooseRouteContext`. */
 export function useOrganization(): OrganizationSummary {
 	const { organization } = useLooseRouteContext();
 	if (!organization) throw new Error("useOrganization was called outside /app/org/$org");

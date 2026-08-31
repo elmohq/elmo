@@ -1,6 +1,5 @@
 import { useParams } from "@tanstack/react-router";
 
-/** The URL segments of the rendered page — see `useLooseRouteContext`. */
 export function useOrganizationParams(): { org: string } {
 	const { org } = useParams({ strict: false });
 	if (!org) throw new Error("useOrganizationParams was called outside /app/org/$org");

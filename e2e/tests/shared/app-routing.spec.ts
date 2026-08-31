@@ -93,24 +93,26 @@ test.describe("App routing", () => {
 		await expect(page.getByRole("button", { name: "Change URL" })).toHaveCount(0);
 	});
 
-	// Slow data is the point of these two: the page that settles at the end of
-	// a navigation looks right either way, so what breaks a page mid-transition
-	// is only visible while the transition is still open. The console guard
-	// catches the rest.
+	// The data is slowed down because what breaks a page mid-transition is gone
+	// by the time the page settles; the console guard catches what these
+	// assertions cannot see.
 	test("walking the whole sidebar over a slow connection never breaks a page", async ({ page }) => {
 		await page.goto(BRAND_URL);
 		const destinations = page.locator(`a[data-sidebar="menu-button"][href^="${organizationUrl()}"]`);
 		await expect(destinations.first()).toBeVisible({ timeout: 30_000 });
 		const hrefs = await destinations.evaluateAll((links) => links.map((link) => link.getAttribute("href")!));
 
-		const network = await delayDataRequests(page);
+		const settled = await delayDataRequests(page);
+		let delayedResponses = 0;
 
 		for (const href of hrefs) {
 			await page.locator(`a[data-sidebar="menu-button"][href="${href}"]`).click();
 			await expect(page).toHaveURL(new RegExp(`${href}$`), { timeout: 30_000 });
-			await network.settled();
+			delayedResponses += await settled();
 			await expect(page.getByText(BOUNDARY), `navigating to ${href}`).toHaveCount(0);
 		}
+
+		expect(delayedResponses, "no navigation went to the network, so none of them was ever slow").toBeGreaterThan(0);
 	});
 
 	test("leaving a brand for its organization over a slow connection keeps the page intact", async ({ page }) => {
@@ -118,10 +120,10 @@ test.describe("App routing", () => {
 		const organization = page.getByRole("navigation", { name: "breadcrumb" }).locator(`a[href="${organizationUrl()}"]`);
 		await expect(organization).toBeVisible({ timeout: 30_000 });
 
-		const network = await delayDataRequests(page);
+		const settled = await delayDataRequests(page);
 
 		await organization.click();
-		await network.settled();
+		expect(await settled(), "the organization page came from cache, so it was never slow").toBeGreaterThan(0);
 		await expect(page.getByText(BOUNDARY)).toHaveCount(0);
 		await expect(page.getByRole("heading", { name: "Organization" })).toBeVisible({ timeout: 30_000 });
 	});

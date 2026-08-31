@@ -6,7 +6,7 @@ import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
-import { useOrganizationsChanged } from "@/hooks/use-organizations";
+import { useOrganization, useOrganizationsChanged } from "@/hooks/use-organizations";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
@@ -17,21 +17,19 @@ import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/se
 export const Route = createFileRoute("/_authed/app/org/$org/new")({
 	staticData: { crumb: "New brand" },
 	loader: ({ context }) => {
-		const { organization } = context;
-		if (organization.brandCreation.kind === "not-offered") {
-			throw redirect({ to: "/app/org/$org", params: orgLinkParams(organization) });
+		const { brandCreation } = context.organization;
+		if (brandCreation.kind === "not-offered") {
+			throw redirect({ to: "/app/org/$org", params: orgLinkParams(context.organization) });
 		}
-		return {
-			organization,
-			blocked: organization.brandCreation.kind === "denied" ? organization.brandCreation : null,
-		};
+		return { blocked: brandCreation.kind === "denied" ? brandCreation : null };
 	},
 	head: pageHead({ description: "Start tracking a new brand in this organization." }),
 	component: NewBrandPage,
 });
 
 function NewBrandPage() {
-	const { organization, blocked } = Route.useLoaderData();
+	const { blocked } = Route.useLoaderData();
+	const organization = useOrganization();
 	const [step, setStep] = useState<"details" | "platforms">("details");
 	const [details, setDetails] = useState({ brandName: "", website: "" });
 	const [platformState, setPlatformState] = useState<NonNullable<OnboardingPlatformState> | null>(null);

@@ -36,8 +36,7 @@ const modeProjects = DEPLOYMENT_MODES.flatMap((mode) => [
     use: {
       ...devices["Desktop Chrome"],
       storageState: authStatePath(mode),
-      // The whitelabel fixture points the app icon at a host that deliberately
-      // does not resolve, so every page it serves logs the failed load.
+      // The whitelabel app icon points at a host that deliberately does not resolve.
       allowedConsoleErrors: mode === "whitelabel" ? [WHITELABEL.appIcon] : [],
     },
   },
