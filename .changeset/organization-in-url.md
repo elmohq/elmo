@@ -4,4 +4,4 @@
 "@workspace/cloud": patch
 ---
 
-Dashboard URLs now name the organization and the brand — `/app/org/{organization}/brand/{brand}`.
+Dashboard URLs now include the organization and the brand — `/app/org/{organization}/brand/{brand}`.

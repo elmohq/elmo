@@ -1,10 +1,10 @@
 ---
-"@workspace/web": patch
-"@workspace/worker": patch
-"@workspace/lib": patch
-"@workspace/cloud": patch
-"@workspace/config": patch
-"@workspace/www": patch
+"@workspace/web": minor
+"@workspace/worker": minor
+"@workspace/lib": minor
+"@workspace/cloud": minor
+"@workspace/config": minor
+"@workspace/www": minor
 ---
 
-Adds behind-the-scenes support for Elmo Cloud.
+Adds support for [Elmo Cloud](https://app.elmohq.com/).

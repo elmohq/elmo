@@ -5,4 +5,4 @@
 "@workspace/cloud": patch
 ---
 
-The account menu lists every organization you belong to and the brands under each.
+The account menu lists every organization (not just brands) you belong to.
