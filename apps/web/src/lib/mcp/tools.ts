@@ -373,7 +373,8 @@ const createPromptsTool = defineTool({
 				}),
 			)
 			.min(1)
-			.max(MAX_PROMPT_BATCH),
+			.max(MAX_PROMPT_BATCH)
+			.describe("The prompts to add."),
 	},
 	run: async ({ auth }, args) => {
 		const brand = await requireBrandInScope(auth, args.brandId, "body");

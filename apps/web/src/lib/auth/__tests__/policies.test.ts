@@ -312,6 +312,43 @@ describe("evaluateDeploymentPolicy", () => {
 		}
 	});
 
+	describe("mcp", () => {
+		it("lets the transport through in every mode, because a read is a POST too", () => {
+			for (const features of [LOCAL_FEATURES, DEMO_FEATURES, WHITELABEL_FEATURES]) {
+				expect(evaluateDeploymentPolicy(features, req("POST", "/api/mcp")).action).toBe("allow");
+			}
+		});
+
+		it("leaves an unauthenticated MCP call to the route, which answers with a challenge", () => {
+			// A middleware block here would be a bare 403 with no WWW-Authenticate,
+			// which is the header a client needs to discover it should sign in.
+			expect(evaluateDeploymentPolicy(LOCAL_FEATURES, req("POST", "/api/mcp")).action).toBe("allow");
+		});
+
+		it("runs the OAuth flow wherever writes are allowed", () => {
+			for (const features of [LOCAL_FEATURES, WHITELABEL_FEATURES]) {
+				expect(evaluateDeploymentPolicy(features, req("GET", "/api/auth/mcp/authorize")).action).toBe("allow");
+				expect(evaluateDeploymentPolicy(features, req("POST", "/api/auth/mcp/register")).action).toBe("allow");
+				expect(evaluateDeploymentPolicy(features, req("POST", "/api/auth/mcp/token")).action).toBe("allow");
+			}
+		});
+
+		it("turns the OAuth flow off in a read-only deployment", () => {
+			// Client registration is an unauthenticated write by design; a public
+			// demo is exactly where that gets abused.
+			for (const path of ["/api/auth/mcp/register", "/api/auth/mcp/authorize", "/api/auth/mcp/token"]) {
+				expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", path))).toMatchObject({
+					action: "block",
+					status: 403,
+				});
+			}
+		});
+
+		it("still serves MCP itself in a read-only deployment", () => {
+			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcp")).action).toBe("allow");
+		});
+	});
+
 	// ────────────────────────────────────────────────────────────
 	// Custom / edge-case feature combos
 	// ────────────────────────────────────────────────────────────

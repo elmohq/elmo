@@ -12,6 +12,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { ApiError } from "@/lib/api/handler";
 import type { Principal } from "@/lib/auth/api-auth";
+import type { McpTool } from "./tools";
 import { toolsFor } from "./tools";
 
 /** Shown in `initialize`; how a client names this server in its UI. */
@@ -61,10 +62,15 @@ function isWriteDenied(err: unknown): err is Error {
 	return err instanceof Error && err.name === "WriteDeniedError";
 }
 
-export function createMcpServer(auth: Principal): McpServer {
+/**
+ * `tools` is a parameter rather than something this reads for itself: which
+ * tools a caller gets is the registry's question, and answering it here would
+ * make "what did the caller actually see" untestable without a database.
+ */
+export function createMcpServer(auth: Principal, tools: readonly McpTool[]): McpServer {
 	const server = new McpServer(MCP_SERVER_INFO, { instructions: INSTRUCTIONS });
 
-	for (const tool of toolsFor(auth)) {
+	for (const tool of tools) {
 		server.registerTool(
 			tool.name,
 			{
@@ -110,7 +116,7 @@ export async function handleMcpRequest(auth: Principal, request: Request): Promi
 		// can be torn down on the way out without truncating anything.
 		enableJsonResponse: true,
 	});
-	const server = createMcpServer(auth);
+	const server = createMcpServer(auth, toolsFor(auth));
 	await server.connect(transport);
 	try {
 		return await transport.handleRequest(request);
