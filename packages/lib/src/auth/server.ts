@@ -10,7 +10,7 @@ import { apiKey } from "@better-auth/api-key";
 import { type SSOOptions, sso } from "@better-auth/sso";
 import { type BetterAuthOptions, type BetterAuthPlugin, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, customSession, organization } from "better-auth/plugins";
+import { admin, customSession, mcp, organization } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { db } from "../db/db";
 import * as schema from "../db/schema";
@@ -49,6 +49,13 @@ export interface CreateAuthOptions {
 	 */
 	extraPlugins?: BetterAuthPlugin[];
 }
+
+/**
+ * Where the MCP plugin sends a browser that reached `/api/auth/mcp/authorize`
+ * without a session. The page signs the person in and hands the request back to
+ * the authorize endpoint, which is what turns a session into an OAuth code.
+ */
+export const MCP_LOGIN_PAGE = "/auth/authorize";
 
 export function createAuth(options?: CreateAuthOptions) {
 	const appUrl = process.env.APP_URL || process.env.VITE_APP_URL;
@@ -144,6 +151,18 @@ export function createAuth(options?: CreateAuthOptions) {
 					admin: adminRole,
 					user: userRole,
 				},
+			}),
+			// The OAuth authorization server behind /api/mcp. An MCP client
+			// registers itself, sends its user here to sign in, and leaves with a
+			// token that acts as that person — the same reach they have in the
+			// dashboard, no more.
+			//
+			// `resource` is the protected resource identifier a client checks the
+			// token audience against, so it names the MCP endpoint rather than the
+			// origin the plugin would default to.
+			mcp({
+				loginPage: MCP_LOGIN_PAGE,
+				resource: `${appUrl.replace(/\/$/, "")}/api/mcp`,
 			}),
 			sso(options?.sso),
 			...(options?.extraPlugins ?? []),
