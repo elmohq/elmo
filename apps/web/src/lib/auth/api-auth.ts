@@ -17,7 +17,7 @@
 import { db } from "@workspace/lib/db/db";
 import { brands, organization } from "@workspace/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
-import { type ApiScope, permissionsToScopes } from "@/lib/api/scopes";
+import { API_SCOPES, type ApiScope, permissionsToScopes } from "@/lib/api/scopes";
 import { getAdminApiKeys, timingSafeStringEqual } from "./policies";
 
 export interface AdminAuth {
@@ -80,6 +80,59 @@ export interface UserAuth {
  * for. `/api/v1` only ever sees the `ApiAuth` half; MCP sees all three.
  */
 export type Principal = ApiAuth | UserAuth;
+
+/**
+ * What a caller reaches, with the three kinds collapsed.
+ *
+ * The kinds differ only in where these three answers come from, so this is the
+ * one place that knows there are three. Everything downstream — brand scoping,
+ * the scope check, the tool filter — asks this instead of switching on `kind`,
+ * which is what keeps a fourth kind from meaning a hunt through five modules.
+ *
+ * `null` means "unrestricted" in both id fields, and it is not the same as an
+ * empty array: `[]` is a caller that reaches nothing, which is what a
+ * restriction naming only other tenants' brands collapses to.
+ */
+export interface PrincipalReach {
+	/** The organizations the caller's data is drawn from; null for every one. */
+	organizationIds: string[] | null;
+	/** A narrowing within those organizations; null for every brand in them. */
+	brandIds: string[] | null;
+	scopes: Set<ApiScope>;
+}
+
+/**
+ * An admin key and a signed-in person both hold every scope — scopes exist to
+ * narrow a *key* below what its issuer can already do, and a session is that
+ * person, who reaches all of this in the dashboard anyway.
+ */
+export function principalReach(auth: Principal): PrincipalReach {
+	switch (auth.kind) {
+		case "admin":
+			return { organizationIds: null, brandIds: null, scopes: new Set(API_SCOPES) };
+		case "organization":
+			return { organizationIds: [auth.organizationId], brandIds: auth.brandIds, scopes: auth.scopes };
+		case "user":
+			return { organizationIds: auth.organizationIds, brandIds: null, scopes: new Set(API_SCOPES) };
+	}
+}
+
+/** What a caller may do, in the one vocabulary the whole surface speaks. */
+export function principalScopes(auth: Principal): Set<ApiScope> {
+	return principalReach(auth).scopes;
+}
+
+/** How a caller is named in `whoami`, in `/me`, and in a log line. */
+export function principalLabel(auth: Principal): string {
+	switch (auth.kind) {
+		case "admin":
+			return "instance admin key";
+		case "organization":
+			return `API key for ${auth.organizationName}`;
+		case "user":
+			return auth.email ?? auth.userId;
+	}
+}
 
 export interface ApiAuthFailure {
 	status: 401 | 429;

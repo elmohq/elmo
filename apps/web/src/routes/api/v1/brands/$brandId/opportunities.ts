@@ -10,12 +10,9 @@
  * tell "no opportunities" from "not enough data yet" from "never generated".
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { db } from "@workspace/lib/db/db";
-import { brandOpportunities } from "@workspace/lib/db/schema";
-import { desc, eq } from "drizzle-orm";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
-import type { OpportunitiesReport } from "@/server/opportunities";
+import { latestOpportunities } from "@/server/opportunities-core";
 
 export const Route = createFileRoute("/api/v1/brands/$brandId/opportunities")({
 	server: {
@@ -24,50 +21,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/opportunities")({
 				scopes: ["analytics:read"],
 				handle: async ({ params, auth }) => {
 					const brand = await requireBrandInScope(auth, params.brandId);
-
-					const [row] = await db
-						.select()
-						.from(brandOpportunities)
-						.where(eq(brandOpportunities.brandId, brand.id))
-						.orderBy(desc(brandOpportunities.createdAt))
-						.limit(1);
-
-					if (!row) {
-						return {
-							brandId: brand.id,
-							status: "not-generated",
-							generatedAt: null,
-							model: null,
-							summary: [],
-							opportunities: [],
-							risks: [],
-						};
-					}
-
-					const report = row.report as OpportunitiesReport;
-					const opportunities = report.opportunities ?? [];
-
-					return {
-						brandId: brand.id,
-						// A stored report with nothing in it is what "not enough tracked
-						// answers yet" looks like on disk.
-						status: opportunities.length > 0 ? "ready" : "insufficient-data",
-						generatedAt: row.createdAt,
-						model: row.model,
-						summary: report.summary ?? [],
-						opportunities: opportunities.map((item) => ({
-							category: item.category,
-							title: item.title,
-							why: item.why,
-							relatedPrompts: (item.relatedPrompts ?? []).map((prompt) => ({
-								text: prompt.text,
-								promptId: prompt.promptId,
-							})),
-							yourCitations: item.yourCitations ?? [],
-							competitorCitations: item.competitorCitations ?? [],
-						})),
-						risks: report.risks ?? [],
-					};
+					return latestOpportunities(brand.id);
 				},
 			}),
 		}),

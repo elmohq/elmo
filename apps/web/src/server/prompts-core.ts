@@ -42,15 +42,26 @@ export class PromptNotFoundError extends Error {
 // Schemas
 // ============================================================================
 
-/** The brand a prompt belongs to. Resolving it to a brand is the caller's job. */
+/**
+ * The descriptions are on the schemas rather than on any one edge's copy of
+ * them: MCP publishes them to the model in `tools/list`, and having a second
+ * set of words for the same field is how the two surfaces come to describe a
+ * prompt differently.
+ */
 const brandIdSchema = z.string().trim().min(1, "brandId is required");
 
-const promptValueSchema = z.string().trim().min(1, "value must be a non-empty string");
+const promptValueSchema = z
+	.string()
+	.trim()
+	.min(1, "value must be a non-empty string")
+	.describe("The question to ask, as a person would type it.");
+
+const promptTagsSchema = z.array(z.string()).describe("Free-form labels used for filtering analytics.");
 
 export const createPromptInputSchema = z.object({
 	brandId: brandIdSchema,
 	value: promptValueSchema,
-	tags: z.array(z.string()).optional(),
+	tags: promptTagsSchema.optional(),
 });
 
 export const bulkPromptInputSchema = z.object({
@@ -59,22 +70,26 @@ export const bulkPromptInputSchema = z.object({
 		.array(
 			z.object({
 				value: promptValueSchema,
-				tags: z.array(z.string()).optional(),
-				enabled: z.boolean().optional(),
-				premiumModels: z.array(z.string()).optional(),
+				tags: promptTagsSchema.optional(),
+				enabled: z.boolean().optional().describe("Whether to start sampling it. Defaults to true."),
+				premiumModels: z.array(z.string()).optional().describe("Premium engines to pair this prompt with."),
 			}),
 		)
 		.min(1, "prompts must contain at least one entry")
-		.max(MAX_PROMPT_BATCH, `prompts may contain at most ${MAX_PROMPT_BATCH} entries`),
+		.max(MAX_PROMPT_BATCH, `prompts may contain at most ${MAX_PROMPT_BATCH} entries`)
+		.describe("The prompts to add."),
 });
 
+/** The fields an update may carry, before the "at least one" rule is applied. */
+export const promptUpdateFields = {
+	value: promptValueSchema.optional().describe("Replacement text."),
+	enabled: z.boolean().optional().describe("Whether to keep sampling it."),
+	tags: promptTagsSchema.optional().describe("Replaces the prompt's tags outright."),
+	premiumModels: z.array(z.string()).optional().describe("Replaces the prompt's premium engine pairings."),
+};
+
 export const updatePromptInputSchema = z
-	.object({
-		value: promptValueSchema.optional(),
-		enabled: z.boolean().optional(),
-		tags: z.array(z.string()).optional(),
-		premiumModels: z.array(z.string()).optional(),
-	})
+	.object(promptUpdateFields)
 	.refine(
 		(body) => Object.keys(body).length > 0,
 		"At least one of value, enabled, tags, or premiumModels must be provided",
@@ -156,6 +171,15 @@ export async function findPrompt(promptId: string): Promise<PromptSummary | null
 	return prompt ?? null;
 }
 
+/**
+ * Just the brand a prompt belongs to — what a caller needs to decide whether
+ * the prompt is theirs before doing anything with it.
+ */
+export async function findPromptBrandId(promptId: string): Promise<string | null> {
+	const [prompt] = await db.select({ brandId: prompts.brandId }).from(prompts).where(eq(prompts.id, promptId)).limit(1);
+	return prompt?.brandId ?? null;
+}
+
 /** The same lookup for a write path, which needs the row's current state. */
 export async function requirePrompt(promptId: string): Promise<Prompt> {
 	const [prompt] = await db.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
@@ -179,7 +203,12 @@ export async function createPrompt(brand: PromptBrand, input: Omit<CreatePromptI
  * leaves the caller guessing how far it got.
  */
 export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptInput, "brandId">): Promise<Prompt[]> {
-	const rows = input.prompts.map((prompt) => ({
+	// Parsed here, not merely typed. `BulkPromptInput` says "output of the
+	// schema", but TypeScript cannot tell a trimmed non-empty string from any
+	// string — so an edge that built its own shape would slip an empty prompt
+	// past a signature that claims to forbid one.
+	const parsed = bulkPromptInputSchema.omit({ brandId: true }).parse(input);
+	const rows = parsed.prompts.map((prompt) => ({
 		brandId: brand.id,
 		value: prompt.value,
 		enabled: prompt.enabled ?? true,
@@ -229,7 +258,10 @@ function promptUpdateData(
 	return update;
 }
 
-export async function updatePrompt(brand: PromptBrand, promptId: string, input: UpdatePromptInput): Promise<Prompt> {
+export async function updatePrompt(brand: PromptBrand, promptId: string, changes: UpdatePromptInput): Promise<Prompt> {
+	// Same reason as createPrompts: the "at least one field" rule and the
+	// non-empty value live on the schema, so they are applied from it.
+	const input = updatePromptInputSchema.parse(changes);
 	const updated = await withQuotaLock(brand.organizationId, async (tx, afterCommit) => {
 		const [existing] = await tx.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
 		if (!existing || existing.brandId !== brand.id) throw new PromptNotFoundError(promptId);

@@ -618,11 +618,16 @@ this plan got wrong.
    it) is what a consumer outside `apps/web` would need; the MCP server (#105)
    lives inside it and wraps these functions in place.
 
-   The CRUD half is shared now too. `apps/web/src/server/prompts-core.ts` holds
-   prompt create / update / delete as edge-agnostic functions — the plan limits
-   they spend, the scheduler they start, the tags they derive — and both
-   `/api/v1/prompts*` and the MCP tools are wrappers over it. What is left is
-   brands and competitors, which are still thin over drizzle in two places.
+   The CRUD and read halves are shared now too, in `apps/web/src/server/*-core.ts`:
+   `prompts-core` (create / update / delete, with the plan limits they spend and
+   the scheduler they start), `runs-core`, `opportunities-core`,
+   `competitors-core`, `platforms-core`, and `listBrands` in `onboarding-core`.
+   Every `/api/v1` route and every MCP tool over those resources is a wrapper.
+   The rule that keeps it that way: **a second edge is not allowed to be a
+   second implementation.** Adding one means extracting first — the alternative
+   is two queries that answer the same question and drift, which is what the
+   first draft of the MCP tools did and what `e2e/tests/shared/mcp.spec.ts`
+   now pins against.
 5. **Read surface.** `/v1/me`, `/v1/platforms`, `/v1/organizations*`, including
    billing.
 6. **Analytics endpoints**, one shared analytics function each.
@@ -754,9 +759,13 @@ compare, and a rate-limited key must be reported as rate-limited rather than
 falling through to a second failure that reads as "invalid".
 
 **Tenancy is not restated.** `UserAuth` joins `AdminAuth` and `OrganizationAuth`
-under a `Principal` union that `lib/api/scope.ts` takes, so all three kinds
-answer the same "which brands" question in one place. `ApiAuth` deliberately
-stays the pair it was, so a `/api/v1` route cannot be handed a session.
+under a `Principal` union, and `principalReach(auth)` collapses the three kinds
+into one `{ organizationIds, brandIds, scopes }` answer. That function is the
+only place that knows there are three kinds: `lib/api/scope.ts` and
+`createApiHandler`'s scope check both ask it rather than switching on the tag,
+so a fourth kind is one `case` and not a hunt through five modules. `ApiAuth`
+deliberately stays the pair it was, so a `/api/v1` route cannot be handed a
+session.
 
 **The authorization endpoint is our page, not the plugin's.** The plugin asks
 for consent only when the *client* requests it, and issues a code immediately to
@@ -787,8 +796,10 @@ Split by what each layer can actually see:
   partition is asserted *by name*, so adding a tool that mutates anything breaks
   a test, which is the moment to ask whether an agent should be able to do it.
   `tenancy.test.ts` stubs `lib/api/scope` to refuse everything and asserts every
-  brand-touching tool refuses with it — a tool that queried drizzle directly
-  would sail past a stubbed scope module and return rows.
+  brand-touching tool both refuses *and* asked — a tool that queried drizzle
+  directly would sail past a stubbed scope module and return rows. It also
+  requires a call to be listed for every tool, so a new one cannot be added
+  without deciding which of the two it is.
 - **Bruno** (`e2e/bruno/mcp/`) — the JSON-RPC and HTTP contract: the challenge a
   credential-less client gets, what each key is offered, that a cross-tenant
   read is worded identically to an absent one, and that both discovery documents

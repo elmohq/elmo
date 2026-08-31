@@ -115,24 +115,41 @@ export interface Paging {
 	offset: number;
 }
 
-export function resolvePaging(page: string | null, limit: string | null, defaultLimit = 20): Paging {
-	const rawPage = page ?? "1";
-	const rawLimit = limit ?? String(defaultLimit);
+/**
+ * Arithmetic only. A caller that reached here with a schema — the MCP tools
+ * declare `page` and `limit` as bounded integers — has already been validated,
+ * and stringifying those numbers so a regex could re-derive them would be the
+ * refactor moving complexity rather than deleting it.
+ */
+export function resolvePaging(page = 1, limit = 20): Paging {
+	return { page, limit, offset: (page - 1) * limit };
+}
+
+/** The same window, read off a query string, where the values really are text. */
+export function parsePaging(url: URL, defaultLimit = 20): Paging {
+	const rawPage = url.searchParams.get("page") ?? "1";
+	const rawLimit = url.searchParams.get("limit") ?? String(defaultLimit);
 	if (!/^\d+$/.test(rawPage) || Number(rawPage) < 1) invalid("page must be a positive integer");
 	if (!/^\d+$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 100) {
 		invalid("limit must be an integer between 1 and 100");
 	}
-	return { page: Number(rawPage), limit: Number(rawLimit), offset: (Number(rawPage) - 1) * Number(rawLimit) };
+	return resolvePaging(Number(rawPage), Number(rawLimit));
 }
 
-export function parsePaging(url: URL, defaultLimit = 20): Paging {
-	return resolvePaging(url.searchParams.get("page"), url.searchParams.get("limit"), defaultLimit);
+/**
+ * The one pagination envelope every list answers with.
+ *
+ * `totalPages` is 0 for an empty result, not 1: "how many pages are there" has
+ * the answer "none" when there is nothing, and a caller looping `page <=
+ * totalPages` should not be sent to fetch an empty first page.
+ */
+export function pageEnvelope(page: number, limit: number, total: number) {
+	return { page, limit, total, totalPages: Math.ceil(total / limit) };
 }
 
 export function paginate<T>(rows: T[], page: number, limit: number) {
-	const total = rows.length;
 	return {
 		data: rows.slice((page - 1) * limit, page * limit),
-		pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+		pagination: pageEnvelope(page, limit, rows.length),
 	};
 }

@@ -16,6 +16,12 @@
 import { MCP_AUTHORIZE_PAGE, oAuthDiscoveryMetadata, oAuthProtectedResourceMetadata } from "@workspace/lib/auth/server";
 import { auth } from "@/lib/auth/server";
 
+/**
+ * One policy for both documents and their preflight. They are public by design
+ * — a client has to read them before it holds anything to authenticate with —
+ * so any origin may, and a preflight that advertised different methods from the
+ * documents it precedes would be its own small lie.
+ */
 const CORS_HEADERS = {
 	"Access-Control-Allow-Origin": "*",
 	"Access-Control-Allow-Methods": "GET, OPTIONS",
@@ -51,16 +57,24 @@ const pluginAuthorizationServerMetadata = oAuthDiscoveryMetadata(auth);
  */
 export const authorizationServerMetadata = async (request: Request): Promise<Response> => {
 	const response = await pluginAuthorizationServerMetadata(request);
-	const metadata = (await response.json()) as Record<string, unknown> & { issuer?: string };
+	// The plugin answers `null` rather than an error when it cannot build the
+	// document. Passing its response through keeps that a degraded document
+	// instead of a TypeError from reading `issuer` off nothing.
+	if (!response.ok) return response;
+	const metadata = (await response.json()) as (Record<string, unknown> & { issuer?: string }) | null;
+	if (!metadata) return Response.json(metadata, { status: response.status, headers: CORS_HEADERS });
+
 	// Built from the document's own issuer, not from the request. Every other
 	// URL in here is derived from APP_URL, and a client that finds one field
 	// naming a different origin from the rest refuses to connect — so a
 	// misconfigured APP_URL should produce one wrong answer to fix, not two
 	// that disagree.
 	const issuer = metadata.issuer ?? new URL(request.url).origin;
+	// Our own headers, not the plugin's: the body is no longer the plugin's, and
+	// a `Content-Length` or `ETag` it sets would describe a different one.
 	return Response.json(
 		{ ...metadata, authorization_endpoint: new URL(MCP_AUTHORIZE_PAGE, issuer).toString() },
-		{ headers: response.headers },
+		{ headers: CORS_HEADERS },
 	);
 };
 

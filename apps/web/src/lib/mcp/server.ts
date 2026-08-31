@@ -12,8 +12,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { ApiError } from "@/lib/api/handler";
 import type { Principal } from "@/lib/auth/api-auth";
-import type { McpTool } from "./tools";
-import { toolsFor } from "./tools";
+import { type McpTool, toolsFor } from "./tools";
 
 /** Shown in `initialize`; how a client names this server in its UI. */
 export const MCP_SERVER_INFO = {
@@ -69,6 +68,9 @@ function isWriteDenied(err: unknown): err is Error {
  */
 export function createMcpServer(auth: Principal, tools: readonly McpTool[]): McpServer {
 	const server = new McpServer(MCP_SERVER_INFO, { instructions: INSTRUCTIONS });
+	// What this connection was actually offered, so `whoami` reports the server's
+	// own decision rather than re-deriving it.
+	const context = { auth, toolNames: tools.map((tool) => tool.name) };
 
 	for (const tool of tools) {
 		server.registerTool(
@@ -89,7 +91,7 @@ export function createMcpServer(auth: Principal, tools: readonly McpTool[]): Mcp
 			},
 			async (args: Record<string, unknown>) => {
 				try {
-					const result = await tool.run({ auth }, args as never);
+					const result = await tool.run(context, args);
 					// JSON text rather than `structuredContent`: an output schema per
 					// tool would be a second copy of every shape `/api/v1` already
 					// publishes, free to drift from it, and every client reads the text

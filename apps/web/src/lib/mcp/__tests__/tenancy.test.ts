@@ -21,13 +21,13 @@ const REFUSED = new Error("scope check reached");
  * the check.
  */
 vi.mock("@/lib/api/scope", () => ({
-	requireBrandInScope: vi.fn(() => {
+	requireBrandInScope: vi.fn(async () => {
 		throw REFUSED;
 	}),
-	isBrandInScope: vi.fn(() => {
+	isBrandInScope: vi.fn(async () => {
 		throw REFUSED;
 	}),
-	brandScopeCondition: vi.fn(() => {
+	brandScopeCondition: vi.fn(async () => {
 		throw REFUSED;
 	}),
 	organizationScopeCondition: vi.fn(() => {
@@ -60,6 +60,15 @@ vi.mock("@/lib/postgres-read", () => ({
 }));
 
 const { MCP_TOOLS } = await import("../tools");
+const scope = await import("@/lib/api/scope");
+
+/** Every stubbed tenancy helper, so "did it ask?" is one question. */
+const SCOPE_CHECKS = [
+	scope.requireBrandInScope,
+	scope.isBrandInScope,
+	scope.brandScopeCondition,
+	scope.organizationScopeCondition,
+] as unknown as Array<{ mock: { calls: unknown[] } }>;
 
 /**
  * The smallest call that gets each tool past argument validation. Hand-written
@@ -91,6 +100,7 @@ const NO_TENANT_DATA = ["whoami", "list_platforms"];
 
 beforeEach(() => {
 	vi.stubEnv("DEPLOYMENT_MODE", "local");
+	for (const check of SCOPE_CHECKS) (check as unknown as { mockClear(): void }).mockClear();
 });
 
 afterEach(() => {
@@ -105,8 +115,16 @@ describe("tenancy", () => {
 
 	for (const tool of MCP_TOOLS.filter((t) => !NO_TENANT_DATA.includes(t.name))) {
 		it(`${tool.name} refuses when the scope check refuses`, async () => {
-			const admin = { auth: { kind: "admin", scopes: null, organizationId: null } } as const;
-			await expect(tool.run(admin, CALLS[tool.name] as never)).rejects.toBe(REFUSED);
+			const admin = {
+				auth: { kind: "admin", scopes: null, organizationId: null },
+				toolNames: [],
+			} as const;
+			// Whatever the tool does with the refusal — re-raise it, or convert it
+			// into a not-found so an id can't be probed — it must not answer.
+			await expect(tool.run(admin, CALLS[tool.name])).rejects.toThrow();
+			// And it must have refused *because it asked*, not for some other reason.
+			const asked = SCOPE_CHECKS.some((check) => check.mock.calls.length > 0);
+			expect(asked, `${tool.name} never consulted lib/api/scope`).toBe(true);
 		});
 	}
 });

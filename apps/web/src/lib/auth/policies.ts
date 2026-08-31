@@ -10,6 +10,7 @@
  */
 import { timingSafeEqual } from "node:crypto";
 import type { FeaturesConfig } from "@workspace/config/types";
+import { MCP_PATH } from "@workspace/lib/auth/server";
 import { READ_ONLY_ERROR, READ_ONLY_MESSAGE } from "@/lib/read-only-errors";
 
 // ============================================================================
@@ -138,6 +139,26 @@ function refuseAuthEndpoint(
 }
 
 /**
+ * Surfaces that enforce read-only at their own gate, in their own error
+ * vocabulary, and so must reach it.
+ *
+ *  - `/api/v1/*` — `createApiHandler` refuses the write with the same
+ *    `{ error, message, code }` envelope every other error on that surface
+ *    carries, rather than a bare middleware body.
+ *  - `/api/mcp` — every MCP call is a POST, including the ones that only read,
+ *    so refusing the transport here would take the reads with it. The tool
+ *    registry is what decides: it drops every writer in a read-only deployment.
+ *
+ * A list rather than a chain of `&&  !isSomething`, so a third surface is a
+ * data change and not a fourth clause in a boolean.
+ */
+const SELF_POLICING_WRITE_SURFACES = ["/api/v1/", `${MCP_PATH}/`];
+
+function refusesItsOwnWrites(pathname: string): boolean {
+	return SELF_POLICING_WRITE_SURFACES.some((prefix) => `${pathname}/`.startsWith(prefix));
+}
+
+/**
  * Evaluate request-level deployment access policy.
  *
  * Encodes the logic from `deploymentMiddleware` as a pure function:
@@ -157,25 +178,17 @@ export function evaluateDeploymentPolicy(features: FeaturesConfig, request: Requ
 	const isApiRoute = pathname.startsWith("/api/");
 	const isServerFunctionRoute = pathname.startsWith("/_server");
 	const isAllowedAuthWrite = DEMO_AUTH_WRITE_ALLOWLIST.has(pathname);
-	// createApiHandler is the auth gate for /api/v1 (it needs a database lookup
-	// this pure function can't do), and it enforces read-only there too, so its
-	// refusal carries the same `{ error, message, code }` envelope as every
-	// other /api/v1 error instead of a bare middleware body.
 	const isPublicApiV1 = pathname.startsWith("/api/v1/");
 	const isPublicApiV1Doc = pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
-	// Every MCP call is a POST, including the ones that only read, so the
-	// read-only block below cannot be the thing that decides what an agent may
-	// do. The tool registry is: it drops every writer in a read-only deployment,
-	// so refusing the transport here would take the reads with it.
-	const isMcp = pathname === "/api/mcp" || pathname === "/api/mcp/";
 
 	// 0. The better-auth endpoints no deployment exposes over HTTP.
 	const authEndpointRefusal = refuseAuthEndpoint(features, pathname, isWriteMethod);
 	if (authEndpointRefusal) return authEndpointRefusal;
 
 	// 1. Read-only mode: block every write except the explicit allowlist
-	// (analytics events + the two auth endpoints a visitor needs to use).
-	if (features.readOnly && isWriteMethod && !isPublicApiV1 && !isMcp) {
+	// (analytics events + the two auth endpoints a visitor needs to use), and
+	// except the surfaces that refuse writes themselves.
+	if (features.readOnly && isWriteMethod && !refusesItsOwnWrites(pathname)) {
 		if ((isApiRoute || isServerFunctionRoute) && !isPlausibleEventRoute && !isAllowedAuthWrite) {
 			return {
 				action: "block",

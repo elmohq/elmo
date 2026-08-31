@@ -15,22 +15,16 @@
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { eq, inArray, type SQL, sql } from "drizzle-orm";
-import type { Principal } from "@/lib/auth/api-auth";
+import { type Principal, principalReach } from "@/lib/auth/api-auth";
 import { ApiError } from "./handler";
 
 type Brand = typeof brands.$inferSelect;
 
-/** The organizations a caller's data is drawn from, or null for "every one". */
-function scopedOrganizationIds(auth: Principal): string[] | null {
-	if (auth.kind === "admin") return null;
-	return auth.kind === "user" ? auth.organizationIds : [auth.organizationId];
-}
-
 /** Every brand the caller may reach, or null when that is "all of them". */
 async function scopedBrandIds(auth: Principal): Promise<string[] | null> {
-	const organizationIds = scopedOrganizationIds(auth);
+	const { organizationIds, brandIds } = principalReach(auth);
 	if (organizationIds === null) return null;
-	if (auth.kind === "organization" && auth.brandIds) return auth.brandIds;
+	if (brandIds) return brandIds;
 	if (organizationIds.length === 0) return [];
 	const rows = await db.select({ id: brands.id }).from(brands).where(inArray(brands.organizationId, organizationIds));
 	return rows.map((row) => row.id);
@@ -64,10 +58,9 @@ export async function brandScopeCondition(
 async function loadBrandInScope(auth: Principal, brandId: string): Promise<Brand | null> {
 	const [brand] = await db.select().from(brands).where(eq(brands.id, brandId)).limit(1);
 	if (!brand) return null;
-	const organizationIds = scopedOrganizationIds(auth);
-	if (organizationIds === null) return brand;
-	if (!organizationIds.includes(brand.organizationId)) return null;
-	if (auth.kind === "organization" && auth.brandIds && !auth.brandIds.includes(brand.id)) return null;
+	const { organizationIds, brandIds } = principalReach(auth);
+	if (organizationIds && !organizationIds.includes(brand.organizationId)) return null;
+	if (brandIds && !brandIds.includes(brand.id)) return null;
 	return brand;
 }
 
@@ -107,7 +100,7 @@ export async function isBrandInScope(auth: Principal, brandId: string): Promise<
  * asking about it.
  */
 export function requireOrganizationInScope(auth: Principal, organizationId: string): void {
-	const organizationIds = scopedOrganizationIds(auth);
+	const { organizationIds } = principalReach(auth);
 	if (organizationIds === null) return;
 	if (!organizationIds.includes(organizationId)) {
 		throw new ApiError(404, "Not Found", `Organization "${organizationId}" not found.`);
@@ -116,7 +109,7 @@ export function requireOrganizationInScope(auth: Principal, organizationId: stri
 
 /** The listing counterpart: the caller's workspaces, or every one for an admin. */
 export function organizationScopeCondition(auth: Principal, column: Parameters<typeof eq>[0]): SQL | undefined {
-	const organizationIds = scopedOrganizationIds(auth);
+	const { organizationIds } = principalReach(auth);
 	if (organizationIds === null) return undefined;
 	if (organizationIds.length === 0) return sql`false`;
 	return inArray(column, organizationIds);

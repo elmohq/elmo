@@ -64,6 +64,20 @@ if [ ! -s "$TMP_OUTPUT" ]; then
   exit 1
 fi
 
+# `references: "organization"` is a runtime option the CLI cannot see, so it
+# emits apikey.referenceId as a bare text column. Restoring the foreign key is
+# what makes a deleted organization take its keys with it; without it a revoked
+# tenant's keys keep resolving to an id nothing answers for. Patched here rather
+# than by hand so regenerating the schema can't quietly drop it again.
+#
+# Scoped to the apikey table on purpose: `subscription.referenceId` is the same
+# column name on a table the Stripe plugin points wherever it is configured to,
+# and it must stay unconstrained.
+#
+# Node rather than another runtime: it is the only one this repo's `engines`
+# guarantees, and the patch runs before Biome so the formatting is Biome's.
+node "$SCRIPT_DIR/patch-apikey-fk.mjs" "$TMP_OUTPUT"
+
 # Prepend our header and write to the real output file
 {
 cat <<'HEADER'
@@ -95,44 +109,6 @@ cat "$TMP_OUTPUT"
 
 # The CLI formats with Prettier and emits imports unsorted, both of which fail
 # `pnpm lint`. Run Biome so the generated file is committable as-is.
-pnpm exec biome check --write "$OUTPUT" >/dev/null
-
-# `references: "organization"` is a runtime option the CLI cannot see, so it
-# emits apikey.referenceId as a bare text column. Restoring the foreign key is
-# what makes a deleted organization take its keys with it; without it a revoked
-# tenant's keys keep resolving to an id nothing answers for. Patched here rather
-# than by hand so regenerating the schema can't quietly drop it again.
-#
-# Scoped to the apikey table on purpose: `subscription.referenceId` is the same
-# column name on a table the Stripe plugin points wherever it is configured to,
-# and it must stay unconstrained.
-python3 - "$OUTPUT" <<'PATCH'
-import re
-import sys
-
-path = sys.argv[1]
-source = open(path).read()
-
-table = re.search(r'export const apikey = pgTable\((.|\n)*?^\);$', source, re.MULTILINE)
-if not table:
-    sys.exit("[generate-auth-schema] ERROR: apikey table not found to patch")
-
-bare = '\t\treferenceId: text("reference_id").notNull(),'
-linked = (
-    '\t\treferenceId: text("reference_id")\n'
-    '\t\t\t.notNull()\n'
-    '\t\t\t.references(() => organization.id, { onDelete: "cascade" }),'
-)
-if linked in table.group(0):
-    sys.exit(0)
-if bare not in table.group(0):
-    sys.exit("[generate-auth-schema] ERROR: apikey.referenceId not in the shape this patch expects")
-
-patched = source[: table.start()] + table.group(0).replace(bare, linked, 1) + source[table.end() :]
-open(path, "w").write(patched)
-PATCH
-
-# Re-run Biome: the patch above writes hand-formatted text into the file.
 pnpm exec biome check --write "$OUTPUT" >/dev/null
 
 echo "[generate-auth-schema] Written $(wc -l < "$OUTPUT") lines to $OUTPUT"

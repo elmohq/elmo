@@ -16,7 +16,7 @@ import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { claimNewBrandSlug, findUnusedBrandSlug } from "@workspace/lib/db/unique-names";
 import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { eq } from "drizzle-orm";
+import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
@@ -487,4 +487,42 @@ export async function saveWizardOnboarding(input: WizardOnboardingInput): Promis
 
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
 	return buildBrandResult(refreshed!);
+}
+
+// ============================================================================
+// Reads
+// ============================================================================
+
+export interface ListBrandsFilters {
+	/** Substring match on the brand's name or its id. */
+	q?: string;
+	enabled?: boolean;
+	limit: number;
+	offset: number;
+	/** The caller's tenancy condition, from `brandScopeCondition`. */
+	scope?: SQL;
+}
+
+/**
+ * The brand list both external surfaces publish, already shaped by
+ * `buildBrandResult`. Tenancy is the caller's job; nothing here knows who is
+ * asking.
+ */
+export async function listBrands(filters: ListBrandsFilters): Promise<{ data: BrandResult[]; total: number }> {
+	const conditions: (SQL | undefined)[] = [filters.scope];
+	if (filters.enabled !== undefined) conditions.push(eq(brands.enabled, filters.enabled));
+	const query = filters.q?.trim();
+	if (query) conditions.push(or(ilike(brands.name, `%${query}%`), ilike(brands.id, `%${query}%`)));
+
+	const where = and(...conditions.filter(Boolean));
+	const [totals] = await db.select({ count: count() }).from(brands).where(where);
+	const rows = await db
+		.select()
+		.from(brands)
+		.where(where)
+		.orderBy(desc(brands.createdAt))
+		.limit(filters.limit)
+		.offset(filters.offset);
+
+	return { data: rows.map(buildBrandResult), total: totals?.count ?? 0 };
 }
