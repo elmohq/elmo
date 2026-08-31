@@ -867,35 +867,46 @@ larger than it is.
 ## 7. MCP — `/api/mcp`
 
 A projection of everything above, for AI clients instead of code. The tools are
-wrappers over `analytics-core`, `prompts-core`, and `tags-core`, so a number an
-agent reads is the number the dashboard shows. The decisions worth recording:
+wrappers over the same `@/server/*-core` functions the REST routes call, so a
+number an agent reads is the number the dashboard shows. The decisions worth
+recording:
+
+**This surface is the product as a workspace member has it, and no more.**
+`McpTool` has no `adminOnly` and must never gain one: an instance-wide key
+connecting here gets exactly the tools an organization key gets. Deleting a
+prompt (`adminOnly` on `/api/v1` since no dashboard role can do it), generating
+a report, running a brand analysis, and creating a brand or an organization are
+all absent — every one is either operator-only or spends money, and neither is a
+decision to hand to a model. `tools.test.ts` asserts the admin and
+fully-scoped-org tool lists are identical, so the day that stops being true is
+the day a test fails.
+
+Billing is readable and only readable. There is no billing write anywhere in the
+codebase for a tool to reach, which is a stronger guarantee than a check.
 
 **`tools/list` is the authorization surface.** The server registers only the
 tools a caller holds every scope for, so a key is never offered something it
 would then be refused. That matters more here than in REST: a `403` is a thing a
-program handles, but a model that sees a tool will plan around it, and telling
-it off afterwards wastes a turn and reads to a user as the product being broken.
+program handles, but a model that sees a tool will plan around it, and telling it
+off afterwards wastes a turn and reads to a user as the product being broken.
 The same filter is what a read-only deployment uses to drop every writer — every
 MCP call is a `POST`, including the reads, so the deployment middleware can't be
 what decides this.
 
 **Two credentials, one principal.** An OAuth session (better-auth's `mcp`
-plugin) is a *person*, and holds what they hold in the dashboard: scopes exist
-to narrow a key below what its issuer can already do, and narrowing a session
-would be a promise the browser doesn't keep. An organization key is what a
-container has, and is the only way to hand out *less* — a subset of scopes, a
-subset of brands. `resolveMcpAuth` tries the key first: an admin key is a string
-compare, and a rate-limited key must be reported as rate-limited rather than
-falling through to a second failure that reads as "invalid".
+plugin) is a *person*, and holds what they hold in the dashboard. An organization
+key is what a container has, and is the only way to hand out *less* — a subset of
+scopes, a subset of brands. `resolveMcpAuth` tries the key first: an admin key is
+a string compare, and a rate-limited key must be reported as rate-limited rather
+than falling through to a second failure that reads as "invalid".
 
 **Tenancy is not restated.** `UserAuth` joins `AdminAuth` and `OrganizationAuth`
 under a `Principal` union, and `principalReach(auth)` collapses the three kinds
 into one `{ organizationIds, brandIds, scopes }` answer. That function is the
 only place that knows there are three kinds: `lib/api/scope.ts` and
-`createApiHandler`'s scope check both ask it rather than switching on the tag,
-so a fourth kind is one `case` and not a hunt through five modules. `ApiAuth`
-deliberately stays the pair it was, so a `/api/v1` route cannot be handed a
-session.
+`createApiHandler`'s scope check both ask it rather than switching on the tag.
+`ApiAuth` deliberately stays the pair it was, so a `/api/v1` route cannot be
+handed a session.
 
 **The authorization endpoint is our page, not the plugin's.** The plugin asks
 for consent only when the *client* requests it, and issues a code immediately to
@@ -906,12 +917,14 @@ and waits for a click. It is where a person is asked, not a gate: the plugin's
 endpoint stays reachable, as every authorization endpoint is, and what actually
 stops a code being useful to anyone else is PKCE and the registered redirect URI.
 
-**No new configuration, and no scope beyond what a key can already hold.**
-There is no MCP env var: the endpoint is on wherever Elmo is. There is no tool
-for billing, report generation, or brand creation — the same reasoning as §1.3,
-with the extra weight that a tool an agent can call is a tool it can call by
-mistake. Deleting a prompt is the one irreversible tool, and it needs
-`prompts:delete` and carries the protocol's `destructiveHint`.
+**Only `list_prompts` and `list_runs` paginate.** A workspace has a handful of
+brands and a handful of competitors per brand, and the analytics answers are
+bounded by construction — so a page argument on those would be a knob every
+caller has to think about to get back what one call already returns.
+
+**No new configuration, ever.** There is no MCP env var: the endpoint is on
+wherever Elmo is. `APP_URL` has to be the address clients reach, because the
+discovery documents are built from it.
 
 **Read-only deployments serve MCP but run no OAuth flow.** Client registration
 is an unauthenticated write by design — that is what lets a client introduce
@@ -924,16 +937,14 @@ Split by what each layer can actually see:
 
 - **Unit** — the registry's rules, where they are cheapest to pin. The write
   partition is asserted *by name*, so adding a tool that mutates anything breaks
-  a test, which is the moment to ask whether an agent should be able to do it.
-  `tenancy.test.ts` stubs `lib/api/scope` to refuse everything and asserts every
-  brand-touching tool both refuses *and* asked — a tool that queried drizzle
-  directly would sail past a stubbed scope module and return rows. It also
-  requires a call to be listed for every tool, so a new one cannot be added
-  without deciding which of the two it is.
+  a test. `tenancy.test.ts` stubs `lib/api/scope` to refuse everything and
+  asserts every brand-touching tool both refuses *and asked* — a tool that
+  queried drizzle directly would sail past a stubbed scope module and return
+  rows.
 - **Bruno** (`e2e/bruno/mcp/`) — the JSON-RPC and HTTP contract: the challenge a
-  credential-less client gets, what each key is offered, that a cross-tenant
-  read is worded identically to an absent one, and that both discovery documents
-  agree on an origin.
+  credential-less client gets, what each key is offered, that an instance key's
+  tool list equals a member key's, that a cross-tenant read is worded identically
+  to an absent one, and that both discovery documents agree on an origin.
 - **Playwright** (`e2e/tests/shared/mcp.spec.ts`) — the two things Bruno cannot
   reach. The official SDK client, because hand-written JSON-RPC proves our
   handler answers and not that a real transport can negotiate with it. And the
