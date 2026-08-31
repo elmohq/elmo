@@ -41,6 +41,20 @@ const API_KEY_PLUGIN_MUTATIONS = new Set([
 	"/api/auth/api-key/delete",
 ]);
 
+/**
+ * The MCP OAuth flow, which a read-only deployment does not run.
+ *
+ * Dynamic client registration is an unauthenticated write by design — that is
+ * what lets an MCP client introduce itself — and a public demo is exactly where
+ * an unauthenticated write nobody has to sign in for gets abused. Turning the
+ * flow off is also the honest answer: a token minted here would act as the
+ * shared demo account, which can't write anything anyway.
+ *
+ * `/api/mcp` itself stays open; a read-only deployment answers it with an API
+ * key and offers only the tools that read.
+ */
+const MCP_OAUTH_PREFIX = "/api/auth/mcp/";
+
 const DEMO_AUTH_WRITE_ALLOWLIST = new Set([
 	"/api/auth/sign-in/email",
 	"/api/auth/sign-in/email/",
@@ -68,6 +82,62 @@ export interface RequestInfo {
 }
 
 /**
+ * The better-auth endpoints that are refused before anything else looks at the
+ * request, whatever the deployment mode.
+ *
+ * Each of these is an HTTP door onto something the app only ever does
+ * server-side, so the rule is "closed" rather than "closed unless". Split out
+ * of evaluateDeploymentPolicy because the list grows and the policy below it
+ * reads better without it inline.
+ */
+function refuseAuthEndpoint(
+	features: FeaturesConfig,
+	pathname: string,
+	isWriteMethod: boolean,
+): DeploymentPolicyResult | null {
+	// Minting or editing an API key never happens over HTTP. The plugin rejects
+	// `permissions` on any request carrying headers, so a browser could only ever
+	// create a scopeless key — but a key's brand narrowing lives in
+	// client-writable metadata, and the create path is where that gets validated
+	// against the organization's brands. Routing every key through the server
+	// function keeps that validation unskippable.
+	if (API_KEY_PLUGIN_MUTATIONS.has(pathname.replace(/\/$/, ""))) {
+		return {
+			action: "block",
+			status: 403,
+			error: "Forbidden",
+			message: "API keys are issued from the dashboard, not over this endpoint",
+		};
+	}
+
+	// Org plugin mutations are blocked everywhere over HTTP. Orgs are created
+	// server-side only — via the provisioning module (local/demo/cloud
+	// create-brand, or the admin brands API whitelabel is provisioned through) —
+	// and cloud team invitations go through server functions that call auth.api
+	// in-process, so no mode needs these HTTP endpoints.
+	if (pathname.startsWith("/api/auth/organization/") && isWriteMethod) {
+		return {
+			action: "block",
+			status: 403,
+			error: "Forbidden",
+			message: "Organization mutations are not available via the API",
+		};
+	}
+
+	// The MCP OAuth flow, off wherever writes are.
+	if (features.readOnly && pathname.startsWith(MCP_OAUTH_PREFIX)) {
+		return {
+			action: "block",
+			status: 403,
+			error: READ_ONLY_ERROR,
+			message: "Sign-in for MCP is disabled here; connect with an API key instead",
+		};
+	}
+
+	return null;
+}
+
+/**
  * Evaluate request-level deployment access policy.
  *
  * Encodes the logic from `deploymentMiddleware` as a pure function:
@@ -87,48 +157,25 @@ export function evaluateDeploymentPolicy(features: FeaturesConfig, request: Requ
 	const isApiRoute = pathname.startsWith("/api/");
 	const isServerFunctionRoute = pathname.startsWith("/_server");
 	const isAllowedAuthWrite = DEMO_AUTH_WRITE_ALLOWLIST.has(pathname);
-	const isOrgPluginMutation = pathname.startsWith("/api/auth/organization/") && isWriteMethod;
-	const isApiKeyPluginMutation = API_KEY_PLUGIN_MUTATIONS.has(pathname.replace(/\/$/, ""));
 	// createApiHandler is the auth gate for /api/v1 (it needs a database lookup
 	// this pure function can't do), and it enforces read-only there too, so its
 	// refusal carries the same `{ error, message, code }` envelope as every
 	// other /api/v1 error instead of a bare middleware body.
 	const isPublicApiV1 = pathname.startsWith("/api/v1/");
 	const isPublicApiV1Doc = pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
+	// Every MCP call is a POST, including the ones that only read, so the
+	// read-only block below cannot be the thing that decides what an agent may
+	// do. The tool registry is: it drops every writer in a read-only deployment,
+	// so refusing the transport here would take the reads with it.
+	const isMcp = pathname === "/api/mcp" || pathname === "/api/mcp/";
 
-	// 0a. Minting or editing an API key never happens over HTTP. The plugin
-	// rejects `permissions` on any request carrying headers, so a browser could
-	// only ever create a scopeless key — but a key's brand narrowing lives in
-	// client-writable metadata, and the create path is where that gets validated
-	// against the organization's brands. Routing every key through the server
-	// function keeps that validation unskippable.
-	if (isApiKeyPluginMutation) {
-		return {
-			action: "block",
-			status: 403,
-			error: "Forbidden",
-			message: "API keys are issued from the dashboard, not over this endpoint",
-		};
-	}
-
-	// 0b. Better-auth org plugin mutations are blocked everywhere over HTTP.
-	// Orgs are created server-side only — via the provisioning module
-	// (local/demo/cloud create-brand, or the admin brands API whitelabel is
-	// provisioned through) — and cloud team invitations go through server
-	// functions that call auth.api in-process, so no mode needs these HTTP
-	// endpoints.
-	if (isOrgPluginMutation) {
-		return {
-			action: "block",
-			status: 403,
-			error: "Forbidden",
-			message: "Organization mutations are not available via the API",
-		};
-	}
+	// 0. The better-auth endpoints no deployment exposes over HTTP.
+	const authEndpointRefusal = refuseAuthEndpoint(features, pathname, isWriteMethod);
+	if (authEndpointRefusal) return authEndpointRefusal;
 
 	// 1. Read-only mode: block every write except the explicit allowlist
 	// (analytics events + the two auth endpoints a visitor needs to use).
-	if (features.readOnly && isWriteMethod && !isPublicApiV1) {
+	if (features.readOnly && isWriteMethod && !isPublicApiV1 && !isMcp) {
 		if ((isApiRoute || isServerFunctionRoute) && !isPlausibleEventRoute && !isAllowedAuthWrite) {
 			return {
 				action: "block",

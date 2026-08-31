@@ -129,9 +129,7 @@ export interface ListPromptsFilters {
 	scope?: SQL;
 }
 
-export async function listPrompts(
-	filters: ListPromptsFilters,
-): Promise<{ data: PromptSummary[]; total: number }> {
+export async function listPrompts(filters: ListPromptsFilters): Promise<{ data: PromptSummary[]; total: number }> {
 	const conditions: (SQL | undefined)[] = [filters.scope];
 	if (filters.brandId) conditions.push(eq(prompts.brandId, filters.brandId));
 	if (filters.enabled !== undefined) conditions.push(eq(prompts.enabled, filters.enabled));
@@ -257,9 +255,7 @@ export async function updatePrompt(brand: PromptBrand, promptId: string, input: 
 			.where(eq(prompts.id, promptId))
 			.returning();
 		if (input.enabled !== undefined && wasEnabled !== input.enabled) {
-			afterCommit(() =>
-				input.enabled ? createPromptJobScheduler(promptId) : removePromptJobScheduler(promptId),
-			);
+			afterCommit(() => (input.enabled ? createPromptJobScheduler(promptId) : removePromptJobScheduler(promptId)));
 		}
 		return row;
 	});

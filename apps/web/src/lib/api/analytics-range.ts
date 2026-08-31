@@ -5,6 +5,11 @@
  * `lookback` shorthand the dashboard is built on. Exactly one form per request
  * — supplying both is a `400` rather than a silent precedence rule nobody can
  * remember. Both resolve to the same concrete bounds before anything queries.
+ *
+ * The rules live in `resolve*` functions that take plain values, so the MCP
+ * tools get the same window and the same refusals as the REST routes without
+ * either side restating them. Reading those values off a `URL` is the only part
+ * that belongs to HTTP.
  */
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
@@ -29,12 +34,19 @@ function invalid(message: string): never {
 	throw new ApiError(400, "Validation Error", message, "validation_error");
 }
 
-export function parseAnalyticsWindow(url: URL): AnalyticsWindow {
-	const params = url.searchParams;
-	const startDate = params.get("startDate");
-	const endDate = params.get("endDate");
-	const lookback = params.get("lookback");
-	const requestedTimezone = params.get("timezone");
+/** The window arguments, however the caller spelled them. */
+export interface AnalyticsWindowInput {
+	startDate?: string | null;
+	endDate?: string | null;
+	lookback?: string | null;
+	timezone?: string | null;
+}
+
+export function resolveAnalyticsWindow(input: AnalyticsWindowInput): AnalyticsWindow {
+	const startDate = input.startDate ?? null;
+	const endDate = input.endDate ?? null;
+	const lookback = input.lookback ?? null;
+	const requestedTimezone = input.timezone ?? null;
 	if (requestedTimezone) {
 		try {
 			new Intl.DateTimeFormat("en-US", { timeZone: requestedTimezone }).format();
@@ -74,6 +86,16 @@ export function parseAnalyticsWindow(url: URL): AnalyticsWindow {
 	return { startDate, endDate, timezone };
 }
 
+export function parseAnalyticsWindow(url: URL): AnalyticsWindow {
+	const params = url.searchParams;
+	return resolveAnalyticsWindow({
+		startDate: params.get("startDate"),
+		endDate: params.get("endDate"),
+		lookback: params.get("lookback"),
+		timezone: params.get("timezone"),
+	});
+}
+
 /** The `model` and `tags` filters every analytics endpoint shares. */
 export interface AnalyticsFilters {
 	model?: string;
@@ -87,16 +109,24 @@ export function parseAnalyticsFilters(url: URL): AnalyticsFilters {
 	};
 }
 
-export function parsePaging(url: URL, defaultLimit = 20): { page: number; limit: number; offset: number } {
-	const rawPage = url.searchParams.get("page") ?? "1";
-	const rawLimit = url.searchParams.get("limit") ?? String(defaultLimit);
+export interface Paging {
+	page: number;
+	limit: number;
+	offset: number;
+}
+
+export function resolvePaging(page: string | null, limit: string | null, defaultLimit = 20): Paging {
+	const rawPage = page ?? "1";
+	const rawLimit = limit ?? String(defaultLimit);
 	if (!/^\d+$/.test(rawPage) || Number(rawPage) < 1) invalid("page must be a positive integer");
 	if (!/^\d+$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 100) {
 		invalid("limit must be an integer between 1 and 100");
 	}
-	const page = Number(rawPage);
-	const limit = Number(rawLimit);
-	return { page, limit, offset: (page - 1) * limit };
+	return { page: Number(rawPage), limit: Number(rawLimit), offset: (Number(rawPage) - 1) * Number(rawLimit) };
+}
+
+export function parsePaging(url: URL, defaultLimit = 20): Paging {
+	return resolvePaging(url.searchParams.get("page"), url.searchParams.get("limit"), defaultLimit);
 }
 
 export function paginate<T>(rows: T[], page: number, limit: number) {

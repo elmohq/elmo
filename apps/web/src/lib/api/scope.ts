@@ -32,10 +32,7 @@ async function scopedBrandIds(auth: Principal): Promise<string[] | null> {
 	if (organizationIds === null) return null;
 	if (auth.kind === "organization" && auth.brandIds) return auth.brandIds;
 	if (organizationIds.length === 0) return [];
-	const rows = await db
-		.select({ id: brands.id })
-		.from(brands)
-		.where(inArray(brands.organizationId, organizationIds));
+	const rows = await db.select({ id: brands.id }).from(brands).where(inArray(brands.organizationId, organizationIds));
 	return rows.map((row) => row.id);
 }
 

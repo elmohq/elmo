@@ -10,7 +10,14 @@ import { apiKey } from "@better-auth/api-key";
 import { type SSOOptions, sso } from "@better-auth/sso";
 import { type BetterAuthOptions, type BetterAuthPlugin, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, customSession, mcp, organization } from "better-auth/plugins";
+import {
+	admin,
+	customSession,
+	mcp,
+	oAuthDiscoveryMetadata,
+	oAuthProtectedResourceMetadata,
+	organization,
+} from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { db } from "../db/db";
 import * as schema from "../db/schema";
@@ -186,3 +193,12 @@ export function createAuth(options?: CreateAuthOptions) {
 }
 
 export type Auth = ReturnType<typeof createAuth>;
+
+/**
+ * The two OAuth discovery documents, as request handlers.
+ *
+ * Re-exported here rather than imported from better-auth at the call site: the
+ * app depends on this package for auth, not on the library directly, and these
+ * belong beside the plugin whose metadata they serve.
+ */
+export { oAuthDiscoveryMetadata, oAuthProtectedResourceMetadata };
