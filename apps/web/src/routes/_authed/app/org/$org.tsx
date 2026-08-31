@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_authed/app/org/$org")({
 
 		const canonical = organization.slug;
 		if (canonical !== params.org) {
-			throw redirect({ to: canonicalOrgHref(location, canonical), replace: true });
+			throw redirect({ href: canonicalOrgHref(location, canonical), replace: true });
 		}
 
 		return { organization };

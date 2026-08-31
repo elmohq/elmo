@@ -12,22 +12,18 @@ import { AppShell, PageContent } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
+import { useOrganization } from "@/hooks/use-organizations";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
-import type { OrganizationSummary } from "@/lib/organizations/types";
 import { getAppName } from "@/lib/route-head";
 
-interface ServerBrandData {
+interface BrandData {
 	brand: BrandWithPrompts;
 	unpaidOrganizationId: string | null;
 }
 
-interface BrandData extends ServerBrandData {
-	organization: OrganizationSummary;
-}
-
 const getBrandData = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string(), brandId: z.string() }))
-	.handler(async ({ data }): Promise<ServerBrandData | null> => {
+	.handler(async ({ data }): Promise<BrandData | null> => {
 		const session = await requireAuthSession();
 		const [, brand] = await Promise.all([
 			requireOrgAccess(session.user.id, data.organizationId),
@@ -97,7 +93,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 
 		const canonical = brandSegment(brand);
 		if (canonical !== params.brand) {
-			throw redirect({ to: canonicalBrandHref(location, canonical), replace: true });
+			throw redirect({ href: canonicalBrandHref(location, canonical), replace: true });
 		}
 
 		return { brandId: brand.id };
@@ -112,7 +108,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 			throw redirect({ to: "/choose-plan", search: { org: result.unpaidOrganizationId } });
 		}
 
-		return { ...result, organization: context.organization };
+		return result;
 	},
 	head: ({ match, loaderData }) => {
 		const appName = getAppName(match);
@@ -133,7 +129,8 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 });
 
 function BrandLayout() {
-	const { brand, organization } = Route.useLoaderData();
+	const { brand } = Route.useLoaderData();
+	const organization = useOrganization();
 
 	return (
 		<AppShell sidebar={<AppSidebar scope="brand" brand={brand} organization={organization} />} header={<SiteHeader />}>

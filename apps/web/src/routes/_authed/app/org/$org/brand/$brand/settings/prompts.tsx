@@ -58,7 +58,6 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 		// share spent by the org's other brands and let it count this list live.
 		const spentHere = premiumSlotsUsed(brandPrompts);
 		return {
-			brandId: context.brandId,
 			prompts: brandPrompts,
 			premium: premiumPool.available
 				? {
@@ -74,7 +73,8 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 });
 
 function PromptsSettingsPage() {
-	const { brandId, prompts: brandPrompts, premium } = Route.useLoaderData();
+	const { prompts: brandPrompts, premium } = Route.useLoaderData();
+	const { brandId } = Route.useRouteContext();
 
 	return (
 		<PromptsEditor

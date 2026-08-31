@@ -1,4 +1,5 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { orgLinkParams } from "@workspace/lib/app-urls";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -16,15 +17,13 @@ import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/se
 export const Route = createFileRoute("/_authed/app/org/$org/new")({
 	staticData: { crumb: "New brand" },
 	loader: ({ context }) => {
-		const { brandCreation, name, id } = context.organization;
-		if (brandCreation.kind === "not-offered") {
-			throw redirect({ to: "/app/org/$org", params: { org: context.organization.slug } });
+		const { organization } = context;
+		if (organization.brandCreation.kind === "not-offered") {
+			throw redirect({ to: "/app/org/$org", params: orgLinkParams(organization) });
 		}
 		return {
-			organizationId: id,
-			organizationName: name,
-			organizationSlug: context.organization.slug,
-			blocked: brandCreation.kind === "denied" ? brandCreation : null,
+			organization,
+			blocked: organization.brandCreation.kind === "denied" ? organization.brandCreation : null,
 		};
 	},
 	head: pageHead({ description: "Start tracking a new brand in this organization." }),
@@ -32,7 +31,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/new")({
 });
 
 function NewBrandPage() {
-	const { organizationId, organizationName, organizationSlug, blocked } = Route.useLoaderData();
+	const { organization, blocked } = Route.useLoaderData();
 	const [step, setStep] = useState<"details" | "platforms">("details");
 	const [details, setDetails] = useState({ brandName: "", website: "" });
 	const [platformState, setPlatformState] = useState<NonNullable<OnboardingPlatformState> | null>(null);
@@ -52,7 +51,7 @@ function NewBrandPage() {
 				data: {
 					brandName,
 					website,
-					organizationId,
+					organizationId: organization.id,
 					...(enabledModels && enabledModels.length > 0 && { enabledModels }),
 				},
 			});
@@ -61,7 +60,7 @@ function NewBrandPage() {
 			await organizationsChanged(() =>
 				navigate({
 					to: "/app/org/$org/brand/$brand",
-					params: { org: organizationSlug, brand: brandSlug },
+					params: { ...orgLinkParams(organization), brand: brandSlug },
 				}),
 			);
 		} catch (err) {
@@ -84,7 +83,7 @@ function NewBrandPage() {
 
 		setIsLoading(true);
 		try {
-			const state = await getOnboardingPlatformStateFn({ data: { organizationId } });
+			const state = await getOnboardingPlatformStateFn({ data: { organizationId: organization.id } });
 			if (!state) {
 				await createBrand(brandName, website, null);
 				return;
@@ -111,7 +110,7 @@ function NewBrandPage() {
 			>
 				<Link
 					to="/app/org/$org/settings/billing"
-					params={{ org: organizationSlug }}
+					params={orgLinkParams(organization)}
 					className={buttonVariants({ className: "w-full" })}
 				>
 					Go to billing
@@ -138,7 +137,7 @@ function NewBrandPage() {
 	}
 
 	return (
-		<FullPageCard title="Create a new brand" subtitle={`Start tracking a brand in ${organizationName}`} showBackButton>
+		<FullPageCard title="Create a new brand" subtitle={`Start tracking a brand in ${organization.name}`} showBackButton>
 			<form action={handleDetailsSubmit} className="space-y-4">
 				<div className="space-y-2">
 					<Label htmlFor="brandName">Brand Name</Label>
