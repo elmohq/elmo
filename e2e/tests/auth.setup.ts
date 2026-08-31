@@ -14,6 +14,7 @@
  * Whichever path runs, the user ends up an admin of TEST_BRAND_ID with report
  * generator access, so shared specs see the same surface in every mode.
  */
+import { test as setup } from "@playwright/test";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { authStatePath, isDeploymentMode, TEST_USER, type DeploymentMode } from "../fixtures";
 import {
@@ -26,7 +27,6 @@ import {
   userExists,
   withDb,
 } from "../session";
-import { test as setup } from "../test";
 
 setup("authenticate", async ({ page, baseURL }, testInfo) => {
   const mode = testInfo.project.name.replace(/:setup$/, "");

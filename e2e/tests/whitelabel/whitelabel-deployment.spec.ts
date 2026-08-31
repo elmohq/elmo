@@ -12,7 +12,7 @@
  * SSO round trip (the authenticated session is minted directly — see
  * e2e/session.ts).
  */
-import { expect, failedResource, test } from "../../test";
+import { expect, test } from "@playwright/test";
 import { TEST_BRAND_ID, WHITELABEL, brandUrl, organizationUrl } from "../../fixtures";
 
 const isIdpRequest = (url: URL) => url.host === WHITELABEL.auth0Domain;
@@ -147,8 +147,7 @@ test.describe("Whitelabel features", () => {
     await expect(page.getByRole("heading", { name: /reports/i }).first()).toBeVisible({ timeout: 30_000 });
   });
 
-  test("the team page is not offered and not reachable", async ({ page, consoleErrors }) => {
-    consoleErrors.allow(failedResource(404, `${organizationUrl()}/settings/members`));
+  test("the team page is not offered and not reachable", async ({ page }) => {
     await page.goto(`${organizationUrl()}/settings`);
     await expect(
       page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),

@@ -13,7 +13,7 @@
  * self-healing scheduler can't re-enqueue the seeded prompts and mutate data
  * they assert on (see .github/workflows/e2e.yaml).
  */
-import { expect, test } from "../test";
+import { test, expect } from "@playwright/test";
 import pg from "pg";
 import { DATABASE_URL, TEST_API_KEY, TEST_BRAND_ID } from "../fixtures";
 

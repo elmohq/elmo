@@ -5,16 +5,13 @@
  *
  * Requests to Crisp are aborted in the browser, so CI never reaches them.
  */
-import { expect, test } from "../../test";
+import { expect, test } from "@playwright/test";
 import { TEST_BRAND_ID, brandUrl, isDeploymentMode } from "../../fixtures";
 
 const CRISP_HOSTS = "**://*.crisp.chat/**";
 
 test.describe("Support chat", () => {
-  test("loads on the deployments we operate, and only those", async ({ page, consoleErrors }, testInfo) => {
-    // Aborting the loader below is what makes it fail to load.
-    consoleErrors.allow(/Failed to load resource: net::ERR_FAILED.*crisp\.chat/);
-
+  test("loads on the deployments we operate, and only those", async ({ page }, testInfo) => {
     const mode = testInfo.project.name;
     if (!isDeploymentMode(mode)) {
       throw new Error(`Project "${testInfo.project.name}" does not name a deployment mode`);
