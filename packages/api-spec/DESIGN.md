@@ -96,7 +96,7 @@ ambiguous.
 
 ```
 brands:read        brands:write
-prompts:read       prompts:write       prompts:delete
+prompts:read       prompts:write
 competitors:read   competitors:write   competitors:delete
 analytics:read
 runs:read
@@ -108,11 +108,16 @@ billing:read
 - `billing:read` is opt-in and has **no `:write` counterpart** — that is the
   structural guarantee that the API cannot touch billing, not a policy check
   somewhere that could be forgotten.
-- **Destructive verbs get their own scope** where one exists. Deleting a prompt
-  cascades its runs and citations; a reporting integration that syncs prompts
-  has no business erasing history. Splitting `:delete` out costs one scope now
-  and is impossible to add later without breaking every key that holds
-  `:write`.
+- **Destructive verbs get their own scope** where one exists. Splitting
+  `:delete` out costs one scope now and is impossible to add later without
+  breaking every key that holds `:write`.
+- **Deleting a prompt has no scope at all.** It cascades its runs and citations,
+  and the dashboard offers no such action to anyone — so a scope for it would
+  put an operation in the API that the product does not have. Disabling
+  (`PATCH` with `enabled: false`) is the supported way to stop tracking a
+  prompt: it keeps the history and frees the plan slot just the same. The verb
+  stays reachable with an admin key, for an operator cleaning up an instance
+  they own (§3.11).
 - There is deliberately **no `reports:*`**. Report generation and brand analysis
   spend provider budget immediately, with no organization to attribute it to —
   the `reports` table has no org column at all — so they stay admin-only (§3.11)
@@ -407,8 +412,10 @@ filtered to the key's brands. Additions:
 
 ### 3.5 Prompts — extend
 
-`GET/POST /v1/prompts`, `GET/PATCH/DELETE /v1/prompts/{promptId}` unchanged,
-scope-checked, org-filtered, with `limit` capped at 100. Additions:
+`GET/POST /v1/prompts` and `GET/PATCH /v1/prompts/{promptId}` unchanged,
+scope-checked, org-filtered, with `limit` capped at 100.
+`DELETE /v1/prompts/{promptId}` keeps its exact behaviour and becomes
+**admin-only** (§1.3, §3.11). Additions:
 
 - List filters: `enabled`, `tag` (repeatable), `q`.
 - Prompt object gains `premiumModels`.
@@ -449,10 +456,10 @@ in the list, marked `system: true`, and cannot be renamed or removed
 (`409 system_tag_immutable`) — applying one to a prompt as a user tag overrides
 the computed classification, which is a prompt edit, not a tag edit.
 
-Both mutations need `prompts:write`, not `prompts:delete`: they relabel prompts
-and destroy no tracked data, and a caller with `prompts:write` could already do
-the same thing one `PATCH /v1/prompts/{promptId}` at a time. Neither touches an
-entitlement pool — a relabel changes no count.
+Both mutations need `prompts:write`: they relabel prompts and destroy no tracked
+data, and a caller with `prompts:write` could already do the same thing one
+`PATCH /v1/prompts/{promptId}` at a time. Neither touches an entitlement pool —
+a relabel changes no count.
 
 ### 3.8 Opportunities — `analytics:read`
 
@@ -528,14 +535,22 @@ different numbers than the UI (see §5).
 provider's `rawOutput` blob. Exposing provider-shaped JSON would hand our
 callers a contract we don't control.
 
-### 3.11 Reports and tools — unchanged, and admin-only
+### 3.11 Reports, tools, and prompt deletion — admin-only
 
-`POST/GET /v1/reports`, `GET /v1/reports/{reportId}`, and `POST /v1/tools/analyze`
-keep their exact current behavior and are reachable **only with an admin key**.
-No scope grants them; they carry `x-elmo-admin-only` in the spec instead of an
-`x-elmo-scopes` list, so there is nothing to accidentally include in a preset.
+`POST/GET /v1/reports`, `GET /v1/reports/{reportId}`, `POST /v1/tools/analyze`,
+and `DELETE /v1/prompts/{promptId}` keep their exact current behavior and are
+reachable **only with an admin key**. No scope grants them; they carry
+`x-elmo-admin-only` in the spec and an empty `x-elmo-scopes`, so there is
+nothing to accidentally include in a preset.
 
-Two reasons, and the second is the harder one:
+`DELETE /v1/prompts/{promptId}` is here for a different reason from the other
+three: it spends nothing, but it destroys tracked history, and no user of the
+dashboard can do it at any role. An API that is strictly more permissive than
+the product is a surface nobody designed. Its `403` names the alternative —
+`PATCH` with `enabled: false` — because the refusal is the one place an
+integration that hit it is certainly reading.
+
+For reports and tools, two reasons, and the second is the harder one:
 
 - Both spend provider budget the moment they're called, and neither writes a
   `usage_events` row. Every other cost in the system is metered per organization

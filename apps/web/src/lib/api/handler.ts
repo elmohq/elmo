@@ -166,6 +166,13 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 	scopes?: ApiScope[];
 	/** Reachable only with an instance admin key; no scope grants it. */
 	adminOnly?: boolean;
+	/**
+	 * Appended to the `403` an admin-only endpoint answers a tenant key with.
+	 * Where a caller has a supported way to get what they wanted, the refusal is
+	 * the one place they are certainly reading — an integration that discovers
+	 * the alternative there needs no second round trip.
+	 */
+	adminOnlyHint?: string;
 	/** Translate domain errors thrown by `handle` into `ApiError` before the generic 500. */
 	mapError?: (err: unknown) => ApiError | undefined;
 	handle: (ctx: ApiHandlerContext<P, B>) => Promise<Response | object>;
@@ -257,12 +264,19 @@ function authFailureResponse(failure: ApiAuthFailure): Response {
 function refuseRequest(
 	auth: ApiAuth,
 	request: Request,
-	opts: { scopes?: ApiScope[]; adminOnly?: boolean },
+	opts: { scopes?: ApiScope[]; adminOnly?: boolean; adminOnlyHint?: string },
 ): Response | null {
 	const headers = rateLimitHeaders(auth);
 
 	if (opts.adminOnly && auth.kind !== "admin") {
-		return errorResponse(403, "Forbidden", "This endpoint requires an instance admin key", "forbidden", headers);
+		const hint = opts.adminOnlyHint ? ` ${opts.adminOnlyHint}` : "";
+		return errorResponse(
+			403,
+			"Forbidden",
+			`This endpoint requires an instance admin key.${hint}`,
+			"forbidden",
+			headers,
+		);
 	}
 
 	if (auth.kind === "organization") {

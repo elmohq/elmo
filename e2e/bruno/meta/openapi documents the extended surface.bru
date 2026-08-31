@@ -38,6 +38,24 @@ tests {
     }
   });
 
+  test("no scope reaches an admin-only operation", function() {
+    // An admin-only operation that also listed a scope would put that scope in
+    // a preset, and a key ticking it would 403 on an endpoint it was told it
+    // covered.
+    for (const [path, operations] of Object.entries(res.getBody().paths)) {
+      for (const [method, operation] of Object.entries(operations)) {
+        if (!operation["x-elmo-admin-only"]) continue;
+        expect(operation["x-elmo-scopes"] || [], `${method} ${path}`).to.eql([]);
+      }
+    }
+  });
+
+  test("deleting a prompt is admin-only and points at the alternative", function() {
+    const operation = res.getBody().paths["/prompts/{promptId}"].delete;
+    expect(operation["x-elmo-admin-only"]).to.equal(true);
+    expect(operation.description).to.contain("enabled: false");
+  });
+
   test("nothing offers to write billing", function() {
     const paths = res.getBody().paths;
     for (const [path, operations] of Object.entries(paths)) {

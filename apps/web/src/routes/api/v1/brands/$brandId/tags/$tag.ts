@@ -2,9 +2,9 @@
  * PATCH  /api/v1/brands/:brandId/tags/:tag — rename it across the brand.
  * DELETE /api/v1/brands/:brandId/tags/:tag — drop it from every prompt.
  *
- * Both take `prompts:write` rather than `prompts:delete`: relabelling destroys
- * no tracked data, and a caller holding `prompts:write` could already do the
- * same thing one `PATCH /prompts/:promptId` at a time.
+ * Both take `prompts:write`: relabelling destroys no tracked data, and a caller
+ * holding `prompts:write` could already do the same thing one
+ * `PATCH /prompts/:promptId` at a time.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";

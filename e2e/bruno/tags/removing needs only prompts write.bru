@@ -1,5 +1,5 @@
 meta {
-  name: removing a tag needs prompts:write, not prompts:delete
+  name: removing a tag needs only prompts:write
   type: http
   seq: 17
 }
@@ -22,7 +22,7 @@ assert {
 
 tests {
   test("dropping a label is not destroying tracked data", function() {
-    expect(res.getStatus(), "a key without prompts:delete may still drop a tag")
+    expect(res.getStatus(), "a key holding no delete scope may still drop a tag")
       .to.equal(200);
   });
 }

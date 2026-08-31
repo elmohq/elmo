@@ -3,7 +3,7 @@
  *
  * GET     fetch one prompt
  * PATCH   update value / enabled / tags
- * DELETE  remove the prompt (cascades to runs + citations)
+ * DELETE  remove the prompt (cascades to runs + citations) — admin key only
  *
  * Protected by API key authentication.
  */
@@ -137,9 +137,15 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 				},
 			}),
 
+			// Deleting takes every run and citation with it, and the dashboard
+			// offers no such action to anyone — so no scope grants it. An
+			// integration that wants a prompt to stop costing runs disables it
+			// (`PATCH` with `enabled: false`), which keeps the history and frees
+			// the plan slot just the same.
 			DELETE: createApiHandler({
 				params: promptParams,
-				scopes: ["prompts:delete"],
+				adminOnly: true,
+				adminOnlyHint: "Send PATCH with `enabled: false` to stop tracking this prompt without losing its history.",
 				handle: async ({ params, auth }) => {
 					const { promptId } = params;
 
