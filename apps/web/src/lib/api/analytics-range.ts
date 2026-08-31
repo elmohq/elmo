@@ -106,3 +106,15 @@ export function paginate<T>(rows: T[], page: number, limit: number) {
 		pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
 	};
 }
+
+/**
+ * The one place a share ratio becomes a wire percentage.
+ *
+ * `analytics-core` keeps shares as exact 0..1 ratios so each surface rounds
+ * once — the dashboard at the point of display, the API here. Every percentage
+ * this API publishes is 0–100, so a route holding a ratio has to convert before
+ * returning it or its response mixes two units.
+ */
+export function asPercent(ratio: number | null): number | null {
+	return ratio === null ? null : Math.round(ratio * 100);
+}

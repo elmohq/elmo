@@ -77,6 +77,17 @@ function validate(value, rawSchema, where, out) {
 	if (expected === "integer" && !Number.isInteger(value)) {
 		out.violations.push(`${where}: expected an integer, got ${value}`);
 	}
+	// A documented range is the only thing that catches a unit changing under a
+	// field: a share that turns from 0-100 into 0..1 is still a number, still
+	// non-null, and still passes every other check here.
+	if (actual === "number") {
+		if (schema.minimum !== undefined && value < schema.minimum) {
+			out.violations.push(`${where}: ${value} is below the documented minimum ${schema.minimum}`);
+		}
+		if (schema.maximum !== undefined && value > schema.maximum) {
+			out.violations.push(`${where}: ${value} is above the documented maximum ${schema.maximum}`);
+		}
+	}
 
 	if (actual === "array") {
 		if (schema.items) value.forEach((item, i) => validate(item, schema.items, `${where}[${i}]`, out));
