@@ -40,7 +40,9 @@ export interface VisibilityTimeSeriesPoint {
 export interface PromptSummary {
 	prompt_id: string;
 	total_runs: number;
+	/** Fraction of runs in which the brand was mentioned, 0..1. */
 	brand_mention_rate: number;
+	/** Fraction of runs in which any tracked competitor was mentioned, 0..1. */
 	competitor_mention_rate: number;
 	total_weighted_mentions: number;
 	last_run_date: string | null;
@@ -508,8 +510,8 @@ export async function getPromptsSummary(
 		SELECT
 			prompt_id,
 			count(*)::int AS total_runs,
-			round(count(*) FILTER (WHERE brand_mentioned) * 100.0 / NULLIF(count(*), 0), 0)::int AS brand_mention_rate,
-			round(count(*) FILTER (WHERE array_length(competitors_mentioned, 1) > 0) * 100.0 / NULLIF(count(*), 0), 0)::int AS competitor_mention_rate,
+			(count(*) FILTER (WHERE brand_mentioned)::float / NULLIF(count(*), 0)) AS brand_mention_rate,
+			(count(*) FILTER (WHERE array_length(competitors_mentioned, 1) > 0)::float / NULLIF(count(*), 0)) AS competitor_mention_rate,
 			(count(*) FILTER (WHERE brand_mentioned) * 2 + COALESCE(sum(array_length(competitors_mentioned, 1)), 0))::int AS total_weighted_mentions,
 			max((created_at AT TIME ZONE ${timezone})::date) AS last_run_date
 		FROM prompt_runs

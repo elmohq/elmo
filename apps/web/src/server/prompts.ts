@@ -164,8 +164,10 @@ function summarizePrompt(
 	const { isBranded } = getEffectiveBrandedStatus(prompt.systemTags || [], userTags);
 	const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
 	const totalRuns = Number(stats?.total_runs ?? 0);
-	const brandMentionRate = Number(stats?.brand_mention_rate ?? 0);
-	const competitorMentionRate = Number(stats?.competitor_mention_rate ?? 0);
+	// The query answers in ratios so the API can publish them unrounded; the
+	// dashboard renders percentages, and this is where it rounds.
+	const brandMentionRate = Math.round(Number(stats?.brand_mention_rate ?? 0) * 100);
+	const competitorMentionRate = Math.round(Number(stats?.competitor_mention_rate ?? 0) * 100);
 
 	return {
 		id: prompt.id,

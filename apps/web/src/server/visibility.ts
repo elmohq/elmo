@@ -33,6 +33,7 @@ export interface VisibilityTimeSeriesPoint {
 }
 
 export interface FilteredVisibilityResponse {
+	/** Whole-number percentage 0-100. The shared computation answers in ratios; this edge rounds. */
 	currentVisibility: number;
 	totalRuns: number;
 	totalPrompts: number;
@@ -149,14 +150,18 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 			{ model: data.model, tags: data.tags, search: data.search },
 		);
 
+		// The shared function answers in ratios, which is what the API publishes.
+		// The dashboard speaks percentages, and this is the single place it
+		// converts — the hero, the bar, and the chart all read what comes out.
+		const asPercent = (ratio: number | null) => (ratio === null ? null : Math.round(ratio * 100));
 		return {
 			// The hero renders this as a percentage, so "no runs to plot" has to
 			// arrive as a number rather than the null the shared function returns.
-			currentVisibility: result.currentVisibility ?? 0,
+			currentVisibility: asPercent(result.currentVisibility) ?? 0,
 			totalRuns: result.totalRuns,
 			totalPrompts: result.totalPrompts,
 			totalCitations: result.totalCitations,
-			visibilityTimeSeries: result.series,
+			visibilityTimeSeries: result.series.map((point) => ({ ...point, visibility: asPercent(point.visibility) })),
 			lookback,
 		};
 	});

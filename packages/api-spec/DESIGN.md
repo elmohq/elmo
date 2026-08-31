@@ -474,10 +474,27 @@ Brand-nested rather than a `/reports/*` family, because `reports` already means
 the one-shot generator in this product. Every endpoint takes the standard date
 window plus optional `model` and `tags`.
 
+**Units.** Every rate, share, and visibility figure here is an exact ratio in
+`[0,1]`, unrounded — a client multiplies by 100 if it wants a percentage. The
+alternative, whole-number percentages, throws away precision the computation
+already has: at seven runs a brand moves in 14-point steps, and rounding makes
+genuinely different values collide. It also forces a per-field note about
+whether a given number is an integer percent or carries a decimal. One rule
+with no exceptions is worth more than numbers that read nicely in a console.
+
+The one number that is not a ratio is `CitationDomain.changeFactor`, which is a
+multiplier against the previous window rather than a share: `2` is twice as many
+citations, `0.5` is half, `1` is unchanged. It is deliberately not a percentage
+change — "+150%" and "1.5x" are different numbers, and the multiplier is the one
+that cannot be misread.
+
+`GET /v1/reports/{id}` predates all of this and keeps its whole-number
+percentages; it shipped that way and nothing here changes it.
+
 | Endpoint | Returns |
 | --- | --- |
 | `GET …/summary` | The dashboard hero in one call: visibility, share of voice, totals for runs, prompts, citations. |
-| `GET …/visibility` | Daily mention-rate series (0–100, `null` on days with no runs) + period totals. |
+| `GET …/visibility` | Daily mention-rate series (ratio 0–1, `null` on days with no runs) + period totals. |
 | `GET …/share-of-voice` | Brand vs. competitor leaderboard, brand share, and a daily share series. |
 | `GET …/platforms` | Per-model visibility and run counts. |
 | `GET …/citations/domains` | Cited domains with counts, category, and period-over-period change. Paginated. |

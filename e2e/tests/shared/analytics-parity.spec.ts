@@ -30,9 +30,11 @@ test.describe("dashboard and API parity", () => {
     expect(response.status()).toBe(200);
     const body = await response.json();
 
-    // The page shows 0 where the API says "nothing to plot"; that difference is
-    // deliberate and lives at the edges, not in the shared computation.
-    expect(body.currentVisibility ?? 0).toBe(rendered);
+    // The API answers in ratios and the page renders a percentage; both round
+    // the same shared number once, at their own edge. The page shows 0 where the
+    // API says "nothing to plot" — that difference is deliberate and also lives
+    // at the edges, not in the computation they share.
+    expect(Math.round((body.currentVisibility ?? 0) * 100)).toBe(rendered);
   });
 
   test("share of voice agrees between the page and the API", async ({ page, request }) => {
@@ -43,12 +45,12 @@ test.describe("dashboard and API parity", () => {
     expect(response.status()).toBe(200);
     const body = await response.json();
 
-    // Exactly one row is the tracked brand, and the shares are the percentages
-    // the leaderboard renders — the API rounds the same ratio the page does.
+    // Exactly one row is the tracked brand, and every share is the exact ratio
+    // the leaderboard rounds for display.
     expect(body.entries.filter((entry: { isBrand: boolean }) => entry.isBrand)).toHaveLength(1);
     for (const entry of body.entries) {
       expect(entry.share).toBeGreaterThanOrEqual(0);
-      expect(entry.share).toBeLessThanOrEqual(100);
+      expect(entry.share).toBeLessThanOrEqual(1);
       // Every competitor the page lists is a competitor the API lists.
       if (!entry.isBrand) await expect(page.getByText(entry.name).first()).toBeVisible();
     }

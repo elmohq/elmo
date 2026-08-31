@@ -30,10 +30,10 @@ tests {
     expect(models).to.include("claude");
   });
 
-  test("visibility is a percentage or null, never a bare count", function() {
+  test("visibility is a ratio or null, never a bare count", function() {
     for (const row of res.getBody().data) {
       expect(row.runs).to.be.a("number");
-      expect(row.visibility === null || (row.visibility >= 0 && row.visibility <= 100)).to.be.true;
+      expect(row.visibility === null || (row.visibility >= 0 && row.visibility <= 1)).to.be.true;
     }
   });
 }

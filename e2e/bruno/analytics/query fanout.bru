@@ -30,7 +30,7 @@ tests {
     const body = res.getBody();
     expect(body.fanoutRuns).to.be.at.most(body.totalRuns);
     expect(body.coverageRate).to.be.at.least(0);
-    expect(body.coverageRate).to.be.at.most(100);
+    expect(body.coverageRate).to.be.at.most(1);
   });
 
   test("a seeded web query is reported", function() {

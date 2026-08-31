@@ -25,12 +25,12 @@ assert {
 }
 
 tests {
-  test("mention rates are percentages", function() {
+  test("mention rates are ratios", function() {
     for (const row of res.getBody().data) {
       expect(row.brandMentionRate).to.be.at.least(0);
-      expect(row.brandMentionRate).to.be.at.most(100);
+      expect(row.brandMentionRate).to.be.at.most(1);
       expect(row.competitorMentionRate).to.be.at.least(0);
-      expect(row.competitorMentionRate).to.be.at.most(100);
+      expect(row.competitorMentionRate).to.be.at.most(1);
     }
   });
 }

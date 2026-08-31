@@ -40,6 +40,7 @@ interface DayBucket {
 }
 
 const round3 = (x: number): number => Math.round(x * 1000) / 1000;
+
 const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 /** Collapse raw rows into one bucket per day (summing duplicate domains), sorted chronologically. */
@@ -136,10 +137,9 @@ export interface VoiceShare {
  * mention count and each competitor's are directly comparable.
  *
  * `share`/`brandShare` are exact ratios, deliberately NOT pre-rounded: the
- * leaderboard renders `round(share * 100)`, the donut `round(mentions / total *
- * 100)`, and the trend `round(brand / denom * 100)` — all the same single round
- * of the same ratio. Pre-rounding `share` here (e.g. to 3 decimals) would
- * double-round and let the table read a point off the headline/donut.
+ * leaderboard, the donut, and the trend each render `round(share * 100)` — the
+ * same single round of the same ratio. Pre-rounding here would double-round and
+ * let the table read a point off the headline.
  */
 export function computeShareOfVoice(
 	brand: { name: string; mentions: number },
@@ -210,7 +210,7 @@ export function shareOfVoiceTimeSeriesLVCF(
 		const b = daily.get(date);
 		if (!b) return { date, share: null };
 		const denom = b.brand + b.competitor;
-		return { date, share: denom === 0 ? null : Math.round((b.brand / denom) * 100) };
+		return { date, share: denom === 0 ? null : b.brand / denom };
 	});
 }
 

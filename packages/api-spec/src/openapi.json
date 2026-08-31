@@ -1110,15 +1110,15 @@
 					"visibility": {
 						"type": "number",
 						"minimum": 0,
-						"maximum": 100,
-						"description": "Share of runs mentioning the brand at the end of the window. Percentage 0–100.",
+						"maximum": 1,
+						"description": "Share of runs mentioning the brand at the end of the window. Ratio 0–1; multiply by 100 for a percentage.",
 						"nullable": true
 					},
 					"shareOfVoice": {
 						"type": "number",
 						"minimum": 0,
-						"maximum": 100,
-						"description": "The brand's share of all brand and competitor mentions. Percentage 0–100.",
+						"maximum": 1,
+						"description": "The brand's share of all brand and competitor mentions. Ratio 0–1; multiply by 100 for a percentage.",
 						"nullable": true
 					},
 					"totalRuns": {
@@ -1165,8 +1165,8 @@
 					"visibility": {
 						"type": "number",
 						"minimum": 0,
-						"maximum": 100,
-						"description": "Null on days with no runs to plot; the series is not gap-filled with zeros. Percentage 0–100.",
+						"maximum": 1,
+						"description": "Null on days with no runs to plot; the series is not gap-filled with zeros. Ratio 0–1; multiply by 100 for a percentage.",
 						"nullable": true
 					}
 				},
@@ -1184,8 +1184,8 @@
 					"currentVisibility": {
 						"type": "number",
 						"minimum": 0,
-						"maximum": 100,
-						"description": "The last plotted point — the number the dashboard hero shows. Percentage 0–100.",
+						"maximum": 1,
+						"description": "The last plotted point — the number the dashboard hero shows. Ratio 0–1; multiply by 100 for a percentage.",
 						"nullable": true
 					},
 					"totalRuns": {
@@ -1227,8 +1227,8 @@
 					"share": {
 						"type": "number",
 						"minimum": 0,
-						"maximum": 100,
-						"description": "Percentage 0–100."
+						"maximum": 1,
+						"description": "This entity's share of all brand and competitor mentions. Ratio 0–1; multiply by 100 for a percentage."
 					}
 				},
 				"required": ["name", "isBrand", "mentions", "prompts", "share"]
@@ -1243,8 +1243,8 @@
 					"share": {
 						"type": "number",
 						"minimum": 0,
-						"maximum": 100,
-						"description": "Percentage 0–100.",
+						"maximum": 1,
+						"description": "The brand's share on this day. Null on days with no runs. Ratio 0–1; multiply by 100 for a percentage.",
 						"nullable": true
 					}
 				},
@@ -1265,8 +1265,8 @@
 					"brandShare": {
 						"type": "number",
 						"minimum": 0,
-						"maximum": 100,
-						"description": "The brand's own share at the end of the window. Percentage 0–100.",
+						"maximum": 1,
+						"description": "The brand's own share at the end of the window. Ratio 0–1; multiply by 100 for a percentage.",
 						"nullable": true
 					},
 					"totalRuns": {
@@ -1307,8 +1307,8 @@
 					"visibility": {
 						"type": "number",
 						"minimum": 0,
-						"maximum": 100,
-						"description": "Share of this platform's runs that mentioned the brand. Percentage 0–100.",
+						"maximum": 1,
+						"description": "Share of this platform's runs that mentioned the brand. Ratio 0–1; multiply by 100 for a percentage.",
 						"nullable": true
 					},
 					"citations": {
@@ -1365,8 +1365,8 @@
 					"share": {
 						"type": "number",
 						"minimum": 0,
-						"maximum": 100,
-						"description": "Share of all citations in the window. Percentage 0–100."
+						"maximum": 1,
+						"description": "Share of all citations in the window. Ratio 0–1; multiply by 100 for a percentage."
 					},
 					"promptCount": {
 						"type": "integer",
@@ -1376,13 +1376,14 @@
 						"type": "integer",
 						"description": "Citations in the equal-length window immediately before this one."
 					},
-					"changePercent": {
+					"changeFactor": {
 						"type": "number",
-						"description": "Change against the previous window. Null when the domain is new.",
+						"minimum": 0,
+						"description": "How this window compares with the equal-length window before it, as a multiplier of the previous count: 2 means twice as many citations, 0.5 means half, 1 means unchanged. Not a percentage change — 1.5 is \"1.5x\", which is a 50% increase. Null when the domain had no citations in the previous window, so there is nothing to divide by.",
 						"nullable": true
 					}
 				},
-				"required": ["domain", "category", "count", "share", "promptCount", "previousCount", "changePercent"]
+				"required": ["domain", "category", "count", "share", "promptCount", "previousCount", "changeFactor"]
 			},
 			"CitationDomainList": {
 				"type": "object",
@@ -1564,8 +1565,8 @@
 					"coverageRate": {
 						"type": "number",
 						"minimum": 0,
-						"maximum": 100,
-						"description": "Share of runs that searched. Percentage 0–100."
+						"maximum": 1,
+						"description": "Share of fan-out query instances whose answer mentioned the brand. Ratio 0–1; multiply by 100 for a percentage."
 					},
 					"data": {
 						"type": "array",
@@ -1613,14 +1614,14 @@
 					"brandMentionRate": {
 						"type": "number",
 						"minimum": 0,
-						"maximum": 100,
-						"description": "Share of this prompt's runs mentioning the brand. Percentage 0–100."
+						"maximum": 1,
+						"description": "Share of this prompt's runs mentioning the brand. Ratio 0–1; multiply by 100 for a percentage."
 					},
 					"competitorMentionRate": {
 						"type": "number",
 						"minimum": 0,
-						"maximum": 100,
-						"description": "Percentage 0–100."
+						"maximum": 1,
+						"description": "Share of this prompt's runs mentioning any tracked competitor. Ratio 0–1; multiply by 100 for a percentage."
 					},
 					"lastRunAt": {
 						"type": "string",
@@ -4593,14 +4594,14 @@
 													"type": "number",
 													"nullable": true,
 													"minimum": 0,
-													"maximum": 1,
-													"description": "Overall share of voice (0-1): brand_mentions / (brand_mentions + competitor_mentions). Null when no mentions at all."
+													"maximum": 100,
+													"description": "Overall share of voice as a whole-number percentage 0-100: brand_mentions / (brand_mentions + competitor_mentions). Null when no mentions at all."
 												},
 												"visibility": {
 													"type": "number",
 													"minimum": 0,
-													"maximum": 1,
-													"description": "Brand visibility (0-1): brand_mentions / total_prompt_runs (how often the brand appears at all across all prompt runs)"
+													"maximum": 100,
+													"description": "Brand visibility as a whole-number percentage 0-100: brand_mentions / total_prompt_runs (how often the brand appears at all across all prompt runs)"
 												},
 												"totalPrompts": {
 													"type": "integer",
@@ -4630,14 +4631,14 @@
 															"sov": {
 																"type": "number",
 																"minimum": 0,
-																"maximum": 1,
-																"description": "Share of voice (0-1): this competitor's mentions / total mentions (brand + all competitors)"
+																"maximum": 100,
+																"description": "Share of voice as a whole-number percentage 0-100: this competitor's mentions / total mentions (brand + all competitors)"
 															},
 															"visibility": {
 																"type": "number",
 																"minimum": 0,
-																"maximum": 1,
-																"description": "Visibility (0-1): prompt runs mentioning this competitor / total prompt runs"
+																"maximum": 100,
+																"description": "Visibility as a whole-number percentage 0-100: prompt runs mentioning this competitor / total prompt runs"
 															},
 															"promptsWithMentions": {
 																"type": "integer",
