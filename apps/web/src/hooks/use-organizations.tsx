@@ -1,14 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "@tanstack/react-router";
+import { useRouteContext, useRouter } from "@tanstack/react-router";
 import { useCallback } from "react";
-import { useLooseRouteContext } from "@/hooks/use-route-context";
 import { invalidateOrganizations, organizationsQuery } from "@/lib/organizations/queries";
 import type { OrganizationSummary } from "@/lib/organizations/types";
+import { ORG_ROUTE_ID } from "@/lib/route-subject";
 
 export function useOrganization(): OrganizationSummary {
-	const { organization } = useLooseRouteContext();
-	if (!organization) throw new Error("useOrganization was called outside /app/org/$org");
-	return organization;
+	return useRouteContext({ from: ORG_ROUTE_ID, select: (context) => context.organization });
 }
 
 export function useOrganizations() {

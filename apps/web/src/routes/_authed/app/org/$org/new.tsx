@@ -1,12 +1,12 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { orgLinkParams } from "@workspace/lib/app-urls";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
-import { useOrganization, useOrganizationsChanged } from "@/hooks/use-organizations";
+import { useOrganizationsChanged } from "@/hooks/use-organizations";
+import { useOrganizationParams } from "@/hooks/use-route-params";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
@@ -17,19 +17,23 @@ import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/se
 export const Route = createFileRoute("/_authed/app/org/$org/new")({
 	staticData: { crumb: "New brand" },
 	loader: ({ context }) => {
-		const { brandCreation } = context.organization;
+		const { brandCreation, name, id } = context.organization;
 		if (brandCreation.kind === "not-offered") {
-			throw redirect({ to: "/app/org/$org", params: orgLinkParams(context.organization) });
+			throw redirect({ to: "/app/org/$org", params: { org: context.organization.slug } });
 		}
-		return { blocked: brandCreation.kind === "denied" ? brandCreation : null };
+		return {
+			organizationId: id,
+			organizationName: name,
+			blocked: brandCreation.kind === "denied" ? brandCreation : null,
+		};
 	},
 	head: pageHead({ description: "Start tracking a new brand in this organization." }),
 	component: NewBrandPage,
 });
 
 function NewBrandPage() {
-	const { blocked } = Route.useLoaderData();
-	const organization = useOrganization();
+	const { organizationId, organizationName, blocked } = Route.useLoaderData();
+	const organizationParams = useOrganizationParams();
 	const [step, setStep] = useState<"details" | "platforms">("details");
 	const [details, setDetails] = useState({ brandName: "", website: "" });
 	const [platformState, setPlatformState] = useState<NonNullable<OnboardingPlatformState> | null>(null);
@@ -49,17 +53,14 @@ function NewBrandPage() {
 				data: {
 					brandName,
 					website,
-					organizationId: organization.id,
+					organizationId,
 					...(enabledModels && enabledModels.length > 0 && { enabledModels }),
 				},
 			});
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
 			await organizationsChanged(() =>
-				navigate({
-					to: "/app/org/$org/brand/$brand",
-					params: { ...orgLinkParams(organization), brand: brandSlug },
-				}),
+				navigate({ to: "/app/org/$org/brand/$brand", params: { ...organizationParams, brand: brandSlug } }),
 			);
 		} catch (err) {
 			setError(writeError(err, "Could not create the brand."));
@@ -81,7 +82,7 @@ function NewBrandPage() {
 
 		setIsLoading(true);
 		try {
-			const state = await getOnboardingPlatformStateFn({ data: { organizationId: organization.id } });
+			const state = await getOnboardingPlatformStateFn({ data: { organizationId } });
 			if (!state) {
 				await createBrand(brandName, website, null);
 				return;
@@ -108,7 +109,7 @@ function NewBrandPage() {
 			>
 				<Link
 					to="/app/org/$org/settings/billing"
-					params={orgLinkParams(organization)}
+					params={organizationParams}
 					className={buttonVariants({ className: "w-full" })}
 				>
 					Go to billing
@@ -135,7 +136,7 @@ function NewBrandPage() {
 	}
 
 	return (
-		<FullPageCard title="Create a new brand" subtitle={`Start tracking a brand in ${organization.name}`} showBackButton>
+		<FullPageCard title="Create a new brand" subtitle={`Start tracking a brand in ${organizationName}`} showBackButton>
 			<form action={handleDetailsSubmit} className="space-y-4">
 				<div className="space-y-2">
 					<Label htmlFor="brandName">Brand Name</Label>

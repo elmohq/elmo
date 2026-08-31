@@ -1,13 +1,10 @@
 import { useParams } from "@tanstack/react-router";
+import { BRAND_ROUTE_ID, ORG_ROUTE_ID } from "@/lib/route-subject";
 
 export function useOrganizationParams(): { org: string } {
-	const { org } = useParams({ strict: false });
-	if (!org) throw new Error("useOrganizationParams was called outside /app/org/$org");
-	return { org };
+	return useParams({ from: ORG_ROUTE_ID });
 }
 
 export function useBrandParams(): { org: string; brand: string } {
-	const { org, brand } = useParams({ strict: false });
-	if (!org || !brand) throw new Error("useBrandParams was called outside /app/org/$org/brand/$brand");
-	return { org, brand };
+	return useParams({ from: BRAND_ROUTE_ID });
 }

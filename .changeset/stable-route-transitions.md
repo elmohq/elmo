@@ -2,4 +2,4 @@
 "@workspace/web": patch
 ---
 
-Fixed transient errors and mismatched organization or brand actions during page navigation.
+Navigating between pages no longer replaces the page you were on with a loading screen while the next one loads.
