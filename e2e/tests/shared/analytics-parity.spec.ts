@@ -11,14 +11,14 @@
  * thing it is for.
  */
 import { expect, test } from "@playwright/test";
-import { TEST_API_KEY, TEST_BRAND_ID } from "../../fixtures";
+import { TEST_API_KEY, TEST_BRAND_ID, brandUrl } from "../../fixtures";
 
 const AUTH = { Authorization: `Bearer ${TEST_API_KEY}` };
 
 test.describe("dashboard and API parity", () => {
   test("the visibility hero and GET /visibility report the same number", async ({ page, request }) => {
     // The overview's default window is the one-month lookback.
-    await page.goto(`/app/${TEST_BRAND_ID}`);
+    await page.goto(brandUrl());
 
     // The hero reads "<n>% Visibility"; the sibling card reads "<n>% Share of
     // Voice", so the trailing word is what tells them apart.
@@ -36,7 +36,7 @@ test.describe("dashboard and API parity", () => {
   });
 
   test("share of voice agrees between the page and the API", async ({ page, request }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}/share-of-voice`);
+    await page.goto(`${brandUrl()}/share-of-voice`);
     await expect(page.getByRole("heading", { name: /share of voice/i }).first()).toBeVisible({ timeout: 30_000 });
 
     const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/share-of-voice?lookback=1m`, { headers: AUTH });
@@ -59,7 +59,7 @@ test.describe("dashboard and API parity", () => {
     // more than the API publishes (the Google module, what's-changed, page-type
     // distribution), so it isn't a wrapper. Two implementations are fine; two
     // answers are not. This pins the fields they both produce.
-    await page.goto(`/app/${TEST_BRAND_ID}/citations`, { waitUntil: "networkidle" });
+    await page.goto(`${brandUrl()}/citations`, { waitUntil: "networkidle" });
     await expect(page.getByText("Total Citations")).toBeVisible({ timeout: 30_000 });
 
     // The page's default window is the last 30 days, ending today, which is what
@@ -144,7 +144,7 @@ test.describe("dashboard and API parity", () => {
   });
 
   test("query fan-out totals agree between the page and the API", async ({ page, request }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}/query-fan-out`);
+    await page.goto(`${brandUrl()}/query-fan-out`);
     await expect(page.getByRole("heading", { name: /fan.?out/i }).first()).toBeVisible({ timeout: 30_000 });
 
     const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/query-fanout?lookback=1m`, { headers: AUTH });

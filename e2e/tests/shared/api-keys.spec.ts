@@ -11,9 +11,9 @@
  * that would show up if the page ever bypassed the server function.
  */
 import { expect, test } from "@playwright/test";
-import { NIKE_BRAND_ID, TEST_BRAND_ID } from "../../fixtures";
+import { NIKE_BRAND_ID, TEST_BRAND_ID, brandUrl } from "../../fixtures";
 
-const KEYS_PAGE = `/app/${TEST_BRAND_ID}/settings/api-keys`;
+const KEYS_PAGE = `${brandUrl()}/settings/api-keys`;
 
 type Page = import("@playwright/test").Page;
 
