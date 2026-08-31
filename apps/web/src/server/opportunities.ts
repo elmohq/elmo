@@ -501,7 +501,19 @@ function citationsForPrompts(
 
 /** Regenerate at most this often; stored generations newer than this are served
  * from cache. Surfaced as "Refreshed weekly" on the page — kept a touch under 7 days. */
-const REFRESH_AFTER_DAYS = 6;
+export const REFRESH_AFTER_DAYS = 6;
+
+/**
+ * Whether the next dashboard view of this brand would generate a new report.
+ *
+ * Generation happens on a page load and nowhere else, so this is the only
+ * honest answer the API can give a caller asking "is a newer one coming?" —
+ * there is no queue to report a position in.
+ */
+export function opportunitiesAreStale(generatedAt: Date | null): boolean {
+	if (!generatedAt) return true;
+	return Date.now() - generatedAt.getTime() >= REFRESH_AFTER_DAYS * 86_400_000;
+}
 const MAX_GENERATION_ATTEMPTS = 3;
 
 /** Resolve the LLM output's prompt strings to tracked IDs (for deep-linking) and
@@ -557,7 +569,7 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" })
 			.orderBy(desc(brandOpportunities.createdAt))
 			.limit(1);
 		const lastEvaluatedAt = latest?.createdAt.toISOString() ?? null;
-		const isFresh = latest && Date.now() - new Date(latest.createdAt).getTime() < REFRESH_AFTER_DAYS * 86_400_000;
+		const isFresh = latest && !opportunitiesAreStale(new Date(latest.createdAt));
 		if (latest && isFresh) {
 			return {
 				report: withoutRepeats(latest.report as OpportunitiesReport),

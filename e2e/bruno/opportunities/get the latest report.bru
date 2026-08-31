@@ -18,6 +18,7 @@ assert {
   res.status: eq 200
   res.body.brandId: eq default
   res.body.status: eq ready
+  res.body.stale: eq false
   res.body.generatedAt: isString
   res.body.model: isString
   res.body.summary: isNotEmpty

@@ -2009,6 +2009,10 @@
 						"description": "`ready` when a report is present. `insufficient-data` when the brand hasn't accumulated enough tracked answers to say anything useful yet. `not-generated` when none has been produced for this brand at all. The lists are empty for anything but `ready`.",
 						"enum": ["ready", "insufficient-data", "not-generated"]
 					},
+					"stale": {
+						"type": "boolean",
+						"description": "Whether the next dashboard view of this brand would produce a newer report. `true` when nothing has been generated yet, or when the stored report has aged past its refresh window.\n\nThis is the answer to “should I check back?”. Generation runs on a dashboard page load and nowhere else — nothing is ever queued, so there is no in-flight state to poll and no way to start one over the API."
+					},
 					"generatedAt": {
 						"type": "string",
 						"format": "date-time",
@@ -2041,7 +2045,7 @@
 						"description": "Caveats: hard-to-win areas, or tactics to avoid."
 					}
 				},
-				"required": ["brandId", "status", "generatedAt", "model", "summary", "opportunities", "risks"]
+				"required": ["brandId", "status", "stale", "generatedAt", "model", "summary", "opportunities", "risks"]
 			}
 		},
 		"responses": {
@@ -2623,7 +2627,7 @@
 		"/brands/{brandId}/opportunities": {
 			"get": {
 				"summary": "Get the latest opportunities report",
-				"description": "**Experimental — the response shape may still change.**\n\nThe brand's most recent Opportunities report: a prioritized set of ways to get cited more often, with the tracked prompts and cited pages behind each one. The same analysis the dashboard shows.\n\nRead-only. Elmo generates a report when the brand's data has moved enough to warrant one; there is no way to trigger generation over the API, because it spends provider budget with nothing metering it per call. `status` says why the lists are empty when they are.",
+				"description": "**Experimental — the response shape may still change.**\n\nThe brand’s most recent Opportunities report: a prioritized set of ways to get cited more often, with the tracked prompts and cited pages behind each one. The same analysis the dashboard shows.\n\nRead-only, and there is no way to trigger generation over the API: it spends provider budget with nothing metering it per call. A report is produced when someone opens the brand’s Opportunities page and the stored one has aged out, so `stale` tells a caller whether the next such view would replace what it just read. `status` says why the lists are empty when they are.",
 				"operationId": "getBrandOpportunities",
 				"tags": ["Opportunities"],
 				"x-elmo-scopes": ["analytics:read"],

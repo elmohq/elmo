@@ -408,7 +408,9 @@ filtered to the key's brands. Additions:
   easy part, and it's meaningless until the attachment is right.
 - **No** `DELETE /v1/brands/{brandId}`. Brand deletion cascades across runs,
   citations, and an organization; an irreversible cascade behind a leaked key is
-  exactly the thing we would regret. Deletion stays a dashboard action.
+  exactly the thing we would regret. Nothing in the product deletes a brand
+  today — not the dashboard either — so the API adding one would be inventing
+  the operation, not exposing it.
 
 ### 3.5 Prompts — extend
 
@@ -473,14 +475,23 @@ beats withholding it: the analysis is the most useful thing in the product to
 pipe somewhere else, and a caller who reads the label knows what they're
 pinning.
 
-Read-only, and deliberately no `POST` to regenerate. Elmo decides when a report
-is stale; generation spends provider budget with nothing metering it per call,
-the same reason `/tools/analyze` stays admin-only (§3.11). What the API returns
-is the newest row of an append-only history.
+Read-only, and deliberately no `POST` to regenerate: generation spends provider
+budget with nothing metering it per call, the same reason `/tools/analyze` stays
+admin-only (§3.11). What the API returns is the newest row of an append-only
+history.
 
 `status` (`ready` / `insufficient-data` / `not-generated`) says why the lists
 are empty when they are, so a caller never has to distinguish "no opportunities"
 from "not enough data yet" from "never generated".
+
+`stale` answers the other question a caller has: *should I check back?*
+Generation happens on a dashboard page load and nowhere else — there is no job,
+no queue, and nothing in flight — so a `processing` status or a `202` with a
+poll URL would be documenting a state that cannot occur. What can be answered
+truthfully is whether the stored report has aged past the window the page
+regenerates on, which is what `stale` reports; `true` also covers "nothing
+stored yet". If generation ever moves onto the worker, `status` has room for
+`processing` and `stale` keeps meaning what it means.
 
 ### 3.9 Analytics — `/v1/brands/{brandId}/…`  *(`analytics:read`)*
 
@@ -583,7 +594,7 @@ would have to take back.
 | --- | --- |
 | Any billing write | Structural guarantee; no scope exists. |
 | Org / member / invitation mutations | Already blocked at the middleware for every caller. |
-| `DELETE /v1/brands/{id}` | Irreversible cascade; dashboard-only. |
+| `DELETE /v1/brands/{id}` | Irreversible cascade, and no surface in the product performs it (§3.4). |
 | Creating a tag that no prompt carries | Tags are derived from `prompts.tags`; a standalone tag would promise a table we don't have (§3.7). |
 | Triggering an Opportunities generation | Spends provider budget with nothing metering it per call (§3.8). |
 | Opportunities history | Only the latest report. The table is append-only, so a `generatedBefore` filter can be added the day someone wants one. |

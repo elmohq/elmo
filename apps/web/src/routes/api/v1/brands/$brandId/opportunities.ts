@@ -3,11 +3,17 @@
  *
  * Read-only, and deliberately no POST to regenerate: producing a report spends
  * provider budget with nothing metering it per call, the same reason
- * /tools/analyze stays admin-only. Elmo decides when one is stale; this returns
- * the newest row of an append-only history.
+ * /tools/analyze stays admin-only. This returns the newest row of an
+ * append-only history.
  *
  * `status` says why the lists are empty when they are, so a caller never has to
  * tell "no opportunities" from "not enough data yet" from "never generated".
+ *
+ * `stale` is the answer to "should I check back?". Generation happens on a
+ * dashboard page load and nowhere else — there is no queue, so no request is
+ * ever in flight to report a position in, and a "processing" state would be a
+ * state that cannot occur. What a caller can act on is whether the next view
+ * of this brand would produce a newer report, which is what `stale` says.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
@@ -15,7 +21,7 @@ import { brandOpportunities } from "@workspace/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
-import type { OpportunitiesReport } from "@/server/opportunities";
+import { type OpportunitiesReport, opportunitiesAreStale } from "@/server/opportunities";
 
 export const Route = createFileRoute("/api/v1/brands/$brandId/opportunities")({
 	server: {
@@ -36,6 +42,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/opportunities")({
 						return {
 							brandId: brand.id,
 							status: "not-generated",
+							stale: true,
 							generatedAt: null,
 							model: null,
 							summary: [],
@@ -52,6 +59,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/opportunities")({
 						// A stored report with nothing in it is what "not enough tracked
 						// answers yet" looks like on disk.
 						status: opportunities.length > 0 ? "ready" : "insufficient-data",
+						stale: opportunitiesAreStale(row.createdAt),
 						generatedAt: row.createdAt,
 						model: row.model,
 						summary: report.summary ?? [],

@@ -17,6 +17,7 @@ headers {
 assert {
   res.status: eq 200
   res.body.status: eq not-generated
+  res.body.stale: eq true
   res.body.generatedAt: isNull
   res.body.opportunities: isEmpty
 }
