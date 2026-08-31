@@ -1,4 +1,3 @@
-import { expect, test } from "@playwright/test";
 import {
 	NIKE_BRAND_ID,
 	SLUGGED_BRAND_ID,
@@ -10,9 +9,12 @@ import {
 	brandUrl,
 	organizationUrl,
 } from "../../fixtures";
+import { delayDataRequests } from "../../latency";
+import { expect, failedResource, test } from "../../test";
 
 const BRAND_URL = brandUrl();
 const SLUGGED_BRAND_URL = brandUrl(SLUGGED_BRAND_SLUG);
+const BOUNDARY = "An unexpected error occurred while loading this page.";
 
 test.describe("App routing", () => {
 	test("a brand with no slug resolves by id", async ({ page }) => {
@@ -39,14 +41,16 @@ test.describe("App routing", () => {
 		});
 	});
 
-	test("an unknown page offers everything the user can reach", async ({ page }) => {
+	test("an unknown page offers everything the user can reach", async ({ page, consoleErrors }) => {
+		consoleErrors.allow(failedResource(404));
 		await page.goto("/app/org/not-a-organization");
 
 		await expect(page.getByText("That page doesn't exist or moved.")).toBeVisible({ timeout: 30_000 });
 		await expect(page.getByRole("link", { name: TEST_BRAND_NAME, exact: true }).first()).toBeVisible();
 	});
 
-	test("the mark on a full-page view leads to the directory", async ({ page }) => {
+	test("the mark on a full-page view leads to the directory", async ({ page, consoleErrors }) => {
+		consoleErrors.allow(failedResource(404));
 		await page.goto("/app/org/not-a-organization");
 
 		const mark = page.getByRole("link", { name: "Go to your organizations" });
@@ -59,14 +63,16 @@ test.describe("App routing", () => {
 		});
 	});
 
-	test("a pre-organization link lands on the same directory", async ({ page }) => {
+	test("a pre-organization link lands on the same directory", async ({ page, consoleErrors }) => {
+		consoleErrors.allow(failedResource(404));
 		await page.goto(`/app/${TEST_BRAND_ID}/citations`);
 
 		await expect(page.getByText("That page doesn't exist or moved.")).toBeVisible({ timeout: 30_000 });
 		await expect(page.locator(`a[href="${BRAND_URL}"]`).first()).toBeVisible();
 	});
 
-	test("a brand from another organization does not resolve under this one", async ({ page }) => {
+	test("a brand from another organization does not resolve under this one", async ({ page, consoleErrors }) => {
+		consoleErrors.allow(failedResource(404));
 		await page.goto(brandUrl(NIKE_BRAND_ID));
 		await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
 	});
@@ -87,20 +93,37 @@ test.describe("App routing", () => {
 		await expect(page.getByRole("button", { name: "Change URL" })).toHaveCount(0);
 	});
 
-	test("cold client-side navigations do not enter the error boundary", async ({ page }) => {
-		const errors: Error[] = [];
-		page.on("pageerror", (error) => errors.push(error));
-
+	// Slow data is the point of these two: the page that settles at the end of
+	// a navigation looks right either way, so what breaks a page mid-transition
+	// is only visible while the transition is still open. The console guard
+	// catches the rest.
+	test("walking the whole sidebar over a slow connection never breaks a page", async ({ page }) => {
 		await page.goto(BRAND_URL);
-		await expect(page.locator(`a[href="${BRAND_URL}"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 30_000 });
+		const destinations = page.locator(`a[data-sidebar="menu-button"][href^="${organizationUrl()}"]`);
+		await expect(destinations.first()).toBeVisible({ timeout: 30_000 });
+		const hrefs = await destinations.evaluateAll((links) => links.map((link) => link.getAttribute("href")!));
 
-		for (const destination of ["Visibility", "Citations", "Brand"]) {
-			await page.getByRole("link", { name: destination, exact: true }).click();
-			await expect(page.getByRole("heading", { name: destination, exact: true })).toBeVisible({ timeout: 30_000 });
-			await expect(page.getByText("An unexpected error occurred while loading this page.")).toHaveCount(0);
+		const network = await delayDataRequests(page);
+
+		for (const href of hrefs) {
+			await page.locator(`a[data-sidebar="menu-button"][href="${href}"]`).click();
+			await expect(page).toHaveURL(new RegExp(`${href}$`), { timeout: 30_000 });
+			await network.settled();
+			await expect(page.getByText(BOUNDARY), `navigating to ${href}`).toHaveCount(0);
 		}
+	});
 
-		expect(errors).toEqual([]);
+	test("leaving a brand for its organization over a slow connection keeps the page intact", async ({ page }) => {
+		await page.goto(`${BRAND_URL}/citations`);
+		const organization = page.getByRole("navigation", { name: "breadcrumb" }).locator(`a[href="${organizationUrl()}"]`);
+		await expect(organization).toBeVisible({ timeout: 30_000 });
+
+		const network = await delayDataRequests(page);
+
+		await organization.click();
+		await network.settled();
+		await expect(page.getByText(BOUNDARY)).toHaveCount(0);
+		await expect(page.getByRole("heading", { name: "Organization" })).toBeVisible({ timeout: 30_000 });
 	});
 
 	test("the breadcrumb trail names the organization, the brand, and the page", async ({ page }) => {

@@ -8,7 +8,8 @@
  * the specs for what makes that mode different.
  */
 import { defineConfig, devices } from "@playwright/test";
-import { authStatePath, DEPLOYMENT_MODES } from "./fixtures";
+import { authStatePath, DEPLOYMENT_MODES, WHITELABEL } from "./fixtures";
+import type { ConsoleErrorOptions } from "./test";
 
 // Base URL can be overridden via environment variable.
 // Default: http://localhost:1515 (Docker Compose maps web:3000 → host:1515)
@@ -32,11 +33,17 @@ const modeProjects = DEPLOYMENT_MODES.flatMap((mode) => [
     // keeps its own — a shared one would delete the previous pass's traces
     // before CI uploads them.
     outputDir: `test-results-${mode}`,
-    use: { ...devices["Desktop Chrome"], storageState: authStatePath(mode) },
+    use: {
+      ...devices["Desktop Chrome"],
+      storageState: authStatePath(mode),
+      // The whitelabel fixture points the app icon at a host that deliberately
+      // does not resolve, so every page it serves logs the failed load.
+      allowedConsoleErrors: mode === "whitelabel" ? [WHITELABEL.appIcon] : [],
+    },
   },
 ]);
 
-export default defineConfig({
+export default defineConfig<ConsoleErrorOptions>({
   testDir: "./tests",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

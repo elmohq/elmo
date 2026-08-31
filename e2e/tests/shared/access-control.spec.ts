@@ -8,7 +8,7 @@
  * point — a mode-specific auth or middleware change that quietly opens one of
  * these up fails here.
  */
-import { expect, test } from "@playwright/test";
+import { expect, failedResource, test } from "../../test";
 import { NIKE_BRAND_ID, TEST_API_KEY, TEST_BRAND_ID, brandUrl, organizationUrl } from "../../fixtures";
 
 test.describe("Unauthenticated access", () => {
@@ -42,7 +42,8 @@ test.describe("Unauthenticated access", () => {
 });
 
 test.describe("Authenticated access", () => {
-  test("a brand in another org is not found", async ({ page }) => {
+  test("a brand in another org is not found", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(404));
     await page.goto(`${organizationUrl()}/brand/${NIKE_BRAND_ID}`);
     await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
   });

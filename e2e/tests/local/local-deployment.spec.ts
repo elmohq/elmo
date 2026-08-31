@@ -6,7 +6,7 @@
  * ships the full report generator and the stock Elmo branding, and it lets the
  * operator create as many brands as they like.
  */
-import { expect, test } from "@playwright/test";
+import { ABORTED_SSR_STREAM, expect, failedResource, test } from "../../test";
 import { TEST_BRAND_ID, TEST_USER, brandUrl, organizationUrl } from "../../fixtures";
 import { userExists } from "../../session";
 
@@ -31,7 +31,8 @@ test.describe("Local signup is closed after bootstrap", () => {
     expect(await userExists(SECOND_USER.email)).toBe(false);
   });
 
-  test("the register page sends you to sign in", async ({ page }) => {
+  test("the register page sends you to sign in", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(ABORTED_SSR_STREAM);
     await page.goto("/auth/register");
     await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
   });
@@ -78,7 +79,11 @@ test.describe("Local features", () => {
     );
   });
 
-  test("the team page is not offered and not reachable — a local install is one user", async ({ page }) => {
+  test("the team page is not offered and not reachable — a local install is one user", async ({
+    page,
+    consoleErrors,
+  }) => {
+    consoleErrors.allow(failedResource(404));
     await page.goto(`${organizationUrl()}/settings`);
     await expect(
       page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),

@@ -11,7 +11,7 @@
  * write leaves the database untouched — a 403 that still wrote would pass the
  * unit tests.
  */
-import { expect, test } from "@playwright/test";
+import { ABORTED_SSR_STREAM, expect, failedResource, test } from "../../test";
 import {
   COMPETITOR_IDS,
   DEMO_CREDENTIALS,
@@ -81,7 +81,8 @@ test.describe("Demo refuses writes", () => {
     expect(prompt.status()).toBe(200);
   });
 
-  test("saving brand settings from the UI fails and writes nothing", async ({ page }) => {
+  test("saving brand settings from the UI fails and writes nothing", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(403));
     await page.goto(`${brandUrl()}/settings/brand`);
 
     const nameInput = page.getByLabel("Brand Name");
@@ -148,7 +149,8 @@ test.describe("Demo auth is sign-in only", () => {
     await expect(page.getByLabel("Password")).toHaveCount(0);
   });
 
-  test("the register page sends you to sign in", async ({ page }) => {
+  test("the register page sends you to sign in", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(ABORTED_SSR_STREAM);
     await page.goto("/auth/register");
     await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
   });
@@ -169,7 +171,8 @@ test.describe("Demo features", () => {
     await page.waitForURL(new RegExp(`${organizationUrl()}/settings$`), { timeout: 30_000 });
   });
 
-  test("saving organization settings fails and says why", async ({ page }) => {
+  test("saving organization settings fails and says why", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(403));
     await page.goto(`${organizationUrl()}/settings`);
 
     const nameField = page.getByLabel("Organization Name", { exact: true });
@@ -180,7 +183,8 @@ test.describe("Demo features", () => {
     await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible({ timeout: 30_000 });
   });
 
-  test("the team page is not offered and not reachable", async ({ page }) => {
+  test("the team page is not offered and not reachable", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(404));
     await page.goto(`${organizationUrl()}/settings`);
     await expect(
       page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),
