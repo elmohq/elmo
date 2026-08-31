@@ -93,7 +93,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 
 		const canonical = brandSegment(brand);
 		if (canonical !== params.brand) {
-			throw redirect({ href: canonicalBrandHref(location, canonical) });
+			throw redirect({ href: canonicalBrandHref(location, canonical), replace: true });
 		}
 
 		return { brandId: brand.id };
