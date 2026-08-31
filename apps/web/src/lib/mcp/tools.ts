@@ -58,7 +58,7 @@ import {
 import { listBrandTags } from "@/server/tags-core";
 import { principalLabel, principalScopes } from "./auth";
 
-export interface McpToolContext {
+interface McpToolContext {
 	auth: Principal;
 }
 

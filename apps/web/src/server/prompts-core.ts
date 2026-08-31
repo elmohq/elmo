@@ -45,7 +45,7 @@ export class PromptNotFoundError extends Error {
 /** The brand a prompt belongs to. Resolving it to a brand is the caller's job. */
 const brandIdSchema = z.string().trim().min(1, "brandId is required");
 
-export const promptValueSchema = z.string().trim().min(1, "value must be a non-empty string");
+const promptValueSchema = z.string().trim().min(1, "value must be a non-empty string");
 
 export const createPromptInputSchema = z.object({
 	brandId: brandIdSchema,
