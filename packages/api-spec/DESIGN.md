@@ -502,8 +502,11 @@ citations, `0.5` is half, `1` is unchanged. It is deliberately not a percentage
 change — "+150%" and "1.5x" are different numbers, and the multiplier is the one
 that cannot be misread.
 
-`GET /v1/reports/{id}` predates all of this and keeps its whole-number
-percentages; it shipped that way and nothing here changes it.
+`GET /v1/reports/{id}` predates all of this and nothing here changes it. It
+mixes both spellings and always has: the per-prompt `sov` under `prompts` is a
+whole-number percentage, while everything under `unstable` is a 0–1 ratio. The
+new endpoints have one rule because they could; that one keeps what it shipped
+with.
 
 | Endpoint | Returns |
 | --- | --- |

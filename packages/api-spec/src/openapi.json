@@ -4635,14 +4635,14 @@
 													"type": "number",
 													"nullable": true,
 													"minimum": 0,
-													"maximum": 100,
-													"description": "Overall share of voice as a whole-number percentage 0-100: brand_mentions / (brand_mentions + competitor_mentions). Null when no mentions at all."
+													"maximum": 1,
+													"description": "Overall share of voice (0-1): brand_mentions / (brand_mentions + competitor_mentions). Null when no mentions at all."
 												},
 												"visibility": {
 													"type": "number",
 													"minimum": 0,
-													"maximum": 100,
-													"description": "Brand visibility as a whole-number percentage 0-100: brand_mentions / total_prompt_runs (how often the brand appears at all across all prompt runs)"
+													"maximum": 1,
+													"description": "Brand visibility (0-1): brand_mentions / total_prompt_runs (how often the brand appears at all across all prompt runs)"
 												},
 												"totalPrompts": {
 													"type": "integer",
@@ -4672,14 +4672,14 @@
 															"sov": {
 																"type": "number",
 																"minimum": 0,
-																"maximum": 100,
-																"description": "Share of voice as a whole-number percentage 0-100: this competitor's mentions / total mentions (brand + all competitors)"
+																"maximum": 1,
+																"description": "Share of voice (0-1): this competitor's mentions / total mentions (brand + all competitors)"
 															},
 															"visibility": {
 																"type": "number",
 																"minimum": 0,
-																"maximum": 100,
-																"description": "Visibility as a whole-number percentage 0-100: prompt runs mentioning this competitor / total prompt runs"
+																"maximum": 1,
+																"description": "Visibility (0-1): prompt runs mentioning this competitor / total prompt runs"
 															},
 															"promptsWithMentions": {
 																"type": "integer",
