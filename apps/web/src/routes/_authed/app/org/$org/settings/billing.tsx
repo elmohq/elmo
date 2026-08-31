@@ -14,7 +14,6 @@ import { Progress } from "@workspace/ui/components/progress";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { type ReactNode, useState } from "react";
 import { PlanComparison } from "@/components/plan-comparison";
-import { useOrganization } from "@/hooks/use-organizations";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { type BillingState, getBillingStateFn, setPremiumAddonQuantityFn } from "@/server/billing";
@@ -38,7 +37,6 @@ function formatDate(iso: string | null): string {
 
 function BillingSettingsPage() {
 	const state = Route.useLoaderData();
-	const { id: organizationId } = useOrganization();
 	const router = useRouter();
 	const isAdmin = isOrgAdminRole(state.organization.role);
 	const { entitlements } = state;
@@ -193,7 +191,7 @@ function BillingSettingsPage() {
 					description={`Beyond what your plan includes, at $${PREMIUM_ADDON_MONTHLY_USD} per pairing per month.`}
 				>
 					<PremiumAddonCard
-						organizationId={organizationId}
+						organizationId={state.organization.id}
 						quantity={state.premiumAddonQuantity}
 						isAdmin={isAdmin}
 						hasSubscription={state.subscription !== null}

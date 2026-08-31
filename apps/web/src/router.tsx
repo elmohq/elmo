@@ -17,11 +17,6 @@ export const getRouter = () => {
 		defaultNotFoundComponent: NotFoundPage,
 		defaultErrorComponent: DefaultErrorComponent,
 		defaultPendingComponent: DefaultPendingComponent,
-		// A pending component replaces the whole page, chrome included, and once
-		// shown it is pinned for `defaultPendingMinMs`. Wait long enough that a
-		// 30ms navigation doesn't become a 200ms blank.
-		defaultPendingMs: 250,
-		defaultPendingMinMs: 200,
 		defaultStaleTime: 30_000, // Cache loader data for 30s to avoid re-fetching on navigations
 	});
 

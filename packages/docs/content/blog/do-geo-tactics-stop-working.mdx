@@ -1,0 +1,132 @@
+---
+title: "Do GEO Tactics Stop Working When Everyone Uses Them?"
+description: "New research simulates GEO in a competitive market: fixed tactics lose their edge as adoption rises, and at 80% adoption they score below doing nothing at all."
+date: "2026-08-31"
+author: ai
+metaTitle: "Do GEO Tactics Stop Working Under Competition?"
+tags:
+  - geo
+  - aeo
+  - ai-citations
+  - ai-visibility
+definedTerms:
+  - term: Competitor-aware GEO
+    definition: "Competitor-aware GEO is the selection of content-rewriting tactics based on what competing documents in the same retrieval pool have already done, rather than from a fixed checklist. The term comes from a 2026 preprint by researchers at Capital One AI Foundations, which formalizes GEO as a strategy-selection problem whose optimal answer changes as more competitors optimize."
+  - term: GEO adoption rate
+    definition: "GEO adoption rate is the fraction of documents competing for the same AI answer that have been rewritten for citation visibility, written as α in the research. Simulated results show fixed single tactics losing their advantage as α rises; the first real-web measurement puts overall adoption near 9%, and around 16% for pages modified in 2026."
+  - term: PAWC
+    definition: "PAWC (Position-Adjusted Word Count) is the standard impression metric in GEO research. It credits a document for the words a generative engine's answer draws from it, weighted so that material appearing earlier in the answer counts more. It measures presence in the answer text, not clicks, conversions, or accuracy."
+howTo:
+  name: "How to decide whether the standard GEO checklist still pays in your category"
+  description: "Use the adoption-rate finding to calibrate tactic choice against how optimized your competitive set already is, instead of assuming the published tactic rankings are stable."
+  steps:
+    - name: Measure adoption in your retrieval pool, not the web average
+      text: "The simulations vary the share of competing documents that are optimized, and the answer changes with it. The measured web average is near 9%, but detected prevalence ranges from 0% on major reference sites to 20% on sampled Amazon pages. Pull the pages actually cited for your tracked prompts and assess those."
+    - name: Treat single tactics as depreciating assets
+      text: "In competitive simulation, every fixed single-strategy method fell below the unoptimized baseline once 80% of competitors were also optimizing. A tactic that works today because your category is quiet is not evidence it will work once the category fills in."
+    - name: Prefer combinations chosen for your pages over checklist order
+      text: "The best-performing approach searched combinations of 15 tactics per query and document rather than applying one universally. You cannot run Bayesian optimization by hand, but you can stop treating the 2024 tactic ranking as a priority order and test combinations against your own tracked prompts."
+    - name: Audit optimized rewrites for faithfulness, not just visibility
+      text: "The winning method's rewrites scored 4.90 on the paper's LLM-judged faithfulness scale against 8.29 for the original documents. Visibility-optimal rewriting drifted from what the source actually said — on your own pages, that drift becomes claims attributed to your brand."
+    - name: Record what the answers say, on a schedule
+      text: "If competitors adopt optimization at different rates, the answer set for your prompts is unstable by construction. Tracking mention wording over time is the only way to notice that a tactic stopped paying before a quarter's content budget went into it."
+    - name: Re-test tactics when your category's adoption visibly rises
+      text: "The research's core claim is that tactic effectiveness is a function of competitor behavior, not of the tactic. Any measurement of what works in your category carries a timestamp."
+faq:
+  - question: Do GEO tactics stop working when competitors use them too?
+    answer: "In simulation, yes — and past a threshold they go negative. A 2026 preprint from Capital One AI Foundations tested fixed rewriting tactics while varying the share of competing documents also optimized, and found that \"single-strategy methods at full competitive optimization (α=0.8) drop below the unoptimized (α=0) baseline.\" A method that re-selected tactic combinations based on the competitive context lost only 11.4% of its performance across the same range."
+  - question: Which GEO tactic works best?
+    answer: "No single tactic won. On GEO-Bench, the strongest single tactic tested (statistics addition, at 23.08 PAWC) trailed both an agentic rewriting baseline (27.95) and the paper's combination-search method (32.62). The consistent finding across the KDD 2024 GEO paper and this one is that combinations beat single edits, and this paper adds that the best combination depends on what competitors have already done."
+  - question: Is the claim that GEO boosts visibility by 40% still valid?
+    answer: "As a measurement of one document being optimized while competitors stand still, yes — that is what the KDD 2024 paper measured. The 2026 competitor-aware study argues that this vacuum assumption is the limit of the finding: as the share of optimized competitors rises in its simulations, the advantage of any fixed tactic shrinks and eventually inverts. The 40% figure describes an early-adopter market, not a saturated one."
+  - question: How close is the real web to the saturated scenario?
+    answer: "Not close, on average. The first measured GEO prevalence, from an August 2026 CISPA-led study, found 8.90% of pages retrieved for real queries were optimized, rising to 16.36% among pages modified in 2026 — against the 80% adoption where simulated single tactics went negative. But prevalence varied from 0% on major reference and medical sites to 20% on sampled Amazon pages, so a competitive commercial category can be far ahead of the average."
+  - question: What is competitor-aware GEO?
+    answer: "Competitor-aware GEO selects rewriting strategies based on the competitive context — which documents share the retrieval pool and how optimized they already are — instead of applying a fixed checklist. The paper that names it searched 32,768 possible combinations of 15 published tactics per query using Bayesian optimization, then fine-tuned a model to propose combinations directly. It beat the strongest agentic baseline by 4.67 PAWC on GEO-Bench and by more than 18% on the competitive variant."
+  - question: Does optimizing for AI citations make content less accurate?
+    answer: "In this study's simulations, the visibility-optimal rewrites were measurably less faithful to the source: 4.90 versus 8.29 for unrewritten documents on an LLM-judged scale. That matches the failure mode in a separate 2026 mechanism-design paper, where repeated optimization rounds accumulated unsupported claims. Visibility and fidelity are separate objectives, and optimizing hard for one traded away the other in both papers."
+  - question: Should I stop running the GEO checklist?
+    answer: "No — the measured web is still mostly unoptimized, and in a low-adoption category the published tactics remain the best-evidenced starting point. What the research removes is the assumption that the checklist's effectiveness is a property of the checklist. It is a property of your category's adoption rate, which means it needs to be measured in your category, and re-measured as the category fills in."
+---
+
+**Every ranking of GEO tactics you have read shares an assumption: your competitors' pages hold still while you optimize yours.** A [preprint posted on 27 August 2026](https://arxiv.org/abs/2608.27631) by Vaibhav Sourirajan and colleagues at Capital One AI Foundations drops that assumption and re-runs the question. When the share of competing documents that are also optimized rises to 80%, every fixed single tactic they tested scores *below* the baseline of never having optimized at all.
+
+**Key takeaways**
+
+- Tactic effectiveness is relative, not absolute. The paper formalizes GEO as a competitor-aware selection problem because "as adoption of content optimization grows, optimal strategies for rewriting content change."
+- Combinations beat checklists. Searching the 32,768 possible combinations of 15 published tactics per query scored 32.62 PAWC on GEO-Bench, against 27.95 for the strongest agentic baseline and 23.08 for the best single tactic tested.
+- Saturation inverts the sign. At 80% simulated adoption, fixed single-strategy methods "drop below the unoptimized (α=0) baseline." The competitor-aware method lost only 11.4% across the full adoption range by shifting "toward less saturated alternatives."
+- The real web is nowhere near 80% — yet. Measured prevalence is 8.90% overall and 16.36% for 2026-modified pages, but it ranges from 0% to 20% by domain, so the number that matters is your category's.
+- The trade the paper underplays: its winning method's rewrites scored 4.90 on faithfulness against 8.29 for the originals. The most visible version of your page was not the most accurate one.
+- The usual caveats apply, and then some: simulated competitors, proxy engines, a word-count metric, and a method that reads the entire competitive corpus before choosing — an advantage no publisher has.
+
+## The question the tactic rankings never answered
+
+Since the [KDD 2024 GEO paper](https://arxiv.org/abs/2311.09735) reported that optimization "can boost visibility by up to 40%," the field has treated its tactic list — add statistics, cite sources, add quotations, improve fluency — as a ranked menu. The ranking came from a specific experimental shape: one document in a retrieval pool gets rewritten, the others stay as they were, and the change in the engine's answer is measured.
+
+That was a reasonable design in 2023, when almost nobody was optimizing. It describes a land grab. The Capital One paper asks what the same tactics are worth once the land is taken, and its answer is that the ranking itself is unstable: the value of any edit depends on how many competing documents already carry it.
+
+The intuition is familiar from every prior optimization discipline. If one page in five has extractable statistics and yours is it, the engine's preference for statistics is your advantage. If four in five do, the same edit buys parity at best. What the paper adds is machinery for measuring this and a demonstration of how sharp the falloff gets.
+
+## What the paper actually did
+
+The method has two phases. First, for each query and document set, it runs Bayesian Optimization of Combinatorial Structures — BOCS — over the 2^15 = 32,768 possible on/off combinations of 15 rewriting strategies drawn from the published GEO literature, using 50 evaluations per search. The 15 include the KDD 2024 tactics (statistics addition, citing sources, quotation addition, fluency, authoritative tone, keyword stuffing) alongside later additions like structured formatting and LLM guidance from C-SEO Bench.
+
+Second, because running BOCS per page is impractical, the observations from those searches become training data: preference pairs and reasoning traces that fine-tune a language model to look at a document corpus and propose a strategy combination directly.
+
+Visibility is scored with PAWC — Position-Adjusted Word Count — the standard GEO-research metric that credits a document for the words the answer draws from it, discounted by position. On GEO-Bench with gpt-oss-120b as the engine:
+
+| Method | PAWC |
+|---|---|
+| **Competitor-aware selection (this paper)** | 32.62 ± 0.25 |
+| **AgenticGEO** (strongest baseline) | 27.95 ± 0.30 |
+| **Statistics addition** (strongest single tactic) | 23.08 ± 0.28 |
+| **Fluency optimization** | 21.92 ± 0.32 |
+
+The gap worth noticing is not the headline one. It is that the best single tactic — the one at the top of most practitioner checklists — sits five points below an agentic rewriter and nearly ten below combination search. The checklist's unit of action, the individual tactic, is the wrong granularity even before competition enters.
+
+## The adoption-rate experiment
+
+Then competition enters. The authors build geo-bench_comp, a variant in which a fraction α of the competing documents are themselves rewritten by simulated optimizers, and test α from 0 to 0.8 — from an unoptimized field to one where four of five competitors are running GEO.
+
+Two results carry the paper. Averaged across adoption rates, the competitor-aware method scores 29.93 PAWC against 25.20 for the strongest baseline — an 18% edge. And at the high end, the fixed approaches do not merely lag: "single-strategy methods at full competitive optimization (α=0.8) drop below the unoptimized (α=0) baseline." Running the standard playbook in a saturated category simulated as worse than never having run it.
+
+The competitor-aware selector avoids this by doing the thing its name says: it infers the adoption level from the documents it can see and shifts "toward less saturated alternatives as the competitive landscape is increasingly optimized." Its total degradation across the full adoption range is 11.4% — it bends where the fixed tactics break. The method also transferred out of distribution, scoring 37.78 on an e-commerce set and 33.48 on Researchy-GEO, more than 8% above the strongest baseline on each.
+
+For anyone doing [answer engine optimization](/blog/answer-engine-optimization), the mechanism matters more than the scores. Nothing about a statistics block or an FAQ became less legible to the engine at high α. What changed is that the edit stopped being a difference. Engines cite what stands out from the pool; an optimization everyone applies is, by definition, no longer what stands out.
+
+## So where is your category on that curve?
+
+The paper does not say, because it cannot — its competitors are synthetic. But the measurement exists elsewhere, and reconciling the two is where this becomes usable.
+
+The [CISPA-led GEO-Flag study](https://arxiv.org/abs/2608.16824), posted ten days earlier, put the first number on real-world adoption: 8.90% of pages retrieved for 1,000 real queries were GEO-optimized, rising to 16.36% among pages modified in 2026 — we covered it in [our analysis of GEO prevalence](/blog/geo-detection). Against the simulation's axis, the measured web sits near α = 0.1, one page in six for recent content. The regime where fixed tactics go negative starts around α = 0.8. On the web average, the 2024 playbook is still operating in something like the vacuum it was measured in.
+
+But the average is doing heavy lifting. The same study found 0% detected optimization on Wikipedia and major medical sites and 20% on sampled Amazon pages, and its year-over-year trend — 7% of 2024-modified pages, 12.8% for 2025, 16.4% for 2026 — points one direction. A competitive commercial category is plausibly years ahead of the mean, and it is precisely the categories where AI answers drive purchases that fill fastest.
+
+That yields a decision rule the paper stops short of stating. The question "do GEO tactics work" has no fixed answer; the question "how optimized are the pages cited for my prompts" does, and it determines the first one. Pull the citations for your tracked prompts, assess how many are visibly running the playbook, and read your position off the curve: a quiet pool means the standard tactics still buy differentiation, a crowded one means they buy parity, and the trend line tells you how long the first state lasts.
+
+## What this does not show
+
+The caveats here are structural, not fine print.
+
+The competitors are simulated — three optimizer functions applied on a fixed rotation — and the engines are proxies: gpt-oss-120b and Llama-3.3-70B-Instruct, not the production systems answering buyers' questions. PAWC measures words drawn into an answer, which is an impression proxy, not a mention, a recommendation, or a sale. And the competitor-aware method holds what the authors concede is "an information advantage": it reads the entire competitive corpus before choosing a strategy. No publisher sees the retrieval pool the way this selector does — though tracking which pages engines actually cite for your prompts is the closest available approximation.
+
+The largest omission sits in the faithfulness table. The winning method's rewrites scored 4.90 against 8.29 for unrewritten documents on the paper's LLM-judged scale — the visibility-optimal version of a page drifted furthest from what the page originally said. The authors log it as a trade-off; for a brand it is the whole risk. A rewrite that wins the citation by saying something your source material does not support becomes an engine confidently attributing that claim to you. This is the same failure mode the [mechanism-design work on citation wars](/blog/citation-wars) found accumulating over repeated optimization rounds, and the same decoration-grade citations the GEO-Flag audit found on 69% of detected pages. Three independent groups, three methods, one convergent result: pushed hard enough, visibility optimization manufactures unsupported claims.
+
+There is also a quieter irony worth holding: a paper about competitors adapting to each other is itself now public. A tactic selector that wins by finding "less saturated alternatives" describes an equilibrium that moves again the moment enough parties run one.
+
+## What to do on Monday
+
+1. **Establish your category's adoption rate.** Take the domains cited for your tracked prompts and assess the pages: statistics blocks, FAQ scaffolding, citation-dense passages, the recognizable shape of the playbook. That number — not the 9% web average — is your α.
+2. **Stop reading the 2024 tactic ranking as a priority order.** Single tactics were the weakest class of method even without competition. Test combinations against your own prompt set and keep what moves your numbers.
+3. **Put your differentiation in what cannot saturate.** Every tactic in the 15-strategy space is available to your competitors the day they want it. First-party data, original numbers, and named expertise are the additions no rewriting strategy reproduces.
+4. **Read every optimized rewrite against its source.** The measured faithfulness cost means the burden of proof sits on the rewrite. A claim that appears only in the optimized version is a claim you did not make until the optimizer made it for you.
+5. **Timestamp your conclusions.** Whatever you measure about tactic effectiveness this quarter describes this quarter's adoption level. The GEO-Flag trend line says the pool changes underneath you; our own tracking shows [60–70% day-to-day turnover](/blog/citation-volatility) in cited domains even now.
+
+## Where this leaves the playbook
+
+The honest summary is that GEO tactics work the way arbitrage works: the return is real, and it is a function of how many others have found the trade. The KDD 2024 measurements described an empty field, the CISPA measurements say the field is one-sixth full and filling, and this paper simulates the far end where the standard moves pay less than nothing. The practitioner's job shifts accordingly — from running a checklist to knowing where on that curve their category sits, which is a measurement question before it is a tactics question.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces and records every answer with its citations and competitor mentions. Because the cited pages for each prompt are in your own database, the adoption-rate check this research calls for is a query, not a project — and re-running it each month tells you when your category's curve starts to bend.
+
+For the fundamentals, start with [what AI citations are](/blog/ai-citations) and [where they come from](/blog/where-ai-citations-come-from). For the adjacent research, see [how much of the web is GEO-optimized](/blog/geo-detection) and [what happens when platforms fight back](/blog/citation-wars). For the practice, the [AEO guide](/blog/answer-engine-optimization) and [how to track your brand in AI search](/blog/track-brand-ai-search). For the vocabulary, the [AI search glossary](/glossary).
