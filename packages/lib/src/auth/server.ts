@@ -58,11 +58,15 @@ export interface CreateAuthOptions {
 }
 
 /**
- * Where the MCP plugin sends a browser that reached `/api/auth/mcp/authorize`
- * without a session. The page signs the person in and hands the request back to
- * the authorize endpoint, which is what turns a session into an OAuth code.
+ * The page an MCP client's user lands on: it signs them in if they aren't, asks
+ * whether to allow the client, and only then hands the request to
+ * `/api/auth/mcp/authorize`, which is what turns a session into an OAuth code.
+ *
+ * It is advertised as the authorization endpoint *and* configured as the
+ * plugin's login page, so it is reached whether a client follows the metadata
+ * or goes straight to the plugin without a session.
  */
-export const MCP_LOGIN_PAGE = "/auth/authorize";
+export const MCP_AUTHORIZE_PAGE = "/auth/authorize";
 
 /** Where the MCP endpoint is served, and what its resource identifier names. */
 export const MCP_PATH = "/api/mcp";
@@ -76,6 +80,9 @@ export function createAuth(options?: CreateAuthOptions) {
 	const localOrigin =
 		process.env.NODE_ENV !== "production" ? `http://localhost:${process.env.PORT ?? "3000"}` : undefined;
 	const baseURL = localOrigin ?? appUrl;
+
+	// No trailing slash: everything below concatenates paths onto it.
+	const origin = baseURL.replace(/\/$/, "");
 
 	const origins = options?.trustedOrigins ?? [];
 	if (!origins.includes(appUrl)) {
@@ -174,8 +181,8 @@ export function createAuth(options?: CreateAuthOptions) {
 			// the two differently is what makes a strict client refuse to connect
 			// against a local instance.
 			mcp({
-				loginPage: MCP_LOGIN_PAGE,
-				resource: `${baseURL.replace(/\/$/, "")}${MCP_PATH}`,
+				loginPage: MCP_AUTHORIZE_PAGE,
+				resource: `${origin}${MCP_PATH}`,
 			}),
 			sso(options?.sso),
 			...(options?.extraPlugins ?? []),

@@ -1,0 +1,32 @@
+meta {
+  name: a scopeless key is offered only what needs no scope
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/mcp
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgNoScopesKey}}
+  Accept: application/json, text/event-stream
+  mcp-protocol-version: 2025-06-18
+}
+
+body:json {
+  { "jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {} }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("exactly whoami and list_platforms", function() {
+    const names = res.body.result.tools.map((tool) => tool.name).sort();
+    expect(names).to.eql(["list_platforms", "whoami"]);
+  });
+}

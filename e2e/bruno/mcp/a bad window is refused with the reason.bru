@@ -1,0 +1,45 @@
+meta {
+  name: a bad window is refused with the reason
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/mcp
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+  Accept: application/json, text/event-stream
+  mcp-protocol-version: 2025-06-18
+}
+
+body:json {
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "get_visibility",
+      "arguments": { "brandId": "{{brandId}}", "lookback": "1m", "startDate": "2026-01-01", "endDate": "2026-02-01" }
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.result.isError: eq true
+}
+
+tests {
+  test("the model is told what to do differently", function() {
+    expect(res.body.result.content[0].text).to.contain("not both");
+  });
+}
+
+docs {
+  The same rule /api/v1 enforces, from the same function: one spelling of the
+  window per call, rather than a precedence rule nobody can remember.
+}

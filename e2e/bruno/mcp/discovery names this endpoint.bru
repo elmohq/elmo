@@ -1,0 +1,30 @@
+meta {
+  name: the protected-resource document names this endpoint
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{baseUrl}}/.well-known/oauth-protected-resource
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("the resource is /api/mcp on this origin", function() {
+    expect(res.body.resource).to.contain("/api/mcp");
+  });
+
+  test("and it names an authorization server to go to", function() {
+    expect(res.body.authorization_servers).to.have.lengthOf(1);
+  });
+}
+
+docs {
+  Served at the origin root because that is the only place a client looks.
+  better-auth publishes it under /api/auth, which no client would find.
+}

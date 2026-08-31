@@ -1,0 +1,40 @@
+meta {
+  name: whoami needs no scope
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/mcp
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgNoScopesKey}}
+  Accept: application/json, text/event-stream
+  mcp-protocol-version: 2025-06-18
+}
+
+body:json {
+  { "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "whoami", "arguments": {} } }
+}
+
+assert {
+  res.status: eq 200
+  res.body.result.isError: isUndefined
+}
+
+tests {
+  test("it says what the connection is and what it holds", function() {
+    const identity = JSON.parse(res.body.result.content[0].text);
+    expect(identity.principal).to.equal("organization-key");
+    expect(identity.organizationIds).to.eql(["default"]);
+    expect(identity.scopes).to.eql([]);
+  });
+}
+
+docs {
+  Always safe to call first, including by a key that turns out to hold nothing
+  — which is exactly when a caller most needs to be told why.
+}

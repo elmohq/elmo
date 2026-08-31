@@ -1,0 +1,24 @@
+meta {
+  name: the prompt survived
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{promptId}}
+}
+
+docs {
+  The refusal above has to be a refusal, not a delete that reported an error.
+}

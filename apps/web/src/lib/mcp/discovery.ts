@@ -13,7 +13,7 @@
  * server. Serving one and not the other is the difference between a client that
  * connects and a client that reports "no authorization server found".
  */
-import { oAuthDiscoveryMetadata, oAuthProtectedResourceMetadata } from "@workspace/lib/auth/server";
+import { MCP_AUTHORIZE_PAGE, oAuthDiscoveryMetadata, oAuthProtectedResourceMetadata } from "@workspace/lib/auth/server";
 import { auth } from "@/lib/auth/server";
 
 const CORS_HEADERS = {
@@ -32,5 +32,36 @@ export function corsPreflight(): Response {
 	return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
-export const authorizationServerMetadata = oAuthDiscoveryMetadata(auth);
+const pluginAuthorizationServerMetadata = oAuthDiscoveryMetadata(auth);
+
+/**
+ * The plugin's document, with the authorization endpoint pointed at our own
+ * page.
+ *
+ * The plugin's endpoint asks for consent only when the *client* requests it,
+ * and issues a code immediately to any browser that already has a session — so
+ * left alone, authorizing an MCP client is something that happens to someone
+ * rather than something they do. `/auth/authorize` names what is asking and
+ * waits for a click, then hands the request straight back.
+ *
+ * This is where a person is asked, not a gate: the plugin's endpoint stays
+ * reachable, as every OAuth authorization endpoint is. What actually stops a
+ * code being useful to anyone but the client that asked for it is PKCE and the
+ * redirect URI it registered.
+ */
+export const authorizationServerMetadata = async (request: Request): Promise<Response> => {
+	const response = await pluginAuthorizationServerMetadata(request);
+	const metadata = (await response.json()) as Record<string, unknown> & { issuer?: string };
+	// Built from the document's own issuer, not from the request. Every other
+	// URL in here is derived from APP_URL, and a client that finds one field
+	// naming a different origin from the rest refuses to connect — so a
+	// misconfigured APP_URL should produce one wrong answer to fix, not two
+	// that disagree.
+	const issuer = metadata.issuer ?? new URL(request.url).origin;
+	return Response.json(
+		{ ...metadata, authorization_endpoint: new URL(MCP_AUTHORIZE_PAGE, issuer).toString() },
+		{ headers: response.headers },
+	);
+};
+
 export const protectedResourceMetadata = oAuthProtectedResourceMetadata(auth);

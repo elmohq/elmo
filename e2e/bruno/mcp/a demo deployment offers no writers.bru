@@ -1,0 +1,47 @@
+meta {
+  name: a demo deployment offers no writers
+  type: http
+  seq: 17
+  tags: [
+    demo
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/mcp
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+  Accept: application/json, text/event-stream
+  mcp-protocol-version: 2025-06-18
+}
+
+body:json {
+  { "jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {} }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  const names = res.body.result.tools.map((tool) => tool.name);
+
+  test("an admin key still reads", function() {
+    expect(names).to.include("get_visibility");
+  });
+
+  test("and is offered nothing that writes", function() {
+    expect(names).to.not.include("create_prompts");
+    expect(names).to.not.include("update_prompt");
+    expect(names).to.not.include("delete_prompt");
+  });
+}
+
+docs {
+  Every MCP call is a POST, including the reads, so the middleware's read-only
+  block cannot be what decides this. The tool registry is.
+}
