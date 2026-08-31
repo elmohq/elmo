@@ -65,7 +65,7 @@ test.describe("API keys", () => {
     expect(identity.scopes).not.toContain("competitors:delete");
 
     // A scope it holds, and one it doesn't.
-    const allowed = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/analytics?startDate=2000-01-01&endDate=2100-01-01`, { headers: auth });
+    const allowed = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/analytics?start=2000-01-01T00:00:00Z&end=2100-01-01T00:00:00Z`, { headers: auth });
     expect(allowed.status()).toBe(200);
 
     const refused = await request.delete("/api/v1/competitors/00000000-0000-0000-0000-999999999999", {

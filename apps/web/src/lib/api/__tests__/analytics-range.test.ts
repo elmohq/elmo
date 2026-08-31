@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { parseAnalyticsWindow, parsePaging } from "../analytics-range";
+import { parseAnalyticsWindow, parsePaging, publicRange } from "../analytics-range";
 
-const WINDOW = "startDate=2026-01-01&endDate=2026-01-31";
+const WINDOW = "start=2026-01-01T00:00:00Z&end=2026-02-01T00:00:00Z";
 
 describe("analytics API query parsing", () => {
 	it("rejects malformed pagination instead of silently coercing it", () => {
@@ -12,28 +12,43 @@ describe("analytics API query parsing", () => {
 	});
 
 	it("requires both bounds of the window", () => {
-		expect(() => parseAnalyticsWindow(new URL("https://example.com?startDate=2026-01-01"))).toThrow(
-			"both startDate and endDate",
+		expect(() => parseAnalyticsWindow(new URL("https://example.com?start=2026-01-01T00:00:00Z"))).toThrow(
+			"both start and end",
 		);
 	});
 
-	it("rejects a date that only looks like one", () => {
-		expect(() => parseAnalyticsWindow(new URL("https://example.com?startDate=2026-13-01&endDate=2026-01-31"))).toThrow(
-			"valid dates in YYYY-MM-DD format",
+	it("refuses a bare date, which means a local day on the snapshot endpoint", () => {
+		expect(() => parseAnalyticsWindow(new URL("https://example.com?start=2026-01-01&end=2026-01-31"))).toThrow(
+			"a bare date is not accepted",
 		);
 	});
 
-	it("rejects a window that runs backwards", () => {
-		expect(() => parseAnalyticsWindow(new URL("https://example.com?startDate=2026-02-01&endDate=2026-01-31"))).toThrow(
-			"startDate must be before or equal to endDate",
+	it("rejects a timestamp that isn't one", () => {
+		expect(() => parseAnalyticsWindow(new URL(`https://example.com?start=yesterday&end=2026-02-01T00:00:00Z`))).toThrow(
+			"must be an ISO 8601 timestamp",
 		);
 	});
 
-	it("buckets in UTC, with nothing a caller can say about it", () => {
-		expect(parseAnalyticsWindow(new URL(`https://example.com?${WINDOW}&timezone=Pacific/Auckland`))).toEqual({
-			startDate: "2026-01-01",
-			endDate: "2026-01-31",
-			timezone: "UTC",
-		});
+	it("rejects a window that runs backwards, and an empty one", () => {
+		const backwards = "start=2026-02-01T00:00:00Z&end=2026-01-01T00:00:00Z";
+		const empty = "start=2026-01-01T00:00:00Z&end=2026-01-01T00:00:00Z";
+		expect(() => parseAnalyticsWindow(new URL(`https://example.com?${backwards}`))).toThrow("start must be before end");
+		expect(() => parseAnalyticsWindow(new URL(`https://example.com?${empty}`))).toThrow("start must be before end");
+	});
+
+	it("keeps the instant the caller sent, normalized to UTC", () => {
+		// An offset is what makes a timestamp self-describing: -05:00 midnight is
+		// 05:00 UTC, and the window has to land on that moment rather than on the
+		// UTC midnight that shares its date.
+		const window = parseAnalyticsWindow(
+			new URL("https://example.com?start=2026-01-01T00:00:00-05:00&end=2026-02-01T00:00:00-05:00"),
+		);
+		expect(publicRange(window)).toEqual({ start: "2026-01-01T05:00:00.000Z", end: "2026-02-01T05:00:00.000Z" });
+	});
+
+	it("labels daily buckets in UTC, with nothing a caller can say about it", () => {
+		expect(parseAnalyticsWindow(new URL(`https://example.com?${WINDOW}&timezone=Pacific/Auckland`)).timezone).toBe(
+			"UTC",
+		);
 	});
 });

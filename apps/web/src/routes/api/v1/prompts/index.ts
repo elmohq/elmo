@@ -36,6 +36,10 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 
 					const filters: (SQL | undefined)[] = [await brandScopeCondition(auth, prompts.brandId)];
 					if (brandId) filters.push(eq(prompts.brandId, brandId));
+					const enabled = searchParams.get("enabled");
+					if (enabled === "true" || enabled === "false") {
+						filters.push(eq(prompts.enabled, enabled === "true"));
+					}
 					const tags = (searchParams.get("tags") ?? "")
 						.split(",")
 						.map((tag) => tag.trim().toLowerCase())

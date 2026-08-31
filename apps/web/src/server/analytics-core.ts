@@ -36,14 +36,38 @@ import {
 	getPromptsFirstEvaluatedAt,
 	getPromptsSummary,
 	getVisibilityDailyAggregate,
+	isCalendarDay,
 } from "@/lib/postgres-read";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
 export interface AnalyticsWindow {
-	startDate: string;
-	endDate: string;
+	/**
+	 * The window's bounds, in one of two spellings. The dashboard passes
+	 * calendar days (`YYYY-MM-DD`, read in `timezone`, `to` covering the whole
+	 * of its last day); `/api/v1` passes ISO 8601 instants and `to` is
+	 * exclusive. `postgres-read` resolves both to the same half-open SQL bound,
+	 * and `windowInstants` below does the same for the arithmetic on this side.
+	 */
+	from: string;
+	to: string;
+	/** The zone the daily buckets are labelled in. */
 	timezone: string;
+}
+
+/**
+ * The window as absolute instants, `[start, end)`, whichever spelling built it.
+ *
+ * Resolved the same way `postgres-read` resolves it for SQL — same predicate,
+ * same day-to-instant rule — because the series domain and the comparison
+ * window below have to describe exactly the rows the queries returned.
+ */
+function windowInstants(window: AnalyticsWindow): { start: Date; end: Date } {
+	const start = new Date(isCalendarDay(window.from) ? `${window.from}T00:00:00Z` : window.from);
+	const end = isCalendarDay(window.to)
+		? new Date(new Date(`${window.to}T00:00:00Z`).getTime() + 86_400_000)
+		: new Date(window.to);
+	return { start, end };
 }
 
 export interface AnalyticsFilters {
@@ -95,10 +119,10 @@ export async function getBrandVisibility(
 		return { currentVisibility: null, totalRuns: 0, totalPrompts: 0, totalCitations: 0, series: [] };
 	}
 
-	const { startDate, endDate, timezone } = window;
+	const { from, to, timezone } = window;
 	const [daily, totalCitations] = await Promise.all([
-		getVisibilityDailyAggregate(brandId, startDate, endDate, timezone, promptIds, brandedPromptIds, filters.model),
-		getCitationsTotalCount(brandId, startDate, endDate, timezone, promptIds, filters.model),
+		getVisibilityDailyAggregate(brandId, from, to, timezone, promptIds, brandedPromptIds, filters.model),
+		getCitationsTotalCount(brandId, from, to, timezone, promptIds, filters.model),
 	]);
 
 	let totalRuns = 0;
@@ -150,7 +174,7 @@ export async function getBrandShareOfVoice(
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters = {},
 ): Promise<BrandShareOfVoice> {
-	const { startDate, endDate, timezone } = window;
+	const { from, to, timezone } = window;
 	const [brandRow, scope] = await Promise.all([
 		db.select({ name: brands.name }).from(brands).where(eq(brands.id, brandId)).limit(1),
 		resolveScope(brandId, filters),
@@ -160,11 +184,12 @@ export async function getBrandShareOfVoice(
 		return { brandName, brandShare: null, totalRuns: 0, entries: [], series: [] };
 	}
 
-	const dateRange = generateDateRange(new Date(startDate), new Date(endDate));
+	const bounds = windowInstants(window);
+	const dateRange = generateDateRange(bounds.start, new Date(bounds.end.getTime() - 1));
 	const [totals, perPromptDaily, perPromptCompetitorDaily] = await Promise.all([
-		getBrandMentionTotals(brandId, startDate, endDate, timezone, scope.promptIds, filters.model),
-		getPerPromptDailyMentions(brandId, startDate, endDate, timezone, scope.promptIds, filters.model),
-		getPerPromptDailyCompetitorMentions(brandId, startDate, endDate, timezone, scope.promptIds, filters.model),
+		getBrandMentionTotals(brandId, from, to, timezone, scope.promptIds, filters.model),
+		getPerPromptDailyMentions(brandId, from, to, timezone, scope.promptIds, filters.model),
+		getPerPromptDailyCompetitorMentions(brandId, from, to, timezone, scope.promptIds, filters.model),
 	]);
 
 	const standings = shareOfVoiceLeaderboardLVCF(
@@ -234,19 +259,16 @@ export async function getBrandModelBreakdown(
 ): Promise<ModelVisibility[]> {
 	const { promptIds } = await resolveScope(brandId, filters);
 	if (promptIds.length === 0) return [];
-	const { startDate, endDate, timezone } = window;
+	const { from, to, timezone } = window;
 
-	const rows = await getBrandMentionRateByModel(brandId, startDate, endDate, timezone, promptIds, filters.model);
+	const rows = await getBrandMentionRateByModel(brandId, from, to, timezone, promptIds, filters.model);
 
 	// One citation total per model, rather than the URL roll-up, which has no
 	// model column to group by.
 	const citationsByModel = new Map<string, number>();
 	await Promise.all(
 		rows.map(async (row) => {
-			citationsByModel.set(
-				row.model,
-				await getCitationsTotalCount(brandId, startDate, endDate, timezone, promptIds, row.model),
-			);
+			citationsByModel.set(row.model, await getCitationsTotalCount(brandId, from, to, timezone, promptIds, row.model));
 		}),
 	);
 
@@ -284,24 +306,23 @@ async function citationContext(brandId: string) {
  */
 export async function getBrandCitations(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters = {}) {
 	const { promptIds } = await resolveScope(brandId, filters);
-	const { startDate, endDate, timezone } = window;
+	const { from, to, timezone } = window;
 	if (promptIds.length === 0) {
 		return { urls: [], domains: [], totals: { citations: 0, uniqueDomains: 0, uniqueUrls: 0 } };
 	}
 
-	const spanDays = Math.max(
-		1,
-		Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86_400_000) + 1,
-	);
-	const previousEnd = new Date(new Date(startDate).getTime() - 86_400_000);
-	const previousStart = new Date(previousEnd.getTime() - (spanDays - 1) * 86_400_000);
-	const iso = (date: Date) => date.toISOString().slice(0, 10);
+	// The comparison window is the same length, ending where this one begins.
+	// Expressed as instants so it lands exactly there whichever spelling the
+	// caller used, rather than rounding outward to whole days.
+	const { start, end } = windowInstants(window);
+	const previousStart = new Date(start.getTime() - (end.getTime() - start.getTime())).toISOString();
+	const previousEnd = start.toISOString();
 
 	const [{ brandDomains, competitorDomains }, current, previous, promptsByDomain] = await Promise.all([
 		citationContext(brandId),
-		getCitationUrlStats(brandId, startDate, endDate, timezone, promptIds, filters.model),
-		getCitationUrlStats(brandId, iso(previousStart), iso(previousEnd), timezone, promptIds, filters.model),
-		getCitationDomainPromptCounts(brandId, startDate, endDate, timezone, promptIds, filters.model),
+		getCitationUrlStats(brandId, from, to, timezone, promptIds, filters.model),
+		getCitationUrlStats(brandId, previousStart, previousEnd, timezone, promptIds, filters.model),
+		getCitationDomainPromptCounts(brandId, from, to, timezone, promptIds, filters.model),
 	]);
 
 	const classify = (domain: string, url: string, title?: string | null) =>
@@ -375,7 +396,7 @@ export async function getBrandQueryFanout(
 		uncapped?: boolean;
 	} = {},
 ): Promise<FanoutAnalysis & { brandName: string }> {
-	const { startDate, endDate, timezone } = window;
+	const { from, to, timezone } = window;
 	const [brandRow, scope] = await Promise.all([
 		db.select({ name: brands.name }).from(brands).where(eq(brands.id, brandId)).limit(1),
 		resolveScope(brandId, filters),
@@ -388,9 +409,9 @@ export async function getBrandQueryFanout(
 	if (promptIds.length === 0) return { brandName, ...emptyFanout() };
 
 	const [breakdown, modelTotals, promptTotals] = await Promise.all([
-		getFanoutBreakdown(brandId, startDate, endDate, timezone, promptIds, filters.model),
-		getFanoutModelTotals(brandId, startDate, endDate, timezone, promptIds, filters.model),
-		getFanoutPromptTotals(brandId, startDate, endDate, timezone, promptIds, filters.model),
+		getFanoutBreakdown(brandId, from, to, timezone, promptIds, filters.model),
+		getFanoutModelTotals(brandId, from, to, timezone, promptIds, filters.model),
+		getFanoutPromptTotals(brandId, from, to, timezone, promptIds, filters.model),
 	]);
 
 	const promptValues = new Map(
@@ -470,10 +491,10 @@ export async function getBrandPromptPerformance(
 ): Promise<PromptPerformance[]> {
 	const scope = await resolveScope(brandId, filters);
 	if (scope.promptIds.length === 0) return [];
-	const { startDate, endDate, timezone } = window;
+	const { from, to, timezone } = window;
 
 	const [summary, firstEvaluated] = await Promise.all([
-		getPromptsSummary(brandId, startDate, endDate, timezone, undefined, filters.model, scope.promptIds),
+		getPromptsSummary(brandId, from, to, timezone, undefined, filters.model, scope.promptIds),
 		getPromptsFirstEvaluatedAt(brandId, scope.promptIds),
 	]);
 

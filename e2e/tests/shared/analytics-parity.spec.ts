@@ -15,16 +15,27 @@ import { TEST_API_KEY, TEST_BRAND_ID, brandUrl } from "../../fixtures";
 
 const AUTH = { Authorization: `Bearer ${TEST_API_KEY}` };
 
-/** The dashboard's one-month preset, spelled the way the API takes a window. */
+/**
+ * The dashboard's one-month preset, as the instants the API takes.
+ *
+ * The dashboard's window is a run of calendar days ending today, so the API's
+ * half-open equivalent runs to the *start of tomorrow* — anything less would
+ * drop today's runs and the two sides would disagree for that reason alone.
+ */
 function lastMonth(): string {
   const today = new Date();
-  const end = today.toISOString().slice(0, 10);
   const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
   // Clamp the day the way the dashboard's own shift does, so the two windows
   // stay identical on the 31st of a month the previous one doesn't have.
   const lastDay = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0)).getUTCDate();
   start.setUTCDate(Math.min(today.getUTCDate(), lastDay));
-  return `startDate=${start.toISOString().slice(0, 10)}&endDate=${end}`;
+  const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 1));
+  return `start=${dayStart(start)}&end=${end.toISOString()}`;
+}
+
+/** Midnight UTC on the day this instant falls in. */
+function dayStart(date: Date): string {
+  return `${date.toISOString().slice(0, 10)}T00:00:00.000Z`;
 }
 
 test.describe("dashboard and API parity", () => {
@@ -77,12 +88,14 @@ test.describe("dashboard and API parity", () => {
     await expect(page.getByText("Total Citations")).toBeVisible({ timeout: 30_000 });
 
     // The page's default window is the last 30 days, ending today, which is what
-    // `citationDateWindow` builds. The API takes it explicitly.
+    // `citationDateWindow` builds. The API takes the same span as instants, so
+    // the end is the start of tomorrow rather than the start of today.
     const today = new Date();
-    const iso = (date: Date) => date.toISOString().slice(0, 10);
     const from = new Date(today);
     from.setUTCDate(from.getUTCDate() - 29);
-    const window = `startDate=${iso(from)}&endDate=${iso(today)}`;
+    const tomorrow = new Date(today);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const window = `start=${dayStart(from)}&end=${dayStart(tomorrow)}`;
 
     const numberUnder = async (label: string) => {
       const value = page.locator("div", { has: page.getByText(label, { exact: true }) }).last();

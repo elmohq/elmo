@@ -146,7 +146,7 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 
 		const result = await getBrandVisibility(
 			data.brandId,
-			{ startDate: fromDateStr, endDate: toDateStr, timezone },
+			{ from: fromDateStr, to: toDateStr, timezone },
 			{ model: data.model, tags: data.tags, search: data.search },
 		);
 

@@ -63,7 +63,7 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 		const { timezone, fromDateStr, toDateStr } = resolveRange(data.lookback as LookbackPeriod, data.timezone);
 		const analysis = await getBrandQueryFanout(
 			data.brandId,
-			{ startDate: fromDateStr, endDate: toDateStr, timezone },
+			{ from: fromDateStr, to: toDateStr, timezone },
 			{ model: data.model, tags: data.tags, search: data.search },
 			{ promptId: data.promptId },
 		);

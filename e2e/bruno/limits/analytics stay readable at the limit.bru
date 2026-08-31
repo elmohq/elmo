@@ -8,7 +8,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/v1/brands/{{cappedBrandId}}/analytics?startDate={{startDate}}&endDate={{endDate}}
+  url: {{baseUrl}}/api/v1/brands/{{cappedBrandId}}/analytics?start={{windowStart}}&end={{windowEnd}}
   body: none
   auth: none
 }
@@ -18,8 +18,8 @@ headers {
 }
 
 params:query {
-  startDate: {{startDate}}
-  endDate: {{endDate}}
+  start: {{windowStart}}
+  end: {{windowEnd}}
 }
 
 assert {

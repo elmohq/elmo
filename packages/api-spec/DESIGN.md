@@ -215,15 +215,24 @@ kebab-case in path segments — matches what already ships.
 
 **Timestamps** ISO-8601 UTC strings. **Dates** `YYYY-MM-DD`.
 
-**Date windows.** Every analytics endpoint takes `startDate` + `endDate` — the
-spelling already shipped on `/prompts/{id}/snapshot`. One spelling, so there is
-no precedence rule to remember and no second vocabulary to keep in step with the
-dashboard's presets. A caller that wants "the last month" subtracts a month.
+**Date windows.** Every analytics endpoint added here takes `start` + `end` as
+ISO 8601 timestamps, half-open: `created_at >= start AND created_at < end`. A
+timestamp names an instant and carries its own offset, so the window means one
+thing without anything else agreed out of band — which is why there is no
+`timezone` beside it. A caller that wants "the last month" subtracts a month.
 
-Days bucket in UTC, with no parameter to change it. The dashboard resolves a
-time zone because it has a browser to read one from; an API request has nothing
-to infer one from, so a zone would be a number the caller has to remember to
-send to make two responses comparable. `/snapshot` shipped without one.
+A bare `YYYY-MM-DD` is refused rather than read as midnight UTC. It is
+`/prompts/{id}/snapshot`'s spelling, where it means a *local* calendar day
+resolved against the caller's zone; accepting it here would put one string in
+two endpoints meaning two different moments.
+
+`/prompts/{id}/snapshot` itself is untouched. It is published, `startDate` and
+`endDate` are what it answers to, and a shipped contract doesn't get respelled
+for consistency with endpoints that didn't exist when it was written.
+
+Daily series are labelled in UTC, with no parameter to change it. A bucket label
+is the one part of the answer a caller can recompute from the instants it was
+handed, so it isn't worth a value everyone has to keep sending.
 
 **Pagination.** `page` (1-based) + `limit` (default 20, max 100), answered with
 `{ page, limit, total, totalPages }`. Offset paging everywhere, for one paging
@@ -453,9 +462,9 @@ scope-checked, org-filtered, with `limit` capped at 100.
 `DELETE /v1/prompts/{promptId}` keeps its exact behaviour and becomes
 **admin-only** (§1.3, §3.11). Additions:
 
-- List filters: `tags` (comma-separated) and `q`. Deliberately not `enabled`:
-  it is a tracking control, and nothing outside the product needs to slice a
-  list by it.
+- List filters: `enabled`, `tags` (comma-separated), and `q`. `enabled` earns
+  its place here and nowhere else: which prompts are actually being sampled is
+  the first thing an integration syncing a prompt set needs to know.
 - Prompt object gains `premiumModels`.
 - `PATCH` accepts `premiumModels`. It and `enabled` are guarded together as one
   delta (§1.4) — they spend two different pools and a save can move both.
@@ -587,12 +596,10 @@ four computations share a scope resolution and run concurrently, so selecting a
 subset saves a caller a fraction of one request and costs every caller a
 parameter to reason about and us a combinatorial response shape to document. The
 things that can grow without bound — cited domains and URLs, sub-queries,
-per-prompt rows — stay paginated endpoints of their own, because those are lists
-and need `page`/`limit` of their own.
+per-prompt rows — stay endpoints of their own, because those are lists.
 
-`GET /v1/prompts/{promptId}/snapshot` stays exactly as it is — including
-`startDate`/`endDate` as the window spelling, which is why the endpoints above
-use it too.
+`GET /v1/prompts/{promptId}/snapshot` stays exactly as it is, `startDate` and
+`endDate` included (§2).
 
 Every one of these is a thin route over a shared analytics function that the
 dashboard's server function also calls, so the API physically cannot report
@@ -769,9 +776,10 @@ as-is.
   parts worth keeping are its shape, not its model: the single-gate
   `createApiHandler`, the route-conformance test, and the settings page.
 - **#408 — `GET /brands/{id}/visibility`.** The right endpoint with the wrong
-  parameter names: it takes `from`/`to`, this spec takes
-  `startDate`/`endDate` to match the snapshot endpoint already public. Merging it as-is ships a second date-window spelling we would then be
-  stuck with. Rebase it onto the settled convention, or fold it into step 6.
+  window: it takes `from`/`to` as calendar days, this spec takes `start`/`end`
+  as ISO 8601 instants (§2). Merging it as-is ships a second window spelling we
+  would then be stuck with. Rebase it onto the settled convention, or fold it
+  into step 6.
 
 ## 6. Testing
 
