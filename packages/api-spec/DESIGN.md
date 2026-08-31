@@ -540,6 +540,7 @@ would have to take back.
 | Raw `rawOutput` | Provider-shaped; would become our contract. |
 | Cadence / scheduling internals | pg-boss detail; `delayOverrideHours` on the brand is the only knob worth exposing, and only for reading initially. |
 | Cursor pagination, idempotency keys, webhooks | Real features, not blockers. Add when an integration needs one. |
+| MCP tools for billing, reports, brand creation | Same reasoning as the scopes they'd need (§1.3). A tool an agent can call is a tool it can call by mistake. |
 | The payment provider's raw subscription `status` | `standing` says what a caller acts on; passing the provider's vocabulary through would make it ours forever. |
 
 ---
@@ -614,9 +615,14 @@ this plan got wrong.
    every URL's category — categorization being the likeliest place for two
    implementations to drift apart quietly. Moving the module into `packages/lib`
    (which means moving `apps/web/src/lib/postgres-read.ts`, ~1,400 lines, with
-   it) is what a future MCP server (#105/#386) would wrap instead of
-   re-querying. Same for the CRUD half: the REST handlers are thin, but they are
-   thin over drizzle rather than over a shared service.
+   it) is what a consumer outside `apps/web` would need; the MCP server (#105)
+   lives inside it and wraps these functions in place.
+
+   The CRUD half is shared now too. `apps/web/src/server/prompts-core.ts` holds
+   prompt create / update / delete as edge-agnostic functions — the plan limits
+   they spend, the scheduler they start, the tags they derive — and both
+   `/api/v1/prompts*` and the MCP tools are wrappers over it. What is left is
+   brands and competitors, which are still thin over drizzle in two places.
 5. **Read surface.** `/v1/me`, `/v1/platforms`, `/v1/organizations*`, including
    billing.
 6. **Analytics endpoints**, one shared analytics function each.
@@ -720,3 +726,76 @@ spec calls impossible fails CI; a field documented optional that was present in
 every response observed is reported, since one run can't prove it. It also lists
 the operations no recorded response exercised, so its coverage doesn't read as
 larger than it is.
+
+---
+
+## 7. MCP — `/api/mcp`
+
+A projection of everything above, for AI clients instead of code. The tools are
+wrappers over `analytics-core`, `prompts-core`, and `tags-core`, so a number an
+agent reads is the number the dashboard shows. The decisions worth recording:
+
+**`tools/list` is the authorization surface.** The server registers only the
+tools a caller holds every scope for, so a key is never offered something it
+would then be refused. That matters more here than in REST: a `403` is a thing a
+program handles, but a model that sees a tool will plan around it, and telling
+it off afterwards wastes a turn and reads to a user as the product being broken.
+The same filter is what a read-only deployment uses to drop every writer — every
+MCP call is a `POST`, including the reads, so the deployment middleware can't be
+what decides this.
+
+**Two credentials, one principal.** An OAuth session (better-auth's `mcp`
+plugin) is a *person*, and holds what they hold in the dashboard: scopes exist
+to narrow a key below what its issuer can already do, and narrowing a session
+would be a promise the browser doesn't keep. An organization key is what a
+container has, and is the only way to hand out *less* — a subset of scopes, a
+subset of brands. `resolveMcpAuth` tries the key first: an admin key is a string
+compare, and a rate-limited key must be reported as rate-limited rather than
+falling through to a second failure that reads as "invalid".
+
+**Tenancy is not restated.** `UserAuth` joins `AdminAuth` and `OrganizationAuth`
+under a `Principal` union that `lib/api/scope.ts` takes, so all three kinds
+answer the same "which brands" question in one place. `ApiAuth` deliberately
+stays the pair it was, so a `/api/v1` route cannot be handed a session.
+
+**The authorization endpoint is our page, not the plugin's.** The plugin asks
+for consent only when the *client* requests it, and issues a code immediately to
+any browser that already has a session — so left alone, authorizing an MCP
+client is something that happens to someone rather than something they do.
+`/auth/authorize` names what is asking and where the token would be delivered,
+and waits for a click. It is where a person is asked, not a gate: the plugin's
+endpoint stays reachable, as every authorization endpoint is, and what actually
+stops a code being useful to anyone else is PKCE and the registered redirect URI.
+
+**No new configuration, and no scope beyond what a key can already hold.**
+There is no MCP env var: the endpoint is on wherever Elmo is. There is no tool
+for billing, report generation, or brand creation — the same reasoning as §1.3,
+with the extra weight that a tool an agent can call is a tool it can call by
+mistake. Deleting a prompt is the one irreversible tool, and it needs
+`prompts:delete` and carries the protocol's `destructiveHint`.
+
+**Read-only deployments serve MCP but run no OAuth flow.** Client registration
+is an unauthenticated write by design — that is what lets a client introduce
+itself — and a public demo is where an unauthenticated write nobody has to sign
+in for gets abused. Connect to one with an API key.
+
+### Testing
+
+Split by what each layer can actually see:
+
+- **Unit** — the registry's rules, where they are cheapest to pin. The write
+  partition is asserted *by name*, so adding a tool that mutates anything breaks
+  a test, which is the moment to ask whether an agent should be able to do it.
+  `tenancy.test.ts` stubs `lib/api/scope` to refuse everything and asserts every
+  brand-touching tool refuses with it — a tool that queried drizzle directly
+  would sail past a stubbed scope module and return rows.
+- **Bruno** (`e2e/bruno/mcp/`) — the JSON-RPC and HTTP contract: the challenge a
+  credential-less client gets, what each key is offered, that a cross-tenant
+  read is worded identically to an absent one, and that both discovery documents
+  agree on an origin.
+- **Playwright** (`e2e/tests/shared/mcp.spec.ts`) — the two things Bruno cannot
+  reach. The official SDK client, because hand-written JSON-RPC proves our
+  handler answers and not that a real transport can negotiate with it. And the
+  browser half of OAuth end to end: register, land on the consent page, click,
+  exchange the code with no cookie and no `Origin` exactly as a native client
+  does, then use the token.

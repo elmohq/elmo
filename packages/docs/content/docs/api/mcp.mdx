@@ -1,0 +1,99 @@
+---
+title: MCP server
+description: Connect Claude, Cursor, or any MCP client to your Elmo instance.
+---
+
+Every Elmo instance serves a [Model Context Protocol](https://modelcontextprotocol.io) endpoint at
+`/api/mcp`. Point an MCP-capable assistant at it and it can read your AI-visibility data — and, if you
+let it, manage your prompts — without you copying numbers between windows.
+
+It is the same data, the same permissions, and the same tenancy as [the REST API](/docs/api): both are
+thin wrappers over one set of functions, so a figure an assistant reads here is the figure the
+dashboard shows.
+
+**Endpoint:** `https://<your-instance>/api/mcp`
+
+## Connecting
+
+### Sign in from the client
+
+Most MCP clients can authenticate themselves. Give the client the URL and it will open a browser,
+ask you to sign in, and show you what it is connecting as — after which it acts as you, in the
+workspaces you belong to.
+
+```bash
+claude mcp add --transport http elmo https://<your-instance>/api/mcp
+```
+
+Nothing is stored on your side: the client registers itself, and access follows your account. Lose
+your membership of a workspace and the connection stops seeing it on the next request.
+
+### Or use an API key
+
+For a container, a scheduled job, or a client that can't run a browser, pass a key issued from
+**Settings → API keys** as a Bearer token:
+
+```json
+{
+  "mcpServers": {
+    "elmo": {
+      "type": "http",
+      "url": "https://<your-instance>/api/mcp",
+      "headers": { "Authorization": "Bearer elmo_..." }
+    }
+  }
+}
+```
+
+This is the better option when you want to hand out *less* than your own access — a key can be
+narrowed to specific brands and to a chosen set of scopes, which signing in cannot.
+
+Instance-wide `ADMIN_API_KEYS` work here too, and reach every workspace.
+
+## What the assistant can do
+
+Ask it to `whoami` at any point and it will tell you what the connection is, which workspaces it
+reaches, and every tool it may call.
+
+| | |
+| --- | --- |
+| **Find things** | brands, their competitors, their prompts, and the tags in use |
+| **Measure** | visibility over a window, share of voice against competitors, per-engine breakdown, per-prompt performance |
+| **Explain** | the pages the engines cited, and the searches they actually ran while answering |
+| **Read answers** | the runs recorded for a prompt, and any single answer in full with its citations |
+| **Plan** | the latest opportunities report |
+| **Change** | create prompts, edit them, and remove them |
+
+Analytics tools take a window: `lookback` (`1w`, `1m`, `3m`, `6m`, `1y`, `all`) or an explicit
+`startDate` and `endDate`.
+
+## Permissions
+
+**A connection is only offered the tools it is allowed.** An assistant is never told about a tool it
+would then be refused, so it doesn't plan around one it can't use.
+
+- Signing in gives the same access you have in the dashboard.
+- An API key gives exactly its scopes. A key without `prompts:write` is offered no way to create or
+  edit a prompt; without `prompts:delete`, no way to remove one.
+- Deleting a prompt is marked destructive, so clients that ask before irreversible actions will.
+- A brand in a workspace the connection doesn't reach reads as one that doesn't exist.
+
+Nothing here can touch billing, generate a report, or create a brand — those are not exposed as
+tools at all.
+
+## Read-only deployments
+
+A demo or otherwise read-only instance serves `/api/mcp` and offers only the tools that read. Signing
+in from a client is turned off there — client registration is an unauthenticated write by design —
+so connect with an API key instead.
+
+## Self-hosting notes
+
+- **No new configuration.** The endpoint is on wherever Elmo is, with no extra variable to set.
+- **`APP_URL` has to be the URL clients actually reach you on.** The endpoint publishes OAuth
+  discovery documents built from it, and a client that finds them naming an origin it can't reach
+  will refuse to connect. This is the one thing to check first when a client reports the server as
+  unreachable but the dashboard works.
+- **HTTPS in production.** Clients require it before they will run the sign-in flow.
+- Requests are ordinary buffered JSON over a single `POST`, so it works unchanged behind a proxy, in
+  Docker Compose, and on serverless platforms.
