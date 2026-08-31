@@ -1,7 +1,7 @@
 meta {
-  name: a scopeless key is offered only what needs no scope
+  name: and the member key sees exactly the same list
   type: http
-  seq: 7
+  seq: 20
 }
 
 post {
@@ -11,7 +11,7 @@ post {
 }
 
 headers {
-  Authorization: Bearer {{orgNoScopesKey}}
+  Authorization: Bearer {{orgFullKey}}
   Accept: application/json, text/event-stream
   mcp-protocol-version: 2025-06-18
 }
@@ -25,8 +25,8 @@ assert {
 }
 
 tests {
-  test("exactly whoami and list_models", function() {
-    const names = res.body.result.tools.map((tool) => tool.name).sort();
-    expect(names).to.eql(["list_models", "whoami"]);
+  test("the two lists are identical", function() {
+    const orgNames = res.body.result.tools.map((tool) => tool.name).sort().join(",");
+    expect(orgNames).to.equal(bru.getVar("adminToolNames"));
   });
 }

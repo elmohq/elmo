@@ -22,8 +22,8 @@ body:json {
     "id": 1,
     "method": "tools/call",
     "params": {
-      "name": "get_visibility",
-      "arguments": { "brandId": "{{brandId}}", "lookback": "1m", "startDate": "2026-01-01", "endDate": "2026-02-01" }
+      "name": "get_analytics",
+      "arguments": { "brandId": "{{brandId}}", "start": "2026-01-01", "end": "2026-02-01T00:00:00Z" }
     }
   }
 }
@@ -34,12 +34,13 @@ assert {
 }
 
 tests {
-  test("the model is told what to do differently", function() {
-    expect(res.body.result.content[0].text).to.contain("not both");
+  test("the model is told what to send instead", function() {
+    expect(res.body.result.content[0].text).to.contain("ISO 8601");
   });
 }
 
 docs {
-  The same rule /api/v1 enforces, from the same function: one spelling of the
-  window per call, rather than a precedence rule nobody can remember.
+  The same rule /api/v1 enforces, from the same function: a bare date means a
+  local day on the legacy snapshot endpoint, so accepting it here would put one
+  string in two endpoints meaning two things.
 }

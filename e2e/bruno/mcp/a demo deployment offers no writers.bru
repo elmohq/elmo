@@ -31,7 +31,7 @@ tests {
   const names = res.body.result.tools.map((tool) => tool.name);
 
   test("an admin key still reads", function() {
-    expect(names).to.include("get_visibility");
+    expect(names).to.include("get_analytics");
   });
 
   test("and is offered nothing that writes", function() {

@@ -19,9 +19,12 @@
 import { expect, request as playwrightRequest, test } from "@playwright/test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { API_KEYS, TEST_BRAND_ID, NIKE_BRAND_ID, TEST_USER } from "../../fixtures";
+import { API_KEYS, NIKE_BRAND_ID, TEST_API_KEY, TEST_BRAND_ID, TEST_USER } from "../../fixtures";
 
 const MCP_PATH = "/api/mcp";
+
+/** Wide enough to cover the seeded runs, in the instants the API takes. */
+const WINDOW = { start: "2025-01-01T00:00:00Z", end: "2027-01-01T00:00:00Z" };
 
 /** Connect the official client to the running instance as a given key. */
 async function connect(baseURL: string, token: string) {
@@ -52,24 +55,21 @@ test.describe("MCP", () => {
     const { tools } = await client.listTools();
     const names = tools.map((tool) => tool.name);
     expect(names).toContain("list_brands");
-    expect(names).toContain("get_visibility");
-    expect(names).toContain("delete_prompt");
+    expect(names).toContain("get_analytics");
 
     const brands = await callTool(client, "list_brands");
     expect(brands.isError).toBe(false);
     expect(brands.json().data.map((brand: { id: string }) => brand.id)).toContain(TEST_BRAND_ID);
 
-    // The figure an agent would act on, against the one the dashboard's own
+    // The numbers an agent would act on, against the ones the dashboard's own
     // API publishes. Two surfaces over one computation; this is what says so.
-    const visibility = await callTool(client, "get_visibility", { brandId: TEST_BRAND_ID, lookback: "1y" });
-    const summary = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/summary?lookback=1y`, {
-      headers: { Authorization: `Bearer ${API_KEYS.orgFull.token}` },
-    });
-    expect(summary.status()).toBe(200);
-    const published = await summary.json();
-    expect(visibility.json().summary.visibility).toBe(published.visibility);
-    expect(visibility.json().summary.totalRuns).toBe(published.totalRuns);
-    expect(visibility.json().summary.uniqueDomains).toBe(published.uniqueDomains);
+    const analytics = await callTool(client, "get_analytics", { brandId: TEST_BRAND_ID, ...WINDOW });
+    const published = await request.get(
+      `/api/v1/brands/${TEST_BRAND_ID}/analytics?start=${WINDOW.start}&end=${WINDOW.end}`,
+      { headers: { Authorization: `Bearer ${API_KEYS.orgFull.token}` } },
+    );
+    expect(published.status()).toBe(200);
+    expect(analytics.json()).toEqual(await published.json());
 
     await client.close();
   });
@@ -83,12 +83,27 @@ test.describe("MCP", () => {
 
     expect(await namesOf(readOnly)).toContain("list_prompts");
     expect(await namesOf(readOnly)).not.toContain("create_prompts");
-    expect(await namesOf(readOnly)).not.toContain("delete_prompt");
+    expect(await namesOf(readOnly)).not.toContain("update_prompt");
     // Not a subset by accident: the read-only key sees strictly fewer.
     expect((await namesOf(readOnly)).length).toBeLessThan((await namesOf(full)).length);
-    expect((await namesOf(scopeless)).sort()).toEqual(["list_platforms", "whoami"]);
+    expect((await namesOf(scopeless)).sort()).toEqual(["list_models", "whoami"]);
 
     await Promise.all([full.close(), readOnly.close(), scopeless.close()]);
+  });
+
+  test("an instance key is offered no tool a member key lacks", async ({ baseURL }) => {
+    // An admin key reaches every workspace, but /api/mcp is the product as a
+    // member has it — so the two lists have to be identical. A difference means
+    // the surface grew an operation no person in the product can perform.
+    const admin = await connect(baseURL!, TEST_API_KEY);
+    const member = await connect(baseURL!, API_KEYS.orgFull.token);
+
+    const namesOf = async (client: Client) => (await client.listTools()).tools.map((t) => t.name).sort();
+    expect(await namesOf(admin)).toEqual(await namesOf(member));
+    // And nothing on either list deletes or provisions.
+    for (const name of await namesOf(admin)) expect(name).not.toMatch(/^(delete_|create_(brand|organization))/);
+
+    await Promise.all([admin.close(), member.close()]);
   });
 
   test("another tenant's brand reads as one that does not exist", async ({ baseURL }) => {

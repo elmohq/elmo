@@ -29,13 +29,22 @@ tests {
 
   test("the reads are there", function() {
     expect(names).to.include("list_brands");
-    expect(names).to.include("get_visibility");
+    expect(names).to.include("get_analytics");
+    expect(names).to.include("get_billing");
     expect(names).to.include("get_run");
   });
 
   test("so are the writes this key holds every scope for", function() {
     expect(names).to.include("create_prompts");
-    expect(names).to.include("delete_prompt");
+    expect(names).to.include("update_prompt");
+  });
+
+  test("and nothing that deletes or provisions", function() {
+    for (const name of names) {
+      expect(name, name).to.not.match(/^delete_/);
+    }
+    expect(names).to.not.include("create_brand");
+    expect(names).to.not.include("create_organization");
   });
 
   test("every tool says whether it writes, and what it is for", function() {
@@ -44,9 +53,10 @@ tests {
       expect(tool.description, tool.name).to.be.a("string");
     }
   });
+}
 
-  test("deleting is flagged as irreversible so a client can confirm first", function() {
-    const del = res.body.result.tools.find((tool) => tool.name === "delete_prompt");
-    expect(del.annotations.destructiveHint).to.equal(true);
-  });
+docs {
+  Deleting a prompt is an instance-key operation on /api/v1 and no dashboard
+  role can do it, so it is absent here rather than scoped: this surface is the
+  product as a workspace member has it.
 }
