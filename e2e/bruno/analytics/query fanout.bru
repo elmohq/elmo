@@ -1,11 +1,11 @@
 meta {
   name: the searches engines ran while answering
   type: http
-  seq: 18
+  seq: 11
 }
 
 get {
-  url: {{baseUrl}}/api/v1/brands/{{brandId}}/query-fanout?lookback=1y
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/query-fanout?startDate={{startDate}}&endDate={{endDate}}
   body: none
   auth: none
 }
@@ -15,7 +15,8 @@ headers {
 }
 
 params:query {
-  lookback: 1y
+  startDate: {{startDate}}
+  endDate: {{endDate}}
 }
 
 assert {

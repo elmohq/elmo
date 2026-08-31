@@ -1,13 +1,10 @@
 /**
- * The date window every analytics endpoint accepts.
- *
- * Two spellings, one meaning: explicit `startDate` + `endDate`, or the
- * `lookback` shorthand the dashboard is built on. Exactly one form per request
- * — supplying both is a `400` rather than a silent precedence rule nobody can
- * remember. Both resolve to the same concrete bounds before anything queries.
+ * The date window every analytics endpoint accepts: explicit `startDate` +
+ * `endDate`, which is the spelling `/prompts/{promptId}/snapshot` already
+ * takes. The dashboard's relative presets are its own affair — a caller that
+ * wants "the last month" can subtract a month.
  */
-import type { LookbackPeriod } from "@/lib/chart-utils";
-import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { resolveTimezone } from "@/lib/timezone-utils";
 import { ApiError } from "./handler";
 
 export interface AnalyticsWindow {
@@ -15,8 +12,6 @@ export interface AnalyticsWindow {
 	endDate: string;
 	timezone: string;
 }
-
-const LOOKBACKS: LookbackPeriod[] = ["1w", "1m", "3m", "6m", "1y", "all"];
 
 function isIsoDate(value: string): boolean {
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -33,7 +28,6 @@ export function parseAnalyticsWindow(url: URL): AnalyticsWindow {
 	const params = url.searchParams;
 	const startDate = params.get("startDate");
 	const endDate = params.get("endDate");
-	const lookback = params.get("lookback");
 	const requestedTimezone = params.get("timezone");
 	if (requestedTimezone) {
 		try {
@@ -44,26 +38,8 @@ export function parseAnalyticsWindow(url: URL): AnalyticsWindow {
 	}
 	const timezone = resolveTimezone(requestedTimezone ?? undefined, "UTC");
 
-	const hasExplicit = startDate !== null || endDate !== null;
-	if (lookback !== null && hasExplicit) {
-		invalid("Provide either lookback or startDate and endDate, not both");
-	}
-
-	if (lookback !== null) {
-		if (!LOOKBACKS.includes(lookback as LookbackPeriod)) {
-			invalid(`lookback must be one of ${LOOKBACKS.join(", ")}`);
-		}
-		// `allStrategy: "1y"` caps the open-ended window the same way the
-		// dashboard does, so the API can't quietly return a wider range.
-		const range = getTimezoneLookbackRange(lookback as LookbackPeriod, timezone, { allStrategy: "1y" }) as {
-			fromDateStr: string;
-			toDateStr: string;
-		};
-		return { startDate: range.fromDateStr, endDate: range.toDateStr, timezone };
-	}
-
 	if (!startDate || !endDate) {
-		invalid("A window is required: either lookback, or both startDate and endDate (YYYY-MM-DD)");
+		invalid("A window is required: both startDate and endDate (YYYY-MM-DD)");
 	}
 	if (!isIsoDate(startDate) || !isIsoDate(endDate)) {
 		invalid("startDate and endDate must be valid dates in YYYY-MM-DD format");
@@ -97,12 +73,4 @@ export function parsePaging(url: URL, defaultLimit = 20): { page: number; limit:
 	const page = Number(rawPage);
 	const limit = Number(rawLimit);
 	return { page, limit, offset: (page - 1) * limit };
-}
-
-export function paginate<T>(rows: T[], page: number, limit: number) {
-	const total = rows.length;
-	return {
-		data: rows.slice((page - 1) * limit, page * limit),
-		pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-	};
 }

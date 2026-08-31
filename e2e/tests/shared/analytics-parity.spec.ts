@@ -15,9 +15,21 @@ import { TEST_API_KEY, TEST_BRAND_ID, brandUrl } from "../../fixtures";
 
 const AUTH = { Authorization: `Bearer ${TEST_API_KEY}` };
 
+/** The dashboard's one-month preset, spelled the way the API takes a window. */
+function lastMonth(): string {
+  const today = new Date();
+  const end = today.toISOString().slice(0, 10);
+  const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
+  // Clamp the day the way the dashboard's own shift does, so the two windows
+  // stay identical on the 31st of a month the previous one doesn't have.
+  const lastDay = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0)).getUTCDate();
+  start.setUTCDate(Math.min(today.getUTCDate(), lastDay));
+  return `startDate=${start.toISOString().slice(0, 10)}&endDate=${end}`;
+}
+
 test.describe("dashboard and API parity", () => {
   test("the visibility hero and GET /analytics report the same number", async ({ page, request }) => {
-    // The overview's default window is the one-month lookback.
+    // The overview's default window is the one-month preset.
     await page.goto(brandUrl());
 
     // The hero reads "<n>% Visibility"; the sibling card reads "<n>% Share of
@@ -26,7 +38,7 @@ test.describe("dashboard and API parity", () => {
     await expect(hero).toBeVisible({ timeout: 30_000 });
     const rendered = Number((await hero.textContent())?.match(/(\d+)%/)?.[1]);
 
-    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/analytics?lookback=1m`, { headers: AUTH });
+    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/analytics?${lastMonth()}`, { headers: AUTH });
     expect(response.status()).toBe(200);
     const body = await response.json();
 
@@ -41,7 +53,7 @@ test.describe("dashboard and API parity", () => {
     await page.goto(`${brandUrl()}/share-of-voice`);
     await expect(page.getByRole("heading", { name: /share of voice/i }).first()).toBeVisible({ timeout: 30_000 });
 
-    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/analytics?lookback=1m`, { headers: AUTH });
+    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/analytics?${lastMonth()}`, { headers: AUTH });
     expect(response.status()).toBe(200);
     const body = (await response.json()).shareOfVoice;
 
@@ -77,10 +89,9 @@ test.describe("dashboard and API parity", () => {
       return Number((await value.innerText()).match(/(\d+)/)?.[1]);
     };
 
-    const domains = await request.get(
-      `/api/v1/brands/${TEST_BRAND_ID}/citations/domains?${window}&limit=100`,
-      { headers: AUTH },
-    );
+    const domains = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/citations/domains?${window}`, {
+      headers: AUTH,
+    });
     expect(domains.status()).toBe(200);
     const domainBody = await domains.json();
 
@@ -107,7 +118,7 @@ test.describe("dashboard and API parity", () => {
 
     // Categorization is the likeliest place for two implementations to drift,
     // so check it per URL rather than trusting the totals to catch it.
-    const urls = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/citations/urls?${window}&limit=100`, {
+    const urls = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/citations/urls?${window}`, {
       headers: AUTH,
     });
     expect(urls.status()).toBe(200);
@@ -149,7 +160,7 @@ test.describe("dashboard and API parity", () => {
     await page.goto(`${brandUrl()}/query-fan-out`);
     await expect(page.getByRole("heading", { name: /fan.?out/i }).first()).toBeVisible({ timeout: 30_000 });
 
-    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/query-fanout?lookback=1m`, { headers: AUTH });
+    const response = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/query-fanout?${lastMonth()}`, { headers: AUTH });
     expect(response.status()).toBe(200);
     const body = await response.json();
 
@@ -157,8 +168,8 @@ test.describe("dashboard and API parity", () => {
     // engines that don't expose their searches still contribute runs.
     expect(body.fanoutRuns).toBeLessThanOrEqual(body.totalRuns);
     expect(body.uniqueQueries).toBeLessThanOrEqual(body.totalQueries);
-    // The API pages its own list, so it must not arrive pre-truncated by the
-    // caps the dashboard applies for display.
-    expect(body.pagination.total).toBe(body.uniqueQueries);
+    // The API answers with the whole list, so it must not arrive pre-truncated
+    // by the caps the dashboard applies for display.
+    expect(body.data.length).toBe(body.uniqueQueries);
   });
 });

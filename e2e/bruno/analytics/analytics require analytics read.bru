@@ -1,11 +1,11 @@
 meta {
   name: analytics require analytics:read
   type: http
-  seq: 9
+  seq: 6
 }
 
 get {
-  url: {{baseUrl}}/api/v1/brands/{{brandId}}/analytics?lookback=1y
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/analytics?startDate={{startDate}}&endDate={{endDate}}
   body: none
   auth: none
 }
@@ -15,7 +15,8 @@ headers {
 }
 
 params:query {
-  lookback: 1y
+  startDate: {{startDate}}
+  endDate: {{endDate}}
 }
 
 assert {

@@ -10,7 +10,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { brands, organization } from "@workspace/lib/db/schema";
 import { assertCanCreateBrand, withQuotaLock } from "@workspace/lib/entitlements";
-import { and, count, desc, eq, type SQL } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandScopeCondition } from "@/lib/api/scope";
 import {
@@ -33,12 +33,7 @@ export const Route = createFileRoute("/api/v1/brands/")({
 					const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20")));
 					const offset = (page - 1) * limit;
 
-					const filters: (SQL | undefined)[] = [await brandScopeCondition(auth, brands.id)];
-					const enabled = searchParams.get("enabled");
-					if (enabled === "true" || enabled === "false") {
-						filters.push(eq(brands.enabled, enabled === "true"));
-					}
-					const where = and(...filters.filter(Boolean));
+					const where = await brandScopeCondition(auth, brands.id);
 
 					const [totalCountResult] = await db.select({ count: count() }).from(brands).where(where);
 					const totalCount = totalCountResult?.count || 0;

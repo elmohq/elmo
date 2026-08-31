@@ -67,7 +67,6 @@ import { Route as AuthedAppOrgOrgSettingsMembersRouteImport } from './routes/_au
 import { Route as ApiV1BrandsBrandIdCitationsDomainsRouteImport } from './routes/api/v1/brands/$brandId/citations/domains'
 import { Route as ApiV1BrandsBrandIdCitationsUrlsRouteImport } from './routes/api/v1/brands/$brandId/citations/urls'
 import { Route as ApiV1BrandsBrandIdTagsIndexRouteImport } from './routes/api/v1/brands/$brandId/tags/index'
-import { Route as ApiV1BrandsBrandIdTagsTagRouteImport } from './routes/api/v1/brands/$brandId/tags/$tag'
 import { Route as ApiV1PromptsPromptIdRunsIndexRouteImport } from './routes/api/v1/prompts/$promptId/runs/index'
 import { Route as ApiV1PromptsPromptIdRunsRunIdRouteImport } from './routes/api/v1/prompts/$promptId/runs/$runId'
 import { Route as AuthedAppOrgOrgBrandBrandIndexRouteImport } from './routes/_authed/app/org/$org/brand/$brand/index'
@@ -395,12 +394,6 @@ const ApiV1BrandsBrandIdTagsIndexRoute =
     path: '/tags/',
     getParentRoute: () => ApiV1BrandsBrandIdRoute,
   } as any)
-const ApiV1BrandsBrandIdTagsTagRoute =
-  ApiV1BrandsBrandIdTagsTagRouteImport.update({
-    id: '/tags/$tag',
-    path: '/tags/$tag',
-    getParentRoute: () => ApiV1BrandsBrandIdRoute,
-  } as any)
 const ApiV1PromptsPromptIdRunsIndexRoute =
   ApiV1PromptsPromptIdRunsIndexRouteImport.update({
     id: '/runs/',
@@ -566,7 +559,6 @@ export interface FileRoutesByFullPath {
   '/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
   '/api/v1/brands/$brandId/citations/domains': typeof ApiV1BrandsBrandIdCitationsDomainsRoute
   '/api/v1/brands/$brandId/citations/urls': typeof ApiV1BrandsBrandIdCitationsUrlsRoute
-  '/api/v1/brands/$brandId/tags/$tag': typeof ApiV1BrandsBrandIdTagsTagRoute
   '/api/v1/prompts/$promptId/runs/$runId': typeof ApiV1PromptsPromptIdRunsRunIdRoute
   '/app/org/$org/settings/': typeof AuthedAppOrgOrgSettingsIndexRoute
   '/api/v1/brands/$brandId/tags/': typeof ApiV1BrandsBrandIdTagsIndexRoute
@@ -638,7 +630,6 @@ export interface FileRoutesByTo {
   '/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
   '/api/v1/brands/$brandId/citations/domains': typeof ApiV1BrandsBrandIdCitationsDomainsRoute
   '/api/v1/brands/$brandId/citations/urls': typeof ApiV1BrandsBrandIdCitationsUrlsRoute
-  '/api/v1/brands/$brandId/tags/$tag': typeof ApiV1BrandsBrandIdTagsTagRoute
   '/api/v1/prompts/$promptId/runs/$runId': typeof ApiV1PromptsPromptIdRunsRunIdRoute
   '/app/org/$org/settings': typeof AuthedAppOrgOrgSettingsIndexRoute
   '/api/v1/brands/$brandId/tags': typeof ApiV1BrandsBrandIdTagsIndexRoute
@@ -718,7 +709,6 @@ export interface FileRoutesById {
   '/_authed/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
   '/api/v1/brands/$brandId/citations/domains': typeof ApiV1BrandsBrandIdCitationsDomainsRoute
   '/api/v1/brands/$brandId/citations/urls': typeof ApiV1BrandsBrandIdCitationsUrlsRoute
-  '/api/v1/brands/$brandId/tags/$tag': typeof ApiV1BrandsBrandIdTagsTagRoute
   '/api/v1/prompts/$promptId/runs/$runId': typeof ApiV1PromptsPromptIdRunsRunIdRoute
   '/_authed/app/org/$org/settings/': typeof AuthedAppOrgOrgSettingsIndexRoute
   '/api/v1/brands/$brandId/tags/': typeof ApiV1BrandsBrandIdTagsIndexRoute
@@ -798,7 +788,6 @@ export interface FileRouteTypes {
     | '/app/org/$org/settings/members'
     | '/api/v1/brands/$brandId/citations/domains'
     | '/api/v1/brands/$brandId/citations/urls'
-    | '/api/v1/brands/$brandId/tags/$tag'
     | '/api/v1/prompts/$promptId/runs/$runId'
     | '/app/org/$org/settings/'
     | '/api/v1/brands/$brandId/tags/'
@@ -870,7 +859,6 @@ export interface FileRouteTypes {
     | '/app/org/$org/settings/members'
     | '/api/v1/brands/$brandId/citations/domains'
     | '/api/v1/brands/$brandId/citations/urls'
-    | '/api/v1/brands/$brandId/tags/$tag'
     | '/api/v1/prompts/$promptId/runs/$runId'
     | '/app/org/$org/settings'
     | '/api/v1/brands/$brandId/tags'
@@ -949,7 +937,6 @@ export interface FileRouteTypes {
     | '/_authed/app/org/$org/settings/members'
     | '/api/v1/brands/$brandId/citations/domains'
     | '/api/v1/brands/$brandId/citations/urls'
-    | '/api/v1/brands/$brandId/tags/$tag'
     | '/api/v1/prompts/$promptId/runs/$runId'
     | '/_authed/app/org/$org/settings/'
     | '/api/v1/brands/$brandId/tags/'
@@ -1411,13 +1398,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1BrandsBrandIdTagsIndexRouteImport
       parentRoute: typeof ApiV1BrandsBrandIdRoute
     }
-    '/api/v1/brands/$brandId/tags/$tag': {
-      id: '/api/v1/brands/$brandId/tags/$tag'
-      path: '/tags/$tag'
-      fullPath: '/api/v1/brands/$brandId/tags/$tag'
-      preLoaderRoute: typeof ApiV1BrandsBrandIdTagsTagRouteImport
-      parentRoute: typeof ApiV1BrandsBrandIdRoute
-    }
     '/api/v1/prompts/$promptId/runs/': {
       id: '/api/v1/prompts/$promptId/runs/'
       path: '/runs'
@@ -1716,7 +1696,6 @@ interface ApiV1BrandsBrandIdRouteChildren {
   ApiV1BrandsBrandIdQueryFanoutRoute: typeof ApiV1BrandsBrandIdQueryFanoutRoute
   ApiV1BrandsBrandIdCitationsDomainsRoute: typeof ApiV1BrandsBrandIdCitationsDomainsRoute
   ApiV1BrandsBrandIdCitationsUrlsRoute: typeof ApiV1BrandsBrandIdCitationsUrlsRoute
-  ApiV1BrandsBrandIdTagsTagRoute: typeof ApiV1BrandsBrandIdTagsTagRoute
   ApiV1BrandsBrandIdTagsIndexRoute: typeof ApiV1BrandsBrandIdTagsIndexRoute
 }
 
@@ -1729,7 +1708,6 @@ const ApiV1BrandsBrandIdRouteChildren: ApiV1BrandsBrandIdRouteChildren = {
   ApiV1BrandsBrandIdCitationsDomainsRoute:
     ApiV1BrandsBrandIdCitationsDomainsRoute,
   ApiV1BrandsBrandIdCitationsUrlsRoute: ApiV1BrandsBrandIdCitationsUrlsRoute,
-  ApiV1BrandsBrandIdTagsTagRoute: ApiV1BrandsBrandIdTagsTagRoute,
   ApiV1BrandsBrandIdTagsIndexRoute: ApiV1BrandsBrandIdTagsIndexRoute,
 }
 

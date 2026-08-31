@@ -1,11 +1,11 @@
 meta {
   name: domains the engines cited
   type: http
-  seq: 14
+  seq: 8
 }
 
 get {
-  url: {{baseUrl}}/api/v1/brands/{{brandId}}/citations/domains?lookback=1y
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/citations/domains?startDate={{startDate}}&endDate={{endDate}}
   body: none
   auth: none
 }
@@ -15,7 +15,8 @@ headers {
 }
 
 params:query {
-  lookback: 1y
+  startDate: {{startDate}}
+  endDate: {{endDate}}
 }
 
 assert {
@@ -23,10 +24,13 @@ assert {
   res.body.data: isArray
   res.body.totals.citations: gte 1
   res.body.totals.uniqueDomains: gte 1
-  res.body.pagination.total: gte 1
 }
 
 tests {
+  test("the whole window's domains come back in one response", function() {
+    expect(res.getBody().data.length).to.be.at.least(1);
+  });
+
   test("the brand's own domain is categorized as the brand's", function() {
     const own = res.getBody().data.find((d) => d.domain === "example.com");
     expect(own, "example.com should be cited in the seed").to.not.be.undefined;

@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/v1/prompts/{{promptId}}/runs?lookback=1y&page=1&limit=1
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}/runs?startDate={{startDate}}&endDate={{endDate}}&page=1&limit=1
   body: none
   auth: none
 }
@@ -15,7 +15,8 @@ headers {
 }
 
 params:query {
-  lookback: 1y
+  startDate: {{startDate}}
+  endDate: {{endDate}}
   page: 1
   limit: 1
 }

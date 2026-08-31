@@ -1,11 +1,11 @@
 meta {
   name: analytics for an unknown brand
   type: http
-  seq: 7
+  seq: 4
 }
 
 get {
-  url: {{baseUrl}}/api/v1/brands/does-not-exist/analytics?lookback=1y
+  url: {{baseUrl}}/api/v1/brands/does-not-exist/analytics?startDate={{startDate}}&endDate={{endDate}}
   body: none
   auth: none
 }
@@ -15,7 +15,8 @@ headers {
 }
 
 params:query {
-  lookback: 1y
+  startDate: {{startDate}}
+  endDate: {{endDate}}
 }
 
 assert {

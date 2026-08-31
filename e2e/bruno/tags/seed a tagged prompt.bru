@@ -25,7 +25,3 @@ body:json {
 assert {
   res.status: eq 201
 }
-
-script:post-response {
-  bru.setVar("tagPromptA", res.getBody().id);
-}

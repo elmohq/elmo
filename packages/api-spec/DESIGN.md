@@ -215,15 +215,17 @@ kebab-case in path segments — matches what already ships.
 
 **Timestamps** ISO-8601 UTC strings. **Dates** `YYYY-MM-DD`.
 
-**Date windows.** Every analytics endpoint takes either
-`startDate` + `endDate` (+ optional `timezone`, default `UTC`) or the shorthand
-`lookback` ∈ `1w|1m|3m|6m|1y|all`. Exactly one form per request; supplying both
-is a `400`. `startDate`/`endDate` is the shipped spelling on
-`/prompts/{id}/snapshot` and stays the canonical one.
+**Date windows.** Every analytics endpoint takes `startDate` + `endDate`
+(+ optional `timezone`, default `UTC`) — the spelling already shipped on
+`/prompts/{id}/snapshot`. One spelling, so there is no precedence rule to
+remember and no second vocabulary to keep in step with the dashboard's presets.
+A caller that wants "the last month" subtracts a month.
 
 **Pagination.** `page` (1-based) + `limit` (default 20, max 100), answered with
 `{ page, limit, total, totalPages }`. Offset paging everywhere, for one paging
-model rather than two.
+model rather than two — but only where the page is what gets fetched. An
+aggregate computed over the whole window answers with the whole list: slicing it
+afterwards would make a caller pay for the same computation once per page.
 
 **List envelopes.** Every list answers `{ data: [...], pagination: {...} }`.
 
@@ -250,7 +252,7 @@ machine code:
 `no_active_plan`,
 `brand_limit`, `prompt_limit`, `model_not_in_plan`, `model_picks_exceeded`,
 `premium_not_in_plan`, `premium_pool_exhausted`, `cadence_faster_than_plan`,
-`system_tag_immutable`, `internal_error`.
+`internal_error`.
 
 Adding a value is not a breaking change, so `code` is **not** an `enum` in the
 spec — a generated client would turn one into a closed type that throws on the
@@ -392,7 +394,6 @@ Existing `GET/POST /v1/brands`, `GET/PATCH /v1/brands/{brandId}` keep their exac
 shapes, now scope-checked (`brands:read` / `brands:write`) and, for org keys,
 filtered to the key's brands. Additions:
 
-- `GET /v1/brands` gains an `enabled` filter.
 - The brand object gains `organizationId`, `enabledModels`, and
   `delayOverrideHours` (all already stored; additive fields).
 - **`POST /v1/brands` needs an owning organization before it needs a limit
@@ -448,7 +449,7 @@ scope-checked, org-filtered, with `limit` capped at 100.
 `DELETE /v1/prompts/{promptId}` keeps its exact behaviour and becomes
 **admin-only** (§1.3, §3.11). Additions:
 
-- List filters: `enabled`, `tag` (repeatable), `q`.
+- List filters: `enabled`, `tags` (comma-separated), `q`.
 - Prompt object gains `premiumModels`.
 - `PATCH` accepts `premiumModels`. It and `enabled` are guarded together as one
   delta (§1.4) — they spend two different pools and a save can move both.
@@ -473,32 +474,30 @@ second way to do what already works.
 `GET/POST /v1/competitors`, `GET/PATCH/DELETE /v1/competitors/{competitorId}`,
 now scope-checked and org-filtered. `MAX_COMPETITORS` already applies.
 
-### 3.7 Tags — `prompts:read` / `prompts:write`
+### 3.7 Tags — `prompts:read`
 
 - `GET /v1/brands/{brandId}/tags` — every tag in use on the brand's prompts,
   with how many carry each.
-- `PATCH /v1/brands/{brandId}/tags/{tag}` — rename it across the brand.
-  Renaming onto an existing tag merges them.
-- `DELETE /v1/brands/{brandId}/tags/{tag}` — remove it from every prompt.
 
 **Derived, not a resource.** There is no tag table: a tag is a string in
-`prompts.tags`, and it exists exactly as long as some prompt carries it. These
-endpoints are a view over that and a bulk edit of it — which is the whole reason
-they're safe to add. A `POST /v1/tags` that created a tag nothing carries would
-be promising a model we don't have, and we'd have to keep it.
+`prompts.tags`, and it exists exactly as long as some prompt carries it. This is
+a view over that and nothing more — which is the whole reason it's safe to add.
+A `POST /v1/tags` that created a tag nothing carries would be promising a model
+we don't have, and we'd have to keep it.
 
 What the list buys a caller is real: today, building the filter the dashboard
 shows means paging every prompt in the brand and deduplicating client-side.
 
-`branded` and `unbranded` are computed from the prompt text. They always appear
-in the list, marked `system: true`, and cannot be renamed or removed
-(`409 system_tag_immutable`) — applying one to a prompt as a user tag overrides
-the computed classification, which is a prompt edit, not a tag edit.
+**Read-only, because the product is.** An earlier draft renamed and removed a
+tag across a brand in one call. Nothing in the dashboard does that — tags are
+edited one prompt at a time — so the API would have been inventing the
+operation, not exposing it, and a caller holding `prompts:write` can already
+reach the same end one `PATCH /v1/prompts/{promptId}` at a time. If brand-wide
+relabelling becomes a thing the product does, it comes back alongside it.
 
-Both mutations need `prompts:write`: they relabel prompts and destroy no tracked
-data, and a caller with `prompts:write` could already do the same thing one
-`PATCH /v1/prompts/{promptId}` at a time. Neither touches an entitlement pool —
-a relabel changes no count.
+`branded` and `unbranded` are computed from the prompt text, so they always
+appear in the list, marked `system: true`; applying one to a prompt as a user
+tag overrides the computed classification.
 
 ### 3.8 Opportunities — `analytics:read`
 
@@ -765,8 +764,7 @@ as-is.
   `createApiHandler`, the route-conformance test, and the settings page.
 - **#408 — `GET /brands/{id}/visibility`.** The right endpoint with the wrong
   parameter names: it takes `from`/`to`, this spec takes
-  `startDate`/`endDate`/`lookback` to match the snapshot endpoint already
-  public. Merging it as-is ships a second date-window spelling we would then be
+  `startDate`/`endDate` to match the snapshot endpoint already public. Merging it as-is ships a second date-window spelling we would then be
   stuck with. Rebase it onto the settled convention, or fold it into step 6.
 
 ## 6. Testing

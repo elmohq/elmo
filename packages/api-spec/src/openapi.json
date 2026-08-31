@@ -2,7 +2,7 @@
 	"openapi": "3.0.3",
 	"info": {
 		"title": "Elmo API",
-		"description": "Read and manage the brands, prompts, competitors, and AI-visibility analytics of an Elmo deployment.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header. Two kinds of token are accepted.\n\n**Instance admin keys** come from the operator's `ADMIN_API_KEYS` environment variable. They reach every organization and every endpoint, including the admin-only ones, and are not subject to plan limits or rate limits.\n\n**Organization keys** (`elmo_…`) are issued from the dashboard. A key acts inside exactly one organization, carries an explicit set of scopes, and may be narrowed further to a subset of that organization's brands. Plan limits, read-only mode, and per-key rate limits all apply.\n\n## Scopes\n\nEach operation lists the scope it requires in `x-elmo-scopes`. Admin keys hold every scope implicitly.\n\n| Scope | Grants |\n| --- | --- |\n| `brands:read` / `brands:write` | Read or manage brands |\n| `prompts:read` / `prompts:write` | Read or manage prompts |\n| `competitors:read` / `competitors:write` / `competitors:delete` | Read, manage, or delete competitors |\n| `analytics:read` | Read aggregated visibility, share of voice, citations, and fan-out |\n| `runs:read` | Read individual model answers and their citations |\n| `billing:read` | Read the organization's plan, limits, and usage |\n\nDeleting a competitor is a scope of its own, so a key that syncs competitors cannot erase them by accident. Deleting a *prompt* has no scope at all: it takes every run and citation with it, the dashboard offers no such action, and `PATCH /prompts/{promptId}` with `enabled: false` stops the tracking without losing the history. It is reachable with an instance admin key only.\n\nThere is deliberately no billing write scope: the API cannot change a subscription, an add-on quantity, or a payment method under any key, including an admin key. Operations marked `x-elmo-admin-only` are reachable with an instance admin key only; no scope grants them. Report generation and brand analysis spend provider budget with no organization to bill it to; deleting a prompt destroys tracked history the dashboard itself will not. For the same reason a single *field* can be admin-only: `enabled` on `PATCH /brands/{brandId}` stops a brand being sampled at all, so setting it with an organization key is a `403`.\n\n## Access and errors\n\nA brand outside the calling key's reach answers `404` with the same body a brand that does not exist would, so a key can never probe another tenant's data. A key that is valid but lacks the scope an operation requires answers `403` naming the missing scope.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Lists take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object. Analytics endpoints take either `startDate` + `endDate` (with an optional `timezone`) or the `lookback` shorthand — one form or the other, never both.\n\n## Stability\n\nAn operation whose response shape may still change carries `x-stability: experimental`, and says so in the first line of its description. Everything else is stable: its shape will only ever gain fields. The absence of the marker is the promise.",
+		"description": "Read and manage the brands, prompts, competitors, and AI-visibility analytics of an Elmo deployment.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header. Two kinds of token are accepted.\n\n**Instance admin keys** come from the operator's `ADMIN_API_KEYS` environment variable. They reach every organization and every endpoint, including the admin-only ones, and are not subject to plan limits or rate limits.\n\n**Organization keys** (`elmo_…`) are issued from the dashboard. A key acts inside exactly one organization, carries an explicit set of scopes, and may be narrowed further to a subset of that organization's brands. Plan limits, read-only mode, and per-key rate limits all apply.\n\n## Scopes\n\nEach operation lists the scope it requires in `x-elmo-scopes`. Admin keys hold every scope implicitly.\n\n| Scope | Grants |\n| --- | --- |\n| `brands:read` / `brands:write` | Read or manage brands |\n| `prompts:read` / `prompts:write` | Read or manage prompts |\n| `competitors:read` / `competitors:write` / `competitors:delete` | Read, manage, or delete competitors |\n| `analytics:read` | Read aggregated visibility, share of voice, citations, and fan-out |\n| `runs:read` | Read individual model answers and their citations |\n| `billing:read` | Read the organization's plan, limits, and usage |\n\nDeleting a competitor is a scope of its own, so a key that syncs competitors cannot erase them by accident. Deleting a *prompt* has no scope at all: it takes every run and citation with it, the dashboard offers no such action, and `PATCH /prompts/{promptId}` with `enabled: false` stops the tracking without losing the history. It is reachable with an instance admin key only.\n\nThere is deliberately no billing write scope: the API cannot change a subscription, an add-on quantity, or a payment method under any key, including an admin key. Operations marked `x-elmo-admin-only` are reachable with an instance admin key only; no scope grants them. Report generation and brand analysis spend provider budget with no organization to bill it to; deleting a prompt destroys tracked history the dashboard itself will not. For the same reason a single *field* can be admin-only: `enabled` on `PATCH /brands/{brandId}` stops a brand being sampled at all, so setting it with an organization key is a `403`.\n\n## Access and errors\n\nA brand outside the calling key's reach answers `404` with the same body a brand that does not exist would, so a key can never probe another tenant's data. A key that is valid but lacks the scope an operation requires answers `403` naming the missing scope.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Collections take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object. Analytics endpoints take `startDate` + `endDate` (with an optional `timezone`) and answer with the whole window in one response.\n\n## Stability\n\nAn operation whose response shape may still change carries `x-stability: experimental`, and says so in the first line of its description. Everything else is stable: its shape will only ever gain fields. The absence of the marker is the promise.",
 		"version": "1.1.0",
 		"contact": {
 			"name": "Elmo",
@@ -161,7 +161,7 @@
 					},
 					"code": {
 						"type": "string",
-						"description": "Stable machine-readable code. Deliberately not an enum: new values are added without a version bump, so treat an unrecognized one as its HTTP status implies. Currently: `unauthorized`, `insufficient_scope`, `forbidden`, `not_found`, `validation_error`, `conflict`, `rate_limited`, `method_not_allowed`, `read_only`, `no_active_plan`, `brand_limit`, `prompt_limit`, `model_not_in_plan`, `model_picks_exceeded`, `premium_not_in_plan`, `premium_pool_exhausted`, `cadence_faster_than_plan`, `system_tag_immutable`, `internal_error`."
+						"description": "Stable machine-readable code. Deliberately not an enum: new values are added without a version bump, so treat an unrecognized one as its HTTP status implies. Currently: `unauthorized`, `insufficient_scope`, `forbidden`, `not_found`, `validation_error`, `conflict`, `rate_limited`, `method_not_allowed`, `read_only`, `no_active_plan`, `brand_limit`, `prompt_limit`, `model_not_in_plan`, `model_picks_exceeded`, `premium_not_in_plan`, `premium_pool_exhausted`, `cadence_faster_than_plan`, `internal_error`."
 					}
 				},
 				"required": ["error"]
@@ -801,7 +801,7 @@
 				"required": ["page", "limit", "total", "totalPages"]
 			},
 			"DateRange": {
-				"description": "The window the response was computed over, resolved from either the explicit dates or the lookback shorthand.",
+				"description": "The window the response was computed over.",
 				"type": "object",
 				"properties": {
 					"startDate": {
@@ -1193,13 +1193,11 @@
 						"type": "array",
 						"items": {
 							"$ref": "#/components/schemas/CitationDomain"
-						}
-					},
-					"pagination": {
-						"$ref": "#/components/schemas/Pagination"
+						},
+						"description": "Every domain cited over the window, ordered by citation count."
 					}
 				},
-				"required": ["brandId", "range", "totals", "data", "pagination"]
+				"required": ["brandId", "range", "totals", "data"]
 			},
 			"CitationUrl": {
 				"type": "object",
@@ -1293,13 +1291,11 @@
 						"type": "array",
 						"items": {
 							"$ref": "#/components/schemas/CitationUrl"
-						}
-					},
-					"pagination": {
-						"$ref": "#/components/schemas/Pagination"
+						},
+						"description": "Every URL cited over the window, ordered by citation count."
 					}
 				},
-				"required": ["brandId", "range", "totals", "data", "pagination"]
+				"required": ["brandId", "range", "totals", "data"]
 			},
 			"FanoutQuery": {
 				"type": "object",
@@ -1353,10 +1349,7 @@
 						"items": {
 							"$ref": "#/components/schemas/FanoutQuery"
 						},
-						"description": "Most-run queries first."
-					},
-					"pagination": {
-						"$ref": "#/components/schemas/Pagination"
+						"description": "Every distinct sub-query over the window, ordered by the runs that ran it."
 					}
 				},
 				"required": [
@@ -1368,8 +1361,7 @@
 					"totalRuns",
 					"avgQueriesPerRun",
 					"coverageRate",
-					"data",
-					"pagination"
+					"data"
 				]
 			},
 			"PromptPerformance": {
@@ -1438,13 +1430,11 @@
 						"type": "array",
 						"items": {
 							"$ref": "#/components/schemas/PromptPerformance"
-						}
-					},
-					"pagination": {
-						"$ref": "#/components/schemas/Pagination"
+						},
+						"description": "Every enabled prompt's results over the window."
 					}
 				},
-				"required": ["brandId", "range", "data", "pagination"]
+				"required": ["brandId", "range", "data"]
 			},
 			"RunSummary": {
 				"description": "A single model answer, without its text. Fetch `GET /runs/{runId}` for the answer itself.",
@@ -1626,36 +1616,6 @@
 					}
 				},
 				"required": ["brandId", "data"]
-			},
-			"RenameTagRequest": {
-				"description": "Renames the tag on every prompt in the brand that carries it. Merging into an existing tag is allowed and deduplicates.",
-				"type": "object",
-				"properties": {
-					"name": {
-						"type": "string",
-						"description": "The new tag. Normalized the same way tags on a prompt are.",
-						"minLength": 1
-					}
-				},
-				"required": ["name"]
-			},
-			"TagMutationResult": {
-				"type": "object",
-				"properties": {
-					"brandId": {
-						"type": "string"
-					},
-					"name": {
-						"type": "string",
-						"description": "The tag after the change, or null when it was removed.",
-						"nullable": true
-					},
-					"promptsUpdated": {
-						"type": "integer",
-						"description": "Prompts whose tag list actually changed."
-					}
-				},
-				"required": ["brandId", "name", "promptsUpdated"]
 			},
 			"OpportunityPrompt": {
 				"type": "object",
@@ -2076,8 +2036,8 @@
 			"StartDate": {
 				"name": "startDate",
 				"in": "query",
-				"description": "Start of the window (inclusive), `YYYY-MM-DD`. Required unless `lookback` is given.",
-				"required": false,
+				"description": "Start of the window (inclusive), `YYYY-MM-DD`.",
+				"required": true,
 				"schema": {
 					"type": "string",
 					"format": "date"
@@ -2086,21 +2046,11 @@
 			"EndDate": {
 				"name": "endDate",
 				"in": "query",
-				"description": "End of the window (inclusive), `YYYY-MM-DD`. Required unless `lookback` is given.",
-				"required": false,
+				"description": "End of the window (inclusive), `YYYY-MM-DD`.",
+				"required": true,
 				"schema": {
 					"type": "string",
 					"format": "date"
-				}
-			},
-			"Lookback": {
-				"name": "lookback",
-				"in": "query",
-				"description": "Relative window ending today. Mutually exclusive with `startDate`/`endDate`; supplying both is a `400`.",
-				"required": false,
-				"schema": {
-					"type": "string",
-					"enum": ["1w", "1m", "3m", "6m", "1y", "all"]
 				}
 			},
 			"Timezone": {
@@ -2161,15 +2111,6 @@
 							"default": 20
 						},
 						"description": "Items per page. Values above the maximum are clamped, not rejected."
-					},
-					{
-						"name": "enabled",
-						"in": "query",
-						"description": "Only brands with this enabled state.",
-						"required": false,
-						"schema": {
-							"type": "boolean"
-						}
 					}
 				],
 				"responses": {
@@ -2366,7 +2307,7 @@
 		"/brands/{brandId}/analytics": {
 			"get": {
 				"summary": "Get a brand's analytics",
-				"description": "Visibility, share of voice, the per-model breakdown and the citation totals for one window, in one request.\n\nThe lists that can grow without bound — cited domains and URLs, sub-queries, per-prompt results — are paginated endpoints of their own. Everything else is always included.",
+				"description": "Visibility, share of voice, the per-model breakdown and the citation totals for one window, in one request.\n\nThe long lists — cited domains and URLs, sub-queries, per-prompt results — are endpoints of their own. Everything else is always included.",
 				"operationId": "getBrandAnalytics",
 				"tags": ["Analytics"],
 				"x-elmo-scopes": ["analytics:read"],
@@ -2379,9 +2320,6 @@
 					},
 					{
 						"$ref": "#/components/parameters/EndDate"
-					},
-					{
-						"$ref": "#/components/parameters/Lookback"
 					},
 					{
 						"$ref": "#/components/parameters/Timezone"
@@ -2443,9 +2381,6 @@
 						"$ref": "#/components/parameters/EndDate"
 					},
 					{
-						"$ref": "#/components/parameters/Lookback"
-					},
-					{
 						"$ref": "#/components/parameters/Timezone"
 					},
 					{
@@ -2453,12 +2388,6 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
-					},
-					{
-						"$ref": "#/components/parameters/Page"
-					},
-					{
-						"$ref": "#/components/parameters/Limit"
 					}
 				],
 				"responses": {
@@ -2511,9 +2440,6 @@
 						"$ref": "#/components/parameters/EndDate"
 					},
 					{
-						"$ref": "#/components/parameters/Lookback"
-					},
-					{
 						"$ref": "#/components/parameters/Timezone"
 					},
 					{
@@ -2521,12 +2447,6 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
-					},
-					{
-						"$ref": "#/components/parameters/Page"
-					},
-					{
-						"$ref": "#/components/parameters/Limit"
 					}
 				],
 				"responses": {
@@ -2630,9 +2550,6 @@
 						"$ref": "#/components/parameters/EndDate"
 					},
 					{
-						"$ref": "#/components/parameters/Lookback"
-					},
-					{
 						"$ref": "#/components/parameters/Timezone"
 					},
 					{
@@ -2640,12 +2557,6 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
-					},
-					{
-						"$ref": "#/components/parameters/Page"
-					},
-					{
-						"$ref": "#/components/parameters/Limit"
 					}
 				],
 				"responses": {
@@ -2698,9 +2609,6 @@
 						"$ref": "#/components/parameters/EndDate"
 					},
 					{
-						"$ref": "#/components/parameters/Lookback"
-					},
-					{
 						"$ref": "#/components/parameters/Timezone"
 					},
 					{
@@ -2708,12 +2616,6 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
-					},
-					{
-						"$ref": "#/components/parameters/Page"
-					},
-					{
-						"$ref": "#/components/parameters/Limit"
 					}
 				],
 				"responses": {
@@ -2779,123 +2681,6 @@
 					},
 					"404": {
 						"$ref": "#/components/responses/NotFoundError"
-					},
-					"429": {
-						"$ref": "#/components/responses/RateLimitError"
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalServerError"
-					}
-				}
-			}
-		},
-		"/brands/{brandId}/tags/{tag}": {
-			"patch": {
-				"summary": "Rename a tag",
-				"description": "Rename the tag on every prompt in the brand that carries it. Renaming onto a tag that already exists merges the two and deduplicates.\n\nNeeds `prompts:write`: this relabels prompts and destroys no tracked data, and a caller holding `prompts:write` could already do it one `PATCH /prompts/{promptId}` at a time.\n\nThe computed `branded` and `unbranded` tags cannot be renamed (`409 system_tag_immutable`).",
-				"operationId": "renameBrandTag",
-				"tags": ["Tags"],
-				"x-elmo-scopes": ["prompts:write"],
-				"parameters": [
-					{
-						"$ref": "#/components/parameters/BrandIdPath"
-					},
-					{
-						"name": "tag",
-						"in": "path",
-						"required": true,
-						"description": "The tag, matched case-insensitively.",
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/RenameTagRequest"
-							}
-						}
-					}
-				},
-				"responses": {
-					"200": {
-						"description": "Rename a tag",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/TagMutationResult"
-								}
-							}
-						}
-					},
-					"400": {
-						"$ref": "#/components/responses/ValidationError"
-					},
-					"401": {
-						"$ref": "#/components/responses/UnauthorizedError"
-					},
-					"403": {
-						"$ref": "#/components/responses/ForbiddenError"
-					},
-					"404": {
-						"$ref": "#/components/responses/NotFoundError"
-					},
-					"409": {
-						"$ref": "#/components/responses/ConflictError"
-					},
-					"429": {
-						"$ref": "#/components/responses/RateLimitError"
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalServerError"
-					}
-				}
-			},
-			"delete": {
-				"summary": "Remove a tag",
-				"description": "Remove the tag from every prompt in the brand that carries it. The prompts themselves, and their runs and citations, are untouched — which is why this needs only `prompts:write`.\n\nThe computed `branded` and `unbranded` tags cannot be removed (`409 system_tag_immutable`).",
-				"operationId": "deleteBrandTag",
-				"tags": ["Tags"],
-				"x-elmo-scopes": ["prompts:write"],
-				"parameters": [
-					{
-						"$ref": "#/components/parameters/BrandIdPath"
-					},
-					{
-						"name": "tag",
-						"in": "path",
-						"required": true,
-						"description": "The tag, matched case-insensitively.",
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"responses": {
-					"200": {
-						"description": "Remove a tag",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/TagMutationResult"
-								}
-							}
-						}
-					},
-					"401": {
-						"$ref": "#/components/responses/UnauthorizedError"
-					},
-					"403": {
-						"$ref": "#/components/responses/ForbiddenError"
-					},
-					"404": {
-						"$ref": "#/components/responses/NotFoundError"
-					},
-					"409": {
-						"$ref": "#/components/responses/ConflictError"
 					},
 					"429": {
 						"$ref": "#/components/responses/RateLimitError"
@@ -3779,9 +3564,6 @@
 					},
 					{
 						"$ref": "#/components/parameters/EndDate"
-					},
-					{
-						"$ref": "#/components/parameters/Lookback"
 					},
 					{
 						"$ref": "#/components/parameters/Timezone"

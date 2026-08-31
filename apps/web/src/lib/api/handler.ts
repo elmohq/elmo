@@ -48,7 +48,6 @@ export type ApiErrorCode =
 	| "premium_not_in_plan"
 	| "premium_pool_exhausted"
 	| "cadence_faster_than_plan"
-	| "system_tag_immutable"
 	| "internal_error";
 
 /**
