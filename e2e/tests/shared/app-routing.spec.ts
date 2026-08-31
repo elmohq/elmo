@@ -87,6 +87,22 @@ test.describe("App routing", () => {
 		await expect(page.getByRole("button", { name: "Change URL" })).toHaveCount(0);
 	});
 
+	test("cold client-side navigations do not enter the error boundary", async ({ page }) => {
+		const errors: Error[] = [];
+		page.on("pageerror", (error) => errors.push(error));
+
+		await page.goto(BRAND_URL);
+		await expect(page.locator(`a[href="${BRAND_URL}"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 30_000 });
+
+		for (const destination of ["Visibility", "Citations", "Brand"]) {
+			await page.getByRole("link", { name: destination, exact: true }).click();
+			await expect(page.getByRole("heading", { name: destination, exact: true })).toBeVisible({ timeout: 30_000 });
+			await expect(page.getByText("An unexpected error occurred while loading this page.")).toHaveCount(0);
+		}
+
+		expect(errors).toEqual([]);
+	});
+
 	test("the breadcrumb trail names the organization, the brand, and the page", async ({ page }) => {
 		await page.goto(`${BRAND_URL}/citations`);
 

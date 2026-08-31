@@ -6,7 +6,6 @@ import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
 import { useOrganizationsChanged } from "@/hooks/use-organizations";
-import { useOrganizationParams } from "@/hooks/use-route-params";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
@@ -24,6 +23,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/new")({
 		return {
 			organizationId: id,
 			organizationName: name,
+			organizationSlug: context.organization.slug,
 			blocked: brandCreation.kind === "denied" ? brandCreation : null,
 		};
 	},
@@ -32,8 +32,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/new")({
 });
 
 function NewBrandPage() {
-	const { organizationId, organizationName, blocked } = Route.useLoaderData();
-	const organizationParams = useOrganizationParams();
+	const { organizationId, organizationName, organizationSlug, blocked } = Route.useLoaderData();
 	const [step, setStep] = useState<"details" | "platforms">("details");
 	const [details, setDetails] = useState({ brandName: "", website: "" });
 	const [platformState, setPlatformState] = useState<NonNullable<OnboardingPlatformState> | null>(null);
@@ -60,7 +59,10 @@ function NewBrandPage() {
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
 			await organizationsChanged(() =>
-				navigate({ to: "/app/org/$org/brand/$brand", params: { ...organizationParams, brand: brandSlug } }),
+				navigate({
+					to: "/app/org/$org/brand/$brand",
+					params: { org: organizationSlug, brand: brandSlug },
+				}),
 			);
 		} catch (err) {
 			setError(writeError(err, "Could not create the brand."));
@@ -109,7 +111,7 @@ function NewBrandPage() {
 			>
 				<Link
 					to="/app/org/$org/settings/billing"
-					params={organizationParams}
+					params={{ org: organizationSlug }}
 					className={buttonVariants({ className: "w-full" })}
 				>
 					Go to billing

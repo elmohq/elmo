@@ -6,7 +6,6 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { useState } from "react";
-import { useOrganization } from "@/hooks/use-organizations";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
@@ -25,8 +24,8 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/members")({
 });
 
 function TeamSettingsPage() {
-	const { id: organizationId } = useOrganization();
-	const { members, invitations, currentUserId } = Route.useLoaderData();
+	const { members, invitations, currentUserId, organization } = Route.useLoaderData();
+	const organizationId = organization.id;
 	const writeError = useWriteErrorMessage();
 	const router = useRouter();
 	const [inviteEmail, setInviteEmail] = useState("");
