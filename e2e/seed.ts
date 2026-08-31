@@ -9,14 +9,22 @@
  *
  * Usage: tsx seed.ts
  */
+import { createHash } from "node:crypto";
 import pg from "pg";
 import {
+  API_KEYS,
+  type ApiKeyFixture,
+  CAPPED_BRAND_ID,
+  CAPPED_ENTITLEMENT_OVERRIDES,
+  CAPPED_ORG_ID,
+  CAPPED_PROMPT_COUNT,
   COMPETITOR_IDS,
   DATABASE_URL,
   NIKE_BRAND_ID,
   NIKE_COMPETITOR_IDS,
   NIKE_ORG_ID,
   NIKE_PROMPT_IDS,
+  NIKE_SECOND_BRAND_ID,
   PROMPT_IDS,
   REPORT_IDS,
   RENAMEABLE_BRAND_ID,
@@ -28,6 +36,8 @@ import {
   TEST_BRAND_ID,
   TEST_BRAND_NAME,
   TEST_BRAND_WEBSITE,
+  UNPAID_BRAND_ID,
+  UNPAID_ORG_ID,
 } from "./fixtures";
 
 const RUN_IDS = [
@@ -41,6 +51,181 @@ const RUN_IDS = [
   "00000000-0000-0000-0000-200000000008",
 ];
 
+
+/**
+ * How better-auth's api-key plugin stores a key: unpadded base64url of the
+ * SHA-256 digest. Reproduced here so the suite can seed keys straight into the
+ * table without a session or a running app.
+ */
+function hashApiKey(token: string): string {
+  return createHash("sha256").update(token).digest("base64url");
+}
+
+/** better-auth stores permissions as `{ resource: [action] }`. */
+function toPermissions(scopes: readonly string[]): Record<string, string[]> {
+  const permissions: Record<string, string[]> = {};
+  for (const scope of scopes) {
+    const [resource, action] = scope.split(":");
+    (permissions[resource] ??= []).push(action);
+  }
+  return permissions;
+}
+
+/**
+ * Seed the API keys the Bruno suite authenticates as.
+ *
+ * The rate limit matches what the plugin issues in production rather than an
+ * inflated test value: the busiest key makes fewer than a hundred requests
+ * across the whole suite, so the real ceiling never gets in the way, and the
+ * suite exercises the limit callers actually get.
+ *
+ * `reference_id` is the organization, not a user: the plugin is configured with
+ * `references: "organization"`, which is what makes a key outlive whoever
+ * issued it. Only the brand narrowing lives in metadata, because metadata is
+ * writable by anyone with a session and so may never grant anything.
+ *
+ * Skipped when the `apikey` table isn't there yet: organization keys are still
+ * being built, and the seeder has to keep working — and keep every other suite
+ * working — until the migration lands. The Bruno cases that need these keys
+ * fail until then, which is the point of having written them first.
+ */
+async function seedApiKeys(client: pg.Client): Promise<void> {
+  const [{ exists }] = (
+    await client.query<{ exists: boolean }>(
+      "SELECT to_regclass('public.apikey') IS NOT NULL AS exists",
+    )
+  ).rows;
+  if (!exists) {
+    console.log("  Skipped API keys: the apikey table does not exist yet");
+    return;
+  }
+
+  await client.query("DELETE FROM apikey WHERE name LIKE 'E2E %'");
+
+  const keys = Object.values(API_KEYS) as ApiKeyFixture[];
+  for (const [index, key] of keys.entries()) {
+    await client.query(
+      `INSERT INTO apikey (
+         id, name, start, prefix, key, reference_id, enabled,
+         rate_limit_enabled, rate_limit_time_window, rate_limit_max,
+         request_count, expires_at, permissions, metadata, created_at, updated_at
+       ) VALUES ($1, $2, $3, 'elmo', $4, $5, $6, true, 60000, 1000, 0, $7, $8, $9, NOW(), NOW())`,
+      [
+        `e2e-apikey-${index + 1}`,
+        key.name,
+        key.token.slice(0, 12),
+        hashApiKey(key.token),
+        key.organizationId,
+        key.enabled !== false,
+        key.expiresInMs === undefined ? null : new Date(Date.now() + key.expiresInMs),
+        JSON.stringify(toPermissions(key.scopes)),
+        key.brandIds === null ? null : JSON.stringify({ brandIds: key.brandIds }),
+      ],
+    );
+  }
+  console.log(`  Created ${keys.length} API keys`);
+}
+
+
+/**
+ * Two tenants that only mean anything in cloud mode: one on a custom plan with
+ * tiny limits, one with no subscription at all. Both are inert everywhere else,
+ * where entitlements resolve to unlimited regardless of what is stored here.
+ */
+async function seedBillingTenants(client: pg.Client): Promise<void> {
+  for (const [orgId, brandId, name, website] of [
+    [CAPPED_ORG_ID, CAPPED_BRAND_ID, "Capped Co", "https://capped.example.com"],
+    [UNPAID_ORG_ID, UNPAID_BRAND_ID, "Unpaid Co", "https://unpaid.example.com"],
+  ] as const) {
+    await client.query(
+      `INSERT INTO organization (id, name, slug, created_at)
+       VALUES ($1, $2, $1, NOW()) ON CONFLICT (id) DO NOTHING`,
+      [orgId, name],
+    );
+    await client.query(
+      `INSERT INTO brands (id, organization_id, name, website, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, true, true, NOW(), NOW())`,
+      [brandId, orgId, name, website],
+    );
+  }
+
+  await client.query("DELETE FROM organization_settings WHERE organization_id = ANY($1)", [
+    [CAPPED_ORG_ID, UNPAID_ORG_ID],
+  ]);
+  await client.query(
+    `INSERT INTO organization_settings (organization_id, entitlement_overrides, premium_addon_quantity, created_at, updated_at)
+     VALUES ($1, $2, 0, NOW(), NOW())`,
+    [CAPPED_ORG_ID, JSON.stringify(CAPPED_ENTITLEMENT_OVERRIDES)],
+  );
+
+  for (let i = 0; i < CAPPED_PROMPT_COUNT; i++) {
+    await client.query(
+      `INSERT INTO prompts (brand_id, value, enabled, tags, system_tags, created_at, updated_at)
+       VALUES ($1, $2, true, '{}', '{}', NOW(), NOW())`,
+      [CAPPED_BRAND_ID, `Capped tenant prompt ${i + 1}`],
+    );
+  }
+  console.log(
+    `  Created billing tenants: ${CAPPED_ORG_ID} (${CAPPED_PROMPT_COUNT}/${CAPPED_ENTITLEMENT_OVERRIDES.maxPrompts} prompts) and ${UNPAID_ORG_ID} (no plan)`,
+  );
+}
+
+/**
+ * One stored Opportunities report for the default brand, so the API test for it
+ * exercises the populated path rather than only the "nothing generated yet" one.
+ * Shaped like what the generator persists: the model's own output, enriched with
+ * resolved prompt ids and the pages already cited for them.
+ */
+async function seedOpportunities(client: pg.Client): Promise<void> {
+  const report = {
+    summary: [
+      "Competitor Alpha is named in comparison answers you are absent from.",
+      "Assistants build monitoring answers from example.com and techblog.io.",
+      "Branded prompts are covered; unbranded discovery is where the gap is.",
+    ],
+    risks: [
+      "Comparison roundups rotate slowly, so placements take time to land.",
+      "Do not chase prompts where every assistant cites the same locked-in source.",
+    ],
+    opportunities: [
+      {
+        category: "creation",
+        title: "Publish a monitoring-tool comparison for unbranded discovery",
+        why: "Assistants answer 'best AI monitoring tool' from third-party roundups, and the brand is named in none of them.",
+        relatedPrompts: [
+          {
+            text: "What is the best AI monitoring tool for tracking brand visibility?",
+            promptId: PROMPT_IDS.branded1,
+          },
+        ],
+        yourCitations: [
+          { title: "AI Monitoring Guide", domain: "example.com", url: "https://example.com/blog/ai-monitoring" },
+        ],
+        competitorCitations: [
+          { title: "Competitor Alpha Features", domain: "competitor-alpha.com", url: "https://competitor-alpha.com/features" },
+        ],
+      },
+      {
+        category: "outreach",
+        title: "Get into the techblog.io tools roundup",
+        why: "It is cited in answers where the brand is absent, and its list rotates often enough to break into.",
+        relatedPrompts: [{ text: "Compare AI visibility platforms and their features", promptId: PROMPT_IDS.branded2 }],
+        yourCitations: [],
+        competitorCitations: [
+          { title: "Best AI Tools 2025", domain: "techblog.io", url: "https://techblog.io/ai-tools-2025" },
+        ],
+      },
+    ],
+  };
+
+  await client.query(
+    `INSERT INTO brand_opportunities (brand_id, report, model, created_at)
+     VALUES ($1, $2, $3, NOW())`,
+    [TEST_BRAND_ID, JSON.stringify(report), "claude-sonnet-5"],
+  );
+  console.log(`  Created 1 opportunities report (${report.opportunities.length} opportunities)`);
+}
+
 async function seed() {
   const client = new pg.Client({ connectionString: DATABASE_URL });
   await client.connect();
@@ -48,6 +233,7 @@ async function seed() {
   try {
     console.log("Seeding E2E test database...");
 
+    await client.query("DELETE FROM brand_opportunities");
     await client.query("DELETE FROM citations");
     await client.query("DELETE FROM prompt_runs");
     await client.query("DELETE FROM prompts");
@@ -452,7 +638,18 @@ async function seed() {
         [nikeRunId, NIKE_PROMPT_IDS.training, NIKE_BRAND_ID, cite.url, cite.domain, cite.title, i],
       );
     }
-    console.log("  Created second tenant: Nike (brand, 2 prompts, 2 competitors, 1 run, 2 citations)");
+    // A second brand in the same org, so a key narrowed to one brand has
+    // something inside its own organization that it must not reach.
+    await client.query(
+      `INSERT INTO brands (id, organization_id, name, website, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $2, 'Jordan', 'https://jordan.com', true, true, NOW(), NOW())`,
+      [NIKE_SECOND_BRAND_ID, NIKE_ORG_ID],
+    );
+    console.log("  Created second tenant: Nike (2 brands, 2 prompts, 2 competitors, 1 run, 2 citations)");
+
+    await seedOpportunities(client);
+    await seedBillingTenants(client);
+    await seedApiKeys(client);
 
     console.log("\nE2E database seeding complete!");
     console.log(`  Brand: ${TEST_BRAND_ID} (${TEST_BRAND_NAME})`);

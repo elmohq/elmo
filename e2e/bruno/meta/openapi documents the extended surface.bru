@@ -1,0 +1,81 @@
+meta {
+  name: the published spec covers the extended surface
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/openapi.json
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("every documented operation is reachable", function() {
+    const paths = res.getBody().paths;
+    for (const path of [
+      "/me",
+      "/platforms",
+      "/organizations",
+      "/organizations/{organizationId}/billing",
+      "/brands/{brandId}/summary",
+      "/brands/{brandId}/visibility",
+      "/brands/{brandId}/share-of-voice",
+      "/brands/{brandId}/platforms",
+      "/brands/{brandId}/citations/domains",
+      "/brands/{brandId}/citations/urls",
+      "/brands/{brandId}/query-fanout",
+      "/brands/{brandId}/prompt-performance",
+      "/prompts/bulk",
+      "/prompts/{promptId}/runs",
+      "/runs/{runId}",
+    ]) {
+      expect(paths, `${path} should be documented`).to.have.property(path);
+    }
+  });
+
+  test("nothing offers to write billing", function() {
+    const paths = res.getBody().paths;
+    for (const [path, operations] of Object.entries(paths)) {
+      if (!path.includes("billing")) continue;
+      expect(Object.keys(operations)).to.eql(["get"]);
+    }
+  });
+
+  test("no operation grants a billing write scope", function() {
+    for (const operations of Object.values(res.getBody().paths)) {
+      for (const operation of Object.values(operations)) {
+        expect(operation["x-elmo-scopes"] || []).to.not.include("billing:write");
+      }
+    }
+  });
+
+  test("every operation declares the scope it needs", function() {
+    const methods = ["get", "post", "put", "patch", "delete"];
+    for (const [path, operations] of Object.entries(res.getBody().paths)) {
+      for (const [method, operation] of Object.entries(operations)) {
+        if (!methods.includes(method)) continue;
+        expect(operation["x-elmo-scopes"], `${method} ${path}`).to.be.an("array");
+      }
+    }
+  });
+
+  test("only an unsettled shape is marked, and it says so where a reader looks", function() {
+    // Absence of the marker is the promise, so a stray value anywhere would
+    // quietly weaken every operation that carries nothing.
+    const methods = ["get", "post", "put", "patch", "delete"];
+    for (const [path, operations] of Object.entries(res.getBody().paths)) {
+      for (const [method, operation] of Object.entries(operations)) {
+        if (!methods.includes(method)) continue;
+        const marker = operation["x-stability"];
+        if (marker === undefined) continue;
+        expect(marker, `${method} ${path}`).to.equal("experimental");
+        expect(operation.description, `${method} ${path}`).to.match(/^\*\*Experimental/);
+      }
+    }
+  });
+}

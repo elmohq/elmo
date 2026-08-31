@@ -1,0 +1,42 @@
+meta {
+  name: read one answer in full
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/runs/{{runId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{runId}}
+  res.body.promptId: isString
+  res.body.model: eq chatgpt
+  res.body.answer.text: isString
+  res.body.citations: isArray
+}
+
+tests {
+  test("citations arrive in the order the engine listed them", function() {
+    const indexes = res.getBody().citations.map((c) => c.citationIndex);
+    expect(indexes).to.eql([...indexes].sort((a, b) => a - b));
+  });
+
+  test("the provider's own payload is not exposed", function() {
+    expect(res.getBody().rawOutput).to.be.undefined;
+  });
+
+  test("the answer is normalized, not a provider envelope or a fallback", function() {
+    const text = res.getBody().answer.text;
+    expect(text).to.be.a("string").and.to.not.be.empty;
+    expect(text, "the wrong extractor was used for this run's provider")
+      .to.not.match(/cannot extract text content/i);
+  });
+}

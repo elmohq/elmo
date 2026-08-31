@@ -6,6 +6,7 @@ import {
 	IconCpu,
 	IconCreditCard,
 	IconDashboard,
+	IconKey,
 	IconLink,
 	IconListDetails,
 	IconSitemap,
@@ -99,6 +100,11 @@ function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts)
 					icon: IconListDetails,
 				},
 				{ title: "LLMs", link: { to: "/app/org/$org/brand/$brand/settings/llms", params }, icon: IconCpu },
+				{
+					title: "API keys",
+					link: { to: "/app/org/$org/brand/$brand/settings/api-keys", params },
+					icon: IconKey,
+				},
 			],
 		});
 	}

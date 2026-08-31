@@ -1,0 +1,23 @@
+meta {
+  name: analytics:read alone is enough
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/visibility?lookback=1y
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgAnalyticsOnlyKey}}
+}
+
+params:query {
+  lookback: 1y
+}
+
+assert {
+  res.status: eq 200
+}

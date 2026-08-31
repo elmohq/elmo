@@ -1,0 +1,34 @@
+meta {
+  name: grounded tracking is not in the plan
+  type: http
+  seq: 11
+  tags: [
+    cloud
+  ]
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/prompts/{{freedSlotPromptId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{cappedKey}}
+}
+
+body:json {
+  {
+    "premiumModels": ["claude"]
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq premium_not_in_plan
+}
+
+docs {
+  Targets an enabled prompt on purpose. A disabled prompt spends nothing from
+  either pool, so assigning it a grounded platform is free — see the next case.
+}

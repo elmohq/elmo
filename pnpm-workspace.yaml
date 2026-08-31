@@ -37,6 +37,11 @@ overrides:
   fast-uri: "^4.1.0"
   form-data: "^4.0.6"
   axios: "^1.18.0"
+  # @better-auth/api-key declares `^1.6.29` on @better-auth/core, which semver
+  # resolves to 1.7 — a second copy of the same types that better-auth@1.6 does
+  # not use. The plugin object then stops being assignable to BetterAuthPlugin
+  # and auth.api loses its inferred endpoints. Lift with better-auth itself.
+  "@better-auth/core": "~1.6.29"
   uuid: "^14.0.2"
   shell-quote: "^1.8.5"
   ws: "^8.20.1"

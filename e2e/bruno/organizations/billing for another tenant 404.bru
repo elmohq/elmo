@@ -1,0 +1,20 @@
+meta {
+  name: another tenant's billing is not found
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/organizations/{{nikeOrgId}}/billing
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}

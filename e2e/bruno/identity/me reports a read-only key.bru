@@ -1,0 +1,25 @@
+meta {
+  name: me reports a read-only key as holding no write scope
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/me
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgReadOnlyKey}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("no scope grants a write", function() {
+    expect(res.getBody().scopes.filter((s) => s.endsWith(":write"))).to.eql([]);
+  });
+}

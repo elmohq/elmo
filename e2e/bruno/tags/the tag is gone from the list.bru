@@ -1,0 +1,28 @@
+meta {
+  name: the removed tag is gone from the list
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/tags
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("nothing is left of the tag the folder built", function() {
+    const names = res.getBody().data.map((t) => t.name);
+    for (const gone of ["bruno-alpha", "bruno-renamed", "bruno-target"]) {
+      expect(names).to.not.include(gone);
+    }
+  });
+}

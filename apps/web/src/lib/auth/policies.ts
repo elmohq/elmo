@@ -30,6 +30,17 @@ const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
  * delete-user, forget-password, admin plugin endpoints, etc.) has no
  * business mutating the shared demo account.
  */
+/**
+ * The api-key plugin endpoints that would otherwise let a signed-in user mint
+ * or edit a key straight from the browser. Blocked outright: issuance goes
+ * through the server function that validates the key's brand narrowing.
+ */
+const API_KEY_PLUGIN_MUTATIONS = new Set([
+	"/api/auth/api-key/create",
+	"/api/auth/api-key/update",
+	"/api/auth/api-key/delete",
+]);
+
 const DEMO_AUTH_WRITE_ALLOWLIST = new Set([
 	"/api/auth/sign-in/email",
 	"/api/auth/sign-in/email/",
@@ -39,7 +50,14 @@ const DEMO_AUTH_WRITE_ALLOWLIST = new Set([
 
 export type DeploymentPolicyResult =
 	| { action: "allow" }
-	| { action: "block"; status: 401 | 403; error: string; message: string }
+	| {
+			action: "block";
+			status: 401 | 403 | 404;
+			error: string;
+			message: string;
+			/** Set on /api/v1 blocks, which answer the same envelope every route does. */
+			code?: string;
+	  }
 	| { action: "redirect"; url: string }
 	| { action: "serve-openapi" };
 
@@ -56,13 +74,12 @@ export interface RequestInfo {
  * 1. Read-only mode blocks API + server-function writes (except analytics events)
  * 2. Admin access control (disabled / readonly / full)
  * 3. OpenAPI spec serving
- * 4. API v1 key authentication
+ *
+ * /api/v1 authentication is deliberately absent: an organization key resolves
+ * against the database, and this function is pure and synchronous by design.
+ * createApiHandler is the gate for those routes.
  */
-export function evaluateDeploymentPolicy(
-	features: FeaturesConfig,
-	request: RequestInfo,
-	options?: { adminApiKeys?: string[] },
-): DeploymentPolicyResult {
+export function evaluateDeploymentPolicy(features: FeaturesConfig, request: RequestInfo): DeploymentPolicyResult {
 	const { pathname, method, authorizationHeader } = request;
 	const isWriteMethod = WRITE_METHODS.has(method);
 	const isPlausibleEventRoute = pathname === "/api/plausible/event" || pathname === "/api/plausible/event/";
@@ -71,8 +88,30 @@ export function evaluateDeploymentPolicy(
 	const isServerFunctionRoute = pathname.startsWith("/_server");
 	const isAllowedAuthWrite = DEMO_AUTH_WRITE_ALLOWLIST.has(pathname);
 	const isOrgPluginMutation = pathname.startsWith("/api/auth/organization/") && isWriteMethod;
+	const isApiKeyPluginMutation = API_KEY_PLUGIN_MUTATIONS.has(pathname.replace(/\/$/, ""));
+	// createApiHandler is the auth gate for /api/v1 (it needs a database lookup
+	// this pure function can't do), and it enforces read-only there too, so its
+	// refusal carries the same `{ error, message, code }` envelope as every
+	// other /api/v1 error instead of a bare middleware body.
+	const isPublicApiV1 = pathname.startsWith("/api/v1/");
+	const isPublicApiV1Doc = pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
 
-	// 0. Better-auth org plugin mutations are blocked everywhere over HTTP.
+	// 0a. Minting or editing an API key never happens over HTTP. The plugin
+	// rejects `permissions` on any request carrying headers, so a browser could
+	// only ever create a scopeless key — but a key's brand narrowing lives in
+	// client-writable metadata, and the create path is where that gets validated
+	// against the organization's brands. Routing every key through the server
+	// function keeps that validation unskippable.
+	if (isApiKeyPluginMutation) {
+		return {
+			action: "block",
+			status: 403,
+			error: "Forbidden",
+			message: "API keys are issued from the dashboard, not over this endpoint",
+		};
+	}
+
+	// 0b. Better-auth org plugin mutations are blocked everywhere over HTTP.
 	// Orgs are created server-side only — via the provisioning module
 	// (local/demo/cloud create-brand, or the admin brands API whitelabel is
 	// provisioned through) — and cloud team invitations go through server
@@ -89,7 +128,7 @@ export function evaluateDeploymentPolicy(
 
 	// 1. Read-only mode: block every write except the explicit allowlist
 	// (analytics events + the two auth endpoints a visitor needs to use).
-	if (features.readOnly && isWriteMethod) {
+	if (features.readOnly && isWriteMethod && !isPublicApiV1) {
 		if ((isApiRoute || isServerFunctionRoute) && !isPlausibleEventRoute && !isAllowedAuthWrite) {
 			return {
 				action: "block",
@@ -107,18 +146,22 @@ export function evaluateDeploymentPolicy(
 		return { action: "serve-openapi" };
 	}
 
-	// 3. Public API v1 key authentication (except docs and spec)
-	const isPublicApiV1 = pathname.startsWith("/api/v1/");
-	const isPublicApiV1Doc = pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
-
-	if (isPublicApiV1 && !isPublicApiV1Doc && !isOpenApi) {
-		const keyResult = evaluateApiKeyAuth(authorizationHeader, options?.adminApiKeys ?? []);
-		if (keyResult !== "allow") {
+	// 3. A coarse gate for /api/v1. Resolving a token needs a database lookup,
+	// which this function cannot do, so createApiHandler stays the real gate —
+	// but a request with no bearer at all can be turned away here.
+	//
+	// The invariant this exists to hold: **nothing under /api/v1 ever answers
+	// with HTML.** Without it a request the router doesn't match falls through
+	// to the SPA, and a client parsing JSON gets a page of markup instead of an
+	// error it can read.
+	if (isPublicApiV1 && !isPublicApiV1Doc) {
+		if (!hasBearerToken(authorizationHeader)) {
 			return {
 				action: "block",
 				status: 401,
-				error: keyResult.error,
-				message: keyResult.message,
+				error: "Unauthorized",
+				message: "Valid API key required as Bearer token in Authorization header",
+				code: "unauthorized",
 			};
 		}
 	}
@@ -134,7 +177,7 @@ export function evaluateDeploymentPolicy(
  * Constant-time string comparison to prevent timing attacks on API keys.
  * Returns true if the strings are equal, false otherwise.
  */
-function timingSafeStringEqual(a: string, b: string): boolean {
+export function timingSafeStringEqual(a: string, b: string): boolean {
 	const bufA = Buffer.from(a);
 	const bufB = Buffer.from(b);
 	if (bufA.length !== bufB.length) {
@@ -143,6 +186,15 @@ function timingSafeStringEqual(a: string, b: string): boolean {
 		return false;
 	}
 	return timingSafeEqual(bufA, bufB);
+}
+
+/**
+ * Whether the request carries a non-empty Bearer token — a shape check only.
+ * Whether that token is *valid* needs a database lookup and belongs to
+ * createApiHandler.
+ */
+function hasBearerToken(header: string | null | undefined): boolean {
+	return typeof header === "string" && header.startsWith("Bearer ") && header.slice(7).trim().length > 0;
 }
 
 /**

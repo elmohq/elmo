@@ -1,0 +1,31 @@
+meta {
+  name: seed a prompt tagged gamma
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}",
+    "value": "Bruno tag fixture gamma",
+    "tags": ["bruno-target"]
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("tagPromptC", res.getBody().id);
+}

@@ -2,7 +2,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { assertAllowed, assertPromptSaveAllowed, decidePromptCap, promptSaveDelta } from "@workspace/lib/entitlements";
+import {
+	assertAllowed,
+	assertPromptSaveAllowed,
+	decidePromptCap,
+	promptSaveDelta,
+	withQuotaLock,
+} from "@workspace/lib/entitlements";
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";

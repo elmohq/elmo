@@ -1,0 +1,20 @@
+meta {
+  name: another tenant's tags are not found
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{nikeBrandId}}/tags
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}

@@ -1,0 +1,35 @@
+meta {
+  name: visibility over a relative window
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/visibility?lookback=1y
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  lookback: 1y
+}
+
+assert {
+  res.status: eq 200
+  res.body.brandId: eq default
+  res.body.series: isArray
+  res.body.totalRuns: gte 1
+}
+
+tests {
+  test("a gap in sampling reads as null, never as zero visibility", function() {
+    for (const point of res.getBody().series) {
+      expect(point.date).to.match(/^\d{4}-\d{2}-\d{2}$/);
+      expect(point.visibility === null || typeof point.visibility === "number").to.be.true;
+    }
+  });
+}

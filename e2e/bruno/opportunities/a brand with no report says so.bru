@@ -1,0 +1,22 @@
+meta {
+  name: a brand that has never been analyzed says so
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{nikeBrandId}}/opportunities
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq not-generated
+  res.body.generatedAt: isNull
+  res.body.opportunities: isEmpty
+}

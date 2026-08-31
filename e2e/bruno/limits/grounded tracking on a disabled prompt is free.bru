@@ -1,0 +1,41 @@
+meta {
+  name: a disabled prompt can be assigned grounded tracking
+  type: http
+  seq: 12
+  tags: [
+    cloud
+  ]
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/prompts/{{cappedPromptId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{cappedKey}}
+}
+
+body:json {
+  {
+    "premiumModels": ["claude"]
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("the assignment sticks without spending a pairing", function() {
+    expect(res.getBody().premiumModels).to.eql(["claude"]);
+    expect(res.getBody().enabled, "this case only means anything while the prompt is off").to.equal(false);
+  });
+}
+
+docs {
+  A disabled prompt is not sampled, so it holds no pairing — the pool counts
+  enabled prompts only. Re-enabling it is what would spend one, and that is
+  guarded by the same save-delta as everything else.
+}

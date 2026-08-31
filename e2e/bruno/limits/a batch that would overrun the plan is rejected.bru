@@ -1,0 +1,37 @@
+meta {
+  name: a batch that would overrun the prompt limit is rejected whole
+  type: http
+  seq: 2
+  tags: [
+    cloud
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts/bulk
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{cappedKey}}
+}
+
+body:json {
+  {
+    "brandId": "{{cappedBrandId}}",
+    "prompts": [
+      { "value": "Capped batch one" },
+      { "value": "Capped batch two" },
+      { "value": "Capped batch three" },
+      { "value": "Capped batch four" },
+      { "value": "Capped batch five" }
+    ]
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq prompt_limit
+  res.body.message: contains 6
+}

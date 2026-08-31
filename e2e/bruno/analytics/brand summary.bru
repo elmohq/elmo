@@ -1,0 +1,32 @@
+meta {
+  name: a brand summary in one request
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/summary?lookback=1y
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  lookback: 1y
+}
+
+assert {
+  res.status: eq 200
+  res.body.brandId: eq default
+  res.body.brandName: isString
+  res.body.range.startDate: isString
+  res.body.range.timezone: eq UTC
+  res.body.totalRuns: gte 1
+  res.body.totalPrompts: gte 1
+  res.body.totalCitations: gte 1
+  res.body.uniqueDomains: gte 1
+  res.body.platforms: isArray
+}

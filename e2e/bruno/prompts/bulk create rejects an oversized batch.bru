@@ -1,0 +1,32 @@
+meta {
+  name: a batch larger than the cap is rejected
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts/bulk
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+script:pre-request {
+  const prompts = Array.from({ length: 101 }, (_, i) => ({ value: `Oversized batch ${i}` }));
+  bru.setVar("oversizedBatch", JSON.stringify(prompts));
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}",
+    "prompts": {{oversizedBatch}}
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq validation_error
+}

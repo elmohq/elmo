@@ -1,0 +1,20 @@
+meta {
+  name: a computed tag cannot be removed
+  type: http
+  seq: 14
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/tags/unbranded
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq system_tag_immutable
+}

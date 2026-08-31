@@ -10,6 +10,7 @@
 
 import { slugify } from "@workspace/lib/app-urls";
 import { db } from "@workspace/lib/db/db";
+import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { ensureOrganization } from "@workspace/lib/db/provisioning";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { claimNewBrandSlug, findUnusedBrandSlug } from "@workspace/lib/db/unique-names";
@@ -71,6 +72,12 @@ export const createBrandInputSchema = z.object({
 	aliases: z.array(z.string()).optional(),
 	competitors: z.array(competitorInputSchema).optional(),
 	prompts: z.array(promptInputSchema).optional(),
+	/**
+	 * Workspace to create the brand in. Honoured only for instance admin keys;
+	 * an organization key always creates inside its own, so the route overrides
+	 * whatever is here.
+	 */
+	organizationId: z.string().min(1).optional(),
 });
 
 /** PATCH /api/v1/brands/:brandId body. brandId comes from the URL. */
@@ -101,6 +108,20 @@ export interface CreateBrandInput {
 	aliases?: string[];
 	competitors?: CompetitorInput[];
 	prompts?: PromptInput[];
+	/**
+	 * The workspace that will own — and be billed for — the brand. Null keeps
+	 * the historical behaviour of provisioning one named after the brand id,
+	 * which is right for an admin key standing up a whole tenant and wrong for
+	 * anyone acting inside a workspace that already exists.
+	 */
+	organizationId?: string | null;
+	/** A transaction the caller is already inside; see createBrand. */
+	conn?: DbConnection;
+	/**
+	 * Runs work once `conn`'s transaction commits. Scheduling is the only thing
+	 * here that must not happen inside it — see the call site.
+	 */
+	afterCommit?: (task: () => Promise<unknown>) => void;
 }
 
 /** Internal shape for updateBrand — matches storage. */
@@ -118,10 +139,15 @@ export type WizardOnboardingInput = z.infer<typeof wizardOnboardingInputSchema>;
 export interface BrandResult {
 	id: string;
 	name: string;
+	organizationId: string;
 	domains: string[];
 	aliases: string[];
 	enabled: boolean;
 	onboarded: boolean;
+	/** Platforms this brand is tracked on. Null means the deployment default. */
+	enabledModels: string[] | null;
+	/** Sampling cadence override in hours. Null means the plan cadence. */
+	delayOverrideHours: number | null;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -148,10 +174,13 @@ export function buildBrandResult(row: typeof brands.$inferSelect): BrandResult {
 	return {
 		id: row.id,
 		name: row.name,
+		organizationId: row.organizationId,
 		domains: [websiteHost, ...row.additionalDomains],
 		aliases: row.aliases,
 		enabled: row.enabled,
 		onboarded: row.onboarded,
+		enabledModels: row.enabledModels,
+		delayOverrideHours: row.delayOverrideHours,
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 	};
@@ -187,6 +216,7 @@ export function apiCreateInputToInternal(input: z.infer<typeof createBrandInputS
 		aliases: input.aliases,
 		competitors: input.competitors,
 		prompts: input.prompts,
+		organizationId: input.organizationId ?? null,
 	};
 }
 
@@ -213,10 +243,12 @@ async function insertCompetitors(args: {
 	brandId: string;
 	websiteHost: string;
 	source: { name: string; domains: string[]; aliases: string[] }[];
+	conn?: DbConnection;
 }): Promise<number> {
 	if (args.source.length === 0) return 0;
+	const conn = args.conn ?? db;
 
-	const existing = await db.query.competitors.findMany({
+	const existing = await conn.query.competitors.findMany({
 		where: eq(competitors.brandId, args.brandId),
 	});
 	const existingDomains = new Set(existing.flatMap((c) => c.domains));
@@ -235,9 +267,9 @@ async function insertCompetitors(args: {
 	}
 	if (toInsert.length === 0) return 0;
 
-	await assertCompetitorCap(args.brandId, toInsert.length);
+	await assertCompetitorCap(args.brandId, toInsert.length, conn);
 
-	await db.insert(competitors).values(toInsert);
+	await conn.insert(competitors).values(toInsert);
 	return toInsert.length;
 }
 
@@ -247,12 +279,19 @@ async function insertPrompts(args: {
 	website: string;
 	source: { value: string; tags: string[]; enabled: boolean }[];
 	dedupeAgainstExisting: boolean;
-}): Promise<number> {
-	if (args.source.length === 0) return 0;
+	conn?: DbConnection;
+	/**
+	 * Supplied when the brand row is still uncommitted in `conn`'s transaction:
+	 * looking it up would use a different connection and find nothing.
+	 */
+	organizationId?: string;
+}): Promise<string[]> {
+	if (args.source.length === 0) return [];
+	const conn = args.conn ?? db;
 
 	const seen = new Set<string>();
 	if (args.dedupeAgainstExisting) {
-		const existing = await db.query.prompts.findMany({
+		const existing = await conn.query.prompts.findMany({
 			where: eq(prompts.brandId, args.brandId),
 		});
 		for (const p of existing) seen.add(p.value.toLowerCase());
@@ -279,15 +318,15 @@ async function insertPrompts(args: {
 			systemTags: computeSystemTags(value, args.brandName, args.website),
 		});
 	}
-	if (rows.length === 0) return 0;
+	if (rows.length === 0) return [];
 
 	// Covers both wizard onboarding and POST /api/v1/brands — the two bulk
 	// prompt-creation surfaces share this chokepoint.
-	await assertCanAddPrompts(await getBrandOrganizationId(args.brandId), rows.filter((r) => r.enabled).length);
+	const organizationId = args.organizationId ?? (await getBrandOrganizationId(args.brandId));
+	await assertCanAddPrompts(organizationId, rows.filter((r) => r.enabled).length, args.conn);
 
-	const inserted = await db.insert(prompts).values(rows).returning({ id: prompts.id });
-	await createMultiplePromptJobSchedulers(inserted.map((r) => r.id));
-	return inserted.length;
+	const inserted = await conn.insert(prompts).values(rows).returning({ id: prompts.id });
+	return inserted.map((r) => r.id);
 }
 
 // ============================================================================
@@ -301,56 +340,77 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	const additionalDomains = dedupeDomains(input.additionalDomains ?? []).filter((d) => d !== websiteHost);
 	const aliases = dedupeAliases(input.aliases ?? []);
 
-	await claimNewBrandSlug(() =>
-		db.transaction(async (tx) => {
+	// Brands are hard-scoped to an org via a NOT NULL FK. The admin API uses the
+	// supplied id for both records, so materialize the org first. This is a no-op
+	// when an earlier call already created it.
+	//
+	// The whole aggregate shares one transaction. A brand that exists with none
+	// of its prompts is worse than no brand at all: the caller gets an error but
+	// retrying hits BrandConflictError, so there is no way back to a good state.
+	const organizationId = input.organizationId ?? input.id;
+	const write = async (tx: DbConnection) => {
+		// Only provision a workspace when the caller didn't name one. Naming an
+		// existing one is how a brand joins a tenant that is already being billed.
+		if (!input.organizationId) {
 			await ensureOrganization({ id: input.id, name: input.name }, tx);
+		}
+		const slug = await findUnusedBrandSlug(organizationId, slugify(input.name, "brand"), tx);
 
-			const slug = await findUnusedBrandSlug(input.id, slugify(input.name, "brand"), tx);
+		const [inserted] = await tx
+			.insert(brands)
+			.values({
+				id: input.id,
+				organizationId,
+				name: input.name,
+				slug,
+				website: formattedWebsite,
+				additionalDomains,
+				aliases,
+				enabled: true,
+				onboarded: true,
+			})
+			.onConflictDoNothing({ target: brands.id })
+			.returning({ id: brands.id });
+		if (!inserted) throw new BrandConflictError(input.id);
 
-			const [inserted] = await tx
-				.insert(brands)
-				.values({
-					id: input.id,
-					organizationId: input.id,
-					name: input.name,
-					slug,
-					website: formattedWebsite,
-					additionalDomains,
-					aliases,
-					enabled: true,
-					onboarded: true,
-				})
-				// Targeted at the id: untargeted, this would also swallow a slug
-				// collision and report the id as taken when it wasn't.
-				.onConflictDoNothing({ target: brands.id })
-				.returning({ id: brands.id });
-			if (!inserted) throw new BrandConflictError(input.id);
-		}),
-	);
+		await insertCompetitors({
+			brandId: input.id,
+			websiteHost,
+			source: (input.competitors ?? []).map((c) => ({
+				name: c.name,
+				domains: c.domains ?? [],
+				aliases: c.aliases ?? [],
+			})),
+			conn: tx,
+		});
 
-	await insertCompetitors({
-		brandId: input.id,
-		websiteHost,
-		source: (input.competitors ?? []).map((c) => ({
-			name: c.name,
-			domains: c.domains ?? [],
-			aliases: c.aliases ?? [],
-		})),
-	});
+		return await insertPrompts({
+			brandId: input.id,
+			brandName: input.name,
+			website: formattedWebsite,
+			source: (input.prompts ?? []).map((p) => ({
+				value: p.value,
+				tags: sanitizeUserTags(p.tags ?? []),
+				enabled: p.enabled ?? true,
+			})),
+			dedupeAgainstExisting: false,
+			conn: tx,
+			organizationId,
+		});
+	};
+	// Reuse the caller's transaction when there is one. Opening a second here
+	// would hold theirs open while waiting on another pooled connection.
+	const promptIds = input.conn ? await write(input.conn) : await claimNewBrandSlug(() => db.transaction(write));
 
-	await insertPrompts({
-		brandId: input.id,
-		brandName: input.name,
-		website: formattedWebsite,
-		source: (input.prompts ?? []).map((p) => ({
-			value: p.value,
-			tags: sanitizeUserTags(p.tags ?? []),
-			enabled: p.enabled ?? true,
-		})),
-		dedupeAgainstExisting: false,
-	});
+	// A scheduler for a prompt the transaction rolled back would outlive the
+	// prompt itself, and it queries through the pool — which would strand this
+	// transaction waiting on a second connection. So it waits for the commit,
+	// whether that is ours or the caller's.
+	const schedule = () => createMultiplePromptJobSchedulers(promptIds);
+	if (input.afterCommit) input.afterCommit(schedule);
+	else await schedule();
 
-	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.id) });
+	const refreshed = await (input.conn ?? db).query.brands.findFirst({ where: eq(brands.id, input.id) });
 	return buildBrandResult(refreshed!);
 }
 
@@ -412,7 +472,7 @@ export async function saveWizardOnboarding(input: WizardOnboardingInput): Promis
 		})),
 	});
 
-	await insertPrompts({
+	const wizardPromptIds = await insertPrompts({
 		brandId: input.brandId,
 		brandName: existing.name,
 		website: existing.website,
@@ -423,6 +483,7 @@ export async function saveWizardOnboarding(input: WizardOnboardingInput): Promis
 		})),
 		dedupeAgainstExisting: true,
 	});
+	await createMultiplePromptJobSchedulers(wizardPromptIds);
 
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
 	return buildBrandResult(refreshed!);

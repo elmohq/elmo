@@ -1,0 +1,41 @@
+meta {
+  name: the searches engines ran while answering
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/query-fanout?lookback=1y
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  lookback: 1y
+}
+
+assert {
+  res.status: eq 200
+  res.body.totalRuns: gte 1
+  res.body.uniqueQueries: gte 1
+  res.body.data: isArray
+}
+
+tests {
+  test("coverage is measured against every run, not just the ones that searched", function() {
+    const body = res.getBody();
+    expect(body.fanoutRuns).to.be.at.most(body.totalRuns);
+    expect(body.coverageRate).to.be.at.least(0);
+    expect(body.coverageRate).to.be.at.most(100);
+  });
+
+  test("a seeded web query is reported", function() {
+    // Fan-out normalizes queries before grouping them, so compare in kind.
+    const queries = res.getBody().data.map((q) => q.query.toLowerCase());
+    expect(queries).to.include("best ai monitoring tools 2025");
+  });
+}

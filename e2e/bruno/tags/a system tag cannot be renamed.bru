@@ -1,0 +1,26 @@
+meta {
+  name: a computed tag cannot be renamed
+  type: http
+  seq: 13
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/tags/branded
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+body:json {
+  {
+    "name": "brand-y"
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq system_tag_immutable
+}

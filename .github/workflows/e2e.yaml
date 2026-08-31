@@ -10,9 +10,11 @@
 #      and run the `worker` project, which submits a job and asserts the worker
 #      processes it
 #   3. cloud — worker back down, recreate `web` with e2e/modes/cloud.yaml,
-#      re-seed, run the `cloud` project
+#      re-seed, run the `cloud` project and the `cloud`-tagged Bruno cases
+#      (plan enforcement, which only exists in this mode)
 #   4. whitelabel — same with e2e/modes/whitelabel.yaml
-#   5. demo — same with e2e/modes/demo.yaml
+#   5. demo — same with e2e/modes/demo.yaml, plus the `demo`-tagged Bruno
+#      cases (every API write must be refused)
 #
 # The mode phases only recreate `web`: DEPLOYMENT_MODE is read at runtime, so
 # one image serves all of them. Ordering matters — the fixture suites run while
@@ -186,6 +188,11 @@ jobs:
         env:
           PLAYWRIGHT_HTML_REPORT: playwright-report-cloud
 
+      # Plan enforcement only exists in cloud mode, so the Bruno cases that
+      # assert it are tagged `cloud` and excluded from the local run above.
+      - name: Run Bruno API tests (cloud mode)
+        run: pnpm test:api:cloud
+
       - name: Switch web to whitelabel mode
         env:
           COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml:e2e/modes/whitelabel.yaml
@@ -218,6 +225,16 @@ jobs:
         run: pnpm -C e2e exec playwright test --project=demo
         env:
           PLAYWRIGHT_HTML_REPORT: playwright-report-demo
+
+      # Every /api/v1 write has to be refused here, whatever the key.
+      - name: Run Bruno API tests (demo mode)
+        run: pnpm test:api:demo
+
+      # The spec is written by hand next to the code it describes, so nothing
+      # but this stops the two from disagreeing. Every response the three runs
+      # above recorded is held against the schema that documents it.
+      - name: Check responses against the OpenAPI spec
+        run: pnpm validate:spec
 
       - name: Dump web logs
         if: failure()

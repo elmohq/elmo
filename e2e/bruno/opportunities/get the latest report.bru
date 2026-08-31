@@ -1,0 +1,55 @@
+meta {
+  name: read the brand's latest opportunities report
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/opportunities
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.brandId: eq default
+  res.body.status: eq ready
+  res.body.generatedAt: isString
+  res.body.model: isString
+  res.body.summary: isNotEmpty
+  res.body.risks: isNotEmpty
+  res.body.opportunities: length 2
+}
+
+tests {
+  test("the stored report is returned, not regenerated", function() {
+    const body = res.getBody();
+    expect(body.opportunities[0].category).to.equal("creation");
+    expect(body.opportunities[1].category).to.equal("outreach");
+  });
+
+  test("every opportunity carries the evidence behind it", function() {
+    const categories = ["creation", "existing-content", "outreach", "social"];
+    for (const item of res.getBody().opportunities) {
+      expect(categories).to.include(item.category);
+      expect(item.title).to.be.a("string").and.to.not.be.empty;
+      expect(item.why).to.be.a("string").and.to.not.be.empty;
+      expect(item.relatedPrompts).to.be.an("array");
+      expect(item.yourCitations).to.be.an("array");
+      expect(item.competitorCitations).to.be.an("array");
+    }
+  });
+
+  test("a related prompt either resolves to a tracked prompt or says it did not", function() {
+    for (const item of res.getBody().opportunities) {
+      for (const prompt of item.relatedPrompts) {
+        expect(prompt.text).to.be.a("string");
+        expect(prompt.promptId === null || typeof prompt.promptId === "string").to.be.true;
+      }
+    }
+  });
+}

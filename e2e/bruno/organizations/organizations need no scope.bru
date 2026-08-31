@@ -1,0 +1,27 @@
+meta {
+  name: organizations need no scope
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/organizations
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgAnalyticsOnlyKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.pagination.total: eq 1
+  res.body.data[0].id: eq default
+}
+
+docs {
+  A key can only ever see the organization it is bound to, so gating this behind
+  brands:read would only stop an analytics-only key from naming the workspace
+  its own numbers belong to.
+}

@@ -1,0 +1,39 @@
+meta {
+  name: individual pages the engines cited
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/citations/urls?lookback=1y
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  lookback: 1y
+}
+
+assert {
+  res.status: eq 200
+  res.body.data: isArray
+  res.body.totals.citations: gte 1
+}
+
+tests {
+  test("each URL carries the classification the dashboard shows", function() {
+    const categories = ["brand", "competitor", "editorial", "reviews", "ecommerce", "social",
+                        "developer", "pr", "reference", "institutional", "other"];
+    for (const row of res.getBody().data) {
+      expect(row.url).to.be.a("string");
+      expect(row.domain).to.be.a("string");
+      expect(categories).to.include(row.category);
+      expect(row.pageType).to.be.a("string");
+      expect(row.isNew).to.be.a("boolean");
+    }
+  });
+}

@@ -12,7 +12,8 @@ import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { isBrandInScope } from "@/lib/api/scope";
 import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 
 // z.guid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
@@ -27,24 +28,35 @@ const updateCompetitorBody = z
 	})
 	.refine((body) => Object.keys(body).length > 0, "At least one of name, domains, or aliases must be provided");
 
+/**
+ * Load a competitor the caller may reach. A competitor belonging to another
+ * tenant reads exactly like one that does not exist.
+ */
+async function loadInScope(auth: Parameters<typeof isBrandInScope>[0], competitorId: string) {
+	const row = await db.query.competitors.findFirst({ where: eq(competitors.id, competitorId) });
+	if (!row || !(await isBrandInScope(auth, row.brandId))) {
+		throw new ApiError(404, "Not Found", `Competitor with ID '${competitorId}' not found`);
+	}
+	return row;
+}
+
 export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				params: competitorParams,
-				handle: async ({ params }) => {
-					const row = await db.query.competitors.findFirst({ where: eq(competitors.id, params.competitorId) });
-					if (!row) {
-						throw new ApiError(404, "Not Found", `Competitor with ID '${params.competitorId}' not found`);
-					}
-					return row;
+				scopes: ["competitors:read"],
+				handle: async ({ params, auth }) => {
+					return await loadInScope(auth, params.competitorId);
 				},
 			}),
 
 			PATCH: createApiHandler({
 				params: competitorParams,
 				body: updateCompetitorBody,
-				handle: async ({ params, body }) => {
+				scopes: ["competitors:write"],
+				handle: async ({ params, body, auth }) => {
+					await loadInScope(auth, params.competitorId);
 					const { competitorId } = params;
 
 					const existing = await db.query.competitors.findFirst({ where: eq(competitors.id, competitorId) });
@@ -79,7 +91,9 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 
 			DELETE: createApiHandler({
 				params: competitorParams,
-				handle: async ({ params }) => {
+				scopes: ["competitors:delete"],
+				handle: async ({ params, auth }) => {
+					await loadInScope(auth, params.competitorId);
 					const [deleted] = await db.delete(competitors).where(eq(competitors.id, params.competitorId)).returning();
 					if (!deleted) {
 						throw new ApiError(404, "Not Found", `Competitor with ID '${params.competitorId}' not found`);
@@ -87,6 +101,6 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 					return deleted;
 				},
 			}),
-		},
+		}),
 	},
 });

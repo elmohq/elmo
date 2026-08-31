@@ -1,0 +1,31 @@
+meta {
+  name: track a prompt on a grounded platform
+  type: http
+  seq: 28
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+body:json {
+  {
+    "premiumModels": ["claude"]
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("the grounded platform is stored", function() {
+    expect(res.getBody().premiumModels).to.eql(["claude"]);
+  });
+}

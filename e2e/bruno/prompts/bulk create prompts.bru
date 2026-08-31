@@ -1,0 +1,45 @@
+meta {
+  name: create several prompts at once
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts/bulk
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}",
+    "prompts": [
+      { "value": "Bruno bulk prompt one", "tags": ["bruno-bulk"] },
+      { "value": "Bruno bulk prompt two", "tags": ["bruno-bulk"] },
+      { "value": "Bruno bulk prompt three", "enabled": false }
+    ]
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.data: length 3
+}
+
+tests {
+  test("each prompt comes back with an id and its brand", function() {
+    for (const prompt of res.getBody().data) {
+      expect(prompt.id).to.be.a("string");
+      expect(prompt.brandId).to.equal(bru.getEnvVar("brandId"));
+    }
+  });
+
+  test("the enabled flag is honoured per prompt", function() {
+    const disabled = res.getBody().data.filter((p) => p.enabled === false);
+    expect(disabled.length).to.equal(1);
+  });
+}

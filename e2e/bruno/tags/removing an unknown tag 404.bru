@@ -1,0 +1,20 @@
+meta {
+  name: removing a tag nothing carries
+  type: http
+  seq: 16
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/tags/bruno-never-used
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}

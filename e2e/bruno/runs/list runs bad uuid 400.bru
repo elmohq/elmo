@@ -1,0 +1,24 @@
+meta {
+  name: an unparseable prompt id
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{badUuid}}/runs?lookback=1y
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  lookback: 1y
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq validation_error
+}

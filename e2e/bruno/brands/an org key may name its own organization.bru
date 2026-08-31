@@ -1,0 +1,38 @@
+meta {
+  name: an org key may name its own organization
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/api/v1/brands
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+script:pre-request {
+  bru.setVar("ownOrgBrandId", "e2e-own-org-" + Date.now());
+}
+
+body:json {
+  {
+    "id": "{{ownOrgBrandId}}",
+    "name": "Own Org Brand",
+    "domains": ["{{ownOrgBrandId}}.example.com"],
+    "organizationId": "{{orgId}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.organizationId: eq default
+}
+
+docs {
+  Naming the key's own organization is accepted rather than ignored: a client
+  that fills the field in from GET /me should not be punished for it.
+}

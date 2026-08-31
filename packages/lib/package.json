@@ -12,6 +12,7 @@
 	},
 	"exports": {
 		"./db/db": "./src/db/db.ts",
+		"./db/db-connection": "./src/db/db-connection.ts",
 		"./db/schema": "./src/db/schema.ts",
 		"./db/auth-sync": "./src/db/auth-sync.ts",
 		"./db/provisioning": "./src/db/provisioning.ts",
@@ -40,6 +41,7 @@
 		"@ai-sdk/anthropic": "^4.0.39",
 		"@ai-sdk/openai": "^4.0.42",
 		"@anthropic-ai/sdk": "^0.117.1",
+		"@better-auth/api-key": "1.6.29",
 		"@better-auth/sso": "^1.6.29",
 		"@better-auth/stripe": "^1.6.29",
 		"@brightdata/sdk": "^1.2.0",
