@@ -28,9 +28,6 @@ import { type ApiAuthFailure, type Principal, resolveApiAuth, type UserAuth } fr
 
 export type McpAuthResult = { auth: Principal } | { failure: ApiAuthFailure };
 
-/** Where `/api/mcp` is served, and what its OAuth resource identifier names. */
-export const MCP_PATH = "/api/mcp";
-
 /**
  * RFC 9728. A client that gets a `401` reads the `resource_metadata` challenge,
  * fetches this document, and learns which authorization server to talk to.

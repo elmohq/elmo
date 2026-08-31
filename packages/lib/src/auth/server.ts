@@ -64,6 +64,9 @@ export interface CreateAuthOptions {
  */
 export const MCP_LOGIN_PAGE = "/auth/authorize";
 
+/** Where the MCP endpoint is served, and what its resource identifier names. */
+export const MCP_PATH = "/api/mcp";
+
 export function createAuth(options?: CreateAuthOptions) {
 	const appUrl = process.env.APP_URL || process.env.VITE_APP_URL;
 	if (!appUrl) {
@@ -164,12 +167,15 @@ export function createAuth(options?: CreateAuthOptions) {
 			// token that acts as that person — the same reach they have in the
 			// dashboard, no more.
 			//
-			// `resource` is the protected resource identifier a client checks the
+			// `resource` is the protected resource identifier a client checks its
 			// token audience against, so it names the MCP endpoint rather than the
-			// origin the plugin would default to.
+			// origin the plugin would default to. It is built from the same
+			// `baseURL` the plugin advertises as the authorization server — naming
+			// the two differently is what makes a strict client refuse to connect
+			// against a local instance.
 			mcp({
 				loginPage: MCP_LOGIN_PAGE,
-				resource: `${appUrl.replace(/\/$/, "")}/api/mcp`,
+				resource: `${baseURL.replace(/\/$/, "")}${MCP_PATH}`,
 			}),
 			sso(options?.sso),
 			...(options?.extraPlugins ?? []),
