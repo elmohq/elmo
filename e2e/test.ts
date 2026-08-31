@@ -55,6 +55,8 @@ export const test = base.extend<
 		});
 	},
 
+	// Listening here rather than in the auto fixture above keeps a spec that only
+	// takes `request` from building a browser context it never uses.
 	context: async ({ context, _consoleErrorLog }, use) => {
 		const watch = (page: Page) => {
 			page.on("console", (message) => {
