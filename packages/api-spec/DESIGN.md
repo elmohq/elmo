@@ -528,8 +528,16 @@ different numbers than the UI (see §5).
   `provider`, `webSearchEnabled`, `brandMentioned`, `competitorsMentioned`,
   `webQueries`, `citationCount`, `createdAt`. **No answer text** — keeps the list
   payload bounded.
-- `GET /v1/runs/{runId}` — one run, plus `answer: { text }` and the full
-  `citations` array.
+- `GET /v1/prompts/{promptId}/runs/{runId}` — one run, plus `answer: { text }`
+  and the full `citations` array.
+
+**Nested, not a top-level `/v1/runs`.** A run is one answer to one prompt and
+has no meaning apart from it; every way a caller arrives at a run id is by
+listing that prompt's runs, so the prompt is always in hand. Nesting makes the
+detail path the list path plus an id, which is the shape a reader guesses, and
+it makes "this run belongs to that prompt" something the URL states and the
+handler checks — a run addressed under the wrong prompt answers `404` rather
+than quietly succeeding.
 
 `answer.text` is the normalized extraction (`extractTextContent`), never the
 provider's `rawOutput` blob. Exposing provider-shaped JSON would hand our

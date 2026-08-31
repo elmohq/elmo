@@ -1,5 +1,9 @@
 /**
- * GET /api/v1/runs/:runId — one answer, in full.
+ * GET /api/v1/prompts/:promptId/runs/:runId — one answer, in full.
+ *
+ * A run only means anything as one of a prompt's answers, so it is addressed
+ * through the prompt that produced it. A run belonging to some other prompt
+ * reads exactly like one that does not exist.
  *
  * `answer.text` is the normalized extraction, never the provider's own payload:
  * that shape belongs to the provider, and exposing it would quietly make it
@@ -9,20 +13,27 @@ import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { citations, promptRuns } from "@workspace/lib/db/schema";
 import { extractTextContent } from "@workspace/lib/text-extraction";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { isBrandInScope } from "@/lib/api/scope";
 
-export const Route = createFileRoute("/api/v1/runs/$runId")({
+export const Route = createFileRoute("/api/v1/prompts/$promptId/runs/$runId")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
-				params: z.object({ runId: z.guid("Invalid run ID format") }),
+				params: z.object({
+					promptId: z.guid("Invalid prompt ID format"),
+					runId: z.guid("Invalid run ID format"),
+				}),
 				scopes: ["runs:read"],
 				handle: async ({ params, auth }) => {
-					const { runId } = params;
-					const [run] = await db.select().from(promptRuns).where(eq(promptRuns.id, runId)).limit(1);
+					const { promptId, runId } = params;
+					const [run] = await db
+						.select()
+						.from(promptRuns)
+						.where(and(eq(promptRuns.id, runId), eq(promptRuns.promptId, promptId)))
+						.limit(1);
 					if (!run || !(await isBrandInScope(auth, run.brandId))) {
 						throw new ApiError(404, "Not Found", `Run with ID '${runId}' not found`);
 					}

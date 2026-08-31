@@ -4119,7 +4119,7 @@
 		"/prompts/{promptId}/runs": {
 			"get": {
 				"summary": "List runs for a prompt",
-				"description": "Individual model answers behind the aggregates, newest first, without their text — the list stays small enough to page through. Fetch `GET /runs/{runId}` for the answer itself.",
+				"description": "Individual model answers behind the aggregates, newest first, without their text — the list stays small enough to page through. Fetch `GET /prompts/{promptId}/runs/{runId}` for the answer itself.",
 				"operationId": "listPromptRuns",
 				"tags": ["Runs"],
 				"x-elmo-scopes": ["runs:read"],
@@ -4162,6 +4162,65 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/RunList"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/prompts/{promptId}/runs/{runId}": {
+			"get": {
+				"summary": "Get a run",
+				"description": "One model answer, with its text normalized out of the provider’s response and its citations in the order the engine listed them. A run belonging to some other prompt answers `404`. The provider’s raw payload is deliberately not exposed — its shape belongs to the provider, not to this API.",
+				"operationId": "getRun",
+				"tags": ["Runs"],
+				"x-elmo-scopes": ["runs:read"],
+				"parameters": [
+					{
+						"name": "promptId",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						}
+					},
+					{
+						"name": "runId",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Get a run",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Run"
 								}
 							}
 						}
@@ -4717,56 +4776,6 @@
 				},
 				"x-elmo-scopes": [],
 				"x-elmo-admin-only": true
-			}
-		},
-		"/runs/{runId}": {
-			"get": {
-				"summary": "Get a run",
-				"description": "One model answer, with its text normalized out of the provider's response and its citations in the order the engine listed them. The provider's raw payload is deliberately not exposed — its shape belongs to the provider, not to this API.",
-				"operationId": "getRun",
-				"tags": ["Runs"],
-				"x-elmo-scopes": ["runs:read"],
-				"parameters": [
-					{
-						"name": "runId",
-						"in": "path",
-						"required": true,
-						"schema": {
-							"type": "string",
-							"format": "uuid"
-						}
-					}
-				],
-				"responses": {
-					"200": {
-						"description": "Get a run",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Run"
-								}
-							}
-						}
-					},
-					"400": {
-						"$ref": "#/components/responses/ValidationError"
-					},
-					"401": {
-						"$ref": "#/components/responses/UnauthorizedError"
-					},
-					"403": {
-						"$ref": "#/components/responses/ForbiddenError"
-					},
-					"404": {
-						"$ref": "#/components/responses/NotFoundError"
-					},
-					"429": {
-						"$ref": "#/components/responses/RateLimitError"
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalServerError"
-					}
-				}
 			}
 		},
 		"/tools/analyze": {

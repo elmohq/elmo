@@ -1,9 +1,10 @@
 /**
  * GET /api/v1/prompts/:promptId/runs — the answers behind a prompt.
  *
- * Metadata only, newest first. The answer text lives on `GET /runs/:runId`,
- * which keeps this list small enough to page through: a window of runs across
- * every platform would otherwise be megabytes of prose.
+ * Metadata only, newest first. The answer text lives one level down, on
+ * `GET /api/v1/prompts/:promptId/runs/:runId`, which keeps this list small
+ * enough to page through: a window of runs across every platform would
+ * otherwise be megabytes of prose.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
@@ -15,7 +16,7 @@ import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { isBrandInScope } from "@/lib/api/scope";
 import { countPromptRuns, getPromptRuns } from "@/lib/postgres-read";
 
-export const Route = createFileRoute("/api/v1/prompts/$promptId/runs")({
+export const Route = createFileRoute("/api/v1/prompts/$promptId/runs/")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({

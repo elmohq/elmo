@@ -32,7 +32,7 @@ tests {
       "/brands/{brandId}/prompt-performance",
       "/prompts/bulk",
       "/prompts/{promptId}/runs",
-      "/runs/{runId}",
+      "/prompts/{promptId}/runs/{runId}",
     ]) {
       expect(paths, `${path} should be documented`).to.have.property(path);
     }
