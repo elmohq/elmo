@@ -1,4 +1,3 @@
-import { expect, test } from "@playwright/test";
 import {
 	NIKE_BRAND_ID,
 	SLUGGED_BRAND_ID,
@@ -10,6 +9,7 @@ import {
 	brandUrl,
 	organizationUrl,
 } from "../../fixtures";
+import { expect, failedResource, test } from "../../test";
 
 const BRAND_URL = brandUrl();
 const SLUGGED_BRAND_URL = brandUrl(SLUGGED_BRAND_SLUG);
@@ -39,14 +39,16 @@ test.describe("App routing", () => {
 		});
 	});
 
-	test("an unknown page offers everything the user can reach", async ({ page }) => {
+	test("an unknown page offers everything the user can reach", async ({ page, consoleErrors }) => {
+		consoleErrors.allow(failedResource(404, "/app/org/not-a-organization"));
 		await page.goto("/app/org/not-a-organization");
 
 		await expect(page.getByText("That page doesn't exist or moved.")).toBeVisible({ timeout: 30_000 });
 		await expect(page.getByRole("link", { name: TEST_BRAND_NAME, exact: true }).first()).toBeVisible();
 	});
 
-	test("the mark on a full-page view leads to the directory", async ({ page }) => {
+	test("the mark on a full-page view leads to the directory", async ({ page, consoleErrors }) => {
+		consoleErrors.allow(failedResource(404, "/app/org/not-a-organization"), failedResource(404, "/appadsf"));
 		await page.goto("/app/org/not-a-organization");
 
 		const mark = page.getByRole("link", { name: "Go to your organizations" });
@@ -59,14 +61,16 @@ test.describe("App routing", () => {
 		});
 	});
 
-	test("a pre-organization link lands on the same directory", async ({ page }) => {
+	test("a pre-organization link lands on the same directory", async ({ page, consoleErrors }) => {
+		consoleErrors.allow(failedResource(404, `/app/${TEST_BRAND_ID}/citations`));
 		await page.goto(`/app/${TEST_BRAND_ID}/citations`);
 
 		await expect(page.getByText("That page doesn't exist or moved.")).toBeVisible({ timeout: 30_000 });
 		await expect(page.locator(`a[href="${BRAND_URL}"]`).first()).toBeVisible();
 	});
 
-	test("a brand from another organization does not resolve under this one", async ({ page }) => {
+	test("a brand from another organization does not resolve under this one", async ({ page, consoleErrors }) => {
+		consoleErrors.allow(failedResource(404, brandUrl(NIKE_BRAND_ID)));
 		await page.goto(brandUrl(NIKE_BRAND_ID));
 		await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
 	});
