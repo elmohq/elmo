@@ -2,7 +2,7 @@
 	"openapi": "3.0.3",
 	"info": {
 		"title": "Elmo API",
-		"description": "Read and manage the brands, prompts, competitors, and AI-visibility analytics of an Elmo deployment.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header. Two kinds of token are accepted.\n\n**Instance admin keys** come from the operator's `ADMIN_API_KEYS` environment variable. They reach every organization and every endpoint, including the admin-only ones, and are not subject to plan limits or rate limits.\n\n**Organization keys** (`elmo_…`) are issued from the dashboard. A key acts inside exactly one organization, carries an explicit set of scopes, and may be narrowed further to a subset of that organization's brands. Plan limits, read-only mode, and per-key rate limits all apply.\n\n## Scopes\n\nEach operation lists the scope it requires in `x-elmo-scopes`. Admin keys hold every scope implicitly.\n\n| Scope | Grants |\n| --- | --- |\n| `brands:read` / `brands:write` | Read or manage brands |\n| `prompts:read` / `prompts:write` | Read or manage prompts |\n| `competitors:read` / `competitors:write` / `competitors:delete` | Read, manage, or delete competitors |\n| `analytics:read` | Read aggregated visibility, share of voice, citations, and fan-out |\n| `runs:read` | Read individual model answers and their citations |\n| `billing:read` | Read the organization's plan, limits, and usage |\n\nDeleting a competitor is a scope of its own, so a key that syncs competitors cannot erase them by accident. Deleting a *prompt* has no scope at all: it takes every run and citation with it, the dashboard offers no such action, and `PATCH /prompts/{promptId}` with `enabled: false` stops the tracking without losing the history. It is reachable with an instance admin key only.\n\nThere is deliberately no billing write scope: the API cannot change a subscription, an add-on quantity, or a payment method under any key, including an admin key. Operations marked `x-elmo-admin-only` are reachable with an instance admin key only; no scope grants them. Report generation and brand analysis spend provider budget with no organization to bill it to; deleting a prompt destroys tracked history the dashboard itself will not. For the same reason a single *field* can be admin-only: `enabled` on `PATCH /brands/{brandId}` stops a brand being sampled at all, so setting it with an organization key is a `403`.\n\n## Access and errors\n\nA brand outside the calling key's reach answers `404` with the same body a brand that does not exist would, so a key can never probe another tenant's data. A key that is valid but lacks the scope an operation requires answers `403` naming the missing scope.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Collections take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object. Analytics endpoints take `startDate` + `endDate` (with an optional `timezone`) and answer with the whole window in one response.\n\n## Stability\n\nAn operation whose response shape may still change carries `x-stability: experimental`, and says so in the first line of its description. Everything else is stable: its shape will only ever gain fields. The absence of the marker is the promise.",
+		"description": "Read and manage the brands, prompts, competitors, and AI-visibility analytics of an Elmo deployment.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header. Two kinds of token are accepted.\n\n**Instance admin keys** come from the operator's `ADMIN_API_KEYS` environment variable. They reach every organization and every endpoint, including the admin-only ones, and are not subject to plan limits or rate limits.\n\n**Organization keys** (`elmo_…`) are issued from the dashboard. A key acts inside exactly one organization, carries an explicit set of scopes, and may be narrowed further to a subset of that organization's brands. Plan limits, read-only mode, and per-key rate limits all apply.\n\n## Scopes\n\nEach operation lists the scope it requires in `x-elmo-scopes`. Admin keys hold every scope implicitly.\n\n| Scope | Grants |\n| --- | --- |\n| `brands:read` / `brands:write` | Read or manage brands |\n| `prompts:read` / `prompts:write` | Read or manage prompts |\n| `competitors:read` / `competitors:write` / `competitors:delete` | Read, manage, or delete competitors |\n| `analytics:read` | Read aggregated visibility, share of voice, citations, and fan-out |\n| `runs:read` | Read individual model answers and their citations |\n| `billing:read` | Read the organization's plan, limits, and usage |\n\nDeleting a competitor is a scope of its own, so a key that syncs competitors cannot erase them by accident. Deleting a *prompt* has no scope at all: it takes every run and citation with it, the dashboard offers no such action, and `PATCH /prompts/{promptId}` with `enabled: false` stops the tracking without losing the history. It is reachable with an instance admin key only.\n\nThere is deliberately no billing write scope: the API cannot change a subscription, an add-on quantity, or a payment method under any key, including an admin key. Operations marked `x-elmo-admin-only` are reachable with an instance admin key only; no scope grants them. Report generation and brand analysis spend provider budget with no organization to bill it to; deleting a prompt destroys tracked history the dashboard itself will not. For the same reason a single *field* can be admin-only: `enabled` on `PATCH /brands/{brandId}` stops a brand being sampled at all, so setting it with an organization key is a `403`.\n\n## Access and errors\n\nA brand outside the calling key's reach answers `404` with the same body a brand that does not exist would, so a key can never probe another tenant's data. A key that is valid but lacks the scope an operation requires answers `403` naming the missing scope.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Collections take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object. Analytics endpoints take `startDate` + `endDate` and answer with the whole window in one response; days are bucketed in UTC.\n\n## Stability\n\nAn operation whose response shape may still change carries `x-stability: experimental`, and says so in the first line of its description. Everything else is stable: its shape will only ever gain fields. The absence of the marker is the promise.",
 		"version": "1.1.0",
 		"contact": {
 			"name": "Elmo",
@@ -801,7 +801,7 @@
 				"required": ["page", "limit", "total", "totalPages"]
 			},
 			"DateRange": {
-				"description": "The window the response was computed over.",
+				"description": "The window the response was computed over. Days are bucketed in UTC.",
 				"type": "object",
 				"properties": {
 					"startDate": {
@@ -811,12 +811,9 @@
 					"endDate": {
 						"type": "string",
 						"format": "date"
-					},
-					"timezone": {
-						"type": "string"
 					}
 				},
-				"required": ["startDate", "endDate", "timezone"]
+				"required": ["startDate", "endDate"]
 			},
 			"ApiKeyIdentity": {
 				"type": "object",
@@ -1431,7 +1428,7 @@
 						"items": {
 							"$ref": "#/components/schemas/PromptPerformance"
 						},
-						"description": "Every enabled prompt's results over the window."
+						"description": "Every prompt sampled over the window, with its results."
 					}
 				},
 				"required": ["brandId", "range", "data"]
@@ -2053,16 +2050,6 @@
 					"format": "date"
 				}
 			},
-			"Timezone": {
-				"name": "timezone",
-				"in": "query",
-				"description": "IANA timezone the daily buckets are computed in.",
-				"required": false,
-				"schema": {
-					"type": "string",
-					"default": "UTC"
-				}
-			},
 			"ModelFilter": {
 				"name": "model",
 				"in": "query",
@@ -2322,9 +2309,6 @@
 						"$ref": "#/components/parameters/EndDate"
 					},
 					{
-						"$ref": "#/components/parameters/Timezone"
-					},
-					{
 						"$ref": "#/components/parameters/ModelFilter"
 					},
 					{
@@ -2379,9 +2363,6 @@
 					},
 					{
 						"$ref": "#/components/parameters/EndDate"
-					},
-					{
-						"$ref": "#/components/parameters/Timezone"
 					},
 					{
 						"$ref": "#/components/parameters/ModelFilter"
@@ -2440,9 +2421,6 @@
 						"$ref": "#/components/parameters/EndDate"
 					},
 					{
-						"$ref": "#/components/parameters/Timezone"
-					},
-					{
 						"$ref": "#/components/parameters/ModelFilter"
 					},
 					{
@@ -2491,15 +2469,6 @@
 				"parameters": [
 					{
 						"$ref": "#/components/parameters/BrandIdPath"
-					},
-					{
-						"name": "timezone",
-						"in": "query",
-						"required": false,
-						"description": "IANA time zone the underlying digest is bucketed by. Defaults to `UTC`.",
-						"schema": {
-							"type": "string"
-						}
 					}
 				],
 				"responses": {
@@ -2535,7 +2504,7 @@
 		"/brands/{brandId}/prompt-performance": {
 			"get": {
 				"summary": "List prompt performance",
-				"description": "Per-prompt mention rates over the window. The analytics counterpart to `GET /prompts?brandId=`, which returns prompt configuration rather than results.\n\nEnabled prompts only: a disabled prompt isn't sampled, so it has no results over the window to report.",
+				"description": "Per-prompt mention rates over the window. The analytics counterpart to `GET /prompts?brandId=`, which returns prompt configuration rather than results.\n\nA prompt the brand stopped tracking is not sampled, so it has no results over the window and does not appear here.",
 				"operationId": "listBrandPromptPerformance",
 				"tags": ["Analytics"],
 				"x-elmo-scopes": ["analytics:read"],
@@ -2548,9 +2517,6 @@
 					},
 					{
 						"$ref": "#/components/parameters/EndDate"
-					},
-					{
-						"$ref": "#/components/parameters/Timezone"
 					},
 					{
 						"$ref": "#/components/parameters/ModelFilter"
@@ -2607,9 +2573,6 @@
 					},
 					{
 						"$ref": "#/components/parameters/EndDate"
-					},
-					{
-						"$ref": "#/components/parameters/Timezone"
 					},
 					{
 						"$ref": "#/components/parameters/ModelFilter"
@@ -3216,15 +3179,6 @@
 						}
 					},
 					{
-						"name": "enabled",
-						"in": "query",
-						"description": "Only prompts with this enabled state.",
-						"required": false,
-						"schema": {
-							"type": "boolean"
-						}
-					},
-					{
 						"name": "tags",
 						"in": "query",
 						"description": "Comma-separated tags. A prompt matches if it carries any of them.",
@@ -3564,9 +3518,6 @@
 					},
 					{
 						"$ref": "#/components/parameters/EndDate"
-					},
-					{
-						"$ref": "#/components/parameters/Timezone"
 					},
 					{
 						"$ref": "#/components/parameters/ModelFilter"

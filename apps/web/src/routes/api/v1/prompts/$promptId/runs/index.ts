@@ -38,9 +38,8 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/runs/")({
 					const { page, limit, offset } = parsePaging(url);
 					const model = url.searchParams.get("model") ?? undefined;
 
-					// Both go through the read layer's timezone-aware, half-open window,
-					// so a run just after local midnight lands on the day the caller
-					// asked about rather than the day UTC happens to be on.
+					// Both go through the read layer's half-open window, so a run at the
+					// very end of endDate lands inside the window rather than after it.
 					const [rows, total] = await Promise.all([
 						getPromptRuns(promptId, startDate, endDate, timezone, limit, offset, model),
 						countPromptRuns(promptId, startDate, endDate, timezone, model),

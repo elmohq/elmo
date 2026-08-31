@@ -459,9 +459,9 @@ export interface PromptPerformance {
  * Per-prompt results over the window — the analytics counterpart to listing
  * prompts.
  *
- * Enabled prompts only: a disabled prompt isn't sampled, so it has no results
- * to report. There is deliberately no `enabled` field rather than one that
- * could only ever say `true`.
+ * A prompt the brand stopped tracking isn't sampled, so it has no results to
+ * report and doesn't appear. Every row here is one that ran, which is why there
+ * is no flag on it that could only ever say the same thing.
  */
 export async function getBrandPromptPerformance(
 	brandId: string,
@@ -496,15 +496,15 @@ export async function getBrandPromptPerformance(
 	});
 }
 
-/** Every headline figure the dashboard shows for a brand, in one request. */
 /**
- * Every non-paginated figure for a brand over one window, in one answer.
+ * Every headline figure the dashboard shows for a brand, over one window, in
+ * one answer.
  *
  * There is no `include` parameter: the four computations behind this share a
  * scope resolution and run concurrently, so asking for a subset saves a caller
  * a fraction of one request and costs everyone a parameter to reason about.
- * The lists that can grow without bound — cited domains and URLs, sub-queries,
- * per-prompt results — are paginated endpoints of their own instead.
+ * The long lists — cited domains and URLs, sub-queries, per-prompt results —
+ * are endpoints of their own instead.
  */
 export async function getBrandAnalytics(brandId: string, window: AnalyticsWindow, filters: AnalyticsFilters = {}) {
 	const [visibility, shareOfVoice, models, citations] = await Promise.all([

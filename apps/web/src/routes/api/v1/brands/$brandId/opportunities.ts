@@ -26,10 +26,9 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/opportunities")({
 		handlers: withMethodGuard({
 			GET: createApiHandler({
 				scopes: ["analytics:read"],
-				handle: async ({ params, request, auth }) => {
+				handle: async ({ params, auth }) => {
 					const brand = await requireBrandInScope(auth, params.brandId);
-					const timezone = new URL(request.url).searchParams.get("timezone") ?? "UTC";
-					const result = await resolveOpportunities(brand.id, timezone);
+					const result = await resolveOpportunities(brand.id, "UTC");
 					const opportunities = result.report?.opportunities ?? [];
 
 					return {

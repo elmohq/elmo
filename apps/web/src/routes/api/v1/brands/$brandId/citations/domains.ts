@@ -3,7 +3,7 @@
  * compared against the equal-length window immediately before it.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { parseAnalyticsFilters, parseAnalyticsWindow } from "@/lib/api/analytics-range";
+import { parseAnalyticsFilters, parseAnalyticsWindow, publicRange } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
 import { getBrandCitations } from "@/server/analytics-core";
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/citations/domains"
 					const { domains, totals } = await getBrandCitations(brand.id, range, parseAnalyticsFilters(url));
 					return {
 						brandId: brand.id,
-						range,
+						range: publicRange(range),
 						totals: { citations: totals.citations, uniqueDomains: totals.uniqueDomains, uniqueUrls: totals.uniqueUrls },
 						data: domains,
 					};

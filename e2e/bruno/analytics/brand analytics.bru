@@ -24,7 +24,7 @@ assert {
   res.body.brandId: eq default
   res.body.brandName: isString
   res.body.range.startDate: isString
-  res.body.range.timezone: eq UTC
+  res.body.range.endDate: isString
   res.body.totals.runs: gte 1
   res.body.totals.prompts: gte 1
   res.body.totals.citations: gte 1

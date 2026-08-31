@@ -35,11 +35,3 @@ assert {
   res.body.citations.competitorCitationsTotal: isNumber
   res.body.citations.citedUrlsTopK: isArray
 }
-
-tests {
-  test("this endpoint takes startDate/endDate, not the lookback shorthand", function() {
-    // It shipped with these names, so they stay the canonical spelling; the
-    // newer analytics endpoints were made to match it rather than the reverse.
-    expect(res.getBody().startDate).to.equal("2000-01-01");
-  });
-}

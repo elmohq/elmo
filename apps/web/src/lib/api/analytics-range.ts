@@ -3,14 +3,24 @@
  * `endDate`, which is the spelling `/prompts/{promptId}/snapshot` already
  * takes. The dashboard's relative presets are its own affair — a caller that
  * wants "the last month" can subtract a month.
+ *
+ * Days are bucketed in UTC and there is no parameter to change that. The
+ * dashboard resolves a time zone because it has a browser to read one from; an
+ * API request has nothing to infer it from, so a zone would be a number the
+ * caller has to supply to make two responses comparable. `/snapshot` shipped
+ * without one and is the precedent.
  */
-import { resolveTimezone } from "@/lib/timezone-utils";
 import { ApiError } from "./handler";
 
 export interface AnalyticsWindow {
 	startDate: string;
 	endDate: string;
 	timezone: string;
+}
+
+/** What a caller sees of the window: the bounds, with no zone to reason about. */
+export function publicRange(window: AnalyticsWindow): { startDate: string; endDate: string } {
+	return { startDate: window.startDate, endDate: window.endDate };
 }
 
 function isIsoDate(value: string): boolean {
@@ -28,15 +38,6 @@ export function parseAnalyticsWindow(url: URL): AnalyticsWindow {
 	const params = url.searchParams;
 	const startDate = params.get("startDate");
 	const endDate = params.get("endDate");
-	const requestedTimezone = params.get("timezone");
-	if (requestedTimezone) {
-		try {
-			new Intl.DateTimeFormat("en-US", { timeZone: requestedTimezone }).format();
-		} catch {
-			invalid("timezone must be a valid IANA time zone");
-		}
-	}
-	const timezone = resolveTimezone(requestedTimezone ?? undefined, "UTC");
 
 	if (!startDate || !endDate) {
 		invalid("A window is required: both startDate and endDate (YYYY-MM-DD)");
@@ -47,7 +48,7 @@ export function parseAnalyticsWindow(url: URL): AnalyticsWindow {
 	if (startDate > endDate) {
 		invalid("startDate must be before or equal to endDate");
 	}
-	return { startDate, endDate, timezone };
+	return { startDate, endDate, timezone: "UTC" };
 }
 
 /** The `model` and `tags` filters every analytics endpoint shares. */

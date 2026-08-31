@@ -215,11 +215,15 @@ kebab-case in path segments — matches what already ships.
 
 **Timestamps** ISO-8601 UTC strings. **Dates** `YYYY-MM-DD`.
 
-**Date windows.** Every analytics endpoint takes `startDate` + `endDate`
-(+ optional `timezone`, default `UTC`) — the spelling already shipped on
-`/prompts/{id}/snapshot`. One spelling, so there is no precedence rule to
-remember and no second vocabulary to keep in step with the dashboard's presets.
-A caller that wants "the last month" subtracts a month.
+**Date windows.** Every analytics endpoint takes `startDate` + `endDate` — the
+spelling already shipped on `/prompts/{id}/snapshot`. One spelling, so there is
+no precedence rule to remember and no second vocabulary to keep in step with the
+dashboard's presets. A caller that wants "the last month" subtracts a month.
+
+Days bucket in UTC, with no parameter to change it. The dashboard resolves a
+time zone because it has a browser to read one from; an API request has nothing
+to infer one from, so a zone would be a number the caller has to remember to
+send to make two responses comparable. `/snapshot` shipped without one.
 
 **Pagination.** `page` (1-based) + `limit` (default 20, max 100), answered with
 `{ page, limit, total, totalPages }`. Offset paging everywhere, for one paging
@@ -449,7 +453,9 @@ scope-checked, org-filtered, with `limit` capped at 100.
 `DELETE /v1/prompts/{promptId}` keeps its exact behaviour and becomes
 **admin-only** (§1.3, §3.11). Additions:
 
-- List filters: `enabled`, `tags` (comma-separated), `q`.
+- List filters: `tags` (comma-separated) and `q`. Deliberately not `enabled`:
+  it is a tracking control, and nothing outside the product needs to slice a
+  list by it.
 - Prompt object gains `premiumModels`.
 - `PATCH` accepts `premiumModels`. It and `enabled` are guarded together as one
   delta (§1.4) — they spend two different pools and a save can move both.

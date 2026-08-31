@@ -11,7 +11,7 @@
  * their own paginated endpoints; what is left is small enough to always send.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { parseAnalyticsFilters, parseAnalyticsWindow } from "@/lib/api/analytics-range";
+import { parseAnalyticsFilters, parseAnalyticsWindow, publicRange } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
 import { getBrandAnalytics } from "@/server/analytics-core";
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/analytics")({
 					const url = new URL(request.url);
 					const range = parseAnalyticsWindow(url);
 					const analytics = await getBrandAnalytics(brand.id, range, parseAnalyticsFilters(url));
-					return { brandId: brand.id, range, ...analytics };
+					return { brandId: brand.id, range: publicRange(range), ...analytics };
 				},
 			}),
 		}),

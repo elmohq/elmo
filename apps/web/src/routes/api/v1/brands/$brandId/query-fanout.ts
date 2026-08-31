@@ -2,7 +2,7 @@
  * GET /api/v1/brands/:brandId/query-fanout — the searches engines ran.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { parseAnalyticsFilters, parseAnalyticsWindow } from "@/lib/api/analytics-range";
+import { parseAnalyticsFilters, parseAnalyticsWindow, publicRange } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
 import { getBrandQueryFanout } from "@/server/analytics-core";
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/query-fanout")({
 					}));
 					return {
 						brandId: brand.id,
-						range,
+						range: publicRange(range),
 						totalQueries: analysis.totalQueries,
 						uniqueQueries: analysis.uniqueQueries,
 						fanoutRuns: analysis.fanoutRuns,

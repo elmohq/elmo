@@ -5,7 +5,7 @@
  * prompt CRUD is ever wanted: this returns results, not configuration.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { parseAnalyticsFilters, parseAnalyticsWindow } from "@/lib/api/analytics-range";
+import { parseAnalyticsFilters, parseAnalyticsWindow, publicRange } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";
 import { getBrandPromptPerformance } from "@/server/analytics-core";
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/prompt-performance
 					const url = new URL(request.url);
 					const range = parseAnalyticsWindow(url);
 					const rows = await getBrandPromptPerformance(brand.id, range, parseAnalyticsFilters(url));
-					return { brandId: brand.id, range, data: rows };
+					return { brandId: brand.id, range: publicRange(range), data: rows };
 				},
 			}),
 		}),

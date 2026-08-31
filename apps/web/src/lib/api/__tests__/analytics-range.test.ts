@@ -11,12 +11,6 @@ describe("analytics API query parsing", () => {
 		);
 	});
 
-	it("rejects an invalid timezone", () => {
-		expect(() => parseAnalyticsWindow(new URL(`https://example.com?${WINDOW}&timezone=Not/AZone`))).toThrow(
-			"timezone must be a valid IANA time zone",
-		);
-	});
-
 	it("requires both bounds of the window", () => {
 		expect(() => parseAnalyticsWindow(new URL("https://example.com?startDate=2026-01-01"))).toThrow(
 			"both startDate and endDate",
@@ -35,8 +29,8 @@ describe("analytics API query parsing", () => {
 		);
 	});
 
-	it("defaults the timezone to UTC", () => {
-		expect(parseAnalyticsWindow(new URL(`https://example.com?${WINDOW}`))).toEqual({
+	it("buckets in UTC, with nothing a caller can say about it", () => {
+		expect(parseAnalyticsWindow(new URL(`https://example.com?${WINDOW}&timezone=Pacific/Auckland`))).toEqual({
 			startDate: "2026-01-01",
 			endDate: "2026-01-31",
 			timezone: "UTC",
