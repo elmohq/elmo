@@ -83,4 +83,6 @@ Then try:
   something it would then be refused.
 - It can create and edit prompts, but nothing deletes data and nothing changes billing.
 - Self-hosting: no extra configuration, but `APP_URL` must be the address clients actually reach you
-  on — that is what the sign-in flow is advertised from. HTTPS is required in production.
+  on — that is what the sign-in flow is advertised from, and what the tokens it issues are bound to.
+  It has to be an HTTPS URL, or `localhost`; the app refuses to start otherwise, because a token
+  bound to anything else is one no MCP client will accept.

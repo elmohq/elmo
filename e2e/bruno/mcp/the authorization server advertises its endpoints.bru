@@ -16,31 +16,26 @@ assert {
 
 tests {
   test("everything a client needs to register and get a token", function() {
-    expect(res.body.registration_endpoint).to.contain("/api/auth/mcp/register");
-    expect(res.body.token_endpoint).to.contain("/api/auth/mcp/token");
+    expect(res.body.registration_endpoint).to.contain("/api/auth/oauth2/register");
+    expect(res.body.token_endpoint).to.contain("/api/auth/oauth2/token");
   });
 
-  test("the authorization endpoint is the page that asks the person", function() {
-    expect(res.body.authorization_endpoint).to.contain("/auth/authorize");
+  test("the authorization endpoint is the plugin's, which bounces to the page", function() {
+    expect(res.body.authorization_endpoint).to.contain("/api/auth/oauth2/authorize");
   });
 
   test("PKCE is offered, which a public client has to have", function() {
     expect(res.body.code_challenge_methods_supported).to.include("S256");
   });
 
-  test("every URL in the document shares the issuer's origin", function() {
-    for (const field of ["authorization_endpoint", "token_endpoint", "registration_endpoint"]) {
-      expect(res.body[field], field).to.have.string(res.body.issuer);
-    }
+  test("a public client may present no secret at the token endpoint", function() {
+    expect(res.body.token_endpoint_auth_methods_supported).to.include("none");
   });
 
-  test("it does not advertise endpoints that do not exist", function() {
-    // The plugin's document invents a jwks_uri and a userinfo_endpoint the
-    // server never mounts, and claims an ID-token algorithm this flow never
-    // issues. A strict client trusts the document over the server.
-    expect(res.body.jwks_uri).to.be.undefined;
-    expect(res.body.userinfo_endpoint).to.be.undefined;
-    expect(res.body.id_token_signing_alg_values_supported).to.be.undefined;
+  test("every URL in the document shares the issuer's origin", function() {
+    for (const field of ["authorization_endpoint", "token_endpoint", "registration_endpoint", "jwks_uri"]) {
+      expect(res.body[field], field).to.have.string(res.body.issuer);
+    }
   });
 }
 
@@ -49,6 +44,7 @@ docs {
   connect, so a misconfigured APP_URL has to produce one wrong answer to fix
   rather than two that disagree.
 
-  The authorization endpoint is the plugin's, pointed at our page: the server
-  forces consent there, and the page is where the person says yes.
+  The authorization endpoint is the plugin's own: it is what holds the signed
+  request, decides whether consent is still needed, and sends the person to the
+  page that asks.
 }

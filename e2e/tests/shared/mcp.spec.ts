@@ -162,13 +162,17 @@ test.describe("MCP", () => {
     const anonymous = await playwrightRequest.newContext({ baseURL, storageState: undefined });
 
     // Register the way a client does: no session, no secret, PKCE only.
-    const registration = await anonymous.post("/api/auth/mcp/register", {
+    // `native` is what a loopback redirect URI belongs to — the server holds a
+    // web client to HTTPS on a routable host, which is where a token would
+    // travel over the network rather than to a listener on this machine.
+    const registration = await anonymous.post("/api/auth/oauth2/register", {
       data: {
         client_name: "Playwright MCP Client",
         redirect_uris: ["http://127.0.0.1:41999/oauth/callback"],
         grant_types: ["authorization_code", "refresh_token"],
         response_types: ["code"],
         token_endpoint_auth_method: "none",
+        application_type: "native",
       },
     });
     expect(registration.status()).toBe(201);
@@ -211,10 +215,9 @@ test.describe("MCP", () => {
     // on markup with no handler attached is silently discarded.
     await page.waitForLoadState("networkidle");
 
-    // The first hop (minting the consent request) is an automatic bounce; the
-    // grant itself is not. Nothing a client can spend exists until this click,
-    // and a page that granted on load would hand a token to anything that
-    // could load this URL.
+    // Nothing a client can spend exists until the click: a page that granted on
+    // load would hand a token to anything that could get this URL opened.
+    expect(delivered).toHaveLength(0);
     await page.getByRole("button", { name: /^Allow / }).click();
     await expect.poll(() => delivered.length).toBeGreaterThan(0);
 
@@ -225,7 +228,10 @@ test.describe("MCP", () => {
     expect(code).toBeTruthy();
 
     // Exchanged with no cookie and no Origin, exactly as a native client does.
-    const token = await anonymous.post("/api/auth/mcp/token", {
+    // No `resource` here either, which is the case a client that predates RFC
+    // 8707 presents: the server names its own resource, so what comes back is
+    // still a token `/api/mcp` can verify rather than an opaque string.
+    const token = await anonymous.post("/api/auth/oauth2/token", {
       form: {
         grant_type: "authorization_code",
         code: code!,
@@ -236,6 +242,12 @@ test.describe("MCP", () => {
     });
     expect(token.status()).toBe(200);
     const { access_token: accessToken } = await token.json();
+
+    // A signed JWT, audience-bound to this server's MCP endpoint. `/api/mcp`
+    // verifies it against the published key set, so a token that is neither is
+    // a token nothing here accepts.
+    const claims = JSON.parse(Buffer.from(accessToken.split(".")[1], "base64url").toString());
+    expect(claims.aud).toContain(new URL(MCP_PATH, baseURL).toString());
 
     const client = await connect(baseURL!, accessToken);
     const identity = await callTool(client, "whoami");
