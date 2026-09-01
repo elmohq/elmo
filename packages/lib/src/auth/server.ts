@@ -75,9 +75,11 @@ export const MCP_PATH = "/api/mcp";
  * `APP_URL` at a plain-HTTP hostname.
  */
 function mcpResource(origin: string): string {
-	const url = new URL(origin);
-	const loopback = url.hostname === "localhost" || url.hostname === "[::1]" || /^127(\.\d+){3}$/.test(url.hostname);
-	if (url.protocol !== "https:" && !loopback) {
+	const { protocol, hostname } = new URL(origin);
+	const octets = hostname.split(".");
+	const isLoopbackIpv4 =
+		octets.length === 4 && octets[0] === "127" && octets.every((octet) => /^\d+$/.test(octet) && Number(octet) <= 255);
+	if (protocol !== "https:" && !(hostname === "localhost" || hostname === "[::1]" || isLoopbackIpv4)) {
 		throw new Error(
 			`APP_URL must be an HTTPS URL (or localhost) to serve MCP: an access token is bound to ${origin}${MCP_PATH}, and MCP clients refuse a resource identifier that isn't. Got ${origin}.`,
 		);
@@ -137,6 +139,7 @@ export function createAuth(options?: CreateAuthOptions) {
 
 	// No trailing slash: everything below concatenates paths onto it.
 	const origin = baseURL.replace(/\/$/, "");
+	const resource = mcpResource(origin);
 
 	const origins = options?.trustedOrigins ?? [];
 	if (!origins.includes(appUrl)) {
@@ -233,6 +236,7 @@ export function createAuth(options?: CreateAuthOptions) {
 			// `customSession` below is deliberately kept cheap for. Nothing here
 			// reads that header, so it is off.
 			jwt({ disableSettingJwtHeader: true }),
+			mcpResourceDefault(resource),
 			// The OAuth authorization server behind /api/mcp. An MCP client
 			// registers itself, sends its user here to sign in, and leaves with a
 			// token that acts as that person — the same reach they have in the
@@ -244,11 +248,10 @@ export function createAuth(options?: CreateAuthOptions) {
 			// `baseURL` the plugin advertises as the authorization server — naming
 			// the two differently is what makes a strict client refuse to connect
 			// against a local instance.
-			mcpResourceDefault(mcpResource(origin)),
 			mcp({
 				loginPage: MCP_AUTHORIZE_PAGE,
 				consentPage: MCP_AUTHORIZE_PAGE,
-				resource: mcpResource(origin),
+				resource,
 				// Registration is off by default, and an MCP client that has never
 				// met this instance has no other way to introduce itself: it has no
 				// session to register under and no secret to register with. Both
