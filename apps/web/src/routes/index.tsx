@@ -1,23 +1,26 @@
 /**
  * Home page - / route
  *
- * Redirects authenticated users to /app.
- * In demo mode, auto-redirects unauthenticated users to /auth/login
- * (the login page pre-fills the demo credentials, so the bare home page
- * is just a redundant extra click).
- * On a fresh deployment that needs bootstrapping (registration is open
- * AND no users exist yet), redirects to /auth/register so the first
- * visitor sees the signup screen instead of an empty-database login form.
- * Shows sign-in for unauthenticated users in other modes.
+ * Sends authenticated visitors to /app and everyone else straight to the auth
+ * page their deployment opens on (see entryRouteForVisitor), so the bare app
+ * URL is never a card with a single button on it. Whitelabel, the one mode
+ * with no such page, still gets the card.
  */
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { buttonVariants } from "@workspace/ui/components/button";
 import FullPageCard from "@/components/full-page-card";
 import { getSession } from "@/lib/auth/session";
+import { entryRouteForVisitor } from "@/lib/entry-route";
 
 export const Route = createFileRoute("/")({
 	validateSearch: (search: Record<string, unknown>) => ({
 		redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+		/**
+		 * Attribution tag carried by links back to us (see
+		 * @workspace/config/referrals). Passed along so a click that lands on the
+		 * bare app URL is still credited once we bounce it to sign-up.
+		 */
+		ref: typeof search.ref === "string" ? search.ref : undefined,
 	}),
 	beforeLoad: async ({ context, search }) => {
 		const session = await getSession();
@@ -26,17 +29,14 @@ export const Route = createFileRoute("/")({
 			throw redirect({ to: "/app" });
 		}
 
-		if (context.clientConfig?.mode === "demo") {
+		const entryRoute = entryRouteForVisitor(context.clientConfig);
+		if (entryRoute) {
 			throw redirect({
-				to: "/auth/login",
-				search: search.redirect ? { returnTo: search.redirect } : {},
-			});
-		}
-
-		if (context.clientConfig?.canRegister && !context.clientConfig?.hasUsers) {
-			throw redirect({
-				to: "/auth/register",
-				search: search.redirect ? { returnTo: search.redirect } : {},
+				to: entryRoute,
+				search: {
+					...(search.redirect ? { returnTo: search.redirect } : {}),
+					...(search.ref ? { ref: search.ref } : {}),
+				},
 			});
 		}
 

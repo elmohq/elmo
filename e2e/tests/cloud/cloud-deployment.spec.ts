@@ -42,6 +42,12 @@ test.describe("Cloud self-serve signup", () => {
     await expect(page.getByRole("link", { name: /create one/i })).toBeVisible();
   });
 
+  test("the bare app URL opens on sign-up, keeping the referral tag", async ({ page }) => {
+    await page.goto("/?ref=marketing-cta");
+    await page.waitForURL(/\/auth\/register\?.*ref=marketing-cta/, { timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Create account" })).toBeVisible({ timeout: 30_000 });
+  });
+
   test("registering asks the new account to verify its email", async ({ page }) => {
     await page.goto("/auth/register");
     await expect(page.getByRole("button", { name: /continue with google/i })).toBeVisible({ timeout: 30_000 });

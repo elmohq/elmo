@@ -37,6 +37,12 @@ test.describe("Local signup is closed after bootstrap", () => {
     await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
   });
 
+  test("the bare app URL opens on sign-in once an account exists", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
+    await expect(page.getByLabel("Email")).toBeVisible({ timeout: 30_000 });
+  });
+
   test("sign in is email and password, with no cloud provider options", async ({ page }) => {
     await page.goto("/auth/login");
     await expect(page.getByLabel("Email")).toBeVisible({ timeout: 30_000 });
