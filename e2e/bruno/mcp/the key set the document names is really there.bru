@@ -1,0 +1,35 @@
+meta {
+  name: the key set the document names is really there
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{baseUrl}}/api/auth/jwks
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("there is a public key to verify an access token against", function() {
+    expect(res.body.keys).to.be.an("array").that.is.not.empty;
+    expect(res.body.keys[0]).to.have.property("kid");
+  });
+
+  test("and no private material comes with it", function() {
+    for (const key of res.body.keys) {
+      expect(key).to.not.have.property("d");
+      expect(key).to.not.have.property("privateKey");
+    }
+  });
+}
+
+docs {
+  Access tokens are JWTs now, verified against this key set rather than looked
+  up in a table. A document that advertised a jwks_uri answering 404 would
+  leave a strict client unable to accept any token this server issues.
+}

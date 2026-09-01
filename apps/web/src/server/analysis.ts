@@ -29,10 +29,6 @@ export function resolveRange(lookback: LookbackPeriod, timezoneParam: string) {
 	return { timezone, fromDateStr, toDateStr };
 }
 
-// ============================================================================
-// Share of Voice
-// ============================================================================
-
 export interface ShareOfVoiceEntry {
 	name: string;
 	mentions: number;

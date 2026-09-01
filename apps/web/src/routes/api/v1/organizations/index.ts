@@ -1,10 +1,7 @@
 /**
- * GET /api/v1/organizations — the workspaces the caller can see.
- *
- * One entry for an organization key, every workspace for an admin key. Needs no
- * scope: a key can only ever see the organization it is already bound to, and
- * gating it would only stop an analytics-only key from naming the workspace its
- * own numbers belong to.
+ * Needs no scope: a key only ever sees the organization it is bound to, and
+ * gating this would stop an analytics-only key naming the workspace its own
+ * numbers belong to.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";

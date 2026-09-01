@@ -1,16 +1,9 @@
 /**
- * The scopes an organization API key can hold.
+ * The wire spells a grant `resource:action`; better-auth stores it as
+ * `{ resource: [action] }`, and the two conversions below are the only bridge.
  *
- * The wire format is `resource:action`; better-auth stores the same grant in
- * the key's `permissions` column as `{ resource: [action] }`, so the two
- * conversions below are the only places that spelling is bridged.
- *
- * There is deliberately no `billing:write`, no `reports:*`, and no
- * `prompts:delete`. Billing is read-only by construction rather than by a check
- * somewhere; report generation spends provider budget with no organization to
- * attribute it to; and deleting a prompt destroys tracked history that the
- * dashboard itself will not. All three are admin-only, which is a property of
- * the endpoint rather than a scope somebody could tick.
+ * No `billing:write`, `reports:*` or `prompts:delete`: all three are admin-only,
+ * which is a property of the endpoint rather than a scope somebody could tick.
  */
 
 export const API_SCOPES = [
@@ -34,7 +27,6 @@ function isApiScope(value: string): value is ApiScope {
 	return SCOPE_SET.has(value);
 }
 
-/** `{ prompts: ["read", "write"] }` → `["prompts:read", "prompts:write"]`. */
 export function permissionsToScopes(permissions: unknown): ApiScope[] {
 	if (!permissions || typeof permissions !== "object") return [];
 	const scopes: ApiScope[] = [];
@@ -48,7 +40,7 @@ export function permissionsToScopes(permissions: unknown): ApiScope[] {
 	return scopes;
 }
 
-/** The inverse, for the create path. Unknown scopes are dropped, not trusted. */
+/** Unknown scopes are dropped, not trusted. */
 export function scopesToPermissions(scopes: readonly string[]): Record<string, string[]> {
 	const permissions: Record<string, string[]> = {};
 	for (const scope of scopes) {

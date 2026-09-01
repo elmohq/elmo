@@ -1,19 +1,3 @@
-/**
- * Who is calling `/api/v1`.
- *
- * Two kinds of Bearer token resolve here and nowhere else:
- *
- *  - an instance admin key from `ADMIN_API_KEYS` — every organization, every
- *    scope, no database round trip;
- *  - an organization key issued from the dashboard — bound to exactly one
- *    organization, holding an explicit set of scopes, optionally narrowed to a
- *    subset of that organization's brands.
- *
- * Everything that grants comes from columns the api-key plugin protects:
- * `referenceId` for the organization, set from a membership check at creation,
- * and `permissions` for the scopes, which it rejects as a server-only property
- * on any request carrying headers.
- */
 import { db } from "@workspace/lib/db/db";
 import { brands, organization } from "@workspace/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
@@ -23,7 +7,6 @@ import { getAdminApiKeys, timingSafeStringEqual } from "./policies";
 export interface AdminAuth {
 	kind: "admin";
 	scopes: null;
-	/** Admin keys are not bound to an organization; they reach every one. */
 	organizationId: null;
 }
 
@@ -34,77 +17,42 @@ export interface OrganizationAuth {
 	organizationId: string;
 	organizationName: string;
 	scopes: Set<ApiScope>;
-	/**
-	 * Null means every brand in the organization. An empty array means the key
-	 * reaches none — which is what a restriction naming only other tenants'
-	 * brands collapses to once it is intersected, and the right answer for it.
-	 */
+	/** Null reaches every brand in the organization; `[]` reaches none. */
 	brandIds: string[] | null;
 	createdAt: Date | null;
 	lastUsedAt: Date | null;
 	expiresAt: Date | null;
 	rateLimit: { limit: number; window: "minute" };
-	/** Echoed back as `X-RateLimit-*` so a caller can pace itself. */
 	rateLimitRemaining: number | null;
 }
 
 export type ApiAuth = AdminAuth | OrganizationAuth;
 
-/**
- * A person, reached through an OAuth token rather than a key.
- *
- * Only `/api/mcp` mints one of these: an MCP client runs the OAuth flow against
- * the better-auth `mcp` plugin and leaves holding a token that stands for a
- * user, not for an organization. `ApiAuth` deliberately does not include it, so
- * a `/api/v1` route cannot be handed one by accident.
- *
- * What it reaches is re-derived from live membership on every request, which is
- * the property that makes it safe for a token to outlive a team change: revoke
- * someone's membership and the token stops seeing that workspace on the next
- * call, with nothing to expire or clean up.
- */
+/** Only `/api/mcp` mints one; `ApiAuth` omits it so `/api/v1` cannot see one. */
 export interface UserAuth {
 	kind: "user";
 	userId: string;
 	email: string | null;
 	name: string | null;
-	/** Every organization the user is currently a member of. */
 	organizationIds: string[];
-	/** The OAuth client that holds the token, for `whoami` and for logs. */
 	clientId: string;
 	expiresAt: Date | null;
 }
 
-/**
- * Everything the brand- and organization-scoping helpers know how to answer
- * for. `/api/v1` only ever sees the `ApiAuth` half; MCP sees all three.
- */
 export type Principal = ApiAuth | UserAuth;
 
-/**
- * What a caller reaches, with the three kinds collapsed.
- *
- * The kinds differ only in where these three answers come from, so this is the
- * one place that knows there are three. Everything downstream — brand scoping,
- * the scope check, the tool filter — asks this instead of switching on `kind`,
- * which is what keeps a fourth kind from meaning a hunt through five modules.
- *
- * `null` means "unrestricted" in both id fields, and it is not the same as an
- * empty array: `[]` is a caller that reaches nothing, which is what a
- * restriction naming only other tenants' brands collapses to.
- */
+/** The only place that knows there are three kinds of caller; everything
+ * downstream asks this instead of switching on `kind`. */
 export interface PrincipalReach {
-	/** The organizations the caller's data is drawn from; null for every one. */
 	organizationIds: string[] | null;
-	/** A narrowing within those organizations; null for every brand in them. */
 	brandIds: string[] | null;
 	scopes: Set<ApiScope>;
 }
 
 /**
- * An admin key and a signed-in person both hold every scope — scopes exist to
- * narrow a *key* below what its issuer can already do, and a session is that
- * person, who reaches all of this in the dashboard anyway.
+ * Scopes narrow a key below what its holder can already do, so an admin key and
+ * a signed-in person hold every one. An OAuth token's `scope` claim is ignored
+ * for the same reason: it is not one of these.
  */
 export function principalReach(auth: Principal): PrincipalReach {
 	switch (auth.kind) {
@@ -117,12 +65,10 @@ export function principalReach(auth: Principal): PrincipalReach {
 	}
 }
 
-/** What a caller may do, in the one vocabulary the whole surface speaks. */
 export function principalScopes(auth: Principal): Set<ApiScope> {
 	return principalReach(auth).scopes;
 }
 
-/** How a caller is named in `whoami`, in `/me`, and in a log line. */
 export function principalLabel(auth: Principal): string {
 	switch (auth.kind) {
 		case "admin":
@@ -151,11 +97,7 @@ const UNAUTHORIZED: ApiAuthFailure = {
 	code: "unauthorized",
 };
 
-/**
- * A single message for every way a key can fail to resolve — unknown, expired,
- * revoked, malformed. Distinguishing them would tell an attacker which of their
- * guesses was once real.
- */
+/** One message for every failure, so a guess cannot be told from a real key. */
 const INVALID_KEY: ApiAuthFailure = {
 	status: 401,
 	error: "Unauthorized",
@@ -176,39 +118,15 @@ function isAdminKey(token: string): boolean {
 }
 
 /**
- * The brand narrowing, if the key carries one.
- *
- * ---------------------------------------------------------------------------
- * `metadata` is client-writable. Nothing read from it may ever widen a key.
- * ---------------------------------------------------------------------------
- *
- * The api-key plugin declares `metadata` with `input: true`, so anyone holding
- * a session that reaches its create or update endpoint can set it to whatever
- * they like. It is the one column on the row that works that way.
- *
- * `brandIds` is safe to keep here only because of what is done with it: it is
- * intersected with the brands of the organization the key is already bound to,
- * so a forged value can shrink a key's reach and never grow it. The worst a
- * caller who writes this field directly achieves is handing their own key
- * everything inside their own organization — which it already had.
- *
- * Before adding a field here, ask what the worst a caller who writes it
- * directly can do. If the answer is anything but "nothing they couldn't already
- * do", it belongs in `referenceId` or `permissions` instead.
- *
- * Absence and invalidity mean opposite things, and conflating them fails in the
- * dangerous direction: `null` here means "reaches every brand in the
- * organization", so reading a corrupted or truncated `brandIds` as absent would
- * *widen* a key that was deliberately narrowed. A restriction that is present
- * but unusable resolves to an empty list — no brands — instead.
+ * `metadata` is client-writable, so nothing read from it may widen a key. This
+ * one is safe only because it is intersected with the key's organization below.
  */
 export function readBrandRestriction(metadata: unknown): string[] | null {
 	if (!metadata || typeof metadata !== "object") return null;
 	if (!("brandIds" in metadata)) return null;
 
 	const raw = (metadata as Record<string, unknown>).brandIds;
-	// Present but not a list of usable ids: the key was narrowed to something,
-	// and we cannot tell to what.
+	// Narrowed to something unreadable: reaching nothing is the safe answer.
 	if (!Array.isArray(raw)) return [];
 	return raw.filter((id): id is string => typeof id === "string" && id.length > 0);
 }
@@ -222,12 +140,6 @@ function asDate(value: unknown): Date | null {
 	return null;
 }
 
-/**
- * Narrow a stored restriction to brands that actually belong to the key's
- * organization. This is what makes a forged `metadata.brandIds` harmless: the
- * intersection can only ever shrink the key's reach, never widen it past the
- * organization `referenceId` already pinned it to.
- */
 async function intersectWithOrgBrands(organizationId: string, restriction: string[] | null): Promise<string[] | null> {
 	if (!restriction) return null;
 	const rows = await db
@@ -245,18 +157,14 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 		return { auth: { kind: "admin", scopes: null, organizationId: null } };
 	}
 
-	// Imported here rather than at module scope: constructing the auth instance
-	// reads APP_URL and throws without it, which would make every module that
-	// reaches this one — including createApiHandler, and so every route —
-	// unimportable outside a configured environment. An admin key never gets
-	// this far, so it never pays for it either.
+	// Deferred: constructing auth reads APP_URL and throws without it, which
+	// would make every route importing this unimportable in a bare environment.
 	let result: Awaited<ReturnType<typeof import("./server").auth.api.verifyApiKey>>;
 	try {
 		const { auth } = await import("./server");
 		result = await auth.api.verifyApiKey({ body: { key: token } });
 	} catch (err) {
-		// A resolver that throws must fail closed: an unavailable database is a
-		// reason to reject a key, never a reason to accept one.
+		// Fail closed: an unavailable database is never a reason to accept a key.
 		console.error("[api] key verification failed:", err);
 		return { failure: INVALID_KEY };
 	}
@@ -264,8 +172,6 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 	const key = result?.key;
 	if (!result?.valid || !key) {
 		if (result?.error?.code === "RATE_LIMITED") {
-			// The plugin knows when the window resets; passing that on is the
-			// difference between a client backing off correctly and guessing.
 			const tryAgainIn = (result.error as { details?: { tryAgainIn?: unknown } }).details?.tryAgainIn;
 			return {
 				failure: {
@@ -286,8 +192,7 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 		.from(organization)
 		.where(eq(organization.id, organizationId))
 		.limit(1);
-	// A key whose organization is gone reaches nothing; treat it as invalid
-	// rather than as a key with an empty scope, so the failure is legible.
+	// A key whose organization is gone is invalid, not a key with empty scope.
 	if (!org) return { failure: INVALID_KEY };
 
 	const scopes = new Set(permissionsToScopes(key.permissions));
@@ -306,7 +211,13 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 			lastUsedAt: asDate(key.lastRequest),
 			expiresAt: asDate(key.expiresAt),
 			rateLimit: { limit: key.rateLimitMax ?? 120, window: "minute" },
-			rateLimitRemaining: typeof key.remaining === "number" ? key.remaining : null,
+			// The fixed-window counter has already consumed this request by the time
+			// the row is in hand, so this is the honest remainder. Null, and no
+			// header, beats inventing a full window.
+			rateLimitRemaining:
+				typeof key.requestCount === "number" && typeof key.rateLimitMax === "number"
+					? Math.max(0, key.rateLimitMax - key.requestCount)
+					: null,
 		},
 	};
 }

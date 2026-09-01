@@ -1,9 +1,5 @@
-/**
- * Competitor reads, as the external surfaces publish them.
- *
- * Server-only and edge-agnostic. Tenancy is the caller's job — pass the `scope`
- * fragment from `brandScopeCondition` — so nothing here knows who is asking.
- */
+/** Tenancy is the caller's job: pass the `scope` fragment from
+ * `brandScopeCondition`. */
 import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
 import { and, count, desc, eq, type SQL } from "drizzle-orm";
@@ -23,12 +19,9 @@ export type CompetitorSummary = {
 };
 
 export interface ListCompetitorsFilters {
-	/** Restricts to one brand; combine with `scope` for the tenancy rule. */
 	brandId?: string;
-	/** Omit both to read the whole scope; a caller that pages passes them together. */
 	limit?: number;
 	offset?: number;
-	/** The caller's tenancy condition, from `brandScopeCondition`. */
 	scope?: SQL;
 }
 

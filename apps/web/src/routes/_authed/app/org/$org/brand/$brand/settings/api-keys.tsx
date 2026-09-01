@@ -1,9 +1,7 @@
 /**
- * /app/$org/brand/$brand/settings/api-keys — issue and revoke the workspace's API keys.
- *
- * The role check here is UX only. The security boundary is in the server
- * functions, and behind them the api-key plugin's own membership check — this
- * page just avoids showing a form that would be refused.
+ * The role check here is UX only — the boundary is in the server functions and
+ * the api-key plugin's own membership check. This page just avoids showing a
+ * form that would be refused.
  */
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
@@ -26,7 +24,6 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 	component: ApiKeysSettingsPage,
 });
 
-/** Presets, so the common cases don't mean ticking eleven boxes. */
 function preset(name: "read" | "all", scopes: readonly ApiScope[]): ApiScope[] {
 	return name === "all" ? [...scopes] : scopes.filter((scope) => scope.endsWith(":read"));
 }
@@ -75,10 +72,8 @@ function ApiKeysSettingsPage() {
 					brandId,
 					name,
 					scopes,
-					// Null, not an empty array: unrestricted is the absence of a
-					// restriction. The server rejects `[]` rather than reading it as
-					// "all", so an empty picker surfaces as an error rather than a key
-					// that quietly reaches everything.
+					// Null, not `[]`: unrestricted is the absence of a restriction. The
+					// server rejects `[]` rather than reading it as "all".
 					brandIds: restrictBrands ? selectedBrands : null,
 					expiresInDays: expiresInDays === "never" ? null : Number(expiresInDays),
 				},
@@ -211,6 +206,10 @@ function ApiKeysSettingsPage() {
 								</div>
 							))}
 						</div>
+						<p className="text-sm text-muted-foreground">
+							Scopes gate both the REST API and MCP connections. Not every scope maps to an MCP tool — see the docs for
+							which ones do.
+						</p>
 					</div>
 
 					<div className="space-y-2">

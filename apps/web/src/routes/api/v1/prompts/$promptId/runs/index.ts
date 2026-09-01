@@ -1,9 +1,6 @@
 /**
- * GET /api/v1/prompts/:promptId/runs — the answers behind a prompt.
- *
- * Metadata only, newest first. The answer text lives on the single-run
- * endpoint, which keeps this list small enough to page through: a window of
- * runs across every model would otherwise be megabytes of prose.
+ * Metadata only: the answer text lives on the single-run endpoint, without which
+ * a window of runs across every model is megabytes of prose.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
@@ -21,7 +18,6 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/runs/")({
 				scopes: ["runs:read"],
 				handle: async ({ params, request, auth }) => {
 					const { promptId } = params;
-					// A prompt in another tenant reads exactly as one that isn't there.
 					const brandId = await findPromptBrandId(promptId);
 					if (!brandId || !(await isBrandInScope(auth, brandId))) {
 						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);

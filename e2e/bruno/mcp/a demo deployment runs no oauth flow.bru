@@ -1,14 +1,14 @@
 meta {
   name: a demo deployment runs no oauth flow
   type: http
-  seq: 18
+  seq: 19
   tags: [
     demo
   ]
 }
 
 post {
-  url: {{baseUrl}}/api/auth/mcp/register
+  url: {{baseUrl}}/api/auth/oauth2/register
   body: json
   auth: none
 }

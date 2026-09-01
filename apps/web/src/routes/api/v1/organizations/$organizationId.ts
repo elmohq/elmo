@@ -1,9 +1,5 @@
-/**
- * GET /api/v1/organizations/:organizationId — one workspace.
- *
- * A workspace outside the key's reach answers 404, identically to one that does
- * not exist.
- */
+/** A workspace outside the key's reach answers 404, identically to one that
+ * does not exist. */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { organization } from "@workspace/lib/db/schema";

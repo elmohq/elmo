@@ -16,16 +16,20 @@ assert {
 
 tests {
   test("everything a client needs to register and get a token", function() {
-    expect(res.body.registration_endpoint).to.contain("/api/auth/mcp/register");
-    expect(res.body.token_endpoint).to.contain("/api/auth/mcp/token");
+    expect(res.body.registration_endpoint).to.contain("/api/auth/oauth2/register");
+    expect(res.body.token_endpoint).to.contain("/api/auth/oauth2/token");
   });
 
-  test("the authorization endpoint is the page that asks the person", function() {
-    expect(res.body.authorization_endpoint).to.contain("/auth/authorize");
+  test("the authorization endpoint is the plugin's, which bounces to the page", function() {
+    expect(res.body.authorization_endpoint).to.contain("/api/auth/oauth2/authorize");
   });
 
   test("PKCE is offered, which a public client has to have", function() {
     expect(res.body.code_challenge_methods_supported).to.include("S256");
+  });
+
+  test("a public client may present no secret at the token endpoint", function() {
+    expect(res.body.token_endpoint_auth_methods_supported).to.include("none");
   });
 
   test("every URL in the document shares the issuer's origin", function() {
@@ -40,8 +44,7 @@ docs {
   connect, so a misconfigured APP_URL has to produce one wrong answer to fix
   rather than two that disagree.
 
-  The authorization endpoint is deliberately not the plugin's: that one issues
-  a code to any browser that already has a session, which would make
-  authorizing an MCP client something that happens to someone rather than
-  something they do.
+  The authorization endpoint is the plugin's own: it is what holds the signed
+  request, decides whether consent is still needed, and sends the person to the
+  page that asks.
 }

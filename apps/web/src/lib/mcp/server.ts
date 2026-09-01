@@ -1,12 +1,6 @@
 /**
- * Turning a caller and the tool registry into an MCP server, per request.
- *
- * The transport is stateless — a fresh server and transport for every POST,
- * with no session id — because that is the only shape that survives the way
- * this app is deployed: several serverless instances behind one URL, where the
- * request that opens a session and the one that uses it need not land on the
- * same machine. It also means a revoked key stops working on the next call
- * rather than at the end of a session nobody is tracking.
+ * Stateless: a fresh server per POST, because the request that opens a session
+ * and the one that uses it need not land on the same instance.
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
@@ -14,7 +8,6 @@ import { ApiError } from "@/lib/api/handler";
 import type { Principal } from "@/lib/auth/api-auth";
 import { type McpTool, toolsFor } from "./tools";
 
-/** Shown in `initialize`; how a client names this server in its UI. */
 export const MCP_SERVER_INFO = {
 	name: "elmo",
 	title: "Elmo AI visibility",
@@ -34,42 +27,24 @@ const INSTRUCTIONS = [
 	"Only the tools this connection is permitted appear in tools/list. Call whoami to see what it is and what it holds.",
 ].join("\n");
 
-/**
- * A tool's failure, as the model should read it.
- *
- * Expected failures (a brand that isn't there, a plan limit, a bad window) are
- * returned as tool errors carrying their own message: the model can act on
- * "that brand doesn't exist" and should not be shown a stack trace. Anything
- * unexpected is logged and answered generically, for the same reason `/api/v1`
- * turns an unknown throw into a bare 500.
- */
+/** An expected failure carries a message the model can act on; anything else is
+ * logged and answered generically. */
 function toolFailure(name: string, err: unknown): { content: [{ type: "text"; text: string }]; isError: true } {
-	const message =
-		err instanceof ApiError || isWriteDenied(err) ? (err as Error).message : "The tool failed unexpectedly.";
-	if (!(err instanceof ApiError) && !isWriteDenied(err)) {
-		console.error(`[mcp] ${name} failed:`, err);
-	}
-	return { content: [{ type: "text", text: message }], isError: true };
+	const expected = err instanceof ApiError || isWriteDenied(err);
+	if (!expected) console.error(`[mcp] ${name} failed:`, err);
+	return {
+		content: [{ type: "text", text: expected ? (err as Error).message : "The tool failed unexpectedly." }],
+		isError: true,
+	};
 }
 
-/**
- * Entitlement refusals arrive as `WriteDeniedError` from packages/lib. Matched
- * by name rather than by `instanceof` so this module doesn't pull the
- * entitlements graph in just to check a type.
- */
+/** By name rather than `instanceof`, to avoid pulling in the entitlements graph. */
 function isWriteDenied(err: unknown): err is Error {
 	return err instanceof Error && err.name === "WriteDeniedError";
 }
 
-/**
- * `tools` is a parameter rather than something this reads for itself: which
- * tools a caller gets is the registry's question, and answering it here would
- * make "what did the caller actually see" untestable without a database.
- */
 export function createMcpServer(auth: Principal, tools: readonly McpTool[]): McpServer {
 	const server = new McpServer(MCP_SERVER_INFO, { instructions: INSTRUCTIONS });
-	// What this connection was actually offered, so `whoami` reports the server's
-	// own decision rather than re-deriving it.
 	const context = { auth, toolNames: tools.map((tool) => tool.name) };
 
 	for (const tool of tools) {
@@ -82,9 +57,7 @@ export function createMcpServer(auth: Principal, tools: readonly McpTool[]): Mcp
 				annotations: {
 					title: tool.title,
 					readOnlyHint: tool.readOnly,
-					// Nothing here deletes anything, so nothing is destructive. Creating
-					// the same prompts twice does create them twice, though, so a write
-					// is not safe to retry blindly.
+					// Creating the same prompts twice creates them twice.
 					destructiveHint: false,
 					idempotentHint: tool.readOnly,
 					openWorldHint: false,
@@ -93,10 +66,8 @@ export function createMcpServer(auth: Principal, tools: readonly McpTool[]): Mcp
 			async (args: Record<string, unknown>) => {
 				try {
 					const result = await tool.run(context, args);
-					// JSON text rather than `structuredContent`: an output schema per
-					// tool would be a second copy of every shape `/api/v1` already
-					// publishes, free to drift from it, and every client reads the text
-					// block while only some read the structured one.
+					// Text rather than `structuredContent`: an output schema per tool is a
+					// second copy of what `/api/v1` already publishes.
 					return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
 				} catch (err) {
 					return toolFailure(tool.name, err);
@@ -108,15 +79,10 @@ export function createMcpServer(auth: Principal, tools: readonly McpTool[]): Mcp
 	return server;
 }
 
-/** Answer one JSON-RPC request. Nothing is kept between calls. */
 export async function handleMcpRequest(auth: Principal, request: Request): Promise<Response> {
 	const transport = new WebStandardStreamableHTTPServerTransport({
-		// A single buffered JSON reply rather than an SSE stream. Every tool here
-		// is request/response with nothing to report mid-flight, and a buffered
-		// body is what a serverless function can actually return — a stream that
-		// outlives the handler is a stream the platform may cut. It also means
-		// `handleRequest` resolves only once the reply is complete, so the server
-		// can be torn down on the way out without truncating anything.
+		// Buffered rather than streamed: a serverless platform may cut a stream
+		// that outlives the handler.
 		enableJsonResponse: true,
 	});
 	const server = createMcpServer(auth, toolsFor(auth));
@@ -124,8 +90,6 @@ export async function handleMcpRequest(auth: Principal, request: Request): Promi
 	try {
 		return await transport.handleRequest(request);
 	} finally {
-		// Nothing is kept between calls, so the per-request server and its tool
-		// closures are released here rather than left for GC to notice.
 		await server.close().catch(() => {});
 	}
 }

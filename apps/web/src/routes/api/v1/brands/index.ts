@@ -48,8 +48,7 @@ export const Route = createFileRoute("/api/v1/brands/")({
 						.offset(offset);
 
 					// Both keys hold the same array while callers move to `data`, which
-					// every list in this API answers with. `brands` is documented as
-					// deprecated and goes in a later release.
+					// every other list in this API answers with.
 					const results = rows.map(buildBrandResult);
 					return {
 						data: results,
@@ -69,16 +68,15 @@ export const Route = createFileRoute("/api/v1/brands/")({
 					}
 					if (err instanceof BrandConflictError) {
 						// Brand ids are globally unique, so this fires for an id another
-						// tenant holds. Worded as availability rather than existence: it
-						// leaks that the id is taken and nothing about who took it.
+						// tenant holds. Worded as availability, which leaks that the id is
+						// taken and nothing about who took it.
 						return new ApiError(409, "Conflict", `Brand id "${err.brandId}" is not available.`);
 					}
 				},
 				handle: async ({ body, auth }) => {
-					// An organization key creates inside its own organization. Naming
-					// that same organization is fine — a client that fills the field in
-					// from `GET /me` shouldn't be punished for it — but naming another
-					// is a mistake worth reporting rather than silently ignoring.
+					// Naming its own organization is fine — a client filling the field
+					// in from `GET /me` shouldn't be punished — but naming another is a
+					// mistake worth reporting rather than ignoring.
 					if (auth.kind === "organization" && body.organizationId && body.organizationId !== auth.organizationId) {
 						throw new ApiError(
 							400,
@@ -87,10 +85,7 @@ export const Route = createFileRoute("/api/v1/brands/")({
 						);
 					}
 					const organizationId = auth.kind === "organization" ? auth.organizationId : (body.organizationId ?? null);
-					// An admin key naming an organization is adding a brand to a tenant
-					// that already exists; provisioning one is what omitting the field
-					// means. Without this the miss surfaces as a foreign-key violation
-					// and a 500.
+					// Without this the miss surfaces as a foreign-key violation and a 500.
 					if (auth.kind === "admin" && organizationId) {
 						const [row] = await db
 							.select({ id: organization.id })

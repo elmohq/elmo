@@ -1,14 +1,6 @@
 /**
- * What each kind of connection is allowed to see.
- *
- * `tools/list` is the whole authorization story for an MCP client: a tool it
- * isn't offered is a tool it will never plan around. So these tests are less
- * about the registry's contents than about the two rules that decide who sees
- * what — scopes, and whether the deployment writes at all.
- *
- * The write partition is pinned by name on purpose. Adding a tool that mutates
- * anything breaks this file, which is the moment to ask whether an agent should
- * be able to do it.
+ * The write partition is pinned by name, so adding a tool that mutates anything
+ * breaks this file — which is the moment to ask whether an agent should do it.
  */
 import { resetDeploymentCache } from "@workspace/deployment";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,7 +9,6 @@ import type { AdminAuth, OrganizationAuth, UserAuth } from "@/lib/auth/api-auth"
 import { MCP_TOOLS, TOOL_SCOPES, toolsFor } from "../tools";
 
 const WRITE_TOOLS = ["create_prompts", "update_prompt"];
-/** Reachable by any connection, however little it holds. */
 const UNSCOPED_TOOLS = ["whoami", "list_models"];
 
 const adminKey: AdminAuth = { kind: "admin", scopes: null, organizationId: null };
@@ -84,10 +75,6 @@ describe("the tool registry", () => {
 	});
 
 	it("offers nothing that deletes and nothing that creates a brand or workspace", () => {
-		// Deleting a prompt takes its runs and citations with it, no dashboard role
-		// can do it, and /api/v1 gates it behind an instance key. Creating a brand
-		// or an organization provisions billable state. None of the three is a
-		// decision to hand to a model, and none has a tool here.
 		const names = MCP_TOOLS.map((tool) => tool.name);
 		for (const forbidden of ["delete_prompt", "delete_brand", "create_brand", "create_organization"]) {
 			expect(names).not.toContain(forbidden);
@@ -96,8 +83,6 @@ describe("the tool registry", () => {
 	});
 
 	it("asks for no scope the API no longer issues", () => {
-		// `prompts:delete` was removed from the API; a tool still asking for it
-		// would be offered to nobody and look like a permissions bug.
 		for (const tool of MCP_TOOLS) {
 			for (const scope of tool.scopes) expect(API_SCOPES).toContain(scope);
 		}
@@ -107,9 +92,6 @@ describe("the tool registry", () => {
 
 describe("which tools a connection is offered", () => {
 	it("gives an admin key the same tools as a fully scoped organization key, and no more", () => {
-		// An instance key reaches every workspace, but this surface offers it no
-		// capability an organization key lacks. If that ever stops being true, the
-		// product has an operation a model can perform and a person cannot.
 		expect(names(adminKey).sort()).toEqual(names(orgKey([...API_SCOPES])).sort());
 	});
 
@@ -143,7 +125,6 @@ describe("which tools a connection is offered", () => {
 		setMode("demo");
 		const offered = names(orgKey([...API_SCOPES]));
 		for (const write of WRITE_TOOLS) expect(offered).not.toContain(write);
-		// The reads survive: a demo instance is still worth connecting to.
 		expect(offered).toContain("get_analytics");
 		expect(offered).toContain("list_prompts");
 	});

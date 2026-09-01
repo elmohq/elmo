@@ -1,8 +1,5 @@
-/**
- * What this connection is, and what this deployment tracks. Neither needs a
- * scope: both are things a caller must be able to ask when something else has
- * just refused them and it is not clear why.
- */
+/** Neither needs a scope: both are what a caller asks when something else has
+ * just refused it and it is not clear why. */
 import { principalLabel, principalScopes } from "@/lib/auth/api-auth";
 import { modelCatalogue } from "@/server/models-core";
 import { defineTool } from "./define";
@@ -23,8 +20,6 @@ export const whoami = defineTool({
 
 		switch (auth.kind) {
 			case "admin":
-				// An instance key reaches every workspace, but this surface offers it
-				// no tool an organization key doesn't also get.
 				return { ...shared, principal: "admin-key", organizationIds: null, brandIds: null };
 			case "organization":
 				return {

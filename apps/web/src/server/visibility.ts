@@ -33,7 +33,7 @@ export interface VisibilityTimeSeriesPoint {
 }
 
 export interface FilteredVisibilityResponse {
-	/** Whole-number percentage 0-100. The shared computation answers in ratios; this edge rounds. */
+	/** Whole-number percentage. The shared computation answers in ratios. */
 	currentVisibility: number;
 	totalRuns: number;
 	totalPrompts: number;
@@ -137,8 +137,7 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 
 		const lookback = data.lookback as LookbackPeriod;
 		const timezone = resolveTimezone(data.timezone);
-		// `allStrategy: "1y"` caps the "all" lookback at a one-year window so the
-		// visibility bar matches the chart section.
+		// Caps the "all" lookback so the visibility bar matches the chart section.
 		const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookback, timezone, { allStrategy: "1y" }) as {
 			fromDateStr: string;
 			toDateStr: string;
@@ -150,13 +149,11 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 			{ model: data.model, tags: data.tags, search: data.search },
 		);
 
-		// The shared function answers in ratios, which is what the API publishes.
-		// The dashboard speaks percentages, and this is the single place it
-		// converts — the hero, the bar, and the chart all read what comes out.
+		// The single place the dashboard converts the shared ratios to percentages.
 		const asPercent = (ratio: number | null) => (ratio === null ? null : Math.round(ratio * 100));
 		return {
-			// The hero renders this as a percentage, so "no runs to plot" has to
-			// arrive as a number rather than the null the shared function returns.
+			// The hero renders a percentage, so "no runs to plot" has to arrive as a
+			// number rather than the null the shared function returns.
 			currentVisibility: asPercent(result.currentVisibility) ?? 0,
 			totalRuns: result.totalRuns,
 			totalPrompts: result.totalPrompts,

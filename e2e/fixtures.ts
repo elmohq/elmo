@@ -70,11 +70,7 @@ export const REPORT_IDS = {
 // Second tenant — a brand in an org the E2E user is NOT a member of.
 export const NIKE_ORG_ID = "nike";
 export const NIKE_BRAND_ID = "nike";
-/**
- * A second brand inside the Nike org, so a key narrowed to one brand of an org
- * it fully belongs to has something to be narrowed *away* from. Deliberately in
- * the tenant the E2E user can't see, so no dashboard spec's brand list changes.
- */
+/** In the tenant the E2E user cannot see, so no dashboard spec's list changes. */
 export const NIKE_SECOND_BRAND_ID = "nike-jordan";
 export const NIKE_PROMPT_IDS = {
   training: "00000000-0000-0000-0000-400000000001",
@@ -85,16 +81,8 @@ export const NIKE_COMPETITOR_IDS = {
   puma: "00000000-0000-0000-0000-410000000002",
 } as const;
 
-// ---------------------------------------------------------------------------
-// Billing fixtures (only meaningful when the stack runs in cloud mode)
-// ---------------------------------------------------------------------------
-
-/**
- * An org on a custom plan with deliberately tiny limits, so a write can be
- * pushed past one without seeding hundreds of rows. Custom plans are
- * config-only (`organization_settings.entitlement_overrides`), so this needs no
- * Stripe subscription.
- */
+/** Tiny limits, so a write can be pushed past one without seeding hundreds of
+ * rows. Config-only, so no Stripe subscription is needed. */
 export const CAPPED_ORG_ID = "capped";
 export const CAPPED_BRAND_ID = "capped";
 export const CAPPED_ENTITLEMENT_OVERRIDES = {
@@ -103,27 +91,13 @@ export const CAPPED_ENTITLEMENT_OVERRIDES = {
   maxPrompts: 6,
   premiumPoolIncluded: 0,
 } as const;
-/** Seeded enabled prompts, one short of CAPPED_ENTITLEMENT_OVERRIDES.maxPrompts. */
 export const CAPPED_PROMPT_COUNT = 5;
 
-/** An org with no subscription at all: reads work, every write is a 402. */
 export const UNPAID_ORG_ID = "unpaid";
 export const UNPAID_BRAND_ID = "unpaid";
 
-// ---------------------------------------------------------------------------
-// API keys
-// ---------------------------------------------------------------------------
-
-/**
- * The organization keys the Bruno suite authenticates as, one per access
- * pattern the API has to get right. Seeded directly into the `apikey` table
- * (see seed.ts) rather than minted over HTTP, so the suite doesn't depend on a
- * session or on the key-management UI existing yet.
- *
- * `scopes` mirrors what better-auth stores in `apikey.permissions`
- * (`{ resource: [action] }`); the wire format the API reports is
- * `resource:action`.
- */
+/** One key per access pattern, seeded straight into `apikey` so the suite needs
+ * no session. */
 export const API_SCOPES = [
   "brands:read",
   "brands:write",
@@ -141,25 +115,20 @@ export type ApiScope = (typeof API_SCOPES)[number];
 
 export const READ_SCOPES = API_SCOPES.filter((scope) => scope.endsWith(":read"));
 
-/** Everything short of destroying data — the preset most integrations want. */
 export const NON_DESTRUCTIVE_SCOPES = API_SCOPES.filter((scope) => !scope.endsWith(":delete"));
 
 
 export interface ApiKeyFixture {
-  /** The plaintext token a request sends. Hashed on the way into the table. */
   token: string;
   name: string;
   organizationId: string;
   scopes: readonly ApiScope[];
-  /** Null means every brand in the organization. An empty array is never valid. */
   brandIds: readonly string[] | null;
   enabled?: boolean;
-  /** Milliseconds from seed time; negative for an already-expired key. */
   expiresInMs?: number;
 }
 
 export const API_KEYS = {
-  /** Everything the default tenant can do. The default identity for happy paths. */
   orgFull: {
     token: "elmo_e2e_org_full",
     name: "E2E org key (full)",
@@ -167,7 +136,6 @@ export const API_KEYS = {
     scopes: API_SCOPES,
     brandIds: null,
   },
-  /** Every read scope and no write scope: writes must 403, reads must succeed. */
   orgReadOnly: {
     token: "elmo_e2e_org_readonly",
     name: "E2E org key (read-only)",
@@ -175,7 +143,6 @@ export const API_KEYS = {
     scopes: READ_SCOPES,
     brandIds: null,
   },
-  /** Only brands:read — every other resource must 403 on missing scope. */
   orgBrandsOnly: {
     token: "elmo_e2e_org_brands_only",
     name: "E2E org key (brands only)",
@@ -183,11 +150,6 @@ export const API_KEYS = {
     scopes: ["brands:read"],
     brandIds: null,
   },
-  /**
-   * No scopes at all. Organizations are the one carve-out that needs none, so
-   * this key proves that carve-out is exactly as wide as intended: it can name
-   * its own workspace and nothing else.
-   */
   orgNoScopes: {
     token: "elmo_e2e_org_no_scopes",
     name: "E2E org key (no scopes)",
@@ -195,7 +157,6 @@ export const API_KEYS = {
     scopes: [],
     brandIds: null,
   },
-  /** Every scope but the destructive ones: writes succeed, deletes must 403. */
   orgNoDelete: {
     token: "elmo_e2e_org_no_delete",
     name: "E2E org key (no delete)",
@@ -203,10 +164,6 @@ export const API_KEYS = {
     scopes: NON_DESTRUCTIVE_SCOPES,
     brandIds: null,
   },
-  /**
-   * Only analytics:read. Proves the analytics endpoints stand on their own
-   * scope, and that a key without brands:read can't reach the org endpoints.
-   */
   orgAnalyticsOnly: {
     token: "elmo_e2e_org_analytics_only",
     name: "E2E org key (analytics only)",
@@ -214,7 +171,6 @@ export const API_KEYS = {
     scopes: ["analytics:read"],
     brandIds: null,
   },
-  /** Full access except billing:read, so the billing endpoint must 403. */
   orgNoBilling: {
     token: "elmo_e2e_org_no_billing",
     name: "E2E org key (no billing)",
@@ -222,11 +178,7 @@ export const API_KEYS = {
     scopes: API_SCOPES.filter((scope) => scope !== "billing:read"),
     brandIds: null,
   },
-  /**
-   * Narrowed to a brand belonging to a *different* organization. Metadata is
-   * client-writable, so this is what a forged restriction looks like; the
-   * intersection empties it and the key reaches nothing.
-   */
+  /** What a forged restriction looks like: the intersection empties it. */
   orgForgedRestriction: {
     token: "elmo_e2e_org_forged_restriction",
     name: "E2E org key (forged restriction)",
@@ -234,7 +186,6 @@ export const API_KEYS = {
     scopes: API_SCOPES,
     brandIds: [NIKE_BRAND_ID],
   },
-  /** The other tenant. Must never see anything belonging to the default org. */
   nikeFull: {
     token: "elmo_e2e_nike_full",
     name: "E2E Nike key (full)",
@@ -242,10 +193,6 @@ export const API_KEYS = {
     scopes: API_SCOPES,
     brandIds: null,
   },
-  /**
-   * Nike's org, narrowed to one of its two brands. Proves a restriction narrows
-   * a key below what its organization would otherwise reach.
-   */
   nikeNarrow: {
     token: "elmo_e2e_nike_narrow",
     name: "E2E Nike key (one brand)",
@@ -253,7 +200,6 @@ export const API_KEYS = {
     scopes: API_SCOPES,
     brandIds: [NIKE_BRAND_ID],
   },
-  /** Past its expiry: must 401 exactly like an unknown key. */
   expired: {
     token: "elmo_e2e_expired",
     name: "E2E org key (expired)",
@@ -262,7 +208,6 @@ export const API_KEYS = {
     brandIds: null,
     expiresInMs: -60_000,
   },
-  /** Cloud only: an org one prompt short of a custom plan's limit. */
   capped: {
     token: "elmo_e2e_capped",
     name: "E2E capped key",
@@ -270,7 +215,6 @@ export const API_KEYS = {
     scopes: API_SCOPES,
     brandIds: null,
   },
-  /** Cloud only: an org with no subscription. Reads work, writes are 402. */
   unpaid: {
     token: "elmo_e2e_unpaid",
     name: "E2E unpaid key",
@@ -278,7 +222,6 @@ export const API_KEYS = {
     scopes: API_SCOPES,
     brandIds: null,
   },
-  /** Revoked: must 401 exactly like an unknown key. */
   disabled: {
     token: "elmo_e2e_disabled",
     name: "E2E org key (revoked)",

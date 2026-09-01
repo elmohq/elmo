@@ -1,27 +1,13 @@
 /**
- * The time window every `/api/v1` analytics endpoint takes.
- *
- * `start` and `end` are ISO 8601 timestamps and the window is half-open,
- * `[start, end)`. A timestamp names an instant and carries its own offset, so
- * there is nothing else for a caller to send and nothing to agree on out of
- * band — which is why there is no `timezone` parameter beside it.
- *
- * `/prompts/{promptId}/snapshot` keeps the `startDate`/`endDate` calendar days
- * it shipped with. That is a published contract, so it stays exactly as it is;
- * these endpoints are new and take the spelling that doesn't need a second
- * parameter to mean anything.
+ * Half-open `[start, end)` ISO instants, which is why there is no `timezone`
+ * beside them. `/prompts/{promptId}/snapshot` keeps the calendar days it
+ * shipped with, being a published contract.
  */
 import type { AnalyticsWindow } from "@/server/analytics-core";
 import { ApiError } from "./handler";
 
-/**
- * Days are labelled in UTC and there is no parameter to change that. A bucket
- * label is the one part of the answer a caller can recompute from the runs it
- * already has, so it isn't worth a value everyone has to keep sending.
- */
 const BUCKET_ZONE = "UTC";
 
-/** What a caller sees of the window: the two instants it asked with, in UTC. */
 export function publicRange(window: AnalyticsWindow): { start: string; end: string } {
 	return { start: window.from, end: window.to };
 }
@@ -30,11 +16,8 @@ function invalid(message: string): never {
 	throw new ApiError(400, "Validation Error", message, "validation_error");
 }
 
-/**
- * A bare `YYYY-MM-DD` is rejected rather than read as midnight UTC. It is the
- * legacy endpoint's spelling, it means a *local* day there, and accepting it
- * here would put the same string in two endpoints meaning two things.
- */
+/** Rejected rather than read as midnight UTC: it means a local day on the
+ * legacy endpoint, and one string cannot mean two things. */
 function parseInstant(name: string, raw: string): string {
 	if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
 		invalid(`${name} must be an ISO 8601 timestamp, e.g. 2026-01-01T00:00:00Z — a bare date is not accepted`);
@@ -46,19 +29,14 @@ function parseInstant(name: string, raw: string): string {
 	return parsed.toISOString();
 }
 
-/**
- * The window rules, over plain values. `parseAnalyticsWindow` reads them off a
- * `URL`; the MCP tools pass them straight in, so both refuse a bad window the
- * same way rather than each restating what a window is.
- */
+/** Over plain values, so the MCP tools and the URL parser refuse a bad window
+ * the same way. */
 export function resolveAnalyticsWindow(rawStart: string | null, rawEnd: string | null): AnalyticsWindow {
 	if (!rawStart || !rawEnd) {
 		invalid("A window is required: both start and end, as ISO 8601 timestamps");
 	}
 	const start = parseInstant("start", rawStart);
 	const end = parseInstant("end", rawEnd);
-	// The window is half-open, so an empty one is a request that can only ever
-	// answer with nothing — worth reporting rather than serving.
 	if (start >= end) {
 		invalid("start must be before end");
 	}
@@ -69,13 +47,9 @@ export function parseAnalyticsWindow(url: URL): AnalyticsWindow {
 	return resolveAnalyticsWindow(url.searchParams.get("start"), url.searchParams.get("end"));
 }
 
-/** The `model` and `tags` filters every analytics endpoint shares. */
-export interface AnalyticsFilters {
-	model?: string;
-	tags?: string;
-}
+export type { AnalyticsFilters } from "@/server/analytics-core";
 
-export function parseAnalyticsFilters(url: URL): AnalyticsFilters {
+export function parseAnalyticsFilters(url: URL): { model?: string; tags?: string } {
 	return {
 		model: url.searchParams.get("model") ?? undefined,
 		tags: url.searchParams.get("tags") ?? undefined,

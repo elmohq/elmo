@@ -15,7 +15,6 @@
 import { describe, expect, it } from "vitest";
 import {
 	evaluateAdminRouteGuard,
-	evaluateApiKeyAuth,
 	evaluateAuthedRouteGuard,
 	evaluateDeploymentPolicy,
 	evaluateReadOnly,
@@ -25,15 +24,10 @@ import {
 } from "@/lib/auth/policies";
 import { createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
 
-// ============================================================================
-// Helpers
-// ============================================================================
-
 function req(method: string, pathname: string, authorizationHeader?: string): RequestInfo {
 	return { pathname, method, authorizationHeader };
 }
 
-/** An /api/v1 request that carries a token, whatever that token turns out to be. */
 function apiReq(method: string, pathname: string): RequestInfo {
 	return req(method, pathname, "Bearer some-token");
 }
@@ -41,10 +35,6 @@ function apiReq(method: string, pathname: string): RequestInfo {
 const VALID_API_KEY = "test-key-abc123";
 const INVALID_API_KEY = "wrong-key";
 const API_KEYS = [VALID_API_KEY, "another-key"];
-
-// ============================================================================
-// 1. Deployment Request Policy Matrix
-// ============================================================================
 
 describe("evaluateDeploymentPolicy", () => {
 	// ────────────────────────────────────────────────────────────
@@ -227,16 +217,8 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 	});
 
-	// ────────────────────────────────────────────────────────────
-	// /api/v1 is createApiHandler's to guard
-	// ────────────────────────────────────────────────────────────
 	describe("api v1", () => {
 		it("passes a request that carries a token through, in every mode", () => {
-			// Whether the token is *valid* means a database lookup, and this function
-			// is pure and synchronous by design. Refusing a write here would also send
-			// a bare middleware body instead of the `{ error, message, code }`
-			// envelope every other /api/v1 error uses. Both jobs belong to
-			// createApiHandler; a conformance test keeps every route wired to it.
 			for (const features of [LOCAL_FEATURES, DEMO_FEATURES, WHITELABEL_FEATURES]) {
 				for (const [method, path] of [
 					["GET", "/api/v1/prompts"],
@@ -252,9 +234,6 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 
 		it("refuses a request carrying no usable token, without looking it up", () => {
-			// The coarse half of the gate: a request with nothing to authenticate is
-			// turned away here, so it can never reach a route or fall through to the
-			// SPA. Anything under /api/v1 that is refused is refused as JSON.
 			for (const header of [undefined, "", "Basic dXNlcjpwYXNz", "Bearer", "Bearer   "]) {
 				const result = evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/prompts", header));
 				expect(result, `header: ${JSON.stringify(header)}`).toMatchObject({
@@ -320,32 +299,45 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 
 		it("leaves an unauthenticated MCP call to the route, which answers with a challenge", () => {
-			// A middleware block here would be a bare 403 with no WWW-Authenticate,
-			// which is the header a client needs to discover it should sign in.
+			// A middleware block would be a bare 403 with no WWW-Authenticate, which
+			// is what a client reads to discover it should sign in.
 			expect(evaluateDeploymentPolicy(LOCAL_FEATURES, req("POST", "/api/mcp")).action).toBe("allow");
 		});
 
 		it("runs the OAuth flow wherever writes are allowed", () => {
 			for (const features of [LOCAL_FEATURES, WHITELABEL_FEATURES]) {
-				expect(evaluateDeploymentPolicy(features, req("GET", "/api/auth/mcp/authorize")).action).toBe("allow");
-				expect(evaluateDeploymentPolicy(features, req("POST", "/api/auth/mcp/register")).action).toBe("allow");
-				expect(evaluateDeploymentPolicy(features, req("POST", "/api/auth/mcp/token")).action).toBe("allow");
+				expect(evaluateDeploymentPolicy(features, req("GET", "/api/auth/oauth2/authorize")).action).toBe("allow");
+				expect(evaluateDeploymentPolicy(features, req("POST", "/api/auth/oauth2/register")).action).toBe("allow");
+				expect(evaluateDeploymentPolicy(features, req("POST", "/api/auth/oauth2/token")).action).toBe("allow");
 			}
 		});
 
 		it("turns the OAuth flow off in a read-only deployment", () => {
-			// Client registration is an unauthenticated write by design; a public
-			// demo is exactly where that gets abused.
-			for (const path of ["/api/auth/mcp/register", "/api/auth/mcp/authorize", "/api/auth/mcp/token"]) {
+			for (const path of ["/api/auth/oauth2/register", "/api/auth/oauth2/authorize", "/api/auth/oauth2/token"]) {
 				expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", path))).toMatchObject({
 					action: "block",
 					status: 403,
 				});
 			}
+			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("GET", "/api/auth/oauth2/authorize"))).toMatchObject({
+				action: "block",
+				status: 403,
+			});
 		});
 
 		it("still serves MCP itself in a read-only deployment", () => {
 			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcp")).action).toBe("allow");
+		});
+
+		it("leaves a path under the MCP endpoint to the route, which answers 404", () => {
+			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcp/sub")).action).toBe("allow");
+		});
+
+		it("does not exempt a route that merely starts with the same characters", () => {
+			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcpx"))).toMatchObject({
+				action: "block",
+				status: 403,
+			});
 		});
 	});
 
@@ -354,8 +346,6 @@ describe("evaluateDeploymentPolicy", () => {
 	// ────────────────────────────────────────────────────────────
 	describe("custom feature combinations", () => {
 		it("leaves API v1 authentication to createApiHandler", () => {
-			// Whether a token is valid resolves against the database, which this pure
-			// function cannot do — so it decides only whether one is present at all.
 			const result = evaluateDeploymentPolicy(LOCAL_FEATURES, apiReq("GET", "/api/v1/prompts"));
 			expect(result.action).toBe("allow");
 		});
@@ -380,10 +370,6 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 	});
 });
-
-// ============================================================================
-// 2. Auth Function-Level Policies
-// ============================================================================
 
 describe("evaluateRequireAdmin", () => {
 	it("denies non-admin users", () => {
@@ -422,10 +408,6 @@ describe("evaluateRequireCanCreateBrands", () => {
 	});
 });
 
-// ============================================================================
-// 3. Route Guard Policies
-// ============================================================================
-
 describe("evaluateAuthedRouteGuard", () => {
 	const session = createMockSession();
 
@@ -447,56 +429,6 @@ describe("evaluateAdminRouteGuard", () => {
 		expect(evaluateAdminRouteGuard(true)).toBe("allow");
 	});
 });
-
-// ============================================================================
-// 4. API Key Authentication
-// ============================================================================
-
-describe("evaluateApiKeyAuth", () => {
-	const keys = ["key-1", "key-2", "key-3"];
-
-	it("rejects missing Authorization header", () => {
-		const result = evaluateApiKeyAuth(null, keys);
-		expect(result).not.toBe("allow");
-	});
-
-	it("rejects empty Authorization header", () => {
-		const result = evaluateApiKeyAuth("", keys);
-		expect(result).not.toBe("allow");
-	});
-
-	it("rejects non-Bearer scheme", () => {
-		const result = evaluateApiKeyAuth("Basic abc123", keys);
-		expect(result).not.toBe("allow");
-	});
-
-	it("rejects invalid key", () => {
-		const result = evaluateApiKeyAuth("Bearer wrong-key", keys);
-		expect(result).not.toBe("allow");
-		if (result !== "allow") {
-			expect(result.message).toContain("Invalid API key");
-		}
-	});
-
-	it("rejects when no keys are configured", () => {
-		const result = evaluateApiKeyAuth("Bearer key-1", []);
-		expect(result).not.toBe("allow");
-	});
-
-	it("allows valid key", () => {
-		expect(evaluateApiKeyAuth("Bearer key-1", keys)).toBe("allow");
-	});
-
-	it("allows any of the configured keys", () => {
-		expect(evaluateApiKeyAuth("Bearer key-2", keys)).toBe("allow");
-		expect(evaluateApiKeyAuth("Bearer key-3", keys)).toBe("allow");
-	});
-});
-
-// ============================================================================
-// 5. Cross-cutting: Full scenario tests
-//    These simulate a user journey through multiple policy layers.
-// ============================================================================
 
 describe("full access-control scenarios", () => {
 	describe("local developer", () => {

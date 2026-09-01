@@ -188,8 +188,8 @@ jobs:
         env:
           PLAYWRIGHT_HTML_REPORT: playwright-report-cloud
 
-      # Plan enforcement only exists in cloud mode, so the Bruno cases that
-      # assert it are tagged `cloud` and excluded from the local run above.
+      # Plan enforcement only exists in cloud mode, so these cases are tagged
+      # `cloud` and excluded from the local run above.
       - name: Run Bruno API tests (cloud mode)
         run: pnpm test:api:cloud
 
@@ -230,9 +230,8 @@ jobs:
       - name: Run Bruno API tests (demo mode)
         run: pnpm test:api:demo
 
-      # The spec is written by hand next to the code it describes, so nothing
-      # but this stops the two from disagreeing. Every response the three runs
-      # above recorded is held against the schema that documents it.
+      # The spec is written by hand, so nothing but this stops it disagreeing
+      # with the responses the three runs above recorded.
       - name: Check responses against the OpenAPI spec
         run: pnpm validate:spec
 

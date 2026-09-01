@@ -1,11 +1,6 @@
 /**
- * The protocol side: what a real MCP client sees when it connects.
- *
  * Driven through the SDK's own client over a linked in-memory transport rather
- * than by inspecting our objects, because the thing worth checking is the wire:
- * that the tools we register are the tools that get advertised, that a refusal
- * arrives as a tool error a model can read rather than as a protocol fault, and
- * that an unexpected failure says nothing about what went wrong.
+ * than by inspecting our objects, because what matters is the wire.
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -38,11 +33,8 @@ async function connect(tools: McpTool[]) {
 	return { client, close: () => Promise.all([client.close(), server.close()]) };
 }
 
-/**
- * The single text block every tool answers with. Typed off `unknown` because
- * `callTool` still admits the protocol's legacy result shape, which has no
- * `content` at all.
- */
+/** Typed off `unknown` because `callTool` still admits the protocol's legacy
+ * result shape, which has no `content` at all. */
 function textOf(result: unknown): string {
 	const content = (result as { content?: Array<{ text?: string }> }).content ?? [];
 	return content[0]?.text ?? "";

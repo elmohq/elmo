@@ -1,20 +1,12 @@
 #!/usr/bin/env node
 /**
- * Check the API's real responses against the spec that documents them.
- *
- * The spec, the runtime validators, and the route code are written separately,
- * so nothing stops them from disagreeing — and a schema that lies is worse than
- * no schema, because a client generated from it breaks on valid data. The Bruno
- * suite already calls every endpoint; this reads the responses it recorded and
- * holds them against what the spec promised.
+ * Hold the responses the Bruno suite recorded against what the spec promised.
  *
  * Usage: node validate-openapi.mjs <bruno-report.json> [...]
  *
- * Two kinds of finding. A violation is a response the spec says is impossible
- * (missing a required field, null where non-nullable, an undocumented
- * property), and fails the run. Drift is weaker evidence that only reads across
- * the whole suite — a documented-optional field that was present every single
- * time — so it is reported without failing.
+ * A violation is a response the spec says is impossible, and fails the run.
+ * Drift — a documented-optional field present every single time — is reported
+ * without failing.
  */
 import { readFileSync } from "node:fs";
 
@@ -41,8 +33,7 @@ function resolve(schema) {
 			}),
 			{},
 		);
-		// `nullable` beside an allOf is how OpenAPI 3.0 spells a nullable $ref —
-		// a bare `$ref` can carry no siblings, so it gets wrapped in one.
+		// How OpenAPI 3.0 spells a nullable $ref, which can carry no siblings.
 		return {
 			...merged,
 			...siblings,
@@ -55,7 +46,6 @@ function resolve(schema) {
 const TYPE_OF = (value) =>
 	value === null ? "null" : Array.isArray(value) ? "array" : typeof value === "number" ? "number" : typeof value;
 
-/** Push a message for everything about `value` the schema forbids. */
 function validate(value, rawSchema, where, out) {
 	const schema = resolve(rawSchema);
 	if (!schema.type && !schema.properties && !schema.enum) return;
@@ -77,9 +67,8 @@ function validate(value, rawSchema, where, out) {
 	if (expected === "integer" && !Number.isInteger(value)) {
 		out.violations.push(`${where}: expected an integer, got ${value}`);
 	}
-	// A documented range is the only thing that catches a unit changing under a
-	// field: a share that turns from 0-100 into 0..1 is still a number, still
-	// non-null, and still passes every other check here.
+	// The only check that catches a unit changing: 0-100 turning into 0..1 is
+	// still a number and still non-null.
 	if (actual === "number") {
 		if (schema.minimum !== undefined && value < schema.minimum) {
 			out.violations.push(`${where}: ${value} is below the documented minimum ${schema.minimum}`);
@@ -123,7 +112,6 @@ function validate(value, rawSchema, where, out) {
 	}
 }
 
-/** The spec path template a concrete URL was served by, e.g. /brands/{brandId}. */
 function matchPath(pathname) {
 	const actual = pathname.slice(BASE_PATH.length).split("/").filter(Boolean);
 	for (const template of Object.keys(SPEC.paths)) {
@@ -167,7 +155,6 @@ for (const file of reports) {
 				continue;
 			}
 			const operation = SPEC.paths[template][result.request.method.toLowerCase()];
-			// A verb the spec doesn't document is the conformance suite's business.
 			if (!operation) continue;
 			const response = operation.responses[String(status)] ?? operation.responses.default;
 			if (!response) {
@@ -199,7 +186,6 @@ console.log(`checked ${checked} responses against the spec`);
 console.log(`${exercised.size}/${documented.length} documented operations were exercised`);
 if (unmatched) console.log(`${unmatched} responses hit no documented path (redirects and unclaimed routes)`);
 
-// Saying only what was checked would read as "all of it".
 if (unexercised.length) {
 	console.log(`\nnot exercised by any recorded response, so unchecked here:`);
 	for (const operation of unexercised) console.log(`  ${operation}`);

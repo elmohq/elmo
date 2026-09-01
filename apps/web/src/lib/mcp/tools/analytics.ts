@@ -1,15 +1,6 @@
 /**
- * The measurements, all over `analytics-core` — the same functions the
- * dashboard's own server functions call, so a number an agent reads is the
- * number the dashboard shows.
- *
- * Every one starts the same way: check the brand is the caller's, resolve the
- * window, apply the filters, answer inside a `{ brandId, range }` envelope.
- * `analyticsTool` does that once so each tool is only the call that makes it
- * different.
- *
- * None of them paginate, because none of them can grow without bound: the lists
- * that can have their own tools.
+ * Over `analytics-core`, the same functions the dashboard calls. None paginate,
+ * because none can grow without bound; the lists that can have their own tools.
  */
 import { publicRange } from "@/lib/api/analytics-range";
 import { requireBrandInScope } from "@/lib/api/scope";
@@ -87,8 +78,6 @@ export const getQueryFanout = analyticsTool({
 		"The web searches the models actually ran while answering, and how often. These are the phrasings to optimize for — they are frequently not the prompt's own wording.",
 	run: async ({ brand, range, filters }) => {
 		const analysis = await getBrandQueryFanout(brand.id, range, filters, { uncapped: true });
-		// topByRuns carries both figures per query; topQueries carries only an
-		// instance count.
 		return {
 			totalQueries: analysis.totalQueries,
 			uniqueQueries: analysis.uniqueQueries,

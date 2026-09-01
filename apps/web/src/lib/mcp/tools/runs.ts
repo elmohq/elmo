@@ -2,12 +2,13 @@
 import { z } from "zod";
 import { ApiError } from "@/lib/api/handler";
 import { isBrandInScope } from "@/lib/api/scope";
+import type { Principal } from "@/lib/auth/api-auth";
 import { findPromptBrandId } from "@/server/prompts-core";
 import { findRunDetail, listPromptRuns } from "@/server/runs-core";
 import { defineTool, modelArg, promptIdArg, windowArgs, windowFor } from "./define";
 
 /** A run belongs to a prompt; reaching the prompt is what reaches the run. */
-async function requirePromptInScope(auth: Parameters<typeof isBrandInScope>[0], promptId: string) {
+async function requirePromptInScope(auth: Principal, promptId: string) {
 	const brandId = await findPromptBrandId(promptId);
 	// A prompt in another tenant reads exactly as one that isn't there.
 	if (!brandId || !(await isBrandInScope(auth, brandId))) {
