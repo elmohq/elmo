@@ -1,5 +1,5 @@
 import { validateWebsiteUrl } from "@/lib/brand-website";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { cleanAndValidateDomain, inDomainSet } from "@/lib/domain-categories";
 
 /**
  * Pure normalization/validation for the "edit brand settings" flow, extracted
@@ -10,7 +10,8 @@ import { cleanAndValidateDomain } from "@/lib/domain-categories";
  *  - name: trimmed; must be non-empty when provided
  *  - website: validated + normalized to a full URL (path preserved)
  *  - additionalDomains: each cleaned/validated (hard error listing the invalid
- *    ones), then de-duplicated
+ *    ones), then de-duplicated, then stripped of entries a broader tracked
+ *    domain already covers (issue #571)
  *  - aliases: trimmed, empties dropped, de-duplicated
  *
  * Only keys present on the input are touched, so a partial edit leaves the rest
@@ -56,7 +57,22 @@ export function normalizeBrandUpdate(input: BrandUpdateInput): NormalizeBrandUpd
 		if (invalid.length > 0) {
 			return { ok: false, error: `Invalid domain(s): ${invalid.join(", ")}` };
 		}
-		updates.additionalDomains = [...new Set(cleaned.filter(Boolean) as string[])];
+		const unique = [...new Set(cleaned.filter(Boolean) as string[])];
+		// Brand matching is suffix-based (`inDomainSet`, which categorizeDomain
+		// uses), so `acme.io` already covers `blog.acme.io` and storing both
+		// leaves an entry in the settings list that does nothing. Comparing each
+		// domain against the others plus the website drops the narrower one,
+		// in either entry order and through a chain of nested subdomains.
+		//
+		// The website is only consulted when it is part of this update: a partial
+		// edit that sends domains alone has no website to compare against, and
+		// this function deliberately never reads the stored brand.
+		const websiteDomain = updates.website ? cleanAndValidateDomain(updates.website) : null;
+		updates.additionalDomains = unique.filter((domain) => {
+			const covering = new Set(unique.filter((other) => other !== domain));
+			if (websiteDomain) covering.add(websiteDomain);
+			return !inDomainSet(domain, covering);
+		});
 	}
 
 	if (input.aliases !== undefined) {

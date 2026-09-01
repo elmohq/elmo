@@ -82,6 +82,53 @@ describe("normalizeBrandUpdate", () => {
 			const result = normalizeBrandUpdate({ additionalDomains: [] });
 			expect(result).toEqual({ ok: true, updates: { additionalDomains: [] } });
 		});
+
+		describe("redundant subdomains", () => {
+			it("drops a subdomain of another additional domain", () => {
+				const result = normalizeBrandUpdate({ additionalDomains: ["acme.io", "blog.acme.io"] });
+				expect(result.ok).toBe(true);
+				if (result.ok) expect(result.updates.additionalDomains).toEqual(["acme.io"]);
+			});
+
+			it("drops the subdomain whichever order it was entered in", () => {
+				const result = normalizeBrandUpdate({ additionalDomains: ["blog.acme.io", "acme.io"] });
+				expect(result.ok).toBe(true);
+				if (result.ok) expect(result.updates.additionalDomains).toEqual(["acme.io"]);
+			});
+
+			it("collapses a chain of nested subdomains to the broadest entry", () => {
+				const result = normalizeBrandUpdate({
+					additionalDomains: ["eu.blog.acme.io", "blog.acme.io", "acme.io"],
+				});
+				expect(result.ok).toBe(true);
+				if (result.ok) expect(result.updates.additionalDomains).toEqual(["acme.io"]);
+			});
+
+			it("keeps a domain that only shares a suffix without a label boundary", () => {
+				const result = normalizeBrandUpdate({
+					additionalDomains: ["acme.io", "notacme.io", "fake-acme.io"],
+				});
+				expect(result.ok).toBe(true);
+				if (result.ok) {
+					expect(result.updates.additionalDomains).toEqual(["acme.io", "notacme.io", "fake-acme.io"]);
+				}
+			});
+
+			it("drops a domain already covered by the website in the same update", () => {
+				const result = normalizeBrandUpdate({
+					website: "https://www.acme.com/products",
+					additionalDomains: ["blog.acme.com", "acme.com", "acme.io"],
+				});
+				expect(result.ok).toBe(true);
+				if (result.ok) expect(result.updates.additionalDomains).toEqual(["acme.io"]);
+			});
+
+			it("leaves subdomains alone when the website is not part of the update", () => {
+				const result = normalizeBrandUpdate({ additionalDomains: ["blog.acme.com"] });
+				expect(result.ok).toBe(true);
+				if (result.ok) expect(result.updates.additionalDomains).toEqual(["blog.acme.com"]);
+			});
+		});
 	});
 
 	describe("aliases", () => {
