@@ -10,7 +10,7 @@
  * Shared across modes on purpose — demo refuses the write, and this is where
  * that would show up if the page ever bypassed the server function.
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../../test";
 import { NIKE_BRAND_ID, TEST_BRAND_ID, brandUrl } from "../../fixtures";
 
 const KEYS_PAGE = `${brandUrl()}/settings/api-keys`;
@@ -65,7 +65,10 @@ test.describe("API keys", () => {
     expect(identity.scopes).not.toContain("competitors:delete");
 
     // A scope it holds, and one it doesn't.
-    const allowed = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/analytics?start=2000-01-01T00:00:00Z&end=2100-01-01T00:00:00Z`, { headers: auth });
+    const allowed = await request.get(
+      `/api/v1/brands/${TEST_BRAND_ID}/analytics?start=2020-03-01T00:00:00Z&end=2020-04-01T00:00:00Z`,
+      { headers: auth },
+    );
     expect(allowed.status()).toBe(200);
 
     const refused = await request.delete("/api/v1/competitors/00000000-0000-0000-0000-999999999999", {
