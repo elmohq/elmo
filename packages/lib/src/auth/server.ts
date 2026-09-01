@@ -227,7 +227,12 @@ export function createAuth(options?: CreateAuthOptions) {
 			// publishes the key set they are verified against. `mcp()` requires it:
 			// without it tokens fall back to being signed with a client secret,
 			// which a public client does not have.
-			jwt(),
+			//
+			// Left to itself the plugin also stamps a freshly signed JWT onto every
+			// session read, which means decrypting the signing key on the path the
+			// `customSession` below is deliberately kept cheap for. Nothing here
+			// reads that header, so it is off.
+			jwt({ disableSettingJwtHeader: true }),
 			// The OAuth authorization server behind /api/mcp. An MCP client
 			// registers itself, sends its user here to sign in, and leaves with a
 			// token that acts as that person — the same reach they have in the
