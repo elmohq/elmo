@@ -1,7 +1,7 @@
 /**
  * The only way to mint a key; the plugin's HTTP endpoints are blocked. This is
  * where the brand narrowing, which lives in client-writable `metadata`, is
- * checked against the workspace's own brands.
+ * checked against the organization's own brands.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
@@ -12,7 +12,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { API_SCOPES, type ApiScope, permissionsToScopes, scopesToPermissions } from "@/lib/api/scopes";
 import { readBrandRestriction } from "@/lib/auth/api-auth";
-import { requireAuthSession, requireBrandOrganization } from "@/lib/auth/helpers";
+import { requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 import { auth } from "@/lib/auth/server";
 
 const EXPIRY_DAYS = [30, 90, 180, 365] as const;
@@ -63,22 +63,22 @@ function summarize(key: StoredApiKey): ApiKeySummary {
 	};
 }
 
-async function requireWorkspace(brandId: string) {
+async function requireKeyAccess(organizationId: string) {
 	const session = await requireAuthSession();
-	const org = await requireBrandOrganization(session.user.id, brandId);
+	const org = await requireOrganization(session.user.id, organizationId);
 	return { session, org, canManage: isOrgAdminRole(org.role) };
 }
 
 function requireManager(canManage: boolean): void {
-	if (!canManage) throw new Error("Only workspace admins can manage API keys");
+	if (!canManage) throw new Error("Only organization admins can manage API keys");
 }
 
 export const listApiKeysFn = createServerFn({ method: "GET" })
-	.validator(z.object({ brandId: z.string() }))
+	.validator(z.object({ organizationId: z.string() }))
 	.handler(async ({ data }): Promise<ApiKeysPageData> => {
-		const { org, canManage } = await requireWorkspace(data.brandId);
+		const { org, canManage } = await requireKeyAccess(data.organizationId);
 
-		const [keys, workspaceBrands] = await Promise.all([
+		const [keys, organizationBrands] = await Promise.all([
 			auth.api.listApiKeys({ query: { organizationId: org.id }, headers: getRequestHeaders() }),
 			db
 				.select({ id: brands.id, name: brands.name })
@@ -91,14 +91,14 @@ export const listApiKeysFn = createServerFn({ method: "GET" })
 			organization: org,
 			canManage,
 			keys: keys.apiKeys.map(summarize),
-			brands: workspaceBrands,
+			brands: organizationBrands,
 			allScopes: API_SCOPES,
 			expiryOptions: EXPIRY_DAYS,
 		};
 	});
 
 const createInput = z.object({
-	brandId: z.string(),
+	organizationId: z.string(),
 	name: z.string().trim().min(1, "Give the key a name"),
 	scopes: z.array(z.enum(API_SCOPES)).min(1, "Choose at least one scope"),
 	/** Null is every brand; `[]` is rejected rather than read as "all", which is
@@ -119,7 +119,7 @@ const createInput = z.object({
 export const createApiKeyFn = createServerFn({ method: "POST" })
 	.validator(createInput)
 	.handler(async ({ data }): Promise<{ key: string; summary: ApiKeySummary }> => {
-		const { session, org, canManage } = await requireWorkspace(data.brandId);
+		const { session, org, canManage } = await requireKeyAccess(data.organizationId);
 		requireManager(canManage);
 
 		if (data.brandIds) {
@@ -127,7 +127,7 @@ export const createApiKeyFn = createServerFn({ method: "POST" })
 				(await db.select({ id: brands.id }).from(brands).where(eq(brands.organizationId, org.id))).map((row) => row.id),
 			);
 			const stray = data.brandIds.find((id) => !owned.has(id));
-			if (stray) throw new Error(`"${stray}" is not a brand in this workspace`);
+			if (stray) throw new Error(`"${stray}" is not a brand in this organization`);
 		}
 
 		// No `headers`: the plugin refuses to set `permissions` for a request
@@ -149,9 +149,9 @@ export const createApiKeyFn = createServerFn({ method: "POST" })
 	});
 
 export const revokeApiKeyFn = createServerFn({ method: "POST" })
-	.validator(z.object({ brandId: z.string(), keyId: z.string() }))
+	.validator(z.object({ organizationId: z.string(), keyId: z.string() }))
 	.handler(async ({ data }): Promise<{ revoked: true }> => {
-		const { org, canManage } = await requireWorkspace(data.brandId);
+		const { org, canManage } = await requireKeyAccess(data.organizationId);
 		requireManager(canManage);
 
 		// The id arrives from the browser and the plugin's delete trusts it.
@@ -160,7 +160,7 @@ export const revokeApiKeyFn = createServerFn({ method: "POST" })
 			headers: getRequestHeaders(),
 		});
 		if (!keys.apiKeys.some((key) => key.id === data.keyId)) {
-			throw new Error("API key not found in this workspace");
+			throw new Error("API key not found in this organization");
 		}
 
 		await auth.api.deleteApiKey({ body: { keyId: data.keyId }, headers: getRequestHeaders() });

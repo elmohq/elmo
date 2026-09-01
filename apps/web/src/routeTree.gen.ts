@@ -67,6 +67,7 @@ import { Route as ApiV1OrganizationsOrganizationIdBillingRouteImport } from './r
 import { Route as ApiV1PromptsPromptIdSnapshotRouteImport } from './routes/api/v1/prompts/$promptId/snapshot'
 import { Route as AuthedAppOrgOrgBrandBrandRouteImport } from './routes/_authed/app/org/$org/brand/$brand'
 import { Route as AuthedAppOrgOrgSettingsIndexRouteImport } from './routes/_authed/app/org/$org/settings/index'
+import { Route as AuthedAppOrgOrgSettingsApiKeysRouteImport } from './routes/_authed/app/org/$org/settings/api-keys'
 import { Route as AuthedAppOrgOrgSettingsBillingRouteImport } from './routes/_authed/app/org/$org/settings/billing'
 import { Route as AuthedAppOrgOrgSettingsBrandsRouteImport } from './routes/_authed/app/org/$org/settings/brands'
 import { Route as AuthedAppOrgOrgSettingsMembersRouteImport } from './routes/_authed/app/org/$org/settings/members'
@@ -86,7 +87,6 @@ import { Route as AuthedAppOrgOrgBrandBrandPromptsIndexRouteImport } from './rou
 import { Route as AuthedAppOrgOrgBrandBrandPromptsPromptIdRouteImport } from './routes/_authed/app/org/$org/brand/$brand/prompts/$promptId'
 import { Route as AuthedAppOrgOrgBrandBrandPromptsEditRouteImport } from './routes/_authed/app/org/$org/brand/$brand/prompts/edit'
 import { Route as AuthedAppOrgOrgBrandBrandSettingsIndexRouteImport } from './routes/_authed/app/org/$org/brand/$brand/settings/index'
-import { Route as AuthedAppOrgOrgBrandBrandSettingsApiKeysRouteImport } from './routes/_authed/app/org/$org/brand/$brand/settings/api-keys'
 import { Route as AuthedAppOrgOrgBrandBrandSettingsBrandRouteImport } from './routes/_authed/app/org/$org/brand/$brand/settings/brand'
 import { Route as AuthedAppOrgOrgBrandBrandSettingsCompetitorsRouteImport } from './routes/_authed/app/org/$org/brand/$brand/settings/competitors'
 import { Route as AuthedAppOrgOrgBrandBrandSettingsLlmsRouteImport } from './routes/_authed/app/org/$org/brand/$brand/settings/llms'
@@ -398,6 +398,12 @@ const AuthedAppOrgOrgSettingsIndexRoute =
     path: '/',
     getParentRoute: () => AuthedAppOrgOrgSettingsRoute,
   } as any)
+const AuthedAppOrgOrgSettingsApiKeysRoute =
+  AuthedAppOrgOrgSettingsApiKeysRouteImport.update({
+    id: '/api-keys',
+    path: '/api-keys',
+    getParentRoute: () => AuthedAppOrgOrgSettingsRoute,
+  } as any)
 const AuthedAppOrgOrgSettingsBillingRoute =
   AuthedAppOrgOrgSettingsBillingRouteImport.update({
     id: '/billing',
@@ -512,12 +518,6 @@ const AuthedAppOrgOrgBrandBrandSettingsIndexRoute =
     path: '/settings/',
     getParentRoute: () => AuthedAppOrgOrgBrandBrandRoute,
   } as any)
-const AuthedAppOrgOrgBrandBrandSettingsApiKeysRoute =
-  AuthedAppOrgOrgBrandBrandSettingsApiKeysRouteImport.update({
-    id: '/settings/api-keys',
-    path: '/settings/api-keys',
-    getParentRoute: () => AuthedAppOrgOrgBrandBrandRoute,
-  } as any)
 const AuthedAppOrgOrgBrandBrandSettingsBrandRoute =
   AuthedAppOrgOrgBrandBrandSettingsBrandRouteImport.update({
     id: '/settings/brand',
@@ -600,6 +600,7 @@ export interface FileRoutesByFullPath {
   '/app/org/$org/': typeof AuthedAppOrgOrgIndexRoute
   '/api/plausible/js/script/': typeof ApiPlausibleJsScriptIndexRoute
   '/app/org/$org/brand/$brand': typeof AuthedAppOrgOrgBrandBrandRouteWithChildren
+  '/app/org/$org/settings/api-keys': typeof AuthedAppOrgOrgSettingsApiKeysRoute
   '/app/org/$org/settings/billing': typeof AuthedAppOrgOrgSettingsBillingRoute
   '/app/org/$org/settings/brands': typeof AuthedAppOrgOrgSettingsBrandsRoute
   '/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
@@ -618,7 +619,6 @@ export interface FileRoutesByFullPath {
   '/app/org/$org/brand/$brand/': typeof AuthedAppOrgOrgBrandBrandIndexRoute
   '/app/org/$org/brand/$brand/prompts/$promptId': typeof AuthedAppOrgOrgBrandBrandPromptsPromptIdRoute
   '/app/org/$org/brand/$brand/prompts/edit': typeof AuthedAppOrgOrgBrandBrandPromptsEditRoute
-  '/app/org/$org/brand/$brand/settings/api-keys': typeof AuthedAppOrgOrgBrandBrandSettingsApiKeysRoute
   '/app/org/$org/brand/$brand/settings/brand': typeof AuthedAppOrgOrgBrandBrandSettingsBrandRoute
   '/app/org/$org/brand/$brand/settings/competitors': typeof AuthedAppOrgOrgBrandBrandSettingsCompetitorsRoute
   '/app/org/$org/brand/$brand/settings/llms': typeof AuthedAppOrgOrgBrandBrandSettingsLlmsRoute
@@ -677,6 +677,7 @@ export interface FileRoutesByTo {
   '/api/v1/prompts/$promptId/snapshot': typeof ApiV1PromptsPromptIdSnapshotRoute
   '/app/org/$org': typeof AuthedAppOrgOrgIndexRoute
   '/api/plausible/js/script': typeof ApiPlausibleJsScriptIndexRoute
+  '/app/org/$org/settings/api-keys': typeof AuthedAppOrgOrgSettingsApiKeysRoute
   '/app/org/$org/settings/billing': typeof AuthedAppOrgOrgSettingsBillingRoute
   '/app/org/$org/settings/brands': typeof AuthedAppOrgOrgSettingsBrandsRoute
   '/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
@@ -695,7 +696,6 @@ export interface FileRoutesByTo {
   '/app/org/$org/brand/$brand': typeof AuthedAppOrgOrgBrandBrandIndexRoute
   '/app/org/$org/brand/$brand/prompts/$promptId': typeof AuthedAppOrgOrgBrandBrandPromptsPromptIdRoute
   '/app/org/$org/brand/$brand/prompts/edit': typeof AuthedAppOrgOrgBrandBrandPromptsEditRoute
-  '/app/org/$org/brand/$brand/settings/api-keys': typeof AuthedAppOrgOrgBrandBrandSettingsApiKeysRoute
   '/app/org/$org/brand/$brand/settings/brand': typeof AuthedAppOrgOrgBrandBrandSettingsBrandRoute
   '/app/org/$org/brand/$brand/settings/competitors': typeof AuthedAppOrgOrgBrandBrandSettingsCompetitorsRoute
   '/app/org/$org/brand/$brand/settings/llms': typeof AuthedAppOrgOrgBrandBrandSettingsLlmsRoute
@@ -762,6 +762,7 @@ export interface FileRoutesById {
   '/_authed/app/org/$org/': typeof AuthedAppOrgOrgIndexRoute
   '/api/plausible/js/script/': typeof ApiPlausibleJsScriptIndexRoute
   '/_authed/app/org/$org/brand/$brand': typeof AuthedAppOrgOrgBrandBrandRouteWithChildren
+  '/_authed/app/org/$org/settings/api-keys': typeof AuthedAppOrgOrgSettingsApiKeysRoute
   '/_authed/app/org/$org/settings/billing': typeof AuthedAppOrgOrgSettingsBillingRoute
   '/_authed/app/org/$org/settings/brands': typeof AuthedAppOrgOrgSettingsBrandsRoute
   '/_authed/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
@@ -780,7 +781,6 @@ export interface FileRoutesById {
   '/_authed/app/org/$org/brand/$brand/': typeof AuthedAppOrgOrgBrandBrandIndexRoute
   '/_authed/app/org/$org/brand/$brand/prompts/$promptId': typeof AuthedAppOrgOrgBrandBrandPromptsPromptIdRoute
   '/_authed/app/org/$org/brand/$brand/prompts/edit': typeof AuthedAppOrgOrgBrandBrandPromptsEditRoute
-  '/_authed/app/org/$org/brand/$brand/settings/api-keys': typeof AuthedAppOrgOrgBrandBrandSettingsApiKeysRoute
   '/_authed/app/org/$org/brand/$brand/settings/brand': typeof AuthedAppOrgOrgBrandBrandSettingsBrandRoute
   '/_authed/app/org/$org/brand/$brand/settings/competitors': typeof AuthedAppOrgOrgBrandBrandSettingsCompetitorsRoute
   '/_authed/app/org/$org/brand/$brand/settings/llms': typeof AuthedAppOrgOrgBrandBrandSettingsLlmsRoute
@@ -847,6 +847,7 @@ export interface FileRouteTypes {
     | '/app/org/$org/'
     | '/api/plausible/js/script/'
     | '/app/org/$org/brand/$brand'
+    | '/app/org/$org/settings/api-keys'
     | '/app/org/$org/settings/billing'
     | '/app/org/$org/settings/brands'
     | '/app/org/$org/settings/members'
@@ -865,7 +866,6 @@ export interface FileRouteTypes {
     | '/app/org/$org/brand/$brand/'
     | '/app/org/$org/brand/$brand/prompts/$promptId'
     | '/app/org/$org/brand/$brand/prompts/edit'
-    | '/app/org/$org/brand/$brand/settings/api-keys'
     | '/app/org/$org/brand/$brand/settings/brand'
     | '/app/org/$org/brand/$brand/settings/competitors'
     | '/app/org/$org/brand/$brand/settings/llms'
@@ -924,6 +924,7 @@ export interface FileRouteTypes {
     | '/api/v1/prompts/$promptId/snapshot'
     | '/app/org/$org'
     | '/api/plausible/js/script'
+    | '/app/org/$org/settings/api-keys'
     | '/app/org/$org/settings/billing'
     | '/app/org/$org/settings/brands'
     | '/app/org/$org/settings/members'
@@ -942,7 +943,6 @@ export interface FileRouteTypes {
     | '/app/org/$org/brand/$brand'
     | '/app/org/$org/brand/$brand/prompts/$promptId'
     | '/app/org/$org/brand/$brand/prompts/edit'
-    | '/app/org/$org/brand/$brand/settings/api-keys'
     | '/app/org/$org/brand/$brand/settings/brand'
     | '/app/org/$org/brand/$brand/settings/competitors'
     | '/app/org/$org/brand/$brand/settings/llms'
@@ -1008,6 +1008,7 @@ export interface FileRouteTypes {
     | '/_authed/app/org/$org/'
     | '/api/plausible/js/script/'
     | '/_authed/app/org/$org/brand/$brand'
+    | '/_authed/app/org/$org/settings/api-keys'
     | '/_authed/app/org/$org/settings/billing'
     | '/_authed/app/org/$org/settings/brands'
     | '/_authed/app/org/$org/settings/members'
@@ -1026,7 +1027,6 @@ export interface FileRouteTypes {
     | '/_authed/app/org/$org/brand/$brand/'
     | '/_authed/app/org/$org/brand/$brand/prompts/$promptId'
     | '/_authed/app/org/$org/brand/$brand/prompts/edit'
-    | '/_authed/app/org/$org/brand/$brand/settings/api-keys'
     | '/_authed/app/org/$org/brand/$brand/settings/brand'
     | '/_authed/app/org/$org/brand/$brand/settings/competitors'
     | '/_authed/app/org/$org/brand/$brand/settings/llms'
@@ -1480,6 +1480,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAppOrgOrgSettingsIndexRouteImport
       parentRoute: typeof AuthedAppOrgOrgSettingsRoute
     }
+    '/_authed/app/org/$org/settings/api-keys': {
+      id: '/_authed/app/org/$org/settings/api-keys'
+      path: '/api-keys'
+      fullPath: '/app/org/$org/settings/api-keys'
+      preLoaderRoute: typeof AuthedAppOrgOrgSettingsApiKeysRouteImport
+      parentRoute: typeof AuthedAppOrgOrgSettingsRoute
+    }
     '/_authed/app/org/$org/settings/billing': {
       id: '/_authed/app/org/$org/settings/billing'
       path: '/billing'
@@ -1613,13 +1620,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAppOrgOrgBrandBrandSettingsIndexRouteImport
       parentRoute: typeof AuthedAppOrgOrgBrandBrandRoute
     }
-    '/_authed/app/org/$org/brand/$brand/settings/api-keys': {
-      id: '/_authed/app/org/$org/brand/$brand/settings/api-keys'
-      path: '/settings/api-keys'
-      fullPath: '/app/org/$org/brand/$brand/settings/api-keys'
-      preLoaderRoute: typeof AuthedAppOrgOrgBrandBrandSettingsApiKeysRouteImport
-      parentRoute: typeof AuthedAppOrgOrgBrandBrandRoute
-    }
     '/_authed/app/org/$org/brand/$brand/settings/brand': {
       id: '/_authed/app/org/$org/brand/$brand/settings/brand'
       path: '/settings/brand'
@@ -1668,6 +1668,7 @@ const AuthedAdminRouteWithChildren = AuthedAdminRoute._addFileChildren(
 )
 
 interface AuthedAppOrgOrgSettingsRouteChildren {
+  AuthedAppOrgOrgSettingsApiKeysRoute: typeof AuthedAppOrgOrgSettingsApiKeysRoute
   AuthedAppOrgOrgSettingsBillingRoute: typeof AuthedAppOrgOrgSettingsBillingRoute
   AuthedAppOrgOrgSettingsBrandsRoute: typeof AuthedAppOrgOrgSettingsBrandsRoute
   AuthedAppOrgOrgSettingsMembersRoute: typeof AuthedAppOrgOrgSettingsMembersRoute
@@ -1676,6 +1677,7 @@ interface AuthedAppOrgOrgSettingsRouteChildren {
 
 const AuthedAppOrgOrgSettingsRouteChildren: AuthedAppOrgOrgSettingsRouteChildren =
   {
+    AuthedAppOrgOrgSettingsApiKeysRoute: AuthedAppOrgOrgSettingsApiKeysRoute,
     AuthedAppOrgOrgSettingsBillingRoute: AuthedAppOrgOrgSettingsBillingRoute,
     AuthedAppOrgOrgSettingsBrandsRoute: AuthedAppOrgOrgSettingsBrandsRoute,
     AuthedAppOrgOrgSettingsMembersRoute: AuthedAppOrgOrgSettingsMembersRoute,
@@ -1697,7 +1699,6 @@ interface AuthedAppOrgOrgBrandBrandRouteChildren {
   AuthedAppOrgOrgBrandBrandIndexRoute: typeof AuthedAppOrgOrgBrandBrandIndexRoute
   AuthedAppOrgOrgBrandBrandPromptsPromptIdRoute: typeof AuthedAppOrgOrgBrandBrandPromptsPromptIdRoute
   AuthedAppOrgOrgBrandBrandPromptsEditRoute: typeof AuthedAppOrgOrgBrandBrandPromptsEditRoute
-  AuthedAppOrgOrgBrandBrandSettingsApiKeysRoute: typeof AuthedAppOrgOrgBrandBrandSettingsApiKeysRoute
   AuthedAppOrgOrgBrandBrandSettingsBrandRoute: typeof AuthedAppOrgOrgBrandBrandSettingsBrandRoute
   AuthedAppOrgOrgBrandBrandSettingsCompetitorsRoute: typeof AuthedAppOrgOrgBrandBrandSettingsCompetitorsRoute
   AuthedAppOrgOrgBrandBrandSettingsLlmsRoute: typeof AuthedAppOrgOrgBrandBrandSettingsLlmsRoute
@@ -1724,8 +1725,6 @@ const AuthedAppOrgOrgBrandBrandRouteChildren: AuthedAppOrgOrgBrandBrandRouteChil
       AuthedAppOrgOrgBrandBrandPromptsPromptIdRoute,
     AuthedAppOrgOrgBrandBrandPromptsEditRoute:
       AuthedAppOrgOrgBrandBrandPromptsEditRoute,
-    AuthedAppOrgOrgBrandBrandSettingsApiKeysRoute:
-      AuthedAppOrgOrgBrandBrandSettingsApiKeysRoute,
     AuthedAppOrgOrgBrandBrandSettingsBrandRoute:
       AuthedAppOrgOrgBrandBrandSettingsBrandRoute,
     AuthedAppOrgOrgBrandBrandSettingsCompetitorsRoute:

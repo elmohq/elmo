@@ -59,6 +59,8 @@ function organizationGroup(organization: OrganizationSummary, features?: Feature
 		items.push({ title: "Billing", link: { to: "/app/org/$org/settings/billing", params }, icon: IconCreditCard });
 	}
 
+	items.push({ title: "API keys", link: { to: "/app/org/$org/settings/api-keys", params }, icon: IconKey });
+
 	return { label: "Organization Settings", items };
 }
 
@@ -100,11 +102,6 @@ function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts)
 					icon: IconListDetails,
 				},
 				{ title: "LLMs", link: { to: "/app/org/$org/brand/$brand/settings/llms", params }, icon: IconCpu },
-				{
-					title: "API keys",
-					link: { to: "/app/org/$org/brand/$brand/settings/api-keys", params },
-					icon: IconKey,
-				},
 			],
 		});
 	}

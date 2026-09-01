@@ -3,9 +3,9 @@
  * table, which says nothing about whether the product can mint one.
  */
 import { expect, test } from "../../test";
-import { NIKE_BRAND_ID, TEST_BRAND_ID, brandUrl } from "../../fixtures";
+import { NIKE_BRAND_ID, TEST_BRAND_ID, organizationUrl } from "../../fixtures";
 
-const KEYS_PAGE = `${brandUrl()}/settings/api-keys`;
+const KEYS_PAGE = `${organizationUrl()}/settings/api-keys`;
 
 type Page = import("@playwright/test").Page;
 
