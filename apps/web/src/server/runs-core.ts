@@ -1,13 +1,6 @@
 /**
- * Recorded answers, as the external surfaces publish them.
- *
- * Server-only and edge-agnostic, so `/api/v1` and the MCP run tools answer with
- * one row shape from one projection. Deciding the caller may see the run is the
- * caller's job; nothing here knows who is asking.
- *
- * `answer.text` is the normalized extraction, never the provider's own payload:
- * that shape belongs to the provider, and exposing it would quietly make it
- * part of these surfaces' contract.
+ * `answer.text` is the normalized extraction, never the provider's payload —
+ * exposing that would make its shape part of this contract.
  */
 import { db } from "@workspace/lib/db/db";
 import { citations, promptRuns } from "@workspace/lib/db/schema";
@@ -55,8 +48,6 @@ export async function listPromptRuns(options: ListRunsOptions): Promise<{ data: 
 	const { promptId, window, limit, offset, model } = options;
 	const { from, to, timezone } = window;
 
-	// Both go through the read layer's half-open window, so a run at the very end
-	// of the window lands inside it rather than after it.
 	const [rows, total] = await Promise.all([
 		getPromptRuns(promptId, from, to, timezone, limit, offset, model),
 		countPromptRuns(promptId, from, to, timezone, model),
@@ -80,12 +71,7 @@ export async function listPromptRuns(options: ListRunsOptions): Promise<{ data: 
 	};
 }
 
-/**
- * One run with its answer text and citations, or null if there is no such run.
- *
- * Addressed through the prompt that produced it, so a run id from one prompt
- * cannot be read under another.
- */
+/** Addressed through its prompt, so a run id cannot be read under another. */
 export async function findRunDetail(promptId: string, runId: string): Promise<RunDetail | null> {
 	const [run] = await db
 		.select()
@@ -106,7 +92,7 @@ export async function findRunDetail(promptId: string, runId: string): Promise<Ru
 		.orderBy(asc(citations.citationIndex));
 
 	// Older rows predate the provider column; the model name is the extractor's
-	// other accepted key, so it is the right fallback.
+	// other accepted key.
 	const text = extractTextContent(run.rawOutput, run.provider ?? run.model);
 
 	return {

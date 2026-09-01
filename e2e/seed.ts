@@ -52,16 +52,11 @@ const RUN_IDS = [
 ];
 
 
-/**
- * How better-auth's api-key plugin stores a key: unpadded base64url of the
- * SHA-256 digest. Reproduced here so the suite can seed keys straight into the
- * table without a session or a running app.
- */
+/** Reproduced from better-auth so keys can be seeded without a running app. */
 function hashApiKey(token: string): string {
   return createHash("sha256").update(token).digest("base64url");
 }
 
-/** better-auth stores permissions as `{ resource: [action] }`. */
 function toPermissions(scopes: readonly string[]): Record<string, string[]> {
   const permissions: Record<string, string[]> = {};
   for (const scope of scopes) {
@@ -72,22 +67,10 @@ function toPermissions(scopes: readonly string[]): Record<string, string[]> {
 }
 
 /**
- * Seed the API keys the Bruno suite authenticates as.
- *
- * The rate limit matches what the plugin issues in production rather than an
- * inflated test value: the busiest key makes fewer than a hundred requests
- * across the whole suite, so the real ceiling never gets in the way, and the
- * suite exercises the limit callers actually get.
- *
- * `reference_id` is the organization, not a user: the plugin is configured with
- * `references: "organization"`, which is what makes a key outlive whoever
- * issued it. Only the brand narrowing lives in metadata, because metadata is
- * writable by anyone with a session and so may never grant anything.
- *
- * Skipped when the `apikey` table isn't there yet: organization keys are still
- * being built, and the seeder has to keep working — and keep every other suite
- * working — until the migration lands. The Bruno cases that need these keys
- * fail until then, which is the point of having written them first.
+ * The rate limit is production's rather than an inflated test value, so the
+ * suite exercises the ceiling callers actually get. Only the brand narrowing
+ * lives in metadata, which anyone with a session can write and so may never
+ * grant anything.
  */
 async function seedApiKeys(client: pg.Client): Promise<void> {
   const [{ exists }] = (
@@ -127,11 +110,8 @@ async function seedApiKeys(client: pg.Client): Promise<void> {
 }
 
 
-/**
- * Two tenants that only mean anything in cloud mode: one on a custom plan with
- * tiny limits, one with no subscription at all. Both are inert everywhere else,
- * where entitlements resolve to unlimited regardless of what is stored here.
- */
+/** Inert outside cloud mode, where entitlements resolve to unlimited whatever
+ * is stored here. */
 async function seedBillingTenants(client: pg.Client): Promise<void> {
   for (const [orgId, brandId, name, website] of [
     [CAPPED_ORG_ID, CAPPED_BRAND_ID, "Capped Co", "https://capped.example.com"],
@@ -170,12 +150,8 @@ async function seedBillingTenants(client: pg.Client): Promise<void> {
   );
 }
 
-/**
- * One stored Opportunities report for the default brand, so the API test for it
- * exercises the populated path rather than only the "nothing generated yet" one.
- * Shaped like what the generator persists: the model's own output, enriched with
- * resolved prompt ids and the pages already cited for them.
- */
+/** So the API test exercises the populated path, not only "nothing generated
+ * yet". Shaped like what the generator persists. */
 async function seedOpportunities(client: pg.Client): Promise<void> {
   const report = {
     summary: [
@@ -638,8 +614,8 @@ async function seed() {
         [nikeRunId, NIKE_PROMPT_IDS.training, NIKE_BRAND_ID, cite.url, cite.domain, cite.title, i],
       );
     }
-    // A second brand in the same org, so a key narrowed to one brand has
-    // something inside its own organization that it must not reach.
+    // So a key narrowed to one brand has something inside its own organization
+    // that it must not reach.
     await client.query(
       `INSERT INTO brands (id, organization_id, name, website, enabled, onboarded, created_at, updated_at)
        VALUES ($1, $2, 'Jordan', 'https://jordan.com', true, true, NOW(), NOW())`,

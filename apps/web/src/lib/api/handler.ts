@@ -1,22 +1,10 @@
 /**
- * Shared handler factory for /api/v1 routes.
+ * Where a `/api/v1` caller is identified. The deployment middleware ahead of
+ * this can only check that a bearer is present, so a route not built here
+ * answers to anyone holding any token.
  *
- * Centralizes the cross-cutting concerns every external API endpoint needs:
- * resolving the caller (admin key or organization key), checking the scope the
- * operation requires, refusing writes in read-only mode, zod validation of path
- * params and JSON bodies, uniform error envelopes (`{ error, message, code }`),
- * and a catch-all that turns unexpected failures into a logged 500. Route files
- * supply only the resource-specific logic via `handle`.
- *
- * This is where a caller is identified. The deployment middleware ahead of it
- * can only check that a bearer is present — resolving one needs a database
- * lookup, and that middleware is pure and synchronous — so a route not built
- * with this factory would answer to anyone holding any token. A conformance
- * test is what keeps that from happening.
- *
- * Handlers signal expected failures (404, 409, ...) by throwing `ApiError`.
- * A plain-object return value is wrapped in `Response.json()` with `status`
- * (default 200); returning a `Response` passes through untouched.
+ * `handle` throws `ApiError` for expected failures; a plain object is wrapped
+ * in `Response.json()`, a `Response` passes through.
  */
 import { WriteDeniedError } from "@workspace/lib/entitlements";
 import type { z } from "zod";
@@ -24,12 +12,8 @@ import { type ApiAuth, type ApiAuthFailure, principalScopes, resolveApiAuth } fr
 import { getDeployment } from "@/lib/config/server";
 import type { ApiScope } from "./scopes";
 
-/**
- * Stable machine-readable codes. Deliberately a plain union rather than an
- * enum in the published spec: new values are added without a version bump, and
- * a generated client that turned this into a closed type would throw on the
- * first one it hasn't seen.
- */
+/** A union rather than an enum in the spec, so a generated client does not
+ * throw on a code added later. */
 export type ApiErrorCode =
 	| "unauthorized"
 	| "insufficient_scope"
@@ -50,12 +34,8 @@ export type ApiErrorCode =
 	| "cadence_faster_than_plan"
 	| "internal_error";
 
-/**
- * The entitlement guards spell their codes with hyphens internally, and call an
- * answer engine a "platform"; the wire spells every code with underscores and
- * calls it a model, which is the word the rest of this API uses. One mapping,
- * here, rather than two conventions leaking into each other.
- */
+/** The guards spell codes with hyphens and say "platform"; the wire uses
+ * underscores and "model". */
 const ENTITLEMENT_CODES: Record<string, ApiErrorCode> = {
 	"no-active-plan": "no_active_plan",
 	"brand-limit": "brand_limit",
@@ -67,11 +47,6 @@ const ENTITLEMENT_CODES: Record<string, ApiErrorCode> = {
 	"cadence-faster-than-plan": "cadence_faster_than_plan",
 };
 
-/**
- * What a status means when a thrower didn't say. Most failures have exactly one
- * sensible code, so routes only pass one explicitly when they mean something
- * more specific than "this is what a 409 is".
- */
 const CODE_FOR_STATUS: Record<number, ApiErrorCode> = {
 	400: "validation_error",
 	401: "unauthorized",
@@ -123,17 +98,11 @@ export interface ApiHandlerContext<P, B> {
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-/**
- * Stamped onto every handler this module produces, so a test can ask a route
- * what it actually wired up instead of reading its source and hoping.
- *
- * Grepping a file for `createApiHandler(` proves only that the string occurs in
- * it — not that the exported handler came from it.
- */
+/** Stamped on every handler here, so the conformance test can ask a route what
+ * it wired up rather than grep for the call. */
 const API_HANDLER = Symbol.for("elmo.api.handler");
 
 export interface ApiHandlerMeta {
-	/** `method-guard` is a generated 405 filler; `endpoint` is a real operation. */
 	kind: "endpoint" | "method-guard";
 	scopes: readonly ApiScope[];
 	adminOnly: boolean;
@@ -149,31 +118,18 @@ function brand<T extends object>(handler: T, meta: ApiHandlerMeta): T {
 	return handler;
 }
 
-/** The stamp, or undefined for anything not built here. */
 export function apiHandlerMeta(value: unknown): ApiHandlerMeta | undefined {
 	if (typeof value !== "function") return undefined;
 	return (value as unknown as Record<symbol, ApiHandlerMeta | undefined>)[API_HANDLER];
 }
 
 export function createApiHandler<P = Record<string, string>, B = undefined>(opts: {
-	/** Zod schema for route path params, e.g. `z.object({ promptId: z.guid() })`. */
 	params?: z.ZodType<P>;
-	/** Zod schema for the JSON request body (POST/PATCH). */
 	body?: z.ZodType<B>;
-	/** Success status used when `handle` returns a plain object (default 200). */
 	status?: number;
-	/** Scopes an organization key must hold. Admin keys hold every scope. */
 	scopes?: ApiScope[];
-	/** Reachable only with an instance admin key; no scope grants it. */
 	adminOnly?: boolean;
-	/**
-	 * Appended to the `403` an admin-only endpoint answers a tenant key with.
-	 * Where a caller has a supported way to get what they wanted, the refusal is
-	 * the one place they are certainly reading — an integration that discovers
-	 * the alternative there needs no second round trip.
-	 */
 	adminOnlyHint?: string;
-	/** Translate domain errors thrown by `handle` into `ApiError` before the generic 500. */
 	mapError?: (err: unknown) => ApiError | undefined;
 	handle: (ctx: ApiHandlerContext<P, B>) => Promise<Response | object>;
 }) {
@@ -216,13 +172,8 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 const ALL_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 
 /**
- * Fill in the verbs a route doesn't implement with a `405`.
- *
- * Without this, a method no handler claims falls through the file router to the
- * SPA and answers `200` with HTML — so `PATCH /organizations/x/billing` would
- * look like it worked. Wrapping the handler map makes "this resource is
- * read-only" something the API states rather than something a caller has to
- * infer from a page of markup.
+ * Without this an unclaimed verb falls through the file router to the SPA and
+ * answers 200 with HTML, so a write would look like it worked.
  */
 export function withMethodGuard<T extends Record<string, unknown>>(handlers: T): T {
 	const allowed = ALL_METHODS.filter((method) => method in handlers);
@@ -256,11 +207,6 @@ function authFailureResponse(failure: ApiAuthFailure): Response {
 	);
 }
 
-/**
- * Everything that can refuse a request once the caller is known: the endpoint
- * being admin-only, a scope the key doesn't hold, or the deployment being
- * read-only. Returns null when the request may proceed.
- */
 function refuseRequest(
 	auth: ApiAuth,
 	request: Request,
@@ -279,8 +225,6 @@ function refuseRequest(
 		);
 	}
 
-	// Asked of the principal rather than of its kind: an admin key holds every
-	// scope, which is a fact about the principal and not an absence of a check.
 	const held = principalScopes(auth);
 	const missing = (opts.scopes ?? []).find((scope) => !held.has(scope));
 	if (missing) {
@@ -293,8 +237,6 @@ function refuseRequest(
 		);
 	}
 
-	// Read-only mode is not a property of the key, so it is checked after the
-	// caller is known but before anything they asked for happens.
 	if (getDeployment().features.readOnly && WRITE_METHODS.has(request.method)) {
 		return errorResponse(403, "Demo Mode", "Write operations are disabled in demo mode", "read_only", headers);
 	}
@@ -303,11 +245,8 @@ function refuseRequest(
 }
 
 /**
- * Tell an organization key where it stands. The plugin counts a fixed window
- * with a read-modify-write per request, so `Remaining` is a guide to back off
- * on rather than a ledger to ride to zero. Sent only when the window's true
- * remainder is known — a header claiming full capacity mid-window would be
- * worse than no header.
+ * The plugin counts a fixed window with a read-modify-write per request, so
+ * `Remaining` is a guide to back off on rather than a ledger to ride to zero.
  */
 function rateLimitHeaders(auth: ApiAuth): Record<string, string> | undefined {
 	if (auth.kind !== "organization") return undefined;

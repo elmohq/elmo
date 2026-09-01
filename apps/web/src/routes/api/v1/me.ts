@@ -1,9 +1,5 @@
-/**
- * GET /api/v1/me — what the calling key is.
- *
- * Requires no scope, so it is always safe to call first when wiring up an
- * integration — including by a key that turns out to hold nothing.
- */
+/** Requires no scope, so it is safe to call first when wiring up an integration
+ * — including by a key that turns out to hold nothing. */
 import { createFileRoute } from "@tanstack/react-router";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { API_SCOPES } from "@/lib/api/scopes";
@@ -34,8 +30,8 @@ export const Route = createFileRoute("/api/v1/me")({
 						organizationName: auth.organizationName,
 						scopes: [...auth.scopes].sort(),
 						brandIds: auth.brandIds,
-						// The key's label as issued — the org-referenced key table stores no
-						// issuer, so a person's name is not available to claim.
+						// The key's label as issued: an org-referenced key stores no issuer,
+						// so there is no person's name to claim.
 						createdBy: auth.name,
 						createdAt: auth.createdAt,
 						lastUsedAt: auth.lastUsedAt,

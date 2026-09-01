@@ -1,13 +1,7 @@
 /**
- * Tags as a view over `prompts.tags`.
- *
- * There is no tag table: a tag exists exactly as long as some prompt carries
- * it, so this lists what is in use and nothing more. Changing a prompt's tags
- * is a prompt edit.
- *
- * `branded` and `unbranded` are computed by Elmo from the prompt text, so they
- * always appear in the list; applying one to a prompt as a user tag overrides
- * the computed classification.
+ * There is no tag table: a tag exists as long as some prompt carries it, so
+ * changing one is a prompt edit. `branded` and `unbranded` are computed from
+ * the prompt text and always listed; applying one as a user tag overrides that.
  */
 import { db } from "@workspace/lib/db/db";
 import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
@@ -42,8 +36,8 @@ export async function listBrandTags(brandId: string): Promise<Tag[]> {
 		}
 	}
 
-	// System tags first, then user tags alphabetically — the order the
-	// dashboard's filter shows, so a client building the same UI needs no sort.
+	// The order the dashboard's filter shows, so a client building the same UI
+	// needs no sort.
 	const system = Object.values(SYSTEM_TAGS).map((name) => ({
 		name,
 		promptCount: systemCounts.get(name) ?? 0,

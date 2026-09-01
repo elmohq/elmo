@@ -38,10 +38,6 @@ import { computeVolatility, type DailyDomainCount, stabilityScore } from "@/lib/
 import { normalizeText, withoutRepeats } from "@/server/opportunities-dedupe";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
-// ============================================================================
-// Structured output (LLM) — the server enriches it before the page renders it.
-// ============================================================================
-
 export const CATEGORIES = ["creation", "existing-content", "outreach", "social"] as const;
 
 const OpportunitySchema = z.object({
@@ -109,14 +105,8 @@ export interface OpportunitiesResponse {
 	reason: OpportunitiesReason;
 	generatedFor: { brandName: string } | null;
 	lastEvaluatedAt: string | null;
-	/** Model/provider behind the report being served, when one is stored. */
 	model: string | null;
 }
-
-// ============================================================================
-// Guidance — fed to the model as system context. Rephrased for this task; do not
-// treat as a verbatim copy of any source. No brand names here — data comes below.
-// ============================================================================
 
 const GUIDANCE = `You are an AI-visibility (AEO) strategist advising a content/marketing team that does NOT know how this tool computes its numbers. From the brand's tracked answer data, produce a prioritized, practical set of opportunities to get the brand cited more often in AI assistant answers (ChatGPT, Perplexity, Google AI, Claude, Copilot).
 
@@ -154,10 +144,6 @@ const TASK = `Using ONLY the data above, return the structured output:
 - summary: 3-5 bullets, one short sentence each — the competitive gaps, where AI sources its answers, and the through-line of the plan. Don't restate overall/per-platform visibility or define metrics.
 - opportunities: 8-12 prioritized opportunities (highest impact first), each sorted into a category, with a plain-language "why" (the motivation, for a non-expert) and the tracked prompts it helps (verbatim). Spread them across the categories the data supports — don't force all four.
 - risks: 2-4 short caveats (hard-to-win areas or tactics to avoid).`;
-
-// ============================================================================
-// Digest builder
-// ============================================================================
 
 const TOP_PROMPTS = 30;
 const pct = (v: number) => Math.round(v * 100);
@@ -539,19 +525,11 @@ async function generateValidReport(prompt: string): Promise<{ report: RawReport;
 }
 
 /**
- * The brand's current report, generating one if the stored one has aged out.
- *
- * Edge-agnostic — no session, no Request — so the dashboard and `/api/v1` are
- * both thin wrappers over it and cannot answer differently. Generation is
- * inline and synchronous: there is no queue, so a caller either gets the
- * current report or waits for the one it just caused.
- *
- * The freshness gate is what bounds the spend. However many callers ask, at
- * most one generation happens per brand per REFRESH_AFTER_DAYS.
+ * Generation is inline and synchronous — there is no queue, so a caller either
+ * gets the current report or waits for the one it just caused. The freshness
+ * gate is what bounds the spend.
  */
 export async function resolveOpportunities(brandId: string, timezone = "UTC"): Promise<OpportunitiesResponse> {
-	// Every generation is kept (append-only); we regenerate only when the latest
-	// is stale.
 	const [latest] = await db
 		.select()
 		.from(brandOpportunities)
@@ -579,7 +557,7 @@ export async function resolveOpportunities(brandId: string, timezone = "UTC"): P
 	const prompt = `${GUIDANCE}\n\n=== BRAND DATA ===\n${digest.text}\n\n=== TASK ===\n${TASK}`;
 	const generated = await generateValidReport(prompt);
 	if (!generated) {
-		// Couldn't get a schema-valid report — serve the last good one if we have it.
+		// No schema-valid report; serve the last good one if there is one.
 		if (latest) return serveStored();
 		throw new Error("Failed to generate a valid opportunities report");
 	}

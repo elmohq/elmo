@@ -1,16 +1,6 @@
 /**
- * Prompts: the questions asked of the models, and the tags they carry.
- *
- * The write tools take their argument shapes from the schemas `prompts-core`
- * exports rather than restating them, so a value MCP accepts is a value
- * `/api/v1` accepts. Retyping them is how the two surfaces come to disagree
- * about what a prompt is.
- *
- * There is no delete tool. Deleting takes a prompt's runs and citations with
- * it, no dashboard role can do it, and `/api/v1` gates it behind an instance
- * key — so offering it here would be the one place a model could do something
- * no person in the product can. Disabling a prompt is the reversible way to
- * stop it costing runs, and it keeps the history.
+ * No delete tool: deleting takes a prompt's runs and citations with it.
+ * Disabling is the reversible way to stop a prompt costing runs.
  */
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
@@ -29,11 +19,8 @@ import {
 import { listBrandTags } from "@/server/tags-core";
 import { brandIdArg, defineTool, promptIdArg } from "./define";
 
-/**
- * The brand a prompt belongs to, if the caller reaches it. A prompt in another
- * tenant is reported exactly as one that doesn't exist, which is why both
- * failures raise the same error.
- */
+/** A prompt in another tenant is reported exactly as one that doesn't exist,
+ * which is why both failures raise the same error. */
 async function brandForPrompt(auth: Principal, promptId: string) {
 	const notFound = () => new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
 	const prompt = await requirePrompt(promptId).catch(() => {
@@ -110,9 +97,8 @@ export const updatePromptTool = defineTool({
 		"Change a prompt's text, tags, or whether it is being sampled. Setting `enabled: false` is how you stop a prompt costing runs — it keeps every answer already recorded.",
 	scopes: ["prompts:write"],
 	readOnly: false,
-	// `premiumModels` is deliberately absent: pairing a prompt with a premium
-	// model spends a metered pool, which is a billing decision rather than
-	// something an agent should make on someone's behalf.
+	// No `premiumModels`: pairing a prompt with one spends a metered pool, which
+	// is a billing decision an agent should not make on someone's behalf.
 	input: {
 		promptId: promptIdArg,
 		value: promptUpdateFields.value,

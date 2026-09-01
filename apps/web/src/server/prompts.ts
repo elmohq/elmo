@@ -689,10 +689,6 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 		};
 	});
 
-// ============================================================================
-// Web Query Lookup (for OptimizeButton)
-// ============================================================================
-
 export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({

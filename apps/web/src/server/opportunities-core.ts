@@ -1,22 +1,12 @@
 /**
- * The latest opportunities report for a brand, as the external surfaces publish
- * it.
- *
- * Server-only and edge-agnostic, so `/api/v1/brands/{id}/opportunities` and the
- * MCP `get_opportunities` tool answer with one shape from one projection.
- *
- * That projection is a whitelist on purpose. The stored `report` column is model
- * output: whatever the generator happened to write is in there, and returning it
- * whole would make the provider's shape ours — the same reason runs publish
- * normalized answer text rather than `rawOutput`.
+ * A whitelist on purpose: the stored `report` column is model output, and
+ * returning it whole would make whatever the generator wrote part of this
+ * contract.
  */
 import type { CitedPage, ReportOpportunity } from "./opportunities";
 import { resolveOpportunities } from "./opportunities";
 
-/**
- * Why the lists are empty when they are, so a caller never has to tell "no
- * opportunities" from "not enough data yet".
- */
+/** So a caller never has to tell "none" from "not enough data yet". */
 export type OpportunitiesStatus = "ready" | "insufficient-data";
 
 export interface PublishedOpportunity {

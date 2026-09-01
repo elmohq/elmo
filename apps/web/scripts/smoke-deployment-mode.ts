@@ -10,10 +10,8 @@
  * deployments must keep booting unchanged while cloud lands (issue #8).
  *
  * Runs the real shared-package boot path via tsx — no build, no live DB.
- * createAuth() returns as soon as the better-auth instance is constructed, so a
- * dummy DATABASE_URL is enough for what this checks. Initialization keeps going
- * behind that — the OAuth provider seeds its resource row — and is the
- * database's business, not this script's.
+ * createAuth() returns as soon as the instance is constructed, so a dummy
+ * DATABASE_URL is enough for what this checks.
  *
  * Lives in apps/web because that package depends on every @workspace/* package
  * this script boots; the script itself imports only @workspace/* entrypoints
@@ -161,9 +159,8 @@ async function smokeMode(mode: SmokeMode): Promise<string[]> {
 		const { getCloudAuthOptions } = await import("@workspace/cloud/auth-hooks");
 		const options = getAuthOptions(mode, getWhitelabelAuthOptions, getCloudAuthOptions);
 		const auth = createAuth(options);
-		// The dummy DATABASE_URL answers nothing, so initialization rejects. Left
-		// alone that is an unhandled rejection, which takes the runner down before
-		// it can report on the modes after this one.
+		// Initialization rejects against the dummy DATABASE_URL; left alone that is
+		// an unhandled rejection and takes the runner down mid-sweep.
 		auth.$context.catch(() => {});
 		if (typeof auth.handler !== "function" || typeof auth.api !== "object") {
 			failures.push("auth initialized without a handler/api");

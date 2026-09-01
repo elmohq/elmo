@@ -28,9 +28,8 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 					const { searchParams } = new URL(request.url);
 					const brandId = searchParams.get("brandId");
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-					// This list had no ceiling at all, so the cap is set where it bounds
-					// a runaway query rather than where it would change what an existing
-					// caller gets back. Clamped rather than rejected for the same reason.
+					// Clamped rather than rejected: the cap is here to bound a runaway
+					// query, not to change what an existing caller gets back.
 					const limit = Math.max(1, Math.min(1000, parseInt(searchParams.get("limit") || "20")));
 					const offset = (page - 1) * limit;
 
@@ -73,8 +72,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 						.offset(offset);
 
 					// Both keys hold the same array while callers move to `data`, which
-					// every list in this API answers with. `prompts` is documented as
-					// deprecated and goes in a later release.
+					// every other list in this API answers with.
 					return {
 						data: promptsList,
 						prompts: promptsList,

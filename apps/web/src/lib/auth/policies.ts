@@ -13,36 +13,19 @@ import { MCP_PATH } from "@workspace/config/constants";
 import type { FeaturesConfig } from "@workspace/config/types";
 import { READ_ONLY_ERROR, READ_ONLY_MESSAGE } from "@/lib/read-only-errors";
 
-// ============================================================================
-// Deployment Request Policy
-// ============================================================================
-
 /** HTTP methods that mutate state */
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-/**
- * The api-key plugin endpoints that would otherwise let a signed-in user mint
- * or edit a key straight from the browser. Blocked outright: issuance goes
- * through the server function that validates the key's brand narrowing.
- */
+/** Blocked outright: issuance goes through the server function that validates
+ * the key's brand narrowing. */
 const API_KEY_PLUGIN_MUTATIONS = new Set([
 	"/api/auth/api-key/create",
 	"/api/auth/api-key/update",
 	"/api/auth/api-key/delete",
 ]);
 
-/**
- * The MCP OAuth flow, which a read-only deployment does not run.
- *
- * Dynamic client registration is an unauthenticated write by design — that is
- * what lets an MCP client introduce itself — and a public demo is exactly where
- * an unauthenticated write nobody has to sign in for gets abused. Turning the
- * flow off is also the honest answer: a token minted here would act as the
- * shared demo account, which can't write anything anyway.
- *
- * `/api/mcp` itself stays open; a read-only deployment answers it with an API
- * key and offers only the tools that read.
- */
+/** Client registration is an unauthenticated write by design, which a public
+ * demo is the wrong place for. `/api/mcp` itself stays open. */
 const MCP_OAUTH_PREFIX = "/api/auth/oauth2/";
 
 /**
@@ -70,7 +53,6 @@ export type DeploymentPolicyResult =
 			status: 401 | 403 | 404;
 			error: string;
 			message: string;
-			/** Set on /api/v1 blocks, which answer the same envelope every route does. */
 			code?: string;
 	  }
 	| { action: "redirect"; url: string }
@@ -82,26 +64,12 @@ export interface RequestInfo {
 	authorizationHeader?: string | null;
 }
 
-/**
- * The better-auth endpoints that are refused before anything else looks at the
- * request, whatever the deployment mode.
- *
- * Each of these is an HTTP door onto something the app only ever does
- * server-side, so the rule is "closed" rather than "closed unless". Split out
- * of evaluateDeploymentPolicy because the list grows and the policy below it
- * reads better without it inline.
- */
+/** Doors onto things the app only ever does server-side. */
 function refuseAuthEndpoint(
 	features: FeaturesConfig,
 	pathname: string,
 	isWriteMethod: boolean,
 ): DeploymentPolicyResult | null {
-	// Minting or editing an API key never happens over HTTP. The plugin rejects
-	// `permissions` on any request carrying headers, so a browser could only ever
-	// create a scopeless key — but a key's brand narrowing lives in
-	// client-writable metadata, and the create path is where that gets validated
-	// against the organization's brands. Routing every key through the server
-	// function keeps that validation unskippable.
 	if (API_KEY_PLUGIN_MUTATIONS.has(pathname.replace(/\/$/, ""))) {
 		return {
 			action: "block",
@@ -111,11 +79,6 @@ function refuseAuthEndpoint(
 		};
 	}
 
-	// Org plugin mutations are blocked everywhere over HTTP. Orgs are created
-	// server-side only — via the provisioning module (local/demo/cloud
-	// create-brand, or the admin brands API whitelabel is provisioned through) —
-	// and cloud team invitations go through server functions that call auth.api
-	// in-process, so no mode needs these HTTP endpoints.
 	if (pathname.startsWith("/api/auth/organization/") && isWriteMethod) {
 		return {
 			action: "block",
@@ -125,7 +88,6 @@ function refuseAuthEndpoint(
 		};
 	}
 
-	// The MCP OAuth flow, off wherever writes are.
 	if (features.readOnly && pathname.startsWith(MCP_OAUTH_PREFIX)) {
 		return {
 			action: "block",
@@ -139,21 +101,8 @@ function refuseAuthEndpoint(
 }
 
 /**
- * Surfaces that enforce read-only at their own gate, in their own error
- * vocabulary, and so must reach it.
- *
- *  - `/api/v1/*` — `createApiHandler` refuses the write with the same
- *    `{ error, message, code }` envelope every other error on that surface
- *    carries, rather than a bare middleware body.
- *  - `/api/mcp` — every MCP call is a POST, including the ones that only read,
- *    so refusing the transport here would take the reads with it. The tool
- *    registry is what decides: it drops every writer in a read-only deployment.
- *    Matched exactly, not as a prefix — the endpoint is one URL with no
- *    subpaths, and the splat route under it answers `404` to everything else,
- *    so a prefix exemption would cover paths that police nothing.
- *
- * A list rather than a chain of `&&  !isSomething`, so a third surface is a
- * data change and not a fourth clause in a boolean.
+ * Every MCP call is a POST including the reads, so refusing the transport would
+ * take those with it; the tool registry drops the writers instead.
  */
 const SELF_POLICING_WRITE_PREFIXES = ["/api/v1/"];
 const SELF_POLICING_WRITE_PATHS = [MCP_PATH];
@@ -174,9 +123,8 @@ function refusesItsOwnWrites(pathname: string): boolean {
  * 2. Admin access control (disabled / readonly / full)
  * 3. OpenAPI spec serving
  *
- * /api/v1 authentication is deliberately absent: an organization key resolves
- * against the database, and this function is pure and synchronous by design.
- * createApiHandler is the gate for those routes.
+ * No /api/v1 authentication: resolving a key needs a database, and this is pure
+ * and synchronous. createApiHandler is the gate for those routes.
  */
 export function evaluateDeploymentPolicy(features: FeaturesConfig, request: RequestInfo): DeploymentPolicyResult {
 	const { pathname, method, authorizationHeader } = request;
@@ -189,13 +137,9 @@ export function evaluateDeploymentPolicy(features: FeaturesConfig, request: Requ
 	const isPublicApiV1 = pathname.startsWith("/api/v1/");
 	const isPublicApiV1Doc = pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
 
-	// 0. The better-auth endpoints no deployment exposes over HTTP.
 	const authEndpointRefusal = refuseAuthEndpoint(features, pathname, isWriteMethod);
 	if (authEndpointRefusal) return authEndpointRefusal;
 
-	// 1. Read-only mode: block every write except the explicit allowlist
-	// (analytics events + the two auth endpoints a visitor needs to use), and
-	// except the surfaces that refuse writes themselves.
 	if (features.readOnly && isWriteMethod && !refusesItsOwnWrites(pathname)) {
 		if ((isApiRoute || isServerFunctionRoute) && !isPlausibleEventRoute && !isAllowedAuthWrite) {
 			return {
@@ -214,14 +158,8 @@ export function evaluateDeploymentPolicy(features: FeaturesConfig, request: Requ
 		return { action: "serve-openapi" };
 	}
 
-	// 3. A coarse gate for /api/v1. Resolving a token needs a database lookup,
-	// which this function cannot do, so createApiHandler stays the real gate —
-	// but a request with no bearer at all can be turned away here.
-	//
-	// The invariant this exists to hold: **nothing under /api/v1 ever answers
-	// with HTML.** Without it a request the router doesn't match falls through
-	// to the SPA, and a client parsing JSON gets a page of markup instead of an
-	// error it can read.
+	// Coarse: this only keeps an unmatched /api/v1 request from falling through
+	// to the SPA and answering with HTML.
 	if (isPublicApiV1 && !isPublicApiV1Doc) {
 		if (!hasBearerToken(authorizationHeader)) {
 			return {
@@ -236,10 +174,6 @@ export function evaluateDeploymentPolicy(features: FeaturesConfig, request: Requ
 
 	return { action: "allow" };
 }
-
-// ============================================================================
-// API Key Authentication
-// ============================================================================
 
 /**
  * Constant-time string comparison to prevent timing attacks on API keys.
@@ -257,9 +191,8 @@ export function timingSafeStringEqual(a: string, b: string): boolean {
 }
 
 /**
- * Whether the request carries a non-empty Bearer token — a shape check only.
- * Whether that token is *valid* needs a database lookup and belongs to
- * createApiHandler.
+ * A shape check only. Whether the token is *valid* needs a database lookup and
+ * belongs to createApiHandler.
  */
 function hasBearerToken(header: string | null | undefined): boolean {
 	return typeof header === "string" && header.startsWith("Bearer ") && header.slice(7).trim().length > 0;
@@ -275,10 +208,6 @@ export function getAdminApiKeys(): string[] {
 		.map((key) => key.trim())
 		.filter(Boolean);
 }
-
-// ============================================================================
-// Auth Function-Level Policies
-// ============================================================================
 
 /**
  * Evaluate admin access requirement.
@@ -305,10 +234,6 @@ export function evaluateReadOnly(readOnly: boolean): "allow" | "deny" {
 export function evaluateRequireCanCreateBrands(canCreateBrands: boolean): "allow" | "deny" {
 	return canCreateBrands ? "allow" : "deny";
 }
-
-// ============================================================================
-// Route Guard Policies
-// ============================================================================
 
 export type RouteGuardResult = "allow" | "redirect-to-login" | "not-found";
 

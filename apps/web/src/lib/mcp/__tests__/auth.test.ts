@@ -1,10 +1,7 @@
 /**
- * Resolving an MCP caller.
- *
- * Two credentials arrive at the same endpoint in the same header, so the order
- * they are tried in is a behaviour rather than an implementation detail: a key
- * that has spent its rate limit must be reported as rate-limited, not fall
- * through to the OAuth path and come back as "invalid".
+ * Two credentials arrive in the same header, so the order they are tried in is a
+ * behaviour: a rate-limited key must be reported as such rather than falling
+ * through to the OAuth path and coming back as "invalid".
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { API_SCOPES } from "@/lib/api/scopes";
@@ -28,8 +25,7 @@ vi.mock("@workspace/lib/auth/server", async (importOriginal) => ({
 }));
 vi.mock("@/lib/auth/server", () => ({ auth: {} }));
 vi.mock("@/lib/auth/helpers", () => ({ listUserOrganizations }));
-// Both reads run through the same builder, so the mock tells them apart by the
-// table they select from, the way the resolver does.
+// Both reads share a builder, so the mock tells them apart by table.
 vi.mock("@workspace/lib/db/db", async () => {
 	const { user } = await import("@workspace/lib/db/schema");
 	return {
@@ -44,8 +40,6 @@ vi.mock("@workspace/lib/db/db", async () => {
 });
 
 const { resolveMcpAuth } = await import("../auth");
-// The real ones, not the mock: only `resolveApiAuth` is replaced above. These
-// are what every caller reaches for, so they are what gets asserted.
 const { principalLabel, principalScopes } = await import("@/lib/auth/api-auth");
 
 const adminKey: AdminAuth = { kind: "admin", scopes: null, organizationId: null };
@@ -75,7 +69,6 @@ const oauthSession: UserAuth = {
 	expiresAt: null,
 };
 
-/** What a verified MCP access token carries: who it stands for, and who holds it. */
 const TOKEN_CLAIMS = { sub: "user_1", client_id: "client_1", exp: 1_800_000_000, scope: "openid" };
 
 function bearer(token: string): Request {
@@ -107,17 +100,12 @@ describe("principalScopes", () => {
 
 describe("mcp scopes are not oauth scopes", () => {
 	it("holds, which is what makes it safe to ignore a token's scope claim", async () => {
-		// `principalScopes` gives an OAuth caller every scope. That is only sound
-		// while a scope here cannot be asked for over OAuth: the authorization
-		// server offers the OIDC four, refuses any scope outside its list, and so
-		// has no narrower grant to honour. Offer one of these as an OAuth scope and
-		// a client could be granted `prompts:read` alone while MCP hands it
-		// `prompts:write` — so this fails first.
+		// `principalScopes` gives an OAuth caller every scope, which is only sound
+		// while none of these can be asked for over OAuth.
 		vi.stubEnv("APP_URL", "http://localhost:3000");
 		vi.stubEnv("BETTER_AUTH_SECRET", "scope-invariant-test");
 		const { createAuth } = await import("@workspace/lib/auth/server");
 		const auth = createAuth();
-		// Initialization reaches for a database this test has not got.
 		auth.$context.catch(() => {});
 
 		const provider = auth.options.plugins?.find((plugin) => plugin.id === "oauth-provider") as

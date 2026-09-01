@@ -1,19 +1,6 @@
 /**
- * Prompt create / update / delete, as edge-agnostic functions.
- *
- * Server-only, and deliberately ignorant of how it was reached: no `Request`,
- * no session, no HTTP status codes. `/api/v1/prompts*` and the MCP tools are
- * both thin wrappers over these, which is the only way the two surfaces can be
- * kept from disagreeing about what "create a prompt" means — the plan limits it
- * spends, the scheduler it starts, the tags it derives.
- *
- * Failures are domain errors. Each edge maps them to its own vocabulary:
- * a status code for REST, a tool error for MCP. Entitlement failures are the
- * exception — `assertPromptSaveAllowed` throws `WriteDeniedError`, which
- * already carries everything both edges need, so it is left to travel.
- *
- * Callers are responsible for deciding that the brand is theirs *before*
- * calling in; nothing here knows who is asking.
+ * No `Request`, session, or status codes: each edge maps these domain errors to
+ * its own vocabulary. Callers decide the brand is theirs before calling in.
  */
 
 import { selectPremiumModels } from "@workspace/config/plans";
@@ -27,10 +14,6 @@ import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-sc
 
 export const MAX_PROMPT_BATCH = 100;
 
-// ============================================================================
-// Errors
-// ============================================================================
-
 export class PromptNotFoundError extends Error {
 	constructor(public readonly promptId: string) {
 		super(`Prompt with ID '${promptId}' not found`);
@@ -38,16 +21,7 @@ export class PromptNotFoundError extends Error {
 	}
 }
 
-// ============================================================================
-// Schemas
-// ============================================================================
-
-/**
- * The descriptions are on the schemas rather than on any one edge's copy of
- * them: MCP publishes them to the model in `tools/list`, and having a second
- * set of words for the same field is how the two surfaces come to describe a
- * prompt differently.
- */
+/** Published to the model by MCP in `tools/list`. */
 const brandIdSchema = z.string().trim().min(1, "brandId is required");
 
 const promptValueSchema = z
@@ -80,7 +54,6 @@ export const bulkPromptInputSchema = z.object({
 		.describe("The prompts to add."),
 });
 
-/** The fields an update may carry, before the "at least one" rule is applied. */
 export const promptUpdateFields = {
 	value: promptValueSchema.optional().describe("Replacement text."),
 	enabled: z.boolean().optional().describe("Whether to keep sampling it."),
@@ -99,7 +72,6 @@ export type CreatePromptInput = z.infer<typeof createPromptInputSchema>;
 export type BulkPromptInput = z.infer<typeof bulkPromptInputSchema>;
 export type UpdatePromptInput = z.infer<typeof updatePromptInputSchema>;
 
-/** The brand fields prompt writes need — whatever loaded it, however it did. */
 export interface PromptBrand {
 	id: string;
 	name: string;
@@ -109,7 +81,6 @@ export interface PromptBrand {
 
 export type Prompt = typeof prompts.$inferSelect;
 
-/** The columns every prompt read answers with; excludes nothing but is explicit. */
 const PROMPT_COLUMNS = {
 	id: prompts.id,
 	brandId: prompts.brandId,
@@ -126,21 +97,13 @@ export type PromptSummary = {
 	[K in keyof typeof PROMPT_COLUMNS]: Prompt[K];
 };
 
-// ============================================================================
-// Reads
-// ============================================================================
-
 export interface ListPromptsFilters {
-	/** Restricts to one brand; combine with `scope` for the tenancy rule. */
 	brandId?: string;
 	enabled?: boolean;
-	/** Matched with overlap, so a prompt carrying any of them is included. */
 	tags?: string[];
-	/** Substring match on the prompt text. */
 	q?: string;
 	limit: number;
 	offset: number;
-	/** The caller's tenancy condition, from `brandScopeCondition`. */
 	scope?: SQL;
 }
 
@@ -165,48 +128,30 @@ export async function listPrompts(filters: ListPromptsFilters): Promise<{ data: 
 	return { data, total: totals?.count ?? 0 };
 }
 
-/** One prompt, or null. Whether the caller may see it is decided outside. */
 export async function findPrompt(promptId: string): Promise<PromptSummary | null> {
 	const [prompt] = await db.select(PROMPT_COLUMNS).from(prompts).where(eq(prompts.id, promptId)).limit(1);
 	return prompt ?? null;
 }
 
-/**
- * Just the brand a prompt belongs to — what a caller needs to decide whether
- * the prompt is theirs before doing anything with it.
- */
 export async function findPromptBrandId(promptId: string): Promise<string | null> {
 	const [prompt] = await db.select({ brandId: prompts.brandId }).from(prompts).where(eq(prompts.id, promptId)).limit(1);
 	return prompt?.brandId ?? null;
 }
 
-/** The same lookup for a write path, which needs the row's current state. */
 export async function requirePrompt(promptId: string): Promise<Prompt> {
 	const [prompt] = await db.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
 	if (!prompt) throw new PromptNotFoundError(promptId);
 	return prompt;
 }
 
-// ============================================================================
-// Writes
-// ============================================================================
-
 export async function createPrompt(brand: PromptBrand, input: Omit<CreatePromptInput, "brandId">): Promise<Prompt> {
 	const [created] = await createPrompts(brand, { prompts: [{ value: input.value, tags: input.tags }] });
 	return created;
 }
 
-/**
- * All-or-nothing. The batch is checked against the organization's prompt and
- * premium pools as a single delta and applied in one transaction, so a batch
- * that would overrun a limit creates nothing rather than part of itself and
- * leaves the caller guessing how far it got.
- */
+/** One delta against both pools in one transaction, so a batch that would
+ * overrun a limit creates nothing. */
 export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptInput, "brandId">): Promise<Prompt[]> {
-	// Parsed here, not merely typed. `BulkPromptInput` says "output of the
-	// schema", but TypeScript cannot tell a trimmed non-empty string from any
-	// string — so an edge that built its own shape would slip an empty prompt
-	// past a signature that claims to forbid one.
 	const parsed = bulkPromptInputSchema.omit({ brandId: true }).parse(input);
 	const rows = parsed.prompts.map((prompt) => ({
 		brandId: brand.id,
@@ -217,8 +162,7 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 		premiumModels: selectPremiumModels(prompt.premiumModels),
 	}));
 
-	// One decision for the whole batch, against both pools it can spend, and the
-	// insert under the same lock so two batches can't both spend the last slot.
+	// Under the lock, so two batches cannot both spend the last slot.
 	const enabled = rows.filter((row) => row.enabled);
 	const created = await withQuotaLock(brand.organizationId, async (tx) => {
 		await assertPromptSaveAllowed(
@@ -232,9 +176,8 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 		return tx.insert(prompts).values(rows).returning();
 	});
 
-	// Scheduling is deliberately outside the transaction: a queue hiccup must not
-	// roll back prompts the customer can see, and the worker's self-healing
-	// scheduler picks up anything that failed to enqueue.
+	// Outside the transaction: a queue hiccup must not roll back prompts the
+	// customer can see; the worker's scheduler picks up what failed.
 	for (const prompt of created) {
 		if (prompt.enabled) await createPromptJobScheduler(prompt.id);
 	}
@@ -259,8 +202,6 @@ function promptUpdateData(
 }
 
 export async function updatePrompt(brand: PromptBrand, promptId: string, changes: UpdatePromptInput): Promise<Prompt> {
-	// Same reason as createPrompts: the "at least one field" rule and the
-	// non-empty value live on the schema, so they are applied from it.
 	const input = updatePromptInputSchema.parse(changes);
 	const updated = await withQuotaLock(brand.organizationId, async (tx, afterCommit) => {
 		const [existing] = await tx.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
@@ -270,8 +211,8 @@ export async function updatePrompt(brand: PromptBrand, promptId: string, changes
 		const willBeEnabled = input.enabled ?? wasEnabled;
 		const nextPremium = input.premiumModels ? selectPremiumModels(input.premiumModels) : existing.premiumModels;
 
-		// Re-enabling a prompt re-spends its premium pairings, so the delta is
-		// computed against what the row costs now, not against zero.
+		// Re-enabling re-spends the premium pairings, so the delta is against what
+		// the row costs now, not zero.
 		await assertPromptSaveAllowed(
 			brand.organizationId,
 			{
@@ -292,8 +233,7 @@ export async function updatePrompt(brand: PromptBrand, promptId: string, changes
 		return row;
 	});
 
-	// The existence check above can race with a concurrent delete; the update's
-	// returning() is the source of truth.
+	// The check above can race with a concurrent delete; returning() decides.
 	if (!updated) throw new PromptNotFoundError(promptId);
 	return updated;
 }
@@ -311,8 +251,7 @@ export async function deletePrompt(promptId: string): Promise<{ prompt: Prompt; 
 		return { deletedRuns, deletedPrompt };
 	});
 
-	// Any existence check the caller made can race with a concurrent delete; the
-	// transaction's returning() is the source of truth.
+	// The caller's check can race with a concurrent delete; returning() decides.
 	if (!result.deletedPrompt) throw new PromptNotFoundError(promptId);
 	return { prompt: result.deletedPrompt, deletedRunsCount: result.deletedRuns.length };
 }

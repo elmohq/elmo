@@ -1,23 +1,14 @@
--- Better-auth 1.7 keys an account on `(issuer, accountId)` instead of
--- `(providerId, accountId)`, and replaces the OAuth provider's tables.
---
--- The issuer backfill is the part that matters: a row left with the wrong
--- issuer is an identity 1.7 cannot find, and a sign-in that cannot find its
--- account falls through to email linking — which is refused unless the local
--- user is already verified. Getting this wrong locks people out, so each
--- provider kind is filled from the source that actually names its issuer.
+-- Better-auth 1.7 keys an account on `(issuer, account_id)`, and an account it
+-- cannot find is a sign-in it refuses — so each provider kind below is filled
+-- from the source that names its issuer.
 
 ALTER TABLE "account" ADD COLUMN "issuer" text;
 --> statement-breakpoint
--- Password accounts have no issuer of their own; better-auth gives them a
--- synthetic one, and looks them up under exactly this string.
+-- The synthetic issuer better-auth looks a password account up under.
 UPDATE "account" SET "issuer" = 'local:credential' WHERE "issuer" IS NULL AND "provider_id" = 'credential';
 --> statement-breakpoint
--- A social provider that names its own issuer is looked up under that name, not
--- under a synthetic one. better-auth ships a fixed issuer for these four; this
--- deployment configures `google` (cloud sign-in with Google). Providers whose
--- issuer is computed from configuration — Cognito, Entra ID, Paybin — would
--- need their own statement here, as would a `generic-oauth` provider.
+-- The providers better-auth gives a fixed issuer. One whose issuer is computed
+-- from configuration — Cognito, Entra ID, Paybin — needs its own line.
 UPDATE "account" SET "issuer" = CASE "provider_id"
 	WHEN 'google' THEN 'https://accounts.google.com'
 	WHEN 'apple' THEN 'https://appleid.apple.com'
@@ -26,11 +17,9 @@ UPDATE "account" SET "issuer" = CASE "provider_id"
 END
 WHERE "issuer" IS NULL AND "provider_id" IN ('google', 'apple', 'facebook', 'line');
 --> statement-breakpoint
--- An SSO identity is issued by the identity provider, so its issuer is the IdP's
--- own — read from the ID token that signed the account in, because that claim is
--- what 1.7 will compare against. `auth0-whitelabel` is named alongside the
--- registered providers because the whitelabel deployment configures it in code
--- (`defaultSSO`), so it has no `sso_provider` row to join to.
+-- An SSO issuer is the IdP's own, read from the ID token that signed the account
+-- in. `auth0-whitelabel` is named because whitelabel configures it in code, so it
+-- has no `sso_provider` row to join to.
 DO $$
 DECLARE
 	row_to_fill record;
@@ -55,8 +44,7 @@ BEGIN
 				)
 			)::jsonb ->> 'iss';
 		EXCEPTION WHEN others THEN
-			-- An ID token that isn't a readable JWT tells us nothing; fall through
-			-- to the registered provider's configured issuer below.
+			-- Unreadable: fall through to the steps below.
 			token_issuer := NULL;
 		END;
 		IF token_issuer IS NOT NULL AND token_issuer <> '' THEN
@@ -65,9 +53,8 @@ BEGIN
 	END LOOP;
 END $$;
 --> statement-breakpoint
--- An SSO account whose ID token could not be read borrows the issuer a sibling
--- account of the same provider resolved to: one identity provider mints under
--- one issuer, so a row that answered is the answer for the rest.
+-- One provider mints under one issuer, so a row that answered answers for the
+-- rest.
 UPDATE "account" a
 SET "issuer" = sibling."issuer"
 FROM (
@@ -77,26 +64,22 @@ FROM (
 ) sibling
 WHERE a."issuer" IS NULL AND a."provider_id" = sibling."provider_id";
 --> statement-breakpoint
--- Registered SSO providers with no sibling to learn from: the issuer their
--- configuration names is the one their tokens are minted with.
+-- Registered SSO providers with no sibling to learn from.
 UPDATE "account" a
 SET "issuer" = s."issuer"
 FROM "sso_provider" s
 WHERE a."issuer" IS NULL AND a."provider_id" = s."provider_id";
 --> statement-breakpoint
--- Everything left names no issuer of its own, and better-auth gives those a
--- synthetic one — a provider id must not be able to collide with a local
--- authentication method.
+-- Everything left names no issuer of its own; better-auth gives those a
+-- synthetic one, prefixed so a provider id cannot collide with a local method.
 UPDATE "account" SET "issuer" = 'local:oauth:' || "provider_id" WHERE "issuer" IS NULL;
 --> statement-breakpoint
 ALTER TABLE "account" ALTER COLUMN "issuer" SET NOT NULL;
 --> statement-breakpoint
 CREATE UNIQUE INDEX "account_issuer_accountId_uidx" ON "account" USING btree ("issuer","account_id");
 --> statement-breakpoint
--- The OAuth provider's tables are replaced rather than migrated. Their columns
--- barely overlap, and their contents cannot survive the upgrade anyway: access
--- tokens are now signed JWTs bound to the MCP resource, so every client
--- reconnects regardless of what is kept here.
+-- Replaced rather than migrated: access tokens are now signed JWTs bound to the
+-- MCP resource, so every client reconnects whatever is kept here.
 DROP TABLE "oauth_access_token" CASCADE;
 --> statement-breakpoint
 DROP TABLE "oauth_consent" CASCADE;

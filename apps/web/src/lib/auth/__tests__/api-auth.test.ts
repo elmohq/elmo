@@ -1,16 +1,8 @@
-/**
- * The instance admin key, which is the one credential resolved without a
- * database.
- *
- * `ADMIN_API_KEYS` is a static list compared in constant time; everything else
- * a caller can present is an organization key the api-key plugin looks up. The
- * cases here are the ones that decide whether a request is admin at all — the
- * step before any scope, organization, or brand narrowing applies.
- */
+/** The instance admin key: a static list compared in constant time, and the one
+ * credential resolved without a database. */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resolveApiAuth } from "@/lib/auth/api-auth";
 
-/** Reached only when the token is not an admin key, so it must not be. */
 const verifyApiKey = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/auth/server", () => ({ auth: { api: { verifyApiKey } } }));
 

@@ -1,11 +1,7 @@
 /**
- * The dashboard's entry point to the Opportunities report.
- *
- * Deliberately its own module: `@/server/opportunities` builds the digest from
- * the database and calls a provider, and the hook that reaches this file is
- * client code. A server function's body is stripped on the way to the browser,
- * so this thin wrapper is the only thing the client graph resolves, and the
- * pipeline behind it never has to be browser-safe.
+ * Its own module so the client graph resolves only this wrapper: a server
+ * function's body is stripped on the way to the browser, and the pipeline behind
+ * it never has to be browser-safe.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";

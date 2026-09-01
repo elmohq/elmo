@@ -1,19 +1,6 @@
 /**
- * Write-time enforcement, shared by the web server functions and the /api/v1
- * handlers so the two surfaces cannot drift.
- *
- * Two kinds of limit share one vocabulary here. Plan limits answer to the org's
- * entitlements and skip their queries when those are unlimited; the flat caps
- * (MAX_PROMPTS, MAX_COMPETITORS) are product-wide and apply with no plan at all.
- * Both speak in `WriteDecision`, so a caller refuses a write the same way
- * whichever kind said no.
- *
- * Shape: pure decide* functions (inputs → verdict) that the tests exercise
- * exhaustively, wrapped by assert* helpers that load what the decision needs.
- *
- * Downgrade policy: these guards only block *adding* beyond a limit. Anything
- * already over a limit is left alone — the worker's run policy stops running the
- * overage, oldest-first wins.
+ * These block only *adding* beyond a limit; anything already over is left to the
+ * worker's run policy, oldest-first.
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
@@ -37,12 +24,8 @@ export type WriteDenialCode =
 	| "prompt-cap"
 	| "competitor-cap";
 
-/**
- * Thrown by the assert* helpers. `status`/`error` are the HTTP response /api/v1
- * renders; server functions surface `message` directly. Having no plan at all
- * is a payment problem; every other denial is a request that conflicts with a
- * limit the caller could satisfy by asking for less.
- */
+/** No plan at all is a payment problem; every other denial is satisfiable by
+ * asking for less. */
 export class WriteDeniedError extends Error {
 	readonly code: WriteDenialCode;
 	readonly status: number;
@@ -77,9 +60,6 @@ export function decideBrandCreate(entitlements: Entitlements, currentBrandCount:
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
 	if (entitlements.maxBrands !== null && currentBrandCount >= entitlements.maxBrands) {
-		// Only point at an upgrade when one actually sells more brands; at the top
-		// of the ladder that would send a customer looking for a tier that does
-		// not exist.
 		const included = `Your plan includes ${entitlements.maxBrands} brand${entitlements.maxBrands === 1 ? "" : "s"}.`;
 		return deny(
 			"brand-limit",
@@ -91,11 +71,8 @@ export function decideBrandCreate(entitlements: Entitlements, currentBrandCount:
 	return ALLOWED;
 }
 
-/**
- * Blocks adding rows, not the brand's current size. Brands can already be over
- * the cap because the admin API ignores it, and the editor resubmits every row
- * on each save — blocking those saves would leave the brand uneditable.
- */
+/** Blocks adding, not the current size: the editor resubmits every row on save,
+ * and a brand can already be over the cap. */
 export function decidePromptCap(existing: number, adding: number): WriteDecision {
 	if (adding <= 0 || existing + adding <= MAX_PROMPTS) return ALLOWED;
 	return deny("prompt-cap", `A brand may have at most ${MAX_PROMPTS} prompts (this one has ${existing}).`);
@@ -109,7 +86,6 @@ export function decideCompetitorCap(resulting: number): WriteDecision {
 	);
 }
 
-/** Adding or re-enabling prompts consumes the org-wide tracked-prompt pool. */
 export function decidePromptAdd(
 	entitlements: Entitlements,
 	currentEnabledPrompts: number,
@@ -128,7 +104,6 @@ export function decidePromptAdd(
 	return ALLOWED;
 }
 
-/** Brand platform picks: every model must be on the plan menu, within the pick count. */
 export function decideEnabledModels(entitlements: Entitlements, requestedModels: string[]): WriteDecision {
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
@@ -266,28 +241,17 @@ async function withEntitlements(
 	for (const decision of await decide(entitlements)) assertAllowed(decision);
 }
 
-/**
- * Postgres advisory locks share one namespace per database. The first argument
- * keeps quota locks from colliding with any other use of the same org id.
- */
+/** Advisory locks share one namespace per database; the first argument keeps
+ * quota locks off any other use of the same org id. */
 const QUOTA_LOCK_CLASS = 0x656c6d6f;
 
 /**
- * Serialize one organization's quota-consuming writes against each other.
+ * Serialize one organization's quota-consuming writes, so two requests cannot
+ * both see the last free slot and both take it.
  *
- * Every guard above reads a usage count and the caller then writes; on their
- * own those are two steps, so two requests can both see the last free slot and
- * both take it. Running the pair under a transaction-scoped advisory lock makes
- * them atomic with respect to anyone else holding the same lock.
- *
- * `run` must do all of its work on the `tx` it is handed, checks included —
- * that is what the `conn` parameters above are for. Reaching for the pooled
- * `db` instead would hold this transaction open while waiting for a second
- * connection, and enough concurrent callers doing that exhaust the pool and
- * deadlock: every one of them holds a connection and needs one more.
- *
- * This orders writers against other writers. A caller that skips it is not
- * blocked, and an unlocked reader still sees a count mid-flight.
+ * `run` must do all of its work on the `tx` it is handed, checks included.
+ * Reaching for the pooled `db` holds this transaction open while waiting for a
+ * second connection, which deadlocks the pool under enough concurrent callers.
  */
 export async function withQuotaLock<T>(
 	organizationId: string,
@@ -387,10 +351,7 @@ export function promptSaveDelta(plan: PromptSavePools): PromptSaveDelta {
 }
 
 /**
- * Guard a whole prompts save against both pools it can spend. One entitlement
- * load and one parallel round of counts, rather than the two of each that
- * calling the single-limit asserts back to back would cost — and the two limits
- * are decided against the same snapshot, so a save can't pass one against a
+ * Both pools against one snapshot, so a save cannot pass one limit against a
  * plan the other was denied under.
  */
 export async function assertPromptSaveAllowed(

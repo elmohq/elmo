@@ -1,12 +1,7 @@
 /**
- * Brands, the competitors measured against them, and what the workspace is
- * paying for.
- *
- * None of these paginate, and none of them cap. A workspace has a handful of
- * brands and a handful of competitors per brand, so a page argument would be a
- * knob every caller has to think about to get back what one call already
- * returns — and a ceiling under a description that says "every" would be a list
- * that lies about being complete.
+ * None of these paginate or cap: a workspace has a handful of brands and a
+ * handful of competitors per brand, and a ceiling under a description saying
+ * "every" would be a list that lies about being complete.
  */
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { z } from "zod";

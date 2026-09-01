@@ -1,10 +1,5 @@
-/**
- * GET /api/v1/brands/:brandId/tags — the tags in use on a brand's prompts.
- *
- * Tags are derived, not stored: one exists exactly as long as some prompt
- * carries it. This saves a caller paging every prompt in the brand just to
- * build the filter the dashboard shows.
- */
+/** Tags are derived, not stored, so this saves a caller paging every prompt in
+ * the brand to build the same list. */
 import { createFileRoute } from "@tanstack/react-router";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requireBrandInScope } from "@/lib/api/scope";

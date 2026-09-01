@@ -18,10 +18,6 @@ import { parseModelFilter } from "@/lib/model-filter";
 
 const db = drizzle(process.env.DATABASE_URL!);
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export interface DashboardSummary {
 	total_prompts: number;
 	total_runs: number;
@@ -128,27 +124,17 @@ export interface AdminActiveBrandsOverTime {
 	count: number;
 }
 
-// ============================================================================
-// Helpers
-// ============================================================================
-
 async function queryPg<T>(query: SQL): Promise<T[]> {
 	const result = await db.execute(query);
 	return result.rows as T[];
 }
 
 /**
- * One end of a query's time window, as an absolute instant.
+ * Two spellings reach here. The dashboard asks for calendar days, so
+ * `YYYY-MM-DD` is resolved against `timezone` with `to` covering the whole of
+ * its last day; `/api/v1` asks with instants, which are used as given.
  *
- * Two spellings reach here and both have to keep working. The dashboard asks
- * for calendar days — "the 1st through the 31st, as my clock reads them" — so
- * `YYYY-MM-DD` is resolved against `timezone`, `to` covering the whole of its
- * last day. `/api/v1` asks with ISO 8601 timestamps, which already name an
- * instant; those are used as given and `end` is exclusive.
- *
- * This is the only place that distinction exists. Every window below is
- * half-open, `created_at >= start AND created_at < end`, whichever spelling
- * built it.
+ * The only place that distinction exists — every window below is half-open.
  */
 export const isCalendarDay = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
@@ -231,10 +217,6 @@ function webSearchFilter(webSearchEnabled?: boolean): SQL {
 	return sql`AND web_search_enabled = ${webSearchEnabled}`;
 }
 
-// ============================================================================
-// Dashboard Summary
-// ============================================================================
-
 export async function getDashboardSummary(
 	brandId: string,
 	fromDate: string | null,
@@ -256,10 +238,6 @@ export async function getDashboardSummary(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Per-Prompt Visibility Time Series (for LVCF smoothing)
-// ============================================================================
 
 export interface PerPromptVisibilityPoint {
 	prompt_id: string;
@@ -293,10 +271,6 @@ export async function getPerPromptVisibilityTimeSeries(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Aggregated Visibility With SQL-Side LVCF
-// ============================================================================
 
 export interface VisibilityDailyAggregate {
 	date: string;
@@ -467,10 +441,6 @@ export async function getCitationsTotalCount(
 	return Number(rows[0]?.total ?? 0);
 }
 
-// ============================================================================
-// Visibility Time Series
-// ============================================================================
-
 export async function getVisibilityTimeSeries(
 	brandId: string,
 	fromDate: string | null,
@@ -497,10 +467,6 @@ export async function getVisibilityTimeSeries(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Prompts Summary
-// ============================================================================
 
 export async function getPromptsFirstEvaluatedAt(
 	brandId: string,
@@ -549,10 +515,6 @@ export async function getPromptsSummary(
 	return rows;
 }
 
-// ============================================================================
-// Prompt Daily Stats
-// ============================================================================
-
 export async function getPromptDailyStats(
 	promptId: string,
 	fromDate: string | null,
@@ -576,10 +538,6 @@ export async function getPromptDailyStats(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Prompt Competitor Daily Stats
-// ============================================================================
 
 export async function getPromptCompetitorDailyStats(
 	promptId: string,
@@ -605,10 +563,6 @@ export async function getPromptCompetitorDailyStats(
 	return rows;
 }
 
-// ============================================================================
-// Web Queries for Mapping
-// ============================================================================
-
 export async function getPromptWebQueriesForMapping(
 	promptId: string,
 	fromDate: string | null,
@@ -628,10 +582,6 @@ export async function getPromptWebQueriesForMapping(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Web Query Counts
-// ============================================================================
 
 export interface WebQueryCount {
 	model: string;
@@ -666,10 +616,6 @@ export async function getPromptWebQueryCounts(
 	return rows;
 }
 
-// ============================================================================
-// Citation Stats (Domain Level)
-// ============================================================================
-
 export async function getCitationDomainStats(
 	brandId: string,
 	fromDate: string,
@@ -694,10 +640,6 @@ export async function getCitationDomainStats(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Citation Stats (URL Level)
-// ============================================================================
 
 export async function getCitationUrlStats(
 	brandId: string,
@@ -748,10 +690,6 @@ export async function getCitationDomainPromptCounts(
 	return new Map(rows.map((row) => [row.domain, Number(row.prompt_count)]));
 }
 
-// ============================================================================
-// Prompt-Level Citation Stats
-// ============================================================================
-
 export async function getPromptCitationUrlStats(
 	promptId: string,
 	fromDate: string,
@@ -775,10 +713,6 @@ export async function getPromptCitationUrlStats(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Prompt Snapshot Queries
-// ============================================================================
 
 export async function getPromptMentionSummary(
 	promptId: string,
@@ -821,10 +755,6 @@ export async function getPromptTopCompetitorMentions(
 	return rows;
 }
 
-// ============================================================================
-// Daily Citation Stats
-// ============================================================================
-
 export async function getDailyCitationStats(
 	brandId: string,
 	fromDate: string,
@@ -849,10 +779,6 @@ export async function getDailyCitationStats(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Per-Prompt Daily Citation Stats (for LVCF smoothing)
-// ============================================================================
 
 export interface PerPromptDailyCitationStats {
 	prompt_id: string;
@@ -887,10 +813,6 @@ export async function getPerPromptDailyCitationStats(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Per-Prompt Run Stats (grounding coverage + mention rates)
-// ============================================================================
 
 export interface PerPromptRunStats {
 	prompt_id: string;
@@ -927,10 +849,6 @@ export async function getPerPromptRunStats(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Share of Voice (competitor mention leaderboard)
-// ============================================================================
 
 export interface BrandMentionTotals {
 	total_runs: number;
@@ -1011,12 +929,8 @@ export interface PromptRunRow {
 	created_at: string;
 }
 
-/**
- * One prompt's runs over a window, newest first, with the citation count each
- * produced. Lives here rather than in the route so the window is bounded by the
- * same timezone-aware, half-open `dateFilter` every other read uses — building
- * the boundaries in JavaScript puts runs near local midnight on the wrong day.
- */
+/** Here rather than in the route so the window goes through the same
+ * timezone-aware `dateFilter` as every other read. */
 export async function getPromptRuns(
 	promptId: string,
 	fromDate: string,
@@ -1048,7 +962,6 @@ export async function getPromptRuns(
 	`);
 }
 
-/** The same window and filters, counted — for the pagination envelope. */
 export async function countPromptRuns(
 	promptId: string,
 	fromDate: string,
@@ -1105,10 +1018,6 @@ export async function getPerPromptDailyCompetitorMentions(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Per-Prompt Cited Pages (titles for the opportunities digest)
-// ============================================================================
 
 export interface PerPromptCitationPageRow {
 	prompt_id: string;
@@ -1188,10 +1097,6 @@ export async function getPerPromptDailyCitationPages(
 	return rows;
 }
 
-// ============================================================================
-// Brand Mention Rate by Model (per-platform standing for the digest)
-// ============================================================================
-
 export interface ModelMentionRateRow {
 	model: string;
 	runs: number;
@@ -1225,10 +1130,6 @@ export async function getBrandMentionRateByModel(
 	return rows;
 }
 
-// ============================================================================
-// Brand Data Age
-// ============================================================================
-
 export async function getBrandEarliestRunDate(brandId: string): Promise<string | null> {
 	const rows = await queryPg<{ earliest_date: string | null }>(sql`
 		SELECT min(created_at) AS earliest_date
@@ -1237,10 +1138,6 @@ export async function getBrandEarliestRunDate(brandId: string): Promise<string |
 	`);
 	return rows[0]?.earliest_date || null;
 }
-
-// ============================================================================
-// Batch Chart Data
-// ============================================================================
 
 export async function getBatchChartData(
 	brandId: string,
@@ -1314,10 +1211,6 @@ export async function getBatchChartData(
 	}));
 }
 
-// ============================================================================
-// Admin Stats
-// ============================================================================
-
 export async function getAdminRunsOverTime(): Promise<AdminRunsOverTime[]> {
 	const rows = await queryPg<AdminRunsOverTime>(sql`
 		SELECT
@@ -1364,22 +1257,6 @@ export async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsO
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Query Fanout
-//
-// The sub-queries an engine issues to the web while answering a prompt, read
-// from `prompt_runs.web_queries` — the single source for every figure, with no
-// provider-specific handling. Entries that aren't genuine fan-out are dropped
-// via `genuineFanoutWq`: the `unavailable` sentinel providers emit when a
-// search happened but the strings aren't exposed, and the prompt echoed
-// verbatim. A run that lists the same query twice counts it ONCE — one
-// instance per (run, normalized query) — so a single run can't satisfy the
-// count >= 2 Invisible/Won gate.
-// Every fan-out query joins `prompts` (to compare against the prompt text) so
-// columns are qualified (`pr.`, the join brings two `created_at` columns into
-// scope) and the shared unqualified filter helpers are inlined instead.
-// ============================================================================
 
 /**
  * Predicate selecting genuine fan-out queries: non-empty, not the `unavailable`

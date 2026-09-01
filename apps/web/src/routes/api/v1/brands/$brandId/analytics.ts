@@ -1,14 +1,8 @@
 /**
- * GET /api/v1/brands/:brandId/analytics — everything a brand's window says.
- *
- * One endpoint rather than a family of overlapping ones: visibility, share of
- * voice, the per-model breakdown and the citation totals are computed from the
- * same resolved prompt scope, so splitting them apart meant four requests
- * carrying the same window and filters to get one picture — and a `summary`
- * that duplicated a scalar from each while costing all four computations.
- *
- * There is no `include` parameter. The lists that can grow without bound have
- * their own paginated endpoints; what is left is small enough to always send.
+ * One endpoint rather than four: visibility, share of voice, the per-model
+ * breakdown and the citation totals come off the same resolved prompt scope.
+ * No `include` parameter — the lists that can grow without bound have their own
+ * paginated endpoints, and what is left is small enough to always send.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { parseAnalyticsFilters, parseAnalyticsWindow, publicRange } from "@/lib/api/analytics-range";

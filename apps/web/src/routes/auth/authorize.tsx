@@ -1,17 +1,7 @@
 /**
- * /auth/authorize — where the MCP OAuth flow asks a person to say yes.
- *
- * The better-auth `mcp` plugin sends a signed-in browser here with the
- * authorization request in the query, signed. The only thing that turns that
- * into a code the client can spend is `POST /api/auth/oauth2/consent` — which
- * happens on a click and nowhere else.
- *
- * Nothing about the request is interpreted here beyond naming the client. Every
- * other parameter is carried and handed back unread — validating them is the
- * plugin's job, and doing any of it twice is how the two get to disagree.
- *
- * An attacker who gets a signed-in browser to load this URL therefore reaches
- * the consent screen — which is where the person says no.
+ * Only `POST /api/auth/oauth2/consent` turns the signed request into a code, and
+ * only a click sends it — so loading this URL on someone's behalf reaches the
+ * consent screen, which is where they say no.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { authClient } from "@workspace/lib/auth/client";
@@ -23,23 +13,16 @@ import { buildTitle, getAppName } from "@/lib/route-head";
 import { getMcpClientFn } from "@/server/mcp-clients";
 import { getViewerFn } from "@/server/viewer";
 
-/**
- * The plugin signs the whole authorization query, and the consent endpoint
- * re-derives that signature from what this page hands back. So the search is
- * passed through exactly as it arrived — dropping a parameter this page has
- * never heard of would invalidate a signature that covered it. Only `client_id`
- * is named, because it is the only one read here.
- */
+/** A passthrough: the plugin signs the whole query, so dropping a parameter this
+ * page never heard of would invalidate the signature. */
 interface AuthorizeSearch {
 	client_id?: string;
 }
 
 export const Route = createFileRoute("/auth/authorize")({
 	validateSearch: (search: Record<string, unknown>): AuthorizeSearch => search,
-	// No bounce to sign in from here. The plugin sends a browser without a
-	// session to the sign-in page instead, and the only way to arrive here
-	// without one is a session that lapsed in between — at which point the
-	// signed request is stale and the connection has to be started again anyway.
+	// The plugin sends a signed-out browser to the sign-in page, so arriving here
+	// without a session means it lapsed and the request is stale.
 	beforeLoad: async () => ({ viewer: await getViewerFn() }),
 	loaderDeps: ({ search }) => ({ clientId: search.client_id }),
 	loader: async ({ context, deps }) => {
@@ -62,17 +45,12 @@ function AuthorizePage() {
 	async function respond(accept: boolean) {
 		setConnecting(true);
 		setError(null);
-		// The signed query rides along from the address bar: the auth client's
-		// oauth-provider plugin picks out the parameters the signature covers and
-		// sends them as `oauth_query`.
 		const { data, error: failure } = await authClient.oauth2.consent({ accept });
 		if (!data?.redirect || !data.url) {
 			setError(failure?.message || "The authorization server refused the request.");
 			setConnecting(false);
 			return;
 		}
-		// A full-page navigation, not a fetch: the answer is the client's callback
-		// URL, and only the browser can follow it there.
 		window.location.href = data.url;
 	}
 

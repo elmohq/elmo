@@ -1,25 +1,5 @@
-/**
- * Who is calling `/api/mcp`.
- *
- * Two ways in, one principal out. Whichever a client uses, everything past this
- * module asks the same questions of it — which brands, which scopes — so a tool
- * never learns how its caller got here.
- *
- *  - **An OAuth token**, minted by the better-auth `mcp` plugin. The client
- *    registers itself, sends its user to sign in, and leaves holding a token
- *    that stands for that person. This is the path an interactive MCP client
- *    takes, and the only one that works without someone pasting a secret into a
- *    config file.
- *  - **An API key**, admin or organization, exactly as `/api/v1` accepts it.
- *    A key is what a scheduled job or a container has; it also lets an operator
- *    hand out a connection narrowed to one brand and a handful of scopes, which
- *    OAuth has no vocabulary for here.
- *
- * A key is tried first because it costs nothing to rule out — an admin key is a
- * string compare, and an unknown key is one indexed lookup — and because a
- * rate-limited key must be reported as rate-limited rather than falling through
- * to a second failure that reads as "invalid".
- */
+/** An OAuth token or an API key, resolved to one principal so a tool never
+ * learns which arrived. */
 import { verifyMcpAccessToken } from "@workspace/lib/auth/server";
 import { db } from "@workspace/lib/db/db";
 import { oauthClient, user } from "@workspace/lib/db/schema";
@@ -28,34 +8,18 @@ import { type ApiAuthFailure, type Principal, resolveApiAuth, type UserAuth } fr
 
 export type McpAuthResult = { auth: Principal } | { failure: ApiAuthFailure };
 
-/**
- * RFC 9728. A client that gets a `401` reads the `resource_metadata` challenge,
- * fetches this document, and learns which authorization server to talk to.
- */
+/** Named in the `401` challenge so an unconfigured client can find the
+ * authorization server. */
 export const MCP_RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource";
 
 /**
- * Resolve an OAuth access token to the person holding it.
- *
- * A signature says the token was issued; it does not say the grant behind it
- * still stands. Everything a signature cannot see is read fresh here, so the
- * answers are the current ones rather than the ones that held at issue time:
- * the person still exists and is not banned, the client still exists and is
- * still enabled, and the workspaces are whichever they belong to now. That is
- * what lets a token outlive a team change without outliving the access that
- * came with it.
- *
- * Not checked, deliberately: whether the browser session that authorized this
- * is still open. These grants carry `offline_access`, which is the client
- * asking to keep working after the person closes the tab, and better-auth keeps
- * exactly those refresh tokens through a sign-out. Disabling the client is how
- * an operator ends one.
+ * A signature says the token was issued, not that the grant still stands, so
+ * everything it cannot see is read fresh. Not the browser session: these grants
+ * carry `offline_access` and better-auth keeps them through a sign-out.
  */
 async function resolveOAuthPrincipal(request: Request): Promise<UserAuth | null> {
-	// Deferred for the same reason api-auth defers it: constructing the auth
-	// instance reads APP_URL and throws without it, which would make the tool
-	// registry unimportable outside a configured environment. `helpers` is the
-	// same dependency — it holds the auth instance at module scope.
+	// Deferred as in api-auth: constructing auth reads APP_URL and throws without
+	// it, which would make the tool registry unimportable.
 	const [{ auth }, { listUserOrganizations }] = await Promise.all([
 		import("@/lib/auth/server"),
 		import("@/lib/auth/helpers"),
@@ -65,9 +29,6 @@ async function resolveOAuthPrincipal(request: Request): Promise<UserAuth | null>
 	try {
 		claims = await verifyMcpAccessToken(auth, request);
 	} catch {
-		// Every rejection lands here, and a rejected token is simply not a
-		// credential: the caller learns that from the challenge the route sends,
-		// which says nothing about which check failed.
 		return null;
 	}
 
@@ -101,15 +62,11 @@ async function resolveOAuthPrincipal(request: Request): Promise<UserAuth | null>
 export async function resolveMcpAuth(request: Request): Promise<McpAuthResult> {
 	const asKey = await resolveApiAuth(request);
 	if ("auth" in asKey) return { auth: asKey.auth };
-	// A key that exists but has spent its budget is a different answer from one
-	// that was never a key; only the latter is worth trying as a token.
+	// A spent key is a different answer from one that was never a key.
 	if (asKey.failure.code === "rate_limited") return asKey;
 
 	const asUser = await resolveOAuthPrincipal(request);
 	if (asUser) return { auth: asUser };
 
-	// Neither read it. The key resolver's message is deliberately the same for
-	// every way a credential can fail, so reusing it says nothing extra about
-	// which of the two paths got closest.
 	return asKey;
 }

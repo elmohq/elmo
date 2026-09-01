@@ -26,22 +26,11 @@ import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
 /**
- * Where the browser goes once it is signed in.
- *
- * Normally wherever it was headed. But the OAuth plugin sends a signed-out
- * person here with an MCP client's authorization request in the query, signed,
- * and handing that same query back to the authorization endpoint is what
- * resumes the flow. It has to go back exactly as it arrived, so it is read off
- * the route's own search — which is declared as a passthrough for this reason —
- * rather than rebuilt.
- *
- * Every sign-in path asks this one question, including the two that leave for
- * an identity provider and come back: for those the request is gone by the time
- * the browser returns, so the way through is to make the return trip land here.
+ * When the OAuth plugin sent the browser here mid-flow, handing the signed query
+ * back to the authorization endpoint resumes it — including for the paths that
+ * leave for an identity provider, where the request is gone on return.
  */
 function postSignInDestination(search: LoginSearch): string {
-	// `sig` is the plugin's; a query without one was not signed and is not an
-	// authorization request.
 	if (!search.sig) return safeReturnTo(search.returnTo);
 	const query = new URLSearchParams(
 		Object.entries(search).flatMap(([key, value]) =>
@@ -51,20 +40,11 @@ function postSignInDestination(search: LoginSearch): string {
 	return `${MCP_AUTHORIZE_ENDPOINT}?${query}`;
 }
 
-/**
- * What this page reads. Everything else the URL carries is kept and handed back
- * untouched: the OAuth plugin signs the whole authorization query, and a
- * parameter dropped on the way through is a signature that no longer verifies.
- */
+/** A passthrough: the plugin signs the whole query, so a dropped parameter is a
+ * signature that no longer verifies. */
 interface LoginSearch {
 	returnTo?: string;
-	/**
-	 * Attribution tag carried by links back to us (see
-	 * @workspace/config/referrals). Declared so it survives long enough for
-	 * analytics to record the pageview it arrived on.
-	 */
 	ref?: string;
-	/** The OAuth plugin's signature over the rest of the query, when there is one. */
 	sig?: string;
 }
 
@@ -99,8 +79,6 @@ function LoginPage() {
 		return <DemoLogin destination={destination} />;
 	}
 
-	// A fresh self-hosted instance has no account to sign in to, so the form
-	// could only ever fail. Send them to the one thing that can work.
 	if (mode === "local" && !hasUsers) {
 		window.location.href = "/auth/register";
 		return null;
@@ -160,7 +138,6 @@ export function SSOLogin({ destination = "/app" }: { destination?: string }) {
 	return <FullPageCard title="Signing in..." subtitle="Redirecting to your identity provider" />;
 }
 
-/** Signs in the shared demo account, whose credentials are printed on the page. */
 export function DemoLogin({ destination = "/app" }: { destination?: string }) {
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
@@ -210,7 +187,6 @@ export function EmailPasswordLogin({
 }: {
 	destination?: string;
 	returnTo?: string;
-	/** The `ref` this page was reached with, kept on links that stay inside auth. */
 	incomingRef?: string;
 	isCloud?: boolean;
 	canRegister?: boolean;
@@ -234,14 +210,10 @@ export function EmailPasswordLogin({
 			});
 
 			if (result.error) {
-				// An expired MCP authorization request is refused here, because the
-				// sign-in carried it. Taking it out of the address bar makes the next
-				// attempt an ordinary sign-in rather than the same refusal — with the
-				// credentials still typed in.
+				// An expired authorization request; dropping it makes the next attempt
+				// an ordinary sign-in.
 				if ((result.error as { error?: string }).error === "invalid_signature") {
-					// Through the router rather than history, so the destination this
-					// page computes from the search is recomputed too — otherwise the
-					// retry aims at the same expired request.
+					// Through the router, so `destination` is recomputed.
 					navigate({ to: "/auth/login", search: {}, replace: true });
 					setError("That connection request expired. Sign in again, then start the connection from your MCP client.");
 					setLoading(false);

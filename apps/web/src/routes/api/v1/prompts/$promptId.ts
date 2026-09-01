@@ -137,11 +137,9 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 				},
 			}),
 
-			// Deleting takes every run and citation with it, and the dashboard
-			// offers no such action to anyone — so no scope grants it. An
-			// integration that wants a prompt to stop costing runs disables it
-			// (`PATCH` with `enabled: false`), which keeps the history and frees
-			// the plan slot just the same.
+			// Takes every run and citation with it, and no dashboard control does it
+			// at any role — so no scope grants it. Disabling frees the plan slot
+			// just the same and keeps the history.
 			DELETE: createApiHandler({
 				params: promptParams,
 				adminOnly: true,

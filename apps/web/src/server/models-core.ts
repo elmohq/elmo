@@ -1,11 +1,5 @@
-/**
- * The models this deployment knows about.
- *
- * `configured` is what the operator has actually wired up; the rest of the
- * catalogue is still listed so a client can tell "we don't run this" from "this
- * isn't a model". An instance with nothing configured yet still gets the
- * catalogue rather than a failure.
- */
+/** The whole catalogue is listed, not just what the operator wired up, so a
+ * client can tell "we don't run this" from "this isn't a model". */
 import { getModelMeta, KNOWN_MODELS } from "@workspace/config/models";
 import { PREMIUM_MODELS } from "@workspace/config/plans";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
