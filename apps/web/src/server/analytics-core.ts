@@ -47,7 +47,8 @@ export interface AnalyticsWindow {
 	 * calendar days (`YYYY-MM-DD`, read in `timezone`, `to` covering the whole
 	 * of its last day); `/api/v1` passes ISO 8601 instants and `to` is
 	 * exclusive. `postgres-read` resolves both to the same half-open SQL bound,
-	 * and `windowInstants` below does the same for the arithmetic on this side.
+	 * and `windowInstants` below matches it for instants — see its note for the
+	 * calendar-day spelling, which no caller here passes.
 	 */
 	from: string;
 	to: string;
@@ -58,9 +59,14 @@ export interface AnalyticsWindow {
 /**
  * The window as absolute instants, `[start, end)`, whichever spelling built it.
  *
- * Resolved the same way `postgres-read` resolves it for SQL — same predicate,
- * same day-to-instant rule — because the series domain and the comparison
- * window below have to describe exactly the rows the queries returned.
+ * For instants this is exactly what `postgres-read` resolves for SQL. For
+ * calendar days it is not: here a bare `YYYY-MM-DD` is midnight UTC, while
+ * `postgres-read` resolves it in the caller's `timezone` — so the derived
+ * bounds can sit a zone offset away from the rows the queries returned. Every
+ * caller that reaches this function passes instants; a calendar-day caller
+ * would see a previous window computed against the UTC-resolved bounds, not
+ * the SQL ones. Fix that by mirroring `windowStart`/`windowEnd` before a
+ * calendar-day caller exists.
  */
 function windowInstants(window: AnalyticsWindow): { start: Date; end: Date } {
 	const start = new Date(isCalendarDay(window.from) ? `${window.from}T00:00:00Z` : window.from);
