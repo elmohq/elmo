@@ -13,6 +13,19 @@ ALTER TABLE "account" ADD COLUMN "issuer" text;
 -- synthetic one, and looks them up under exactly this string.
 UPDATE "account" SET "issuer" = 'local:credential' WHERE "issuer" IS NULL AND "provider_id" = 'credential';
 --> statement-breakpoint
+-- A social provider that names its own issuer is looked up under that name, not
+-- under a synthetic one. better-auth ships a fixed issuer for these four; this
+-- deployment configures `google` (cloud sign-in with Google). Providers whose
+-- issuer is computed from configuration — Cognito, Entra ID, Paybin — would
+-- need their own statement here, as would a `generic-oauth` provider.
+UPDATE "account" SET "issuer" = CASE "provider_id"
+	WHEN 'google' THEN 'https://accounts.google.com'
+	WHEN 'apple' THEN 'https://appleid.apple.com'
+	WHEN 'facebook' THEN 'https://www.facebook.com'
+	WHEN 'line' THEN 'https://access.line.me'
+END
+WHERE "issuer" IS NULL AND "provider_id" IN ('google', 'apple', 'facebook', 'line');
+--> statement-breakpoint
 -- An SSO identity is issued by the identity provider, so its issuer is the IdP's
 -- own — read from the ID token that signed the account in, because that claim is
 -- what 1.7 will compare against. `auth0-whitelabel` is named alongside the
@@ -52,16 +65,28 @@ BEGIN
 	END LOOP;
 END $$;
 --> statement-breakpoint
--- Registered SSO providers whose accounts carried no usable ID token: the
--- issuer their configuration names is the one their tokens are minted with.
+-- An SSO account whose ID token could not be read borrows the issuer a sibling
+-- account of the same provider resolved to: one identity provider mints under
+-- one issuer, so a row that answered is the answer for the rest.
+UPDATE "account" a
+SET "issuer" = sibling."issuer"
+FROM (
+	SELECT DISTINCT ON ("provider_id") "provider_id", "issuer"
+	FROM "account"
+	WHERE "issuer" IS NOT NULL AND "issuer" NOT LIKE 'local:%'
+) sibling
+WHERE a."issuer" IS NULL AND a."provider_id" = sibling."provider_id";
+--> statement-breakpoint
+-- Registered SSO providers with no sibling to learn from: the issuer their
+-- configuration names is the one their tokens are minted with.
 UPDATE "account" a
 SET "issuer" = s."issuer"
 FROM "sso_provider" s
 WHERE a."issuer" IS NULL AND a."provider_id" = s."provider_id";
 --> statement-breakpoint
--- Everything left is a social provider, which better-auth also namespaces
--- rather than trusting the provider's own issuer — a provider id must not be
--- able to collide with a local authentication method.
+-- Everything left names no issuer of its own, and better-auth gives those a
+-- synthetic one — a provider id must not be able to collide with a local
+-- authentication method.
 UPDATE "account" SET "issuer" = 'local:oauth:' || "provider_id" WHERE "issuer" IS NULL;
 --> statement-breakpoint
 ALTER TABLE "account" ALTER COLUMN "issuer" SET NOT NULL;
