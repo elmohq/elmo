@@ -17,7 +17,7 @@
 import { db } from "@workspace/lib/db/db";
 import { brands, organization } from "@workspace/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
-import { type ApiScope, permissionsToScopes } from "@/lib/api/scopes";
+import { API_SCOPES, type ApiScope, permissionsToScopes } from "@/lib/api/scopes";
 import { getAdminApiKeys, timingSafeStringEqual } from "./policies";
 
 export interface AdminAuth {
@@ -49,6 +49,90 @@ export interface OrganizationAuth {
 }
 
 export type ApiAuth = AdminAuth | OrganizationAuth;
+
+/**
+ * A person, reached through an OAuth token rather than a key.
+ *
+ * Only `/api/mcp` mints one of these: an MCP client runs the OAuth flow against
+ * the better-auth `mcp` plugin and leaves holding a token that stands for a
+ * user, not for an organization. `ApiAuth` deliberately does not include it, so
+ * a `/api/v1` route cannot be handed one by accident.
+ *
+ * What it reaches is re-derived from live membership on every request, which is
+ * the property that makes it safe for a token to outlive a team change: revoke
+ * someone's membership and the token stops seeing that workspace on the next
+ * call, with nothing to expire or clean up.
+ */
+export interface UserAuth {
+	kind: "user";
+	userId: string;
+	email: string | null;
+	name: string | null;
+	/** Every organization the user is currently a member of. */
+	organizationIds: string[];
+	/** The OAuth client that holds the token, for `whoami` and for logs. */
+	clientId: string;
+	expiresAt: Date | null;
+}
+
+/**
+ * Everything the brand- and organization-scoping helpers know how to answer
+ * for. `/api/v1` only ever sees the `ApiAuth` half; MCP sees all three.
+ */
+export type Principal = ApiAuth | UserAuth;
+
+/**
+ * What a caller reaches, with the three kinds collapsed.
+ *
+ * The kinds differ only in where these three answers come from, so this is the
+ * one place that knows there are three. Everything downstream — brand scoping,
+ * the scope check, the tool filter — asks this instead of switching on `kind`,
+ * which is what keeps a fourth kind from meaning a hunt through five modules.
+ *
+ * `null` means "unrestricted" in both id fields, and it is not the same as an
+ * empty array: `[]` is a caller that reaches nothing, which is what a
+ * restriction naming only other tenants' brands collapses to.
+ */
+export interface PrincipalReach {
+	/** The organizations the caller's data is drawn from; null for every one. */
+	organizationIds: string[] | null;
+	/** A narrowing within those organizations; null for every brand in them. */
+	brandIds: string[] | null;
+	scopes: Set<ApiScope>;
+}
+
+/**
+ * An admin key and a signed-in person both hold every scope — scopes exist to
+ * narrow a *key* below what its issuer can already do, and a session is that
+ * person, who reaches all of this in the dashboard anyway.
+ */
+export function principalReach(auth: Principal): PrincipalReach {
+	switch (auth.kind) {
+		case "admin":
+			return { organizationIds: null, brandIds: null, scopes: new Set(API_SCOPES) };
+		case "organization":
+			return { organizationIds: [auth.organizationId], brandIds: auth.brandIds, scopes: auth.scopes };
+		case "user":
+			return { organizationIds: auth.organizationIds, brandIds: null, scopes: new Set(API_SCOPES) };
+	}
+}
+
+/** What a caller may do, in the one vocabulary the whole surface speaks. */
+export function principalScopes(auth: Principal): Set<ApiScope> {
+	return principalReach(auth).scopes;
+}
+
+/** How a caller is named in `whoami`, in `/me`, and in a log line. */
+export function principalLabel(auth: Principal): string {
+	switch (auth.kind) {
+		case "admin":
+			return "instance admin key";
+		case "organization":
+			return `API key for ${auth.organizationName}`;
+		case "user":
+			return auth.email ?? auth.userId;
+	}
+}
 
 export interface ApiAuthFailure {
 	status: 401 | 429;

@@ -1,0 +1,47 @@
+meta {
+  name: the authorization server advertises its endpoints
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/.well-known/oauth-authorization-server
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("everything a client needs to register and get a token", function() {
+    expect(res.body.registration_endpoint).to.contain("/api/auth/mcp/register");
+    expect(res.body.token_endpoint).to.contain("/api/auth/mcp/token");
+  });
+
+  test("the authorization endpoint is the page that asks the person", function() {
+    expect(res.body.authorization_endpoint).to.contain("/auth/authorize");
+  });
+
+  test("PKCE is offered, which a public client has to have", function() {
+    expect(res.body.code_challenge_methods_supported).to.include("S256");
+  });
+
+  test("every URL in the document shares the issuer's origin", function() {
+    for (const field of ["authorization_endpoint", "token_endpoint", "registration_endpoint", "jwks_uri"]) {
+      expect(res.body[field], field).to.have.string(res.body.issuer);
+    }
+  });
+}
+
+docs {
+  A client that finds two fields here naming different origins refuses to
+  connect, so a misconfigured APP_URL has to produce one wrong answer to fix
+  rather than two that disagree.
+
+  The authorization endpoint is deliberately not the plugin's: that one issues
+  a code to any browser that already has a session, which would make
+  authorizing an MCP client something that happens to someone rather than
+  something they do.
+}

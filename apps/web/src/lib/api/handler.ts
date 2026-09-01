@@ -20,7 +20,7 @@
  */
 import { WriteDeniedError } from "@workspace/lib/entitlements";
 import type { z } from "zod";
-import { type ApiAuth, type ApiAuthFailure, resolveApiAuth } from "@/lib/auth/api-auth";
+import { type ApiAuth, type ApiAuthFailure, principalScopes, resolveApiAuth } from "@/lib/auth/api-auth";
 import { getDeployment } from "@/lib/config/server";
 import type { ApiScope } from "./scopes";
 
@@ -279,17 +279,18 @@ function refuseRequest(
 		);
 	}
 
-	if (auth.kind === "organization") {
-		const missing = (opts.scopes ?? []).find((scope) => !auth.scopes.has(scope));
-		if (missing) {
-			return errorResponse(
-				403,
-				"Forbidden",
-				`This API key is missing the ${missing} scope`,
-				"insufficient_scope",
-				headers,
-			);
-		}
+	// Asked of the principal rather than of its kind: an admin key holds every
+	// scope, which is a fact about the principal and not an absence of a check.
+	const held = principalScopes(auth);
+	const missing = (opts.scopes ?? []).find((scope) => !held.has(scope));
+	if (missing) {
+		return errorResponse(
+			403,
+			"Forbidden",
+			`This API key is missing the ${missing} scope`,
+			"insufficient_scope",
+			headers,
+		);
 	}
 
 	// Read-only mode is not a property of the key, so it is checked after the

@@ -46,11 +46,12 @@ function parseInstant(name: string, raw: string): string {
 	return parsed.toISOString();
 }
 
-export function parseAnalyticsWindow(url: URL): AnalyticsWindow {
-	const params = url.searchParams;
-	const rawStart = params.get("start");
-	const rawEnd = params.get("end");
-
+/**
+ * The window rules, over plain values. `parseAnalyticsWindow` reads them off a
+ * `URL`; the MCP tools pass them straight in, so both refuse a bad window the
+ * same way rather than each restating what a window is.
+ */
+export function resolveAnalyticsWindow(rawStart: string | null, rawEnd: string | null): AnalyticsWindow {
 	if (!rawStart || !rawEnd) {
 		invalid("A window is required: both start and end, as ISO 8601 timestamps");
 	}
@@ -62,6 +63,10 @@ export function parseAnalyticsWindow(url: URL): AnalyticsWindow {
 		invalid("start must be before end");
 	}
 	return { from: start, to: end, timezone: BUCKET_ZONE };
+}
+
+export function parseAnalyticsWindow(url: URL): AnalyticsWindow {
+	return resolveAnalyticsWindow(url.searchParams.get("start"), url.searchParams.get("end"));
 }
 
 /** The `model` and `tags` filters every analytics endpoint shares. */

@@ -1,0 +1,38 @@
+meta {
+  name: a demo deployment runs no oauth flow
+  type: http
+  seq: 18
+  tags: [
+    demo
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/auth/mcp/register
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "client_name": "should not be registrable",
+    "redirect_uris": ["http://127.0.0.1:9999/callback"],
+    "token_endpoint_auth_method": "none"
+  }
+}
+
+assert {
+  res.status: eq 403
+}
+
+tests {
+  test("it points at the way in that does work", function() {
+    expect(res.body.message).to.contain("API key");
+  });
+}
+
+docs {
+  Client registration is an unauthenticated write by design — that is what lets
+  an MCP client introduce itself — and a public demo is exactly where an
+  unauthenticated write nobody has to sign in for gets abused.
+}

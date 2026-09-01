@@ -1,0 +1,42 @@
+meta {
+  name: a tool the key lacks is not there to call
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/mcp
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgNoBillingKey}}
+  Accept: application/json, text/event-stream
+  mcp-protocol-version: 2025-06-18
+}
+
+body:json {
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": { "name": "get_billing", "arguments": { "organizationId": "{{orgId}}" } }
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.result.isError: eq true
+}
+
+tests {
+  test("the refusal names the tool rather than the missing scope", function() {
+    expect(res.body.result.content[0].text).to.contain("get_billing");
+  });
+}
+
+docs {
+  Calling a tool that was never registered is refused by the protocol itself.
+  A key without billing:read cannot reach the handler at all.
+}

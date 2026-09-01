@@ -1,0 +1,32 @@
+meta {
+  name: and the member key sees exactly the same list
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/api/mcp
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+  Accept: application/json, text/event-stream
+  mcp-protocol-version: 2025-06-18
+}
+
+body:json {
+  { "jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {} }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("the two lists are identical", function() {
+    const orgNames = res.body.result.tools.map((tool) => tool.name).sort().join(",");
+    expect(orgNames).to.equal(bru.getVar("adminToolNames"));
+  });
+}

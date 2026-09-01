@@ -16,7 +16,7 @@ import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { claimNewBrandSlug, findUnusedBrandSlug } from "@workspace/lib/db/unique-names";
 import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { eq } from "drizzle-orm";
+import { count, desc, eq, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
@@ -488,4 +488,31 @@ export async function saveWizardOnboarding(input: WizardOnboardingInput): Promis
 
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
 	return buildBrandResult(refreshed!);
+}
+
+// ============================================================================
+// Reads
+// ============================================================================
+
+export interface ListBrandsFilters {
+	/** Omit both to read the whole scope; a caller that pages passes them together. */
+	limit?: number;
+	offset?: number;
+	/** The caller's tenancy condition, from `brandScopeCondition`. */
+	scope?: SQL;
+}
+
+/**
+ * The brand list both external surfaces publish, already shaped by
+ * `buildBrandResult`. Tenancy is the caller's job; nothing here knows who is
+ * asking.
+ */
+export async function listBrands(filters: ListBrandsFilters): Promise<{ data: BrandResult[]; total: number }> {
+	const where = filters.scope;
+	const [totals] = await db.select({ count: count() }).from(brands).where(where);
+	let query = db.select().from(brands).where(where).orderBy(desc(brands.createdAt)).$dynamic();
+	if (filters.limit !== undefined) query = query.limit(filters.limit).offset(filters.offset ?? 0);
+	const rows = await query;
+
+	return { data: rows.map(buildBrandResult), total: totals?.count ?? 0 };
 }

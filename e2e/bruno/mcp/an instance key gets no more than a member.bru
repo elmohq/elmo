@@ -1,0 +1,36 @@
+meta {
+  name: an instance key gets no more than a member
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/api/mcp
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+  Accept: application/json, text/event-stream
+  mcp-protocol-version: 2025-06-18
+}
+
+body:json {
+  { "jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {} }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("adminToolNames", res.body.result.tools.map((tool) => tool.name).sort().join(","));
+}
+
+docs {
+  Recorded here and compared in the next request. An instance-wide key reaches
+  every workspace, but /api/mcp offers it no capability an organization key
+  lacks — otherwise the product would have an operation a model can perform and
+  a person cannot.
+}

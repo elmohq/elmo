@@ -1,20 +1,17 @@
 /**
  * GET /api/v1/prompts/:promptId/runs — the answers behind a prompt.
  *
- * Metadata only, newest first. The answer text lives one level down, on
- * `GET /api/v1/prompts/:promptId/runs/:runId`, which keeps this list small
- * enough to page through: a window of runs across every platform would
- * otherwise be megabytes of prose.
+ * Metadata only, newest first. The answer text lives on the single-run
+ * endpoint, which keeps this list small enough to page through: a window of
+ * runs across every model would otherwise be megabytes of prose.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { db } from "@workspace/lib/db/db";
-import { prompts } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { parseAnalyticsWindow, parsePaging } from "@/lib/api/analytics-range";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { isBrandInScope } from "@/lib/api/scope";
-import { countPromptRuns, getPromptRuns } from "@/lib/postgres-read";
+import { findPromptBrandId } from "@/server/prompts-core";
+import { listPromptRuns } from "@/server/runs-core";
 
 export const Route = createFileRoute("/api/v1/prompts/$promptId/runs/")({
 	server: {
@@ -24,43 +21,23 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/runs/")({
 				scopes: ["runs:read"],
 				handle: async ({ params, request, auth }) => {
 					const { promptId } = params;
-					const [prompt] = await db
-						.select({ id: prompts.id, brandId: prompts.brandId })
-						.from(prompts)
-						.where(eq(prompts.id, promptId))
-						.limit(1);
-					if (!prompt || !(await isBrandInScope(auth, prompt.brandId))) {
+					// A prompt in another tenant reads exactly as one that isn't there.
+					const brandId = await findPromptBrandId(promptId);
+					if (!brandId || !(await isBrandInScope(auth, brandId))) {
 						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
 					}
 
 					const url = new URL(request.url);
-					const { from, to, timezone } = parseAnalyticsWindow(url);
 					const { page, limit, offset } = parsePaging(url);
-					const model = url.searchParams.get("model") ?? undefined;
+					const { data, total } = await listPromptRuns({
+						promptId,
+						window: parseAnalyticsWindow(url),
+						limit,
+						offset,
+						model: url.searchParams.get("model") ?? undefined,
+					});
 
-					// Both go through the read layer's half-open window, so a run at the
-					// very end of endDate lands inside the window rather than after it.
-					const [rows, total] = await Promise.all([
-						getPromptRuns(promptId, from, to, timezone, limit, offset, model),
-						countPromptRuns(promptId, from, to, timezone, model),
-					]);
-
-					return {
-						data: rows.map((row) => ({
-							id: row.id,
-							promptId: row.prompt_id,
-							brandId: row.brand_id,
-							model: row.model,
-							provider: row.provider,
-							webSearchEnabled: row.web_search_enabled,
-							brandMentioned: row.brand_mentioned,
-							competitorsMentioned: row.competitors_mentioned,
-							webQueries: row.web_queries,
-							citationCount: row.citation_count,
-							createdAt: row.created_at,
-						})),
-						pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
-					};
+					return { data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
 				},
 			}),
 		}),

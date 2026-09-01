@@ -1,0 +1,71 @@
+---
+title: MCP server
+description: Connect Claude, Cursor, or another AI client to your Elmo instance.
+---
+
+Every Elmo instance serves a [Model Context Protocol](https://modelcontextprotocol.io) endpoint, so an
+AI client can read your visibility data and manage prompts without you copying numbers between windows.
+
+```
+https://<your-instance>/api/mcp
+```
+
+## Connect
+
+### Sign in from the client
+
+Most clients can authenticate themselves — give them the URL and they will open a browser for you to
+sign in.
+
+```bash
+claude mcp add --transport http elmo https://<your-instance>/api/mcp
+```
+
+In a client that takes JSON instead:
+
+```json
+{
+  "mcpServers": {
+    "elmo": { "type": "http", "url": "https://<your-instance>/api/mcp" }
+  }
+}
+```
+
+The connection then acts as you, in the workspaces you belong to.
+
+### Or use an API key
+
+For a client that can't open a browser — a container, a scheduled job — issue a key under
+**Settings → API keys** and send it as a bearer token:
+
+```json
+{
+  "mcpServers": {
+    "elmo": {
+      "type": "http",
+      "url": "https://<your-instance>/api/mcp",
+      "headers": { "Authorization": "Bearer elmo_..." }
+    }
+  }
+}
+```
+
+A key is also how you grant *less* than your own access: tick only the scopes you want, and optionally
+narrow it to specific brands.
+
+## Check it works
+
+Ask the assistant to run `whoami`. It will report what the connection is, which workspaces it reaches,
+and every tool it may call — which is the quickest way to see why something else was refused.
+
+Then try:
+
+> Which of my brands has the lowest visibility this month, and what are the models citing instead?
+
+## Notes
+
+- The connection only ever gets the tools its permissions allow, so a client is never offered
+  something it would then be refused.
+- It can create and edit prompts, but nothing deletes data and nothing changes billing.
+- Self-hosting: no extra configuration, but `APP_URL` must be the address clients actually reach you
+  on — that is what the sign-in flow is advertised from. HTTPS is required in production.
