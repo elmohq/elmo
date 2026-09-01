@@ -64,7 +64,7 @@ function DocsArticle({
 	);
 }
 
-export const clientLoader = browserCollections.docs.createClientLoader({
+const clientLoader = browserCollections.docs.createClientLoader({
 	component({ toc, frontmatter, default: MDX }, _props: undefined) {
 		return (
 			<div className="flex gap-10">

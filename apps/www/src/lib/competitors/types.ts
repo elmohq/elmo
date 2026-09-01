@@ -31,7 +31,7 @@ export type CompetitorCategory =
 	| "open-source"
 	| "other";
 
-export interface FeatureDefinition {
+interface FeatureDefinition {
 	label: string;
 	description: string;
 	searchTerm?: string;
@@ -199,10 +199,6 @@ export const FEATURE_CATEGORIES: Record<string, FeatureCategory> = {
 	},
 };
 
-export const ALL_FEATURE_KEYS: FeatureKey[] = Object.values(FEATURE_CATEGORIES).flatMap(
-	(cat) => Object.keys(cat.features) as FeatureKey[],
-);
-
 export function getFeatureLabel(key: FeatureKey): string {
 	for (const cat of Object.values(FEATURE_CATEGORIES)) {
 		if (key in cat.features) return cat.features[key].label;
@@ -259,7 +255,7 @@ export const CATEGORY_LABELS: Record<CompetitorCategory, string> = {
 	other: "Other",
 };
 
-export const LOW_DR_THRESHOLD = 25;
+const LOW_DR_THRESHOLD = 25;
 
 export function isLowDR(competitor: Competitor): boolean {
 	return competitor.ahrefsDR < LOW_DR_THRESHOLD;

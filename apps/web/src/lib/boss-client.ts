@@ -62,10 +62,3 @@ export async function getBoss(): Promise<PgBoss> {
 /**
  * Stop the pg-boss client (for graceful shutdown).
  */
-export async function stopBoss(): Promise<void> {
-	if (bossInstance) {
-		await bossInstance.stop();
-		bossInstance = null;
-		bossPromise = null;
-	}
-}

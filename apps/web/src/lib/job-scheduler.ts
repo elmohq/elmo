@@ -4,11 +4,7 @@ import { brands, prompts } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
 
-export function hoursToMs(hours: number): number {
-	return hours * 60 * 60 * 1000;
-}
-
-export async function getPromptCadenceHours(promptId: string): Promise<number> {
+async function getPromptCadenceHours(promptId: string): Promise<number> {
 	const defaultDelayHours = getDefaultDelayHours();
 	try {
 		const prompt = await db.query.prompts.findFirst({
@@ -128,22 +124,6 @@ export async function createMultiplePromptJobSchedulers(
 	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
 }
 
-export async function removeMultiplePromptJobSchedulers(promptIds: string[]): Promise<boolean[]> {
-	const results = await Promise.allSettled(promptIds.map((promptId) => removePromptJobScheduler(promptId)));
-
-	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
-}
-
-export async function recreatePromptJobScheduler(promptId: string, options: SchedulerOptions = {}): Promise<boolean> {
-	try {
-		await removePromptJobScheduler(promptId);
-		return await createPromptJobScheduler(promptId, options);
-	} catch (error) {
-		console.error(`Failed to recreate job scheduler for prompt ${promptId}:`, error);
-		return false;
-	}
-}
-
 /**
  * Sends an immediate job to process a prompt (outside of the schedule).
  * Useful for manual retries from the admin UI.
@@ -168,33 +148,6 @@ export async function sendImmediatePromptJob(promptId: string): Promise<boolean>
 		return true;
 	} catch (error) {
 		console.error(`Failed to send immediate job for prompt ${promptId}:`, error);
-		return false;
-	}
-}
-
-export async function scheduleNextPromptRun(promptId: string, cadenceHours: number): Promise<boolean> {
-	try {
-		const boss = await getBoss();
-		const startAfterSeconds = cadenceHours * 60 * 60;
-
-		await boss.send(
-			"process-prompt",
-			{ promptId, cadenceHours },
-			{
-				singletonKey: `prompt-${promptId}`,
-				singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period
-				startAfter: startAfterSeconds,
-				retryLimit: 3,
-				retryDelay: 60,
-				retryBackoff: true,
-				expireInSeconds: 60 * 15,
-			},
-		);
-
-		console.log(`Scheduled next run for prompt ${promptId} in ${cadenceHours}h`);
-		return true;
-	} catch (error) {
-		console.error(`Failed to schedule next run for prompt ${promptId}:`, error);
 		return false;
 	}
 }

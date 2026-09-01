@@ -7,7 +7,7 @@ import { getCredential } from "../../secrets";
  * Scraper", and AI Optimization "LLM Responses".
  */
 
-export const MAX_PROMPT_CHARS = 500;
+const MAX_PROMPT_CHARS = 500;
 
 // Country localization is intentionally not exposed via SCRAPE_TARGETS yet
 // because support differs by DataForSEO surface and underlying model.
@@ -22,7 +22,7 @@ export function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));
 }
 
-export function authFetch(url: string | URL | Request, init?: RequestInit): Promise<Response> {
+function authFetch(url: string | URL | Request, init?: RequestInit): Promise<Response> {
 	const username = getCredential("DATAFORSEO_LOGIN");
 	const password = getCredential("DATAFORSEO_PASSWORD");
 	if (!username || !password) {

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getPromptRunsFn } from "@/server/prompts";
 
-export const promptRunsKeys = {
+const promptRunsKeys = {
 	all: ["prompt-runs"] as const,
 	list: (promptId: string, options: { page: number; limit: number; days: number }) =>
 		[...promptRunsKeys.all, promptId, options] as const,

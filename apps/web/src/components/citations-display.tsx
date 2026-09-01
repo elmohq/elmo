@@ -18,12 +18,7 @@ import {
 	PAGE_TYPE_CONFIG,
 } from "@/lib/domain-categories";
 
-export type {
-	CitationData,
-	GoogleModuleData,
-	GoogleProductRow,
-	GoogleQueryRow,
-} from "@/components/citations/types";
+export type { CitationData } from "@/components/citations/types";
 
 interface CitationsDisplayProps {
 	citationData: CitationData;

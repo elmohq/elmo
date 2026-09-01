@@ -3,7 +3,6 @@ import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import { type DashboardSummaryResponse, getDashboardSummaryFn } from "@/server/dashboard";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
-export type { CitationTimeSeriesPoint, DashboardSummaryResponse, VisibilityTimeSeriesPoint } from "@/server/dashboard";
 
 export const dashboardKeys = {
 	all: ["dashboard"] as const,

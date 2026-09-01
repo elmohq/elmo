@@ -585,7 +585,3 @@ export const PAGE_TYPE_CONFIG: Record<CitationPageType, { label: string; chartCo
 	shopping: { label: "Shopping", chartColor: "#9c6b4e" },
 	other: { label: "Other", chartColor: "#9498a0" },
 };
-
-export const PAGE_TYPE_COLORS: Record<string, string> = Object.fromEntries(
-	CITATION_PAGE_TYPES.map((p) => [p, PAGE_TYPE_CONFIG[p].chartColor]),
-);

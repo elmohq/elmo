@@ -33,12 +33,6 @@ const promptValueSchema = z
 
 const promptTagsSchema = z.array(z.string()).describe("Free-form labels used for filtering analytics.");
 
-export const createPromptInputSchema = z.object({
-	brandId: brandIdSchema,
-	value: promptValueSchema,
-	tags: promptTagsSchema.optional(),
-});
-
 export const bulkPromptInputSchema = z.object({
 	brandId: brandIdSchema,
 	prompts: z
@@ -69,7 +63,6 @@ export const updatePromptInputSchema = z
 		"At least one of value, enabled, tags, or premiumModels must be provided",
 	);
 
-export type CreatePromptInput = z.infer<typeof createPromptInputSchema>;
 export type BulkPromptInput = z.infer<typeof bulkPromptInputSchema>;
 export type UpdatePromptInput = z.infer<typeof updatePromptInputSchema>;
 
@@ -129,11 +122,6 @@ export async function listPrompts(filters: ListPromptsFilters): Promise<{ data: 
 	return { data, total: totals?.count ?? 0 };
 }
 
-export async function findPrompt(promptId: string): Promise<PromptSummary | null> {
-	const [prompt] = await db.select(PROMPT_COLUMNS).from(prompts).where(eq(prompts.id, promptId)).limit(1);
-	return prompt ?? null;
-}
-
 export async function findPromptBrandId(promptId: string): Promise<string | null> {
 	const [prompt] = await db.select({ brandId: prompts.brandId }).from(prompts).where(eq(prompts.id, promptId)).limit(1);
 	return prompt?.brandId ?? null;
@@ -143,11 +131,6 @@ export async function requirePrompt(promptId: string): Promise<Prompt> {
 	const [prompt] = await db.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
 	if (!prompt) throw new PromptNotFoundError(promptId);
 	return prompt;
-}
-
-export async function createPrompt(brand: PromptBrand, input: Omit<CreatePromptInput, "brandId">): Promise<Prompt> {
-	const [created] = await createPrompts(brand, { prompts: [{ value: input.value, tags: input.tags }] });
-	return created;
 }
 
 /** One delta against both pools in one transaction, so a batch that would

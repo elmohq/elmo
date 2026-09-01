@@ -19,7 +19,7 @@ import { MdSelectAll } from "react-icons/md";
 import { useBrand } from "@/hooks/use-brands";
 import { getDefaultLookbackPeriod, type LookbackPeriod } from "@/lib/chart-utils";
 
-export { ALL_MODELS_VALUE, getAvailableModels } from "@/lib/model-filter";
+export { ALL_MODELS_VALUE } from "@/lib/model-filter";
 
 // Filter state lives in the URL, validated by the `$brand` layout route's
 // search schema (see `validateBrandFilterSearch`). The widgets here keep
@@ -40,17 +40,16 @@ import {
 /** "all" is the no-filter sentinel; any other string is a concrete model id
  *  from the deployment's `SCRAPE_TARGETS`. Deployments can configure arbitrary
  *  model ids, so we don't constrain this to a literal union. */
-export type ModelFilterValue = string;
 
 /** The model filter's trigger glyph. `all` is the no-filter sentinel; every
  *  other value names one of the brand's targets, whose logo is decided by
  *  @workspace/config/models. */
-export function iconForModel(model: string, className = "size-3.5") {
+function iconForModel(model: string, className = "size-3.5") {
 	if (model === ALL_MODELS_VALUE) return <MdSelectAll className={className} />;
 	return <ModelIcon iconId={iconIdForModelFilter(model)} className={className} />;
 }
 
-export function labelForModel(model: string): string {
+function labelForModel(model: string): string {
 	return labelForModelFilter(model);
 }
 
@@ -116,7 +115,7 @@ export function FilterTriggerButton({
 // Model dropdown — subscribes to only the "model" URL key.
 // ------------------------------------------------------------------
 
-export function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) {
+function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) {
 	const availableModels = getAvailableModels(trackedTargets);
 	const defaultModel = availableModels.includes(ALL_MODELS_VALUE)
 		? ALL_MODELS_VALUE
@@ -172,7 +171,7 @@ export function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarge
 // Lookback dropdown — subscribes to only the "lookback" URL key.
 // ------------------------------------------------------------------
 
-export function LookbackDropdown() {
+function LookbackDropdown() {
 	const { brand } = useBrand();
 	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
 	const urlLookback = useSearch({ strict: false, select: (s) => s.lookback });
@@ -207,7 +206,7 @@ export function LookbackDropdown() {
 // dropdown doesn't need to fetch.
 // ------------------------------------------------------------------
 
-export function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
+function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
 	const urlTags = useSearch({ strict: false, select: (s) => s.tags });
 	const setFilters = useFilterNavigate();
 	const selected = useMemo(() => splitTags(urlTags), [urlTags]);
@@ -284,7 +283,7 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 // setState) to avoid flashing back when the URL echo races with typing.
 // ------------------------------------------------------------------
 
-export function SearchInput({ placeholder = "Search prompts..." }: { placeholder?: string }) {
+function SearchInput({ placeholder = "Search prompts..." }: { placeholder?: string }) {
 	const urlValue = useSearch({ strict: false, select: (s) => s.q });
 	const setFilters = useFilterNavigate();
 	const value = urlValue ?? "";
@@ -357,7 +356,7 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 // prompts-summary query is read once by a single owner.
 // ------------------------------------------------------------------
 
-export function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
+function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
 	const tags = useSearch({ strict: false, select: (s) => s.tags });
 	const q = useSearch({ strict: false, select: (s) => s.q });
 	const active = Boolean(tags) || Boolean(q);

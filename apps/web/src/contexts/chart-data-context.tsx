@@ -139,7 +139,7 @@ export function ChartDataProvider({
 	return <ChartDataContext.Provider value={value}>{children}</ChartDataContext.Provider>;
 }
 
-export function useChartDataContext() {
+function useChartDataContext() {
 	const context = useContext(ChartDataContext);
 	if (!context) {
 		throw new Error("useChartDataContext must be used within a ChartDataProvider");

@@ -57,7 +57,7 @@ function BlogLink({ href = "", ...props }: ComponentPropsWithoutRef<"a">) {
 // is built once at module scope rather than per render.
 const mdxComponents = getMDXComponents({ a: BlogLink });
 
-export const clientLoader = browserCollections.blog.createClientLoader({
+const clientLoader = browserCollections.blog.createClientLoader({
 	component({ default: MDX }, _props: undefined) {
 		return <MDX components={mdxComponents} />;
 	},

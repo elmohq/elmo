@@ -4,7 +4,7 @@ import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { TrackedTarget } from "@/lib/model-filter";
 import { getBrand, getCompetitors } from "@/server/brands";
 
-export type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
+type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	earliestDataDate?: string | null;
 	/**
 	 * What this brand's results can be broken down by, resolved server-side so

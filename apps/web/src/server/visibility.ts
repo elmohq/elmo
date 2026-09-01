@@ -27,7 +27,7 @@ export interface BatchChartDataResponse {
 	};
 }
 
-export interface VisibilityTimeSeriesPoint {
+interface VisibilityTimeSeriesPoint {
 	date: string;
 	visibility: number | null;
 }

@@ -241,13 +241,6 @@ export function applyPerPromptCitationLVCF(
 	);
 }
 
-/** Map the 0–500 score range to 20-point percentage bands. */
-export const normalizeToPercentage = (value: number): number => {
-	const percentage = (value / 500) * 100;
-	const roundedPercentage = Math.floor(percentage / 20) * 20;
-	return Math.min(roundedPercentage, 100);
-};
-
 export function getBadgeVariant(value: number): "default" | "secondary" | "destructive" {
 	if (value > 75) return "default";
 	if (value > 45) return "secondary";
@@ -352,19 +345,6 @@ export function calculateVisibilityPercentages(
 		return dataPoint;
 	});
 }
-export function getCompetitorColor(
-	competitorName: string,
-	competitors: Competitor[],
-	whitelabelColors: string[],
-): string {
-	const sortedCompetitors = [...competitors].sort((a, b) => a.name.localeCompare(b.name));
-	const index = sortedCompetitors.findIndex((c) => c.name === competitorName);
-
-	// Index zero is reserved for the brand.
-	const colorIndex = (index + 1) % whitelabelColors.length;
-	return whitelabelColors[colorIndex] || whitelabelColors[1];
-}
-
 function calculateAverageVisibility(data: ChartDataPoint[], competitorId: string): number {
 	const validValues = data
 		.map((point) => point[competitorId] as number | null)
@@ -399,10 +379,6 @@ export function selectCompetitorsToDisplay(
 	}
 
 	return topCompetitors;
-}
-
-export function getBrandColor(whitelabelColors: string[]): string {
-	return whitelabelColors[0];
 }
 
 export function filterAndCompleteChartData(chartData: ChartDataPoint[], lookback: LookbackPeriod): ChartDataPoint[] {
@@ -477,49 +453,4 @@ export function extendLinesToChartEdges(chartData: ChartDataPoint[], dataKeys: s
 
 export function isExtendedDataPoint(dataPoint: ChartDataPoint, key: string): boolean {
 	return dataPoint[`_extended_${key}`] === true;
-}
-
-/**
- * Create a mapping from prompt IDs to their oldest web query (first alphabetically if multiple from same time)
- */
-export function createPromptToWebQueryMapping(promptRuns: PromptRun[]): Record<string, string> {
-	const promptToWebQuery: Record<string, string> = {};
-
-	const promptRunsByPromptId = promptRuns.reduce(
-		(acc, run) => {
-			if (!acc[run.promptId]) {
-				acc[run.promptId] = [];
-			}
-			acc[run.promptId].push(run);
-			return acc;
-		},
-		{} as Record<string, PromptRun[]>,
-	);
-
-	Object.entries(promptRunsByPromptId).forEach(([promptId, runs]) => {
-		const runsWithWebQueries = runs.filter((run) => run.webQueries && run.webQueries.length > 0);
-
-		if (runsWithWebQueries.length === 0) return;
-
-		runsWithWebQueries.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-		const oldestDate = runsWithWebQueries[0].createdAt;
-		const oldestRuns = runsWithWebQueries.filter(
-			(run) => new Date(run.createdAt).getTime() === new Date(oldestDate).getTime(),
-		);
-
-		const allWebQueries: string[] = [];
-		oldestRuns.forEach((run) => {
-			if (run.webQueries) {
-				allWebQueries.push(...run.webQueries);
-			}
-		});
-
-		if (allWebQueries.length > 0) {
-			allWebQueries.sort();
-			promptToWebQuery[promptId] = allWebQueries[0];
-		}
-	});
-
-	return promptToWebQuery;
 }
