@@ -541,29 +541,37 @@ export function isInstitutionalDomain(domain: string): boolean {
 	return false;
 }
 
+/** Tried in order; the first match wins. Forums (incl. community.X / forums.X
+ *  subdomains) lead so a forum on an ecommerce/editorial site isn't miscounted
+ *  as a store. */
+const DOMAIN_CATEGORY_CHECKS: [(domain: string) => boolean, CitationCategory][] = [
+	[isForumDomain, "social"],
+	[isPrWireDomain, "pr"],
+	[isReviewDomain, "reviews"],
+	[isEcommerceDomain, "ecommerce"],
+	[isSocialMediaDomain, "social"],
+	[isDeveloperDomain, "developer"],
+	[isReferenceDomain, "reference"],
+	[isEditorialDomain, "editorial"],
+	[isInstitutionalDomain, "institutional"],
+];
+
+/** Matches the domain itself or any subdomain of it. */
+function matchesAnyDomain(domain: string, candidates: Set<string>): boolean {
+	for (const candidate of candidates) {
+		if (domain === candidate || domain.endsWith(`.${candidate}`)) return true;
+	}
+	return false;
+}
+
 export function categorizeDomain(
 	domain: string,
 	brandDomains: Set<string>,
 	competitorDomains: Set<string>,
 ): CitationCategory {
-	for (const bd of brandDomains) {
-		if (domain === bd || domain.endsWith(`.${bd}`)) return "brand";
-	}
-	for (const cd of competitorDomains) {
-		if (domain === cd || domain.endsWith(`.${cd}`)) return "competitor";
-	}
-	// Forums (incl. community.X / forums.X subdomains) win over the generic lists
-	// below so a forum on an ecommerce/editorial site isn't miscounted as a store.
-	if (isForumDomain(domain)) return "social";
-	if (isPrWireDomain(domain)) return "pr";
-	if (isReviewDomain(domain)) return "reviews";
-	if (isEcommerceDomain(domain)) return "ecommerce";
-	if (isSocialMediaDomain(domain)) return "social";
-	if (isDeveloperDomain(domain)) return "developer";
-	if (isReferenceDomain(domain)) return "reference";
-	if (isEditorialDomain(domain)) return "editorial";
-	if (isInstitutionalDomain(domain)) return "institutional";
-	return "other";
+	if (matchesAnyDomain(domain, brandDomains)) return "brand";
+	if (matchesAnyDomain(domain, competitorDomains)) return "competitor";
+	return DOMAIN_CATEGORY_CHECKS.find(([matches]) => matches(domain))?.[1] ?? "other";
 }
 
 /**

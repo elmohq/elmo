@@ -5,6 +5,7 @@
 
 import { selectPremiumModels } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
+import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { citations, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
@@ -201,37 +202,49 @@ function promptUpdateData(
 	return update;
 }
 
+/** The quota-checked half of an update: re-read the row under the lock, charge
+ *  the plan for the change, then write. */
+async function applyPromptUpdate(
+	tx: DbConnection,
+	afterCommit: (task: () => Promise<unknown>) => void,
+	brand: PromptBrand,
+	promptId: string,
+	input: UpdatePromptInput,
+): Promise<Prompt | undefined> {
+	const [existing] = await tx.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
+	if (!existing || existing.brandId !== brand.id) throw new PromptNotFoundError(promptId);
+
+	const wasEnabled = existing.enabled;
+	const willBeEnabled = input.enabled ?? wasEnabled;
+	const nextPremium = input.premiumModels ? selectPremiumModels(input.premiumModels) : existing.premiumModels;
+
+	// Re-enabling re-spends the premium pairings, so the delta is against what
+	// the row costs now, not zero.
+	await assertPromptSaveAllowed(
+		brand.organizationId,
+		{
+			prompts: (willBeEnabled ? 1 : 0) - (wasEnabled ? 1 : 0),
+			premiumPairings: (willBeEnabled ? nextPremium.length : 0) - (wasEnabled ? existing.premiumModels.length : 0),
+		},
+		tx,
+	);
+
+	const [row] = await tx
+		.update(prompts)
+		.set(promptUpdateData(input, brand, nextPremium))
+		.where(eq(prompts.id, promptId))
+		.returning();
+	if (input.enabled !== undefined && wasEnabled !== input.enabled) {
+		afterCommit(() => (input.enabled ? createPromptJobScheduler(promptId) : removePromptJobScheduler(promptId)));
+	}
+	return row;
+}
+
 export async function updatePrompt(brand: PromptBrand, promptId: string, changes: UpdatePromptInput): Promise<Prompt> {
 	const input = updatePromptInputSchema.parse(changes);
-	const updated = await withQuotaLock(brand.organizationId, async (tx, afterCommit) => {
-		const [existing] = await tx.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
-		if (!existing || existing.brandId !== brand.id) throw new PromptNotFoundError(promptId);
-
-		const wasEnabled = existing.enabled;
-		const willBeEnabled = input.enabled ?? wasEnabled;
-		const nextPremium = input.premiumModels ? selectPremiumModels(input.premiumModels) : existing.premiumModels;
-
-		// Re-enabling re-spends the premium pairings, so the delta is against what
-		// the row costs now, not zero.
-		await assertPromptSaveAllowed(
-			brand.organizationId,
-			{
-				prompts: (willBeEnabled ? 1 : 0) - (wasEnabled ? 1 : 0),
-				premiumPairings: (willBeEnabled ? nextPremium.length : 0) - (wasEnabled ? existing.premiumModels.length : 0),
-			},
-			tx,
-		);
-
-		const [row] = await tx
-			.update(prompts)
-			.set(promptUpdateData(input, brand, nextPremium))
-			.where(eq(prompts.id, promptId))
-			.returning();
-		if (input.enabled !== undefined && wasEnabled !== input.enabled) {
-			afterCommit(() => (input.enabled ? createPromptJobScheduler(promptId) : removePromptJobScheduler(promptId)));
-		}
-		return row;
-	});
+	const updated = await withQuotaLock(brand.organizationId, (tx, afterCommit) =>
+		applyPromptUpdate(tx, afterCommit, brand, promptId, input),
+	);
 
 	// The check above can race with a concurrent delete; returning() decides.
 	if (!updated) throw new PromptNotFoundError(promptId);

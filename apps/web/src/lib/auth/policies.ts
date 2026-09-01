@@ -117,6 +117,42 @@ function refusesItsOwnWrites(pathname: string): boolean {
 	);
 }
 
+/** Read-only mode blocks API and server-function writes. Analytics events and
+ *  the demo auth allowlist stay open; the self-policing routes refuse their own
+ *  writes deeper in. */
+function refuseReadOnlyWrite(
+	features: FeaturesConfig,
+	pathname: string,
+	isWriteMethod: boolean,
+): DeploymentPolicyResult | null {
+	if (!features.readOnly || !isWriteMethod || refusesItsOwnWrites(pathname)) return null;
+	if (!pathname.startsWith("/api/") && !pathname.startsWith("/_server")) return null;
+
+	const isPlausibleEventRoute = pathname === "/api/plausible/event" || pathname === "/api/plausible/event/";
+	if (isPlausibleEventRoute || DEMO_AUTH_WRITE_ALLOWLIST.has(pathname)) return null;
+
+	return { action: "block", status: 403, error: READ_ONLY_ERROR, message: READ_ONLY_MESSAGE };
+}
+
+/** Coarse: this only keeps an unmatched /api/v1 request from falling through to
+ *  the SPA and answering with HTML. */
+function refuseUnauthenticatedApiV1(
+	pathname: string,
+	authorizationHeader: string | null | undefined,
+): DeploymentPolicyResult | null {
+	if (!pathname.startsWith("/api/v1/")) return null;
+	if (pathname === "/api/v1/docs" || pathname === "/api/v1/docs/") return null;
+	if (hasBearerToken(authorizationHeader)) return null;
+
+	return {
+		action: "block",
+		status: 401,
+		error: "Unauthorized",
+		message: "Valid API key required as Bearer token in Authorization header",
+		code: "unauthorized",
+	};
+}
+
 /**
  * Evaluate request-level deployment access policy.
  *
@@ -131,50 +167,17 @@ function refusesItsOwnWrites(pathname: string): boolean {
 export function evaluateDeploymentPolicy(features: FeaturesConfig, request: RequestInfo): DeploymentPolicyResult {
 	const { pathname, method, authorizationHeader } = request;
 	const isWriteMethod = WRITE_METHODS.has(method);
-	const isPlausibleEventRoute = pathname === "/api/plausible/event" || pathname === "/api/plausible/event/";
-
-	const isApiRoute = pathname.startsWith("/api/");
-	const isServerFunctionRoute = pathname.startsWith("/_server");
-	const isAllowedAuthWrite = DEMO_AUTH_WRITE_ALLOWLIST.has(pathname);
-	const isPublicApiV1 = pathname.startsWith("/api/v1/");
-	const isPublicApiV1Doc = pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
 
 	const authEndpointRefusal = refuseAuthEndpoint(features, pathname, isWriteMethod);
 	if (authEndpointRefusal) return authEndpointRefusal;
 
-	if (features.readOnly && isWriteMethod && !refusesItsOwnWrites(pathname)) {
-		if ((isApiRoute || isServerFunctionRoute) && !isPlausibleEventRoute && !isAllowedAuthWrite) {
-			return {
-				action: "block",
-				status: 403,
-				error: READ_ONLY_ERROR,
-				message: READ_ONLY_MESSAGE,
-			};
-		}
-	}
+	const readOnlyRefusal = refuseReadOnlyWrite(features, pathname, isWriteMethod);
+	if (readOnlyRefusal) return readOnlyRefusal;
 
-	// 2. Serve OpenAPI spec
 	const isOpenApi = pathname === "/api/v1/openapi.json" || pathname === "/api/v1/openapi.json/";
+	if (isOpenApi && method === "GET") return { action: "serve-openapi" };
 
-	if (isOpenApi && method === "GET") {
-		return { action: "serve-openapi" };
-	}
-
-	// Coarse: this only keeps an unmatched /api/v1 request from falling through
-	// to the SPA and answering with HTML.
-	if (isPublicApiV1 && !isPublicApiV1Doc) {
-		if (!hasBearerToken(authorizationHeader)) {
-			return {
-				action: "block",
-				status: 401,
-				error: "Unauthorized",
-				message: "Valid API key required as Bearer token in Authorization header",
-				code: "unauthorized",
-			};
-		}
-	}
-
-	return { action: "allow" };
+	return refuseUnauthenticatedApiV1(pathname, authorizationHeader) ?? { action: "allow" };
 }
 
 /**

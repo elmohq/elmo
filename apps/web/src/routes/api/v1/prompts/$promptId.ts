@@ -10,7 +10,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { selectPremiumModels } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
-import { citations, promptRuns, prompts } from "@workspace/lib/db/schema";
+import type { DbConnection } from "@workspace/lib/db/db-connection";
+import { type Brand, citations, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
@@ -49,6 +50,49 @@ function promptUpdateData(
 	if (body.tags !== undefined) update.tags = sanitizeUserTags(body.tags);
 	if (body.premiumModels !== undefined) update.premiumModels = nextPremium;
 	return update;
+}
+
+/** The quota-checked half of PATCH: re-read the prompt under the lock, charge
+ *  the plan for any change in enabled/premium state, then write. */
+async function applyPromptUpdate({
+	tx,
+	afterCommit,
+	promptId,
+	body,
+	brand,
+}: {
+	tx: DbConnection;
+	afterCommit: (task: () => Promise<unknown>) => void;
+	promptId: string;
+	body: z.infer<typeof updatePromptBody>;
+	brand: Brand;
+}) {
+	const { enabled, premiumModels } = body;
+
+	const [existing] = await tx.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
+	if (!existing || existing.brandId !== brand.id) {
+		throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
+	}
+
+	const wasEnabled = existing.enabled;
+	const willBeEnabled = enabled ?? wasEnabled;
+	const nextPremium = premiumModels ? selectPremiumModels(premiumModels) : existing.premiumModels;
+
+	await assertPromptSaveAllowed(
+		brand.organizationId,
+		{
+			prompts: (willBeEnabled ? 1 : 0) - (wasEnabled ? 1 : 0),
+			premiumPairings: (willBeEnabled ? nextPremium.length : 0) - (wasEnabled ? existing.premiumModels.length : 0),
+		},
+		tx,
+	);
+
+	const updateData = promptUpdateData(body, brand, nextPremium);
+	const [updated] = await tx.update(prompts).set(updateData).where(eq(prompts.id, promptId)).returning();
+	if (enabled !== undefined && wasEnabled !== enabled) {
+		afterCommit(() => (enabled ? createPromptJobScheduler(promptId) : removePromptJobScheduler(promptId)));
+	}
+	return updated;
 }
 
 export const Route = createFileRoute("/api/v1/prompts/$promptId")({
@@ -93,7 +137,6 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 				scopes: ["prompts:write"],
 				handle: async ({ params, body, auth }) => {
 					const { promptId } = params;
-					const { enabled, premiumModels } = body;
 
 					const existingPrompt = await db.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
 					if (existingPrompt.length === 0) {
@@ -103,30 +146,9 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
 					});
 
-					const updatedPrompt = await withQuotaLock(brand.organizationId, async (tx, afterCommit) => {
-						const [existing] = await tx.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
-						if (!existing || existing.brandId !== brand.id) {
-							throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
-						}
-						const wasEnabled = existing.enabled;
-						const willBeEnabled = enabled ?? wasEnabled;
-						const nextPremium = premiumModels ? selectPremiumModels(premiumModels) : existing.premiumModels;
-						const updateData = promptUpdateData(body, brand, nextPremium);
-						await assertPromptSaveAllowed(
-							brand.organizationId,
-							{
-								prompts: (willBeEnabled ? 1 : 0) - (wasEnabled ? 1 : 0),
-								premiumPairings:
-									(willBeEnabled ? nextPremium.length : 0) - (wasEnabled ? existing.premiumModels.length : 0),
-							},
-							tx,
-						);
-						const [updated] = await tx.update(prompts).set(updateData).where(eq(prompts.id, promptId)).returning();
-						if (enabled !== undefined && wasEnabled !== enabled) {
-							afterCommit(() => (enabled ? createPromptJobScheduler(promptId) : removePromptJobScheduler(promptId)));
-						}
-						return updated;
-					});
+					const updatedPrompt = await withQuotaLock(brand.organizationId, (tx, afterCommit) =>
+						applyPromptUpdate({ tx, afterCommit, promptId, body, brand }),
+					);
 					// The existence check above can race with a concurrent delete;
 					// the update's returning() is the source of truth.
 					if (!updatedPrompt) {

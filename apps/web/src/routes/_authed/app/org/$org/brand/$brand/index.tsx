@@ -386,15 +386,10 @@ function HeroStat({ value, loading }: { value: number | null; loading: boolean }
 	);
 }
 
-function DashboardPage() {
-	const { brandId } = Route.useRouteContext();
-	const { brand, isLoading: isLoadingBrand } = useBrand();
-	// The footer reports what this brand actually runs, resolved server-side.
-	const trackedTargets = brand?.trackedTargets ?? [];
-	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brand?.id, "1m");
-	const { data: sovData, isLoading: isLoadingSov } = useShareOfVoice(brand?.id, { lookback: "1m" });
-	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
-	const clientConfig = context.clientConfig;
+/** Everything the two trend sections plot, plus the loading flags they key off. */
+function useDashboardMetrics(brandId: string | undefined) {
+	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brandId, "1m");
+	const { data: sovData, isLoading: isLoadingSov } = useShareOfVoice(brandId, { lookback: "1m" });
 
 	useEffect(() => {
 		if (dashboardSummary?.totalPrompts != null) {
@@ -402,27 +397,45 @@ function DashboardPage() {
 		}
 	}, [dashboardSummary?.totalPrompts]);
 
-	const totalRuns = dashboardSummary?.totalRuns || 0;
-	const totalPrompts = dashboardSummary?.totalPrompts || 0;
-	const visibilityTimeSeries = dashboardSummary?.visibilityTimeSeries || [];
-	const sovTimeSeries = sovData?.shareTimeSeries ?? [];
-	const loadingVisibility = isLoadingBrand || isLoadingSummary;
-	const loadingSov = isLoadingBrand || isLoadingSov;
-	// The tooltips quote live figures, so they stay off until those have loaded.
-	const visibilityTooltip = loadingVisibility
-		? undefined
-		: `The percentage of AI answers to your prompts that mention your brand — the big number is the latest point on this line. For prompts that don't name your brand, it's ${dashboardSummary?.nonBrandedVisibility || 0}%. Visibility shifts as AI models, the prompts you track, or the sites AI scans change; the line is smoothed for staggered prompt schedules.`;
-	const sovTooltip = loadingSov
-		? undefined
-		: "Your brand's share of all brand and competitor mentions across the AI answers to your prompts — the big number is the latest point on this line. It shifts as AI models change, as you and competitors publish, or as the sites AI scans move; the line is smoothed for staggered prompt schedules.";
+	return {
+		isLoadingSummary,
+		isLoadingSov,
+		totalRuns: dashboardSummary?.totalRuns || 0,
+		totalPrompts: dashboardSummary?.totalPrompts || 0,
+		visibilityTimeSeries: dashboardSummary?.visibilityTimeSeries || [],
+		sovTimeSeries: sovData?.shareTimeSeries ?? [],
+		nonBrandedVisibility: dashboardSummary?.nonBrandedVisibility || 0,
+		lastUpdatedAt: dashboardSummary?.lastUpdatedAt || null,
+	};
+}
+
+const visibilityTooltipText = (nonBrandedVisibility: number) =>
+	`The percentage of AI answers to your prompts that mention your brand — the big number is the latest point on this line. For prompts that don't name your brand, it's ${nonBrandedVisibility}%. Visibility shifts as AI models, the prompts you track, or the sites AI scans change; the line is smoothed for staggered prompt schedules.`;
+
+const SOV_TOOLTIP =
+	"Your brand's share of all brand and competitor mentions across the AI answers to your prompts — the big number is the latest point on this line. It shifts as AI models change, as you and competitors publish, or as the sites AI scans move; the line is smoothed for staggered prompt schedules.";
+
+function DashboardPage() {
+	const { brandId } = Route.useRouteContext();
+	const { brand, isLoading: isLoadingBrand } = useBrand();
+	// The footer reports what this brand actually runs, resolved server-side.
+	const trackedTargets = brand?.trackedTargets ?? [];
+	const metrics = useDashboardMetrics(brand?.id);
+	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const clientConfig = context.clientConfig;
+
+	const loadingVisibility = isLoadingBrand || metrics.isLoadingSummary;
+	const loadingSov = isLoadingBrand || metrics.isLoadingSov;
 
 	if (!isLoadingBrand && !brand?.onboarded) {
 		return <ResearchBrandData brandId={brandId} clientConfig={clientConfig} />;
 	}
 
 	// No runs yet: the dashboard has nothing to plot, so point at what to do next.
-	if (!isLoadingBrand && !isLoadingSummary && totalRuns === 0) {
-		return <AwaitingFirstEvaluation totalPrompts={totalPrompts} hasPrompts={(brand?.prompts?.length ?? 0) > 0} />;
+	if (!loadingVisibility && metrics.totalRuns === 0) {
+		return (
+			<AwaitingFirstEvaluation totalPrompts={metrics.totalPrompts} hasPrompts={(brand?.prompts?.length ?? 0) > 0} />
+		);
 	}
 
 	return (
@@ -435,12 +448,13 @@ function DashboardPage() {
 					linkLabel="View Visibility"
 					chartTitle="Visibility Trends (30d)"
 					chartLabel="AI Visibility (7d avg)"
-					tooltip={visibilityTooltip}
+					// The tooltips quote live figures, so they stay off until those have loaded.
+					tooltip={loadingVisibility ? undefined : visibilityTooltipText(metrics.nonBrandedVisibility)}
 					// "Current" = the latest plotted point, so the hero number always
 					// matches the right end of the chart beside it (rather than the
 					// whole-window average).
-					value={lastValue(visibilityTimeSeries, "overall")}
-					series={visibilityTimeSeries.map((p) => ({ date: p.date, value: p.overall }))}
+					value={lastValue(metrics.visibilityTimeSeries, "overall")}
+					series={metrics.visibilityTimeSeries.map((p) => ({ date: p.date, value: p.overall }))}
 					loading={loadingVisibility}
 				/>
 
@@ -451,18 +465,18 @@ function DashboardPage() {
 					linkLabel="View Share of Voice"
 					chartTitle="Share of Voice Trends (30d)"
 					chartLabel="Share of Voice"
-					tooltip={sovTooltip}
-					value={lastValue(sovTimeSeries, "share")}
-					series={sovTimeSeries.map((p) => ({ date: p.date, value: p.share }))}
+					tooltip={loadingSov ? undefined : SOV_TOOLTIP}
+					value={lastValue(metrics.sovTimeSeries, "share")}
+					series={metrics.sovTimeSeries.map((p) => ({ date: p.date, value: p.share }))}
 					loading={loadingSov}
 				/>
 
 				<section className="pt-2">
 					<TrackingStats
 						loading={loadingVisibility}
-						totalPrompts={totalPrompts}
-						totalRuns={totalRuns}
-						lastUpdatedAt={dashboardSummary?.lastUpdatedAt || null}
+						totalPrompts={metrics.totalPrompts}
+						totalRuns={metrics.totalRuns}
+						lastUpdatedAt={metrics.lastUpdatedAt}
 						delayHours={brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24}
 						trackedTargets={trackedTargets}
 					/>

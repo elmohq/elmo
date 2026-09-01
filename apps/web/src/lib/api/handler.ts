@@ -123,6 +123,21 @@ export function apiHandlerMeta(value: unknown): ApiHandlerMeta | undefined {
 	return (value as unknown as Record<symbol, ApiHandlerMeta | undefined>)[API_HANDLER];
 }
 
+/** Params then body, short-circuiting on the first that fails validation. */
+async function parseInputs<P, B>(
+	opts: { params?: z.ZodType<P>; body?: z.ZodType<B> },
+	request: Request,
+	params: Record<string, string>,
+): Promise<{ response: Response } | { params: P; body: B }> {
+	const parsedParams = opts.params ? parseAgainst(opts.params, params) : { data: params as P };
+	if ("response" in parsedParams) return { response: parsedParams.response };
+
+	const parsedBody = opts.body ? await parseJsonBody(opts.body, request) : { data: undefined as B };
+	if ("response" in parsedBody) return { response: parsedBody.response };
+
+	return { params: parsedParams.data, body: parsedBody.data };
+}
+
 export function createApiHandler<P = Record<string, string>, B = undefined>(opts: {
 	params?: z.ZodType<P>;
 	body?: z.ZodType<B>;
@@ -147,14 +162,11 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 		const refusal = refuseRequest(auth, request, opts);
 		if (refusal) return refusal;
 
-		const parsedParams = opts.params ? parseAgainst(opts.params, params) : { data: params as P };
-		if ("response" in parsedParams) return withRateLimit(parsedParams.response, auth);
-
-		const parsedBody = opts.body ? await parseJsonBody(opts.body, request) : { data: undefined as B };
-		if ("response" in parsedBody) return withRateLimit(parsedBody.response, auth);
+		const parsed = await parseInputs(opts, request, params);
+		if ("response" in parsed) return withRateLimit(parsed.response, auth);
 
 		try {
-			const result = await opts.handle({ params: parsedParams.data, body: parsedBody.data, request, auth });
+			const result = await opts.handle({ params: parsed.params, body: parsed.body, request, auth });
 			const response = result instanceof Response ? result : Response.json(result, { status: opts.status ?? 200 });
 			return withRateLimit(response, auth);
 		} catch (err) {
