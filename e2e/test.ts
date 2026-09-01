@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { type ConsoleMessage, type Page, expect, test as base } from "@playwright/test";
 
 export type ConsoleErrorPattern = string | RegExp;
@@ -18,6 +19,24 @@ export interface ConsoleErrorCollector {
 	recorded(): string[];
 }
 
+/**
+ * A client address of this test's own, sent as `X-Forwarded-For`.
+ *
+ * better-auth rate-limits `/sign-in*` and `/sign-up*` to three requests per ten
+ * seconds per client IP, and when it cannot resolve one it puts every caller in
+ * a single shared bucket. Nothing in front of the container sets the header, so
+ * the whole suite counted as one client: four parallel workers signing in spent
+ * each other's budget and the loser got a 429 it had no way to report. One
+ * address per test is what the limiter assumes anyway — separate people sign in
+ * from separate places.
+ *
+ * Private space (RFC 1918), and wide enough that the digest does not collide.
+ */
+function syntheticClientIp(seed: string): string {
+	const [a, b, c] = createHash("sha256").update(seed).digest();
+	return `10.${a}.${b}.${c}`;
+}
+
 export interface ConsoleErrorOptions {
 	allowedConsoleErrors: ConsoleErrorPattern[];
 }
@@ -28,9 +47,24 @@ interface ConsoleErrorLog {
 }
 
 export const test = base.extend<
-	ConsoleErrorOptions & { consoleErrors: ConsoleErrorCollector; _consoleErrorLog: ConsoleErrorLog }
+	ConsoleErrorOptions & {
+		consoleErrors: ConsoleErrorCollector;
+		clientHeaders: Record<string, string>;
+		_consoleErrorLog: ConsoleErrorLog;
+	}
 >({
 	allowedConsoleErrors: [[], { option: true }],
+
+	// Exposed so a spec building its own context (see mcp.spec.ts) can present
+	// the same client the fixtures do, rather than falling back to the shared
+	// bucket this fixture exists to escape.
+	clientHeaders: async ({}, use, testInfo) => {
+		await use({ "X-Forwarded-For": syntheticClientIp(testInfo.testId) });
+	},
+
+	extraHTTPHeaders: async ({ extraHTTPHeaders, clientHeaders }, use) => {
+		await use({ ...extraHTTPHeaders, ...clientHeaders });
+	},
 
 	_consoleErrorLog: [
 		async ({ allowedConsoleErrors }, use, testInfo) => {
