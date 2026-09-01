@@ -22,7 +22,7 @@
  */
 import { verifyMcpAccessToken } from "@workspace/lib/auth/server";
 import { db } from "@workspace/lib/db/db";
-import { user } from "@workspace/lib/db/schema";
+import { oauthClient, user } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { API_SCOPES, type ApiScope } from "@/lib/api/scopes";
 import { type ApiAuthFailure, type Principal, resolveApiAuth, type UserAuth } from "@/lib/auth/api-auth";
@@ -42,6 +42,12 @@ export const MCP_RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource
  * narrow a *key* below what its issuer can already do — and a session is that
  * person, who reaches all of this in the dashboard anyway. Narrowing here would
  * be a promise the browser doesn't keep.
+ *
+ * That is why the token's own `scope` claim is not consulted: none of these
+ * scopes is an OAuth scope, so a token cannot carry one, and a request for one
+ * is refused at the authorization endpoint. `mcp scopes are not oauth scopes`
+ * in `__tests__/auth.test.ts` fails if that ever stops being true, because on
+ * that day this function would be handing out capabilities a person declined.
  */
 export function principalScopes(auth: Principal): Set<ApiScope> {
 	if (auth.kind === "organization") return auth.scopes;
@@ -63,10 +69,19 @@ export function principalLabel(auth: Principal): string {
 /**
  * Resolve an OAuth access token to the person holding it.
  *
- * Membership is read fresh rather than trusted from the token, so a token
- * outlives a team change without outliving the access that came with it.
- * Returns null for anything that isn't a live token — including one whose user
- * has since been deleted, which no signature check can see.
+ * A signature says the token was issued; it does not say the grant behind it
+ * still stands. Everything a signature cannot see is read fresh here, so the
+ * answers are the current ones rather than the ones that held at issue time:
+ * the person still exists and is not banned, the client still exists and is
+ * still enabled, and the workspaces are whichever they belong to now. That is
+ * what lets a token outlive a team change without outliving the access that
+ * came with it.
+ *
+ * Not checked, deliberately: whether the browser session that authorized this
+ * is still open. These grants carry `offline_access`, which is the client
+ * asking to keep working after the person closes the tab, and better-auth keeps
+ * exactly those refresh tokens through a sign-out. Disabling the client is how
+ * an operator ends one.
  */
 async function resolveOAuthPrincipal(request: Request): Promise<UserAuth | null> {
 	// Deferred for the same reason api-auth defers it: constructing the auth
@@ -92,12 +107,16 @@ async function resolveOAuthPrincipal(request: Request): Promise<UserAuth | null>
 	const clientId = typeof claims.client_id === "string" ? claims.client_id : null;
 	if (!userId || !clientId) return null;
 
-	const [account] = await db
-		.select({ id: user.id, email: user.email, name: user.name })
-		.from(user)
-		.where(eq(user.id, userId))
-		.limit(1);
-	if (!account) return null;
+	const [[account], [client]] = await Promise.all([
+		db
+			.select({ id: user.id, email: user.email, name: user.name, banned: user.banned })
+			.from(user)
+			.where(eq(user.id, userId))
+			.limit(1),
+		db.select({ disabled: oauthClient.disabled }).from(oauthClient).where(eq(oauthClient.clientId, clientId)).limit(1),
+	]);
+	if (!account || account.banned) return null;
+	if (!client || client.disabled) return null;
 
 	const organizations = await listUserOrganizations(account.id);
 	return {

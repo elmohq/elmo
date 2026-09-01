@@ -13,7 +13,10 @@ import type { AdminAuth, ApiAuthResult, OrganizationAuth, UserAuth } from "@/lib
 const resolveApiAuth = vi.hoisted(() => vi.fn<(request: Request) => Promise<ApiAuthResult>>());
 const verifyMcpAccessToken = vi.hoisted(() => vi.fn());
 const listUserOrganizations = vi.hoisted(() => vi.fn());
-const selectUser = vi.hoisted(() => vi.fn<() => Promise<Array<{ id: string; email: string; name: string }>>>());
+const selectUser = vi.hoisted(() =>
+	vi.fn<() => Promise<Array<{ id: string; email: string; name: string; banned?: boolean | null }>>>(),
+);
+const selectClient = vi.hoisted(() => vi.fn<() => Promise<Array<{ disabled?: boolean | null }>>>());
 
 vi.mock("@/lib/auth/api-auth", async (importOriginal) => ({
 	...(await importOriginal<typeof import("@/lib/auth/api-auth")>()),
@@ -25,11 +28,20 @@ vi.mock("@workspace/lib/auth/server", async (importOriginal) => ({
 }));
 vi.mock("@/lib/auth/server", () => ({ auth: {} }));
 vi.mock("@/lib/auth/helpers", () => ({ listUserOrganizations }));
-vi.mock("@workspace/lib/db/db", () => ({
-	db: {
-		select: () => ({ from: () => ({ where: () => ({ limit: () => selectUser() }) }) }),
-	},
-}));
+// Both reads run through the same builder, so the mock tells them apart by the
+// table they select from, the way the resolver does.
+vi.mock("@workspace/lib/db/db", async () => {
+	const { user } = await import("@workspace/lib/db/schema");
+	return {
+		db: {
+			select: () => ({
+				from: (table: unknown) => ({
+					where: () => ({ limit: () => (table === user ? selectUser() : selectClient()) }),
+				}),
+			}),
+		},
+	};
+});
 
 const { principalLabel, principalScopes, resolveMcpAuth } = await import("../auth");
 
@@ -90,6 +102,32 @@ describe("principalScopes", () => {
 	});
 });
 
+describe("mcp scopes are not oauth scopes", () => {
+	it("holds, which is what makes it safe to ignore a token's scope claim", async () => {
+		// `principalScopes` gives an OAuth caller every scope. That is only sound
+		// while a scope here cannot be asked for over OAuth: the authorization
+		// server offers the OIDC four, refuses any scope outside its list, and so
+		// has no narrower grant to honour. Offer one of these as an OAuth scope and
+		// a client could be granted `prompts:read` alone while MCP hands it
+		// `prompts:write` — so this fails first.
+		vi.stubEnv("APP_URL", "http://localhost:3000");
+		vi.stubEnv("BETTER_AUTH_SECRET", "scope-invariant-test");
+		const { createAuth } = await import("@workspace/lib/auth/server");
+		const auth = createAuth();
+		// Initialization reaches for a database this test has not got.
+		auth.$context.catch(() => {});
+
+		const provider = auth.options.plugins?.find((plugin) => plugin.id === "oauth-provider") as
+			| { options: { scopes?: string[] } }
+			| undefined;
+		expect(provider, "the MCP plugin is what serves OAuth here").toBeDefined();
+
+		const offered = new Set(provider?.options.scopes ?? []);
+		expect(API_SCOPES.filter((scope) => offered.has(scope))).toEqual([]);
+		vi.unstubAllEnvs();
+	});
+});
+
 describe("principalLabel", () => {
 	it("names the workspace a key belongs to rather than the key", () => {
 		expect(principalLabel(orgKey)).toContain("Acme");
@@ -126,6 +164,7 @@ describe("resolveMcpAuth", () => {
 		resolveApiAuth.mockResolvedValue(INVALID_KEY);
 		verifyMcpAccessToken.mockResolvedValue(TOKEN_CLAIMS);
 		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone" }]);
+		selectClient.mockResolvedValue([{ disabled: false }]);
 		listUserOrganizations.mockResolvedValue([{ id: "org_1" }, { id: "org_2" }]);
 
 		await expect(resolveMcpAuth(bearer("oauth-token"))).resolves.toEqual({
@@ -137,6 +176,7 @@ describe("resolveMcpAuth", () => {
 		resolveApiAuth.mockResolvedValue(INVALID_KEY);
 		verifyMcpAccessToken.mockResolvedValue(TOKEN_CLAIMS);
 		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone" }]);
+		selectClient.mockResolvedValue([{ disabled: false }]);
 		listUserOrganizations.mockResolvedValue([]);
 
 		const resolved = await resolveMcpAuth(bearer("oauth-token"));
@@ -147,6 +187,34 @@ describe("resolveMcpAuth", () => {
 		resolveApiAuth.mockResolvedValue(INVALID_KEY);
 		verifyMcpAccessToken.mockResolvedValue({ ...TOKEN_CLAIMS, sub: "deleted" });
 		selectUser.mockResolvedValue([]);
+		selectClient.mockResolvedValue([{ disabled: false }]);
+
+		await expect(resolveMcpAuth(bearer("oauth-token"))).resolves.toEqual(INVALID_KEY);
+	});
+
+	it("refuses a banned person, whose signature is still perfectly good", async () => {
+		resolveApiAuth.mockResolvedValue(INVALID_KEY);
+		verifyMcpAccessToken.mockResolvedValue(TOKEN_CLAIMS);
+		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone", banned: true }]);
+		selectClient.mockResolvedValue([{ disabled: false }]);
+
+		await expect(resolveMcpAuth(bearer("oauth-token"))).resolves.toEqual(INVALID_KEY);
+	});
+
+	it("refuses a token whose client has been disabled", async () => {
+		resolveApiAuth.mockResolvedValue(INVALID_KEY);
+		verifyMcpAccessToken.mockResolvedValue(TOKEN_CLAIMS);
+		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone" }]);
+		selectClient.mockResolvedValue([{ disabled: true }]);
+
+		await expect(resolveMcpAuth(bearer("oauth-token"))).resolves.toEqual(INVALID_KEY);
+	});
+
+	it("refuses a token whose client is gone", async () => {
+		resolveApiAuth.mockResolvedValue(INVALID_KEY);
+		verifyMcpAccessToken.mockResolvedValue(TOKEN_CLAIMS);
+		selectUser.mockResolvedValue([{ id: "user_1", email: "someone@example.com", name: "Someone" }]);
+		selectClient.mockResolvedValue([]);
 
 		await expect(resolveMcpAuth(bearer("oauth-token"))).resolves.toEqual(INVALID_KEY);
 	});
