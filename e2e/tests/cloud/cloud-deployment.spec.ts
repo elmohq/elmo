@@ -9,6 +9,7 @@
  * transactional-email provider — so the specs verify addresses in the database
  * and assert on everything around it.
  */
+import type { APIResponse } from "@playwright/test";
 import { expect, failedResource, test } from "../../test";
 import { CLOUD_SIGNUP, TEST_BRAND_ID, TEST_USER, brandUrl, organizationUrl } from "../../fixtures";
 import { deleteUsers, userExists, verifyEmail } from "../../session";
@@ -86,7 +87,7 @@ test.describe("Cloud self-serve signup", () => {
       failOnStatusCode: false,
     });
 
-    expect(response.ok()).toBe(false);
+    expect(response.ok(), await describeResponse(response)).toBe(false);
     expect(await response.text()).toContain("Disposable email addresses are not supported");
   });
 
@@ -99,10 +100,16 @@ test.describe("Cloud self-serve signup", () => {
     // The allowlist gate returns the same generic failure as any other refused
     // signup, so the assertion is that no account appeared — read against the
     // allowlisted signup above, which does create one.
-    expect(response.ok()).toBe(false);
+    expect(response.ok(), await describeResponse(response)).toBe(false);
     expect(await userExists(BLOCKED_EMAIL)).toBe(false);
   });
 });
+
+/** `ok()` alone reports "expected false, received true", which says nothing
+ * about which refusal did not happen. */
+async function describeResponse(response: APIResponse): Promise<string> {
+  return `the signup was not refused: ${response.status()} ${await response.text()}`;
+}
 
 test.describe("Cloud features", () => {
   test("report generation is switched off", async ({ page, consoleErrors }) => {

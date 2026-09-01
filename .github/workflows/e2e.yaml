@@ -241,9 +241,11 @@ jobs:
       - name: Check responses against the OpenAPI spec
         run: pnpm validate:spec
 
+      # Every mode, not just `web`: a cloud or demo failure leaves its evidence
+      # in that mode's own container.
       - name: Dump web logs
         if: failure()
-        run: docker compose logs web
+        run: docker compose logs web web-cloud web-whitelabel web-demo
 
       - name: Upload Playwright reports
         uses: actions/upload-artifact@v7
