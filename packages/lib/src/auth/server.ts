@@ -14,8 +14,8 @@ import { type BetterAuthOptions, type BetterAuthPlugin, betterAuth } from "bette
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware } from "better-auth/api";
 import {
-	BEARER_AUTHORIZATION_SCHEME,
-	getDpopJktFromPayload,
+	createDpopReplayStore,
+	enforceDpopBinding,
 	parseAccessTokenAuthorization,
 	verifyJwsAccessToken,
 } from "better-auth/oauth2";
@@ -320,29 +320,47 @@ const jwksCacheKey = {};
  * the discovery document advertises, because that URL is the address clients
  * reach the app on and the app has no way to reach itself there: behind a
  * container's published port, or a proxy, it names something that is not this
- * process.
+ * process. That is the one reason this is assembled from the library's pieces
+ * rather than being `verifyAccessTokenRequest`, which only takes a URL to fetch
+ * keys from; every check it makes is made here, by the same functions.
  */
 export async function verifyMcpAccessToken(auth: Auth, request: Request): Promise<JWTPayload> {
 	const authorization = parseAccessTokenAuthorization(request.headers.get("authorization"));
-	if (authorization?.scheme !== BEARER_AUTHORIZATION_SCHEME || !authorization.token) {
-		throw new Error("no bearer access token");
+	if (!authorization?.token || authorization.scheme === "Unknown") {
+		throw new Error("no Bearer or DPoP access token");
 	}
 
 	// The resolved base URL carries the auth base path, which is what the plugin
 	// stamps as `iss`. The resource identifier names the MCP endpoint at the
 	// origin instead, which is a different string on purpose.
-	const { baseURL } = await auth.$context;
+	const { baseURL, internalAdapter } = await auth.$context;
+	const origin = new URL(baseURL).origin;
 	const payload = await verifyJwsAccessToken(authorization.token, {
 		jwksFetch: () => auth.api.getJwks(),
 		jwksCacheKey,
-		verifyOptions: { issuer: baseURL, audience: `${new URL(baseURL).origin}${MCP_PATH}` },
+		verifyOptions: { issuer: baseURL, audience: `${origin}${MCP_PATH}` },
 	});
 
-	// A sender-constrained token only proves anything alongside the proof that
-	// goes with it, and checking that proof takes more than the token. Nothing
-	// here asks for one, so one arriving is a token being spent as something
-	// weaker than it was issued as.
-	if (getDpopJktFromPayload(payload)) throw new Error("DPoP-bound access token presented as a bearer token");
+	// RFC 9449. A client that binds its token to a key proves it holds that key
+	// on every call, which is what makes a stolen token useless — so the proof is
+	// checked rather than the token refused. This also settles the scheme both
+	// ways: a bound token spent as a bearer token is refused, and so is `DPoP`
+	// over a token that was never bound.
+	//
+	// The URL is rebuilt on the configured origin because that is the one the
+	// client signed into `htu`. What the request says can be the address inside a
+	// container or in front of a proxy, and a proof is not wrong for having been
+	// signed against the address the client was told to use.
+	await enforceDpopBinding({
+		payload,
+		authorization,
+		proofJwt: request.headers.get("dpop"),
+		method: request.method,
+		url: new URL(new URL(request.url).pathname, origin).toString(),
+		// Backed by the database, so a proof replayed against another instance
+		// finds its own `jti` already spent.
+		replayStore: createDpopReplayStore(internalAdapter),
+	});
 	return payload;
 }
 
