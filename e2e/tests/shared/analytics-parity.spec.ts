@@ -10,7 +10,7 @@
  * If someone reimplements a metric on one side, this fails. That is the only
  * thing it is for.
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../../test";
 import { TEST_API_KEY, TEST_BRAND_ID, brandUrl } from "../../fixtures";
 
 const AUTH = { Authorization: `Bearer ${TEST_API_KEY}` };
