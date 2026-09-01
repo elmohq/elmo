@@ -144,8 +144,7 @@ function ApiKeysSettingsPage() {
 				<div className="space-y-1">
 					<h1 className="text-3xl font-bold">API Keys</h1>
 					<p className="max-w-2xl text-muted-foreground">
-						Keys act as {organization.name}, not as you, so they keep working after you change teams. Any organization
-						admin can revoke one.
+						Keys authenticate the REST API and MCP connections for this organization.
 					</p>
 				</div>
 				<a
@@ -230,7 +229,7 @@ function ApiKeysSettingsPage() {
 							<section className="space-y-3">
 								<SectionHeading
 									title="Brand access"
-									description={`Unrestricted keys reach every brand in ${organization.name}, including ones added later.`}
+									description="Unrestricted keys reach every brand in this organization, including ones added later."
 								/>
 								<label
 									htmlFor="restrict-brands"
