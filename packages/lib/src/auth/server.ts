@@ -12,6 +12,7 @@ import { oauthProviderAuthServerMetadata } from "@better-auth/oauth-provider";
 import { type SSOOptions, sso } from "@better-auth/sso";
 import { type BetterAuthOptions, type BetterAuthPlugin, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { createAuthMiddleware } from "better-auth/api";
 import { requestToResourceInput, verifyAccessTokenRequest } from "better-auth/oauth2";
 import { admin, customSession, jwt, organization } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
@@ -82,6 +83,46 @@ function mcpResource(origin: string): string {
 		);
 	}
 	return `${origin}${MCP_PATH}`;
+}
+
+/**
+ * Name the resource on an authorization request that left it out.
+ *
+ * RFC 8707's `resource` is what binds a token to the server it is for, and it
+ * is also what decides the token's shape: without it the plugin issues an
+ * opaque string instead of a signed JWT, and `/api/mcp` — which verifies
+ * against the published key set — has no way to read one. There is exactly one
+ * protected resource behind this authorization server, so filling in the
+ * parameter a client omitted grants nothing it was not already asking for.
+ *
+ * The default lands before the plugin signs the query, so it survives the login
+ * and consent round trips and is still on the authorization code the client
+ * redeems — which is why the token endpoint needs no matching default.
+ */
+function mcpResourceDefault(resource: string) {
+	return {
+		id: "mcp-resource-default",
+		version: "1.0",
+		hooks: {
+			before: [
+				{
+					matcher: (ctx: { path?: string }) => ctx.path === "/oauth2/authorize",
+					// Returned rather than assigned: a before hook is handed a copy of
+					// the context, and only what it returns reaches the endpoint.
+					handler: createAuthMiddleware(async (ctx) => {
+						const body = ctx.body as Record<string, unknown> | undefined;
+						if (ctx.query?.resource || body?.resource) return;
+						return {
+							context: {
+								query: { ...ctx.query, resource },
+								...(body && { body: { ...body, resource } }),
+							},
+						};
+					}),
+				},
+			],
+		},
+	} satisfies BetterAuthPlugin;
 }
 
 export function createAuth(options?: CreateAuthOptions) {
@@ -198,6 +239,7 @@ export function createAuth(options?: CreateAuthOptions) {
 			// `baseURL` the plugin advertises as the authorization server — naming
 			// the two differently is what makes a strict client refuse to connect
 			// against a local instance.
+			mcpResourceDefault(mcpResource(origin)),
 			mcp({
 				loginPage: MCP_AUTHORIZE_PAGE,
 				consentPage: MCP_AUTHORIZE_PAGE,
