@@ -39,8 +39,9 @@ import { useViewer } from "@/hooks/use-route-context";
 import { adminNavItems } from "@/lib/admin-nav";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
-type ScopeProps =
-	| { scope: "brand"; organization: OrganizationSummary; brand: BrandWithPrompts }
+export type AppSidebarProps =
+	// The brand arrives with its layout's loader data, a beat after the match.
+	| { scope: "brand"; organization: OrganizationSummary; brand?: BrandWithPrompts }
 	| { scope: "organization"; organization: OrganizationSummary }
 	| { scope: "admin" | "account" };
 
@@ -64,7 +65,8 @@ function organizationGroup(organization: OrganizationSummary, features?: Feature
 	return { label: "Organization Settings", items };
 }
 
-function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts): NavGroup[] {
+function brandGroups(organization: OrganizationSummary, brand?: BrandWithPrompts): NavGroup[] {
+	if (!brand) return [];
 	const params = brandLinkParams(organization, brand);
 	const dashboard: NavItem[] = [
 		{ title: "Overview", link: { to: "/app/org/$org/brand/$brand", params }, icon: IconDashboard, exact: true },
@@ -109,7 +111,7 @@ function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts)
 	return groups;
 }
 
-export function AppSidebar(props: ScopeProps) {
+export function AppSidebar(props: AppSidebarProps) {
 	const { scope } = props;
 	const { setOpenMobile } = useSidebar();
 	const { isAdmin, hasReportAccess } = useViewer();

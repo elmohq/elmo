@@ -19,10 +19,7 @@ import { Spinner } from "@workspace/ui/components/spinner";
 import { Switch } from "@workspace/ui/components/switch";
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { AppShell } from "@/components/app-shell";
-import { AppSidebar } from "@/components/app-sidebar";
 import { PlanComparison } from "@/components/plan-comparison";
-import { SiteHeader } from "@/components/site-header";
 import { pageHead } from "@/lib/route-head";
 import { getPaywallStateFn, type PaywallRequired, type PaywallState } from "@/server/billing";
 
@@ -64,15 +61,7 @@ function ChoosePlanPage() {
 			<PlanPicker paywall={paywall} />
 		) : null;
 
-	// The app's own shell, minus everywhere it could take you: a customer who
-	// cannot get past this page still needs to see whose product it is, which
-	// account they are signed into, and how to sign out of it — most of all the
-	// non-admin who is told to go ask someone else.
-	return (
-		<AppShell sidebar={<AppSidebar scope="account" />} header={<SiteHeader />}>
-			<div className="flex flex-1 flex-col">{body}</div>
-		</AppShell>
-	);
+	return body;
 }
 
 /** Post-checkout: wait for the Stripe webhook to record the subscription. */

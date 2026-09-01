@@ -2,11 +2,18 @@
  * Auth layout route - pathless layout that protects all child routes.
  *
  * Checks for an authenticated better-auth session, redirects to /auth/login if not found.
+ * Owns the app shell for every signed-in page that has one, so the rail and
+ * header survive a move between a brand, its organization, and the admin
+ * section instead of being rebuilt by whichever layout was entered.
  */
 
 import { createFileRoute, Outlet, redirect, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { useEffect, useRef } from "react";
+import { AppShell, PageContent } from "@/components/app-shell";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import { useAppChrome } from "@/hooks/use-app-chrome";
 import { identifyCrispUser } from "@/lib/crisp";
 import { identifyUser, setPersonProperties } from "@/lib/posthog";
 import { getViewerFn } from "@/server/viewer";
@@ -50,5 +57,26 @@ function AuthedLayout() {
 		identifyCrispUser({ id: user.id, email: user.email, name: user.name });
 	}, [context.session?.user, context.clientConfig?.mode]);
 
-	return <Outlet />;
+	return <AppChrome />;
+}
+
+function AppChrome() {
+	const chrome = useAppChrome();
+
+	if (!chrome) return <Outlet />;
+
+	return (
+		<AppShell sidebar={<AppSidebar {...chrome} />} header={<SiteHeader />}>
+			{/* The plan gate lays its own page out edge to edge. */}
+			{chrome.scope === "account" ? (
+				<div className="flex flex-1 flex-col">
+					<Outlet />
+				</div>
+			) : (
+				<PageContent>
+					<Outlet />
+				</PageContent>
+			)}
+		</AppShell>
+	);
 }
