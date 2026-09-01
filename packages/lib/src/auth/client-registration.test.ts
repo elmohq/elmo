@@ -1,3 +1,4 @@
+import { cimd } from "@better-auth/cimd";
 import { mcp } from "@better-auth/mcp";
 import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
@@ -7,6 +8,20 @@ import { describe, expect, it } from "vitest";
 import { nativeClientRegistrationDefault } from "./native-client-registration";
 
 const BASE_URL = "https://elmo.test";
+const CLIENT_ID_URL = "https://client.example.com/oauth/client.json";
+
+const metadataDocument = {
+	client_id: CLIENT_ID_URL,
+	client_name: "Example CLI",
+	redirect_uris: ["http://127.0.0.1:1455/callback"],
+	grant_types: ["authorization_code", "refresh_token"],
+	response_types: ["code"],
+	token_endpoint_auth_method: "none",
+};
+
+// Stands in for the network so the document under test is the only variable.
+const fetchClientMetadataResource = async (input: RequestInfo | URL) =>
+	String(input) === CLIENT_ID_URL ? Response.json(metadataDocument) : new Response("not found", { status: 404 });
 
 const options = {
 	secret: "native-client-registration-test-secret",
@@ -15,6 +30,7 @@ const options = {
 	plugins: [
 		jwt({ disableSettingJwtHeader: true }),
 		nativeClientRegistrationDefault(),
+		cimd({ fetchClientMetadataResource, metadataProfile: "mcp-2026-07-28" }),
 		mcp({
 			loginPage: "/auth/login",
 			consentPage: "/auth/authorize",
@@ -108,5 +124,47 @@ describe("dynamic client registration", () => {
 
 		expect(status).toBe(400);
 		expect(body.error_description).toContain("private-use");
+	});
+});
+
+describe("client ID metadata documents", () => {
+	async function authorize(params: Record<string, string>) {
+		const query = new URLSearchParams({
+			response_type: "code",
+			code_challenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+			code_challenge_method: "S256",
+			...params,
+		});
+		return auth.handler(new Request(`${BASE_URL}/api/auth/oauth2/authorize?${query}`, { redirect: "manual" }));
+	}
+
+	it("is advertised so a client knows to skip registration", async () => {
+		const response = await auth.handler(new Request(`${BASE_URL}/api/auth/.well-known/oauth-authorization-server`));
+		const metadata = (await response.json()) as Record<string, unknown>;
+
+		expect(metadata.client_id_metadata_document_supported).toBe(true);
+		// Deprecated but still the only route for clients that predate CIMD.
+		expect(metadata.registration_endpoint).toBe(`${BASE_URL}/api/auth/oauth2/register`);
+	});
+
+	it("admits a client that hosts its own identity, with no registration call at all", async () => {
+		const response = await authorize({
+			client_id: CLIENT_ID_URL,
+			redirect_uri: "http://127.0.0.1:1455/callback",
+		});
+
+		expect(response.status).toBe(302);
+		expect(response.headers.get("location")).toContain("/auth/login");
+	});
+
+	it("fails closed when the document cannot be fetched", async () => {
+		const response = await authorize({
+			client_id: "https://client.example.com/gone.json",
+			redirect_uri: "http://127.0.0.1:1455/callback",
+		});
+		const body = (await response.json()) as Record<string, string>;
+
+		expect(response.status).toBe(400);
+		expect(body.error).toBe("invalid_client");
 	});
 });
