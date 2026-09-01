@@ -44,12 +44,12 @@ const INSTRUCTIONS = [
  * turns an unknown throw into a bare 500.
  */
 function toolFailure(name: string, err: unknown): { content: [{ type: "text"; text: string }]; isError: true } {
-	const message =
-		err instanceof ApiError || isWriteDenied(err) ? (err as Error).message : "The tool failed unexpectedly.";
-	if (!(err instanceof ApiError) && !isWriteDenied(err)) {
-		console.error(`[mcp] ${name} failed:`, err);
-	}
-	return { content: [{ type: "text", text: message }], isError: true };
+	const expected = err instanceof ApiError || isWriteDenied(err);
+	if (!expected) console.error(`[mcp] ${name} failed:`, err);
+	return {
+		content: [{ type: "text", text: expected ? (err as Error).message : "The tool failed unexpectedly." }],
+		isError: true,
+	};
 }
 
 /**

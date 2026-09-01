@@ -62,11 +62,14 @@ export interface AnalyticsWindow {
  * For instants this is exactly what `postgres-read` resolves for SQL. For
  * calendar days it is not: here a bare `YYYY-MM-DD` is midnight UTC, while
  * `postgres-read` resolves it in the caller's `timezone` — so the derived
- * bounds can sit a zone offset away from the rows the queries returned. Every
- * caller that reaches this function passes instants; a calendar-day caller
- * would see a previous window computed against the UTC-resolved bounds, not
- * the SQL ones. Fix that by mirroring `windowStart`/`windowEnd` before a
- * calendar-day caller exists.
+ * bounds can sit a zone offset away from the rows the queries returned.
+ *
+ * Which matters only where the bounds become a *window*. The citations
+ * comparison window below is one, and instants are all that reach it. Share of
+ * voice is not: it turns these into day labels through `generateDateRange`,
+ * which reads UTC day parts, so a calendar day goes in and the same day comes
+ * back out. Mirror `windowStart`/`windowEnd` here before a calendar-day caller
+ * needs a window rather than a label.
  */
 function windowInstants(window: AnalyticsWindow): { start: Date; end: Date } {
 	const start = new Date(isCalendarDay(window.from) ? `${window.from}T00:00:00Z` : window.from);

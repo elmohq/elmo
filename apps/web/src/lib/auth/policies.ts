@@ -21,17 +21,6 @@ import { READ_ONLY_ERROR, READ_ONLY_MESSAGE } from "@/lib/read-only-errors";
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 /**
- * Exact better-auth endpoints that remain writable in read-only mode.
- *
- * Whitelist rather than blacklist: every other `/api/auth/**` write is
- * rejected in demo, so new better-auth endpoints (from plugins we add or
- * library upgrades) are blocked by default instead of silently becoming
- * reachable. Only sign-in and sign-out need to work for a demo visitor
- * — everything else (change-password, change-email, update-user,
- * delete-user, forget-password, admin plugin endpoints, etc.) has no
- * business mutating the shared demo account.
- */
-/**
  * The api-key plugin endpoints that would otherwise let a signed-in user mint
  * or edit a key straight from the browser. Blocked outright: issuance goes
  * through the server function that validates the key's brand narrowing.
@@ -56,6 +45,17 @@ const API_KEY_PLUGIN_MUTATIONS = new Set([
  */
 const MCP_OAUTH_PREFIX = "/api/auth/oauth2/";
 
+/**
+ * Exact better-auth endpoints that remain writable in read-only mode.
+ *
+ * Whitelist rather than blacklist: every other `/api/auth/**` write is
+ * rejected in demo, so new better-auth endpoints (from plugins we add or
+ * library upgrades) are blocked by default instead of silently becoming
+ * reachable. Only sign-in and sign-out need to work for a demo visitor
+ * — everything else (change-password, change-email, update-user,
+ * delete-user, forget-password, admin plugin endpoints, etc.) has no
+ * business mutating the shared demo account.
+ */
 const DEMO_AUTH_WRITE_ALLOWLIST = new Set([
 	"/api/auth/sign-in/email",
 	"/api/auth/sign-in/email/",

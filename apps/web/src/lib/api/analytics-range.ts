@@ -69,13 +69,15 @@ export function parseAnalyticsWindow(url: URL): AnalyticsWindow {
 	return resolveAnalyticsWindow(url.searchParams.get("start"), url.searchParams.get("end"));
 }
 
-/** The `model` and `tags` filters every analytics endpoint shares. */
-export interface AnalyticsFilters {
-	model?: string;
-	tags?: string;
-}
+/**
+ * The filters every analytics endpoint shares, re-exported from where the
+ * computations that consume them define it. Two structurally similar copies
+ * happened to interoperate only because the field this one lacked was
+ * optional — one more required field apart and they would not have.
+ */
+export type { AnalyticsFilters } from "@/server/analytics-core";
 
-export function parseAnalyticsFilters(url: URL): AnalyticsFilters {
+export function parseAnalyticsFilters(url: URL): { model?: string; tags?: string } {
 	return {
 		model: url.searchParams.get("model") ?? undefined,
 		tags: url.searchParams.get("tags") ?? undefined,
