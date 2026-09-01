@@ -24,6 +24,26 @@ import FullPageCard from "@/components/full-page-card";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
+/**
+ * Where to send the browser after sign-in when an MCP client is waiting on it.
+ *
+ * The plugin sends a signed-out person here with the authorization request in
+ * the query, signed. Handing that same query back to the authorization endpoint
+ * is what resumes the flow — and it has to be handed back exactly as it
+ * arrived, so it is read from the address bar rather than rebuilt.
+ *
+ * Every sign-in path uses this, including the two that leave for an identity
+ * provider and come back: for those the request is gone by the time the browser
+ * returns, so the way through is to make the return trip land here.
+ */
+function mcpContinuation(): string | undefined {
+	if (typeof window === "undefined") return undefined;
+	const search = window.location.search;
+	// `sig` is the plugin's; a query without one was not signed and is not an
+	// authorization request.
+	return new URLSearchParams(search).has("sig") ? `/api/auth/oauth2/authorize${search}` : undefined;
+}
+
 export const Route = createFileRoute("/auth/login")({
 	validateSearch: z.object({
 		returnTo: z.string().optional(),
@@ -85,7 +105,7 @@ export function SSOLogin({ returnTo }: { returnTo?: string }) {
 		let cancelled = false;
 
 		authClient.signIn
-			.sso({ providerId: "auth0-whitelabel", callbackURL: safeReturnTo(returnTo) })
+			.sso({ providerId: "auth0-whitelabel", callbackURL: mcpContinuation() ?? safeReturnTo(returnTo) })
 			.then((result) => {
 				if (cancelled) return;
 				if (result.error) {
@@ -139,13 +159,9 @@ export function DemoLogin({ returnTo }: { returnTo?: string }) {
 				setLoading(false);
 				return;
 			}
-			// A sign-in that arrived mid-OAuth carries the authorization request
-			// with it, and the server answers with where the browser goes next
-			// instead of with a session. Following that is what finishes the flow
-			// the MCP client started.
-			const next = (result.data as { url?: string } | null)?.url;
-			if (next) {
-				window.location.href = next;
+			const continuation = mcpContinuation();
+			if (continuation) {
+				window.location.href = continuation;
 				return;
 			}
 
@@ -223,13 +239,9 @@ export function EmailPasswordLogin({
 				return;
 			}
 
-			// A sign-in that arrived mid-OAuth carries the authorization request
-			// with it, and the server answers with where the browser goes next
-			// instead of with a session. Following that is what finishes the flow
-			// the MCP client started.
-			const next = (result.data as { url?: string } | null)?.url;
-			if (next) {
-				window.location.href = next;
+			const continuation = mcpContinuation();
+			if (continuation) {
+				window.location.href = continuation;
 				return;
 			}
 
@@ -253,7 +265,9 @@ export function EmailPasswordLogin({
 						type="button"
 						variant="outline"
 						className="w-full"
-						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: safeReturnTo(returnTo) })}
+						onClick={() =>
+							authClient.signIn.social({ provider: "google", callbackURL: mcpContinuation() ?? safeReturnTo(returnTo) })
+						}
 					>
 						<IconBrandGoogle className="size-4" />
 						Continue with Google
