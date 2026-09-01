@@ -162,6 +162,10 @@ A web app serves the dashboard and REST API, a worker schedules and executes pro
 - [Email](mailto:support@elmohq.com)
 - [Schedule a call](https://cal.com/jrhizor/elmo)
 
+## Contributing
+
+Interested in contributing? See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow and CLA process, the [developer guide](https://www.elmohq.com/docs/developer-guide) for setup and architecture, and browse [good first issues](https://github.com/elmohq/elmo/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) to get started.
+
 ## License
 
 Elmo is open source under the [MIT License](LICENSE.md).
