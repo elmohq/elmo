@@ -204,6 +204,16 @@ export function EmailPasswordLogin({
 			});
 
 			if (result.error) {
+				// An expired MCP authorization request is refused here, because the
+				// sign-in carried it. Taking it out of the address bar makes the next
+				// attempt an ordinary sign-in rather than the same refusal — with the
+				// credentials still typed in.
+				if ((result.error as { error?: string }).error === "invalid_signature") {
+					window.history.replaceState(null, "", "/auth/login");
+					setError("That connection request expired. Sign in again, then start the connection from your MCP client.");
+					setLoading(false);
+					return;
+				}
 				if (isCloud && result.error.status === 403) {
 					setError("Please verify your email first — we just sent you a new verification link.");
 				} else {
