@@ -44,7 +44,12 @@ function unauthorized(message: string): Response {
 	);
 }
 
-async function handler({ request }: { request: Request }): Promise<Response> {
+/**
+ * Exported for the splat route below it, which TanStack matches for `/api/mcp`
+ * itself as well as for everything under it — so the endpoint has to be
+ * reachable from there or the one URL this whole surface has answers `404`.
+ */
+export async function handleMcp({ request }: { request: Request }): Promise<Response> {
 	const resolved = await resolveMcpAuth(request);
 	if ("failure" in resolved) {
 		if (resolved.failure.status === 429) {
@@ -67,9 +72,9 @@ async function handler({ request }: { request: Request }): Promise<Response> {
 export const Route = createFileRoute("/api/mcp")({
 	server: {
 		handlers: {
-			POST: handler,
-			GET: handler,
-			DELETE: handler,
+			POST: handleMcp,
+			GET: handleMcp,
+			DELETE: handleMcp,
 		},
 	},
 });
