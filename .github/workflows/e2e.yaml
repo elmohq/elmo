@@ -88,12 +88,25 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
+      # Not `--with-deps`: that runs apt-get update on every job, cache hit or
+      # not, for libraries the runner image already carries. The probe below
+      # costs a second and installs them for real if that ever stops being true.
       - name: Install Playwright browsers
         uses: nick-fields/retry@v4
         with:
-          timeout_minutes: 1
+          timeout_minutes: 5
           max_attempts: 3
-          command: pnpm -C apps/web exec playwright install chromium --with-deps
+          command: pnpm -C apps/web exec playwright install chromium
+
+      - name: Install browser system libraries if chromium will not start
+        run: |
+          pnpm -C apps/web exec node -e "
+            const { chromium } = require('playwright');
+            chromium.launch().then((b) => b.close()).then(
+              () => process.exit(0),
+              (e) => { console.error(String(e).split('\n')[0]); process.exit(1); },
+            );
+          " || pnpm -C apps/web exec playwright install-deps chromium
 
       - name: Build elmo CLI
         run: pnpm -C apps/cli build
