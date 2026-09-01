@@ -151,6 +151,29 @@ test.describe("MCP", () => {
     expect((await metadata.json()).resource).toContain(MCP_PATH);
   });
 
+  test("the endpoint answers its own URL, and nothing below it", async ({ request }) => {
+    // One splat route serves both, because TanStack matches it for the
+    // endpoint's own path as well. Which of the two a request gets is the sort
+    // of thing a comment can claim and be wrong about, so it is asserted here:
+    // the endpoint refuses an uncredentialled call, and a subpath — which the
+    // protocol has none of — is a client pointed at the wrong place.
+    const call = (path: string) =>
+      request.post(path, {
+        headers: { Accept: "application/json, text/event-stream" },
+        data: { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} },
+      });
+
+    for (const path of [MCP_PATH, `${MCP_PATH}/`]) {
+      expect((await call(path)).status(), path).toBe(401);
+    }
+
+    const below = await call(`${MCP_PATH}/anything`);
+    expect(below.status()).toBe(404);
+    // Answered in the protocol's envelope rather than the SPA's markup, which a
+    // client parsing JSON-RPC would read as a successful reply it cannot parse.
+    expect((await below.json()).error.message).toBe("Not Found");
+  });
+
   test("a person can authorize an MCP client from the browser", async ({ page, baseURL }, testInfo) => {
     test.skip(
       testInfo.project.name === "demo",

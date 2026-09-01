@@ -117,3 +117,11 @@ export const DEFAULT_CHART_COLORS = [
  * into them.
  */
 export const MCP_PATH = "/api/mcp";
+
+/**
+ * The authorization endpoint an interrupted MCP sign-in is resumed at.
+ *
+ * The path the OAuth plugin mounts under the auth base path. Named here so the
+ * sign-in page can send a browser back to it without knowing either.
+ */
+export const MCP_AUTHORIZE_ENDPOINT = "/api/auth/oauth2/authorize";

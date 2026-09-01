@@ -9,6 +9,7 @@
 
 import { IconBrandGoogle, IconInfoCircle } from "@tabler/icons-react";
 import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
+import { MCP_AUTHORIZE_ENDPOINT } from "@workspace/config/constants";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
@@ -25,35 +26,50 @@ import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
 /**
- * Where to send the browser after sign-in when an MCP client is waiting on it.
+ * Where the browser goes once it is signed in.
  *
- * The plugin sends a signed-out person here with the authorization request in
- * the query, signed. Handing that same query back to the authorization endpoint
- * is what resumes the flow — and it has to be handed back exactly as it
- * arrived, so it is read from the address bar rather than rebuilt.
+ * Normally wherever it was headed. But the OAuth plugin sends a signed-out
+ * person here with an MCP client's authorization request in the query, signed,
+ * and handing that same query back to the authorization endpoint is what
+ * resumes the flow. It has to go back exactly as it arrived, so it is read off
+ * the route's own search — which is declared as a passthrough for this reason —
+ * rather than rebuilt.
  *
- * Every sign-in path uses this, including the two that leave for an identity
- * provider and come back: for those the request is gone by the time the browser
- * returns, so the way through is to make the return trip land here.
+ * Every sign-in path asks this one question, including the two that leave for
+ * an identity provider and come back: for those the request is gone by the time
+ * the browser returns, so the way through is to make the return trip land here.
  */
-function mcpContinuation(): string | undefined {
-	if (typeof window === "undefined") return undefined;
-	const search = window.location.search;
+function postSignInDestination(search: LoginSearch): string {
 	// `sig` is the plugin's; a query without one was not signed and is not an
 	// authorization request.
-	return new URLSearchParams(search).has("sig") ? `/api/auth/oauth2/authorize${search}` : undefined;
+	if (!search.sig) return safeReturnTo(search.returnTo);
+	const query = new URLSearchParams(
+		Object.entries(search).flatMap(([key, value]) =>
+			value === undefined ? [] : [[key, String(value)] as [string, string]],
+		),
+	);
+	return `${MCP_AUTHORIZE_ENDPOINT}?${query}`;
+}
+
+/**
+ * What this page reads. Everything else the URL carries is kept and handed back
+ * untouched: the OAuth plugin signs the whole authorization query, and a
+ * parameter dropped on the way through is a signature that no longer verifies.
+ */
+interface LoginSearch {
+	returnTo?: string;
+	/**
+	 * Attribution tag carried by links back to us (see
+	 * @workspace/config/referrals). Declared so it survives long enough for
+	 * analytics to record the pageview it arrived on.
+	 */
+	ref?: string;
+	/** The OAuth plugin's signature over the rest of the query, when there is one. */
+	sig?: string;
 }
 
 export const Route = createFileRoute("/auth/login")({
-	validateSearch: z.object({
-		returnTo: z.string().optional(),
-		/**
-		 * Attribution tag carried by links back to us (see
-		 * @workspace/config/referrals). Declared so the router keeps it in the URL
-		 * long enough for analytics to record the pageview it arrived on.
-		 */
-		ref: z.string().optional(),
-	}),
+	validateSearch: (search: Record<string, unknown>): LoginSearch => search,
 	head: ({ match }) => {
 		const appName = getAppName(match);
 		return {
@@ -67,18 +83,20 @@ export const Route = createFileRoute("/auth/login")({
 });
 
 function LoginPage() {
-	const { returnTo, ref: incomingRef } = Route.useSearch();
+	const search = Route.useSearch();
+	const { returnTo, ref: incomingRef } = search;
+	const destination = postSignInDestination(search);
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const mode = context.clientConfig?.mode;
 	const canRegister = context.clientConfig?.canRegister ?? false;
 	const hasUsers = context.clientConfig?.hasUsers ?? false;
 
 	if (mode === "whitelabel") {
-		return <SSOLogin returnTo={returnTo} />;
+		return <SSOLogin destination={destination} />;
 	}
 
 	if (mode === "demo") {
-		return <DemoLogin returnTo={returnTo} />;
+		return <DemoLogin destination={destination} />;
 	}
 
 	// A fresh self-hosted instance has no account to sign in to, so the form
@@ -90,6 +108,7 @@ function LoginPage() {
 
 	return (
 		<EmailPasswordLogin
+			destination={destination}
 			returnTo={returnTo}
 			incomingRef={incomingRef}
 			isCloud={mode === "cloud"}
@@ -98,14 +117,14 @@ function LoginPage() {
 	);
 }
 
-export function SSOLogin({ returnTo }: { returnTo?: string }) {
+export function SSOLogin({ destination = "/app" }: { destination?: string }) {
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
 		let cancelled = false;
 
 		authClient.signIn
-			.sso({ providerId: "auth0-whitelabel", callbackURL: mcpContinuation() ?? safeReturnTo(returnTo) })
+			.sso({ providerId: "auth0-whitelabel", callbackURL: destination })
 			.then((result) => {
 				if (cancelled) return;
 				if (result.error) {
@@ -121,7 +140,7 @@ export function SSOLogin({ returnTo }: { returnTo?: string }) {
 		return () => {
 			cancelled = true;
 		};
-	}, [returnTo]);
+	}, [destination]);
 
 	if (error) {
 		return (
@@ -142,8 +161,7 @@ export function SSOLogin({ returnTo }: { returnTo?: string }) {
 }
 
 /** Signs in the shared demo account, whose credentials are printed on the page. */
-export function DemoLogin({ returnTo }: { returnTo?: string }) {
-	const navigate = useNavigate();
+export function DemoLogin({ destination = "/app" }: { destination?: string }) {
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 
@@ -159,13 +177,7 @@ export function DemoLogin({ returnTo }: { returnTo?: string }) {
 				setLoading(false);
 				return;
 			}
-			const continuation = mcpContinuation();
-			if (continuation) {
-				window.location.href = continuation;
-				return;
-			}
-
-			navigate({ to: safeReturnTo(returnTo) });
+			window.location.href = destination;
 		} catch {
 			setError("Something went wrong. Please try again.");
 			setLoading(false);
@@ -190,11 +202,13 @@ export function DemoLogin({ returnTo }: { returnTo?: string }) {
 }
 
 export function EmailPasswordLogin({
+	destination = "/app",
 	returnTo,
 	incomingRef,
 	isCloud,
 	canRegister,
 }: {
+	destination?: string;
 	returnTo?: string;
 	/** The `ref` this page was reached with, kept on links that stay inside auth. */
 	incomingRef?: string;
@@ -225,7 +239,10 @@ export function EmailPasswordLogin({
 				// attempt an ordinary sign-in rather than the same refusal — with the
 				// credentials still typed in.
 				if ((result.error as { error?: string }).error === "invalid_signature") {
-					window.history.replaceState(null, "", "/auth/login");
+					// Through the router rather than history, so the destination this
+					// page computes from the search is recomputed too — otherwise the
+					// retry aims at the same expired request.
+					navigate({ to: "/auth/login", search: {}, replace: true });
 					setError("That connection request expired. Sign in again, then start the connection from your MCP client.");
 					setLoading(false);
 					return;
@@ -239,13 +256,7 @@ export function EmailPasswordLogin({
 				return;
 			}
 
-			const continuation = mcpContinuation();
-			if (continuation) {
-				window.location.href = continuation;
-				return;
-			}
-
-			navigate({ to: safeReturnTo(returnTo) });
+			window.location.href = destination;
 		} catch {
 			setError("Something went wrong. Please try again.");
 			setLoading(false);
@@ -265,9 +276,7 @@ export function EmailPasswordLogin({
 						type="button"
 						variant="outline"
 						className="w-full"
-						onClick={() =>
-							authClient.signIn.social({ provider: "google", callbackURL: mcpContinuation() ?? safeReturnTo(returnTo) })
-						}
+						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: destination })}
 					>
 						<IconBrandGoogle className="size-4" />
 						Continue with Google

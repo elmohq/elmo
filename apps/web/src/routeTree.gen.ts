@@ -15,7 +15,6 @@ import { Route as AuthedAdminRouteImport } from './routes/_authed/admin'
 import { Route as AuthedAppRouteImport } from './routes/_authed/app'
 import { Route as AuthedChoosePlanRouteImport } from './routes/_authed/choose-plan'
 import { Route as AuthedReportsRouteImport } from './routes/_authed/reports'
-import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as AuthAuthorizeRouteImport } from './routes/auth/authorize'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
@@ -122,11 +121,6 @@ const AuthedReportsRoute = AuthedReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => AuthedRoute,
 } as any)
-const ApiMcpRoute = ApiMcpRouteImport.update({
-  id: '/api/mcp',
-  path: '/api/mcp',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthAuthorizeRoute = AuthAuthorizeRouteImport.update({
   id: '/auth/authorize',
   path: '/auth/authorize',
@@ -228,9 +222,9 @@ const ApiManifestIndexRoute = ApiManifestIndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMcpSplatRoute = ApiMcpSplatRouteImport.update({
-  id: '/$',
-  path: '/$',
-  getParentRoute: () => ApiMcpRoute,
+  id: '/api/mcp/$',
+  path: '/api/mcp/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiOgIndexRoute = ApiOgIndexRouteImport.update({
   id: '/api/og/',
@@ -555,7 +549,6 @@ export interface FileRoutesByFullPath {
   '/app': typeof AuthedAppRouteWithChildren
   '/choose-plan': typeof AuthedChoosePlanRoute
   '/reports': typeof AuthedReportsRouteWithChildren
-  '/api/mcp': typeof ApiMcpRouteWithChildren
   '/auth/authorize': typeof AuthAuthorizeRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -636,7 +629,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/choose-plan': typeof AuthedChoosePlanRoute
-  '/api/mcp': typeof ApiMcpRouteWithChildren
   '/auth/authorize': typeof AuthAuthorizeRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -719,7 +711,6 @@ export interface FileRoutesById {
   '/_authed/app': typeof AuthedAppRouteWithChildren
   '/_authed/choose-plan': typeof AuthedChoosePlanRoute
   '/_authed/reports': typeof AuthedReportsRouteWithChildren
-  '/api/mcp': typeof ApiMcpRouteWithChildren
   '/auth/authorize': typeof AuthAuthorizeRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -805,7 +796,6 @@ export interface FileRouteTypes {
     | '/app'
     | '/choose-plan'
     | '/reports'
-    | '/api/mcp'
     | '/auth/authorize'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -886,7 +876,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/choose-plan'
-    | '/api/mcp'
     | '/auth/authorize'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -968,7 +957,6 @@ export interface FileRouteTypes {
     | '/_authed/app'
     | '/_authed/choose-plan'
     | '/_authed/reports'
-    | '/api/mcp'
     | '/auth/authorize'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -1050,7 +1038,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
-  ApiMcpRoute: typeof ApiMcpRouteWithChildren
   AuthAuthorizeRoute: typeof AuthAuthorizeRoute
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
@@ -1060,6 +1047,7 @@ export interface RootRouteChildren {
   DotwellKnownOauthAuthorizationServerSplatRoute: typeof DotwellKnownOauthAuthorizationServerSplatRoute
   DotwellKnownOauthProtectedResourceSplatRoute: typeof DotwellKnownOauthProtectedResourceSplatRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiMcpSplatRoute: typeof ApiMcpSplatRoute
   ApiV1SplatRoute: typeof ApiV1SplatRoute
   ApiV1MeRoute: typeof ApiV1MeRoute
   ApiV1ModelsRoute: typeof ApiV1ModelsRoute
@@ -1127,13 +1115,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/reports'
       preLoaderRoute: typeof AuthedReportsRouteImport
       parentRoute: typeof AuthedRoute
-    }
-    '/api/mcp': {
-      id: '/api/mcp'
-      path: '/api/mcp'
-      fullPath: '/api/mcp'
-      preLoaderRoute: typeof ApiMcpRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/auth/authorize': {
       id: '/auth/authorize'
@@ -1270,10 +1251,10 @@ declare module '@tanstack/react-router' {
     }
     '/api/mcp/$': {
       id: '/api/mcp/$'
-      path: '/$'
+      path: '/api/mcp/$'
       fullPath: '/api/mcp/$'
       preLoaderRoute: typeof ApiMcpSplatRouteImport
-      parentRoute: typeof ApiMcpRoute
+      parentRoute: typeof rootRouteImport
     }
     '/api/og/': {
       id: '/api/og/'
@@ -1832,17 +1813,6 @@ const AuthedRouteChildren: AuthedRouteChildren = {
 const AuthedRouteWithChildren =
   AuthedRoute._addFileChildren(AuthedRouteChildren)
 
-interface ApiMcpRouteChildren {
-  ApiMcpSplatRoute: typeof ApiMcpSplatRoute
-}
-
-const ApiMcpRouteChildren: ApiMcpRouteChildren = {
-  ApiMcpSplatRoute: ApiMcpSplatRoute,
-}
-
-const ApiMcpRouteWithChildren =
-  ApiMcpRoute._addFileChildren(ApiMcpRouteChildren)
-
 interface ApiV1BrandsBrandIdRouteChildren {
   ApiV1BrandsBrandIdAnalyticsRoute: typeof ApiV1BrandsBrandIdAnalyticsRoute
   ApiV1BrandsBrandIdOpportunitiesRoute: typeof ApiV1BrandsBrandIdOpportunitiesRoute
@@ -1901,7 +1871,6 @@ const ApiV1PromptsPromptIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
-  ApiMcpRoute: ApiMcpRouteWithChildren,
   AuthAuthorizeRoute: AuthAuthorizeRoute,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
@@ -1913,6 +1882,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotwellKnownOauthProtectedResourceSplatRoute:
     DotwellKnownOauthProtectedResourceSplatRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiMcpSplatRoute: ApiMcpSplatRoute,
   ApiV1SplatRoute: ApiV1SplatRoute,
   ApiV1MeRoute: ApiV1MeRoute,
   ApiV1ModelsRoute: ApiV1ModelsRoute,
