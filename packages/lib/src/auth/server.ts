@@ -17,6 +17,7 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import type { JWTPayload } from "jose";
 import { db } from "../db/db";
 import * as schema from "../db/schema";
+import { nativeClientRegistrationDefault } from "./native-client-registration";
 import { ac, adminRole, memberRole, ownerRole, userRole } from "./permissions";
 
 export interface CreateAuthOptions {
@@ -174,6 +175,7 @@ export function createAuth(options?: CreateAuthOptions) {
 			// The header would otherwise sign a JWT on every session read.
 			jwt({ disableSettingJwtHeader: true }),
 			mcpResourceDefault(resource),
+			nativeClientRegistrationDefault(),
 			mcp({
 				loginPage: LOGIN_PAGE,
 				consentPage: MCP_AUTHORIZE_PAGE,
