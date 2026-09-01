@@ -173,14 +173,6 @@ function DocsPageActions({ filePath, mdUrl }: { filePath: string; mdUrl: string 
 	);
 }
 
-/**
- * fumadocs-openapi's markup is authored to sit inside a `prose` container: it
- * leans on typography for headings, paragraph rhythm and inline code, and marks
- * its own sub-trees `not-prose` where it wants to opt out. Wrapping the whole
- * page in `not-prose` would strip all of that. The operation description is
- * rendered by ClientAPIPage from the OpenAPI markdown, so the page must not
- * print `description` itself — that copy would be raw, unparsed markdown.
- */
 function OpenApiContent({ title, apiProps }: { title: string; apiProps: ClientApiPageProps }) {
 	return (
 		<article className="prose prose-zinc min-w-0 max-w-none flex-1">
