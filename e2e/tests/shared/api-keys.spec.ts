@@ -16,6 +16,23 @@ async function tickScope(page: Page, resource: string, action: string) {
   await group.getByRole("checkbox", { name: action, exact: true }).first().click();
 }
 
+/**
+ * Opens the create dialog and names the key. Both halves are retried together:
+ * a click or a typed value before hydration is silently dropped, and reopening
+ * an already-open dialog would be swallowed by its own backdrop.
+ */
+async function openCreateForm(page: Page, name: string) {
+  const dialog = page.getByRole("dialog");
+  const nameField = page.locator("#key-name");
+  await expect(async () => {
+    if (!(await dialog.isVisible())) {
+      await page.getByRole("button", { name: "New key" }).click();
+    }
+    await nameField.fill(name);
+    await expect(nameField).toHaveValue(name, { timeout: 1_000 });
+  }).toPass({ timeout: 30_000 });
+}
+
 test.describe("API keys", () => {
   test("a key issued from the page carries exactly what was ticked", async ({ page, request }, testInfo) => {
     test.skip(testInfo.project.name === "demo", "demo refuses every write; covered by the Bruno demo suite");
@@ -23,13 +40,8 @@ test.describe("API keys", () => {
     await page.goto(KEYS_PAGE, { waitUntil: "networkidle" });
     await expect(page.getByRole("heading", { name: "API Keys" })).toBeVisible();
 
-    // A value typed before hydration is silently discarded.
-    const nameField = page.locator("#key-name");
     const name = `Playwright key ${Date.now()}`;
-    await expect(async () => {
-      await nameField.fill(name);
-      await expect(nameField).toHaveValue(name, { timeout: 1_000 });
-    }).toPass({ timeout: 30_000 });
+    await openCreateForm(page, name);
     await page.getByRole("button", { name: "Read only" }).click();
     await tickScope(page, "Prompts", "Write");
     await page.getByRole("checkbox", { name: "Restrict this key to specific brands" }).first().click();
@@ -95,19 +107,16 @@ test.describe("API keys", () => {
     await page.goto(KEYS_PAGE, { waitUntil: "networkidle" });
     await expect(page.getByRole("heading", { name: "API Keys" })).toBeVisible();
 
-    const nameField = page.locator("#key-name");
     const name = `Empty restriction ${Date.now()}`;
-    await expect(async () => {
-      await nameField.fill(name);
-      await expect(nameField).toHaveValue(name, { timeout: 1_000 });
-    }).toPass({ timeout: 30_000 });
+    await openCreateForm(page, name);
 
     // Must not quietly become "every brand"; the server is what refuses.
     await page.getByRole("button", { name: "Read only" }).click();
     await page.getByRole("checkbox", { name: "Restrict this key to specific brands" }).first().click();
     await page.getByRole("button", { name: "Create key", exact: true }).click();
 
-    await expect(page.getByText(/at least one brand/i)).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(name)).toBeHidden();
+    // Refused in the dialog, which stays open so the picks survive the error.
+    await expect(page.getByRole("dialog").getByText(/at least one brand/i)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("listitem").filter({ hasText: name })).toHaveCount(0);
   });
 });

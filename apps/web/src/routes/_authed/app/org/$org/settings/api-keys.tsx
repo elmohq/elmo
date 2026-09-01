@@ -1,15 +1,23 @@
 /**
  * The role check here is UX only — the boundary is in the server functions and
- * the api-key plugin's own membership check. This page just avoids showing a
+ * the api-key plugin's own membership check. This page just avoids offering a
  * form that would be refused.
  */
-import { IconAlertTriangle, IconBook, IconCheck, IconCircleCheck, IconCopy, IconKey } from "@tabler/icons-react";
+import {
+	IconAlertTriangle,
+	IconBook,
+	IconCheck,
+	IconCircleCheck,
+	IconCopy,
+	IconKey,
+	IconPlus,
+} from "@tabler/icons-react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { API_DOCS_URL, MCP_DOCS_URL } from "@workspace/config/constants";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import {
 	Dialog,
@@ -68,65 +76,33 @@ function titleCase(value: string): string {
 	return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function toggle<T>(list: T[], value: T): T[] {
+	return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
+}
+
 function ApiKeysSettingsPage() {
 	const { keys, brands, allScopes, expiryOptions, canManage, organization } = Route.useLoaderData();
-	const organizationId = organization.id;
 	const router = useRouter();
 
-	const [name, setName] = useState("");
-	const [scopes, setScopes] = useState<ApiScope[]>(() => preset("read", allScopes));
-	const [restrictBrands, setRestrictBrands] = useState(false);
-	const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-	const [expiresInDays, setExpiresInDays] = useState<string>("never");
-	const [creating, setCreating] = useState(false);
+	const [creatingOpen, setCreatingOpen] = useState(false);
 	const [revokeTarget, setRevokeTarget] = useState<ApiKeySummary | null>(null);
 	const [revoking, setRevoking] = useState(false);
-	/** Kept apart from `error`: the dialog's backdrop covers the page-level alert. */
+	/** Kept in the dialog: its backdrop would cover a page-level alert. */
 	const [revokeError, setRevokeError] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
 	/** Shown once and never again — only the hash is stored. */
 	const [issuedKey, setIssuedKey] = useState<string | null>(null);
 
-	function toggle<T>(list: T[], value: T): T[] {
-		return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
-	}
-
-	async function handleCreate(event: React.FormEvent) {
-		event.preventDefault();
-		setError(null);
-		setIssuedKey(null);
-		setCreating(true);
-		try {
-			const { key } = await createApiKeyFn({
-				data: {
-					organizationId,
-					name,
-					scopes,
-					// Null, not `[]`: unrestricted is the absence of a restriction. The
-					// server rejects `[]` rather than reading it as "all".
-					brandIds: restrictBrands ? selectedBrands : null,
-					expiresInDays: expiresInDays === "never" ? null : Number(expiresInDays),
-				},
-			});
-			trackEvent("api_key_created", { scopes: scopes.length, restricted: restrictBrands });
-			setIssuedKey(key);
-			setName("");
-			setScopes(preset("read", allScopes));
-			setRestrictBrands(false);
-			setSelectedBrands([]);
-			await router.invalidate();
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to create the API key");
-		} finally {
-			setCreating(false);
-		}
+	async function handleCreated(key: string) {
+		setIssuedKey(key);
+		setCreatingOpen(false);
+		await router.invalidate();
 	}
 
 	async function handleRevoke(keyId: string) {
 		setRevokeError(null);
 		setRevoking(true);
 		try {
-			await revokeApiKeyFn({ data: { organizationId, keyId } });
+			await revokeApiKeyFn({ data: { organizationId: organization.id, keyId } });
 			setRevokeTarget(null);
 			await router.invalidate();
 		} catch (err) {
@@ -139,7 +115,7 @@ function ApiKeysSettingsPage() {
 	const brandNames = new Map(brands.map((brand) => [brand.id, brand.name]));
 
 	return (
-		<div className="max-w-5xl space-y-8">
+		<div className="max-w-4xl space-y-8">
 			<header className="flex flex-wrap items-start justify-between gap-4">
 				<div className="space-y-1">
 					<h1 className="text-3xl font-bold">API Keys</h1>
@@ -147,141 +123,28 @@ function ApiKeysSettingsPage() {
 						Keys authenticate the REST API and MCP connections for this organization.
 					</p>
 				</div>
-				<a
-					href={API_DOCS_URL}
-					target="_blank"
-					rel="noreferrer"
-					className={buttonVariants({ variant: "outline", size: "sm" })}
-				>
-					<IconBook className="size-4" />
-					API docs
-				</a>
+				<div className="flex items-center gap-2">
+					<a
+						href={API_DOCS_URL}
+						target="_blank"
+						rel="noreferrer"
+						className={buttonVariants({ variant: "outline", size: "sm" })}
+					>
+						<IconBook className="size-4" />
+						API docs
+					</a>
+					{canManage && (
+						<Button type="button" size="sm" onClick={() => setCreatingOpen(true)}>
+							<IconPlus className="size-4" />
+							New key
+						</Button>
+					)}
+				</div>
 			</header>
-
-			{error && (
-				<Alert variant="destructive">
-					<IconAlertTriangle />
-					<AlertTitle>Something went wrong</AlertTitle>
-					<AlertDescription>{error}</AlertDescription>
-				</Alert>
-			)}
 
 			{issuedKey && <IssuedKeyCard value={issuedKey} />}
 
-			{canManage ? (
-				<form onSubmit={handleCreate}>
-					<Card>
-						<CardHeader className="border-b">
-							<CardTitle>Create a key</CardTitle>
-							<CardDescription>
-								Name it for wherever it will run, and grant it only what that place needs.
-							</CardDescription>
-						</CardHeader>
-
-						<CardContent className="space-y-6">
-							<div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
-								<div className="space-y-2">
-									<Label htmlFor="key-name">Name</Label>
-									<Input
-										id="key-name"
-										placeholder="Reporting pipeline"
-										value={name}
-										onChange={(event) => setName(event.target.value)}
-										required
-									/>
-								</div>
-								<div className="space-y-2">
-									<Label htmlFor="key-expiry">Expires</Label>
-									<Select
-										items={{
-											never: "Never",
-											...Object.fromEntries(expiryOptions.map((days) => [String(days), `In ${days} days`])),
-										}}
-										value={expiresInDays}
-										onValueChange={(value) => setExpiresInDays(value ?? "never")}
-									>
-										<SelectTrigger id="key-expiry" className="w-full">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="never">Never</SelectItem>
-											{expiryOptions.map((days) => (
-												<SelectItem key={days} value={String(days)}>
-													In {days} days
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-							</div>
-
-							<Separator />
-
-							<ScopePicker
-								allScopes={allScopes}
-								scopes={scopes}
-								onToggle={(scope) => setScopes((current) => toggle(current, scope))}
-								onPreset={(which) => setScopes(preset(which, allScopes))}
-							/>
-
-							<Separator />
-
-							<section className="space-y-3">
-								<SectionHeading
-									title="Brand access"
-									description="Unrestricted keys reach every brand in this organization, including ones added later."
-								/>
-								<label
-									htmlFor="restrict-brands"
-									className="flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors hover:bg-accent/50"
-								>
-									<Checkbox
-										id="restrict-brands"
-										checked={restrictBrands}
-										onCheckedChange={(next) => setRestrictBrands(next === true)}
-									/>
-									<span className="text-sm font-medium">Restrict this key to specific brands</span>
-								</label>
-								{restrictBrands &&
-									(brands.length === 0 ? (
-										<p className="text-sm text-muted-foreground">
-											This organization has no brands yet, so there is nothing to narrow the key to.
-										</p>
-									) : (
-										<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-											{brands.map((brand) => (
-												<label
-													key={brand.id}
-													htmlFor={`brand-${brand.id}`}
-													className="flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors hover:bg-accent/50"
-												>
-													<Checkbox
-														id={`brand-${brand.id}`}
-														checked={selectedBrands.includes(brand.id)}
-														onCheckedChange={() => setSelectedBrands((current) => toggle(current, brand.id))}
-													/>
-													<span className="min-w-0 flex-1 truncate text-sm font-medium">{brand.name}</span>
-												</label>
-											))}
-										</div>
-									))}
-							</section>
-						</CardContent>
-
-						<CardFooter className="flex-wrap justify-between gap-3 border-t">
-							<p className="text-sm text-muted-foreground">
-								{scopes.length === 0
-									? "Pick at least one scope — a key that grants nothing can't be created."
-									: "The key is shown once, right after it is created."}
-							</p>
-							<Button type="submit" disabled={creating || scopes.length === 0}>
-								{creating ? <Spinner /> : <IconKey className="size-4" />}
-								{creating ? "Creating…" : "Create key"}
-							</Button>
-						</CardFooter>
-					</Card>
-				</form>
-			) : (
+			{!canManage && (
 				<Alert>
 					<IconAlertTriangle />
 					<AlertTitle>Read-only view</AlertTitle>
@@ -300,7 +163,7 @@ function ApiKeysSettingsPage() {
 				</div>
 
 				{keys.length === 0 ? (
-					<EmptyKeys canManage={canManage} />
+					<EmptyKeys canManage={canManage} onCreate={() => setCreatingOpen(true)} />
 				) : (
 					<Card className="gap-0 py-0">
 						<ul className="divide-y">
@@ -320,6 +183,28 @@ function ApiKeysSettingsPage() {
 					</Card>
 				)}
 			</section>
+
+			<Dialog open={creatingOpen} onOpenChange={setCreatingOpen}>
+				{/* Flex column, not the default grid: the fields scroll on a short
+				    viewport while the header and the submit stay put. */}
+				<DialogContent className="flex max-h-[85vh] flex-col gap-4 sm:max-w-3xl">
+					<DialogHeader className="shrink-0">
+						<DialogTitle>Create a key</DialogTitle>
+						<DialogDescription>
+							Name it for wherever it will run, and grant it only what that place needs.
+						</DialogDescription>
+					</DialogHeader>
+					{/* The popup unmounts on close, so each open starts from a clean form. */}
+					<CreateKeyForm
+						organizationId={organization.id}
+						brands={brands}
+						allScopes={allScopes}
+						expiryOptions={expiryOptions}
+						onCreated={handleCreated}
+						onCancel={() => setCreatingOpen(false)}
+					/>
+				</DialogContent>
+			</Dialog>
 
 			<Dialog
 				open={revokeTarget !== null}
@@ -358,6 +243,171 @@ function ApiKeysSettingsPage() {
 				</DialogContent>
 			</Dialog>
 		</div>
+	);
+}
+
+function CreateKeyForm({
+	organizationId,
+	brands,
+	allScopes,
+	expiryOptions,
+	onCreated,
+	onCancel,
+}: {
+	organizationId: string;
+	brands: ApiKeysPageData["brands"];
+	allScopes: readonly ApiScope[];
+	expiryOptions: readonly number[];
+	onCreated: (key: string) => void;
+	onCancel: () => void;
+}) {
+	const [name, setName] = useState("");
+	const [scopes, setScopes] = useState<ApiScope[]>(() => preset("read", allScopes));
+	const [restrictBrands, setRestrictBrands] = useState(false);
+	const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+	const [expiresInDays, setExpiresInDays] = useState<string>("never");
+	const [creating, setCreating] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	async function handleSubmit(event: React.FormEvent) {
+		event.preventDefault();
+		setError(null);
+		setCreating(true);
+		try {
+			const { key } = await createApiKeyFn({
+				data: {
+					organizationId,
+					name,
+					scopes,
+					// Null, not `[]`: unrestricted is the absence of a restriction. The
+					// server rejects `[]` rather than reading it as "all".
+					brandIds: restrictBrands ? selectedBrands : null,
+					expiresInDays: expiresInDays === "never" ? null : Number(expiresInDays),
+				},
+			});
+			trackEvent("api_key_created", { scopes: scopes.length, restricted: restrictBrands });
+			onCreated(key);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to create the API key");
+		} finally {
+			setCreating(false);
+		}
+	}
+
+	return (
+		<form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
+			<div className="min-h-0 flex-1 space-y-6 overflow-y-auto">
+				{error && (
+					<Alert variant="destructive">
+						<IconAlertTriangle />
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+				)}
+
+				<div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
+					<div className="space-y-2">
+						<Label htmlFor="key-name">Name</Label>
+						<Input
+							id="key-name"
+							placeholder="Reporting pipeline"
+							value={name}
+							onChange={(event) => setName(event.target.value)}
+							required
+						/>
+					</div>
+					<div className="space-y-2">
+						<Label htmlFor="key-expiry">Expires</Label>
+						<Select
+							items={{
+								never: "Never",
+								...Object.fromEntries(expiryOptions.map((days) => [String(days), `In ${days} days`])),
+							}}
+							value={expiresInDays}
+							onValueChange={(value) => setExpiresInDays(value ?? "never")}
+						>
+							<SelectTrigger id="key-expiry" className="w-full">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="never">Never</SelectItem>
+								{expiryOptions.map((days) => (
+									<SelectItem key={days} value={String(days)}>
+										In {days} days
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+				</div>
+
+				<Separator />
+
+				<ScopePicker
+					allScopes={allScopes}
+					scopes={scopes}
+					onToggle={(scope) => setScopes((current) => toggle(current, scope))}
+					onPreset={(which) => setScopes(preset(which, allScopes))}
+				/>
+
+				<Separator />
+
+				<section className="space-y-3">
+					<SectionHeading
+						title="Brand access"
+						description="Unrestricted keys reach every brand in this organization, including ones added later."
+					/>
+					<label
+						htmlFor="restrict-brands"
+						className="flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors hover:bg-accent/50"
+					>
+						<Checkbox
+							id="restrict-brands"
+							checked={restrictBrands}
+							onCheckedChange={(next) => setRestrictBrands(next === true)}
+						/>
+						<span className="text-sm font-medium">Restrict this key to specific brands</span>
+					</label>
+					{restrictBrands &&
+						(brands.length === 0 ? (
+							<p className="text-sm text-muted-foreground">
+								This organization has no brands yet, so there is nothing to narrow the key to.
+							</p>
+						) : (
+							<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+								{brands.map((brand) => (
+									<label
+										key={brand.id}
+										htmlFor={`brand-${brand.id}`}
+										className="flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors hover:bg-accent/50"
+									>
+										<Checkbox
+											id={`brand-${brand.id}`}
+											checked={selectedBrands.includes(brand.id)}
+											onCheckedChange={() => setSelectedBrands((current) => toggle(current, brand.id))}
+										/>
+										<span className="min-w-0 flex-1 truncate text-sm font-medium">{brand.name}</span>
+									</label>
+								))}
+							</div>
+						))}
+				</section>
+			</div>
+
+			<DialogFooter className="shrink-0 items-center border-t pt-4 sm:justify-between">
+				<p className="text-sm text-muted-foreground">
+					{scopes.length === 0 ? "Pick at least one scope." : "The key is shown once, right after it is created."}
+				</p>
+				<div className="flex items-center gap-2">
+					<Button type="button" variant="outline" disabled={creating} onClick={onCancel}>
+						Cancel
+					</Button>
+					<Button type="submit" disabled={creating || scopes.length === 0}>
+						{creating ? <Spinner /> : <IconKey className="size-4" />}
+						{creating ? "Creating…" : "Create key"}
+					</Button>
+				</div>
+			</DialogFooter>
+		</form>
 	);
 }
 
@@ -468,9 +518,9 @@ function IssuedKeyCard({ value }: { value: string }) {
 	}, [copied]);
 
 	return (
-		<Card className="gap-4 border-emerald-500/40 bg-emerald-50/60 dark:bg-emerald-950/20">
+		<Card className="gap-4 border-emerald-500/40 bg-emerald-50/60">
 			<CardHeader>
-				<CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+				<CardTitle className="flex items-center gap-2 text-emerald-700">
 					<IconCircleCheck className="size-5" />
 					Key created
 				</CardTitle>
@@ -579,18 +629,26 @@ function KeyRow({
 	);
 }
 
-function EmptyKeys({ canManage }: { canManage: boolean }) {
+function EmptyKeys({ canManage, onCreate }: { canManage: boolean; onCreate: () => void }) {
 	return (
-		<div className="flex flex-col items-center gap-2 rounded-md border border-dashed px-6 py-12 text-center">
+		<div className="flex flex-col items-center gap-3 rounded-md border border-dashed px-6 py-12 text-center">
 			<span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
 				<IconKey className="size-5" />
 			</span>
-			<p className="font-medium">No API keys yet</p>
-			<p className="max-w-sm text-sm text-muted-foreground">
-				{canManage
-					? "Create one above to call the REST API or connect an MCP client."
-					: "An organization admin can issue one."}
-			</p>
+			<div className="space-y-1">
+				<p className="font-medium">No API keys yet</p>
+				<p className="max-w-sm text-sm text-muted-foreground">
+					{canManage
+						? "Issue one to call the REST API or connect an MCP client."
+						: "An organization admin can issue one."}
+				</p>
+			</div>
+			{canManage && (
+				<Button type="button" onClick={onCreate}>
+					<IconPlus className="size-4" />
+					Create your first key
+				</Button>
+			)}
 		</div>
 	);
 }

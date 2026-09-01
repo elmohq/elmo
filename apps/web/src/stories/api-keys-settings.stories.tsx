@@ -97,14 +97,13 @@ export const WithKeys: Story = {
 		// A key past its expiry is called out rather than sitting among the live ones.
 		await expect(await canvas.findByText("Expired")).toBeVisible();
 		await expect((await canvas.findAllByText("Active")).length).toBe(2);
-		// The default preset is read-only, so no write scope starts ticked.
-		const prompts = within(await canvas.findByRole("group", { name: "Prompts" }));
-		await expect(await prompts.findByRole("checkbox", { name: "Read" })).toBeChecked();
-		await expect(await prompts.findByRole("checkbox", { name: "Write" })).not.toBeChecked();
+		// Creating is behind the header button, so the list is all the page shows.
+		await expect(await canvas.findByRole("button", { name: "New key" })).toBeVisible();
+		await expect(canvas.queryByLabelText("Name")).toBeNull();
 	},
 };
 
-/** Nothing issued yet: the list says so instead of rendering an empty box. */
+/** Nothing issued yet: the empty state carries the way to fix that. */
 export const NoKeys: Story = {
 	render: () => {
 		load({ keys: [], canManage: true });
@@ -113,6 +112,8 @@ export const NoKeys: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText("No API keys yet")).toBeVisible();
+		await userEvent.click(await canvas.findByRole("button", { name: "Create your first key" }));
+		await expect(await within(document.body).findByRole("dialog")).toBeVisible();
 	},
 };
 
@@ -124,9 +125,24 @@ export const NonAdmin: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(canvas.queryByRole("button", { name: "Create key" })).toBeNull();
+		await expect(canvas.queryByRole("button", { name: "New key" })).toBeNull();
 		await expect(canvas.queryByRole("button", { name: "Revoke" })).toBeNull();
 		await expect(await canvas.findByText("Reporting pipeline")).toBeVisible();
+	},
+};
+
+/** The create form, as it opens. */
+export const CreateKeyDialog: Story = {
+	render: () => {
+		load({ keys: KEYS, canManage: true });
+		return <ApiKeysSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		await userEvent.click(await within(canvasElement).findByRole("button", { name: "New key" }));
+		const dialog = within(await within(document.body).findByRole("dialog"));
+		await expect(await dialog.findByLabelText("Name")).toBeVisible();
+		// Read-only by default: one read scope per resource, and six resources have one.
+		await expect(await dialog.findByText("6/10")).toBeVisible();
 	},
 };
 
@@ -137,12 +153,11 @@ export const ScopePresets: Story = {
 		return <ApiKeysSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
-		const canvas = within(canvasElement);
-		// One read scope per resource, and six resources have one.
-		await expect(await canvas.findByText("6/10")).toBeVisible();
-		await userEvent.click(await canvas.findByRole("button", { name: "Full access" }));
-		await expect(await canvas.findByText("10/10")).toBeVisible();
-		const competitors = within(await canvas.findByRole("group", { name: "Competitors" }));
+		await userEvent.click(await within(canvasElement).findByRole("button", { name: "New key" }));
+		const dialog = within(await within(document.body).findByRole("dialog"));
+		await userEvent.click(await dialog.findByRole("button", { name: "Full access" }));
+		await expect(await dialog.findByText("10/10")).toBeVisible();
+		const competitors = within(await dialog.findByRole("group", { name: "Competitors" }));
 		await expect(await competitors.findByRole("checkbox", { name: "Delete" })).toBeChecked();
 	},
 };
@@ -154,10 +169,11 @@ export const RestrictedToBrands: Story = {
 		return <ApiKeysSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
-		const canvas = within(canvasElement);
-		await expect(canvas.queryByRole("checkbox", { name: "Acme Labs" })).toBeNull();
-		await userEvent.click(await canvas.findByRole("checkbox", { name: /restrict this key to specific brands/i }));
-		await expect(await canvas.findByRole("checkbox", { name: "Acme Labs" })).toBeVisible();
+		await userEvent.click(await within(canvasElement).findByRole("button", { name: "New key" }));
+		const dialog = within(await within(document.body).findByRole("dialog"));
+		await expect(dialog.queryByRole("checkbox", { name: "Acme Labs" })).toBeNull();
+		await userEvent.click(await dialog.findByRole("checkbox", { name: /restrict this key to specific brands/i }));
+		await expect(await dialog.findByRole("checkbox", { name: "Acme Labs" })).toBeVisible();
 	},
 };
 
@@ -169,10 +185,12 @@ export const KeyJustCreated: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await userEvent.type(await canvas.findByLabelText("Name"), "Nightly export");
-		await userEvent.click(await canvas.findByRole("button", { name: "Create key" }));
+		await userEvent.click(await canvas.findByRole("button", { name: "New key" }));
+		const dialog = within(await within(document.body).findByRole("dialog"));
+		await userEvent.type(await dialog.findByLabelText("Name"), "Nightly export");
+		await userEvent.click(await dialog.findByRole("button", { name: "Create key" }));
+		// The dialog gets out of the way; the secret belongs to the page behind it.
 		await expect(await canvas.findByText("Key created")).toBeVisible();
-		// The whole secret, not the truncated prefix the list shows for stored keys.
 		await expect(await canvas.findByText("elmo_5f3b9c1d84a24e7fbc2a6d0e91f7c3b8")).toBeVisible();
 	},
 };
