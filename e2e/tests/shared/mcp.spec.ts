@@ -16,9 +16,10 @@
  * Both run against the same seeded data every other spec uses, so a number an
  * agent reads here is checked against the one the REST surface publishes.
  */
-import { expect, request as playwrightRequest, test } from "@playwright/test";
+import { request as playwrightRequest } from "@playwright/test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { expect, test } from "../../test";
 import { API_KEYS, NIKE_BRAND_ID, TEST_API_KEY, TEST_BRAND_ID, TEST_USER } from "../../fixtures";
 
 const MCP_PATH = "/api/mcp";
