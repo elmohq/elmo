@@ -10,12 +10,13 @@ import { createAuthMiddleware } from "better-auth/api";
 const HTTP_LOOPBACK_REDIRECT = /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])([:/?#]|$)/i;
 
 /**
- * OpenID Connect Registration §2 defaults an omitted `application_type` to
- * `web`, and a web client may not redirect to loopback — so a client that never
- * declares a type is turned away for using the only redirect its platform can
- * receive. Reading those registrations as native costs nothing: a client that
- * asks for `web` is still held to https, and a public client still proves
- * itself with PKCE rather than with its redirect URI.
+ * MCP requires a client to declare `application_type` when it registers, and
+ * OpenID Connect Registration §2 defaults an omitted one to `web` — which may
+ * not redirect to loopback. A client that skips it is therefore turned away for
+ * asking to be redirected to the machine it runs on, and no browser client asks
+ * for that, so read the registration as the native one it is. A client that
+ * says `web` is still held to https, and a public client still proves itself
+ * with PKCE rather than with its redirect URI.
  */
 export function nativeClientRegistrationDefault() {
 	return {
@@ -30,11 +31,11 @@ export function nativeClientRegistrationDefault() {
 						const body = ctx.body as Record<string, unknown> | undefined;
 						if (!body || body.application_type !== undefined) return;
 						const redirectUris = body.redirect_uris;
-						const allLoopback =
-							Array.isArray(redirectUris) &&
-							redirectUris.length > 0 &&
-							redirectUris.every((uri) => typeof uri === "string" && HTTP_LOOPBACK_REDIRECT.test(uri));
-						if (!allLoopback) return;
+						if (!Array.isArray(redirectUris)) return;
+						const wantsLoopback = redirectUris.some(
+							(uri) => typeof uri === "string" && HTTP_LOOPBACK_REDIRECT.test(uri),
+						);
+						if (!wantsLoopback) return;
 						return { context: { body: { ...body, application_type: "native" } } };
 					}),
 				},

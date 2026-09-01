@@ -68,6 +68,15 @@ describe("dynamic client registration", () => {
 		},
 	);
 
+	it("registers a client that offers a hosted callback alongside its loopback one", async () => {
+		const { status, body } = await register({
+			redirect_uris: ["http://127.0.0.1:54321/callback", "https://www.example.com/mcp/oauth/callback"],
+		});
+
+		expect(status).toBe(201);
+		expect(body.application_type).toBe("native");
+	});
+
 	it("still holds a client that asks to be treated as a web app to https", async () => {
 		const { status, body } = await register({
 			application_type: "web",
@@ -92,12 +101,12 @@ describe("dynamic client registration", () => {
 		expect(body.error).toBe("invalid_redirect_uri");
 	});
 
-	it("rejects a client asking for a public redirect alongside its loopback one", async () => {
+	it("reports the real fault in a private-use scheme rather than blaming the loopback URI", async () => {
 		const { status, body } = await register({
-			redirect_uris: ["http://127.0.0.1:19876/mcp/oauth/callback", "https://example.com/callback"],
+			redirect_uris: ["http://127.0.0.1:54321/callback", "cursor://anysphere.cursor-mcp/oauth/callback"],
 		});
 
 		expect(status).toBe(400);
-		expect(body.error).toBe("invalid_redirect_uri");
+		expect(body.error_description).toContain("private-use");
 	});
 });
