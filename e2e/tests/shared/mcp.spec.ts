@@ -211,8 +211,10 @@ test.describe("MCP", () => {
     // on markup with no handler attached is silently discarded.
     await page.waitForLoadState("networkidle");
 
-    // Nothing is issued until it is clicked: a page that bounced a signed-in
-    // browser onward would hand a token to anything that could load this URL.
+    // The first hop (minting the consent request) is an automatic bounce; the
+    // grant itself is not. Nothing a client can spend exists until this click,
+    // and a page that granted on load would hand a token to anything that
+    // could load this URL.
     await page.getByRole("button", { name: /^Allow / }).click();
     await expect.poll(() => delivered.length).toBeGreaterThan(0);
 

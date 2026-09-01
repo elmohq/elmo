@@ -10,6 +10,7 @@ import { apiKey } from "@better-auth/api-key";
 import { type SSOOptions, sso } from "@better-auth/sso";
 import { type BetterAuthOptions, type BetterAuthPlugin, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { createAuthMiddleware } from "better-auth/api";
 import {
 	admin,
 	customSession,
@@ -70,6 +71,33 @@ export const MCP_AUTHORIZE_PAGE = "/auth/authorize";
 
 /** Where the MCP endpoint is served, and what its resource identifier names. */
 export const MCP_PATH = "/api/mcp";
+
+/**
+ * The `mcp` plugin only requires consent when the *client* sends
+ * `prompt=consent`, and no MCP client sends it — so left alone, a signed-in
+ * browser that loads `/api/auth/mcp/authorize` hands a code to the redirect URI
+ * with no say from the person holding it. This rewrites every authorize request
+ * to `prompt=consent`, which is the plugin's own consent switch, so the flow
+ * always stops at the consent page.
+ *
+ * The plugin's login round-trip replays `ctx.query` from a cookie rather than
+ * the URL, but the rewrite has already landed in the query by the time that
+ * cookie is written, so it survives the round trip.
+ */
+const mcpConsentGate = {
+	id: "mcp-consent-gate",
+	version: "1.0",
+	hooks: {
+		before: [
+			{
+				matcher: (ctx: { path?: string }) => ctx.path === "/mcp/authorize",
+				handler: createAuthMiddleware(async (ctx) => {
+					ctx.query = { ...ctx.query, prompt: "consent" };
+				}),
+			},
+		],
+	},
+} satisfies BetterAuthPlugin;
 
 export function createAuth(options?: CreateAuthOptions) {
 	const appUrl = process.env.APP_URL || process.env.VITE_APP_URL;
@@ -174,16 +202,22 @@ export function createAuth(options?: CreateAuthOptions) {
 			// token that acts as that person — the same reach they have in the
 			// dashboard, no more.
 			//
+			// `consentPage` is not in the plugin's published options type, but its
+			// authorize handler reads it — without it the plugin only stops for
+			// consent when the client asks, and none do.
+			//
 			// `resource` is the protected resource identifier a client checks its
 			// token audience against, so it names the MCP endpoint rather than the
 			// origin the plugin would default to. It is built from the same
 			// `baseURL` the plugin advertises as the authorization server — naming
 			// the two differently is what makes a strict client refuse to connect
 			// against a local instance.
+			mcpConsentGate,
 			mcp({
 				loginPage: MCP_AUTHORIZE_PAGE,
+				consentPage: MCP_AUTHORIZE_PAGE,
 				resource: `${origin}${MCP_PATH}`,
-			}),
+			} as Parameters<typeof mcp>[0]),
 			sso(options?.sso),
 			...(options?.extraPlugins ?? []),
 			// Replaces the /get-session endpoint, so this runs on every session
