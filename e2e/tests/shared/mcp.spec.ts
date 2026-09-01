@@ -75,18 +75,28 @@ test.describe("MCP", () => {
     await client.close();
   });
 
-  test("a key is offered exactly the tools its scopes allow", async ({ baseURL }) => {
+  test("a key is offered exactly the tools its scopes allow", async ({ baseURL }, testInfo) => {
     const full = await connect(baseURL!, API_KEYS.orgFull.token);
     const readOnly = await connect(baseURL!, API_KEYS.orgReadOnly.token);
     const scopeless = await connect(baseURL!, API_KEYS.orgNoScopes.token);
 
     const namesOf = async (client: Client) => (await client.listTools()).tools.map((tool) => tool.name);
+    const fullNames = await namesOf(full);
+    const readOnlyNames = await namesOf(readOnly);
 
-    expect(await namesOf(readOnly)).toContain("list_prompts");
-    expect(await namesOf(readOnly)).not.toContain("create_prompts");
-    expect(await namesOf(readOnly)).not.toContain("update_prompt");
-    // Not a subset by accident: the read-only key sees strictly fewer.
-    expect((await namesOf(readOnly)).length).toBeLessThan((await namesOf(full)).length);
+    expect(readOnlyNames).toContain("list_prompts");
+    expect(readOnlyNames).not.toContain("create_prompts");
+    expect(readOnlyNames).not.toContain("update_prompt");
+    // Not a subset by accident: everything the read-only key holds, the full key
+    // holds too.
+    expect(fullNames).toEqual(expect.arrayContaining(readOnlyNames));
+    // A read-only deployment has already dropped both writers for every key, so
+    // there the two lists are equal rather than strictly ordered. Asserting
+    // "fewer" in that mode would be asserting the scope filter still has
+    // something left to remove.
+    if (testInfo.project.name === "demo") expect([...readOnlyNames].sort()).toEqual([...fullNames].sort());
+    else expect(readOnlyNames.length).toBeLessThan(fullNames.length);
+
     expect((await namesOf(scopeless)).sort()).toEqual(["list_models", "whoami"]);
 
     await Promise.all([full.close(), readOnly.close(), scopeless.close()]);
