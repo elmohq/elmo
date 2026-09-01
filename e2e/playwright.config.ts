@@ -1,19 +1,15 @@
 /**
  * One Playwright project per deployment mode.
  *
- * The stack serves a single DEPLOYMENT_MODE at a time, so a run targets one
- * mode: `--project=cloud` expects the web container to already be running in
- * cloud mode (see e2e/modes/*.yaml and .github/workflows/e2e.yaml). Each mode
- * runs the shared specs — the behaviour every deployment owes its users — plus
- * the specs for what makes that mode different.
+ * A container serves a single DEPLOYMENT_MODE, so the stack runs one per mode,
+ * each on its own port: `--project=cloud` addresses the cloud container (see
+ * e2e/modes.yaml and .github/workflows/e2e.yaml). Each mode runs the shared
+ * specs — the behaviour every deployment owes its users — plus the specs for
+ * what makes that mode different.
  */
 import { defineConfig, devices } from "@playwright/test";
-import { authStatePath, DEPLOYMENT_MODES, WHITELABEL } from "./fixtures";
+import { authStatePath, DEPLOYMENT_MODES, modeUrl, WHITELABEL } from "./fixtures";
 import type { ConsoleErrorOptions } from "./test";
-
-// Base URL can be overridden via environment variable.
-// Default: http://localhost:1515 (Docker Compose maps web:3000 → host:1515)
-const BASE_URL = process.env.BASE_URL || "http://localhost:1515";
 
 // Each mode run writes its own HTML report so the three CI passes don't
 // overwrite each other's output.
@@ -23,7 +19,7 @@ const modeProjects = DEPLOYMENT_MODES.flatMap((mode) => [
   {
     name: `${mode}:setup`,
     testMatch: /auth\.setup\.ts/,
-    use: { ...devices["Desktop Chrome"] },
+    use: { ...devices["Desktop Chrome"], baseURL: modeUrl(mode) },
   },
   {
     name: mode,
@@ -35,6 +31,7 @@ const modeProjects = DEPLOYMENT_MODES.flatMap((mode) => [
     outputDir: `test-results-${mode}`,
     use: {
       ...devices["Desktop Chrome"],
+      baseURL: modeUrl(mode),
       storageState: authStatePath(mode),
       allowedConsoleErrors: mode === "whitelabel" ? [WHITELABEL.appIcon] : [],
     },
@@ -57,7 +54,6 @@ export default defineConfig<ConsoleErrorOptions>({
   maxFailures: process.env.CI ? 10 : 5,
 
   use: {
-    baseURL: BASE_URL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -75,7 +71,7 @@ export default defineConfig<ConsoleErrorOptions>({
       testMatch: /worker\.spec\.ts/,
       outputDir: "test-results-worker",
       timeout: 150_000,
-      use: { ...devices["Desktop Chrome"] },
+      use: { ...devices["Desktop Chrome"], baseURL: modeUrl("local") },
     },
   ],
 });

@@ -1,0 +1,110 @@
+# Every deployment mode, up at once.
+#
+# A container reads DEPLOYMENT_MODE at startup and holds it for its lifetime, so
+# covering four modes used to mean recreating `web` three times and waiting out
+# each cold start in turn. These services are the same image under four
+# configurations instead, one port each (MODE_PORTS in e2e/fixtures.ts), so the
+# boots overlap and no phase stops to switch. Each carries its own APP_URL:
+# better-auth signs cookies and MCP resource identifiers against it, so a
+# container that named the wrong port would refuse its own callers.
+#
+# They share `web`'s database. The suites still run one at a time and re-seed
+# between them, and a web container writes nothing except in answer to a
+# request, so an idle mode cannot disturb the mode under test.
+#
+# Demo deliberately reuses that shared database rather than getting a clean one:
+# signup is disabled there, so the account its specs sign in with has to have
+# been bootstrapped by the local phase. That mirrors how the public demo is
+# deployed, and is why the demo phase still runs last.
+services:
+  # The mode services carry no build of their own, so `docker compose build`
+  # still builds this image exactly once; naming it here is what lets them run
+  # it.
+  web:
+    image: elmo-e2e-web
+
+  # Cloud requires Stripe, Resend, and Google OAuth to be configured — env
+  # validation fails the app without them — but no assertion calls those
+  # services, so every credential here is a placeholder. Verification emails are
+  # attempted and fail; better-auth logs the failure and completes the signup
+  # regardless, so the suite covers cloud signup without an email provider.
+  web-cloud:
+    image: elmo-e2e-web
+    env_file:
+      # Relative to the project directory, which is where the first file in
+      # COMPOSE_FILE lives — the generated .elmo/elmo.yaml, beside this .env.
+      - path: .env
+        required: true
+    ports:
+      - "1516:3000"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    environment:
+      DEPLOYMENT_MODE: cloud
+      VITE_DEPLOYMENT_MODE: cloud
+      APP_URL: http://localhost:1516
+      VITE_APP_URL: http://localhost:1516
+      # Admits the E2E user plus the two domains e2e/tests/cloud uses. The
+      # disposable domain is allowlisted on purpose, so the disposable-address
+      # rejection is reached rather than masked by the invite-only gate.
+      CLOUD_SIGNUP_ALLOWLIST: "e2e@test.local,@e2e-allowed.test,@mailinator.com"
+      STRIPE_SECRET_KEY: sk_test_e2e_placeholder
+      STRIPE_WEBHOOK_SECRET: whsec_e2e_placeholder
+      RESEND_API_KEY: re_e2e_placeholder
+      RESEND_FROM_EMAIL: Elmo E2E <e2e@example.test>
+      GOOGLE_CLIENT_ID: e2e-google-client-id
+      GOOGLE_CLIENT_SECRET: e2e-google-client-secret
+
+  # The Auth0 values point at a reserved-for-testing domain that cannot resolve,
+  # so no run can reach a real identity provider. The specs assert on the
+  # authorize/logout URLs the app builds rather than completing an SSO round
+  # trip; the authenticated session is minted directly (see e2e/session.ts).
+  #
+  # Branding and the optimization template must stay in sync with WHITELABEL in
+  # e2e/fixtures.ts, which is what the specs assert against.
+  web-whitelabel:
+    image: elmo-e2e-web
+    env_file:
+      # Relative to the project directory, which is where the first file in
+      # COMPOSE_FILE lives — the generated .elmo/elmo.yaml, beside this .env.
+      - path: .env
+        required: true
+    ports:
+      - "1517:3000"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    environment:
+      DEPLOYMENT_MODE: whitelabel
+      VITE_DEPLOYMENT_MODE: whitelabel
+      APP_URL: http://localhost:1517
+      VITE_APP_URL: http://localhost:1517
+      VITE_APP_NAME: Acme AI Search
+      VITE_APP_ICON: https://cdn.example.test/acme-icon.png
+      VITE_APP_PARENT_NAME: Acme
+      VITE_APP_PARENT_URL: https://app.example.test/
+      VITE_OPTIMIZATION_URL_TEMPLATE: https://app.example.test/optimize?org_id={brandId}&prompt={prompt}&web_query={webQuery}
+      AUTH0_DOMAIN: e2e-idp.example.test
+      AUTH0_MGMT_API_DOMAIN: e2e-idp.example.test
+      AUTH0_CLIENT_ID: e2e-auth0-client-id
+      AUTH0_CLIENT_SECRET: e2e-auth0-client-secret
+
+  # Demo is local with READ_ONLY forced on.
+  web-demo:
+    image: elmo-e2e-web
+    env_file:
+      # Relative to the project directory, which is where the first file in
+      # COMPOSE_FILE lives — the generated .elmo/elmo.yaml, beside this .env.
+      - path: .env
+        required: true
+    ports:
+      - "1518:3000"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    environment:
+      DEPLOYMENT_MODE: demo
+      VITE_DEPLOYMENT_MODE: demo
+      APP_URL: http://localhost:1518
+      VITE_APP_URL: http://localhost:1518

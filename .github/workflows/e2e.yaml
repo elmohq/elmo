@@ -9,24 +9,24 @@
 #   2. worker — start the worker (pointed at the no-network `stub` provider)
 #      and run the `worker` project, which submits a job and asserts the worker
 #      processes it
-#   3. cloud — worker back down, recreate `web` with e2e/modes/cloud.yaml,
-#      re-seed, run the `cloud` project and the `cloud`-tagged Bruno cases
-#      (plan enforcement, which only exists in this mode)
-#   4. whitelabel — same with e2e/modes/whitelabel.yaml
-#   5. demo — same with e2e/modes/demo.yaml, plus the `demo`-tagged Bruno
-#      cases (every API write must be refused)
+#   3. cloud — worker back down, re-seed, run the `cloud` project and the
+#      `cloud`-tagged Bruno cases (plan enforcement, which only exists here)
+#   4. whitelabel — same, against the whitelabel container
+#   5. demo — same, plus the `demo`-tagged Bruno cases (every API write must be
+#      refused)
 #
-# The mode phases only recreate `web`: DEPLOYMENT_MODE is read at runtime, so
-# one image serves all of them. Ordering matters — the fixture suites run while
-# the worker is down so its self-healing scheduler can't mutate seeded data,
-# and the local phase runs first because it bootstraps the account the other
-# modes sign in with.
+# All four modes are up from the start, one container each (e2e/modes.yaml), so
+# their boots overlap and no phase pays to recreate and re-warm `web`. They
+# share one database and one image, and the suites still run one at a time.
+# Ordering matters — the fixture suites run while the worker is down so its
+# self-healing scheduler can't mutate seeded data, and the local phase runs
+# first because it bootstraps the account the other modes sign in with.
 #
 # This workflow is the SINGLE SOURCE OF TRUTH for E2E test orchestration.
 # Run locally via: pnpm test:e2e-local  (replays this workflow with
 # https://github.com/nektos/act); `pnpm test:e2e`, `pnpm test:e2e:cloud`,
 # `pnpm test:e2e:whitelabel`, and `pnpm test:e2e:demo` run one mode's specs
-# against an already-running stack in that mode.
+# against an already-running stack.
 
 name: E2E Tests
 
@@ -51,11 +51,11 @@ jobs:
     timeout-minutes: 45
 
     env:
-      # One file set for every `docker compose` invocation below, so no step
-      # can silently run against a different effective config. The override
-      # scopes the worker to the no-network stub provider. The mode phases
-      # append their own override on top of this.
-      COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml
+      # One file set for every `docker compose` invocation below, so no step can
+      # silently run against a different effective config. The first override
+      # scopes the worker to the no-network stub provider; the second adds a
+      # container per deployment mode.
+      COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml:e2e/modes.yaml
 
     steps:
       - name: Checkout
@@ -142,13 +142,20 @@ jobs:
       - name: Build images
         run: docker compose build
 
-      # Start web only (with its deps db-migrate + postgres). The worker stays
-      # down for now — it comes up in phase 2, after the fixture suites run.
-      - name: Start web
-        run: docker compose up -d --no-build web
+      # Every mode at once (with their shared deps db-migrate + postgres), so the
+      # four cold starts overlap instead of costing a recreate-and-wait between
+      # phases. The worker stays down for now — it comes up in phase 2, after
+      # the fixture suites run.
+      - name: Start every deployment mode
+        run: docker compose up -d --no-build web web-cloud web-whitelabel web-demo
 
       - name: Wait for web
-        run: bash e2e/wait-for-web.sh
+        run: |
+          bash e2e/wait-for-web.sh \
+            http://localhost:1515/ \
+            http://localhost:1516/ \
+            http://localhost:1517/ \
+            http://localhost:1518/
 
       - name: Seed test data
         run: cd e2e && npx tsx seed.ts
@@ -179,19 +186,13 @@ jobs:
         if: failure()
         run: docker compose logs worker
 
-      # Phase 3+ — the remaining deployment modes. The worker goes back down so
-      # its scheduler can't touch the re-seeded fixtures, then `web` is
-      # recreated with the mode's env overlay. `--no-deps` keeps the recreate
-      # off postgres, so the bootstrapped account and its session survive.
+      # Phase 3+ — the remaining deployment modes, each already up and warm on
+      # its own port. The worker goes back down so its scheduler can't touch the
+      # re-seeded fixtures. The re-seed between phases is what keeps them from
+      # reading each other's leftovers: they share one database, and the cloud
+      # suite in particular creates and deletes accounts.
       - name: Stop worker
         run: docker compose stop worker
-
-      - name: Switch web to cloud mode
-        env:
-          COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml:e2e/modes/cloud.yaml
-        run: |
-          docker compose up -d --no-build --no-deps --force-recreate web
-          bash e2e/wait-for-web.sh
 
       - name: Re-seed test data
         run: cd e2e && npx tsx seed.ts
@@ -206,13 +207,6 @@ jobs:
       - name: Run Bruno API tests (cloud mode)
         run: pnpm test:api:cloud
 
-      - name: Switch web to whitelabel mode
-        env:
-          COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml:e2e/modes/whitelabel.yaml
-        run: |
-          docker compose up -d --no-build --no-deps --force-recreate web
-          bash e2e/wait-for-web.sh
-
       - name: Re-seed test data
         run: cd e2e && npx tsx seed.ts
 
@@ -221,19 +215,12 @@ jobs:
         env:
           PLAYWRIGHT_HTML_REPORT: playwright-report-whitelabel
 
-      # Demo has no signup, so it reuses the account the local phase
-      # bootstrapped — the same way the public demo reuses a local install's
-      # database. It writes nothing, so it goes last.
-      - name: Switch web to demo mode
-        env:
-          COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml:e2e/modes/demo.yaml
-        run: |
-          docker compose up -d --no-build --no-deps --force-recreate web
-          bash e2e/wait-for-web.sh
-
       - name: Re-seed test data
         run: cd e2e && npx tsx seed.ts
 
+      # Demo has no signup, so it reuses the account the local phase
+      # bootstrapped — the same way the public demo reuses a local install's
+      # database. It writes nothing, so it goes last.
       - name: Run Playwright E2E tests (demo mode)
         run: pnpm -C e2e exec playwright test --project=demo
         env:

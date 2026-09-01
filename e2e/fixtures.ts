@@ -238,11 +238,27 @@ export const API_KEYS = {
 
 /**
  * The deployment modes the E2E suite covers. Each one is a Playwright project
- * that runs the shared specs plus its own; the stack serves one mode at a time,
- * so CI recreates the web container between them (see e2e/modes/*.yaml).
+ * that runs the shared specs plus its own.
+ *
+ * A container serves one mode for its lifetime, so the stack runs one per mode
+ * (see e2e/modes.yaml) rather than recreating a single container between
+ * phases. The ports here are what that file publishes, and the suites still run
+ * one at a time against a shared database.
  */
+export const MODE_PORTS = {
+  local: 1515,
+  cloud: 1516,
+  whitelabel: 1517,
+  demo: 1518,
+} as const;
+
 export const DEPLOYMENT_MODES = ["local", "cloud", "whitelabel", "demo"] as const;
 export type DeploymentMode = (typeof DEPLOYMENT_MODES)[number];
+
+/** Where a mode's stack answers. `BASE_URL` overrides it for a one-off run. */
+export function modeUrl(mode: DeploymentMode): string {
+  return process.env.BASE_URL ?? `http://localhost:${MODE_PORTS[mode]}`;
+}
 
 export function isDeploymentMode(value: string): value is DeploymentMode {
   return (DEPLOYMENT_MODES as readonly string[]).includes(value);
@@ -260,8 +276,8 @@ export function authStatePath(mode: DeploymentMode): string {
 export const GENERATED_ENV_PATH = path.join(E2E_DIR, ".elmo", ".env");
 
 /**
- * Whitelabel branding, mirroring e2e/modes/whitelabel.yaml. Kept here so specs
- * assert against the same values the container is configured with.
+ * Whitelabel branding, mirroring `web-whitelabel` in e2e/modes.yaml. Kept here
+ * so specs assert against the same values the container is configured with.
  */
 export const WHITELABEL = {
   appName: "Acme AI Search",
@@ -274,8 +290,8 @@ export const WHITELABEL = {
 } as const;
 
 /**
- * Cloud signup fixtures, mirroring CLOUD_SIGNUP_ALLOWLIST in
- * e2e/modes/cloud.yaml. The allowlist admits `allowedDomain` and the disposable
+ * Cloud signup fixtures, mirroring CLOUD_SIGNUP_ALLOWLIST in e2e/modes.yaml.
+ * The allowlist admits `allowedDomain` and the disposable
  * domain, so the disposable-address rejection is reached on its own merits
  * rather than being masked by the invite-only gate.
  */
