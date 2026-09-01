@@ -74,7 +74,10 @@ export const test = base.extend<
 	// the same client the fixtures do, rather than falling back to the shared
 	// bucket this fixture exists to escape.
 	clientHeaders: async ({}, use, testInfo) => {
-		await use({ "X-Forwarded-For": syntheticClientIp(testInfo.testId) });
+		// Keyed on the attempt, not just the test: a retry that reused the address
+		// would inherit a budget the failed attempt had already spent, and ten
+		// seconds is long enough that a retry lands inside it.
+		await use({ "X-Forwarded-For": syntheticClientIp(`${testInfo.testId}#${testInfo.retry}`) });
 	},
 
 	extraHTTPHeaders: async ({ extraHTTPHeaders, clientHeaders }, use) => {

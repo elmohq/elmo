@@ -9,7 +9,6 @@
  * transactional-email provider — so the specs verify addresses in the database
  * and assert on everything around it.
  */
-import type { APIResponse } from "@playwright/test";
 import { expect, failedResource, test } from "../../test";
 import { CLOUD_SIGNUP, TEST_BRAND_ID, TEST_USER, brandUrl, organizationUrl } from "../../fixtures";
 import { deleteUsers, userExists, verifyEmail } from "../../session";
@@ -81,35 +80,38 @@ test.describe("Cloud self-serve signup", () => {
     await expect(page.getByRole("button", { name: "Subscribe to Starter" })).toBeVisible();
   });
 
+  // A 400 rather than the allowlist's 403, so unlike the case below this
+  // refusal does reach the caller.
   test("a disposable address is refused", async ({ request }) => {
     const response = await request.post("/api/auth/sign-up/email", {
       data: { email: DISPOSABLE_EMAIL, password: NEW_USER.password, name: "Throwaway" },
       failOnStatusCode: false,
     });
 
-    expect(response.ok(), await describeResponse(response)).toBe(false);
+    expect(response.ok(), `${response.status()} ${await response.text()}`).toBe(false);
     expect(await response.text()).toContain("Disposable email addresses are not supported");
+    expect(await userExists(DISPOSABLE_EMAIL)).toBe(false);
   });
 
-  test("an address outside the allowlist is refused", async ({ request }) => {
+  /**
+   * Cloud requires email verification, which puts better-auth in the mode where
+   * a refused creation answers exactly as a duplicate address does — a 200 over
+   * a synthetic user — so that signup cannot be used to learn who is already
+   * registered. The allowlist refusal is a 403, the status that rule covers, so
+   * the response says nothing either way and the account never existing is the
+   * whole of what this can assert. Read it against the allowlisted signup
+   * above, which does create one.
+   */
+  test("an address outside the allowlist creates no account", async ({ request }) => {
     const response = await request.post("/api/auth/sign-up/email", {
       data: { email: BLOCKED_EMAIL, password: NEW_USER.password, name: "Outsider" },
       failOnStatusCode: false,
     });
+    expect(response.status(), await response.text()).toBe(200);
 
-    // The allowlist gate returns the same generic failure as any other refused
-    // signup, so the assertion is that no account appeared — read against the
-    // allowlisted signup above, which does create one.
-    expect(response.ok(), await describeResponse(response)).toBe(false);
-    expect(await userExists(BLOCKED_EMAIL)).toBe(false);
+    expect(await userExists(BLOCKED_EMAIL), "an address off the allowlist was signed up").toBe(false);
   });
 });
-
-/** `ok()` alone reports "expected false, received true", which says nothing
- * about which refusal did not happen. */
-async function describeResponse(response: APIResponse): Promise<string> {
-  return `the signup was not refused: ${response.status()} ${await response.text()}`;
-}
 
 test.describe("Cloud features", () => {
   test("report generation is switched off", async ({ page, consoleErrors }) => {
