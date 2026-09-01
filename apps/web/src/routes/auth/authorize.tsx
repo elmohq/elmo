@@ -1,11 +1,10 @@
 /**
  * /auth/authorize — where the MCP OAuth flow asks a person to say yes.
  *
- * The better-auth `mcp` plugin sends a browser here whenever `/api/auth/oauth2/
- * authorize` needs something from the person rather than from the client: a
- * session, or permission. Either way the request arrives as a signed query, and
- * the only thing that turns it into a code the client can spend is
- * `POST /api/auth/oauth2/consent` — which happens on a click and nowhere else.
+ * The better-auth `mcp` plugin sends a signed-in browser here with the
+ * authorization request in the query, signed. The only thing that turns that
+ * into a code the client can spend is `POST /api/auth/oauth2/consent` — which
+ * happens on a click and nowhere else.
  *
  * Nothing about the request is interpreted here beyond naming the client. Every
  * other parameter is carried and handed back unread — validating them is the
@@ -14,7 +13,7 @@
  * An attacker who gets a signed-in browser to load this URL therefore reaches
  * the consent screen — which is where the person says no.
  */
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button } from "@workspace/ui/components/button";
@@ -37,14 +36,14 @@ interface AuthorizeSearch {
 
 export const Route = createFileRoute("/auth/authorize")({
 	validateSearch: (search: Record<string, unknown>): AuthorizeSearch => search,
-	beforeLoad: async ({ location }) => {
-		const viewer = await getViewerFn();
-		if (!viewer) throw redirect({ to: "/auth/login", search: { returnTo: location.href } });
-		return { viewer };
-	},
+	// No bounce to sign in from here. The plugin sends a browser without a
+	// session to the sign-in page instead, and the only way to arrive here
+	// without one is a session that lapsed in between — at which point the
+	// signed request is stale and the connection has to be started again anyway.
+	beforeLoad: async () => ({ viewer: await getViewerFn() }),
 	loaderDeps: ({ search }) => ({ clientId: search.client_id }),
-	loader: async ({ deps }) => {
-		if (!deps.clientId) return { client: null };
+	loader: async ({ context, deps }) => {
+		if (!context.viewer || !deps.clientId) return { client: null };
 		return { client: await getMcpClientFn({ data: { clientId: deps.clientId } }) };
 	},
 	head: ({ match }) => ({ meta: [{ title: buildTitle("Authorize", { appName: getAppName(match) }) }] }),
@@ -53,6 +52,7 @@ export const Route = createFileRoute("/auth/authorize")({
 
 function AuthorizePage() {
 	const search = Route.useSearch();
+	const { viewer } = Route.useRouteContext();
 	const { client } = Route.useLoaderData();
 	const [connecting, setConnecting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -74,6 +74,18 @@ function AuthorizePage() {
 		// A full-page navigation, not a fetch: the answer is the client's callback
 		// URL, and only the browser can follow it there.
 		window.location.href = data.url;
+	}
+
+	if (!viewer) {
+		return (
+			<FullPageCard title="You're signed out" subtitle="Start the connection from your MCP client again.">
+				<Alert variant="destructive">
+					<AlertDescription>
+						This request was made for a session that has since ended, and signing back in won't revive it.
+					</AlertDescription>
+				</Alert>
+			</FullPageCard>
+		);
 	}
 
 	if (!search.client_id) {
