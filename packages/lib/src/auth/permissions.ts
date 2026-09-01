@@ -56,6 +56,12 @@ export const userRole = ac.newRole({
 // Issuing an API key is an owner/admin action — a key can act as the whole
 // organization, so handing one out is closer to inviting a teammate than to
 // editing a prompt.
+//
+// Of what these grant, only `apiKey` and the organization statements gate
+// anything today: the api-key plugin reads the first, the organization plugin
+// the second. Nothing consults `brand` or `report` yet, so what they say about
+// a member is a statement of intent rather than a rule anyone enforces — read
+// them that way until something asks.
 // ---------------------------------------------------------------------------
 
 /** Owners and workspace admins are the same set of permissions today. */
