@@ -10,6 +10,7 @@ import { apiKey } from "@better-auth/api-key";
 import { mcp } from "@better-auth/mcp";
 import { oauthProviderAuthServerMetadata } from "@better-auth/oauth-provider";
 import { type SSOOptions, sso } from "@better-auth/sso";
+import { MCP_PATH } from "@workspace/config/constants";
 import { type BetterAuthOptions, type BetterAuthPlugin, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware } from "better-auth/api";
@@ -77,9 +78,6 @@ export const MCP_AUTHORIZE_PAGE = "/auth/authorize";
  * and a query rebuilt is a signature broken.
  */
 const LOGIN_PAGE = "/auth/login";
-
-/** Where the MCP endpoint is served, and what its resource identifier names. */
-export const MCP_PATH = "/api/mcp";
 
 /**
  * The resource identifier an MCP access token is bound to.
@@ -374,4 +372,4 @@ export async function verifyMcpAccessToken(auth: Auth, request: Request): Promis
  * the request itself, so the route that places it at its RFC path hands the
  * request back to `auth.handler`.
  */
-export { oauthProviderAuthServerMetadata };
+export { MCP_PATH, oauthProviderAuthServerMetadata };

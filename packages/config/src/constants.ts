@@ -107,3 +107,13 @@ export const DEFAULT_CHART_COLORS = [
 	"#db2206",
 	"#1c5451",
 ];
+
+/**
+ * Where the MCP endpoint is served, and what its resource identifier names.
+ *
+ * Here rather than beside the auth server because the deployment policy rules
+ * need it too, and those are documented as pure — reaching for the auth module
+ * to learn one path would pull better-auth, its plugins, and a database pool
+ * into them.
+ */
+export const MCP_PATH = "/api/mcp";

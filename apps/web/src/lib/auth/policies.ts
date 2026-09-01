@@ -9,8 +9,8 @@
  * to one of these functions, making it trivial to write regression tests.
  */
 import { timingSafeEqual } from "node:crypto";
+import { MCP_PATH } from "@workspace/config/constants";
 import type { FeaturesConfig } from "@workspace/config/types";
-import { MCP_PATH } from "@workspace/lib/auth/server";
 import { READ_ONLY_ERROR, READ_ONLY_MESSAGE } from "@/lib/read-only-errors";
 
 // ============================================================================
