@@ -3,17 +3,15 @@
  * running server honours it, which a config or root-route change could break
  * while the unit tests still pass.
  *
- * Requests to Crisp are aborted in the browser, so CI never reaches them.
+ * Requests to Crisp are aborted for the whole suite (see e2e/test.ts), so CI
+ * never reaches them. The route below is this spec's own, layered on top to
+ * count what a mode that should stay quiet tried to fetch.
  */
-import { expect, test } from "../../test";
+import { CRISP_HOSTS, expect, test } from "../../test";
 import { TEST_BRAND_ID, brandUrl, isDeploymentMode } from "../../fixtures";
 
-const CRISP_HOSTS = "**://*.crisp.chat/**";
-
 test.describe("Support chat", () => {
-  test("loads on the deployments we operate, and only those", async ({ page, consoleErrors }, testInfo) => {
-    consoleErrors.allow(/Failed to load resource: net::ERR_FAILED.*crisp\.chat/);
-
+  test("loads on the deployments we operate, and only those", async ({ page }, testInfo) => {
     const mode = testInfo.project.name;
     if (!isDeploymentMode(mode)) {
       throw new Error(`Project "${testInfo.project.name}" does not name a deployment mode`);

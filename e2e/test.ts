@@ -3,7 +3,22 @@ import { type ConsoleMessage, type Page, expect, test as base } from "@playwrigh
 
 export type ConsoleErrorPattern = string | RegExp;
 
-const ALWAYS_ALLOWED: ConsoleErrorPattern[] = [/t[0-9]\.gstatic\.com/];
+/**
+ * Crisp, blocked below, and the failure that blocking prints.
+ *
+ * The widget is configured on the deployments we operate, so cloud and demo
+ * load it. Letting the browser fetch it makes the suite depend on which origins
+ * Crisp's CDN is willing to serve — it answers localhost:1515 and refuses the
+ * ports the other modes run on, which is nothing this suite has an opinion
+ * about. support-chat.spec.ts asserts on the loader Elmo installs, and that is
+ * in the DOM either way.
+ */
+export const CRISP_HOSTS = "**://*.crisp.chat/**";
+
+const ALWAYS_ALLOWED: ConsoleErrorPattern[] = [
+	/t[0-9]\.gstatic\.com/,
+	/Failed to load resource: net::ERR_FAILED.*crisp\.chat/,
+];
 
 export const failedResource = (status: number, from: string): RegExp =>
 	new RegExp(`Failed to load resource: the server responded with a status of ${status}\\D.*${escapeRegExp(from)}`);
@@ -92,6 +107,10 @@ export const test = base.extend<
 	// Listening here rather than in the auto fixture above keeps a spec that only
 	// takes `request` from building a browser context it never uses.
 	context: async ({ context, _consoleErrorLog }, use) => {
+		// A page route still wins over this one, so a spec can watch the requests
+		// it aborts (see support-chat.spec.ts).
+		await context.route(CRISP_HOSTS, (route) => route.abort());
+
 		const watch = (page: Page) => {
 			page.on("console", (message) => {
 				if (message.type() === "error") _consoleErrorLog.recorded.push(describeConsoleError(message));
