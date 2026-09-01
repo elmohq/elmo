@@ -37,13 +37,20 @@ export const auth = createAuth({
 		}),
 	],
 });
+// The CLI reads table definitions off `auth.options`, which is ready the moment
+// the call above returns. Initialization keeps going in the background and
+// reaches for the database — the OAuth provider seeds its resource row there —
+// so its rejection is swallowed rather than left to take the process down.
+auth.$context.catch(() => {});
 export default auth;
 EOF
 
 cleanup() { rm -f "$AUTH_CONFIG" "$TMP_OUTPUT"; }
 trap cleanup EXIT
 
-# createAuth() resolves its base URL at construction; no network, no DB.
+# createAuth() resolves its base URL at construction; no network, no DB. The
+# adapter is named rather than resolved from the config so the CLI reads the
+# table definitions without opening a connection.
 export APP_URL="${APP_URL:-http://localhost:3000}"
 export BETTER_AUTH_SECRET="${BETTER_AUTH_SECRET:-schema-generation}"
 export DATABASE_URL="${DATABASE_URL:-postgres://schema:gen@127.0.0.1:5432/gen}"
@@ -56,6 +63,8 @@ echo "[generate-auth-schema] Running better-auth CLI..."
 pnpm exec auth generate \
   --config "$AUTH_CONFIG" \
   --output "$TMP_OUTPUT" \
+  --adapter drizzle \
+  --dialect postgresql \
   --yes \
   2>&1
 

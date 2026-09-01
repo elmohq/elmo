@@ -54,7 +54,7 @@ const API_KEY_PLUGIN_MUTATIONS = new Set([
  * `/api/mcp` itself stays open; a read-only deployment answers it with an API
  * key and offers only the tools that read.
  */
-const MCP_OAUTH_PREFIX = "/api/auth/mcp/";
+const MCP_OAUTH_PREFIX = "/api/auth/oauth2/";
 
 const DEMO_AUTH_WRITE_ALLOWLIST = new Set([
 	"/api/auth/sign-in/email",

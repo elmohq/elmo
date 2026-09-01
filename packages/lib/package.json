@@ -44,6 +44,7 @@
 		"@better-auth/api-key": "1.7.2",
 		"@better-auth/sso": "^1.7.2",
 		"@better-auth/mcp": "1.7.2",
+		"@better-auth/oauth-provider": "1.7.2",
 		"@better-auth/stripe": "^1.7.2",
 		"@brightdata/sdk": "^1.2.0",
 		"@mozilla/readability": "^0.6.0",
@@ -60,7 +61,7 @@
 	},
 	"devDependencies": {
 		"@types/pg": "^8.21.0",
-		"auth": "1.6.29",
+		"auth": "1.7.2",
 		"drizzle-kit": "^0.31.10",
 		"stripe": "^22.5.0",
 		"typescript": "^7.0.2",

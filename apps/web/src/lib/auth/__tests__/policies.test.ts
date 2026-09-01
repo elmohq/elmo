@@ -327,21 +327,27 @@ describe("evaluateDeploymentPolicy", () => {
 
 		it("runs the OAuth flow wherever writes are allowed", () => {
 			for (const features of [LOCAL_FEATURES, WHITELABEL_FEATURES]) {
-				expect(evaluateDeploymentPolicy(features, req("GET", "/api/auth/mcp/authorize")).action).toBe("allow");
-				expect(evaluateDeploymentPolicy(features, req("POST", "/api/auth/mcp/register")).action).toBe("allow");
-				expect(evaluateDeploymentPolicy(features, req("POST", "/api/auth/mcp/token")).action).toBe("allow");
+				expect(evaluateDeploymentPolicy(features, req("GET", "/api/auth/oauth2/authorize")).action).toBe("allow");
+				expect(evaluateDeploymentPolicy(features, req("POST", "/api/auth/oauth2/register")).action).toBe("allow");
+				expect(evaluateDeploymentPolicy(features, req("POST", "/api/auth/oauth2/token")).action).toBe("allow");
 			}
 		});
 
 		it("turns the OAuth flow off in a read-only deployment", () => {
 			// Client registration is an unauthenticated write by design; a public
 			// demo is exactly where that gets abused.
-			for (const path of ["/api/auth/mcp/register", "/api/auth/mcp/authorize", "/api/auth/mcp/token"]) {
+			for (const path of ["/api/auth/oauth2/register", "/api/auth/oauth2/authorize", "/api/auth/oauth2/token"]) {
 				expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", path))).toMatchObject({
 					action: "block",
 					status: 403,
 				});
 			}
+			// The authorize endpoint is a GET, which the read-only write block would
+			// have let through on its own.
+			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("GET", "/api/auth/oauth2/authorize"))).toMatchObject({
+				action: "block",
+				status: 403,
+			});
 		});
 
 		it("still serves MCP itself in a read-only deployment", () => {

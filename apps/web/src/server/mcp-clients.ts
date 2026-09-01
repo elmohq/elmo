@@ -10,7 +10,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
-import { oauthApplication } from "@workspace/lib/db/schema";
+import { oauthClient } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession } from "@/lib/auth/helpers";
@@ -30,16 +30,15 @@ export const getMcpClientFn = createServerFn({ method: "GET" })
 		await requireAuthSession();
 
 		const [client] = await db
-			.select({ name: oauthApplication.name, redirectUrls: oauthApplication.redirectUrls })
-			.from(oauthApplication)
-			.where(eq(oauthApplication.clientId, data.clientId))
+			.select({ name: oauthClient.name, redirectUris: oauthClient.redirectUris })
+			.from(oauthClient)
+			.where(eq(oauthClient.clientId, data.clientId))
 			.limit(1);
 		if (!client) return null;
 
 		const redirectHosts = [
 			...new Set(
-				client.redirectUrls
-					.split(",")
+				client.redirectUris
 					.map((url) => {
 						try {
 							return new URL(url.trim()).host;

@@ -20,6 +20,7 @@
  * rate-limited key must be reported as rate-limited rather than falling through
  * to a second failure that reads as "invalid".
  */
+import { verifyMcpAccessToken } from "@workspace/lib/auth/server";
 import { db } from "@workspace/lib/db/db";
 import { user } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -65,7 +66,7 @@ export function principalLabel(auth: Principal): string {
  * Membership is read fresh rather than trusted from the token, so a token
  * outlives a team change without outliving the access that came with it.
  * Returns null for anything that isn't a live token — including one whose user
- * has since been deleted, which the plugin's own expiry check can't see.
+ * has since been deleted, which no signature check can see.
  */
 async function resolveOAuthPrincipal(request: Request): Promise<UserAuth | null> {
 	// Deferred for the same reason api-auth defers it: constructing the auth
@@ -77,21 +78,24 @@ async function resolveOAuthPrincipal(request: Request): Promise<UserAuth | null>
 		import("@/lib/auth/helpers"),
 	]);
 
-	let token: Awaited<ReturnType<typeof auth.api.getMcpSession>>;
+	let claims: Awaited<ReturnType<typeof verifyMcpAccessToken>>;
 	try {
-		token = await auth.api.getMcpSession({ headers: request.headers });
-	} catch (err) {
-		// A resolver that throws must fail closed: an unavailable database is a
-		// reason to reject a token, never a reason to accept one.
-		console.error("[mcp] OAuth token verification failed:", err);
+		claims = await verifyMcpAccessToken(auth, request);
+	} catch {
+		// Every rejection lands here, and a rejected token is simply not a
+		// credential: the caller learns that from the challenge the route sends,
+		// which says nothing about which check failed.
 		return null;
 	}
-	if (!token?.userId) return null;
+
+	const userId = typeof claims.sub === "string" ? claims.sub : null;
+	const clientId = typeof claims.client_id === "string" ? claims.client_id : null;
+	if (!userId || !clientId) return null;
 
 	const [account] = await db
 		.select({ id: user.id, email: user.email, name: user.name })
 		.from(user)
-		.where(eq(user.id, token.userId))
+		.where(eq(user.id, userId))
 		.limit(1);
 	if (!account) return null;
 
@@ -102,8 +106,8 @@ async function resolveOAuthPrincipal(request: Request): Promise<UserAuth | null>
 		email: account.email ?? null,
 		name: account.name ?? null,
 		organizationIds: organizations.map((org) => org.id),
-		clientId: token.clientId,
-		expiresAt: token.accessTokenExpiresAt ? new Date(token.accessTokenExpiresAt) : null,
+		clientId,
+		expiresAt: typeof claims.exp === "number" ? new Date(claims.exp * 1000) : null,
 	};
 }
 

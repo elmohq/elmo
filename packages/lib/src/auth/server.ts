@@ -7,19 +7,15 @@
  */
 
 import { apiKey } from "@better-auth/api-key";
+import { mcp } from "@better-auth/mcp";
+import { oauthProviderAuthServerMetadata } from "@better-auth/oauth-provider";
 import { type SSOOptions, sso } from "@better-auth/sso";
 import { type BetterAuthOptions, type BetterAuthPlugin, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { createAuthMiddleware } from "better-auth/api";
-import {
-	admin,
-	customSession,
-	mcp,
-	oAuthDiscoveryMetadata,
-	oAuthProtectedResourceMetadata,
-	organization,
-} from "better-auth/plugins";
+import { requestToResourceInput, verifyAccessTokenRequest } from "better-auth/oauth2";
+import { admin, customSession, jwt, organization } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
+import type { JWTPayload } from "jose";
 import { db } from "../db/db";
 import * as schema from "../db/schema";
 import { ac, adminRole, memberRole, ownerRole, userRole } from "./permissions";
@@ -59,13 +55,10 @@ export interface CreateAuthOptions {
 }
 
 /**
- * The page an MCP client's user lands on: it signs them in if they aren't, asks
- * whether to allow the client, and only then hands the request to
- * `/api/auth/mcp/authorize`, which is what turns a session into an OAuth code.
- *
- * It is advertised as the authorization endpoint *and* configured as the
- * plugin's login page, so it is reached whether a client follows the metadata
- * or goes straight to the plugin without a session.
+ * The page an MCP client's user lands on: it signs them in if they aren't and
+ * asks whether to allow the client. It is the plugin's login page and its
+ * consent page, because both bounces carry the same signed authorization query
+ * and the same question follows either one.
  */
 export const MCP_AUTHORIZE_PAGE = "/auth/authorize";
 
@@ -73,31 +66,23 @@ export const MCP_AUTHORIZE_PAGE = "/auth/authorize";
 export const MCP_PATH = "/api/mcp";
 
 /**
- * The `mcp` plugin only requires consent when the *client* sends
- * `prompt=consent`, and no MCP client sends it — so left alone, a signed-in
- * browser that loads `/api/auth/mcp/authorize` hands a code to the redirect URI
- * with no say from the person holding it. This rewrites every authorize request
- * to `prompt=consent`, which is the plugin's own consent switch, so the flow
- * always stops at the consent page.
+ * The resource identifier an MCP access token is bound to.
  *
- * The plugin's login round-trip replays `ctx.query` from a cookie rather than
- * the URL, but the rewrite has already landed in the query by the time that
- * cookie is written, so it survives the round trip.
+ * Rejected before the plugin sees it so the failure names the setting that
+ * caused it: the plugin throws a `TypeError` about resource URLs, which is a
+ * hard startup failure for the whole app when all the operator did was point
+ * `APP_URL` at a plain-HTTP hostname.
  */
-const mcpConsentGate = {
-	id: "mcp-consent-gate",
-	version: "1.0",
-	hooks: {
-		before: [
-			{
-				matcher: (ctx: { path?: string }) => ctx.path === "/mcp/authorize",
-				handler: createAuthMiddleware(async (ctx) => {
-					ctx.query = { ...ctx.query, prompt: "consent" };
-				}),
-			},
-		],
-	},
-} satisfies BetterAuthPlugin;
+function mcpResource(origin: string): string {
+	const url = new URL(origin);
+	const loopback = url.hostname === "localhost" || url.hostname === "[::1]" || /^127(\.\d+){3}$/.test(url.hostname);
+	if (url.protocol !== "https:" && !loopback) {
+		throw new Error(
+			`APP_URL must be an HTTPS URL (or localhost) to serve MCP: an access token is bound to ${origin}${MCP_PATH}, and MCP clients refuse a resource identifier that isn't. Got ${origin}.`,
+		);
+	}
+	return `${origin}${MCP_PATH}`;
+}
 
 export function createAuth(options?: CreateAuthOptions) {
 	const appUrl = process.env.APP_URL || process.env.VITE_APP_URL;
@@ -197,6 +182,11 @@ export function createAuth(options?: CreateAuthOptions) {
 					user: userRole,
 				},
 			}),
+			// Signs the access tokens the MCP authorization server issues, and
+			// publishes the key set they are verified against. `mcp()` requires it:
+			// without it tokens fall back to being signed with a client secret,
+			// which a public client does not have.
+			jwt(),
 			// The OAuth authorization server behind /api/mcp. An MCP client
 			// registers itself, sends its user here to sign in, and leaves with a
 			// token that acts as that person — the same reach they have in the
@@ -208,21 +198,20 @@ export function createAuth(options?: CreateAuthOptions) {
 			// `baseURL` the plugin advertises as the authorization server — naming
 			// the two differently is what makes a strict client refuse to connect
 			// against a local instance.
-			mcpConsentGate,
 			mcp({
 				loginPage: MCP_AUTHORIZE_PAGE,
 				consentPage: MCP_AUTHORIZE_PAGE,
-				// Every client here is effectively public — registration asks no
-				// secret — so PKCE is what stops a stolen authorization code being
-				// redeemed by whoever intercepted it. The plugin only enforces this
-				// when told; discovery advertises S256 either way, and advertising a
-				// requirement the server does not have is worse than advertising it.
-				oidcConfig: { requirePKCE: true },
-				resource: `${origin}${MCP_PATH}`,
-				// `consentPage` and the bare `oidcConfig` are not in the plugin's
-				// published options type, but its handlers read both. The cast is
-				// the honest record of that gap, not a shortcut around it.
-			} as unknown as Parameters<typeof mcp>[0]),
+				resource: mcpResource(origin),
+				// Registration is off by default, and an MCP client that has never
+				// met this instance has no other way to introduce itself: it has no
+				// session to register under and no secret to register with. Both
+				// switches are needed for that — the first opens /oauth2/register,
+				// the second lets an unauthenticated caller reach it. PKCE is what
+				// stands in for the missing secret, and the plugin requires it of
+				// every public client without being asked.
+				allowDynamicClientRegistration: true,
+				allowUnauthenticatedClientRegistration: true,
+			}),
 			sso(options?.sso),
 			...(options?.extraPlugins ?? []),
 			// Replaces the /get-session endpoint, so this runs on every session
@@ -247,10 +236,37 @@ export function createAuth(options?: CreateAuthOptions) {
 export type Auth = ReturnType<typeof createAuth>;
 
 /**
- * The two OAuth discovery documents, as request handlers.
+ * The claims of the MCP access token a request carries, or a rejection.
  *
- * Re-exported here rather than imported from better-auth at the call site: the
- * app depends on this package for auth, not on the library directly, and these
- * belong beside the plugin whose metadata they serve.
+ * The token is a JWT the authorization server signed, so this is a signature
+ * check against the published key set followed by the two questions that make
+ * the signature mean something here: was it minted by this server, and was it
+ * minted for `/api/mcp`. A token this instance issued for some other resource
+ * is a valid signature that must not open this door.
+ *
+ * Lives here rather than in the app because the audience it checks has to be
+ * the identifier the plugin was configured with, and that is built above.
  */
-export { oAuthDiscoveryMetadata, oAuthProtectedResourceMetadata };
+export async function verifyMcpAccessToken(auth: Auth, request: Request): Promise<JWTPayload> {
+	// The resolved base URL carries the auth base path, which is what the plugin
+	// stamps as `iss` and serves the key set under. The resource identifier names
+	// the MCP endpoint at the origin instead, which is a different string on
+	// purpose.
+	const { baseURL } = await auth.$context;
+	return verifyAccessTokenRequest(requestToResourceInput(request), {
+		verifyOptions: { issuer: baseURL, audience: `${new URL(baseURL).origin}${MCP_PATH}` },
+		jwksUrl: `${baseURL}/jwks`,
+	});
+}
+
+/**
+ * The authorization-server discovery document, as a request handler.
+ *
+ * Re-exported here rather than imported from the plugin package at the call
+ * site: the app depends on this package for auth, not on the library directly,
+ * and this belongs beside the plugin whose metadata it serves. The
+ * protected-resource document has no such export — the plugin answers it from
+ * the request itself, so the route that places it at its RFC path hands the
+ * request back to `auth.handler`.
+ */
+export { oauthProviderAuthServerMetadata };
