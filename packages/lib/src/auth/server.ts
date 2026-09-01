@@ -56,12 +56,22 @@ export interface CreateAuthOptions {
 }
 
 /**
- * The page an MCP client's user lands on: it signs them in if they aren't and
- * asks whether to allow the client. It is the plugin's login page and its
- * consent page, because both bounces carry the same signed authorization query
- * and the same question follows either one.
+ * Where an MCP client's user is asked whether to allow it. The plugin sends a
+ * signed-in browser here with the authorization request in the query, and this
+ * page hands that query back to the consent endpoint on a click.
  */
 export const MCP_AUTHORIZE_PAGE = "/auth/authorize";
+
+/**
+ * Where the plugin sends a browser that has no session yet.
+ *
+ * The app's own sign-in page, not a step of our own: the auth client sends the
+ * signed authorization query along with the sign-in request, so the plugin
+ * finishes the authorize it was in the middle of and answers with where to go
+ * next. Bouncing through a `returnTo` instead would mean rebuilding that query,
+ * and a query rebuilt is a signature broken.
+ */
+const LOGIN_PAGE = "/auth/login";
 
 /** Where the MCP endpoint is served, and what its resource identifier names. */
 export const MCP_PATH = "/api/mcp";
@@ -249,7 +259,7 @@ export function createAuth(options?: CreateAuthOptions) {
 			// the two differently is what makes a strict client refuse to connect
 			// against a local instance.
 			mcp({
-				loginPage: MCP_AUTHORIZE_PAGE,
+				loginPage: LOGIN_PAGE,
 				consentPage: MCP_AUTHORIZE_PAGE,
 				resource,
 				// Registration is off by default, and an MCP client that has never

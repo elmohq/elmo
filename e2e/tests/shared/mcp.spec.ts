@@ -24,6 +24,9 @@ import { API_KEYS, NIKE_BRAND_ID, TEST_API_KEY, TEST_BRAND_ID, TEST_USER } from 
 
 const MCP_PATH = "/api/mcp";
 
+/** A port nothing listens on: the code is read off the request the browser attempts. */
+const SIGNED_OUT_CALLBACK = "http://127.0.0.1:41998/oauth/callback";
+
 /** Wide enough to cover the seeded runs, in the instants the API takes. */
 const WINDOW = { start: "2025-01-01T00:00:00Z", end: "2027-01-01T00:00:00Z" };
 
@@ -262,6 +265,89 @@ test.describe("MCP", () => {
     expect((await callTool(client, "get_brand", { brandId: NIKE_BRAND_ID })).isError).toBe(true);
 
     await client.close();
+    await anonymous.dispose();
+  });
+  /**
+   * The signed-out half of the same flow: the person an MCP client sends here is
+   * usually not signed in, and the plugin routes them through the sign-in page
+   * with the authorization request in the query. That query is signed, so it has
+   * to arrive at the consent endpoint character for character — anything that
+   * rebuilds it on the way through breaks the signature and the connection.
+   */
+  test("a person who is not signed in yet arrives at the same consent screen", async ({ browser, baseURL }, testInfo) => {
+    test.skip(testInfo.project.name === "demo", "a read-only deployment runs no OAuth flow");
+    test.skip(testInfo.project.name === "whitelabel", "whitelabel signs in through Auth0, which this suite does not stand up");
+
+    const anonymous = await playwrightRequest.newContext({ baseURL, storageState: undefined });
+    const registration = await anonymous.post("/api/auth/oauth2/register", {
+      data: {
+        client_name: "Playwright Signed-out Client",
+        redirect_uris: [SIGNED_OUT_CALLBACK],
+        grant_types: ["authorization_code", "refresh_token"],
+        response_types: ["code"],
+        token_endpoint_auth_method: "none",
+        application_type: "native",
+      },
+    });
+    expect(registration.status()).toBe(201);
+    const { client_id: clientId } = await registration.json();
+
+    const verifier = "playwright-signed-out-verifier-" + "y".repeat(32);
+    const query = new URLSearchParams({
+      client_id: clientId,
+      response_type: "code",
+      redirect_uri: SIGNED_OUT_CALLBACK,
+      scope: "openid profile email offline_access",
+      state: "playwright-signed-out",
+      code_challenge: base64Url(await sha256(verifier)),
+      code_challenge_method: "S256",
+    });
+
+    // A browser with no session, which is what a client opens.
+    const context = await browser.newContext({ storageState: undefined });
+    const page = await context.newPage();
+    const delivered: string[] = [];
+    page.on("request", (req) => {
+      if (req.url().startsWith(SIGNED_OUT_CALLBACK)) delivered.push(req.url());
+    });
+
+    const discovery = await (await anonymous.get("/.well-known/oauth-authorization-server")).json();
+    await page.goto(`${new URL(discovery.authorization_endpoint).pathname}?${query}`);
+    await expect(page).toHaveURL(/\/auth\/login\?/);
+
+    await page.getByLabel("Email").fill(TEST_USER.email);
+    await page.getByLabel("Password").fill(TEST_USER.password);
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+
+    // Signing in finishes the authorize the client started, so the next page is
+    // the consent screen rather than the dashboard.
+    await page.waitForURL(/\/auth\/authorize/);
+    await expect(page.getByText("Playwright Signed-out Client").first()).toBeVisible();
+    expect(delivered).toHaveLength(0);
+
+    await page.getByRole("button", { name: /^Allow / }).click();
+    await expect.poll(() => delivered.length).toBeGreaterThan(0);
+
+    const callback = new URL(delivered[0]);
+    expect(callback.searchParams.get("state")).toBe("playwright-signed-out");
+    const code = callback.searchParams.get("code");
+    expect(code).toBeTruthy();
+
+    const token = await anonymous.post("/api/auth/oauth2/token", {
+      form: {
+        grant_type: "authorization_code",
+        code: code!,
+        redirect_uri: SIGNED_OUT_CALLBACK,
+        client_id: clientId,
+        code_verifier: verifier,
+      },
+    });
+    expect(token.status()).toBe(200);
+
+    const client = await connect(baseURL!, (await token.json()).access_token);
+    expect((await callTool(client, "whoami")).json().email).toBe(TEST_USER.email);
+    await client.close();
+    await context.close();
     await anonymous.dispose();
   });
 });

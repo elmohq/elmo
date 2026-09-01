@@ -139,6 +139,16 @@ export function DemoLogin({ returnTo }: { returnTo?: string }) {
 				setLoading(false);
 				return;
 			}
+			// A sign-in that arrived mid-OAuth carries the authorization request
+			// with it, and the server answers with where the browser goes next
+			// instead of with a session. Following that is what finishes the flow
+			// the MCP client started.
+			const next = (result.data as { url?: string } | null)?.url;
+			if (next) {
+				window.location.href = next;
+				return;
+			}
+
 			navigate({ to: safeReturnTo(returnTo) });
 		} catch {
 			setError("Something went wrong. Please try again.");
@@ -200,6 +210,16 @@ export function EmailPasswordLogin({
 					setError(result.error.message ?? "Invalid email or password");
 				}
 				setLoading(false);
+				return;
+			}
+
+			// A sign-in that arrived mid-OAuth carries the authorization request
+			// with it, and the server answers with where the browser goes next
+			// instead of with a session. Following that is what finishes the flow
+			// the MCP client started.
+			const next = (result.data as { url?: string } | null)?.url;
+			if (next) {
+				window.location.href = next;
 				return;
 			}
 
