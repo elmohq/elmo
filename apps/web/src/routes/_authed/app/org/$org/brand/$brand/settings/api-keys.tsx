@@ -211,6 +211,10 @@ function ApiKeysSettingsPage() {
 								</div>
 							))}
 						</div>
+						<p className="text-sm text-muted-foreground">
+							Scopes gate both the REST API and MCP connections. Not every scope maps to an MCP tool — see the docs for
+							which ones do.
+						</p>
 					</div>
 
 					<div className="space-y-2">

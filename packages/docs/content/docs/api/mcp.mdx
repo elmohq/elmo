@@ -53,6 +53,21 @@ For a client that can't open a browser — a container, a scheduled job — issu
 A key is also how you grant *less* than your own access: tick only the scopes you want, and optionally
 narrow it to specific brands.
 
+A connection is only offered the tools its scopes allow, and not every scope maps to a tool:
+
+| Scope | MCP tool |
+| --- | --- |
+| `brands:read` | `whoami`, `list_models`, `list_brands`, `get_brand`, `list_competitors` |
+| `prompts:read` | `list_prompts`, `list_prompt_tags` |
+| `prompts:write` | `create_prompts`, `update_prompt` |
+| `billing:read` | `get_billing` |
+| `analytics:read` | `get_analytics`, `get_prompt_performance`, `get_citations`, `get_query_fanout`, `get_opportunities` |
+| `runs:read` | `list_runs`, `get_run` |
+
+`competitors:write` and `competitors:delete` matter to the [REST API](/docs/api/v1) only — MCP can
+read competitors but never changes them, like everything else it touches. A key holding just one of
+them reaches no MCP tool beyond what its other scopes already grant.
+
 ## Check it works
 
 Ask the assistant to run `whoami`. It will report what the connection is, which workspaces it reaches,
