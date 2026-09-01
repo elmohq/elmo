@@ -1,26 +1,117 @@
 ---
 title: MCP
-description: Connect Claude Code, OpenCode, or another AI client to Elmo.
+description: Connect Claude Code, VS Code, Cursor, or another AI client to Elmo.
 ---
 
 Elmo serves a [Model Context Protocol](https://modelcontextprotocol.io) endpoint at `/api/mcp`, so an
 AI client can read your visibility data and manage prompts without you copying numbers between
 windows.
 
-Connections authenticate with an API key. Issue one from **Settings → API keys** in the organization's
-settings sidebar — keys belong to the organization, so they are not found under a brand. Tick only the
-scopes you want and optionally narrow the key to selected brands: that is how you grant a client
-*less* than your own access.
+On cloud that is `https://app.elmohq.com/api/mcp`. A self-hosted instance serves the same endpoint on
+its own address, so swap `app.elmohq.com` for yours in everything below.
 
-## Cloud
+There are two ways to connect. Signing in from the client is the quickest, and the connection then
+acts as you, in the workspaces you belong to. An API key is for a client that can't open a browser —
+a container, a scheduled job — and is also how you grant a client *less* than your own access.
 
-The endpoint is `https://app.elmohq.com/api/mcp`.
+## Sign in from the client
+
+Give the client the URL and it opens a browser for you to sign in. There is no application to
+register first, on cloud or on your own instance.
+
+### Claude Code
+
+```bash
+claude mcp add --transport http elmo https://app.elmohq.com/api/mcp
+```
+
+Then run `/mcp` and choose **Authenticate**.
+
+### VS Code
+
+```bash
+code --add-mcp '{"name":"elmo","type":"http","url":"https://app.elmohq.com/api/mcp"}'
+```
+
+Or put it under `servers` in `mcp.json`:
+
+```json
+{
+  "servers": {
+    "elmo": { "type": "http", "url": "https://app.elmohq.com/api/mcp" }
+  }
+}
+```
+
+VS Code asks you to sign in the first time it starts the server.
+
+### OpenCode
+
+In `opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "elmo": {
+      "type": "remote",
+      "url": "https://app.elmohq.com/api/mcp",
+      "enabled": true
+    }
+  }
+}
+```
+
+Then `opencode mcp auth elmo`.
+
+### Cursor
+
+Cursor can't sign in this way yet. It asks to be redirected to
+`cursor://anysphere.cursor-mcp/oauth/callback`, a private-use scheme that
+[RFC 8252 §7.1](https://www.rfc-editor.org/rfc/rfc8252.html#section-7.1) doesn't permit, and Elmo
+turns it down as other standards-compliant providers do. Use an API key until Cursor sends a
+compliant callback.
+
+## Or use an API key
+
+Issue one from **Settings → API keys** in the organization's settings sidebar — keys belong to the
+organization, so they are not found under a brand. Tick only the scopes you want and optionally narrow
+the key to selected brands.
+
+Send it as a bearer token.
 
 Claude Code:
 
 ```bash
 claude mcp add --transport http elmo https://app.elmohq.com/api/mcp \
   --header "Authorization: Bearer elmo_..."
+```
+
+Cursor, in `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "elmo": {
+      "url": "https://app.elmohq.com/api/mcp",
+      "headers": { "Authorization": "Bearer elmo_..." }
+    }
+  }
+}
+```
+
+VS Code, in `mcp.json`:
+
+```json
+{
+  "servers": {
+    "elmo": {
+      "type": "http",
+      "url": "https://app.elmohq.com/api/mcp",
+      "headers": { "Authorization": "Bearer elmo_..." }
+    }
+  }
+}
 ```
 
 OpenCode, in `opencode.json`:
@@ -39,36 +130,18 @@ OpenCode, in `opencode.json`:
 }
 ```
 
-## Self-hosted
+## Self-hosting
 
-Every instance serves the same endpoint on its own address:
+Nothing has to be turned on — the endpoint is there as soon as the instance is, and signing in from a
+client works against your instance the same way it does against cloud.
 
-```
-https://<your-instance>/api/mcp
-```
-
-```bash
-claude mcp add --transport http elmo https://<your-instance>/api/mcp \
-  --header "Authorization: Bearer elmo_..."
-```
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "elmo": {
-      "type": "remote",
-      "url": "https://<your-instance>/api/mcp",
-      "enabled": true,
-      "headers": { "Authorization": "Bearer elmo_..." }
-    }
-  }
-}
-```
+The one thing that has to be right is `APP_URL`: it must be the address clients actually reach you on,
+because that is where the sign-in flow is advertised from and what the tokens it issues are bound to.
+It has to be an HTTPS URL, or `localhost` — the app refuses to start otherwise, since a token bound to
+anything else is one no MCP client will accept.
 
 Keys come from the same organization settings page as on cloud, and instance-wide admin keys can also
-be configured server-side through the `ADMIN_API_KEYS` environment variable. Nothing else has to be turned on — the
-endpoint is there as soon as the instance is.
+be configured server-side through the `ADMIN_API_KEYS` environment variable.
 
 ## Try
 
@@ -96,3 +169,6 @@ would then be refused:
 
 `brands:write`, `competitors:write` and `competitors:delete` matter to the [REST API](/docs/api) only.
 MCP can create and edit prompts, but nothing deletes data and nothing changes billing.
+
+A connection you signed in from acts as you and reaches everything you can, so scopes are a property
+of a key rather than of the sign-in.

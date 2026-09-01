@@ -1,5 +1,6 @@
 ---
 "@workspace/lib": patch
+"@workspace/docs": patch
 ---
 
-MCP clients that receive their sign-in redirect on a loopback address, such as opencode and other command-line clients, can now connect to an Elmo instance.
+Sign in to the MCP server from a client that receives its redirect on a loopback address, such as OpenCode, or from one that identifies itself with a Client ID Metadata Document.
