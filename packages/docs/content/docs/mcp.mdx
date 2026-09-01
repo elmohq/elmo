@@ -7,9 +7,10 @@ Elmo serves a [Model Context Protocol](https://modelcontextprotocol.io) endpoint
 AI client can read your visibility data and manage prompts without you copying numbers between
 windows.
 
-Connections authenticate with an API key. Issue one under **Settings → API keys**, tick only the
-scopes you want, and optionally narrow it to specific brands — a key is how you grant a client *less*
-than your own access.
+Connections authenticate with an API key. Issue one from **Settings → API keys** in the organization's
+settings sidebar — keys belong to the organization, so they are not found under a brand. Tick only the
+scopes you want and optionally narrow the key to selected brands: that is how you grant a client
+*less* than your own access.
 
 ## Cloud
 
@@ -65,8 +66,8 @@ claude mcp add --transport http elmo https://<your-instance>/api/mcp \
 }
 ```
 
-Keys come from the same place as on cloud, and instance-wide admin keys can also be configured
-server-side through the `ADMIN_API_KEYS` environment variable. Nothing else has to be turned on — the
+Keys come from the same organization settings page as on cloud, and instance-wide admin keys can also
+be configured server-side through the `ADMIN_API_KEYS` environment variable. Nothing else has to be turned on — the
 endpoint is there as soon as the instance is.
 
 ## Try
