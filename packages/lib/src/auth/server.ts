@@ -13,7 +13,12 @@ import { type SSOOptions, sso } from "@better-auth/sso";
 import { type BetterAuthOptions, type BetterAuthPlugin, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware } from "better-auth/api";
-import { requestToResourceInput, verifyAccessTokenRequest } from "better-auth/oauth2";
+import {
+	BEARER_AUTHORIZATION_SCHEME,
+	getDpopJktFromPayload,
+	parseAccessTokenAuthorization,
+	verifyJwsAccessToken,
+} from "better-auth/oauth2";
 import { admin, customSession, jwt, organization } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import type { JWTPayload } from "jose";
@@ -296,27 +301,49 @@ export function createAuth(options?: CreateAuthOptions) {
 export type Auth = ReturnType<typeof createAuth>;
 
 /**
- * The claims of the MCP access token a request carries, or a rejection.
+ * Identity for the cached key set, so a verification reads the keys from the
+ * database at most once every few minutes rather than once per request.
+ */
+const jwksCacheKey = {};
+
+/**
+ * The claims of the MCP access token a request carries. Throws if it has none,
+ * or if what it has is not one this server issued for `/api/mcp`.
  *
  * The token is a JWT the authorization server signed, so this is a signature
- * check against the published key set followed by the two questions that make
- * the signature mean something here: was it minted by this server, and was it
+ * check against that key set followed by the two questions that make the
+ * signature mean something here: was it minted by this server, and was it
  * minted for `/api/mcp`. A token this instance issued for some other resource
  * is a valid signature that must not open this door.
  *
- * Lives here rather than in the app because the audience it checks has to be
- * the identifier the plugin was configured with, and that is built above.
+ * The keys are read through `auth.api` rather than fetched from the `jwks_uri`
+ * the discovery document advertises, because that URL is the address clients
+ * reach the app on and the app has no way to reach itself there: behind a
+ * container's published port, or a proxy, it names something that is not this
+ * process.
  */
 export async function verifyMcpAccessToken(auth: Auth, request: Request): Promise<JWTPayload> {
+	const authorization = parseAccessTokenAuthorization(request.headers.get("authorization"));
+	if (authorization?.scheme !== BEARER_AUTHORIZATION_SCHEME || !authorization.token) {
+		throw new Error("no bearer access token");
+	}
+
 	// The resolved base URL carries the auth base path, which is what the plugin
-	// stamps as `iss` and serves the key set under. The resource identifier names
-	// the MCP endpoint at the origin instead, which is a different string on
-	// purpose.
+	// stamps as `iss`. The resource identifier names the MCP endpoint at the
+	// origin instead, which is a different string on purpose.
 	const { baseURL } = await auth.$context;
-	return verifyAccessTokenRequest(requestToResourceInput(request), {
+	const payload = await verifyJwsAccessToken(authorization.token, {
+		jwksFetch: () => auth.api.getJwks(),
+		jwksCacheKey,
 		verifyOptions: { issuer: baseURL, audience: `${new URL(baseURL).origin}${MCP_PATH}` },
-		jwksUrl: `${baseURL}/jwks`,
 	});
+
+	// A sender-constrained token only proves anything alongside the proof that
+	// goes with it, and checking that proof takes more than the token. Nothing
+	// here asks for one, so one arriving is a token being spent as something
+	// weaker than it was issued as.
+	if (getDpopJktFromPayload(payload)) throw new Error("DPoP-bound access token presented as a bearer token");
+	return payload;
 }
 
 /**
