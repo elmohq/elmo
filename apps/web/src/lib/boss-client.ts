@@ -58,7 +58,3 @@ export async function getBoss(): Promise<PgBoss> {
 
 	return bossPromise;
 }
-
-/**
- * Stop the pg-boss client (for graceful shutdown).
- */

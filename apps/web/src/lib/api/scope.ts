@@ -6,7 +6,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { eq, inArray, type SQL, sql } from "drizzle-orm";
 import { type Principal, principalReach } from "@/lib/auth/api-auth";
-import { type Prompt, requirePrompt } from "@/server/prompts-core";
+import { type Prompt, PromptNotFoundError, requirePrompt } from "@/server/prompts-core";
 import { ApiError } from "./handler";
 
 type Brand = typeof brands.$inferSelect;
@@ -61,8 +61,10 @@ export async function requirePromptInScope(
 	promptId: string,
 ): Promise<{ prompt: Prompt; brand: Brand }> {
 	const notFound = () => new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
-	const prompt = await requirePrompt(promptId).catch(() => {
-		throw notFound();
+	// Only a missing row reads as not-found; a failing query still surfaces as a 500.
+	const prompt = await requirePrompt(promptId).catch((err) => {
+		if (err instanceof PromptNotFoundError) throw notFound();
+		throw err;
 	});
 	const brand = await requireBrandInScope(auth, prompt.brandId).catch(() => {
 		throw notFound();

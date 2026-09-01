@@ -214,10 +214,7 @@ export function getAdminApiKeys(): string[] {
 		.filter(Boolean);
 }
 
-/**
- * Evaluate admin access requirement.
- * Used by `requireAdminMiddleware`.
- */
+/** Evaluate admin access requirement. */
 export function evaluateRequireAdmin(isAdmin: boolean): "allow" | "deny" {
 	return isAdmin ? "allow" : "deny";
 }
