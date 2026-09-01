@@ -93,7 +93,7 @@ export const WithKeys: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByRole("heading", { name: "API keys" })).toBeVisible();
+		await expect(await canvas.findByRole("heading", { name: "API Keys" })).toBeVisible();
 		// A key past its expiry is called out rather than sitting among the live ones.
 		await expect(await canvas.findByText("Expired")).toBeVisible();
 		await expect((await canvas.findAllByText("Active")).length).toBe(2);

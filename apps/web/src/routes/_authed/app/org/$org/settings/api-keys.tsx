@@ -39,7 +39,7 @@ import {
 export const Route = createFileRoute("/_authed/app/org/$org/settings/api-keys")({
 	loader: ({ context }): Promise<ApiKeysPageData> =>
 		listApiKeysFn({ data: { organizationId: context.organization.id } }),
-	staticData: { crumb: "API keys" },
+	staticData: { crumb: "API Keys" },
 	head: pageHead({ description: "Issue and revoke API keys for this organization." }),
 	component: ApiKeysSettingsPage,
 });
@@ -142,7 +142,7 @@ function ApiKeysSettingsPage() {
 		<div className="max-w-5xl space-y-8">
 			<header className="flex flex-wrap items-start justify-between gap-4">
 				<div className="space-y-1">
-					<h1 className="text-3xl font-bold">API keys</h1>
+					<h1 className="text-3xl font-bold">API Keys</h1>
 					<p className="max-w-2xl text-muted-foreground">
 						Keys act as {organization.name}, not as you, so they keep working after you change teams. Any organization
 						admin can revoke one.

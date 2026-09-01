@@ -21,7 +21,7 @@ test.describe("API keys", () => {
     test.skip(testInfo.project.name === "demo", "demo refuses every write; covered by the Bruno demo suite");
 
     await page.goto(KEYS_PAGE, { waitUntil: "networkidle" });
-    await expect(page.getByRole("heading", { name: "API keys" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "API Keys" })).toBeVisible();
 
     // A value typed before hydration is silently discarded.
     const nameField = page.locator("#key-name");
@@ -93,7 +93,7 @@ test.describe("API keys", () => {
     test.skip(testInfo.project.name === "demo", "demo refuses every write; covered by the Bruno demo suite");
 
     await page.goto(KEYS_PAGE, { waitUntil: "networkidle" });
-    await expect(page.getByRole("heading", { name: "API keys" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "API Keys" })).toBeVisible();
 
     const nameField = page.locator("#key-name");
     const name = `Empty restriction ${Date.now()}`;
