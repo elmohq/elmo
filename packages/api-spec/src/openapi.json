@@ -2166,6 +2166,9 @@
 					"403": {
 						"$ref": "#/components/responses/ForbiddenError"
 					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
 					"409": {
 						"$ref": "#/components/responses/ConflictError"
 					},
