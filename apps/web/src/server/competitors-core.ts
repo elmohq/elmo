@@ -25,8 +25,9 @@ export type CompetitorSummary = {
 export interface ListCompetitorsFilters {
 	/** Restricts to one brand; combine with `scope` for the tenancy rule. */
 	brandId?: string;
-	limit: number;
-	offset: number;
+	/** Omit both to read the whole scope; a caller that pages passes them together. */
+	limit?: number;
+	offset?: number;
 	/** The caller's tenancy condition, from `brandScopeCondition`. */
 	scope?: SQL;
 }
@@ -39,13 +40,14 @@ export async function listCompetitors(
 
 	const where = and(...conditions.filter(Boolean));
 	const [totals] = await db.select({ count: count() }).from(competitors).where(where);
-	const data = await db
+	let query = db
 		.select(COMPETITOR_COLUMNS)
 		.from(competitors)
 		.where(where)
 		.orderBy(desc(competitors.createdAt))
-		.limit(filters.limit)
-		.offset(filters.offset);
+		.$dynamic();
+	if (filters.limit !== undefined) query = query.limit(filters.limit).offset(filters.offset ?? 0);
+	const data = await query;
 
 	return { data, total: totals?.count ?? 0 };
 }

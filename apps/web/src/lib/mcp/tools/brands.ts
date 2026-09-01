@@ -2,9 +2,11 @@
  * Brands, the competitors measured against them, and what the workspace is
  * paying for.
  *
- * None of these paginate. A workspace has a handful of brands and a handful of
- * competitors per brand, so a page argument would be a knob every caller has to
- * think about to get back what one call already returns.
+ * None of these paginate, and none of them cap. A workspace has a handful of
+ * brands and a handful of competitors per brand, so a page argument would be a
+ * knob every caller has to think about to get back what one call already
+ * returns — and a ceiling under a description that says "every" would be a list
+ * that lies about being complete.
  */
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { z } from "zod";
@@ -14,9 +16,6 @@ import { listCompetitors } from "@/server/competitors-core";
 import { buildBrandResult, listBrands } from "@/server/onboarding-core";
 import { brandIdArg, defineTool } from "./define";
 
-/** Bounded by what a workspace can hold, not by what a caller asks for. */
-const ALL_ROWS = { limit: 1000, offset: 0 };
-
 export const listBrandsTool = defineTool({
 	name: "list_brands",
 	title: "List brands",
@@ -25,7 +24,7 @@ export const listBrandsTool = defineTool({
 	readOnly: true,
 	input: {},
 	run: async ({ auth }) => {
-		const { data } = await listBrands({ scope: await brandScopeCondition(auth, brands.id), ...ALL_ROWS });
+		const { data } = await listBrands({ scope: await brandScopeCondition(auth, brands.id) });
 		return { data };
 	},
 });
@@ -53,7 +52,6 @@ export const listCompetitorsTool = defineTool({
 		const { data } = await listCompetitors({
 			scope: await brandScopeCondition(auth, competitors.brandId),
 			brandId: brand.id,
-			...ALL_ROWS,
 		});
 		return { brandId: brand.id, data };
 	},
