@@ -3,4 +3,4 @@
 "@workspace/docs": patch
 ---
 
-Sign in to the MCP server from a client that receives its redirect on a loopback address, such as OpenCode, or from one that identifies itself with a Client ID Metadata Document.
+Sign in to the MCP server from Claude Code, Codex, Cursor, OpenCode and VS Code, rather than only with an API key.

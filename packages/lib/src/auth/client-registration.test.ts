@@ -91,6 +91,36 @@ describe("dynamic client registration", () => {
 
 		expect(status).toBe(201);
 		expect(body.application_type).toBe("native");
+		expect(body.redirect_uris).toEqual([
+			"http://127.0.0.1:54321/callback",
+			"https://www.example.com/mcp/oauth/callback",
+		]);
+	});
+
+	it("registers a client that bundles a deeplink its platform never made well-formed", async () => {
+		const { status, body } = await register({
+			redirect_uris: [
+				"cursor://anysphere.cursor-mcp/oauth/callback",
+				"https://www.cursor.com/agents/mcp/oauth/callback",
+				"http://localhost:8787/callback",
+			],
+		});
+
+		expect(status).toBe(201);
+		expect(body.redirect_uris).toEqual([
+			"https://www.cursor.com/agents/mcp/oauth/callback",
+			"http://localhost:8787/callback",
+		]);
+	});
+
+	it("leaves a client that declares its own type exactly as it asked", async () => {
+		const { status, body } = await register({
+			application_type: "native",
+			redirect_uris: ["http://localhost:8787/callback", "cursor://anysphere.cursor-mcp/oauth/callback"],
+		});
+
+		expect(status).toBe(400);
+		expect(body.error_description).toContain("private-use");
 	});
 
 	it("still holds a client that asks to be treated as a web app to https", async () => {
@@ -115,15 +145,6 @@ describe("dynamic client registration", () => {
 
 		expect(status).toBe(400);
 		expect(body.error).toBe("invalid_redirect_uri");
-	});
-
-	it("reports the real fault in a private-use scheme rather than blaming the loopback URI", async () => {
-		const { status, body } = await register({
-			redirect_uris: ["http://127.0.0.1:54321/callback", "cursor://anysphere.cursor-mcp/oauth/callback"],
-		});
-
-		expect(status).toBe(400);
-		expect(body.error_description).toContain("private-use");
 	});
 });
 

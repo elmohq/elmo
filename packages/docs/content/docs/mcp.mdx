@@ -1,6 +1,6 @@
 ---
 title: MCP
-description: Connect Claude Code, VS Code, Cursor, or another AI client to Elmo.
+description: Connect Claude Code, Codex, Cursor, VS Code, or another AI client to Elmo.
 ---
 
 Elmo serves a [Model Context Protocol](https://modelcontextprotocol.io) endpoint at `/api/mcp`, so an
@@ -66,11 +66,24 @@ Then `opencode mcp auth elmo`.
 
 ### Cursor
 
-Cursor can't sign in this way yet. It asks to be redirected to
-`cursor://anysphere.cursor-mcp/oauth/callback`, a private-use scheme that
-[RFC 8252 §7.1](https://www.rfc-editor.org/rfc/rfc8252.html#section-7.1) doesn't permit, and Elmo
-turns it down as other standards-compliant providers do. Use an API key until Cursor sends a
-compliant callback.
+In `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "elmo": { "url": "https://app.elmohq.com/api/mcp" }
+  }
+}
+```
+
+Cursor shows the server as needing login; sign in from there.
+
+### Codex
+
+```bash
+codex mcp add elmo --url https://app.elmohq.com/api/mcp
+codex mcp login elmo
+```
 
 ## Or use an API key
 
@@ -85,6 +98,13 @@ Claude Code:
 ```bash
 claude mcp add --transport http elmo https://app.elmohq.com/api/mcp \
   --header "Authorization: Bearer elmo_..."
+```
+
+Codex, which reads the key from the environment rather than the config file:
+
+```bash
+codex mcp add elmo --url https://app.elmohq.com/api/mcp \
+  --bearer-token-env-var ELMO_API_KEY
 ```
 
 Cursor, in `~/.cursor/mcp.json`:
