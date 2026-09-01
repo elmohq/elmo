@@ -42,8 +42,8 @@ export interface ConsoleErrorCollector {
  * a single shared bucket. Nothing in front of the container sets the header, so
  * the whole suite counted as one client: four parallel workers signing in spent
  * each other's budget and the loser got a 429 it had no way to report. One
- * address per test is what the limiter assumes anyway — separate people sign in
- * from separate places.
+ * address per attempt is what the limiter assumes anyway — separate people sign
+ * in from separate places, and a retry is a fresh one.
  *
  * Private space (RFC 1918), and wide enough that the digest does not collide.
  */
