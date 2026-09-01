@@ -6,6 +6,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { eq, inArray, type SQL, sql } from "drizzle-orm";
 import { type Principal, principalReach } from "@/lib/auth/api-auth";
+import { type Prompt, requirePrompt } from "@/server/prompts-core";
 import { ApiError } from "./handler";
 
 type Brand = typeof brands.$inferSelect;
@@ -51,6 +52,22 @@ export async function requireBrandInScope(
 	throw via === "body"
 		? new ApiError(400, "Validation Error", `Brand with ID '${brandId}' not found`, "validation_error")
 		: new ApiError(404, "Not Found", `Brand "${brandId}" not found.`);
+}
+
+/** A prompt in another tenant is reported exactly as one that doesn't exist,
+ * which is why both failures raise the same error. */
+export async function requirePromptInScope(
+	auth: Principal,
+	promptId: string,
+): Promise<{ prompt: Prompt; brand: Brand }> {
+	const notFound = () => new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
+	const prompt = await requirePrompt(promptId).catch(() => {
+		throw notFound();
+	});
+	const brand = await requireBrandInScope(auth, prompt.brandId).catch(() => {
+		throw notFound();
+	});
+	return { prompt, brand };
 }
 
 export async function isBrandInScope(auth: Principal, brandId: string): Promise<boolean> {
