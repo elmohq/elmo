@@ -12,7 +12,7 @@ type Page = import("@playwright/test").Page;
 /** The checkboxes are named only by their action, so the lookup is scoped to
  * the resource group. */
 async function tickScope(page: Page, resource: string, action: string) {
-  const group = page.locator("div.rounded.border").filter({ has: page.getByText(resource, { exact: true }) });
+  const group = page.getByRole("group", { name: resource, exact: true });
   await group.getByRole("checkbox", { name: action, exact: true }).first().click();
 }
 
@@ -31,7 +31,7 @@ test.describe("API keys", () => {
       await expect(nameField).toHaveValue(name, { timeout: 1_000 });
     }).toPass({ timeout: 30_000 });
     await page.getByRole("button", { name: "Read only" }).click();
-    await tickScope(page, "prompts", "write");
+    await tickScope(page, "Prompts", "Write");
     await page.getByRole("checkbox", { name: "Restrict this key to specific brands" }).first().click();
     await page.getByRole("checkbox", { name: "Test Organization", exact: true }).first().click();
     await page.getByRole("button", { name: "Create key", exact: true }).click();
@@ -77,13 +77,11 @@ test.describe("API keys", () => {
     const other = await request.get(`/api/v1/brands/${NIKE_BRAND_ID}`, { headers: auth, failOnStatusCode: false });
     expect(other.status()).toBe(404);
 
-    // Playwright dismisses dialogs unless something is listening, which would
-    // make the click a no-op and leave the key live.
-    page.on("dialog", (dialog) => dialog.accept());
     await page.reload({ waitUntil: "networkidle" });
-    const row = page.locator("div.p-3").filter({ hasText: name });
+    const row = page.getByRole("listitem").filter({ hasText: name });
     await expect(async () => {
-      await row.getByRole("button", { name: "Revoke" }).click();
+      await row.getByRole("button", { name: "Revoke", exact: true }).click();
+      await page.getByRole("button", { name: "Revoke key", exact: true }).click();
       await expect(row).toHaveCount(0, { timeout: 2_000 });
     }).toPass({ timeout: 30_000 });
 
