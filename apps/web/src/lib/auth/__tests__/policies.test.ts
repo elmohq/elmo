@@ -329,8 +329,12 @@ describe("evaluateDeploymentPolicy", () => {
 			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcp")).action).toBe("allow");
 		});
 
-		it("exempts only the MCP endpoint itself, not every path under it", () => {
-			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcp/sub"))).toMatchObject({
+		it("leaves a path under the MCP endpoint to the route, which answers 404", () => {
+			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcp/sub")).action).toBe("allow");
+		});
+
+		it("does not exempt a route that merely starts with the same characters", () => {
+			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcpx"))).toMatchObject({
 				action: "block",
 				status: 403,
 			});

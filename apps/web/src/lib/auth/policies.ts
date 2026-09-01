@@ -102,9 +102,11 @@ function refuseAuthEndpoint(
 
 /**
  * Every MCP call is a POST including the reads, so refusing the transport would
- * take those with it; the tool registry drops the writers instead.
+ * take those with it; the tool registry drops the writers instead. Paths under
+ * the endpoint are included so a request that matches no route answers 404 in
+ * every mode rather than 403 in the read-only ones.
  */
-const SELF_POLICING_WRITE_PREFIXES = ["/api/v1/"];
+const SELF_POLICING_WRITE_PREFIXES = ["/api/v1/", `${MCP_PATH}/`];
 const SELF_POLICING_WRITE_PATHS = [MCP_PATH];
 
 function refusesItsOwnWrites(pathname: string): boolean {
