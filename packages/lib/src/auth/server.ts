@@ -6,6 +6,7 @@
  * Auth0 org sync, cloud webhook handlers) can be injected.
  */
 
+import { apiKey } from "@better-auth/api-key";
 import { type SSOOptions, sso } from "@better-auth/sso";
 import { type BetterAuthOptions, type BetterAuthPlugin, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -13,7 +14,7 @@ import { admin, customSession, organization } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { db } from "../db/db";
 import * as schema from "../db/schema";
-import { ac, adminRole, userRole } from "./permissions";
+import { ac, adminRole, memberRole, ownerRole, userRole } from "./permissions";
 
 export interface CreateAuthOptions {
 	databaseHooks?: BetterAuthOptions["databaseHooks"];
@@ -111,7 +112,32 @@ export function createAuth(options?: CreateAuthOptions) {
 		databaseHooks: options?.databaseHooks,
 
 		plugins: [
-			organization(options?.organizationOptions),
+			organization({
+				ac,
+				roles: { owner: ownerRole, admin: ownerRole, member: memberRole },
+				...options?.organizationOptions,
+			}),
+			// Keys belong to the organization, not to whoever pressed the button:
+			// `referenceId` is the org id and the plugin refuses to mint a key for
+			// one the caller isn't a member of, checking the `apiKey` statement on
+			// their org role. Scopes ride in `permissions`, which the plugin treats
+			// as server-only — so a key can only be created through a server
+			// function, never from a browser.
+			apiKey({
+				references: "organization",
+				defaultPrefix: "elmo_",
+				enableMetadata: true,
+				// Generous on purpose: this exists to stop a runaway loop from
+				// saturating the database, not to meter normal use. A nightly
+				// analytics pull costs a few dozen requests; exporting a brand's
+				// answer text costs one per run, which is hundreds of thousands for
+				// a large workspace. At 120/min that export took a day.
+				//
+				// The limit is stamped onto each key when it is created, not read
+				// from here per request — raising this later does nothing for keys
+				// already issued.
+				rateLimit: { enabled: true, timeWindow: 60_000, maxRequests: 1_000 },
+			}),
 			admin({
 				ac,
 				roles: {

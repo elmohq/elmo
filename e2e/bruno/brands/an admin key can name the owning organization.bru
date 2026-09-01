@@ -1,0 +1,33 @@
+meta {
+  name: an admin key can create a brand inside an existing organization
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{baseUrl}}/api/v1/brands
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+script:pre-request {
+  bru.setVar("attachedBrandId", "e2e-attached-" + Date.now());
+}
+
+body:json {
+  {
+    "id": "{{attachedBrandId}}",
+    "name": "Attached Brand",
+    "domains": ["{{attachedBrandId}}.example.com"],
+    "organizationId": "{{nikeOrgId}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.organizationId: eq nike
+}

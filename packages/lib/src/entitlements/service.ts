@@ -19,6 +19,7 @@ import { getDeploymentModeFromEnv } from "@workspace/config/env";
 import type { DeploymentMode } from "@workspace/config/types";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/db";
+import type { DbConnection } from "../db/db-connection";
 import { brands, organizationSettings, subscription } from "../db/schema";
 
 type SubscriptionRow = typeof subscription.$inferSelect;
@@ -111,10 +112,22 @@ const UNLIMITED_STATE: OrgBillingState = {
  * their own one-row variants of the same two queries — one query shape, one
  * place that decides which subscription row wins.
  */
+/**
+ * `conn` runs the read on a transaction the caller already opened. Quota
+ * decisions need it: checking usage on a second pooled connection while
+ * holding a transaction open can exhaust the pool and deadlock.
+ */
+export interface EntitlementReadOptions {
+	mode?: DeploymentMode;
+	now?: Date;
+	conn?: DbConnection;
+}
+
 export async function getOrgBillingStates(
 	orgIds: string[],
-	options?: { mode?: DeploymentMode; now?: Date },
+	options?: EntitlementReadOptions,
 ): Promise<Map<string, OrgBillingState>> {
+	const conn = options?.conn ?? db;
 	const mode = options?.mode ?? getDeploymentModeFromEnv(process.env);
 	const result = new Map<string, OrgBillingState>();
 	if (mode !== "cloud") {
@@ -125,8 +138,8 @@ export async function getOrgBillingStates(
 	const now = options?.now ?? new Date();
 
 	const [subscriptionRows, settingsRows] = await Promise.all([
-		db.select().from(subscription).where(inArray(subscription.referenceId, orgIds)),
-		db.select().from(organizationSettings).where(inArray(organizationSettings.organizationId, orgIds)),
+		conn.select().from(subscription).where(inArray(subscription.referenceId, orgIds)),
+		conn.select().from(organizationSettings).where(inArray(organizationSettings.organizationId, orgIds)),
 	]);
 
 	const subscriptionsByOrg = new Map<string, SubscriptionRow[]>();
@@ -149,27 +162,21 @@ export async function getOrgBillingStates(
 	return result;
 }
 
-export async function getOrgBillingState(
-	orgId: string,
-	options?: { mode?: DeploymentMode; now?: Date },
-): Promise<OrgBillingState> {
+export async function getOrgBillingState(orgId: string, options?: EntitlementReadOptions): Promise<OrgBillingState> {
 	const states = await getOrgBillingStates([orgId], options);
 	// getOrgBillingStates always populates every requested id; the fallback is a
 	// type narrowing, not a case that happens.
 	return states.get(orgId) ?? UNLIMITED_STATE;
 }
 
-export async function getOrgEntitlements(
-	orgId: string,
-	options?: { mode?: DeploymentMode; now?: Date },
-): Promise<Entitlements> {
+export async function getOrgEntitlements(orgId: string, options?: EntitlementReadOptions): Promise<Entitlements> {
 	return (await getOrgBillingState(orgId, options)).entitlements;
 }
 
 /** Entitlements only, for callers (the worker sweep, the paywall) with no use for the rows. */
 export async function getOrgEntitlementsMap(
 	orgIds: string[],
-	options?: { mode?: DeploymentMode; now?: Date },
+	options?: EntitlementReadOptions,
 ): Promise<Map<string, Entitlements>> {
 	const states = await getOrgBillingStates(orgIds, options);
 	return new Map([...states].map(([orgId, state]) => [orgId, state.entitlements]));

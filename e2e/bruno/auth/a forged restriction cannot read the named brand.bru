@@ -1,0 +1,20 @@
+meta {
+  name: the forged restriction does not grant the brand it names
+  type: http
+  seq: 28
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{nikeBrandId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgForgedKey}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}

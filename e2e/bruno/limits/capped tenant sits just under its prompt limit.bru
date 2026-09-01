@@ -1,0 +1,28 @@
+meta {
+  name: the capped tenant sits one prompt under its limit
+  type: http
+  seq: 1
+  tags: [
+    cloud
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/v1/organizations/{{cappedOrgId}}/billing
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{cappedKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.billingEnabled: isTruthy
+  res.body.limits.maxPrompts: eq 6
+  res.body.limits.maxBrands: eq 1
+  res.body.usage.enabledPrompts: eq 5
+  res.body.usage.brands: eq 1
+  res.body.plan.standing: eq active
+}

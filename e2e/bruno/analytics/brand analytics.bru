@@ -1,0 +1,85 @@
+meta {
+  name: everything a brand's window says, in one request
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/analytics?start={{windowStart}}&end={{windowEnd}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  start: {{windowStart}}
+  end: {{windowEnd}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.brandId: eq default
+  res.body.brandName: isString
+  res.body.range.start: isString
+  res.body.range.end: isString
+  res.body.totals.runs: gte 1
+  res.body.totals.prompts: gte 1
+  res.body.totals.citations: gte 1
+  res.body.totals.uniqueDomains: gte 1
+  res.body.totals.uniqueUrls: gte 1
+}
+
+tests {
+  test("a gap in sampling reads as null, never as zero visibility", function() {
+    for (const point of res.getBody().visibility.series) {
+      expect(point.date).to.match(/^\d{4}-\d{2}-\d{2}$/);
+      expect(point.visibility === null || typeof point.visibility === "number").to.be.true;
+    }
+  });
+
+  test("exactly one share-of-voice entry is the tracked brand, and shares are ratios", function() {
+    const entries = res.getBody().shareOfVoice.entries;
+    expect(entries.filter((e) => e.isBrand).length).to.equal(1);
+    for (const entry of entries) {
+      expect(entry.share).to.be.at.least(0);
+      expect(entry.share).to.be.at.most(1);
+    }
+  });
+
+  test("the seeded competitors show up", function() {
+    const names = res.getBody().shareOfVoice.entries.map((e) => e.name);
+    expect(names).to.include("Competitor Alpha");
+  });
+
+  test("the share-of-voice trend is a series of ratios", function() {
+    for (const point of res.getBody().shareOfVoice.series) {
+      expect(point.date).to.match(/^\d{4}-\d{2}-\d{2}$/);
+      expect(point.share === null || (point.share >= 0 && point.share <= 1)).to.be.true;
+    }
+  });
+
+  test("every seeded model is accounted for", function() {
+    const models = res.getBody().models.map((row) => row.model);
+    expect(models).to.include("chatgpt");
+    expect(models).to.include("claude");
+  });
+
+  test("per-model visibility is a ratio or null, never a bare count", function() {
+    for (const row of res.getBody().models) {
+      expect(row.runs).to.be.a("number");
+      expect(row.visibility === null || (row.visibility >= 0 && row.visibility <= 1)).to.be.true;
+    }
+  });
+
+  test("the headline visibility matches the last plotted point", function() {
+    // One number, computed once. If these could disagree the endpoint would be
+    // reporting two different answers to the same question.
+    const body = res.getBody();
+    const plotted = body.visibility.series.filter((p) => p.visibility !== null);
+    if (plotted.length === 0) return;
+    expect(body.visibility.current).to.equal(plotted[plotted.length - 1].visibility);
+  });
+}

@@ -1,0 +1,20 @@
+meta {
+  name: the new brand is not reachable by the other tenant
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{createdOrgBrandId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{nikeFullKey}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}

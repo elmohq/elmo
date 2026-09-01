@@ -10,9 +10,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { assertCompetitorCap } from "@workspace/lib/entitlements";
-import { count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
 import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 
 const createCompetitorBody = z.object({
@@ -24,16 +25,18 @@ const createCompetitorBody = z.object({
 
 export const Route = createFileRoute("/api/v1/competitors/")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
-				handle: async ({ request }) => {
+				scopes: ["competitors:read"],
+				handle: async ({ request, auth }) => {
 					const { searchParams } = new URL(request.url);
 					const brandId = searchParams.get("brandId");
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
 					const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20")));
 					const offset = (page - 1) * limit;
 
-					const where = brandId ? eq(competitors.brandId, brandId) : undefined;
+					const scope = await brandScopeCondition(auth, competitors.brandId);
+					const where = brandId ? and(scope, eq(competitors.brandId, brandId)) : scope;
 
 					const [totalCountResult] = await db.select({ count: count() }).from(competitors).where(where);
 					const totalCount = totalCountResult?.count || 0;
@@ -55,7 +58,11 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 						.limit(limit)
 						.offset(offset);
 
+					// Both keys hold the same array while callers move to `data`, which
+					// every list in this API answers with. `competitors` is documented
+					// as deprecated and goes in a later release.
 					return {
+						data: list,
 						competitors: list,
 						pagination: { page, limit, total: totalCount, totalPages },
 					};
@@ -65,13 +72,11 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 			POST: createApiHandler({
 				body: createCompetitorBody,
 				status: 201,
-				handle: async ({ body }) => {
+				scopes: ["competitors:write"],
+				handle: async ({ body, auth }) => {
 					const { brandId, name, domains, aliases } = body;
 
-					const brandRow = await db.query.brands.findFirst({ where: eq(brands.id, brandId) });
-					if (!brandRow) {
-						throw new ApiError(400, "Validation Error", `Brand with ID '${brandId}' not found`);
-					}
+					await requireBrandInScope(auth, brandId, "body");
 
 					await assertCompetitorCap(brandId, 1);
 
@@ -88,6 +93,6 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 					return inserted;
 				},
 			}),
-		},
+		}),
 	},
 });

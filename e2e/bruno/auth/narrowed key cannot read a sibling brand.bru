@@ -1,0 +1,20 @@
+meta {
+  name: a brand restriction narrows a key inside its own org
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{nikeSecondBrandId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{nikeNarrowKey}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}

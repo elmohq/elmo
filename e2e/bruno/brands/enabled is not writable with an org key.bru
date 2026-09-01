@@ -1,0 +1,36 @@
+meta {
+  name: an org key cannot change a brand's enabled state
+  type: http
+  seq: 25
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+body:json {
+  {
+    "enabled": false
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq forbidden
+  res.body.message: contains instance admin key
+}
+
+tests {
+  test("the key holding brands:write is still refused", function() {
+    // Disabling a brand stops the worker sampling it at all, and no dashboard
+    // control does it at any role. Refused rather than ignored, so a caller
+    // that meant it learns the field did nothing.
+    expect(res.getBody().code).to.not.equal("insufficient_scope");
+  });
+}

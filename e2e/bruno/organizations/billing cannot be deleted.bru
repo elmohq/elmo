@@ -1,0 +1,26 @@
+meta {
+  name: billing cannot be deleted
+  type: http
+  seq: 12
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/organizations/{{orgId}}/billing
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 405
+  res.body.code: eq method_not_allowed
+}
+
+tests {
+  test("the resource says what it does accept", function() {
+    expect(res.getHeader("allow")).to.equal("GET");
+  });
+}

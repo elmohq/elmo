@@ -26,6 +26,7 @@ export {
 	type WriteDecision,
 	type WriteDenialCode,
 	WriteDeniedError,
+	withQuotaLock,
 } from "./guards";
 export {
 	getBrandOrganizationId,

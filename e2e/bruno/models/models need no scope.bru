@@ -1,0 +1,19 @@
+meta {
+  name: models need no scope
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/models
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgAnalyticsOnlyKey}}
+}
+
+assert {
+  res.status: eq 200
+}

@@ -1,0 +1,47 @@
+meta {
+  name: creating one prompt still returns the prompt, unwrapped
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}",
+    "value": "Compat: one prompt per request",
+    "tags": ["compat"]
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.brandId: eq default
+  res.body.value: eq Compat: one prompt per request
+  res.body.enabled: isTruthy
+}
+
+script:post-response {
+  bru.setVar("compatPromptId", res.getBody().id);
+}
+
+tests {
+  test("the response is the created prompt itself", function() {
+    // Creation has always answered with the resource. A caller reading
+    // `res.id` must keep working, which is why there is one create endpoint
+    // taking one prompt rather than one whose shape changes with its input.
+    const body = res.getBody();
+    expect(body.id).to.be.a("string");
+    for (const field of ["id", "brandId", "value", "enabled", "tags", "systemTags", "createdAt", "updatedAt"]) {
+      expect(body, `Prompt.${field}`).to.have.property(field);
+    }
+  });
+}

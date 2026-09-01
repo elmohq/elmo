@@ -1,0 +1,28 @@
+meta {
+  name: a run under the wrong prompt is not found
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}/runs/{{otherPromptRunId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq not_found
+}
+
+tests {
+  test("the run exists and is the caller's own — it is just under another prompt", function() {
+    // Both prompts belong to the calling key's organization, so this is the
+    // nesting check answering, not the tenancy check.
+    expect(res.getBody().message).to.contain("not found");
+  });
+}

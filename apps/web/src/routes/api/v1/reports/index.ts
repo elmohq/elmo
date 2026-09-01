@@ -11,7 +11,7 @@ import { type NewReport, reports } from "@workspace/lib/db/schema";
 import { cleanOnboardingUrl } from "@workspace/lib/onboarding";
 import { count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { sendReportJob } from "@/lib/job-scheduler";
 
 const createReportBody = z.object({
@@ -31,8 +31,9 @@ const createReportBody = z.object({
 
 export const Route = createFileRoute("/api/v1/reports/")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			POST: createApiHandler({
+				adminOnly: true,
 				body: createReportBody,
 				status: 201,
 				handle: async ({ body }) => {
@@ -79,6 +80,7 @@ export const Route = createFileRoute("/api/v1/reports/")({
 			}),
 
 			GET: createApiHandler({
+				adminOnly: true,
 				handle: async ({ request }) => {
 					const { searchParams } = new URL(request.url);
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
@@ -103,12 +105,16 @@ export const Route = createFileRoute("/api/v1/reports/")({
 						.limit(limit)
 						.offset(offset);
 
+					// Both keys hold the same array while callers move to `data`, which
+					// every list in this API answers with. `reports` is documented as
+					// deprecated and goes in a later release.
 					return {
+						data: reportsList,
 						reports: reportsList,
 						pagination: { page, limit, total: totalCount, totalPages },
 					};
 				},
 			}),
-		},
+		}),
 	},
 });

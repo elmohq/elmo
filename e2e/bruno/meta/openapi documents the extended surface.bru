@@ -1,0 +1,103 @@
+meta {
+  name: the published spec covers the extended surface
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/openapi.json
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("every documented operation is reachable", function() {
+    const paths = res.getBody().paths;
+    for (const path of [
+      "/me",
+      "/models",
+      "/organizations",
+      "/organizations/{organizationId}/billing",
+      "/brands/{brandId}/analytics",
+      "/brands/{brandId}/citations/domains",
+      "/brands/{brandId}/citations/urls",
+      "/brands/{brandId}/query-fanout",
+      "/brands/{brandId}/prompt-performance",
+      "/prompts/{promptId}/runs",
+      "/prompts/{promptId}/runs/{runId}",
+    ]) {
+      expect(paths, `${path} should be documented`).to.have.property(path);
+    }
+  });
+
+  test("no scope reaches an admin-only operation", function() {
+    // An admin-only operation that also listed a scope would put that scope in
+    // a preset, and a key ticking it would 403 on an endpoint it was told it
+    // covered.
+    for (const [path, operations] of Object.entries(res.getBody().paths)) {
+      for (const [method, operation] of Object.entries(operations)) {
+        if (!operation["x-elmo-admin-only"]) continue;
+        expect(operation["x-elmo-scopes"] || [], `${method} ${path}`).to.eql([]);
+      }
+    }
+  });
+
+  test("deleting a prompt is admin-only and points at the alternative", function() {
+    const operation = res.getBody().paths["/prompts/{promptId}"].delete;
+    expect(operation["x-elmo-admin-only"]).to.equal(true);
+    expect(operation.description).to.contain("enabled: false");
+  });
+
+  test("an answer engine is a model everywhere on the wire", function() {
+    // Three words for one thing is how a caller ends up filtering /platforms
+    // by ?model=. The plan config still says "platform" internally; nothing
+    // this API publishes does.
+    const published = JSON.stringify(res.getBody());
+    expect(published, "the spec still says platform somewhere").to.not.match(/platform/i);
+  });
+
+  test("nothing offers to write billing", function() {
+    const paths = res.getBody().paths;
+    for (const [path, operations] of Object.entries(paths)) {
+      if (!path.includes("billing")) continue;
+      expect(Object.keys(operations)).to.eql(["get"]);
+    }
+  });
+
+  test("no operation grants a billing write scope", function() {
+    for (const operations of Object.values(res.getBody().paths)) {
+      for (const operation of Object.values(operations)) {
+        expect(operation["x-elmo-scopes"] || []).to.not.include("billing:write");
+      }
+    }
+  });
+
+  test("every operation declares the scope it needs", function() {
+    const methods = ["get", "post", "put", "patch", "delete"];
+    for (const [path, operations] of Object.entries(res.getBody().paths)) {
+      for (const [method, operation] of Object.entries(operations)) {
+        if (!methods.includes(method)) continue;
+        expect(operation["x-elmo-scopes"], `${method} ${path}`).to.be.an("array");
+      }
+    }
+  });
+
+  test("only an unsettled shape is marked, and it says so where a reader looks", function() {
+    // Absence of the marker is the promise, so a stray value anywhere would
+    // quietly weaken every operation that carries nothing.
+    const methods = ["get", "post", "put", "patch", "delete"];
+    for (const [path, operations] of Object.entries(res.getBody().paths)) {
+      for (const [method, operation] of Object.entries(operations)) {
+        if (!methods.includes(method)) continue;
+        const marker = operation["x-stability"];
+        if (marker === undefined) continue;
+        expect(marker, `${method} ${path}`).to.equal("experimental");
+        expect(operation.description, `${method} ${path}`).to.match(/^\*\*Experimental/);
+      }
+    }
+  });
+}

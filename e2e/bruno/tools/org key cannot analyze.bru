@@ -1,0 +1,26 @@
+meta {
+  name: brand analysis is admin-only
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/tools/analyze
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+body:json {
+  {
+    "website": "acme.com"
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.error: eq Forbidden
+}

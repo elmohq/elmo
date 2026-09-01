@@ -1,0 +1,24 @@
+meta {
+  name: analytics:read alone is enough
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/analytics?start={{windowStart}}&end={{windowEnd}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgAnalyticsOnlyKey}}
+}
+
+params:query {
+  start: {{windowStart}}
+  end: {{windowEnd}}
+}
+
+assert {
+  res.status: eq 200
+}

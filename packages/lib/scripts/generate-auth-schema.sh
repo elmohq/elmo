@@ -83,6 +83,11 @@ cat <<'HEADER'
  * tables or columns, re-run the generation script and commit the diff. If the
  * new table needs indexes beyond what the generator emits, add them in a new
  * migration — not in this file.
+ *
+ * One column deserves a warning the generator can't carry: `apikey.metadata` is
+ * writable by anyone with a session, by plugin design. Never store anything
+ * there that grants access — see readBrandRestriction in
+ * apps/web/src/lib/auth/api-auth.ts.
  */
 HEADER
 cat "$TMP_OUTPUT"

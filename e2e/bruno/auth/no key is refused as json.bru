@@ -1,0 +1,28 @@
+meta {
+  name: a request with no key is refused as JSON
+  type: http
+  seq: 24
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+  res.body.error: eq Unauthorized
+  res.body.code: eq unauthorized
+}
+
+tests {
+  test("the refusal is JSON, not a page of markup", function() {
+    expect(res.getHeader("content-type")).to.contain("application/json");
+  });
+}
+
+docs {
+  Nothing under /api/v1 ever answers with HTML. This one is refused before any
+  route runs, so it is the case most likely to fall through to the SPA.
+}

@@ -1,0 +1,28 @@
+meta {
+  name: a read-only key cannot create a competitor
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{baseUrl}}/api/v1/competitors
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgReadOnlyKey}}
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}",
+    "name": "Read Only Rival"
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq insufficient_scope
+  res.body.message: contains competitors:write
+}

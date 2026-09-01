@@ -2,7 +2,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { assertAllowed, assertPromptSaveAllowed, decidePromptCap, promptSaveDelta } from "@workspace/lib/entitlements";
+import {
+	assertAllowed,
+	assertPromptSaveAllowed,
+	decidePromptCap,
+	promptSaveDelta,
+	withQuotaLock,
+} from "@workspace/lib/entitlements";
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -158,8 +164,10 @@ function summarizePrompt(
 	const { isBranded } = getEffectiveBrandedStatus(prompt.systemTags || [], userTags);
 	const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
 	const totalRuns = Number(stats?.total_runs ?? 0);
-	const brandMentionRate = Number(stats?.brand_mention_rate ?? 0);
-	const competitorMentionRate = Number(stats?.competitor_mention_rate ?? 0);
+	// The query answers in ratios so the API can publish them unrounded; the
+	// dashboard renders percentages, and this is where it rounds.
+	const brandMentionRate = Math.round(Number(stats?.brand_mention_rate ?? 0) * 100);
+	const competitorMentionRate = Math.round(Number(stats?.competitor_mention_rate ?? 0) * 100);
 
 	return {
 		id: prompt.id,

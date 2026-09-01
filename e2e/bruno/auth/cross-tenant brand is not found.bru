@@ -1,0 +1,27 @@
+meta {
+  name: an org key cannot read another tenant's brand
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{nikeBrandId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}
+
+script:post-response {
+  // Normalize the id out: a 404 names the brand it was asked for, so two
+  // different ids can never produce byte-identical bodies. What has to match is
+  // everything else.
+  bru.setVar("crossTenantShape", JSON.stringify(res.getBody()).split("nike").join("<id>"));
+}

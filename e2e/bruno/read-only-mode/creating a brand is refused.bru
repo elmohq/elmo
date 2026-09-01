@@ -1,0 +1,31 @@
+meta {
+  name: a demo deployment refuses to create a brand
+  type: http
+  seq: 3
+  tags: [
+    demo
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/v1/brands
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+body:json {
+  {
+    "id": "demo-write-attempt",
+    "name": "Demo Write Attempt",
+    "domains": ["demo-write-attempt.example.com"]
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq read_only
+}
