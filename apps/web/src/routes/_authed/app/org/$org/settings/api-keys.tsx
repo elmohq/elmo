@@ -17,10 +17,11 @@ import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import { type ApiKeysPageData, createApiKeyFn, listApiKeysFn, revokeApiKeyFn } from "@/server/api-keys";
 
-export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/api-keys")({
-	loader: async ({ params }): Promise<ApiKeysPageData> => listApiKeysFn({ data: { brandId: params.brand } }),
+export const Route = createFileRoute("/_authed/app/org/$org/settings/api-keys")({
+	loader: ({ context }): Promise<ApiKeysPageData> =>
+		listApiKeysFn({ data: { organizationId: context.organization.id } }),
 	staticData: { crumb: "API keys" },
-	head: pageHead({ description: "Issue and revoke API keys for this workspace." }),
+	head: pageHead({ description: "Issue and revoke API keys for this organization." }),
 	component: ApiKeysSettingsPage,
 });
 
@@ -42,8 +43,8 @@ function scopeGroups(scopes: readonly ApiScope[]): Map<string, ApiScope[]> {
 }
 
 function ApiKeysSettingsPage() {
-	const { brand: brandId } = Route.useParams();
 	const { keys, brands, allScopes, expiryOptions, canManage, organization } = Route.useLoaderData();
+	const organizationId = organization.id;
 	const router = useRouter();
 
 	const [name, setName] = useState("");
@@ -69,7 +70,7 @@ function ApiKeysSettingsPage() {
 		try {
 			const { key } = await createApiKeyFn({
 				data: {
-					brandId,
+					organizationId,
 					name,
 					scopes,
 					// Null, not `[]`: unrestricted is the absence of a restriction. The
@@ -97,7 +98,7 @@ function ApiKeysSettingsPage() {
 		setError(null);
 		setRevoking(keyId);
 		try {
-			await revokeApiKeyFn({ data: { brandId, keyId } });
+			await revokeApiKeyFn({ data: { organizationId, keyId } });
 			await router.invalidate();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to revoke the API key");
@@ -113,8 +114,8 @@ function ApiKeysSettingsPage() {
 			<div>
 				<h1 className="text-3xl font-bold">API keys</h1>
 				<p className="text-muted-foreground">
-					Keys act as {organization.name}, not as you, so they keep working after you change teams. Any workspace admin
-					can revoke one.
+					Keys act as {organization.name}, not as you, so they keep working after you change teams. Any organization
+					admin can revoke one.
 				</p>
 			</div>
 
@@ -268,7 +269,7 @@ function ApiKeysSettingsPage() {
 									<p className="text-sm text-muted-foreground">
 										{key.brandIds
 											? `Limited to ${key.brandIds.map((id) => brandNames.get(id) ?? id).join(", ")}`
-											: "All brands in this workspace"}{" "}
+											: "All brands in this organization"}{" "}
 										· created {formatDate(key.createdAt)} · last used {formatDate(key.lastUsedAt)}
 										{key.expiresAt ? ` · expires ${formatDate(key.expiresAt)}` : ""}
 									</p>
