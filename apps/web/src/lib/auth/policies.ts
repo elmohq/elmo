@@ -266,34 +266,6 @@ function hasBearerToken(header: string | null | undefined): boolean {
 }
 
 /**
- * Evaluate Bearer token API key authentication.
- * Returns "allow" or an object with error details.
- * Uses timing-safe comparison to prevent timing attacks.
- */
-export function evaluateApiKeyAuth(
-	authorizationHeader: string | null | undefined,
-	adminApiKeys: string[],
-): "allow" | { error: string; message: string } {
-	if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
-		return {
-			error: "Unauthorized",
-			message: "Valid API key required as Bearer token in Authorization header",
-		};
-	}
-
-	const token = authorizationHeader.substring(7);
-
-	if (adminApiKeys.length === 0 || !adminApiKeys.some((key) => timingSafeStringEqual(key, token))) {
-		return {
-			error: "Unauthorized",
-			message: "Invalid API key",
-		};
-	}
-
-	return "allow";
-}
-
-/**
  * Parse comma-separated ADMIN_API_KEYS env var into a trimmed, non-empty array.
  * Single source of truth — use this everywhere instead of inline parsing.
  */
@@ -302,15 +274,6 @@ export function getAdminApiKeys(): string[] {
 		.split(",")
 		.map((key) => key.trim())
 		.filter(Boolean);
-}
-
-/**
- * Validate a Bearer API key from a request.
- * Convenience wrapper for use in API route handlers.
- */
-export function validateApiKeyFromRequest(request: Request): boolean {
-	const authHeader = request.headers.get("Authorization");
-	return evaluateApiKeyAuth(authHeader, getAdminApiKeys()) === "allow";
 }
 
 // ============================================================================

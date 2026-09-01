@@ -12,7 +12,7 @@
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import openApiSpec from "@workspace/api-spec";
-import { evaluateApiKeyAuth, evaluateDeploymentPolicy, evaluateReadOnly, getAdminApiKeys } from "@/lib/auth/policies";
+import { evaluateDeploymentPolicy, evaluateReadOnly } from "@/lib/auth/policies";
 import { getDeployment } from "@/lib/config/server";
 
 /**
@@ -75,26 +75,6 @@ export const readOnlyMiddleware = createMiddleware({ type: "function" }).server(
 		if (result.action === "block" && result.error === "Demo Mode") {
 			throw new Error(result.message);
 		}
-	}
-
-	return next();
-});
-
-/**
- * API key authentication middleware for public API routes (/api/v1/*).
- * Validates Bearer token against ADMIN_API_KEYS environment variable.
- */
-export const apiKeyMiddleware = createMiddleware().server(async ({ next }) => {
-	const request = getRequest();
-	const authHeader = request.headers.get("Authorization");
-
-	const result = evaluateApiKeyAuth(authHeader, getAdminApiKeys());
-
-	if (result !== "allow") {
-		throw new Response(JSON.stringify({ error: result.error, message: result.message }), {
-			status: 401,
-			headers: { "Content-Type": "application/json" },
-		});
 	}
 
 	return next();

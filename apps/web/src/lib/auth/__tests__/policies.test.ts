@@ -15,7 +15,6 @@
 import { describe, expect, it } from "vitest";
 import {
 	evaluateAdminRouteGuard,
-	evaluateApiKeyAuth,
 	evaluateAuthedRouteGuard,
 	evaluateDeploymentPolicy,
 	evaluateReadOnly,
@@ -460,51 +459,6 @@ describe("evaluateAdminRouteGuard", () => {
 
 	it("allows admin users", () => {
 		expect(evaluateAdminRouteGuard(true)).toBe("allow");
-	});
-});
-
-// ============================================================================
-// 4. API Key Authentication
-// ============================================================================
-
-describe("evaluateApiKeyAuth", () => {
-	const keys = ["key-1", "key-2", "key-3"];
-
-	it("rejects missing Authorization header", () => {
-		const result = evaluateApiKeyAuth(null, keys);
-		expect(result).not.toBe("allow");
-	});
-
-	it("rejects empty Authorization header", () => {
-		const result = evaluateApiKeyAuth("", keys);
-		expect(result).not.toBe("allow");
-	});
-
-	it("rejects non-Bearer scheme", () => {
-		const result = evaluateApiKeyAuth("Basic abc123", keys);
-		expect(result).not.toBe("allow");
-	});
-
-	it("rejects invalid key", () => {
-		const result = evaluateApiKeyAuth("Bearer wrong-key", keys);
-		expect(result).not.toBe("allow");
-		if (result !== "allow") {
-			expect(result.message).toContain("Invalid API key");
-		}
-	});
-
-	it("rejects when no keys are configured", () => {
-		const result = evaluateApiKeyAuth("Bearer key-1", []);
-		expect(result).not.toBe("allow");
-	});
-
-	it("allows valid key", () => {
-		expect(evaluateApiKeyAuth("Bearer key-1", keys)).toBe("allow");
-	});
-
-	it("allows any of the configured keys", () => {
-		expect(evaluateApiKeyAuth("Bearer key-2", keys)).toBe("allow");
-		expect(evaluateApiKeyAuth("Bearer key-3", keys)).toBe("allow");
 	});
 });
 
