@@ -26,7 +26,6 @@ export async function brandScopeCondition(
 ): Promise<SQL | undefined> {
 	const ids = await scopedBrandIds(auth);
 	if (ids === null) return undefined;
-	// `inArray(col, [])` throws in drizzle.
 	if (ids.length === 0) return sql`false`;
 	return inArray(column, ids);
 }
