@@ -24,7 +24,6 @@ import { verifyMcpAccessToken } from "@workspace/lib/auth/server";
 import { db } from "@workspace/lib/db/db";
 import { oauthClient, user } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { API_SCOPES, type ApiScope } from "@/lib/api/scopes";
 import { type ApiAuthFailure, type Principal, resolveApiAuth, type UserAuth } from "@/lib/auth/api-auth";
 
 export type McpAuthResult = { auth: Principal } | { failure: ApiAuthFailure };
@@ -34,37 +33,6 @@ export type McpAuthResult = { auth: Principal } | { failure: ApiAuthFailure };
  * fetches this document, and learns which authorization server to talk to.
  */
 export const MCP_RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource";
-
-/**
- * What a caller may do, in the one vocabulary the whole surface speaks.
- *
- * A person signed in over OAuth holds every scope, because scopes exist to
- * narrow a *key* below what its issuer can already do — and a session is that
- * person, who reaches all of this in the dashboard anyway. Narrowing here would
- * be a promise the browser doesn't keep.
- *
- * That is why the token's own `scope` claim is not consulted: none of these
- * scopes is an OAuth scope, so a token cannot carry one, and a request for one
- * is refused at the authorization endpoint. `mcp scopes are not oauth scopes`
- * in `__tests__/auth.test.ts` fails if that ever stops being true, because on
- * that day this function would be handing out capabilities a person declined.
- */
-export function principalScopes(auth: Principal): Set<ApiScope> {
-	if (auth.kind === "organization") return auth.scopes;
-	return new Set(API_SCOPES);
-}
-
-/** How a tool names the caller in `whoami` and in a refusal. */
-export function principalLabel(auth: Principal): string {
-	switch (auth.kind) {
-		case "admin":
-			return "instance admin key";
-		case "organization":
-			return `API key for ${auth.organizationName}`;
-		case "user":
-			return auth.email ?? auth.userId;
-	}
-}
 
 /**
  * Resolve an OAuth access token to the person holding it.

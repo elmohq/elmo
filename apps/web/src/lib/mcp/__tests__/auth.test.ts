@@ -43,7 +43,10 @@ vi.mock("@workspace/lib/db/db", async () => {
 	};
 });
 
-const { principalLabel, principalScopes, resolveMcpAuth } = await import("../auth");
+const { resolveMcpAuth } = await import("../auth");
+// The real ones, not the mock: only `resolveApiAuth` is replaced above. These
+// are what every caller reaches for, so they are what gets asserted.
+const { principalLabel, principalScopes } = await import("@/lib/auth/api-auth");
 
 const adminKey: AdminAuth = { kind: "admin", scopes: null, organizationId: null };
 

@@ -105,6 +105,13 @@ export interface PrincipalReach {
  * An admin key and a signed-in person both hold every scope — scopes exist to
  * narrow a *key* below what its issuer can already do, and a session is that
  * person, who reaches all of this in the dashboard anyway.
+ *
+ * That is also why an MCP caller's OAuth token has its `scope` claim ignored:
+ * none of these scopes is an OAuth scope, so a token cannot carry one, and a
+ * request for one is refused at the authorization endpoint — there is no
+ * narrower grant to honour. `mcp scopes are not oauth scopes` in
+ * `lib/mcp/__tests__/auth.test.ts` fails if that stops being true, because on
+ * that day this would hand out capabilities a person declined.
  */
 export function principalReach(auth: Principal): PrincipalReach {
 	switch (auth.kind) {
