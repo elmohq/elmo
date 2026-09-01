@@ -148,14 +148,22 @@ function refuseAuthEndpoint(
  *  - `/api/mcp` — every MCP call is a POST, including the ones that only read,
  *    so refusing the transport here would take the reads with it. The tool
  *    registry is what decides: it drops every writer in a read-only deployment.
+ *    Matched exactly, not as a prefix — the endpoint is one URL with no
+ *    subpaths, and the splat route under it answers `404` to everything else,
+ *    so a prefix exemption would cover paths that police nothing.
  *
  * A list rather than a chain of `&&  !isSomething`, so a third surface is a
  * data change and not a fourth clause in a boolean.
  */
-const SELF_POLICING_WRITE_SURFACES = ["/api/v1/", `${MCP_PATH}/`];
+const SELF_POLICING_WRITE_PREFIXES = ["/api/v1/"];
+const SELF_POLICING_WRITE_PATHS = [MCP_PATH];
 
 function refusesItsOwnWrites(pathname: string): boolean {
-	return SELF_POLICING_WRITE_SURFACES.some((prefix) => `${pathname}/`.startsWith(prefix));
+	const normalized = pathname.replace(/\/$/, "");
+	return (
+		SELF_POLICING_WRITE_PATHS.includes(normalized) ||
+		SELF_POLICING_WRITE_PREFIXES.some((prefix) => `${pathname}/`.startsWith(prefix))
+	);
 }
 
 /**

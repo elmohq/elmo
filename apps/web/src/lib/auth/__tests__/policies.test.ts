@@ -347,6 +347,15 @@ describe("evaluateDeploymentPolicy", () => {
 		it("still serves MCP itself in a read-only deployment", () => {
 			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcp")).action).toBe("allow");
 		});
+
+		it("exempts only the MCP endpoint itself, not every path under it", () => {
+			// The endpoint is a single URL; a subpath matches no route and the splat
+			// answers `404` JSON-RPC, so nothing there needs a write exemption.
+			expect(evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcp/sub"))).toMatchObject({
+				action: "block",
+				status: 403,
+			});
+		});
 	});
 
 	// ────────────────────────────────────────────────────────────
