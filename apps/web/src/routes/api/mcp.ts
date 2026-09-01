@@ -13,12 +13,23 @@
  * a bare `401` instead would leave an unconfigured client with nowhere to go.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { auth } from "@/lib/auth/server";
 import { MCP_RESOURCE_METADATA_PATH, resolveMcpAuth } from "@/lib/mcp/auth";
 import { handleMcpRequest } from "@/lib/mcp/server";
 
-function unauthorized(request: Request, message: string): Response {
-	const resourceMetadata = new URL(MCP_RESOURCE_METADATA_PATH, request.url).toString();
-	const challenge = `Bearer resource_metadata="${resourceMetadata}"`;
+/**
+ * The origin the metadata challenge names. Taken from the auth config rather
+ * than the request: the resource identifier the rest of the flow advertises is
+ * built from that config, and a challenge naming a different origin than the
+ * document it points at is exactly the disagreement a strict client refuses on.
+ */
+function mcpResourceMetadataUrl(): string {
+	const baseURL = typeof auth.options.baseURL === "string" ? auth.options.baseURL : undefined;
+	return new URL(MCP_RESOURCE_METADATA_PATH, baseURL ?? "http://localhost:3000").toString();
+}
+
+function unauthorized(message: string): Response {
+	const challenge = `Bearer resource_metadata="${mcpResourceMetadataUrl()}"`;
 	return Response.json(
 		{ jsonrpc: "2.0", id: null, error: { code: -32001, message } },
 		{
@@ -45,7 +56,7 @@ async function handler({ request }: { request: Request }): Promise<Response> {
 				},
 			);
 		}
-		return unauthorized(request, resolved.failure.message);
+		return unauthorized(resolved.failure.message);
 	}
 
 	// The transport answers the methods the protocol defines and refuses the

@@ -305,12 +305,14 @@ function refuseRequest(
 /**
  * Tell an organization key where it stands. The plugin counts a fixed window
  * with a read-modify-write per request, so `Remaining` is a guide to back off
- * on rather than a ledger to ride to zero.
+ * on rather than a ledger to ride to zero. Sent only when the window's true
+ * remainder is known — a header claiming full capacity mid-window would be
+ * worse than no header.
  */
 function rateLimitHeaders(auth: ApiAuth): Record<string, string> | undefined {
 	if (auth.kind !== "organization") return undefined;
 	const headers: Record<string, string> = { "X-RateLimit-Limit": String(auth.rateLimit.limit) };
-	headers["X-RateLimit-Remaining"] = String(auth.rateLimitRemaining ?? auth.rateLimit.limit);
+	if (auth.rateLimitRemaining !== null) headers["X-RateLimit-Remaining"] = String(auth.rateLimitRemaining);
 	return headers;
 }
 

@@ -29,9 +29,18 @@ tests {
   });
 
   test("every URL in the document shares the issuer's origin", function() {
-    for (const field of ["authorization_endpoint", "token_endpoint", "registration_endpoint", "jwks_uri"]) {
+    for (const field of ["authorization_endpoint", "token_endpoint", "registration_endpoint"]) {
       expect(res.body[field], field).to.have.string(res.body.issuer);
     }
+  });
+
+  test("it does not advertise endpoints that do not exist", function() {
+    // The plugin's document invents a jwks_uri and a userinfo_endpoint the
+    // server never mounts, and claims an ID-token algorithm this flow never
+    // issues. A strict client trusts the document over the server.
+    expect(res.body.jwks_uri).to.be.undefined;
+    expect(res.body.userinfo_endpoint).to.be.undefined;
+    expect(res.body.id_token_signing_alg_values_supported).to.be.undefined;
   });
 }
 
@@ -40,8 +49,6 @@ docs {
   connect, so a misconfigured APP_URL has to produce one wrong answer to fix
   rather than two that disagree.
 
-  The authorization endpoint is deliberately not the plugin's: that one issues
-  a code to any browser that already has a session, which would make
-  authorizing an MCP client something that happens to someone rather than
-  something they do.
+  The authorization endpoint is the plugin's, pointed at our page: the server
+  forces consent there, and the page is where the person says yes.
 }

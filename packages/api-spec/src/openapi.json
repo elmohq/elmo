@@ -876,7 +876,7 @@
 						"required": ["limit", "window"]
 					},
 					"createdBy": {
-						"description": "Name of the member who issued the key. Null for admin keys.",
+						"description": "The key's label, as given when it was issued. Null for admin keys.",
 						"type": "string",
 						"nullable": true
 					},
@@ -1968,7 +1968,7 @@
 						}
 					},
 					"X-RateLimit-Remaining": {
-						"description": "Requests left in the current window. Counted with a read-modify-write per request, so treat it as a guide and back off on 429 rather than riding it to zero.",
+						"description": "Requests left in the current window. Counted with a read-modify-write per request, so treat it as a guide and back off on 429 rather than riding it to zero. Sent only when the remainder is known.",
 						"schema": {
 							"type": "integer"
 						}

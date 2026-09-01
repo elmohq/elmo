@@ -34,6 +34,8 @@ export const Route = createFileRoute("/api/v1/me")({
 						organizationName: auth.organizationName,
 						scopes: [...auth.scopes].sort(),
 						brandIds: auth.brandIds,
+						// The key's label as issued — the org-referenced key table stores no
+						// issuer, so a person's name is not available to claim.
 						createdBy: auth.name,
 						createdAt: auth.createdAt,
 						lastUsedAt: auth.lastUsedAt,

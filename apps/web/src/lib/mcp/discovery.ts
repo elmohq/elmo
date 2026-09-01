@@ -42,19 +42,26 @@ const pluginAuthorizationServerMetadata = oAuthDiscoveryMetadata(auth);
 
 /**
  * The plugin's document, with the authorization endpoint pointed at our own
- * page.
+ * page and the fields the plugin invents taken back out.
  *
- * The plugin's endpoint asks for consent only when the *client* requests it,
- * and issues a code immediately to any browser that already has a session — so
- * left alone, authorizing an MCP client is something that happens to someone
- * rather than something they do. `/auth/authorize` names what is asking and
- * waits for a click, then hands the request straight back.
+ * The consent flow is enforced server-side (`mcpConsentGate` + `consentPage`);
+ * this page is where the person is asked, and the plugin's endpoint is the one
+ * that bounces a signed-out browser here.
  *
- * This is where a person is asked, not a gate: the plugin's endpoint stays
- * reachable, as every OAuth authorization endpoint is. What actually stops a
- * code being useful to anyone but the client that asked for it is PKCE and the
- * redirect URI it registered.
+ * The plugin's document lies in three ways, and a strict client trusts the
+ * document over the server:
+ *
+ *  - `userinfo_endpoint` and `jwks_uri` name endpoints the plugin never mounts
+ *    — both `404`. Access tokens here are opaque strings verified by database
+ *    lookup, not JWTs, so there is no key set and no userinfo to reach.
+ *  - `id_token_signing_alg_values_supported: ["RS256"]` advertises an ID token
+ *    this flow never issues.
+ *
+ * Stripping them says "this server has no such thing", which is true, rather
+ * than pointing a client at a `404`.
  */
+const PLUGIN_METADATA_LIES = ["userinfo_endpoint", "jwks_uri", "id_token_signing_alg_values_supported"] as const;
+
 export const authorizationServerMetadata = async (request: Request): Promise<Response> => {
 	const response = await pluginAuthorizationServerMetadata(request);
 	// The plugin answers `null` rather than an error when it cannot build the
@@ -70,6 +77,7 @@ export const authorizationServerMetadata = async (request: Request): Promise<Res
 	// misconfigured APP_URL should produce one wrong answer to fix, not two
 	// that disagree.
 	const issuer = metadata.issuer ?? new URL(request.url).origin;
+	for (const field of PLUGIN_METADATA_LIES) delete metadata[field];
 	// Our own headers, not the plugin's: the body is no longer the plugin's, and
 	// a `Content-Length` or `ETag` it sets would describe a different one.
 	return Response.json(
@@ -78,4 +86,18 @@ export const authorizationServerMetadata = async (request: Request): Promise<Res
 	);
 };
 
-export const protectedResourceMetadata = oAuthProtectedResourceMetadata(auth);
+const pluginProtectedResourceMetadata = oAuthProtectedResourceMetadata(auth);
+
+/**
+ * The plugin's protected-resource document, with the same honesty applied: it
+ * also names a `jwks_uri` that does not exist and claims an RSA signing
+ * algorithm for tokens that are not JWTs.
+ */
+export const protectedResourceMetadata = async (request: Request): Promise<Response> => {
+	const response = await pluginProtectedResourceMetadata(request);
+	if (!response.ok) return response;
+	const metadata = (await response.json()) as Record<string, unknown> | null;
+	if (!metadata) return Response.json(metadata, { status: response.status, headers: CORS_HEADERS });
+	for (const field of PLUGIN_METADATA_LIES) delete metadata[field];
+	return Response.json(metadata, { headers: CORS_HEADERS });
+};

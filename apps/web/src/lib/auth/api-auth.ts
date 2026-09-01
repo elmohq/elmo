@@ -44,7 +44,7 @@ export interface OrganizationAuth {
 	lastUsedAt: Date | null;
 	expiresAt: Date | null;
 	rateLimit: { limit: number; window: "minute" };
-	/** Echoed back as `X-RateLimit-*` so a caller can pace itself. */
+	/** Echoed back as `X-RateLimit-Remaining` so a caller can pace itself. */
 	rateLimitRemaining: number | null;
 }
 
@@ -306,7 +306,14 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 			lastUsedAt: asDate(key.lastRequest),
 			expiresAt: asDate(key.expiresAt),
 			rateLimit: { limit: key.rateLimitMax ?? 120, window: "minute" },
-			rateLimitRemaining: typeof key.remaining === "number" ? key.remaining : null,
+			// Echoed back as `X-RateLimit-Remaining`. The plugin's fixed-window counter
+			// has already consumed this request by the time the row is in hand, so this
+			// is the honest remainder of the window. Null — and no header — when the
+			// counter isn't a number, rather than a made-up full window.
+			rateLimitRemaining:
+				typeof key.requestCount === "number" && typeof key.rateLimitMax === "number"
+					? Math.max(0, key.rateLimitMax - key.requestCount)
+					: null,
 		},
 	};
 }

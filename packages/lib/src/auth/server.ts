@@ -202,10 +202,6 @@ export function createAuth(options?: CreateAuthOptions) {
 			// token that acts as that person — the same reach they have in the
 			// dashboard, no more.
 			//
-			// `consentPage` is not in the plugin's published options type, but its
-			// authorize handler reads it — without it the plugin only stops for
-			// consent when the client asks, and none do.
-			//
 			// `resource` is the protected resource identifier a client checks its
 			// token audience against, so it names the MCP endpoint rather than the
 			// origin the plugin would default to. It is built from the same
@@ -216,8 +212,17 @@ export function createAuth(options?: CreateAuthOptions) {
 			mcp({
 				loginPage: MCP_AUTHORIZE_PAGE,
 				consentPage: MCP_AUTHORIZE_PAGE,
+				// Every client here is effectively public — registration asks no
+				// secret — so PKCE is what stops a stolen authorization code being
+				// redeemed by whoever intercepted it. The plugin only enforces this
+				// when told; discovery advertises S256 either way, and advertising a
+				// requirement the server does not have is worse than advertising it.
+				oidcConfig: { requirePKCE: true },
 				resource: `${origin}${MCP_PATH}`,
-			} as Parameters<typeof mcp>[0]),
+				// `consentPage` and the bare `oidcConfig` are not in the plugin's
+				// published options type, but its handlers read both. The cast is
+				// the honest record of that gap, not a shortcut around it.
+			} as unknown as Parameters<typeof mcp>[0]),
 			sso(options?.sso),
 			...(options?.extraPlugins ?? []),
 			// Replaces the /get-session endpoint, so this runs on every session
