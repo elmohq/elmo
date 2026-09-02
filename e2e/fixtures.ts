@@ -245,7 +245,7 @@ export const API_KEYS = {
  * phases. The ports here are what that file publishes, and the suites still run
  * one at a time against a shared database.
  */
-export const MODE_PORTS = {
+const MODE_PORTS = {
   local: 1515,
   cloud: 1516,
   whitelabel: 1517,
@@ -291,9 +291,9 @@ export const WHITELABEL = {
 
 /**
  * Cloud signup fixtures, mirroring CLOUD_SIGNUP_ALLOWLIST in e2e/modes.yaml.
- * The allowlist admits `allowedDomain` and the disposable
- * domain, so the disposable-address rejection is reached on its own merits
- * rather than being masked by the invite-only gate.
+ * The allowlist admits `allowedDomain` and the disposable domain, so the
+ * disposable-address rejection is reached on its own merits rather than being
+ * masked by the invite-only gate.
  */
 export const CLOUD_SIGNUP = {
   allowedDomain: "e2e-allowed.test",

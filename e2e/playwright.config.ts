@@ -11,8 +11,8 @@ import { defineConfig, devices } from "@playwright/test";
 import { authStatePath, DEPLOYMENT_MODES, modeUrl, WHITELABEL } from "./fixtures";
 import type { ConsoleErrorOptions } from "./test";
 
-// Each mode run writes its own HTML report so the three CI passes don't
-// overwrite each other's output.
+// Each mode run writes its own HTML report so the CI passes don't overwrite
+// each other's output.
 const HTML_REPORT_DIR = process.env.PLAYWRIGHT_HTML_REPORT || "playwright-report";
 
 const modeProjects = DEPLOYMENT_MODES.flatMap((mode) => [
@@ -42,6 +42,11 @@ export default defineConfig<ConsoleErrorOptions>({
   testDir: "./tests",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
+  // A retry still runs, so a genuine blip does not fail the job on its own —
+  // but it is reported. Four tests had been failing their first attempt for
+  // months behind a silent retry, each costing a whole timeout; a suite that
+  // needs one is telling you something it used to be able to swallow.
+  failOnFlakyTests: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 4,
   reporter: process.env.CI
