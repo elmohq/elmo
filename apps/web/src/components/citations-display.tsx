@@ -77,19 +77,24 @@ function useCitationSections(citationData: CitationData) {
 	);
 
 	const changed = citationData.whatsChanged;
+	const totalChanges = changed
+		? changed.newUrls.length +
+			changed.droppedUrls.length +
+			changed.titleChanges.length +
+			changed.newDomains.length +
+			changed.droppedDomains.length
+		: 0;
+
 	return {
 		brandShare: lastTrendPoint ? (lastTrendPoint.brand ?? 0) : windowShare,
 		chartSourceCategories,
 		chartPageTypes,
 		urlSourceTabs,
 		urlPageTypeTabs,
-		totalChanges: changed
-			? changed.newUrls.length +
-				changed.droppedUrls.length +
-				changed.titleChanges.length +
-				changed.newDomains.length +
-				changed.droppedDomains.length
-			: 0,
+		// An empty change set reads as no change set: nothing downstream
+		// distinguishes them, so the section is resolved here rather than at
+		// every render site.
+		whatsChanged: totalChanges > 0 ? changed : undefined,
 	};
 }
 
@@ -138,7 +143,7 @@ function ChangesAndGapsRow({
 	contentGaps,
 	days,
 }: {
-	whatsChanged: CitationData["whatsChanged"] | undefined;
+	whatsChanged: CitationData["whatsChanged"];
 	contentGaps: NonNullable<CitationData["competitorOnlyPrompts"]>;
 	days: number;
 }) {
@@ -167,13 +172,12 @@ export function CitationsDisplay({
 	days = 7,
 	onCompetitorAdded,
 }: CitationsDisplayProps) {
-	const { brandShare, chartSourceCategories, chartPageTypes, urlSourceTabs, urlPageTypeTabs, totalChanges } =
+	const { brandShare, chartSourceCategories, chartPageTypes, urlSourceTabs, urlPageTypeTabs, whatsChanged } =
 		useCitationSections(citationData);
 	const domainSourceTabs = urlSourceTabs; // identical by construction (same chart-category list)
 
 	const contentGaps = citationData.competitorOnlyPrompts ?? [];
 	const googleModule = citationData.googleModule;
-	const whatsChanged = citationData.whatsChanged;
 	const subredditData = useSubredditData(citationData.specificUrls, citationData.whatsChanged);
 
 	// Bail out only AFTER every hook above has run unconditionally (Rules of Hooks).
@@ -195,11 +199,7 @@ export function CitationsDisplay({
 				chartPageTypes={chartPageTypes}
 			/>
 
-			<ChangesAndGapsRow
-				whatsChanged={totalChanges > 0 ? whatsChanged : undefined}
-				contentGaps={contentGaps}
-				days={days}
-			/>
+			<ChangesAndGapsRow whatsChanged={whatsChanged} contentGaps={contentGaps} days={days} />
 
 			{/* Top Cited Domains */}
 			{citationData.domainDistribution.length > 0 && (
