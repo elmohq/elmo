@@ -66,9 +66,8 @@ export async function requirePromptInScope(
 		if (err instanceof PromptNotFoundError) throw notFound();
 		throw err;
 	});
-	const brand = await requireBrandInScope(auth, prompt.brandId).catch(() => {
-		throw notFound();
-	});
+	const brand = await loadBrandInScope(auth, prompt.brandId);
+	if (!brand) throw notFound();
 	return { prompt, brand };
 }
 
