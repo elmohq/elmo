@@ -101,22 +101,6 @@ async function benchBrand(brandId: string, runCount: number, hasCitations: boole
 	results.push(await bench("getPromptsFirstEvaluatedAt", () => pgRead.getPromptsFirstEvaluatedAt(brandId, promptIds)));
 
 	results.push(
-		await bench("getPromptDailyStats", () => pgRead.getPromptDailyStats(firstPromptId, fromDate, toDate, tz)),
-	);
-
-	results.push(
-		await bench("getPromptCompetitorDailyStats", () =>
-			pgRead.getPromptCompetitorDailyStats(firstPromptId, fromDate, toDate, tz),
-		),
-	);
-
-	results.push(
-		await bench("getPromptWebQueriesForMapping", () =>
-			pgRead.getPromptWebQueriesForMapping(firstPromptId, fromDate, toDate, tz),
-		),
-	);
-
-	results.push(
 		await bench("getPromptMentionSummary", () => pgRead.getPromptMentionSummary(firstPromptId, fromDate, toDate, tz)),
 	);
 
