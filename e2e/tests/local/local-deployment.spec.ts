@@ -9,6 +9,7 @@
 import { ABORTED_SSR_STREAM, expect, failedResource, test } from "../../test";
 import { TEST_BRAND_ID, TEST_USER, brandUrl, organizationUrl } from "../../fixtures";
 import { userExists } from "../../session";
+import { openAccountMenu } from "../../interactions";
 
 const SECOND_USER = {
   email: "second-user@test.local",
@@ -67,7 +68,7 @@ test.describe("Local features", () => {
       0,
     );
 
-    await page.getByRole("button", { name: "Account and organizations" }).click();
+    await openAccountMenu(page);
     await expect(page.getByRole("menu").locator('a[href="/reports"]')).toBeVisible({ timeout: 30_000 });
 
     await page.goto(`${organizationUrl()}/settings`);

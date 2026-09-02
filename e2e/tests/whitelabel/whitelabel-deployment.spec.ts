@@ -14,6 +14,7 @@
  */
 import { expect, failedResource, test } from "../../test";
 import { TEST_BRAND_ID, WHITELABEL, brandUrl, organizationUrl } from "../../fixtures";
+import { fillUntilSaveable } from "../../interactions";
 
 const isIdpRequest = (url: URL) => url.host === WHITELABEL.auth0Domain;
 
@@ -163,9 +164,10 @@ test.describe("Whitelabel features", () => {
 
     const nameField = page.getByLabel("Organization Name", { exact: true });
     await expect(nameField).toBeEnabled({ timeout: 30_000 });
-    await nameField.fill("Renamed From The Settings Page");
 
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    const save = page.getByRole("button", { name: "Save", exact: true });
+    await fillUntilSaveable(nameField, "Renamed From The Settings Page", save);
+    await save.click();
     await expect(page.getByText(/cannot be renamed in this deployment/i)).toBeVisible({ timeout: 30_000 });
   });
 });
