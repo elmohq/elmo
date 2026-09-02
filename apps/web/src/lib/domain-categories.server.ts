@@ -556,21 +556,13 @@ const DOMAIN_CATEGORY_CHECKS: [(domain: string) => boolean, CitationCategory][] 
 	[isInstitutionalDomain, "institutional"],
 ];
 
-/** Matches the domain itself or any subdomain of it. */
-function matchesAnyDomain(domain: string, candidates: Set<string>): boolean {
-	for (const candidate of candidates) {
-		if (domain === candidate || domain.endsWith(`.${candidate}`)) return true;
-	}
-	return false;
-}
-
 export function categorizeDomain(
 	domain: string,
 	brandDomains: Set<string>,
 	competitorDomains: Set<string>,
 ): CitationCategory {
-	if (matchesAnyDomain(domain, brandDomains)) return "brand";
-	if (matchesAnyDomain(domain, competitorDomains)) return "competitor";
+	if (inDomainSet(domain, brandDomains)) return "brand";
+	if (inDomainSet(domain, competitorDomains)) return "competitor";
 	return DOMAIN_CATEGORY_CHECKS.find(([matches]) => matches(domain))?.[1] ?? "other";
 }
 
