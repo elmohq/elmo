@@ -18,7 +18,7 @@ import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar"
 import { expect, screen, userEvent, within } from "storybook/test";
 import { AppSidebar } from "@/components/app-sidebar";
 import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
-import { setMockOrganizations } from "./_mocks/server-organizations";
+import { setMockOrganizations, setMockOrganizationsFailures } from "./_mocks/server-organizations";
 import { setMockRouteContext } from "./_mocks/tanstack-router";
 import { setMockAuth } from "./_mocks/use-auth";
 import { setMockBrand } from "./_mocks/use-brands";
@@ -345,6 +345,30 @@ export const Cloud: StoryObj = {
 		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
 		await expect(await screen.findByText("Workflows")).toBeInTheDocument();
 		await expect(screen.queryByText("Reports")).toBeNull();
+	},
+};
+
+/** The account menu's retry recovers the organization list after a failed load */
+export const OrganizationsRetry: StoryObj = {
+	render: () => {
+		configureMocks(cloudConfig, onboardedBrand, authedUser("Rita Retry", "rita@acme.com", "rita"), undefined, [
+			organization,
+		]);
+		setMockOrganizationsFailures(1);
+
+		return (
+			<SidebarFrame label="Organizations failed to load — retry">
+				<AppSidebar scope="brand" brand={onboardedBrand} organization={organization} />
+			</SidebarFrame>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(await canvas.findByRole("button", { name: "Account and organizations" }));
+
+		await userEvent.click(await screen.findByText("Couldn't load your organizations — retry"));
+
+		await expect(await screen.findByText(organization.name)).toBeInTheDocument();
 	},
 };
 
