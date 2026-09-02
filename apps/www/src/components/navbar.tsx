@@ -28,8 +28,6 @@ export function Navbar() {
 		<header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur">
 			<div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 md:px-6">
 				<div className="flex items-center gap-3 md:gap-8">
-					{/* Base UI treats a NavigationMenu.Root rendered inside any floating element as a nested
-					    menu and drops the composite root its links need, so the root stays outside the popover. */}
 					<NavigationMenu className="md:hidden" orientation="vertical">
 						<Popover>
 							<PopoverTrigger
