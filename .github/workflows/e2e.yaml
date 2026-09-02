@@ -9,18 +9,23 @@
 #   2. worker — start the worker (pointed at the no-network `stub` provider)
 #      and run the `worker` project, which submits a job and asserts the worker
 #      processes it
-#   3. cloud — worker back down, re-seed, run the `cloud` project and the
-#      `cloud`-tagged Bruno cases (plan enforcement, which only exists here)
+#   3. cloud — worker back down, run the `cloud` project and the `cloud`-tagged
+#      Bruno cases (plan enforcement, which only exists here)
 #   4. whitelabel — same, against the whitelabel container
-#   5. demo — same, plus the `demo`-tagged Bruno cases (every API write must be
-#      refused)
+#   5. demo — re-seed, then the `demo` project plus the `demo`-tagged Bruno
+#      cases (every API write must be refused)
 #
 # All four modes are up from the start, one container each (e2e/modes.yaml), so
-# their boots overlap and no phase pays to recreate and re-warm `web`. They
-# share one database and one image, and the suites still run one at a time.
-# Ordering matters — the fixture suites run while the worker is down so its
-# self-healing scheduler can't mutate seeded data, and the local phase runs
-# first because it bootstraps the account the other modes sign in with.
+# their boots overlap and no phase pays to recreate and re-warm `web`. Cloud and
+# whitelabel each hold a database of their own, so a phase cannot read what the
+# phase before it left behind and the two are in no particular order.
+#
+# What ordering is left is real. The fixture suites run while the worker is down
+# so its self-healing scheduler can't mutate seeded data. Local runs first
+# because it bootstraps the account the other modes sign in with. Demo runs
+# after it because demo shares local's database — signup is disabled there, so
+# that bootstrapped account is the only way in — and re-seeds first because the
+# worker phase wrote runs into it.
 #
 # This workflow is the SINGLE SOURCE OF TRUTH for E2E test orchestration.
 # Run locally via: pnpm test:e2e-local  (replays this workflow with
@@ -132,10 +137,10 @@ jobs:
       - name: Build images
         run: docker compose build
 
-      # Every mode at once (with their shared deps db-migrate + postgres), so the
-      # four cold starts overlap instead of costing a recreate-and-wait between
-      # phases. The worker stays down for now — it comes up in phase 2, after
-      # the fixture suites run.
+      # Every mode at once, so the four cold starts overlap instead of costing a
+      # recreate-and-wait between phases. Their deps come up with them: postgres,
+      # the per-mode databases, and a migrate for each. The worker stays down for
+      # now — it comes up in phase 2, after the fixture suites run.
       - name: Start every deployment mode
         run: docker compose up -d --no-build web web-cloud web-whitelabel web-demo
 
@@ -147,6 +152,8 @@ jobs:
             http://localhost:1517/ \
             http://localhost:1518/
 
+      # Every database the stack stands up, in one pass — seed.ts reads the list
+      # from MODE_STACKS rather than taking it from here.
       - name: Seed test data
         run: cd e2e && npx tsx seed.ts
 
@@ -178,14 +185,12 @@ jobs:
 
       # Phase 3+ — the remaining deployment modes, each already up and warm on
       # its own port. The worker goes back down so its scheduler can't touch the
-      # re-seeded fixtures. The re-seed between phases is what keeps them from
-      # reading each other's leftovers: they share one database, and the cloud
-      # suite in particular creates and deletes accounts.
+      # fixtures the suites below read.
+      #
+      # Cloud and whitelabel own their databases, still holding the seed from
+      # before phase 1 and nothing else, so neither needs one here.
       - name: Stop worker
         run: docker compose stop worker
-
-      - name: Re-seed test data
-        run: cd e2e && npx tsx seed.ts
 
       - name: Run Playwright E2E tests (cloud mode)
         run: pnpm -C e2e exec playwright test --project=cloud
@@ -197,20 +202,18 @@ jobs:
       - name: Run Bruno API tests (cloud mode)
         run: pnpm test:api:cloud
 
-      - name: Re-seed test data
-        run: cd e2e && npx tsx seed.ts
-
       - name: Run Playwright E2E tests (whitelabel mode)
         run: pnpm -C e2e exec playwright test --project=whitelabel
         env:
           PLAYWRIGHT_HTML_REPORT: playwright-report-whitelabel
 
+      # Demo has no signup, so it reuses the account the local phase
+      # bootstrapped — the same way the public demo reuses a local install's
+      # database. Sharing it is also why this phase re-seeds: the worker wrote
+      # runs into that database in phase 2. Demo writes nothing itself.
       - name: Re-seed test data
         run: cd e2e && npx tsx seed.ts
 
-      # Demo has no signup, so it reuses the account the local phase
-      # bootstrapped — the same way the public demo reuses a local install's
-      # database. It writes nothing, so it goes last.
       - name: Run Playwright E2E tests (demo mode)
         run: pnpm -C e2e exec playwright test --project=demo
         env:
@@ -226,10 +229,13 @@ jobs:
         run: pnpm validate:spec
 
       # Every mode, not just `web`: a cloud or demo failure leaves its evidence
-      # in that mode's own container.
+      # in that mode's own container, and a database that never got made or
+      # migrated leaves it in the one-shot services that own that.
       - name: Dump web logs
         if: failure()
-        run: docker compose logs web web-cloud web-whitelabel web-demo
+        run: |
+          docker compose logs web web-cloud web-whitelabel web-demo \
+            mode-databases db-migrate db-migrate-cloud db-migrate-whitelabel
 
       - name: Upload Playwright reports
         uses: actions/upload-artifact@v7
