@@ -3,7 +3,7 @@
 // this from a client module would bloat the browser bundle — keep it confined to
 // server functions. Client code imports types/config from `./domain-categories`.
 
-import { type CitationCategory, FORUM_DOMAINS, inferPageType, isForumDomain } from "./domain-categories";
+import { type CitationCategory, FORUM_DOMAINS, inDomainSet, inferPageType, isForumDomain } from "./domain-categories";
 import { EDITORIAL_DOMAINS } from "./editorial-domains";
 
 const SOCIAL_MEDIA_DOMAINS = new Set([
@@ -483,21 +483,6 @@ const INSTITUTIONAL_DOMAINS = new Set([
 	"gov.au",
 	"govt.nz",
 ]);
-
-/**
- * True if `domain` equals, or is a subdomain of, any entry in `set`. Walks the
- * domain's parent suffixes so lookups stay O(labels) regardless of set size —
- * important for the large editorial set.
- */
-function inDomainSet(domain: string, set: Set<string>): boolean {
-	let d = domain;
-	while (true) {
-		if (set.has(d)) return true;
-		const dot = d.indexOf(".");
-		if (dot === -1) return false;
-		d = d.slice(dot + 1);
-	}
-}
 
 function isSocialMediaDomain(domain: string): boolean {
 	return inDomainSet(domain, SOCIAL_MEDIA_DOMAINS);
