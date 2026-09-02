@@ -42,10 +42,11 @@ export default defineConfig<ConsoleErrorOptions>({
   testDir: "./tests",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  // A retry still runs, so a genuine blip does not fail the job on its own —
-  // but it is reported. Four tests had been failing their first attempt for
-  // months behind a silent retry, each costing a whole timeout; a suite that
-  // needs one is telling you something it used to be able to swallow.
+  // A test that needed its retry fails the job. Four had been failing their
+  // first attempt for months behind a silent retry, each costing a whole
+  // timeout; a suite that needs one is telling you something it used to be
+  // able to swallow. The retry still runs, but it no longer forgives the
+  // failure — it is what produces the trace below.
   failOnFlakyTests: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 4,
