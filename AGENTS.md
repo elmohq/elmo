@@ -67,3 +67,4 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 - Add one only for **user-facing** changes (something an end user of the product would notice). Internal refactors, dependency bumps, and CI tweaks don't get one.
 - Keep it to one short, product-focused sentence; default to `patch`; scope it to the packages actually affected.
 - If a non-package directory (like `e2e/`) breaks Changesets tooling, fix the tooling configuration rather than inventing versions.
+- Never create a changeset for `apps/www`.
