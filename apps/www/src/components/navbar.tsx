@@ -2,17 +2,12 @@ import { Link, useLoaderData } from "@tanstack/react-router";
 import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
 import { Button } from "@workspace/ui/components/button";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@workspace/ui/components/dropdown-menu";
-import {
 	NavigationMenu,
 	NavigationMenuItem,
 	NavigationMenuLink,
 	NavigationMenuList,
 } from "@workspace/ui/components/navigation-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { ArrowRight } from "lucide-react";
 import { formatStarCount } from "@/lib/github-stars";
 import { Logo } from "./logo";
@@ -33,47 +28,53 @@ export function Navbar() {
 		<header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur">
 			<div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 md:px-6">
 				<div className="flex items-center gap-3 md:gap-8">
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={<Button className="group size-8 md:hidden" variant="ghost" size="icon" aria-label="Open menu" />}
-						>
-							<svg
-								aria-hidden="true"
-								className="pointer-events-none"
-								width={16}
-								height={16}
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth="2"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								xmlns="http://www.w3.org/2000/svg"
+					{/* Base UI treats a NavigationMenu.Root rendered inside any floating element as a nested
+					    menu and drops the composite root its links need, so the root stays outside the popover. */}
+					<NavigationMenu className="md:hidden" orientation="vertical">
+						<Popover>
+							<PopoverTrigger
+								render={<Button className="group size-8" variant="ghost" size="icon" aria-label="Open menu" />}
 							>
-								<path
-									d="M4 12L20 12"
-									className="origin-center -translate-y-[7px] transition-all duration-300 ease-[cubic-bezier(.5,.85,.25,1.1)] group-aria-expanded:translate-x-0 group-aria-expanded:translate-y-0 group-aria-expanded:rotate-[315deg]"
-								/>
-								<path
-									d="M4 12H20"
-									className="origin-center transition-all duration-300 ease-[cubic-bezier(.5,.85,.25,1.8)] group-aria-expanded:rotate-45"
-								/>
-								<path
-									d="M4 12H20"
-									className="origin-center translate-y-[7px] transition-all duration-300 ease-[cubic-bezier(.5,.85,.25,1.1)] group-aria-expanded:translate-y-0 group-aria-expanded:rotate-[135deg]"
-								/>
-							</svg>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="start" className="w-44 md:hidden">
-							{navigationLinks.map((link) => (
-								<DropdownMenuItem
-									key={link.href}
-									className="font-medium text-zinc-600"
-									render={<a href={link.href}>{link.label}</a>}
-								/>
-							))}
-						</DropdownMenuContent>
-					</DropdownMenu>
+								<svg
+									aria-hidden="true"
+									className="pointer-events-none"
+									width={16}
+									height={16}
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									xmlns="http://www.w3.org/2000/svg"
+								>
+									<path
+										d="M4 12L20 12"
+										className="origin-center -translate-y-[7px] transition-all duration-300 ease-[cubic-bezier(.5,.85,.25,1.1)] group-aria-expanded:translate-x-0 group-aria-expanded:translate-y-0 group-aria-expanded:rotate-[315deg]"
+									/>
+									<path
+										d="M4 12H20"
+										className="origin-center transition-all duration-300 ease-[cubic-bezier(.5,.85,.25,1.8)] group-aria-expanded:rotate-45"
+									/>
+									<path
+										d="M4 12H20"
+										className="origin-center translate-y-[7px] transition-all duration-300 ease-[cubic-bezier(.5,.85,.25,1.1)] group-aria-expanded:translate-y-0 group-aria-expanded:rotate-[135deg]"
+									/>
+								</svg>
+							</PopoverTrigger>
+							<PopoverContent align="start" className="w-44 p-1">
+								<NavigationMenuList className="w-full flex-col items-start gap-0">
+									{navigationLinks.map((link) => (
+										<NavigationMenuItem key={link.href} className="w-full">
+											<NavigationMenuLink href={link.href} className="py-1.5">
+												{link.label}
+											</NavigationMenuLink>
+										</NavigationMenuItem>
+									))}
+								</NavigationMenuList>
+							</PopoverContent>
+						</Popover>
+					</NavigationMenu>
 					<Link to="/" aria-label="Homepage" className="flex items-center">
 						<Logo className="text-2xl" />
 					</Link>
