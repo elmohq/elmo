@@ -230,6 +230,8 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	printBanner();
 	p.intro(pc.bold("Setting up Elmo"));
 
+	assertDockerRunning();
+
 	// Said before the wizard asks for anything, not after: someone who would
 	// rather buy the managed version should find that out before they have gone
 	// and opened scraper accounts.
@@ -1655,6 +1657,14 @@ function assertDockerRunning(): void {
 	const result = spawnSync("docker", ["info"], {
 		stdio: "ignore",
 	});
+	if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+		throw new Error(
+			"Docker does not appear to be installed. Install Docker Desktop or Docker Engine and try again: https://docs.docker.com/get-docker/",
+		);
+	}
+	if (result.error) {
+		throw new Error(`Could not run Docker: ${result.error.message}`);
+	}
 	if (result.status !== 0) {
 		throw new Error("Docker does not appear to be running. Start Docker and try again.");
 	}
