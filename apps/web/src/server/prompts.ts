@@ -24,11 +24,8 @@ import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 import {
 	type CitationUrlStats,
 	getPromptCitationUrlStats,
-	getPromptCompetitorDailyStats,
-	getPromptDailyStats,
 	getPromptsFirstEvaluatedAt,
 	getPromptsSummary,
-	getPromptWebQueriesForMapping,
 	getPromptWebQueryCounts,
 } from "@/lib/postgres-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
@@ -88,65 +85,7 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 /**
  * Get prompts summary for a brand (visibility scores, tags, etc.)
  */
-type PromptDailyStat = Awaited<ReturnType<typeof getPromptDailyStats>>[number];
-type PromptCompetitorDailyStat = Awaited<ReturnType<typeof getPromptCompetitorDailyStats>>[number];
-type PromptWebQuery = Awaited<ReturnType<typeof getPromptWebQueriesForMapping>>[number];
 type PromptSummaryStat = Awaited<ReturnType<typeof getPromptsSummary>>[number];
-
-function buildVisibilityChartData(args: {
-	dateRange: string[];
-	dailyStats: PromptDailyStat[];
-	competitorStats: PromptCompetitorDailyStat[];
-	brandId: string;
-	competitors: { id: string; name: string }[];
-}): { date: string; [seriesId: string]: number | string | null }[] {
-	const runsByDate = new Map(args.dailyStats.map((stat) => [String(stat.date), stat]));
-	const mentionsByDate = new Map<string, Map<string, number>>();
-	for (const stat of args.competitorStats) {
-		const date = String(stat.date);
-		const byCompetitor = mentionsByDate.get(date) ?? new Map<string, number>();
-		byCompetitor.set(stat.competitor_name, Number(stat.mention_count));
-		mentionsByDate.set(date, byCompetitor);
-	}
-
-	return args.dateRange.map((date) => {
-		const dayStat = runsByDate.get(date);
-		const totalRuns = Number(dayStat?.total_runs ?? 0);
-		const rate = (count: number) => (totalRuns === 0 ? null : Math.round((count / totalRuns) * 100));
-		const mentions = mentionsByDate.get(date);
-		const point: { date: string; [seriesId: string]: number | string | null } = { date };
-		point[args.brandId] = rate(Number(dayStat?.brand_mentioned_count ?? 0));
-		for (const competitor of args.competitors) point[competitor.id] = rate(mentions?.get(competitor.name) ?? 0);
-		return point;
-	});
-}
-
-function earliestQuery(rows: PromptWebQuery[]): string | undefined {
-	const oldest = rows[0];
-	if (!oldest) return undefined;
-	const oldestTime = new Date(oldest.created_at_iso).getTime();
-	return rows
-		.filter((row) => new Date(row.created_at_iso).getTime() === oldestTime)
-		.map((row) => row.web_query)
-		.sort()[0];
-}
-
-/**
- * The query this prompt first triggered, overall and per model — what labels the
- * chart's series. Rows arrive oldest-first.
- */
-function webQueryMappings(
-	rows: PromptWebQuery[],
-	promptId: string,
-): { webQueryMapping: Record<string, string>; modelWebQueryMappings: Record<string, Record<string, string>> } {
-	const overall = earliestQuery(rows);
-	const modelWebQueryMappings: Record<string, Record<string, string>> = {};
-	for (const model of new Set(rows.map((row) => row.model))) {
-		const query = earliestQuery(rows.filter((row) => row.model === model));
-		if (query) modelWebQueryMappings[model] = { [promptId]: query };
-	}
-	return { webQueryMapping: overall ? { [promptId]: overall } : {}, modelWebQueryMappings };
-}
 
 function summarizePrompt(
 	prompt: {
@@ -602,91 +541,6 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		await expeditePromptRuns(promptsGainingPremium(existingById, saved));
 
 		return saved;
-	});
-
-export const getPromptChartDataFn = createServerFn({ method: "GET" })
-	.validator(
-		z.object({
-			brandId: z.string(),
-			promptId: z.string(),
-			lookback: z.string().optional().default("1m"),
-			webSearchEnabled: z.string().optional(),
-			model: z.string().optional(),
-			timezone: z.string().optional(),
-		}),
-	)
-	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
-
-		const timezone = resolveTimezone(data.timezone);
-		const lookbackParam = (data.lookback || "1m") as LookbackPeriod;
-		const { fromDateStr } = getTimezoneLookbackRange(lookbackParam, timezone);
-		// "all" leaves the query unbounded below; the chart still ends today, and
-		// its start is pulled back to the first day with data once that is known.
-		const toDateStr = new Date().toLocaleDateString("en-CA", { timeZone: timezone });
-		const endDate = new Date(toDateStr);
-		let startDate = fromDateStr ? new Date(fromDateStr) : new Date();
-
-		const [promptData, brandData, competitorsData] = await Promise.all([
-			db
-				.select({ id: prompts.id, value: prompts.value, brandId: prompts.brandId })
-				.from(prompts)
-				.where(eq(prompts.id, data.promptId))
-				.limit(1),
-			db.select().from(brands).where(eq(brands.id, data.brandId)).limit(1),
-			db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
-		]);
-
-		if (promptData.length === 0) throw new Error("Prompt not found");
-		if (brandData.length === 0) throw new Error("Brand not found");
-		if (promptData[0].brandId !== data.brandId) throw new Error("Access denied");
-
-		const prompt = promptData[0];
-		const brand = brandData[0];
-		const brandCompetitors = competitorsData;
-
-		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
-
-		const [dailyStats, competitorStats, webQueryData] = await Promise.all([
-			getPromptDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.model),
-			getPromptCompetitorDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.model),
-			getPromptWebQueriesForMapping(data.promptId, fromDateStr, toDateStr, timezone),
-		]);
-
-		if (lookbackParam === "all" && dailyStats.length > 0) {
-			const sortedDates = dailyStats.map((s) => String(s.date)).sort();
-			startDate = new Date(sortedDates[0]);
-		}
-
-		const dateRange = generateDateRange(startDate, endDate);
-		const sortedCompetitors = [...brandCompetitors].sort((a, b) => a.name.localeCompare(b.name));
-		const chartData = buildVisibilityChartData({
-			dateRange,
-			dailyStats,
-			competitorStats,
-			brandId: brand.id,
-			competitors: sortedCompetitors,
-		});
-
-		const totalRuns = dailyStats.reduce((sum, s) => sum + Number(s.total_runs), 0);
-		const seriesIds = [brand.id, ...sortedCompetitors.map((c) => c.id)];
-		const hasVisibilityData = chartData.some((point) => seriesIds.some((id) => Number(point[id] ?? 0) > 0));
-		const lastBrandVisibility =
-			(chartData.filter((point) => point[brand.id] !== null).pop()?.[brand.id] as number | undefined) ?? null;
-		const { webQueryMapping, modelWebQueryMappings } = webQueryMappings(webQueryData, data.promptId);
-
-		return {
-			prompt: { id: prompt.id, value: prompt.value },
-			chartData,
-			brand,
-			competitors: brandCompetitors,
-			totalRuns,
-			hasVisibilityData,
-			lastBrandVisibility,
-			webQueryMapping,
-			modelWebQueryMappings,
-		};
 	});
 
 export const getPromptWebQueryFn = createServerFn({ method: "GET" })

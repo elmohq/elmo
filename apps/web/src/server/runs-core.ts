@@ -23,7 +23,7 @@ export interface RunSummary {
 	createdAt: Date | string;
 }
 
-export interface RunCitation {
+interface RunCitation {
 	url: string;
 	domain: string;
 	title: string | null;

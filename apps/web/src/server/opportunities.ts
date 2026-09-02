@@ -38,7 +38,7 @@ import { computeVolatility, type DailyDomainCount, stabilityScore } from "@/lib/
 import { normalizeText, withoutRepeats } from "@/server/opportunities-dedupe";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
-export const CATEGORIES = ["creation", "existing-content", "outreach", "social"] as const;
+const CATEGORIES = ["creation", "existing-content", "outreach", "social"] as const;
 
 const OpportunitySchema = z.object({
 	category: z
@@ -61,7 +61,7 @@ const OpportunitySchema = z.object({
 		.describe("The tracked prompts (verbatim, exactly as written in the data) this helps. May be empty."),
 });
 
-export const opportunitiesSchema = z.object({
+const opportunitiesSchema = z.object({
 	summary: z
 		.array(z.string())
 		.describe(
@@ -99,7 +99,7 @@ export interface OpportunitiesReport extends Omit<RawReport, "opportunities"> {
 	opportunities: ReportOpportunity[];
 }
 
-export type OpportunitiesReason = "insufficient-data" | null;
+type OpportunitiesReason = "insufficient-data" | null;
 export interface OpportunitiesResponse {
 	report: OpportunitiesReport | null;
 	reason: OpportunitiesReason;

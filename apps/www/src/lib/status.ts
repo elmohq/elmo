@@ -3,7 +3,7 @@ import { Redis } from "@upstash/redis";
 import { STATUS_TARGETS } from "@workspace/config/scrape-targets";
 import type { StatusEntry, TargetStatus } from "./status-helpers";
 
-export type { StatusEntry, TargetStatus } from "./status-helpers";
+export type { TargetStatus } from "./status-helpers";
 
 const redis = new Redis({
 	url: process.env.UPSTASH_REDIS_REST_URL!,

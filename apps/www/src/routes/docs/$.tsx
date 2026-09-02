@@ -29,7 +29,7 @@ interface OpenApiLoaderData {
 
 type LoaderData = DocsLoaderData | OpenApiLoaderData;
 
-export type { DocsLoaderData, LoaderData, OpenApiLoaderData };
+export type { LoaderData };
 
 export const Route = createFileRoute("/docs/$")({
 	component: Page,

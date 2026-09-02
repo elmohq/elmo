@@ -10,7 +10,7 @@ export interface ShareOfVoiceFilters {
 	tags?: string[];
 }
 
-export const shareOfVoiceKeys = {
+const shareOfVoiceKeys = {
 	all: ["share-of-voice"] as const,
 	list: (brandId: string, filters?: ShareOfVoiceFilters) => [...shareOfVoiceKeys.all, brandId, filters] as const,
 };

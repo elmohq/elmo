@@ -230,9 +230,6 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@biomejs/biome':
-        specifier: 2.5.8
-        version: 2.5.8
       '@storybook/addon-vitest':
         specifier: ^10.5.8
         version: 10.5.8(@vitest/browser-playwright@4.1.10)(@vitest/browser@4.1.10)(@vitest/runner@4.1.10)(react@19.2.8)(storybook@10.5.8(@types/react@19.2.18)(prettier@3.9.6)(react@19.2.8))(vitest@4.1.10)

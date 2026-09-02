@@ -26,14 +26,14 @@ import {
 } from "@/lib/postgres-read";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 
-export interface VisibilityTimeSeriesPoint {
+interface VisibilityTimeSeriesPoint {
 	date: string;
 	overall: number | null;
 	nonBranded: number | null;
 	branded: number | null;
 }
 
-export type CitationTimeSeriesPoint = { date: string } & Record<CitationCategory, number>;
+type CitationTimeSeriesPoint = { date: string } & Record<CitationCategory, number>;
 
 export interface DashboardSummaryResponse {
 	totalPrompts: number;

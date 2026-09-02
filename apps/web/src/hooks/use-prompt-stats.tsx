@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getPromptStatsFn } from "@/server/prompts";
 
-export const promptStatsKeys = {
+const promptStatsKeys = {
 	all: ["prompt-stats"] as const,
 	detail: (promptId: string, days: number) => [...promptStatsKeys.all, promptId, days] as const,
 };

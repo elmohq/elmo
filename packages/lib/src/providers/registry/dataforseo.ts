@@ -162,28 +162,40 @@ async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
 	// Overview runner).
 	let lastError = "No response or tasks.";
 	for (let attempt = 0; attempt < 3; attempt++) {
-		try {
-			const response = await api.googleOrganicLiveAdvanced([requestInfo]);
-			const task = response?.tasks?.[0];
-			if (task?.status_code === 20000 && task.result?.length) {
-				// The SERP response carries the AI Overview as an items[].type
-				// "ai_overview" element, which the shared Google extractors understand.
-				const citations = extractCitationsFromGoogle(response);
-				return {
-					rawOutput: sanitizeForJson(response),
-					webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
-					textContent: extractTextFromGoogle(response),
-					citations,
-					modelVersion: "dataforseo",
-				};
-			}
-			lastError = task ? `${task.status_code} ${task.status_message}` : "No response or tasks.";
-		} catch (error) {
-			lastError = error instanceof Error ? error.message : String(error);
-		}
+		const outcome = await attemptGoogleAiOverview(api, requestInfo);
+		if ("result" in outcome) return outcome.result;
+		lastError = outcome.error;
 		if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
 	}
 	throw new Error(`DataForSEO API Error: ${lastError}`);
+}
+
+async function attemptGoogleAiOverview(
+	api: ReturnType<typeof createDfsSerpApi>,
+	requestInfo: client.SerpGoogleOrganicLiveAdvancedRequestInfo,
+): Promise<{ result: ScrapeResult } | { error: string }> {
+	try {
+		const response = await api.googleOrganicLiveAdvanced([requestInfo]);
+		const task = response?.tasks?.[0];
+		if (task?.status_code !== 20000 || !task.result?.length) {
+			return { error: task ? `${task.status_code} ${task.status_message}` : "No response or tasks." };
+		}
+
+		// The SERP response carries the AI Overview as an items[].type
+		// "ai_overview" element, which the shared Google extractors understand.
+		const citations = extractCitationsFromGoogle(response);
+		return {
+			result: {
+				rawOutput: sanitizeForJson(response),
+				webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
+				textContent: extractTextFromGoogle(response),
+				citations,
+				modelVersion: "dataforseo",
+			},
+		};
+	} catch (error) {
+		return { error: error instanceof Error ? error.message : String(error) };
+	}
 }
 
 /**
@@ -209,23 +221,21 @@ async function resolveGroundingRedirect(url: string): Promise<string> {
 	}
 }
 
-async function resolveGroundingRedirects(raw: unknown): Promise<void> {
-	type RawAnnotation = { url?: string };
-	type RawLlmResponse = {
-		tasks?: { result?: { items?: { sections?: { annotations?: RawAnnotation[] }[] }[] }[] }[];
-	};
+type RawAnnotation = { url?: string };
+type RawLlmResponse = {
+	tasks?: { result?: { items?: { sections?: { annotations?: RawAnnotation[] }[] }[] }[] }[];
+};
+
+function collectGroundingAnnotations(raw: unknown): RawAnnotation[] {
 	const items = (raw as RawLlmResponse)?.tasks?.[0]?.result?.[0]?.items ?? [];
-	const redirected: RawAnnotation[] = [];
-	for (const item of items) {
-		for (const section of item?.sections ?? []) {
-			for (const ann of section?.annotations ?? []) {
-				if (typeof ann?.url === "string" && ann.url.startsWith(GROUNDING_REDIRECT_PREFIX)) {
-					redirected.push(ann);
-				}
-			}
-		}
-	}
+	const annotations = items.flatMap((item) => (item?.sections ?? []).flatMap((section) => section?.annotations ?? []));
+	return annotations.filter((ann) => typeof ann?.url === "string" && ann.url.startsWith(GROUNDING_REDIRECT_PREFIX));
+}
+
+async function resolveGroundingRedirects(raw: unknown): Promise<void> {
+	const redirected = collectGroundingAnnotations(raw);
 	if (redirected.length === 0) return;
+
 	const resolved = new Map<string, string>();
 	await Promise.all(
 		[...new Set(redirected.map((a) => a.url as string))].map(async (u) =>

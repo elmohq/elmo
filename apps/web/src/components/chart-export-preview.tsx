@@ -5,7 +5,7 @@ import type { ChartDataPoint, ChartSubject, LookbackPeriod } from "@/lib/chart-u
 import { getBadgeClassName, getBadgeVariant } from "@/lib/chart-utils";
 import { BaseChart } from "./base-chart";
 
-export interface ChartExportBranding {
+interface ChartExportBranding {
 	name?: string;
 	icon?: string;
 	parentUrl?: string;
@@ -23,8 +23,8 @@ export interface ChartExportPreviewProps {
 	branding: ChartExportBranding;
 }
 
-export const EXPORT_W = 1200;
-export const EXPORT_H = 628;
+const EXPORT_W = 1200;
+const EXPORT_H = 628;
 
 const HEADER_H = 56;
 const HEADER_TOP = 16;

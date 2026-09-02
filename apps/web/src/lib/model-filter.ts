@@ -34,7 +34,7 @@ export interface TrackedTarget {
 }
 
 /** How often a target runs, as a rate: "4×/day", or "every 3 days" once past one. */
-export function describeCadence(intervalHours: number): string {
+function describeCadence(intervalHours: number): string {
 	if (intervalHours <= 0) return "—";
 	if (intervalHours >= 48) return `every ${Math.round(intervalHours / 24)} days`;
 	if (intervalHours > 24) return "every other day";
