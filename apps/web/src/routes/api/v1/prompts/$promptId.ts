@@ -11,7 +11,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { requirePromptInScope } from "@/lib/api/scope";
-import { deletePrompt, PromptNotFoundError, updatePrompt, updatePromptInputSchema } from "@/server/prompts-core";
+import {
+	deletePrompt,
+	PromptNotFoundError,
+	toPromptSummary,
+	updatePrompt,
+	updatePromptInputSchema,
+} from "@/server/prompts-core";
 
 // z.guid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
 // always used; z.uuid() enforces RFC version bits and rejects existing IDs.
@@ -29,7 +35,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 			GET: createApiHandler({
 				params: promptParams,
 				scopes: ["prompts:read"],
-				handle: async ({ params, auth }) => (await requirePromptInScope(auth, params.promptId)).prompt,
+				handle: async ({ params, auth }) => toPromptSummary((await requirePromptInScope(auth, params.promptId)).prompt),
 			}),
 
 			PATCH: createApiHandler({
@@ -39,7 +45,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 				mapError: mapPromptNotFound,
 				handle: async ({ params, body, auth }) => {
 					const { brand } = await requirePromptInScope(auth, params.promptId);
-					return await updatePrompt(brand, params.promptId, body);
+					return toPromptSummary(await updatePrompt(brand, params.promptId, body));
 				},
 			}),
 
@@ -54,7 +60,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 				handle: async ({ params, auth }) => {
 					await requirePromptInScope(auth, params.promptId);
 					const { prompt, deletedRunsCount } = await deletePrompt(params.promptId);
-					return { ...prompt, deletedRunsCount };
+					return { ...toPromptSummary(prompt), deletedRunsCount };
 				},
 			}),
 		}),

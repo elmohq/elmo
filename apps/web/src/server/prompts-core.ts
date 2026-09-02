@@ -91,6 +91,23 @@ export type PromptSummary = {
 	[K in keyof typeof PROMPT_COLUMNS]: Prompt[K];
 };
 
+/** The public shape of a prompt. `listPrompts` selects these columns; a read
+ *  that starts from the whole row projects onto them here, so every edge that
+ *  hands a prompt to a client answers the same fields. */
+export function toPromptSummary(prompt: Prompt): PromptSummary {
+	return {
+		id: prompt.id,
+		brandId: prompt.brandId,
+		value: prompt.value,
+		enabled: prompt.enabled,
+		tags: prompt.tags,
+		systemTags: prompt.systemTags,
+		premiumModels: prompt.premiumModels,
+		createdAt: prompt.createdAt,
+		updatedAt: prompt.updatedAt,
+	};
+}
+
 export interface ListPromptsFilters {
 	brandId?: string;
 	enabled?: boolean;
