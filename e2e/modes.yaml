@@ -16,6 +16,19 @@
 # signup is disabled there, so the account its specs sign in with has to have
 # been bootstrapped by the local phase. That mirrors how the public demo is
 # deployed, and is why the demo phase still runs last.
+# Everything a mode service has in common, so each one below shows only what
+# makes it that mode.
+x-mode: &mode
+  image: elmo-e2e-web
+  env_file:
+    # Relative to the project directory, which is where the first file in
+    # COMPOSE_FILE lives — the generated .elmo/elmo.yaml, beside this .env.
+    - path: .env
+      required: true
+  depends_on:
+    db-migrate:
+      condition: service_completed_successfully
+
 services:
   # The mode services carry no build of their own, so `docker compose build`
   # still builds this image exactly once; naming it here is what lets them run
@@ -29,17 +42,9 @@ services:
   # attempted and fail; better-auth logs the failure and completes the signup
   # regardless, so the suite covers cloud signup without an email provider.
   web-cloud:
-    image: elmo-e2e-web
-    env_file:
-      # Relative to the project directory, which is where the first file in
-      # COMPOSE_FILE lives — the generated .elmo/elmo.yaml, beside this .env.
-      - path: .env
-        required: true
+    <<: *mode
     ports:
       - "1516:3000"
-    depends_on:
-      db-migrate:
-        condition: service_completed_successfully
     environment:
       DEPLOYMENT_MODE: cloud
       VITE_DEPLOYMENT_MODE: cloud
@@ -64,17 +69,9 @@ services:
   # Branding and the optimization template must stay in sync with WHITELABEL in
   # e2e/fixtures.ts, which is what the specs assert against.
   web-whitelabel:
-    image: elmo-e2e-web
-    env_file:
-      # Relative to the project directory, which is where the first file in
-      # COMPOSE_FILE lives — the generated .elmo/elmo.yaml, beside this .env.
-      - path: .env
-        required: true
+    <<: *mode
     ports:
       - "1517:3000"
-    depends_on:
-      db-migrate:
-        condition: service_completed_successfully
     environment:
       DEPLOYMENT_MODE: whitelabel
       VITE_DEPLOYMENT_MODE: whitelabel
@@ -92,17 +89,9 @@ services:
 
   # Demo is local with READ_ONLY forced on.
   web-demo:
-    image: elmo-e2e-web
-    env_file:
-      # Relative to the project directory, which is where the first file in
-      # COMPOSE_FILE lives — the generated .elmo/elmo.yaml, beside this .env.
-      - path: .env
-        required: true
+    <<: *mode
     ports:
       - "1518:3000"
-    depends_on:
-      db-migrate:
-        condition: service_completed_successfully
     environment:
       DEPLOYMENT_MODE: demo
       VITE_DEPLOYMENT_MODE: demo
