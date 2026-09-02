@@ -60,17 +60,17 @@ export function Navbar() {
 							</svg>
 						</PopoverTrigger>
 						<PopoverContent align="start" className="w-44 p-1 md:hidden">
-							<NavigationMenu className="max-w-none *:w-full">
-								<NavigationMenuList className="flex-col items-start gap-0">
-									{navigationLinks.map((link) => (
-										<NavigationMenuItem key={link.href} className="w-full">
-											<NavigationMenuLink href={link.href} className="py-1.5">
-												{link.label}
-											</NavigationMenuLink>
-										</NavigationMenuItem>
-									))}
-								</NavigationMenuList>
-							</NavigationMenu>
+							<nav aria-label="Main" className="flex flex-col">
+								{navigationLinks.map((link) => (
+									<a
+										key={link.href}
+										href={link.href}
+										className="rounded-sm px-2 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
+									>
+										{link.label}
+									</a>
+								))}
+							</nav>
 						</PopoverContent>
 					</Popover>
 					<Link to="/" aria-label="Homepage" className="flex items-center">
