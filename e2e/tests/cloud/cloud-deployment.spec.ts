@@ -12,6 +12,7 @@
 import { expect, failedResource, test } from "../../test";
 import { CLOUD_SIGNUP, TEST_BRAND_ID, TEST_USER, brandUrl, organizationUrl } from "../../fixtures";
 import { deleteUsers, userExists, verifyEmail } from "../../session";
+import { openAccountMenu } from "../../interactions";
 
 const NEW_USER = {
   email: `signup@${CLOUD_SIGNUP.allowedDomain}`,
@@ -132,8 +133,7 @@ test.describe("Cloud features", () => {
     ).toHaveCount(0);
 
     // The admin section is present (this user is an admin) but has no Reports entry.
-    await page.getByRole("button", { name: "Account and organizations" }).click();
-    const menu = page.getByRole("menu");
+    const menu = await openAccountMenu(page);
     await expect(menu.locator('a[href="/admin"]')).toBeVisible();
     await expect(menu.locator('a[href="/reports"]')).toHaveCount(0);
   });

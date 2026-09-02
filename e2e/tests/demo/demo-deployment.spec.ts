@@ -24,6 +24,7 @@ import {
   organizationUrl,
 } from "../../fixtures";
 import { withDb } from "../../session";
+import { fillUntilSaveable } from "../../interactions";
 
 const authed = { Authorization: `Bearer ${TEST_API_KEY}` };
 
@@ -177,9 +178,10 @@ test.describe("Demo features", () => {
 
     const nameField = page.getByLabel("Organization Name", { exact: true });
     await expect(nameField).toBeEnabled({ timeout: 30_000 });
-    await nameField.fill("Renamed In Demo");
 
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    const save = page.getByRole("button", { name: "Save", exact: true });
+    await fillUntilSaveable(nameField, "Renamed In Demo", save);
+    await save.click();
     await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible({ timeout: 30_000 });
   });
 
