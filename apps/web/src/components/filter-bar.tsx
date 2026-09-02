@@ -37,20 +37,12 @@ import {
 	type TrackedTarget,
 } from "@/lib/model-filter";
 
-/** "all" is the no-filter sentinel; any other string is a concrete model id
- *  from the deployment's `SCRAPE_TARGETS`. Deployments can configure arbitrary
- *  model ids, so we don't constrain this to a literal union. */
-
 /** The model filter's trigger glyph. `all` is the no-filter sentinel; every
  *  other value names one of the brand's targets, whose logo is decided by
  *  @workspace/config/models. */
 function iconForModel(model: string, className = "size-3.5") {
 	if (model === ALL_MODELS_VALUE) return <MdSelectAll className={className} />;
 	return <ModelIcon iconId={iconIdForModelFilter(model)} className={className} />;
-}
-
-function labelForModel(model: string): string {
-	return labelForModelFilter(model);
 }
 
 const LOOKBACK_OPTIONS: { value: LookbackPeriod; label: string }[] = [
@@ -141,14 +133,18 @@ function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) 
 		<DropdownMenu>
 			<DropdownMenuTrigger
 				render={
-					<FilterTriggerButton icon={iconForModel(selected)} label={labelForModel(selected)} active={isFiltered} />
+					<FilterTriggerButton
+						icon={iconForModel(selected)}
+						label={labelForModelFilter(selected)}
+						active={isFiltered}
+					/>
 				}
 			/>
 			<DropdownMenuContent align="start" className="w-56">
 				<DropdownMenuRadioGroup value={selected} onValueChange={handleChange}>
 					<DropdownMenuRadioItem value={ALL_MODELS_VALUE} className="cursor-pointer gap-2">
 						{iconForModel(ALL_MODELS_VALUE)}
-						{labelForModel(ALL_MODELS_VALUE)}
+						{labelForModelFilter(ALL_MODELS_VALUE)}
 					</DropdownMenuRadioItem>
 					{groups.map((group) => (
 						<DropdownMenuGroup key={group.tier}>
@@ -156,7 +152,7 @@ function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) 
 							{group.values.map((value) => (
 								<DropdownMenuRadioItem key={value} value={value} className="cursor-pointer gap-2">
 									{iconForModel(value)}
-									{labelForModel(value)}
+									{labelForModelFilter(value)}
 								</DropdownMenuRadioItem>
 							))}
 						</DropdownMenuGroup>
