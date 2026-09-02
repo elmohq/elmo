@@ -2,12 +2,17 @@ import { Link, useLoaderData } from "@tanstack/react-router";
 import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
 import { Button } from "@workspace/ui/components/button";
 import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
+import {
 	NavigationMenu,
 	NavigationMenuItem,
 	NavigationMenuLink,
 	NavigationMenuList,
 } from "@workspace/ui/components/navigation-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { ArrowRight } from "lucide-react";
 import { formatStarCount } from "@/lib/github-stars";
 import { Logo } from "./logo";
@@ -28,8 +33,8 @@ export function Navbar() {
 		<header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur">
 			<div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 md:px-6">
 				<div className="flex items-center gap-3 md:gap-8">
-					<Popover>
-						<PopoverTrigger
+					<DropdownMenu>
+						<DropdownMenuTrigger
 							render={<Button className="group size-8 md:hidden" variant="ghost" size="icon" aria-label="Open menu" />}
 						>
 							<svg
@@ -58,21 +63,17 @@ export function Navbar() {
 									className="origin-center translate-y-[7px] transition-all duration-300 ease-[cubic-bezier(.5,.85,.25,1.1)] group-aria-expanded:translate-y-0 group-aria-expanded:rotate-[135deg]"
 								/>
 							</svg>
-						</PopoverTrigger>
-						<PopoverContent align="start" className="w-44 p-1 md:hidden">
-							<nav aria-label="Main" className="flex flex-col">
-								{navigationLinks.map((link) => (
-									<a
-										key={link.href}
-										href={link.href}
-										className="rounded-sm px-2 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
-									>
-										{link.label}
-									</a>
-								))}
-							</nav>
-						</PopoverContent>
-					</Popover>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="start" className="w-44 md:hidden">
+							{navigationLinks.map((link) => (
+								<DropdownMenuItem
+									key={link.href}
+									className="font-medium text-zinc-600"
+									render={<a href={link.href}>{link.label}</a>}
+								/>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
 					<Link to="/" aria-label="Homepage" className="flex items-center">
 						<Logo className="text-2xl" />
 					</Link>
