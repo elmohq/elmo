@@ -1,6 +1,6 @@
 /**
  * The role check here is UX only — the boundary is in the server functions and
- * the api-key plugin's own membership check. This page just avoids offering a
+ * the api-key plugin's own membership check. This page just avoids showing a
  * form that would be refused.
  */
 import {
@@ -71,7 +71,6 @@ function scopeGroups(scopes: readonly ApiScope[]): Map<string, ApiScope[]> {
 	return groups;
 }
 
-/** Scopes are lowercase on the wire; the labels built from them aren't. */
 function titleCase(value: string): string {
 	return value.charAt(0).toUpperCase() + value.slice(1);
 }
@@ -87,7 +86,6 @@ function ApiKeysSettingsPage() {
 	const [creatingOpen, setCreatingOpen] = useState(false);
 	const [revokeTarget, setRevokeTarget] = useState<ApiKeySummary | null>(null);
 	const [revoking, setRevoking] = useState(false);
-	/** Kept in the dialog: its backdrop would cover a page-level alert. */
 	const [revokeError, setRevokeError] = useState<string | null>(null);
 	/** Shown once and never again — only the hash is stored. */
 	const [issuedKey, setIssuedKey] = useState<string | null>(null);
@@ -185,8 +183,6 @@ function ApiKeysSettingsPage() {
 			</section>
 
 			<Dialog open={creatingOpen} onOpenChange={setCreatingOpen}>
-				{/* Flex column, not the default grid: the fields scroll on a short
-				    viewport while the header and the submit stay put. */}
 				<DialogContent className="flex max-h-[85vh] flex-col gap-4 sm:max-w-3xl">
 					<DialogHeader className="shrink-0">
 						<DialogTitle>Create a key</DialogTitle>
@@ -194,7 +190,6 @@ function ApiKeysSettingsPage() {
 							Name it for wherever it will run, and grant it only what that place needs.
 						</DialogDescription>
 					</DialogHeader>
-					{/* The popup unmounts on close, so each open starts from a clean form. */}
 					<CreateKeyForm
 						organizationId={organization.id}
 						brands={brands}
@@ -423,10 +418,6 @@ function SectionHeading({ title, description, action }: { title: string; descrip
 	);
 }
 
-/**
- * One bordered group per resource, so a grant reads as "prompts: read, write"
- * rather than as ten checkboxes that all have to be matched back to a prefix.
- */
 function ScopePicker({
 	allScopes,
 	scopes,
@@ -471,8 +462,6 @@ function ScopePicker({
 					const picked = group.filter((scope) => scopes.includes(scope)).length;
 					return (
 						<fieldset key={resource} className="rounded-md border">
-							{/* Out of flow, so it names the group without notching the border;
-							    the visible header repeats it alongside the tally. */}
 							<legend className="sr-only">{titleCase(resource)}</legend>
 							<div
 								aria-hidden="true"
@@ -507,7 +496,6 @@ function ScopePicker({
 	);
 }
 
-/** The one moment the secret exists in the browser, so it gets its own panel. */
 function IssuedKeyCard({ value }: { value: string }) {
 	const [copied, setCopied] = useState(false);
 

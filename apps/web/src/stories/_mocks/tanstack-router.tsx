@@ -176,8 +176,6 @@ function buildLocation({ to, params }: { to?: string; params?: Record<string, st
 export function useRouter() {
 	return {
 		navigate: (_opts: unknown) => {},
-		// Loader data is fixed for the life of a story, so a refetch is a no-op —
-		// but pages await it after a write, so it has to resolve rather than throw.
 		invalidate: async () => {},
 		buildLocation,
 		state: { location: { pathname: "/", search: "", hash: "" } },

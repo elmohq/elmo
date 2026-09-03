@@ -50,7 +50,6 @@ const KEYS: ApiKeysPageData["keys"] = [
 	},
 ];
 
-/** The route's loader never runs in Storybook, so the story supplies its result. */
 function load(page: Partial<ApiKeysPageData>) {
 	const data: ApiKeysPageData = {
 		organization: { id: "org-1", name: "Acme", role: "admin" },
@@ -85,7 +84,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The page an admin lands on with keys already issued. */
 export const WithKeys: Story = {
 	render: () => {
 		load({ keys: KEYS, canManage: true });
@@ -94,16 +92,13 @@ export const WithKeys: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByRole("heading", { name: "API Keys" })).toBeVisible();
-		// A key past its expiry is called out rather than sitting among the live ones.
 		await expect(await canvas.findByText("Expired")).toBeVisible();
 		await expect((await canvas.findAllByText("Active")).length).toBe(2);
-		// Creating is behind the header button, so the list is all the page shows.
 		await expect(await canvas.findByRole("button", { name: "New key" })).toBeVisible();
 		await expect(canvas.queryByLabelText("Name")).toBeNull();
 	},
 };
 
-/** Nothing issued yet: the empty state carries the way to fix that. */
 export const NoKeys: Story = {
 	render: () => {
 		load({ keys: [], canManage: true });
@@ -117,7 +112,6 @@ export const NoKeys: Story = {
 	},
 };
 
-/** A member sees the keys but is offered no way to change them. */
 export const NonAdmin: Story = {
 	render: () => {
 		load({ keys: KEYS, canManage: false });
@@ -131,7 +125,6 @@ export const NonAdmin: Story = {
 	},
 };
 
-/** The create form, as it opens. */
 export const CreateKeyDialog: Story = {
 	render: () => {
 		load({ keys: KEYS, canManage: true });
@@ -141,12 +134,10 @@ export const CreateKeyDialog: Story = {
 		await userEvent.click(await within(canvasElement).findByRole("button", { name: "New key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
 		await expect(await dialog.findByLabelText("Name")).toBeVisible();
-		// Read-only by default: one read scope per resource, and six resources have one.
 		await expect(await dialog.findByText("6/10")).toBeVisible();
 	},
 };
 
-/** The presets set every scope at once, and the tally follows them. */
 export const ScopePresets: Story = {
 	render: () => {
 		load({ keys: KEYS, canManage: true });
@@ -162,7 +153,6 @@ export const ScopePresets: Story = {
 	},
 };
 
-/** Brands only become pickable once the key is narrowed to some. */
 export const RestrictedToBrands: Story = {
 	render: () => {
 		load({ keys: KEYS, canManage: true });
@@ -177,7 +167,6 @@ export const RestrictedToBrands: Story = {
 	},
 };
 
-/** The secret exists in the browser exactly once, so creating one surfaces it. */
 export const KeyJustCreated: Story = {
 	render: () => {
 		load({ keys: KEYS, canManage: true });
@@ -189,13 +178,11 @@ export const KeyJustCreated: Story = {
 		const dialog = within(await within(document.body).findByRole("dialog"));
 		await userEvent.type(await dialog.findByLabelText("Name"), "Nightly export");
 		await userEvent.click(await dialog.findByRole("button", { name: "Create key" }));
-		// The dialog gets out of the way; the secret belongs to the page behind it.
 		await expect(await canvas.findByText("Key created")).toBeVisible();
 		await expect(await canvas.findByText("elmo_5f3b9c1d84a24e7fbc2a6d0e91f7c3b8")).toBeVisible();
 	},
 };
 
-/** Revoking asks first, in the app rather than through a browser prompt. */
 export const RevokeConfirmation: Story = {
 	render: () => {
 		load({ keys: KEYS, canManage: true });
@@ -205,7 +192,6 @@ export const RevokeConfirmation: Story = {
 		const canvas = within(canvasElement);
 		const rows = await canvas.findAllByRole("button", { name: "Revoke" });
 		await userEvent.click(rows[0]);
-		// The dialog portals out of the canvas, so it is looked up on the body.
 		const dialog = within(document.body);
 		await expect(await dialog.findByText("Revoke Reporting pipeline?")).toBeVisible();
 		await expect(await dialog.findByRole("button", { name: "Revoke key" })).toBeVisible();

@@ -16,11 +16,6 @@ async function tickScope(page: Page, resource: string, action: string) {
   await group.getByRole("checkbox", { name: action, exact: true }).first().click();
 }
 
-/**
- * Opens the create dialog and names the key. Both halves are retried together:
- * a click or a typed value before hydration is silently dropped, and reopening
- * an already-open dialog would be swallowed by its own backdrop.
- */
 async function openCreateForm(page: Page, name: string) {
   const dialog = page.getByRole("dialog");
   const nameField = page.locator("#key-name");
@@ -115,7 +110,6 @@ test.describe("API keys", () => {
     await page.getByRole("checkbox", { name: "Restrict this key to specific brands" }).first().click();
     await page.getByRole("button", { name: "Create key", exact: true }).click();
 
-    // Refused in the dialog, which stays open so the picks survive the error.
     await expect(page.getByRole("dialog").getByText(/at least one brand/i)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("listitem").filter({ hasText: name })).toHaveCount(0);
   });

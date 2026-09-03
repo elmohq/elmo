@@ -1,9 +1,3 @@
-/**
- * Mock for @/server/api-keys used in Storybook stories. The real module talks to
- * the better-auth api-key plugin; stories drive the shapes the page renders and
- * the two writes it offers.
- */
-
 import { API_SCOPES, type ApiScope } from "@/lib/api/scopes";
 
 export interface ApiKeySummary {

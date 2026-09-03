@@ -20,7 +20,6 @@ export const DEFAULT_APP_URL = "http://localhost:3000/";
  */
 export const PROVIDERS_DOCS_URL = "https://www.elmohq.com/docs/user-guide/providers";
 
-/** Public docs for the REST API and the MCP endpoint, linked from the API keys page. */
 export const API_DOCS_URL = "https://www.elmohq.com/docs/api";
 export const MCP_DOCS_URL = "https://www.elmohq.com/docs/mcp";
 
