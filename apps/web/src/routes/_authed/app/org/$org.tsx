@@ -16,5 +16,6 @@ export const Route = createFileRoute("/_authed/app/org/$org")({
 
 		return { organization };
 	},
+	loader: ({ context }): { organization: OrganizationSummary } => ({ organization: context.organization }),
 	component: () => <Outlet />,
 });
