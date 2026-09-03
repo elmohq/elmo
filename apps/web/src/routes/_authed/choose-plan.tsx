@@ -9,6 +9,7 @@
  * app.
  */
 
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import type { PlanKey } from "@workspace/config/plans";
 import { authClient } from "@workspace/lib/auth/client";
@@ -20,6 +21,7 @@ import { Switch } from "@workspace/ui/components/switch";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { PlanComparison } from "@/components/plan-comparison";
+import { forgetPaywall } from "@/lib/billing/queries";
 import { pageHead } from "@/lib/route-head";
 import { getPaywallStateFn, type PaywallRequired, type PaywallState } from "@/server/billing";
 
@@ -67,6 +69,7 @@ function ChoosePlanPage() {
 /** Post-checkout: wait for the Stripe webhook to record the subscription. */
 function ActivatingOrganization({ organizationId }: { organizationId?: string }) {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 
 	useEffect(() => {
 		let cancelled = false;
@@ -74,6 +77,8 @@ function ActivatingOrganization({ organizationId }: { organizationId?: string })
 			for (let i = 0; i < 30 && !cancelled; i++) {
 				const state = await getPaywallStateFn({ data: { organizationId } });
 				if (!state.needsPlan) {
+					// The gate cached its last answer; the subscription just changed it.
+					forgetPaywall(queryClient);
 					navigate({ to: "/app" });
 					return;
 				}
@@ -84,7 +89,7 @@ function ActivatingOrganization({ organizationId }: { organizationId?: string })
 		return () => {
 			cancelled = true;
 		};
-	}, [navigate, organizationId]);
+	}, [navigate, organizationId, queryClient]);
 
 	return (
 		<div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">

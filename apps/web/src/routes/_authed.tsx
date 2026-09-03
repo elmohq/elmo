@@ -17,13 +17,19 @@ import { SiteHeader } from "@/components/site-header";
 import { useAppChrome } from "@/hooks/use-app-chrome";
 import { identifyCrispUser } from "@/lib/crisp";
 import { identifyUser, setPersonProperties } from "@/lib/posthog";
-import { getViewerFn } from "@/server/viewer";
+import { viewerQuery } from "@/lib/viewer/queries";
 
 export const Route = createFileRoute("/_authed")({
-	beforeLoad: async ({ location }) => {
-		const viewer = await getViewerFn();
+	beforeLoad: async ({ context, location }) => {
+		// This guard runs before every navigation. The query cache answers it
+		// without a round trip while the last answer is fresh and refreshes it in
+		// the background once it is stale, the way /app/org/$org already reads
+		// the organization list.
+		const viewer = await context.queryClient.ensureQueryData({ ...viewerQuery, revalidateIfStale: true });
 
 		if (!viewer) {
+			// A signed-out answer must not outlive the sign-in that follows it.
+			context.queryClient.removeQueries({ queryKey: viewerQuery.queryKey });
 			throw redirect({
 				to: "/auth/login",
 				search: { returnTo: location.href },
