@@ -9,11 +9,23 @@ const KEYS_PAGE = `${organizationUrl()}/settings/api-keys`;
 
 type Page = import("@playwright/test").Page;
 
-/** The checkboxes are named only by their action, so the lookup is scoped to
- * the resource group. */
+/** The grid only exists under the Custom tab, and each box is named
+ * `<Resource> <action>`. */
 async function tickScope(page: Page, resource: string, action: string) {
-  const group = page.locator("div.rounded.border").filter({ has: page.getByText(resource, { exact: true }) });
-  await group.getByRole("checkbox", { name: action, exact: true }).first().click();
+  await page.getByRole("tab", { name: "Custom", exact: true }).click();
+  await page.getByRole("checkbox", { name: `${resource} ${action}`, exact: true }).first().click();
+}
+
+async function openCreateForm(page: Page, name: string) {
+  const dialog = page.getByRole("dialog");
+  const nameField = page.locator("#key-name");
+  await expect(async () => {
+    if (!(await dialog.isVisible())) {
+      await page.getByRole("button", { name: "New key" }).click();
+    }
+    await nameField.fill(name);
+    await expect(nameField).toHaveValue(name, { timeout: 1_000 });
+  }).toPass({ timeout: 30_000 });
 }
 
 test.describe("API keys", () => {
@@ -21,25 +33,20 @@ test.describe("API keys", () => {
     test.skip(testInfo.project.name === "demo", "demo refuses every write; covered by the Bruno demo suite");
 
     await page.goto(KEYS_PAGE, { waitUntil: "networkidle" });
-    await expect(page.getByRole("heading", { name: "API keys" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "API Keys" })).toBeVisible();
 
-    // A value typed before hydration is silently discarded.
-    const nameField = page.locator("#key-name");
     const name = `Playwright key ${Date.now()}`;
-    await expect(async () => {
-      await nameField.fill(name);
-      await expect(nameField).toHaveValue(name, { timeout: 1_000 });
-    }).toPass({ timeout: 30_000 });
-    await page.getByRole("button", { name: "Read only" }).click();
-    await tickScope(page, "prompts", "write");
-    await page.getByRole("checkbox", { name: "Restrict this key to specific brands" }).first().click();
+    await openCreateForm(page, name);
+    await page.getByRole("tab", { name: "Read only", exact: true }).click();
+    await tickScope(page, "Prompts", "write");
+    await page.getByRole("tab", { name: "Specific brands", exact: true }).click();
     await page.getByRole("checkbox", { name: "Test Organization", exact: true }).first().click();
     await page.getByRole("button", { name: "Create key", exact: true }).click();
 
-    const secret = page.locator("code.font-mono").first();
-    await expect(secret).toBeVisible({ timeout: 30_000 });
-    const key = (await secret.textContent())?.trim() ?? "";
-    expect(key).toMatch(/^elmo_/);
+    const issued = page.locator("[data-slot=card]").filter({ hasText: "Key created" });
+    await expect(issued).toBeVisible({ timeout: 30_000 });
+    const key = (await issued.locator("code").innerText()).trim();
+    expect(key).toMatch(/^elmo_[A-Za-z]+$/);
     await expect(page.getByText(name)).toBeVisible();
 
     const auth = { Authorization: `Bearer ${key}` };
@@ -77,15 +84,17 @@ test.describe("API keys", () => {
     const other = await request.get(`/api/v1/brands/${NIKE_BRAND_ID}`, { headers: auth, failOnStatusCode: false });
     expect(other.status()).toBe(404);
 
-    // Playwright dismisses dialogs unless something is listening, which would
-    // make the click a no-op and leave the key live.
-    page.on("dialog", (dialog) => dialog.accept());
     await page.reload({ waitUntil: "networkidle" });
-    const row = page.locator("div.p-3").filter({ hasText: name });
+    const row = page.getByRole("row").filter({ hasText: name });
+    const confirm = page.getByRole("dialog");
     await expect(async () => {
-      await row.getByRole("button", { name: "Revoke" }).click();
-      await expect(row).toHaveCount(0, { timeout: 2_000 });
+      if (!(await confirm.isVisible())) {
+        await row.getByRole("button", { name: "Revoke", exact: true }).click();
+      }
+      await confirm.getByRole("button", { name: "Revoke key", exact: true }).click();
+      await expect(confirm).toBeHidden({ timeout: 5_000 });
     }).toPass({ timeout: 30_000 });
+    await expect(row).toHaveCount(0);
 
     const afterRevoke = await request.get("/api/v1/me", { headers: auth, failOnStatusCode: false });
     expect(afterRevoke.status()).toBe(401);
@@ -95,21 +104,17 @@ test.describe("API keys", () => {
     test.skip(testInfo.project.name === "demo", "demo refuses every write; covered by the Bruno demo suite");
 
     await page.goto(KEYS_PAGE, { waitUntil: "networkidle" });
-    await expect(page.getByRole("heading", { name: "API keys" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "API Keys" })).toBeVisible();
 
-    const nameField = page.locator("#key-name");
     const name = `Empty restriction ${Date.now()}`;
-    await expect(async () => {
-      await nameField.fill(name);
-      await expect(nameField).toHaveValue(name, { timeout: 1_000 });
-    }).toPass({ timeout: 30_000 });
+    await openCreateForm(page, name);
 
     // Must not quietly become "every brand"; the server is what refuses.
-    await page.getByRole("button", { name: "Read only" }).click();
-    await page.getByRole("checkbox", { name: "Restrict this key to specific brands" }).first().click();
+    await page.getByRole("tab", { name: "Read only", exact: true }).click();
+    await page.getByRole("tab", { name: "Specific brands", exact: true }).click();
     await page.getByRole("button", { name: "Create key", exact: true }).click();
 
-    await expect(page.getByText(/at least one brand/i)).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(name)).toBeHidden();
+    await expect(page.getByRole("dialog").getByText(/at least one brand/i)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("row").filter({ hasText: name })).toHaveCount(0);
   });
 });
