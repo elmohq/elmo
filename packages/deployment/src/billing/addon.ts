@@ -100,7 +100,7 @@ export async function setPremiumAddonQuantity(input: {
 		const price = prices.data[0];
 		if (!price) {
 			throw new Error(
-				`Stripe price with lookup key "${lookupKey}" not found — run packages/cloud/scripts/bootstrap-stripe.ts against this Stripe account`,
+				`Stripe price with lookup key "${lookupKey}" not found — run packages/deployment/scripts/bootstrap-stripe.ts against this Stripe account`,
 			);
 		}
 		await stripe.subscriptionItems.create({

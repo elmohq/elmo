@@ -1,15 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { isOrgAdminRole } from "@workspace/config/roles";
+import { getDeployment } from "@workspace/deployment";
+import { syncAuth0UserById } from "@workspace/deployment/auth-hooks/whitelabel";
 import { isValidSlug, MAX_SLUG_LENGTH } from "@workspace/lib/app-urls";
 import { db } from "@workspace/lib/db/db";
 import { provisionUmbrellaOrg } from "@workspace/lib/db/provisioning";
 import { organization } from "@workspace/lib/db/schema";
 import { claimOrgSlug, isOrgSlugAvailable } from "@workspace/lib/db/unique-names";
-import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getAuthSession, listUserOrganizations, requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
-import { getDeployment } from "@/lib/config/server";
 import { summarizeOrganizations } from "@/lib/organizations/summarize";
 import type { OrganizationsView } from "@/lib/organizations/types";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";

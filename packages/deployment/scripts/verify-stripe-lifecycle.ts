@@ -15,7 +15,7 @@
  *      (put its whsec_... into STRIPE_WEBHOOK_SECRET of the app)
  *   3. This script:
  *      STRIPE_SECRET_KEY=sk_test_... DATABASE_URL=postgres://... \
- *        pnpm -C packages/cloud exec tsx scripts/verify-stripe-lifecycle.ts <org-id>
+ *        pnpm -C packages/deployment exec tsx scripts/verify-stripe-lifecycle.ts <org-id>
  *
  * <org-id> must be an existing organization row (sign up once in the app).
  * The catalog must be bootstrapped first (scripts/bootstrap-stripe.ts).

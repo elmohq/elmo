@@ -10,7 +10,7 @@
  * flow; existing subscriptions keep their old price until changed.
  *
  * Usage:
- *   STRIPE_SECRET_KEY=sk_test_... pnpm -C packages/cloud exec tsx scripts/bootstrap-stripe.ts
+ *   STRIPE_SECRET_KEY=sk_test_... pnpm -C packages/deployment exec tsx scripts/bootstrap-stripe.ts
  */
 
 import {

@@ -129,3 +129,7 @@ export function OptimizeButton({
 		</DropdownMenu>
 	);
 }
+
+export function OptimizeButtonStub(_props: OptimizeButtonProps) {
+	return null;
+}

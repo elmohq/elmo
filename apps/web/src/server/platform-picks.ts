@@ -5,6 +5,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { parseScrapeTargets, providersByModel } from "@workspace/config/scrape-targets";
+import { getDeployment } from "@workspace/deployment";
 import { getDefaultDelayHours, getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
@@ -27,7 +28,6 @@ import {
 	requireOrgAccess,
 	requirePlatformPicksEditable,
 } from "@/lib/auth/helpers";
-import { getDeployment } from "@/lib/config/server";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { addedPlatforms } from "@/lib/run-config-changes";
 

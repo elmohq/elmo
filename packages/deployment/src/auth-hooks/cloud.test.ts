@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getCloudAuthOptions } from "./auth-hooks";
+import { getCloudAuthOptions } from "./cloud";
 
 function makeUser(email: string) {
 	return {
