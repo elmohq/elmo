@@ -22,8 +22,6 @@ interface BarData {
 	isBrand: boolean;
 }
 
-/** Recharts clones the `tick` element with the axis geometry, so everything but
- *  `brandName` arrives from outside. */
 function CustomXAxisTick({
 	x,
 	y,

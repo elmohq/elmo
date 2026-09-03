@@ -10,7 +10,6 @@ import type { LookbackPeriod } from "@/lib/lookback";
 import { BaseChart } from "./base-chart";
 import { ChartActionsFooter } from "./chart-footer";
 
-/** Inert bar silhouettes standing in for a chart that has nothing to plot. */
 function PlaceholderBars({ heights }: { heights: readonly number[] }) {
 	const bars = heights.map((height, index) => ({ key: `bar-${index}`, height }));
 	return (
@@ -22,7 +21,6 @@ function PlaceholderBars({ heights }: { heights: readonly number[] }) {
 	);
 }
 
-/** The prompt name with the list's search term marked, so a filtered list shows why each card matched. */
 function PromptTitle({ name, highlight }: { name: string; highlight: string }) {
 	const term = highlight.trim();
 	if (!term) return <CardTitle className="text-sm">{name}</CardTitle>;
@@ -49,8 +47,6 @@ function PromptTitle({ name, highlight }: { name: string; highlight: string }) {
 	);
 }
 
-/** Stands in for a chart card while its data loads; mirrors the success card's
- *  structure so the list doesn't jump when the real card arrives. */
 export function PromptChartSkeleton() {
 	return (
 		<Card className="py-3 gap-3">

@@ -54,7 +54,6 @@ type PromptRun = NonNullable<PromptRunsData>["runs"][number];
 
 const RUNS_PER_PAGE = 15;
 
-/** The responses tab pages server-side, so its page count comes from the reported total. */
 function runsPage(data: PromptRunsData) {
 	const total = Number(data?.total ?? 0);
 	return { runs: data?.runs ?? [], total, totalPages: Math.ceil(total / RUNS_PER_PAGE) || 1 };

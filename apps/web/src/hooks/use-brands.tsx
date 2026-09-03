@@ -45,8 +45,6 @@ export function useBrand(brandId?: string) {
 		refetchOnReconnect: true,
 	});
 
-	/** A brand edit changes what the sidebar and switcher list, so every brand
-	 *  query is dropped alongside this one. */
 	const refetch = async () => {
 		await query.refetch();
 		queryClient.invalidateQueries({ queryKey: brandKeys.all });

@@ -40,7 +40,6 @@ function DownloadButton({ onDownload, isDownloading }: { onDownload: () => void;
 	);
 }
 
-/** Download-only footer for the print/report cards, which have no prompt-scoped actions. */
 export function ChartDownloadFooter({ onDownload, isDownloading }: { onDownload: () => void; isDownloading: boolean }) {
 	return (
 		<div className="print:hidden">
@@ -56,14 +55,10 @@ interface ChartActionsFooterProps {
 	promptName?: string;
 	brandId?: string;
 
-	// For export
 	onDownload?: () => void;
 	isDownloading?: boolean;
 
-	// For optimization
-	/** Current model filter ("all" = no filter). */
 	selectedModel?: string;
-	/** The targets this brand runs, as filter values — no "all" sentinel. */
 	availableModels: string[];
 	lookback?: LookbackPeriod;
 }

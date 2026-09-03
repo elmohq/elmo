@@ -245,7 +245,6 @@ export interface ChartDataPoint {
 	[key: string]: number | string | boolean | null;
 }
 
-/** Green / amber / red bands every visibility badge is styled from. */
 export function visibilityBadgeProps(value: number): {
 	variant: "default" | "secondary" | "destructive";
 	className: string;
@@ -255,15 +254,10 @@ export function visibilityBadgeProps(value: number): {
 	return { variant: "destructive", className: "bg-rose-500 hover:bg-rose-500 text-white" };
 }
 
-/**
- * The most recent point where at least one of `ids` reported a value. Charts
- * label themselves from it, so a trailing run of empty days must not win.
- */
 export function latestObservedPoint(chartData: ChartDataPoint[], ids: string[]): ChartDataPoint | undefined {
 	return chartData.filter((point) => ids.some((id) => point[id] !== null && point[id] !== undefined)).pop();
 }
 
-/** Latest observed value for one series, or null when it never reported. */
 export function latestVisibility(chartData: ChartDataPoint[], id: string): number | null {
 	const point = latestObservedPoint(chartData, [id]);
 	return point ? (point[id] as number) : null;
