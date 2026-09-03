@@ -21,26 +21,10 @@ export function usePromptRunsOnly(promptId?: string, options?: { page?: number; 
 		placeholderData: (prev) => prev,
 	});
 
-	const total = Number(query.data?.total || 0);
-	const totalPages = Math.ceil(total / limit) || 1;
-
 	return {
-		runs: query.data?.runs || [],
-		total,
-		hasMore: query.data?.hasMore || false,
+		data: query.data,
 		isLoading: query.isLoading,
-		isError: query.error,
-		revalidate: query.refetch,
-		// Pagination object matching Next.js hook shape
-		pagination: query.data
-			? {
-					page,
-					limit,
-					total,
-					totalPages,
-					hasNext: page < totalPages,
-					hasPrev: page > 1,
-				}
-			: undefined,
+		error: query.error,
+		refetch: query.refetch,
 	};
 }

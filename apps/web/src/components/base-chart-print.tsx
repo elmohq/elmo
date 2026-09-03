@@ -3,7 +3,7 @@ import type { ClientConfig } from "@workspace/config/types";
 import type { Competitor } from "@workspace/lib/db/schema";
 import { Badge } from "@workspace/ui/components/badge";
 import { Bar, BarChart, Cell, ResponsiveContainer, XAxis, YAxis } from "recharts";
-import { type ChartDataPoint, type ChartSubject, getBadgeClassName, getBadgeVariant } from "@/lib/chart-utils";
+import { type ChartDataPoint, type ChartSubject, latestObservedPoint, visibilityBadgeProps } from "@/lib/chart-utils";
 
 interface BaseChartPrintProps {
 	data: ChartDataPoint[];
@@ -22,9 +22,20 @@ interface BarData {
 	isBrand: boolean;
 }
 
-function CustomXAxisTick(props: any) {
-	const { x, y, payload, brandName } = props;
-	const isCurrentBrand = payload.value === brandName;
+/** Recharts clones the `tick` element with the axis geometry, so everything but
+ *  `brandName` arrives from outside. */
+function CustomXAxisTick({
+	x,
+	y,
+	payload,
+	brandName,
+}: {
+	x?: number;
+	y?: number;
+	payload?: { value: string };
+	brandName: string;
+}) {
+	const isCurrentBrand = payload?.value === brandName;
 
 	return (
 		<g transform={`translate(${x},${y})`}>
@@ -37,7 +48,7 @@ function CustomXAxisTick(props: any) {
 				fontSize="10"
 				fontWeight={isCurrentBrand ? "bold" : "normal"}
 			>
-				{payload.value}
+				{payload?.value}
 			</text>
 		</g>
 	);
@@ -53,12 +64,7 @@ export function BaseChartPrint({
 	competitors,
 }: BaseChartPrintProps) {
 	const routeContext = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
-	const latestDataPoint = data
-		.filter((point) => {
-			const allIds = [brand.id, ...competitors.map((c) => c.id)];
-			return allIds.some((id) => point[id] !== null && point[id] !== undefined);
-		})
-		.pop();
+	const latestDataPoint = latestObservedPoint(data, [brand.id, ...competitors.map((c) => c.id)]);
 
 	if (!latestDataPoint) {
 		return (
@@ -108,10 +114,10 @@ export function BaseChartPrint({
 			{showTitle && (
 				<div className="flex items-center justify-center gap-2">
 					{title && <h3 className="text-sm font-medium capitalize print:text-xs">{title}</h3>}
-					{showBadge && visibility !== null && (
+					{showBadge && visibility != null && (
 						<Badge
-							variant={getBadgeVariant(visibility!)}
-							className={`text-xs ${getBadgeClassName(visibility!)} print:text-xs`}
+							variant={visibilityBadgeProps(visibility).variant}
+							className={`text-xs ${visibilityBadgeProps(visibility).className} print:text-xs`}
 						>
 							{visibility}%
 						</Badge>

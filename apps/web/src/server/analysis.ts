@@ -13,7 +13,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import type { LookbackPeriod } from "@/lib/chart-utils";
+import type { LookbackPeriod } from "@/lib/lookback";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { getBrandShareOfVoice } from "@/server/analytics-core";
 

@@ -10,12 +10,11 @@ import {
 	type ChartSubject,
 	extendLinesToChartEdges,
 	filterAndCompleteChartData,
-	getBadgeClassName,
-	getBadgeVariant,
 	isExtendedDataPoint,
-	type LookbackPeriod,
 	selectCompetitorsToDisplay,
+	visibilityBadgeProps,
 } from "@/lib/chart-utils";
+import type { LookbackPeriod } from "@/lib/lookback";
 
 /** The brand's own line is the one people are looking for, so it carries more
  *  weight than the competitors it's plotted against. */
@@ -199,8 +198,11 @@ export function BaseChart({
 			{showTitle && (
 				<div className="flex items-center justify-center gap-2">
 					{title && <h3 className="text-sm font-medium capitalize">{title}</h3>}
-					{showBadge && visibility !== null && (
-						<Badge variant={getBadgeVariant(visibility!)} className={`text-xs ${getBadgeClassName(visibility!)}`}>
+					{showBadge && visibility != null && (
+						<Badge
+							variant={visibilityBadgeProps(visibility).variant}
+							className={`text-xs ${visibilityBadgeProps(visibility).className}`}
+						>
 							{visibility}%
 						</Badge>
 					)}

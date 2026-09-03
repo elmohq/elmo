@@ -45,17 +45,18 @@ export function useBrand(brandId?: string) {
 		refetchOnReconnect: true,
 	});
 
-	const revalidate = async () => {
+	/** A brand edit changes what the sidebar and switcher list, so every brand
+	 *  query is dropped alongside this one. */
+	const refetch = async () => {
 		await query.refetch();
 		queryClient.invalidateQueries({ queryKey: brandKeys.all });
 	};
 
 	return {
-		brandId: resolvedBrandId,
-		brand: query.data as BrandWithPromptsAndDataInfo | undefined,
+		data: query.data as BrandWithPromptsAndDataInfo | undefined,
 		isLoading: query.isLoading,
-		isError: query.error,
-		revalidate,
+		error: query.error,
+		refetch,
 	};
 }
 
@@ -75,9 +76,9 @@ export function useCompetitors(brandId?: string) {
 	});
 
 	return {
-		competitors: query.data || [],
+		data: query.data ?? [],
 		isLoading: query.isLoading,
-		isError: query.error,
-		revalidate: query.refetch,
+		error: query.error,
+		refetch: query.refetch,
 	};
 }

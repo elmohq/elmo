@@ -11,8 +11,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import type { LookbackPeriod } from "@/lib/chart-utils";
 import type { FanoutAnalysis } from "@/lib/fanout-analysis";
+import type { LookbackPeriod } from "@/lib/lookback";
 import { LOOKBACK, resolveRange } from "@/server/analysis";
 import { getBrandQueryFanout } from "@/server/analytics-core";
 

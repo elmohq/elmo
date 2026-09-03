@@ -1,4 +1,4 @@
-import type { LookbackPeriod } from "@/lib/chart-utils";
+import type { LookbackPeriod } from "@/lib/lookback";
 
 type DateShift = {
 	days?: number;

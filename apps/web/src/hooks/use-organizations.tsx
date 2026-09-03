@@ -14,10 +14,10 @@ export function useOrganizations() {
 	const query = useQuery(organizationsQuery);
 
 	return {
-		organizations: query.data?.organizations ?? [],
+		data: query.data?.organizations ?? [],
 		isLoading: query.isLoading,
-		isError: query.isError,
 		isFetching: query.isFetching,
+		error: query.error,
 		refetch: query.refetch,
 	};
 }

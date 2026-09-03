@@ -5,7 +5,7 @@ import { brands, competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import type { LookbackPeriod } from "@/lib/chart-utils";
+import type { LookbackPeriod } from "@/lib/lookback";
 import { getBatchChartData, type ProcessedBatchChartDataPoint } from "@/lib/postgres-read";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { getBrandVisibility } from "@/server/analytics-core";
