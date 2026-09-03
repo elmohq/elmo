@@ -118,8 +118,6 @@ export function AppSidebar({ section, organization, brand }: AppSidebarProps) {
 	// the user straight back to the gate.
 	const adminItems = section === "account" ? [] : adminNavItems({ isAdmin, hasReportAccess, reportsEnabled });
 
-	// A section whose layout data has not arrived yet renders without its nav
-	// groups rather than taking the shell down with it.
 	const groups: NavGroup[] = [
 		...(section === "brand" && organization && brand ? brandGroups(organization, brand) : []),
 		...(section === "organization" && organization ? [organizationGroup(organization, features)] : []),

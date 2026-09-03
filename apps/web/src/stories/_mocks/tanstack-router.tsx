@@ -81,8 +81,6 @@ export function setMockLoaderData(data: unknown) {
 	_loaderData = data;
 }
 
-// A `from` reads the named layout's loader data (see `_matches` below), the
-// way the shell and the organization pages do; without one it is the story's.
 export function useLoaderData(opts?: { from?: string; select?: (data: any) => unknown }) {
 	const data = opts?.from ? _matches.find((match) => match.routeId === opts.from)?.loaderData : _loaderData;
 	return opts?.select ? opts.select(data) : (data as any);

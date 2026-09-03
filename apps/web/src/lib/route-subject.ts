@@ -17,7 +17,6 @@ export interface RouteSubjects {
 	brand?: LoaderDataOf<typeof BRAND_ROUTE_ID>["brand"];
 }
 
-/** The organization and brand the matched routes are about, from their layouts' loader data. */
 export function routeSubjects(matches: SubjectMatch[]): RouteSubjects {
 	const subjects: RouteSubjects = {};
 	for (const match of matches) {

@@ -16,9 +16,6 @@ export const Route = createFileRoute("/_authed/app/org/$org")({
 
 		return { organization };
 	},
-	// Pages and the shell read the organization from here rather than from route
-	// context: loader data is the route's cached data and stays put through
-	// every load state, while beforeLoad context is rebuilt on each navigation.
 	loader: ({ context }): { organization: OrganizationSummary } => ({ organization: context.organization }),
 	component: () => <Outlet />,
 });

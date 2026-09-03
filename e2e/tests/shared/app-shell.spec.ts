@@ -3,12 +3,6 @@ import { brandUrl, organizationUrl } from "../../fixtures";
 import { openAccountMenu } from "../../interactions";
 import { expect, test } from "../../test";
 
-/**
- * Long enough that a navigation with a loader crosses the router's pending
- * threshold, which is when it publishes the destination's layouts before their
- * data has all arrived. The shell has to be built from what survives that, or
- * the rail flashes an error card on the way to the page.
- */
 const SERVER_CALL_DELAY_MS = 1_200;
 
 declare global {
@@ -25,7 +19,6 @@ test.describe("App shell", () => {
     });
 
     await page.goto(brandUrl());
-    // Opening the menu is the one signal that React has taken over the page.
     await openAccountMenu(page);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("menu")).toBeHidden();
@@ -50,12 +43,6 @@ test.describe("App shell", () => {
   });
 });
 
-/**
- * Clicks a link and waits for the router to land on the destination. A click
- * the page was not yet listening to would navigate the document instead, which
- * passes the URL check while exercising nothing, so the marker set on the
- * window has to survive the trip.
- */
 async function clientNavigate(page: Page, selector: string, destination: string): Promise<void> {
   await page.evaluate(() => {
     window.__sameDocument = true;

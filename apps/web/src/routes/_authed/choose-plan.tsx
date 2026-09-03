@@ -77,7 +77,6 @@ function ActivatingOrganization({ organizationId }: { organizationId?: string })
 			for (let i = 0; i < 30 && !cancelled; i++) {
 				const state = await getPaywallStateFn({ data: { organizationId } });
 				if (!state.needsPlan) {
-					// The gate cached its last answer; the subscription just changed it.
 					forgetPaywall(queryClient);
 					navigate({ to: "/app" });
 					return;
