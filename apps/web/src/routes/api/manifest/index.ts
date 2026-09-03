@@ -80,9 +80,6 @@ function buildManifest(): object {
 		short_name: branding.name,
 		name: `${branding.name} - AI Search Optimization`,
 		icons,
-		// Absolute, because a relative start_url resolves against the manifest's
-		// own URL (/api/manifest) rather than the app root. scope follows it so
-		// the whole dashboard stays inside the installed window.
 		start_url: "/",
 		scope: "/",
 		display: "standalone",

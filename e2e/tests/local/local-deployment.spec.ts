@@ -133,7 +133,6 @@ test.describe("Local features", () => {
     const response = await request.get("/api/manifest");
     const manifest = (await response.json()) as { start_url: string; scope: string };
 
-    // Resolved the way a browser does it: against the manifest's URL, not the page's.
     const manifestUrl = "https://elmo.test/api/manifest";
     expect(new URL(manifest.start_url, manifestUrl).pathname).toBe("/");
     expect(new URL(manifest.scope, manifestUrl).pathname).toBe("/");
