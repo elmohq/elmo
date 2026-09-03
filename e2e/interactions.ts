@@ -43,9 +43,20 @@ export async function openAccountMenu(page: Page): Promise<Locator> {
 /**
  * Fills a field and returns once the form has registered the edit, which is
  * what takes its save button out of the disabled state.
+ *
+ * Each attempt clears the field before refilling it, because a swallowed fill
+ * poisons every identical repeat. React hydrates a controlled input by keeping
+ * whatever text is already in the DOM — deliberately, so it can't discard
+ * typing that beat it — and seeds its change tracker from that same text. The
+ * component's state still holds the server value, so the form is not dirty,
+ * while the tracker says the field already reads `value`; a repeat that fills
+ * `value` again is therefore a no-op React declines to report, and the button
+ * stays disabled for the whole budget. Clearing first is a change the tracker
+ * can't dismiss.
  */
 export async function fillUntilSaveable(field: Locator, value: string, save: Locator): Promise<void> {
 	await expect(async () => {
+		await field.fill("");
 		await field.fill(value);
 		await expect(save).toBeEnabled({ timeout: ATTEMPT });
 	}).toPass({ timeout: HYDRATION });
