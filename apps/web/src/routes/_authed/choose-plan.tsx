@@ -29,7 +29,7 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute("/_authed/choose-plan")({
-	staticData: { crumb: "Choose a plan" },
+	staticData: { crumb: "Choose a plan", nav: "account" },
 	validateSearch: searchSchema,
 	loaderDeps: ({ search }) => ({ status: search.status, org: search.org }),
 	// The explicit return type breaks the type-inference cycle created by this

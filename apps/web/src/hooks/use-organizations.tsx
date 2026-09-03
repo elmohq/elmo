@@ -1,12 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouteContext, useRouter } from "@tanstack/react-router";
+import { useLoaderData, useRouter } from "@tanstack/react-router";
 import { useCallback } from "react";
 import { invalidateOrganizations, organizationsQuery } from "@/lib/organizations/queries";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 import { ORG_ROUTE_ID } from "@/lib/route-subject";
 
 export function useOrganization(): OrganizationSummary {
-	return useRouteContext({ from: ORG_ROUTE_ID, select: (context) => context.organization });
+	return useLoaderData({ from: ORG_ROUTE_ID, select: (data) => data.organization });
 }
 
 export function useOrganizations() {

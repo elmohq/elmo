@@ -4,7 +4,8 @@
  * Checks for an authenticated better-auth session, redirects to /auth/login if not found.
  * Owns the app shell for every signed-in page that has one, so the rail and
  * header survive a move between a brand, its organization, and the admin
- * section instead of being rebuilt by whichever layout was entered.
+ * section instead of being rebuilt by whichever layout was entered. Layouts
+ * declare the rail they want through `staticData.nav`; see lib/app-chrome.ts.
  */
 
 import { createFileRoute, Outlet, redirect, useRouteContext } from "@tanstack/react-router";
@@ -68,7 +69,7 @@ function AppChrome() {
 	return (
 		<AppShell sidebar={<AppSidebar {...chrome} />} header={<SiteHeader />}>
 			{/* The plan gate lays its own page out edge to edge. */}
-			{chrome.scope === "account" ? (
+			{chrome.nav === "account" ? (
 				<div className="flex flex-1 flex-col">
 					<Outlet />
 				</div>

@@ -214,7 +214,7 @@ export const Local: StoryObj = {
 
 		return (
 			<SidebarFrame label="Local — Self-hosted, full admin">
-				<AppSidebar scope="brand" brand={brand} organization={organization} />
+				<AppSidebar nav="brand" brand={brand} organization={organization} />
 			</SidebarFrame>
 		);
 	},
@@ -236,7 +236,7 @@ export const Demo = () => {
 
 	return (
 		<SidebarFrame label="Demo — Read-only, seeded user">
-			<AppSidebar scope="brand" brand={brand} organization={organization} />
+			<AppSidebar nav="brand" brand={brand} organization={organization} />
 		</SidebarFrame>
 	);
 };
@@ -251,7 +251,7 @@ export const Whitelabel = () => {
 
 	return (
 		<SidebarFrame label="Whitelabel — Regular user, no admin section">
-			<AppSidebar scope="brand" brand={brand} organization={organization} />
+			<AppSidebar nav="brand" brand={brand} organization={organization} />
 		</SidebarFrame>
 	);
 };
@@ -267,7 +267,7 @@ export const WhitelabelAdmin = () => {
 
 	return (
 		<SidebarFrame label="Whitelabel Admin — Admin links live in the account menu">
-			<AppSidebar scope="brand" brand={brand} organization={organization} />
+			<AppSidebar nav="brand" brand={brand} organization={organization} />
 		</SidebarFrame>
 	);
 };
@@ -284,7 +284,7 @@ export const WhitelabelReportOnly: StoryObj = {
 
 		return (
 			<SidebarFrame label="Whitelabel Report-only — Reports is the only admin entry">
-				<AppSidebar scope="brand" brand={brand} organization={organization} />
+				<AppSidebar nav="brand" brand={brand} organization={organization} />
 			</SidebarFrame>
 		);
 	},
@@ -307,7 +307,7 @@ export const AdminRoute: StoryObj = {
 
 		return (
 			<SidebarFrame label="Admin route — admin nav on the rail">
-				<AppSidebar scope="admin" />
+				<AppSidebar nav="admin" />
 			</SidebarFrame>
 		);
 	},
@@ -331,7 +331,7 @@ export const Cloud: StoryObj = {
 
 		return (
 			<SidebarFrame label="Cloud — Billing and Team on the organization's rail">
-				<AppSidebar scope="organization" organization={organization} />
+				<AppSidebar nav="organization" organization={organization} />
 			</SidebarFrame>
 		);
 	},
@@ -358,7 +358,7 @@ export const OrganizationsRetry: StoryObj = {
 
 		return (
 			<SidebarFrame label="Organizations failed to load — retry">
-				<AppSidebar scope="brand" brand={onboardedBrand} organization={organization} />
+				<AppSidebar nav="brand" brand={onboardedBrand} organization={organization} />
 			</SidebarFrame>
 		);
 	},
@@ -378,7 +378,7 @@ export const WhitelabelHasNoBillingOrTeam: StoryObj = {
 
 		return (
 			<SidebarFrame label="Whitelabel — no Billing or Team item">
-				<AppSidebar scope="organization" organization={organization} />
+				<AppSidebar nav="organization" organization={organization} />
 			</SidebarFrame>
 		);
 	},
@@ -399,7 +399,7 @@ export const ChoosePlanGate: StoryObj = {
 
 		return (
 			<SidebarFrame label="Cloud gate — nothing to navigate to yet">
-				<AppSidebar scope="account" />
+				<AppSidebar nav="account" />
 			</SidebarFrame>
 		);
 	},
@@ -431,7 +431,7 @@ export const ManyOrganizations: StoryObj = {
 
 		return (
 			<SidebarFrame label="Many organizations — account menu links to the switcher">
-				<AppSidebar scope="brand" brand={brand} organization={organization} />
+				<AppSidebar nav="brand" brand={brand} organization={organization} />
 			</SidebarFrame>
 		);
 	},
@@ -450,7 +450,7 @@ export const WhitelabelOnboarding = () => {
 
 	return (
 		<SidebarFrame label="Whitelabel Onboarding — Brand not onboarded, minimal nav">
-			<AppSidebar scope="brand" brand={brand} organization={organization} />
+			<AppSidebar nav="brand" brand={brand} organization={organization} />
 		</SidebarFrame>
 	);
 };

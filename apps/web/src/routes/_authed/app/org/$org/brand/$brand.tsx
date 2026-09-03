@@ -59,6 +59,7 @@ function BrandLayoutSkeleton() {
 }
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
+	staticData: { nav: "brand" },
 	validateSearch: validateBrandFilterSearch,
 	beforeLoad: ({ params, location, context }): { brandId: string } => {
 		const { brands: owned } = context.organization;

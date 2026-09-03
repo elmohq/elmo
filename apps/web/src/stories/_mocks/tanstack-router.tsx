@@ -81,8 +81,11 @@ export function setMockLoaderData(data: unknown) {
 	_loaderData = data;
 }
 
-export function useLoaderData(opts?: { select?: (data: any) => unknown }) {
-	return opts?.select ? opts.select(_loaderData) : (_loaderData as any);
+// A `from` reads the named layout's loader data (see `_matches` below), the
+// way the shell and the organization pages do; without one it is the story's.
+export function useLoaderData(opts?: { from?: string; select?: (data: any) => unknown }) {
+	const data = opts?.from ? _matches.find((match) => match.routeId === opts.from)?.loaderData : _loaderData;
+	return opts?.select ? opts.select(data) : (data as any);
 }
 
 export function createRootRouteWithContext<TContext>() {
@@ -132,28 +135,30 @@ export function useSearch(opts?: { select?: (search: Record<string, unknown>) =>
 	return opts?.select ? opts.select(_search) : _search;
 }
 
-export function useMatch(_opts?: unknown) {
-	return { params: { org: "mock-organization", brand: "mock-brand-id" } };
+export function useMatch(opts?: { from?: string; shouldThrow?: boolean; select?: (match: any) => unknown }) {
+	const found = opts?.from ? _matches.find((match) => match.routeId === opts.from) : _matches[_matches.length - 1];
+	if (!found) return undefined;
+	const match = { ...found, params: { org: "mock-organization", brand: "mock-brand-id" } };
+	return opts?.select ? opts.select(match) : match;
 }
 
 let _matches: Array<{
 	routeId: string;
 	pathname: string;
-	staticData: { crumb?: string };
-	context?: unknown;
+	staticData: { crumb?: string; nav?: string };
 	loaderData?: unknown;
 }> = [
 	{
 		routeId: "/_authed/app/org/$org",
 		pathname: "/app/org/mock-organization",
 		staticData: {},
-		context: { organization: { name: "Acme" } },
+		loaderData: { organization: BASE_ROUTE_CONTEXT.organization },
 	},
 	{
 		routeId: "/_authed/app/org/$org/brand/$brand",
 		pathname: "/app/org/mock-organization/brand/mock-brand-id",
-		staticData: {},
-		loaderData: { brand: { name: "Acme Corp" } },
+		staticData: { nav: "brand" },
+		loaderData: { brand: { id: "mock-brand-id", name: "Acme Corp" } },
 	},
 ];
 
