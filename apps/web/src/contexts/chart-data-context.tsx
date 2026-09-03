@@ -1,6 +1,6 @@
 import type { Competitor } from "@workspace/lib/db/schema";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
-import { type ChartSubject, generateDateRange } from "@/lib/chart-utils";
+import { type ChartSubject, generateDateRange, latestVisibility } from "@/lib/chart-utils";
 import type { ProcessedBatchChartDataPoint } from "@/lib/postgres-read";
 
 // Chart data for a single prompt (pre-processed for rendering)
@@ -115,8 +115,7 @@ export function ChartDataProvider({
 				});
 			});
 
-			const lastDataPoint = chartData.filter((point) => point[brand.id] !== null).pop();
-			const lastBrandVisibility = lastDataPoint ? (lastDataPoint[brand.id] as number) : null;
+			const lastBrandVisibility = latestVisibility(chartData, brand.id);
 
 			return {
 				chartData,

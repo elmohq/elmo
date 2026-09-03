@@ -17,10 +17,12 @@ import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
 import { useBrand } from "@/hooks/use-brands";
-import { getDefaultLookbackPeriod, type LookbackPeriod } from "@/lib/chart-utils";
+import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
+import { LOOKBACK_PERIODS, type LookbackPeriod } from "@/lib/lookback";
 
-export { ALL_MODELS_VALUE } from "@/lib/model-filter";
+export { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 
+import { ALL_MODELS_VALUE, iconIdForModelFilter, labelForModelFilter } from "@workspace/config/model-filter";
 // Filter state lives in the URL, validated by the `$brand` layout route's
 // search schema (see `validateBrandFilterSearch`). The widgets here keep
 // per-key `useSearch` selectors so one filter's click doesn't re-render the
@@ -28,14 +30,7 @@ export { ALL_MODELS_VALUE } from "@/lib/model-filter";
 // The router commits search updates synchronously within the interaction, so
 // the URL itself is the authoritative filter state.
 import { coerceLookback, joinTags, splitTags, useFilterNavigate } from "@/hooks/use-list-filters";
-import {
-	ALL_MODELS_VALUE,
-	getAvailableModels,
-	groupTrackedTargets,
-	iconIdForModelFilter,
-	labelForModelFilter,
-	type TrackedTarget,
-} from "@/lib/model-filter";
+import { getAvailableModels, groupTrackedTargets, type TrackedTarget } from "@/lib/model-filter";
 
 /** The model filter's trigger glyph. `all` is the no-filter sentinel; every
  *  other value names one of the brand's targets, whose logo is decided by
@@ -45,18 +40,14 @@ function iconForModel(model: string, className = "size-3.5") {
 	return <ModelIcon iconId={iconIdForModelFilter(model)} className={className} />;
 }
 
-const LOOKBACK_OPTIONS: { value: LookbackPeriod; label: string }[] = [
-	{ value: "1w", label: "Last 7 days" },
-	{ value: "1m", label: "Last 30 days" },
-	{ value: "3m", label: "Last 3 months" },
-	{ value: "6m", label: "Last 6 months" },
-	{ value: "1y", label: "Last 12 months" },
-	{ value: "all", label: "All time" },
-];
-
-function getLookbackLabel(lookback: LookbackPeriod): string {
-	return LOOKBACK_OPTIONS.find((o) => o.value === lookback)?.label ?? lookback;
-}
+const LOOKBACK_LABELS: Record<LookbackPeriod, string> = {
+	"1w": "Last 7 days",
+	"1m": "Last 30 days",
+	"3m": "Last 3 months",
+	"6m": "Last 6 months",
+	"1y": "Last 12 months",
+	all: "All time",
+};
 
 // ------------------------------------------------------------------
 // Trigger button (used by every dropdown)
@@ -168,7 +159,7 @@ function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) 
 // ------------------------------------------------------------------
 
 function LookbackDropdown() {
-	const { brand } = useBrand();
+	const { data: brand } = useBrand();
 	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
 	const urlLookback = useSearch({ strict: false, select: (s) => s.lookback });
 	const setFilters = useFilterNavigate();
@@ -181,13 +172,13 @@ function LookbackDropdown() {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger
-				render={<FilterTriggerButton icon={<Clock className="size-3.5" />} label={getLookbackLabel(selected)} />}
+				render={<FilterTriggerButton icon={<Clock className="size-3.5" />} label={LOOKBACK_LABELS[selected]} />}
 			/>
 			<DropdownMenuContent align="start" className="w-48">
 				<DropdownMenuRadioGroup value={selected} onValueChange={(v) => handleChange(v as LookbackPeriod)}>
-					{LOOKBACK_OPTIONS.map((opt) => (
-						<DropdownMenuRadioItem key={opt.value} value={opt.value} className="cursor-pointer">
-							{opt.label}
+					{LOOKBACK_PERIODS.map((period) => (
+						<DropdownMenuRadioItem key={period} value={period} className="cursor-pointer">
+							{LOOKBACK_LABELS[period]}
 						</DropdownMenuRadioItem>
 					))}
 				</DropdownMenuRadioGroup>

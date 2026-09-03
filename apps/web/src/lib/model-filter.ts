@@ -10,14 +10,6 @@
 import { ALL_MODELS_VALUE, labelForModelFilter } from "@workspace/config/model-filter";
 import { PLATFORM_TIER_LABELS, type PlanPlatformGroupId } from "@workspace/config/plans";
 
-export {
-	ALL_MODELS_VALUE,
-	iconIdForModelFilter,
-	labelForModelFilter,
-	parseModelFilter,
-	targetFilterValue,
-} from "@workspace/config/model-filter";
-
 /** One thing a brand's results can be filtered down to. */
 export interface TrackedTarget {
 	/** What travels in the URL — the model id, or `<model>::premium`. */

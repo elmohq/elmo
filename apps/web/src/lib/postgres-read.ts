@@ -5,6 +5,7 @@
  * on prompt_runs and citations tables.
  */
 
+import { parseModelFilter } from "@workspace/config/model-filter";
 import { getAllProviders } from "@workspace/lib/providers";
 import { type SQL, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -14,7 +15,6 @@ import {
 	type FanoutPromptTotalRow,
 	UNAVAILABLE_SENTINEL,
 } from "@/lib/fanout-analysis";
-import { parseModelFilter } from "@/lib/model-filter";
 
 const db = drizzle(process.env.DATABASE_URL!);
 

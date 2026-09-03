@@ -9,13 +9,13 @@ import {
 	type ChartDataPoint,
 	type ChartSubject,
 	calculateVisibilityPercentages,
-	getBadgeClassName,
-	getBadgeVariant,
-	type LookbackPeriod,
+	latestVisibility,
 	selectCompetitorsToDisplay,
+	visibilityBadgeProps,
 } from "@/lib/chart-utils";
+import type { LookbackPeriod } from "@/lib/lookback";
 import { BaseChartPrint } from "./base-chart-print";
-import { ChartDownloadFooter } from "./chart-download-footer";
+import { ChartDownloadFooter } from "./chart-footer";
 
 interface PromptRunData {
 	id: string;
@@ -95,17 +95,13 @@ function resolveBadgeValue(
 	isReportContext: boolean,
 ): number | null {
 	if (isReportContext) return sovChartData ? (sovChartData[0][brand.id] as number) : null;
-	const lastDataPoint = chartData.filter((point) => point[brand.id] !== null).pop();
-	return lastDataPoint ? (lastDataPoint[brand.id] as number) : null;
+	return latestVisibility(chartData, brand.id);
 }
 
 function resolveBadgeClasses(badgeValue: number | null, isReportContext: boolean) {
 	if (badgeValue === null) return null;
 	if (isReportContext) return getSoVBadgeClasses(badgeValue);
-	return {
-		variant: getBadgeVariant(badgeValue) as "default" | "secondary" | "destructive",
-		className: getBadgeClassName(badgeValue),
-	};
+	return visibilityBadgeProps(badgeValue);
 }
 
 /** Card chrome for the states that have no chart to draw. */

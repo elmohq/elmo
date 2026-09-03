@@ -1,8 +1,9 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 import { useCallback, useMemo } from "react";
 import { useBrand } from "@/hooks/use-brands";
-import { getDefaultLookbackPeriod, type LookbackPeriod } from "@/lib/chart-utils";
-import { ALL_MODELS_VALUE } from "@/lib/model-filter";
+import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
+import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
 
 /** The shared dashboard filter params. Validated once at the `$brand` layout
  *  route (`validateSearch: validateBrandFilterSearch`) so every child route
@@ -42,9 +43,9 @@ export function joinTags(tags: readonly string[]): string | undefined {
 	return tags.length > 0 ? tags.join(",") : undefined;
 }
 
-const LOOKBACK_VALUES = ["1w", "1m", "3m", "6m", "1y", "all"] as const;
 export function coerceLookback(raw: string | null | undefined, fallback: LookbackPeriod): LookbackPeriod {
-	return (LOOKBACK_VALUES as readonly string[]).includes(raw ?? "") ? (raw as LookbackPeriod) : fallback;
+	const parsed = lookbackSchema.safeParse(raw);
+	return parsed.success ? parsed.data : fallback;
 }
 
 /** Write side of the filter URL state: one router navigation per interaction
@@ -74,7 +75,7 @@ export function useFilterNavigate() {
  *  keep their own per-key `useSearch` selectors so a lookback click doesn't
  *  re-render the whole bar. */
 export function useListFilters() {
-	const { brand } = useBrand();
+	const { data: brand } = useBrand();
 	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
 
 	const urlFilters: BrandFilterSearch = useSearch({ strict: false });

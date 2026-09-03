@@ -6,12 +6,7 @@ import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import {
-	applyPerPromptCitationLVCF,
-	applyPerPromptLVCF,
-	generateDateRange,
-	type LookbackPeriod,
-} from "@/lib/chart-utils";
+import { applyPerPromptCitationLVCF, applyPerPromptLVCF, generateDateRange } from "@/lib/chart-utils";
 import {
 	type CitationCategory,
 	emptyCategoryCounts,
@@ -19,6 +14,7 @@ import {
 	toRoundedPercentages,
 } from "@/lib/domain-categories";
 import { categorizeDomain } from "@/lib/domain-categories.server";
+import type { LookbackPeriod } from "@/lib/lookback";
 import {
 	getDashboardSummary,
 	getPerPromptDailyCitationStats,

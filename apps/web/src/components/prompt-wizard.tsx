@@ -80,7 +80,7 @@ const EditableTagsInput = memo(
 EditableTagsInput.displayName = "EditableTagsInput";
 
 export default function PromptWizard({ onComplete }: PromptWizardProps) {
-	const { brand } = useBrand();
+	const { data: brand } = useBrand();
 	const queryClient = useQueryClient();
 	const router = useRouter();
 	const writeError = useWriteErrorMessage();

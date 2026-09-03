@@ -14,10 +14,19 @@ import { NIKE_BRAND_ID, TEST_API_KEY, TEST_BRAND_ID, brandUrl, organizationUrl }
 test.describe("Unauthenticated access", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
-  test("the dashboard redirects to login", async ({ page }) => {
-    await page.goto(`${brandUrl()}`);
-    await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
-    expect(page.url()).toContain("returnTo");
+  // Asserted on the response rather than on where a browser settles: a
+  // whitelabel login page starts SSO the moment it hydrates, so the browser
+  // leaves for the identity provider — a placeholder domain that never resolves
+  // — and whether it is still on /auth/login when the assertion runs is a race.
+  // The redirect is what the guarantee rests on anyway: no anonymous request is
+  // served the dashboard.
+  test("the dashboard redirects to login", async ({ request }) => {
+    const response = await request.get(brandUrl(), { maxRedirects: 0, failOnStatusCode: false });
+    expect(response.status()).toBe(307);
+
+    const [pathname, query] = (response.headers().location ?? "").split("?");
+    expect(pathname).toBe("/auth/login");
+    expect(new URLSearchParams(query).get("returnTo")).toBe(brandUrl());
   });
 
   test("the public API rejects a request with no key", async ({ request }) => {

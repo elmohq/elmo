@@ -5,9 +5,9 @@ import {
 	generateDateRange,
 	getDaysFromLookback,
 	getDefaultLookbackPeriod,
-	type LookbackPeriod,
 } from "@/lib/chart-utils";
 import { toRoundedPercentages } from "@/lib/domain-categories";
+import type { LookbackPeriod } from "@/lib/lookback";
 
 describe("getDaysFromLookback", () => {
 	it.each<[LookbackPeriod, number]>([

@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import { type BatchChartDataResponse, getBatchChartDataFn } from "@/server/visibility";
-
-type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
+import type { LookbackPeriod } from "@/lib/lookback";
+import { getBatchChartDataFn } from "@/server/visibility";
 
 export interface BatchChartDataFilters {
 	lookback?: LookbackPeriod;
@@ -40,14 +39,13 @@ export function useBatchChartData(brandId?: string, filters?: BatchChartDataFilt
 		staleTime: 60_000,
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: true,
-		placeholderData: (prev) => prev, // Keep previous data while loading
+		placeholderData: (prev) => prev,
 	});
 
 	return {
-		batchChartData: query.data,
+		data: query.data,
 		isLoading: query.isLoading,
-		isValidating: query.isFetching,
-		isError: query.error,
-		revalidate: query.refetch,
+		error: query.error,
+		refetch: query.refetch,
 	};
 }
