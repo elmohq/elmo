@@ -27,10 +27,6 @@ export async function findReport(reportId: string): Promise<Report | undefined> 
 	return report;
 }
 
-/**
- * The row exists before the job is queued, so a queue failure leaves a report
- * marked `failed` rather than nothing at all.
- */
 export async function createReport(input: {
 	brandName: string;
 	brandWebsite: string;

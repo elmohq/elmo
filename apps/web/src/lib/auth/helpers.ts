@@ -78,8 +78,6 @@ export async function requireBrandAccess(userId: string, brandId: string): Promi
 	}
 }
 
-/** The caller's session, having checked they may reach `brandId` — the preamble
- * every brand-scoped server function opens with. */
 export async function requireBrandSession(brandId: string) {
 	const session = await requireAuthSession();
 	await requireBrandAccess(session.user.id, brandId);

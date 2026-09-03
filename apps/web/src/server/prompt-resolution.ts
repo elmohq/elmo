@@ -65,8 +65,6 @@ export async function resolveFilteredPrompts(
 		}));
 }
 
-/** The tags query parameter every filtered read takes: a comma-separated list,
- * with empty entries dropped. */
 export function parseTagFilter(tags: string | undefined): string[] {
 	return tags?.split(",").filter(Boolean) || [];
 }
