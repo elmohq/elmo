@@ -231,15 +231,10 @@ export function isPlanKey(value: string): value is PlanKey {
 	return value in PLANS;
 }
 
-/** Whether a plan sells premium tracking at all — included, as an add-on, or both. */
 export function sellsPremium(plan: PlanDefinition): boolean {
 	return plan.premiumIncluded > 0 || plan.premiumAddonAvailable;
 }
 
-/**
- * The plans premium tracking is sold on, named the way a customer sees them, so
- * a message pointing at them can't drift from what PLANS actually offers.
- */
 export function premiumPlanNames(): string {
 	const names = Object.values(PLANS)
 		.filter(sellsPremium)

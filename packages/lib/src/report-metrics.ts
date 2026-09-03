@@ -369,8 +369,7 @@ export function analyzeByEngine(
 		if (run.brandMentioned) stats.mentions++;
 	}
 
-	// Reports keep their runs as a stored JSON blob, which the model-id rename
-	// never rewrote — old reports still name engines by provider.
+	// Persisted reports may use provider names where current reports use model ids.
 	const legacyAliases: Record<string, string> = {
 		openai: "ChatGPT",
 		anthropic: "Claude",

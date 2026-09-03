@@ -164,8 +164,7 @@ export const openrouter: Provider = {
 		return {
 			rawOutput: data,
 			textContent: extractTextFromOpenRouterResponse(data),
-			// OpenRouter doesn't expose what search queries the model made
-			// internally, so citations are the only evidence one ran.
+			// OpenRouter doesn't expose the search queries the model made internally.
 			webQueries: reportedWebQueries([], { searchProven: citations.length > 0 }),
 			citations,
 			modelVersion: data?.model ?? modelSlug.replace(":online", ""),

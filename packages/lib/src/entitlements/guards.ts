@@ -208,7 +208,6 @@ export async function countOrgEnabledPrompts(organizationId: string, conn: DbCon
 	return row?.value ?? 0;
 }
 
-/** `premiumSlotsUsed`'s rule, asked of the whole org in SQL rather than a loaded set. */
 export async function countOrgAssignedPremiumSlots(organizationId: string, conn: DbConnection = db): Promise<number> {
 	const [row] = await conn
 		.select({ value: sql<string>`coalesce(sum(cardinality(${prompts.premiumModels})), 0)` })

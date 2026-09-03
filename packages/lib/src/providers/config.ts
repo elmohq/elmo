@@ -2,19 +2,15 @@ import { WEB_QUERIES_UNAVAILABLE } from "../constants";
 import { getCredential } from "../secrets";
 import type { ModelConfig } from "./types";
 
-/** A provider is usable once every credential it needs is present. */
 export function configuredWhen(...credentialKeys: string[]): () => boolean {
 	return () => credentialKeys.every((key) => !!getCredential(key));
 }
 
 /**
- * What a run reports as the queries behind its answer.
- *
- * `webSearch` is whether search was even on — with it off there is nothing to
- * report. `searchProven` is evidence a search actually ran for the providers
- * that expose citations but not the query strings behind them; those runs are
- * marked "unavailable" rather than dropped, so the fan-out read path can tell
- * "searched, queries withheld" apart from "never searched".
+ * A run that searched but withheld its query strings is marked "unavailable"
+ * rather than dropped, so the read path can tell it apart from one that never
+ * searched. `searchProven` is whatever evidence a provider offers that a search
+ * ran — usually the presence of citations.
  */
 export function reportedWebQueries(
 	queries: string[],

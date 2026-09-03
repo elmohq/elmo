@@ -67,9 +67,7 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 		],
 	};
 
-	// Search queries, when the model ran web search. The SDK doesn't reliably
-	// surface the raw query, so a search with none exposed falls back to the
-	// "unavailable" marker.
+	// The SDK doesn't reliably surface the raw query.
 	const webQueries: string[] = [];
 	for (const part of result.content ?? []) {
 		const q = (part as any)?.input?.query ?? (part as any)?.action?.query;

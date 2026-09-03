@@ -18,7 +18,6 @@ export const DFS_LANGUAGE_CODE = "en";
 
 export const isDataforseoConfigured = configuredWhen("DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD");
 
-/** DataForSEO's success status code; anything else is a task-level failure. */
 const DFS_STATUS_OK = 20000;
 
 // Non-generic on purpose: the SDK gives every endpoint its own result class, so
@@ -34,11 +33,6 @@ export interface DfsResponse {
 	tasks?: DfsTask[];
 }
 
-/**
- * The one result a live DataForSEO call carries, or why it has none. A response
- * fails two ways — no task at all, or a task with a non-success status code —
- * and callers treat both the same, so they arrive as one cause string.
- */
 export function dfsResultOrError<T>(response: DfsResponse | undefined | null): Attempt<T> {
 	const task = response?.tasks?.[0];
 	if (!task) return { error: "No response or tasks." };
@@ -48,14 +42,12 @@ export function dfsResultOrError<T>(response: DfsResponse | undefined | null): A
 	return { result: task.result[0] as T };
 }
 
-/** As `dfsResultOrError`, for the calls that have no retry to fall back on. */
 export function dfsFirstResult<T>(response: DfsResponse | undefined | null): T {
 	const outcome = dfsResultOrError<T>(response);
 	if ("error" in outcome) throw new Error(`DataForSEO API Error: ${outcome.error}`);
 	return outcome.result;
 }
 
-/** The LLM's expanded queries, which only some surfaces report. */
 export function fanOutQueries(result: { fan_out_queries?: unknown }): string[] {
 	return nonEmptyStrings(result.fan_out_queries);
 }

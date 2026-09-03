@@ -261,7 +261,6 @@ async function runLlmResponse(model: string, prompt: string, options?: ProviderO
 
 	return {
 		rawOutput: raw,
-		// DataForSEO exposes the LLM's expanded queries as fan_out_queries.
 		webQueries: reportedWebQueries(fanOutQueries(result), { webSearch, searchProven: citations.length > 0 }),
 		textContent: extractTextFromDataforseoLlm(raw),
 		citations,
@@ -277,8 +276,7 @@ async function runLlmScraper(model: keyof typeof SCRAPER_CALLS, prompt: string):
 
 	return {
 		rawOutput: raw,
-		// ChatGPT reports its expanded queries as fan_out_queries; Gemini's
-		// scraper response has no equivalent field.
+		// Gemini's scraper response carries no fan_out_queries field.
 		webQueries: reportedWebQueries(fanOutQueries(result), { searchProven: citations.length > 0 }),
 		textContent: extractTextFromDataforseoScraper(raw),
 		citations,
