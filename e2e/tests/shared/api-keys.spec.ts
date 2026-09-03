@@ -43,10 +43,10 @@ test.describe("API keys", () => {
     await page.getByRole("checkbox", { name: "Test Organization", exact: true }).first().click();
     await page.getByRole("button", { name: "Create key", exact: true }).click();
 
-    const secret = page.locator("code.font-mono").first();
-    await expect(secret).toBeVisible({ timeout: 30_000 });
-    const key = (await secret.textContent())?.trim() ?? "";
-    expect(key).toMatch(/^elmo_/);
+    const issued = page.locator("[data-slot=card]").filter({ hasText: "Key created" });
+    await expect(issued).toBeVisible({ timeout: 30_000 });
+    const key = (await issued.locator("code").innerText()).trim();
+    expect(key).toMatch(/^elmo_[A-Za-z]+$/);
     await expect(page.getByText(name)).toBeVisible();
 
     const auth = { Authorization: `Bearer ${key}` };
@@ -86,9 +86,12 @@ test.describe("API keys", () => {
 
     await page.reload({ waitUntil: "networkidle" });
     const row = page.getByRole("listitem").filter({ hasText: name });
+    const confirm = page.getByRole("dialog");
     await expect(async () => {
-      await row.getByRole("button", { name: "Revoke", exact: true }).click();
-      await page.getByRole("button", { name: "Revoke key", exact: true }).click();
+      if (!(await confirm.isVisible())) {
+        await row.getByRole("button", { name: "Revoke", exact: true }).click();
+      }
+      await confirm.getByRole("button", { name: "Revoke key", exact: true }).click();
       await expect(row).toHaveCount(0, { timeout: 2_000 });
     }).toPass({ timeout: 30_000 });
 
