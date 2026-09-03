@@ -43,14 +43,10 @@ export async function openAccountMenu(page: Page): Promise<Locator> {
 /**
  * Fills a field and returns once the form has registered the edit, which is
  * what takes its save button out of the disabled state.
- *
- * The clear is load-bearing. React hydrates an input by keeping the text
- * already in the DOM and tracking it as the current value, so a fill that beat
- * hydration leaves the form clean but the field reading `value` — and every
- * later fill of `value` is then a change React sees no reason to report.
  */
 export async function fillUntilSaveable(field: Locator, value: string, save: Locator): Promise<void> {
 	await expect(async () => {
+		// Reset the input in case it holds text from a prior attempt.
 		await field.fill("");
 		await field.fill(value);
 		await expect(save).toBeEnabled({ timeout: ATTEMPT });
