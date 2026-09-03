@@ -128,4 +128,13 @@ test.describe("Local features", () => {
     expect(manifest.short_name).toBe("Elmo");
     expect(manifest.icons.some((icon) => icon.src.startsWith("/icons/elmo-icon"))).toBe(true);
   });
+
+  test("an installed app launches at the app root, not the manifest's own directory", async ({ request }) => {
+    const response = await request.get("/api/manifest");
+    const manifest = (await response.json()) as { start_url: string; scope: string };
+
+    const manifestUrl = "https://elmo.test/api/manifest";
+    expect(new URL(manifest.start_url, manifestUrl).pathname).toBe("/");
+    expect(new URL(manifest.scope, manifestUrl).pathname).toBe("/");
+  });
 });
