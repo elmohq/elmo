@@ -9,11 +9,11 @@ const KEYS_PAGE = `${organizationUrl()}/settings/api-keys`;
 
 type Page = import("@playwright/test").Page;
 
-/** The checkboxes are named only by their action, so the lookup is scoped to
- * the resource group. */
+/** The grid only exists under the Custom tab, and each box is named
+ * `<Resource> <action>`. */
 async function tickScope(page: Page, resource: string, action: string) {
-  const group = page.getByRole("group", { name: resource, exact: true });
-  await group.getByRole("checkbox", { name: action, exact: true }).first().click();
+  await page.getByRole("tab", { name: "Custom", exact: true }).click();
+  await page.getByRole("checkbox", { name: `${resource} ${action}`, exact: true }).first().click();
 }
 
 async function openCreateForm(page: Page, name: string) {
@@ -37,9 +37,9 @@ test.describe("API keys", () => {
 
     const name = `Playwright key ${Date.now()}`;
     await openCreateForm(page, name);
-    await page.getByRole("button", { name: "Read only" }).click();
-    await tickScope(page, "Prompts", "Write");
-    await page.getByRole("checkbox", { name: "Restrict this key to specific brands" }).first().click();
+    await page.getByRole("tab", { name: "Read only", exact: true }).click();
+    await tickScope(page, "Prompts", "write");
+    await page.getByRole("tab", { name: "Specific brands", exact: true }).click();
     await page.getByRole("checkbox", { name: "Test Organization", exact: true }).first().click();
     await page.getByRole("button", { name: "Create key", exact: true }).click();
 
@@ -85,7 +85,7 @@ test.describe("API keys", () => {
     expect(other.status()).toBe(404);
 
     await page.reload({ waitUntil: "networkidle" });
-    const row = page.locator("li").filter({ hasText: name });
+    const row = page.getByRole("row").filter({ hasText: name });
     const confirm = page.getByRole("dialog");
     await expect(async () => {
       if (!(await confirm.isVisible())) {
@@ -110,11 +110,11 @@ test.describe("API keys", () => {
     await openCreateForm(page, name);
 
     // Must not quietly become "every brand"; the server is what refuses.
-    await page.getByRole("button", { name: "Read only" }).click();
-    await page.getByRole("checkbox", { name: "Restrict this key to specific brands" }).first().click();
+    await page.getByRole("tab", { name: "Read only", exact: true }).click();
+    await page.getByRole("tab", { name: "Specific brands", exact: true }).click();
     await page.getByRole("button", { name: "Create key", exact: true }).click();
 
     await expect(page.getByRole("dialog").getByText(/at least one brand/i)).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator("li").filter({ hasText: name })).toHaveCount(0);
+    await expect(page.getByRole("row").filter({ hasText: name })).toHaveCount(0);
   });
 });

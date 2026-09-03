@@ -92,8 +92,11 @@ export const WithKeys: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByRole("heading", { name: "API Keys" })).toBeVisible();
+		await expect(await canvas.findByRole("heading", { name: "Active keys" })).toBeVisible();
+		await expect(await canvas.findByRole("heading", { name: "Inactive keys" })).toBeVisible();
+		// The expired key is listed apart from the two that still authenticate.
 		await expect(await canvas.findByText("Expired")).toBeVisible();
-		await expect((await canvas.findAllByText("Active")).length).toBe(2);
+		await expect((await canvas.findAllByRole("button", { name: "Revoke" })).length).toBe(2);
 		await expect(await canvas.findByRole("button", { name: "New key" })).toBeVisible();
 		await expect(canvas.queryByLabelText("Name")).toBeNull();
 	},
@@ -109,6 +112,19 @@ export const NoKeys: Story = {
 		await expect(await canvas.findByText("No API keys yet")).toBeVisible();
 		await userEvent.click(await canvas.findByRole("button", { name: "Create your first key" }));
 		await expect(await within(document.body).findByRole("dialog")).toBeVisible();
+	},
+};
+
+export const OnlyInactiveKeys: Story = {
+	render: () => {
+		load({ keys: [KEYS[2]], canManage: true });
+		return <ApiKeysSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText("No active API keys")).toBeVisible();
+		await expect(await canvas.findByText("Old dashboard export")).toBeVisible();
+		await expect(canvas.queryByRole("button", { name: "Revoke" })).toBeNull();
 	},
 };
 
@@ -134,7 +150,9 @@ export const CreateKeyDialog: Story = {
 		await userEvent.click(await within(canvasElement).findByRole("button", { name: "New key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
 		await expect(await dialog.findByLabelText("Name")).toBeVisible();
-		await expect(await dialog.findByText("6/10")).toBeVisible();
+		await expect(await dialog.findByRole("tab", { name: "Read only" })).toHaveAttribute("aria-selected", "true");
+		// Custom is what reveals the per-resource grid; the presets stay collapsed.
+		await expect(dialog.queryByRole("checkbox", { name: "Prompts write" })).toBeNull();
 	},
 };
 
@@ -146,10 +164,9 @@ export const ScopePresets: Story = {
 	play: async ({ canvasElement }) => {
 		await userEvent.click(await within(canvasElement).findByRole("button", { name: "New key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
-		await userEvent.click(await dialog.findByRole("button", { name: "Full access" }));
-		await expect(await dialog.findByText("10/10")).toBeVisible();
-		const competitors = within(await dialog.findByRole("group", { name: "Competitors" }));
-		await expect(await competitors.findByRole("checkbox", { name: "Delete" })).toBeChecked();
+		await userEvent.click(await dialog.findByRole("tab", { name: "Full access" }));
+		await userEvent.click(await dialog.findByRole("tab", { name: "Custom" }));
+		await expect(await dialog.findByRole("checkbox", { name: "Competitors delete" })).toBeChecked();
 	},
 };
 
@@ -162,7 +179,7 @@ export const RestrictedToBrands: Story = {
 		await userEvent.click(await within(canvasElement).findByRole("button", { name: "New key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
 		await expect(dialog.queryByRole("checkbox", { name: "Acme Labs" })).toBeNull();
-		await userEvent.click(await dialog.findByRole("checkbox", { name: /restrict this key to specific brands/i }));
+		await userEvent.click(await dialog.findByRole("tab", { name: "Specific brands" }));
 		await expect(await dialog.findByRole("checkbox", { name: "Acme Labs" })).toBeVisible();
 	},
 };
@@ -193,7 +210,7 @@ export const RevokeConfirmation: Story = {
 		const rows = await canvas.findAllByRole("button", { name: "Revoke" });
 		await userEvent.click(rows[0]);
 		const dialog = within(document.body);
-		await expect(await dialog.findByText("Revoke Reporting pipeline?")).toBeVisible();
+		await expect(await dialog.findByText(/Revoke .Reporting pipeline.\?/)).toBeVisible();
 		await expect(await dialog.findByRole("button", { name: "Revoke key" })).toBeVisible();
 	},
 };
