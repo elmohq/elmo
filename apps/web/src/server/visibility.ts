@@ -4,8 +4,8 @@ import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import type { LookbackPeriod } from "@/lib/lookback";
+import { requireBrandSession } from "@/lib/auth/helpers";
+import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
 import { getBatchChartData, type ProcessedBatchChartDataPoint } from "@/lib/postgres-read";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { getBrandVisibility } from "@/server/analytics-core";
@@ -46,7 +46,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
+			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
 			search: z.string().optional(),
@@ -54,11 +54,10 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 		}),
 	)
 	.handler(async ({ data }): Promise<BatchChartDataResponse> => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const timezone = resolveTimezone(data.timezone);
-		const lookbackParam = data.lookback as LookbackPeriod;
+		const lookbackParam = data.lookback;
 
 		// `allStrategy: "1y"` guarantees concrete bounds for every lookback
 		// (including "all"), so the dates are never null here.
@@ -124,7 +123,7 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
+			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
 			search: z.string().optional(),
@@ -132,10 +131,9 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 		}),
 	)
 	.handler(async ({ data }): Promise<FilteredVisibilityResponse> => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
-		const lookback = data.lookback as LookbackPeriod;
+		const lookback = data.lookback;
 		const timezone = resolveTimezone(data.timezone);
 		// Caps the "all" lookback so the visibility bar matches the chart section.
 		const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookback, timezone, { allStrategy: "1y" }) as {

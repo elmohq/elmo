@@ -31,8 +31,8 @@ import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
 	requireAuthSession,
-	requireBrandAccess,
 	requireBrandOrganization,
+	requireBrandSession,
 	requireOrgAccess,
 	requirePlatformPicksEditable,
 } from "@/lib/auth/helpers";
@@ -198,8 +198,7 @@ async function getBrandWithPromptsFromDb(
 export const getBrand = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const brand = await getBrandWithPromptsFromDb(data.brandId);
 		if (!brand) {
@@ -400,8 +399,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 export const getCompetitors = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		return db.query.competitors.findMany({
 			where: eq(competitors.brandId, data.brandId),
@@ -425,8 +423,7 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		// A bulk replace, so the list submitted is the list the brand ends up with.
 		assertAllowed(decideCompetitorCap(data.competitors.length));
@@ -475,8 +472,7 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
@@ -511,8 +507,7 @@ export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const existing = await db.query.competitors.findFirst({
 			where: and(eq(competitors.id, data.competitorId), eq(competitors.brandId, data.brandId)),
@@ -545,8 +540,7 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);

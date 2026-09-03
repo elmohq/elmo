@@ -24,7 +24,7 @@ import { z } from "zod";
 import {
 	canEditPlatformPicks,
 	requireAuthSession,
-	requireBrandAccess,
+	requireBrandSession,
 	requireOrgAccess,
 	requirePlatformPicksEditable,
 } from "@/lib/auth/helpers";
@@ -196,8 +196,7 @@ function picksEditable(available: PlatformOption[], picks: number | null): boole
 export const getModelPickerStateFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }): Promise<ModelPickerState> => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
 		if (!brand) throw new Error("Brand not found");
@@ -278,8 +277,7 @@ export const updateEnabledModelsFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		requirePlatformPicksEditable();
 
