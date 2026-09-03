@@ -4,8 +4,8 @@
  * form that would be refused.
  */
 import { IconAlertTriangle, IconCheck, IconCircleCheck, IconCopy, IconKey, IconPlus } from "@tabler/icons-react";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { API_DOCS_URL, MCP_DOCS_URL } from "@workspace/config/constants";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { orgLinkParams } from "@workspace/lib/app-urls";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
@@ -28,6 +28,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { cn } from "@workspace/ui/lib/utils";
 import { useEffect, useState } from "react";
+import { useOrganization } from "@/hooks/use-organizations";
 import type { ApiScope } from "@/lib/api/scopes";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
@@ -87,6 +88,7 @@ function isActive(key: ApiKeySummary): boolean {
 
 function ApiKeysSettingsPage() {
 	const { keys, brands, allScopes, expiryOptions, canManage, organization } = Route.useLoaderData();
+	const linkParams = orgLinkParams(useOrganization());
 	const router = useRouter();
 
 	const [creatingOpen, setCreatingOpen] = useState(false);
@@ -126,13 +128,13 @@ function ApiKeysSettingsPage() {
 				<h1 className="text-3xl font-bold">API Keys</h1>
 				<p className="max-w-2xl text-muted-foreground">
 					Keys authenticate the{" "}
-					<a href={API_DOCS_URL} target="_blank" rel="noreferrer" className="underline underline-offset-4">
+					<Link to="/app/org/$org/settings/api" params={linkParams} className="underline underline-offset-4">
 						REST API
-					</a>{" "}
+					</Link>{" "}
 					and{" "}
-					<a href={MCP_DOCS_URL} target="_blank" rel="noreferrer" className="underline underline-offset-4">
+					<Link to="/app/org/$org/settings/mcp" params={linkParams} className="underline underline-offset-4">
 						MCP
-					</a>{" "}
+					</Link>{" "}
 					connections for this organization.
 				</p>
 			</header>

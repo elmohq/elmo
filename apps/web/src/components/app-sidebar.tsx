@@ -3,12 +3,14 @@ import {
 	IconBuilding,
 	IconBuildings,
 	IconChartBar,
+	IconCode,
 	IconCpu,
 	IconCreditCard,
 	IconDashboard,
 	IconKey,
 	IconLink,
 	IconListDetails,
+	IconPlugConnected,
 	IconSitemap,
 	IconSpeakerphone,
 	IconTarget,
@@ -59,7 +61,11 @@ function organizationGroup(organization: OrganizationSummary, features?: Feature
 		items.push({ title: "Billing", link: { to: "/app/org/$org/settings/billing", params }, icon: IconCreditCard });
 	}
 
-	items.push({ title: "API Keys", link: { to: "/app/org/$org/settings/api-keys", params }, icon: IconKey });
+	items.push(
+		{ title: "API Keys", link: { to: "/app/org/$org/settings/api-keys", params }, icon: IconKey },
+		{ title: "MCP", link: { to: "/app/org/$org/settings/mcp", params }, icon: IconPlugConnected },
+		{ title: "API", link: { to: "/app/org/$org/settings/api", params }, icon: IconCode },
+	);
 
 	return { label: "Organization Settings", items };
 }

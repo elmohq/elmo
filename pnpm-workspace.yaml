@@ -69,6 +69,10 @@ allowBuilds:
   # only ever talk to Postgres, so neither native build is needed.
   "@prisma/client": false
   better-sqlite3: false
+  # Scalar's reference renderer is Vue under the hood. vue-demi's postinstall
+  # only re-points its shim at the installed Vue major, and it ships built for
+  # Vue 3 already, which is the only Vue in this tree.
+  vue-demi: false
 
 blockExoticSubdeps: true
 minimumReleaseAge: 5760
