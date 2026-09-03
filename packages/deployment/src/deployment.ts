@@ -1,13 +1,7 @@
 /**
- * Server-only deployment factory.
- *
- * Reads DEPLOYMENT_MODE from the environment and builds a Deployment
- * configuration object. The Deployment is purely static config (mode,
- * features, branding) — all auth is handled by better-auth.
- *
- * The singleton is cached at module scope. On Vercel serverless this
- * persists across warm invocations, which is safe because the
- * Deployment object contains no request-scoped state.
+ * The singleton is cached at module scope. On Vercel serverless this persists
+ * across warm invocations, which is safe because the Deployment object contains
+ * no request-scoped state.
  *
  * This module stays Node-safe: branding is assembled from env alone, so the
  * worker builds a Deployment without pulling in the React OptimizeButton.
@@ -104,9 +98,8 @@ function whitelabelBranding(env: Env): BrandingConfig {
 function brandingFor(mode: DeploymentMode, env: Env): BrandingConfig {
 	if (mode === "whitelabel") return whitelabelBranding(env);
 
-	// Cloud ships the Elmo defaults, so it takes no VITE_APP_* overrides. The
-	// localhost URL fallback keeps this total: a missing APP_URL surfaces on the
-	// env-validation page rather than throwing here.
+	// The localhost URL fallback keeps this total: a missing APP_URL surfaces on
+	// the env-validation page rather than throwing here.
 	if (mode === "cloud") {
 		return {
 			name: DEFAULT_APP_NAME,
@@ -127,7 +120,6 @@ function brandingFor(mode: DeploymentMode, env: Env): BrandingConfig {
 }
 
 export function buildDeployment(requestedMode: DeploymentMode, env: Env): Deployment {
-	// A read-only local install is what demo mode is.
 	const mode = requestedMode === "local" && env.READ_ONLY === "true" ? "demo" : requestedMode;
 	return {
 		mode,

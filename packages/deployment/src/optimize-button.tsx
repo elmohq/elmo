@@ -130,9 +130,6 @@ export function OptimizeButton({
 	);
 }
 
-/**
- * Optimize is a whitelabel-only affordance; every other mode renders nothing.
- */
 export function OptimizeButtonStub(_props: OptimizeButtonProps) {
 	return null;
 }

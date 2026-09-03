@@ -10,7 +10,6 @@ const WHITELABEL_ENV = {
 	VITE_OPTIMIZATION_URL_TEMPLATE: "https://agency.example.com/optimize/{brandId}",
 };
 
-/** The whole configuration surface, mode by mode, so no value drifts unnoticed. */
 const EXPECTED: Record<string, Deployment> = {
 	local: {
 		mode: "local",
