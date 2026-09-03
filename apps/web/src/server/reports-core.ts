@@ -30,8 +30,6 @@ export async function createReport(input: {
 }): Promise<Report> {
 	const newReport: NewReport = {
 		brandName: input.brandName.trim(),
-		// Full path is kept — it's what the analysis reads — but credentials
-		// are stripped before the URL is stored or handed to any fetcher.
 		brandWebsite: cleanOnboardingUrl(input.brandWebsite),
 		status: "pending",
 	};
