@@ -1,8 +1,9 @@
 import { DEFAULT_APP_ICON, DEFAULT_APP_NAME } from "@workspace/config/constants";
 import type { Competitor } from "@workspace/lib/db/schema";
 import { Badge } from "@workspace/ui/components/badge";
-import type { ChartDataPoint, ChartSubject, LookbackPeriod } from "@/lib/chart-utils";
-import { getBadgeClassName, getBadgeVariant } from "@/lib/chart-utils";
+import type { ChartDataPoint, ChartSubject } from "@/lib/chart-utils";
+import { visibilityBadgeProps } from "@/lib/chart-utils";
+import type { LookbackPeriod } from "@/lib/lookback";
 import { BaseChart } from "./base-chart";
 
 interface ChartExportBranding {
@@ -62,8 +63,8 @@ export function ChartExportPreview({
 				</h2>
 				{visibility !== null && (
 					<Badge
-						variant={getBadgeVariant(visibility)}
-						className={`${getBadgeClassName(visibility)} shrink-0`}
+						variant={visibilityBadgeProps(visibility).variant}
+						className={`${visibilityBadgeProps(visibility).className} shrink-0`}
 						style={{ fontSize: 16, padding: "4px 14px" }}
 					>
 						{visibility}% Visibility

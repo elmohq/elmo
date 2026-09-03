@@ -7,12 +7,10 @@
  *      Consumers are responsible for computing SoV and other derived metrics.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { db } from "@workspace/lib/db/db";
-import { reports } from "@workspace/lib/db/schema";
 import { computeReportUnstableStats } from "@workspace/lib/report-metrics";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { findReport } from "@/server/reports-core";
 
 export const Route = createFileRoute("/api/v1/reports/$reportId")({
 	server: {
@@ -23,12 +21,10 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 				handle: async ({ params, request }) => {
 					const { reportId } = params;
 
-					const result = await db.select().from(reports).where(eq(reports.id, reportId)).limit(1);
-					if (result.length === 0) {
+					const report = await findReport(reportId);
+					if (!report) {
 						throw new ApiError(404, "Not Found", `Report with ID '${reportId}' not found`);
 					}
-
-					const report = result[0];
 
 					// For non-completed reports, return status with progress
 					if (report.status !== "completed" || !report.rawOutput) {

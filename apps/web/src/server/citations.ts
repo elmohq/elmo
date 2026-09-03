@@ -5,7 +5,7 @@ import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/sch
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
+import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
 import {
 	type CitationDomain,
@@ -40,6 +40,7 @@ import {
 	type PerPromptCitationPageRow,
 	type PerPromptDailyCitationPageRow,
 } from "@/lib/postgres-read";
+import { parseTagFilter } from "@/server/prompt-resolution";
 
 type Classify = (domain: string, url: string, title?: string | null) => CitationCategory;
 
@@ -342,8 +343,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		}),
 	)
 	.handler(async ({ data }): Promise<CitationsResult> => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		// Window: `data.days` calendar days ending today (inclusive), plus the
 		// contiguous equal-length previous window — all UTC (server-TZ independent).
@@ -379,7 +379,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 				.sort(),
 		];
 
-		const tagFilter = data.tags?.split(",").filter(Boolean) || [];
+		const tagFilter = parseTagFilter(data.tags);
 		const enabledPromptIds =
 			tagFilter.length > 0 ? promptIdsMatchingTags(allPrompts, tagFilter) : allPrompts.map((p) => p.id);
 		if (enabledPromptIds.length === 0) return emptyCitationsResult(availableTags, competitorSummary);

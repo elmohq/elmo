@@ -1,5 +1,6 @@
 import { expect, test } from "../../test";
 import { RENAMEABLE_BRAND_ID, RENAMEABLE_BRAND_SLUG, TEST_BRAND_NAME, TEST_ORG_SLUG, brandUrl, organizationUrl } from "../../fixtures";
+import { fillUntilSaveable } from "../../interactions";
 
 test.describe("Organization rename", () => {
   test("the slug is a field of the same form, with no save of its own", async ({ page }) => {
@@ -12,8 +13,7 @@ test.describe("Organization rename", () => {
     const save = page.getByRole("button", { name: "Save", exact: true });
     await expect(save).toBeDisabled();
 
-    await slugField.fill(`${TEST_ORG_SLUG}-elsewhere`);
-    await expect(save).toBeEnabled();
+    await fillUntilSaveable(slugField, `${TEST_ORG_SLUG}-elsewhere`, save);
   });
 
   test("a name padded with spaces can still be saved, and settles trimmed", async ({ page }) => {
@@ -25,8 +25,7 @@ test.describe("Organization rename", () => {
     const save = page.getByRole("button", { name: "Save", exact: true });
     await expect(save).toBeDisabled();
 
-    await nameField.fill(`  ${TEST_BRAND_NAME}  `);
-    await expect(save).toBeEnabled();
+    await fillUntilSaveable(nameField, `  ${TEST_BRAND_NAME}  `, save);
 
     await save.click();
     await expect(nameField).toHaveValue(TEST_BRAND_NAME);

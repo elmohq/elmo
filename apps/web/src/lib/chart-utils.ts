@@ -1,8 +1,7 @@
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { CITATION_CATEGORIES, type CitationCategory } from "@/lib/domain-categories";
+import type { LookbackPeriod } from "@/lib/lookback";
 import type { PerPromptDailyCitationStats, PerPromptVisibilityPoint } from "@/lib/postgres-read";
-
-export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
 /** Charts key a series by id and label it by name; nothing else about a brand is read. */
 export interface ChartSubject {
@@ -241,21 +240,27 @@ export function applyPerPromptCitationLVCF(
 	);
 }
 
-export function getBadgeVariant(value: number): "default" | "secondary" | "destructive" {
-	if (value > 75) return "default";
-	if (value > 45) return "secondary";
-	return "destructive";
-}
-
-export function getBadgeClassName(value: number): string {
-	if (value > 75) return "bg-emerald-600 hover:bg-emerald-600 text-white";
-	if (value > 45) return "bg-amber-500 hover:bg-amber-500 text-white";
-	return "bg-rose-500 hover:bg-rose-500 text-white";
-}
-
 export interface ChartDataPoint {
 	date: string;
 	[key: string]: number | string | boolean | null;
+}
+
+export function visibilityBadgeProps(value: number): {
+	variant: "default" | "secondary" | "destructive";
+	className: string;
+} {
+	if (value > 75) return { variant: "default", className: "bg-emerald-600 hover:bg-emerald-600 text-white" };
+	if (value > 45) return { variant: "secondary", className: "bg-amber-500 hover:bg-amber-500 text-white" };
+	return { variant: "destructive", className: "bg-rose-500 hover:bg-rose-500 text-white" };
+}
+
+export function latestObservedPoint(chartData: ChartDataPoint[], ids: string[]): ChartDataPoint | undefined {
+	return chartData.filter((point) => ids.some((id) => point[id] !== null && point[id] !== undefined)).pop();
+}
+
+export function latestVisibility(chartData: ChartDataPoint[], id: string): number | null {
+	const point = latestObservedPoint(chartData, [id]);
+	return point ? (point[id] as number) : null;
 }
 
 import type { Competitor, PromptRun } from "@workspace/lib/db/schema";

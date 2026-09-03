@@ -52,7 +52,7 @@ export async function resolveFilteredPrompts(
 		.from(prompts)
 		.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true)));
 
-	const tagFilter = opts.tags?.split(",").filter(Boolean) || [];
+	const tagFilter = parseTagFilter(opts.tags);
 	const search = opts.search?.toLowerCase();
 
 	return allPrompts
@@ -63,6 +63,10 @@ export async function resolveFilteredPrompts(
 			systemTags: p.systemTags || [],
 			tags: p.tags || [],
 		}));
+}
+
+export function parseTagFilter(tags: string | undefined): string[] {
+	return tags?.split(",").filter(Boolean) || [];
 }
 
 /**

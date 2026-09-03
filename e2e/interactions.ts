@@ -46,6 +46,8 @@ export async function openAccountMenu(page: Page): Promise<Locator> {
  */
 export async function fillUntilSaveable(field: Locator, value: string, save: Locator): Promise<void> {
 	await expect(async () => {
+		// Reset the input in case it holds text from a prior attempt.
+		await field.fill("");
 		await field.fill(value);
 		await expect(save).toBeEnabled({ timeout: ATTEMPT });
 	}).toPass({ timeout: HYDRATION });

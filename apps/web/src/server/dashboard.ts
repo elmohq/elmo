@@ -5,13 +5,8 @@ import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import {
-	applyPerPromptCitationLVCF,
-	applyPerPromptLVCF,
-	generateDateRange,
-	type LookbackPeriod,
-} from "@/lib/chart-utils";
+import { requireBrandSession } from "@/lib/auth/helpers";
+import { applyPerPromptCitationLVCF, applyPerPromptLVCF, generateDateRange } from "@/lib/chart-utils";
 import {
 	type CitationCategory,
 	emptyCategoryCounts,
@@ -19,6 +14,7 @@ import {
 	toRoundedPercentages,
 } from "@/lib/domain-categories";
 import { categorizeDomain } from "@/lib/domain-categories.server";
+import { lookbackSchema } from "@/lib/lookback";
 import {
 	getDashboardSummary,
 	getPerPromptDailyCitationStats,
@@ -50,15 +46,14 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
+			lookback: lookbackSchema.default("1m"),
 			timezone: z.string().default("UTC"),
 		}),
 	)
 	.handler(async ({ data }): Promise<DashboardSummaryResponse> => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
-		const lookbackParam = data.lookback as LookbackPeriod;
+		const lookbackParam = data.lookback;
 		const timezone = resolveTimezone(data.timezone);
 
 		// Same timezone-aware window as the visibility and share-of-voice pages, so
