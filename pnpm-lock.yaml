@@ -154,9 +154,6 @@ importers:
       '@workspace/api-spec':
         specifier: workspace:*
         version: link:../../packages/api-spec
-      '@workspace/cloud':
-        specifier: workspace:*
-        version: link:../../packages/cloud
       '@workspace/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -172,9 +169,6 @@ importers:
       '@workspace/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@workspace/whitelabel':
-        specifier: workspace:*
-        version: link:../../packages/whitelabel
       auth0:
         specifier: ^6.2.0
         version: 6.2.0
@@ -302,9 +296,6 @@ importers:
       '@workspace/lib':
         specifier: workspace:*
         version: link:../../packages/lib
-      '@workspace/whitelabel':
-        specifier: workspace:*
-        version: link:../../packages/whitelabel
       auth0:
         specifier: ^6.2.0
         version: 6.2.0
@@ -500,52 +491,6 @@ importers:
 
   packages/api-spec: {}
 
-  packages/cloud:
-    dependencies:
-      '@better-auth/stripe':
-        specifier: ^1.7.2
-        version: 1.7.2(@better-auth/core@1.7.2(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.4.3))(jose@6.2.9)(kysely@0.28.17)(nanostores@1.5.0))(better-auth@1.7.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@tanstack/react-start@1.168.46(esbuild@0.28.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.4)(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)))(better-sqlite3@12.11.1)(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.21.0)(@upstash/redis@1.38.2)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.0))(pg@8.23.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10))(better-call@1.4.0(zod@4.4.3))(stripe@22.5.0(@types/node@26.2.0))
-      '@workspace/config':
-        specifier: workspace:*
-        version: link:../config
-      '@workspace/lib':
-        specifier: workspace:*
-        version: link:../lib
-      better-auth:
-        specifier: ^1.7.2
-        version: 1.7.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@tanstack/react-start@1.168.46(esbuild@0.28.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.4)(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)))(better-sqlite3@12.11.1)(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.21.0)(@upstash/redis@1.38.2)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.0))(pg@8.23.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10)
-      disposable-email-domains:
-        specifier: ^1.0.62
-        version: 1.0.62
-      drizzle-orm:
-        specifier: ^0.45.2
-        version: 0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.21.0)(@upstash/redis@1.38.2)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.0)
-      resend:
-        specifier: ^6.17.2
-        version: 6.17.2
-      stripe:
-        specifier: ^22.5.0
-        version: 22.5.0(@types/node@26.2.0)
-    devDependencies:
-      '@types/disposable-email-domains':
-        specifier: ^1.0.6
-        version: 1.0.6
-      '@types/node':
-        specifier: ^26.2.0
-        version: 26.2.0
-      '@types/pg':
-        specifier: ^8.21.0
-        version: 8.21.0
-      pg:
-        specifier: ^8.23.0
-        version: 8.23.0
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-      vitest:
-        specifier: ^4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@26.2.0)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
-
   packages/config:
     dependencies:
       zod:
@@ -564,25 +509,67 @@ importers:
 
   packages/deployment:
     dependencies:
-      '@workspace/cloud':
-        specifier: workspace:*
-        version: link:../cloud
+      '@better-auth/stripe':
+        specifier: ^1.7.2
+        version: 1.7.2(@better-auth/core@1.7.2(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.4.3))(jose@6.2.9)(kysely@0.28.17)(nanostores@1.5.0))(better-auth@1.7.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@tanstack/react-start@1.168.46(esbuild@0.28.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.4)(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)))(better-sqlite3@12.11.1)(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.21.0)(@upstash/redis@1.38.2)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.0))(pg@8.23.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10))(better-call@1.4.0(zod@4.4.3))(stripe@22.5.0(@types/node@26.2.0))
+      '@tabler/icons-react':
+        specifier: ^3.0.0
+        version: 3.46.0(react@19.2.8)
       '@workspace/config':
         specifier: workspace:*
         version: link:../config
-      '@workspace/local':
+      '@workspace/lib':
         specifier: workspace:*
-        version: link:../local
-      '@workspace/whitelabel':
+        version: link:../lib
+      '@workspace/ui':
         specifier: workspace:*
-        version: link:../whitelabel
+        version: link:../ui
+      auth0:
+        specifier: ^6.0.0
+        version: 6.2.0
+      better-auth:
+        specifier: ^1.7.2
+        version: 1.7.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@tanstack/react-start@1.168.46(esbuild@0.28.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.4)(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)))(better-sqlite3@12.11.1)(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.21.0)(@upstash/redis@1.38.2)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.0))(pg@8.23.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.11)(vitest@4.1.10)
+      disposable-email-domains:
+        specifier: ^1.0.62
+        version: 1.0.62
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.21.0)(@upstash/redis@1.38.2)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.8
+      resend:
+        specifier: ^6.17.2
+        version: 6.17.2
+      stripe:
+        specifier: ^22.5.0
+        version: 22.5.0(@types/node@26.2.0)
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
+      '@types/disposable-email-domains':
+        specifier: ^1.0.6
+        version: 1.0.6
       '@types/node':
         specifier: ^26.2.0
         version: 26.2.0
+      '@types/pg':
+        specifier: ^8.21.0
+        version: 8.21.0
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.18
+      pg:
+        specifier: ^8.23.0
+        version: 8.23.0
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@26.2.0)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
 
   packages/docs:
     dependencies:
@@ -691,22 +678,6 @@ importers:
         specifier: ^4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@26.2.0)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
 
-  packages/local:
-    dependencies:
-      '@workspace/config':
-        specifier: workspace:*
-        version: link:../config
-      react:
-        specifier: ^18.0.0 || ^19.0.0
-        version: 19.2.5
-    devDependencies:
-      '@types/node':
-        specifier: ^26.2.0
-        version: 26.2.0
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-
   packages/og:
     dependencies:
       '@resvg/resvg-js':
@@ -795,40 +766,6 @@ importers:
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-
-  packages/whitelabel:
-    dependencies:
-      '@tabler/icons-react':
-        specifier: ^3.0.0
-        version: 3.41.1(react@19.2.5)
-      '@workspace/config':
-        specifier: workspace:*
-        version: link:../config
-      '@workspace/lib':
-        specifier: workspace:*
-        version: link:../lib
-      '@workspace/ui':
-        specifier: workspace:*
-        version: link:../ui
-      auth0:
-        specifier: ^6.0.0
-        version: 6.0.0
-      react:
-        specifier: ^19.0.0
-        version: 19.2.5
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
-    devDependencies:
-      '@types/node':
-        specifier: ^26.2.0
-        version: 26.2.0
-      '@types/react':
-        specifier: ^19.2.14
-        version: 19.2.18
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -4062,18 +3999,10 @@ packages:
     resolution: {integrity: sha512-qGzCltMN05ohRRQAXB8TPWt+0Coz9Va266gr9nYN1qc/f/EIaup3VRg7b59mtRaeKTRcxreF20l/udCM/gOqNg==}
     engines: {node: '>=8'}
 
-  '@tabler/icons-react@3.41.1':
-    resolution: {integrity: sha512-kUgweE+DJtAlMZVIns1FTDdcbpRVnkK7ZpUOXmoxy3JAF0rSHj0TcP4VHF14+gMJGnF+psH2Zt26BLT6owetBA==}
-    peerDependencies:
-      react: '>= 16'
-
   '@tabler/icons-react@3.46.0':
     resolution: {integrity: sha512-CCm7xJWhDT2PH4ZIFkP6AgYKtVhq0gpYkjUN+GVh1AzmIQaa77OW0bQPBPQiTE0PsXMR9oSxFqA3qBglzPyrVQ==}
     peerDependencies:
       react: '>= 16'
-
-  '@tabler/icons@3.41.1':
-    resolution: {integrity: sha512-OaRnVbRmH2nHtFeg+RmMJ/7m2oBIF9XCJAUD5gQnMrpK9f05ydj8MZrAf3NZQqOXyxGN1UBL0D5IKLLEUfr74Q==}
 
   '@tabler/icons@3.46.0':
     resolution: {integrity: sha512-f2RYFl3fzPwj5WO82x6en0dmkjefxEfOm16D1ByM6cj/McNiwOkL4VaPUoP9VVIrXAD9WnTSVFr70px703b//A==}
@@ -5073,10 +5002,6 @@ packages:
   auth0@4.37.1:
     resolution: {integrity: sha512-o9ca0P+hHSUbiwOSFW+DS2GmCA5c6T6E1UJZhWcgKmjAI2Aid16wLzY4/y+XNFb7Im1rM+wQc5YkkNZuTy5FOw==}
     engines: {node: '>=18'}
-
-  auth0@6.0.0:
-    resolution: {integrity: sha512-RnwCiNMTCBz0spbeTRBRyhsN1cDTOk5ubqGZA7q8/L6we6agATtp67+kca4YPoQW0fVv8p1ff82W456w5PmrSw==}
-    engines: {node: ^20.19.0 || ^22.12.0 || ^24.0.0 || ^26.0.0}
 
   auth0@6.2.0:
     resolution: {integrity: sha512-XELtfGo0wc6et4cYr3ds+9NNHZ63BpJa/VdXRY1UuijFPIIPslYL2a2ZWe8rQh5g1DFcOyAD06ubH37BRk0T+Q==}
@@ -8067,10 +7992,6 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
-
-  react@19.2.5:
-    resolution: {integrity: sha512-llUJLzz1zTUBrskt2pwZgLq59AemifIftw4aB7JxOqf1HY2FDaGDxgwpAPVzHU1kdWabH7FauP4i1oEeer2WCA==}
-    engines: {node: '>=0.10.0'}
 
   react@19.2.8:
     resolution: {integrity: sha512-PWaYA1L/q9u2u7xYQi+Y3L3Yfnie7XyLeaJICV1MGD6LprsBxcAqGjYyr0eY3p+QdsA+x/Irkt4Qif8D63+Sbw==}
@@ -12451,17 +12372,10 @@ snapshots:
 
   '@supercharge/promise-pool@3.3.0': {}
 
-  '@tabler/icons-react@3.41.1(react@19.2.5)':
-    dependencies:
-      '@tabler/icons': 3.41.1
-      react: 19.2.5
-
   '@tabler/icons-react@3.46.0(react@19.2.8)':
     dependencies:
       '@tabler/icons': 3.46.0
       react: 19.2.8
-
-  '@tabler/icons@3.41.1': {}
 
   '@tabler/icons@3.46.0': {}
 
@@ -13754,12 +13668,6 @@ snapshots:
     dependencies:
       jose: 4.15.9
       undici-types: 6.28.0
-      uuid: 14.0.2
-
-  auth0@6.0.0:
-    dependencies:
-      auth0-legacy: auth0@4.37.1
-      jose: 5.10.0
       uuid: 14.0.2
 
   auth0@6.2.0:
@@ -17065,8 +16973,6 @@ snapshots:
       tslib: 2.8.1
     optionalDependencies:
       '@types/react': 19.2.18
-
-  react@19.2.5: {}
 
   react@19.2.8: {}
 

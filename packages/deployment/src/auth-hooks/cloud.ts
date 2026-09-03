@@ -9,10 +9,10 @@
 import type { CreateAuthOptions } from "@workspace/lib/auth/server";
 import { provisionUmbrellaOrg } from "@workspace/lib/db/provisioning";
 import { APIError } from "better-auth/api";
-import { createStripeBillingPlugin } from "./billing/plugin";
-import { isDisposableEmail } from "./disposable-domains";
-import { sendEmail } from "./email";
-import { invitationEmail, passwordResetEmail, verificationEmail } from "./email-templates";
+import { createStripeBillingPlugin } from "../billing/plugin";
+import { isDisposableEmail } from "../disposable-domains";
+import { sendEmail } from "../email";
+import { invitationEmail, passwordResetEmail, verificationEmail } from "../email-templates";
 
 // ── Signup allowlist ──────────────────────────────────────────────────
 

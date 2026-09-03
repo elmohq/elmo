@@ -6,10 +6,11 @@
  * `handle` throws `ApiError` for expected failures; a plain object is wrapped
  * in `Response.json()`, a `Response` passes through.
  */
+
+import { getDeployment } from "@workspace/deployment";
 import { WriteDeniedError } from "@workspace/lib/entitlements";
 import type { z } from "zod";
 import { type ApiAuth, type ApiAuthFailure, principalScopes, resolveApiAuth } from "@/lib/auth/api-auth";
-import { getDeployment } from "@/lib/config/server";
 import type { ApiScope } from "./scopes";
 
 /** A union rather than an enum in the spec, so a generated client does not

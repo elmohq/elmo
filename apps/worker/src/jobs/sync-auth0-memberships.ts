@@ -9,8 +9,8 @@
  * changes don't require users to log out and back in.
  */
 
+import { syncAuth0User } from "@workspace/deployment/auth-hooks/whitelabel";
 import { listAuth0Accounts } from "@workspace/lib/db/auth-sync";
-import { syncAuth0User } from "@workspace/whitelabel/auth-hooks";
 import type { Job } from "pg-boss";
 
 export interface SyncAuth0MembershipsData {

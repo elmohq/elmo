@@ -8,7 +8,7 @@
  *
  * Stripe prices are referenced by lookup key (stripePlanLookupKey /
  * PREMIUM_ADDON_LOOKUP_KEYS) rather than per-environment price-ID env vars;
- * packages/cloud/scripts/bootstrap-stripe.ts provisions any Stripe account (test or live)
+ * packages/deployment/scripts/bootstrap-stripe.ts provisions any Stripe account (test or live)
  * with these exact keys.
  */
 
@@ -249,7 +249,7 @@ export function planDisplayName(planKey: PlanKey | "custom" | null): string {
 /**
  * Stripe price lookup key for a plan/interval. The @better-auth/stripe plugin
  * resolves these to price IDs at checkout time, so the same code works against
- * any Stripe account bootstrapped with packages/cloud/scripts/bootstrap-stripe.ts.
+ * any Stripe account bootstrapped with packages/deployment/scripts/bootstrap-stripe.ts.
  */
 export function stripePlanLookupKey(plan: PlanKey, interval: BillingInterval): string {
 	return `elmo_cloud_${plan}_${interval}`;

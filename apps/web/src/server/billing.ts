@@ -6,10 +6,11 @@
  * no custom payment surface here.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { setPremiumAddonQuantity } from "@workspace/cloud/billing";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { isPremiumAddonAvailable } from "@workspace/config/plans";
 import { isOrgAdminRole } from "@workspace/config/roles";
+import { getDeployment } from "@workspace/deployment";
+import { setPremiumAddonQuantity } from "@workspace/deployment/billing";
 import {
 	countOrgAssignedPremiumSlots,
 	countOrgBrands,
@@ -19,7 +20,6 @@ import {
 } from "@workspace/lib/entitlements";
 import { z } from "zod";
 import { listUserOrganizations, requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
-import { getDeployment } from "@/lib/config/server";
 
 export type BillingState = {
 	billingEnabled: boolean;
