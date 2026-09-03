@@ -85,15 +85,16 @@ test.describe("API keys", () => {
     expect(other.status()).toBe(404);
 
     await page.reload({ waitUntil: "networkidle" });
-    const row = page.getByRole("listitem").filter({ hasText: name });
+    const row = page.locator("li").filter({ hasText: name });
     const confirm = page.getByRole("dialog");
     await expect(async () => {
       if (!(await confirm.isVisible())) {
         await row.getByRole("button", { name: "Revoke", exact: true }).click();
       }
       await confirm.getByRole("button", { name: "Revoke key", exact: true }).click();
-      await expect(row).toHaveCount(0, { timeout: 2_000 });
+      await expect(confirm).toBeHidden({ timeout: 5_000 });
     }).toPass({ timeout: 30_000 });
+    await expect(row).toHaveCount(0);
 
     const afterRevoke = await request.get("/api/v1/me", { headers: auth, failOnStatusCode: false });
     expect(afterRevoke.status()).toBe(401);
@@ -114,6 +115,6 @@ test.describe("API keys", () => {
     await page.getByRole("button", { name: "Create key", exact: true }).click();
 
     await expect(page.getByRole("dialog").getByText(/at least one brand/i)).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("listitem").filter({ hasText: name })).toHaveCount(0);
+    await expect(page.locator("li").filter({ hasText: name })).toHaveCount(0);
   });
 });
