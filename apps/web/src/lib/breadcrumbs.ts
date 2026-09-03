@@ -19,11 +19,11 @@ export function useBreadcrumbs(): Crumb[] {
 
 	return matches.flatMap((match): Crumb[] => {
 		if (match.routeId === ORG_ROUTE_ID) {
-			const label = subjects.organizationName;
+			const label = subjects.organization?.name;
 			return label ? [{ label, href: match.pathname, kind: "Organization" }] : [];
 		}
 		if (match.routeId === BRAND_ROUTE_ID) {
-			const label = subjects.brandName;
+			const label = subjects.brand?.name;
 			return label ? [{ label, href: match.pathname, kind: "Brand" }] : [];
 		}
 		return match.staticData.crumb ? [{ label: match.staticData.crumb, href: match.pathname }] : [];
