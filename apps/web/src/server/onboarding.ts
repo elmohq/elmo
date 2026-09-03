@@ -19,7 +19,7 @@ import {
 	enqueueAnalyzeBrand,
 	getAnalyzeBrandStatus,
 } from "@/lib/analyze-brand-job";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
+import { requireBrandSession } from "@/lib/auth/helpers";
 import { saveWizardOnboarding, wizardOnboardingInputSchema } from "@/server/onboarding-core";
 
 /**
@@ -43,8 +43,7 @@ export const startAnalyzeBrandFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 		await enqueueAnalyzeBrand(data);
 		return { ok: true };
 	});
@@ -59,8 +58,7 @@ export const startAnalyzeBrandFn = createServerFn({ method: "POST" })
 export const getAnalyzeBrandStatusFn = createServerFn({ method: "POST" })
 	.validator(z.object({ brandId: z.string().min(1) }))
 	.handler(async ({ data }): Promise<AnalyzeBrandStatus> => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 		return getAnalyzeBrandStatus(data.brandId);
 	});
 
@@ -68,8 +66,7 @@ export const getAnalyzeBrandStatusFn = createServerFn({ method: "POST" })
 export const cancelAnalyzeBrandFn = createServerFn({ method: "POST" })
 	.validator(z.object({ brandId: z.string().min(1) }))
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 		await cancelAnalyzeBrand(data.brandId);
 		return { ok: true };
 	});
@@ -81,7 +78,6 @@ export const cancelAnalyzeBrandFn = createServerFn({ method: "POST" })
 export const updateOnboardedBrandFn = createServerFn({ method: "POST" })
 	.validator(wizardOnboardingInputSchema)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 		return saveWizardOnboarding(data);
 	});
