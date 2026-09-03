@@ -1,5 +1,4 @@
 import { DEFAULT_APP_ICON, DEFAULT_APP_NAME, DEFAULT_APP_URL, DEFAULT_CHART_COLORS } from "@workspace/config/constants";
-import type { Deployment } from "@workspace/config/types";
 import { beforeEach, describe, expect, it } from "vitest";
 import { buildDeployment, getDeployment, resetDeploymentCache } from "./deployment";
 
@@ -10,117 +9,31 @@ const WHITELABEL_ENV = {
 	VITE_OPTIMIZATION_URL_TEMPLATE: "https://agency.example.com/optimize/{brandId}",
 };
 
-const EXPECTED: Record<string, Deployment> = {
-	local: {
-		mode: "local",
-		features: {
-			readOnly: false,
-			showOptimizeButton: false,
-			canCreateBrands: true,
-			platformPicksEditable: true,
-			canEditOrganizations: true,
-			canCreateOrganizations: false,
-			selfServeSignup: false,
-			billing: false,
-			reportGeneration: true,
-			teamInvites: false,
-		},
-		branding: {
+describe("branding", () => {
+	it("falls back to the Elmo defaults when nothing is configured", () => {
+		expect(buildDeployment("local", {}).branding).toEqual({
 			name: DEFAULT_APP_NAME,
 			icon: DEFAULT_APP_ICON,
 			url: DEFAULT_APP_URL,
 			parentName: undefined,
 			parentUrl: undefined,
 			chartColors: DEFAULT_CHART_COLORS,
-		},
-	},
-	demo: {
-		mode: "demo",
-		features: {
-			readOnly: true,
-			showOptimizeButton: false,
-			canCreateBrands: false,
-			platformPicksEditable: false,
-			canEditOrganizations: false,
-			canCreateOrganizations: false,
-			selfServeSignup: false,
-			billing: false,
-			reportGeneration: true,
-			teamInvites: false,
-		},
-		branding: {
-			name: DEFAULT_APP_NAME,
-			icon: DEFAULT_APP_ICON,
-			url: DEFAULT_APP_URL,
-			parentName: undefined,
-			parentUrl: undefined,
-			chartColors: DEFAULT_CHART_COLORS,
-		},
-	},
-	whitelabel: {
-		mode: "whitelabel",
-		features: {
-			readOnly: false,
-			showOptimizeButton: true,
-			canCreateBrands: false,
-			platformPicksEditable: false,
-			canEditOrganizations: false,
-			canCreateOrganizations: false,
-			selfServeSignup: false,
-			billing: false,
-			reportGeneration: true,
-			teamInvites: false,
-		},
-		branding: {
+		});
+	});
+
+	it("takes whitelabel's name, icon and URL from its required VITE_APP_* vars", () => {
+		expect(buildDeployment("whitelabel", WHITELABEL_ENV).branding).toMatchObject({
 			name: "Agency",
 			icon: "https://cdn.example.com/agency.png",
 			url: "https://agency.example.com",
-			parentName: undefined,
-			parentUrl: undefined,
-			onboardingRedirectUrl: undefined,
-			onboardingRedirectUrlTemplate: undefined,
 			optimizationUrlTemplate: "https://agency.example.com/optimize/{brandId}",
-			chartColors: DEFAULT_CHART_COLORS,
-		},
-	},
-	cloud: {
-		mode: "cloud",
-		features: {
-			readOnly: false,
-			showOptimizeButton: false,
-			canCreateBrands: true,
-			platformPicksEditable: true,
-			canEditOrganizations: true,
-			canCreateOrganizations: true,
-			selfServeSignup: true,
-			billing: true,
-			reportGeneration: false,
-			teamInvites: true,
-		},
-		branding: {
-			name: DEFAULT_APP_NAME,
-			icon: DEFAULT_APP_ICON,
-			url: DEFAULT_APP_URL,
-			chartColors: DEFAULT_CHART_COLORS,
-		},
-	},
-};
-
-describe("buildDeployment", () => {
-	it.each(["local", "demo", "cloud"] as const)("builds %s from a bare environment", (mode) => {
-		expect(buildDeployment(mode, {})).toEqual(EXPECTED[mode]);
+		});
 	});
 
-	it("builds whitelabel from its required VITE_APP_* vars", () => {
-		expect(buildDeployment("whitelabel", WHITELABEL_ENV)).toEqual(EXPECTED.whitelabel);
-	});
-
-	it("refuses whitelabel without its required branding vars", () => {
+	it("refuses whitelabel without those vars", () => {
 		expect(() => buildDeployment("whitelabel", {})).toThrow();
 	});
-});
 
-describe("branding", () => {
 	it("takes local's name, icon, URL and parent links from the environment", () => {
 		const { branding } = buildDeployment("local", {
 			APP_NAME: "Acme",

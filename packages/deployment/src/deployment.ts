@@ -13,7 +13,7 @@ import type { BrandingConfig, Deployment, DeploymentMode, FeaturesConfig } from 
 
 type Env = Record<string, string | undefined>;
 
-const FEATURES_BY_MODE: Record<DeploymentMode, FeaturesConfig> = {
+export const FEATURES_BY_MODE: Record<DeploymentMode, FeaturesConfig> = {
 	local: {
 		readOnly: false,
 		showOptimizeButton: false,

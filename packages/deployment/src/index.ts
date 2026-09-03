@@ -4,4 +4,4 @@
  * OptimizeButton selector lives at "@workspace/deployment/client".
  */
 
-export { type GetDeploymentOptions, getDeployment, resetDeploymentCache } from "./deployment";
+export { FEATURES_BY_MODE, type GetDeploymentOptions, getDeployment, resetDeploymentCache } from "./deployment";
