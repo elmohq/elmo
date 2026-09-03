@@ -1,7 +1,3 @@
-/**
- * No `Request`, session, or status codes: each edge maps these domain errors to
- * its own vocabulary.
- */
 import { db } from "@workspace/lib/db/db";
 import { type NewReport, type Report, reports } from "@workspace/lib/db/schema";
 import { cleanOnboardingUrl } from "@workspace/lib/onboarding";
