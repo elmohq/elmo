@@ -29,6 +29,9 @@ export default function ApiReference({ url, darkMode }: { url: string; darkMode:
 				// The spec already has a `Models` tag — the answer engines — so
 				// Scalar's schema section needs the other name.
 				modelsSectionLabel: "Schemas",
+				// Scalar's stylesheet paints `body` in its own layer, which lands after
+				// ours and would repaint the page around the embed.
+				customCss: "@layer scalar-base { body { background-color: var(--background); } }",
 			}}
 		/>
 	);
