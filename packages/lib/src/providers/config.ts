@@ -1,8 +1,29 @@
+import { WEB_QUERIES_UNAVAILABLE } from "../constants";
+import { getCredential } from "../secrets";
 import type { ModelConfig } from "./types";
 
-// SCRAPE_TARGETS parsing/formatting lives in @workspace/config (the env source
-// of truth, shared with the CLI); re-exported here for compatibility.
-export { parseScrapeTargets } from "@workspace/config/scrape-targets";
+/** A provider is usable once every credential it needs is present. */
+export function configuredWhen(...credentialKeys: string[]): () => boolean {
+	return () => credentialKeys.every((key) => !!getCredential(key));
+}
+
+/**
+ * What a run reports as the queries behind its answer.
+ *
+ * `webSearch` is whether search was even on — with it off there is nothing to
+ * report. `searchProven` is evidence a search actually ran for the providers
+ * that expose citations but not the query strings behind them; those runs are
+ * marked "unavailable" rather than dropped, so the fan-out read path can tell
+ * "searched, queries withheld" apart from "never searched".
+ */
+export function reportedWebQueries(
+	queries: string[],
+	{ webSearch = true, searchProven = true }: { webSearch?: boolean; searchProven?: boolean } = {},
+): string[] {
+	if (!webSearch) return [];
+	if (queries.length > 0) return queries;
+	return searchProven ? [WEB_QUERIES_UNAVAILABLE] : [];
+}
 
 // Per-call output caps for the direct API providers: a worst-case bound on a
 // single tracked run, not a target length — sized well above any answer we

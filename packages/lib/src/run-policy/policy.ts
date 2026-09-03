@@ -30,6 +30,11 @@ export interface TargetPlan {
 	replication: number;
 }
 
+/** The plan's slowest cadence, which bounds how far back a last-run lookup reaches. */
+export function slowestIntervalHours(targets: readonly TargetPlan[]): number {
+	return targets.length > 0 ? Math.max(...targets.map((target) => target.intervalHours)) : 0;
+}
+
 export interface PromptRunPlan {
 	targets: TargetPlan[];
 	/**
@@ -194,6 +199,31 @@ export function defaultPlatformPicks(entitlements: Entitlements, scrapeTargets: 
  */
 export function targetKey(config: Pick<ModelConfig, "model" | "provider" | "webSearch">): string {
 	return `${config.model}::${config.provider}::${config.webSearch ? "web" : "base"}`;
+}
+
+/** One aggregated `MAX(created_at)` row per target, as the last-run query returns it. */
+export interface LastRunRow {
+	model: string;
+	/** Nullable on the column: a row without one predates target keying. */
+	provider: string | null;
+	webSearchEnabled: boolean;
+	lastRunAt: Date | string;
+}
+
+/**
+ * Last-run times keyed the way `selectDueTargets` looks them up. Rows with no
+ * provider are dropped — they can't be matched to a target anyway.
+ */
+export function lastRunsByTargetKey(rows: readonly LastRunRow[]): Map<string, Date> {
+	const byKey = new Map<string, Date>();
+	for (const row of rows) {
+		if (!row.provider) continue;
+		byKey.set(
+			targetKey({ model: row.model, provider: row.provider, webSearch: row.webSearchEnabled }),
+			new Date(row.lastRunAt),
+		);
+	}
+	return byKey;
 }
 
 /**

@@ -134,7 +134,7 @@ export const MAX_STANDARD_RUNS_PER_DAY = 7;
 /** Dunning: how long past_due keeps tracking alive before it pauses. */
 export const PAST_DUE_GRACE_DAYS = 7;
 
-/** Extra premium prompt/model slots: $5 each per month, Pro and Business only. */
+/** Extra premium prompt/model slots, on the plans that sell the tier. */
 export const PREMIUM_ADDON_MONTHLY_USD = 5;
 
 /** Annual = 10× monthly (two months free). */
@@ -229,6 +229,22 @@ export const PLAN_KEYS = Object.keys(PLANS) as PlanKey[];
 
 export function isPlanKey(value: string): value is PlanKey {
 	return value in PLANS;
+}
+
+/** Whether a plan sells premium tracking at all — included, as an add-on, or both. */
+export function sellsPremium(plan: PlanDefinition): boolean {
+	return plan.premiumIncluded > 0 || plan.premiumAddonAvailable;
+}
+
+/**
+ * The plans premium tracking is sold on, named the way a customer sees them, so
+ * a message pointing at them can't drift from what PLANS actually offers.
+ */
+export function premiumPlanNames(): string {
+	const names = Object.values(PLANS)
+		.filter(sellsPremium)
+		.map((plan) => plan.name);
+	return new Intl.ListFormat("en", { type: "conjunction" }).format(names);
 }
 
 /**
@@ -376,7 +392,7 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 	// A plan either sells the premium tier or it doesn't; when it does, the whole
 	// tier comes with it. Narrowing it to the plan's pick menu would drop the
 	// models that are premium precisely because they are too dear to pick.
-	const hasPremium = plan.premiumIncluded > 0 || plan.premiumAddonAvailable;
+	const hasPremium = sellsPremium(plan);
 
 	return {
 		// A plan with a single option has nothing to choose, so it names it.

@@ -4,7 +4,7 @@
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
-import { MAX_SELF_SERVE_BRANDS, premiumPairings, premiumSlotsUsed } from "@workspace/config/plans";
+import { MAX_SELF_SERVE_BRANDS, premiumPairings, premiumPlanNames, premiumSlotsUsed } from "@workspace/config/plans";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { MAX_COMPETITORS, MAX_PROMPTS } from "../constants";
 import { db } from "../db/db";
@@ -139,7 +139,7 @@ export function decidePremiumAssign(
 	if (entitlements.premiumPool <= 0) {
 		return deny(
 			"premium-not-in-plan",
-			"Premium tracking — adding a grounded, cited answer to a prompt from a model's own web search — is available on the Pro and Business plans.",
+			`Premium tracking — adding a grounded, cited answer to a prompt from a model's own web search — is available on the ${premiumPlanNames()} plans.`,
 		);
 	}
 	if (currentAssignedEnabled + adding > entitlements.premiumPool) {
@@ -208,11 +208,7 @@ export async function countOrgEnabledPrompts(organizationId: string, conn: DbCon
 	return row?.value ?? 0;
 }
 
-/**
- * Premium pairings the org has spent: one per prompt/model pair on enabled prompts,
- * so a prompt tracked on two premium models counts twice. Picking the same model
- * ungrounded is a platform pick and never counts here.
- */
+/** `premiumSlotsUsed`'s rule, asked of the whole org in SQL rather than a loaded set. */
 export async function countOrgAssignedPremiumSlots(organizationId: string, conn: DbConnection = db): Promise<number> {
 	const [row] = await conn
 		.select({ value: sql<string>`coalesce(sum(cardinality(${prompts.premiumModels})), 0)` })

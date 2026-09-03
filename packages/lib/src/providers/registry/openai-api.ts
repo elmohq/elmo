@@ -1,13 +1,15 @@
 import { createOpenAI, openai } from "@ai-sdk/openai";
-import { generateText, Output } from "ai";
+import { generateText } from "ai";
 import { getCredential } from "../../secrets";
 import { extractCitationsFromOpenAI, extractTextFromOpenAI } from "../../text-extraction";
 import {
 	API_PROVIDER_MAX_OUTPUT_TOKENS,
+	configuredWhen,
 	OPENAI_WEB_SEARCH_CONTEXT_SIZE,
 	OPENAI_WEB_SEARCH_MAX_TOOL_CALLS,
 	RESEARCH_WEB_SEARCH_CONTEXT_SIZE,
 	RESEARCH_WEB_SEARCH_MAX_USES,
+	reportedWebQueries,
 	warnIfOutputCapped,
 } from "../config";
 import type {
@@ -17,6 +19,7 @@ import type {
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
+import { structuredResearch } from "./ai-sdk";
 
 const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
 
@@ -65,17 +68,17 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 	};
 
 	// Search queries, when the model ran web search. The SDK doesn't reliably
-	// surface the raw query, so fall back to "unavailable" (a soft signal).
+	// surface the raw query, so a search with none exposed falls back to the
+	// "unavailable" marker.
 	const webQueries: string[] = [];
 	for (const part of result.content ?? []) {
 		const q = (part as any)?.input?.query ?? (part as any)?.action?.query;
 		if (typeof q === "string") webQueries.push(q);
 	}
-	if (options?.webSearch && webQueries.length === 0) webQueries.push("unavailable");
 
 	return {
 		rawOutput,
-		webQueries,
+		webQueries: reportedWebQueries(webQueries, { webSearch: options?.webSearch ?? false }),
 		textContent: extractTextFromOpenAI(rawOutput),
 		citations: extractCitationsFromOpenAI(rawOutput),
 		modelVersion: model,
@@ -88,9 +91,7 @@ export const openaiApi: Provider = {
 	access: "api",
 	docsAnchor: "direct-model-apis",
 
-	isConfigured() {
-		return !!getCredential("OPENAI_API_KEY");
-	},
+	isConfigured: configuredWhen("OPENAI_API_KEY"),
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const version = options?.version ?? DEFAULT_RESEARCH_MODEL;
@@ -102,22 +103,18 @@ export const openaiApi: Provider = {
 		schema,
 		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
-		const result = await generateText({
-			model: getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL),
+		const object = await structuredResearch(getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL), {
+			prompt,
+			schema,
 			...(webSearch
 				? {
 						tools: {
 							web_search: openai.tools.webSearch({ searchContextSize: RESEARCH_WEB_SEARCH_CONTEXT_SIZE }) as any,
 						},
+						providerOptions: { openai: { maxToolCalls: RESEARCH_WEB_SEARCH_MAX_USES } },
 					}
 				: {}),
-			...(webSearch ? { providerOptions: { openai: { maxToolCalls: RESEARCH_WEB_SEARCH_MAX_USES } } } : {}),
-			output: Output.object({ schema }),
-			prompt,
 		});
-		return {
-			object: result.output as T,
-			modelVersion: DEFAULT_RESEARCH_MODEL,
-		};
+		return { object, modelVersion: DEFAULT_RESEARCH_MODEL };
 	},
 };

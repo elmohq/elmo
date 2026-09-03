@@ -4,7 +4,7 @@
  * stay in separate files.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { providersByModel } from "@workspace/config/scrape-targets";
+import { parseScrapeTargets, providersByModel } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours, getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
@@ -13,7 +13,6 @@ import type { ModelConfig, ProviderAccess } from "@workspace/lib/providers";
 import {
 	describeProvider,
 	isGroundedApiTarget,
-	parseScrapeTargets,
 	resolveProviderAccess,
 	selectTargetsForBrand,
 } from "@workspace/lib/providers";

@@ -8,7 +8,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { setPremiumAddonQuantity } from "@workspace/cloud/billing";
 import type { Entitlements } from "@workspace/config/entitlements";
-import { isPremiumAddonAvailable } from "@workspace/config/plans";
+import { isPremiumAddonAvailable, premiumPlanNames } from "@workspace/config/plans";
 import { isOrgAdminRole } from "@workspace/config/roles";
 import {
 	countOrgAssignedPremiumSlots,
@@ -132,7 +132,7 @@ export const setPremiumAddonQuantityFn = createServerFn({ method: "POST" })
 
 		const state = await getOrgBillingState(org.id);
 		if (!isPremiumAddonAvailable(state.entitlements.planKey)) {
-			throw new Error("Extra premium pairings are available on the Pro and Business plans");
+			throw new Error(`Extra premium pairings are available on the ${premiumPlanNames()} plans`);
 		}
 		if (!state.subscription?.stripeSubscriptionId) {
 			throw new Error("No active subscription to attach the add-on to");

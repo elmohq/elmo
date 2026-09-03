@@ -1,8 +1,6 @@
-import { z } from "zod";
-import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
 import { type Citation, normalizeCitationTitle } from "../../text-extraction";
-import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
+import { API_PROVIDER_MAX_OUTPUT_TOKENS, configuredWhen, reportedWebQueries, warnIfOutputCapped } from "../config";
 import type {
 	Provider,
 	ProviderOptions,
@@ -10,6 +8,7 @@ import type {
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
+import { jsonSchemaResponseFormat, parseSchemaJson } from "./ai-sdk";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
@@ -80,9 +79,7 @@ export const openrouter: Provider = {
 	access: "api",
 	docsAnchor: "direct-model-apis",
 
-	isConfigured() {
-		return !!getCredential("OPENROUTER_API_KEY");
-	},
+	isConfigured: configuredWhen("OPENROUTER_API_KEY"),
 
 	async runStructuredResearch<T>({
 		prompt,
@@ -91,14 +88,10 @@ export const openrouter: Provider = {
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		// Raw fetch (no AI SDK) so we can attach the OpenRouter `plugins` field
 		// — the AI SDK's OpenAI-compat path doesn't pass it through.
-		const jsonSchema = z.toJSONSchema(schema as z.ZodType);
 		const body: Record<string, unknown> = {
 			model: DEFAULT_RESEARCH_MODEL,
 			messages: [{ role: "user", content: prompt }],
-			response_format: {
-				type: "json_schema",
-				json_schema: { name: "research_output", strict: true, schema: jsonSchema },
-			},
+			response_format: jsonSchemaResponseFormat(schema),
 		};
 		// `engine: "native"` runs the underlying provider's real web-search tool
 		// (e.g. Anthropic's web_search_20250305) instead of the Exa fallback.
@@ -116,9 +109,8 @@ export const openrouter: Provider = {
 		if (typeof content !== "string") {
 			throw new Error(`OpenRouter returned no JSON content (model=${DEFAULT_RESEARCH_MODEL})`);
 		}
-		const parsed = (schema as z.ZodType).parse(JSON.parse(content));
 		return {
-			object: parsed as T,
+			object: parseSchemaJson(schema, content),
 			// Report the alias we sent, not OpenRouter's resolved version
 			// (e.g. "openai/gpt-5-mini" vs "openai/gpt-5-mini-2025-08-07") —
 			// matches what openai-api and anthropic-api do.
@@ -155,12 +147,7 @@ export const openrouter: Provider = {
 		// the Responses API + SDK when it's stable.
 		const res = await fetch(OPENROUTER_API_URL, {
 			method: "POST",
-			headers: {
-				Authorization: `Bearer ${getCredential("OPENROUTER_API_KEY")}`,
-				"Content-Type": "application/json",
-				"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
-				"X-Title": "Elmo AEO",
-			},
+			headers: openrouterHeaders(),
 			body: JSON.stringify(body),
 		});
 
@@ -173,14 +160,13 @@ export const openrouter: Provider = {
 		warnIfOutputCapped("openrouter", modelSlug, data?.choices?.[0]?.finish_reason);
 
 		const citations = extractCitationsFromOpenRouterResponse(data);
-		// OpenRouter doesn't expose what search queries the model made internally.
-		// Only mark as "unavailable" when citations prove a web search happened.
-		const webQueries = citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [];
 
 		return {
 			rawOutput: data,
 			textContent: extractTextFromOpenRouterResponse(data),
-			webQueries,
+			// OpenRouter doesn't expose what search queries the model made
+			// internally, so citations are the only evidence one ran.
+			webQueries: reportedWebQueries([], { searchProven: citations.length > 0 }),
 			citations,
 			modelVersion: data?.model ?? modelSlug.replace(":online", ""),
 		};

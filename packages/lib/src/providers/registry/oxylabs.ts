@@ -1,6 +1,8 @@
 import { getCredential } from "../../secrets";
 import { type Citation, extractCitationsFromOxylabs, extractTextFromOxylabs } from "../../text-extraction";
+import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
+import { failureDetails, isTransientStatus, pollDelay, queriesFromKeys, responseError, sleep } from "./scrape-shared";
 
 // Oxylabs Web Scraper API sources for AI surfaces.
 // ChatGPT and Perplexity use `prompt`; the Google surfaces use `query` and
@@ -17,8 +19,6 @@ const OXYLABS_SOURCES: Record<string, { source: string; field: "prompt" | "query
 // Push-Pull for every source; ChatGPT and Perplexity do not support batch jobs.
 const OXYLABS_JOBS_URL = "https://data.oxylabs.io/v1/queries";
 const OXYLABS_JOB_TIMEOUT_MS = 10 * 60 * 1000;
-const OXYLABS_POLL_BASE_DELAY_MS = 2000;
-const OXYLABS_POLL_MAX_DELAY_MS = 10_000;
 
 interface OxylabsJob {
 	id?: string;
@@ -40,28 +40,6 @@ function requestHeaders(): Record<string, string> {
 		Authorization: basicAuthHeader(),
 		"Content-Type": "application/json",
 	};
-}
-
-function pollDelay(attempt: number): number {
-	return Math.min(OXYLABS_POLL_BASE_DELAY_MS * 2 ** Math.floor(attempt / 5), OXYLABS_POLL_MAX_DELAY_MS);
-}
-
-function sleep(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function isTransientStatus(status: number): boolean {
-	return status === 408 || status === 429 || status >= 500;
-}
-
-async function responseError(res: Response): Promise<string> {
-	return `${res.status}: ${(await res.text()).slice(0, 500)}`.trim();
-}
-
-function faultDetails(job: OxylabsJob): string {
-	if (job.statuses === undefined || job.statuses === null) return "";
-	const serialized = typeof job.statuses === "string" ? job.statuses : JSON.stringify(job.statuses);
-	return serialized ? ` (${serialized.slice(0, 500)})` : "";
 }
 
 async function submitJob(body: Record<string, any>): Promise<OxylabsJob> {
@@ -104,7 +82,7 @@ async function waitForJob(initialJob: OxylabsJob, deadline: number): Promise<voi
 		const status = job.status?.toLowerCase();
 		if (status === "done") return;
 		if (status === "faulted") {
-			throw new Error(`Oxylabs job ${job.id} faulted${faultDetails(job)}`);
+			throw new Error(`Oxylabs job ${job.id} faulted${failureDetails(job.statuses)}`);
 		}
 
 		await sleep(Math.min(pollDelay(attempt++), deadline - Date.now()));
@@ -142,20 +120,11 @@ async function runAsyncQuery(body: Record<string, any>): Promise<OxylabsPayload>
 	return fetchResults(job.id!, deadline);
 }
 
-function extractWebQueries(content: Record<string, any>): string[] {
-	// Oxylabs exposes search queries under different keys depending on the source.
-	// `related_queries` is not one of them: Oxylabs documents it as the follow-up
-	// questions Perplexity suggests below an answer, so counting it would report
-	// searches that never ran.
-	for (const key of ["search_queries", "web_search_queries"]) {
-		const arr = content[key];
-		if (Array.isArray(arr)) {
-			const queries = arr.filter((q: any) => typeof q === "string" && q.trim());
-			if (queries.length > 0) return queries;
-		}
-	}
-	return [];
-}
+// Oxylabs exposes search queries under different keys depending on the source.
+// `related_queries` is not one of them: Oxylabs documents it as the follow-up
+// questions Perplexity suggests below an answer, so counting it would report
+// searches that never ran.
+const OXYLABS_QUERY_KEYS = ["search_queries", "web_search_queries"] as const;
 
 export const oxylabs: Provider = {
 	id: "oxylabs",
@@ -163,9 +132,7 @@ export const oxylabs: Provider = {
 	access: "scraped",
 	docsAnchor: "oxylabs",
 
-	isConfigured() {
-		return !!getCredential("OXYLABS_USERNAME") && !!getCredential("OXYLABS_PASSWORD");
-	},
+	isConfigured: configuredWhen("OXYLABS_USERNAME", "OXYLABS_PASSWORD"),
 
 	validateTarget(config: ModelConfig) {
 		if (!OXYLABS_SOURCES[config.model]) {
@@ -201,22 +168,17 @@ export const oxylabs: Provider = {
 
 		const textContent = extractTextFromOxylabs(payload);
 		const citations: Citation[] = extractCitationsFromOxylabs(payload);
-		const webQueries = extractWebQueries(content);
+		const webQueries = queriesFromKeys(content, OXYLABS_QUERY_KEYS);
 
 		return {
 			rawOutput: payload,
 			textContent,
-			// When ChatGPT web search is disabled, no queries are expected.
-			// Otherwise expose the queries Oxylabs surfaced, or mark "unavailable"
-			// when citations prove a search happened but no queries were exposed.
-			webQueries:
-				model === "chatgpt" && !options?.webSearch
-					? []
-					: webQueries.length > 0
-						? webQueries
-						: citations.length > 0
-							? ["unavailable"]
-							: [],
+			// Every source but ChatGPT always searches, so only ChatGPT's toggle
+			// can rule out queries entirely.
+			webQueries: reportedWebQueries(webQueries, {
+				webSearch: model !== "chatgpt" || (options?.webSearch ?? false),
+				searchProven: citations.length > 0,
+			}),
 			citations,
 			modelVersion:
 				typeof content.llm_model === "string"
