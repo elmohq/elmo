@@ -6,7 +6,7 @@ import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/se
 
 export const Route = createFileRoute("/_authed/app/org/$org/")({
 	// A guard, so it runs before any loader and before the router has a reason
-	// to show this chrome-less page on the way to the settings.
+	// to show this shell-less page on the way to the settings.
 	beforeLoad: ({ context }) => {
 		if (!needsSetup(context.organization)) {
 			throw redirect({ to: "/app/org/$org/settings", params: { org: context.organization.slug } });

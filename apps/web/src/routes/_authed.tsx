@@ -5,7 +5,8 @@
  * Owns the app shell for every signed-in page that has one, so the rail and
  * header survive a move between a brand, its organization, and the admin
  * section instead of being rebuilt by whichever layout was entered. Layouts
- * declare the rail they want through `staticData.nav`; see lib/app-chrome.ts.
+ * declare which shell they live in through `staticData.shell`; see
+ * lib/shell-scope.ts.
  */
 
 import { createFileRoute, Outlet, redirect, useRouteContext } from "@tanstack/react-router";
@@ -14,7 +15,7 @@ import { useEffect, useRef } from "react";
 import { AppShell, PageContent } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import { useAppChrome } from "@/hooks/use-app-chrome";
+import { useShellScope } from "@/hooks/use-shell-scope";
 import { identifyCrispUser } from "@/lib/crisp";
 import { identifyUser, setPersonProperties } from "@/lib/posthog";
 import { viewerQuery } from "@/lib/viewer/queries";
@@ -64,18 +65,18 @@ function AuthedLayout() {
 		identifyCrispUser({ id: user.id, email: user.email, name: user.name });
 	}, [context.session?.user, context.clientConfig?.mode]);
 
-	return <AppChrome />;
+	return <Shell />;
 }
 
-function AppChrome() {
-	const chrome = useAppChrome();
+function Shell() {
+	const scope = useShellScope();
 
-	if (!chrome) return <Outlet />;
+	if (!scope) return <Outlet />;
 
 	return (
-		<AppShell sidebar={<AppSidebar {...chrome} />} header={<SiteHeader />}>
+		<AppShell sidebar={<AppSidebar {...scope} />} header={<SiteHeader />}>
 			{/* The plan gate lays its own page out edge to edge. */}
-			{chrome.nav === "account" ? (
+			{scope.section === "account" ? (
 				<div className="flex flex-1 flex-col">
 					<Outlet />
 				</div>

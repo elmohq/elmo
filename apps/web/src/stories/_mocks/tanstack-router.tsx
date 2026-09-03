@@ -145,7 +145,7 @@ export function useMatch(opts?: { from?: string; shouldThrow?: boolean; select?:
 let _matches: Array<{
 	routeId: string;
 	pathname: string;
-	staticData: { crumb?: string; nav?: string };
+	staticData: { crumb?: string; shell?: string };
 	loaderData?: unknown;
 }> = [
 	{
@@ -157,7 +157,7 @@ let _matches: Array<{
 	{
 		routeId: "/_authed/app/org/$org/brand/$brand",
 		pathname: "/app/org/mock-organization/brand/mock-brand-id",
-		staticData: { nav: "brand" },
+		staticData: { shell: "brand" },
 		loaderData: { brand: { id: "mock-brand-id", name: "Acme Corp" } },
 	},
 ];

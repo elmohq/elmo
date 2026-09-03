@@ -37,10 +37,10 @@ import { NavUser } from "@/components/nav-user";
 import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import { useViewer } from "@/hooks/use-route-context";
 import { adminNavItems } from "@/lib/admin-nav";
-import type { AppChrome } from "@/lib/app-chrome";
 import type { OrganizationSummary } from "@/lib/organizations/types";
+import type { ShellScope } from "@/lib/shell-scope";
 
-export type AppSidebarProps = AppChrome;
+export type AppSidebarProps = ShellScope;
 
 function organizationGroup(organization: OrganizationSummary, features?: FeaturesConfig): NavGroup {
 	const params = orgLinkParams(organization);
@@ -107,7 +107,7 @@ function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts)
 	return groups;
 }
 
-export function AppSidebar({ nav, organization, brand }: AppSidebarProps) {
+export function AppSidebar({ section, organization, brand }: AppSidebarProps) {
 	const { setOpenMobile } = useSidebar();
 	const { isAdmin, hasReportAccess } = useViewer();
 	const features = useDeploymentFeatures();
@@ -116,14 +116,14 @@ export function AppSidebar({ nav, organization, brand }: AppSidebarProps) {
 
 	// A gate page offers no destinations: every link would either 404 or bounce
 	// the user straight back to the gate.
-	const adminItems = nav === "account" ? [] : adminNavItems({ isAdmin, hasReportAccess, reportsEnabled });
+	const adminItems = section === "account" ? [] : adminNavItems({ isAdmin, hasReportAccess, reportsEnabled });
 
-	// A rail whose layout data has not arrived yet renders without its groups
-	// rather than taking the shell down with it.
+	// A section whose layout data has not arrived yet renders without its nav
+	// groups rather than taking the shell down with it.
 	const groups: NavGroup[] = [
-		...(nav === "brand" && organization && brand ? brandGroups(organization, brand) : []),
-		...(nav === "organization" && organization ? [organizationGroup(organization, features)] : []),
-		...(nav === "admin" && adminItems.length > 0 ? [{ label: "Admin", items: adminItems }] : []),
+		...(section === "brand" && organization && brand ? brandGroups(organization, brand) : []),
+		...(section === "organization" && organization ? [organizationGroup(organization, features)] : []),
+		...(section === "admin" && adminItems.length > 0 ? [{ label: "Admin", items: adminItems }] : []),
 	];
 	const brandmark = (
 		<>
@@ -141,7 +141,7 @@ export function AppSidebar({ nav, organization, brand }: AppSidebarProps) {
 					<SidebarMenuItem>
 						{/* On a gate page the mark still says whose product this is, but it
 						    leads nowhere — /app would redirect right back here. */}
-						{nav === "account" ? (
+						{section === "account" ? (
 							<div className="flex items-center gap-2 p-2">{brandmark}</div>
 						) : (
 							<SidebarMenuButton size="lg" render={<Link to="/app" onClick={() => setOpenMobile(false)} />}>
@@ -155,7 +155,7 @@ export function AppSidebar({ nav, organization, brand }: AppSidebarProps) {
 				<NavMain groups={groups} />
 			</SidebarContent>
 			<SidebarFooter>
-				<NavUser showOrganizations={nav !== "account"} adminItems={nav === "admin" ? [] : adminItems} />
+				<NavUser showOrganizations={section !== "account"} adminItems={section === "admin" ? [] : adminItems} />
 				<NavAppInfo />
 			</SidebarFooter>
 		</Sidebar>

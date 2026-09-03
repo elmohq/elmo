@@ -21,7 +21,7 @@ import { pageHead } from "@/lib/route-head";
 import { createReportFn, getReportsFn } from "@/server/reports";
 
 export const Route = createFileRoute("/_authed/reports/")({
-	staticData: { crumb: "Reports", nav: "admin" },
+	staticData: { crumb: "Reports", shell: "admin" },
 	head: pageHead({ description: "Generate and view one-time brand reports." }),
 	beforeLoad: ({ context }) => {
 		if (!context.isAdmin && !context.hasReportAccess) throw notFound();
