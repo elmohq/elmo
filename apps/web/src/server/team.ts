@@ -1,12 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
+import { getDeployment } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
 import { invitation, member, organization, user } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 import { auth } from "@/lib/auth/server";
-import { getDeployment } from "@/lib/config/server";
 
 function requireTeamInvites(): void {
 	if (!getDeployment().features.teamInvites) {

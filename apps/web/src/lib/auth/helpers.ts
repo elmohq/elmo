@@ -2,10 +2,10 @@
  * Server-side auth helpers backed by better-auth.
  */
 import { getRequestHeaders } from "@tanstack/react-start/server";
+import { getDeployment } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
 import { brands, member, organization } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
-import { getDeployment } from "@/lib/config/server";
 import { auth } from "./server";
 
 type SessionLike = { user: { id: string; [key: string]: unknown }; session?: unknown };

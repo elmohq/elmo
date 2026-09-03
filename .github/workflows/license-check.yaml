@@ -24,7 +24,9 @@ jobs:
   license-check:
     name: Dependency License Audit
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    timeout-minutes: 5
+    # The audit is ~20s of work; the budget only has to be wide enough that a
+    # slow pnpm/npm registry during setup can't spend it before the audit runs.
+    timeout-minutes: 10
 
     steps:
       - name: Checkout

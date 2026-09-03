@@ -4,21 +4,44 @@
 	"private": true,
 	"license": "MIT",
 	"scripts": {
-		"check-types": "tsc --noEmit"
+		"check-types": "tsc --noEmit",
+		"test": "vitest run",
+		"bootstrap:stripe": "tsx scripts/bootstrap-stripe.ts",
+		"verify:stripe-lifecycle": "tsx scripts/verify-stripe-lifecycle.ts"
 	},
 	"main": "./src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
-		"./client": "./src/client.ts"
+		"./client": "./src/client.ts",
+		"./optimize-button": "./src/optimize-button.tsx",
+		"./billing": "./src/billing/index.ts",
+		"./auth-hooks/cloud": "./src/auth-hooks/cloud.ts",
+		"./auth-hooks/whitelabel": "./src/auth-hooks/whitelabel.ts"
 	},
 	"dependencies": {
-		"@workspace/cloud": "workspace:*",
+		"@better-auth/stripe": "^1.7.2",
 		"@workspace/config": "workspace:*",
-		"@workspace/local": "workspace:*",
-		"@workspace/whitelabel": "workspace:*"
+		"@workspace/lib": "workspace:*",
+		"@workspace/ui": "workspace:*",
+		"better-auth": "^1.7.2",
+		"disposable-email-domains": "^1.0.62",
+		"drizzle-orm": "^0.45.2",
+		"resend": "^6.17.2",
+		"stripe": "^22.5.0",
+		"zod": "^4.4.3"
+	},
+	"peerDependencies": {
+		"@tabler/icons-react": "^3.0.0",
+		"auth0": "^6.0.0",
+		"react": "^19.0.0"
 	},
 	"devDependencies": {
+		"@types/disposable-email-domains": "^1.0.6",
 		"@types/node": "^26.2.0",
-		"typescript": "^7.0.2"
+		"@types/pg": "^8.21.0",
+		"@types/react": "^19.2.18",
+		"pg": "^8.23.0",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.10"
 	}
 }

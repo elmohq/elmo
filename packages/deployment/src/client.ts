@@ -6,23 +6,22 @@
  * components and route files that are bundled for the browser.
  */
 import type { ClientConfig, OptimizeButtonProps } from "@workspace/config/types";
-import { OptimizeButton as LocalOptimizeButton } from "@workspace/local/components/optimize-button";
-import { OptimizeButton as WhitelabelOptimizeButton } from "@workspace/whitelabel/components/optimize-button";
+import { OptimizeButton, OptimizeButtonStub } from "./optimize-button";
 
 export type { OptimizeButtonProps, WebQueryResult } from "@workspace/config/types";
 
-type OptimizeButtonComponent = (props: OptimizeButtonProps) => ReturnType<typeof WhitelabelOptimizeButton>;
+type OptimizeButtonComponent = (props: OptimizeButtonProps) => ReturnType<typeof OptimizeButton>;
 
 const OPTIMIZE_BUTTON_BY_MODE: Record<ClientConfig["mode"], OptimizeButtonComponent> = {
-	local: LocalOptimizeButton,
-	demo: LocalOptimizeButton,
+	local: OptimizeButtonStub,
+	demo: OptimizeButtonStub,
 	whitelabel: (props) =>
-		WhitelabelOptimizeButton({
+		OptimizeButton({
 			...props,
 			parentName: props.parentName ?? "",
 			optimizationUrlTemplate: props.optimizationUrlTemplate ?? "",
 		}),
-	cloud: LocalOptimizeButton,
+	cloud: OptimizeButtonStub,
 };
 
 /**

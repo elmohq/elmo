@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { OptimizeButton } from "@workspace/whitelabel/components/optimize-button";
+import { OptimizeButton } from "@workspace/deployment/optimize-button";
 import { expect, fn, userEvent, within } from "storybook/test";
 
 const meta = {

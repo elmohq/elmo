@@ -5,9 +5,9 @@ import geistSans500Data from "virtual:font/geist-sans-500";
 import titanOne400Data from "virtual:font/titan-one-400";
 import { createFileRoute } from "@tanstack/react-router";
 import { DEFAULT_APP_NAME } from "@workspace/config/constants";
+import { getDeployment } from "@workspace/deployment";
 import { renderOgPng } from "@workspace/og/rasterize";
 import { renderOgImage } from "@workspace/og/render";
-import { getDeployment } from "@/lib/config/server";
 
 const publicDir = new URL("../../../../public/", import.meta.url);
 

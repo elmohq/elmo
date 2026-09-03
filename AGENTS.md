@@ -11,7 +11,7 @@ Elmo is an open-source AI visibility platform (Answer Engine Optimization): it t
 - `packages/lib` — shared logic and the Drizzle schema/migrations
 - `packages/ui` — shared shadcn-based UI components
 - `packages/docs` — user-facing docs content (MDX), rendered by `apps/www`
-- `packages/deployment` — deployment-mode config (reads `DEPLOYMENT_MODE`, exposes per-mode features)
+- `packages/deployment` — deployment-mode config, per-mode auth hooks, cloud billing/email
 - `packages/config` — env validation and shared constants/types
 - `packages/api-spec` — OpenAPI spec
 - `e2e/` — Playwright end-to-end tests
