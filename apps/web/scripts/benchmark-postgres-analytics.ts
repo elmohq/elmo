@@ -170,12 +170,6 @@ async function main(): Promise<void> {
 		allResults.push(...brandResults);
 	}
 
-	// === Admin queries (run once) ===
-	console.log("\n### Admin queries\n");
-
-	allResults.push(await bench("getAdminRunsOverTime", () => pgRead.getAdminRunsOverTime()));
-	allResults.push(await bench("getAdminBrandRunStats", () => pgRead.getAdminBrandRunStats()));
-
 	// ============================================================================
 	// Output
 	// ============================================================================

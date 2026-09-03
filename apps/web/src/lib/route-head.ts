@@ -26,12 +26,12 @@ interface HeadArgs {
 
 export function pageHead(page: { title?: string; description?: string }) {
 	return ({ match, matches }: HeadArgs) => {
-		const { organizationName, brandName } = routeSubjects(matches);
+		const { organization, brand } = routeSubjects(matches);
 		const name = page.title ?? match.staticData?.crumb;
 		const appName = getAppName(match);
 		return {
 			meta: [
-				{ title: name ? buildTitle(name, { appName, subject: brandName ?? organizationName }) : appName },
+				{ title: name ? buildTitle(name, { appName, subject: brand?.name ?? organization?.name }) : appName },
 				...(page.description ? [{ name: "description", content: page.description }] : []),
 			],
 		};

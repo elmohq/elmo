@@ -155,6 +155,12 @@ test.describe("Demo auth is sign-in only", () => {
     await page.goto("/auth/register");
     await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
   });
+
+  test("the bare app URL opens on sign-in", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
+    await expect(page.getByText("Demo Account")).toBeVisible({ timeout: 30_000 });
+  });
 });
 
 test.describe("Demo features", () => {

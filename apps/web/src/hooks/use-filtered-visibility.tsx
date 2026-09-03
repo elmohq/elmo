@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import { type FilteredVisibilityResponse, getFilteredVisibilityFn } from "@/server/visibility";
-
-type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
+import type { LookbackPeriod } from "@/lib/lookback";
+import { getFilteredVisibilityFn } from "@/server/visibility";
 
 export interface FilteredVisibilityFilters {
 	lookback?: LookbackPeriod;
@@ -45,10 +44,10 @@ export function useFilteredVisibility(brandId?: string, filters?: FilteredVisibi
 	});
 
 	return {
-		filteredVisibility: query.data,
+		data: query.data,
 		isLoading: query.isLoading,
-		isValidating: query.isFetching,
-		isError: query.error,
-		revalidate: query.refetch,
+		isFetching: query.isFetching,
+		error: query.error,
+		refetch: query.refetch,
 	};
 }

@@ -46,6 +46,18 @@ test.describe("Whitelabel sign-in is SSO only", () => {
     expect(authorizeUrl.searchParams.get("redirect_uri")).toContain("/api/auth/sso/callback/auth0-whitelabel");
   });
 
+  test("the bare app URL waits for a click rather than starting SSO", async ({ page }) => {
+    const authorizeRequests: string[] = [];
+    await page.route(isIdpRequest, async (route) => {
+      authorizeRequests.push(route.request().url());
+      await route.fulfill({ status: 200, contentType: "text/html", body: "<html>idp stub</html>" });
+    });
+
+    await page.goto("/");
+    await expect(page.getByRole("link", { name: "Sign In" })).toBeVisible({ timeout: 30_000 });
+    expect(authorizeRequests).toEqual([]);
+  });
+
   test("password sign-in is refused", async ({ request }) => {
     const response = await request.post("/api/auth/sign-in/email", {
       data: { email: "someone@partner.test", password: "whatever-password-123" },

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { Entitlements } from "@workspace/config/entitlements";
+import { targetFilterValue } from "@workspace/config/model-filter";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { isValidSlug, MAX_SLUG_LENGTH, slugify } from "@workspace/lib/app-urls";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
@@ -26,8 +27,8 @@ import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
 	requireAuthSession,
-	requireBrandAccess,
 	requireBrandOrganization,
+	requireBrandSession,
 	requireOrgAccess,
 	requirePlatformPicksEditable,
 } from "@/lib/auth/helpers";
@@ -36,7 +37,7 @@ import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { getDeployment } from "@/lib/config/server";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
-import { type TrackedTarget, targetFilterValue } from "@/lib/model-filter";
+import type { TrackedTarget } from "@/lib/model-filter";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
 /**
@@ -193,8 +194,7 @@ async function getBrandWithPromptsFromDb(
 export const getBrand = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const brand = await getBrandWithPromptsFromDb(data.brandId);
 		if (!brand) {
@@ -395,8 +395,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 export const getCompetitors = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		return db.query.competitors.findMany({
 			where: eq(competitors.brandId, data.brandId),
@@ -420,8 +419,7 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		// A bulk replace, so the list submitted is the list the brand ends up with.
 		assertAllowed(decideCompetitorCap(data.competitors.length));
@@ -470,8 +468,7 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
@@ -506,8 +503,7 @@ export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const existing = await db.query.competitors.findFirst({
 			where: and(eq(competitors.id, data.competitorId), eq(competitors.brandId, data.brandId)),
@@ -540,8 +536,7 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);

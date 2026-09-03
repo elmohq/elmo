@@ -9,6 +9,7 @@ import {
 	IconSpeakerphone,
 } from "@tabler/icons-react";
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
+import { labelForModelFilter } from "@workspace/config/model-filter";
 import type { ClientConfig } from "@workspace/config/types";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -21,7 +22,7 @@ import { useBrand } from "@/hooks/use-brands";
 import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import { useBrandParams } from "@/hooks/use-route-params";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
-import { describeTargetSchedule, labelForModelFilter, type TrackedTarget } from "@/lib/model-filter";
+import { describeTargetSchedule, type TrackedTarget } from "@/lib/model-filter";
 import { setPersonProperties } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 
@@ -389,7 +390,7 @@ function HeroStat({ value, loading }: { value: number | null; loading: boolean }
 /** Everything the two trend sections plot, plus the loading flags they key off.
  *  Reads only; the analytics write lives in `useReportedPromptCount`. */
 function useDashboardMetrics(brandId: string | undefined) {
-	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brandId, "1m");
+	const { data: dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brandId, "1m");
 	const { data: sovData, isLoading: isLoadingSov } = useShareOfVoice(brandId, { lookback: "1m" });
 
 	return {
@@ -419,7 +420,7 @@ const SOV_TOOLTIP =
 
 function DashboardPage() {
 	const { brandId } = Route.useRouteContext();
-	const { brand, isLoading: isLoadingBrand } = useBrand();
+	const { data: brand, isLoading: isLoadingBrand } = useBrand();
 	// The footer reports what this brand actually runs, resolved server-side.
 	const trackedTargets = brand?.trackedTargets ?? [];
 	const {

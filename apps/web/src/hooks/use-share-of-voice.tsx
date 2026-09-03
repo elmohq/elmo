@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import type { LookbackPeriod } from "@/lib/chart-utils";
+import type { LookbackPeriod } from "@/lib/lookback";
 import { getShareOfVoiceFn } from "@/server/analysis";
 
 export interface ShareOfVoiceFilters {
@@ -38,8 +38,7 @@ export function useShareOfVoice(brandId?: string, filters?: ShareOfVoiceFilters)
 	return {
 		data: query.data,
 		isLoading: query.isLoading,
-		isFetching: query.isFetching,
-		isError: !!query.error,
-		revalidate: query.refetch,
+		error: query.error,
+		refetch: query.refetch,
 	};
 }

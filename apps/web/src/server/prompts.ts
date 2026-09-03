@@ -12,8 +12,7 @@ import {
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import type { LookbackPeriod } from "@/lib/chart-utils";
+import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
 import { generateDateRange } from "@/lib/chart-utils";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@/lib/citation-rollup";
 import { extractDomain } from "@/lib/domain-categories";
@@ -21,6 +20,7 @@ import { classifyUrl } from "@/lib/domain-categories.server";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
+import type { LookbackPeriod } from "@/lib/lookback";
 import {
 	type CitationUrlStats,
 	getPromptCitationUrlStats,
@@ -30,6 +30,7 @@ import {
 } from "@/lib/postgres-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
 // Server Functions
 // ============================================================================
@@ -40,8 +41,7 @@ import { planPromptSave } from "@/server/prompt-save";
 export const getPromptMetadataFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string(), promptId: z.string() }))
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const prompt = await db.query.prompts.findFirst({
 			where: and(eq(prompts.id, data.promptId), eq(prompts.brandId, data.brandId)),
@@ -150,8 +150,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const allPrompts = await db
 			.select()
@@ -180,7 +179,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 
 		// Collect all user tags (system tags are added separately)
 		const allUserTags = new Set<string>();
-		const tagFilter = data.tags?.split(",").filter(Boolean) || [];
+		const tagFilter = parseTagFilter(data.tags);
 
 		const promptSummaries = allPrompts.map((p) => {
 			for (const tag of p.tags || []) allUserTags.add(tag);
@@ -422,8 +421,7 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		});
 		if (!prompt) throw new Error("Prompt not found");
 
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, prompt.brandId);
+		await requireBrandSession(prompt.brandId);
 
 		const fromDate = new Date();
 		fromDate.setDate(fromDate.getDate() - data.days);
@@ -477,8 +475,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, data.brandId),
@@ -554,8 +551,7 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const timezone = resolveTimezone(data.timezone, "UTC");
 		const { fromDateStr } = getTimezoneLookbackRange((data.lookback || "1m") as LookbackPeriod, timezone);
