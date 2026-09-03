@@ -1,6 +1,6 @@
 import type { CitationCategory, CitationPageType } from "@/lib/domain-categories";
 
-export interface GoogleProductRow {
+interface GoogleProductRow {
 	name: string;
 	count: number;
 	attribution: "brand" | "competitor" | "other";
@@ -8,7 +8,7 @@ export interface GoogleProductRow {
 	prompts: { id: string; value: string; count: number }[];
 	urls: { url: string; count: number }[];
 }
-export interface GoogleQueryRow {
+interface GoogleQueryRow {
 	query: string;
 	count: number;
 	prompts: { id: string; value: string; count: number }[];

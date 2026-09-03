@@ -12,7 +12,7 @@ import { listModels, whoami } from "./identity";
 import { createPromptsTool, listPromptsTool, listPromptTags, updatePromptTool } from "./prompts";
 import { getRun, listRuns } from "./runs";
 
-export type { McpTool, McpToolContext } from "./define";
+export type { McpTool } from "./define";
 
 export const MCP_TOOLS: readonly McpTool[] = [
 	whoami,

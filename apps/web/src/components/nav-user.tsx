@@ -215,8 +215,8 @@ function OrganizationSwitcher({ onNavigate }: { onNavigate: () => void }) {
 			{isError && (
 				<DropdownMenuItem
 					className="cursor-pointer"
-					onSelect={(event) => {
-						event.preventDefault();
+					closeOnClick={false}
+					onClick={() => {
 						refetch();
 					}}
 				>

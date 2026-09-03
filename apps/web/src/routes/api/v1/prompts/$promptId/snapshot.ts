@@ -11,7 +11,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { isBrandInScope } from "@/lib/api/scope";
-import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
+import { extractDomain, inDomainSet, normalizeUrl } from "@/lib/domain-categories";
 import {
 	getPromptCitationUrlStats,
 	getPromptMentionSummary,
@@ -29,13 +29,6 @@ function isValidDate(dateStr: string): boolean {
 const MAX_TOP_K = 50;
 const DEFAULT_TOP_MENTIONS = 5;
 const DEFAULT_TOP_CITATIONS = 10;
-
-function isMatchingDomain(domain: string, domainSet: Set<string>): boolean {
-	for (const owned of domainSet) {
-		if (domain === owned || domain.endsWith(`.${owned}`)) return true;
-	}
-	return false;
-}
 
 function boundedTopK(raw: string | null, fallback: number): number {
 	const parsed = Number.parseInt(raw || String(fallback), 10);
@@ -138,9 +131,9 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 					const allCitationUrls = Array.from(urlCounts.entries())
 						.map(([url, { count, title, domain }]) => {
 							citationsTotal += count;
-							if (isMatchingDomain(domain, brandDomains)) {
+							if (inDomainSet(domain, brandDomains)) {
 								brandCitationsTotal += count;
-							} else if (isMatchingDomain(domain, competitorDomains)) {
+							} else if (inDomainSet(domain, competitorDomains)) {
 								competitorCitationsTotal += count;
 							}
 							return { url, title, count };

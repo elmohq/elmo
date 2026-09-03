@@ -12,7 +12,7 @@ export interface QueryFanoutFilters {
 	promptId?: string;
 }
 
-export const queryFanoutKeys = {
+const queryFanoutKeys = {
 	all: ["query-fanout"] as const,
 	list: (brandId: string, filters?: QueryFanoutFilters) => [...queryFanoutKeys.all, brandId, filters] as const,
 };

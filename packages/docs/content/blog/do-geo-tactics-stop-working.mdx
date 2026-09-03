@@ -1,7 +1,8 @@
 ---
 title: "Do GEO Tactics Stop Working When Everyone Uses Them?"
-description: "New research simulates GEO in a competitive market: fixed tactics lose their edge as adoption rises, and at 80% adoption they score below doing nothing at all."
+description: "Two simulations of GEO in a competitive market: fixed tactics lose their edge as adoption rises, and the ranking signal itself drifts away from quality as the pool optimizes."
 date: "2026-08-31"
+updated: "2026-09-01"
 author: ai
 metaTitle: "Do GEO Tactics Stop Working Under Competition?"
 tags:
@@ -16,6 +17,8 @@ definedTerms:
     definition: "GEO adoption rate is the fraction of documents competing for the same AI answer that have been rewritten for citation visibility, written as α in the research. Simulated results show fixed single tactics losing their advantage as α rises; the first real-web measurement puts overall adoption near 9%, and around 16% for pages modified in 2026."
   - term: PAWC
     definition: "PAWC (Position-Adjusted Word Count) is the standard impression metric in GEO research. It credits a document for the words a generative engine's answer draws from it, weighted so that material appearing earlier in the answer counts more. It measures presence in the answer text, not clicks, conversions, or accuracy."
+  - term: Quality–ranking alignment
+    definition: "Quality–ranking alignment is the correlation, measured as Spearman's ρ, between where an LLM-based ranker places documents and how an independent judge scores their quality. The CHASE simulation tracks it across rounds of optimization; its decline means visibility becomes a weaker signal of content quality as more of the competing pool optimizes."
 howTo:
   name: "How to decide whether the standard GEO checklist still pays in your category"
   description: "Use the adoption-rate finding to calibrate tactic choice against how optimized your competitive set already is, instead of assuming the published tactic rankings are stable."
@@ -43,6 +46,10 @@ faq:
     answer: "Not close, on average. The first measured GEO prevalence, from an August 2026 CISPA-led study, found 8.90% of pages retrieved for real queries were optimized, rising to 16.36% among pages modified in 2026 — against the 80% adoption where simulated single tactics went negative. But prevalence varied from 0% on major reference and medical sites to 20% on sampled Amazon pages, so a competitive commercial category can be far ahead of the average."
   - question: What is competitor-aware GEO?
     answer: "Competitor-aware GEO selects rewriting strategies based on the competitive context — which documents share the retrieval pool and how optimized they already are — instead of applying a fixed checklist. The paper that names it searched 32,768 possible combinations of 15 published tactics per query using Bayesian optimization, then fine-tuned a model to propose combinations directly. It beat the strongest agentic baseline by 4.67 PAWC on GEO-Bench and by more than 18% on the competitive variant."
+  - question: What happens to content quality when everyone optimizes repeatedly?
+    answer: "In the CHASE simulation, posted 31 August 2026 and accepted to COLM 2026, 20 rounds of creators adapting documents to the same LLM ranking signal reduced the alignment between ranking and independently judged quality in all six domains tested, with Spearman's ρ falling by between 0.018 and 0.107 (mean 0.068). A random-target control showed the decline comes from chasing the ranking signal specifically, not from repeated rewriting itself. Alignment stayed positive at round 20 and measured homogenization was modest — erosion, not collapse."
+  - question: Does ranking well actually predict getting cited?
+    answer: "Closely enough to optimize against, per the CHASE validation: ranking position predicted whether a document was cited in grounded generated answers with an AUC of 0.853 ± 0.093 across six domains. That matters for reading GEO research, because it means results measured on ranking proxies transfer reasonably well to the citation outcomes practitioners actually track."
   - question: Does optimizing for AI citations make content less accurate?
     answer: "In this study's simulations, the visibility-optimal rewrites were measurably less faithful to the source: 4.90 versus 8.29 for unrewritten documents on an LLM-judged scale. That matches the failure mode in a separate 2026 mechanism-design paper, where repeated optimization rounds accumulated unsupported claims. Visibility and fidelity are separate objectives, and optimizing hard for one traded away the other in both papers."
   - question: Should I stop running the GEO checklist?
@@ -57,6 +64,7 @@ faq:
 - Combinations beat checklists. Searching the 32,768 possible combinations of 15 published tactics per query scored 32.62 PAWC on GEO-Bench, against 27.95 for the strongest agentic baseline and 23.08 for the best single tactic tested.
 - Saturation inverts the sign. At 80% simulated adoption, fixed single-strategy methods "drop below the unoptimized (α=0) baseline." The competitor-aware method lost only 11.4% across the full adoption range by shifting "toward less saturated alternatives."
 - The real web is nowhere near 80% — yet. Measured prevalence is 8.90% overall and 16.36% for 2026-modified pages, but it ranges from 0% to 20% by domain, so the number that matters is your category's.
+- *Added 1 September:* a second simulation, [CHASE](https://arxiv.org/abs/2608.30466), generalizes the result to the whole pool. Over 20 rounds of creators adapting to one LLM ranking signal, the correlation between rank and independently judged quality fell in all six domains tested (mean Δρ −0.068) — the tactics stop paying you, and the signal gets worse at rewarding quality at the same time.
 - The trade the paper underplays: its winning method's rewrites scored 4.90 on faithfulness against 8.29 for the originals. The most visible version of your page was not the most accurate one.
 - The usual caveats apply, and then some: simulated competitors, proxy engines, a word-count metric, and a method that reads the entire competitive corpus before choosing — an advantage no publisher has.
 
@@ -105,15 +113,29 @@ But the average is doing heavy lifting. The same study found 0% detected optimiz
 
 That yields a decision rule the paper stops short of stating. The question "do GEO tactics work" has no fixed answer; the question "how optimized are the pages cited for my prompts" does, and it determines the first one. Pull the citations for your tracked prompts, assess how many are visibly running the playbook, and read your position off the curve: a quiet pool means the standard tactics still buy differentiation, a crowded one means they buy parity, and the trend line tells you how long the first state lasts.
 
+## What repeated rounds do to the pool itself
+
+*Added 1 September 2026.* The Capital One paper asks what saturation does to your tactic. A [second simulation posted on 31 August](https://arxiv.org/abs/2608.30466) — CHASE, by Qianwen Gao and colleagues, accepted to COLM 2026 — asks what it does to everyone: it runs 20 rounds in which creators repeatedly adapt documents toward features extracted from recent ranking winners, across six domains (retail, video games, books, web, news, debate), with roughly 29% of non-winning documents rewritten each round.
+
+Before running it, the authors validate the thing most GEO research quietly assumes: that ranking is a fair proxy for citation. In their measurement, a document's rank predicted whether it was cited in grounded generated answers with an AUC of 0.853 ± 0.093 across the six domains. That number is useful on its own — it says rank-shaped optimization and citation-shaped optimization are close to the same game, which is why results like the adoption curve above transfer to the citation outcomes brands actually track.
+
+The core result: quality–ranking alignment declined in every domain, with the change in Spearman's ρ ranging from −0.018 (books) to −0.107, mean −0.068 over the 20 rounds. The control condition is what makes it attributable — documents rewritten just as often, but toward arbitrary targets rather than ranking-derived ones, showed little or none of the decline (retail: −0.047 under ranking-derived targets against +0.001 under random ones). The drift comes from chasing the signal, not from rewriting per se.
+
+Two honest readings the paper's title undersells. Alignment eroded but **stayed positive at round 20 in every domain** — after 20 rounds of exploitation the ranker still weakly favored better documents. And the homogenization in the acronym is measurable but small: mean pairwise embedding similarity within a query pool moved by a point or two (video games went from .334 to .348), and the retail pool actually got slightly *more* diverse. This is a direction of travel, not a collapse — the same reading discipline the adoption curve deserves.
+
+Put the two papers together and the saturation story gains a second axis. As your category's α rises, the Capital One result says any fixed tactic buys less; CHASE says the referee's ordering drifts away from quality at the same time. The compounding conclusion for a brand is the one this post already reached from the faithfulness table: differentiation that survives is the kind no rewrite reproduces, because rewriting toward the signal is precisely the behavior that degrades the signal.
+
 ## What this does not show
 
 The caveats here are structural, not fine print.
 
 The competitors are simulated — three optimizer functions applied on a fixed rotation — and the engines are proxies: gpt-oss-120b and Llama-3.3-70B-Instruct, not the production systems answering buyers' questions. PAWC measures words drawn into an answer, which is an impression proxy, not a mention, a recommendation, or a sale. And the competitor-aware method holds what the authors concede is "an information advantage": it reads the entire competitive corpus before choosing a strategy. No publisher sees the retrieval pool the way this selector does — though tracking which pages engines actually cite for your prompts is the closest available approximation.
 
-The largest omission sits in the faithfulness table. The winning method's rewrites scored 4.90 against 8.29 for unrewritten documents on the paper's LLM-judged scale — the visibility-optimal version of a page drifted furthest from what the page originally said. The authors log it as a trade-off; for a brand it is the whole risk. A rewrite that wins the citation by saying something your source material does not support becomes an engine confidently attributing that claim to you. This is the same failure mode the [mechanism-design work on citation wars](/blog/citation-wars) found accumulating over repeated optimization rounds, and the same decoration-grade citations the GEO-Flag audit found on 69% of detected pages. Three independent groups, three methods, one convergent result: pushed hard enough, visibility optimization manufactures unsupported claims.
+The largest omission sits in the faithfulness table. The winning method's rewrites scored 4.90 against 8.29 for unrewritten documents on the paper's LLM-judged scale — the visibility-optimal version of a page drifted furthest from what the page originally said. The authors log it as a trade-off; for a brand it is the whole risk. A rewrite that wins the citation by saying something your source material does not support becomes an engine confidently attributing that claim to you. This is the same failure mode the [mechanism-design work on citation wars](/blog/citation-wars) found accumulating over repeated optimization rounds, and the same decoration-grade citations the GEO-Flag audit found on 69% of detected pages. Three independent groups, three methods, one convergent result: pushed hard enough, visibility optimization manufactures unsupported claims. The CHASE result above is the population-level rhyme — a fourth group finding that the same pressure decouples the ranking signal from quality for everyone at once.
 
-There is also a quieter irony worth holding: a paper about competitors adapting to each other is itself now public. A tactic selector that wins by finding "less saturated alternatives" describes an equilibrium that moves again the moment enough parties run one.
+The CHASE simulation carries its own caveats in the same family: 20 queries per domain with 5–10 candidate documents each, an LLM ranker (Gemini Flash-class) standing in for a production engine, and quality judged by another LLM whose agreement with human raters was moderate (Spearman's ρ of 0.58 on shared dimensions). The authors are explicit that the framework "intentionally isolates repeated adaptation to an LLM ranking signal rather than modeling a complete generative-search system."
+
+There is also a quieter irony worth holding: a paper about competitors adapting to each other is itself now public. A tactic selector that wins by finding "less saturated alternatives" describes an equilibrium that moves again the moment enough parties run one — and parties will: a demo system automating exactly this kind of feedback-driven tactic selection, [Agent2UCB](https://arxiv.org/abs/2608.29063), was posted two days later.
 
 ## What to do on Monday
 
@@ -125,7 +147,7 @@ There is also a quieter irony worth holding: a paper about competitors adapting 
 
 ## Where this leaves the playbook
 
-The honest summary is that GEO tactics work the way arbitrage works: the return is real, and it is a function of how many others have found the trade. The KDD 2024 measurements described an empty field, the CISPA measurements say the field is one-sixth full and filling, and this paper simulates the far end where the standard moves pay less than nothing. The practitioner's job shifts accordingly — from running a checklist to knowing where on that curve their category sits, which is a measurement question before it is a tactics question.
+The honest summary is that GEO tactics work the way arbitrage works: the return is real, and it is a function of how many others have found the trade. The KDD 2024 measurements described an empty field, the CISPA measurements say the field is one-sixth full and filling, the Capital One simulation shows the far end where the standard moves pay less than nothing, and CHASE shows the trade eroding the price signal itself as the field fills. The practitioner's job shifts accordingly — from running a checklist to knowing where on that curve their category sits, which is a measurement question before it is a tactics question.
 
 [Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces and records every answer with its citations and competitor mentions. Because the cited pages for each prompt are in your own database, the adoption-rate check this research calls for is a query, not a project — and re-running it each month tells you when your category's curve starts to bend.
 

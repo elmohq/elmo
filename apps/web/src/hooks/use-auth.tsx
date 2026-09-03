@@ -5,7 +5,7 @@
  */
 import { useRouteContext } from "@tanstack/react-router";
 
-export interface AuthUser {
+interface AuthUser {
 	id: string;
 	name?: string;
 	email?: string;

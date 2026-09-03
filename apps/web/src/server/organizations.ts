@@ -14,7 +14,7 @@ import { summarizeOrganizations } from "@/lib/organizations/summarize";
 import type { OrganizationsView } from "@/lib/organizations/types";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
-export type { OrganizationSummary, OrganizationsView } from "@/lib/organizations/types";
+export type { OrganizationsView } from "@/lib/organizations/types";
 
 export const listOrganizationsFn = createServerFn({ method: "GET" }).handler(async (): Promise<OrganizationsView> => {
 	const session = await getAuthSession();

@@ -1,5 +1,6 @@
 import { expect, test } from "../../test";
 import { brandUrl } from "../../fixtures";
+import { openAccountMenu } from "../../interactions";
 
 const BRAND_URL = brandUrl();
 
@@ -57,8 +58,7 @@ test.describe("Overview Page", () => {
     await expect(page.locator(`a[href="${BRAND_URL}"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('a[href="/admin"][data-sidebar="menu-button"]')).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Account and organizations" }).click();
-    const adminLink = page.getByRole("menu").locator('a[href="/admin"]');
+    const adminLink = (await openAccountMenu(page)).locator('a[href="/admin"]');
     await expect(adminLink).toBeVisible({ timeout: 15_000 });
     await adminLink.click();
     await page.waitForURL(/\/admin$/);

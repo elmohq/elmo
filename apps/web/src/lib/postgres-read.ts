@@ -49,24 +49,6 @@ export interface PromptFirstEvaluatedAt {
 	first_evaluated_at: string;
 }
 
-export interface PromptDailyStats {
-	date: string;
-	total_runs: number;
-	brand_mentioned_count: number;
-}
-
-export interface PromptCompetitorDailyStats {
-	date: string;
-	competitor_name: string;
-	mention_count: number;
-}
-
-export interface WebQueryMapping {
-	model: string;
-	web_query: string;
-	created_at_iso: string;
-}
-
 export interface CitationDomainStats {
 	domain: string;
 	count: number;
@@ -511,74 +493,6 @@ export async function getPromptsSummary(
 			${promptIdFilter(enabledPromptIds)}
 		GROUP BY prompt_id
 		ORDER BY total_runs DESC
-	`);
-	return rows;
-}
-
-export async function getPromptDailyStats(
-	promptId: string,
-	fromDate: string | null,
-	toDate: string | null,
-	timezone: string,
-	webSearchEnabled?: boolean,
-	model?: string,
-): Promise<PromptDailyStats[]> {
-	const rows = await queryPg<PromptDailyStats>(sql`
-		SELECT
-			(created_at AT TIME ZONE ${timezone})::date AS date,
-			count(*)::int AS total_runs,
-			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
-		FROM prompt_runs
-		WHERE prompt_id = ${promptId}
-			${dateFilter(fromDate, toDate, timezone)}
-			${webSearchFilter(webSearchEnabled)}
-			${modelFilter(model)}
-		GROUP BY date
-		ORDER BY date
-	`);
-	return rows;
-}
-
-export async function getPromptCompetitorDailyStats(
-	promptId: string,
-	fromDate: string | null,
-	toDate: string | null,
-	timezone: string,
-	webSearchEnabled?: boolean,
-	model?: string,
-): Promise<PromptCompetitorDailyStats[]> {
-	const rows = await queryPg<PromptCompetitorDailyStats>(sql`
-		SELECT
-			(created_at AT TIME ZONE ${timezone})::date AS date,
-			competitor_name,
-			count(*)::int AS mention_count
-		FROM prompt_runs, unnest(competitors_mentioned) AS competitor_name
-		WHERE prompt_id = ${promptId}
-			${dateFilter(fromDate, toDate, timezone)}
-			${webSearchFilter(webSearchEnabled)}
-			${modelFilter(model)}
-		GROUP BY date, competitor_name
-		ORDER BY date, competitor_name
-	`);
-	return rows;
-}
-
-export async function getPromptWebQueriesForMapping(
-	promptId: string,
-	fromDate: string | null,
-	toDate: string | null,
-	timezone: string,
-): Promise<WebQueryMapping[]> {
-	const rows = await queryPg<WebQueryMapping>(sql`
-		SELECT
-			model,
-			web_query,
-			to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS created_at_iso
-		FROM prompt_runs, unnest(web_queries) AS web_query
-		WHERE prompt_id = ${promptId}
-			AND array_length(web_queries, 1) > 0
-			${dateFilter(fromDate, toDate, timezone)}
-		ORDER BY created_at ASC
 	`);
 	return rows;
 }

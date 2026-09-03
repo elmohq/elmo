@@ -42,7 +42,7 @@ export function requirePlatformPicksEditable(): void {
 	}
 }
 
-export async function checkOrgAccess(userId: string, orgId: string): Promise<boolean> {
+async function checkOrgAccess(userId: string, orgId: string): Promise<boolean> {
 	const [row] = await db
 		.select({ id: member.id })
 		.from(member)

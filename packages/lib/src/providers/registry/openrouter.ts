@@ -28,19 +28,22 @@ function openrouterHeaders(): Record<string, string> {
 	};
 }
 
+/** The Responses-style shape, where text lives in `output[].content[].text`. */
+function responsesApiTexts(output: unknown): string[] {
+	if (!Array.isArray(output)) return [];
+	return output
+		.filter((item: any) => item?.type === "message")
+		.flatMap((msg: any) => msg.content ?? [])
+		.filter((c: any) => c?.type === "output_text" && c.text)
+		.map((c: any) => c.text as string);
+}
+
 function extractTextFromOpenRouterResponse(data: any): string {
-	if (data?.choices?.[0]?.message?.content) return data.choices[0].message.content;
-	if (data?.output) {
-		const msgs = Array.isArray(data.output) ? data.output.filter((i: any) => i.type === "message") : [];
-		const texts: string[] = [];
-		for (const msg of msgs) {
-			for (const c of msg.content ?? []) {
-				if (c.type === "output_text" && c.text) texts.push(c.text);
-			}
-		}
-		if (texts.length) return texts.join("\n");
-	}
-	return "No text content found in OpenRouter response.";
+	const chatContent = data?.choices?.[0]?.message?.content;
+	if (chatContent) return chatContent;
+
+	const texts = responsesApiTexts(data?.output);
+	return texts.length > 0 ? texts.join("\n") : "No text content found in OpenRouter response.";
 }
 
 function extractCitationsFromOpenRouterResponse(data: any): Citation[] {

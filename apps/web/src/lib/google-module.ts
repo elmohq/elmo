@@ -27,8 +27,8 @@ export interface GoogleModulePageRow {
 	count: number;
 }
 
-export type GooglePromptRef = { id: string; value: string; count: number };
-export type GoogleProduct = {
+type GooglePromptRef = { id: string; value: string; count: number };
+type GoogleProduct = {
 	name: string;
 	count: number;
 	attribution: ProductAttribution["kind"];
@@ -36,7 +36,7 @@ export type GoogleProduct = {
 	prompts: GooglePromptRef[];
 	urls: { url: string; count: number }[];
 };
-export type GoogleQuery = { query: string; count: number; prompts: GooglePromptRef[] };
+type GoogleQuery = { query: string; count: number; prompts: GooglePromptRef[] };
 export type GoogleModule = {
 	shopping: { totalCitations: number; brandCount: number; competitorCount: number; products: GoogleProduct[] };
 	search: { totalCitations: number; queries: GoogleQuery[] };
