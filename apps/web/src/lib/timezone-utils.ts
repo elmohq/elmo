@@ -114,3 +114,20 @@ export function getTimezoneLookbackRange(
 			};
 	}
 }
+
+/**
+ * A lookback plus a requested timezone resolved to the concrete calendar-day
+ * bounds every analytics query takes. `allStrategy: "1y"` keeps the bounds
+ * non-null for "all", so callers never branch on a missing window.
+ */
+export function resolveLookbackRange(
+	lookback: LookbackPeriod,
+	timezoneParam: string,
+): { timezone: string; fromDateStr: string; toDateStr: string } {
+	const timezone = resolveTimezone(timezoneParam);
+	const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookback, timezone, { allStrategy: "1y" }) as {
+		fromDateStr: string;
+		toDateStr: string;
+	};
+	return { timezone, fromDateStr, toDateStr };
+}

@@ -78,6 +78,14 @@ export async function requireBrandAccess(userId: string, brandId: string): Promi
 	}
 }
 
+/** The caller's session, having checked they may reach `brandId` — the preamble
+ * every brand-scoped server function opens with. */
+export async function requireBrandSession(brandId: string) {
+	const session = await requireAuthSession();
+	await requireBrandAccess(session.user.id, brandId);
+	return session;
+}
+
 /**
  * The brand's owning org plus the caller's membership in it — for callers that
  * need the org itself, not just an access verdict. Resolves both in the one
