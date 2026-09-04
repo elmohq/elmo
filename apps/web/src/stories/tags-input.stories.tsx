@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { cleanAndValidateDomain } from "@workspace/lib/citations/domain-categories";
 import { Label } from "@workspace/ui/components/label";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { useMemo, useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
 const meta = {
 	title: "Components/TagsInput",

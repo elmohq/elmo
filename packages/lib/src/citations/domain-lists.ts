@@ -1,7 +1,7 @@
-// Server-only domain classification. Holds the large hardcoded domain lists
-// (including the ~25k-entry editorial set) and `categorizeDomain`. Importing
-// this from a client module would bloat the browser bundle — keep it confined to
-// server functions. Client code imports types/config from `./domain-categories`.
+// Domain classification against the large hardcoded lists (including the
+// ~25k-entry editorial set). Only servers and workers may import it: pulling it
+// into a browser bundle would cost hundreds of kilobytes. Client code imports
+// the types and pure helpers from `./domain-categories`.
 
 import { type CitationCategory, FORUM_DOMAINS, inDomainSet, inferPageType, isForumDomain } from "./domain-categories";
 import { EDITORIAL_DOMAINS } from "./editorial-domains";

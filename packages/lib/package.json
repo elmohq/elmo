@@ -35,7 +35,14 @@
 		"./providers/types": "./src/providers/types.ts",
 		"./entitlements": "./src/entitlements/index.ts",
 		"./run-policy": "./src/run-policy/index.ts",
-		"./usage": "./src/usage/cost.ts"
+		"./usage": "./src/usage/cost.ts",
+		"./citations/domain-categories": "./src/citations/domain-categories.ts",
+		"./citations/domain-lists": "./src/citations/domain-lists.ts",
+		"./citations/rollup": "./src/citations/rollup.ts",
+		"./rollups": "./src/rollups/index.ts",
+		"./rollups/constants": "./src/rollups/constants.ts",
+		"./mentions": "./src/mentions.ts",
+		"./derivers": "./src/derivers/index.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^4.0.39",

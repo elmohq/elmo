@@ -4,7 +4,7 @@ import {
 	CITATION_PAGE_TYPES,
 	type CitationCategory,
 	PAGE_TYPE_CONFIG,
-} from "@/lib/domain-categories";
+} from "@workspace/lib/citations/domain-categories";
 
 export const getCategoryLabel = (category: string) => CATEGORY_CONFIG[category as CitationCategory]?.label ?? category;
 

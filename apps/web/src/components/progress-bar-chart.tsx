@@ -165,4 +165,4 @@ export function ProgressBarChart({
 	);
 }
 
-export { DOMAIN_CATEGORY_COLORS } from "@/lib/domain-categories";
+export { DOMAIN_CATEGORY_COLORS } from "@workspace/lib/citations/domain-categories";
