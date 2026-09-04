@@ -1,4 +1,6 @@
 import { apiKey } from "@better-auth/api-key";
+import { cimd } from "@better-auth/cimd";
+import { fetchClientMetadataResource } from "@better-auth/cimd/node";
 import { mcp } from "@better-auth/mcp";
 import { oauthProviderAuthServerMetadata } from "@better-auth/oauth-provider";
 import { type SSOOptions, sso } from "@better-auth/sso";
@@ -17,6 +19,7 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import type { JWTPayload } from "jose";
 import { db } from "../db/db";
 import * as schema from "../db/schema";
+import { nativeClientRegistrationDefault } from "./native-client-registration";
 import { ac, adminRole, memberRole, ownerRole, userRole } from "./permissions";
 
 export interface CreateAuthOptions {
@@ -174,6 +177,11 @@ export function createAuth(options?: CreateAuthOptions) {
 			// The header would otherwise sign a JWT on every session read.
 			jwt({ disableSettingJwtHeader: true }),
 			mcpResourceDefault(resource),
+			nativeClientRegistrationDefault(),
+			// The registration MCP prefers: the client is identified by a metadata
+			// document it hosts, so nothing about it is self-asserted at a POST we
+			// cannot attribute to anyone.
+			cimd({ fetchClientMetadataResource, metadataProfile: "mcp-2026-07-28" }),
 			mcp({
 				loginPage: LOGIN_PAGE,
 				consentPage: MCP_AUTHORIZE_PAGE,
