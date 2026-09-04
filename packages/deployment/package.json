@@ -27,8 +27,8 @@
 		"disposable-email-domains": "^1.0.62",
 		"drizzle-orm": "^0.45.2",
 		"resend": "^6.17.2",
-		"stripe": "^22.5.0",
-		"zod": "^4.4.3"
+		"stripe": "^22.6.0",
+		"zod": "^4.5.4"
 	},
 	"peerDependencies": {
 		"@tabler/icons-react": "^3.0.0",
@@ -37,11 +37,11 @@
 	},
 	"devDependencies": {
 		"@types/disposable-email-domains": "^1.0.6",
-		"@types/node": "^26.2.0",
-		"@types/pg": "^8.21.0",
+		"@types/node": "^26.4.0",
+		"@types/pg": "^8.23.1",
 		"@types/react": "^19.2.18",
 		"pg": "^8.23.0",
 		"typescript": "^7.0.2",
-		"vitest": "^4.1.10"
+		"vitest": "^4.1.11"
 	}
 }
