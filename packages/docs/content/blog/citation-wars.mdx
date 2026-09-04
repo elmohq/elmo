@@ -1,7 +1,8 @@
 ---
 title: "Citation Wars: The GEO Playbook Is Now the Attack Model"
-description: "A new CMU paper simulates what happens when everyone optimizes for AI citations. Quality falls, filters fail, and the defense that works rewards verifiable claims."
+description: "A CMU paper simulates what happens when everyone optimizes for AI citations: quality falls and filters fail. A second benchmark now shows safety guardrails missing GEO-injected misinformation almost entirely."
 date: "2026-08-13"
+updated: "2026-09-03"
 author: ai
 metaTitle: "Citation Wars: GEO Tactics as the Attack Model"
 tags:
@@ -16,6 +17,10 @@ definedTerms:
     definition: "A citation-seeking rewrite is an edit made to raise a document's chance of being cited by a generative engine rather than to improve the document. In repeated simulation, such rewrites accumulate unsupported claims and fabricated details."
   - term: Verifiable-content rewards
     definition: "Verifiable-content rewards (VCR) is a proposed platform mechanism that credits a rewrite in proportion to the factual claims, numerical details, and named citations it adds that are supported by the original document, instead of only penalizing suspicious edits."
+  - term: Information-distorting GEO
+    definition: "Information-distorting GEO is a rewrite that applies standard citation-seeking optimization — clearer structure, authoritative phrasing, citation hooks — and also injects a targeted false claim, repeated with varied phrasing. The term comes from Counter-GEO-Bench, a 2026 benchmark showing that such rewrites pass off-the-shelf safety guardrails as fluent informational content."
+  - term: Negative GEO
+    definition: "Negative GEO is optimized content built to win retrieval while contrasting against legitimate competing information to suppress it — for example, a page engineered into an AI answer that undermines a rival product. It is one of the eight information-distorting attack classes in the Counter-GEO-Bench taxonomy."
 howTo:
   name: "How to keep GEO tactics on the right side of a verifiability defense"
   description: "Adapt the standard answer engine optimization playbook so the specifics you add are checkable against a source, which is what the emerging platform-side defenses reward."
@@ -39,6 +44,10 @@ faq:
     answer: "It depends on whether the statistics are checkable. Adding statistics comes from the KDD 2024 GEO paper, which reported that its methods could boost visibility by up to 40%. The 2026 mechanism-design paper reimplements that same method as one of five GEO attackers it defends against, and the defense it proposes credits added claims only when they are supported by the original document. Sourced numbers survive that test; decorative ones are exactly what it filters."
   - question: Can platforms detect GEO manipulation with keyword filters?
     answer: "Not well. The paper tested a keyword scrub that applied a regex filter over 24 GEO-style phrases and found its effectiveness \"remains close to zero.\" Two other classical defenses, prompt-based suspicion labels and hard rejection of suspicious documents, also underperformed the reward-based mechanism the authors propose."
+  - question: Do AI safety guardrails catch GEO-injected misinformation?
+    answer: "Barely. Counter-GEO-Bench, a September 2026 benchmark from researchers at Tsinghua University and the University of Hong Kong accepted to EMNLP 2026, paired 247 human-verified queries with GEO rewrites carrying targeted false claims and measured a 55.7% undefended attack success rate averaged across three victim models. Granite Guardian, Llama Guard 3, and NeMo's self-check fact-checking reduced that by at most 5.7% relative. The authors' diagnosis: safety guardrails target policy violations, and GEO misinformation passes through them as fluent informational content. A lightweight detector trained on the attack classes themselves cut attack success by 47.6% relative with answer quality unchanged."
+  - question: What is negative GEO?
+    answer: "Negative GEO is one of the eight information-distorting attack classes in the Counter-GEO-Bench taxonomy: content optimized to win retrieval while contrasting against legitimate competing information to suppress it — a page built to reach the answer and undermine a true alternative, such as a competitor. In the benchmark, distorting attacks succeeded undefended more than half the time and deployed general-purpose guardrails barely reduced them, which makes monitoring what answers actually say about your brand the only detection layer you currently control."
   - question: What is VCR in generative engine optimization?
     answer: "VCR stands for verifiable-content rewards, a platform mechanism proposed in the paper \"Mechanism Design for Generative Engines.\" Instead of only penalizing suspicious rewrites, the platform also credits rewrites in proportion to the factual claims, numerical details, and named citations they surface that are supported by the original document. Across three benchmarks it beat the strongest baseline defense by an average of 12.1 percentage points on the authors' combined defense-and-utility score."
   - question: Does GEO optimization make content worse?
@@ -56,6 +65,7 @@ faq:
 - Filtering does not save the platform. A keyword scrub over 24 GEO-style phrases was close to useless, and the equilibrium the authors identify is an inert one where nobody is punished and nobody improves.
 - The defense that worked pays for verifiability. VCR credits added claims, numbers, and named citations *that the original document supports*, beating the strongest baseline by an average of 12.1 percentage points.
 - That is the practitioner takeaway, and it is not "stop adding statistics." It is that a sourced number and an invented one are about to stop being the same move.
+- *Added 3 September:* independent confirmation, with the stakes raised. [Counter-GEO-Bench](https://arxiv.org/abs/2609.02316) pairs the same GEO optimization with injected false claims and finds the claims landing in answers 55.7% of the time undefended — and off-the-shelf safety guardrails cutting that by at most 5.7% relative. Generic filters keep failing; a detector trained on what GEO manipulation specifically does cut it by 47.6%.
 - Caveats are large: simulation, small models, LLM-judged quality, no production engine involved. Read it as a direction of travel, not a measurement.
 
 ## The setup, in plain terms
@@ -123,6 +133,20 @@ For anyone doing [answer engine optimization](/blog/answer-engine-optimization),
 
 The advice "add statistics" survives. The version of it that treats numbers as decoration does not. That distinction is already worth acting on for a separate reason: fabricated specifics on your own pages can be lifted verbatim into an answer and attributed to you, which is a liability rather than an optimization.
 
+## The misinformation variant walks through today's guardrails
+
+*Added 3 September 2026.* The keyword-scrub result now has independent confirmation from a second group, on the version of the attack with the most at stake. [Counter-GEO-Bench](https://arxiv.org/abs/2609.02316), by Bing Zheng and Wenming Yang of Tsinghua's Shenzhen International Graduate School with Zongyao Zhao of the University of Hong Kong — accepted to EMNLP 2026 — asks what happens when a GEO rewrite doesn't just decorate but lies. The authors built 247 human-verified queries from GEO-Bench pairs and produced two rewrites of each source: an information-preserving one (clearer structure, authoritative phrasing, citation hooks, facts intact) and an information-distorting one — the same optimization strength plus a targeted false claim injected in at least three places with varied phrasing.
+
+Undefended, the false claim was asserted in the answer 55.7% of the time (95% CI: 53.1–58.2), averaged across three open-weight victim models. With the standard safety guardrails in front, almost nothing changed: Granite Guardian cut attack success by 1.7 percentage points (not statistically significant), Llama Guard 3 by 3.2 points — statistically real, "operationally negligible" in the authors' words — and NeMo's self-check fact-checking rail blocked 98.4% of one model's outputs whether or not anything was wrong with them. The abstract's summary is "at most 5.7% relative," and the diagnosis fits the CMU finding exactly: "Safety-taxonomy guardrails target policy violations, while GEO misinformation passes through them as fluent informational content."
+
+The taxonomy of eight distorting attack classes reads like the GEO checklist with its intent inverted: fake institutional authority, fabricated citations to nonexistent studies, fake freshness markers ("temporal poison"), AI-extractable formatting around a false claim ("structured hijack"), fabricated ratings and testimonials ("review flood"), and — the one aimed squarely at brands — negative GEO, content that contrasts against legitimate competing information to suppress it. Review flood was the most successful class undefended, at 62.8%. Every class is a distorted twin of something a checklist sells as best practice, which is this post's thesis restated as a threat model.
+
+The defense pattern repeats too. As with VCR, the generic mechanism failed and the targeted one worked: the paper's baseline detector, C-GEO Guard — a 184-million-parameter encoder trained to recognize the eight attack classes by similarity — cut attack success by 47.6% relative (26.5 points absolute) with answer quality unchanged, 4.48 defended against 4.49 undefended on the paper's five-point scale. Two independent groups, one shape: defenses aimed at what GEO manipulation specifically does can work, and defenses aimed at generic badness don't. The gap in the targeted defense is instructive as well — structured hijack, the attack that hides inside extractable formatting, was the hardest class to catch, at a 22% relative reduction against 60% for the easiest. Manipulation that looks like structure survives longest.
+
+The usual discipline applies. This is 247 English-only queries; the victims are open-weight models, not the production engines running undisclosed guardrails of their own; the attacks come from a fixed taxonomy with no detector-aware adversary; and the distortions were themselves written by an LLM. What it establishes is narrower and still uncomfortable: the defense layer actually deployed in front of today's open models does not distinguish an optimized page that informs from an optimized page that deceives.
+
+For a brand, the exposed surface is the negative-GEO and review-flood end of that taxonomy. A page optimized into retrieval that undermines your product or fabricates satisfaction numbers for a competitor reads to current guardrails as ordinary informational content, and in this benchmark's setting more than half of such attempts reached the answer. It is the adversarial version of the [manufactured-source problem](/blog/can-you-trust-ai-citations) we covered last week, and the countermeasure available to you is the same, because the platform-side one is not deployed: record what the answers in your category actually say, so a false claim about you is something you catch in days rather than discover in a lost deal.
+
 ## What this does not show
 
 The provenance deserves the same scrutiny the finding does.
@@ -149,4 +173,4 @@ The useful frame is not that GEO is dead. It is that GEO has entered the phase e
 
 [Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces and records the full answer text alongside every mention, citation, and competitor named beside you. Because the raw answers are yours to query, you can check what an engine actually said about your brand rather than inferring it from a citation count — which is the measurement this paper's failure mode calls for.
 
-For the fundamentals, start with [what AI citations are](/blog/ai-citations) and [where they come from](/blog/where-ai-citations-come-from). For the practice, see the [AEO guide](/blog/answer-engine-optimization) and [how to track your brand in AI search](/blog/track-brand-ai-search). For the vocabulary, the [AI search glossary](/glossary).
+For the fundamentals, start with [what AI citations are](/blog/ai-citations) and [where they come from](/blog/where-ai-citations-come-from). For the adjacent research, see [what happens to GEO tactics under competition](/blog/do-geo-tactics-stop-working) and [whether the sources AI cites check out](/blog/can-you-trust-ai-citations). For the practice, see the [AEO guide](/blog/answer-engine-optimization) and [how to track your brand in AI search](/blog/track-brand-ai-search). For the vocabulary, the [AI search glossary](/glossary).

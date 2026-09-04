@@ -12,6 +12,7 @@
 import { expect, failedResource, test } from "../../test";
 import { CLOUD_SIGNUP, TEST_BRAND_ID, TEST_USER, brandUrl, organizationUrl } from "../../fixtures";
 import { deleteUsers, userExists, verifyEmail } from "../../session";
+import { openAccountMenu } from "../../interactions";
 
 const NEW_USER = {
   email: `signup@${CLOUD_SIGNUP.allowedDomain}`,
@@ -40,6 +41,12 @@ test.describe("Cloud self-serve signup", () => {
     await expect(page.getByRole("button", { name: /continue with google/i })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("link", { name: /forgot password/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /create one/i })).toBeVisible();
+  });
+
+  test("the bare app URL opens on sign-up, keeping the referral tag", async ({ page }) => {
+    await page.goto("/?ref=marketing-cta");
+    await page.waitForURL(/\/auth\/register\?.*ref=marketing-cta/, { timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Create account" })).toBeVisible({ timeout: 30_000 });
   });
 
   test("registering asks the new account to verify its email", async ({ page }) => {
@@ -80,27 +87,36 @@ test.describe("Cloud self-serve signup", () => {
     await expect(page.getByRole("button", { name: "Subscribe to Starter" })).toBeVisible();
   });
 
+  // A 400 rather than the allowlist's 403, so unlike the case below this
+  // refusal does reach the caller.
   test("a disposable address is refused", async ({ request }) => {
     const response = await request.post("/api/auth/sign-up/email", {
       data: { email: DISPOSABLE_EMAIL, password: NEW_USER.password, name: "Throwaway" },
       failOnStatusCode: false,
     });
 
-    expect(response.ok()).toBe(false);
+    expect(response.ok(), `${response.status()} ${await response.text()}`).toBe(false);
     expect(await response.text()).toContain("Disposable email addresses are not supported");
+    expect(await userExists(DISPOSABLE_EMAIL)).toBe(false);
   });
 
-  test("an address outside the allowlist is refused", async ({ request }) => {
+  /**
+   * Cloud requires email verification, which puts better-auth in the mode where
+   * a refused creation answers exactly as a duplicate address does — a 200 over
+   * a synthetic user — so that signup cannot be used to learn who is already
+   * registered. The allowlist refusal is a 403, the status that rule covers, so
+   * the response says nothing either way and the account never existing is the
+   * whole of what this can assert. Read it against the allowlisted signup
+   * above, which does create one.
+   */
+  test("an address outside the allowlist creates no account", async ({ request }) => {
     const response = await request.post("/api/auth/sign-up/email", {
       data: { email: BLOCKED_EMAIL, password: NEW_USER.password, name: "Outsider" },
       failOnStatusCode: false,
     });
+    expect(response.status(), await response.text()).toBe(200);
 
-    // The allowlist gate returns the same generic failure as any other refused
-    // signup, so the assertion is that no account appeared — read against the
-    // allowlisted signup above, which does create one.
-    expect(response.ok()).toBe(false);
-    expect(await userExists(BLOCKED_EMAIL)).toBe(false);
+    expect(await userExists(BLOCKED_EMAIL), "an address off the allowlist was signed up").toBe(false);
   });
 });
 
@@ -123,8 +139,7 @@ test.describe("Cloud features", () => {
     ).toHaveCount(0);
 
     // The admin section is present (this user is an admin) but has no Reports entry.
-    await page.getByRole("button", { name: "Account and organizations" }).click();
-    const menu = page.getByRole("menu");
+    const menu = await openAccountMenu(page);
     await expect(menu.locator('a[href="/admin"]')).toBeVisible();
     await expect(menu.locator('a[href="/reports"]')).toHaveCount(0);
   });

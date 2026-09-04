@@ -14,6 +14,7 @@
  */
 import { expect, failedResource, test } from "../../test";
 import { TEST_BRAND_ID, WHITELABEL, brandUrl, organizationUrl } from "../../fixtures";
+import { fillUntilSaveable } from "../../interactions";
 
 const isIdpRequest = (url: URL) => url.host === WHITELABEL.auth0Domain;
 
@@ -43,6 +44,18 @@ test.describe("Whitelabel sign-in is SSO only", () => {
     expect(authorizeUrl.searchParams.get("client_id")).toBe(WHITELABEL.auth0ClientId);
     expect(authorizeUrl.searchParams.get("response_type")).toBe("code");
     expect(authorizeUrl.searchParams.get("redirect_uri")).toContain("/api/auth/sso/callback/auth0-whitelabel");
+  });
+
+  test("the bare app URL waits for a click rather than starting SSO", async ({ page }) => {
+    const authorizeRequests: string[] = [];
+    await page.route(isIdpRequest, async (route) => {
+      authorizeRequests.push(route.request().url());
+      await route.fulfill({ status: 200, contentType: "text/html", body: "<html>idp stub</html>" });
+    });
+
+    await page.goto("/");
+    await expect(page.getByRole("link", { name: "Sign In" })).toBeVisible({ timeout: 30_000 });
+    expect(authorizeRequests).toEqual([]);
   });
 
   test("password sign-in is refused", async ({ request }) => {
@@ -163,9 +176,10 @@ test.describe("Whitelabel features", () => {
 
     const nameField = page.getByLabel("Organization Name", { exact: true });
     await expect(nameField).toBeEnabled({ timeout: 30_000 });
-    await nameField.fill("Renamed From The Settings Page");
 
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    const save = page.getByRole("button", { name: "Save", exact: true });
+    await fillUntilSaveable(nameField, "Renamed From The Settings Page", save);
+    await save.click();
     await expect(page.getByText(/cannot be renamed in this deployment/i)).toBeVisible({ timeout: 30_000 });
   });
 });

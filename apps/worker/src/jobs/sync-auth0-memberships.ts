@@ -9,8 +9,8 @@
  * changes don't require users to log out and back in.
  */
 
+import { syncAuth0User } from "@workspace/deployment/auth-hooks/whitelabel";
 import { listAuth0Accounts } from "@workspace/lib/db/auth-sync";
-import { syncAuth0User } from "@workspace/whitelabel/auth-hooks";
 import type { Job } from "pg-boss";
 
 export interface SyncAuth0MembershipsData {
@@ -25,36 +25,47 @@ function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+type Auth0Account = Awaited<ReturnType<typeof listAuth0Accounts>>[number];
+
+/** Syncs one batch concurrently and reports how many of it landed. */
+async function syncBatch(batch: Auth0Account[]): Promise<{ synced: number; failed: number }> {
+	const results = await Promise.allSettled(batch.map(({ userId, accountId }) => syncAuth0User(userId, accountId)));
+
+	let synced = 0;
+	let failed = 0;
+	for (const [idx, result] of results.entries()) {
+		if (result.status === "fulfilled") {
+			synced++;
+			continue;
+		}
+		failed++;
+		console.error(
+			`[sync-auth0-memberships] Failed to sync user ${batch[idx].userId}:`,
+			result.reason instanceof Error ? result.reason.message : result.reason,
+		);
+	}
+	return { synced, failed };
+}
+
+async function syncAllAccounts(accounts: Auth0Account[]): Promise<void> {
+	let synced = 0;
+	let failed = 0;
+
+	for (let i = 0; i < accounts.length; i += BATCH_SIZE) {
+		const batchTotals = await syncBatch(accounts.slice(i, i + BATCH_SIZE));
+		synced += batchTotals.synced;
+		failed += batchTotals.failed;
+
+		if (i + BATCH_SIZE < accounts.length) await sleep(BATCH_DELAY_MS);
+	}
+
+	console.log(`[sync-auth0-memberships] Done: ${synced} synced, ${failed} failed`);
+}
+
 export async function syncAuth0MembershipsJob(jobs: Job<SyncAuth0MembershipsData>[]): Promise<void> {
 	for (const _job of jobs) {
 		const accounts = await listAuth0Accounts();
 		console.log(`[sync-auth0-memberships] Syncing ${accounts.length} users`);
-
-		let synced = 0;
-		let failed = 0;
-
-		for (let i = 0; i < accounts.length; i += BATCH_SIZE) {
-			const batch = accounts.slice(i, i + BATCH_SIZE);
-
-			const results = await Promise.allSettled(batch.map(({ userId, accountId }) => syncAuth0User(userId, accountId)));
-
-			for (const [idx, result] of results.entries()) {
-				if (result.status === "fulfilled") {
-					synced++;
-				} else {
-					failed++;
-					console.error(
-						`[sync-auth0-memberships] Failed to sync user ${batch[idx].userId}:`,
-						result.reason instanceof Error ? result.reason.message : result.reason,
-					);
-				}
-			}
-
-			if (i + BATCH_SIZE < accounts.length) {
-				await sleep(BATCH_DELAY_MS);
-			}
-		}
-
-		console.log(`[sync-auth0-memberships] Done: ${synced} synced, ${failed} failed`);
+		await syncAllAccounts(accounts);
 	}
 }

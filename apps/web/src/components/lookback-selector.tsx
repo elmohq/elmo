@@ -2,24 +2,17 @@ import { useSearch } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useBrand } from "@/hooks/use-brands";
 import { coerceLookback, useFilterNavigate } from "@/hooks/use-list-filters";
-import { getDefaultLookbackPeriod, type LookbackPeriod } from "@/lib/chart-utils";
+import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
+import { LOOKBACK_PERIODS, type LookbackPeriod } from "@/lib/lookback";
 
-function getLookbackLabel(lookback: LookbackPeriod): string {
-	switch (lookback) {
-		case "1w":
-			return "1w";
-		case "1m":
-			return "1mo";
-		case "3m":
-			return "3mo";
-		case "6m":
-			return "6mo";
-		case "1y":
-			return "1yr";
-		case "all":
-			return "all";
-	}
-}
+const LOOKBACK_LABELS: Record<LookbackPeriod, string> = {
+	"1w": "1w",
+	"1m": "1mo",
+	"3m": "3mo",
+	"6m": "6mo",
+	"1y": "1yr",
+	all: "all",
+};
 
 interface LookbackSelectorProps {
 	defaultPeriod?: LookbackPeriod;
@@ -27,7 +20,7 @@ interface LookbackSelectorProps {
 }
 
 export function LookbackSelector({ defaultPeriod, onLookbackChange }: LookbackSelectorProps) {
-	const { brand } = useBrand();
+	const { data: brand } = useBrand();
 	const computedDefaultPeriod = useMemo(
 		() => defaultPeriod ?? getDefaultLookbackPeriod(brand?.earliestDataDate),
 		[defaultPeriod, brand?.earliestDataDate],
@@ -44,7 +37,7 @@ export function LookbackSelector({ defaultPeriod, onLookbackChange }: LookbackSe
 
 	return (
 		<div className="flex rounded-md bg-muted p-1">
-			{(["1w", "1m", "3m", "6m", "1y", "all"] as LookbackPeriod[]).map((period) => (
+			{LOOKBACK_PERIODS.map((period) => (
 				<button
 					key={period}
 					onClick={() => handleChange(period)}
@@ -55,7 +48,7 @@ export function LookbackSelector({ defaultPeriod, onLookbackChange }: LookbackSe
 					}`}
 					type="button"
 				>
-					{getLookbackLabel(period)}
+					{LOOKBACK_LABELS[period]}
 				</button>
 			))}
 		</div>
@@ -63,7 +56,7 @@ export function LookbackSelector({ defaultPeriod, onLookbackChange }: LookbackSe
 }
 
 export function useLookbackPeriod(defaultPeriod?: LookbackPeriod) {
-	const { brand } = useBrand();
+	const { data: brand } = useBrand();
 	const computedDefaultPeriod = useMemo(
 		() => defaultPeriod ?? getDefaultLookbackPeriod(brand?.earliestDataDate),
 		[defaultPeriod, brand?.earliestDataDate],

@@ -12,8 +12,8 @@
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import openApiSpec from "@workspace/api-spec";
+import { getDeployment } from "@workspace/deployment";
 import { evaluateDeploymentPolicy, evaluateReadOnly } from "@/lib/auth/policies";
-import { getDeployment } from "@/lib/config/server";
 
 /**
  * Global request middleware - provides deployment config context

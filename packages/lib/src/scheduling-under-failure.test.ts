@@ -28,6 +28,53 @@ interface PendingJob {
 	consecutiveFailures: number;
 }
 
+interface SimState {
+	lastRunAt: number | null;
+	pending: PendingJob;
+}
+
+/** A due job runs, records its outcome, and schedules its successor. Returns
+ *  the elapsed hour it attempted at, or null when nothing was due. */
+function runDueJob(
+	state: SimState,
+	now: number,
+	cadenceHours: number,
+	succeeds: (elapsedHours: number) => boolean,
+): number | null {
+	if (state.pending.startAfter > now) return null;
+
+	const elapsedHours = now / HOUR;
+	const ok = succeeds(elapsedHours);
+	if (ok) state.lastRunAt = now;
+
+	const consecutiveFailures = ok ? 0 : state.pending.consecutiveFailures + 1;
+	const delayHours = failureBackoffHours(consecutiveFailures, cadenceHours);
+	state.pending = { createdAt: now, startAfter: now + delayHours * HOUR, consecutiveFailures };
+	return elapsedHours;
+}
+
+/** Whether schedule-maintenance would drag the next job forward on this tick. */
+function wouldExpedite(state: SimState, now: number, runFrequencyMs: number, promptCreatedAt: Date): boolean {
+	const lastRunAt = state.lastRunAt === null ? null : new Date(state.lastRunAt);
+	const overdue = targetOverdueStatus({
+		intervalHours: runFrequencyMs / HOUR,
+		lastRunAt,
+		promptCreatedAt,
+		now,
+	}).isOverdue;
+
+	return (
+		overdue &&
+		shouldExpediteJob({
+			jobConsecutiveFailures: state.pending.consecutiveFailures,
+			lastRunAt,
+			runFrequencyMs,
+			now,
+			minIntervalMs: EXPEDITE_MIN_INTERVAL_MS,
+		})
+	);
+}
+
 /**
  * Runs the scheduler's decision path over simulated time for one prompt.
  *
@@ -47,41 +94,14 @@ function simulate({
 	const runFrequencyMs = cadenceHours * HOUR;
 	const promptCreatedAt = new Date(0);
 	const attemptHours: number[] = [];
-
-	let lastRunAt: number | null = null;
-	let pending: PendingJob = { createdAt: 0, startAfter: 0, consecutiveFailures: 0 };
+	const state: SimState = { lastRunAt: null, pending: { createdAt: 0, startAfter: 0, consecutiveFailures: 0 } };
 
 	for (let now = 0; now < days * 24 * HOUR; now += TICK_MS) {
-		// 1. A due job runs, records its outcome, and schedules its successor.
-		if (pending.startAfter <= now) {
-			const elapsedHours = now / HOUR;
-			attemptHours.push(elapsedHours);
+		const attemptedAt = runDueJob(state, now, cadenceHours, succeeds);
+		if (attemptedAt !== null) attemptHours.push(attemptedAt);
 
-			const ok = succeeds(elapsedHours);
-			if (ok) lastRunAt = now;
-			const consecutiveFailures = ok ? 0 : pending.consecutiveFailures + 1;
-			const delayHours = failureBackoffHours(consecutiveFailures, cadenceHours);
-			pending = { createdAt: now, startAfter: now + delayHours * HOUR, consecutiveFailures };
-		}
-
-		// 2. schedule-maintenance considers dragging the next job forward.
-		const overdue = targetOverdueStatus({
-			intervalHours: runFrequencyMs / HOUR,
-			lastRunAt: lastRunAt === null ? null : new Date(lastRunAt),
-			promptCreatedAt,
-			now,
-		}).isOverdue;
-		if (
-			overdue &&
-			shouldExpediteJob({
-				jobConsecutiveFailures: pending.consecutiveFailures,
-				lastRunAt: lastRunAt === null ? null : new Date(lastRunAt),
-				runFrequencyMs,
-				now,
-				minIntervalMs: EXPEDITE_MIN_INTERVAL_MS,
-			})
-		) {
-			pending = { ...pending, startAfter: now };
+		if (wouldExpedite(state, now, runFrequencyMs, promptCreatedAt)) {
+			state.pending = { ...state.pending, startAfter: now };
 		}
 	}
 

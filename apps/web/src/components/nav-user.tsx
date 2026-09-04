@@ -181,7 +181,7 @@ export function NavUser({
 }
 
 function OrganizationSwitcher({ onNavigate }: { onNavigate: () => void }) {
-	const { organizations, isLoading, isError, isFetching, refetch } = useOrganizations();
+	const { data: organizations, isLoading, isFetching, error, refetch } = useOrganizations();
 	const currentBrandId = useBrandId();
 
 	if (organizations.length > INLINE_ORGANIZATION_LIMIT) {
@@ -212,11 +212,11 @@ function OrganizationSwitcher({ onNavigate }: { onNavigate: () => void }) {
 					<span className="text-muted-foreground">Loading organizations…</span>
 				</DropdownMenuItem>
 			)}
-			{isError && (
+			{error && (
 				<DropdownMenuItem
 					className="cursor-pointer"
-					onSelect={(event) => {
-						event.preventDefault();
+					closeOnClick={false}
+					onClick={() => {
 						refetch();
 					}}
 				>

@@ -1,8 +1,8 @@
+import { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 import { useRef } from "react";
 import { VisibilityBar, VisibilityBarEmpty, VisibilityBarSkeleton } from "@/components/visibility-bar";
 import { useFilteredVisibility } from "@/hooks/use-filtered-visibility";
 import { useListFilters } from "@/hooks/use-list-filters";
-import { ALL_MODELS_VALUE } from "@/lib/model-filter";
 
 /**
  * Self-contained visibility bar. Subscribes directly to the filter URL
@@ -21,9 +21,9 @@ export function VisibilityBarSection({ brandId }: { brandId: string | undefined 
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 
 	const {
-		filteredVisibility,
+		data: filteredVisibility,
 		isLoading: isLoadingVisibility,
-		isValidating: isValidatingVisibility,
+		isFetching: isFetchingVisibility,
 	} = useFilteredVisibility(brandId, {
 		lookback,
 		tags: tags.length > 0 ? tags : undefined,
@@ -32,7 +32,7 @@ export function VisibilityBarSection({ brandId }: { brandId: string | undefined 
 	});
 
 	// Keep the last-known visibility around so we don't flash the skeleton
-	// on a refetch (react-query's isValidating flips true while the new data
+	// on a refetch (react-query's isFetching flips true while the new data
 	// is in flight even though we already have a prior result to show).
 	const lastRef = useRef(filteredVisibility);
 	if (filteredVisibility) lastRef.current = filteredVisibility;
@@ -43,7 +43,7 @@ export function VisibilityBarSection({ brandId }: { brandId: string | undefined 
 	const isEmpty = hasLoaded && stable.totalRuns === 0;
 	// While refetching on an empty previous result, keep showing the skeleton
 	// rather than flashing "no data" between states.
-	const showingSkeleton = !stable || (stable.totalRuns === 0 && isValidatingVisibility);
+	const showingSkeleton = !stable || (stable.totalRuns === 0 && isFetchingVisibility);
 
 	return (
 		<div className="mt-3 grid [&>*]:col-start-1 [&>*]:row-start-1">

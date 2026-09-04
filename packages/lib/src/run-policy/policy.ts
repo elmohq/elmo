@@ -30,6 +30,10 @@ export interface TargetPlan {
 	replication: number;
 }
 
+export function slowestIntervalHours(targets: readonly TargetPlan[]): number {
+	return targets.length > 0 ? Math.max(...targets.map((target) => target.intervalHours)) : 0;
+}
+
 export interface PromptRunPlan {
 	targets: TargetPlan[];
 	/**
@@ -64,33 +68,56 @@ function intervalForRate(runsPerDay: number): number {
 	return 24 / Math.max(1, runsPerDay);
 }
 
+/** Unmetered deployments run every target the brand selects, at the brand cadence. */
+function unlimitedRunPlan(input: ResolveRunPlanInput): PromptRunPlan {
+	const interval = input.brand.delayOverrideHours ?? input.defaultDelayHours;
+	const targets = selectTargetsForBrand(input.scrapeTargets, input.brand.enabledModels).map((config) => ({
+		config,
+		intervalHours: interval,
+		replication: getRunsPerPrompt(),
+	}));
+	return { targets, rescheduleHours: targets.length > 0 ? interval : null };
+}
+
+/**
+ * A pick always means the ungrounded target: the grounded one is sold from the
+ * premium pool, so picking a premium model must not quietly buy the expensive
+ * call. A picked platform that isn't configured on this instance drops out.
+ */
+function standardTargets(input: ResolveRunPlanInput, intervalHours: number, replication: number): TargetPlan[] {
+	return resolveBrandPicks(input.entitlements, input.brand, input.scrapeTargets)
+		.map((model) => input.scrapeTargets.find((t) => t.model === model && !isGroundedApiTarget(t)))
+		.filter((config) => config !== undefined)
+		.map((config) => ({ config, intervalHours, replication }));
+}
+
+/**
+ * Each prompt/model pair the org has spent a pool slot on runs the model's
+ * grounded target, which costs an order of magnitude more than the same model
+ * ungrounded and so is never a platform pick.
+ */
+function premiumTargets(input: ResolveRunPlanInput, intervalHours: number): TargetPlan[] {
+	if (input.entitlements.premiumPool <= 0) return [];
+	return input.prompt.premiumModels
+		.map((model) => input.scrapeTargets.find((t) => t.model === model && isGroundedApiTarget(t)))
+		.filter((config) => config !== undefined)
+		.map((config) => ({ config, intervalHours, replication: 1 }));
+}
+
 export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan {
 	const { entitlements } = input;
 
-	// Unmetered deployments run every target the brand selects, at the brand
-	// cadence. Read off the entitlements rather than a separately-passed
+	// Read "unmetered" off the entitlements rather than a separately-passed
 	// deployment mode: the two came from different places (one from
 	// @workspace/deployment, one from the environment the entitlement query
 	// read), and a worker whose mode said "not cloud" while the org's
 	// entitlements said otherwise would quietly run a paying customer on every
 	// configured platform instead of the four they bought.
-	if (entitlements.unlimited) {
-		const interval = input.brand.delayOverrideHours ?? input.defaultDelayHours;
-		const targets = selectTargetsForBrand(input.scrapeTargets, input.brand.enabledModels).map((config) => ({
-			config,
-			intervalHours: interval,
-			replication: getRunsPerPrompt(),
-		}));
-		return { targets, rescheduleHours: targets.length > 0 ? interval : null };
-	}
+	if (entitlements.unlimited) return unlimitedRunPlan(input);
 
 	if (!entitlements.trackingActive || input.withinPromptPool === false) {
 		return { targets: [], rescheduleHours: null };
 	}
-
-	const targets: TargetPlan[] = [];
-
-	const picks = resolveBrandPicks(entitlements, input.brand, input.scrapeTargets);
 
 	// A cadence override may only slow sampling below the plan rate. The write
 	// path enforces the same floor, but a stored override can be faster than
@@ -99,27 +126,15 @@ export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan 
 	// "sample me less often", which is not a statement about a particular tier.
 	const overrideHours = input.brand.delayOverrideHours;
 	const slowerOf = (planInterval: number) => Math.max(overrideHours ?? planInterval, planInterval);
-	const standardInterval = slowerOf(intervalForRate(entitlements.standardRunsPerDay ?? 1));
-	const premiumInterval = slowerOf(intervalForRate(entitlements.premiumRunsPerDay));
-	const replication = entitlements.replication ?? 1;
-	for (const model of picks) {
-		// A pick always means the ungrounded target: the grounded one is sold from
-		// the premium pool below, so picking a premium model must not quietly buy
-		// the expensive call.
-		const config = input.scrapeTargets.find((t) => t.model === model && !isGroundedApiTarget(t));
-		if (!config) continue; // picked platform not configured on this instance
-		targets.push({ config, intervalHours: standardInterval, replication });
-	}
 
-	// The premium tier: each prompt/model pair the org has spent a slot on runs
-	// the model's grounded target, which costs an order of magnitude more than
-	// the same model ungrounded and so is never a platform pick.
-	if (entitlements.premiumPool > 0) {
-		for (const model of input.prompt.premiumModels) {
-			const config = input.scrapeTargets.find((t) => t.model === model && isGroundedApiTarget(t));
-			if (config) targets.push({ config, intervalHours: premiumInterval, replication: 1 });
-		}
-	}
+	const targets = [
+		...standardTargets(
+			input,
+			slowerOf(intervalForRate(entitlements.standardRunsPerDay ?? 1)),
+			entitlements.replication ?? 1,
+		),
+		...premiumTargets(input, slowerOf(intervalForRate(entitlements.premiumRunsPerDay))),
+	];
 
 	if (targets.length === 0) return { targets, rescheduleHours: null };
 	return { targets, rescheduleHours: Math.min(...targets.map((t) => t.intervalHours)) };
@@ -183,6 +198,26 @@ export function defaultPlatformPicks(entitlements: Entitlements, scrapeTargets: 
  */
 export function targetKey(config: Pick<ModelConfig, "model" | "provider" | "webSearch">): string {
 	return `${config.model}::${config.provider}::${config.webSearch ? "web" : "base"}`;
+}
+
+export interface LastRunRow {
+	model: string;
+	/** Nullable on the column: a row without one predates target keying. */
+	provider: string | null;
+	webSearchEnabled: boolean;
+	lastRunAt: Date | string;
+}
+
+export function lastRunsByTargetKey(rows: readonly LastRunRow[]): Map<string, Date> {
+	const byKey = new Map<string, Date>();
+	for (const row of rows) {
+		if (!row.provider) continue;
+		byKey.set(
+			targetKey({ model: row.model, provider: row.provider, webSearch: row.webSearchEnabled }),
+			new Date(row.lastRunAt),
+		);
+	}
+	return byKey;
 }
 
 /**

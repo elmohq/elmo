@@ -1,6 +1,6 @@
 import type { WriteDenialCode } from "@workspace/lib/entitlements";
 
-export interface OrganizationBrand {
+interface OrganizationBrand {
 	id: string;
 	slug: string | null;
 	name: string;

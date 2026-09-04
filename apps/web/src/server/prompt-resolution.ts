@@ -52,31 +52,37 @@ export async function resolveFilteredPrompts(
 		.from(prompts)
 		.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true)));
 
-	const tagFilter = opts.tags?.split(",").filter(Boolean) || [];
-	const search = opts.search;
+	const tagFilter = parseTagFilter(opts.tags);
+	const search = opts.search?.toLowerCase();
 
 	return allPrompts
-		.filter((p) => {
-			const userTags = p.tags || [];
-
-			// Tag filter — match getPromptsSummaryFn: a prompt's effective tags
-			// are its user tags plus exactly one system tag reflecting its
-			// effective branded status.
-			if (tagFilter.length > 0) {
-				const { isBranded } = getEffectiveBrandedStatus(p.systemTags || [], userTags);
-				const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
-				const effectiveTags = userTags.includes(systemTag) ? userTags : [...userTags, systemTag];
-				if (!tagFilter.some((t) => effectiveTags.includes(t))) return false;
-			}
-
-			if (search && !p.value.toLowerCase().includes(search.toLowerCase())) return false;
-
-			return true;
-		})
+		.filter((p) => matchesTagFilter(p, tagFilter) && (!search || p.value.toLowerCase().includes(search)))
 		.map((p) => ({
 			id: p.id,
 			value: p.value,
 			systemTags: p.systemTags || [],
 			tags: p.tags || [],
 		}));
+}
+
+export function parseTagFilter(tags: string | undefined): string[] {
+	return tags?.split(",").filter(Boolean) || [];
+}
+
+/**
+ * Matches getPromptsSummaryFn: a prompt's effective tags are its user tags plus
+ * exactly one system tag reflecting its effective branded status.
+ */
+function matchesTagFilter(
+	prompt: { systemTags: string[] | null; tags: string[] | null },
+	tagFilter: string[],
+): boolean {
+	if (tagFilter.length === 0) return true;
+
+	const userTags = prompt.tags || [];
+	const { isBranded } = getEffectiveBrandedStatus(prompt.systemTags || [], userTags);
+	const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
+	const effectiveTags = userTags.includes(systemTag) ? userTags : [...userTags, systemTag];
+
+	return tagFilter.some((t) => effectiveTags.includes(t));
 }

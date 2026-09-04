@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import { getOpportunitiesFn } from "@/server/opportunities-fn";
 
-export const opportunitiesKeys = {
+const opportunitiesKeys = {
 	all: ["opportunities-report"] as const,
 	detail: (brandId: string) => [...opportunitiesKeys.all, brandId] as const,
 };
@@ -30,8 +30,7 @@ export function useOpportunities(brandId?: string) {
 	return {
 		data: query.data,
 		isLoading: query.isLoading,
-		isFetching: query.isFetching,
-		isError: !!query.error,
-		revalidate: query.refetch,
+		error: query.error,
+		refetch: query.refetch,
 	};
 }

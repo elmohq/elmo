@@ -11,8 +11,7 @@ import { oxylabs } from "./registry/oxylabs";
 import { stub } from "./registry/stub";
 import type { ModelConfig, Provider, ProviderAccess } from "./types";
 
-export { STATUS_TARGETS } from "@workspace/config/scrape-targets";
-export { parseScrapeTargets, validateScrapeTargets } from "./config";
+export { validateScrapeTargets } from "./config";
 export { selectTargetsForBrand } from "./runner";
 export type {
 	ModelConfig,

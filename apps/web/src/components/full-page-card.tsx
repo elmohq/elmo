@@ -18,6 +18,50 @@ interface FullPageCardProps {
 	className?: string;
 }
 
+/** The header and body of the card. `hasHeading` decides both whether the
+ *  header renders and how the body is padded, so the two stay in sync. */
+function CardBody({ title, subtitle, children }: Pick<FullPageCardProps, "title" | "subtitle" | "children">) {
+	const hasHeading = Boolean(title || subtitle);
+
+	return (
+		<Card className="my-8">
+			{hasHeading && (
+				<CardHeader className={subtitle ? "text-center" : "text-center grid-rows-1 gap-0"}>
+					{title && <CardTitle className="text-xl">{title}</CardTitle>}
+					{subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+				</CardHeader>
+			)}
+			{children && (
+				<>
+					{hasHeading && <Separator />}
+					<CardContent className={hasHeading ? "" : "flex flex-col items-center space-y-6 py-4 px-12"}>
+						{children}
+					</CardContent>
+				</>
+			)}
+		</Card>
+	);
+}
+
+function BackButton({
+	customBackButton,
+	showBackButton,
+	backButtonHref,
+	backButtonText,
+}: Required<Pick<FullPageCardProps, "showBackButton" | "backButtonHref" | "backButtonText">> &
+	Pick<FullPageCardProps, "customBackButton">) {
+	if (customBackButton) return <div className="flex justify-center">{customBackButton}</div>;
+	if (!showBackButton) return null;
+
+	return (
+		<div className="flex justify-center">
+			<Link to={backButtonHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
+				{backButtonText}
+			</Link>
+		</div>
+	);
+}
+
 export default function FullPageCard({
 	logoHref,
 	title,
@@ -44,31 +88,15 @@ export default function FullPageCard({
 						<Logo />
 					)}
 				</div>
-				<Card className="my-8">
-					{(title || subtitle) && (
-						<CardHeader className={subtitle ? "text-center" : "text-center grid-rows-1 gap-0"}>
-							{title && <CardTitle className="text-xl">{title}</CardTitle>}
-							{subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
-						</CardHeader>
-					)}
-					{children && (
-						<>
-							{(title || subtitle) && <Separator />}
-							<CardContent className={title || subtitle ? "" : "flex flex-col items-center space-y-6 py-4 px-12"}>
-								{children}
-							</CardContent>
-						</>
-					)}
-				</Card>
-				{customBackButton ? (
-					<div className="flex justify-center">{customBackButton}</div>
-				) : showBackButton ? (
-					<div className="flex justify-center">
-						<Link to={backButtonHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
-							{backButtonText}
-						</Link>
-					</div>
-				) : null}
+				<CardBody title={title} subtitle={subtitle}>
+					{children}
+				</CardBody>
+				<BackButton
+					customBackButton={customBackButton}
+					showBackButton={showBackButton}
+					backButtonHref={backButtonHref}
+					backButtonText={backButtonText}
+				/>
 			</div>
 		</div>
 	);

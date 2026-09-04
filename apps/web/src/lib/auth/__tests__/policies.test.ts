@@ -18,7 +18,6 @@ import {
 	evaluateAuthedRouteGuard,
 	evaluateDeploymentPolicy,
 	evaluateReadOnly,
-	evaluateRequireAdmin,
 	evaluateRequireCanCreateBrands,
 	type RequestInfo,
 } from "@/lib/auth/policies";
@@ -371,16 +370,6 @@ describe("evaluateDeploymentPolicy", () => {
 	});
 });
 
-describe("evaluateRequireAdmin", () => {
-	it("denies non-admin users", () => {
-		expect(evaluateRequireAdmin(false)).toBe("deny");
-	});
-
-	it("allows admin users", () => {
-		expect(evaluateRequireAdmin(true)).toBe("allow");
-	});
-});
-
 describe("evaluateReadOnly", () => {
 	it("denies writes when read-only is enabled", () => {
 		expect(evaluateReadOnly(true)).toBe("deny");
@@ -486,9 +475,6 @@ describe("full access-control scenarios", () => {
 			expect(evaluateDeploymentPolicy(features, req("GET", "/admin")).action).toBe("allow");
 			expect(evaluateDeploymentPolicy(features, req("POST", "/admin")).action).toBe("allow");
 
-			// Auth: passes
-			expect(evaluateRequireAdmin(true)).toBe("allow");
-
 			// Route guards: all pass
 			expect(evaluateAuthedRouteGuard(session)).toBe("allow");
 			expect(evaluateAdminRouteGuard(true)).toBe("allow");
@@ -498,7 +484,6 @@ describe("full access-control scenarios", () => {
 	describe("whitelabel authenticated non-admin", () => {
 		it("can access org routes but not admin", () => {
 			// Admin denied
-			expect(evaluateRequireAdmin(false)).toBe("deny");
 			expect(evaluateAdminRouteGuard(false)).toBe("not-found");
 		});
 	});

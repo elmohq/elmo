@@ -4,32 +4,17 @@
  */
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
-import { ApiError } from "@/lib/api/handler";
-import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
-import type { Principal } from "@/lib/auth/api-auth";
+import { brandScopeCondition, requireBrandInScope, requirePromptInScope } from "@/lib/api/scope";
 import {
 	bulkPromptInputSchema,
 	createPrompts,
 	listPrompts,
 	MAX_PROMPT_BATCH,
 	promptUpdateFields,
-	requirePrompt,
 	updatePrompt,
 } from "@/server/prompts-core";
 import { listBrandTags } from "@/server/tags-core";
 import { brandIdArg, defineTool, promptIdArg } from "./define";
-
-/** A prompt in another tenant is reported exactly as one that doesn't exist,
- * which is why both failures raise the same error. */
-async function brandForPrompt(auth: Principal, promptId: string) {
-	const notFound = () => new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
-	const prompt = await requirePrompt(promptId).catch(() => {
-		throw notFound();
-	});
-	return requireBrandInScope(auth, prompt.brandId).catch(() => {
-		throw notFound();
-	});
-}
 
 export const listPromptsTool = defineTool({
 	name: "list_prompts",
@@ -106,7 +91,7 @@ export const updatePromptTool = defineTool({
 		tags: promptUpdateFields.tags,
 	},
 	run: async ({ auth }, args) => {
-		const brand = await brandForPrompt(auth, args.promptId);
+		const { brand } = await requirePromptInScope(auth, args.promptId);
 		const { promptId, ...changes } = args;
 		return updatePrompt(brand, promptId, changes);
 	},

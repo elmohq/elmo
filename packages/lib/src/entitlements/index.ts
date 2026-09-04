@@ -1,4 +1,3 @@
-export type { Entitlements } from "@workspace/config/entitlements";
 export {
 	assertAllowed,
 	assertCadenceAllowed,

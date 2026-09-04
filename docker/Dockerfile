@@ -17,9 +17,6 @@ COPY apps/worker/package.json ./apps/worker/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/config/package.json ./packages/config/
 COPY packages/lib/package.json ./packages/lib/
-COPY packages/local/package.json ./packages/local/
-COPY packages/whitelabel/package.json ./packages/whitelabel/
-COPY packages/cloud/package.json ./packages/cloud/
 COPY packages/deployment/package.json ./packages/deployment/
 COPY packages/og/package.json ./packages/og/
 COPY packages/api-spec/package.json ./packages/api-spec/
@@ -38,26 +35,33 @@ COPY --from=deps /app/apps/worker/node_modules ./apps/worker/node_modules
 COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
 COPY --from=deps /app/packages/config/node_modules ./packages/config/node_modules
 COPY --from=deps /app/packages/lib/node_modules ./packages/lib/node_modules
-COPY --from=deps /app/packages/local/node_modules ./packages/local/node_modules
-COPY --from=deps /app/packages/whitelabel/node_modules ./packages/whitelabel/node_modules
-COPY --from=deps /app/packages/cloud/node_modules ./packages/cloud/node_modules
 COPY --from=deps /app/packages/deployment/node_modules ./packages/deployment/node_modules
 COPY --from=deps /app/packages/og/node_modules ./packages/og/node_modules
 
 # Copy source code
 COPY . .
 
+# The web bundle and the two pruned deployments below read the same tree and
+# write nothing the others read, so they are separate stages: BuildKit runs
+# them concurrently instead of spending the bundle's minute before starting on
+# the deploys.
+
+# Web application bundle
+FROM builder AS web-build
+
 # Build arguments for VITE_ env vars (baked into client bundle)
 ARG DEPLOYMENT_MODE=local
 ARG VITE_DEPLOYMENT_MODE=${DEPLOYMENT_MODE}
 ENV VITE_DEPLOYMENT_MODE=${VITE_DEPLOYMENT_MODE}
 
-# Build the web application (increase heap for large bundles)
 RUN pnpm --filter @workspace/web build
 
-# Create pruned standalone deployments (only each package's own deps)
+# Pruned standalone deployments (only each package's own deps)
 # --legacy: allows deploy without inject-workspace-packages (which breaks Alpine Docker builds)
+FROM builder AS worker-deploy
 RUN pnpm --filter @workspace/worker deploy --legacy /deploy/worker
+
+FROM builder AS lib-deploy
 RUN pnpm --filter @workspace/lib deploy --legacy /deploy/lib
 
 # Runner stage for web app (Nitro)
@@ -75,7 +79,7 @@ COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Copy Nitro output - this is the entire server bundle
-COPY --from=builder --chown=elmo:nodejs /app/apps/web/.output ./.output
+COPY --from=web-build --chown=elmo:nodejs /app/apps/web/.output ./.output
 
 USER elmo
 
@@ -90,7 +94,7 @@ CMD ["node", ".output/server/index.mjs"]
 FROM base AS migrate
 WORKDIR /app
 
-COPY --from=builder /deploy/lib ./
+COPY --from=lib-deploy /deploy/lib ./
 
 CMD ["npx", "drizzle-kit", "migrate"]
 
@@ -106,7 +110,7 @@ RUN adduser --system --uid 1001 worker
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-COPY --from=builder --chown=worker:nodejs /deploy/worker ./
+COPY --from=worker-deploy --chown=worker:nodejs /deploy/worker ./
 
 USER worker
 

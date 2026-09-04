@@ -3,7 +3,7 @@
 // this from a client module would bloat the browser bundle — keep it confined to
 // server functions. Client code imports types/config from `./domain-categories`.
 
-import { type CitationCategory, FORUM_DOMAINS, inferPageType, isForumDomain } from "./domain-categories";
+import { type CitationCategory, FORUM_DOMAINS, inDomainSet, inferPageType, isForumDomain } from "./domain-categories";
 import { EDITORIAL_DOMAINS } from "./editorial-domains";
 
 const SOCIAL_MEDIA_DOMAINS = new Set([
@@ -484,50 +484,35 @@ const INSTITUTIONAL_DOMAINS = new Set([
 	"govt.nz",
 ]);
 
-/**
- * True if `domain` equals, or is a subdomain of, any entry in `set`. Walks the
- * domain's parent suffixes so lookups stay O(labels) regardless of set size —
- * important for the large editorial set.
- */
-function inDomainSet(domain: string, set: Set<string>): boolean {
-	let d = domain;
-	while (true) {
-		if (set.has(d)) return true;
-		const dot = d.indexOf(".");
-		if (dot === -1) return false;
-		d = d.slice(dot + 1);
-	}
-}
-
-export function isSocialMediaDomain(domain: string): boolean {
+function isSocialMediaDomain(domain: string): boolean {
 	return inDomainSet(domain, SOCIAL_MEDIA_DOMAINS);
 }
 
-export function isPrWireDomain(domain: string): boolean {
+function isPrWireDomain(domain: string): boolean {
 	return inDomainSet(domain, PR_WIRE_DOMAINS);
 }
 
-export function isReviewDomain(domain: string): boolean {
+function isReviewDomain(domain: string): boolean {
 	return inDomainSet(domain, REVIEW_DOMAINS);
 }
 
-export function isEcommerceDomain(domain: string): boolean {
+function isEcommerceDomain(domain: string): boolean {
 	return inDomainSet(domain, ECOMMERCE_DOMAINS);
 }
 
-export function isDeveloperDomain(domain: string): boolean {
+function isDeveloperDomain(domain: string): boolean {
 	return inDomainSet(domain, DEVELOPER_DOMAINS);
 }
 
-export function isReferenceDomain(domain: string): boolean {
+function isReferenceDomain(domain: string): boolean {
 	return inDomainSet(domain, REFERENCE_DOMAINS);
 }
 
-export function isEditorialDomain(domain: string): boolean {
+function isEditorialDomain(domain: string): boolean {
 	return inDomainSet(domain, EDITORIAL_DOMAIN_SET);
 }
 
-export function isInstitutionalDomain(domain: string): boolean {
+function isInstitutionalDomain(domain: string): boolean {
 	if (inDomainSet(domain, INSTITUTIONAL_DOMAINS)) return true;
 	const parts = domain.split(".");
 	if (parts.length < 2) return false;
@@ -541,29 +526,29 @@ export function isInstitutionalDomain(domain: string): boolean {
 	return false;
 }
 
+/** Tried in order; the first match wins. Forums (incl. community.X / forums.X
+ *  subdomains) lead so a forum on an ecommerce/editorial site isn't miscounted
+ *  as a store. */
+const DOMAIN_CATEGORY_CHECKS: [(domain: string) => boolean, CitationCategory][] = [
+	[isForumDomain, "social"],
+	[isPrWireDomain, "pr"],
+	[isReviewDomain, "reviews"],
+	[isEcommerceDomain, "ecommerce"],
+	[isSocialMediaDomain, "social"],
+	[isDeveloperDomain, "developer"],
+	[isReferenceDomain, "reference"],
+	[isEditorialDomain, "editorial"],
+	[isInstitutionalDomain, "institutional"],
+];
+
 export function categorizeDomain(
 	domain: string,
 	brandDomains: Set<string>,
 	competitorDomains: Set<string>,
 ): CitationCategory {
-	for (const bd of brandDomains) {
-		if (domain === bd || domain.endsWith(`.${bd}`)) return "brand";
-	}
-	for (const cd of competitorDomains) {
-		if (domain === cd || domain.endsWith(`.${cd}`)) return "competitor";
-	}
-	// Forums (incl. community.X / forums.X subdomains) win over the generic lists
-	// below so a forum on an ecommerce/editorial site isn't miscounted as a store.
-	if (isForumDomain(domain)) return "social";
-	if (isPrWireDomain(domain)) return "pr";
-	if (isReviewDomain(domain)) return "reviews";
-	if (isEcommerceDomain(domain)) return "ecommerce";
-	if (isSocialMediaDomain(domain)) return "social";
-	if (isDeveloperDomain(domain)) return "developer";
-	if (isReferenceDomain(domain)) return "reference";
-	if (isEditorialDomain(domain)) return "editorial";
-	if (isInstitutionalDomain(domain)) return "institutional";
-	return "other";
+	if (inDomainSet(domain, brandDomains)) return "brand";
+	if (inDomainSet(domain, competitorDomains)) return "competitor";
+	return DOMAIN_CATEGORY_CHECKS.find(([matches]) => matches(domain))?.[1] ?? "other";
 }
 
 /**

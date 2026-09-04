@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getPromptStatsFn } from "@/server/prompts";
 
-export const promptStatsKeys = {
+const promptStatsKeys = {
 	all: ["prompt-stats"] as const,
 	detail: (promptId: string, days: number) => [...promptStatsKeys.all, promptId, days] as const,
 };
@@ -15,17 +15,13 @@ export function usePromptStats(promptId?: string, options?: { days?: number }) {
 		enabled: !!promptId,
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,
-		placeholderData: (prev) => prev, // Keep previous data while refetching
+		placeholderData: (prev) => prev,
 	});
 
 	return {
 		data: query.data,
-		promptStats: query.data,
 		isLoading: query.isLoading,
-		isError: query.error,
-		revalidate: query.refetch,
-		// Convenience accessors (match Next.js hook)
-		prompt: query.data?.prompt,
-		aggregations: query.data?.aggregations,
+		error: query.error,
+		refetch: query.refetch,
 	};
 }

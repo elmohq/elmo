@@ -8,7 +8,7 @@
  *
  * Stripe prices are referenced by lookup key (stripePlanLookupKey /
  * PREMIUM_ADDON_LOOKUP_KEYS) rather than per-environment price-ID env vars;
- * packages/cloud/scripts/bootstrap-stripe.ts provisions any Stripe account (test or live)
+ * packages/deployment/scripts/bootstrap-stripe.ts provisions any Stripe account (test or live)
  * with these exact keys.
  */
 
@@ -134,7 +134,7 @@ export const MAX_STANDARD_RUNS_PER_DAY = 7;
 /** Dunning: how long past_due keeps tracking alive before it pauses. */
 export const PAST_DUE_GRACE_DAYS = 7;
 
-/** Extra premium prompt/model slots: $5 each per month, Pro and Business only. */
+/** Extra premium prompt/model slots, on the plans that sell the tier. */
 export const PREMIUM_ADDON_MONTHLY_USD = 5;
 
 /** Annual = 10× monthly (two months free). */
@@ -231,6 +231,17 @@ export function isPlanKey(value: string): value is PlanKey {
 	return value in PLANS;
 }
 
+export function sellsPremium(plan: PlanDefinition): boolean {
+	return plan.premiumIncluded > 0 || plan.premiumAddonAvailable;
+}
+
+export function premiumPlanNames(): string {
+	const names = Object.values(PLANS)
+		.filter(sellsPremium)
+		.map((plan) => plan.name);
+	return new Intl.ListFormat("en", { type: "conjunction" }).format(names);
+}
+
 /**
  * Whether extra premium slots can be purchased for a resolved plan key. Custom
  * plans always may; no plan means nothing to attach the add-on to.
@@ -249,7 +260,7 @@ export function planDisplayName(planKey: PlanKey | "custom" | null): string {
 /**
  * Stripe price lookup key for a plan/interval. The @better-auth/stripe plugin
  * resolves these to price IDs at checkout time, so the same code works against
- * any Stripe account bootstrapped with packages/cloud/scripts/bootstrap-stripe.ts.
+ * any Stripe account bootstrapped with packages/deployment/scripts/bootstrap-stripe.ts.
  */
 export function stripePlanLookupKey(plan: PlanKey, interval: BillingInterval): string {
 	return `elmo_cloud_${plan}_${interval}`;
@@ -376,7 +387,7 @@ export function planPlatformBreakdown(plan: PlanDefinition): PlanPlatformBreakdo
 	// A plan either sells the premium tier or it doesn't; when it does, the whole
 	// tier comes with it. Narrowing it to the plan's pick menu would drop the
 	// models that are premium precisely because they are too dear to pick.
-	const hasPremium = plan.premiumIncluded > 0 || plan.premiumAddonAvailable;
+	const hasPremium = sellsPremium(plan);
 
 	return {
 		// A plan with a single option has nothing to choose, so it names it.

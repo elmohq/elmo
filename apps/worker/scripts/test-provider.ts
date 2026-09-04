@@ -13,7 +13,8 @@
 
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { getModelMeta } from "@workspace/config/models";
-import { getProvider, parseScrapeTargets, type ScrapeResult, STATUS_TARGETS } from "@workspace/lib/providers";
+import { parseScrapeTargets, STATUS_TARGETS } from "@workspace/config/scrape-targets";
+import { getProvider, type ScrapeResult } from "@workspace/lib/providers";
 import { extractCitations, extractTextContent } from "@workspace/lib/text-extraction";
 import { escapeGitHubSummaryTableCell } from "./github-summary";
 
@@ -405,34 +406,39 @@ function writeGitHubSummary(results: TargetResult[]) {
 		"|--------|--------|---------|-------|------|------------|-----------|-------------|------------|---------------|",
 	];
 
-	for (const r of results) {
-		const status = r.status === "pass" ? ":white_check_mark:" : ":x:";
-		const error = r.error ? escapeGitHubSummaryTableCell(r.error.slice(0, 100)) : "";
-		const rawKB = (r.rawOutputBytes / 1024).toFixed(1) + " KB";
-		const sample = r.sampleOutput
-			? `<details><summary>Show</summary><pre>${escapeGitHubSummaryTableCell(r.sampleOutput)}</pre></details>`
-			: "";
-		lines.push(
-			`| ${status} | <code>${escapeGitHubSummaryTableCell(r.target)}</code> | ${formatLatency(r.latency)} | ${error} | ${r.textLength} | ${rawKB} | ${r.citations} | ${r.webQueries} | ${r.webSearch ? "enabled" : "disabled"} | ${sample} |`,
-		);
-	}
-
-	const allIssues = results.flatMap((r) => r.issues.map((i) => ({ target: r.target, ...i })));
-
-	if (allIssues.length > 0) {
-		lines.push("", "### Validation Issues", "");
-		lines.push("| Severity | Target | Field | Issue |");
-		lines.push("|----------|--------|-------|-------|");
-		for (const i of allIssues) {
-			const icon = i.severity === "error" ? ":x:" : ":warning:";
-			lines.push(
-				`| ${icon} | <code>${escapeGitHubSummaryTableCell(i.target)}</code> | <code>${escapeGitHubSummaryTableCell(i.field)}</code> | ${escapeGitHubSummaryTableCell(i.message)} |`,
-			);
-		}
-	}
-
+	lines.push(...results.map(summaryTableRow));
+	lines.push(...validationIssuesSection(results));
 	lines.push("");
 	appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n"));
+}
+
+function summaryTableRow(r: TargetResult): string {
+	const status = r.status === "pass" ? ":white_check_mark:" : ":x:";
+	const error = r.error ? escapeGitHubSummaryTableCell(r.error.slice(0, 100)) : "";
+	const rawKB = `${(r.rawOutputBytes / 1024).toFixed(1)} KB`;
+	const sample = r.sampleOutput
+		? `<details><summary>Show</summary><pre>${escapeGitHubSummaryTableCell(r.sampleOutput)}</pre></details>`
+		: "";
+
+	return `| ${status} | <code>${escapeGitHubSummaryTableCell(r.target)}</code> | ${formatLatency(r.latency)} | ${error} | ${r.textLength} | ${rawKB} | ${r.citations} | ${r.webQueries} | ${r.webSearch ? "enabled" : "disabled"} | ${sample} |`;
+}
+
+/** Empty when nothing was flagged, so the section header stays off too. */
+function validationIssuesSection(results: TargetResult[]): string[] {
+	const allIssues = results.flatMap((r) => r.issues.map((i) => ({ target: r.target, ...i })));
+	if (allIssues.length === 0) return [];
+
+	return [
+		"",
+		"### Validation Issues",
+		"",
+		"| Severity | Target | Field | Issue |",
+		"|----------|--------|-------|-------|",
+		...allIssues.map(
+			(i) =>
+				`| ${i.severity === "error" ? ":x:" : ":warning:"} | <code>${escapeGitHubSummaryTableCell(i.target)}</code> | <code>${escapeGitHubSummaryTableCell(i.field)}</code> | ${escapeGitHubSummaryTableCell(i.message)} |`,
+		),
+	];
 }
 
 async function main() {

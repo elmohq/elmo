@@ -4,7 +4,8 @@
  * stay in separate files.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { providersByModel } from "@workspace/config/scrape-targets";
+import { parseScrapeTargets, providersByModel } from "@workspace/config/scrape-targets";
+import { getDeployment } from "@workspace/deployment";
 import { getDefaultDelayHours, getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
@@ -13,7 +14,6 @@ import type { ModelConfig, ProviderAccess } from "@workspace/lib/providers";
 import {
 	describeProvider,
 	isGroundedApiTarget,
-	parseScrapeTargets,
 	resolveProviderAccess,
 	selectTargetsForBrand,
 } from "@workspace/lib/providers";
@@ -24,11 +24,10 @@ import { z } from "zod";
 import {
 	canEditPlatformPicks,
 	requireAuthSession,
-	requireBrandAccess,
+	requireBrandSession,
 	requireOrgAccess,
 	requirePlatformPicksEditable,
 } from "@/lib/auth/helpers";
-import { getDeployment } from "@/lib/config/server";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { addedPlatforms } from "@/lib/run-config-changes";
 
@@ -196,8 +195,7 @@ function picksEditable(available: PlatformOption[], picks: number | null): boole
 export const getModelPickerStateFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }): Promise<ModelPickerState> => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
 		if (!brand) throw new Error("Brand not found");
@@ -278,8 +276,7 @@ export const updateEnabledModelsFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
 		requirePlatformPicksEditable();
 

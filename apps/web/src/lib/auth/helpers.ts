@@ -2,10 +2,10 @@
  * Server-side auth helpers backed by better-auth.
  */
 import { getRequestHeaders } from "@tanstack/react-start/server";
+import { getDeployment } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
 import { brands, member, organization } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
-import { getDeployment } from "@/lib/config/server";
 import { auth } from "./server";
 
 type SessionLike = { user: { id: string; [key: string]: unknown }; session?: unknown };
@@ -42,7 +42,7 @@ export function requirePlatformPicksEditable(): void {
 	}
 }
 
-export async function checkOrgAccess(userId: string, orgId: string): Promise<boolean> {
+async function checkOrgAccess(userId: string, orgId: string): Promise<boolean> {
 	const [row] = await db
 		.select({ id: member.id })
 		.from(member)
@@ -76,6 +76,12 @@ export async function requireBrandAccess(userId: string, brandId: string): Promi
 	if (!(await checkBrandAccess(userId, brandId))) {
 		throw new Error("Forbidden: No access to this brand");
 	}
+}
+
+export async function requireBrandSession(brandId: string) {
+	const session = await requireAuthSession();
+	await requireBrandAccess(session.user.id, brandId);
+	return session;
 }
 
 /**

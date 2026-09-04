@@ -9,6 +9,7 @@
 import { ABORTED_SSR_STREAM, expect, failedResource, test } from "../../test";
 import { TEST_BRAND_ID, TEST_USER, brandUrl, organizationUrl } from "../../fixtures";
 import { userExists } from "../../session";
+import { openAccountMenu } from "../../interactions";
 
 const SECOND_USER = {
   email: "second-user@test.local",
@@ -35,6 +36,12 @@ test.describe("Local signup is closed after bootstrap", () => {
     consoleErrors.allow(ABORTED_SSR_STREAM);
     await page.goto("/auth/register");
     await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
+  });
+
+  test("the bare app URL opens on sign-in once an account exists", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
+    await expect(page.getByLabel("Email")).toBeVisible({ timeout: 30_000 });
   });
 
   test("sign in is email and password, with no cloud provider options", async ({ page }) => {
@@ -67,7 +74,7 @@ test.describe("Local features", () => {
       0,
     );
 
-    await page.getByRole("button", { name: "Account and organizations" }).click();
+    await openAccountMenu(page);
     await expect(page.getByRole("menu").locator('a[href="/reports"]')).toBeVisible({ timeout: 30_000 });
 
     await page.goto(`${organizationUrl()}/settings`);
@@ -126,5 +133,14 @@ test.describe("Local features", () => {
     const manifest = (await response.json()) as { short_name: string; icons: { src: string }[] };
     expect(manifest.short_name).toBe("Elmo");
     expect(manifest.icons.some((icon) => icon.src.startsWith("/icons/elmo-icon"))).toBe(true);
+  });
+
+  test("an installed app launches at the app root, not the manifest's own directory", async ({ request }) => {
+    const response = await request.get("/api/manifest");
+    const manifest = (await response.json()) as { start_url: string; scope: string };
+
+    const manifestUrl = "https://elmo.test/api/manifest";
+    expect(new URL(manifest.start_url, manifestUrl).pathname).toBe("/");
+    expect(new URL(manifest.scope, manifestUrl).pathname).toBe("/");
   });
 });
