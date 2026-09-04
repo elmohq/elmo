@@ -39,8 +39,7 @@ export function Community() {
 						Talk to us!
 					</h2>
 					<p className="mt-5 max-w-[58ch] text-pretty text-zinc-600 md:text-lg">
-						Hop into our Discord to ask questions and get help straight from the maintainers. We'd love to hear from
-						you.
+						Ask questions and get help straight from the maintainers on Discord.
 					</p>
 					<div className="mt-7 flex flex-wrap items-center gap-3">
 						<a

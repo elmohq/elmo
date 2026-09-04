@@ -58,9 +58,8 @@ export function Hero() {
 							Know How AI Talks About Your Brand
 						</h1>
 						<p className="mt-6 max-w-[58ch] text-pretty text-base text-zinc-600 md:text-lg">
-							Track your brand's visibility across any AI model. Monitor mentions, analyze citations, and benchmark
-							competitors. Run it in our cloud or host it yourself — it's open source either way, so your data stays
-							yours and you'll never get locked in.
+							Track your brand's visibility across any AI model: mentions, citations, and competitor benchmarks. Run it
+							in our cloud or self-host — it's open source, so your data stays yours and you'll never get locked in.
 						</p>
 						<div className="mt-8 flex flex-wrap items-center gap-2">
 							<CloudSignupCTA />

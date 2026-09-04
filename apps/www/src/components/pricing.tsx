@@ -40,8 +40,8 @@ const plans: Plan[] = [
 		features: [
 			"Managed hosting, automatic updates",
 			"Track ChatGPT, Google, Perplexity & more",
-			"Scraped surfaces sampled up to 4× daily",
-			"Premium grounded models on Pro & Business",
+			"We re-check AI answers up to 4× daily",
+			"Models with live web results on Pro & Business",
 			"API access on every plan",
 			"Unlimited seats",
 		],
@@ -68,7 +68,7 @@ const plans: Plan[] = [
 		id: "white-label",
 		tag: "03",
 		name: "White Label",
-		desc: "Provide AEO for all of your customers.",
+		desc: "Offer AEO tracking to your clients.",
 		price: "Custom",
 		priceLabel: "",
 		features: [
@@ -108,7 +108,7 @@ export function Pricing({ as: Heading = "h2" }: { as?: "h1" | "h2" } = {}) {
 				<div>
 					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ PRICING</p>
 					<Heading className="mt-4 max-w-[28ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-						Run it in our cloud, self-host it, or white-label it for your customers.
+						Run it in our cloud, self-host it, or white-label it — you choose.
 					</Heading>
 				</div>
 
