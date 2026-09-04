@@ -37,6 +37,11 @@ test.describe("API keys", () => {
 
     const name = `Playwright key ${Date.now()}`;
     await openCreateForm(page, name);
+    // A real click, because the failure this guards against was the dialog
+    // painting over the open listbox and swallowing them.
+    await page.locator("#key-expiry").click();
+    await page.getByRole("option", { name: "In 30 days", exact: true }).click();
+    await expect(page.locator("#key-expiry")).toContainText("In 30 days");
     await page.getByRole("tab", { name: "Read only", exact: true }).click();
     await tickScope(page, "Prompts", "write");
     await page.getByRole("tab", { name: "Specific brands", exact: true }).click();
