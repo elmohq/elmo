@@ -1,7 +1,8 @@
-import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
 import { type Citation, cloroAnswer, extractCitationsFromCloro, extractTextFromCloro } from "../../text-extraction";
+import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ScrapeResult } from "../types";
+import { failureDetails, isTransientStatus, pollDelay, queriesFromKeys, responseError, sleep } from "./scrape-shared";
 
 // Cloro monitors live AI answer engines. Each Elmo model maps to a Cloro task
 // type: the chatbots (ChatGPT, Perplexity, Copilot, Gemini) and Google AI Mode
@@ -47,8 +48,6 @@ const CLORO_GENERATION_TIMEOUT_MS = 10 * 60 * 1000;
  */
 const CLORO_TOTAL_TIMEOUT_MS = 60 * 60 * 1000;
 
-const CLORO_POLL_BASE_DELAY_MS = 2000;
-const CLORO_POLL_MAX_DELAY_MS = 10_000;
 // Cloro localizes every answer; default to a US audience.
 const CLORO_COUNTRY = "US";
 
@@ -71,28 +70,6 @@ function requestHeaders(): Record<string, string> {
 		Authorization: `Bearer ${getCredential("CLORO_API_KEY")}`,
 		"Content-Type": "application/json",
 	};
-}
-
-function pollDelay(attempt: number): number {
-	return Math.min(CLORO_POLL_BASE_DELAY_MS * 2 ** Math.floor(attempt / 5), CLORO_POLL_MAX_DELAY_MS);
-}
-
-function sleep(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function isTransientStatus(status: number): boolean {
-	return status === 408 || status === 429 || status >= 500;
-}
-
-async function responseError(res: Response): Promise<string> {
-	return `${res.status}: ${(await res.text()).slice(0, 500)}`.trim();
-}
-
-function failureDetails(task: CloroTask): string {
-	if (task.error === undefined || task.error === null) return "";
-	const serialized = typeof task.error === "string" ? task.error : JSON.stringify(task.error);
-	return serialized ? ` (${serialized.slice(0, 500)})` : "";
 }
 
 async function submitTask(taskType: string, payload: Record<string, any>): Promise<CloroTask> {
@@ -140,7 +117,7 @@ async function runAsyncTask(taskType: string, payload: Record<string, any>): Pro
 		const status = latest.task?.status?.toUpperCase();
 		if (status === "COMPLETED") return latest.response ?? {};
 		if (status === "FAILED") {
-			throw new Error(`Cloro task ${taskId} failed${failureDetails(latest.task!)}`);
+			throw new Error(`Cloro task ${taskId} failed${failureDetails(latest.task?.error)}`);
 		}
 
 		// An unreported status is treated as running: better to hold a task to
@@ -170,16 +147,7 @@ async function runAsyncTask(taskType: string, payload: Record<string, any>): Pro
 // the provider reported, and the fan-out read path drops verbatim repeats. Its
 // `related_queries` is deliberately not read — those are the follow-up questions
 // Perplexity suggests below an answer, not searches it ran.
-function extractWebQueries(answer: Record<string, any>): string[] {
-	for (const key of ["searchQueries", "search_model_queries", "mapSearchQueries"]) {
-		const arr = answer[key];
-		if (Array.isArray(arr)) {
-			const queries = arr.filter((q: any) => typeof q === "string" && q.trim());
-			if (queries.length > 0) return queries;
-		}
-	}
-	return [];
-}
+const CLORO_QUERY_KEYS = ["searchQueries", "search_model_queries", "mapSearchQueries"] as const;
 
 export const cloro: Provider = {
 	id: "cloro",
@@ -187,9 +155,7 @@ export const cloro: Provider = {
 	access: "scraped",
 	docsAnchor: "cloro",
 
-	isConfigured() {
-		return !!getCredential("CLORO_API_KEY");
-	},
+	isConfigured: configuredWhen("CLORO_API_KEY"),
 
 	validateTarget(config: ModelConfig) {
 		if (!CLORO_TASKS[config.model]) {
@@ -216,7 +182,7 @@ export const cloro: Provider = {
 
 		const textContent = extractTextFromCloro(response);
 		const citations: Citation[] = extractCitationsFromCloro(response);
-		const webQueries = extractWebQueries(answer);
+		const webQueries = queriesFromKeys(answer, CLORO_QUERY_KEYS);
 
 		return {
 			rawOutput: response,
@@ -224,7 +190,7 @@ export const cloro: Provider = {
 			// Every Cloro surface web-searches, so surface the queries Cloro
 			// exposed, or mark them unavailable when citations prove a search
 			// happened but no query strings came back.
-			webQueries: webQueries.length > 0 ? webQueries : citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
+			webQueries: reportedWebQueries(webQueries, { searchProven: citations.length > 0 }),
 			citations,
 			modelVersion: typeof answer.model === "string" ? answer.model : undefined,
 		};

@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { Entitlements } from "@workspace/config/entitlements";
 import { targetFilterValue } from "@workspace/config/model-filter";
+import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeployment } from "@workspace/deployment";
 import { isValidSlug, MAX_SLUG_LENGTH, slugify } from "@workspace/lib/app-urls";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
@@ -18,15 +20,9 @@ import {
 	assertCompetitorCap,
 	assertEnabledModelsAllowed,
 	decideCompetitorCap,
-	type Entitlements,
 	getOrgEntitlements,
 } from "@workspace/lib/entitlements";
-import {
-	isGroundedApiTarget,
-	parseScrapeTargets,
-	resolveProviderAccess,
-	selectTargetsForBrand,
-} from "@workspace/lib/providers";
+import { isGroundedApiTarget, resolveProviderAccess, selectTargetsForBrand } from "@workspace/lib/providers";
 import { defaultPlatformPicks, resolvePromptRunPlan } from "@workspace/lib/run-policy";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
