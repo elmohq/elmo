@@ -7,6 +7,7 @@ import {
 	extractCitationsFromGoogle,
 	extractCitationsFromOpenAI,
 	extractCitationsFromOxylabs,
+	extractRun,
 	extractTextContent,
 	extractTextFromAnthropic,
 	extractTextFromBrightdata,
@@ -16,6 +17,7 @@ import {
 	extractTextFromOpenAI,
 	extractTextFromOxylabs,
 	normalizeCitationTitle,
+	tryExtractTextContent,
 } from "./text-extraction";
 
 /** A minimal DataForSEO AI Optimization "LLM Responses" payload. */
@@ -308,6 +310,76 @@ describe("text-extraction", () => {
 		it("should attempt generic extraction for unknown providers", () => {
 			expect(extractTextContent({ choices: [{ message: { content: "generic" } }] }, "unknown")).toBe("generic");
 			expect(extractTextContent({ answer_markdown: "md content" }, "unknown")).toBe("md content");
+		});
+	});
+
+	describe("tryExtractTextContent", () => {
+		// Every shape a provider answers with when its payload holds no answer. The
+		// reader-facing placeholder must never be mistaken for the answer itself.
+		const emptyPayloads: [label: string, providerOrEngine: string, rawOutput: unknown][] = [
+			["openai", "openai-api", {}],
+			["openai by legacy engine", "chatgpt", {}],
+			["anthropic", "anthropic-api", {}],
+			["anthropic by legacy engine", "claude", null],
+			["mistral", "mistral-api", {}],
+			["dataforseo serp", "dataforseo", {}],
+			["dataforseo by legacy engine", "google-ai-overview", {}],
+			["dataforseo llm responses", "dataforseo", { tasks: [{ result: [{ items: [{ sections: [] }] }] }] }],
+			["dataforseo llm scraper", "dataforseo", { tasks: [{ result: [{ sources: [] }] }] }],
+			["openrouter", "openrouter", {}],
+			["olostep", "olostep", {}],
+			["brightdata", "brightdata", {}],
+			["brightdata with no record", "brightdata", null],
+			["oxylabs", "oxylabs", { results: [{ content: {} }] }],
+			["oxylabs with no content", "oxylabs", {}],
+			["cloro", "cloro", {}],
+			["cloro with no answer", "cloro", null],
+			["an unknown provider", "unknown", {}],
+			["an unknown provider with no payload", "unknown", null],
+		];
+
+		it.each(emptyPayloads)("reports no text for %s", (_label, providerOrEngine, rawOutput) => {
+			expect(extractTextContent(rawOutput, providerOrEngine).trim()).not.toBe("");
+			expect(tryExtractTextContent(rawOutput, providerOrEngine)).toBeNull();
+		});
+
+		it("reports no text when a payload cannot be parsed", () => {
+			expect(tryExtractTextContent({ json_content: "{not json" }, "olostep")).toBeNull();
+		});
+
+		it("reports no text for a blank answer", () => {
+			expect(tryExtractTextContent("   ", "unknown")).toBeNull();
+		});
+
+		it("returns the answer when the payload has one", () => {
+			const rawOutput = { output: [{ type: "message", content: [{ type: "output_text", text: "The answer." }] }] };
+			expect(tryExtractTextContent(rawOutput, "openai-api")).toBe("The answer.");
+		});
+	});
+
+	describe("extractRun", () => {
+		it("extracts an answer and its citations together", () => {
+			const rawOutput = {
+				output: [
+					{
+						type: "message",
+						content: [
+							{
+								type: "output_text",
+								text: "The answer.",
+								annotations: [{ type: "url_citation", url: "https://example.com/a", title: "A" }],
+							},
+						],
+					},
+				],
+			};
+			const run = extractRun(rawOutput, "openai-api");
+			expect(run.textContent).toBe("The answer.");
+			expect(run.citations.map((citation) => citation.url)).toEqual(["https://example.com/a"]);
+		});
+
+		it("yields nothing to store for an empty payload", () => {
+			expect(extractRun({}, "openai-api")).toEqual({ textContent: null, citations: [] });
 		});
 	});
 

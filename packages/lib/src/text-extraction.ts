@@ -8,6 +8,13 @@
  * at write time, so these functions are primarily for reading historical data.
  */
 
+/**
+ * Stamped on every run this module parses. Bumping it marks stored text and
+ * citations as no longer what today's parsing would produce, which is what lets
+ * a fix to any provider's shape be replayed over history from `raw_output`.
+ */
+export const EXTRACTOR_VERSION = 1;
+
 // ============================================================================
 // Text extraction by provider
 // ============================================================================
@@ -389,6 +396,38 @@ function tryGenericExtraction(rawOutput: any): string {
 	return "Unknown provider format - cannot extract text content.";
 }
 
+/**
+ * `extractTextContent` answers a reader, so an unreadable payload comes back as
+ * a human-readable placeholder. Storing one of those as a run's text would let
+ * every later layer treat the placeholder as the answer, so extraction for
+ * storage reports absence as null instead.
+ */
+const EXTRACTION_FAILURE_SENTINELS: ReadonlySet<string> = new Set([
+	"Error extracting text content.",
+	"No AI overview content found.",
+	"No content.",
+	"No content in BrightData output.",
+	"No content in Cloro output.",
+	"No content in Oxylabs output.",
+	"No text content found in Anthropic output.",
+	"No text content found in BrightData output.",
+	"No text content found in Cloro output.",
+	"No text content found in DataForSEO LLM output.",
+	"No text content found in DataForSEO Scraper output.",
+	"No text content found in Mistral output.",
+	"No text content found in Olostep output.",
+	"No text content found in OpenAI output.",
+	"No text content found in OpenRouter output.",
+	"No text content found in Oxylabs output.",
+	"Unknown provider format - cannot extract text content.",
+]);
+
+export function tryExtractTextContent(rawOutput: unknown, providerOrEngine: string): string | null {
+	const text = extractTextContent(rawOutput, providerOrEngine);
+	if (!text.trim() || EXTRACTION_FAILURE_SENTINELS.has(text)) return null;
+	return text;
+}
+
 // ============================================================================
 // Citation extraction by provider
 // ============================================================================
@@ -658,4 +697,14 @@ export function extractCitations(rawOutput: any, providerOrEngine: string): Cita
 		default:
 			return [];
 	}
+}
+
+export function extractRun(
+	rawOutput: unknown,
+	providerOrEngine: string,
+): { textContent: string | null; citations: Citation[] } {
+	return {
+		textContent: tryExtractTextContent(rawOutput, providerOrEngine),
+		citations: extractCitations(rawOutput, providerOrEngine),
+	};
 }
