@@ -3,16 +3,17 @@ import { useBranding } from "@/hooks/use-deployment-features";
 
 /**
  * Where this instance answers, for the URLs we hand people to paste elsewhere.
- * Prefers the configured app URL so the server renders the same string the
- * client does; an instance that never set one falls back to the browser.
+ * The configured app URL renders first so the server and the first client pass
+ * agree, then the browser's own origin takes over — a deployment that never set
+ * APP_URL would otherwise tell everyone to call localhost.
  */
 export function useAppOrigin(): string {
 	const configured = useBranding()?.url?.replace(/\/$/, "");
 	const [origin, setOrigin] = useState(configured ?? "");
 
 	useEffect(() => {
-		if (!configured) setOrigin(window.location.origin);
-	}, [configured]);
+		setOrigin(window.location.origin);
+	}, []);
 
 	return origin;
 }

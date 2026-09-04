@@ -228,6 +228,30 @@ export const Local: StoryObj = {
 	},
 };
 
+/** Organization settings — the keys page and the docs beside it */
+export const OrganizationSettings: StoryObj = {
+	render: () => {
+		configureMocks(localConfig, onboardedBrand, authedUser("Local Admin", "admin@localhost", "local-admin"), {
+			isAdmin: true,
+			hasReportAccess: true,
+		});
+
+		return (
+			<SidebarFrame label="Organization settings">
+				<AppSidebar scope="organization" organization={organization} />
+			</SidebarFrame>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText("API Keys")).toBeVisible();
+		// The reference and the connection guide are docs, not settings.
+		await expect(await canvas.findByText("Docs")).toBeVisible();
+		await expect(await canvas.findByText("API")).toBeVisible();
+		await expect(await canvas.findByText("MCP")).toBeVisible();
+	},
+};
+
 /** Demo — read-only preview, seeded user, no admin */
 export const Demo = () => {
 	const demoUser = authedUser("Demo User", "demo@elmohq.com", "demo");

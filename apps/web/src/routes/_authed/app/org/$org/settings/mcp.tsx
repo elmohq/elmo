@@ -3,13 +3,11 @@
  * actually registered, whether writes are served at all — so a whitelabel or
  * air-gapped instance never has to send anybody to elmohq.com to connect.
  */
-import { IconKey } from "@tabler/icons-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { MCP_PATH } from "@workspace/config/constants";
+import { DEFAULT_APP_NAME, MCP_PATH } from "@workspace/config/constants";
 import { orgLinkParams } from "@workspace/lib/app-urls";
 import { Badge } from "@workspace/ui/components/badge";
-import { buttonVariants } from "@workspace/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Card } from "@workspace/ui/components/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { CodeBlock, InlineCode } from "@/components/code-block";
@@ -35,7 +33,7 @@ function clientId(appName: string): string {
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, "-")
 		.replace(/^-|-$/g, "");
-	return slug || "elmo";
+	return slug || "mcp";
 }
 
 function claudeCodeSnippet(id: string, endpoint: string): string {
@@ -78,7 +76,7 @@ function McpSettingsPage() {
 	const branding = useBranding();
 	const origin = useAppOrigin();
 
-	const appName = branding?.name || "Elmo";
+	const appName = branding?.name || DEFAULT_APP_NAME;
 	const endpoint = `${origin}${MCP_PATH}`;
 	const id = clientId(appName);
 
@@ -86,38 +84,27 @@ function McpSettingsPage() {
 		<div className="max-w-4xl space-y-8">
 			<header className="space-y-1">
 				<h1 className="text-3xl font-bold">MCP</h1>
-				<p className="max-w-2xl text-muted-foreground">
-					Connect Claude Code, Cursor, or any other MCP client to {appName}. A connection can reach exactly what the API
-					key it authenticates with can reach — no more.
-				</p>
+				<p className="max-w-2xl text-muted-foreground">Connect any chat bot to {appName}.</p>
 			</header>
 
-			<Card>
-				<CardHeader>
-					<CardTitle>Endpoint</CardTitle>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="flex flex-wrap items-center gap-2">
-						<code className="min-w-0 flex-1 break-all rounded-md border bg-muted/40 px-3 py-2 font-mono text-sm">
-							{endpoint}
-						</code>
-						<CopyButton value={endpoint} label="Copy" />
-					</div>
-					<div className="flex flex-wrap items-center justify-between gap-3">
-						<p className="text-sm text-muted-foreground">
-							Authenticate with <InlineCode>Authorization: Bearer {KEY_PLACEHOLDER}</InlineCode>.
-						</p>
-						<Link
-							to="/app/org/$org/settings/api-keys"
-							params={orgLinkParams(organization)}
-							className={buttonVariants({ variant: "outline", size: "sm" })}
-						>
-							<IconKey className="size-4" />
-							API keys
-						</Link>
-					</div>
-				</CardContent>
-			</Card>
+			<div className="space-y-2">
+				<div className="flex flex-wrap items-center gap-2">
+					<span className="text-sm text-muted-foreground">Endpoint</span>
+					<code className="rounded-md border bg-muted/40 px-2 py-1 font-mono text-sm">{endpoint}</code>
+					<CopyButton value={endpoint} />
+				</div>
+				<p className="text-sm text-muted-foreground">
+					Authenticate with <InlineCode>Authorization: Bearer {KEY_PLACEHOLDER}</InlineCode>, using a key from{" "}
+					<Link
+						to="/app/org/$org/settings/api-keys"
+						params={orgLinkParams(organization)}
+						className="underline underline-offset-4"
+					>
+						API Keys
+					</Link>
+					.
+				</p>
+			</div>
 
 			<section className="space-y-3">
 				<div className="space-y-1">
@@ -129,23 +116,23 @@ function McpSettingsPage() {
 				<Tabs defaultValue="claude-code">
 					<TabsList>
 						<TabsTrigger value="claude-code">Claude Code</TabsTrigger>
-						<TabsTrigger value="json">Cursor & friends</TabsTrigger>
 						<TabsTrigger value="opencode">OpenCode</TabsTrigger>
+						<TabsTrigger value="json">Cursor</TabsTrigger>
 					</TabsList>
 					<TabsContent value="claude-code" className="space-y-2 pt-2">
 						<CodeBlock code={claudeCodeSnippet(id, endpoint)} />
-					</TabsContent>
-					<TabsContent value="json" className="space-y-2 pt-2">
-						<p className="text-sm text-muted-foreground">
-							Cursor reads <InlineCode>~/.cursor/mcp.json</InlineCode>; most other clients take the same shape.
-						</p>
-						<CodeBlock code={jsonConfigSnippet(id, endpoint)} />
 					</TabsContent>
 					<TabsContent value="opencode" className="space-y-2 pt-2">
 						<p className="text-sm text-muted-foreground">
 							In <InlineCode>opencode.json</InlineCode>.
 						</p>
 						<CodeBlock code={openCodeSnippet(id, endpoint)} />
+					</TabsContent>
+					<TabsContent value="json" className="space-y-2 pt-2">
+						<p className="text-sm text-muted-foreground">
+							Cursor reads <InlineCode>~/.cursor/mcp.json</InlineCode>; most other clients take the same shape.
+						</p>
+						<CodeBlock code={jsonConfigSnippet(id, endpoint)} />
 					</TabsContent>
 				</Tabs>
 			</section>
@@ -161,7 +148,7 @@ function McpSettingsPage() {
 					</p>
 				</div>
 				<Card className="gap-0 overflow-hidden py-0">
-					<Table>
+					<Table className="[&_td]:px-4 [&_th]:px-4">
 						<TableHeader>
 							<TableRow className="hover:bg-transparent">
 								<TableHead className="w-[22%]">Tool</TableHead>

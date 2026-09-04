@@ -52,8 +52,8 @@ export const Connect: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		// The endpoint is this deployment's, not a placeholder to fill in.
-		await expect(await canvas.findByText("https://app.elmohq.com/api/mcp")).toBeVisible();
+		// The endpoint is the host the app is served from, not a placeholder to fill in.
+		await expect(await canvas.findByText(`${window.location.origin}/api/mcp`)).toBeVisible();
 		await expect(await canvas.findByText("create_prompts")).toBeVisible();
 		await expect(await canvas.findByText("prompts:write")).toBeVisible();
 	},
@@ -66,8 +66,10 @@ export const OtherClients: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await userEvent.click(await canvas.findByRole("tab", { name: "OpenCode" }));
-		await expect(await canvas.findByText(/opencode.ai\/config.json/)).toBeVisible();
+		// Claude Code leads; the others are one tab away.
+		await expect(await canvas.findByRole("tab", { name: "Claude Code" })).toHaveAttribute("aria-selected", "true");
+		await userEvent.click(await canvas.findByRole("tab", { name: "Cursor" }));
+		await expect(await canvas.findByText(/~\/.cursor\/mcp.json/)).toBeVisible();
 	},
 };
 
@@ -78,9 +80,9 @@ export const Whitelabel: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText("https://visibility.acme.com/api/mcp")).toBeVisible();
-		// Nothing on the page sends a whitelabel customer to the vendor.
-		await expect(canvas.queryByText(/elmohq\.com/)).toBeNull();
+		await expect(await canvas.findByText("Connect any chat bot to Acme Visibility.")).toBeVisible();
+		// Nothing on the page names the vendor.
+		await expect(canvas.queryByText(/elmo/i)).toBeNull();
 	},
 };
 

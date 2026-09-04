@@ -46,7 +46,7 @@ type ScopeProps =
 	| { scope: "organization"; organization: OrganizationSummary }
 	| { scope: "admin" | "account" };
 
-function organizationGroup(organization: OrganizationSummary, features?: FeaturesConfig): NavGroup {
+function organizationGroups(organization: OrganizationSummary, features?: FeaturesConfig): NavGroup[] {
 	const params = orgLinkParams(organization);
 	const items: NavItem[] = [
 		{ title: "Organization", link: { to: "/app/org/$org/settings", params }, icon: IconBriefcase, exact: true },
@@ -61,13 +61,18 @@ function organizationGroup(organization: OrganizationSummary, features?: Feature
 		items.push({ title: "Billing", link: { to: "/app/org/$org/settings/billing", params }, icon: IconCreditCard });
 	}
 
-	items.push(
-		{ title: "API Keys", link: { to: "/app/org/$org/settings/api-keys", params }, icon: IconKey },
-		{ title: "MCP", link: { to: "/app/org/$org/settings/mcp", params }, icon: IconPlugConnected },
-		{ title: "API", link: { to: "/app/org/$org/settings/api", params }, icon: IconCode },
-	);
+	items.push({ title: "API Keys", link: { to: "/app/org/$org/settings/api-keys", params }, icon: IconKey });
 
-	return { label: "Organization Settings", items };
+	return [
+		{ label: "Organization Settings", items },
+		{
+			label: "Docs",
+			items: [
+				{ title: "API", link: { to: "/app/org/$org/settings/api", params }, icon: IconCode },
+				{ title: "MCP", link: { to: "/app/org/$org/settings/mcp", params }, icon: IconPlugConnected },
+			],
+		},
+	];
 }
 
 function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts): NavGroup[] {
@@ -129,7 +134,7 @@ export function AppSidebar(props: ScopeProps) {
 
 	const groups: NavGroup[] = [
 		...(props.scope === "brand" ? brandGroups(props.organization, props.brand) : []),
-		...(props.scope === "organization" ? [organizationGroup(props.organization, features)] : []),
+		...(props.scope === "organization" ? organizationGroups(props.organization, features) : []),
 		...(scope === "admin" && adminItems.length > 0 ? [{ label: "Admin", items: adminItems }] : []),
 	];
 	const brandmark = (

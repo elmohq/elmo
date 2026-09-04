@@ -37,13 +37,11 @@ export const Reference: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText("https://app.elmohq.com/api/v1")).toBeVisible();
+		await expect(await canvas.findByRole("heading", { name: "API Docs" })).toBeVisible();
+		// Whatever host the app is being served from is the one people should call.
+		await expect(await canvas.findByText(`${window.location.origin}/api/v1`)).toBeVisible();
 		// The reference reads the instance's own spec rather than a hosted copy.
 		await expect(await canvas.findByTestId("api-reference-mock")).toHaveTextContent("/api/v1/openapi.json");
-		await expect(await canvas.findByRole("link", { name: /OpenAPI spec/ })).toHaveAttribute(
-			"href",
-			"/api/v1/openapi.json",
-		);
 	},
 };
 
@@ -54,7 +52,8 @@ export const Whitelabel: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText("https://visibility.acme.com/api/v1")).toBeVisible();
-		await expect(canvas.queryByText(/elmohq\.com/)).toBeNull();
+		await expect(await canvas.findByText("Programmatic interface for Acme Visibility.")).toBeVisible();
+		// Nothing on the page names the vendor.
+		await expect(canvas.queryByText(/elmo/i)).toBeNull();
 	},
 };

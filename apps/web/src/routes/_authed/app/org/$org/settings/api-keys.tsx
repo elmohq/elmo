@@ -3,7 +3,7 @@
  * the api-key plugin's own membership check. This page just avoids showing a
  * form that would be refused.
  */
-import { IconAlertTriangle, IconCheck, IconCircleCheck, IconCopy, IconKey, IconPlus } from "@tabler/icons-react";
+import { IconAlertTriangle, IconBan, IconCircleCheck, IconKey, IconPlus } from "@tabler/icons-react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { orgLinkParams } from "@workspace/lib/app-urls";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
@@ -26,8 +26,10 @@ import { Separator } from "@workspace/ui/components/separator";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { CopyButton } from "@/components/copy-button";
 import { useOrganization } from "@/hooks/use-organizations";
 import type { ApiScope } from "@/lib/api/scopes";
 import { trackEvent } from "@/lib/posthog";
@@ -57,10 +59,10 @@ function preset(name: "read" | "all", scopes: readonly ApiScope[]): ApiScope[] {
 	return name === "all" ? [...scopes] : scopes.filter((scope) => scope.endsWith(":read"));
 }
 
-function formatDate(value: string | null): string {
+function formatDate(value: string | null, empty = "—"): string {
 	return value
 		? new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
-		: "—";
+		: empty;
 }
 
 function scopeGroups(scopes: readonly ApiScope[]): Map<string, ApiScope[]> {
@@ -151,10 +153,7 @@ function ApiKeysSettingsPage() {
 
 			<section className="space-y-3">
 				<div className="flex flex-wrap items-center justify-between gap-3">
-					<div className="flex items-baseline gap-2">
-						<h2 className="text-lg font-semibold">Active keys</h2>
-						{active.length > 0 && <span className="text-sm text-muted-foreground tabular-nums">{active.length}</span>}
-					</div>
+					<h2 className="text-lg font-semibold">Active</h2>
 					{canManage && (
 						<Button type="button" size="sm" onClick={() => setCreatingOpen(true)}>
 							<IconPlus className="size-4" />
@@ -185,8 +184,8 @@ function ApiKeysSettingsPage() {
 			{inactive.length > 0 && (
 				<section className="space-y-3">
 					<div className="space-y-1">
-						<h2 className="text-lg font-semibold text-muted-foreground">Inactive keys</h2>
-						<p className="text-sm text-muted-foreground">Expired or disabled — they no longer authenticate anything.</p>
+						<h2 className="text-lg font-semibold text-muted-foreground">Inactive</h2>
+						<p className="text-sm text-muted-foreground">Revoked or expired — they no longer authenticate anything.</p>
 					</div>
 					<KeyTable keys={inactive} allScopes={allScopes} brandNames={brandNames} inactive />
 				</section>
@@ -530,14 +529,6 @@ function BrandPicker({
 }
 
 function IssuedKeyCard({ value }: { value: string }) {
-	const [copied, setCopied] = useState(false);
-
-	useEffect(() => {
-		if (!copied) return;
-		const timer = setTimeout(() => setCopied(false), 2_000);
-		return () => clearTimeout(timer);
-	}, [copied]);
-
 	return (
 		<Card className="gap-4 border-emerald-500/40 bg-emerald-50/60">
 			<CardHeader>
@@ -551,17 +542,7 @@ function IssuedKeyCard({ value }: { value: string }) {
 				<code className="min-w-0 flex-1 break-all rounded-md border bg-background px-3 py-2 font-mono text-sm">
 					{value}
 				</code>
-				<Button
-					type="button"
-					variant="outline"
-					onClick={() => {
-						navigator.clipboard.writeText(value);
-						setCopied(true);
-					}}
-				>
-					{copied ? <IconCheck className="size-4" /> : <IconCopy className="size-4" />}
-					{copied ? "Copied" : "Copy"}
-				</Button>
+				<CopyButton value={value} />
 			</CardContent>
 		</Card>
 	);
@@ -601,17 +582,17 @@ function KeyTable({
 	return (
 		<Card className={cn("gap-0 overflow-hidden py-0", inactive && "bg-muted/40 text-muted-foreground")}>
 			{/* Fixed widths so the two tables line up as one grid when stacked. */}
-			<Table className="min-w-[56rem] table-fixed">
+			<Table className="min-w-[58rem] table-fixed [&_td]:px-4 [&_th]:px-4">
 				<TableHeader>
 					<TableRow className="hover:bg-transparent">
-						<TableHead className="w-[18%]">Name</TableHead>
-						<TableHead className="w-[10%]">Key</TableHead>
-						<TableHead className="w-[23%]">Scopes</TableHead>
-						<TableHead className="w-[12%]">Brands</TableHead>
-						<TableHead className="w-[9%]">Created</TableHead>
-						<TableHead className="w-[9%]">Last used</TableHead>
-						<TableHead className="w-[9%]">Expires</TableHead>
-						<TableHead className="w-[10%]">
+						<TableHead className="w-[21%]">Name</TableHead>
+						<TableHead className="w-[9%]">Key</TableHead>
+						<TableHead className="w-[22%]">Scopes</TableHead>
+						<TableHead className="w-[11%]">Brands</TableHead>
+						<TableHead className="w-[9.5%]">Created</TableHead>
+						<TableHead className="w-[9.5%]">Last used</TableHead>
+						<TableHead className="w-[10%]">Expires</TableHead>
+						<TableHead className="w-[8%] text-right">
 							<span className="sr-only">Actions</span>
 						</TableHead>
 					</TableRow>
@@ -624,7 +605,7 @@ function KeyTable({
 									<span className="truncate">{key.name ?? "Untitled key"}</span>
 									{inactive && (
 										<Badge variant="outline" className="font-normal">
-											{key.enabled ? "Expired" : "Disabled"}
+											{key.enabled ? "Expired" : "Revoked"}
 										</Badge>
 									)}
 								</div>
@@ -645,20 +626,38 @@ function KeyTable({
 								{key.brandIds ? key.brandIds.map((id) => brandNames.get(id) ?? id).join(", ") : "All brands"}
 							</TableCell>
 							<TableCell className="whitespace-nowrap">{formatDate(key.createdAt)}</TableCell>
-							<TableCell className="whitespace-nowrap">{formatDate(key.lastUsedAt)}</TableCell>
-							<TableCell className="whitespace-nowrap">{formatDate(key.expiresAt)}</TableCell>
-							<TableCell className="text-right">
-								{onRevoke && (
-									<Button type="button" variant="outline" size="sm" onClick={() => onRevoke(key)}>
-										Revoke
-									</Button>
-								)}
-							</TableCell>
+							<TableCell className="whitespace-nowrap">{formatDate(key.lastUsedAt, "Never")}</TableCell>
+							<TableCell className="whitespace-nowrap">{formatDate(key.expiresAt, "Never")}</TableCell>
+							<TableCell className="text-right">{onRevoke && <RevokeButton onClick={() => onRevoke(key)} />}</TableCell>
 						</TableRow>
 					))}
 				</TableBody>
 			</Table>
 		</Card>
+	);
+}
+
+/** Icon-only: one row per key, and the action is rare enough that a column of
+ * outlined buttons was louder than the keys themselves. */
+function RevokeButton({ onClick }: { onClick: () => void }) {
+	return (
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+						onClick={onClick}
+					>
+						<IconBan className="size-4" />
+						<span className="sr-only">Revoke</span>
+					</Button>
+				}
+			/>
+			<TooltipContent>Revoke key</TooltipContent>
+		</Tooltip>
 	);
 }
 

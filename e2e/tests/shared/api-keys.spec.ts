@@ -94,7 +94,11 @@ test.describe("API keys", () => {
       await confirm.getByRole("button", { name: "Revoke key", exact: true }).click();
       await expect(confirm).toBeHidden({ timeout: 5_000 });
     }).toPass({ timeout: 30_000 });
-    await expect(row).toHaveCount(0);
+
+    // Revoking disables the key rather than deleting it, so the row survives
+    // among the inactive ones with nothing left to act on.
+    await expect(row.getByText("Revoked")).toBeVisible({ timeout: 30_000 });
+    await expect(row.getByRole("button", { name: "Revoke", exact: true })).toHaveCount(0);
 
     const afterRevoke = await request.get("/api/v1/me", { headers: auth, failOnStatusCode: false });
     expect(afterRevoke.status()).toBe(401);

@@ -163,6 +163,8 @@ export const revokeApiKeyFn = createServerFn({ method: "POST" })
 			throw new Error("API key not found in this organization");
 		}
 
-		await auth.api.deleteApiKey({ body: { keyId: data.keyId }, headers: getRequestHeaders() });
+		// Disabled rather than deleted: it stops authenticating immediately either
+		// way, and the row survives so the page can say the key existed.
+		await auth.api.updateApiKey({ body: { keyId: data.keyId, enabled: false }, headers: getRequestHeaders() });
 		return { revoked: true };
 	});

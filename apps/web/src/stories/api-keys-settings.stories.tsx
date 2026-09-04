@@ -92,10 +92,12 @@ export const WithKeys: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByRole("heading", { name: "API Keys" })).toBeVisible();
-		await expect(await canvas.findByRole("heading", { name: "Active keys" })).toBeVisible();
-		await expect(await canvas.findByRole("heading", { name: "Inactive keys" })).toBeVisible();
+		await expect(await canvas.findByRole("heading", { name: "Active" })).toBeVisible();
+		await expect(await canvas.findByRole("heading", { name: "Inactive" })).toBeVisible();
 		// The expired key is listed apart from the two that still authenticate.
 		await expect(await canvas.findByText("Expired")).toBeVisible();
+		// A key that never expires says so rather than showing a dash.
+		await expect((await canvas.findAllByText("Never")).length).toBeGreaterThan(0);
 		await expect((await canvas.findAllByRole("button", { name: "Revoke" })).length).toBe(2);
 		await expect(await canvas.findByRole("button", { name: "New key" })).toBeVisible();
 		await expect(canvas.queryByLabelText("Name")).toBeNull();
