@@ -20,6 +20,7 @@
 		"./auth/server": "./src/auth/server.ts",
 		"./auth/client": "./src/auth/client.ts",
 		"./auth/permissions": "./src/auth/permissions.ts",
+		"./auth/redirect-uri": "./src/auth/redirect-uri.ts",
 		"./constants": "./src/constants.ts",
 		"./app-urls": "./src/app-urls.ts",
 		"./expedite": "./src/expedite.ts",
