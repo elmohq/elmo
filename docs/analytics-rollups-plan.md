@@ -250,6 +250,17 @@ Phases 1 and 3 can proceed in parallel after the migration lands; Phase 2 depend
 - Production shadow run of the equivalence script before the Phase 2 merge.
 - Operations: dirty backlog size, oldest-mark age, and stale-row counts per version as health metrics; reconcile drift to Sentry.
 
+## Implementation notes
+
+Where the code differs from the schema and job sketches above:
+
+- `prompt_runs.analysis_versions` is a jsonb map of deriver name to stamp (`<version>:<config hash>`), and `pipeline_state` also records `extractor_version` and `deriver_versions` so a worker restart can tell a real version bump from first initialization.
+- `cited_pages.static_category` and the citation rollups store `google` for Google search and shopping surfaces; it is outside `CITATION_CATEGORIES`, and readers drop those rows from the source mix the way `rollUpCitationUrls` always has.
+- `rollup_competitor_mentions.runs` counts distinct runs, matching the raw top-competitor query.
+- The nightly reconcile is its own queue, `reconcile-rollups`; the write path nudges `refresh-rollups` with a 10-second singleton window after every successful prompt cycle.
+- `reprocess` continues itself with a cursor after four minutes of work and re-derives `prompts.system_tags` per brand when interpretation ran. Filling `text_content` lazily during an interpretation pass does not stamp `extractor_version`, so an extraction pass still revisits those rows.
+- While `pipeline_state.backfill_completed_at` is null, `analytics-read.ts` serves every read from the raw tables; the raw functions and the fallback are removed once every deployment has backfilled.
+
 ## Decisions
 
 1. Everything derived is reprocessable from raw, and bug fixes and new derivers apply to history through version bumps. Word-boundary matching therefore applies to existing runs.
