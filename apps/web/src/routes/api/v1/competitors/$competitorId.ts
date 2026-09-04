@@ -14,6 +14,7 @@ import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { requestBrandReprocess } from "@/lib/job-scheduler";
 import { isBrandInScope } from "@/lib/api/scope";
 
 // z.guid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
@@ -80,6 +81,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 					if (!updated) {
 						throw new ApiError(404, "Not Found", `Competitor with ID '${competitorId}' not found`);
 					}
+					await requestBrandReprocess(updated.brandId);
 					return updated;
 				},
 			}),
@@ -93,6 +95,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 					if (!deleted) {
 						throw new ApiError(404, "Not Found", `Competitor with ID '${params.competitorId}' not found`);
 					}
+					await requestBrandReprocess(deleted.brandId);
 					return deleted;
 				},
 			}),

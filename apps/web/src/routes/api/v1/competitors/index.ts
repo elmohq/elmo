@@ -14,6 +14,7 @@ import { assertCompetitorCap } from "@workspace/lib/entitlements";
 import { z } from "zod";
 import { clampedPaging } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { requestBrandReprocess } from "@/lib/job-scheduler";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
 import { listCompetitors } from "@/server/competitors-core";
 
@@ -72,6 +73,7 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 						})
 						.returning();
 
+					await requestBrandReprocess(brandId);
 					return inserted;
 				},
 			}),

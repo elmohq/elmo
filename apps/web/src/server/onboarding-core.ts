@@ -364,6 +364,10 @@ export async function updateBrand(input: UpdateBrandInput): Promise<BrandResult>
 	if (input.enabled !== undefined) patch.enabled = input.enabled;
 
 	await db.update(brands).set(patch).where(eq(brands.id, input.brandId));
+	// Mention detection matches on these, so history is re-derived when they move.
+	if (patch.name !== undefined || patch.website !== undefined || patch.additionalDomains || patch.aliases) {
+		await requestBrandReprocess(input.brandId);
+	}
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
 	return buildBrandResult(refreshed!);
 }
