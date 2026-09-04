@@ -8,7 +8,7 @@ describe("deploymentOpenApiSpec", () => {
 	it("answers with the host the spec was fetched from", () => {
 		const spec = deploymentOpenApiSpec(ELMO, "https://app.elmohq.com");
 
-		expect(spec.servers).toEqual([{ url: "https://app.elmohq.com/api/v1", description: "API" }]);
+		expect(spec.servers).toEqual([{ url: "https://app.elmohq.com/api/v1", description: "Elmo API" }]);
 	});
 
 	it("does not leak the vendor into a whitelabel deployment", () => {
@@ -16,7 +16,10 @@ describe("deploymentOpenApiSpec", () => {
 
 		expect(spec.info.title).toBe("Acme Visibility API");
 		expect(spec.info.contact).toEqual({ name: "Acme Visibility", url: "https://visibility.acme.com" });
-		expect(spec.servers?.[0].url).toBe("https://visibility.acme.com/api/v1");
+		expect(spec.servers?.[0]).toEqual({
+			url: "https://visibility.acme.com/api/v1",
+			description: "Acme Visibility API",
+		});
 	});
 
 	it("serves a self-hosted instance its own address, port and all", () => {

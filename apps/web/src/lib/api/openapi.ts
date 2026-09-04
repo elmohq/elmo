@@ -32,6 +32,12 @@ export function deploymentOpenApiSpec(branding: { name: string; url: string }, o
 			// The license stays as it is: the software really is the one it names.
 			contact: { name: branding.name, url: branding.url },
 		},
-		servers: (document.servers ?? []).map((server) => ({ ...server, url: new URL(server.url, origin).href })),
+		// Named after the deployment too: a client picking a server sees the app
+		// it is calling, not the word "API".
+		servers: (document.servers ?? []).map((server) => ({
+			...server,
+			url: new URL(server.url, origin).href,
+			description: `${branding.name} API`,
+		})),
 	};
 }

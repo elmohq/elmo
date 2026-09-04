@@ -1,4 +1,5 @@
 import spec from "@workspace/api-spec";
+import { DEFAULT_APP_NAME } from "@workspace/config/constants";
 import { CLOUD_APP_URL } from "@workspace/config/referrals";
 import type { OpenAPIV3_2 } from "fumadocs-openapi";
 import { createOpenAPI } from "fumadocs-openapi/server";
@@ -11,7 +12,7 @@ import { createOpenAPI } from "fumadocs-openapi/server";
  */
 export const hostedSpec = {
 	...spec,
-	servers: [{ url: `${CLOUD_APP_URL}/api/v1`, description: "Elmo Cloud" }],
+	servers: [{ url: `${CLOUD_APP_URL}/api/v1`, description: `${DEFAULT_APP_NAME} API` }],
 };
 
 export const openapi = createOpenAPI({
