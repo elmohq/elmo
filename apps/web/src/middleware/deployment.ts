@@ -11,7 +11,7 @@
  */
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import openApiSpec from "@workspace/api-spec";
+import { deploymentOpenApiSpec } from "@/lib/api/openapi";
 import { evaluateDeploymentPolicy, evaluateReadOnly } from "@/lib/auth/policies";
 import { getDeployment } from "@/lib/config/server";
 
@@ -45,20 +45,9 @@ export const deploymentMiddleware = createMiddleware().server(async ({ next }) =
 		case "redirect":
 			throw Response.redirect(new URL(result.url, request.url), 302);
 		case "serve-openapi":
-			// Named after the deployment, so a whitelabel instance documents itself
-			// and points at its own operator. The license stays as it is: the
-			// software really is the one it names.
-			throw Response.json(
-				{
-					...openApiSpec,
-					info: {
-						...openApiSpec.info,
-						title: `${deployment.branding.name} API`,
-						contact: { name: deployment.branding.name, url: deployment.branding.url },
-					},
-				},
-				{ headers: { "Content-Type": "application/json" } },
-			);
+			throw Response.json(deploymentOpenApiSpec(deployment.branding, url.origin), {
+				headers: { "Content-Type": "application/json" },
+			});
 	}
 
 	return next({
