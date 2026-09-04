@@ -165,7 +165,6 @@ A web app serves the dashboard and REST API, a worker schedules and executes pro
 </p>
 
 <br />
-<br />
 
 <a href="https://github.com/sponsors/elmohq"><strong>Become a sponsor →</strong></a>
 
