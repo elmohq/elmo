@@ -52,8 +52,12 @@ export const modelArg = z.string().optional().describe("Restrict to one model, b
 /** Half-open `[start, end)`. A timestamp carries its own offset, so there is no
  * time zone to pass beside it. */
 export const windowArgs = {
-	start: z.string().describe("Start of the window, an ISO 8601 timestamp, e.g. 2026-01-01T00:00:00Z. Inclusive."),
-	end: z.string().describe("End of the window, an ISO 8601 timestamp. Exclusive."),
+	start: z
+		.string()
+		.describe(
+			"Start of the window, an ISO 8601 timestamp, e.g. 2026-01-01T00:00:00Z. Inclusive, and aligned down to the half hour.",
+		),
+	end: z.string().describe("End of the window, an ISO 8601 timestamp. Exclusive, and aligned down to the half hour."),
 	model: modelArg,
 	tags: z.string().optional().describe("Comma-separated prompt tags; only prompts carrying one are counted."),
 };

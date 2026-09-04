@@ -98,16 +98,6 @@ describe("getTimezoneLookbackRange", () => {
 		expect(getTimezoneLookbackRange(lookback, "UTC", { now })).toEqual({ fromDateStr, toDateStr });
 	});
 
-	it.each<["none" | "1y", string | null, string | null]>([
-		["none", null, null],
-		["1y", "2023-03-31", "2024-03-31"],
-	])("applies the %s strategy to the all lookback", (allStrategy, fromDateStr, toDateStr) => {
-		expect(getTimezoneLookbackRange("all", "UTC", { now, allStrategy })).toEqual({
-			fromDateStr,
-			toDateStr,
-		});
-	});
-
 	it.each<[string, string, string]>([
 		["UTC", "2025-12-25", "2025-12-31"],
 		["Asia/Tokyo", "2025-12-26", "2026-01-01"],

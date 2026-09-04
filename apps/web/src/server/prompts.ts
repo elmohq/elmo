@@ -13,6 +13,7 @@ import {
 	withQuotaLock,
 } from "@workspace/lib/entitlements";
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
@@ -442,7 +443,14 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		]);
 
 		return {
-			runs: runs.map((r) => ({ ...r, rawOutput: r.rawOutput as {} })),
+			// Rows written before extraction was versioned carry no text, so they are
+			// extracted on read; the model name is the extractor's other accepted key
+			// for rows that also predate the provider column.
+			runs: runs.map((r) => ({
+				...r,
+				rawOutput: r.rawOutput as {},
+				textContent: r.textContent ?? extractTextContent(r.rawOutput, r.provider ?? r.model),
+			})),
 			total: totalResult[0]?.count || 0,
 			page: data.page,
 			limit: data.limit,

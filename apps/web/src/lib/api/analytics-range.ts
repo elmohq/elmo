@@ -3,6 +3,7 @@
  * beside them. `/prompts/{promptId}/snapshot` keeps the calendar days it
  * shipped with, being a published contract.
  */
+import { BUCKET_MS } from "@workspace/lib/rollups/constants";
 import type { AnalyticsWindow } from "@/server/analytics-core";
 import { ApiError } from "./handler";
 
@@ -29,16 +30,31 @@ function parseInstant(name: string, raw: string): string {
 	return parsed.toISOString();
 }
 
+/** Analytics are aggregated per half-hour bucket, and a bucket cannot be split
+ * at 10:17. Flooring both bounds is what lets the response echo the window that
+ * was actually answered. */
+function alignToBucket(instant: string): string {
+	return new Date(Math.floor(new Date(instant).getTime() / BUCKET_MS) * BUCKET_MS).toISOString();
+}
+
 /** Over plain values, so the MCP tools and the URL parser refuse a bad window
  * the same way. */
 export function resolveAnalyticsWindow(rawStart: string | null, rawEnd: string | null): AnalyticsWindow {
 	if (!rawStart || !rawEnd) {
 		invalid("A window is required: both start and end, as ISO 8601 timestamps");
 	}
-	const start = parseInstant("start", rawStart);
-	const end = parseInstant("end", rawEnd);
+	const requestedStart = parseInstant("start", rawStart);
+	const requestedEnd = parseInstant("end", rawEnd);
+	const start = alignToBucket(requestedStart);
+	const end = alignToBucket(requestedEnd);
+	// Checked after alignment, so a window narrower than one bucket is refused
+	// rather than answered as empty — and says why.
 	if (start >= end) {
-		invalid("start must be before end");
+		invalid(
+			requestedStart < requestedEnd
+				? "start and end fall in the same half-hour bucket, which leaves an empty window"
+				: "start must be before end",
+		);
 	}
 	return { from: start, to: end, timezone: BUCKET_ZONE };
 }

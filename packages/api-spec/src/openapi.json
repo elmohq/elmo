@@ -2035,7 +2035,7 @@
 			"WindowStart": {
 				"name": "start",
 				"in": "query",
-				"description": "Inclusive lower bound of the window, an ISO 8601 timestamp such as `2026-01-01T00:00:00Z`. A bare `YYYY-MM-DD` is rejected: that is `/prompts/{promptId}/snapshot`'s spelling and means a local calendar day there.",
+				"description": "Inclusive lower bound of the window, an ISO 8601 timestamp such as `2026-01-01T00:00:00Z`. Aligned down to the half hour, the grain analytics are aggregated at; where a response repeats the window, it repeats the aligned one. A bare `YYYY-MM-DD` is rejected: that is `/prompts/{promptId}/snapshot`'s spelling and means a local calendar day there.",
 				"required": true,
 				"schema": {
 					"type": "string",
@@ -2045,7 +2045,7 @@
 			"WindowEnd": {
 				"name": "end",
 				"in": "query",
-				"description": "Exclusive upper bound of the window, an ISO 8601 timestamp. The window is half-open: a run at exactly `end` is outside it.",
+				"description": "Exclusive upper bound of the window, an ISO 8601 timestamp, also aligned down to the half hour. The window is half-open: a run at exactly `end` is outside it. `start` and `end` inside one half-hour bucket leave an empty window and are rejected.",
 				"required": true,
 				"schema": {
 					"type": "string",

@@ -12,7 +12,7 @@ import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { count, desc, eq, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
+import { createMultiplePromptJobSchedulers, requestBrandReprocess } from "@/lib/job-scheduler";
 
 export class BrandConflictError extends Error {
 	constructor(public readonly brandId: string) {
@@ -405,6 +405,11 @@ export async function saveWizardOnboarding(input: WizardOnboardingInput): Promis
 		dedupeAgainstExisting: true,
 	});
 	await createMultiplePromptJobSchedulers(wizardPromptIds);
+
+	// The wizard runs against a brand that already exists, and its prompts page
+	// is reachable before it is completed, so the runs it rewrites the name,
+	// domains, and competitors for may already be there.
+	await requestBrandReprocess(input.brandId);
 
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
 	return buildBrandResult(refreshed!);

@@ -13,8 +13,8 @@ import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import type { FanoutAnalysis } from "@/lib/fanout-analysis";
 import { lookbackSchema } from "@/lib/lookback";
-import { resolveLookbackRange } from "@/lib/timezone-utils";
 import { getBrandQueryFanout } from "@/server/analytics-core";
+import { resolveBrandWindow } from "@/server/brand-window";
 
 export interface QueryFanoutResponse extends FanoutAnalysis {
 	brandName: string;
@@ -59,7 +59,7 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 	.handler(async ({ data }): Promise<QueryFanoutResponse> => {
 		await requireBrandSession(data.brandId);
 
-		const { timezone, fromDateStr, toDateStr } = resolveLookbackRange(data.lookback, data.timezone);
+		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 		const analysis = await getBrandQueryFanout(
 			data.brandId,
 			{ from: fromDateStr, to: toDateStr, timezone },
