@@ -14,8 +14,8 @@ import { assertCompetitorCap } from "@workspace/lib/entitlements";
 import { z } from "zod";
 import { clampedPaging } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
-import { requestBrandReprocess } from "@/lib/job-scheduler";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
+import { requestBrandReprocess } from "@/lib/job-scheduler";
 import { listCompetitors } from "@/server/competitors-core";
 
 const createCompetitorBody = z.object({
