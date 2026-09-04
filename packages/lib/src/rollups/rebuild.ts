@@ -121,7 +121,7 @@ async function insertCompetitorRollup(
 			coalesce(provider, ''),
 			web_search_enabled,
 			competitor_name,
-			count(*)::int
+			count(DISTINCT id)::int
 		FROM ${promptRuns}, LATERAL unnest(competitors_mentioned) AS competitor_name
 		${runsInRange(brandId, from, toExclusive)}
 		GROUP BY brand_id, ${bucket}, prompt_id, model, coalesce(provider, ''), web_search_enabled, competitor_name
