@@ -1,3 +1,5 @@
+import { isLoopbackIP } from "@better-auth/core/utils/host";
+import { isReverseDomainPrivateUseRedirectUri } from "@better-auth/core/utils/redirect-uri";
 import type { BetterAuthPlugin } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
 
@@ -9,20 +11,23 @@ import { createAuthMiddleware } from "better-auth/api";
  */
 const HTTP_LOOPBACK_REDIRECT = /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])([:/?#]|$)/i;
 
-function isLoopbackHost(hostname: string): boolean {
-	return hostname === "localhost" || hostname === "[::1]" || /^127(\.\d{1,3}){3}$/.test(hostname);
-}
-
-/** The two redirects RFC 8252 gives a native app: a loopback port, or a claimed https URL. */
+/**
+ * The redirects RFC 8252 gives a native app: a loopback port, a claimed https
+ * URL, or a private-use scheme of its own. Judged with the predicates the
+ * registration endpoint itself applies, so nothing it would accept is dropped.
+ */
 function usableByNativeClient(uri: unknown): boolean {
 	if (typeof uri !== "string") return false;
 	if (HTTP_LOOPBACK_REDIRECT.test(uri)) return true;
+	let url: URL;
 	try {
-		const url = new URL(uri);
-		return url.protocol === "https:" && !isLoopbackHost(url.hostname);
+		url = new URL(uri);
 	} catch {
 		return false;
 	}
+	if (url.protocol === "https:") return !(isLoopbackIP(url.hostname) || url.hostname === "localhost");
+	if (url.protocol === "http:") return false;
+	return isReverseDomainPrivateUseRedirectUri(url);
 }
 
 /**

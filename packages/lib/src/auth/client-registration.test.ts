@@ -113,6 +113,16 @@ describe("dynamic client registration", () => {
 		]);
 	});
 
+	it("keeps a private-use scheme of the client's own alongside its loopback redirect", async () => {
+		const { status, body } = await register({
+			redirect_uris: ["http://127.0.0.1:1455/callback", "com.example.cli:/oauth/callback"],
+		});
+
+		expect(status).toBe(201);
+		expect(body.application_type).toBe("native");
+		expect(body.redirect_uris).toEqual(["http://127.0.0.1:1455/callback", "com.example.cli:/oauth/callback"]);
+	});
+
 	it("leaves a client that declares its own type exactly as it asked", async () => {
 		const { status, body } = await register({
 			application_type: "native",
