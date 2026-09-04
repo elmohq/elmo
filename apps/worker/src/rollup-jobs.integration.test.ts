@@ -1,6 +1,7 @@
 import * as schema from "@workspace/lib/db/schema";
 import {
 	brands,
+	competitors,
 	organization,
 	pipelineState,
 	promptRuns,
@@ -8,6 +9,7 @@ import {
 	rollupDirty,
 	rollupPromptRuns,
 } from "@workspace/lib/db/schema";
+import { compareBucket } from "@workspace/lib/rollups";
 import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -234,6 +236,85 @@ describe.skipIf(!connectionString)("worker rollup jobs against postgres", () => 
 				runReprocess({ layers: ["extraction"], brandId: "no-such-brand" }, db, sendBoss),
 			).resolves.toBeUndefined();
 			expect(sendBoss.send).toHaveBeenCalled();
+		});
+	});
+
+	// Task 06 case 4 lives here rather than in apps/web's analytics-read
+	// integration suite: runRefreshTick's module (refresh-rollups.ts) imports
+	// @sentry/node, which is not a dependency of apps/web, so the web test
+	// cannot import it (directly or transitively) even via a relative path.
+	// The "share of voice matches raw" checks below reproduce the shape of
+	// apps/web's rollup-read.ts / postgres-read.ts getPerPromptDailyCompetitorMentions
+	// directly in SQL for the same reason — apps/web's postgres-read.ts pulls in
+	// its own web-only relative imports (@/lib/fanout-analysis).
+	describe("runReprocess through to a refresh, after a competitor's domain changes", () => {
+		it("restamps analysis, updates competitors_mentioned, marks the bucket dirty, and matches raw once refreshed", async () => {
+			// Domain strings deliberately share no substring with the competitor's own
+			// name or with each other: mentionsSubject also matches on the bare name,
+			// so a domain built from it (e.g. "globex-new.example") would flag the
+			// competitor by name alone and the domain change below would test nothing.
+			const [competitor] = await db
+				.insert(competitors)
+				.values({ brandId: BRAND_ID, name: "Globex", domains: ["oldsite.example"] })
+				.returning({ id: competitors.id });
+
+			await insertRun(db, {
+				id: RUN(7),
+				createdAt: B0,
+				provider: "openai-api",
+				brandMentioned: false,
+				rawOutput: { choices: [{ message: { content: "According to newsite.example, Acme is the best CRM." } }] },
+			});
+
+			// Establishes a baseline stamp and text against the OLD domain, so the
+			// second pass below is stale for one reason only: the domain change.
+			await runReprocess({ layers: ["extraction", "interpretation"], brandId: BRAND_ID }, db, fakeBoss());
+			const [before] = await db
+				.select()
+				.from(promptRuns)
+				.where(eq(promptRuns.id, RUN(7)));
+			expect(before.competitorsMentioned).toEqual([]);
+			const stampBefore = before.analysisVersions.mentions;
+			expect(stampBefore).toBeDefined();
+			await db.delete(rollupDirty);
+
+			await db
+				.update(competitors)
+				.set({ domains: ["newsite.example"] })
+				.where(eq(competitors.id, competitor.id));
+			await runReprocess({ layers: ["interpretation"], brandId: BRAND_ID }, db, fakeBoss());
+
+			const [after] = await db
+				.select()
+				.from(promptRuns)
+				.where(eq(promptRuns.id, RUN(7)));
+			expect(after.competitorsMentioned).toEqual(["Globex"]);
+			expect(after.analysisVersions.mentions).not.toBe(stampBefore);
+
+			const marks = await db.select().from(rollupDirty).where(eq(rollupDirty.bucket, B0));
+			expect(marks.map((mark) => mark.reason)).toEqual(["reprocess"]);
+
+			await runRefreshTick({ source: "test" }, db);
+
+			const bucketEnd = new Date(B0.getTime() + 30 * 60 * 1000);
+			const comparison = await compareBucket(db, BRAND_ID, B0, bucketEnd);
+			expect(comparison.runs[0]).toBe(comparison.runs[1]);
+			expect(comparison.brandMentioned[0]).toBe(comparison.brandMentioned[1]);
+
+			const rollupMentions = await db.execute(sql`
+				SELECT competitor_name, sum(runs)::int AS mentions
+				FROM rollup_competitor_mentions
+				WHERE brand_id = ${BRAND_ID}
+				GROUP BY competitor_name
+			`);
+			const rawMentions = await db.execute(sql`
+				SELECT competitor, count(*)::int AS mentions
+				FROM prompt_runs, unnest(competitors_mentioned) AS competitor
+				WHERE brand_id = ${BRAND_ID}
+				GROUP BY competitor
+			`);
+			expect(rollupMentions.rows).toEqual([{ competitor_name: "Globex", mentions: 1 }]);
+			expect(rawMentions.rows).toEqual([{ competitor: "Globex", mentions: 1 }]);
 		});
 	});
 });
