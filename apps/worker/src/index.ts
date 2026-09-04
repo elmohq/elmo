@@ -1,9 +1,12 @@
 import * as Sentry from "@sentry/node";
 import { getDeployment } from "@workspace/deployment";
 import { getProvider, parseScrapeTargets, validateScrapeTargets } from "@workspace/lib/providers";
+import { REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE } from "@workspace/lib/rollups/constants";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import boss from "./boss";
 import { registerHandlers } from "./handlers";
+import { RECONCILE_ROLLUPS_QUEUE } from "./jobs/reconcile-rollups";
+import { initializePipeline } from "./rollups-startup";
 import { shutdownTelemetry } from "./telemetry";
 
 if (process.env.SENTRY_DSN) {
@@ -72,6 +75,25 @@ async function main() {
 			expireInSeconds: 60 * 10,
 		});
 	}
+	// Same options apps/web creates these with: whichever process starts first
+	// defines the queue, and a send to a queue that does not exist fails.
+	await boss.createQueue(REFRESH_ROLLUPS_QUEUE, {
+		retryLimit: 2,
+		retryDelay: 30,
+		retryBackoff: true,
+		expireInSeconds: 60 * 5,
+	});
+	await boss.createQueue(RECONCILE_ROLLUPS_QUEUE, {
+		retryLimit: 1,
+		retryDelay: 300,
+		expireInSeconds: 60 * 30,
+	});
+	await boss.createQueue(REPROCESS_QUEUE, {
+		retryLimit: 2,
+		retryDelay: 60,
+		retryBackoff: true,
+		expireInSeconds: 60 * 10,
+	});
 	console.log("Queues created");
 
 	await boss.schedule("schedule-maintenance", "*/5 * * * *", { source: "scheduled" }, { tz: "UTC" });
@@ -81,6 +103,22 @@ async function main() {
 		await boss.schedule("sync-auth0-memberships", "*/15 * * * *", { source: "scheduled" }, { tz: "UTC" });
 		console.log("Scheduled Auth0 membership sync (every 15 minutes)");
 	}
+
+	await boss.schedule(
+		REFRESH_ROLLUPS_QUEUE,
+		"* * * * *",
+		{ source: "scheduled" },
+		{ tz: "UTC", singletonKey: REFRESH_ROLLUPS_QUEUE },
+	);
+	console.log("Scheduled refresh-rollups job (every minute)");
+
+	await boss.schedule(RECONCILE_ROLLUPS_QUEUE, "0 3 * * *", { source: "scheduled" }, { tz: "UTC" });
+	console.log("Scheduled reconcile-rollups job (daily at 03:00 UTC)");
+
+	// Backfill/version bookkeeping, and the reprocess sends it can trigger, need
+	// the queues above to already exist — hence after creation, before handlers
+	// start pulling jobs off them.
+	await initializePipeline();
 
 	// Register job handlers
 	await registerHandlers(boss);

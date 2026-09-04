@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/node";
 import { getDeployment } from "@workspace/deployment";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
+import type { DbConnection } from "@workspace/lib/db/db-connection";
 import {
 	type Brand,
 	brands,
@@ -12,8 +13,10 @@ import {
 	prompts,
 	usageEvents,
 } from "@workspace/lib/db/schema";
+import { type BrandContext, brandContextFrom, deriveAll } from "@workspace/lib/derivers";
 import { type Entitlements, getOrgEntitlements } from "@workspace/lib/entitlements";
 import { getProvider, type ModelConfig, type Provider, parseScrapeTargets } from "@workspace/lib/providers";
+import { markDirtyForTimestamps, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	dailyRunCeiling,
@@ -23,7 +26,7 @@ import {
 	selectDueTargets,
 	targetKey,
 } from "@workspace/lib/run-policy";
-import type { Citation } from "@workspace/lib/text-extraction";
+import { type Citation, EXTRACTOR_VERSION } from "@workspace/lib/text-extraction";
 import { estimateRunCostUsd } from "@workspace/lib/usage";
 import { and, eq, gt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
@@ -203,77 +206,33 @@ async function isOrgOverDailyCeiling(organizationId: string, ceiling: number): P
 	return Number(row?.value ?? 0) >= ceiling;
 }
 
-function extractDomainFromUrl(urlOrDomain: string): string {
-	try {
-		const url = new URL(urlOrDomain.startsWith("http") ? urlOrDomain : `https://${urlOrDomain}`);
-		return url.hostname.replace(/^www\./, "").toLowerCase();
-	} catch {
-		return urlOrDomain.replace(/^www\./, "").toLowerCase();
-	}
-}
-
-function analyzeMentions(
-	content: string,
-	brand: Brand,
-	competitorsList: Competitor[],
-): {
+interface SavePromptRunInput {
+	promptId: string;
+	brandId: string;
+	model: string;
+	provider: string | null;
+	version: string;
+	webSearchEnabled: boolean;
+	rawOutput: unknown;
+	webQueries: string[];
 	brandMentioned: boolean;
 	competitorsMentioned: string[];
-} {
-	const contentLower = content.toLowerCase();
-
-	const brandNames = [brand.name, ...(brand.aliases || [])].map((n) => n.toLowerCase());
-	const brandDomains = [
-		extractDomainFromUrl(brand.website),
-		...(brand.additionalDomains || []).map(extractDomainFromUrl),
-	];
-	const brandMentioned =
-		brandNames.some((n) => contentLower.includes(n)) || brandDomains.some((d) => contentLower.includes(d));
-
-	const competitorsMentioned = competitorsList
-		.filter((competitor) => {
-			const names = [competitor.name, ...(competitor.aliases || [])].map((n) => n.toLowerCase());
-			const nameMatch = names.some((n) => contentLower.includes(n));
-			const domainMatch = (competitor.domains || []).some((d) => contentLower.includes(extractDomainFromUrl(d)));
-			return nameMatch || domainMatch;
-		})
-		.map((competitor) => competitor.name);
-
-	return { brandMentioned, competitorsMentioned };
+	textContent: string | null;
+	extractorVersion: number;
+	analysisVersions: Record<string, string>;
 }
 
-async function savePromptRun(
-	promptId: string,
-	brandId: string,
-	model: string,
-	provider: string | null,
-	version: string,
-	webSearchEnabled: boolean,
-	rawOutput: unknown,
-	webQueries: string[],
-	brandMentioned: boolean,
-	competitorsMentioned: string[],
-): Promise<{ id: string; createdAt: Date }> {
-	const [result] = await db
+async function savePromptRun(conn: DbConnection, input: SavePromptRunInput): Promise<{ id: string; createdAt: Date }> {
+	const [result] = await conn
 		.insert(promptRuns)
-		.values({
-			promptId,
-			brandId,
-			model,
-			provider,
-			version,
-			webSearchEnabled,
-			rawOutput,
-			webQueries,
-			brandMentioned,
-			competitorsMentioned,
-		})
+		.values(input)
 		.returning({ id: promptRuns.id, createdAt: promptRuns.createdAt });
 
 	return result;
 }
 
 async function saveCitations(
+	conn: DbConnection,
 	promptRunId: string,
 	promptId: string,
 	brandId: string,
@@ -283,7 +242,7 @@ async function saveCitations(
 ): Promise<void> {
 	if (extracted.length === 0) return;
 
-	await db.insert(citations).values(
+	await conn.insert(citations).values(
 		extracted.map((c) => ({
 			promptRunId,
 			promptId,
@@ -331,7 +290,7 @@ async function runModelIteration({
 	promptId,
 	promptValue,
 	brand,
-	competitorsList,
+	ctx,
 	config,
 	providerImpl,
 	runIndex,
@@ -339,7 +298,7 @@ async function runModelIteration({
 	promptId: string;
 	promptValue: string;
 	brand: Brand;
-	competitorsList: Competitor[];
+	ctx: BrandContext;
 	config: ModelConfig;
 	providerImpl: Provider;
 	runIndex: number;
@@ -360,27 +319,36 @@ async function runModelIteration({
 		const { rawOutput, textContent, webQueries, citations: extractedCitations, modelVersion } = result;
 		console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
 
-		const safeTextContent = typeof textContent === "string" ? textContent : "";
-
-		const { brandMentioned, competitorsMentioned } = analyzeMentions(safeTextContent, brand, competitorsList);
+		const text = typeof textContent === "string" && textContent.trim() ? textContent : null;
+		const { columns, versions } = deriveAll(
+			{ textContent: text, rawOutput, provider: config.provider, model: config.model },
+			ctx,
+		);
 
 		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
-		const { id: promptRunId, createdAt } = await savePromptRun(
-			promptId,
-			brand.id,
-			config.model,
-			config.provider,
-			recordedVersion,
-			config.webSearch,
-			rawOutput,
-			webQueries,
-			brandMentioned,
-			competitorsMentioned,
-		);
+		const { id: promptRunId, createdAt } = await db.transaction(async (tx) => {
+			const run = await savePromptRun(tx, {
+				promptId,
+				brandId: brand.id,
+				model: config.model,
+				provider: config.provider,
+				version: recordedVersion,
+				webSearchEnabled: config.webSearch,
+				rawOutput,
+				webQueries,
+				brandMentioned: columns.brandMentioned ?? false,
+				competitorsMentioned: columns.competitorsMentioned ?? [],
+				textContent: text,
+				extractorVersion: EXTRACTOR_VERSION,
+				analysisVersions: versions,
+			});
+			await saveCitations(tx, run.id, promptId, brand.id, config.model, extractedCitations, run.createdAt);
+			await markDirtyForTimestamps(tx, brand.id, [run.createdAt], "run");
+			return run;
+		});
 		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
 
-		await saveCitations(promptRunId, promptId, brand.id, config.model, extractedCitations, createdAt);
 		await recordUsageEvent({
 			organizationId: brand.organizationId,
 			brandId: brand.id,
@@ -429,6 +397,7 @@ async function processPrompt(
 	}
 
 	const { prompt, brand, competitors: competitorsList } = context;
+	const ctx = brandContextFrom(brand, competitorsList);
 
 	if (!prompt.enabled || !brand.enabled) {
 		console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
@@ -483,7 +452,7 @@ async function processPrompt(
 				promptId,
 				promptValue: prompt.value,
 				brand,
-				competitorsList,
+				ctx,
 				config: target.config,
 				providerImpl,
 				runIndex: i + 1,
@@ -514,6 +483,20 @@ async function processPrompt(
 		successful_runs: successCount,
 		failed_runs: failures.length,
 	});
+
+	if (successCount > 0) {
+		try {
+			// Seconds-fresh dashboards instead of waiting for the once-a-minute
+			// schedule; a queue hiccup here must not fail an otherwise-successful cycle.
+			await boss.send(
+				REFRESH_ROLLUPS_QUEUE,
+				{ source: "run" },
+				{ singletonKey: REFRESH_ROLLUPS_QUEUE, singletonSeconds: 10 },
+			);
+		} catch (error) {
+			console.error(`Failed to send refresh-rollups trigger for prompt ${promptId}:`, error);
+		}
+	}
 
 	// A cycle where nothing came back means the targets themselves are failing,
 	// so the next attempt backs off instead of running on cadence. Anything that

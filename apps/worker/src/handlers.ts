@@ -1,10 +1,14 @@
 import * as Sentry from "@sentry/node";
 import { getDeployment } from "@workspace/deployment";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
+import { REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE } from "@workspace/lib/rollups/constants";
 import type { Job, PgBoss } from "pg-boss";
 import { type AnalyzeBrandData, analyzeBrandJob } from "./jobs/analyze-brand";
 import { type GenerateReportData, generateReportJob } from "./jobs/generate-report";
 import { type ProcessPromptData, processPromptJob } from "./jobs/process-prompt";
+import { RECONCILE_ROLLUPS_QUEUE, type ReconcileRollupsData, reconcileRollupsJob } from "./jobs/reconcile-rollups";
+import { type RefreshRollupsData, refreshRollupsJob } from "./jobs/refresh-rollups";
+import { type ReprocessData, reprocessJob } from "./jobs/reprocess";
 import { type ScheduleMaintenanceData, scheduleMaintenanceJob } from "./jobs/schedule-maintenance";
 import { type SyncAuth0MembershipsData, syncAuth0MembershipsJob } from "./jobs/sync-auth0-memberships";
 
@@ -70,4 +74,21 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 		);
 		console.log("Registered handler: sync-auth0-memberships");
 	}
+
+	await boss.work<RefreshRollupsData>(
+		REFRESH_ROLLUPS_QUEUE,
+		{ localConcurrency: 1 },
+		withSentry(REFRESH_ROLLUPS_QUEUE, refreshRollupsJob),
+	);
+	console.log(`Registered handler: ${REFRESH_ROLLUPS_QUEUE}`);
+
+	await boss.work<ReconcileRollupsData>(
+		RECONCILE_ROLLUPS_QUEUE,
+		{ localConcurrency: 1 },
+		withSentry(RECONCILE_ROLLUPS_QUEUE, reconcileRollupsJob),
+	);
+	console.log(`Registered handler: ${RECONCILE_ROLLUPS_QUEUE}`);
+
+	await boss.work<ReprocessData>(REPROCESS_QUEUE, { localConcurrency: 1 }, withSentry(REPROCESS_QUEUE, reprocessJob));
+	console.log(`Registered handler: ${REPROCESS_QUEUE}`);
 }

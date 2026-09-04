@@ -4,6 +4,8 @@ import { mentionsDeriver } from "./mentions";
 import type { BrandContext, DerivedColumns, Deriver, DeriverInput } from "./types";
 
 export { mentionsDeriver } from "./mentions";
+export type { RowWorkPlan, StoredRunVersions } from "./reprocess-plan";
+export { planRowWork } from "./reprocess-plan";
 export type { BrandContext, DerivedColumns, Deriver, DeriverInput } from "./types";
 
 export const DERIVERS: readonly Deriver[] = [mentionsDeriver];
