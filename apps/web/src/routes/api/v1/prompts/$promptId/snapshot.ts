@@ -10,13 +10,13 @@ import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
-import { requirePromptInScope } from "@/lib/api/scope";
 import {
 	getPromptCitationUrlStats,
 	getPromptMentionSummary,
 	getPromptTopCompetitorMentions,
-} from "@/lib/postgres-read";
+} from "@/lib/analytics-read";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { requirePromptInScope } from "@/lib/api/scope";
 
 function isValidDate(dateStr: string): boolean {
 	const dateRegex = /^\d{4}-\d{2}-\d{2}$/;

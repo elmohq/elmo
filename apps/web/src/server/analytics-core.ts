@@ -4,6 +4,7 @@
  * different numbers from the same data.
  */
 
+import { parseModelFilter } from "@workspace/config/model-filter";
 import { getModelMeta } from "@workspace/config/models";
 import { extractDomain, normalizeUrl } from "@workspace/lib/citations/domain-categories";
 import { classifyUrl as classifyUrlShared } from "@workspace/lib/citations/domain-lists";
@@ -12,22 +13,27 @@ import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
-import { generateDateRange } from "@/lib/chart-utils";
-import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
 import {
+	type CitationCountByModelRow,
 	getBrandMentionRateByModel,
 	getBrandMentionTotals,
 	getCitationDomainPromptCounts,
+	getCitationsCountByModel,
 	getCitationsTotalCount,
 	getCitationUrlStats,
+	getPerPromptDailyCompetitorMentions,
+	getPerPromptDailyMentions,
+	getPromptsSummary,
+	getVisibilityDailyAggregate,
+} from "@/lib/analytics-read";
+import { generateDateRange } from "@/lib/chart-utils";
+import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
+import {
+	API_PROVIDER_IDS,
 	getFanoutBreakdown,
 	getFanoutModelTotals,
 	getFanoutPromptTotals,
-	getPerPromptDailyCompetitorMentions,
-	getPerPromptDailyMentions,
 	getPromptsFirstEvaluatedAt,
-	getPromptsSummary,
-	getVisibilityDailyAggregate,
 	isCalendarDay,
 } from "@/lib/postgres-read";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
@@ -221,6 +227,32 @@ export interface ModelVisibility {
 	citations: number;
 }
 
+/** Whether a citations-by-model row was reached by a grounded API call — the
+ * same test `modelFilter` applies at query time. */
+export function isGroundedCitationRow(row: Pick<CitationCountByModelRow, "provider" | "web_search_enabled">): boolean {
+	return row.web_search_enabled && API_PROVIDER_IDS.includes(row.provider);
+}
+
+/**
+ * Sums `getCitationsCountByModel`'s (model, provider, web_search_enabled)
+ * rows down to one count per bare model, so it lines up with
+ * `getBrandMentionRateByModel`'s rows. A target's premium-ness restricts the
+ * sum to matching rows only; no target (the filter is unset) sums every row
+ * for that model, matching how the unfiltered mention-rate query counts runs
+ * across both grounded and standard.
+ */
+export function citationsByBareModel(
+	rows: CitationCountByModelRow[],
+	target: { model: string; premium: boolean } | null,
+): Map<string, number> {
+	const byModel = new Map<string, number>();
+	for (const row of rows) {
+		if (target && isGroundedCitationRow(row) !== target.premium) continue;
+		byModel.set(row.model, (byModel.get(row.model) ?? 0) + row.count);
+	}
+	return byModel;
+}
+
 async function getBrandModelBreakdown(
 	brandId: string,
 	window: AnalyticsWindow,
@@ -230,15 +262,11 @@ async function getBrandModelBreakdown(
 	if (promptIds.length === 0) return [];
 	const { from, to, timezone } = window;
 
-	const rows = await getBrandMentionRateByModel(brandId, from, to, timezone, promptIds, filters.model);
-
-	// The URL roll-up has no model column to group by.
-	const citationsByModel = new Map<string, number>();
-	await Promise.all(
-		rows.map(async (row) => {
-			citationsByModel.set(row.model, await getCitationsTotalCount(brandId, from, to, timezone, promptIds, row.model));
-		}),
-	);
+	const [rows, citationRows] = await Promise.all([
+		getBrandMentionRateByModel(brandId, from, to, timezone, promptIds, filters.model),
+		getCitationsCountByModel(brandId, from, to, timezone, promptIds),
+	]);
+	const citationsByModel = citationsByBareModel(citationRows, filters.model ? parseModelFilter(filters.model) : null);
 
 	return rows.map((row) => {
 		const runs = Number(row.runs);

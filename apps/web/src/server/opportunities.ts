@@ -32,7 +32,7 @@ import {
 	getPerPromptRunStats,
 	type PerPromptDailyCompetitorRow,
 	type PerPromptRunStats,
-} from "@/lib/postgres-read";
+} from "@/lib/analytics-read";
 import { isBrandedPrompt } from "@/lib/prompt-tags";
 import { resolveLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { computeVolatility, type DailyDomainCount, stabilityScore } from "@/lib/visibility-stats";

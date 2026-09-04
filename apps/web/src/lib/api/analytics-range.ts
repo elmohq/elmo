@@ -3,7 +3,7 @@
  * beside them. `/prompts/{promptId}/snapshot` keeps the calendar days it
  * shipped with, being a published contract.
  */
-import { BUCKET_MS } from "@workspace/lib/rollups/constants";
+import { bucketStart } from "@workspace/lib/rollups";
 import type { AnalyticsWindow } from "@/server/analytics-core";
 import { ApiError } from "./handler";
 
@@ -34,7 +34,7 @@ function parseInstant(name: string, raw: string): string {
  * at 10:17. Flooring both bounds is what lets the response echo the window that
  * was actually answered. */
 function alignToBucket(instant: string): string {
-	return new Date(Math.floor(new Date(instant).getTime() / BUCKET_MS) * BUCKET_MS).toISOString();
+	return bucketStart(new Date(instant)).toISOString();
 }
 
 /** Over plain values, so the MCP tools and the URL parser refuse a bad window

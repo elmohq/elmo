@@ -16,19 +16,14 @@ import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
+import { type CitationUrlStats, getPromptCitationUrlStats, getPromptsSummary } from "@/lib/analytics-read";
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
 import { generateDateRange } from "@/lib/chart-utils";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 import type { LookbackPeriod } from "@/lib/lookback";
-import {
-	type CitationUrlStats,
-	getPromptCitationUrlStats,
-	getPromptsFirstEvaluatedAt,
-	getPromptsSummary,
-	getPromptWebQueryCounts,
-} from "@/lib/postgres-read";
+import { getPromptsFirstEvaluatedAt, getPromptWebQueryCounts } from "@/lib/postgres-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { parseTagFilter } from "@/server/prompt-resolution";

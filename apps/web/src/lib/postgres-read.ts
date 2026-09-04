@@ -87,7 +87,7 @@ export interface ProcessedBatchChartDataPoint {
 	competitor_counts: Record<string, number>;
 }
 
-async function queryPg<T>(query: SQL): Promise<T[]> {
+export async function queryPg<T>(query: SQL): Promise<T[]> {
 	const result = await db.execute(query);
 	return result.rows as T[];
 }
@@ -101,11 +101,11 @@ async function queryPg<T>(query: SQL): Promise<T[]> {
  */
 export const isCalendarDay = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
-function windowStart(from: string, timezone: string): SQL {
+export function windowStart(from: string, timezone: string): SQL {
 	return isCalendarDay(from) ? sql`(${from}::date AT TIME ZONE ${timezone})` : sql`${from}::timestamptz`;
 }
 
-function windowEnd(to: string, timezone: string): SQL {
+export function windowEnd(to: string, timezone: string): SQL {
 	return isCalendarDay(to) ? sql`((${to}::date + interval '1 day') AT TIME ZONE ${timezone})` : sql`${to}::timestamptz`;
 }
 
@@ -114,14 +114,14 @@ function dateFilter(fromDate: string | null, toDate: string | null, timezone: st
 	return sql`AND created_at >= ${windowStart(fromDate, timezone)} AND created_at < ${windowEnd(toDate, timezone)}`;
 }
 
-function uuidList(ids: string[]): SQL {
+export function uuidList(ids: string[]): SQL {
 	return sql.join(
 		ids.map((id) => sql`${id}::uuid`),
 		sql`, `,
 	);
 }
 
-function promptIdFilter(enabledPromptIds?: string[]): SQL {
+export function promptIdFilter(enabledPromptIds?: string[]): SQL {
 	if (!enabledPromptIds?.length) return sql``;
 	return sql`AND prompt_id IN (${uuidList(enabledPromptIds)})`;
 }
@@ -136,7 +136,7 @@ function promptIdFilter(enabledPromptIds?: string[]): SQL {
  * default and calls the API when a target pins a version) is classified by its
  * default here, since the row doesn't record which route ran.
  */
-const API_PROVIDER_IDS = getAllProviders()
+export const API_PROVIDER_IDS = getAllProviders()
 	.filter((provider) => provider.access === "api")
 	.map((provider) => provider.id);
 
@@ -148,7 +148,7 @@ const API_PROVIDER_IDS = getAllProviders()
  * drizzle flattens a JS array into a single text parameter, which `ANY(...)`
  * then can't compare element-wise.
  */
-function modelFilter(model?: string, opts?: { alias?: string; source?: "prompt_runs" | "citations" }): SQL {
+export function modelFilter(model?: string, opts?: { alias?: string; source?: "prompt_runs" | "citations" }): SQL {
 	const target = model ? parseModelFilter(model) : null;
 	if (!target) return sql``;
 	const prefix = opts?.alias ? sql.raw(`${opts.alias}.`) : sql``;
@@ -175,7 +175,7 @@ function modelFilter(model?: string, opts?: { alias?: string; source?: "prompt_r
 	return sql`AND ${prefix}model = ${target.model} AND ${target.premium ? grounded : sql`NOT ${grounded}`}`;
 }
 
-function webSearchFilter(webSearchEnabled?: boolean): SQL {
+export function webSearchFilter(webSearchEnabled?: boolean): SQL {
 	if (webSearchEnabled === undefined) return sql``;
 	return sql`AND web_search_enabled = ${webSearchEnabled}`;
 }

@@ -12,14 +12,14 @@ import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireBrandSession } from "@/lib/auth/helpers";
-import { applyPerPromptCitationLVCF, applyPerPromptLVCF, generateDateRange } from "@/lib/chart-utils";
-import { lookbackSchema } from "@/lib/lookback";
 import {
 	getDashboardSummary,
 	getPerPromptDailyCitationStats,
 	getPerPromptVisibilityTimeSeries,
-} from "@/lib/postgres-read";
+} from "@/lib/analytics-read";
+import { requireBrandSession } from "@/lib/auth/helpers";
+import { applyPerPromptCitationLVCF, applyPerPromptLVCF, generateDateRange } from "@/lib/chart-utils";
+import { lookbackSchema } from "@/lib/lookback";
 import { resolveBrandWindow } from "@/server/brand-window";
 
 interface VisibilityTimeSeriesPoint {
