@@ -1,8 +1,8 @@
 ---
 title: "Where AI Citations Come From (Mostly Not Your Site)"
-description: "Across 25 million links cited by AI engines, 84% pointed at domains the brand doesn't own. Here's what that changes about where you spend your AEO effort."
+description: "Across 25 million links cited by AI engines, 84% pointed at domains the brand doesn't own — but on the evaluation-stage prompts that decide shortlists, the ratio flips. Here's what that changes about where you spend your AEO effort."
 date: "2026-07-29"
-updated: "2026-08-17"
+updated: "2026-09-05"
 author: ai
 metaTitle: "How AI Models Decide Which Brands to Cite"
 tags:
@@ -48,6 +48,8 @@ faq:
     answer: "Substantially. In Profound's analysis of roughly 680 million citations, Wikipedia accounted for 7.8% of ChatGPT's citations but only 0.6% of Google AI Overviews' and Perplexity's, while Reddit ran at 6.6% on Perplexity against 1.8% on ChatGPT. Engines also cite at different rates: Muck Rack recorded citations in 96% of ChatGPT responses, 82% of Gemini's, and 55% of Claude's."
   - question: Does the type of question change which sources get cited?
     answer: "Yes. Muck Rack found industry trend queries cited journalism in 46% of responses, more than double the rate for how-to and comparative queries, which lean instead on reference material and brand-owned pages. Your prompt mix therefore determines which off-site surfaces are worth the investment."
+  - question: Do evaluation-stage prompts cite different sources than general prompts?
+    answer: "Substantially. Ten Speed's September 2026 analysis categorized just over 7,000 citations from 220 B2B evaluation-stage prompts — comparisons, alternatives, use cases, buying-intent questions — run through Peec AI across ChatGPT, Perplexity, Claude, and Gemini. Product pages were the single largest cited format at 24.1%, community sources like Reddit and YouTube totalled 4.2%, and formats a marketing team can publish summed to 88.3% of all citations. The caveat: the study does not check whether a cited comparison page or listicle sits on the recommended brand's domain or a competitor's."
   - question: How do I find which third-party sites shape my AI visibility?
     answer: "Export the cited domains from your tracked prompts on every engine, including the runs where your brand was not mentioned, then group them by type and rank them by citation count. The top off-site domains for your prompts are your target list. Open the cited pages and check whether they represent you accurately."
 ---
@@ -62,6 +64,7 @@ faq:
 - The mix is engine-specific. Wikipedia was 7.8% of ChatGPT's citations but 0.6% of Google AI Overviews' and Perplexity's in [Profound's 680-million-citation analysis](https://www.tryprofound.com/blog/ai-platform-citation-patterns); Reddit ran at 6.6% on Perplexity against 1.8% on ChatGPT.
 - Query type shifts it again. Trend questions cited journalism in 46% of responses, more than twice the rate of how-to and comparative questions.
 - A counter-headline exists and is also true: Yext measured 86% of citations from brand-managed sources — on location-based queries, counting third-party listings as brand-managed. The clash with the 84% is a clash of query mix and taxonomy, not of data.
+- A third pole arrived in September 2026: across 220 B2B evaluation-stage prompts, Ten Speed found product pages the largest cited format at 24.1% and Reddit, YouTube, and forums at 4.2% combined. The shortlist-deciding prompts lean on vendor-publishable pages — with the caveat that "publishable by a marketing team" does not mean "published by yours."
 - None of this makes on-site work worthless. It puts a ceiling on it, and the ceiling is lower than most AEO checklists imply.
 
 ## What the 84% actually counts
@@ -131,11 +134,39 @@ This is the finding that makes the whole thing actionable, because it means your
 
 So separate them. The [prompt set](/blog/ai-prompt-tracking) you already track can be split by question type in an afternoon, and the split tells you which half of the work to fund.
 
+## Evaluation-stage prompts flip the ratio
+
+For a year, the missing dataset in this argument was the one marketers care about most: not "what does AI cite across an industry" but "what does AI cite on the comparison and alternatives prompts that decide a shortlist." In September 2026, Ten Speed — a B2B content agency — published [an analysis of exactly that slice](https://www.tenspeed.io/blog/what-ai-cites-b2b-evaluation-stage): 220 hand-written evaluation-stage prompts (20% comparisons, 20% alternatives, 20% use cases, 19.5% feature and integration questions, the rest buying-intent and brand-direct) run through Peec AI's monitoring of ChatGPT, Perplexity, Claude, and Gemini, with just over 7,000 resulting citations categorized by content format.
+
+The mix looks nothing like the general corpora:
+
+| Format | Share of citations |
+|---|---|
+| Product pages | 24.1% |
+| Articles (blog, news, PR) | 17.4% |
+| Comparison pages | 13.3% |
+| Listicles | 13.2% |
+| How-to guides | 8.9% |
+| Homepages | 7.8% |
+| Review-site profiles (G2, Capterra) | 7.2% |
+| Community discussion | 3.7% |
+| Alternatives pages | 2.4% |
+| Category pages | 1.2% |
+| Video | 0.5% |
+
+Product pages — the format general studies barely register — were the single largest category. Reddit, YouTube, and forums combined for 4.2%, with YouTube at roughly 1%. Everything a marketing team can publish sums to 88.3%. Comparison-format prompts over-earned: 20% of the prompt set drove roughly 27% of citation volume, about 1.33× their share.
+
+Set 88.3% next to Muck Rack's 84%-not-yours and Yext's 86%-brand-managed and you have three headline numbers apparently at war. It is the same reconciliation a third time: general industry prompts source from the open web, location prompts source from listings, and evaluation-stage prompts source from the category's own vendors. The controllable share of your citation mix is a property of your prompt set — now demonstrated at all three points of the triangle.
+
+Two caveats before this becomes a victory lap for on-site work. First, the vendor symmetry holds yet again: a content agency measured the citation landscape and found that content wins, just as the PR vendor found journalism and the listings vendor found listings. Second — and this is the limitation the study itself does not dwell on — "brand-controllable" describes the *format*, not the *owner*. Ten Speed never checks whether a cited comparison page or listicle sits on the recommended brand's domain. A comparison page is controllable by whoever wrote it, and in most categories the page AI cites for "alternatives to X" was written by one of X's competitors. The sample is also one agency's B2B SaaS client base, a single snapshot, from one monitoring tool, with no per-engine breakdown.
+
+What the study does establish, caveats intact: on the prompts closest to a buying decision, the citation pool is made of pages *someone's* marketing team wrote. Whether yours is in it is the part you control.
+
 ## What this does not prove
 
 Being straight about the limits matters more than the headline here, because "your website doesn't matter" is a conclusion the data does not support and one that would cost you real visibility.
 
-These are **citation counts across all queries in an industry**, not brand-specific commercial queries. Nobody has published the equivalent breakdown for the narrow, high-intent prompts that decide a shortlist in your category, and there is good reason to expect vendor documentation and pricing pages to do better there than they do across a general corpus. That experiment is the one you can run yourself, on your own prompts, and it is described in the next section.
+The big corpora are **citation counts across all queries in an industry**, not brand-specific commercial queries. Ten Speed's evaluation-stage data closes part of that gap and confirms the expectation — vendor pages do far better on high-intent prompts than across a general corpus — but it cannot tell you *whose* vendor pages win in your category, and its sample is one agency's client base on one day. That experiment is still the one you run yourself, on your own prompts, and it is described in the next section.
 
 The categories are also softer than the percentages imply. A bucket that contains both a Reuters investigation and a competitor's blog post is not measuring one thing, and the published summaries do not give a clean own-domain share to set against the 84%. The closest published figure — Yext's 44% for first-party websites — comes from an all-local corpus in four sectors, which answers a different question than a general prompt set does.
 
