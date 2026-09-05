@@ -15,7 +15,7 @@ import {
 import { inTransaction, markDirtyForTimestamps, REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE } from "@workspace/lib/rollups";
 import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { type Citation, EXTRACTOR_VERSION, extractRun, tryExtractTextContent } from "@workspace/lib/text-extraction";
-import { and, asc, eq, gt, gte, inArray, type SQL, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, type SQL, sql } from "drizzle-orm";
 import type { Job, PgBoss } from "pg-boss";
 import boss from "../boss";
 
@@ -25,7 +25,19 @@ export interface ReprocessData {
 	layers: ("extraction" | "interpretation")[];
 	/** Restrict interpretation to these deriver names; omitted = all of DERIVERS. */
 	derivers?: string[];
-	cursor?: { brandId: string; lastRunId: string | null };
+	cursor?: { brandId: string; after: RunCursor | null };
+}
+
+/**
+ * Keyset position inside a brand's runs. Ordering by `(created_at, id)` lets
+ * the brand's `(brand_id, created_at)` index serve every batch; ordering by id
+ * alone would walk the primary key and filter, which for a small brand in a
+ * large table means scanning most of it per batch. The timestamp travels as
+ * ISO text because the cursor rides in a job payload.
+ */
+export interface RunCursor {
+	createdAt: string;
+	id: string;
 }
 
 const BATCH_SIZE = 200;
@@ -126,7 +138,7 @@ export function buildRowUpdate(rowPlan: RowPlan, raw: unknown | undefined, ctx: 
 	return { columns, citations };
 }
 
-async function loadRunBatch(conn: DbConnection, brandId: string, afterId: string | null): Promise<StoredRun[]> {
+async function loadRunBatch(conn: DbConnection, brandId: string, after: RunCursor | null): Promise<StoredRun[]> {
 	return conn
 		.select({
 			id: promptRuns.id,
@@ -139,8 +151,15 @@ async function loadRunBatch(conn: DbConnection, brandId: string, afterId: string
 			analysisVersions: promptRuns.analysisVersions,
 		})
 		.from(promptRuns)
-		.where(and(eq(promptRuns.brandId, brandId), afterId ? gt(promptRuns.id, afterId) : undefined))
-		.orderBy(asc(promptRuns.id))
+		.where(
+			and(
+				eq(promptRuns.brandId, brandId),
+				after
+					? sql`(${promptRuns.createdAt}, ${promptRuns.id}) > (${after.createdAt}::timestamptz, ${after.id}::uuid)`
+					: undefined,
+			),
+		)
+		.orderBy(asc(promptRuns.createdAt), asc(promptRuns.id))
 		.limit(BATCH_SIZE);
 }
 
@@ -206,7 +225,7 @@ interface BrandProcessResult {
 	processed: number;
 	rewritten: number;
 	timedOut: boolean;
-	lastId: string | null;
+	last: RunCursor | null;
 }
 
 async function processRunsForBrand(
@@ -214,16 +233,16 @@ async function processRunsForBrand(
 	brandId: string,
 	ctx: BrandContext,
 	data: ReprocessData,
-	startAfterId: string | null,
+	startAfter: RunCursor | null,
 	deadline: number,
 ): Promise<BrandProcessResult> {
-	let afterId = startAfterId;
+	let after = startAfter;
 	let processed = 0;
 	let rewritten = 0;
 
 	for (;;) {
-		if (Date.now() > deadline) return { processed, rewritten, timedOut: true, lastId: afterId };
-		const rows = await loadRunBatch(conn, brandId, afterId);
+		if (Date.now() > deadline) return { processed, rewritten, timedOut: true, last: after };
+		const rows = await loadRunBatch(conn, brandId, after);
 		if (rows.length === 0) break;
 
 		const plans = rows.map((row) => planRow(row, ctx, data));
@@ -235,9 +254,10 @@ async function processRunsForBrand(
 
 		processed += rows.length;
 		rewritten += batch.rewritten;
-		afterId = rows[rows.length - 1].id;
+		const lastRow = rows[rows.length - 1];
+		after = { createdAt: lastRow.createdAt.toISOString(), id: lastRow.id };
 	}
-	return { processed, rewritten, timedOut: false, lastId: afterId };
+	return { processed, rewritten, timedOut: false, last: after };
 }
 
 function sameTags(a: string[], b: string[]): boolean {
@@ -287,9 +307,9 @@ async function sendContinuation(
 	sendBoss: BossSender,
 	data: ReprocessData,
 	brandId: string,
-	lastRunId: string | null,
+	after: RunCursor | null,
 ): Promise<void> {
-	await sendBoss.send(REPROCESS_QUEUE, { ...data, cursor: { brandId, lastRunId } });
+	await sendBoss.send(REPROCESS_QUEUE, { ...data, cursor: { brandId, after } });
 }
 
 async function triggerRefresh(sendBoss: BossSender): Promise<void> {
@@ -316,8 +336,8 @@ async function processBrand(
 		return null;
 	}
 
-	const startAfterId = data.cursor?.brandId === brandId ? (data.cursor.lastRunId ?? null) : null;
-	const result = await processRunsForBrand(conn, brandId, context.ctx, data, startAfterId, deadline);
+	const startAfter = data.cursor?.brandId === brandId ? data.cursor.after : null;
+	const result = await processRunsForBrand(conn, brandId, context.ctx, data, startAfter, deadline);
 	console.log(
 		`[reprocess] brand ${brandId} processed=${result.processed} rewritten=${result.rewritten} skipped=${result.processed - result.rewritten}`,
 	);
@@ -340,7 +360,7 @@ export async function runReprocess(
 	for (const brandId of brandIds) {
 		const result = await processBrand(conn, data, brandId, deadline);
 		if (result?.timedOut) {
-			await sendContinuation(sendBoss, data, brandId, result.lastId);
+			await sendContinuation(sendBoss, data, brandId, result.last);
 			return;
 		}
 	}
