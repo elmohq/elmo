@@ -1,7 +1,7 @@
 import { and, asc, gt, lt, sql } from "drizzle-orm";
+import { classifyPage } from "../citations/page-classification";
 import type { DbConnection } from "../db/db-connection";
 import { citedPages } from "../db/schema";
-import { classifyPage } from "./aggregate-citations";
 import { chunked } from "./chunk";
 import { CLASSIFIER_VERSION } from "./constants";
 

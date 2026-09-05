@@ -1,15 +1,14 @@
-import { classifyUrl } from "@workspace/lib/citations/domain-lists";
-import { GOOGLE_STATIC_CATEGORY } from "@workspace/lib/rollups";
 import { describe, expect, it } from "vitest";
-import { resolveCitationClass } from "@/server/citations";
+import { classifyUrl } from "./domain-lists";
+import { GOOGLE_STATIC_CATEGORY, resolvePageClass } from "./page-classification";
 
 /**
- * `resolveCitationClass` reproduces, from the rollup-stored (static_category,
+ * `resolvePageClass` reproduces, from the rollup-stored (static_category,
  * page_type) pair, what `classifyUrl`/`resolvePageType` would say for a given
  * brand — without a URL or title to reclassify from. These tests hold the two
  * paths to the same answer for the cases the override has to get right.
  */
-describe("resolveCitationClass", () => {
+describe("resolvePageClass", () => {
 	const brandDomains = new Set(["ourbrand.com"]);
 	const competitorDomains = new Set(["rival.com"]);
 
@@ -20,7 +19,7 @@ describe("resolveCitationClass", () => {
 			"brand",
 		);
 		expect(
-			resolveCitationClass(
+			resolvePageClass(
 				{ domain: "ourbrand.com", static_category: "editorial", page_type: "article" },
 				brandDomains,
 				competitorDomains,
@@ -30,7 +29,7 @@ describe("resolveCitationClass", () => {
 
 	it("overrides to competitor for a tracked competitor's domain", () => {
 		expect(
-			resolveCitationClass(
+			resolvePageClass(
 				{ domain: "rival.com", static_category: "other", page_type: "product" },
 				brandDomains,
 				competitorDomains,
@@ -40,7 +39,7 @@ describe("resolveCitationClass", () => {
 
 	it("keeps the stored category for a domain that is neither brand nor competitor", () => {
 		expect(
-			resolveCitationClass(
+			resolvePageClass(
 				{ domain: "some-editorial-site.com", static_category: "editorial", page_type: "howto" },
 				brandDomains,
 				competitorDomains,
@@ -54,7 +53,7 @@ describe("resolveCitationClass", () => {
 		// (which fills static_category/page_type at rebuild time) doesn't know the
 		// category yet, so the override has to redo this part at read time.
 		expect(
-			resolveCitationClass(
+			resolvePageClass(
 				{ domain: "some-editorial-site.com", static_category: "editorial", page_type: "other" },
 				brandDomains,
 				competitorDomains,
@@ -64,7 +63,7 @@ describe("resolveCitationClass", () => {
 
 	it("does not upgrade an uncategorized page type on a non-content-publisher domain", () => {
 		expect(
-			resolveCitationClass(
+			resolvePageClass(
 				{ domain: "some-store.com", static_category: "ecommerce", page_type: "other" },
 				brandDomains,
 				competitorDomains,
@@ -74,7 +73,7 @@ describe("resolveCitationClass", () => {
 
 	it("never upgrades an already-specific page type", () => {
 		expect(
-			resolveCitationClass(
+			resolvePageClass(
 				{ domain: "some-editorial-site.com", static_category: "institutional", page_type: "video" },
 				brandDomains,
 				competitorDomains,
@@ -84,7 +83,7 @@ describe("resolveCitationClass", () => {
 
 	it("drops a Google surface row (null) ahead of the brand/competitor override, matching how the raw path drops them by URL before classifying", () => {
 		expect(
-			resolveCitationClass(
+			resolvePageClass(
 				{ domain: "google.com", static_category: GOOGLE_STATIC_CATEGORY, page_type: "search" },
 				brandDomains,
 				competitorDomains,
@@ -93,7 +92,7 @@ describe("resolveCitationClass", () => {
 		// Even a domain that happens to be tracked as the brand's own still drops:
 		// the raw path filters isGoogleSurfaceUrl(url) before it ever calls classify().
 		expect(
-			resolveCitationClass(
+			resolvePageClass(
 				{ domain: "ourbrand.com", static_category: GOOGLE_STATIC_CATEGORY, page_type: "shopping" },
 				new Set(["ourbrand.com"]),
 				competitorDomains,

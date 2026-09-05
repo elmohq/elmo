@@ -1,41 +1,10 @@
-import {
-	type CitationCategory,
-	type CitationPageType,
-	inferPageType,
-	isGoogleSurfaceUrl,
-	normalizeUrl,
-} from "../citations/domain-categories";
-import { categorizeDomain, classifyUrl } from "../citations/domain-lists";
+import { isGoogleSurfaceUrl, normalizeUrl } from "../citations/domain-categories";
+import { categorizeDomain } from "../citations/domain-lists";
+import { classifyPage, GOOGLE_STATIC_CATEGORY } from "../citations/page-classification";
 import { bucketStart } from "./bucket";
 import { CLASSIFIER_VERSION } from "./constants";
 
-/**
- * Google search and shopping surfaces get their own category so reads can pull
- * them out of the source mix — they are rendered as their own module and would
- * otherwise be counted twice. It is deliberately outside `CITATION_CATEGORIES`:
- * it is a rollup storage concern, not a citation source category.
- */
-export const GOOGLE_STATIC_CATEGORY = "google";
-
-export type StaticCategory = CitationCategory | typeof GOOGLE_STATIC_CATEGORY;
-
-/** The tenant-independent classification stored on `cited_pages`. */
-export interface PageClassification {
-	pageType: CitationPageType;
-	staticCategory: StaticCategory;
-}
-
 const NO_DOMAINS: Set<string> = new Set();
-
-/**
- * Classification of a single page. Brand and competitor domains are left out:
- * they differ per tenant and are applied at read time over domain-grain rows.
- */
-export function classifyPage(url: string, domain: string, title: string | null): PageClassification {
-	const pageType = inferPageType(url, title);
-	if (isGoogleSurfaceUrl(url)) return { pageType, staticCategory: GOOGLE_STATIC_CATEGORY };
-	return { pageType, staticCategory: classifyUrl(domain, url, title, NO_DOMAINS, NO_DOMAINS) };
-}
 
 export interface CitationSourceRow {
 	brandId: string;

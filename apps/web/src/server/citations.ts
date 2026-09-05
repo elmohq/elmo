@@ -5,11 +5,9 @@ import {
 	CITATION_PAGE_TYPES,
 	type CitationCategory,
 	type CitationPageType,
-	CONTENT_PUBLISHER_CATEGORIES,
 	emptyCategoryCounts,
 	emptyPageTypeCounts,
 	extractDomain,
-	inDomainSet,
 	isGoogleSurfaceUrl,
 	normalizeUrl,
 	toRoundedPercentages,
@@ -18,6 +16,7 @@ import {
 	categorizeDomain as categorizeDomainShared,
 	classifyUrl as classifyUrlShared,
 } from "@workspace/lib/citations/domain-lists";
+import { type ResolvedPageClass, resolvePageClass } from "@workspace/lib/citations/page-classification";
 import {
 	type CitationDomain,
 	type CitationUrl,
@@ -27,7 +26,6 @@ import {
 } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { GOOGLE_STATIC_CATEGORY } from "@workspace/lib/rollups";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -167,39 +165,6 @@ function promptCountsByUrl(urlStats: CitationUrlStats[]): Map<string, number> {
 	return byUrl;
 }
 
-export interface ResolvedCitationClass {
-	category: CitationCategory;
-	pageType: CitationPageType;
-}
-
-/**
- * Applies the two adjustments a stored `(static_category, page_type)` pair
- * needs to match what `classifyUrl`/`resolvePageType` would say for this
- * brand: the brand/competitor domain override (checked first, same as
- * `classifyUrl`), and — since a domain that clears that override keeps
- * `static_category` as its category — the "uncategorized page on a
- * content-publisher domain reads as an article" fallback, using the
- * (possibly just-overridden) category. Returns null for a Google surface
- * row: those never contributed to either series (`rollUpCitationUrls` drops
- * them the same way, via `isGoogleSurfaceUrl`).
- */
-export function resolveCitationClass(
-	row: Pick<PerPromptDailyCitationClassRow, "domain" | "static_category" | "page_type">,
-	brandDomains: Set<string>,
-	competitorDomains: Set<string>,
-): ResolvedCitationClass | null {
-	if (row.static_category === GOOGLE_STATIC_CATEGORY) return null;
-	const category = inDomainSet(row.domain, brandDomains)
-		? "brand"
-		: inDomainSet(row.domain, competitorDomains)
-			? "competitor"
-			: (row.static_category as CitationCategory);
-	const storedPageType = row.page_type as CitationPageType;
-	const pageType =
-		storedPageType === "other" && CONTENT_PUBLISHER_CATEGORIES.has(category) ? "article" : storedPageType;
-	return { category, pageType };
-}
-
 /**
  * Per-day percentage trends over the window, smoothed per prompt so a
  * staggered cadence doesn't read as a gap. Rows are already at (prompt, day,
@@ -209,7 +174,7 @@ export function resolveCitationClass(
  */
 function buildClassTimeSeries<K extends string>(args: {
 	rows: PerPromptDailyCitationClassRow[];
-	keyFor: (resolved: ResolvedCitationClass) => K;
+	keyFor: (resolved: ResolvedPageClass) => K;
 	dateRange: string[];
 	cadenceHours: number | null | undefined;
 	allKeys: readonly K[];
@@ -218,7 +183,7 @@ function buildClassTimeSeries<K extends string>(args: {
 	competitorDomains: Set<string>;
 }): ({ date: string } & Record<K, number>)[] {
 	const keyedRows = args.rows.flatMap((row) => {
-		const resolved = resolveCitationClass(row, args.brandDomains, args.competitorDomains);
+		const resolved = resolvePageClass(row, args.brandDomains, args.competitorDomains);
 		if (!resolved) return [];
 		return [{ prompt_id: row.prompt_id, date: String(row.date), key: args.keyFor(resolved), count: Number(row.count) }];
 	});

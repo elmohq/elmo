@@ -39,6 +39,7 @@
 		"./citations/domain-categories": "./src/citations/domain-categories.ts",
 		"./citations/domain-lists": "./src/citations/domain-lists.ts",
 		"./citations/rollup": "./src/citations/rollup.ts",
+		"./citations/page-classification": "./src/citations/page-classification.ts",
 		"./rollups": "./src/rollups/index.ts",
 		"./rollups/constants": "./src/rollups/constants.ts",
 		"./mentions": "./src/mentions.ts",
