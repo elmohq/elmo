@@ -8,7 +8,7 @@ import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 
 const title = "Off-Site AEO — Get Cited by AI on High-Authority Sites · Elmo";
 const description =
-	"Managed off-site AEO: we place human-edited guest articles on high-authority (DR20–60+) sites so AI answer engines cite your brand. Targeted to your gaps, refreshed monthly, with a report. Great backlinks, too.";
+	"Managed off-site AEO: we place human-edited guest articles on high-authority (DR20–60+) sites so AI answer engines cite your brand. Placements target your gaps, refresh monthly, and come with a report — plus the backlinks.";
 
 export const Route = createFileRoute("/off-site-aeo")({
 	head: () => ({
