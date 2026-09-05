@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { API_PROVIDER_IDS } from "@/lib/postgres-read";
+import { API_PROVIDER_IDS } from "@/lib/analytics-sql";
 import { citationsByBareModel, isGroundedCitationRow } from "@/server/analytics-core";
 
 /**

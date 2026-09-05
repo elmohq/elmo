@@ -1,56 +1,44 @@
 /**
- * Postgres analytics read layer, backed by the rollup tables instead of raw
- * `prompt_runs`/`citations`. Same exported names, signatures, and return
- * shapes as `postgres-read.ts` — `analytics-read.ts` picks between the two
- * once the backfill has caught up.
- *
- * Window/filter helpers (`windowStart`, `windowEnd`, `uuidList`,
- * `promptIdFilter`, `modelFilter`, `webSearchFilter`, `queryPg`) are shared
- * with `postgres-read.ts` rather than duplicated: the rollup tables carry
- * `provider` and `web_search_enabled` on every row, so the same
- * `modelFilter` predicate that targets `prompt_runs`/`citations` works
- * unchanged here, and the citations `EXISTS`-against-`prompt_runs` branch is
- * never needed.
+ * Analytics reads against the rollup tables. Same exported names, signatures,
+ * and return shapes as `postgres-read.ts`; `analytics-read.ts` picks between
+ * the two once the backfill has caught up. The rollup tables carry `provider`
+ * and `web_search_enabled` on every row, so the shared `modelFilter` applies
+ * unchanged and the citations `EXISTS` against `prompt_runs` is never needed.
  */
 
 import { type SQL, sql } from "drizzle-orm";
 import {
-	type BrandMentionTotals,
-	type CitationDomainStats,
-	type CitationUrlStats,
-	type DailyCitationStats,
-	type DashboardSummary,
-	type ModelMentionRateRow,
 	modelFilter,
-	type PerPromptCitationPageRow,
-	type PerPromptDailyCitationStats,
-	type PerPromptDailyCompetitorRow,
-	type PerPromptDailyMentionRow,
-	type PerPromptRunStats,
-	type PerPromptVisibilityPoint,
-	type ProcessedBatchChartDataPoint,
-	type PromptMentionSummary,
-	type PromptSummary,
 	promptIdFilter,
 	queryPg,
-	type TopCompetitorMention,
 	uuidList,
-	type VisibilityDailyAggregate,
 	webSearchFilter,
 	windowEnd,
+	windowFilter,
 	windowStart,
+} from "@/lib/analytics-sql";
+import type {
+	BrandMentionTotals,
+	CitationDomainStats,
+	CitationUrlStats,
+	DailyCitationStats,
+	DashboardSummary,
+	ModelMentionRateRow,
+	PerPromptCitationPageRow,
+	PerPromptDailyCitationStats,
+	PerPromptDailyCompetitorRow,
+	PerPromptDailyMentionRow,
+	PerPromptRunStats,
+	PerPromptVisibilityPoint,
+	ProcessedBatchChartDataPoint,
+	PromptMentionSummary,
+	PromptSummary,
+	TopCompetitorMention,
+	VisibilityDailyAggregate,
 } from "@/lib/postgres-read";
 
-/**
- * The predicate every rollup read shares: `bucket` is the rollup grain's
- * timestamp, so this is `dateFilter` from `postgres-read.ts` with `bucket` in
- * place of `created_at`. Returns a fresh fragment on every call — interpolate
- * it once per query site rather than storing and reusing the result.
- */
-function rollupWindow(fromDate: string | null, toDate: string | null, timezone: string): SQL {
-	if (!fromDate || !toDate) return sql``;
-	return sql`AND bucket >= ${windowStart(fromDate, timezone)} AND bucket < ${windowEnd(toDate, timezone)}`;
-}
+const rollupWindow = (fromDate: string | null, toDate: string | null, timezone: string): SQL =>
+	windowFilter(sql`bucket`, fromDate, toDate, timezone);
 
 export async function getDashboardSummary(
 	brandId: string,
