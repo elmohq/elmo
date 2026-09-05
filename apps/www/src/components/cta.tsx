@@ -21,7 +21,8 @@ export function CTA() {
 							Start tracking AI answers today.
 						</h2>
 						<p className="mt-5 max-w-[52ch] text-pretty text-zinc-600 md:text-lg">
-							Sign up for the cloud and we run everything for you from ${CLOUD_ENTRY_PRICE_USD}/mo, or run the same open-source product on your own infra for free.
+							Sign up for the cloud and we run everything for you from ${CLOUD_ENTRY_PRICE_USD}/mo, or run the same
+							open-source product on your own infra for free.
 						</p>
 						<div className="mt-7 flex flex-wrap items-center gap-2">
 							<CloudSignupCTA />

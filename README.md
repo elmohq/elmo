@@ -156,6 +156,16 @@ A web app serves the dashboard and REST API, a worker schedules and executes pro
 - [API reference](https://www.elmohq.com/docs/api) — the REST API for brands, prompts, competitors, snapshots, and reports
 - [AI Visibility Tool Directory](https://www.elmohq.com/ai-visibility-tools) — 100+ AEO/GEO tools compared
 
+## Sponsors
+
+<p align="left">
+  <a href="https://www.llumohq.com/">
+    <img src="https://nynjceth7hnajxhe.public.blob.vercel-storage.com/sponsors/llumo.png" alt="Llumo" width="78">
+  </a>
+</p>
+
+<a href="https://github.com/sponsors/elmohq"><strong>Become a sponsor →</strong></a>
+
 ## Contact
 
 - [Discord](https://discord.gg/s24nubCtKz)
