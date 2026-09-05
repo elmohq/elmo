@@ -11,8 +11,9 @@
  * enough that no deploy needs to know to bust it.
  */
 
+import { classifyPage } from "@workspace/lib/citations/page-classification";
 import { db } from "@workspace/lib/db/db";
-import { classifyPage, rollupsReady } from "@workspace/lib/rollups";
+import { rollupsReady } from "@workspace/lib/rollups";
 import * as raw from "@/lib/postgres-read";
 import * as rollup from "@/lib/rollup-read";
 
@@ -22,7 +23,13 @@ let readyCache: { value: boolean; expiresAt: number } | null = null;
 async function isReady(): Promise<boolean> {
 	const now = Date.now();
 	if (readyCache && readyCache.expiresAt > now) return readyCache.value;
-	const value = await rollupsReady(db);
+	let value = false;
+	try {
+		value = await rollupsReady(db);
+	} catch (error) {
+		// A web deploy can land before the migration; the raw reads still work then.
+		console.error("[analytics-read] rollup readiness check failed, serving raw reads:", error);
+	}
 	readyCache = { value, expiresAt: now + READY_CACHE_MS };
 	return value;
 }
