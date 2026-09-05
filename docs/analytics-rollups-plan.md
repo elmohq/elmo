@@ -46,7 +46,7 @@ Every analytics page issues several brand-wide `GROUP BY`s over the window again
 | Layer | Data | Version stamp | Recomputed when |
 |---|---|---|---|
 | L0 raw | `prompt_runs.raw_output` | — | never (except prompt deletion) |
-| L1 extraction | `prompt_runs.text_content`, `prompt_runs.web_queries`, `citations` rows | `prompt_runs.extractor_version` | extractor code changes (provider payload parsing, citation extraction, URL normalization) |
+| L1 extraction | `prompt_runs.text_content`, `citations` rows | `prompt_runs.extractor_version` | extractor code changes (provider payload parsing, citation extraction, URL normalization) |
 | L2 interpretation | `brand_mentioned`, `competitors_mentioned`, future derived facts (ads, sentiment, refusals) | `prompt_runs.analysis_versions` jsonb, one entry per deriver: hash of that deriver's code version plus the brand config it reads | brand or competitor config change; deriver code change; new deriver added |
 | L3 rollups | bucket tables below, `cited_pages` | `pipeline_state.rollup_version`, `pipeline_state.classifier_version` | any change in L0–L2; rollup measures added; classifier lists change |
 
@@ -259,6 +259,7 @@ Where the code differs from the schema and job sketches above:
 - `rollup_competitor_mentions.runs` counts distinct runs, matching the raw top-competitor query.
 - The nightly reconcile is its own queue, `reconcile-rollups`; the write path nudges `refresh-rollups` with a 10-second singleton window after every successful prompt cycle.
 - `reprocess` continues itself with a cursor after four minutes of work and re-derives `prompts.system_tags` per brand when interpretation ran. Filling `text_content` lazily during an interpretation pass does not stamp `extractor_version`, so an extraction pass still revisits those rows.
+- `reprocess` does not re-extract `web_queries`: providers report them at run time and there is no standalone extractor over `raw_output` for them yet.
 - While `pipeline_state.backfill_completed_at` is null, `analytics-read.ts` serves every read from the raw tables; the raw functions and the fallback are removed once every deployment has backfilled.
 
 ## Decisions
