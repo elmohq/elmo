@@ -1,12 +1,12 @@
 import * as Sentry from "@sentry/node";
 import { getDeployment } from "@workspace/deployment";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
-import { REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE } from "@workspace/lib/rollups/constants";
+import { RECONCILE_ROLLUPS_QUEUE, REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE } from "@workspace/lib/rollups/constants";
 import type { Job, PgBoss } from "pg-boss";
 import { type AnalyzeBrandData, analyzeBrandJob } from "./jobs/analyze-brand";
 import { type GenerateReportData, generateReportJob } from "./jobs/generate-report";
 import { type ProcessPromptData, processPromptJob } from "./jobs/process-prompt";
-import { RECONCILE_ROLLUPS_QUEUE, type ReconcileRollupsData, reconcileRollupsJob } from "./jobs/reconcile-rollups";
+import { type ReconcileRollupsData, reconcileRollupsJob } from "./jobs/reconcile-rollups";
 import { type RefreshRollupsData, refreshRollupsJob } from "./jobs/refresh-rollups";
 import { type ReprocessData, reprocessJob } from "./jobs/reprocess";
 import { type ScheduleMaintenanceData, scheduleMaintenanceJob } from "./jobs/schedule-maintenance";

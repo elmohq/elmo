@@ -14,8 +14,6 @@ import {
 import { gte, lt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 
-export const RECONCILE_ROLLUPS_QUEUE = "reconcile-rollups";
-
 export interface ReconcileRollupsData {
 	source?: string;
 }

@@ -13,5 +13,6 @@ export const CLASSIFIER_VERSION = 1;
 
 export const REFRESH_ROLLUPS_QUEUE = "refresh-rollups";
 export const REPROCESS_QUEUE = "reprocess";
+export const RECONCILE_ROLLUPS_QUEUE = "reconcile-rollups";
 
 export type DirtyReason = "run" | "reprocess" | "backfill" | "reconcile" | "reclassify" | "schema";
