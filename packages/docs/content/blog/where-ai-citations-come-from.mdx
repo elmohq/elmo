@@ -2,7 +2,7 @@
 title: "Where AI Citations Come From (Mostly Not Your Site)"
 description: "Across 25 million links cited by AI engines, 84% pointed at domains the brand doesn't own. Here's what that changes about where you spend your AEO effort."
 date: "2026-07-29"
-updated: "2026-08-17"
+updated: "2026-09-04"
 author: ai
 metaTitle: "How AI Models Decide Which Brands to Cite"
 tags:
@@ -44,6 +44,8 @@ faq:
     answer: "Across published studies the recurring names are Reddit, Wikipedia, LinkedIn, YouTube, and large editorial outlets. Semrush tracked 100 million-plus citations over 13 weeks in 2025 and found those domains consistently at the top. But the mix differs sharply by engine, and your own category's list will differ from any published one."
   - question: Why does Yext say 86% of AI citations come from brand-managed sources?
     answer: "Because it measured a different query universe with a different taxonomy. Yext's October 2025 study analysed 6.8 million citations from 1.6 million location-based queries in retail, financial services, healthcare, and food service, and counted both first-party websites (44%) and third-party listings the brand can edit (42%) as brand-managed. Muck Rack's 84% earned figure comes from industry-topic prompts and classes anything off the brand's own domain as earned. The two studies largely classify the same kinds of citations in opposite directions, and neither describes your prompts."
+  - question: Do brand-owned pages get cited more on evaluation-stage prompts?
+    answer: "Yes, dramatically. Ten Speed's September 2026 study ran 220 B2B evaluation-stage prompts — comparisons, alternatives, use cases, buying intent — and classified 7,387 citations from ChatGPT, Perplexity, Claude, and Gemini: 88.3% pointed at brand-controllable pages, with product pages alone at 24.1% and Reddit, YouTube, and forums combined at 4.2%. The sample is one content agency's client portfolio, so treat it as directional, but it matches Muck Rack's finding that comparative queries lean on brand-owned pages."
   - question: Do different AI engines cite different kinds of sources?
     answer: "Substantially. In Profound's analysis of roughly 680 million citations, Wikipedia accounted for 7.8% of ChatGPT's citations but only 0.6% of Google AI Overviews' and Perplexity's, while Reddit ran at 6.6% on Perplexity against 1.8% on ChatGPT. Engines also cite at different rates: Muck Rack recorded citations in 96% of ChatGPT responses, 82% of Gemini's, and 55% of Claude's."
   - question: Does the type of question change which sources get cited?
@@ -62,6 +64,7 @@ faq:
 - The mix is engine-specific. Wikipedia was 7.8% of ChatGPT's citations but 0.6% of Google AI Overviews' and Perplexity's in [Profound's 680-million-citation analysis](https://www.tryprofound.com/blog/ai-platform-citation-patterns); Reddit ran at 6.6% on Perplexity against 1.8% on ChatGPT.
 - Query type shifts it again. Trend questions cited journalism in 46% of responses, more than twice the rate of how-to and comparative questions.
 - A counter-headline exists and is also true: Yext measured 86% of citations from brand-managed sources — on location-based queries, counting third-party listings as brand-managed. The clash with the 84% is a clash of query mix and taxonomy, not of data.
+- Funnel stage moves it furthest. On 220 B2B evaluation-stage prompts, Ten Speed's September 2026 study put 88.3% of citations on brand-controllable pages, with product pages the largest single category at 24.1% and Reddit, YouTube, and forums combined at 4.2%. The 84% and the 88.3% describe opposite ends of the same journey.
 - None of this makes on-site work worthless. It puts a ceiling on it, and the ceiling is lower than most AEO checklists imply.
 
 ## What the 84% actually counts
@@ -131,11 +134,23 @@ This is the finding that makes the whole thing actionable, because it means your
 
 So separate them. The [prompt set](/blog/ai-prompt-tracking) you already track can be split by question type in an afternoon, and the split tells you which half of the work to fund.
 
+## Evaluation-stage prompts flip the ratio
+
+When this post first ran in July, the sharpest limitation was that every large corpus measured general industry prompts, and nobody had published the split for the narrow, high-intent prompts that decide a shortlist. In September 2026 [Ten Speed published exactly that](https://www.tenspeed.io/blog/what-ai-cites-b2b-evaluation-stage): 220 evaluation-stage prompts — comparisons, alternatives, and use cases at 20% each, feature and integration questions at 19.5%, buying intent at 10.5%, brand-direct at 10% — run across its B2B SaaS and professional-services client portfolio, with 7,387 citations from ChatGPT, Perplexity, Claude, and Gemini classified by page type via Peec AI's monitoring.
+
+The result inverts the headline of this post. 88.3% of citations pointed at brand-controllable pages. Product pages alone were the largest single category at 24.1%, ahead of articles at 17.4%, comparison pages at 13.3%, and listicles at 13.2%. The community sources that dominate general corpora nearly vanished: Reddit, YouTube, forums, and discussion threads combined for 4.2%, with YouTube itself around 1%. The largest third-party bucket was directory profiles like G2 and Capterra at 7.2% — the same listings-shaped surface Yext found carrying local queries.
+
+Same two dials as every study in this post. The query universe is the bottom of the funnel, where Muck Rack's own data already showed comparative questions leaning on brand-owned pages — comparison-format prompts were 20% of Ten Speed's set and drew 26.7% of its citations. And the taxonomy is generous: brand-controllable means controllable by *some* brand, and the prompt set deliberately included competitor brands, so a rival's comparison page arguing against you counts toward the 88.3%. Under Muck Rack's domain-ownership rules, much of that bucket would land in earned.
+
+One more dial this time: the sample. The corpus is a content agency's own client portfolio — companies that already pay for editorial and product content, which is a sample selected for owning exactly the pages being counted. The study says so itself: the client base is "not a neutral or random sample of B2B brands," and the findings are a descriptive snapshot rather than a tested benchmark. The vendor symmetry from earlier now has a third instance to complete the pattern: Muck Rack sells PR software and found journalism, Yext sells listings and found listings, Ten Speed sells content marketing and found brand-controllable content. Nobody is fabricating; every corpus grows the answer its owner's product addresses.
+
+Discounted for all of that, the direction holds, and it is the actionable part: your controllable share is not one number, it is a curve across the funnel. On the awareness-shaped prompts general corpora sample, roughly 84% of citations sit beyond your reach; on the shortlist-deciding prompts, most citations point at pages some marketing team wrote, and the residual levers are directories and a thin slice of community threads. Split your tracked prompts by stage before splitting your budget.
+
 ## What this does not prove
 
 Being straight about the limits matters more than the headline here, because "your website doesn't matter" is a conclusion the data does not support and one that would cost you real visibility.
 
-These are **citation counts across all queries in an industry**, not brand-specific commercial queries. Nobody has published the equivalent breakdown for the narrow, high-intent prompts that decide a shortlist in your category, and there is good reason to expect vendor documentation and pricing pages to do better there than they do across a general corpus. That experiment is the one you can run yourself, on your own prompts, and it is described in the next section.
+The big corpora are **citation counts across all queries in an industry**, not brand-specific commercial queries. The evaluation-stage breakdown above is the first published version of that split, and it landed where you would expect — brand pages dominate where shortlists form — but it covers one agency's clients at one moment, untested statistically. The version that decides your budget is the one you run yourself, on your own prompts, and it is described in the next section.
 
 The categories are also softer than the percentages imply. A bucket that contains both a Reuters investigation and a competitor's blog post is not measuring one thing, and the published summaries do not give a clean own-domain share to set against the 84%. The closest published figure — Yext's 44% for first-party websites — comes from an all-local corpus in four sectors, which answers a different question than a general prompt set does.
 
