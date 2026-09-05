@@ -101,7 +101,10 @@ export async function runRefreshTick(
 		const batch = await processClaimedBatch(conn, marks, deadline);
 		ranges += batch.ranges;
 		failed += batch.failed;
-		if (batch.timedOut) break;
+		// A failed range's marks were just restored and sit at the front of the
+		// queue, so claiming again would retry them in a tight loop for the rest
+		// of the budget; the next tick retries them once instead.
+		if (batch.timedOut || batch.failed > 0) break;
 	}
 
 	await finishBackfillIfDrained(conn);
