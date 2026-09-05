@@ -15,7 +15,7 @@ import {
 	rollupPromptRuns,
 } from "../db/schema";
 import { enqueueBackfill, finishBackfillIfDrained, rollupsReady } from "./backfill";
-import { CLASSIFIER_VERSION } from "./constants";
+import { BUCKET_MS, CLASSIFIER_VERSION } from "./constants";
 import {
 	claimDirty,
 	coalesceMarks,
@@ -367,6 +367,21 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 		);
 		expect(guideRow).toMatchObject({ pageId: guide?.id, citations: 2, positionSum: 0, positionCount: 2 });
 		expect(urls.reduce((total, row) => total + row.citations, 0)).toBe(SEED_CITATIONS.length);
+	});
+
+	it("keeps the most recently seen title however the ranges are rebuilt", async () => {
+		// Newest bucket first, the order the backfill uses, then oldest first.
+		for (const order of [
+			[B2, B1, B0],
+			[B0, B1, B2],
+		]) {
+			await reset(db);
+			await seed(db);
+			for (const bucket of order) await rebuildRange(db, BRAND_ID, bucket, new Date(bucket.getTime() + BUCKET_MS));
+			const guide = (await pageRows(db)).find((page) => page.url === GUIDE);
+			expect(guide?.title).toBe("New guide title");
+			expect(guide?.pageType).toBe("howto");
+		}
 	});
 
 	it("keeps domain rows at the same total as the raw citations", async () => {

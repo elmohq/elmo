@@ -1,4 +1,4 @@
-import { and, eq, gte, lt, sql } from "drizzle-orm";
+import { and, eq, gte, lt, type SQL, sql } from "drizzle-orm";
 import type { DbConnection } from "../db/db-connection";
 import {
 	citations,
@@ -149,8 +149,23 @@ function readCitations(tx: DbConnection, brandId: string, from: Date, toExclusiv
 }
 
 /**
+ * Ranges are rebuilt in any order (the backfill goes newest-first), so a page
+ * must keep the title that was seen most recently, not the one from whichever
+ * rebuild ran last. A titled range beats an untitled row outright; otherwise
+ * the more recent range wins. The classification travels with the title it
+ * was computed from.
+ */
+const incomingTitleWins = sql`CASE
+	WHEN excluded.title IS NOT NULL THEN (${citedPages.title} IS NULL OR excluded.last_seen_at >= ${citedPages.lastSeenAt})
+	ELSE (${citedPages.title} IS NULL AND excluded.last_seen_at >= ${citedPages.lastSeenAt})
+END`;
+
+const withTitle = (incoming: SQL, existing: SQL): SQL =>
+	sql`CASE WHEN ${incomingTitleWins} THEN ${incoming} ELSE ${existing} END`;
+
+/**
  * Upserts the range's pages and returns their ids. A page row is shared by every
- * tenant, so the upsert keeps the widest window seen and the newest title.
+ * tenant, so the upsert keeps the widest window seen.
  */
 async function upsertPages(tx: DbConnection, pages: PageUpsert[]): Promise<Map<string, number>> {
 	const ids = new Map<string, number>();
@@ -162,10 +177,10 @@ async function upsertPages(tx: DbConnection, pages: PageUpsert[]): Promise<Map<s
 				target: citedPages.url,
 				set: {
 					domain: sql`excluded.domain`,
-					title: sql`coalesce(excluded.title, ${citedPages.title})`,
-					pageType: sql`excluded.page_type`,
-					staticCategory: sql`excluded.static_category`,
-					classifierVersion: sql`excluded.classifier_version`,
+					title: withTitle(sql`excluded.title`, sql`${citedPages.title}`),
+					pageType: withTitle(sql`excluded.page_type`, sql`${citedPages.pageType}`),
+					staticCategory: withTitle(sql`excluded.static_category`, sql`${citedPages.staticCategory}`),
+					classifierVersion: withTitle(sql`excluded.classifier_version`, sql`${citedPages.classifierVersion}`),
 					firstSeenAt: sql`least(${citedPages.firstSeenAt}, excluded.first_seen_at)`,
 					lastSeenAt: sql`greatest(${citedPages.lastSeenAt}, excluded.last_seen_at)`,
 				},
