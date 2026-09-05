@@ -1436,7 +1436,7 @@
 				"required": ["brandId", "range", "data"]
 			},
 			"RunSummary": {
-				"description": "A single model answer, without its text. Fetch `GET /runs/{runId}` for the answer itself.",
+				"description": "A single model answer, without its text. Fetch `GET /prompts/{promptId}/runs/{runId}` for the answer itself.",
 				"type": "object",
 				"properties": {
 					"id": {
