@@ -40,8 +40,8 @@ const plans: Plan[] = [
 		features: [
 			"Managed hosting, automatic updates",
 			"Track ChatGPT, Google, Perplexity & more",
-			"We re-check AI answers up to 4× daily",
-			"Models with live web results on Pro & Business",
+			"We scrape AI answers up to 4× daily",
+			"Premium grounded models on Pro & Business",
 			"API access on every plan",
 			"Unlimited seats",
 		],
