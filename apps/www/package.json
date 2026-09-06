@@ -28,7 +28,6 @@
 		"@workspace/config": "workspace:*",
 		"@workspace/docs": "workspace:*",
 		"@workspace/og": "workspace:*",
-		"harfbuzzjs": "0.10.0",
 		"@workspace/ui": "workspace:*",
 		"fumadocs-core": "^16.15.4",
 		"fumadocs-mdx": "^15.4.0",

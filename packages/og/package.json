@@ -18,7 +18,7 @@
 		"@resvg/resvg-js": "^2.6.2",
 		"@workspace/config": "workspace:*",
 		"react": "^19.2.8",
-		"satori": "^0.33.4"
+		"satori": "0.32.0"
 	},
 	"devDependencies": {
 		"@types/node": "^26.4.0",

@@ -1,10 +1,9 @@
 /**
  * OG Image Generation E2E Tests
  *
- * `/api/og` renders social-share preview images with satori — whose text shaper
- * is a WASM build of HarfBuzz — and resvg. It's a public route (social crawlers
- * fetch it, unauthenticated) referenced from every page's `og:image` meta tag
- * (see apps/web src/routes/__root.tsx).
+ * `/api/og` renders social-share preview images with satori and resvg.
+ * It's a public route (social crawlers fetch it, unauthenticated) referenced
+ * from every page's `og:image` meta tag (see apps/web src/routes/__root.tsx).
  *
  * Nothing else in the E2E suite fetches this route — a browser sets the
  * `og:image` meta tag but never requests it, so a bare page load can't catch a
