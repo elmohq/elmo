@@ -2024,6 +2024,88 @@
 					"type": "string"
 				}
 			}
+		},
+		"requestBodies": {
+			"CreateBrandRequest": {
+				"required": true,
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/CreateBrandRequest"
+						}
+					}
+				}
+			},
+			"UpdateBrandRequest": {
+				"required": true,
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/UpdateBrandRequest"
+						}
+					}
+				}
+			},
+			"CreateCompetitorRequest": {
+				"required": true,
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/CreateCompetitorRequest"
+						}
+					}
+				}
+			},
+			"UpdateCompetitorRequest": {
+				"required": true,
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/UpdateCompetitorRequest"
+						}
+					}
+				}
+			},
+			"CreatePromptRequest": {
+				"required": true,
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/CreatePromptRequest"
+						}
+					}
+				}
+			},
+			"UpdatePromptRequest": {
+				"required": true,
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/UpdatePromptRequest"
+						}
+					}
+				}
+			},
+			"CreateReportRequest": {
+				"required": true,
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/CreateReportRequest"
+						}
+					}
+				}
+			},
+			"AnalyzeBrandRequest": {
+				"required": true,
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/AnalyzeBrandRequest"
+						}
+					}
+				}
+			}
 		}
 	},
 	"paths": {
@@ -2034,26 +2116,10 @@
 				"tags": ["Brands"],
 				"parameters": [
 					{
-						"name": "page",
-						"in": "query",
-						"required": false,
-						"schema": {
-							"type": "integer",
-							"minimum": 1,
-							"default": 1
-						}
+						"$ref": "#/components/parameters/Page"
 					},
 					{
-						"name": "limit",
-						"in": "query",
-						"required": false,
-						"schema": {
-							"type": "integer",
-							"minimum": 1,
-							"maximum": 100,
-							"default": 20
-						},
-						"description": "Items per page. Values above the maximum are clamped, not rejected."
+						"$ref": "#/components/parameters/Limit"
 					}
 				],
 				"responses": {
@@ -2088,14 +2154,7 @@
 				"operationId": "createBrand",
 				"tags": ["Brands"],
 				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/CreateBrandRequest"
-							}
-						}
-					}
+					"$ref": "#/components/requestBodies/CreateBrandRequest"
 				},
 				"responses": {
 					"201": {
@@ -2201,14 +2260,7 @@
 					}
 				],
 				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/UpdateBrandRequest"
-							}
-						}
-					}
+					"$ref": "#/components/requestBodies/UpdateBrandRequest"
 				},
 				"responses": {
 					"200": {
@@ -2628,26 +2680,10 @@
 						}
 					},
 					{
-						"name": "page",
-						"in": "query",
-						"required": false,
-						"schema": {
-							"type": "integer",
-							"minimum": 1,
-							"default": 1
-						}
+						"$ref": "#/components/parameters/Page"
 					},
 					{
-						"name": "limit",
-						"in": "query",
-						"required": false,
-						"schema": {
-							"type": "integer",
-							"minimum": 1,
-							"maximum": 100,
-							"default": 20
-						},
-						"description": "Items per page. Values above the maximum are clamped, not rejected."
+						"$ref": "#/components/parameters/Limit"
 					}
 				],
 				"responses": {
@@ -2682,14 +2718,7 @@
 				"operationId": "createCompetitor",
 				"tags": ["Competitors"],
 				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/CreateCompetitorRequest"
-							}
-						}
-					}
+					"$ref": "#/components/requestBodies/CreateCompetitorRequest"
 				},
 				"responses": {
 					"201": {
@@ -2795,14 +2824,7 @@
 					}
 				],
 				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/UpdateCompetitorRequest"
-							}
-						}
-					}
+					"$ref": "#/components/requestBodies/UpdateCompetitorRequest"
 				},
 				"responses": {
 					"200": {
@@ -3115,15 +3137,7 @@
 						}
 					},
 					{
-						"name": "page",
-						"in": "query",
-						"description": "Page number for pagination (1-based)",
-						"required": false,
-						"schema": {
-							"type": "integer",
-							"minimum": 1,
-							"default": 1
-						}
+						"$ref": "#/components/parameters/Page"
 					},
 					{
 						"name": "limit",
@@ -3233,14 +3247,7 @@
 				"operationId": "createPrompt",
 				"tags": ["Prompts"],
 				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/CreatePromptRequest"
-							}
-						}
-					}
+					"$ref": "#/components/requestBodies/CreatePromptRequest"
 				},
 				"responses": {
 					"201": {
@@ -3346,14 +3353,7 @@
 					}
 				],
 				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/UpdatePromptRequest"
-							}
-						}
-					}
+					"$ref": "#/components/requestBodies/UpdatePromptRequest"
 				},
 				"responses": {
 					"200": {
@@ -3735,14 +3735,7 @@
 				"operationId": "createReport",
 				"tags": ["Reports"],
 				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/CreateReportRequest"
-							}
-						}
-					}
+					"$ref": "#/components/requestBodies/CreateReportRequest"
 				},
 				"responses": {
 					"201": {
@@ -3810,27 +3803,10 @@
 				"tags": ["Reports"],
 				"parameters": [
 					{
-						"name": "page",
-						"in": "query",
-						"description": "Page number for pagination (1-based)",
-						"required": false,
-						"schema": {
-							"type": "integer",
-							"minimum": 1,
-							"default": 1
-						}
+						"$ref": "#/components/parameters/Page"
 					},
 					{
-						"name": "limit",
-						"in": "query",
-						"description": "Items per page. Values above the maximum are clamped, not rejected.",
-						"required": false,
-						"schema": {
-							"type": "integer",
-							"minimum": 1,
-							"maximum": 100,
-							"default": 20
-						}
+						"$ref": "#/components/parameters/Limit"
 					}
 				],
 				"responses": {
@@ -4125,14 +4101,7 @@
 				"operationId": "analyzeBrand",
 				"tags": ["Tools"],
 				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/AnalyzeBrandRequest"
-							}
-						}
-					}
+					"$ref": "#/components/requestBodies/AnalyzeBrandRequest"
 				},
 				"responses": {
 					"200": {
