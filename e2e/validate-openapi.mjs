@@ -9,6 +9,8 @@
  * without failing.
  */
 import { readFileSync } from "node:fs";
+import Ajv from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 
 const SPEC = JSON.parse(
 	readFileSync(new URL("../packages/api-spec/src/openapi.json", import.meta.url), "utf8"),
@@ -17,109 +19,124 @@ const BASE_PATH = new URL(SPEC.servers[0].url, "http://x").pathname.replace(/\/$
 
 const METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 
-const typesOf = (schema) => (Array.isArray(schema.type) ? schema.type : schema.type ? [schema.type] : []);
+const schemaFor = (ref) => SPEC.components.schemas[ref.replace("#/components/schemas/", "")];
 
-function resolve(schema) {
-	if (schema?.$ref) {
-		const name = schema.$ref.replace("#/components/schemas/", "");
-		return resolve(SPEC.components.schemas[name]);
+/**
+ * The spec never declares a response closed, but a field it does not mention is
+ * exactly the drift this is here to catch, so every documented object is sealed
+ * before Ajv sees it.
+ *
+ * A branch of an `allOf` is left open, and a branch that is a `$ref` is inlined
+ * to leave it that way: `unevaluatedProperties` sees only what its own schema
+ * object evaluated, so a sealed branch would reject the properties its sibling
+ * contributes.
+ */
+function seal(node, open = false) {
+	if (Array.isArray(node)) return node.map((item) => seal(item));
+	if (node === null || typeof node !== "object") return node;
+
+	const out = {};
+	for (const [key, value] of Object.entries(node)) {
+		out[key] =
+			key === "allOf"
+				? value.map((branch) => seal(branch.$ref ? schemaFor(branch.$ref) : branch, true))
+				: seal(value);
 	}
-	if (schema?.anyOf) {
-		const { anyOf, ...siblings } = schema;
-		const members = anyOf.filter((member) => member.type !== "null");
-		// Unchecked, rather than checked against one arm of a real union.
-		if (members.length !== 1) return {};
-		const merged = { ...resolve(members[0]), ...siblings };
-		if (members.length === anyOf.length) return merged;
-		return { ...merged, type: [...typesOf(merged), "null"] };
-	}
-	if (schema?.allOf) {
-		const { allOf, ...siblings } = schema;
-		const merged = allOf.map(resolve).reduce(
-			(acc, part) => ({
-				...acc,
-				...part,
-				properties: { ...acc.properties, ...part.properties },
-				required: [...(acc.required ?? []), ...(part.required ?? [])],
-			}),
-			{},
-		);
-		return {
-			...merged,
-			...siblings,
-			required: [...(merged.required ?? []), ...(siblings.required ?? [])],
-		};
-	}
-	return schema ?? {};
+	const describesAnObject = Object.keys(out.properties ?? {}).length > 0;
+	if (!open && (describesAnObject || Array.isArray(out.allOf))) out.unevaluatedProperties = false;
+	return out;
 }
 
-const TYPE_OF = (value) =>
-	value === null ? "null" : Array.isArray(value) ? "array" : typeof value === "number" ? "number" : typeof value;
+// OpenAPI 3.1 schemas are JSON Schema 2020-12, so Ajv reads them as they stand.
+const ajv = new Ajv({ strict: false, allErrors: true, logger: false });
+addFormats(ajv);
+ajv.addSchema({ $id: "spec", ...seal(SPEC) }, "spec");
 
-function validate(value, rawSchema, where, out) {
-	const schema = resolve(rawSchema);
-	const types = typesOf(schema);
-	if (types.length === 0 && !schema.properties && !schema.enum) return;
+const escape = (part) => String(part).replace(/~/g, "~0").replace(/\//g, "~1");
+const validators = new Map();
 
-	if (value === null) {
-		if (!types.includes("null")) out.violations.push(`${where}: null, but the spec does not admit null`);
+/**
+ * Only the success bodies are written inline; every error envelope is a `$ref`
+ * into `components/responses`, and those go unchecked unless it is followed.
+ */
+function responseAt(path, method, status) {
+	const response = SPEC.paths[path][method].responses[status];
+	if (!response.$ref) {
+		return { pointer: `/paths/${escape(path)}/${method}/responses/${escape(status)}`, response };
+	}
+	const name = response.$ref.split("/").pop();
+	return { pointer: `/components/responses/${escape(name)}`, response: SPEC.components.responses[name] };
+}
+
+function validatorFor(path, method, status) {
+	const pointer = `spec#${responseAt(path, method, status).pointer}/content/${escape("application/json")}/schema`;
+	if (!validators.has(pointer)) validators.set(pointer, ajv.compile({ $ref: pointer }));
+	return validators.get(pointer);
+}
+
+const responseBodySchema = (path, method, status) =>
+	responseAt(path, method, status).response.content?.["application/json"]?.schema;
+
+/**
+ * A nullable field is an `anyOf` against `{ "type": "null" }`, so a value that
+ * fails the real branch also fails the null one. Both of those say nothing the
+ * real branch's own error does not.
+ */
+const isNullableUnionNoise = (error) =>
+	error.keyword === "anyOf" ||
+	(error.keyword === "type" && error.params.type === "null" && error.schemaPath.includes("/anyOf/"));
+
+function describe(error, where) {
+	const at = `${where}${error.instancePath}`;
+	if (error.keyword === "unevaluatedProperties") {
+		return `${at}/${error.params.unevaluatedProperty}: returned but undocumented`;
+	}
+	if (error.keyword === "required") {
+		return `${at}/${error.params.missingProperty}: required by the spec, absent from the response`;
+	}
+	if (error.keyword === "type" && Array.isArray(error.params.type)) {
+		return `${at}: must be ${error.params.type.join(" or ")}`;
+	}
+	return `${at}: ${error.message}`;
+}
+
+/**
+ * The one place that still reads the schema by hand, and it only feeds the
+ * advisory drift report — it never decides whether the run passes.
+ */
+function documented(schema) {
+	if (!schema) return { properties: {}, required: [], items: undefined };
+	if (schema.$ref) return documented(schemaFor(schema.$ref));
+	if (schema.allOf) {
+		return schema.allOf.map(documented).reduce(
+			(acc, part) => ({
+				properties: { ...acc.properties, ...part.properties },
+				required: [...acc.required, ...part.required],
+				items: acc.items ?? part.items,
+			}),
+			{ properties: {}, required: [], items: undefined },
+		);
+	}
+	return { properties: schema.properties ?? {}, required: schema.required ?? [], items: schema.items };
+}
+
+function trackDrift(value, schema, where, seen) {
+	const { properties, required, items } = documented(schema);
+	if (Array.isArray(value)) {
+		for (const item of value) trackDrift(item, items, `${where}[]`, seen);
 		return;
 	}
+	if (value === null || typeof value !== "object") return;
 
-	const actual = TYPE_OF(value);
-	const expected = types.filter((type) => type !== "null");
-	if (expected.length && !expected.some((type) => (type === "integer" ? actual === "number" : actual === type))) {
-		out.violations.push(`${where}: expected ${expected.join(" or ")}, got ${actual}`);
-		return;
-	}
-	if (schema.enum && !schema.enum.includes(value)) {
-		out.violations.push(`${where}: ${JSON.stringify(value)} is not one of ${JSON.stringify(schema.enum)}`);
-	}
-	if (expected.includes("integer") && actual === "number" && !Number.isInteger(value)) {
-		out.violations.push(`${where}: expected an integer, got ${value}`);
-	}
-	// The only check that catches a unit changing: 0-100 turning into 0..1 is
-	// still a number and still non-null.
-	if (actual === "number") {
-		if (schema.minimum !== undefined && value < schema.minimum) {
-			out.violations.push(`${where}: ${value} is below the documented minimum ${schema.minimum}`);
+	for (const [name, property] of Object.entries(properties)) {
+		const at = `${where}.${name}`;
+		if (!required.includes(name)) {
+			const entry = seen.get(at) ?? { present: 0, total: 0 };
+			entry.total += 1;
+			if (name in value) entry.present += 1;
+			seen.set(at, entry);
 		}
-		if (schema.maximum !== undefined && value > schema.maximum) {
-			out.violations.push(`${where}: ${value} is above the documented maximum ${schema.maximum}`);
-		}
-	}
-
-	if (actual === "array") {
-		if (schema.items) value.forEach((item, i) => validate(item, schema.items, `${where}[${i}]`, out));
-		return;
-	}
-	if (actual !== "object") return;
-
-	for (const name of schema.required ?? []) {
-		if (!(name in value)) out.violations.push(`${where}.${name}: required by the spec, absent from the response`);
-	}
-	const properties = schema.properties ?? {};
-	const optional = new Set(Object.keys(properties).filter((name) => !(schema.required ?? []).includes(name)));
-	for (const [name, item] of Object.entries(value)) {
-		if (!properties[name]) {
-			if (schema.additionalProperties !== false && Object.keys(properties).length === 0) continue;
-			out.violations.push(`${where}.${name}: returned but undocumented`);
-			continue;
-		}
-		if (optional.has(name)) {
-			const seen = out.optionalSeen.get(`${where.replace(/\[\d+\]/g, "[]")}.${name}`) ?? { present: 0, total: 0 };
-			seen.present += item === undefined ? 0 : 1;
-			seen.total += 1;
-			out.optionalSeen.set(`${where.replace(/\[\d+\]/g, "[]")}.${name}`, seen);
-		}
-		validate(item, properties[name], `${where}.${name}`, out);
-	}
-	for (const name of optional) {
-		if (name in value) continue;
-		const key = `${where.replace(/\[\d+\]/g, "[]")}.${name}`;
-		const seen = out.optionalSeen.get(key) ?? { present: 0, total: 0 };
-		seen.total += 1;
-		out.optionalSeen.set(key, seen);
+		if (name in value) trackDrift(value[name], property, at, seen);
 	}
 }
 
@@ -139,7 +156,8 @@ if (reports.length === 0) {
 	process.exit(2);
 }
 
-const out = { violations: [], optionalSeen: new Map() };
+const violations = [];
+const optionalSeen = new Map();
 const exercised = new Set();
 let checked = 0;
 let unmatched = 0;
@@ -165,36 +183,43 @@ for (const file of reports) {
 				unmatched += 1;
 				continue;
 			}
-			const operation = SPEC.paths[template][result.request.method.toLowerCase()];
+			const method = result.request.method.toLowerCase();
+			const operation = SPEC.paths[template][method];
 			if (!operation) continue;
-			const response = operation.responses[String(status)] ?? operation.responses.default;
-			if (!response) {
-				out.violations.push(`${result.request.method} ${template}: answered ${status}, which the spec never mentions`);
+			const documentedStatus = operation.responses[String(status)] ? String(status) : "default";
+			if (!operation.responses[documentedStatus]) {
+				violations.push(`${result.request.method} ${template}: answered ${status}, which the spec never mentions`);
 				continue;
 			}
 			exercised.add(`${result.request.method} ${template}`);
-			const schema = response.content?.["application/json"]?.schema;
+			const schema = responseBodySchema(template, method, documentedStatus);
 			if (!schema) continue;
-			validate(body, schema, `${result.request.method} ${template} ${status}`, out);
+
+			const where = `${result.request.method} ${template} ${status}`;
+			const validate = validatorFor(template, method, documentedStatus);
+			if (!validate(body)) {
+				for (const error of validate.errors) {
+					if (!isNullableUnionNoise(error)) violations.push(describe(error, where));
+				}
+			}
+			trackDrift(body, schema, where, optionalSeen);
 			checked += 1;
 		}
 	}
 }
 
-const alwaysPresent = [...out.optionalSeen.entries()].filter(
-	([, seen]) => seen.total >= 3 && seen.present === seen.total,
-);
+const alwaysPresent = [...optionalSeen.entries()].filter(([, seen]) => seen.total >= 3 && seen.present === seen.total);
 
-const documented = [];
+const documentedOperations = [];
 for (const [path, methods] of Object.entries(SPEC.paths)) {
 	for (const method of Object.keys(methods)) {
-		if (METHODS.has(method.toUpperCase())) documented.push(`${method.toUpperCase()} ${path}`);
+		if (METHODS.has(method.toUpperCase())) documentedOperations.push(`${method.toUpperCase()} ${path}`);
 	}
 }
-const unexercised = documented.filter((operation) => !exercised.has(operation)).sort();
+const unexercised = documentedOperations.filter((operation) => !exercised.has(operation)).sort();
 
 console.log(`checked ${checked} responses against the spec`);
-console.log(`${exercised.size}/${documented.length} documented operations were exercised`);
+console.log(`${exercised.size}/${documentedOperations.length} documented operations were exercised`);
 if (unmatched) console.log(`${unmatched} responses hit no documented path (redirects and unclaimed routes)`);
 
 if (unexercised.length) {
@@ -202,7 +227,7 @@ if (unexercised.length) {
 	for (const operation of unexercised) console.log(`  ${operation}`);
 }
 
-const unique = [...new Set(out.violations)].sort();
+const unique = [...new Set(violations)].sort();
 if (unique.length) {
 	console.log(`\n${unique.length} response(s) contradict the spec:`);
 	for (const violation of unique) console.log(`  ${violation}`);

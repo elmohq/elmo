@@ -57,6 +57,11 @@ jobs:
       - name: Format and lint
         run: pnpm lint
 
+      # The OpenAPI document is written by hand and no compiler reads it, so
+      # this is the only thing that holds it to the spec it claims to be.
+      - name: Lint the OpenAPI document
+        run: pnpm lint:spec
+
       # Redundant with `pnpm build` (turbo's build depends on check-types), but
       # it fails in a minute instead of after the whole build, and turbo caches
       # the result so the build step doesn't repeat it.
