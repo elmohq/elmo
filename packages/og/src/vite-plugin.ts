@@ -60,11 +60,12 @@ export function embedBinaries(): Plugin {
  * Wire this into the nitro plugin's `compiled` hook, which runs once the server
  * output (and its traced `node_modules`) is on disk.
  */
-export function copyOgBinaryAssets(nitro: { options: { rootDir: string; output: { serverDir: string } } }): void {
-	// Resolve from the app, which declares harfbuzzjs and names it in `traceDeps`,
-	// rather than from this package — the two must agree on one copy.
-	const require = createRequire(join(nitro.options.rootDir, "package.json"));
-	const wasm = require.resolve("harfbuzzjs/hb.wasm");
+export function copyOgBinaryAssets(nitro: { options: { output: { serverDir: string } } }): void {
+	// Resolve harfbuzzjs *through satori*, which pins it exactly and therefore
+	// always has it adjacent. Resolving it by name instead would depend on how
+	// the installer happened to lay out node_modules.
+	const require = createRequire(import.meta.url);
+	const wasm = createRequire(require.resolve("satori/package.json")).resolve("harfbuzzjs/hb.wasm");
 	const dest = join(nitro.options.output.serverDir, "node_modules", "harfbuzzjs", "hb.wasm");
 	mkdirSync(dirname(dest), { recursive: true });
 	copyFileSync(wasm, dest);
