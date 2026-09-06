@@ -20,7 +20,7 @@ describe("changeExistingPassword", () => {
 	});
 
 	it("posts current and new password to better-auth change-password", async () => {
-		const fetchMock = vi.fn(async () => {
+		const fetchMock = vi.fn<typeof fetch>(async () => {
 			return new Response(JSON.stringify({}), {
 				status: 200,
 				headers: { "Content-Type": "application/json" },
@@ -36,7 +36,7 @@ describe("changeExistingPassword", () => {
 		});
 
 		expect(fetchMock).toHaveBeenCalled();
-		const [input, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit | undefined];
+		const [input, init] = fetchMock.mock.calls[0];
 		const url = requestUrl(input);
 		expect(url).toContain("/api/auth/change-password");
 		expect(url).not.toContain("forgot-password");

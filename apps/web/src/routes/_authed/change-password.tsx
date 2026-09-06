@@ -1,12 +1,5 @@
-/**
- * /change-password — change an existing password while signed in.
- *
- * Unauthenticated visits go through /auth/login with returnTo via `_authed`.
- * Forgot/reset remain a different flow; this page always asks for the current
- * password.
- */
-
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -30,6 +23,22 @@ export const Route = createFileRoute("/_authed/change-password")({
 });
 
 function ChangePasswordPage() {
+	const { clientConfig } = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+
+	if (clientConfig?.mode === "demo" || clientConfig?.mode === "whitelabel") {
+		return (
+			<FullPageCard
+				title="Change password"
+				subtitle={
+					clientConfig.mode === "demo"
+						? "Password changes are disabled for the shared demo account."
+						: "Your password is managed by your sign-in provider. Change it with your provider."
+				}
+				showBackButton
+			/>
+		);
+	}
+
 	return <ChangePasswordForm />;
 }
 
