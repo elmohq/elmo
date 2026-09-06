@@ -40,6 +40,7 @@
 		"@workspace/deployment": "workspace:*",
 		"@workspace/lib": "workspace:*",
 		"@workspace/og": "workspace:*",
+		"harfbuzzjs": "0.10.0",
 		"@workspace/ui": "workspace:*",
 		"auth0": "^6.3.0",
 		"drizzle-orm": "^0.45.2",

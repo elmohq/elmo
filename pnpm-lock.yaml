@@ -177,6 +177,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.38.3)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.0)
+      harfbuzzjs:
+        specifier: 0.10.0
+        version: 0.10.0
       html2canvas-pro:
         specifier: ^2.4.0
         version: 2.4.0
@@ -389,6 +392,9 @@ importers:
       fumadocs-ui:
         specifier: ^16.15.4
         version: 16.15.4(@types/mdx@2.0.14)(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(fumadocs-core@16.15.4(@mdx-js/mdx@3.1.1(supports-color@7.2.0))(@tanstack/react-router@1.170.32(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.2.18)(lucide-react@1.37.0(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(supports-color@7.2.0)(zod@4.5.4))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(tailwindcss@4.3.3)
+      harfbuzzjs:
+        specifier: 0.10.0
+        version: 0.10.0
       lucide-react:
         specifier: ^1.37.0
         version: 1.37.0(react@19.2.8)
