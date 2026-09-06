@@ -1,15 +1,15 @@
 /**
  * OG Image Generation E2E Tests
  *
- * `/api/og` renders social-share preview images with satori and resvg.
+ * `/api/og` renders social-share preview images with takumi's WASM backend.
  * It's a public route (social crawlers fetch it, unauthenticated) referenced
  * from every page's `og:image` meta tag (see apps/web src/routes/__root.tsx).
  *
  * Nothing else in the E2E suite fetches this route — a browser sets the
  * `og:image` meta tag but never requests it, so a bare page load can't catch a
- * broken renderer. These tests exercise the route directly so that a native- or
- * WASM-binary bundling regression in the standalone Docker image fails CI here
- * instead of silently shipping blank social cards.
+ * broken renderer. These tests exercise the route directly so that a takumi /
+ * WASM bundling regression in the standalone Docker image fails CI here instead
+ * of silently shipping blank social cards.
  */
 import { expect, test } from "../../test";
 

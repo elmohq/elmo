@@ -692,8 +692,8 @@ importers:
         specifier: ^19.2.8
         version: 19.2.8
       satori:
-        specifier: 0.32.0
-        version: 0.32.0
+        specifier: ^0.29.0
+        version: 0.29.1
     devDependencies:
       '@types/node':
         specifier: ^26.4.0
@@ -8164,8 +8164,8 @@ packages:
   samlify@2.13.1:
     resolution: {integrity: sha512-vdYr/zohDGBbfWNU4miEzc1jmWOtkLySPViapC6nfGkv9KxzLq4UlGkKyryzwLw4jVlZk88Rw93HaCRVpe+t+g==}
 
-  satori@0.32.0:
-    resolution: {integrity: sha512-WwYeCWKjxfXvk7SsLSLTJhcPOrB2HCxbptqGIiYor0yqaPu3xA5uMTQ/4Dan5mxClhhk2Wn9ZE1pLGIlGdUxFQ==}
+  satori@0.29.1:
+    resolution: {integrity: sha512-fPRFt1V0zq+qjNTWuLGdH26Qu9oI/WHcHIsDj7EdrmudDd5XIkx0TsDzD2POthxKiJ4xMPyq20YIj6WcgEbY3Q==}
     engines: {node: '>=16'}
 
   sax@1.6.1:
@@ -17223,7 +17223,7 @@ snapshots:
       xml-escape: 1.1.0
       xpath: 0.0.34
 
-  satori@0.32.0:
+  satori@0.29.1:
     dependencies:
       '@shuding/opentype.js': 1.4.0-beta.0
       css-background-parser: 0.1.0

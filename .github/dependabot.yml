@@ -6,13 +6,6 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 4
-    ignore:
-      # satori 0.33 added harfbuzzjs — an Emscripten CJS build that reads
-      # `__dirname` and loads `hb.wasm` from beside itself. Neither survives the
-      # Nitro ESM server bundle, so /api/og 500s. Revisit once satori moves to
-      # harfbuzzjs v1, which is ESM and ships the wasm through `exports`.
-      - dependency-name: "satori"
-        versions: [">=0.33.0"]
     groups:
       all-minor-and-patch:
         update-types:
