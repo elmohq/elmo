@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
-import { embedBinaries, externalizeResvg } from "@workspace/og/vite-plugin";
+import { embedBinaries } from "@workspace/og/vite-plugin";
 import mdx from "fumadocs-mdx/vite";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
@@ -29,12 +29,16 @@ export default defineConfig({
 	},
 	plugins: [
 		embedBinaries(),
-		externalizeResvg(),
 		mdx(MdxConfig),
 		tailwindcss(),
 		tanstackStart(),
 		nitro({
-			traceDeps: ["@resvg/resvg-js"],
+			// The OG renderer is a native addon: its entry `require`s a platform-specific
+			// `.node` binary no JS bundler can inline, so it has to stay external and be
+			// traced into the server output. Its export map declares only `import`, which
+			// the tracer won't resolve unless that condition is in the list.
+			traceDeps: ["@takumi-rs/core"],
+			exportConditions: ["import"],
 			alias: {
 				tslib: tslibEsm,
 			},

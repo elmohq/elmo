@@ -22,19 +22,31 @@ const ZINC = {
 	200: "#e4e4e7",
 } as const;
 
-// Satori renders these: every element with more than one child needs
-// display:flex, styles are inline, and only the faces in OG_FONTS exist
+// Takumi renders these: styles are inline and only the faces in OG_FONTS exist
 // (Titan One 400, Geist Sans 400/500, Geist Mono 400).
 const SANS = "Geist Sans";
 const MONO = "Geist Mono";
 const WORDMARK = "Titan One";
 
-function withAlpha(color: string, alpha: number): string | undefined {
+/** Accent colors reach us from deployment branding, which doesn't constrain their syntax. */
+function parseHex(color: string): number | undefined {
 	const hex = color.trim().replace(/^#/, "");
 	const full = hex.length === 3 ? [...hex].map((c) => c + c).join("") : hex;
-	if (!/^[0-9a-f]{6}$/i.test(full)) return undefined;
-	const n = Number.parseInt(full, 16);
-	return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+	return /^[0-9a-f]{6}$/i.test(full) ? Number.parseInt(full, 16) : undefined;
+}
+
+function withAlpha(rgb: number, alpha: number): string {
+	return `rgba(${(rgb >> 16) & 255},${(rgb >> 8) & 255},${rgb & 255},${alpha})`;
+}
+
+/**
+ * The accent haze in the top-right corner. Alpha steps down quadratically across
+ * the stops so the glow stays concentrated near its center — a single stop out to
+ * the edge washes the whole corner at an even strength.
+ */
+function glowGradient(rgb: number): string {
+	const stops = [0, 0.25, 0.5, 0.75, 1].map((t) => `${withAlpha(rgb, 0.16 * (1 - t) ** 2)} ${t * 60}%`);
+	return `radial-gradient(circle, ${stops.join(", ")})`;
 }
 
 export interface OgFrameOptions {
@@ -51,8 +63,9 @@ export interface OgFrameOptions {
  * edge, and a mono footer. Content is laid out in a column inside the padding.
  */
 export function OgFrame({ accentColors, footer, children }: OgFrameOptions) {
-	const colors = accentColors.length > 0 ? [...new Set(accentColors)] : [ZINC[950]];
-	const glow = withAlpha(colors[0], 0.16);
+	const accents = [...new Set(accentColors.map(parseHex).filter((rgb) => rgb !== undefined))];
+	const colors = accents.length > 0 ? accents.map((rgb) => withAlpha(rgb, 1)) : [ZINC[950]];
+	const glow = accents.length > 0 ? glowGradient(accents[0]) : undefined;
 	const gridLines = (extent: number) =>
 		Array.from({ length: Math.floor(extent / GRID_CELL) }, (_, i) => (i + 1) * GRID_CELL);
 
@@ -116,7 +129,7 @@ export function OgFrame({ accentColors, footer, children }: OgFrameOptions) {
 						right: -260,
 						width: 900,
 						height: 900,
-						backgroundImage: `radial-gradient(circle, ${glow} 0%, rgba(255,255,255,0) 60%)`,
+						backgroundImage: glow,
 					}}
 				/>
 			) : null}

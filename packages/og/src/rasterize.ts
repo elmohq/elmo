@@ -1,25 +1,26 @@
-import { Resvg } from "@resvg/resvg-js";
+import { type FontLoader, Renderer } from "@takumi-rs/core";
+import { fromJsx } from "@takumi-rs/helpers/jsx";
 import type { ReactNode } from "react";
-import satori, { type SatoriOptions } from "satori";
 
 export interface RasterizeOptions {
 	width: number;
 	height: number;
-	fonts: SatoriOptions["fonts"];
+	fonts: FontLoader[];
 }
 
+// Process-wide because the renderer owns the font and image caches: it dedupes
+// repeated `fonts` registrations, so every card after the first reuses the
+// parsed faces.
+const renderer = new Renderer();
+
 /**
- * Lay out a React element with Satori (JSX/CSS → SVG) and rasterize it to PNG
- * with resvg. Satori's font parser handles TTF/OTF/WOFF (not WOFF2).
- *
- * resvg is a native addon; the app vite configs mark it external and trace it
- * into the Nitro output so the server bundler never tries to inline its `.node`.
+ * Lay out a React element with Takumi and encode it as a PNG. Takumi's font
+ * parser handles TTF/OTF/WOFF/WOFF2.
  */
 export async function renderOgPng(
 	element: ReactNode,
 	{ width, height, fonts }: RasterizeOptions,
-): Promise<ArrayBuffer> {
-	const svg = await satori(element, { width, height, fonts });
-	const png = new Resvg(svg, { fitTo: { mode: "width", value: width } }).render().asPng();
-	return png.buffer.slice(png.byteOffset, png.byteOffset + png.byteLength) as ArrayBuffer;
+): Promise<Buffer<ArrayBuffer>> {
+	const { node, css } = await fromJsx(element);
+	return renderer.render(node, { width, height, format: "png", css, fonts });
 }

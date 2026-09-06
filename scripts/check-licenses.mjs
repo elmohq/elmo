@@ -20,9 +20,9 @@ import { execSync } from "node:child_process";
 // ── Allowed SPDX license identifiers ────────────────────────────────
 // Permissive licenses compatible with MIT redistribution, plus MPL-2.0.
 // MPL-2.0 is file-level copyleft: used as an unmodified dependency it places no
-// obligations on Elmo's own MIT-licensed code (e.g. satori/resvg for OG images,
-// lightningcss for CSS). Strong copyleft (GPL/LGPL/AGPL) is intentionally NOT
-// added — its terms would conflict with shipping Elmo under MIT.
+// obligations on Elmo's own MIT-licensed code (e.g. lightningcss for CSS).
+// Strong copyleft (GPL/LGPL/AGPL) is intentionally NOT added — its terms would
+// conflict with shipping Elmo under MIT.
 const ALLOWED_LICENSES = new Set([
   "MIT",
   "MIT-0",
