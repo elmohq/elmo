@@ -27,16 +27,16 @@ import { createWriteStream, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_APP_NAME } from "@workspace/config/constants";
 import { renderOgPng } from "@workspace/og/rasterize";
+import { OG_HEIGHT, OG_WIDTH, renderOgImage } from "@workspace/og/render";
 import { ZipArchive } from "archiver";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
 const BRAND_COLOR = "#2563eb";
-const ACCENT_COLORS = ["#2563eb", "#f4d35e", "#ee964b", "#f95738"];
-const TAGLINE = "AI Search Optimization";
-const DESCRIPTION = "Track and optimize your brand's visibility across AI models.";
+const SITE_URL = "https://www.elmohq.com";
 const OUTPUT_ZIP = resolve(__dirname, "../elmo-brand-kit.zip");
 
 // ---------------------------------------------------------------------------
@@ -66,6 +66,12 @@ const fonts = [
 		data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff"),
 		style: "normal" as const,
 		weight: 500 as const,
+	},
+	{
+		name: "Geist Mono",
+		data: loadFont("@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff"),
+		style: "normal" as const,
+		weight: 400 as const,
 	},
 ];
 
@@ -223,68 +229,6 @@ function PatternBanner({
 	);
 }
 
-// ---------------------------------------------------------------------------
-// OG image
-// ---------------------------------------------------------------------------
-
-function OgImage({ title }: { title: string }) {
-	return (
-		<div tw="flex w-full h-full relative overflow-hidden" style={{ backgroundColor: "#ffffff" }}>
-			<div
-				style={{
-					position: "absolute",
-					fontFamily: "Titan One",
-					fontSize: 700,
-					color: "rgba(37,99,235,0.04)",
-					lineHeight: 1,
-					right: -60,
-					top: -60,
-				}}
-			>
-				e
-			</div>
-
-			<div tw="flex flex-col justify-center h-full" style={{ paddingLeft: 80, paddingRight: 80 }}>
-				<div
-					style={{
-						fontFamily: "Titan One",
-						fontSize: 80,
-						color: BRAND_COLOR,
-						lineHeight: 1,
-						marginBottom: 28,
-					}}
-				>
-					elmo
-				</div>
-				<div
-					style={{
-						fontFamily: "Geist Sans",
-						fontSize: 44,
-						fontWeight: 500,
-						color: "#1e293b",
-						marginBottom: 16,
-					}}
-				>
-					{title}
-				</div>
-				<div style={{ fontFamily: "Geist Sans", fontSize: 24, color: "#64748b" }}>{DESCRIPTION}</div>
-			</div>
-
-			<div
-				style={{
-					display: "flex",
-					position: "absolute",
-					bottom: 0,
-					left: 0,
-					width: "100%",
-					height: 6,
-					backgroundImage: `linear-gradient(to right, ${ACCENT_COLORS.join(", ")})`,
-				}}
-			/>
-		</div>
-	);
-}
-
 const files: { name: string; data: Buffer }[] = [];
 
 async function addFile(name: string, data: Buffer | Promise<Buffer>) {
@@ -343,7 +287,7 @@ for (const bg of logoBgs) {
 
 // OG
 console.log("\nOG Images:");
-const ogData = await render(<OgImage title={TAGLINE} />, 1200, 630);
+const ogData = await render(renderOgImage({ appName: DEFAULT_APP_NAME, url: SITE_URL }), OG_WIDTH, OG_HEIGHT);
 files.push({ name: "og/og-default.png", data: ogData });
 console.log("  ✓ og/og-default.png  (1200×630)");
 

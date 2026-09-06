@@ -66,6 +66,7 @@ export const Route = createFileRoute("/blog/$")({
 					description: pageDescription,
 					path,
 					type: "article",
+					label: "Blog",
 				}),
 			],
 			links: [{ rel: "canonical", href: canonicalUrl(path) }],

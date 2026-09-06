@@ -7,6 +7,7 @@ const EMBEDDED_BINARIES: Record<string, string> = {
 	"virtual:font/titan-one-400": "@fontsource/titan-one/files/titan-one-latin-400-normal.woff",
 	"virtual:font/geist-sans-400": "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff",
 	"virtual:font/geist-sans-500": "@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff",
+	"virtual:font/geist-mono-400": "@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff",
 };
 
 // resvg (the OG rasterizer) is a native addon: its entry `require`s a

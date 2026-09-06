@@ -20,15 +20,18 @@ export function ogMeta({
 	path,
 	image,
 	type = "website",
+	label,
 }: {
 	title: string;
 	description: string;
 	path: string;
 	image?: string;
 	type?: "website" | "article";
+	/** Section shown on the generated share image, e.g. "Blog". Ignored when `image` is given. */
+	label?: string;
 }) {
 	const url = canonicalUrl(path);
-	const resolvedImage = image ?? getMarketingOgImage({ title, description });
+	const resolvedImage = image ?? getMarketingOgImage({ title, description, label });
 	const absoluteImage = resolvedImage.startsWith("http") ? resolvedImage : canonicalUrl(resolvedImage);
 
 	return [

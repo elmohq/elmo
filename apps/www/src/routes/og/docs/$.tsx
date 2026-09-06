@@ -1,10 +1,9 @@
-import geistSans400Data from "virtual:font/geist-sans-400";
-import geistSans500Data from "virtual:font/geist-sans-500";
-import titanOne400Data from "virtual:font/titan-one-400";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { DEFAULT_APP_NAME } from "@workspace/config/constants";
+import { OG_FONTS } from "@workspace/og/fonts";
 import { renderOgPng } from "@workspace/og/rasterize";
-import { renderOgImage } from "@workspace/og/render";
+import { OG_HEIGHT, OG_WIDTH, renderOgImage } from "@workspace/og/render";
+import { SITE_URL } from "@/lib/seo";
 import { source } from "@/lib/source";
 
 export const Route = createFileRoute("/og/docs/$")({
@@ -20,31 +19,10 @@ export const Route = createFileRoute("/og/docs/$")({
 						appName: DEFAULT_APP_NAME,
 						title: page.data.title,
 						description: page.data.description,
+						label: "Docs",
+						url: SITE_URL,
 					}),
-					{
-						width: 1200,
-						height: 630,
-						fonts: [
-							{
-								name: "Titan One",
-								data: titanOne400Data,
-								style: "normal" as const,
-								weight: 400 as const,
-							},
-							{
-								name: "Geist Sans",
-								data: geistSans400Data,
-								style: "normal" as const,
-								weight: 400 as const,
-							},
-							{
-								name: "Geist Sans",
-								data: geistSans500Data,
-								style: "normal" as const,
-								weight: 500 as const,
-							},
-						],
-					},
+					{ width: OG_WIDTH, height: OG_HEIGHT, fonts: OG_FONTS },
 				);
 
 				return new Response(png, {
