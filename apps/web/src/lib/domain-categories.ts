@@ -194,9 +194,24 @@ export function isGoogleSearchUrl(url: string): boolean {
 	}
 }
 
+/**
+ * Google link wrappers: AI Mode's `/goto?url=`, ad clicks (`/aclk`), and the
+ * `/url` and `/imgres` redirectors. The destination is an encoded Google payload
+ * rather than the publisher's address, so the citation names no resolvable
+ * source and can't be attributed to a domain.
+ */
+export function isGoogleRedirectUrl(url: string): boolean {
+	if (!googleHost(url)) return false;
+	try {
+		return /^\/(goto|aclk|url|imgres)\/?$/.test(new URL(url).pathname);
+	} catch {
+		return false;
+	}
+}
+
 /** Any Google search/shopping surface pulled out of the source-mix donut. */
 export function isGoogleSurfaceUrl(url: string): boolean {
-	return isGoogleShoppingUrl(url) || isGoogleSearchUrl(url);
+	return isGoogleShoppingUrl(url) || isGoogleSearchUrl(url) || isGoogleRedirectUrl(url);
 }
 
 export function parseGoogleProductName(url: string, title?: string | null): string | null {
@@ -349,9 +364,22 @@ export function isForumDomain(host: string): boolean {
 }
 
 /**
- * Infer a page type from the URL path + citation title. Heuristic — "good, not
- * perfect"; the long tail falls through to "other".
+ * Path segments that mark technical documentation whoever publishes it — the
+ * signal that makes an otherwise-unclassified host a developer source. Kept
+ * narrower than the "doc" page type, which also covers consumer help centres.
  */
+const DEVELOPER_PATH_RE =
+	/\/(docs?|documentation|developers?|api|apis|sdks?|reference|api-reference|changelog|release-notes|openapi|swagger|graphql)(\/|$)/;
+
+/** True when the URL path is technical documentation (see DEVELOPER_PATH_RE). */
+export function hasDeveloperPath(url: string): boolean {
+	try {
+		return DEVELOPER_PATH_RE.test(new URL(url).pathname.toLowerCase());
+	} catch {
+		return false;
+	}
+}
+
 /**
  * Ordered page-type rules. Order is load-bearing: an earlier rule wins, which
  * is how "/products/return-pillow" reads as a product rather than a returns
@@ -378,7 +406,7 @@ const PAGE_TYPE_RULES: PageTypeRule[] = [
 			/\/(comments|forums?|threads?|viewtopic|discussion)(\/|$)/.test(path) ||
 			/\/r\//.test(path),
 	},
-	{ type: "doc", matches: ({ path }) => /\/(docs?|documentation|developers?|api|sdk|reference)(\/|$)/.test(path) },
+	{ type: "doc", matches: ({ path }) => DEVELOPER_PATH_RE.test(path) },
 	{ type: "review", matches: ({ haystack }) => /\breview(s|ed)?\b/.test(haystack) },
 	{
 		type: "comparison",
@@ -393,7 +421,9 @@ const PAGE_TYPE_RULES: PageTypeRule[] = [
 			/^\s*(best|top)\b/.test(title) ||
 			// "best-"/"top-" in the URL slug (catches review domains whose title doesn't
 			// lead with "Best"), excluding store "best-seller" pages and commerce paths.
-			(/(^|\/)(best|top)-[a-z]/.test(path) &&
+			// "best-" also counts mid-slug ("/the-best-running-shoes"); "top-" does not,
+			// because apparel slugs like "/tank-top-black" would collide.
+			(/(^|\/)(best|top)-[a-z]|-best-[a-z]/.test(path) &&
 				!/best-?sellers?|\/(products?|collections|shop|store|dp|gp|pdp|item|cart|buy)(\/|$|-)/.test(path)),
 	},
 	{
@@ -418,9 +448,13 @@ const PAGE_TYPE_RULES: PageTypeRule[] = [
 		// /products/return-pillow is a product, not a returns page.
 		type: "product",
 		matches: ({ path }) =>
-			/\/(dp|gp\/product|gp\/aw\/d|ip|itm|pdp|products?|item|shop|store|collections|buy|cart|pricing|plans?)(\/|$)/.test(
+			/\/(dp|gp\/product|gp\/aw\/d|ip|itm|pdp|products?|item|shop|store|collections?|catalog(ue)?|categor(y|ies)|browse|buy|cart|pricing|plans?)(\/|$)/.test(
 				path,
-			),
+			) ||
+			// "/p/<slug>" is a widespread product path, but also Substack's post path.
+			// Requiring a hyphenated slug carrying a digit — the SKU or model number
+			// a product slug almost always ends in — keeps prose post slugs out.
+			/\/p\/(?=[a-z0-9-]*-)(?=[a-z0-9-]*\d)/.test(path),
 	},
 	{
 		type: "info",
@@ -429,17 +463,44 @@ const PAGE_TYPE_RULES: PageTypeRule[] = [
 				path,
 			),
 	},
-	{ type: "doc", matches: ({ path }) => /\/(support|help|kb)(\/|$)/.test(path) },
+	{ type: "doc", matches: ({ path }) => /\/(support|help|kb|knowledge-?base|glossary)(\/|$)/.test(path) },
 	{
 		type: "article",
 		matches: ({ path }) =>
-			/\/(blog|news|articles?|story|stories|posts?|magazine|tips|advice|journal|features?|insights?|resources?)(\/|$|-)/.test(
+			/\/(blogs?|news|newsroom|articles?|story|stories|posts?|magazine|tips|advice|journal|features?|insights?|resources?|reports?|case-stud(y|ies)|white-?papers?|opinions?|editorials?)(\/|$|-)/.test(
 				path,
 			) ||
 			/\/\d{4}\/\d{2}\//.test(path) ||
 			/\/\d{4}\/[a-z]/.test(path),
 	},
+	{
+		// Last resort: the bare multi-word slug a blog post sits on when the site
+		// has no /blog prefix ("/the-most-durable-shoes-for-toddlers"). Product
+		// pages share the shape, so slugs carrying a SKU are excluded and the
+		// commerce rules above get first refusal.
+		type: "article",
+		matches: ({ path }) => isRootPostSlug(path),
+	},
 ];
+
+const LOCALE_SEGMENT_RE = /^[a-z]{2}([-][a-z]{2})?$/;
+
+function isRootPostSlug(path: string): boolean {
+	let segments = path.split("/").filter(Boolean);
+	if (segments.length === 2 && LOCALE_SEGMENT_RE.test(segments[0])) segments = segments.slice(1);
+	if (segments.length !== 1) return false;
+	const slug = segments[0].replace(/\.(html?|php|aspx)$/, "");
+	if ((slug.match(/-/g) ?? []).length < 4) return false;
+	// A run of 4+ digits that isn't a year is a SKU, and a slug ending in digits
+	// is a catalogue id — both mark a product page rather than a post.
+	if (slug.split("-").some((token) => /^\d{4,}$/.test(token) && !isYear(token))) return false;
+	return !/\d$/.test(slug) || /(^|-)(19|20)\d\d$/.test(slug);
+}
+
+function isYear(token: string): boolean {
+	const n = Number(token);
+	return n >= 1900 && n <= 2099;
+}
 
 /**
  * Infer a page type from the URL path + citation title. Heuristic — "good, not
@@ -456,7 +517,9 @@ export function inferPageType(url: string, title?: string | null): CitationPageT
 		return "other";
 	}
 
-	const path = parsed.pathname.toLowerCase();
+	// Underscore-separated slugs ("/gear_guides/best_running_shoes") are the same
+	// shape as hyphen-separated ones; normalize so one set of rules covers both.
+	const path = parsed.pathname.toLowerCase().replace(/_/g, "-");
 	if (path === "/" || path === "") return "homepage";
 
 	const lowerTitle = (title ?? "").toLowerCase();

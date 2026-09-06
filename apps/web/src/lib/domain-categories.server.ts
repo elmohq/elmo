@@ -3,7 +3,14 @@
 // this from a client module would bloat the browser bundle — keep it confined to
 // server functions. Client code imports types/config from `./domain-categories`.
 
-import { type CitationCategory, FORUM_DOMAINS, inDomainSet, inferPageType, isForumDomain } from "./domain-categories";
+import {
+	type CitationCategory,
+	FORUM_DOMAINS,
+	hasDeveloperPath,
+	inDomainSet,
+	inferPageType,
+	isForumDomain,
+} from "./domain-categories";
 import { EDITORIAL_DOMAINS } from "./editorial-domains";
 
 const SOCIAL_MEDIA_DOMAINS = new Set([
@@ -102,7 +109,175 @@ const DEVELOPER_DOMAINS = new Set([
 	"anaconda.org",
 	"metacpan.org",
 	"rosettacode.org",
+	// Developer hosting platforms. Listed as suffixes so every project subdomain
+	// (alice.github.io, my-app.vercel.app) resolves with them.
+	"github.io",
+	"github.dev",
+	"github.blog",
+	"githubusercontent.com",
+	"gitlab.io",
+	"pages.dev",
+	"workers.dev",
+	"deno.dev",
+	"val.town",
+	"vercel.app",
+	"netlify.app",
+	"herokuapp.com",
+	"fly.dev",
+	"web.app",
+	"firebaseapp.com",
+	"appspot.com",
+	"azurewebsites.net",
+	"streamlit.app",
+	"replit.app",
+	"repl.co",
+	"glitch.me",
+	"surge.sh",
+	"js.org",
+	"gitbook.io",
+	"mintlify.app",
+	"codesandbox.io",
+	"stackblitz.com",
+	"jsfiddle.net",
+	"codepen.io",
+	"observablehq.com",
+	"colab.research.google.com",
+	// Platform developer portals. The docs./developer./api. prefix heuristic in
+	// isDeveloperDomain covers most vendors; these are the apex-hosted exceptions.
+	"cloud.google.com",
+	"ai.google.dev",
+	"firebase.google.com",
+	"web.dev",
+	"support.google.com",
+	"learn.microsoft.com",
+	"azure.microsoft.com",
+	"aws.amazon.com",
+	// Languages, runtimes, and flagship open-source projects. These are mostly
+	// .org/.io and would otherwise fall into the institutional blanket.
+	"python.org",
+	"nodejs.org",
+	"php.net",
+	"ruby-lang.org",
+	"rust-lang.org",
+	"go.dev",
+	"kotlinlang.org",
+	"scala-lang.org",
+	"haskell.org",
+	"perl.org",
+	"typescriptlang.org",
+	"openjdk.org",
+	"cppreference.com",
+	"isocpp.org",
+	"apache.org",
+	"kernel.org",
+	"gnu.org",
+	"linux.org",
+	"debian.org",
+	"ubuntu.com",
+	"fedoraproject.org",
+	"archlinux.org",
+	"freebsd.org",
+	"mozilla.org",
+	"w3.org",
+	"whatwg.org",
+	"ietf.org",
+	"rfc-editor.org",
+	"postgresql.org",
+	"sqlite.org",
+	"mysql.com",
+	"mariadb.org",
+	"redis.io",
+	"mongodb.com",
+	"elastic.co",
+	"kubernetes.io",
+	"docker.com",
+	"nginx.org",
+	"terraform.io",
+	"hashicorp.com",
+	"ansible.com",
+	"grafana.com",
+	"prometheus.io",
+	"opentelemetry.io",
+	"openssl.org",
+	"reactjs.org",
+	"react.dev",
+	"vuejs.org",
+	"angular.dev",
+	"svelte.dev",
+	"nextjs.org",
+	"nuxt.com",
+	"vite.dev",
+	"vitejs.dev",
+	"eslint.org",
+	"prettier.io",
+	"jquery.com",
+	"numpy.org",
+	"scipy.org",
+	"pydata.org",
+	"scikit-learn.org",
+	"pytorch.org",
+	"tensorflow.org",
+	"spring.io",
+	"openapis.org",
+	"json-schema.org",
+	"semver.org",
+	"json.org",
+	// Developer publishers and practice sites (same shelf as dev.to / css-tricks).
+	"sitepoint.com",
+	"smashingmagazine.com",
+	"infoq.com",
+	"thenewstack.io",
+	"hackernoon.com",
+	"phoronix.com",
+	"slashdot.org",
+	"tutorialspoint.com",
+	"javatpoint.com",
+	"programiz.com",
+	"realpython.com",
+	"towardsdatascience.com",
+	"machinelearningmastery.com",
+	"kdnuggets.com",
+	"analyticsvidhya.com",
+	"leetcode.com",
+	"hackerrank.com",
+	"codewars.com",
+	"exercism.org",
+	"codeforces.com",
+	"roadmap.sh",
+	"refactoring.guru",
+	"martinfowler.com",
+	// Model providers and LLM tooling — the working end of the "model hub" shelf.
+	"openai.com",
+	"chatgpt.com",
+	"anthropic.com",
+	"claude.com",
+	"claude.ai",
+	"mistral.ai",
+	"cohere.com",
+	"perplexity.ai",
+	"deepseek.com",
+	"x.ai",
+	"together.ai",
+	"groq.com",
+	"replicate.com",
+	"ollama.com",
+	"langchain.com",
+	"llamaindex.ai",
+	"langfuse.com",
+	"modal.com",
+	"gemini.google.com",
+	"ai.google",
+	"vertexai.google.com",
 ]);
+
+// Host prefixes that mark a developer surface on any domain — the same
+// generalizable shape as the forum subdomain heuristic, so a vendor's docs land
+// in "developer" without enumerating every vendor.
+const DEVELOPER_HOST_PREFIX_RE = /^(docs?|developers?|dev|devs|api|apis|sdks?|codelabs|git|engineering)\./;
+
+// Mirrors, proxies, and country fronts of the big code hosts (qgithub.com,
+// github.leishennb.icu) — the host carrying the code host's name is the signal.
+const CODE_HOST_MIRROR_RE = /(github|gitlab|bitbucket)/;
 
 // Press-release distribution wires — small, finite, unambiguous.
 const PR_WIRE_DOMAINS = new Set([
@@ -177,6 +352,30 @@ const REVIEW_DOMAINS = new Set([
 	"kununu.com",
 	"homeadvisor.com",
 	"thumbtack.com",
+	// Software / tool directories: listings with side-by-side alternatives, the
+	// same job G2 and Capterra do.
+	"alternativeto.net",
+	"slant.co",
+	"saashub.com",
+	"stackshare.io",
+	"financesonline.com",
+	"softwaresuggest.com",
+	"crozdesk.com",
+	"saasworthy.com",
+	"tekpon.com",
+	"selecthub.com",
+	"appsumo.com",
+	"theresanaiforthat.com",
+	"futurepedia.io",
+	"futuretools.io",
+	"toolify.ai",
+	"aitools.fyi",
+	"libhunt.com",
+	// Local / professional directories
+	"yellowpages.com",
+	"manta.com",
+	"justdial.com",
+	"foursquare.com",
 ]);
 
 // Reference / structured-knowledge. Checked before `institutional` so that
@@ -414,9 +613,36 @@ const ECOMMERCE_DOMAINS = new Set([
 	"cargurus.com",
 	"autotrader.com",
 	"cars.com",
+	// App stores and marketplaces — a listing page is a storefront.
+	"apps.apple.com",
+	"itunes.apple.com",
+	"play.google.com",
+	"chromewebstore.google.com",
+	"addons.mozilla.org",
+	"apps.shopify.com",
+	"apps.odoo.com",
+	"marketplace.atlassian.com",
+	"marketplace.visualstudio.com",
+	"workspace.google.com",
+	// Hosted-store platforms, matched as suffixes so every merchant subdomain
+	// (acme.myshopify.com) resolves.
+	"myshopify.com",
+	"bigcartel.com",
+	"ecwid.com",
+	"square.site",
 ]);
 
+// Host prefixes and TLDs that mark a storefront on any domain, so a shop doesn't
+// need to be enumerated to be recognized.
+const ECOMMERCE_HOST_PREFIX_RE = /^(shop|store|shopping|checkout)\./;
+const ECOMMERCE_TLDS = new Set(["shop", "store"]);
+
 const EDITORIAL_DOMAIN_SET = new Set(EDITORIAL_DOMAINS);
+
+// A blog/news subdomain is published content whoever owns the apex domain — the
+// editorial counterpart to the forum and developer prefix heuristics. Checked
+// after every other category, so it only claims otherwise-unbucketed hosts.
+const EDITORIAL_HOST_PREFIX_RE = /^(blogs?|news|newsroom|magazine|press)\./;
 
 // TLDs and second-level domains that indicate institutional/government/academic sites
 const INSTITUTIONAL_TLDS = new Set(["edu", "gov", "mil", "int"]);
@@ -497,11 +723,15 @@ function isReviewDomain(domain: string): boolean {
 }
 
 function isEcommerceDomain(domain: string): boolean {
-	return inDomainSet(domain, ECOMMERCE_DOMAINS);
+	if (inDomainSet(domain, ECOMMERCE_DOMAINS)) return true;
+	if (ECOMMERCE_HOST_PREFIX_RE.test(domain)) return true;
+	return ECOMMERCE_TLDS.has(domain.split(".").pop() ?? "");
 }
 
 function isDeveloperDomain(domain: string): boolean {
-	return inDomainSet(domain, DEVELOPER_DOMAINS);
+	return (
+		inDomainSet(domain, DEVELOPER_DOMAINS) || DEVELOPER_HOST_PREFIX_RE.test(domain) || CODE_HOST_MIRROR_RE.test(domain)
+	);
 }
 
 function isReferenceDomain(domain: string): boolean {
@@ -510,6 +740,10 @@ function isReferenceDomain(domain: string): boolean {
 
 function isEditorialDomain(domain: string): boolean {
 	return inDomainSet(domain, EDITORIAL_DOMAIN_SET);
+}
+
+function hasEditorialHostPrefix(domain: string): boolean {
+	return EDITORIAL_HOST_PREFIX_RE.test(domain);
 }
 
 function isInstitutionalDomain(domain: string): boolean {
@@ -539,7 +773,71 @@ const DOMAIN_CATEGORY_CHECKS: [(domain: string) => boolean, CitationCategory][] 
 	[isReferenceDomain, "reference"],
 	[isEditorialDomain, "editorial"],
 	[isInstitutionalDomain, "institutional"],
+	// Last: a university or agency newsroom (news.mit.edu) is institutional first.
+	[hasEditorialHostPrefix, "editorial"],
 ];
+
+// Second-level labels a country registry puts its generic namespaces under
+// (nike.com.br, nike.co.uk, example.or.jp).
+const COUNTRY_SECOND_LEVELS = new Set(["com", "co", "net", "org", "edu", "gov", "ac", "or", "ne", "gob", "govt"]);
+
+// Two-letter TLDs sold as generic namespaces rather than used as a country's
+// own. A domain under one of these is its own site, not a local edition.
+const GENERIC_TWO_LETTER_TLDS = new Set([
+	"io",
+	"ai",
+	"co",
+	"me",
+	"tv",
+	"cc",
+	"ly",
+	"sh",
+	"so",
+	"to",
+	"gg",
+	"fm",
+	"am",
+	"is",
+	"st",
+	"ws",
+	"im",
+	"vc",
+	"ag",
+	"bz",
+	"mn",
+	"nu",
+	"pw",
+	"re",
+	"sc",
+	"tk",
+	"ml",
+	"ga",
+	"cf",
+	"gq",
+]);
+
+/**
+ * Country storefronts of a tracked domain: nike.com.br and nike.co.uk for
+ * nike.com, hubspot.de for hubspot.com. Only the public suffix may differ, and
+ * only for a country-code one, so a shared name on an unrelated gTLD
+ * (acme.com vs acme.io) is not treated as the same company.
+ */
+function isCountryVariant(domain: string, tracked: Set<string>): boolean {
+	const parts = domain.split(".");
+	if (parts.length < 2) return false;
+	const label = parts[0];
+	const suffix = parts.slice(1);
+	// Accept "<label>.<cc>" and "<label>.<generic sld>.<cc>" only.
+	const tld = suffix[suffix.length - 1];
+	if (suffix.length > 2 || tld.length !== 2) return false;
+	if (suffix.length === 1 && GENERIC_TWO_LETTER_TLDS.has(tld)) return false;
+	if (suffix.length === 2 && !COUNTRY_SECOND_LEVELS.has(suffix[0])) return false;
+	for (const t of tracked) {
+		const tParts = t.split(".");
+		if (tParts.length >= 2 && tParts[0] === label && t !== domain) return true;
+	}
+	return false;
+}
 
 export function categorizeDomain(
 	domain: string,
@@ -548,7 +846,13 @@ export function categorizeDomain(
 ): CitationCategory {
 	if (inDomainSet(domain, brandDomains)) return "brand";
 	if (inDomainSet(domain, competitorDomains)) return "competitor";
-	return DOMAIN_CATEGORY_CHECKS.find(([matches]) => matches(domain))?.[1] ?? "other";
+	const category = DOMAIN_CATEGORY_CHECKS.find(([matches]) => matches(domain))?.[1];
+	if (category) return category;
+	// Checked after the curated lists so a country edition of a publisher stays
+	// editorial rather than being claimed by a same-named brand.
+	if (isCountryVariant(domain, brandDomains)) return "brand";
+	if (isCountryVariant(domain, competitorDomains)) return "competitor";
+	return "other";
 }
 
 /**
@@ -591,5 +895,8 @@ export function classifyUrl(
 	if (pt === "forum") return "social"; // a forum page on an unlisted domain is still community / UGC
 	if (EDITORIAL_PAGE_TYPES.has(pt)) return "editorial";
 	if (pt === "product" || pt === "shopping") return "ecommerce";
+	// Technical documentation reads as a developer source no matter who hosts it.
+	// Narrower than the "doc" page type, which also covers consumer help centres.
+	if (hasDeveloperPath(url)) return "developer";
 	return "other";
 }
