@@ -1007,7 +1007,8 @@
 					},
 					"interval": {
 						"type": ["string", "null"],
-						"enum": ["monthly", "annual"]
+						"enum": ["monthly", "annual", null],
+						"description": "Null on a negotiated plan, which carries no billing interval."
 					},
 					"periodEnd": {
 						"type": ["string", "null"],
