@@ -17,10 +17,23 @@ const BASE_PATH = new URL(SPEC.servers[0].url, "http://x").pathname.replace(/\/$
 
 const METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 
+// A 3.1 type is a string or a union of them, and null is one of the members.
+const typesOf = (schema) => (Array.isArray(schema.type) ? schema.type : schema.type ? [schema.type] : []);
+
 function resolve(schema) {
 	if (schema?.$ref) {
 		const name = schema.$ref.replace("#/components/schemas/", "");
 		return resolve(SPEC.components.schemas[name]);
+	}
+	// How a nullable $ref is spelled, since a union is the only way to widen one.
+	if (schema?.anyOf) {
+		const { anyOf, ...siblings } = schema;
+		const members = anyOf.filter((member) => member.type !== "null");
+		// Any other union goes unchecked rather than checked against one arm.
+		if (members.length !== 1) return {};
+		const merged = { ...resolve(members[0]), ...siblings };
+		if (members.length === anyOf.length) return merged;
+		return { ...merged, type: [...typesOf(merged), "null"] };
 	}
 	if (schema?.allOf) {
 		const { allOf, ...siblings } = schema;
@@ -33,7 +46,6 @@ function resolve(schema) {
 			}),
 			{},
 		);
-		// How OpenAPI 3.0 spells a nullable $ref, which can carry no siblings.
 		return {
 			...merged,
 			...siblings,
@@ -48,23 +60,24 @@ const TYPE_OF = (value) =>
 
 function validate(value, rawSchema, where, out) {
 	const schema = resolve(rawSchema);
-	if (!schema.type && !schema.properties && !schema.enum) return;
+	const types = typesOf(schema);
+	if (types.length === 0 && !schema.properties && !schema.enum) return;
 
 	if (value === null) {
-		if (!schema.nullable) out.violations.push(`${where}: null, but the spec does not mark it nullable`);
+		if (!types.includes("null")) out.violations.push(`${where}: null, but the spec does not admit null`);
 		return;
 	}
 
 	const actual = TYPE_OF(value);
-	const expected = schema.type;
-	if (expected && !(expected === "integer" ? actual === "number" : actual === expected)) {
-		out.violations.push(`${where}: expected ${expected}, got ${actual}`);
+	const expected = types.filter((type) => type !== "null");
+	if (expected.length && !expected.some((type) => (type === "integer" ? actual === "number" : actual === type))) {
+		out.violations.push(`${where}: expected ${expected.join(" or ")}, got ${actual}`);
 		return;
 	}
 	if (schema.enum && !schema.enum.includes(value)) {
 		out.violations.push(`${where}: ${JSON.stringify(value)} is not one of ${JSON.stringify(schema.enum)}`);
 	}
-	if (expected === "integer" && !Number.isInteger(value)) {
+	if (expected.includes("integer") && actual === "number" && !Number.isInteger(value)) {
 		out.violations.push(`${where}: expected an integer, got ${value}`);
 	}
 	// The only check that catches a unit changing: 0-100 turning into 0..1 is

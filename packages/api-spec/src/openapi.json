@@ -1,5 +1,5 @@
 {
-	"openapi": "3.0.3",
+	"openapi": "3.1.1",
 	"info": {
 		"title": "Elmo API",
 		"description": "Read and manage the brands, prompts, competitors, and AI-visibility analytics of an Elmo deployment.\n\n## Authentication\n\nEvery request carries a Bearer token in the `Authorization` header. Two kinds of token are accepted.\n\n**Instance admin keys** come from the operator's `ADMIN_API_KEYS` environment variable. They reach every organization and every endpoint, including the admin-only ones, and are not subject to plan limits or rate limits.\n\n**Organization keys** (`elmo_…`) are issued from the dashboard. A key acts inside exactly one organization, carries an explicit set of scopes, and may be narrowed further to a subset of that organization's brands. Plan limits, read-only mode, and per-key rate limits all apply.\n\n## Scopes\n\nEach operation lists the scope it requires in `x-elmo-scopes`. Admin keys hold every scope implicitly.\n\n| Scope | Grants |\n| --- | --- |\n| `brands:read` / `brands:write` | Read or manage brands |\n| `prompts:read` / `prompts:write` | Read or manage prompts |\n| `competitors:read` / `competitors:write` / `competitors:delete` | Read, manage, or delete competitors |\n| `analytics:read` | Read aggregated visibility, share of voice, citations, and fan-out |\n| `runs:read` | Read individual model answers and their citations |\n| `billing:read` | Read the organization's plan, limits, and usage |\n\nDeleting a competitor is a scope of its own, so a key that syncs competitors cannot erase them by accident. Deleting a *prompt* has no scope at all: it takes every run and citation with it, the dashboard offers no such action, and `PATCH /prompts/{promptId}` with `enabled: false` stops the tracking without losing the history. It is reachable with an instance admin key only.\n\nThere is deliberately no billing write scope: the API cannot change a subscription, an add-on quantity, or a payment method under any key, including an admin key. Operations marked `x-elmo-admin-only` are reachable with an instance admin key only; no scope grants them. Report generation and brand analysis spend provider budget with no organization to bill it to; deleting a prompt destroys tracked history the dashboard itself will not. For the same reason a single *field* can be admin-only: `enabled` on `PATCH /brands/{brandId}` stops a brand being sampled at all, so setting it with an organization key is a `403`.\n\n## Access and errors\n\nA brand outside the calling key's reach answers `404` with the same body a brand that does not exist would, so a key can never probe another tenant's data. A key that is valid but lacks the scope an operation requires answers `403` naming the missing scope.\n\nErrors share one envelope — `{ error, message, code }` — where `code` is a stable machine-readable string. Treat an unrecognized `code` as its HTTP status implies; new values are added without a version bump.\n\n## Conventions\n\nTimestamps are ISO-8601 UTC; dates are `YYYY-MM-DD`. Collections take `page` (1-based) and `limit` (max 100) and answer with a `pagination` object. Analytics endpoints take `start` + `end` as ISO 8601 timestamps, half-open, and answer with the whole window in one response; daily series are labelled in UTC. `/prompts/{promptId}/snapshot` keeps the `startDate`/`endDate` calendar days it shipped with.\n\n## Stability\n\nAn operation whose response shape may still change carries `x-stability: experimental`, and says so in the first line of its description. Everything else is stable: its shape will only ever gain fields. The absence of the marker is the promise.",
@@ -166,20 +166,6 @@
 				},
 				"required": ["error"]
 			},
-			"SuccessMessage": {
-				"type": "object",
-				"properties": {
-					"message": {
-						"type": "string",
-						"description": "Success message"
-					},
-					"data": {
-						"type": "object",
-						"description": "Additional response data"
-					}
-				},
-				"required": ["message"]
-			},
 			"CreateReportRequest": {
 				"type": "object",
 				"properties": {
@@ -230,9 +216,8 @@
 						"description": "Timestamp when the report was created"
 					},
 					"completedAt": {
-						"type": "string",
+						"type": ["string", "null"],
 						"format": "date-time",
-						"nullable": true,
 						"description": "Timestamp when the report completed"
 					}
 				},
@@ -304,8 +289,7 @@
 						"description": "The cited URL"
 					},
 					"title": {
-						"type": "string",
-						"nullable": true,
+						"type": ["string", "null"],
 						"description": "Page title if available"
 					},
 					"count": {
@@ -564,16 +548,14 @@
 					},
 					"enabledModels": {
 						"description": "Models this brand is tracked on. Null means the deployment default.",
-						"type": "array",
+						"type": ["array", "null"],
 						"items": {
 							"type": "string"
-						},
-						"nullable": true
+						}
 					},
 					"delayOverrideHours": {
-						"type": "integer",
-						"description": "Sampling cadence override in hours. Null means the plan cadence.",
-						"nullable": true
+						"type": ["integer", "null"],
+						"description": "Sampling cadence override in hours. Null means the plan cadence."
 					}
 				},
 				"required": [
@@ -826,13 +808,11 @@
 						"enum": ["admin", "organization"]
 					},
 					"organizationId": {
-						"type": "string",
-						"description": "The organization this key acts inside. Null for admin keys.",
-						"nullable": true
+						"type": ["string", "null"],
+						"description": "The organization this key acts inside. Null for admin keys."
 					},
 					"organizationName": {
-						"type": "string",
-						"nullable": true
+						"type": ["string", "null"]
 					},
 					"scopes": {
 						"type": "array",
@@ -843,25 +823,22 @@
 					},
 					"brandIds": {
 						"description": "Brands the key is narrowed to, or null when it reaches every brand in its organization. Never an empty array — a restriction to no brands is rejected at creation rather than treated as no restriction.",
-						"type": "array",
+						"type": ["array", "null"],
 						"items": {
 							"type": "string"
-						},
-						"nullable": true
+						}
 					},
 					"createdAt": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
+						"type": ["string", "null"],
+						"format": "date-time"
 					},
 					"expiresAt": {
-						"type": "string",
+						"type": ["string", "null"],
 						"description": "When the key stops working, if it has an expiry.",
-						"format": "date-time",
-						"nullable": true
+						"format": "date-time"
 					},
 					"rateLimit": {
-						"type": "object",
+						"type": ["object", "null"],
 						"properties": {
 							"limit": {
 								"type": "integer"
@@ -872,18 +849,15 @@
 							}
 						},
 						"description": "The key's configured limit — generous by design: it exists to stop a runaway loop, not to meter normal use. Enforcement is a fixed window and approximate under concurrency.",
-						"nullable": true,
 						"required": ["limit", "window"]
 					},
 					"createdBy": {
 						"description": "The key's label, as given when it was issued. Null for admin keys.",
-						"type": "string",
-						"nullable": true
+						"type": ["string", "null"]
 					},
 					"lastUsedAt": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
+						"type": ["string", "null"],
+						"format": "date-time"
 					}
 				},
 				"required": [
@@ -926,31 +900,26 @@
 				"type": "object",
 				"properties": {
 					"maxBrands": {
-						"type": "integer",
-						"description": "Null means no limit.",
-						"nullable": true
+						"type": ["integer", "null"],
+						"description": "Null means no limit."
 					},
 					"maxPrompts": {
-						"type": "integer",
-						"description": "Enabled prompts across the whole organization. Null means no limit.",
-						"nullable": true
+						"type": ["integer", "null"],
+						"description": "Enabled prompts across the whole organization. Null means no limit."
 					},
 					"modelPicks": {
-						"type": "integer",
-						"description": "Models trackable per brand.",
-						"nullable": true
+						"type": ["integer", "null"],
+						"description": "Models trackable per brand."
 					},
 					"modelMenu": {
 						"description": "Models the plan may pick from. Null means any.",
-						"type": "array",
+						"type": ["array", "null"],
 						"items": {
 							"type": "string"
-						},
-						"nullable": true
+						}
 					},
 					"standardRunsPerDay": {
-						"type": "integer",
-						"nullable": true
+						"type": ["integer", "null"]
 					},
 					"premiumPool": {
 						"type": "integer",
@@ -983,18 +952,22 @@
 					},
 					"plan": {
 						"description": "Null when the organization has no subscription, or when billing is disabled.",
-						"nullable": true,
-						"allOf": [
+						"anyOf": [
 							{
 								"$ref": "#/components/schemas/BillingPlan"
+							},
+							{
+								"type": "null"
 							}
 						]
 					},
 					"limits": {
-						"nullable": true,
-						"allOf": [
+						"anyOf": [
 							{
 								"$ref": "#/components/schemas/PlanLimits"
+							},
+							{
+								"type": "null"
 							}
 						]
 					},
@@ -1020,9 +993,8 @@
 				"type": "object",
 				"properties": {
 					"key": {
-						"type": "string",
-						"description": "Plan identifier, or `custom` for a negotiated plan.",
-						"nullable": true
+						"type": ["string", "null"],
+						"description": "Plan identifier, or `custom` for a negotiated plan."
 					},
 					"name": {
 						"type": "string",
@@ -1034,14 +1006,12 @@
 						"enum": ["active", "grace", "paused", "none"]
 					},
 					"interval": {
-						"type": "string",
-						"enum": ["monthly", "annual"],
-						"nullable": true
+						"type": ["string", "null"],
+						"enum": ["monthly", "annual"]
 					},
 					"periodEnd": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
+						"type": ["string", "null"],
+						"format": "date-time"
 					},
 					"cancelAtPeriodEnd": {
 						"type": "boolean"
@@ -1061,11 +1031,10 @@
 						"format": "date"
 					},
 					"visibility": {
-						"type": "number",
+						"type": ["number", "null"],
 						"minimum": 0,
 						"maximum": 1,
-						"description": "Null on days with no runs to plot; the series is not gap-filled with zeros. Ratio 0–1; multiply by 100 for a percentage.",
-						"nullable": true
+						"description": "Null on days with no runs to plot; the series is not gap-filled with zeros. Ratio 0–1; multiply by 100 for a percentage."
 					}
 				},
 				"required": ["date", "visibility"]
@@ -1105,11 +1074,10 @@
 						"format": "date"
 					},
 					"share": {
-						"type": "number",
+						"type": ["number", "null"],
 						"minimum": 0,
 						"maximum": 1,
-						"description": "The brand's share on this day. Null on days with no runs. Ratio 0–1; multiply by 100 for a percentage.",
-						"nullable": true
+						"description": "The brand's share on this day. Null on days with no runs. Ratio 0–1; multiply by 100 for a percentage."
 					}
 				},
 				"required": ["date", "share"]
@@ -1156,10 +1124,9 @@
 						"description": "Citations in the equal-length window immediately before this one."
 					},
 					"changeFactor": {
-						"type": "number",
+						"type": ["number", "null"],
 						"minimum": 0,
-						"description": "How this window compares with the equal-length window before it, as a multiplier of the previous count: 2 means twice as many citations, 0.5 means half, 1 means unchanged. Not a percentage change — 1.5 is \"1.5x\", which is a 50% increase. Null when the domain had no citations in the previous window, so there is nothing to divide by.",
-						"nullable": true
+						"description": "How this window compares with the equal-length window before it, as a multiplier of the previous count: 2 means twice as many citations, 0.5 means half, 1 means unchanged. Not a percentage change — 1.5 is \"1.5x\", which is a 50% increase. Null when the domain had no citations in the previous window, so there is nothing to divide by."
 					}
 				},
 				"required": ["domain", "category", "count", "share", "promptCount", "previousCount", "changeFactor"]
@@ -1209,8 +1176,7 @@
 						"type": "string"
 					},
 					"title": {
-						"type": "string",
-						"nullable": true
+						"type": ["string", "null"]
 					},
 					"category": {
 						"type": "string",
@@ -1395,14 +1361,12 @@
 						"description": "Share of this prompt's runs mentioning any tracked competitor. Ratio 0–1; multiply by 100 for a percentage."
 					},
 					"lastRunAt": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
+						"type": ["string", "null"],
+						"format": "date-time"
 					},
 					"firstEvaluatedAt": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
+						"type": ["string", "null"],
+						"format": "date-time"
 					}
 				},
 				"required": [
@@ -1454,9 +1418,8 @@
 						"type": "string"
 					},
 					"provider": {
-						"type": "string",
-						"description": "How the answer was obtained. Informational; not a stable enum.",
-						"nullable": true
+						"type": ["string", "null"],
+						"description": "How the answer was obtained. Informational; not a stable enum."
 					},
 					"webSearchEnabled": {
 						"type": "boolean",
@@ -1511,8 +1474,7 @@
 						"type": "string"
 					},
 					"title": {
-						"type": "string",
-						"nullable": true
+						"type": ["string", "null"]
 					},
 					"citationIndex": {
 						"type": "integer",
@@ -1534,9 +1496,8 @@
 								"type": "object",
 								"properties": {
 									"text": {
-										"type": "string",
-										"description": "The answer, normalized out of the provider's response. Null when nothing could be extracted.",
-										"nullable": true
+										"type": ["string", "null"],
+										"description": "The answer, normalized out of the provider's response. Null when nothing could be extracted."
 									}
 								},
 								"required": ["text"]
@@ -1624,10 +1585,9 @@
 						"description": "The prompt as the report names it."
 					},
 					"promptId": {
-						"type": "string",
+						"type": ["string", "null"],
 						"description": "The tracked prompt it resolved to, or null when it didn't match one.",
-						"format": "uuid",
-						"nullable": true
+						"format": "uuid"
 					}
 				},
 				"required": ["text", "promptId"]
@@ -1643,8 +1603,7 @@
 						"type": "string"
 					},
 					"title": {
-						"type": "string",
-						"nullable": true
+						"type": ["string", "null"]
 					}
 				},
 				"required": ["url", "domain", "title"]
@@ -1702,14 +1661,12 @@
 						"enum": ["ready", "insufficient-data"]
 					},
 					"generatedAt": {
-						"type": "string",
-						"format": "date-time",
-						"nullable": true
+						"type": ["string", "null"],
+						"format": "date-time"
 					},
 					"model": {
-						"type": "string",
-						"description": "The model that produced the report, when recorded.",
-						"nullable": true
+						"type": ["string", "null"],
+						"description": "The model that produced the report, when recorded."
 					},
 					"summary": {
 						"type": "array",
@@ -1751,11 +1708,10 @@
 						"type": "integer"
 					},
 					"visibility": {
-						"type": "number",
+						"type": ["number", "null"],
 						"minimum": 0,
 						"maximum": 1,
-						"description": "Share of this model's runs that mentioned the brand. Ratio 0–1; multiply by 100 for a percentage.",
-						"nullable": true
+						"description": "Share of this model's runs that mentioned the brand. Ratio 0–1; multiply by 100 for a percentage."
 					},
 					"citations": {
 						"type": "integer"
@@ -1781,11 +1737,10 @@
 						"description": "How often the brand is mentioned at all.",
 						"properties": {
 							"current": {
-								"type": "number",
+								"type": ["number", "null"],
 								"minimum": 0,
 								"maximum": 1,
-								"description": "The last plotted point — the number the dashboard hero shows. Ratio 0–1; multiply by 100 for a percentage.",
-								"nullable": true
+								"description": "The last plotted point — the number the dashboard hero shows. Ratio 0–1; multiply by 100 for a percentage."
 							},
 							"series": {
 								"type": "array",
@@ -1801,11 +1756,10 @@
 						"description": "The brand against its tracked competitors.",
 						"properties": {
 							"brand": {
-								"type": "number",
+								"type": ["number", "null"],
 								"minimum": 0,
 								"maximum": 1,
-								"description": "The brand's own share at the end of the window. Ratio 0–1; multiply by 100 for a percentage.",
-								"nullable": true
+								"description": "The brand's own share at the end of the window. Ratio 0–1; multiply by 100 for a percentage."
 							},
 							"entries": {
 								"type": "array",
@@ -4004,9 +3958,8 @@
 											"format": "date-time"
 										},
 										"completedAt": {
-											"type": "string",
-											"format": "date-time",
-											"nullable": true
+											"type": ["string", "null"],
+											"format": "date-time"
 										},
 										"prompts": {
 											"type": "array",
@@ -4020,8 +3973,7 @@
 											"description": "Derived stats (SoV, visibility, etc.). Format may change between versions. Only present when status is 'completed'.",
 											"properties": {
 												"sov": {
-													"type": "number",
-													"nullable": true,
+													"type": ["number", "null"],
 													"minimum": 0,
 													"maximum": 1,
 													"description": "Overall share of voice (0-1): brand_mentions / (brand_mentions + competitor_mentions). Null when no mentions at all."
