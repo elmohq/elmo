@@ -1,0 +1,21 @@
+meta {
+  name: billing requires billing:read
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/organizations/{{orgId}}/billing
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgNoBillingKey}}
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq insufficient_scope
+  res.body.message: contains billing:read
+}

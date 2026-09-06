@@ -1,0 +1,33 @@
+meta {
+  name: the freed slot can be spent, but only once
+  type: http
+  seq: 8
+  tags: [
+    cloud
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{cappedKey}}
+}
+
+body:json {
+  {
+    "brandId": "{{cappedBrandId}}",
+    "value": "Capped tenant prompt filling the freed slot"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("freedSlotPromptId", res.getBody().id);
+}

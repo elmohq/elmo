@@ -7,8 +7,8 @@ export const SITE_NAME = "Elmo";
 // optimization" because answer engines expand the acronym when they search, and
 // carries no pricing so it stays true wherever it is reused.
 export const SITE_DESCRIPTION =
-	"Open source AI visibility and answer engine optimization (AEO) platform for tracking how AI answers mention and cite your brand.";
-export const SITE_LOGO_URL = `${SITE_URL}/brand/icons/elmo-icon-512.png`;
+	"Open-source answer engine optimization (AEO) platform: track how AI answers mention and cite your brand.";
+const SITE_LOGO_URL = `${SITE_URL}/brand/icons/elmo-icon-512.png`;
 
 export function canonicalUrl(path: string): string {
 	return `${SITE_URL}${path}`;
@@ -49,7 +49,7 @@ export function ogMeta({
 	];
 }
 
-export function jsonLd(data: Record<string, unknown>): {
+function jsonLd(data: Record<string, unknown>): {
 	type: string;
 	children: string;
 } {

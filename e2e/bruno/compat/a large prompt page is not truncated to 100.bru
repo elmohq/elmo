@@ -1,0 +1,32 @@
+meta {
+  name: a caller asking for more than 100 prompts still gets them
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?limit=500
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+params:query {
+  limit: 500
+}
+
+assert {
+  res.status: eq 200
+  res.body.pagination.limit: eq 500
+}
+
+tests {
+  test("the ceiling is high enough to leave existing callers alone", function() {
+    // This list shipped with no maximum at all. The cap exists to bound a
+    // runaway query, so it has to sit above anything a real caller asks for.
+    expect(res.getBody().pagination.limit).to.equal(500);
+  });
+}

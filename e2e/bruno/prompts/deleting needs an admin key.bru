@@ -1,0 +1,33 @@
+meta {
+  name: no scope grants a prompt delete
+  type: http
+  seq: 30
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq forbidden
+  res.body.message: contains instance admin key
+}
+
+tests {
+  test("the key holding every scope is still refused", function() {
+    // orgFullKey carries every scope this API issues. If deleting were ever
+    // reachable with one, this is the key that would reach it.
+    expect(res.getBody().code).to.not.equal("insufficient_scope");
+  });
+
+  test("the refusal names the supported alternative", function() {
+    expect(res.getBody().message).to.contain("enabled: false");
+  });
+}

@@ -1,0 +1,20 @@
+meta {
+  name: a revoked key is rejected
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{disabledKey}}
+}
+
+assert {
+  res.status: eq 401
+  res.body.error: eq Unauthorized
+}

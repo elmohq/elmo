@@ -16,13 +16,11 @@
  * the brand_opportunities table (append-only) and served as-is until the latest
  * is older than REFRESH_AFTER_DAYS, so a normal page load doesn't trigger an LLM call.
  */
-import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
 import { brandOpportunities, brands, competitors } from "@workspace/lib/db/schema";
 import { runStructuredCompletionPrompt } from "@workspace/lib/onboarding";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import { type CitationCategory, extractDomain } from "@/lib/domain-categories";
 import { categorizeDomain } from "@/lib/domain-categories.server";
 import {
@@ -35,16 +33,38 @@ import {
 	type PerPromptRunStats,
 } from "@/lib/postgres-read";
 import { isBrandedPrompt } from "@/lib/prompt-tags";
-import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { resolveLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { computeVolatility, type DailyDomainCount, stabilityScore } from "@/lib/visibility-stats";
-import { normalizeText, withoutRepeats } from "@/server/opportunities-dedupe";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
-// ============================================================================
-// Structured output (LLM) — the server enriches it before the page renders it.
-// ============================================================================
+/** First occurrence of each entry, by whatever `key` identifies it. */
+function distinctBy<T>(items: T[], key: (item: T) => string): T[] {
+	const seen = new Set<string>();
+	return items.filter((item) => {
+		const id = key(item);
+		if (seen.has(id)) return false;
+		seen.add(id);
+		return true;
+	});
+}
 
-export const CATEGORIES = ["creation", "existing-content", "outreach", "social"] as const;
+const normalizeText = (text: string) => text.trim().toLowerCase();
+
+export function withoutRepeats(report: OpportunitiesReport): OpportunitiesReport {
+	return {
+		...report,
+		summary: distinctBy(report.summary, normalizeText),
+		risks: distinctBy(report.risks, normalizeText),
+		opportunities: distinctBy(report.opportunities, (o) => normalizeText(o.title)).map((o) => ({
+			...o,
+			relatedPrompts: distinctBy(o.relatedPrompts, (p) => normalizeText(p.text)),
+			yourCitations: distinctBy(o.yourCitations, (c) => c.url),
+			competitorCitations: distinctBy(o.competitorCitations, (c) => c.url),
+		})),
+	};
+}
+
+const CATEGORIES = ["creation", "existing-content", "outreach", "social"] as const;
 
 const OpportunitySchema = z.object({
 	category: z
@@ -67,7 +87,7 @@ const OpportunitySchema = z.object({
 		.describe("The tracked prompts (verbatim, exactly as written in the data) this helps. May be empty."),
 });
 
-export const opportunitiesSchema = z.object({
+const opportunitiesSchema = z.object({
 	summary: z
 		.array(z.string())
 		.describe(
@@ -105,18 +125,14 @@ export interface OpportunitiesReport extends Omit<RawReport, "opportunities"> {
 	opportunities: ReportOpportunity[];
 }
 
-export type OpportunitiesReason = "insufficient-data" | null;
+type OpportunitiesReason = "insufficient-data" | null;
 export interface OpportunitiesResponse {
 	report: OpportunitiesReport | null;
 	reason: OpportunitiesReason;
 	generatedFor: { brandName: string } | null;
 	lastEvaluatedAt: string | null;
+	model: string | null;
 }
-
-// ============================================================================
-// Guidance — fed to the model as system context. Rephrased for this task; do not
-// treat as a verbatim copy of any source. No brand names here — data comes below.
-// ============================================================================
 
 const GUIDANCE = `You are an AI-visibility (AEO) strategist advising a content/marketing team that does NOT know how this tool computes its numbers. From the brand's tracked answer data, produce a prioritized, practical set of opportunities to get the brand cited more often in AI assistant answers (ChatGPT, Perplexity, Google AI, Claude, Copilot).
 
@@ -155,10 +171,6 @@ const TASK = `Using ONLY the data above, return the structured output:
 - opportunities: 8-12 prioritized opportunities (highest impact first), each sorted into a category, with a plain-language "why" (the motivation, for a non-expert) and the tracked prompts it helps (verbatim). Spread them across the categories the data supports — don't force all four.
 - risks: 2-4 short caveats (hard-to-win areas or tactics to avoid).`;
 
-// ============================================================================
-// Digest builder
-// ============================================================================
-
 const TOP_PROMPTS = 30;
 const pct = (v: number) => Math.round(v * 100);
 
@@ -181,13 +193,6 @@ function modelToPlatform(model: string): string {
 	if (m.startsWith("gpt") || m.startsWith("o1") || m.startsWith("o3") || m.startsWith("o4") || m.includes("chatgpt"))
 		return "ChatGPT";
 	return model;
-}
-
-function resolveRange(lookback: "1w" | "1m", timezone: string) {
-	return getTimezoneLookbackRange(lookback, timezone, { allStrategy: "1y" }) as {
-		fromDateStr: string;
-		toDateStr: string;
-	};
 }
 
 /** Top competitor (by mentions) per prompt, with rate = mentions / runs. */
@@ -372,8 +377,8 @@ function summarizePlatformVisibility(byModel: { model: string; runs: number; bra
  * to enrich the LLM output. Returns null if there isn't enough data. */
 async function buildDigest(brandId: string, timezoneParam: string): Promise<Digest | null> {
 	const timezone = resolveTimezone(timezoneParam);
-	const r30 = resolveRange("1m", timezone);
-	const r7 = resolveRange("1w", timezone);
+	const r30 = resolveLookbackRange("1m", timezone);
+	const r7 = resolveLookbackRange("1w", timezone);
 
 	const prompts = await resolveFilteredPrompts(brandId, {});
 	if (prompts.length === 0) return null;
@@ -538,71 +543,55 @@ async function generateValidReport(prompt: string): Promise<{ report: RawReport;
 	return null;
 }
 
-// ============================================================================
-// Server function
-// ============================================================================
-
-export const getOpportunitiesFn = createServerFn({ method: "GET" })
-	.validator(z.object({ brandId: z.string(), timezone: z.string().default("UTC") }))
-	.handler(async ({ data }): Promise<OpportunitiesResponse> => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
-
-		// Serve the most recent stored report while it's fresh. Every generation is
-		// kept (append-only); we regenerate only when the latest is stale.
-		const [latest] = await db
-			.select()
-			.from(brandOpportunities)
-			.where(eq(brandOpportunities.brandId, data.brandId))
-			.orderBy(desc(brandOpportunities.createdAt))
-			.limit(1);
-		const lastEvaluatedAt = latest?.createdAt.toISOString() ?? null;
-		const isFresh = latest && Date.now() - new Date(latest.createdAt).getTime() < REFRESH_AFTER_DAYS * 86_400_000;
-		if (latest && isFresh) {
-			return {
-				report: withoutRepeats(latest.report as OpportunitiesReport),
-				reason: null,
-				generatedFor: null,
-				lastEvaluatedAt,
-			};
-		}
-
-		const digest = await buildDigest(data.brandId, data.timezone);
-		if (!digest) {
-			if (latest)
-				return {
-					report: withoutRepeats(latest.report as OpportunitiesReport),
-					reason: null,
-					generatedFor: null,
-					lastEvaluatedAt,
-				};
-			return { report: null, reason: "insufficient-data", generatedFor: null, lastEvaluatedAt };
-		}
-
-		const prompt = `${GUIDANCE}\n\n=== BRAND DATA ===\n${digest.text}\n\n=== TASK ===\n${TASK}`;
-		const generated = await generateValidReport(prompt);
-		if (!generated) {
-			// Couldn't get a schema-valid report — serve the last good one if we have it.
-			if (latest)
-				return {
-					report: withoutRepeats(latest.report as OpportunitiesReport),
-					reason: null,
-					generatedFor: null,
-					lastEvaluatedAt,
-				};
-			throw new Error("Failed to generate a valid opportunities report");
-		}
-
-		const report = enrichReport(generated.report, digest);
-		const [savedReport] = await db
-			.insert(brandOpportunities)
-			.values({ brandId: data.brandId, report, model: generated.model })
-			.returning({ createdAt: brandOpportunities.createdAt });
-
-		return {
-			report,
-			reason: null,
-			generatedFor: { brandName: digest.brandName },
-			lastEvaluatedAt: savedReport?.createdAt.toISOString() ?? null,
-		};
+/**
+ * Generation is inline and synchronous — there is no queue, so a caller either
+ * gets the current report or waits for the one it just caused. The freshness
+ * gate is what bounds the spend.
+ */
+export async function resolveOpportunities(brandId: string, timezone = "UTC"): Promise<OpportunitiesResponse> {
+	const [latest] = await db
+		.select()
+		.from(brandOpportunities)
+		.where(eq(brandOpportunities.brandId, brandId))
+		.orderBy(desc(brandOpportunities.createdAt))
+		.limit(1);
+	const lastEvaluatedAt = latest?.createdAt.toISOString() ?? null;
+	const servedModel = latest?.model ?? null;
+	const isFresh = latest && Date.now() - new Date(latest.createdAt).getTime() < REFRESH_AFTER_DAYS * 86_400_000;
+	const serveStored = () => ({
+		report: withoutRepeats(latest.report as OpportunitiesReport),
+		reason: null,
+		generatedFor: null,
+		lastEvaluatedAt,
+		model: servedModel,
 	});
+	if (latest && isFresh) return serveStored();
+
+	const digest = await buildDigest(brandId, timezone);
+	if (!digest) {
+		if (latest) return serveStored();
+		return { report: null, reason: "insufficient-data", generatedFor: null, lastEvaluatedAt, model: null };
+	}
+
+	const prompt = `${GUIDANCE}\n\n=== BRAND DATA ===\n${digest.text}\n\n=== TASK ===\n${TASK}`;
+	const generated = await generateValidReport(prompt);
+	if (!generated) {
+		// No schema-valid report; serve the last good one if there is one.
+		if (latest) return serveStored();
+		throw new Error("Failed to generate a valid opportunities report");
+	}
+
+	const report = enrichReport(generated.report, digest);
+	const [savedReport] = await db
+		.insert(brandOpportunities)
+		.values({ brandId, report, model: generated.model })
+		.returning({ createdAt: brandOpportunities.createdAt });
+
+	return {
+		report,
+		reason: null,
+		generatedFor: { brandName: digest.brandName },
+		lastEvaluatedAt: savedReport?.createdAt.toISOString() ?? null,
+		model: generated.model,
+	};
+}

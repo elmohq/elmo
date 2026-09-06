@@ -1,6 +1,6 @@
 {
 	"name": "@workspace/www",
-	"version": "0.2.19",
+	"version": "0.3.0",
 	"private": true,
 	"license": "MIT",
 	"type": "module",
@@ -21,8 +21,8 @@
 		"@resvg/resvg-js": "^2.6.2",
 		"@tailwindcss/typography": "^0.5.20",
 		"@tailwindcss/vite": "^4.3.3",
-		"@tanstack/react-router": "^1.170.29",
-		"@tanstack/react-start": "^1.168.46",
+		"@tanstack/react-router": "^1.170.32",
+		"@tanstack/react-start": "^1.168.49",
 		"@upstash/redis": "^1.38.2",
 		"@workspace/api-spec": "workspace:*",
 		"@workspace/config": "workspace:*",

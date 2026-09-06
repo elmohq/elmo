@@ -54,6 +54,7 @@ const config: StorybookConfig = {
 					{ find: /^@\/server\/prompts(\.ts)?$/, replacement: path.resolve(mocksDir, "server-prompts.ts") },
 					{ find: /^@\/server\/billing(\.ts)?$/, replacement: path.resolve(mocksDir, "server-billing.ts") },
 					{ find: /^@\/server\/team(\.ts)?$/, replacement: path.resolve(mocksDir, "server-team.ts") },
+					{ find: /^@\/server\/organizations(\.ts)?$/, replacement: path.resolve(mocksDir, "server-organizations.ts") },
 					{
 						find: /^@\/server\/premium-tracking(\.ts)?$/,
 						replacement: path.resolve(mocksDir, "server-premium-tracking.ts"),
@@ -62,7 +63,10 @@ const config: StorybookConfig = {
 					{ find: /^@\/server\/citations(\.ts)?$/, replacement: path.resolve(mocksDir, "server-citations.ts") },
 					{ find: /^@\/server\/dashboard(\.ts)?$/, replacement: path.resolve(mocksDir, "server-dashboard.ts") },
 					{ find: /^@\/server\/analysis(\.ts)?$/, replacement: path.resolve(mocksDir, "server-analysis.ts") },
-					{ find: /^@\/server\/opportunities(\.ts)?$/, replacement: path.resolve(mocksDir, "server-opportunities.ts") },
+					{
+						find: /^@\/server\/opportunities-fn(\.ts)?$/,
+						replacement: path.resolve(mocksDir, "server-opportunities.ts"),
+					},
 					{ find: /^@tanstack\/react-router$/, replacement: path.resolve(mocksDir, "tanstack-router.tsx") },
 					{ find: /^@tanstack\/react-start\/server$/, replacement: path.resolve(mocksDir, "tanstack-start.ts") },
 					{ find: /^@tanstack\/react-start$/, replacement: path.resolve(mocksDir, "tanstack-start.ts") },

@@ -62,15 +62,14 @@ What matters for development:
 
 ## Deployment Modes
 
-Each deployment mode is implemented as a separate package in `packages/`:
+`packages/deployment` resolves the active mode at runtime from `DEPLOYMENT_MODE` and supplies that mode's feature flags, branding, and auth hooks:
 
-| Package | Mode | Description |
-|---------|------|-------------|
-| `packages/local` | `local` | Single-org, email/password auth |
-| `packages/demo` | `demo` | Read-only demonstration |
-| `packages/whitelabel` | `whitelabel` | Multi-org with Auth0 SSO |
-
-The `packages/deployment` package resolves the active mode at runtime based on `DEPLOYMENT_MODE` and provides the correct implementation.
+| Mode | Description |
+|------|-------------|
+| `local` | Single-org, email/password auth |
+| `demo` | Read-only demonstration |
+| `whitelabel` | Multi-org with Auth0 SSO |
+| `cloud` | Managed multi-tenant, self-serve signup with Stripe billing |
 
 ## Database
 
@@ -82,6 +81,12 @@ The database schema is defined with Drizzle ORM in `packages/lib/src/db/`. Key t
 - **citations** — URLs cited by AI models in their responses
 
 Migrations are generated with `drizzle-kit generate` and applied with `drizzle-kit migrate`.
+
+Never use `drizzle-kit push` against a deployment. It diffs the live database
+against the schema files rather than replaying migrations, so it drops any index
+a migration created that the schema cannot express — `INCLUDE` indexes, and
+anything on the generated better-auth tables. It also records nothing in
+`drizzle.__drizzle_migrations`, leaving `migrate` unable to tell what has run.
 
 ## Provider Abstraction
 

@@ -113,7 +113,7 @@ export type CellAvailability = "tracked" | "untracked" | "unavailable";
 // Classify a model × provider-category combination independent of run data:
 // "tracked" when Elmo runs it, "unavailable" when the combination can't exist,
 // "untracked" when it could exist but Elmo doesn't currently run it.
-export function cellAvailability(model: string, provider: string, hasTarget: boolean): CellAvailability {
+function cellAvailability(model: string, provider: string, hasTarget: boolean): CellAvailability {
 	if (hasTarget) return "tracked";
 	// Categories with a fixed collector list reach only those surfaces.
 	const reachable = PROVIDER_MODELS[provider];
@@ -236,7 +236,7 @@ export function rateTier(rate: number | null): RateTier {
 }
 
 // The most recent deduped run for a target, or null if it has never run.
-export function latestOf(entries: StatusEntry[]): StatusEntry | null {
+function latestOf(entries: StatusEntry[]): StatusEntry | null {
 	const deduped = dedupeEntries(entries);
 	return deduped.length ? deduped[deduped.length - 1] : null;
 }

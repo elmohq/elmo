@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
-import { getDeployment } from "@workspace/deployment";
+import type { Entitlements } from "@workspace/config/entitlements";
+import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import {
@@ -12,15 +13,18 @@ import {
 	prompts,
 	usageEvents,
 } from "@workspace/lib/db/schema";
-import { type Entitlements, getOrgEntitlements } from "@workspace/lib/entitlements";
-import { getProvider, type ModelConfig, type Provider, parseScrapeTargets } from "@workspace/lib/providers";
+import { getOrgEntitlements } from "@workspace/lib/entitlements";
+import { analyzeMentions } from "@workspace/lib/mentions";
+import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	dailyRunCeiling,
 	lastRunQueryWindowMs,
+	lastRunsByTargetKey,
 	type PromptRunPlan,
 	resolveBrandPromptRunPlans,
 	selectDueTargets,
+	slowestIntervalHours,
 	targetKey,
 } from "@workspace/lib/run-policy";
 import type { Citation } from "@workspace/lib/text-extraction";
@@ -173,15 +177,7 @@ async function getLastRunsByTargetKey(promptId: string, maxIntervalHours: number
 		.where(and(eq(promptRuns.promptId, promptId), gt(promptRuns.createdAt, windowStart)))
 		.groupBy(promptRuns.model, promptRuns.provider, promptRuns.webSearchEnabled);
 
-	const map = new Map<string, Date>();
-	for (const row of rows) {
-		if (!row.provider) continue;
-		map.set(
-			targetKey({ model: row.model, provider: row.provider, webSearch: row.webSearchEnabled }),
-			new Date(row.lastRunAt),
-		);
-	}
-	return map;
+	return lastRunsByTargetKey(rows);
 }
 
 /**
@@ -201,45 +197,6 @@ async function isOrgOverDailyCeiling(organizationId: string, ceiling: number): P
 			and(eq(usageEvents.organizationId, organizationId), gt(usageEvents.createdAt, sql`now() - interval '24 hours'`)),
 		);
 	return Number(row?.value ?? 0) >= ceiling;
-}
-
-function extractDomainFromUrl(urlOrDomain: string): string {
-	try {
-		const url = new URL(urlOrDomain.startsWith("http") ? urlOrDomain : `https://${urlOrDomain}`);
-		return url.hostname.replace(/^www\./, "").toLowerCase();
-	} catch {
-		return urlOrDomain.replace(/^www\./, "").toLowerCase();
-	}
-}
-
-function analyzeMentions(
-	content: string,
-	brand: Brand,
-	competitorsList: Competitor[],
-): {
-	brandMentioned: boolean;
-	competitorsMentioned: string[];
-} {
-	const contentLower = content.toLowerCase();
-
-	const brandNames = [brand.name, ...(brand.aliases || [])].map((n) => n.toLowerCase());
-	const brandDomains = [
-		extractDomainFromUrl(brand.website),
-		...(brand.additionalDomains || []).map(extractDomainFromUrl),
-	];
-	const brandMentioned =
-		brandNames.some((n) => contentLower.includes(n)) || brandDomains.some((d) => contentLower.includes(d));
-
-	const competitorsMentioned = competitorsList
-		.filter((competitor) => {
-			const names = [competitor.name, ...(competitor.aliases || [])].map((n) => n.toLowerCase());
-			const nameMatch = names.some((n) => contentLower.includes(n));
-			const domainMatch = (competitor.domains || []).some((d) => contentLower.includes(extractDomainFromUrl(d)));
-			return nameMatch || domainMatch;
-		})
-		.map((competitor) => competitor.name);
-
-	return { brandMentioned, competitorsMentioned };
 }
 
 async function savePromptRun(
@@ -362,7 +319,11 @@ async function runModelIteration({
 
 		const safeTextContent = typeof textContent === "string" ? textContent : "";
 
-		const { brandMentioned, competitorsMentioned } = analyzeMentions(safeTextContent, brand, competitorsList);
+		const { brandMentioned, competitorsMentioned } = analyzeMentions(
+			safeTextContent,
+			{ name: brand.name, aliases: brand.aliases, domains: [brand.website, ...(brand.additionalDomains ?? [])] },
+			competitorsList,
+		);
 
 		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
@@ -447,8 +408,7 @@ async function processPrompt(
 		return;
 	}
 
-	const maxIntervalHours = Math.max(...plan.targets.map((t) => t.intervalHours));
-	const lastRuns = await getLastRunsByTargetKey(promptId, maxIntervalHours);
+	const lastRuns = await getLastRunsByTargetKey(promptId, slowestIntervalHours(plan.targets));
 	const dueTargets = selectDueTargets(plan.targets, lastRuns, new Date());
 
 	if (dueTargets.length === 0) {

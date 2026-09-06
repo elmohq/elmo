@@ -29,7 +29,7 @@ premium pool per plan. The application references Stripe prices by **lookup key*
 so one bootstrap command provisions any Stripe account (test or live) to match the catalog:
 
 ```bash
-STRIPE_SECRET_KEY=sk_test_... pnpm -C packages/cloud exec tsx scripts/bootstrap-stripe.ts
+STRIPE_SECRET_KEY=sk_test_... pnpm -C packages/deployment exec tsx scripts/bootstrap-stripe.ts
 ```
 
 Re-run it after editing the catalog; it only creates what's missing (Stripe prices are immutable, so
@@ -50,7 +50,7 @@ notices go through the same `RESEND_API_KEY` / `RESEND_FROM_EMAIL` configuration
 emails — no additional setup.
 
 Enable Stripe Tax and Smart Retries in the Stripe dashboard. Before launch, walk the full lifecycle
-against a test-clock customer with `packages/cloud/scripts/verify-stripe-lifecycle.ts` (see its
+against a test-clock customer with `packages/deployment/scripts/verify-stripe-lifecycle.ts` (see its
 header for usage).
 
 ### Coupons

@@ -56,7 +56,7 @@ export interface FanoutQueryStat {
 }
 
 /** One prompt's contribution to a fan-out query (the Top Queries drill-down). */
-export interface QueryPromptRef {
+interface QueryPromptRef {
 	promptId: string;
 	promptValue: string;
 	/** Run instances of this prompt that issued the query. */
@@ -132,7 +132,7 @@ export interface FanoutAnalysis {
 	totalRuns: number;
 	/** Mean fan-out queries per run that fanned out (1 decimal). */
 	avgPerExecution: number;
-	/** Baseline brand-mention rate across all fan-out query instances (0..100). */
+	/** Baseline brand-mention rate across all fan-out query instances. Ratio 0..1. */
 	coverageRate: number;
 	topQueries: FanoutQueryStat[];
 	terms: TermStat[];
@@ -270,7 +270,7 @@ const STOPWORDS = new Set([
 ]);
 
 /** True for stop words; the Word changes view hides these by default. */
-export function isStopword(word: string): boolean {
+function isStopword(word: string): boolean {
 	return STOPWORDS.has(word.toLowerCase());
 }
 
@@ -438,7 +438,10 @@ export function computeFanoutAnalysis(
 	const { overall, promptsPerQuery, perModel, perPrompt, terms, added, dropped, preserved, totalQueries, totalBrand } =
 		tallyBreakdown(breakdown, promptValueMap);
 
-	const coverageRate = pct(totalBrand, totalQueries);
+	// A ratio, not a percentage: this one is published over the API, and every
+	// rate there is 0..1. The percentages below stay as they are — nothing
+	// outside the dashboard reads them.
+	const coverageRate = totalQueries > 0 ? totalBrand / totalQueries : 0;
 	const allQueryStats = toQueryStats(overall, overall.size);
 	const topQueries = allQueryStats.slice(0, L.topQueries);
 

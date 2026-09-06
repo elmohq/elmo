@@ -1,49 +1,31 @@
 import { IconChevronDown, IconInfoCircle, IconSearch } from "@tabler/icons-react";
-import { Link } from "@tanstack/react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useMemo, useState } from "react";
+import { BrandPromptLink } from "@/components/brand-prompt-link";
 import { attributionDotClass } from "@/components/citations/shared";
 import type { GoogleModuleData } from "@/components/citations/types";
 import { ListPagination, usePagedList } from "@/components/list-pagination";
 
 const PRODUCTS_PAGE_SIZE = 10;
 
-function PromptCountList({
-	prompts,
-	brandId,
-}: {
-	prompts: { id: string; value: string; count: number }[];
-	brandId?: string;
-}) {
+function PromptCountList({ prompts }: { prompts: { id: string; value: string; count: number }[] }) {
 	return (
 		<div className="pl-5 pb-2 space-y-0.5">
-			{prompts.map((p) =>
-				brandId ? (
-					<Link
-						key={p.id}
-						to="/app/$brand/prompts/$promptId"
-						params={{ brand: brandId, promptId: p.id }}
-						className="flex items-center justify-between py-1 group text-xs"
-					>
-						<span className="text-muted-foreground group-hover:text-foreground group-hover:underline truncate min-w-0">
-							{p.value}
-						</span>
-						<span className="tabular-nums text-muted-foreground shrink-0 ml-3">{p.count.toLocaleString()}</span>
-					</Link>
-				) : (
-					<div key={p.id} className="flex items-center justify-between py-1 text-xs">
-						<span className="text-muted-foreground truncate min-w-0">{p.value}</span>
-						<span className="tabular-nums text-muted-foreground shrink-0 ml-3">{p.count.toLocaleString()}</span>
-					</div>
-				),
-			)}
+			{prompts.map((p) => (
+				<BrandPromptLink key={p.id} promptId={p.id} className="flex items-center justify-between py-1 group text-xs">
+					<span className="text-muted-foreground group-hover:text-foreground group-hover:underline truncate min-w-0">
+						{p.value}
+					</span>
+					<span className="tabular-nums text-muted-foreground shrink-0 ml-3">{p.count.toLocaleString()}</span>
+				</BrandPromptLink>
+			))}
 		</div>
 	);
 }
 
-export function GoogleShoppingCard({ googleModule, brandId }: { googleModule: GoogleModuleData; brandId?: string }) {
+export function GoogleShoppingCard({ googleModule }: { googleModule: GoogleModuleData }) {
 	const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
 	const [productFilter, setProductFilter] = useState<"all" | "brand" | "competitor">("all");
 	const [expandedQuery, setExpandedQuery] = useState<string | null>(null);
@@ -142,9 +124,7 @@ export function GoogleShoppingCard({ googleModule, brandId }: { googleModule: Go
 												{product.count.toLocaleString()}
 											</span>
 										</div>
-										{isExpanded && product.prompts.length > 0 && (
-											<PromptCountList prompts={product.prompts} brandId={brandId} />
-										)}
+										{isExpanded && product.prompts.length > 0 && <PromptCountList prompts={product.prompts} />}
 									</div>
 								);
 							})}
@@ -177,7 +157,7 @@ export function GoogleShoppingCard({ googleModule, brandId }: { googleModule: Go
 											</button>
 											<span className="text-sm font-semibold tabular-nums shrink-0">{q.count.toLocaleString()}</span>
 										</div>
-										{isExpanded && q.prompts.length > 0 && <PromptCountList prompts={q.prompts} brandId={brandId} />}
+										{isExpanded && q.prompts.length > 0 && <PromptCountList prompts={q.prompts} />}
 									</div>
 								);
 							})}

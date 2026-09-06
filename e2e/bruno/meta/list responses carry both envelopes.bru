@@ -1,0 +1,37 @@
+meta {
+  name: every list carries data alongside its shipped key
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands?limit=100
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+params:query {
+  limit: 100
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("data and brands are the same list", function() {
+    const body = res.getBody();
+    expect(body.data).to.be.an("array");
+    expect(body.data).to.eql(body.brands);
+  });
+}
+
+docs {
+  Stage 1 of the list-envelope migration: `data` is the field to read, the
+  named key stays until the one known consumer has moved. Stage 2 removes the
+  named key — at which point this case becomes "data only".
+}

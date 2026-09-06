@@ -7,13 +7,15 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors } from "@workspace/lib/db/schema";
-import { count, desc, eq } from "drizzle-orm";
+import { competitors } from "@workspace/lib/db/schema";
+import { assertCompetitorCap } from "@workspace/lib/entitlements";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { clampedPaging } from "@/lib/api/analytics-range";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
 import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
+import { listCompetitors } from "@/server/competitors-core";
 
 const createCompetitorBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
@@ -24,40 +26,27 @@ const createCompetitorBody = z.object({
 
 export const Route = createFileRoute("/api/v1/competitors/")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
-				handle: async ({ request }) => {
+				scopes: ["competitors:read"],
+				handle: async ({ request, auth }) => {
 					const { searchParams } = new URL(request.url);
-					const brandId = searchParams.get("brandId");
-					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-					const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20")));
-					const offset = (page - 1) * limit;
+					const { page, limit, offset } = clampedPaging(searchParams);
 
-					const where = brandId ? eq(competitors.brandId, brandId) : undefined;
+					const { data, total } = await listCompetitors({
+						scope: await brandScopeCondition(auth, competitors.brandId),
+						brandId: searchParams.get("brandId") ?? undefined,
+						limit,
+						offset,
+					});
 
-					const [totalCountResult] = await db.select({ count: count() }).from(competitors).where(where);
-					const totalCount = totalCountResult?.count || 0;
-					const totalPages = Math.ceil(totalCount / limit);
-
-					const list = await db
-						.select({
-							id: competitors.id,
-							brandId: competitors.brandId,
-							name: competitors.name,
-							domains: competitors.domains,
-							aliases: competitors.aliases,
-							createdAt: competitors.createdAt,
-							updatedAt: competitors.updatedAt,
-						})
-						.from(competitors)
-						.where(where)
-						.orderBy(desc(competitors.createdAt))
-						.limit(limit)
-						.offset(offset);
-
+					// Both keys hold the same array while callers move to `data`, which
+					// every list in this API answers with. `competitors` is documented
+					// as deprecated and goes in a later release.
 					return {
-						competitors: list,
-						pagination: { page, limit, total: totalCount, totalPages },
+						data,
+						competitors: data,
+						pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
 					};
 				},
 			}),
@@ -65,25 +54,13 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 			POST: createApiHandler({
 				body: createCompetitorBody,
 				status: 201,
-				handle: async ({ body }) => {
+				scopes: ["competitors:write"],
+				handle: async ({ body, auth }) => {
 					const { brandId, name, domains, aliases } = body;
 
-					const brandRow = await db.query.brands.findFirst({ where: eq(brands.id, brandId) });
-					if (!brandRow) {
-						throw new ApiError(400, "Validation Error", `Brand with ID '${brandId}' not found`);
-					}
+					await requireBrandInScope(auth, brandId, "body");
 
-					const [{ count: currentCount }] = await db
-						.select({ count: count() })
-						.from(competitors)
-						.where(eq(competitors.brandId, brandId));
-					if ((currentCount || 0) + 1 > MAX_COMPETITORS) {
-						throw new ApiError(
-							409,
-							"Conflict",
-							`Brand already has ${currentCount}/${MAX_COMPETITORS} competitors. Delete one before adding another.`,
-						);
-					}
+					await assertCompetitorCap(brandId, 1);
 
 					const [inserted] = await db
 						.insert(competitors)
@@ -98,6 +75,6 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 					return inserted;
 				},
 			}),
-		},
+		}),
 	},
 });

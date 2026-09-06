@@ -1,0 +1,40 @@
+meta {
+  name: per-prompt results over the window
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/prompt-performance?start={{windowStart}}&end={{windowEnd}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  start: {{windowStart}}
+  end: {{windowEnd}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.data: isArray
+}
+
+tests {
+  test("every prompt in the window comes back in one response", function() {
+    expect(res.getBody().data.length).to.be.at.least(5);
+  });
+
+  test("mention rates are ratios", function() {
+    for (const row of res.getBody().data) {
+      expect(row.brandMentionRate).to.be.at.least(0);
+      expect(row.brandMentionRate).to.be.at.most(1);
+      expect(row.competitorMentionRate).to.be.at.least(0);
+      expect(row.competitorMentionRate).to.be.at.most(1);
+    }
+  });
+}

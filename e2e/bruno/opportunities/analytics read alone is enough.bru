@@ -1,0 +1,19 @@
+meta {
+  name: analytics:read alone is enough
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/opportunities
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgAnalyticsOnlyKey}}
+}
+
+assert {
+  res.status: eq 200
+}

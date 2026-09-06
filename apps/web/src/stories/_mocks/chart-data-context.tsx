@@ -33,13 +33,6 @@ export function useOptionalChartDataContext() {
 	return _mockContextValue;
 }
 
-export function useChartDataContext() {
-	if (!_mockContextValue) {
-		throw new Error("useChartDataContext must be used within a ChartDataProvider");
-	}
-	return _mockContextValue;
-}
-
 // No-op provider for stories (context is controlled via setMockChartDataContext)
 export function ChartDataProvider({ children }: { children: ReactNode }) {
 	return <>{children}</>;

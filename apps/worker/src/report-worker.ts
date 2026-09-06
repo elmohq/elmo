@@ -1,8 +1,10 @@
+import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { type Brand, brands, reports } from "@workspace/lib/db/schema";
+import { analyzeMentions } from "@workspace/lib/mentions";
 import { analyzeBrand } from "@workspace/lib/onboarding";
-import { getProvider, type ModelConfig, parseScrapeTargets } from "@workspace/lib/providers";
+import { getProvider, type ModelConfig } from "@workspace/lib/providers";
 import { computeSystemTags, isPromptBranded } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
 
@@ -157,40 +159,6 @@ function selectOptimalPrompts(
 	return selectedPrompts;
 }
 
-function analyzeMentions(
-	content: string,
-	brandName: string,
-	brandWebsite: string,
-	competitors: CompetitorResult[],
-): {
-	brandMentioned: boolean;
-	competitorsMentioned: string[];
-} {
-	const contentLower = content.toLowerCase();
-	const brandNameLower = brandName.toLowerCase();
-
-	const url = new URL(brandWebsite.startsWith("http") ? brandWebsite : `https://${brandWebsite}`);
-	const domain = url.hostname.replace(/^www\./, "").toLowerCase();
-
-	const brandMentioned = contentLower.includes(brandNameLower) || contentLower.includes(domain);
-
-	const competitorsMentioned = competitors
-		.filter((competitor) => {
-			const nameMatch = contentLower.includes(competitor.name.toLowerCase());
-
-			const competitorUrl = new URL(
-				competitor.domain.startsWith("http") ? competitor.domain : `https://${competitor.domain}`,
-			);
-			const competitorDomain = competitorUrl.hostname.replace(/^www\./, "").toLowerCase();
-
-			const domainMatch = contentLower.includes(competitorDomain);
-			return nameMatch || domainMatch;
-		})
-		.map((competitor) => competitor.name);
-
-	return { brandMentioned, competitorsMentioned };
-}
-
 // Whitelabel uses its fixed 2+1+1 mapping; other modes match day-to-day
 // tracking frequency.
 async function runPrompt(
@@ -209,9 +177,8 @@ async function runPrompt(
 		});
 		const { brandMentioned, competitorsMentioned } = analyzeMentions(
 			result.textContent,
-			brandName,
-			brandWebsite,
-			competitors,
+			{ name: brandName, domains: [brandWebsite] },
+			competitors.map((competitor) => ({ name: competitor.name, domains: [competitor.domain] })),
 		);
 		return {
 			model: config.model,

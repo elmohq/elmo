@@ -1,0 +1,21 @@
+meta {
+  name: opportunities require analytics:read
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/opportunities
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgBrandsOnlyKey}}
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq insufficient_scope
+  res.body.message: contains analytics:read
+}

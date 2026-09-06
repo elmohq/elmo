@@ -5,19 +5,23 @@ import {
 	UNLIMITED_ENTITLEMENTS,
 } from "@workspace/config/entitlements";
 import { describe, expect, it } from "vitest";
+import { MAX_COMPETITORS, MAX_PROMPTS } from "../constants";
 import {
 	decideBrandCreate,
 	decideCadenceOverride,
+	decideCompetitorCap,
 	decideEnabledModels,
 	decidePremiumAssign,
 	decidePromptAdd,
-	type EntitlementDecision,
+	decidePromptCap,
+	promptSaveDelta,
+	type WriteDecision,
 } from "./guards";
 
 const NOW = new Date("2026-08-05T12:00:00Z");
 
 /** Assert the denial and hand back what it told the customer, in one step. */
-function denialMessage(decision: EntitlementDecision): string {
+function denialMessage(decision: WriteDecision): string {
 	if (decision.allowed) throw new Error("expected a denial, got an allow");
 	return decision.message;
 }
@@ -33,6 +37,7 @@ function planEntitlements(plan: string): Entitlements {
 }
 
 const PRO = planEntitlements("pro");
+const STARTER = planEntitlements("starter");
 
 describe("unlimited entitlements short-circuit every guard", () => {
 	it("allows everything", () => {
@@ -97,6 +102,129 @@ describe("decidePromptAdd", () => {
 	});
 });
 
+describe("decidePromptCap", () => {
+	it("allows a save that stays within the cap", () => {
+		expect(decidePromptCap(0, 1).allowed).toBe(true);
+		expect(decidePromptCap(MAX_PROMPTS - 1, 1).allowed).toBe(true);
+	});
+
+	it("refuses a save that grows past the cap", () => {
+		expect(denialMessage(decidePromptCap(MAX_PROMPTS, 1))).toMatch(new RegExp(`at most ${MAX_PROMPTS} prompts`));
+		expect(decidePromptCap(MAX_PROMPTS - 1, 2).allowed).toBe(false);
+	});
+
+	it("keeps an over-cap brand editable as long as the save adds nothing", () => {
+		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, 150, 0).allowed).toBe(true);
+		expect(decidePromptCap(150, 0).allowed).toBe(true);
+		expect(decidePromptCap(150, 1).allowed).toBe(false);
+	});
+
+	it("lets an unlimited deployment add past MAX_PROMPTS over the admin API", () => {
+		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, MAX_PROMPTS, 1).allowed).toBe(true);
+		expect(decidePromptAdd(UNLIMITED_ENTITLEMENTS, MAX_PROMPTS * 10, 500).allowed).toBe(true);
+	});
+});
+
+describe("decideCompetitorCap", () => {
+	it("allows a brand up to the cap", () => {
+		expect(decideCompetitorCap(0).allowed).toBe(true);
+		expect(decideCompetitorCap(MAX_COMPETITORS).allowed).toBe(true);
+	});
+
+	it("refuses the first competitor over it, and says how far over", () => {
+		const message = denialMessage(decideCompetitorCap(MAX_COMPETITORS + 3));
+		expect(message).toMatch(new RegExp(`at most ${MAX_COMPETITORS} competitors`));
+		expect(message).toMatch(new RegExp(`${MAX_COMPETITORS + 3}`));
+	});
+});
+
+describe("promptSaveDelta", () => {
+	const grounded = { enabled: true, premiumModels: ["claude"] };
+
+	it("counts a deleted grounded prompt as a release", () => {
+		expect(
+			promptSaveDelta({ updates: [{ before: grounded, after: { enabled: false, premiumModels: [] } }], inserts: [] }),
+		).toEqual({
+			prompts: -1,
+			premiumPairings: -1,
+		});
+	});
+
+	it("counts disabling a grounded prompt as a release", () => {
+		expect(
+			promptSaveDelta({
+				updates: [{ before: grounded, after: { enabled: false, premiumModels: ["claude"] } }],
+				inserts: [],
+			}),
+		).toEqual({
+			prompts: -1,
+			premiumPairings: -1,
+		});
+	});
+
+	it("charges re-enabling a grounded prompt for the pairing it resumes, without calling it an assignment", () => {
+		expect(
+			promptSaveDelta({
+				updates: [{ before: { enabled: false, premiumModels: ["claude"] }, after: grounded }],
+				inserts: [],
+			}),
+		).toEqual({
+			prompts: 1,
+			premiumPairings: 1,
+		});
+	});
+
+	it("carrying the same assignment back is not an assignment", () => {
+		expect(promptSaveDelta({ updates: [{ before: grounded, after: grounded }], inserts: [] })).toEqual({
+			prompts: 0,
+			premiumPairings: 0,
+		});
+	});
+
+	it("charges a second model on a row that already carries one, and calls it an assignment", () => {
+		expect(
+			promptSaveDelta({
+				updates: [{ before: grounded, after: { enabled: true, premiumModels: ["claude", "grok"] } }],
+				inserts: [],
+			}),
+		).toEqual({ prompts: 0, premiumPairings: 1 });
+	});
+
+	it("counts a swap as one assignment, not two", () => {
+		expect(
+			promptSaveDelta({
+				updates: [{ before: grounded, after: { enabled: true, premiumModels: ["grok"] } }],
+				inserts: [],
+			}),
+		).toEqual({
+			prompts: 0,
+			premiumPairings: 0,
+		});
+	});
+
+	it("charges an insert only when it lands enabled", () => {
+		expect(promptSaveDelta({ updates: [], inserts: [{ after: grounded }] })).toEqual({
+			prompts: 1,
+			premiumPairings: 1,
+		});
+		expect(
+			promptSaveDelta({ updates: [], inserts: [{ after: { enabled: false, premiumModels: ["claude"] } }] }),
+		).toEqual({
+			prompts: 0,
+			premiumPairings: 0,
+		});
+	});
+
+	it("nets a save that swaps one prompt for another to nothing", () => {
+		expect(
+			promptSaveDelta({
+				updates: [{ before: grounded, after: { enabled: false, premiumModels: [] } }],
+				inserts: [{ after: { enabled: true, premiumModels: [] } }],
+			}),
+		).toEqual({ prompts: 0, premiumPairings: -1 });
+	});
+});
+
 describe("decideEnabledModels", () => {
 	it("allows picks from the standard menu within the pick count", () => {
 		expect(decideEnabledModels(PRO, ["chatgpt", "perplexity", "gemini", "copilot"]).allowed).toBe(true);
@@ -144,6 +272,11 @@ describe("decideEnabledModels", () => {
 });
 
 describe("decidePremiumAssign", () => {
+	it("reports a lapsed subscription as a payment problem, not an upsell", () => {
+		expect(decidePremiumAssign(NO_PLAN_ENTITLEMENTS, 0, 1)).toMatchObject({ code: "no-active-plan" });
+		expect(denialMessage(decidePremiumAssign(NO_PLAN_ENTITLEMENTS, 0, 1))).not.toMatch(/Pro and Business/);
+	});
+
 	it("denies on plans without a claude pool", () => {
 		expect(decidePremiumAssign(planEntitlements("basic"), 0, 1)).toMatchObject({
 			allowed: false,

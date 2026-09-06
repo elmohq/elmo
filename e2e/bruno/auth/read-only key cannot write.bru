@@ -1,0 +1,28 @@
+meta {
+  name: a read-only key cannot write
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgReadOnlyKey}}
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}",
+    "value": "read-only keys may not create prompts"
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq insufficient_scope
+  res.body.message: contains prompts:write
+}

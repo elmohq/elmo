@@ -1,0 +1,46 @@
+meta {
+  name: a bad window is refused with the reason
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/mcp
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+  Accept: application/json, text/event-stream
+  mcp-protocol-version: 2025-06-18
+}
+
+body:json {
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "get_analytics",
+      "arguments": { "brandId": "{{brandId}}", "start": "2026-01-01", "end": "2026-02-01T00:00:00Z" }
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.result.isError: eq true
+}
+
+tests {
+  test("the model is told what to send instead", function() {
+    expect(res.body.result.content[0].text).to.contain("ISO 8601");
+  });
+}
+
+docs {
+  The same rule /api/v1 enforces, from the same function: a bare date means a
+  local day on the legacy snapshot endpoint, so accepting it here would put one
+  string in two endpoints meaning two things.
+}

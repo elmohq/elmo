@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
-import type { LookbackPeriod } from "@/lib/chart-utils";
+import { useResolvedBrandId } from "@/hooks/use-brand-id";
+import type { LookbackPeriod } from "@/lib/lookback";
 import { getShareOfVoiceFn } from "@/server/analysis";
 
 export interface ShareOfVoiceFilters {
@@ -10,14 +10,13 @@ export interface ShareOfVoiceFilters {
 	tags?: string[];
 }
 
-export const shareOfVoiceKeys = {
+const shareOfVoiceKeys = {
 	all: ["share-of-voice"] as const,
 	list: (brandId: string, filters?: ShareOfVoiceFilters) => [...shareOfVoiceKeys.all, brandId, filters] as const,
 };
 
 export function useShareOfVoice(brandId?: string, filters?: ShareOfVoiceFilters) {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+	const resolvedBrandId = useResolvedBrandId(brandId);
 
 	const query = useQuery({
 		queryKey: shareOfVoiceKeys.list(resolvedBrandId || "", filters),
@@ -39,8 +38,7 @@ export function useShareOfVoice(brandId?: string, filters?: ShareOfVoiceFilters)
 	return {
 		data: query.data,
 		isLoading: query.isLoading,
-		isFetching: query.isFetching,
-		isError: !!query.error,
-		revalidate: query.refetch,
+		error: query.error,
+		refetch: query.refetch,
 	};
 }

@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
-import { getOpportunitiesFn } from "@/server/opportunities";
+import { useResolvedBrandId } from "@/hooks/use-brand-id";
+import { getOpportunitiesFn } from "@/server/opportunities-fn";
 
-export const opportunitiesKeys = {
+const opportunitiesKeys = {
 	all: ["opportunities-report"] as const,
 	detail: (brandId: string) => [...opportunitiesKeys.all, brandId] as const,
 };
@@ -13,8 +13,7 @@ export const opportunitiesKeys = {
  * Infinity, no refetch-on-focus) rather than refetched.
  */
 export function useOpportunities(brandId?: string) {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+	const resolvedBrandId = useResolvedBrandId(brandId);
 
 	const query = useQuery({
 		queryKey: opportunitiesKeys.detail(resolvedBrandId || ""),
@@ -31,8 +30,7 @@ export function useOpportunities(brandId?: string) {
 	return {
 		data: query.data,
 		isLoading: query.isLoading,
-		isFetching: query.isFetching,
-		isError: !!query.error,
-		revalidate: query.refetch,
+		error: query.error,
+		refetch: query.refetch,
 	};
 }

@@ -99,11 +99,11 @@ export function Stats() {
 				<div>
 					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ MODEL COVERAGE</p>
 					<h2 className="mt-4 max-w-[28ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-						Track any AI model.
+						Track every major AI model.
 					</h2>
 					<p className="mt-5 max-w-[58ch] text-pretty text-zinc-600 md:text-lg">
-						See exactly what ChatGPT and other AI search users see exactly with web scraping. Track LLM responses with
-						their APIs or OpenRouter. Bring your own keys.
+						See what ChatGPT users see, via web scraping. Track LLM responses through their APIs or OpenRouter. Bring
+						your own keys.
 					</p>
 				</div>
 

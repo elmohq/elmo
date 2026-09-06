@@ -1,0 +1,33 @@
+meta {
+  name: an org key is told its rate limit
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("the response advertises the per-key rate limit", function() {
+    expect(res.getHeader("x-ratelimit-limit")).to.equal("1000");
+    expect(res.getHeader("x-ratelimit-remaining")).to.not.be.undefined;
+  });
+}
+
+docs {
+  Pins the shipped ceiling, not just that a header exists. The limit is meant to
+  stop a runaway loop rather than meter normal use, and it is stamped onto a key
+  at creation — so a change here is a change to what every future key gets, and
+  worth noticing.
+}

@@ -1,8 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
+import { useResolvedBrandId } from "@/hooks/use-brand-id";
+import type { LookbackPeriod } from "@/lib/lookback";
 import { getPromptsSummaryFn } from "@/server/prompts";
-
-export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
 export interface PromptsSummaryFilters {
 	lookback?: LookbackPeriod;
@@ -17,8 +16,7 @@ export const promptsSummaryKeys = {
 };
 
 export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilters) {
-	const params = useParams({ strict: false }) as { brand?: string };
-	const resolvedBrandId = brandId || params.brand;
+	const resolvedBrandId = useResolvedBrandId(brandId);
 
 	const query = useQuery({
 		queryKey: promptsSummaryKeys.list(resolvedBrandId || "", filters),
@@ -38,15 +36,14 @@ export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilt
 		refetchOnWindowFocus: true,
 		refetchOnReconnect: true,
 		refetchInterval: 60_000,
-		placeholderData: (prev) => prev, // Keep previous data while refetching
+		placeholderData: (prev) => prev,
 	});
 
 	return {
-		promptsSummary: query.data,
+		data: query.data,
 		isLoading: query.isLoading,
-		isValidating: query.isFetching,
-		isError: query.error,
-		revalidate: query.refetch,
+		error: query.error,
+		refetch: query.refetch,
 	};
 }
 

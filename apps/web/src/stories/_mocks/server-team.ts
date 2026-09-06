@@ -26,7 +26,6 @@ export function setMockTeam(team: Partial<TeamData>) {
 }
 
 export const listTeamFn = async () => _team;
-export const updateOrganizationFn = async () => ({ ok: true });
 export const inviteTeamMemberFn = async () => ({ ok: true });
 export const cancelInvitationFn = async () => ({ ok: true });
 export const removeTeamMemberFn = async () => ({ ok: true });

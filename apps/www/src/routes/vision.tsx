@@ -54,8 +54,8 @@ function VisionPage() {
 								AI visibility monitoring should be a commodity, not a luxury.
 							</h1>
 							<p className="mt-6 max-w-2xl text-lg text-balance text-zinc-600 md:text-xl">
-								The emerging market for "AI search optimization" is full of inflated pricing, opaque methodologies, and
-								venture-funded startups burning cash. We think there's a better way.
+								The "AI search optimization" market is full of inflated pricing and opaque methodologies. We're building
+								something better.
 							</p>
 						</div>
 					</div>
@@ -83,7 +83,7 @@ function VisionPage() {
 								<p>
 									Meanwhile, the AEO space is rife with misinformation. Consultants sell "optimization" services based
 									on flawed assumptions about how LLMs work. Rankings are presented as deterministic when they're
-									probabilistic. Correlation is sold as causation. We believe this hurts everyone.
+									probabilistic. Correlation is sold as causation.
 								</p>
 							</div>
 						</div>
@@ -95,14 +95,11 @@ function VisionPage() {
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
 						<div className="max-w-3xl">
 							<SectionEyebrow num="02" label="OUR APPROACH" />
-							<h2 className="font-heading mt-3 text-3xl text-zinc-950 md:text-4xl">
-								Small, sustainable, built to last
-							</h2>
+							<h2 className="font-heading mt-3 text-3xl text-zinc-950 md:text-4xl">Bootstrapped and built to last</h2>
 							<div className="mt-8 space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 								<p>
 									Elmo is bootstrapped. We don't have investors demanding hyper-growth or a board pushing us toward
-									enterprise-only pricing. That means we need far less to be a success — and far less to stick around
-									long-term.
+									enterprise-only pricing. That means we can succeed on modest revenue — and stay around for years.
 								</p>
 								<p>
 									We believe AI visibility data should be cost-effective to access. The underlying operations — querying
@@ -197,8 +194,7 @@ function VisionPage() {
 									<div className="rounded-md border border-zinc-200 bg-white p-5">
 										<h3 className="font-semibold text-zinc-950">Anti-Slop</h3>
 										<p className="mt-2 text-sm text-zinc-600">
-											We give you the data and context and help you grow your brand's AI presence naturally, without
-											generating AI slop or astroturfing.
+											We give you the data and context to grow your AI presence naturally — no AI slop, no astroturfing.
 										</p>
 									</div>
 								</div>
@@ -212,8 +208,8 @@ function VisionPage() {
 					<div className="mx-auto max-w-6xl px-4 text-center md:px-6">
 						<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Sustainable AEO</h2>
 						<p className="mx-auto mt-4 max-w-xl text-lg text-balance text-zinc-600">
-							Elmo is open source, cost-effective, and built for the long haul. If that resonates, we'd love to have
-							you.
+							Elmo is open source, cost-effective, and built for the long haul. If that sounds like your kind of tool,
+							come build with us.
 						</p>
 						<div className="mt-8 flex flex-wrap justify-center gap-3">
 							<a href={CLOUD_SIGNUP_URL} className={buttonVariants({ size: "sm" })}>

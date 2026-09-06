@@ -82,22 +82,22 @@ const valuePoints: ValuePoint[] = [
 	{
 		icon: <Quote className="size-4" strokeWidth={2.5} />,
 		title: "What is off-site AEO?",
-		body: "Answer engines build replies from the whole web, not just your homepage. They weight sources by authority and corroboration. When several independent, trusted sites describe you the same way, a model is far more confident citing you.",
+		body: "Answer engines build replies from the whole web, not just your homepage. They favor sources other trusted sites agree with. When several independent, trusted sites describe you the same way, a model is far more confident citing you.",
 	},
 	{
 		icon: <Target className="size-4" strokeWidth={2.5} />,
 		title: "Targeted, not spray-and-pray",
-		body: "We don't publish random posts. We start from your AI-visibility data and find the prompts you're missing, the competitors cited instead of you, and the sources those models already trust. Then we plan each placement to close a specific gap or reinforce your brand's authority.",
+		body: "We start from your AI-visibility data: the prompts you're missing and the competitors cited instead of you. Each placement closes one of those gaps.",
 	},
 	{
 		icon: <PenLine className="size-4" strokeWidth={2.5} />,
 		title: "Drafted with AI, and humanized",
-		body: "After we come up with a plan, we create drafts of the guest posts using the best AI models. Then, we humanize the articles so they land under a 25% AI-detection score on both ZeroGPT and Pangram. This human touch-up improves the resiliency of your posts.",
+		body: "After we come up with a plan, we create drafts of the guest posts using the best AI models. Then, we humanize the articles so they land under a 25% AI-detection score on both ZeroGPT and Pangram. That rewrite makes the posts read like human writing, which keeps them from getting flagged or ignored.",
 	},
 	{
 		icon: <CalendarClock className="size-4" strokeWidth={2.5} />,
 		title: "Fresh sources, every month",
-		body: "AI answers lean on recent data. While a one-time burst fades, a steady publishing every month keeps data about your brand and industry current and authoritative. It's a more natural backlink pattern for classic SEO, too.",
+		body: "AI answers favor recent data. A one-time burst fades; publishing every month keeps your brand's data fresh. It's a more natural backlink pattern for classic SEO, too.",
 	},
 ];
 
@@ -107,7 +107,7 @@ export function OffSiteValue() {
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
 				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ WHY IT WORKS</p>
 				<h2 className="mt-4 max-w-[24ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-					Many high-authority data points, built purposefully.
+					More mentions on sites AI already trusts.
 				</h2>
 				<p className="mt-5 max-w-[60ch] text-pretty text-zinc-600 md:text-lg">
 					We give AI answer engines a steady supply of trustworthy sources that mention you in the right context. The
@@ -138,8 +138,8 @@ export function OffSiteValue() {
 						>
 							Jared Rhizor
 						</a>
-						, who's spent the last year finding the levers that move the needle on AI citations by building AEO tooling
-						for top e-commerce and B2B SaaS brands.
+						, who has spent the last year building AEO tooling for top e-commerce and B2B SaaS brands and learning what
+						actually changes AI citations.
 					</p>
 				</div>
 			</div>
@@ -163,7 +163,7 @@ const steps = [
 	{
 		num: "03",
 		title: "Autopilot",
-		body: "We keep publishing on a steady cadence, adjusting targets as your visibility moves, keeping data fresh for AI models.",
+		body: "We keep publishing monthly and adjust targets as your visibility shifts.",
 	},
 ];
 
@@ -173,7 +173,7 @@ export function OffSiteProcess() {
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
 				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ HOW IT WORKS</p>
 				<h2 className="mt-4 max-w-[24ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-					One call, quality posts. Live within 30 days.
+					One call, then live posts within 30 days.
 				</h2>
 
 				<div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 md:grid-cols-3">
@@ -216,7 +216,7 @@ const plans: OffSitePlan[] = [
 		id: "starter",
 		tag: "01",
 		name: "Starter",
-		desc: "A focused entry point into off-site AEO.",
+		desc: "Four placements a month to get started.",
 		price: "$1,950",
 		posts: 4,
 		buckets: [
@@ -246,7 +246,7 @@ const plans: OffSitePlan[] = [
 		id: "authority",
 		tag: "03",
 		name: "Authority",
-		desc: "Maximum data points, topped with a flagship.",
+		desc: "The most placements, including one DR60+ site.",
 		price: "$9,950",
 		posts: 14,
 		buckets: [

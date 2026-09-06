@@ -4,10 +4,10 @@
   "workspaces": {
     ".": {
       "entry": ["turbo.json"],
-      "ignoreBinaries": ["playwright"]
+      "ignoreBinaries": ["playwright", "drizzle-kit"]
     },
     "apps/web": {
-      "entry": ["src/routes/**/*.{ts,tsx}!", "src/server.ts", "scripts/*.ts"],
+      "entry": ["src/routes/**/*.{ts,tsx}!", "scripts/*.ts"],
       "project": ["src/**/*.{ts,tsx}", "scripts/**/*.ts"],
       "ignore": ["src/stories/_mocks/**"],
       "ignoreDependencies": [
@@ -15,20 +15,25 @@
         "tw-animate-css",
         "@tailwindcss/typography",
         "@fontsource/geist-sans",
-        "@base-ui/react"
+        "@base-ui/react",
+        "@resvg/resvg-js"
       ]
     },
     "apps/www": {
-      "entry": ["src/server.ts", "scripts/**"],
-      "ignore": [".source/**"],
-      "ignoreDependencies": ["shiki", "@base-ui/react"]
+      "entry": ["scripts/**"],
+      "ignoreDependencies": ["shiki", "@resvg/resvg-js"]
     },
-    "apps/worker": {
-      "entry": ["scripts/test-provider.ts"]
+    "packages/og": {
+      "ignoreDependencies": ["nitro"]
+    },
+    "packages/lib": {
+      "entry": ["scripts/*.mjs"],
+      "ignoreDependencies": ["auth"]
     },
     "e2e": {
       "entry": ["*.ts", "tests/**/*.setup.ts"],
-      "project": ["**/*.ts"]
+      "project": ["**/*.ts"],
+      "ignoreBinaries": ["script"]
     }
   }
 }

@@ -20,7 +20,7 @@ TMP_OUTPUT="/tmp/better-auth-schema-gen.ts"
 # mode injects via CreateAuthOptions.extraPlugins — today that's cloud's
 # Stripe billing plugin (subscription table + stripeCustomerId columns). The
 # schema-relevant options here (subscription.enabled, organization.enabled)
-# must match the runtime construction in packages/cloud/src/billing/plugin.ts.
+# must match the runtime construction in packages/deployment/src/billing/plugin.ts.
 mkdir -p "$(dirname "$AUTH_CONFIG")"
 cat > "$AUTH_CONFIG" <<'EOF'
 import { stripe } from "@better-auth/stripe";
@@ -37,13 +37,17 @@ export const auth = createAuth({
 		}),
 	],
 });
+// Initialization keeps going in the background and reaches for the database, so
+// its rejection is swallowed rather than left to take the process down.
+auth.$context.catch(() => {});
 export default auth;
 EOF
 
 cleanup() { rm -f "$AUTH_CONFIG" "$TMP_OUTPUT"; }
 trap cleanup EXIT
 
-# createAuth() resolves its base URL at construction; no network, no DB.
+# The adapter is named rather than resolved from the config so the CLI reads the
+# table definitions without opening a connection.
 export APP_URL="${APP_URL:-http://localhost:3000}"
 export BETTER_AUTH_SECRET="${BETTER_AUTH_SECRET:-schema-generation}"
 export DATABASE_URL="${DATABASE_URL:-postgres://schema:gen@127.0.0.1:5432/gen}"
@@ -56,6 +60,8 @@ echo "[generate-auth-schema] Running better-auth CLI..."
 pnpm exec auth generate \
   --config "$AUTH_CONFIG" \
   --output "$TMP_OUTPUT" \
+  --adapter drizzle \
+  --dialect postgresql \
   --yes \
   2>&1
 
@@ -63,6 +69,13 @@ if [ ! -s "$TMP_OUTPUT" ]; then
   echo "[generate-auth-schema] ERROR: CLI produced empty output" >&2
   exit 1
 fi
+
+# `references: "organization"` is a runtime option the CLI cannot see, so it
+# emits apikey.referenceId as a bare text column. The foreign key is what makes a
+# deleted organization take its keys with it. Scoped to apikey on purpose:
+# `subscription.referenceId` is the same column name on a table the Stripe plugin
+# points wherever it is configured to, and must stay unconstrained.
+node "$SCRIPT_DIR/patch-apikey-fk.mjs" "$TMP_OUTPUT"
 
 # Prepend our header and write to the real output file
 {
@@ -83,6 +96,9 @@ cat <<'HEADER'
  * tables or columns, re-run the generation script and commit the diff. If the
  * new table needs indexes beyond what the generator emits, add them in a new
  * migration — not in this file.
+ *
+ * `apikey.metadata` is writable by anyone with a session, by plugin design.
+ * Never store anything there that grants access.
  */
 HEADER
 cat "$TMP_OUTPUT"

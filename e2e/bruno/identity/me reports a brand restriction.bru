@@ -1,0 +1,26 @@
+meta {
+  name: me reports a brand restriction
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/me
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{nikeNarrowKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.organizationId: eq nike
+}
+
+tests {
+  test("the restriction is reported, not just applied", function() {
+    expect(res.getBody().brandIds).to.eql(["nike"]);
+  });
+}

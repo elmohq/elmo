@@ -1,0 +1,35 @@
+meta {
+  name: the brand limit is enforced
+  type: http
+  seq: 10
+  tags: [
+    cloud
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/v1/brands
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{cappedKey}}
+}
+
+script:pre-request {
+  bru.setVar("cappedNewBrandId", "capped-second-" + Date.now());
+}
+
+body:json {
+  {
+    "id": "{{cappedNewBrandId}}",
+    "name": "Second Capped Brand",
+    "domains": ["{{cappedNewBrandId}}.example.com"]
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq brand_limit
+}

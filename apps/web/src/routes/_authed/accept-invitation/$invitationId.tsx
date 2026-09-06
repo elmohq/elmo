@@ -11,6 +11,9 @@ import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
+import { useOrganizationsChanged } from "@/hooks/use-organizations";
+import { buildTitle, getAppName } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { acceptInvitationFn, getInvitationFn } from "@/server/team";
 
 export const Route = createFileRoute("/_authed/accept-invitation/$invitationId")({
@@ -25,14 +28,25 @@ export const Route = createFileRoute("/_authed/accept-invitation/$invitationId")
 			};
 		}
 	},
+	head: ({ match }) => {
+		const appName = getAppName(match);
+		return {
+			meta: [
+				{ title: buildTitle("Accept invitation", { appName }) },
+				{ name: "description", content: "Join your team." },
+			],
+		};
+	},
 	component: AcceptInvitationPage,
 });
 
 function AcceptInvitationPage() {
 	const { invitationId } = Route.useParams();
 	const { invitation, error: loadError } = Route.useLoaderData();
+	const organizationsChanged = useOrganizationsChanged();
 	const navigate = useNavigate();
 	const [accepting, setAccepting] = useState(false);
+	const writeError = useWriteErrorMessage();
 	const [acceptError, setAcceptError] = useState<string | null>(null);
 
 	if (loadError || !invitation) {
@@ -57,10 +71,10 @@ function AcceptInvitationPage() {
 		setAcceptError(null);
 		setAccepting(true);
 		try {
-			await acceptInvitationFn({ data: { invitationId } });
-			navigate({ to: "/app" });
+			const { orgSlug } = await acceptInvitationFn({ data: { invitationId } });
+			await organizationsChanged(() => navigate({ to: "/app/org/$org", params: { org: orgSlug } }));
 		} catch (err) {
-			setAcceptError(err instanceof Error ? err.message : "Failed to accept the invitation");
+			setAcceptError(writeError(err, "Failed to accept the invitation"));
 			setAccepting(false);
 		}
 	}

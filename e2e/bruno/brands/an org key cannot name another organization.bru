@@ -1,0 +1,43 @@
+meta {
+  name: an org key cannot name another organization
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/api/v1/brands
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+script:pre-request {
+  bru.setVar("smuggledBrandId", "e2e-smuggled-" + Date.now());
+}
+
+body:json {
+  {
+    "id": "{{smuggledBrandId}}",
+    "name": "Smuggled Brand",
+    "domains": ["{{smuggledBrandId}}.example.com"],
+    "organizationId": "{{nikeOrgId}}"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.error: eq Validation Error
+  res.body.code: eq validation_error
+  res.body.message: eq Organization keys always create inside their own organization; omit organizationId or set it to the key's organization.
+}
+
+tests {
+  test("the refusal says nothing about the organization that was named", function() {
+    // Worded purely in terms of the caller, and the named org is never looked
+    // up — so this can't become an existence oracle for another tenant.
+    expect(res.getBody().message).to.not.contain(bru.getEnvVar("nikeOrgId"));
+  });
+}

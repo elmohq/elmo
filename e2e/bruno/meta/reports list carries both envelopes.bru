@@ -1,0 +1,27 @@
+meta {
+  name: the reports list carries data alongside its shipped key
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/v1/reports
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("data and reports are the same list", function() {
+    const body = res.getBody();
+    expect(body.data).to.be.an("array");
+    expect(body.data).to.eql(body.reports);
+  });
+}

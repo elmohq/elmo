@@ -1,0 +1,31 @@
+meta {
+  name: an org key lists only its own competitors
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{baseUrl}}/api/v1/competitors?limit=100
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  limit: 100
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("the other tenant's competitors are invisible", function() {
+    const names = res.getBody().competitors.map((c) => c.name);
+    expect(names).to.include("Competitor Alpha");
+    expect(names).to.not.include("Adidas");
+  });
+}

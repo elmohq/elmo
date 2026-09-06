@@ -317,6 +317,21 @@ export const FORUM_DOMAINS = new Set([
 ]);
 
 /**
+ * True if `domain` equals, or is a subdomain of, any entry in `set`. Walks the
+ * domain's parent suffixes so lookups stay O(labels) regardless of set size —
+ * important for the large editorial set.
+ */
+export function inDomainSet(domain: string, set: Set<string>): boolean {
+	let d = domain;
+	while (true) {
+		if (set.has(d)) return true;
+		const dot = d.indexOf(".");
+		if (dot === -1) return false;
+		d = d.slice(dot + 1);
+	}
+}
+
+/**
  * True for dedicated forum domains and conventional forum subdomains
  * (forum.X, forums.X, community.X, discuss.X, boards.X) — a generalizable signal
  * that works across niches without enumerating every site.
@@ -585,7 +600,3 @@ export const PAGE_TYPE_CONFIG: Record<CitationPageType, { label: string; chartCo
 	shopping: { label: "Shopping", chartColor: "#9c6b4e" },
 	other: { label: "Other", chartColor: "#9498a0" },
 };
-
-export const PAGE_TYPE_COLORS: Record<string, string> = Object.fromEntries(
-	CITATION_PAGE_TYPES.map((p) => [p, PAGE_TYPE_CONFIG[p].chartColor]),
-);

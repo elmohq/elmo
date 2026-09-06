@@ -4,6 +4,7 @@
 
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
+import { brandSegment } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
@@ -23,12 +24,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Settings, TrendingDown, TrendingUp } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
-import { getAppName } from "@/lib/route-head";
+import { pageHead } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 import { getAdminStatsFn, updateDelayOverrideFn } from "@/server/admin";
 
 interface BrandStats {
 	id: string;
+	slug: string | null;
 	name: string;
+	organizationSlug: string;
 	website: string;
 	enabled: boolean;
 	onboarded: boolean;
@@ -77,6 +81,7 @@ function timeUnitsToHours(units: { weeks: number; days: number; hours: number })
 function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate: () => void }) {
 	const defaultDelayHours = useDefaultDelayHours();
 	const [open, setOpen] = useState(false);
+	const writeError = useWriteErrorMessage();
 	const [timeUnits, setTimeUnits] = useState({ weeks: 0, days: 0, hours: 0 });
 	const [isUpdating, setIsUpdating] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -111,7 +116,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 			onUpdate();
 			setOpen(false);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to update");
+			setError(writeError(err, "Failed to update"));
 		} finally {
 			setIsUpdating(false);
 		}
@@ -125,7 +130,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 			onUpdate();
 			setOpen(false);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to clear override");
+			setError(writeError(err, "Failed to clear override"));
 		} finally {
 			setIsUpdating(false);
 		}
@@ -250,21 +255,76 @@ function ActivityIndicator({ added, removed }: { added: number; removed: number 
 	);
 }
 
+/** One brand's row in the admin table. A brand is overdue when its last run is
+ *  older than the delay it currently runs on. */
+function BrandStatsRow({ brand, onUpdate }: { brand: BrandStats; onUpdate: () => void }) {
+	const defaultDelayHours = useDefaultDelayHours();
+	const currentDelayHours = brand.delayOverrideHours ?? defaultDelayHours;
+	const isOverdue =
+		brand.lastPromptRunAt !== null &&
+		brand.activePrompts > 0 &&
+		Date.now() - new Date(brand.lastPromptRunAt).getTime() > currentDelayHours * 60 * 60 * 1000;
+
+	return (
+		<TableRow>
+			<TableCell className="font-medium">
+				<div className="space-y-1">
+					<Link
+						to="/app/org/$org/brand/$brand"
+						params={{ org: brand.organizationSlug, brand: brandSegment(brand) }}
+						className="hover:underline text-primary"
+					>
+						{brand.name}
+					</Link>
+					<div className="text-xs text-muted-foreground">{brand.website}</div>
+				</div>
+			</TableCell>
+			<TableCell className="text-right">
+				<div className="font-medium">{brand.activePrompts}</div>
+			</TableCell>
+			<TableCell>
+				<div className="flex justify-end">
+					<ActivityIndicator added={brand.promptsAddedLast7Days || 0} removed={brand.promptsRemovedLast7Days || 0} />
+				</div>
+			</TableCell>
+			<TableCell>
+				<div className="flex justify-end">
+					<ActivityIndicator added={brand.promptsAddedLast30Days || 0} removed={brand.promptsRemovedLast30Days || 0} />
+				</div>
+			</TableCell>
+			<TableCell className="text-right">{brand.promptRuns7Days?.toLocaleString() || 0}</TableCell>
+			<TableCell className="text-right">{brand.promptRuns30Days?.toLocaleString() || 0}</TableCell>
+			<TableCell>
+				{brand.lastPromptRunAt ? (
+					<span className={`text-sm ${isOverdue ? "text-red-600 font-semibold" : ""}`}>
+						{new Date(brand.lastPromptRunAt).toLocaleDateString()}
+					</span>
+				) : (
+					<span className="text-muted-foreground">Never</span>
+				)}
+			</TableCell>
+			<TableCell>
+				<div className="space-y-1">
+					<div className="font-medium">{formatDelayHours(currentDelayHours)}</div>
+					<span className="text-xs text-muted-foreground">
+						{brand.delayOverrideHours !== null ? "Custom" : "Default"}
+					</span>
+				</div>
+			</TableCell>
+			<TableCell>
+				<DelayOverrideDialog brand={brand} onUpdate={onUpdate} />
+			</TableCell>
+		</TableRow>
+	);
+}
+
 export const Route = createFileRoute("/_authed/admin/")({
-	head: ({ match }) => {
-		const appName = getAppName(match);
-		return {
-			meta: [
-				{ title: `Admin · ${appName}` },
-				{ name: "description", content: "Monitor and manage brands, prompts, and scheduling." },
-			],
-		};
-	},
+	staticData: { crumb: "Brands" },
+	head: pageHead({ title: "Admin", description: "Monitor and manage brands, prompts, and scheduling." }),
 	component: AdminDashboard,
 });
 
 function AdminDashboard() {
-	const defaultDelayHours = useDefaultDelayHours();
 	const [brands, setBrands] = useState<BrandStats[]>([]);
 	const [brandsOverTime, setBrandsOverTime] = useState<{ date: string; count: number }[]>([]);
 	const [activeBrandsOverTime, setActiveBrandsOverTime] = useState<{ date: string; count: number }[]>([]);
@@ -585,68 +645,9 @@ function AdminDashboard() {
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{brands.map((brand) => {
-									const currentDelayHours = brand.delayOverrideHours ?? defaultDelayHours;
-									const currentDelayMs = currentDelayHours * 60 * 60 * 1000;
-									const isOverdue =
-										brand.lastPromptRunAt && brand.activePrompts > 0
-											? new Date().getTime() - new Date(brand.lastPromptRunAt).getTime() > currentDelayMs
-											: false;
-
-									return (
-										<TableRow key={brand.id}>
-											<TableCell className="font-medium">
-												<div className="space-y-1">
-													<Link to="/app/$brand" params={{ brand: brand.id }} className="hover:underline text-primary">
-														{brand.name}
-													</Link>
-													<div className="text-xs text-muted-foreground">{brand.website}</div>
-												</div>
-											</TableCell>
-											<TableCell className="text-right">
-												<div className="font-medium">{brand.activePrompts}</div>
-											</TableCell>
-											<TableCell>
-												<div className="flex justify-end">
-													<ActivityIndicator
-														added={brand.promptsAddedLast7Days || 0}
-														removed={brand.promptsRemovedLast7Days || 0}
-													/>
-												</div>
-											</TableCell>
-											<TableCell>
-												<div className="flex justify-end">
-													<ActivityIndicator
-														added={brand.promptsAddedLast30Days || 0}
-														removed={brand.promptsRemovedLast30Days || 0}
-													/>
-												</div>
-											</TableCell>
-											<TableCell className="text-right">{brand.promptRuns7Days?.toLocaleString() || 0}</TableCell>
-											<TableCell className="text-right">{brand.promptRuns30Days?.toLocaleString() || 0}</TableCell>
-											<TableCell>
-												{brand.lastPromptRunAt ? (
-													<span className={`text-sm ${isOverdue ? "text-red-600 font-semibold" : ""}`}>
-														{new Date(brand.lastPromptRunAt).toLocaleDateString()}
-													</span>
-												) : (
-													<span className="text-muted-foreground">Never</span>
-												)}
-											</TableCell>
-											<TableCell>
-												<div className="space-y-1">
-													<div className="font-medium">{formatDelayHours(currentDelayHours)}</div>
-													<span className="text-xs text-muted-foreground">
-														{brand.delayOverrideHours !== null ? "Custom" : "Default"}
-													</span>
-												</div>
-											</TableCell>
-											<TableCell>
-												<DelayOverrideDialog brand={brand} onUpdate={fetchBrandStats} />
-											</TableCell>
-										</TableRow>
-									);
-								})}
+								{brands.map((brand) => (
+									<BrandStatsRow key={brand.id} brand={brand} onUpdate={fetchBrandStats} />
+								))}
 							</TableBody>
 						</Table>
 					</div>

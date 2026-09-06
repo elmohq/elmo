@@ -1,0 +1,32 @@
+meta {
+  name: an org key lists only its own brands
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands?limit=100
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  limit: 100
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("the other tenant is invisible", function() {
+    const ids = res.getBody().brands.map((b) => b.id);
+    expect(ids).to.include("default");
+    expect(ids).to.not.include("nike");
+    expect(ids).to.not.include("nike-jordan");
+  });
+}

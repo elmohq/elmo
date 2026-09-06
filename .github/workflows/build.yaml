@@ -92,12 +92,15 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
+      # Not `--with-deps`: that runs apt-get update on every job, cache hit or
+      # not, for libraries the runner image already carries. If an image ever
+      # stops carrying them, Playwright fails naming `playwright install-deps`.
       - name: Install Playwright browsers
         uses: nick-fields/retry@v4
         with:
           timeout_minutes: 1
           max_attempts: 3
-          command: pnpm -C apps/web exec playwright install chromium --with-deps
+          command: pnpm -C apps/web exec playwright install chromium
 
       - name: Storybook tests
         run: pnpm -C apps/web test:storybook

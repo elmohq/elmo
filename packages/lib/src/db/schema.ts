@@ -10,6 +10,7 @@ import {
 	smallint,
 	text,
 	timestamp,
+	uniqueIndex,
 	uuid,
 } from "drizzle-orm/pg-core";
 // `organization` is referenced by the brands FK below; the re-export makes it
@@ -31,6 +32,7 @@ export const brands = pgTable(
 	{
 		id: text("id").primaryKey().notNull(),
 		name: text("name").notNull(),
+		slug: text("slug"),
 		website: text("website").notNull(),
 		additionalDomains: text("additional_domains").array().notNull().default([]),
 		aliases: text("aliases").array().notNull().default([]),
@@ -53,6 +55,10 @@ export const brands = pgTable(
 	},
 	(table) => ({
 		organizationIdIdx: index("brands_organization_id_idx").on(table.organizationId),
+		// Postgres treats nulls as distinct here, which is what lets every
+		// un-slugged brand in an organization coexist. NULLS NOT DISTINCT would
+		// allow only one.
+		organizationSlugIdx: uniqueIndex("brands_organization_id_slug_idx").on(table.organizationId, table.slug),
 	}),
 ).enableRLS();
 
@@ -154,7 +160,7 @@ export const citations = pgTable(
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 	},
 	(table) => ({
-		brandAnalyticsIdx: index("idx_citations_brand_analytics").on(
+		brandAnalyticsIdx: index("citations_brand_created_analytics_idx").on(
 			table.brandId,
 			table.createdAt,
 			table.url,
@@ -162,6 +168,7 @@ export const citations = pgTable(
 			table.title,
 			table.promptId,
 			table.model,
+			table.citationIndex,
 		),
 		promptCreatedIdx: index("citations_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		domainIdx: index("citations_domain_idx").on(table.domain),

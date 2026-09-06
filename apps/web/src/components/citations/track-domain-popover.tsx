@@ -23,7 +23,7 @@ export function TrackDomainPopover({
 	competitors: Array<{ id: string; name: string; domains: string[] }>;
 	onAdded?: () => void;
 }) {
-	const { brand } = useBrand(brandId);
+	const { data: brand } = useBrand(brandId);
 	const [open, setOpen] = useState(false);
 	const [newName, setNewName] = useState("");
 	const [saving, setSaving] = useState(false);

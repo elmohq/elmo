@@ -6,11 +6,12 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, prompts } from "@workspace/lib/db/schema";
+import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
-import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
+import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { requirePromptInScope } from "@/lib/api/scope";
+import { extractDomain, inDomainSet, normalizeUrl } from "@/lib/domain-categories";
 import {
 	getPromptCitationUrlStats,
 	getPromptMentionSummary,
@@ -28,13 +29,6 @@ function isValidDate(dateStr: string): boolean {
 const MAX_TOP_K = 50;
 const DEFAULT_TOP_MENTIONS = 5;
 const DEFAULT_TOP_CITATIONS = 10;
-
-function isMatchingDomain(domain: string, domainSet: Set<string>): boolean {
-	for (const owned of domainSet) {
-		if (domain === owned || domain.endsWith(`.${owned}`)) return true;
-	}
-	return false;
-}
 
 function boundedTopK(raw: string | null, fallback: number): number {
 	const parsed = Number.parseInt(raw || String(fallback), 10);
@@ -70,34 +64,19 @@ function parseSnapshotQuery(url: URL): { startDate: string; endDate: string; kMe
 
 export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
 				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
-				handle: async ({ params, request }) => {
+				scopes: ["analytics:read"],
+				handle: async ({ params, request, auth }) => {
 					const { promptId } = params;
 					const { startDate, endDate, kMentions, kCitations } = parseSnapshotQuery(new URL(request.url));
 
-					const promptResult = await db
-						.select({ id: prompts.id, brandId: prompts.brandId, value: prompts.value })
-						.from(prompts)
-						.where(eq(prompts.id, promptId))
-						.limit(1);
-					if (promptResult.length === 0) {
-						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
-					}
-					const prompt = promptResult[0];
+					const { prompt, brand } = await requirePromptInScope(auth, promptId);
+					const competitorsList = await db.select().from(competitors).where(eq(competitors.brandId, prompt.brandId));
 
-					const [brandInfo, competitorsList] = await Promise.all([
-						db.select().from(brands).where(eq(brands.id, prompt.brandId)).limit(1),
-						db.select().from(competitors).where(eq(competitors.brandId, prompt.brandId)),
-					]);
-					if (brandInfo.length === 0) {
-						throw new ApiError(500, "Internal Server Error", "Brand not found for prompt");
-					}
 					const brandDomains = new Set(
-						[extractDomain(brandInfo[0].website), ...(brandInfo[0].additionalDomains || []).map(extractDomain)].filter(
-							Boolean,
-						),
+						[extractDomain(brand.website), ...(brand.additionalDomains || []).map(extractDomain)].filter(Boolean),
 					);
 					const competitorDomains = new Set(
 						competitorsList.flatMap((c) => (c.domains || []).map(extractDomain)).filter(Boolean),
@@ -133,9 +112,9 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 					const allCitationUrls = Array.from(urlCounts.entries())
 						.map(([url, { count, title, domain }]) => {
 							citationsTotal += count;
-							if (isMatchingDomain(domain, brandDomains)) {
+							if (inDomainSet(domain, brandDomains)) {
 								brandCitationsTotal += count;
-							} else if (isMatchingDomain(domain, competitorDomains)) {
+							} else if (inDomainSet(domain, competitorDomains)) {
 								competitorCitationsTotal += count;
 							}
 							return { url, title, count };
@@ -169,6 +148,6 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 					};
 				},
 			}),
-		},
+		}),
 	},
 });

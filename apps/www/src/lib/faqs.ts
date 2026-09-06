@@ -44,7 +44,7 @@ export const PRICING_FAQS: FaqItem[] = [
 	{
 		question: "Is there a hosted or cloud version of Elmo?",
 		answer:
-			"Managed cloud hosting is coming soon for teams that would rather not run their own infrastructure. Until then, you can self-host Elmo for free or get in touch about early access and managed deployments.",
+			"Yes. Elmo Cloud is a managed cloud hosting for teams that would rather not run their own infrastructure, starting at $29/mo. You can also self-host Elmo for free, or get in touch about white-label and managed deployments.",
 	},
 	{
 		question: "Can agencies white-label Elmo?",
@@ -54,7 +54,7 @@ export const PRICING_FAQS: FaqItem[] = [
 	{
 		question: "What do I need to run Elmo myself?",
 		answer:
-			"Elmo runs as a Docker Compose stack, all managed with a simple CLI — install it, run the interactive init, and bring everything up in a couple of commands. You can use the bundled database or connect Elmo to your own PostgreSQL database.",
+			"Elmo runs as a Docker Compose stack managed by a CLI. Install it, run the interactive init, and it's up in a couple of commands. You can use the bundled database or connect Elmo to your own PostgreSQL database.",
 	},
 	{
 		question: "Do I need a credit card to get started?",
@@ -69,12 +69,12 @@ export const OFFSITE_FAQS: FaqItem[] = [
 	{
 		question: "How does the off-site AEO service work?",
 		answer:
-			"It starts with a consultancy call where we review how AI answer engines currently talk about you and decide which prompts and gaps to target. Within 30 days, that month's posts are planned, written, humanized, and live on high-authority sites, and you get a report tying each placement to the issue it targets. We then keep publishing for you every month, adjusting the targets as your visibility shifts.",
+			"It starts with a call where we review how AI answer engines currently talk about you and pick the prompts and gaps to target. Within 30 days, that month's posts are planned, written, humanized, and live on high-authority sites, and you get a report tying each placement to the issue it targets. We then keep publishing for you every month, adjusting the targets as your visibility shifts.",
 	},
 	{
 		question: "Are the articles AI-generated?",
 		answer:
-			"Yes, and we're upfront about it. We draft with AI, then it is reworked until it lands under a 25% AI-detection score on both ZeroGPT and Pangram before it goes live. That keeps quality high while keeping your brand mentioned in content the models actually trust and cite.",
+			"Yes, and we're upfront about it. We draft with AI, then it is reworked until it lands under a 25% AI-detection score on both ZeroGPT and Pangram before it goes live. The result reads like human writing, and it lives on sites the models cite.",
 	},
 	{
 		question: "Do you offer refunds?",
@@ -84,12 +84,12 @@ export const OFFSITE_FAQS: FaqItem[] = [
 	{
 		question: "How is this different from buying backlinks?",
 		answer:
-			"It's a similar process. However, we make sure the content is useful for AEO, only place it on high-quality sites, and humanize the text to avoid detection. Many backlink services offer very low-quality placements with high spam scores, non-existent traffic, and gamed DRs, and either make you provide your own content or produce content that's low quality and easily detected as AI.",
+			"It's a similar process. Many backlink services offer low-quality placements with high spam scores and no traffic. They also make you write the content yourself — or generate it, which is easy to detect. We do neither: the content is useful for AEO, it only goes on high-quality sites, and it's humanized.",
 	},
 	{
 		question: "Will this help my traditional SEO too?",
 		answer:
-			"These all provide dofollow links on high-DR domains with actual traffic, so your search rankings should benefit as well. But the primary purpose is to provide more data points to AI searches for AEO.",
+			"These all provide dofollow links on high-DR domains with actual traffic, so your search rankings should benefit as well. But the primary goal is giving AI answer engines more reasons to mention you.",
 	},
 ];
 

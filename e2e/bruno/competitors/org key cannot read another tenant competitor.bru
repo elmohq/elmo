@@ -1,0 +1,20 @@
+meta {
+  name: another tenant's competitor is not found
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{baseUrl}}/api/v1/competitors/00000000-0000-0000-0000-410000000001
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}

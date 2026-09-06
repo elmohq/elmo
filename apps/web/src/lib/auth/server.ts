@@ -7,10 +7,10 @@
  * This is the single source of truth for the server-side auth object.
  * All server functions, middleware, and route handlers import from here.
  */
-import { getCloudAuthOptions } from "@workspace/cloud/auth-hooks";
+import { getCloudAuthOptions } from "@workspace/deployment/auth-hooks/cloud";
+import { getWhitelabelAuthOptions } from "@workspace/deployment/auth-hooks/whitelabel";
 import { type CreateAuthOptions, createAuth } from "@workspace/lib/auth/server";
 import { countUsers, provisionLocalOrg } from "@workspace/lib/db/provisioning";
-import { getWhitelabelAuthOptions } from "@workspace/whitelabel/auth-hooks";
 
 /**
  * Local mode hooks: enforce "exactly one user, with an admin org created

@@ -11,7 +11,7 @@
  * write leaves the database untouched — a 403 that still wrote would pass the
  * unit tests.
  */
-import { expect, test } from "@playwright/test";
+import { ABORTED_SSR_STREAM, expect, failedResource, test } from "../../test";
 import {
   COMPETITOR_IDS,
   DEMO_CREDENTIALS,
@@ -20,8 +20,11 @@ import {
   TEST_BRAND_ID,
   TEST_BRAND_NAME,
   TEST_USER,
+  brandUrl,
+  organizationUrl,
 } from "../../fixtures";
 import { withDb } from "../../session";
+import { fillUntilSaveable } from "../../interactions";
 
 const authed = { Authorization: `Bearer ${TEST_API_KEY}` };
 
@@ -79,8 +82,9 @@ test.describe("Demo refuses writes", () => {
     expect(prompt.status()).toBe(200);
   });
 
-  test("saving brand settings from the UI fails and writes nothing", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}/settings/brand`);
+  test("saving brand settings from the UI fails and writes nothing", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(403, "/_serverFn/"));
+    await page.goto(`${brandUrl()}/settings/brand`);
 
     const nameInput = page.getByLabel("Brand Name");
     await expect(nameInput).toBeVisible({ timeout: 30_000 });
@@ -95,6 +99,7 @@ test.describe("Demo refuses writes", () => {
     expect((await writeAttempt).status()).toBe(403);
 
     await expect(page.getByText("Brand details updated successfully!")).toHaveCount(0);
+    await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible();
     expect(await countRows("brands", "id = $1 AND name = $2", [TEST_BRAND_ID, TEST_BRAND_NAME])).toBe(1);
   });
 });
@@ -145,29 +150,55 @@ test.describe("Demo auth is sign-in only", () => {
     await expect(page.getByLabel("Password")).toHaveCount(0);
   });
 
-  test("the register page sends you to sign in", async ({ page }) => {
+  test("the register page sends you to sign in", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(ABORTED_SSR_STREAM);
     await page.goto("/auth/register");
     await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
+  });
+
+  test("the bare app URL opens on sign-in", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
+    await expect(page.getByText("Demo Account")).toBeVisible({ timeout: 30_000 });
   });
 });
 
 test.describe("Demo features", () => {
   test("the demo pill is shown", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}`);
+    await page.goto(`${brandUrl()}`);
     await expect(page.getByText("Demo", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
   });
 
-  test("brands cannot be created", async ({ page }) => {
+  test("nothing can be created", async ({ page }) => {
     await page.goto("/app");
-    await expect(page.getByText("Brand Switcher", { exact: true })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("link", { name: /create new brand/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /create new brand|new brand/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /new organization/i })).toHaveCount(0);
 
-    await page.goto("/app/new");
-    await page.waitForURL(/\/app(?:\/)?$/, { timeout: 30_000 });
+    await page.goto(`${organizationUrl()}/new`);
+    await page.waitForURL(new RegExp(`${organizationUrl()}/settings$`), { timeout: 30_000 });
   });
 
-  test("team settings are unavailable", async ({ page }) => {
-    await page.goto(`/app/${TEST_BRAND_ID}/settings/members`);
-    await page.waitForURL(new RegExp(`/app/${TEST_BRAND_ID}$`), { timeout: 30_000 });
+  test("saving organization settings fails and says why", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(403, "/_serverFn/"));
+    await page.goto(`${organizationUrl()}/settings`);
+
+    const nameField = page.getByLabel("Organization Name", { exact: true });
+    await expect(nameField).toBeEnabled({ timeout: 30_000 });
+
+    const save = page.getByRole("button", { name: "Save", exact: true });
+    await fillUntilSaveable(nameField, "Renamed In Demo", save);
+    await save.click();
+    await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible({ timeout: 30_000 });
+  });
+
+  test("the team page is not offered and not reachable", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(404, `${organizationUrl()}/settings/members`));
+    await page.goto(`${organizationUrl()}/settings`);
+    await expect(
+      page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),
+    ).toHaveCount(0);
+
+    await page.goto(`${organizationUrl()}/settings/members`);
+    await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
   });
 });

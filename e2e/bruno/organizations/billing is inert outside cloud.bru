@@ -1,0 +1,22 @@
+meta {
+  name: billing reports no plan on a deployment without billing
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/v1/organizations/{{orgId}}/billing
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.billingEnabled: isFalsy
+  res.body.plan: isNull
+  res.body.limits: isNull
+}

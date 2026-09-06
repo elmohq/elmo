@@ -107,7 +107,7 @@ export const Route = createFileRoute("/blog/$")({
 	},
 });
 
-export const serverLoader = createServerFn({ method: "GET" })
+const serverLoader = createServerFn({ method: "GET" })
 	.inputValidator((slugs: string[]) => slugs)
 	.handler(async ({ data: slugs }): Promise<BlogPostLoaderData> => {
 		// Lazy import keeps the server-only blog source out of the client bundle

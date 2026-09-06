@@ -1,0 +1,24 @@
+meta {
+  name: the forged restriction reaches nothing in its own org either
+  type: http
+  seq: 29
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/analytics?start={{windowStart}}&end={{windowEnd}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgForgedKey}}
+}
+
+params:query {
+  start: {{windowStart}}
+  end: {{windowEnd}}
+}
+
+assert {
+  res.status: eq 404
+}

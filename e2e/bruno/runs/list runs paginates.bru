@@ -1,0 +1,28 @@
+meta {
+  name: runs paginate
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}/runs?start={{windowStart}}&end={{windowEnd}}&page=1&limit=1
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  start: {{windowStart}}
+  end: {{windowEnd}}
+  page: 1
+  limit: 1
+}
+
+assert {
+  res.status: eq 200
+  res.body.pagination.limit: eq 1
+  res.body.data: length 1
+}

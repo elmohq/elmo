@@ -3,14 +3,12 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { db } from "@workspace/lib/db/db";
-import { brands, prompts } from "@workspace/lib/db/schema";
-import { assertCanAddPrompts } from "@workspace/lib/entitlements";
-import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { count, desc, eq } from "drizzle-orm";
+import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
-import { createPromptJobScheduler } from "@/lib/job-scheduler";
+import { clampedPaging } from "@/lib/api/analytics-range";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
+import { createPrompts, listPrompts } from "@/server/prompts-core";
 
 const createPromptBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
@@ -20,41 +18,30 @@ const createPromptBody = z.object({
 
 export const Route = createFileRoute("/api/v1/prompts/")({
 	server: {
-		handlers: {
+		handlers: withMethodGuard({
 			GET: createApiHandler({
-				handle: async ({ request }) => {
+				scopes: ["prompts:read"],
+				handle: async ({ request, auth }) => {
 					const { searchParams } = new URL(request.url);
-					const brandId = searchParams.get("brandId");
-					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-					const limit = Math.max(1, parseInt(searchParams.get("limit") || "20"));
-					const offset = (page - 1) * limit;
+					const { page, limit, offset } = clampedPaging(searchParams, 1000);
 
-					const whereConditions = brandId ? eq(prompts.brandId, brandId) : undefined;
+					const enabled = searchParams.get("enabled");
+					const { data, total } = await listPrompts({
+						scope: await brandScopeCondition(auth, prompts.brandId),
+						brandId: searchParams.get("brandId") ?? undefined,
+						enabled: enabled === "true" ? true : enabled === "false" ? false : undefined,
+						tags: (searchParams.get("tags") ?? "").split(","),
+						q: searchParams.get("q") ?? undefined,
+						limit,
+						offset,
+					});
 
-					const [totalCountResult] = await db.select({ count: count() }).from(prompts).where(whereConditions);
-					const totalCount = totalCountResult?.count || 0;
-					const totalPages = Math.ceil(totalCount / limit);
-
-					const promptsList = await db
-						.select({
-							id: prompts.id,
-							brandId: prompts.brandId,
-							value: prompts.value,
-							enabled: prompts.enabled,
-							tags: prompts.tags,
-							systemTags: prompts.systemTags,
-							createdAt: prompts.createdAt,
-							updatedAt: prompts.updatedAt,
-						})
-						.from(prompts)
-						.where(whereConditions)
-						.orderBy(desc(prompts.createdAt))
-						.limit(limit)
-						.offset(offset);
-
+					// Both keys hold the same array while callers move to `data`, which
+					// every other list in this API answers with.
 					return {
-						prompts: promptsList,
-						pagination: { page, limit, total: totalCount, totalPages },
+						data,
+						prompts: data,
+						pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
 					};
 				},
 			}),
@@ -62,29 +49,15 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 			POST: createApiHandler({
 				body: createPromptBody,
 				status: 201,
-				handle: async ({ body }) => {
-					const { brandId, value, tags } = body;
-
-					const brandInfo = await db.select().from(brands).where(eq(brands.id, brandId)).limit(1);
-					if (brandInfo.length === 0) {
-						throw new ApiError(400, "Validation Error", `Brand with ID '${brandId}' not found`);
-					}
-
-					const brand = brandInfo[0];
-					await assertCanAddPrompts(brand.organizationId, 1);
-					const userTags = tags ? sanitizeUserTags(tags) : [];
-					const systemTags = computeSystemTags(value, brand.name, brand.website);
-
-					const [newPrompt] = await db
-						.insert(prompts)
-						.values({ brandId, value, tags: userTags, systemTags, enabled: true })
-						.returning();
-
-					await createPromptJobScheduler(newPrompt.id);
-
-					return newPrompt;
+				scopes: ["prompts:write"],
+				handle: async ({ body, auth }) => {
+					const brand = await requireBrandInScope(auth, body.brandId, "body");
+					const [created] = await createPrompts(brand, {
+						prompts: [{ value: body.value, tags: body.tags, enabled: true }],
+					});
+					return created;
 				},
 			}),
-		},
+		}),
 	},
 });

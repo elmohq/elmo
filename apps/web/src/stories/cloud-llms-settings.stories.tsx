@@ -1,13 +1,3 @@
-/**
- * Stories for /app/$brand/settings/llms — where a customer chooses which AI
- * platforms a brand is tracked against.
- *
- * The same page serves self-hosted and cloud, and the difference is the point:
- * self-hosted offers every configured target with no cap, while cloud offers
- * only the plan menu, stops at the plan's pick count, and says what an upgrade
- * would add. The Scraped/API pill is why a customer can tell what a platform's
- * numbers mean; grounded Claude is reported here but assigned per prompt.
- */
 import type { Meta, StoryObj } from "@storybook/react";
 import { PROVIDERS_DOCS_URL } from "@workspace/config/constants";
 import { PLATFORM_TIER_LABELS, STANDARD_PLATFORM_MENU } from "@workspace/config/plans";
@@ -16,7 +6,7 @@ import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import { platformGroupCopy } from "@/lib/platform-groups";
-import { Route } from "@/routes/_authed/app/$brand/settings/llms";
+import { Route } from "@/routes/_authed/app/org/$org/brand/$brand/settings/llms";
 import type { ModelPickerState, PlatformOption } from "@/server/platform-picks";
 import type { PremiumPool } from "@/server/premium-tracking";
 import { setMockLoaderData } from "./_mocks/tanstack-router";
@@ -123,8 +113,23 @@ function loader(picker: ModelPickerState, premium: PremiumPool = NO_PREMIUM_POOL
 function standardPicker(overrides: Partial<ModelPickerState> = {}): ModelPickerState {
 	return {
 		available: menuOptions(STANDARD_PLATFORM_MENU),
+		editable: true,
 		enabledModels: ["chatgpt", "google-ai-mode", "perplexity", "claude"],
 		planLimits: { platformPicks: 4, platformMenu: [...STANDARD_PLATFORM_MENU] },
+		upgradeOptions: [],
+		costBasis: null,
+		unconfiguredPlatforms: [],
+		...overrides,
+	};
+}
+
+/** No plan menu, no pick count, and every configured target tracked. */
+function unmeteredPicker(available: PlatformOption[], overrides: Partial<ModelPickerState> = {}): ModelPickerState {
+	return {
+		available,
+		editable: true,
+		enabledModels: available.map((option) => option.model),
+		planLimits: null,
 		upgradeOptions: [],
 		costBasis: null,
 		unconfiguredPlatforms: [],
@@ -226,6 +231,8 @@ export const StarterSinglePlatform: Story = {
 	render: () => {
 		loader({
 			available: menuOptions(["chatgpt"]),
+			// One pick, one platform: the server reports nothing to change.
+			editable: false,
 			enabledModels: ["chatgpt"],
 			planLimits: { platformPicks: 1, platformMenu: ["chatgpt"] },
 			upgradeOptions: PICKABLE.filter((option) => option.model !== "chatgpt"),
@@ -238,7 +245,7 @@ export const StarterSinglePlatform: Story = {
 		const canvas = within(canvasElement);
 		// The tier names the card and also groups the upgrade options below it.
 		await expect((await canvas.findAllByText(CARD_TITLES.scraped)).length).toBeGreaterThan(0);
-		await expect(await canvas.findByText(/your plan tracks one platform/i)).toBeVisible();
+		await expect(await canvas.findByText("ChatGPT")).toBeVisible();
 		await expect(canvas.queryByRole("checkbox")).toBeNull();
 		await expect(await canvas.findByText(/upgrade to track more platforms/i)).toBeVisible();
 		await expect(await canvas.findByRole("button", { name: /compare plans/i })).toBeVisible();
@@ -251,6 +258,7 @@ export const UpgradeableMidPlan: Story = {
 		const menu = ["chatgpt", "google-ai-mode", "perplexity", "claude"];
 		loader({
 			available: menuOptions(menu),
+			editable: true,
 			enabledModels: ["chatgpt", "claude"],
 			planLimits: { platformPicks: 4, platformMenu: menu },
 			upgradeOptions: PICKABLE.filter((option) => !menu.includes(option.model)),
@@ -275,14 +283,7 @@ export const UpgradeableMidPlan: Story = {
  */
 export const UnlimitedPicks: Story = {
 	render: () => {
-		loader({
-			available: optionsByModel(false, { excludePremium: false }),
-			enabledModels: null,
-			planLimits: null,
-			upgradeOptions: [],
-			costBasis: null,
-			unconfiguredPlatforms: [],
-		});
+		loader(unmeteredPicker(optionsByModel(false, { excludePremium: false })));
 		return <LlmsSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
@@ -299,19 +300,13 @@ export const UnlimitedPicks: Story = {
 /** No targets configured at all: the page says so instead of an empty grid. */
 export const NoTargetsConfigured: Story = {
 	render: () => {
-		loader({
-			available: [],
-			enabledModels: null,
-			planLimits: null,
-			upgradeOptions: [],
-			costBasis: null,
-			unconfiguredPlatforms: [],
-		});
+		loader(unmeteredPicker([], { editable: false }));
 		return <LlmsSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText(/no models are configured on this deployment/i)).toBeVisible();
+		await expect(await canvas.findByText(/not tracked on any platform yet/i)).toBeVisible();
+		await expect(canvas.queryByText(/SCRAPE_TARGETS/)).toBeNull();
 	},
 };
 
@@ -368,14 +363,11 @@ export const NoClaudeAllowance: Story = {
  */
 export const SelfHostedShowsCostEstimates: Story = {
 	render: () => {
-		loader({
-			available: optionsByModel(true, { excludePremium: false }),
-			enabledModels: null,
-			planLimits: null,
-			upgradeOptions: [],
-			costBasis: { enabledPrompts: 40, runsPerDay: 1, replication: 5 },
-			unconfiguredPlatforms: [],
-		});
+		loader(
+			unmeteredPicker(optionsByModel(true, { excludePremium: false }), {
+				costBasis: { enabledPrompts: 40, runsPerDay: 1, replication: 5 },
+			}),
+		);
 		return <LlmsSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
@@ -394,14 +386,11 @@ export const SelfHostedShowsCostEstimates: Story = {
 /** Unticking a platform quotes the bill it would leave behind, before saving. */
 export const SelfHostedTotalFollowsTheSelection: Story = {
 	render: () => {
-		loader({
-			available: optionsByModel(true, { excludePremium: false }),
-			enabledModels: null,
-			planLimits: null,
-			upgradeOptions: [],
-			costBasis: { enabledPrompts: 40, runsPerDay: 1, replication: 5 },
-			unconfiguredPlatforms: [],
-		});
+		loader(
+			unmeteredPicker(optionsByModel(true, { excludePremium: false }), {
+				costBasis: { enabledPrompts: 40, runsPerDay: 1, replication: 5 },
+			}),
+		);
 		return <LlmsSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
@@ -441,46 +430,57 @@ export const SelfHostedSuggestsMorePlatforms: Story = {
 	render: () => {
 		// A minimal instance: only ChatGPT via BrightData.
 		const configured = CLOUD_TARGETS.filter((t) => t.model === "chatgpt");
-		loader({
-			available: configured.map((config) => toOption(config, true)),
-			enabledModels: null,
-			planLimits: null,
-			upgradeOptions: [],
-			costBasis: { enabledPrompts: 12, runsPerDay: 1, replication: 5 },
-			unconfiguredPlatforms: [
+		loader(
+			unmeteredPicker(
+				configured.map((config) => toOption(config, true)),
 				{
-					// Reachable either way, and the two are not equivalent.
-					model: "perplexity",
-					providers: [
-						{ id: "brightdata", name: "BrightData", access: "scraped", docsUrl: `${PROVIDERS_DOCS_URL}#brightdata` },
-						{ id: "oxylabs", name: "Oxylabs", access: "scraped", docsUrl: `${PROVIDERS_DOCS_URL}#oxylabs` },
+					costBasis: { enabledPrompts: 12, runsPerDay: 1, replication: 5 },
+					unconfiguredPlatforms: [
 						{
-							id: "openrouter",
-							name: "OpenRouter",
-							access: "api",
-							docsUrl: `${PROVIDERS_DOCS_URL}#direct-model-apis`,
+							// Reachable either way, and the two are not equivalent.
+							model: "perplexity",
+							providers: [
+								{
+									id: "brightdata",
+									name: "BrightData",
+									access: "scraped",
+									docsUrl: `${PROVIDERS_DOCS_URL}#brightdata`,
+								},
+								{ id: "oxylabs", name: "Oxylabs", access: "scraped", docsUrl: `${PROVIDERS_DOCS_URL}#oxylabs` },
+								{
+									id: "openrouter",
+									name: "OpenRouter",
+									access: "api",
+									docsUrl: `${PROVIDERS_DOCS_URL}#direct-model-apis`,
+								},
+							],
+						},
+						{
+							model: "claude",
+							providers: [
+								{
+									id: "anthropic-api",
+									name: "Anthropic",
+									access: "api",
+									docsUrl: `${PROVIDERS_DOCS_URL}#direct-model-apis`,
+								},
+							],
+						},
+						{
+							model: "copilot",
+							providers: [
+								{
+									id: "brightdata",
+									name: "BrightData",
+									access: "scraped",
+									docsUrl: `${PROVIDERS_DOCS_URL}#brightdata`,
+								},
+							],
 						},
 					],
 				},
-				{
-					model: "claude",
-					providers: [
-						{
-							id: "anthropic-api",
-							name: "Anthropic",
-							access: "api",
-							docsUrl: `${PROVIDERS_DOCS_URL}#direct-model-apis`,
-						},
-					],
-				},
-				{
-					model: "copilot",
-					providers: [
-						{ id: "brightdata", name: "BrightData", access: "scraped", docsUrl: `${PROVIDERS_DOCS_URL}#brightdata` },
-					],
-				},
-			],
-		});
+			),
+		);
 		return <LlmsSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
@@ -519,21 +519,18 @@ export const CloudHidesPlatformSuggestions: Story = {
 
 /**
  * Whitelabel is the case the mode gates exist for. It resolves the same
- * unlimited entitlements as local, so the picker is uncapped and grounded Claude
- * is offerable — but the person looking is the agency's *customer*, not the
- * operator. So the provider cost estimates (the agency's margin) and the
- * unconfigured-platform suggestions (the agency's SCRAPE_TARGETS) both stay
- * hidden, exactly as they are in cloud.
+ * unlimited entitlements as local — but the person looking is the agency's
+ * *customer*, not the operator. So the cost estimates, the platform suggestions
+ * and the picks themselves all stay the agency's.
  *
- * This pins the rendering half of that: given a payload with no cost basis and
- * no suggestions, the page must not invent either — it can't catch the server
- * gate itself widening from `mode === "local"`, since the server function is
- * mocked here.
+ * This pins the rendering half of that — it can't catch the server gates
+ * themselves widening, since the server function is mocked here.
  */
 export const Whitelabel: Story = {
 	render: () => {
 		loader({
 			available: optionsByModel(false, { excludePremium: false }),
+			editable: false,
 			enabledModels: ["chatgpt", "perplexity", "claude"],
 			planLimits: null,
 			upgradeOptions: [],
@@ -544,9 +541,10 @@ export const Whitelabel: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		// Uncapped, like local.
-		await expect(canvas.queryByText(/picks$/)).toBeNull();
-		await expect(await canvas.findByRole("checkbox", { name: /grok/i })).not.toHaveAttribute("aria-disabled", "true");
+		await expect(canvas.queryByRole("checkbox")).toBeNull();
+		await expect(canvas.queryByRole("button", { name: /save changes/i })).toBeNull();
+		await expect(await canvas.findByText(CARD_TITLES.scraped)).toBeVisible();
+		await expect(await canvas.findByText("ChatGPT")).toBeVisible();
 
 		// Operator detail withheld, like cloud.
 		await expect(canvas.queryByText("Track more platforms")).toBeNull();
@@ -555,5 +553,29 @@ export const Whitelabel: Story = {
 
 		// No plan means no grounded Claude pool to report.
 		await expect(canvas.queryByText(CARD_TITLES.premium)).toBeNull();
+	},
+};
+
+/** Demo refuses every write, so the page reports the same way whitelabel does. */
+export const DemoIsNotEditable: Story = {
+	render: () => {
+		loader({
+			available: optionsByModel(false, { excludePremium: false }),
+			editable: false,
+			enabledModels: ["chatgpt", "perplexity"],
+			planLimits: null,
+			upgradeOptions: [],
+			costBasis: null,
+			unconfiguredPlatforms: [],
+		});
+		return <LlmsSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.queryByRole("checkbox")).toBeNull();
+		await expect(await canvas.findByText("ChatGPT")).toBeVisible();
+		await expect(await canvas.findByText("Perplexity")).toBeVisible();
+		// Configured but not tracked — listing it would imply it could be turned on.
+		await expect(canvas.queryByText("Grok")).toBeNull();
 	},
 };

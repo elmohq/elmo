@@ -1,0 +1,37 @@
+meta {
+  name: an admin key is bound by the org's plan
+  type: http
+  seq: 6
+  tags: [
+    cloud
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+body:json {
+  {
+    "brandId": "{{cappedBrandId}}",
+    "value": "Operator prompt past the plan limit"
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq prompt_limit
+}
+
+docs {
+  An admin key bypasses tenancy and scopes — that is what makes it an operator
+  key — but a plan limit protects the organization's billing, not the caller,
+  and the worker would refuse to sample whatever it created past one. Raising a
+  customer's ceiling is a job for entitlement_overrides.
+}

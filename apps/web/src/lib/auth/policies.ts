@@ -9,14 +9,24 @@
  * to one of these functions, making it trivial to write regression tests.
  */
 import { timingSafeEqual } from "node:crypto";
+import { MCP_PATH } from "@workspace/config/constants";
 import type { FeaturesConfig } from "@workspace/config/types";
-
-// ============================================================================
-// Deployment Request Policy
-// ============================================================================
+import { READ_ONLY_ERROR, READ_ONLY_MESSAGE } from "@/lib/read-only-errors";
 
 /** HTTP methods that mutate state */
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+/** Blocked outright: issuance goes through the server function that validates
+ * the key's brand narrowing. */
+const API_KEY_PLUGIN_MUTATIONS = new Set([
+	"/api/auth/api-key/create",
+	"/api/auth/api-key/update",
+	"/api/auth/api-key/delete",
+]);
+
+/** Client registration is an unauthenticated write by design, which a public
+ * demo is the wrong place for. `/api/mcp` itself stays open. */
+const MCP_OAUTH_PREFIX = "/api/auth/oauth2/";
 
 /**
  * Exact better-auth endpoints that remain writable in read-only mode.
@@ -38,7 +48,13 @@ const DEMO_AUTH_WRITE_ALLOWLIST = new Set([
 
 export type DeploymentPolicyResult =
 	| { action: "allow" }
-	| { action: "block"; status: 401 | 403; error: string; message: string }
+	| {
+			action: "block";
+			status: 401 | 403 | 404;
+			error: string;
+			message: string;
+			code?: string;
+	  }
 	| { action: "redirect"; url: string }
 	| { action: "serve-openapi" };
 
@@ -48,36 +64,22 @@ export interface RequestInfo {
 	authorizationHeader?: string | null;
 }
 
-/**
- * Evaluate request-level deployment access policy.
- *
- * Encodes the logic from `deploymentMiddleware` as a pure function:
- * 1. Read-only mode blocks API + server-function writes (except analytics events)
- * 2. Admin access control (disabled / readonly / full)
- * 3. OpenAPI spec serving
- * 4. API v1 key authentication
- */
-export function evaluateDeploymentPolicy(
+/** Doors onto things the app only ever does server-side. */
+function refuseAuthEndpoint(
 	features: FeaturesConfig,
-	request: RequestInfo,
-	options?: { adminApiKeys?: string[] },
-): DeploymentPolicyResult {
-	const { pathname, method, authorizationHeader } = request;
-	const isWriteMethod = WRITE_METHODS.has(method);
-	const isPlausibleEventRoute = pathname === "/api/plausible/event" || pathname === "/api/plausible/event/";
+	pathname: string,
+	isWriteMethod: boolean,
+): DeploymentPolicyResult | null {
+	if (API_KEY_PLUGIN_MUTATIONS.has(pathname.replace(/\/$/, ""))) {
+		return {
+			action: "block",
+			status: 403,
+			error: "Forbidden",
+			message: "API keys are issued from the dashboard, not over this endpoint",
+		};
+	}
 
-	const isApiRoute = pathname.startsWith("/api/");
-	const isServerFunctionRoute = pathname.startsWith("/_server");
-	const isAllowedAuthWrite = DEMO_AUTH_WRITE_ALLOWLIST.has(pathname);
-	const isOrgPluginMutation = pathname.startsWith("/api/auth/organization/") && isWriteMethod;
-
-	// 0. Better-auth org plugin mutations are blocked everywhere over HTTP.
-	// Orgs are created server-side only — via the provisioning module
-	// (local/demo/cloud create-brand, or the admin brands API whitelabel is
-	// provisioned through) — and cloud team invitations go through server
-	// functions that call auth.api in-process, so no mode needs these HTTP
-	// endpoints.
-	if (isOrgPluginMutation) {
+	if (pathname.startsWith("/api/auth/organization/") && isWriteMethod) {
 		return {
 			action: "block",
 			status: 403,
@@ -86,54 +88,103 @@ export function evaluateDeploymentPolicy(
 		};
 	}
 
-	// 1. Read-only mode: block every write except the explicit allowlist
-	// (analytics events + the two auth endpoints a visitor needs to use).
-	if (features.readOnly && isWriteMethod) {
-		if ((isApiRoute || isServerFunctionRoute) && !isPlausibleEventRoute && !isAllowedAuthWrite) {
-			return {
-				action: "block",
-				status: 403,
-				error: "Demo Mode",
-				message: "Write operations are disabled in demo mode",
-			};
-		}
+	if (features.readOnly && pathname.startsWith(MCP_OAUTH_PREFIX)) {
+		return {
+			action: "block",
+			status: 403,
+			error: READ_ONLY_ERROR,
+			message: "Sign-in for MCP is disabled here; connect with an API key instead",
+		};
 	}
 
-	// 2. Serve OpenAPI spec
-	const isOpenApi = pathname === "/api/v1/openapi.json" || pathname === "/api/v1/openapi.json/";
-
-	if (isOpenApi && method === "GET") {
-		return { action: "serve-openapi" };
-	}
-
-	// 3. Public API v1 key authentication (except docs and spec)
-	const isPublicApiV1 = pathname.startsWith("/api/v1/");
-	const isPublicApiV1Doc = pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
-
-	if (isPublicApiV1 && !isPublicApiV1Doc && !isOpenApi) {
-		const keyResult = evaluateApiKeyAuth(authorizationHeader, options?.adminApiKeys ?? []);
-		if (keyResult !== "allow") {
-			return {
-				action: "block",
-				status: 401,
-				error: keyResult.error,
-				message: keyResult.message,
-			};
-		}
-	}
-
-	return { action: "allow" };
+	return null;
 }
 
-// ============================================================================
-// API Key Authentication
-// ============================================================================
+/**
+ * Every MCP call is a POST including the reads, so refusing the transport would
+ * take those with it; the tool registry drops the writers instead. Paths under
+ * the endpoint are included so a request that matches no route answers 404 in
+ * every mode rather than 403 in the read-only ones.
+ */
+const SELF_POLICING_WRITE_PREFIXES = ["/api/v1/", `${MCP_PATH}/`];
+const SELF_POLICING_WRITE_PATHS = [MCP_PATH];
+
+function refusesItsOwnWrites(pathname: string): boolean {
+	const normalized = pathname.replace(/\/$/, "");
+	return (
+		SELF_POLICING_WRITE_PATHS.includes(normalized) ||
+		SELF_POLICING_WRITE_PREFIXES.some((prefix) => `${pathname}/`.startsWith(prefix))
+	);
+}
+
+/** Read-only mode blocks API and server-function writes. Analytics events and
+ *  the demo auth allowlist stay open; the self-policing routes refuse their own
+ *  writes deeper in. */
+function refuseReadOnlyWrite(
+	features: FeaturesConfig,
+	pathname: string,
+	isWriteMethod: boolean,
+): DeploymentPolicyResult | null {
+	if (!features.readOnly || !isWriteMethod || refusesItsOwnWrites(pathname)) return null;
+	if (!pathname.startsWith("/api/") && !pathname.startsWith("/_server")) return null;
+
+	const isPlausibleEventRoute = pathname === "/api/plausible/event" || pathname === "/api/plausible/event/";
+	if (isPlausibleEventRoute || DEMO_AUTH_WRITE_ALLOWLIST.has(pathname)) return null;
+
+	return { action: "block", status: 403, error: READ_ONLY_ERROR, message: READ_ONLY_MESSAGE };
+}
+
+/** Coarse: this only keeps an unmatched /api/v1 request from falling through to
+ *  the SPA and answering with HTML. */
+function refuseUnauthenticatedApiV1(
+	pathname: string,
+	authorizationHeader: string | null | undefined,
+): DeploymentPolicyResult | null {
+	if (!pathname.startsWith("/api/v1/")) return null;
+	if (pathname === "/api/v1/docs" || pathname === "/api/v1/docs/") return null;
+	if (hasBearerToken(authorizationHeader)) return null;
+
+	return {
+		action: "block",
+		status: 401,
+		error: "Unauthorized",
+		message: "Valid API key required as Bearer token in Authorization header",
+		code: "unauthorized",
+	};
+}
+
+/**
+ * Evaluate request-level deployment access policy.
+ *
+ * Encodes the logic from `deploymentMiddleware` as a pure function:
+ * 1. Read-only mode blocks API + server-function writes (except analytics events)
+ * 2. Admin access control (disabled / readonly / full)
+ * 3. OpenAPI spec serving
+ *
+ * No /api/v1 authentication: resolving a key needs a database, and this is pure
+ * and synchronous. createApiHandler is the gate for those routes.
+ */
+export function evaluateDeploymentPolicy(features: FeaturesConfig, request: RequestInfo): DeploymentPolicyResult {
+	const { pathname, method, authorizationHeader } = request;
+	const isWriteMethod = WRITE_METHODS.has(method);
+
+	const authEndpointRefusal = refuseAuthEndpoint(features, pathname, isWriteMethod);
+	if (authEndpointRefusal) return authEndpointRefusal;
+
+	const readOnlyRefusal = refuseReadOnlyWrite(features, pathname, isWriteMethod);
+	if (readOnlyRefusal) return readOnlyRefusal;
+
+	const isOpenApi = pathname === "/api/v1/openapi.json" || pathname === "/api/v1/openapi.json/";
+	if (isOpenApi && method === "GET") return { action: "serve-openapi" };
+
+	return refuseUnauthenticatedApiV1(pathname, authorizationHeader) ?? { action: "allow" };
+}
 
 /**
  * Constant-time string comparison to prevent timing attacks on API keys.
  * Returns true if the strings are equal, false otherwise.
  */
-function timingSafeStringEqual(a: string, b: string): boolean {
+export function timingSafeStringEqual(a: string, b: string): boolean {
 	const bufA = Buffer.from(a);
 	const bufB = Buffer.from(b);
 	if (bufA.length !== bufB.length) {
@@ -145,31 +196,11 @@ function timingSafeStringEqual(a: string, b: string): boolean {
 }
 
 /**
- * Evaluate Bearer token API key authentication.
- * Returns "allow" or an object with error details.
- * Uses timing-safe comparison to prevent timing attacks.
+ * A shape check only. Whether the token is *valid* needs a database lookup and
+ * belongs to createApiHandler.
  */
-export function evaluateApiKeyAuth(
-	authorizationHeader: string | null | undefined,
-	adminApiKeys: string[],
-): "allow" | { error: string; message: string } {
-	if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
-		return {
-			error: "Unauthorized",
-			message: "Valid API key required as Bearer token in Authorization header",
-		};
-	}
-
-	const token = authorizationHeader.substring(7);
-
-	if (adminApiKeys.length === 0 || !adminApiKeys.some((key) => timingSafeStringEqual(key, token))) {
-		return {
-			error: "Unauthorized",
-			message: "Invalid API key",
-		};
-	}
-
-	return "allow";
+function hasBearerToken(header: string | null | undefined): boolean {
+	return typeof header === "string" && header.startsWith("Bearer ") && header.slice(7).trim().length > 0;
 }
 
 /**
@@ -184,57 +215,6 @@ export function getAdminApiKeys(): string[] {
 }
 
 /**
- * Validate a Bearer API key from a request.
- * Convenience wrapper for use in API route handlers.
- */
-export function validateApiKeyFromRequest(request: Request): boolean {
-	const authHeader = request.headers.get("Authorization");
-	return evaluateApiKeyAuth(authHeader, getAdminApiKeys()) === "allow";
-}
-
-// ============================================================================
-// Signup Allowlist
-// ============================================================================
-
-// ============================================================================
-// Auth Function-Level Policies
-// ============================================================================
-
-/**
- * Evaluate admin access requirement.
- * Used by `requireAdminMiddleware`.
- */
-export function evaluateRequireAdmin(isAdmin: boolean): "allow" | "deny" {
-	return isAdmin ? "allow" : "deny";
-}
-
-/**
- * Which org a newly created brand attaches to, in pure form.
- *
- * An explicit choice must be one the caller belongs to. Without one, a single
- * membership is unambiguous and anything more is not — the caller is asked
- * rather than picked for, because the answer decides who can see the brand and
- * which org is billed for it. Never falls back to an arbitrary membership.
- */
-export type BrandOrgChoice =
-	| { ok: true; organizationId: string }
-	| { ok: false; reason: "no-organization" | "forbidden" | "ambiguous" };
-
-export function resolveBrandOrganization(
-	memberOrgIds: readonly string[],
-	requestedOrgId: string | undefined,
-): BrandOrgChoice {
-	if (memberOrgIds.length === 0) return { ok: false, reason: "no-organization" };
-	if (requestedOrgId) {
-		return memberOrgIds.includes(requestedOrgId)
-			? { ok: true, organizationId: requestedOrgId }
-			: { ok: false, reason: "forbidden" };
-	}
-	if (memberOrgIds.length === 1) return { ok: true, organizationId: memberOrgIds[0] };
-	return { ok: false, reason: "ambiguous" };
-}
-
-/**
  * Evaluate read-only mode enforcement.
  * Used by `readOnlyMiddleware` for server functions.
  */
@@ -244,17 +224,13 @@ export function evaluateReadOnly(readOnly: boolean): "allow" | "deny" {
 
 /**
  * Evaluate whether the deployment allows the user to create brands from the UI.
- * Used by the create-brand server function. Local mode is the only mode that
- * allows it — whitelabel brands are provisioned through the admin API, demo is
- * read-only.
+ * Used by the create-brand server function. True in local and cloud, which sells
+ * brands by the plan — whitelabel brands are provisioned through the admin API,
+ * demo is read-only.
  */
 export function evaluateRequireCanCreateBrands(canCreateBrands: boolean): "allow" | "deny" {
 	return canCreateBrands ? "allow" : "deny";
 }
-
-// ============================================================================
-// Route Guard Policies
-// ============================================================================
 
 export type RouteGuardResult = "allow" | "redirect-to-login" | "not-found";
 
@@ -274,12 +250,4 @@ export function evaluateAuthedRouteGuard(session: unknown | null): RouteGuardRes
 export function evaluateAdminRouteGuard(isAdmin: boolean): RouteGuardResult {
 	if (!isAdmin) return "not-found";
 	return "allow";
-}
-
-/**
- * Evaluate the `/app/$brand` layout guard.
- * Mirrors the `loader` in `_authed/app/$brand.tsx`.
- */
-export function evaluateBrandRouteGuard(hasAccess: boolean): RouteGuardResult {
-	return hasAccess ? "allow" : "not-found";
 }

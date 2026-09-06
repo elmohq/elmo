@@ -1,0 +1,23 @@
+meta {
+  name: a demo deployment still answers reads
+  type: http
+  seq: 1
+  tags: [
+    demo
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.brands: isArray
+}

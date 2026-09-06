@@ -400,12 +400,20 @@ export type Citation = {
 	citationIndex: number;
 };
 
+export const CITATION_TITLE_MAX_LENGTH = 256;
+
+export function normalizeCitationTitle(title: unknown): string | undefined {
+	if (typeof title !== "string" || !title) return undefined;
+	const chars = Array.from(title);
+	return chars.length > CITATION_TITLE_MAX_LENGTH ? chars.slice(0, CITATION_TITLE_MAX_LENGTH).join("") : title;
+}
+
 function parseCitationUrl(url: string, title: string | undefined, idx: number): Citation | null {
 	try {
 		const parsed = new URL(url);
 		return {
 			url,
-			title: title || undefined,
+			title: normalizeCitationTitle(title),
 			domain: parsed.hostname.replace(/^www\./, ""),
 			citationIndex: idx,
 		};

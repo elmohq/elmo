@@ -1,0 +1,21 @@
+meta {
+  name: tags require prompts:read
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/tags
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgAnalyticsOnlyKey}}
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq insufficient_scope
+  res.body.message: contains prompts:read
+}

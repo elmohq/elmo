@@ -129,15 +129,10 @@ async function openPremium(canvasElement: HTMLElement, says: RegExp) {
 	await userEvent.click(await premiumTrigger(canvasElement, says));
 }
 
-/**
- * The premium column, which only appears when the workspace has an allowance.
- * The pool is org-wide, so the count includes prompts belonging to the org's
- * other brands — which this editor cannot show but which still spend it.
- */
 export const PremiumColumn: StoryObj = {
 	render: () => (
 		<Harness
-			premium={{ total: 20, assignedElsewhere: 4, brandId: "mock-brand-id" }}
+			premium={{ total: 20, assignedElsewhere: 4 }}
 			initial={[
 				...entries(["best crm for small business"], { premiumModels: ["claude"] }),
 				...entries(["cheapest project management tool"]),
@@ -164,7 +159,7 @@ export const PremiumColumn: StoryObj = {
 export const PremiumSpendsASlotPerModel: StoryObj = {
 	render: () => (
 		<Harness
-			premium={{ total: 20, assignedElsewhere: 0, brandId: "mock-brand-id" }}
+			premium={{ total: 20, assignedElsewhere: 0 }}
 			initial={entries(["best crm for small business"], { premiumModels: ["claude"] })}
 		/>
 	),
@@ -185,7 +180,7 @@ export const PremiumSpendsASlotPerModel: StoryObj = {
 export const PremiumAtCapacity: StoryObj = {
 	render: () => (
 		<Harness
-			premium={{ total: 5, assignedElsewhere: 4, brandId: "mock-brand-id" }}
+			premium={{ total: 5, assignedElsewhere: 4 }}
 			initial={[
 				...entries(["best crm for small business"], { premiumModels: ["claude"] }),
 				...entries(["cheapest project management tool"]),
@@ -211,7 +206,7 @@ export const PremiumAtCapacity: StoryObj = {
 export const PremiumIgnoresDisabledPrompts: StoryObj = {
 	render: () => (
 		<Harness
-			premium={{ total: 20, assignedElsewhere: 0, brandId: "mock-brand-id" }}
+			premium={{ total: 20, assignedElsewhere: 0 }}
 			initial={entries(["most durable trail runners"], { enabled: false })}
 		/>
 	),

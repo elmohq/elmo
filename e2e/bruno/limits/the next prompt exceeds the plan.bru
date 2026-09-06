@@ -1,0 +1,30 @@
+meta {
+  name: the next prompt exceeds the plan
+  type: http
+  seq: 5
+  tags: [
+    cloud
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{cappedKey}}
+}
+
+body:json {
+  {
+    "brandId": "{{cappedBrandId}}",
+    "value": "Capped tenant prompt 7"
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq prompt_limit
+}

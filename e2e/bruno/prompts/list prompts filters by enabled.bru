@@ -1,0 +1,37 @@
+meta {
+  name: list prompts filtered by enabled state
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?brandId={{brandId}}&enabled=false
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  brandId: {{brandId}}
+  enabled: false
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("only disabled prompts come back", function() {
+    const prompts = res.getBody().data;
+    expect(prompts.length, "the previous case disabled one").to.be.at.least(1);
+    for (const prompt of prompts) expect(prompt.enabled).to.equal(false);
+  });
+
+  test("the prompt disabled a moment ago is one of them", function() {
+    const ids = res.getBody().data.map((prompt) => prompt.id);
+    expect(ids).to.include(bru.getVar("disabledPromptId"));
+  });
+}

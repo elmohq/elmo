@@ -1,0 +1,20 @@
+meta {
+  name: an empty Bearer token is refused
+  type: http
+  seq: 26
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer
+}
+
+assert {
+  res.status: eq 401
+  res.body.code: eq unauthorized
+}

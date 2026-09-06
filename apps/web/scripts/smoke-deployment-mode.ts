@@ -10,8 +10,8 @@
  * deployments must keep booting unchanged while cloud lands (issue #8).
  *
  * Runs the real shared-package boot path via tsx — no build, no live DB.
- * createAuth() only constructs the better-auth instance (drizzle's pg pool is
- * lazy), so a dummy DATABASE_URL is enough.
+ * createAuth() returns as soon as the instance is constructed, so a dummy
+ * DATABASE_URL is enough for what this checks.
  *
  * Lives in apps/web because that package depends on every @workspace/* package
  * this script boots; the script itself imports only @workspace/* entrypoints
@@ -155,10 +155,13 @@ async function smokeMode(mode: SmokeMode): Promise<string[]> {
 	// 3. auth initialization — dynamic import so DATABASE_URL is live before db.ts runs
 	try {
 		const { createAuth } = await import("@workspace/lib/auth/server");
-		const { getWhitelabelAuthOptions } = await import("@workspace/whitelabel/auth-hooks");
-		const { getCloudAuthOptions } = await import("@workspace/cloud/auth-hooks");
+		const { getWhitelabelAuthOptions } = await import("@workspace/deployment/auth-hooks/whitelabel");
+		const { getCloudAuthOptions } = await import("@workspace/deployment/auth-hooks/cloud");
 		const options = getAuthOptions(mode, getWhitelabelAuthOptions, getCloudAuthOptions);
 		const auth = createAuth(options);
+		// Initialization rejects against the dummy DATABASE_URL; left alone that is
+		// an unhandled rejection and takes the runner down mid-sweep.
+		auth.$context.catch(() => {});
 		if (typeof auth.handler !== "function" || typeof auth.api !== "object") {
 			failures.push("auth initialized without a handler/api");
 		}

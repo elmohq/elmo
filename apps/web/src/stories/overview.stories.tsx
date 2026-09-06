@@ -1,12 +1,7 @@
-/**
- * Stories for the brand Overview page (/app/$brand). Renders the real
- * DashboardPage with mocked brand + dashboard/share-of-voice data so the page
- * can be viewed without auth or a database.
- */
 import type { Meta, StoryObj } from "@storybook/react";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
-import { Route } from "@/routes/_authed/app/$brand/index";
+import { Route } from "@/routes/_authed/app/org/$org/brand/$brand/index";
 
 // The route file exports only `Route` (route files must, for code-splitting).
 // Render its component via the route options — the mock exposes `options`.

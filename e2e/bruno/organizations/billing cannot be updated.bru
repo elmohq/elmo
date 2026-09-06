@@ -1,0 +1,32 @@
+meta {
+  name: billing cannot be updated
+  type: http
+  seq: 10
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/organizations/{{orgId}}/billing
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+body:json {
+  {
+    "plan": "business"
+  }
+}
+
+assert {
+  res.status: eq 405
+  res.body.code: eq method_not_allowed
+}
+
+tests {
+  test("the resource says what it does accept", function() {
+    expect(res.getHeader("allow")).to.equal("GET");
+  });
+}

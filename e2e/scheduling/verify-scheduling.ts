@@ -142,7 +142,8 @@ if (scenario === "local") {
 
   await client.query("UPDATE subscription SET status = 'active' WHERE id = 'sub-verify-1'");
   await boss.send("schedule-maintenance", { source: "verify" }, { retryLimit: 0 });
-  await waitFor(async () => (await runCount(prompt.id)) > 3, 120000, "revival runs");
+  await waitFor(async () => (await runCount(prompt.id)) >= 6, 120000, "revival runs");
+  await new Promise((r) => setTimeout(r, 5000));
   const revived = await runCount(prompt.id);
   assert(revived === 6, `resubscribe: maintenance revives the chain and due targets run (got ${revived})`);
 } else {

@@ -1,0 +1,28 @@
+meta {
+  name: the carve-out stops at organizations
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgNoScopesKey}}
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq insufficient_scope
+  res.body.message: contains brands:read
+}
+
+docs {
+  These assertions are coupled to the single-org key model: a key is bound to
+  exactly one organization by referenceId (DESIGN.md §1.2 marks that as a
+  decision point). If key ownership ever moves to user + live membership, a key
+  could reach several organizations and these are expected to change.
+}

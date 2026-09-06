@@ -1,5 +1,13 @@
 # @elmohq/cli
 
+## 0.3.0
+
+### Patch Changes
+
+- 3ba2e5a: `elmo init` now says up front that a managed cloud option exists, and what it costs, before walking through self-hosted setup.
+- 1f46b62: Fix broken docs link in `elmo init` and the LLMs settings page.
+- 5b90bbc: The worker now gets time to finish in-flight jobs when a deployment stops or upgrades, instead of being killed mid-evaluation.
+
 ## 0.2.19
 
 ### Patch Changes

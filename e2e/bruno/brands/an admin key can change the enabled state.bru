@@ -1,0 +1,26 @@
+meta {
+  name: an admin key can change a brand's enabled state
+  type: http
+  seq: 27
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/brands/{{nikeSecondBrandId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+body:json {
+  {
+    "enabled": false
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.enabled: isFalsy
+}

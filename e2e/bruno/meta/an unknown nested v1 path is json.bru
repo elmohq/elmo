@@ -1,0 +1,24 @@
+meta {
+  name: an unknown nested /api/v1 path answers JSON too
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/brands/default/nope/deeper
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq not_found
+}

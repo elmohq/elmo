@@ -1,0 +1,31 @@
+meta {
+  name: me describes an org key
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/me
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.keyType: eq organization
+  res.body.organizationId: eq default
+  res.body.brandIds: isNull
+  res.body.rateLimit.limit: isNumber
+  res.body.rateLimit.window: eq minute
+}
+
+tests {
+  test("the key reports the scopes it was issued with", function() {
+    expect(res.getBody().scopes).to.include("prompts:write");
+    expect(res.getBody().scopes).to.include("billing:read");
+  });
+}

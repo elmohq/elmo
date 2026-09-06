@@ -1,0 +1,29 @@
+meta {
+  name: the last prompt the plan allows is accepted
+  type: http
+  seq: 4
+  tags: [
+    cloud
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{cappedKey}}
+}
+
+body:json {
+  {
+    "brandId": "{{cappedBrandId}}",
+    "value": "Capped tenant prompt 6"
+  }
+}
+
+assert {
+  res.status: eq 201
+}

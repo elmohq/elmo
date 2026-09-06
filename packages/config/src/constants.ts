@@ -107,3 +107,11 @@ export const DEFAULT_CHART_COLORS = [
 	"#db2206",
 	"#1c5451",
 ];
+
+/** Here rather than beside the auth server so the deployment policy rules can
+ * read it without pulling better-auth and a database pool into them. */
+export const MCP_PATH = "/api/mcp";
+
+/** Where an interrupted MCP sign-in resumes. Named here so the sign-in page
+ * need not know the auth base path or the plugin's own. */
+export const MCP_AUTHORIZE_ENDPOINT = "/api/auth/oauth2/authorize";
