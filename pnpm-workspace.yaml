@@ -3,8 +3,11 @@ packages:
   - "packages/*"
   - "e2e"
 
+# satori loads harfbuzzjs as CJS from disk at runtime (it is externalized, not
+# bundled — see packages/og/src/vite-plugin.ts), so the Nitro dep trace has to be
+# able to resolve it from the app root.
 publicHoistPattern:
-  - "@takumi-rs/core-*"
+  - "harfbuzzjs"
 
 overrides:
   "@types/react": "^19.2.14"
