@@ -40,6 +40,14 @@ overrides:
   # @better-auth/core is pinned alongside better-auth itself in packages/lib; the plugins declare a wider
   # range on core, and two copies of core break the plugin object and auth.api types.
   "@better-auth/core": "~1.7.2"
+  # jose is a peer of @better-auth/core, so a second copy of it splits core in two and
+  # breaks those same types. Anchor the v6 line to the version packages/lib pins; the v4
+  # and v5 lines belong to unrelated consumers and are left alone.
+  "jose@^6": "6.2.10"
+  # rolldown 1.2.6 emits an SSR bundle that exports a binding it never declares, so the
+  # built web server dies on boot. 1.2.7 fixes it; vite asks for ~1.2.4 and would otherwise
+  # stay on 1.2.6, so pin the floor for the whole tree.
+  rolldown: "^1.2.7"
   uuid: "^14.0.2"
   shell-quote: "^1.8.5"
   ws: "^8.20.1"
