@@ -1,0 +1,11 @@
+# `recommended` only warns on these four, and a warning does not fail CI.
+# Unused components are how the spec accumulates schemas nothing serves, and an
+# example that contradicts its own schema is the one kind of drift no response
+# check can catch: nothing ever returns it.
+extends:
+  - recommended
+rules:
+  no-unused-components: error
+  no-invalid-media-type-examples: error
+  no-invalid-parameter-examples: error
+  no-invalid-schema-examples: error

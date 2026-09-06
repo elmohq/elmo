@@ -12,6 +12,7 @@
     "build": "turbo build",
     "lint": "biome check --diagnostic-level=error --config-path=biome.json .",
     "lint:fix": "biome check --write --diagnostic-level=error --config-path=biome.json .",
+    "lint:spec": "pnpm --filter @workspace/api-spec lint:spec",
     "test": "turbo test",
     "format": "biome format --write --config-path=biome.json .",
     "knip": "knip",
