@@ -17,7 +17,6 @@ const BASE_PATH = new URL(SPEC.servers[0].url, "http://x").pathname.replace(/\/$
 
 const METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 
-// A 3.1 type is a string or a union of them, and null is one of the members.
 const typesOf = (schema) => (Array.isArray(schema.type) ? schema.type : schema.type ? [schema.type] : []);
 
 function resolve(schema) {
@@ -25,11 +24,10 @@ function resolve(schema) {
 		const name = schema.$ref.replace("#/components/schemas/", "");
 		return resolve(SPEC.components.schemas[name]);
 	}
-	// How a nullable $ref is spelled, since a union is the only way to widen one.
 	if (schema?.anyOf) {
 		const { anyOf, ...siblings } = schema;
 		const members = anyOf.filter((member) => member.type !== "null");
-		// Any other union goes unchecked rather than checked against one arm.
+		// Unchecked, rather than checked against one arm of a real union.
 		if (members.length !== 1) return {};
 		const merged = { ...resolve(members[0]), ...siblings };
 		if (members.length === anyOf.length) return merged;
