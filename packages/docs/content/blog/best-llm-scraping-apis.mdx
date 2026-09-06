@@ -52,9 +52,9 @@ faq:
 
 - The price spread between the cheapest and most expensive provider is about 15x for identical work. Tracking one prompt across ChatGPT and Google AI Mode for a month costs roughly $0.15 on [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) and $2.25 on [Olostep](https://olostep.com/?ref=elmo).
 - Headline per-run pricing is the wrong number to compare. If you're only tracking a handful of prompts, a provider without a minimum monthly payment might be better. If you're tracking at scale, you may want to check the volume pricing for each provider.
-- Coverage is not uniform. [Cloro](https://cloro.dev?fpr=elmo), [BrightData](https://get.brightdata.com/67h1b7h0shcn), and [Olostep](https://olostep.com/?ref=elmo) reach all six surfaces; [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) cannot reach Gemini or Copilot; [DataForSEO](https://dataforseo.com/?aff=184966) has no Perplexity scraper.
+- Coverage is not uniform. [Cloro](https://affiliate.cloro.dev/elmo?sid=blog), [BrightData](https://get.brightdata.com/67h1b7h0shcn), and [Olostep](https://olostep.com/?ref=elmo) reach all six surfaces; [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) cannot reach Gemini or Copilot; [DataForSEO](https://dataforseo.com/?aff=184966) has no Perplexity scraper.
 - Reliability varies more than price does, and it is the variable nobody publishes, and a failed scrape is a hole in your prompt's history that you cannot backfill.
-- Google AI Overview scrapers are the least reliable across most scraping providers, except for [Cloro](https://cloro.dev?fpr=elmo).
+- Google AI Overview scrapers are the least reliable across most scraping providers, except for [Cloro](https://affiliate.cloro.dev/elmo?sid=blog).
 - Latency ranges from seconds to individual runs of nearly 19 minutes. It rarely matters for scheduled tracking but matters enormously for anything a user is waiting on.
 
 ## What an LLM scraping API actually does
@@ -88,7 +88,7 @@ The assumption is five runs a day across two surfaces, ChatGPT and Google AI Mod
 |---|---|---|---|
 | [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) | $0.50 / 1K results on Micro | ~$0.15 | $49/mo plan (≈325 prompts) |
 | [BrightData](https://get.brightdata.com/67h1b7h0shcn) | ~$0.0015 / record | ~$0.45 | Pay-as-you-go, $10 minimum |
-| [Cloro](https://cloro.dev?fpr=elmo) | 11 credits / prompt / day | ~$0.65 | $30/mo plan (≈22 prompts) |
+| [Cloro](https://affiliate.cloro.dev/elmo?sid=blog) | 11 credits / prompt / day | ~$0.65 | $30/mo plan (≈22 prompts) |
 | [DataForSEO](https://dataforseo.com/?aff=184966) | $0.004 / page (live) | ~$1.20 | $50 minimum top-up |
 | [Olostep](https://olostep.com/?ref=elmo) | ~5× BrightData | ~$2.25 | Pay-as-you-go |
 
@@ -108,7 +108,7 @@ We run every provider against every surface it supports, several times a day, an
 
 | Provider | Success rate | Median latency | Slowest run |
 |---|:---:|:---:|:---:|
-| [Cloro](https://cloro.dev?fpr=elmo) | 100% | 40s | 3m05s |
+| [Cloro](https://affiliate.cloro.dev/elmo?sid=blog) | 100% | 40s | 3m05s |
 | [BrightData](https://get.brightdata.com/67h1b7h0shcn) | 95% | 49s | 8m47s |
 | [DataForSEO](https://dataforseo.com/?aff=184966) | 95% | 11s | 1m05s |
 | [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) | 83% | 33s | 9m08s |
@@ -133,17 +133,17 @@ Clean across all six surfaces, with good documentation and an API that is pleasa
 
 It costs slightly more per run than [BrightData](https://get.brightdata.com/67h1b7h0shcn) and it is plan-based rather than pay-as-you-go, so the $30 floor stings on very small projects.
 
-It is also the provider we put our own money behind: [Cloro](https://cloro.dev?fpr=elmo) is the primary data source for Elmo Cloud, so the numbers in the table above are the same ones our paying customers depend on. Ahrefs, Scrunch, and Evertune run on it too.
+It is also the provider we put our own money behind: [Cloro](https://affiliate.cloro.dev/elmo?sid=blog) is the primary data source for Elmo Cloud, so the numbers in the table above are the same ones our paying customers depend on. Ahrefs, Scrunch, and Evertune run on it too.
 
 <Callout title="Best for">Teams that want one provider to cover everything and would rather not think about it again.</Callout>
 
-<ProviderCTA href="https://cloro.dev?fpr=elmo" name="Cloro" />
+<ProviderCTA href="https://affiliate.cloro.dev/elmo?sid=blog" name="Cloro" />
 
 ### BrightData
 
-A common default for web scraping in general, and reasonably so. Pay-as-you-go with no monthly minimum (although you have to pay $10 up front), a little cheaper per run than [Cloro](https://cloro.dev?fpr=elmo), and a battle-tested dataset collector for each major surface. Only Google AI Overview is a real weak point in terms of reliability.
+A common default for web scraping in general, and reasonably so. Pay-as-you-go with no monthly minimum (although you have to pay $10 up front), a little cheaper per run than [Cloro](https://affiliate.cloro.dev/elmo?sid=blog), and a battle-tested dataset collector for each major surface. Only Google AI Overview is a real weak point in terms of reliability.
 
-Two trade-offs. It is slower than [Cloro](https://cloro.dev?fpr=elmo) on identical surfaces, which does not matter for scheduled tracking and does if a user is waiting. And Google AI Overview is its weak spot at 71%, well below the 96–98% it manages everywhere else.
+Two trade-offs. It is slower than [Cloro](https://affiliate.cloro.dev/elmo?sid=blog) on identical surfaces, which does not matter for scheduled tracking and does if a user is waiting. And Google AI Overview is its weak spot at 71%, well below the 96–98% it manages everywhere else.
 
 <Callout title="Best for">Low volume, or anyone who wants to pay only for what they use.</Callout>
 
@@ -181,7 +181,7 @@ Pay-as-you-go with a $50 minimum top-up and no subscription, and the tiered queu
 
 ## How to choose
 
-- **What's the best overall?** [Cloro](https://cloro.dev?fpr=elmo). It covers everything at a reasonable price and rarely fails. It's what we use for Elmo Cloud.
+- **What's the best overall?** [Cloro](https://affiliate.cloro.dev/elmo?sid=blog). It covers everything at a reasonable price and rarely fails. It's what we use for Elmo Cloud.
 - **Only tracking 10–20 prompts?** Consider [BrightData](https://get.brightdata.com/67h1b7h0shcn) or [DataForSEO](https://dataforseo.com/?aff=184966). Both are pay-as-you-go, with $10 and $50 minimums.
 - **Need Gemini or Copilot?** Don't use [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32).
 
