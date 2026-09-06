@@ -8,7 +8,8 @@
 	},
 	"type": "module",
 	"exports": {
-		"./render": "./src/render.ts",
+		"./render": "./src/render.tsx",
+		"./fonts": "./src/fonts.ts",
 		"./rasterize": "./src/rasterize.ts",
 		"./vite-plugin": "./src/vite-plugin.ts",
 		"./virtual": "./src/virtual.d.ts",
