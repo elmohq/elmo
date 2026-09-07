@@ -131,20 +131,6 @@ describe("categorizeDomain priority", () => {
 		expect(cat("theresanaiforthat.com")).toBe("reviews");
 	});
 
-	it("claims country editions of a tracked domain", () => {
-		const b = new Set(["nike.com"]);
-		const c = new Set(["hubspot.com"]);
-		expect(categorizeDomain("nike.com.br", b, c)).toBe("brand");
-		expect(categorizeDomain("nike.co.uk", b, c)).toBe("brand");
-		expect(categorizeDomain("nike.in", b, c)).toBe("brand");
-		expect(categorizeDomain("hubspot.de", b, c)).toBe("competitor");
-		// only the country suffix may differ: a shared name on another gTLD is not the same company
-		expect(categorizeDomain("nike.io", b, c)).toBe("other");
-		expect(categorizeDomain("nikeshoes.br", b, c)).toBe("other");
-		// and a publisher keeps its own category rather than being claimed by name
-		expect(categorizeDomain("bbc.co.uk", new Set(["bbc.com"]), c)).toBe("editorial");
-	});
-
 	it("brand and competitor always win over list categories", () => {
 		const b = new Set(["amazon.com"]); // hypothetically the brand's own domain
 		const c = new Set(["github.com", "g2.com"]); // hypothetically tracked competitors

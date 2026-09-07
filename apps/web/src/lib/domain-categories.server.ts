@@ -275,8 +275,8 @@ const DEVELOPER_DOMAINS = new Set([
 // in "developer" without enumerating every vendor.
 const DEVELOPER_HOST_PREFIX_RE = /^(docs?|developers?|dev|devs|api|apis|sdks?|codelabs|git|engineering)\./;
 
-// Mirrors, proxies, and country fronts of the big code hosts (qgithub.com,
-// github.leishennb.icu) — the host carrying the code host's name is the signal.
+// Mirrors and proxies of the big code hosts (qgithub.com, github.leishennb.icu)
+// — the host carrying the code host's name is the signal.
 const CODE_HOST_MIRROR_RE = /(github|gitlab|bitbucket)/;
 
 // Press-release distribution wires — small, finite, unambiguous.
@@ -777,68 +777,6 @@ const DOMAIN_CATEGORY_CHECKS: [(domain: string) => boolean, CitationCategory][] 
 	[hasEditorialHostPrefix, "editorial"],
 ];
 
-// Second-level labels a country registry puts its generic namespaces under
-// (nike.com.br, nike.co.uk, example.or.jp).
-const COUNTRY_SECOND_LEVELS = new Set(["com", "co", "net", "org", "edu", "gov", "ac", "or", "ne", "gob", "govt"]);
-
-// Two-letter TLDs sold as generic namespaces rather than used as a country's
-// own. A domain under one of these is its own site, not a local edition.
-const GENERIC_TWO_LETTER_TLDS = new Set([
-	"io",
-	"ai",
-	"co",
-	"me",
-	"tv",
-	"cc",
-	"ly",
-	"sh",
-	"so",
-	"to",
-	"gg",
-	"fm",
-	"am",
-	"is",
-	"st",
-	"ws",
-	"im",
-	"vc",
-	"ag",
-	"bz",
-	"mn",
-	"nu",
-	"pw",
-	"re",
-	"sc",
-	"tk",
-	"ml",
-	"ga",
-	"cf",
-	"gq",
-]);
-
-/**
- * Country storefronts of a tracked domain: nike.com.br and nike.co.uk for
- * nike.com, hubspot.de for hubspot.com. Only the public suffix may differ, and
- * only for a country-code one, so a shared name on an unrelated gTLD
- * (acme.com vs acme.io) is not treated as the same company.
- */
-function isCountryVariant(domain: string, tracked: Set<string>): boolean {
-	const parts = domain.split(".");
-	if (parts.length < 2) return false;
-	const label = parts[0];
-	const suffix = parts.slice(1);
-	// Accept "<label>.<cc>" and "<label>.<generic sld>.<cc>" only.
-	const tld = suffix[suffix.length - 1];
-	if (suffix.length > 2 || tld.length !== 2) return false;
-	if (suffix.length === 1 && GENERIC_TWO_LETTER_TLDS.has(tld)) return false;
-	if (suffix.length === 2 && !COUNTRY_SECOND_LEVELS.has(suffix[0])) return false;
-	for (const t of tracked) {
-		const tParts = t.split(".");
-		if (tParts.length >= 2 && tParts[0] === label && t !== domain) return true;
-	}
-	return false;
-}
-
 export function categorizeDomain(
 	domain: string,
 	brandDomains: Set<string>,
@@ -846,13 +784,7 @@ export function categorizeDomain(
 ): CitationCategory {
 	if (inDomainSet(domain, brandDomains)) return "brand";
 	if (inDomainSet(domain, competitorDomains)) return "competitor";
-	const category = DOMAIN_CATEGORY_CHECKS.find(([matches]) => matches(domain))?.[1];
-	if (category) return category;
-	// Checked after the curated lists so a country edition of a publisher stays
-	// editorial rather than being claimed by a same-named brand.
-	if (isCountryVariant(domain, brandDomains)) return "brand";
-	if (isCountryVariant(domain, competitorDomains)) return "competitor";
-	return "other";
+	return DOMAIN_CATEGORY_CHECKS.find(([matches]) => matches(domain))?.[1] ?? "other";
 }
 
 /**
