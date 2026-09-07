@@ -8,7 +8,7 @@
 
 import { IconBrandGoogle } from "@tabler/icons-react";
 import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
-import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
+import { CLOUD_ENTRY_PRICE_USD, MONEY_BACK_GUARANTEE_DAYS } from "@workspace/config/plans";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
@@ -16,13 +16,15 @@ import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Separator } from "@workspace/ui/components/separator";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
+import { startSessionRecording, stopSessionRecording, trackEvent, trackEventBeforeNavigation } from "@/lib/posthog";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
+import { markVerificationPending } from "@/lib/signup-funnel";
 
 export const Route = createFileRoute("/auth/register")({
 	validateSearch: z.object({
@@ -86,10 +88,19 @@ export function RegisterForm({
 	const [resending, setResending] = useState(false);
 	const source = isCloud ? "cloud-signup" : "self-hosted-signup";
 
+	// Only where someone is deciding whether to pay; a self-hosted admin
+	// creating the bootstrap account is not a funnel.
+	useEffect(() => {
+		if (!isCloud) return;
+		startSessionRecording();
+		return stopSessionRecording;
+	}, [isCloud]);
+
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		setError(null);
 		setLoading(true);
+		trackEvent("signup_started", { method: "email", ref: incomingRef });
 
 		try {
 			const result = await authClient.signUp.email({
@@ -105,7 +116,10 @@ export function RegisterForm({
 				return;
 			}
 
+			trackEvent("signup_completed", { method: "email", ref: incomingRef });
+
 			if (isCloud) {
+				markVerificationPending({ ref: incomingRef });
 				setPendingVerification(true);
 				setLoading(false);
 				return;
@@ -147,7 +161,7 @@ export function RegisterForm({
 			title={isCloud ? "Start tracking your AI visibility" : "Create your admin account"}
 			subtitle={
 				isCloud
-					? `Plans start at $${CLOUD_ENTRY_PRICE_USD}/mo. Cancel any time.`
+					? `Plans start at $${CLOUD_ENTRY_PRICE_USD}/mo. Cancel any time, ${MONEY_BACK_GUARANTEE_DAYS}-day money-back guarantee.`
 					: "This is the owner account for your self-hosted instance."
 			}
 			pitch={<SalesPanel variant={isCloud ? "cloud" : "self-hosted"} source={source} />}
@@ -159,7 +173,10 @@ export function RegisterForm({
 						type="button"
 						variant="outline"
 						className="w-full"
-						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: safeReturnTo(returnTo) })}
+						onClick={() => {
+							trackEventBeforeNavigation("signup_started", { method: "google", ref: incomingRef });
+							authClient.signIn.social({ provider: "google", callbackURL: safeReturnTo(returnTo) });
+						}}
 					>
 						<IconBrandGoogle className="size-4" />
 						Continue with Google

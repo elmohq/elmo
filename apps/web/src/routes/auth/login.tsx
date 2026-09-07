@@ -17,11 +17,12 @@ import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Separator } from "@workspace/ui/components/separator";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
+import { trackEventBeforeNavigation } from "@/lib/posthog";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
@@ -140,10 +141,10 @@ export function SSOLogin({ destination = "/app" }: { destination?: string }) {
 
 export function DemoLogin({ destination = "/app" }: { destination?: string }) {
 	const [error, setError] = useState<string | null>(null);
-	const [loading, setLoading] = useState(false);
+	const [loading, setLoading] = useState(true);
+	const attempted = useRef(false);
 
-	async function handleSubmit(e: React.FormEvent) {
-		e.preventDefault();
+	const signIn = useCallback(async () => {
 		setError(null);
 		setLoading(true);
 
@@ -159,10 +160,23 @@ export function DemoLogin({ destination = "/app" }: { destination?: string }) {
 			setError("Something went wrong. Please try again.");
 			setLoading(false);
 		}
+	}, [destination]);
+
+	// The credentials are public, so there is nothing for a visitor to type:
+	// the page signs them in on arrival, and the button is only for a retry.
+	useEffect(() => {
+		if (attempted.current) return;
+		attempted.current = true;
+		void signIn();
+	}, [signIn]);
+
+	function handleSubmit(e: React.FormEvent) {
+		e.preventDefault();
+		void signIn();
 	}
 
 	return (
-		<FullPageCard title="Sign in">
+		<FullPageCard title={loading ? "Signing in to the demo..." : "Sign in"}>
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
 				<DemoCredentialsCallout />
 				{error && (
@@ -228,6 +242,7 @@ export function EmailPasswordLogin({
 				return;
 			}
 
+			trackEventBeforeNavigation("login_completed", { method: "email" });
 			window.location.href = destination;
 		} catch {
 			setError("Something went wrong. Please try again.");
@@ -248,7 +263,10 @@ export function EmailPasswordLogin({
 						type="button"
 						variant="outline"
 						className="w-full"
-						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: destination })}
+						onClick={() => {
+							trackEventBeforeNavigation("login_started", { method: "google" });
+							authClient.signIn.social({ provider: "google", callbackURL: destination });
+						}}
 					>
 						<IconBrandGoogle className="size-4" />
 						Continue with Google
