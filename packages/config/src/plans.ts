@@ -485,3 +485,16 @@ export const CLOUD_SIGNUP_URL = `${CLOUD_APP_URL}/auth/register`;
 
 /** Lowest self-serve monthly price among all plans. */
 export const CLOUD_ENTRY_PRICE_USD = Math.min(...PLAN_KEYS.map((key) => PLANS[key].monthlyPriceUsd));
+
+/**
+ * The plan singled out wherever the ladder is shown. Starter is the price the
+ * site leads with, but it tracks one platform once a day; Basic is the first
+ * plan that delivers what the homepage describes, so it is the one to point at.
+ */
+export const RECOMMENDED_PLAN: PlanKey = "basic";
+
+/**
+ * How long after first checkout a customer can ask for a full refund. Quoted
+ * wherever a plan is sold, so it lives with the plans rather than in copy.
+ */
+export const MONEY_BACK_GUARANTEE_DAYS = 7;
