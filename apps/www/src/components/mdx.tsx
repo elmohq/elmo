@@ -2,6 +2,7 @@ import { FeedbackBlock } from "@workspace/docs/components/feedback/client";
 import type { ActionResponse, BlockFeedback } from "@workspace/docs/components/feedback/schema";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import type { MDXComponents } from "mdx/types";
+import { CloudCallout } from "@/components/cloud-callout";
 import { ProviderCTA } from "@/components/provider-cta";
 import { YouTubeEmbed } from "@/components/youtube-embed";
 
@@ -24,6 +25,7 @@ export function getMDXComponents(components?: MDXComponents) {
 		),
 		YouTube: YouTubeEmbed,
 		ProviderCTA,
+		CloudCallout,
 		...components,
 	} satisfies MDXComponents;
 }

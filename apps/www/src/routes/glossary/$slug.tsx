@@ -1,5 +1,7 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
+import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { CloudSignupCTA, SelfHostCTA } from "@/components/cta-buttons";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { type GlossaryTerm, getGlossaryTerm, glossaryTerms } from "@/data/glossary";
@@ -115,19 +117,15 @@ function GlossaryTermPage() {
 					<div className="mx-auto max-w-3xl px-4 text-center md:px-6">
 						<h2 className="font-heading text-2xl text-zinc-950">See it in your own data</h2>
 						<p className="mx-auto mt-3 max-w-xl text-zinc-600">
-							Elmo is an open-source AI visibility platform. Self-host it for free and track how AI answer engines
-							mention and cite your brand.
+							Elmo is an open-source AI visibility platform. Run it in our cloud from ${CLOUD_ENTRY_PRICE_USD}/mo or
+							self-host it for free, and track how AI answer engines mention and cite your brand.
 						</p>
-						<div className="mt-6 flex flex-wrap justify-center gap-3">
-							<Link
-								to="/docs"
-								className="inline-flex h-9 items-center rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700"
-							>
-								Get started
-							</Link>
+						<div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+							<CloudSignupCTA source="marketing-glossary" />
+							<SelfHostCTA source="marketing-glossary" />
 							<a
 								href="/ai-visibility-tools"
-								className="inline-flex h-9 items-center rounded-md border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 hover:text-zinc-950"
+								className="inline-flex h-8 items-center px-1 text-sm font-medium text-zinc-600 hover:text-zinc-950"
 							>
 								Compare tools
 							</a>

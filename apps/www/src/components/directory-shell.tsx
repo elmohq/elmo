@@ -1,8 +1,10 @@
 import { Link } from "@tanstack/react-router";
+import { CLOUD_ENTRY_PRICE_USD, MONEY_BACK_GUARANTEE_DAYS } from "@workspace/config/plans";
 import { Badge } from "@workspace/ui/components/badge";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
+import { CloudSignupCTA, SelfHostCTA } from "./cta-buttons";
 
 export function DirectoryBackLink({ label = "AI Visibility Tool Directory" }: { label?: string }) {
 	return (
@@ -54,14 +56,13 @@ export function DirectoryElmoBanner({
 				<div className="rounded-md border border-blue-200 bg-blue-50/40 p-6">
 					<h2 className="font-heading text-xl text-zinc-950">Elmo: the open-source alternative</h2>
 					<p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-600">{pitch}</p>
-					<div className="mt-4 flex flex-wrap gap-3">
-						<Link to="/docs" className={buttonVariants({ size: "sm" })}>
-							Deploy Elmo
-						</Link>
+					<div className="mt-4 flex flex-wrap items-center gap-2">
+						<CloudSignupCTA source="marketing-directory" />
+						<SelfHostCTA source="marketing-directory" />
 						<Link
 							to="/ai-visibility-tools/$slug"
 							params={{ slug: comparison.slug }}
-							className={buttonVariants({ variant: "outline", size: "sm" })}
+							className={buttonVariants({ variant: "ghost", size: "sm" })}
 						>
 							Elmo vs {comparison.name}
 							<ArrowRight className="h-3.5 w-3.5" />
@@ -79,21 +80,12 @@ export function ElmoCta() {
 			<div className="mx-auto max-w-3xl px-4 text-center md:px-6">
 				<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">Ready to track your AI visibility?</h2>
 				<p className="mx-auto mt-4 max-w-xl text-lg text-balance text-zinc-600">
-					Deploy Elmo in minutes and start monitoring how ChatGPT, Claude, and Google AI Overviews talk about your
-					brand. Open source, self-hosted, free.
+					Start in our cloud from ${CLOUD_ENTRY_PRICE_USD}/mo with a {MONEY_BACK_GUARANTEE_DAYS}-day money-back
+					guarantee, or self-host the same open-source product for free.
 				</p>
-				<div className="mt-8 flex flex-wrap justify-center gap-3">
-					<Link to="/docs" className={buttonVariants({ size: "sm" })}>
-						Deploy Elmo
-					</Link>
-					<a
-						href="https://github.com/elmohq/elmo"
-						target="_blank"
-						rel="noopener noreferrer"
-						className={buttonVariants({ variant: "outline", size: "sm" })}
-					>
-						View on GitHub
-					</a>
+				<div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+					<CloudSignupCTA source="marketing-directory" />
+					<SelfHostCTA source="marketing-directory" />
 				</div>
 			</div>
 		</section>
