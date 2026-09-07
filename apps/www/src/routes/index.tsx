@@ -8,7 +8,7 @@ import { Hero } from "@/components/hero";
 import { Navbar } from "@/components/navbar";
 import { Pricing } from "@/components/pricing";
 import { Stats } from "@/components/stats";
-import { SpeakeasyTestimonial, TradeSitesTestimonial } from "@/components/testimonial";
+import { TradeSitesTestimonial } from "@/components/testimonial";
 import { HOME_FAQS } from "@/lib/faqs";
 import { canonicalUrl, faqJsonLd, ogMeta, SITE_NAME, softwareApplicationJsonLd } from "@/lib/seo";
 
@@ -43,7 +43,6 @@ function HomePage() {
 			<main>
 				<Hero />
 				<Stats />
-				<SpeakeasyTestimonial />
 				<Features />
 				<TradeSitesTestimonial />
 				<Community />
