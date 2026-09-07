@@ -1,5 +1,5 @@
 import { Link, useLoaderData } from "@tanstack/react-router";
-import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
+import { cloudLoginUrl, cloudSignupUrl } from "@workspace/config/referrals";
 import { Button } from "@workspace/ui/components/button";
 import {
 	NavigationMenu,
@@ -9,16 +9,22 @@ import {
 } from "@workspace/ui/components/navigation-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { ArrowRight } from "lucide-react";
+import { trackCta } from "@/lib/analytics";
 import { formatStarCount } from "@/lib/github-stars";
 import { Logo } from "./logo";
 
 const navigationLinks = [
+	{ href: "/features", label: "Features" },
 	{ href: "/pricing", label: "Pricing" },
 	{ href: "/changelog", label: "Changelog" },
 	{ href: "/roadmap", label: "Roadmap" },
 	{ href: "/vision", label: "Vision" },
 	{ href: "/docs", label: "Docs" },
 ];
+
+const SIGNUP_URL = cloudSignupUrl("marketing-navbar");
+// A customer coming back had no way in from the site short of the sign-up page.
+const LOGIN_URL = cloudLoginUrl("marketing-navbar");
 
 export function Navbar() {
 	const rootData = useLoaderData({ from: "__root__" });
@@ -69,6 +75,15 @@ export function Navbar() {
 											</NavigationMenuLink>
 										</NavigationMenuItem>
 									))}
+									<NavigationMenuItem className="w-full border-t border-zinc-200 pt-1">
+										<NavigationMenuLink
+											href={LOGIN_URL}
+											onClick={() => trackCta("cloud-login", "marketing-navbar")}
+											className="py-1.5"
+										>
+											Log in
+										</NavigationMenuLink>
+									</NavigationMenuItem>
 								</NavigationMenuList>
 							</PopoverContent>
 						</Popover>
@@ -123,10 +138,18 @@ export function Navbar() {
 						)}
 					</a>
 					<a
-						href={CLOUD_SIGNUP_URL}
+						href={LOGIN_URL}
+						onClick={() => trackCta("cloud-login", "marketing-navbar")}
+						className="hidden h-8 items-center px-2 text-sm font-medium text-zinc-600 hover:text-zinc-950 md:inline-flex"
+					>
+						Log in
+					</a>
+					<a
+						href={SIGNUP_URL}
+						onClick={() => trackCta("cloud-signup", "marketing-navbar")}
 						className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
 					>
-						Sign up
+						Get started
 						<ArrowRight className="size-3.5" />
 					</a>
 				</div>
