@@ -1,5 +1,6 @@
-import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
+import { CLOUD_ENTRY_PRICE_USD, MONEY_BACK_GUARANTEE_DAYS } from "@workspace/config/plans";
 import { bookDemoUrl } from "@workspace/config/referrals";
+import { trackCta } from "@/lib/analytics";
 import { externalRel } from "@/lib/external-link";
 import { CloudSignupCTA, QuietCTA, SelfHostCTA } from "./cta-buttons";
 import { QuickstartBlock } from "./quickstart-block";
@@ -21,13 +22,16 @@ export function CTA() {
 							Start tracking AI answers today.
 						</h2>
 						<p className="mt-5 max-w-[52ch] text-pretty text-zinc-600 md:text-lg">
-							Sign up for the cloud and we run everything for you from ${CLOUD_ENTRY_PRICE_USD}/mo, or run the same
-							open-source product on your own infra for free.
+							Sign up for the cloud and we run everything for you from ${CLOUD_ENTRY_PRICE_USD}/mo, backed by a{" "}
+							{MONEY_BACK_GUARANTEE_DAYS}-day money-back guarantee. Or run the same open-source product on your own
+							infra for free.
 						</p>
 						<div className="mt-7 flex flex-wrap items-center gap-2">
-							<CloudSignupCTA />
-							<SelfHostCTA />
-							<QuietCTA href="https://github.com/elmohq/elmo">View source</QuietCTA>
+							<CloudSignupCTA source="marketing-cta" />
+							<SelfHostCTA source="marketing-cta" />
+							<QuietCTA href="https://github.com/elmohq/elmo" source="marketing-cta" destination="github">
+								View source
+							</QuietCTA>
 						</div>
 						{/* A fourth button would flatten the three above it, so the call
 						    that suits someone still deciding is offered as a sentence. */}
@@ -37,6 +41,7 @@ export function CTA() {
 								href={DEMO_URL}
 								target="_blank"
 								rel={externalRel(DEMO_URL)}
+								onClick={() => trackCta("book-demo", "marketing-cta")}
 								className="font-medium text-zinc-700 underline underline-offset-2 hover:text-zinc-950"
 							>
 								Book a 30-minute demo
