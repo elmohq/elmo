@@ -1,6 +1,4 @@
-import { Link } from "@tanstack/react-router";
-import { buttonVariants } from "@workspace/ui/components/button";
-import { ArrowRight } from "lucide-react";
+import { CloudSignupCTA, SelfHostCTA } from "./cta-buttons";
 
 const LINK = "font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900";
 
@@ -137,8 +135,8 @@ export function AiVisibilitySoftwareHub() {
 							</p>
 							<p>
 								That matters in a market full of opaque scoring and inflated pricing. With Elmo you own your data and
-								avoid vendor lock-in: the self-hosted core is free, with a managed cloud option on the way. To see how
-								it compares with the rest of the field, read our roundup of the{" "}
+								avoid vendor lock-in: the self-hosted core is free, and Elmo Cloud runs it for you from $29/mo. To see
+								how it compares with the rest of the field, read our roundup of the{" "}
 								<a className={LINK} href="/blog/best-ai-visibility-tools">
 									best AI visibility tools
 								</a>{" "}
@@ -149,19 +147,9 @@ export function AiVisibilitySoftwareHub() {
 								.
 							</p>
 						</div>
-						<div className="mt-8 flex flex-wrap gap-3">
-							<Link to="/docs" className={buttonVariants({ size: "sm" })}>
-								Read the docs
-								<ArrowRight className="size-3.5" />
-							</Link>
-							<a
-								href="https://github.com/elmohq/elmo"
-								target="_blank"
-								rel="noopener noreferrer"
-								className={buttonVariants({ variant: "outline", size: "sm" })}
-							>
-								Star on GitHub
-							</a>
+						<div className="mt-8 flex flex-wrap items-center gap-2">
+							<CloudSignupCTA source="marketing-directory" />
+							<SelfHostCTA source="marketing-directory" />
 						</div>
 					</div>
 				</div>

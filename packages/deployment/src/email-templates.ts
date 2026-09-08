@@ -6,6 +6,8 @@
  * organization name) are HTML-escaped before landing in markup.
  */
 
+import { MONEY_BACK_GUARANTEE_DAYS } from "@workspace/config/plans";
+
 export interface EmailContent {
 	subject: string;
 	html: string;
@@ -44,10 +46,10 @@ export function verificationEmail(input: { url: string }): EmailContent {
 		subject: "Verify your email address",
 		html: wrapHtml(
 			"Verify your email address",
-			"Click the button below to verify your email and finish signing up.",
+			`Click the button below to verify your email and finish signing up. Every Elmo Cloud plan is backed by a ${MONEY_BACK_GUARANTEE_DAYS}-day money-back guarantee.`,
 			url,
 		),
-		text: `Verify your email address by visiting this link: ${url}`,
+		text: `Verify your email address by visiting this link: ${url}\n\nEvery Elmo Cloud plan is backed by a ${MONEY_BACK_GUARANTEE_DAYS}-day money-back guarantee.`,
 	};
 }
 

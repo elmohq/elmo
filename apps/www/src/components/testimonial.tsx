@@ -30,10 +30,6 @@ function Testimonial({ quote, author, company, companyUrl, mark }: CustomerQuote
 	);
 }
 
-export function SpeakeasyTestimonial() {
-	return <Testimonial {...CUSTOMER_QUOTES.speakeasy} />;
-}
-
 export function TradeSitesTestimonial() {
 	return <Testimonial {...CUSTOMER_QUOTES.tradesites} />;
 }

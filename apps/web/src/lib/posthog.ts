@@ -32,6 +32,34 @@ export function trackEvent(
 	posthog.capture(eventName, properties);
 }
 
+/**
+ * For an event fired by a click that immediately leaves the page (a checkout
+ * redirect, an OAuth hop): sent as a beacon at once, so the navigation cannot
+ * cancel it.
+ */
+export function trackEventBeforeNavigation(
+	eventName: string,
+	properties?: Record<string, string | number | boolean | undefined>,
+): void {
+	if (!initialized) return;
+	posthog.capture(eventName, properties, { send_instantly: true, transport: "sendBeacon" });
+}
+
+/**
+ * Recording is off by default and switched on only for the pages where
+ * someone is deciding whether to pay. It records nothing unless the PostHog
+ * project has recordings enabled, and input values are masked by default.
+ */
+export function startSessionRecording(): void {
+	if (!initialized) return;
+	posthog.startSessionRecording();
+}
+
+export function stopSessionRecording(): void {
+	if (!initialized) return;
+	posthog.stopSessionRecording();
+}
+
 export function setPersonProperties(properties: Record<string, string | number | boolean | undefined>): void {
 	if (!initialized) return;
 	posthog.people.set(properties);

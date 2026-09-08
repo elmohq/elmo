@@ -1,7 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
-import { buttonVariants } from "@workspace/ui/components/button";
-import { ArrowRight } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { CloudSignupCTA, QuietCTA, SelfHostCTA } from "@/components/cta-buttons";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { breadcrumbJsonLd, canonicalUrl, ogMeta } from "@/lib/seo";
@@ -211,22 +209,12 @@ function VisionPage() {
 							Elmo is open source, cost-effective, and built for the long haul. If that sounds like your kind of tool,
 							come build with us.
 						</p>
-						<div className="mt-8 flex flex-wrap justify-center gap-3">
-							<a href={CLOUD_SIGNUP_URL} className={buttonVariants({ size: "sm" })}>
-								Start with Cloud
-								<ArrowRight className="size-3.5" />
-							</a>
-							<Link to="/docs" className={buttonVariants({ variant: "outline", size: "sm" })}>
-								Self-host free
-							</Link>
-							<a
-								href="https://github.com/elmohq/elmo"
-								target="_blank"
-								rel="noopener noreferrer"
-								className={buttonVariants({ variant: "outline", size: "sm" })}
-							>
+						<div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+							<CloudSignupCTA source="marketing-vision" />
+							<SelfHostCTA source="marketing-vision" />
+							<QuietCTA href="https://github.com/elmohq/elmo" source="marketing-vision" destination="github">
 								Star on GitHub
-							</a>
+							</QuietCTA>
 						</div>
 					</div>
 				</section>

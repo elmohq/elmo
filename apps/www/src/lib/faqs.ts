@@ -1,3 +1,5 @@
+import { CLOUD_ENTRY_PRICE_USD, MONEY_BACK_GUARANTEE_DAYS } from "@workspace/config/plans";
+
 export interface FaqItem {
 	question: string;
 	answer: string;
@@ -43,8 +45,16 @@ export const PRICING_FAQS: FaqItem[] = [
 	},
 	{
 		question: "Is there a hosted or cloud version of Elmo?",
+		answer: `Yes. Elmo Cloud is managed hosting for teams that would rather not run their own infrastructure, starting at $${CLOUD_ENTRY_PRICE_USD}/mo with a ${MONEY_BACK_GUARANTEE_DAYS}-day money-back guarantee. You can also self-host Elmo for free, or get in touch about white-label and managed deployments.`,
+	},
+	{
+		question: "Is there a free trial?",
+		answer: `No. Every cloud plan comes with a ${MONEY_BACK_GUARANTEE_DAYS}-day money-back guarantee instead: if Elmo isn't right for you in the first week, email hello@elmohq.com and we refund the full amount. If you want to look before paying anything, the live demo is open to everyone and self-hosting is free.`,
+	},
+	{
+		question: "Can I cancel any time?",
 		answer:
-			"Yes. Elmo Cloud is a managed cloud hosting for teams that would rather not run their own infrastructure, starting at $29/mo. You can also self-host Elmo for free, or get in touch about white-label and managed deployments.",
+			"Yes. Cancel from your billing settings whenever you like. Your plan stays active until the end of the period you've paid for, and your data stays readable after that.",
 	},
 	{
 		question: "Can agencies white-label Elmo?",
@@ -58,8 +68,7 @@ export const PRICING_FAQS: FaqItem[] = [
 	},
 	{
 		question: "Do I need a credit card to get started?",
-		answer:
-			"No. Self-hosting Elmo does not require an account or a credit card. Clone the open-source repository, deploy with the CLI, and start tracking your AI visibility.",
+		answer: `Not to self-host: that needs no account and no card. Deploy with the CLI and start tracking. Elmo Cloud is paid from day one, from $${CLOUD_ENTRY_PRICE_USD}/mo, and refundable in full for ${MONEY_BACK_GUARANTEE_DAYS} days.`,
 	},
 ];
 
