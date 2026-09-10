@@ -117,6 +117,18 @@ describe("categorizeDomain priority", () => {
 		expect(cat("news.mit.edu")).toBe("institutional"); // a university newsroom stays institutional
 	});
 
+	it("routes press subdomains to PR, since a release feed is not coverage", () => {
+		expect(cat("press.some-saas.io")).toBe("pr");
+		expect(cat("press.mit.edu")).toBe("institutional"); // a university press office stays institutional
+	});
+
+	it("leaves consumer assistant surfaces unbucketed rather than calling them developer", () => {
+		expect(cat("chatgpt.com")).toBe("other");
+		expect(cat("claude.ai")).toBe("other");
+		expect(cat("perplexity.ai")).toBe("other");
+		expect(cat("gemini.google.com")).toBe("other");
+	});
+
 	it("routes storefronts by host shape and app stores by name", () => {
 		expect(cat("shop.mango.com")).toBe("ecommerce");
 		expect(cat("adsport.store")).toBe("ecommerce");

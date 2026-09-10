@@ -246,14 +246,13 @@ const DEVELOPER_DOMAINS = new Set([
 	"refactoring.guru",
 	"martinfowler.com",
 	// Model providers and LLM tooling — the working end of the "model hub" shelf.
+	// The assistant surfaces themselves (chatgpt.com, claude.ai, perplexity.ai,
+	// gemini.google.com) are consumer products, not developer sources, and stay
+	// unbucketed rather than sit in the wrong one.
 	"openai.com",
-	"chatgpt.com",
 	"anthropic.com",
-	"claude.com",
-	"claude.ai",
 	"mistral.ai",
 	"cohere.com",
-	"perplexity.ai",
 	"deepseek.com",
 	"x.ai",
 	"together.ai",
@@ -264,7 +263,6 @@ const DEVELOPER_DOMAINS = new Set([
 	"llamaindex.ai",
 	"langfuse.com",
 	"modal.com",
-	"gemini.google.com",
 	"ai.google",
 	"vertexai.google.com",
 ]);
@@ -645,7 +643,12 @@ const EDITORIAL_DOMAIN_SET = new Set(EDITORIAL_DOMAINS);
 // A blog/news subdomain is published content whoever owns the apex domain — the
 // editorial counterpart to the forum and developer prefix heuristics. Checked
 // after every other category, so it only claims otherwise-unbucketed hosts.
-const EDITORIAL_HOST_PREFIX_RE = /^(blogs?|news|newsroom|magazine|press)\./;
+const EDITORIAL_HOST_PREFIX_RE = /^(blogs?|news|newsroom|magazine)\./;
+
+// A press subdomain is the company's own release feed rather than a publisher's
+// coverage of it, so it belongs with the wires. Checked as late as the editorial
+// prefix, so a university press office stays institutional.
+const PR_HOST_PREFIX_RE = /^press\./;
 
 // TLDs and second-level domains that indicate institutional/government/academic sites
 const INSTITUTIONAL_TLDS = new Set(["edu", "gov", "mil", "int"]);
@@ -749,6 +752,10 @@ function hasEditorialHostPrefix(domain: string): boolean {
 	return EDITORIAL_HOST_PREFIX_RE.test(domain);
 }
 
+function hasPrHostPrefix(domain: string): boolean {
+	return PR_HOST_PREFIX_RE.test(domain);
+}
+
 function isInstitutionalDomain(domain: string): boolean {
 	if (inDomainSet(domain, INSTITUTIONAL_DOMAINS)) return true;
 	const parts = domain.split(".");
@@ -778,6 +785,7 @@ const DOMAIN_CATEGORY_CHECKS: [(domain: string) => boolean, CitationCategory][] 
 	[isInstitutionalDomain, "institutional"],
 	// Last: a university or agency newsroom (news.mit.edu) is institutional first.
 	[hasEditorialHostPrefix, "editorial"],
+	[hasPrHostPrefix, "pr"],
 ];
 
 export function categorizeDomain(
