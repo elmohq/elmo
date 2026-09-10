@@ -126,14 +126,14 @@ describe("searchapi provider", () => {
 		expect(result.webQueries).toEqual(["unavailable"]);
 	});
 
-	it("drops a source Google served as a redirect it could not resolve", async () => {
-		// The only domain such a link names is google.com, so keeping it would
-		// credit Google for a citation some publisher earned.
+	it("reports a source Google served as a redirect it could not resolve", async () => {
+		// Like the Google Shopping links the other scrapers report, the wrapper is
+		// stored as the provider gave it and excluded from the reports by URL.
 		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(AI_OVERVIEW_SERP)));
 
 		const result = await searchapi.run("google-ai-overview", "best running shoes for beginners", { webSearch: true });
 
-		expect(result.citations.map((c) => c.domain)).toEqual(["runnersworld.com"]);
+		expect(result.citations.map((c) => c.domain)).toEqual(["runnersworld.com", "google.com"]);
 	});
 
 	it("fails a query Google answered without an AI Overview", async () => {

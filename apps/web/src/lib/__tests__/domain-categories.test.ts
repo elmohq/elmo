@@ -139,6 +139,17 @@ describe("Google AI Mode URL detection", () => {
 		expect(isGoogleSurfaceUrl("https://forbes.com/article")).toBe(false);
 	});
 
+	it("keeps an unresolved Google redirect out of the source mix", () => {
+		// A wrapper that could not be resolved names google.com and nothing else,
+		// so it is neither a shopping card nor a search — just not a source.
+		const redirect = "https://www.google.com/goto?url=CAESfAHrOzAV7Y5Bq0cBdDMzIJig5SvhvwHpHzaWS4NhP5AyObe3";
+		expect(isGoogleSurfaceUrl(redirect)).toBe(true);
+		expect(isGoogleShoppingUrl(redirect)).toBe(false);
+		expect(isGoogleSearchUrl(redirect)).toBe(false);
+		// A publisher page that merely starts with the same letters is not one.
+		expect(isGoogleSurfaceUrl("https://developers.google.com/urlshortener")).toBe(false);
+	});
+
 	it("parses product name from the title and skips the placeholder query", () => {
 		expect(parseGoogleProductName(shopping, "U Beauty The Super Hydrator")).toBe("U Beauty The Super Hydrator");
 		expect(parseGoogleSearchQuery(shopping)).toBeNull(); // q=product placeholder

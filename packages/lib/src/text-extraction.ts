@@ -660,23 +660,17 @@ export function extractCitationsFromCloro(rawOutput: any): Citation[] {
 	});
 }
 
-/**
- * Google serves some AI Overview sources as an encrypted redirect. SearchApi
- * resolves them when asked, but a destination it cannot resolve stays wrapped,
- * and the only domain such a link names is google.com — the publisher behind it
- * is unrecoverable, so recording one would attribute the citation to Google.
- */
-function isUnresolvedGoogleRedirect(url: unknown): boolean {
-	return typeof url === "string" && url.startsWith("https://www.google.com/goto?url=");
-}
-
 export function extractCitationsFromSearchapi(rawOutput: any): Citation[] {
 	return collectCitations((add) => {
-		// `reference_links` is what the answer cites. ChatGPT also returns
-		// `web_results`, the full ranked set it retrieved, which is not the same
-		// thing and is deliberately not read.
-		for (const ref of asArray(searchapiAnswer(rawOutput)?.reference_links)) {
-			if (isUnresolvedGoogleRedirect(ref?.link)) continue;
+		// `reference_links` is what the answer cites, on every engine. ChatGPT also
+		// returns `web_results`, the full ranked set it retrieved, which is not the
+		// same thing and is deliberately not read.
+		//
+		// Google's redirect wrappers reach this list when SearchApi could not
+		// resolve one back to its publisher, and they stay: the citations page
+		// excludes them from the source mix by URL, the same way it handles the
+		// Google Shopping deep links the other scrapers report.
+		for (const ref of pluck([searchapiAnswer(rawOutput)], "reference_links")) {
 			add(sourceUrl(ref, "link", "url"), ref?.title ?? ref?.source);
 		}
 	});

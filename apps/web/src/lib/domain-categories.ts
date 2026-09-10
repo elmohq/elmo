@@ -194,9 +194,26 @@ export function isGoogleSearchUrl(url: string): boolean {
 	}
 }
 
-/** Any Google search/shopping surface pulled out of the source-mix donut. */
+/**
+ * Google's own redirect wrapper, e.g. `google.com/goto?url=<encrypted>`. Google
+ * hands AI Overview sources out this way and scrapers resolve them back to the
+ * publisher, but one that can't be resolved arrives still wrapped. The only
+ * domain it names is Google's, so counting it would credit Google for a
+ * citation some publisher earned.
+ */
+export function isGoogleRedirectUrl(url: string): boolean {
+	if (!googleHost(url)) return false;
+	try {
+		const path = new URL(url).pathname.replace(/\/$/, "");
+		return path === "/goto" || path === "/url";
+	} catch {
+		return false;
+	}
+}
+
+/** Any Google search/shopping/redirect surface pulled out of the source-mix donut. */
 export function isGoogleSurfaceUrl(url: string): boolean {
-	return isGoogleShoppingUrl(url) || isGoogleSearchUrl(url);
+	return isGoogleShoppingUrl(url) || isGoogleSearchUrl(url) || isGoogleRedirectUrl(url);
 }
 
 export function parseGoogleProductName(url: string, title?: string | null): string | null {
