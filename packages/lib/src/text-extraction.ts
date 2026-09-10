@@ -331,8 +331,10 @@ export function extractTextFromCloro(rawOutput: any): string {
 	try {
 		const answer = cloroAnswer(rawOutput);
 		if (!answer) return "No content in Cloro output.";
-		// `markdown` first: the AI Overview task is asked for it explicitly, and
-		// `text` is the same answer with its formatting flattened away.
+		// `markdown` first: every task asks for it, and it is the only field that
+		// carries the answer's inline citations — `text` is the same answer with
+		// those and its formatting flattened away. Runs stored before the request
+		// asked for markdown only have `text`, so the fallback stays.
 		for (const key of ["markdown", "text"]) {
 			if (typeof answer[key] === "string" && answer[key].trim()) return answer[key].trim();
 		}
