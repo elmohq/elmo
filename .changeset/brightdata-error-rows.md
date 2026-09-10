@@ -2,4 +2,4 @@
 "@workspace/lib": patch
 ---
 
-A BrightData run that the collector failed on now reports that failure instead of recording the error payload as the chatbot's answer.
+Fixed problem where certain types of BrightData scraping failures wrote the error as a response on a successful prompt run. These cases now fail.

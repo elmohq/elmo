@@ -104,19 +104,8 @@ function rowError(record: Record<string, any>): string | null {
 	return parts.length > 0 ? parts.join(" — ") : null;
 }
 
-/**
- * Exported for tests.
- *
- * `include_errors=true` means a `ready` snapshot can carry a per-input failure
- * rather than an answer — a proxy-layer `no_peers`, a blocked target, a crawler
- * fault. A row with no readable answer is a failed run, not a response whose
- * text happens to be the row itself: mention analysis scores whatever it is
- * handed, so a payload dump standing in for an answer would quietly land in a
- * brand's visibility numbers as a real reply the chatbot never gave.
- *
- * An answer wins over an error field, so a run BrightData flagged but still
- * completed is kept rather than discarded.
- */
+/** Exported for tests. `include_errors=true` means a ready snapshot can carry a
+ *  per-input failure in place of an answer. */
 export function readAnswer(record: Record<string, any>, subject: string): string {
 	const answer = findAnswer(record);
 	if (answer) return answer;
@@ -269,14 +258,13 @@ async function triggerSnapshot(datasetId: string, model: string, prompt: string,
  *  status string doesn't fail the run on the very first poll. */
 const TERMINAL_FAILURE = new Set(["failed", "error", "cancelled"]);
 
-/** BrightData gives up on an input it can't collect at around nine minutes and
- *  finishes the snapshot with an error row naming the reason, so polling has to
- *  outlast that ceiling for a run to report why it failed rather than only that
- *  it did. */
+/** Outlasts the ~9 minutes BrightData takes to finish a stuck input with an
+ *  error row, so a run reports its reason rather than only our own timeout. */
 const POLL_TIMEOUT_MS = 12 * 60 * 1000;
 
 async function pollUntilReady(snapshotId: string): Promise<void> {
-	const deadline = Date.now() + POLL_TIMEOUT_MS;
+	const startedAt = Date.now();
+	const deadline = startedAt + POLL_TIMEOUT_MS;
 
 	for (let attempt = 0; Date.now() < deadline; attempt++) {
 		const status = await getSnapshotStatus(snapshotId);
@@ -288,7 +276,7 @@ async function pollUntilReady(snapshotId: string): Promise<void> {
 		await sleep(pollDelay(attempt));
 	}
 
-	throw new Error(`BrightData snapshot ${snapshotId} timed out after ${POLL_TIMEOUT_MS / 60_000} minutes`);
+	throw new Error(`BrightData snapshot ${snapshotId} timed out after ${Math.round((Date.now() - startedAt) / 1000)}s`);
 }
 
 /** Read snapshot status straight from datasets/v3/progress. We bypass the SDK's

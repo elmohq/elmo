@@ -1,5 +1,23 @@
-import { describe, expect, it } from "vitest";
-import { extractWebQueries, readAnswer } from "./brightdata";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { brightdata, extractWebQueries, readAnswer } from "./brightdata";
+
+vi.mock("@brightdata/sdk", () => ({
+	bdclient: class {
+		scrape = { snapshot: { cancel: vi.fn().mockResolvedValue(undefined), fetch: vi.fn() } };
+		close = vi.fn().mockResolvedValue(undefined);
+	},
+}));
+
+afterEach(() => {
+	vi.clearAllMocks();
+	vi.unstubAllEnvs();
+	vi.unstubAllGlobals();
+	vi.useRealTimers();
+});
+
+function jsonResponse(body: unknown, status = 200): Response {
+	return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+}
 
 describe("extractWebQueries", () => {
 	it("reports the queries a run expanded the prompt into", () => {
@@ -68,5 +86,35 @@ describe("readAnswer", () => {
 
 	it("treats an empty error field as no error at all", () => {
 		expect(() => readAnswer({ error: "", error_code: null }, "chatgpt snapshot sd_5")).toThrow(/no answer/);
+	});
+});
+
+describe("brightdata polling", () => {
+	it("polls a running snapshot past BrightData's nine-minute give-up before abandoning it", async () => {
+		vi.useFakeTimers();
+		vi.stubEnv("BRIGHTDATA_API_TOKEN", "test-token");
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn()
+				.mockImplementation((url: string) =>
+					Promise.resolve(
+						url.includes("/trigger") ? jsonResponse({ snapshot_id: "sd_stuck" }) : jsonResponse({ status: "running" }),
+					),
+				),
+		);
+
+		const promise = brightdata.run("perplexity", "What is a well-reviewed speaker?", { webSearch: true });
+		const settled: Promise<Error> = promise.then(
+			() => {
+				throw new Error("expected the run to reject");
+			},
+			(e: unknown) => e as Error,
+		);
+		await vi.runAllTimersAsync();
+		const error = await settled;
+
+		expect(error.message).toMatch(/sd_stuck timed out/);
+		expect(Number(error.message.match(/timed out after (\d+)s/)?.[1])).toBeGreaterThanOrEqual(9 * 60);
 	});
 });
