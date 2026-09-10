@@ -90,11 +90,31 @@ async function attemptGoogleAiOverview(zone: string, url: string): Promise<Attem
 	};
 }
 
-function normalizeAnswer(record: Record<string, any>): string {
+function findAnswer(record: Record<string, any>): string | null {
 	for (const key of ["answer_text_markdown", "answer_text", "answer", "response_raw", "response", "text", "content"]) {
 		if (typeof record[key] === "string" && record[key].trim()) return record[key].trim();
 	}
-	return JSON.stringify(record).slice(0, 2000);
+	return null;
+}
+
+function rowError(record: Record<string, any>): string | null {
+	const parts = [record.error, record.error_code]
+		.map((value) => (typeof value === "string" ? value.trim() : value ? JSON.stringify(value) : ""))
+		.filter(Boolean);
+	return parts.length > 0 ? parts.join(" — ") : null;
+}
+
+/** Exported for tests. `include_errors=true` means a ready snapshot can carry a
+ *  per-input failure in place of an answer. */
+export function readAnswer(record: Record<string, any>, subject: string): string {
+	const answer = findAnswer(record);
+	if (answer) return answer;
+	const error = rowError(record);
+	throw new Error(
+		error
+			? `BrightData ${subject} returned an error row: ${error}`
+			: `BrightData ${subject} returned a row with no answer`,
+	);
 }
 
 /**
@@ -171,7 +191,7 @@ export const brightdata: Provider = {
 			consumed = true;
 
 			const record = (Array.isArray(payload) ? payload[0] : payload) ?? {};
-			const answer = normalizeAnswer(record);
+			const answer = readAnswer(record, `${model} snapshot ${snapshotId}`);
 
 			const webQueries = extractWebQueries(record);
 			const citations = extractCitationsFromBrightdata(record);
@@ -238,10 +258,15 @@ async function triggerSnapshot(datasetId: string, model: string, prompt: string,
  *  status string doesn't fail the run on the very first poll. */
 const TERMINAL_FAILURE = new Set(["failed", "error", "cancelled"]);
 
-async function pollUntilReady(snapshotId: string): Promise<void> {
-	const maxAttempts = 60;
+/** BrightData publishes no collection deadline, so this is sized past the
+ *  slowest error row a stuck input has been seen to produce — not to any
+ *  documented limit. Too low and their reason never reaches us. */
+const POLL_TIMEOUT_MS = 12 * 60 * 1000;
 
-	for (let attempt = 0; attempt < maxAttempts; attempt++) {
+async function pollUntilReady(snapshotId: string): Promise<void> {
+	const deadline = Date.now() + POLL_TIMEOUT_MS;
+
+	for (let attempt = 0; Date.now() < deadline; attempt++) {
 		const status = await getSnapshotStatus(snapshotId);
 		if (status === "ready") return;
 		if (TERMINAL_FAILURE.has(status)) {
