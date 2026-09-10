@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractWebQueries } from "./brightdata";
+import { extractWebQueries, readAnswer } from "./brightdata";
 
 describe("extractWebQueries", () => {
 	it("reports the queries a run expanded the prompt into", () => {
@@ -34,5 +34,39 @@ describe("extractWebQueries", () => {
 
 	it("reports nothing when the payload carries no query fields", () => {
 		expect(extractWebQueries({ answer_text: "hello" })).toEqual([]);
+	});
+});
+
+describe("readAnswer", () => {
+	it("reads the answer the chatbot gave, preferring the markdown form", () => {
+		expect(readAnswer({ answer_text_markdown: "  **Yes**  ", answer_text: "Yes" }, "chatgpt snapshot sd_1")).toBe(
+			"**Yes**",
+		);
+	});
+
+	it("fails a run BrightData could not collect, naming the reason it gave", () => {
+		const record = {
+			timestamp: "2026-09-06T10:37:52.406Z",
+			input: { url: "https://www.perplexity.ai/", prompt: "best speakers", index: 1 },
+			error: "Crawler error: Unexpected Status 502 (no_peer)",
+			error_code: "no_peers",
+		};
+		expect(() => readAnswer(record, "perplexity snapshot sd_2")).toThrow(
+			/perplexity snapshot sd_2 .*Crawler error: Unexpected Status 502 \(no_peer\).*no_peers/,
+		);
+	});
+
+	it("fails a row with no answer rather than passing the payload off as one", () => {
+		expect(() => readAnswer({ input: { prompt: "best speakers" } }, "gemini snapshot sd_3")).toThrow(
+			/gemini snapshot sd_3/,
+		);
+	});
+
+	it("keeps an answer that arrived alongside an error field", () => {
+		expect(readAnswer({ answer_text: "Yes", error: "partial page load" }, "copilot snapshot sd_4")).toBe("Yes");
+	});
+
+	it("treats an empty error field as no error at all", () => {
+		expect(() => readAnswer({ error: "", error_code: null }, "chatgpt snapshot sd_5")).toThrow(/no answer/);
 	});
 });
