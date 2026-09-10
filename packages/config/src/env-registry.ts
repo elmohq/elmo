@@ -189,6 +189,25 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Oxylabs Web Scraper API password.",
 	},
 	{
+		name: "DATAFORSEO_LOCATION_CODE",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"DataForSEO location code for every scraped SERP surface. Defaults to 2840 (United States). Deployment-wide; per-target localization is a separate concern (#13, #525).",
+	},
+	{
+		name: "BRIGHTDATA_SERP_COUNTRY",
+		scope: "server",
+		requiredBy: "optional",
+		description: "Two-letter country for BrightData's Google AI Overview SERP (`gl`). Defaults to `us`.",
+	},
+	{
+		name: "CLORO_COUNTRY",
+		scope: "server",
+		requiredBy: "optional",
+		description: "Two-letter country Cloro localizes answers to. Defaults to `US`.",
+	},
+	{
 		name: "CLORO_API_KEY",
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",

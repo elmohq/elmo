@@ -3,6 +3,7 @@ import { getCredential } from "../../secrets";
 import { extractCitationsFromBrightdata, extractTextFromBrightdata } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
+import { getBrightdataSerpCountry } from "./locale";
 import { type Attempt, nonEmptyStrings, pollDelay, retryTransient, sleep } from "./scrape-shared";
 
 // Google AI Overview isn't a Web Scraper dataset — it's the AI summary block on
@@ -34,8 +35,8 @@ const BRIGHTDATA_REQUEST_URL = "https://api.brightdata.com/request";
 
 /**
  * Fetch Google's AI Overview through BrightData's SERP API. AI Overview is the
- * AI summary block on a normal results page, so we request a US-English Google
- * SERP as parsed JSON (`brd_json=1`) with `brd_ai_overview=2` — the flag that
+ * AI summary block on a normal results page, so we request an English Google
+ * SERP for BRIGHTDATA_SERP_COUNTRY (default `us`) as parsed JSON (`brd_json=1`) with `brd_ai_overview=2` — the flag that
  * makes BrightData surface the overview; without it AIO shows up in only a
  * fraction of SERPs. This runs through a serp zone (default `sdk_serp`, the zone
  * the BrightData SDK auto-provisions; override with BRIGHTDATA_SERP_ZONE), billed
@@ -44,7 +45,7 @@ const BRIGHTDATA_REQUEST_URL = "https://api.brightdata.com/request";
  */
 function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
 	const zone = process.env.BRIGHTDATA_SERP_ZONE ?? "sdk_serp";
-	const url = `https://www.google.com/search?q=${encodeURIComponent(prompt)}&brd_json=1&brd_ai_overview=2&gl=us&hl=en`;
+	const url = `https://www.google.com/search?q=${encodeURIComponent(prompt)}&brd_json=1&brd_ai_overview=2&gl=${getBrightdataSerpCountry()}&hl=en`;
 
 	return retryTransient(
 		() => attemptGoogleAiOverview(zone, url),

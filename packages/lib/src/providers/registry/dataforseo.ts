@@ -14,12 +14,12 @@ import {
 	createDfsAiApi,
 	createDfsSerpApi,
 	DFS_LANGUAGE_CODE,
-	DFS_LOCATION_CODE,
 	dfsFirstResult,
 	dfsResultOrError,
 	fanOutQueries,
 	isDataforseoConfigured,
 } from "./dataforseo-shared";
+import { getDfsLocationCode } from "./locale";
 import { type Attempt, retryTransient, sanitizeForJson } from "./scrape-shared";
 
 /**
@@ -60,7 +60,7 @@ const SCRAPER_CALLS = {
 		api.chatGptLlmScraperLiveAdvanced([
 			new client.AiOptimizationChatGptLlmScraperLiveAdvancedRequestInfo({
 				keyword: prompt,
-				location_code: DFS_LOCATION_CODE,
+				location_code: getDfsLocationCode(),
 				language_code: DFS_LANGUAGE_CODE,
 				// ChatGPT decides per prompt whether to search; force it so a tracked
 				// run always reflects the browsing experience. Gemini always searches
@@ -72,7 +72,7 @@ const SCRAPER_CALLS = {
 		api.geminiLlmScraperLiveAdvanced([
 			new client.AiOptimizationGeminiLlmScraperLiveAdvancedRequestInfo({
 				keyword: prompt,
-				location_code: DFS_LOCATION_CODE,
+				location_code: getDfsLocationCode(),
 				language_code: DFS_LANGUAGE_CODE,
 			}),
 		]),
@@ -117,7 +117,7 @@ async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
 	const api = createDfsSerpApi();
 	const requestInfo = new client.SerpGoogleAiModeLiveAdvancedRequestInfo({
 		keyword: prompt,
-		location_code: DFS_LOCATION_CODE,
+		location_code: getDfsLocationCode(),
 		language_code: DFS_LANGUAGE_CODE,
 		depth: 10,
 	});
@@ -143,7 +143,7 @@ function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
 	const api = createDfsSerpApi();
 	const requestInfo = new client.SerpGoogleOrganicLiveAdvancedRequestInfo({
 		keyword: prompt,
-		location_code: DFS_LOCATION_CODE,
+		location_code: getDfsLocationCode(),
 		language_code: DFS_LANGUAGE_CODE,
 		depth: 10,
 		// AI Overviews are generated on demand; without this DataForSEO only
