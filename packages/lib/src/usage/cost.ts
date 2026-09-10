@@ -13,6 +13,7 @@
  */
 
 const PROVIDER_COST_ESTIMATES_USD: Record<string, number> = {
+	searchapi: 0.005,
 	olostep: 0.01,
 	brightdata: 0.01,
 	oxylabs: 0.01,

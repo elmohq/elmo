@@ -127,6 +127,7 @@ async function configureProvidersInteractive(env: EnvMap): Promise<"recommended"
 			`     • ${pc.cyan("Cloro")}      — most reliable, every surface, ~$0.65/mo per prompt ($30/mo min)`,
 			`     • ${pc.cyan("BrightData")} — pay-as-you-go and cheaper, but slower, ~$0.45/mo per prompt`,
 			`     • ${pc.cyan("Oxylabs")}    — cheapest per run, no Gemini/Copilot, $49/mo min`,
+			`     • ${pc.cyan("SearchApi")}  — flat per-search, every surface, ~$1.20/mo per prompt ($40/mo min)`,
 			`     • ${pc.cyan("Olostep")}    — premium, built for high volume, ~$2.25/mo per prompt`,
 			`     • ${pc.cyan("DataForSEO")} — pay-as-you-go, scrapers + direct APIs, ~$1.20/mo per prompt`,
 			"",
@@ -168,6 +169,10 @@ async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 			{ value: "cloro" as const, label: "Cloro — most reliable, every surface (~$0.65/mo per prompt, $30/mo min)" },
 			{ value: "brightdata" as const, label: "BrightData — pay-as-you-go, cheaper but slower (~$0.45/mo per prompt)" },
 			{ value: "oxylabs" as const, label: "Oxylabs — cheapest per run, no Gemini/Copilot ($49/mo min)" },
+			{
+				value: "searchapi" as const,
+				label: "SearchApi — flat per-search, every surface (~$1.20/mo per prompt, $40/mo min)",
+			},
 			{ value: "olostep" as const, label: "Olostep — premium, built for high volume (~$2.25/mo per prompt)" },
 			{
 				value: "dataforseo" as const,
@@ -436,7 +441,13 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 		postgres_mode: postgresMode,
 		dev_mode: Boolean(options.dev),
 		setup_mode: setupMode,
-		has_scraper: Boolean(env.BRIGHTDATA_API_TOKEN || env.OLOSTEP_API_KEY || env.OXYLABS_USERNAME || env.CLORO_API_KEY),
+		has_scraper: Boolean(
+			env.BRIGHTDATA_API_TOKEN ||
+				env.SEARCHAPI_API_KEY ||
+				env.OLOSTEP_API_KEY ||
+				env.OXYLABS_USERNAME ||
+				env.CLORO_API_KEY,
+		),
 		has_direct_api: hasDirectApiConfigured(env),
 	});
 

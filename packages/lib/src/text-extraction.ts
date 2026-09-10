@@ -343,6 +343,41 @@ export function extractTextFromCloro(rawOutput: any): string {
 }
 
 /**
+ * SearchApi answers every AI surface in one shape — `markdown`, typed
+ * `text_blocks`, and `reference_links`. Google AI Overview is the exception:
+ * it rides inside a normal Google SERP response, so unwrap it first.
+ */
+export function searchapiAnswer(rawOutput: any): Record<string, any> | null {
+	if (!rawOutput || typeof rawOutput !== "object") return null;
+	const answer = "ai_overview" in rawOutput ? rawOutput.ai_overview : rawOutput;
+	return answer && typeof answer === "object" ? answer : null;
+}
+
+/** Blocks nest their prose under `items`, so walk them for the `answer` strings. */
+function collectSearchapiBlocks(node: any, out: string[], depth = 0): void {
+	if (depth > 8) return;
+	for (const block of asArray(node)) {
+		const answer = textOrNull(block?.answer) ?? textOrNull(block?.code);
+		if (answer) out.push(answer.trim());
+		collectSearchapiBlocks(block?.items, out, depth + 1);
+	}
+}
+
+export function extractTextFromSearchapi(rawOutput: any): string {
+	return firstText("No text content found in SearchApi output.", [
+		() => {
+			const answer = searchapiAnswer(rawOutput);
+			if (!answer) return null;
+			const markdown = textOrNull(answer.markdown);
+			if (markdown) return markdown.trim();
+			const blocks: string[] = [];
+			collectSearchapiBlocks(answer.text_blocks, blocks);
+			return blocks.length > 0 ? blocks.join("\n\n") : null;
+		},
+	]);
+}
+
+/**
  * Extract text content from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
  * because persisted runs may not identify a provider.
@@ -366,6 +401,8 @@ export function extractTextContent(rawOutput: any, providerOrEngine: string): st
 			return extractTextFromDataforseo(rawOutput);
 		case "openrouter":
 			return extractTextFromOpenRouter(rawOutput);
+		case "searchapi":
+			return extractTextFromSearchapi(rawOutput);
 		case "olostep":
 			return extractTextFromOlostep(rawOutput);
 		case "brightdata":
@@ -624,6 +661,28 @@ export function extractCitationsFromCloro(rawOutput: any): Citation[] {
 }
 
 /**
+ * Google serves some AI Overview sources as an encrypted redirect. SearchApi
+ * resolves them when asked, but a destination it cannot resolve stays wrapped,
+ * and the only domain such a link names is google.com — the publisher behind it
+ * is unrecoverable, so recording one would attribute the citation to Google.
+ */
+function isUnresolvedGoogleRedirect(url: unknown): boolean {
+	return typeof url === "string" && url.startsWith("https://www.google.com/goto?url=");
+}
+
+export function extractCitationsFromSearchapi(rawOutput: any): Citation[] {
+	return collectCitations((add) => {
+		// `reference_links` is what the answer cites. ChatGPT also returns
+		// `web_results`, the full ranked set it retrieved, which is not the same
+		// thing and is deliberately not read.
+		for (const ref of asArray(searchapiAnswer(rawOutput)?.reference_links)) {
+			if (isUnresolvedGoogleRedirect(ref?.link)) continue;
+			add(sourceUrl(ref, "link", "url"), ref?.title ?? ref?.source);
+		}
+	});
+}
+
+/**
  * Extract citations from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
  * because persisted runs may not identify a provider.
@@ -641,6 +700,8 @@ export function extractCitations(rawOutput: any, providerOrEngine: string): Cita
 			return extractCitationsFromDataforseo(rawOutput);
 		case "openrouter":
 			return extractCitationsFromOpenRouter(rawOutput);
+		case "searchapi":
+			return extractCitationsFromSearchapi(rawOutput);
 		case "olostep":
 			return extractCitationsFromOlostep(rawOutput);
 		case "brightdata":

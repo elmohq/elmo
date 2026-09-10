@@ -10,14 +10,24 @@ import { assertNotCancelled, link } from "./util.js";
 const CLORO_AFFILIATE = "https://affiliate.cloro.dev/elmo?sid=cli";
 const BRIGHTDATA_AFFILIATE = "https://get.brightdata.com/elmo?sid=cli";
 const OXYLABS_AFFILIATE = "https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32";
+const SEARCHAPI_AFFILIATE = "https://www.searchapi.io/?via=elmo";
 const OLOSTEP_AFFILIATE = "https://olostep.com/?ref=elmo";
 const DATAFORSEO_AFFILIATE = "https://dataforseo.com/?aff=184966";
 
-export type RecommendedScraper = "cloro" | "brightdata" | "oxylabs" | "olostep" | "dataforseo";
+export type RecommendedScraper = "cloro" | "brightdata" | "oxylabs" | "searchapi" | "olostep" | "dataforseo";
 export type DirectApiProvider = "openrouter" | "anthropic" | "openai" | "mistral";
 
 // Surfaces each scraper can track — the first two are the "recommended starter" set.
 const BRIGHTDATA_MODELS = [
+	"chatgpt",
+	"google-ai-mode",
+	"google-ai-overview",
+	"perplexity",
+	"copilot",
+	"gemini",
+] as const;
+
+const SEARCHAPI_MODELS = [
 	"chatgpt",
 	"google-ai-mode",
 	"google-ai-overview",
@@ -179,6 +189,16 @@ export const PROVIDER_PROMPTS: ProviderSpec[] = [
 			{ envKey: "OXYLABS_PASSWORD", message: "Oxylabs password", secret: true, validate: required },
 		],
 		picker: scraperPicker("Oxylabs", "oxylabs", OXYLABS_MODELS),
+	},
+	{
+		id: "searchapi",
+		kind: "scraper",
+		label: "SearchApi",
+		costHint: "flat per-search, every surface — ~$1.20/mo per prompt, $40/mo min",
+		confirmDefault: false,
+		signup: { message: "Sign up and copy your API key", url: SEARCHAPI_AFFILIATE },
+		credentials: [{ envKey: "SEARCHAPI_API_KEY", message: "SearchApi API key", secret: true, validate: required }],
+		picker: scraperPicker("SearchApi", "searchapi", SEARCHAPI_MODELS),
 	},
 	{
 		id: "olostep",

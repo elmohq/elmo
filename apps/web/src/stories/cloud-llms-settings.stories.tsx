@@ -36,7 +36,7 @@ const CLOUD_TARGETS = parseScrapeTargets(
 );
 
 /** Mirrors the server's classification without importing the provider registry. */
-const SCRAPERS = new Set(["brightdata", "olostep", "oxylabs", "cloro", "dataforseo"]);
+const SCRAPERS = new Set(["brightdata", "searchapi", "olostep", "oxylabs", "cloro", "dataforseo"]);
 
 /** The display names describeProvider() returns for these ids. */
 const PROVIDER_NAMES: Record<string, string> = {
