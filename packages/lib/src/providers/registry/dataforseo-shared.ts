@@ -11,9 +11,8 @@ import { type Attempt, nonEmptyStrings } from "./scrape-shared";
 
 const MAX_PROMPT_CHARS = 500;
 
-// Country localization is intentionally not exposed via SCRAPE_TARGETS yet
-// because support differs by DataForSEO surface and underlying model.
-export const DFS_LOCATION_CODE = 2840;
+// Location is deployment-wide and lives in ./locale — see the note there on
+// why per-target localization is deliberately not expressed in SCRAPE_TARGETS.
 export const DFS_LANGUAGE_CODE = "en";
 
 export const isDataforseoConfigured = configuredWhen("DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD");
