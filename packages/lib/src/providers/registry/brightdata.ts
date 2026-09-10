@@ -258,9 +258,9 @@ async function triggerSnapshot(datasetId: string, model: string, prompt: string,
  *  status string doesn't fail the run on the very first poll. */
 const TERMINAL_FAILURE = new Set(["failed", "error", "cancelled"]);
 
-/** Outlasts the ~9 minutes BrightData takes to finish a stuck input with an
- *  error row, so a run reports its reason rather than only our own timeout. */
-const POLL_TIMEOUT_MS = 12 * 60 * 1000;
+/** Exported for tests. Has to stay above BRIGHTDATA_GIVE_UP_MS so a stuck
+ *  input's error row reaches us instead of only our own timeout. */
+export const POLL_TIMEOUT_MS = 12 * 60 * 1000;
 
 async function pollUntilReady(snapshotId: string): Promise<void> {
 	const startedAt = Date.now();
