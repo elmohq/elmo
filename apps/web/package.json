@@ -44,6 +44,7 @@
 		"@workspace/ui": "workspace:*",
 		"auth0": "^6.4.0",
 		"drizzle-orm": "^0.45.2",
+		"harfbuzzjs": "^0.10.0",
 		"html2canvas-pro": "^2.4.1",
 		"lucide-react": "^1.41.0",
 		"pg": "^8.23.0",

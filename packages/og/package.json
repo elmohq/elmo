@@ -18,6 +18,7 @@
 	"dependencies": {
 		"@resvg/resvg-js": "^2.6.2",
 		"@workspace/config": "workspace:*",
+		"harfbuzzjs": "^0.10.0",
 		"react": "^19.2.8",
 		"satori": "^0.33.4"
 	},

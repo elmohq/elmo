@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
-import { embedBinaries, externalizeResvg } from "@workspace/og/vite-plugin";
+import { copyBinaryAssets, embedBinaries, externalizeBinaryDeps, OG_BINARY_DEPS } from "@workspace/og/vite-plugin";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 import pkg from "./package.json" with { type: "json" };
@@ -27,12 +27,13 @@ export default defineConfig({
 	},
 	plugins: [
 		embedBinaries(),
-		externalizeResvg(),
+		externalizeBinaryDeps(),
 		devtools(),
 		tailwindcss(),
 		tanstackStart(),
 		nitro({
-			traceDeps: ["@resvg/resvg-js"],
+			traceDeps: OG_BINARY_DEPS,
+			modules: [copyBinaryAssets()],
 			sourcemap: true,
 			alias: {
 				tslib: tslibEsm,
