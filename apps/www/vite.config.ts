@@ -33,10 +33,6 @@ export default defineConfig({
 		tailwindcss(),
 		tanstackStart(),
 		nitro({
-			// The OG renderer is a native addon: its entry `require`s a platform-specific
-			// `.node` binary no JS bundler can inline, so it has to stay external and be
-			// traced into the server output. Its export map declares only `import`, which
-			// the tracer won't resolve unless that condition is in the list.
 			traceDeps: ["@takumi-rs/core"],
 			exportConditions: ["import"],
 			alias: {

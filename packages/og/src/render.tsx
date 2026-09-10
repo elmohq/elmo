@@ -22,13 +22,11 @@ const ZINC = {
 	200: "#e4e4e7",
 } as const;
 
-// Takumi renders these: styles are inline and only the faces in OG_FONTS exist
-// (Titan One 400, Geist Sans 400/500, Geist Mono 400).
+// Only the faces in OG_FONTS exist.
 const SANS = "Geist Sans";
 const MONO = "Geist Mono";
 const WORDMARK = "Titan One";
 
-/** Accent colors reach us from deployment branding, which doesn't constrain their syntax. */
 function parseHex(color: string): number | undefined {
 	const hex = color.trim().replace(/^#/, "");
 	const full = hex.length === 3 ? [...hex].map((c) => c + c).join("") : hex;
@@ -39,11 +37,7 @@ function withAlpha(rgb: number, alpha: number): string {
 	return `rgba(${(rgb >> 16) & 255},${(rgb >> 8) & 255},${rgb & 255},${alpha})`;
 }
 
-/**
- * The accent haze in the top-right corner. Alpha steps down quadratically across
- * the stops so the glow stays concentrated near its center — a single stop out to
- * the edge washes the whole corner at an even strength.
- */
+// Alpha steps down quadratically so the glow stays concentrated near its center.
 function glowGradient(rgb: number): string {
 	const stops = [0, 0.25, 0.5, 0.75, 1].map((t) => `${withAlpha(rgb, 0.16 * (1 - t) ** 2)} ${t * 60}%`);
 	return `radial-gradient(circle, ${stops.join(", ")})`;
