@@ -643,12 +643,13 @@ const EDITORIAL_DOMAIN_SET = new Set(EDITORIAL_DOMAINS);
 // A blog/news subdomain is published content whoever owns the apex domain — the
 // editorial counterpart to the forum and developer prefix heuristics. Checked
 // after every other category, so it only claims otherwise-unbucketed hosts.
-const EDITORIAL_HOST_PREFIX_RE = /^(blogs?|news|newsroom|magazine)\./;
+const EDITORIAL_HOST_PREFIX_RE = /^(blogs?|news|magazine)\./;
 
-// A press subdomain is the company's own release feed rather than a publisher's
-// coverage of it, so it belongs with the wires. Checked as late as the editorial
-// prefix, so a university press office stays institutional.
-const PR_HOST_PREFIX_RE = /^press\./;
+// A press or newsroom subdomain is the company's own release feed rather than a
+// publisher's coverage of it, so it belongs with the wires. Checked as late as
+// the editorial prefix, so a university press office stays institutional; an
+// outlet that lives at newsroom.<tld> is caught by the editorial list first.
+const PR_HOST_PREFIX_RE = /^(press|newsroom)\./;
 
 // TLDs and second-level domains that indicate institutional/government/academic sites
 const INSTITUTIONAL_TLDS = new Set(["edu", "gov", "mil", "int"]);

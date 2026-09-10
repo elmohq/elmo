@@ -119,7 +119,9 @@ describe("categorizeDomain priority", () => {
 
 	it("routes press subdomains to PR, since a release feed is not coverage", () => {
 		expect(cat("press.some-saas.io")).toBe("pr");
+		expect(cat("newsroom.some-saas.io")).toBe("pr");
 		expect(cat("press.mit.edu")).toBe("institutional"); // a university press office stays institutional
+		expect(cat("newsroom.co.nz")).toBe("editorial"); // an outlet at that apex is still a publisher
 	});
 
 	it("leaves consumer assistant surfaces unbucketed rather than calling them developer", () => {
