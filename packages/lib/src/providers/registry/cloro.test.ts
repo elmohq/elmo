@@ -1,10 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cloro } from "./cloro";
 
-// A completed ChatGPT task `response`: the answer in both shapes Cloro returns
-// it — `markdown` with its inline citations, `text` with them stripped — plus
-// the two source arrays (the `sources` reference panel and the inline
-// `citationPills`), which overlap on one URL to exercise de-duplication.
+// A completed ChatGPT task `response`: the answer text plus the two source
+// arrays (the `sources` reference panel and the inline `citationPills`), which
+// overlap on one URL to exercise de-duplication.
 const CHATGPT_RESPONSE = {
 	text: "The Sonos Era 300 is a well-reviewed speaker released recently.",
 	markdown:
@@ -138,8 +137,7 @@ describe("cloro provider", () => {
 		});
 		expect(fetchMock.mock.calls[1][0]).toBe("https://api.cloro.dev/v1/async/task/task-1");
 
-		// The markdown the task asked for, with its inline citations, not the
-		// flattened `text` beside it.
+		// The markdown the task asked for, not the flattened `text` beside it.
 		expect(result.textContent).toContain("**Sonos Era 300**");
 		// whathifi appears in both `sources` and `citationPills`; techradar only in
 		// the pills — so two distinct citations after de-duplication.
@@ -232,9 +230,8 @@ describe("cloro provider", () => {
 		expect(result.citations.map((c) => c.domain)).toEqual(["cnet.com", "google.com"]);
 	});
 
-	// Markdown is opt-in per task and free, and it is the only field carrying the
-	// answer's inline citations. A surface left out of the request silently
-	// downgrades to `text`, which reads as an answer that cited nothing.
+	// Markdown is opt-in per task, and a surface left out of the request silently
+	// downgrades to `text` — the same answer with its citations stripped.
 	it.each([
 		["chatgpt", "CHATGPT", { markdown: true, searchQueries: true }],
 		["perplexity", "PERPLEXITY", { markdown: true }],

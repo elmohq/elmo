@@ -11,19 +11,6 @@ import { failureDetails, isTransientStatus, pollDelay, queriesFromKeys, response
 // surface that hides its fan-out queries behind an `include` flag.
 type CloroTaskConfig = { taskType: string; field: "prompt" | "query"; include: Record<string, unknown> };
 
-/**
- * Every task asks for markdown, which Cloro only returns when requested.
- *
- * It is the answer as the engine laid it out — headings, lists, tables — and
- * the only field carrying the inline `[label](url)` citations that mark which
- * claim each source backs. The `text` beside it is the same answer with both
- * thrown away, so an answer read from `text` cannot be told apart from one the
- * engine wrote without citing anything. Markdown costs no extra credits.
- *
- * The Google Search task takes the flag inside its `aioverview` block instead:
- * there the answer is one section of a SERP response rather than the response
- * itself, and a top-level `markdown` would mean the whole page.
- */
 const CLORO_TASKS: Record<string, CloroTaskConfig> = {
 	chatgpt: { taskType: "CHATGPT", field: "prompt", include: { markdown: true, searchQueries: true } },
 	perplexity: { taskType: "PERPLEXITY", field: "prompt", include: { markdown: true } },
