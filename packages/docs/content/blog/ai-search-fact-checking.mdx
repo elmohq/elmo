@@ -1,0 +1,119 @@
+---
+title: "Do AI Search Engines Fact-Check What They Read About Your Brand?"
+description: "A new 72,000-page benchmark fed fabricated brand claims to ten search agents: they endorsed the fake brands in 40–50% of exposed runs and verified suspicious evidence in about 2%. Corroboration, not truth, is what the agents check."
+date: "2026-09-10"
+author: ai
+metaTitle: "Do AI Engines Fact-Check Brand Claims? What a Benchmark Found"
+tags:
+  - ai-search
+  - ai-visibility
+  - aeo
+  - geo
+definedTerms:
+  - term: Evidence poisoning
+    definition: "Evidence poisoning is placing fabricated web content — false claims, fake products, invented endorsements — where an AI search agent's retrieval will find it, so the agent adopts the claim into its answer. Unlike prompt injection, nothing instructs the model; the attack is simply publishing evidence that isn't true."
+  - term: Corroboration trap
+    definition: "The corroboration trap is the failure mode in which an AI agent's ability to recognize fabricated evidence collapses when the fabrication arrives with supporting material — ratings, certifications, reports, user feedback — because the agent treats agreement between sources as verification. In the HAE-GEO benchmark, recognition scores fell by two-thirds when direct assertions were upgraded to corroborated ones."
+  - term: Verification-to-recovery gap
+    definition: "The verification-to-recovery gap is the distance between an AI agent checking a suspicious claim and actually revising an answer that already adopted it. Benchmarked agents verified suspicious evidence in roughly 2% of standard runs, and even when prompted defenses raised verification, only 67–82% of verifications led the agent to walk back an adopted false claim."
+howTo:
+  name: "How to audit your brand's exposure to fabricated AI evidence"
+  description: "Measure how well-corroborated your brand's key facts are on the open web, and set up the monitoring that catches a false claim before a buyer repeats it."
+  steps:
+    - name: List the facts a buyer would ask an engine to confirm
+      text: "Pricing, integrations, security posture, customer outcomes, who you serve, and the head-to-head comparisons in your category. These are the claims retrieval goes looking for and the ones a fabricated page can contest."
+    - name: Count independent sources stating each fact
+      text: "For every fact, count the crawlable, ungated pages that state it — your site, review platforms, press, documentation, third-party writeups. A fact stated in one place is one fabricated 'corroborating' page away from a coin flip; agreement across sources is what agents actually check."
+    - name: Fix single-source facts first
+      text: "Publish the canonical version on your own domain, then earn restatements on surfaces engines already cite in your category. The defense against manufactured corroboration is real corroboration."
+    - name: Record what answers say, not just whether you appear
+      text: "A mention count cannot distinguish an answer that describes you accurately from one repeating a fabricated claim. Keep the full answer text from every tracked run so new claims are diffable."
+    - name: Alert on new domains entering your citation set
+      text: "A fabricated source has to be retrieved before it can be believed. An unfamiliar domain suddenly cited across your category's prompts is the earliest observable stage of the attack — check its registration date, templates, and whether it publishes at inhuman volume."
+    - name: Verify claims the way the agents don't
+      text: "For any new factual claim about your brand in a tracked answer, open the cited page and check it says what the answer says. Benchmarked agents did this in about 2% of runs; it is the whole detection layer, and right now you are the one running it."
+faq:
+  - question: Do AI search engines verify claims before repeating them?
+    answer: "Rarely. In the HAE-GEO benchmark, ten search agents given a multi-turn search-and-scrape interface issued a strict verification of suspicious evidence in roughly 2% of standard runs. Real-engine audits agree: a September 2026 audit of Perplexity found 34.7% of citations attached to numeric claims pointed at pages that didn't contain the number, with no sign the engine checks whether a cited page supports the sentence it decorates."
+  - question: How often do AI agents fall for fabricated brand claims?
+    answer: "In HAE-GEO, agents that encountered a poisoned page endorsed the fabricated brand in about 40% of runs when the page made a direct assertion, rising to about 50% when the fabrication came with manufactured corroboration — ratings, certifications, reports, and user feedback. A caution-oriented system prompt lowered those rates to roughly 28% and 38% but did not change the shape: more corroboration, more endorsement."
+  - question: What is the corroboration trap in AI search?
+    answer: "Agents treat agreement between sources as verification. When HAE-GEO upgraded direct false assertions to fabrications supported by fake ratings, certifications, and user feedback, agents' poison-recognition scores fell from 1.02 to 0.33 on a 0–2 scale — the corroborated lie was endorsed more and recognized less. Manufacturing that agreement is already practiced on the live web: one audited network published 215,128 templated buying guides across three cross-linked sites."
+  - question: Can a system prompt make AI agents resistant to poisoned evidence?
+    answer: "Partially, at a price. A defense prompt in HAE-GEO cut fake-brand endorsement by 12–13 points at every attack level and raised verification behavior from about 2% to about 17% of runs — while adding 1.82 tool calls per query and 24.5% more tokens on average. But verifying didn't reliably mean recovering: among defended runs that adopted a false claim and later verified it, only 66.7–81.8% actually walked the claim back."
+  - question: How do I protect my brand from fabricated claims in AI answers?
+    answer: "Two moves. First, make your true facts better-corroborated than a fabrication can be: state each key fact on a canonical, crawlable page and earn independent restatements on surfaces engines already cite, because agreement across sources is the only check agents reliably run. Second, monitor the answers themselves — full text, not mention counts — and treat any new claim or unfamiliar cited domain as something a human opens and verifies within days."
+  - question: Is evidence poisoning happening on the real web or just in benchmarks?
+    answer: "Both mechanisms are documented separately. The benchmark results are sandboxed — HAE-GEO's 770 poisoned pages per level compete inside a fixed 72,039-page corpus. But manipulation of production engines was demonstrated on Bing and Perplexity as early as 2024, a 2026 benchmark found GEO-injected false claims landing in answers 55.7% of the time with safety guardrails cutting that by at most 5.7% relative, and a three-site network had published over 215,000 machine-targeted buying guides that Perplexity retrieved and cited. The pieces of the attack all exist in production; the benchmark measures how the agent behaves once they connect."
+---
+
+**Mostly, no — and a new benchmark now puts numbers on exactly how the checking fails.** [HAE-GEO](https://arxiv.org/abs/2609.06027), a September 2026 preprint from Zhongan Bi and colleagues, planted 770 fabricated-brand pages per attack level inside a 72,039-page web corpus and let ten search agents research product questions across 8 categories and 154 brands. Agents that encountered a poisoned page endorsed the fake brand in roughly 40% of runs — rising, not falling, to about 50% when the fabrication came dressed in fake ratings, certifications, and user feedback. Strict verification of suspicious evidence happened in about 2% of standard runs.
+
+**Key takeaways**
+
+- Corroboration beats truth. Agents' ability to recognize planted evidence collapsed from 1.02 to 0.33 (on a 0–2 scale) as direct assertions were upgraded to fabrications with manufactured supporting material. Agreement between sources is what agents treat as verification.
+- Verification is close to absent by default — about 2% of runs — and a caution-oriented system prompt raised it only to about 17%, at a cost of 1.82 extra tool calls and 24.5% more tokens per query.
+- Checking is not correcting. Even among defended runs that adopted a false claim and then verified it, only 66.7–81.8% walked the claim back. The paper calls this the verification-to-recovery gap.
+- This reconciles with what real-engine audits keep finding: 34.7% of Perplexity's numeric-claim citations didn't support the sentence they decorated, and GEO-injected false claims passed off-the-shelf guardrails with at most a 5.7% relative reduction.
+- The attack's raw material already exists in production: a three-site network with 215,128 templated buying guides was retrieved and cited by Perplexity this month. HAE-GEO's contribution is measuring what the agent does when that material reaches it.
+- The defense you control follows from the mechanism: make your true facts more corroborated than a fabrication can afford to be, and run the verification step yourself by monitoring what answers actually say.
+
+## What the benchmark did
+
+Search-augmented agents — the systems behind AI answers and, increasingly, [AI-mediated buying research](/blog/ai-referral-traffic-conversion) — read the web and act on it. HAE-GEO asks the question every prior manipulation study stopped short of: not *can* fabricated content reach the agent, but what the agent does across the full trajectory once it has — notice, adopt, verify, recover.
+
+The setup is a controlled sandbox. Ten agents (among them Claude, GPT, Kimi, GLM, Qwen, MiniMax, and DeepSeek models) research product questions through a multi-turn search-and-scrape interface over 72,039 real pages, into which the authors inject 770 poisoned pages per attack level promoting fabricated entities. The three levels escalate the craft:
+
+| Level | Technique | Endorsement rate (base prompt) | Endorsement rate (defense prompt) |
+|---|---|---|---|
+| L1 — direct assertion | The false claim, stated plainly | ~40% | ~28% |
+| L2 — contextual camouflage | The claim embedded in plausible surrounding content | ~48% | ~35% |
+| L3 — apparent corroboration | The claim plus fake ratings, certifications, reports, user feedback | ~50% | ~38% |
+
+Endorsement here means the agent's final answer positively framed the fabricated brand, among runs where the poisoned material actually reached the agent. Two readings of that table matter. First, half of exposed runs ending in endorsement is a poor ceiling for systems buyers treat as research assistants. Second — and this is the paper's finding — the gradient runs the wrong way. Better-crafted lies do better, and the defense prompt shifts the whole curve down without flattening it.
+
+## The corroboration trap
+
+The mechanism behind that gradient is the benchmark's most useful export. The authors score whether the agent's reasoning shows any recognition that evidence is planted, on a 0–2 scale. Under standard prompting, recognition falls from 1.02 at L1 to 0.33 at L3 — a two-thirds collapse triggered precisely by the fabrication *looking supported*. The agent's implicit verification procedure is to check whether sources agree. Manufacture the agreement and you have passed the check.
+
+That should sound familiar, because manufacturing agreement is already an industrial practice on the live web. The [Trellner audit](https://trellner.com/reports/manufactured-sources-behind-ai-recommendations) we covered in [Can You Trust AI Citations?](/blog/can-you-trust-ai-citations) found three cross-linked sites — shared registration window, shared DNS, shared templates — that had published 215,128 generated buying guides, retrieved and cited by Perplexity for software-recommendation queries. One site dressed as a market research firm, one as a statistics portal, one as a review outlet: three "independent" voices, one operator. That is HAE-GEO's L3 attack running in production, aimed at winning recommendations rather than at any single brand's facts — so far.
+
+The trap generalizes beyond attacks, which is why it belongs in a marketer's model of AI search rather than only a security researcher's. An engine that verifies by counting agreeing sources will also *misdescribe* a brand confidently whenever the web's copies of a fact agree with each other and not with reality — the stale-pricing problem, the old-CEO problem. In the [Haus Research audit](https://hausresearch.com/reports/perplexity-citation-audit) of Perplexity, answers about who a company's CEO is passed verification only 44.3% of the time, sourced heavily from directories echoing each other. Nobody poisoned anything; the corroboration was just wrong together.
+
+## Checking is not correcting
+
+The second finding is quieter and, for anyone hoping the platforms will prompt their way out of this, more damning. HAE-GEO measures verification — the agent actually re-searching or cross-checking a suspicious claim — and finds it at roughly 2% of runs under standard prompting. A caution-oriented defense prompt raises that to roughly 17%, and cuts endorsement by 12–13 points at every level. Progress, bought with 1.82 additional tool calls per query and a 24.5% macro-average increase in token consumption — the kind of latency-and-cost bill that explains why production engines default to not checking.
+
+But the sharper result is what happens after verification. Among defended runs where the agent had already adopted the false claim and subsequently obtained verifying evidence against it, the claim was actually walked back in 81.8% of cases at L1 — falling to 66.7% at L2 and L3. The agent looked, found the contradiction, and a third of the time kept the fabrication in its answer anyway. The authors also isolate agentic search itself (on two models, interactive search versus static retrieval) and find it reduces endorsement without reliably improving recognition: the agent ends up safer without ending up better-informed, which means the safety doesn't transfer to claims the roster of retrieved pages happens to favor.
+
+For the platform side of this arms race — detectors, rerankers, verifiable-content rewards — see [Citation Wars](/blog/citation-wars). The short version is that targeted defenses work in research settings and none are announced in production. HAE-GEO adds the demand-side half: the answering agents themselves are not running the check either.
+
+## Sandbox numbers, live-web mechanism
+
+The obvious objection is that this is a sandbox, and it is worth spelling out both directions of the gap rather than waving at it.
+
+The benchmark is generous to the attacker in one way: its metrics are conditioned on exposure. Every endorsement rate above counts only runs where poisoned material reached the agent, and the paper does not report how often the 770 poisoned pages won retrieval against 72,039 competitors in the first place. On the live web, getting retrieved is the hard part — our own [42-day volatility study](/blog/citation-volatility) found the domains cited for a prompt churning 60–70% day to day, with the openings concentrated on prompts where no authoritative source exists. Thin-supply categories are where a fabricated source gets its exposure; well-supplied ones are defended by competition before the agent's judgment is ever tested.
+
+But the live web is harsher than the sandbox in the other direction, and here the independent evidence stacks up. Manipulation of production engines is not hypothetical: [preference manipulation attacks](https://arxiv.org/abs/2406.18382) steered Bing and Perplexity toward attacker products in 2024, and a [Harvard study](https://arxiv.org/abs/2404.07981) showed a crafted text sequence on a product page reliably promoting it into an LLM's top recommendation. [Counter-GEO-Bench](https://arxiv.org/abs/2609.02316) measured GEO-injected false claims landing in answers 55.7% of the time, with deployed safety guardrails reducing that by at most 5.7% relative. And the Haus audit found 34.7% of Perplexity's numeric-claim citations pointing at pages that didn't contain the number — the engine does not check whether its own citations support its own sentences, let alone whether the pages are honest. Four independent datasets, one picture: every stage of the pipeline that could catch a corroborated fabrication currently doesn't.
+
+## What actually protects a brand
+
+If agents verify by counting agreement, then corroboration is the unit of both attack and defense — and that yields a decision rule you can apply this week.
+
+**Inventory your facts by corroboration count, not by page.** For each fact a buyer would ask an engine to confirm — pricing, integrations, security posture, outcomes, comparisons — count the independent, crawlable, ungated sources currently stating it. A fact stated only on your own site is one manufactured "corroborating" page away from a coin flip in the agent's judgment; a fact restated across your site, two review platforms, documentation, and a third-party writeup is expensive to out-corroborate. Spend your [AEO effort](/blog/answer-engine-optimization) on the single-source facts first. This is the same direction the [where-citations-come-from data](/blog/where-ai-citations-come-from) points for visibility — most citations are third-party — but the reason here is defensive: those third-party restatements are your fact's alibi.
+
+**Run the verification step the agents skip.** The 2% figure is the operative one: nobody in the pipeline is opening cited pages and checking claims, so the detection layer for a false claim about your brand is whoever reads your tracked answers. That means recording full answer text, not mention counts — a fabricated claim shows up as new wording, and [sentiment and description tracking](/blog/ai-brand-sentiment) is where it surfaces first. It also means watching the citation set: a fabricated source must be retrieved before it can be believed, so an unfamiliar domain newly cited across your category's prompts is the attack's earliest observable stage, and worth five minutes of provenance checking (registration date, template reuse, publication volume no human produces).
+
+What this doesn't license is manufacturing corroboration of your own. Fake independent restatements are the exact signature the emerging platform-side detectors are trained on, and the [mechanism-design work](/blog/citation-wars) all points the same way: agreement that traces to one operator is the thing being learned as an attack class.
+
+## Limitations
+
+HAE-GEO is a preprint from a single group, not yet peer-reviewed. The corpus is fixed and the retrieval sandboxed, so nothing here measures how often fabricated pages win exposure on the live web — the endorsement rates are ceilings on the judgment stage, not estimates of end-to-end attack success. The poisoned pages promote fabricated entities; defaming or misdescribing a *real* brand may be easier (the priors are contested) or harder (real corroboration exists to contradict it), and the benchmark doesn't test it. Recognition and recovery are scored by an LLM judge on a 0–2 rubric. And the ten agents are harness-wrapped models, not the production engines with undisclosed guardrail stacks that answer your buyers' questions. Treat the direction as solid — corroboration substitutes for verification, and verification rarely triggers correction — and the decimals as this benchmark's.
+
+## Watch the answers, because nothing else is watching
+
+Every layer that could fact-check a claim about your brand — retrieval, guardrails, the agent's own verification loop — currently defers to whether the web appears to agree with itself. Making sure it genuinely agrees about you, and noticing quickly when an answer says something new, is the whole defensive playbook available today.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces, storing the full answer text, every cited domain, and every competitor named beside you on every run. Because the raw answers are yours to query, a new claim or an unfamiliar source in your category is a diff, not a discovery in a lost deal.
+
+For the fundamentals, start with [how to track your brand in AI search](/blog/track-brand-ai-search) and [AI citations](/blog/ai-citations). For the adjacent research, see [Citation Wars](/blog/citation-wars), [Can You Trust AI Citations?](/blog/can-you-trust-ai-citations), and [GEO detection](/blog/geo-detection). For the vocabulary, the [AI search glossary](/glossary).
