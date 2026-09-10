@@ -11,6 +11,6 @@
 		"lint:spec": "REDOCLY_TELEMETRY=off REDOCLY_SUPPRESS_UPDATE_NOTICE=true redocly lint src/openapi.json"
 	},
 	"devDependencies": {
-		"@redocly/cli": "^2.51.0"
+		"@redocly/cli": "^2.51.2"
 	}
 }
