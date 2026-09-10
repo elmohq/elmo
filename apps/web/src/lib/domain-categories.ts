@@ -102,6 +102,10 @@ export function cleanAndValidateDomain(input: string): string | null {
 	return cleaned;
 }
 
+// Domain coverage lives in @workspace/lib so the onboarding pipeline answers
+// "is this domain already covered?" the same way the citation categorizer does.
+export { dropRedundantDomains, findRedundantDomains, inDomainSet, redundantDomainReason } from "@workspace/lib/domains";
+
 export function dedupeDomains(values: string[]): string[] {
 	const out: string[] = [];
 	const seen = new Set<string>();
@@ -315,21 +319,6 @@ export const FORUM_DOMAINS = new Set([
 	"thenest.com",
 	"cafemom.com",
 ]);
-
-/**
- * True if `domain` equals, or is a subdomain of, any entry in `set`. Walks the
- * domain's parent suffixes so lookups stay O(labels) regardless of set size —
- * important for the large editorial set.
- */
-export function inDomainSet(domain: string, set: Set<string>): boolean {
-	let d = domain;
-	while (true) {
-		if (set.has(d)) return true;
-		const dot = d.indexOf(".");
-		if (dot === -1) return false;
-		d = d.slice(dot + 1);
-	}
-}
 
 /**
  * True for dedicated forum domains and conventional forum subdomains

@@ -1,5 +1,5 @@
 import { validateWebsiteUrl } from "@/lib/brand-website";
-import { cleanAndValidateDomain, inDomainSet } from "@/lib/domain-categories";
+import { cleanAndValidateDomain, findRedundantDomains, redundantDomainReason } from "@/lib/domain-categories";
 
 /**
  * Pure normalization/validation for the "edit brand settings" flow, extracted
@@ -10,12 +10,13 @@ import { cleanAndValidateDomain, inDomainSet } from "@/lib/domain-categories";
  *  - name: trimmed; must be non-empty when provided
  *  - website: validated + normalized to a full URL (path preserved)
  *  - additionalDomains: each cleaned/validated (hard error listing the invalid
- *    ones), then de-duplicated, then stripped of entries a broader tracked
- *    domain already covers (issue #571)
+ *    ones), then de-duplicated; an entry a broader tracked domain already
+ *    covers is a hard error too
  *  - aliases: trimmed, empties dropped, de-duplicated
  *
  * Only keys present on the input are touched, so a partial edit leaves the rest
- * of the brand untouched.
+ * of the brand untouched. The brand's stored website is passed separately so
+ * the coverage rule still holds for an update that only sends domains.
  */
 export interface BrandUpdateInput {
 	name?: string;
@@ -33,7 +34,10 @@ interface BrandUpdateFields {
 
 export type NormalizeBrandUpdateResult = { ok: true; updates: BrandUpdateFields } | { ok: false; error: string };
 
-export function normalizeBrandUpdate(input: BrandUpdateInput): NormalizeBrandUpdateResult {
+export function normalizeBrandUpdate(
+	input: BrandUpdateInput,
+	currentWebsite?: string | null,
+): NormalizeBrandUpdateResult {
 	const updates: BrandUpdateFields = {};
 
 	if (input.name !== undefined) {
@@ -58,21 +62,18 @@ export function normalizeBrandUpdate(input: BrandUpdateInput): NormalizeBrandUpd
 			return { ok: false, error: `Invalid domain(s): ${invalid.join(", ")}` };
 		}
 		const unique = [...new Set(cleaned.filter(Boolean) as string[])];
-		// Brand matching is suffix-based (`inDomainSet`, which categorizeDomain
-		// uses), so `acme.io` already covers `blog.acme.io` and storing both
-		// leaves an entry in the settings list that does nothing. Comparing each
-		// domain against the others plus the website drops the narrower one,
-		// in either entry order and through a chain of nested subdomains.
-		//
-		// The website is only consulted when it is part of this update: a partial
-		// edit that sends domains alone has no website to compare against, and
-		// this function deliberately never reads the stored brand.
-		const websiteDomain = updates.website ? cleanAndValidateDomain(updates.website) : null;
-		updates.additionalDomains = unique.filter((domain) => {
-			const covering = new Set(unique.filter((other) => other !== domain));
-			if (websiteDomain) covering.add(websiteDomain);
-			return !inDomainSet(domain, covering);
-		});
+		// The website being edited in this same submit wins over the stored one.
+		const websiteDomain = cleanAndValidateDomain(updates.website ?? currentWebsite ?? "");
+		// Saying so beats silently dropping the entry: the user typed it, and the
+		// message names the domain that made it pointless.
+		const redundant = findRedundantDomains(unique, websiteDomain);
+		if (redundant.size > 0) {
+			const listed = [...redundant].map(
+				([domain, covering]) => `${domain} (${redundantDomainReason(domain, covering)})`,
+			);
+			return { ok: false, error: `Redundant domain(s): ${listed.join(", ")}` };
+		}
+		updates.additionalDomains = unique;
 	}
 
 	if (input.aliases !== undefined) {

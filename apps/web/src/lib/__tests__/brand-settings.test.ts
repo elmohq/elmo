@@ -83,25 +83,32 @@ describe("normalizeBrandUpdate", () => {
 			expect(result).toEqual({ ok: true, updates: { additionalDomains: [] } });
 		});
 
-		describe("redundant subdomains", () => {
-			it("drops a subdomain of another additional domain", () => {
+		describe("redundant domains", () => {
+			it("rejects a subdomain of another additional domain", () => {
 				const result = normalizeBrandUpdate({ additionalDomains: ["acme.io", "blog.acme.io"] });
-				expect(result.ok).toBe(true);
-				if (result.ok) expect(result.updates.additionalDomains).toEqual(["acme.io"]);
+				expect(result).toEqual({
+					ok: false,
+					error: "Redundant domain(s): blog.acme.io (already covered by acme.io)",
+				});
 			});
 
-			it("drops the subdomain whichever order it was entered in", () => {
+			it("rejects the subdomain whichever order it was entered in", () => {
 				const result = normalizeBrandUpdate({ additionalDomains: ["blog.acme.io", "acme.io"] });
-				expect(result.ok).toBe(true);
-				if (result.ok) expect(result.updates.additionalDomains).toEqual(["acme.io"]);
+				expect(result).toEqual({
+					ok: false,
+					error: "Redundant domain(s): blog.acme.io (already covered by acme.io)",
+				});
 			});
 
-			it("collapses a chain of nested subdomains to the broadest entry", () => {
+			it("names every redundant entry in the input", () => {
 				const result = normalizeBrandUpdate({
 					additionalDomains: ["eu.blog.acme.io", "blog.acme.io", "acme.io"],
 				});
-				expect(result.ok).toBe(true);
-				if (result.ok) expect(result.updates.additionalDomains).toEqual(["acme.io"]);
+				expect(result).toEqual({
+					ok: false,
+					error:
+						"Redundant domain(s): eu.blog.acme.io (already covered by blog.acme.io), blog.acme.io (already covered by acme.io)",
+				});
 			});
 
 			it("keeps a domain that only shares a suffix without a label boundary", () => {
@@ -114,19 +121,41 @@ describe("normalizeBrandUpdate", () => {
 				}
 			});
 
-			it("drops a domain already covered by the website in the same update", () => {
+			it("rejects a domain the website in the same update covers", () => {
 				const result = normalizeBrandUpdate({
 					website: "https://www.acme.com/products",
-					additionalDomains: ["blog.acme.com", "acme.com", "acme.io"],
+					additionalDomains: ["blog.acme.com", "acme.io"],
 				});
-				expect(result.ok).toBe(true);
-				if (result.ok) expect(result.updates.additionalDomains).toEqual(["acme.io"]);
+				expect(result).toEqual({
+					ok: false,
+					error: "Redundant domain(s): blog.acme.com (already covered by acme.com)",
+				});
 			});
 
-			it("leaves subdomains alone when the website is not part of the update", () => {
-				const result = normalizeBrandUpdate({ additionalDomains: ["blog.acme.com"] });
+			it("rejects a domain the brand's stored website covers when the update omits it", () => {
+				const result = normalizeBrandUpdate({ additionalDomains: ["blog.acme.com"] }, "https://acme.com");
+				expect(result).toEqual({
+					ok: false,
+					error: "Redundant domain(s): blog.acme.com (already covered by acme.com)",
+				});
+			});
+
+			it("judges against the website being submitted, not the stored one", () => {
+				// Moving the brand to a new website frees the domains the old one covered.
+				const result = normalizeBrandUpdate(
+					{ website: "newco.com", additionalDomains: ["blog.acme.com"] },
+					"https://acme.com",
+				);
 				expect(result.ok).toBe(true);
 				if (result.ok) expect(result.updates.additionalDomains).toEqual(["blog.acme.com"]);
+			});
+
+			it("rejects a domain that repeats the website", () => {
+				const result = normalizeBrandUpdate({ website: "acme.com", additionalDomains: ["acme.com"] });
+				expect(result).toEqual({
+					ok: false,
+					error: "Redundant domain(s): acme.com (already the brand's website)",
+				});
 			});
 		});
 	});

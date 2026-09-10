@@ -36,7 +36,7 @@ import {
 import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { cleanAndValidateDomain, findRedundantDomains, redundantDomainReason } from "@/lib/domain-categories";
 import type { TrackedTarget } from "@/lib/model-filter";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
@@ -353,12 +353,22 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 
 		if (data.slug !== undefined && !isValidSlug(data.slug)) throw new Error(INVALID_SLUG);
 
-		const normalized = normalizeBrandUpdate({
-			name: data.name,
-			website: data.website,
-			additionalDomains: data.additionalDomains,
-			aliases: data.aliases,
+		// An update that edits domains without resending the website still has to
+		// be judged against the website the brand actually has.
+		const existing = await db.query.brands.findFirst({
+			columns: { website: true },
+			where: eq(brands.id, data.brandId),
 		});
+
+		const normalized = normalizeBrandUpdate(
+			{
+				name: data.name,
+				website: data.website,
+				additionalDomains: data.additionalDomains,
+				aliases: data.aliases,
+			},
+			existing?.website,
+		);
 		if (!normalized.ok) {
 			throw new Error(normalized.error);
 		}
@@ -473,6 +483,15 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
 
+		const existing = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
+		if (!existing) throw new Error("Brand not found");
+
+		// Suffix matching already counts a subdomain of a domain the brand tracks,
+		// so appending one would add a row that changes nothing.
+		const websiteDomain = cleanAndValidateDomain(existing.website);
+		const covering = findRedundantDomains([...existing.additionalDomains, domain], websiteDomain).get(domain);
+		if (covering) throw new Error(`${domain} is ${redundantDomainReason(domain, covering)}`);
+
 		const [result] = await db
 			.update(brands)
 			.set({
@@ -482,13 +501,8 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 			.where(and(eq(brands.id, data.brandId), sql`NOT (${domain} = ANY(${brands.additionalDomains}))`))
 			.returning();
 
-		if (result) return result;
-
-		const brand = await db.query.brands.findFirst({
-			where: eq(brands.id, data.brandId),
-		});
-		if (!brand) throw new Error("Brand not found");
-		return brand;
+		// No row updated means the domain was already in the list.
+		return result ?? existing;
 	});
 
 /**
