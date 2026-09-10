@@ -216,6 +216,37 @@ describe("analyzeBrand", () => {
 		expect(result.brandName).toBe("Nike");
 	});
 
+	it("keeps only the broadest of the domains the model suggests", async () => {
+		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
+			brandName: "Acme",
+			// The model routinely answers with the site's own subdomains, which
+			// suffix matching already counts as the brand's.
+			additionalDomains: ["blog.acme.com", "acme.io", "shop.acme.io", "acme.com"],
+			aliases: [],
+			competitors: [],
+			suggestedPrompts: [],
+		});
+
+		const result = await analyzeBrand({ website: "acme.com" });
+
+		expect(result.additionalDomains).toEqual(["acme.io"]);
+	});
+
+	it("still treats a dropped subdomain as the brand's when filtering competitors", async () => {
+		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
+			brandName: "Acme",
+			additionalDomains: ["blog.acme.com"],
+			aliases: [],
+			competitors: [{ name: "Not a competitor", domains: ["blog.acme.com"], aliases: [] }],
+			suggestedPrompts: [],
+		});
+
+		const result = await analyzeBrand({ website: "acme.com" });
+
+		expect(result.additionalDomains).toEqual([]);
+		expect(result.competitors).toEqual([]);
+	});
+
 	it("respects maxCompetitors=0 / maxPrompts=0", async () => {
 		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
 			brandName: "Acme",

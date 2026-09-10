@@ -1,5 +1,6 @@
 ---
 "@workspace/web": patch
+"@workspace/lib": patch
 ---
 
-Saving brand settings now drops additional domains that a broader tracked domain already covers, so adding `blog.acme.com` alongside `acme.com` no longer leaves a redundant entry in the list.
+Additional brand domains that a broader tracked domain already covers are now rejected with a message naming the covering domain, in brand settings and when adding a domain from a citation; onboarding, the brands API, and AI-suggested domains drop them instead of storing an entry that does nothing.

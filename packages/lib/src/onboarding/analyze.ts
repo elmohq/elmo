@@ -12,6 +12,7 @@
  * to communicate context + quality guidelines, not field-by-field shape.
  */
 import { z } from "zod";
+import { dropRedundantDomains } from "../domains";
 import { getWebsiteExcerpt } from "../website-excerpt";
 import { runStructuredResearchPrompt } from "./llm";
 import {
@@ -307,19 +308,24 @@ function normalize(args: {
 	// ("Nike Golf" → "Nike"), which would silently widen every match.
 	const brandName = providedBrandName ?? ((raw.brandName || brandNameHint).trim() || brandNameHint);
 
-	const ownedDomains = new Set([website]);
-	const additionalDomains = (raw.additionalDomains ?? [])
+	const suggestedDomains = (raw.additionalDomains ?? [])
 		.map((d) => cleanAndValidateDomain(d))
-		.filter((d): d is string => d !== null && d !== website);
-	for (const d of additionalDomains) ownedDomains.add(d);
+		.filter((d): d is string => d !== null);
 
-	const dedupedAdditionalDomains = uniqueLowercase(additionalDomains);
+	// Competitor filtering still sees every domain the model named as the
+	// brand's, including the ones dropped just below.
+	const ownedDomains = new Set([website, ...suggestedDomains]);
+
+	// The model happily answers with `blog.acme.com` next to `acme.com`, which
+	// suffix matching already covers. Correcting it here rather than erroring:
+	// nobody typed these, so there is no one to tell.
+	const additionalDomains = dropRedundantDomains(suggestedDomains, website);
 	const aliases = filterRedundantAliases(uniqueTrim(raw.aliases ?? []), brandName);
 
 	return {
 		brandName,
 		website,
-		additionalDomains: dedupedAdditionalDomains,
+		additionalDomains,
 		aliases,
 		competitors: includeCompetitors ? normalizeCompetitors(raw.competitors ?? [], ownedDomains, maxCompetitors) : [],
 		suggestedPrompts: includePrompts ? normalizePrompts(raw.suggestedPrompts ?? [], maxPrompts) : [],
