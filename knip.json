@@ -16,16 +16,15 @@
         "@tailwindcss/typography",
         "@fontsource/geist-sans",
         "@base-ui/react",
-        "@resvg/resvg-js",
-        "harfbuzzjs"
+        "@takumi-rs/core"
       ]
     },
     "apps/www": {
       "entry": ["scripts/**"],
-      "ignoreDependencies": ["shiki", "@resvg/resvg-js", "harfbuzzjs"]
+      "ignoreDependencies": ["shiki", "@takumi-rs/core"]
     },
     "packages/og": {
-      "ignoreDependencies": ["nitro", "harfbuzzjs"]
+      "ignoreDependencies": ["nitro"]
     },
     "packages/lib": {
       "entry": ["scripts/*.mjs"],

@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
-import { copyBinaryAssets, embedBinaries, externalizeBinaryDeps, OG_BINARY_DEPS } from "@workspace/og/vite-plugin";
+import { embedBinaries } from "@workspace/og/vite-plugin";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 import pkg from "./package.json" with { type: "json" };
@@ -27,18 +27,17 @@ export default defineConfig({
 	},
 	plugins: [
 		embedBinaries(),
-		externalizeBinaryDeps(),
 		devtools(),
 		tailwindcss(),
 		tanstackStart(),
 		nitro({
-			traceDeps: OG_BINARY_DEPS,
-			modules: [copyBinaryAssets()],
+			traceDeps: ["@takumi-rs/core"],
+			exportConditions: ["import"],
 			sourcemap: true,
 			alias: {
 				tslib: tslibEsm,
 			},
-			noExternals: ["@opentelemetry/instrumentation", "@opentelemetry/api", "@prisma/instrumentation"],
+			noExternals: ["@opentelemetry", "@sentry", "@prisma/instrumentation"],
 			rollupConfig: {
 				external: ["fsevents"],
 			},

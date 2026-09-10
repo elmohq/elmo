@@ -6,6 +6,8 @@ import { cloro } from "./cloro";
 // overlap on one URL to exercise de-duplication.
 const CHATGPT_RESPONSE = {
 	text: "The Sonos Era 300 is a well-reviewed speaker released recently.",
+	markdown:
+		"The **Sonos Era 300** is a well-reviewed speaker released recently. ([Sonos Era 300 review](https://www.whathifi.com/reviews/sonos-era-300))",
 	model: "gpt-5-3-mini",
 	sources: [{ position: 1, url: "https://www.whathifi.com/reviews/sonos-era-300", label: "Sonos Era 300 review" }],
 	citationPills: [
@@ -48,6 +50,8 @@ const AI_OVERVIEW_RESPONSE = {
 // follow-up questions under `related_queries`.
 const PERPLEXITY_RESPONSE = {
 	text: "The Sonos Era 100 lasts longer than the Bose SoundLink Flex.",
+	markdown:
+		"The **Sonos Era 100** lasts longer than the Bose SoundLink Flex. ([Era 100 review](https://www.soundguys.com/era-100-review))",
 	sources: [{ position: 1, url: "https://www.soundguys.com/era-100-review", label: "Era 100 review" }],
 	search_model_queries: ["Compare the Sonos Era 100 and the Bose SoundLink Flex"],
 	related_queries: ["Which is better for a pool party", "What about the JBL Charge 6"],
@@ -125,11 +129,16 @@ describe("cloro provider", () => {
 		});
 		expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
 			taskType: "CHATGPT",
-			payload: { prompt: "What is a well-reviewed speaker?", country: "US", include: { searchQueries: true } },
+			payload: {
+				prompt: "What is a well-reviewed speaker?",
+				country: "US",
+				include: { markdown: true, searchQueries: true },
+			},
 		});
 		expect(fetchMock.mock.calls[1][0]).toBe("https://api.cloro.dev/v1/async/task/task-1");
 
-		expect(result.textContent).toContain("Sonos Era 300");
+		// The markdown the task asked for, not the flattened `text` beside it.
+		expect(result.textContent).toContain("**Sonos Era 300**");
 		// whathifi appears in both `sources` and `citationPills`; techradar only in
 		// the pills — so two distinct citations after de-duplication.
 		expect(result.citations).toHaveLength(2);
@@ -221,6 +230,32 @@ describe("cloro provider", () => {
 		expect(result.citations.map((c) => c.domain)).toEqual(["cnet.com", "google.com"]);
 	});
 
+	// Markdown is opt-in per task, and a surface left out of the request silently
+	// downgrades to `text` — the same answer with its citations stripped.
+	it.each([
+		["chatgpt", "CHATGPT", { markdown: true, searchQueries: true }],
+		["perplexity", "PERPLEXITY", { markdown: true }],
+		["copilot", "COPILOT", { markdown: true }],
+		["gemini", "GEMINI", { markdown: true }],
+		["google-ai-mode", "AIMODE", { markdown: true }],
+		// The overview is one section of a SERP response, so the flag rides inside
+		// the block that asks for it rather than sitting at the top level.
+		["google-ai-overview", "GOOGLE", { aioverview: { markdown: true } }],
+	])("asks %s for markdown", async (model, taskType, include) => {
+		vi.useFakeTimers();
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ success: true, task: { id: "task-md", status: "QUEUED" } }))
+			.mockResolvedValueOnce(jsonResponse({ task: { id: "task-md", status: "COMPLETED" }, response: {} }));
+		vi.stubGlobal("fetch", fetchMock);
+
+		const promise = cloro.run(model, "best speakers");
+		await vi.runAllTimersAsync();
+		await promise;
+
+		expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ taskType, payload: { include } });
+	});
+
 	it("keeps polling through transient and no-content status responses", async () => {
 		vi.useFakeTimers();
 		const fetchMock = vi
@@ -238,7 +273,7 @@ describe("cloro provider", () => {
 		expect(fetchMock).toHaveBeenCalledTimes(4);
 		expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
 			taskType: "PERPLEXITY",
-			payload: { prompt: "What is a well-reviewed speaker?", country: "US" },
+			payload: { prompt: "What is a well-reviewed speaker?", country: "US", include: { markdown: true } },
 		});
 		expect(result.textContent).toContain("Sonos Era 300");
 	});
