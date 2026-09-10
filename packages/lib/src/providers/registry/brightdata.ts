@@ -258,13 +258,13 @@ async function triggerSnapshot(datasetId: string, model: string, prompt: string,
  *  status string doesn't fail the run on the very first poll. */
 const TERMINAL_FAILURE = new Set(["failed", "error", "cancelled"]);
 
-/** Exported for tests. Has to stay above BRIGHTDATA_GIVE_UP_MS so a stuck
- *  input's error row reaches us instead of only our own timeout. */
-export const POLL_TIMEOUT_MS = 12 * 60 * 1000;
+/** BrightData publishes no collection deadline, so this is sized past the
+ *  slowest error row a stuck input has been seen to produce — not to any
+ *  documented limit. Too low and their reason never reaches us. */
+const POLL_TIMEOUT_MS = 12 * 60 * 1000;
 
 async function pollUntilReady(snapshotId: string): Promise<void> {
-	const startedAt = Date.now();
-	const deadline = startedAt + POLL_TIMEOUT_MS;
+	const deadline = Date.now() + POLL_TIMEOUT_MS;
 
 	for (let attempt = 0; Date.now() < deadline; attempt++) {
 		const status = await getSnapshotStatus(snapshotId);
@@ -276,7 +276,7 @@ async function pollUntilReady(snapshotId: string): Promise<void> {
 		await sleep(pollDelay(attempt));
 	}
 
-	throw new Error(`BrightData snapshot ${snapshotId} timed out after ${Math.round((Date.now() - startedAt) / 1000)}s`);
+	throw new Error(`BrightData snapshot ${snapshotId} timed out`);
 }
 
 /** Read snapshot status straight from datasets/v3/progress. We bypass the SDK's

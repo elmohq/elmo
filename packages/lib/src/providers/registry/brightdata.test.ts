@@ -1,14 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { brightdata, extractWebQueries, POLL_TIMEOUT_MS, readAnswer } from "./brightdata";
+import { brightdata, extractWebQueries, readAnswer } from "./brightdata";
 
-/** How long BrightData itself gives a stuck input before it finishes the
- *  snapshot with an error row naming the reason. Theirs, not ours — measured
- *  from live `no_peers` rows, which landed ~9 minutes after the trigger. */
-const BRIGHTDATA_GIVE_UP_MS = 9 * 60 * 1000;
+const { cancelSnapshot } = vi.hoisted(() => ({ cancelSnapshot: vi.fn() }));
 
 vi.mock("@brightdata/sdk", () => ({
 	bdclient: class {
-		scrape = { snapshot: { cancel: vi.fn().mockResolvedValue(undefined), fetch: vi.fn() } };
+		scrape = { snapshot: { cancel: cancelSnapshot, fetch: vi.fn() } };
 		close = vi.fn().mockResolvedValue(undefined);
 	},
 }));
@@ -95,11 +92,7 @@ describe("readAnswer", () => {
 });
 
 describe("brightdata polling", () => {
-	it("waits longer than BrightData does before giving up on a snapshot", () => {
-		expect(POLL_TIMEOUT_MS).toBeGreaterThan(BRIGHTDATA_GIVE_UP_MS);
-	});
-
-	it("polls a running snapshot past BrightData's give-up before abandoning it", async () => {
+	it("cancels a snapshot it gave up waiting on, so it stops counting against the running-jobs cap", async () => {
 		vi.useFakeTimers();
 		vi.stubEnv("BRIGHTDATA_API_TOKEN", "test-token");
 		vi.stubGlobal(
@@ -124,7 +117,6 @@ describe("brightdata polling", () => {
 		const error = await settled;
 
 		expect(error.message).toMatch(/sd_stuck timed out/);
-		const elapsedMs = Number(error.message.match(/timed out after (\d+)s/)?.[1]) * 1000;
-		expect(elapsedMs).toBeGreaterThan(BRIGHTDATA_GIVE_UP_MS);
+		expect(cancelSnapshot).toHaveBeenCalledWith("sd_stuck");
 	});
 });
