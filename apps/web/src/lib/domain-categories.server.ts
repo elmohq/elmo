@@ -148,7 +148,6 @@ const DEVELOPER_DOMAINS = new Set([
 	"ai.google.dev",
 	"firebase.google.com",
 	"web.dev",
-	"support.google.com",
 	"learn.microsoft.com",
 	"azure.microsoft.com",
 	"aws.amazon.com",
@@ -275,6 +274,10 @@ const DEVELOPER_DOMAINS = new Set([
 // in "developer" without enumerating every vendor.
 const DEVELOPER_HOST_PREFIX_RE = /^(docs?|developers?|dev|devs|api|apis|sdks?|codelabs|git|engineering)\./;
 
+// Hosts the prefix heuristic would claim but that publish something else:
+// docs.google.com is the consumer document editor, not Google's developer docs.
+const DEVELOPER_HOST_PREFIX_EXCEPTIONS = new Set(["docs.google.com"]);
+
 // Mirrors and proxies of the big code hosts (qgithub.com, github.leishennb.icu)
 // — the host carrying the code host's name is the signal.
 const CODE_HOST_MIRROR_RE = /(github|gitlab|bitbucket)/;
@@ -364,7 +367,6 @@ const REVIEW_DOMAINS = new Set([
 	"saasworthy.com",
 	"tekpon.com",
 	"selecthub.com",
-	"appsumo.com",
 	"theresanaiforthat.com",
 	"futurepedia.io",
 	"futuretools.io",
@@ -624,6 +626,7 @@ const ECOMMERCE_DOMAINS = new Set([
 	"marketplace.atlassian.com",
 	"marketplace.visualstudio.com",
 	"workspace.google.com",
+	"appsumo.com",
 	// Hosted-store platforms, matched as suffixes so every merchant subdomain
 	// (acme.myshopify.com) resolves.
 	"myshopify.com",
@@ -729,9 +732,9 @@ function isEcommerceDomain(domain: string): boolean {
 }
 
 function isDeveloperDomain(domain: string): boolean {
-	return (
-		inDomainSet(domain, DEVELOPER_DOMAINS) || DEVELOPER_HOST_PREFIX_RE.test(domain) || CODE_HOST_MIRROR_RE.test(domain)
-	);
+	if (inDomainSet(domain, DEVELOPER_DOMAINS)) return true;
+	if (DEVELOPER_HOST_PREFIX_EXCEPTIONS.has(domain)) return false;
+	return DEVELOPER_HOST_PREFIX_RE.test(domain) || CODE_HOST_MIRROR_RE.test(domain);
 }
 
 function isReferenceDomain(domain: string): boolean {

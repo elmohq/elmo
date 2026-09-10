@@ -448,13 +448,13 @@ const PAGE_TYPE_RULES: PageTypeRule[] = [
 		// /products/return-pillow is a product, not a returns page.
 		type: "product",
 		matches: ({ path }) =>
-			/\/(dp|gp\/product|gp\/aw\/d|ip|itm|pdp|products?|item|shop|store|collections?|catalog(ue)?|categor(y|ies)|browse|buy|cart|pricing|plans?)(\/|$)/.test(
+			/\/(dp|gp\/product|gp\/aw\/d|ip|itm|pdp|products?|item|shop|store|collections?|catalog(ue)?|buy|cart|pricing|plans?)(\/|$)/.test(
 				path,
 			) ||
 			// "/p/<slug>" is a widespread product path, but also Substack's post path.
-			// Requiring a hyphenated slug carrying a digit — the SKU or model number
-			// a product slug almost always ends in — keeps prose post slugs out.
-			/\/p\/(?=[a-z0-9-]*-)(?=[a-z0-9-]*\d)/.test(path),
+			// A catalogue id tells them apart: prose slugs carry counts and years
+			// ("/p/5-lessons-from-2024"), not a SKU-length run of digits.
+			hasCatalogueId(path),
 	},
 	{
 		type: "info",
@@ -473,28 +473,18 @@ const PAGE_TYPE_RULES: PageTypeRule[] = [
 			/\/\d{4}\/\d{2}\//.test(path) ||
 			/\/\d{4}\/[a-z]/.test(path),
 	},
-	{
-		// Last resort: the bare multi-word slug a blog post sits on when the site
-		// has no /blog prefix ("/the-most-durable-shoes-for-toddlers"). Product
-		// pages share the shape, so slugs carrying a SKU are excluded and the
-		// commerce rules above get first refusal.
-		type: "article",
-		matches: ({ path }) => isRootPostSlug(path),
-	},
 ];
 
-const LOCALE_SEGMENT_RE = /^[a-z]{2}([-][a-z]{2})?$/;
-
-function isRootPostSlug(path: string): boolean {
-	let segments = path.split("/").filter(Boolean);
-	if (segments.length === 2 && LOCALE_SEGMENT_RE.test(segments[0])) segments = segments.slice(1);
-	if (segments.length !== 1) return false;
-	const slug = segments[0].replace(/\.(html?|php|aspx)$/, "");
-	if ((slug.match(/-/g) ?? []).length < 4) return false;
-	// A run of 4+ digits that isn't a year is a SKU, and a slug ending in digits
-	// is a catalogue id — both mark a product page rather than a post.
-	if (slug.split("-").some((token) => /^\d{4,}$/.test(token) && !isYear(token))) return false;
-	return !/\d$/.test(slug) || /(^|-)(19|20)\d\d$/.test(slug);
+/**
+ * True when a "/p/" path carries a catalogue id — a run of four or more digits
+ * that isn't a year, anywhere after the prefix (retailers put it in the slug or
+ * in a trailing segment). Four digits is the floor because shorter runs are
+ * prose: counts, model years, "gpt-4".
+ */
+function hasCatalogueId(path: string): boolean {
+	const rest = /\/p\/(.+)/.exec(path)?.[1];
+	if (!rest) return false;
+	return (rest.match(/\d{4,}/g) ?? []).some((run) => !isYear(run));
 }
 
 function isYear(token: string): boolean {

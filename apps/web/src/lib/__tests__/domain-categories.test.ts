@@ -272,20 +272,17 @@ describe("inferPageType", () => {
 
 	it("separates /p/ product paths from /p/ post paths", () => {
 		expect(inferPageType("https://sivasdescalzo.com/us/p/air-jordan-1-low-gs-553560-072")).toBe("product");
-		// Substack posts share the path but carry no SKU
+		expect(inferPageType("https://www.target.com/p/apple-airpods-pro-2/-/A-54191097")).toBe("product");
+		// Substack posts share the path but carry no catalogue id — the numbers in
+		// a post slug are years and counts, which must not read as a SKU
 		expect(inferPageType("https://annsmarty.com/p/reddit-for-llm-visibility")).not.toBe("product");
+		expect(inferPageType("https://www.noahpinion.blog/p/5-lessons-from-2024")).not.toBe("product");
+		expect(inferPageType("https://thediff.co/p/gpt-4-and-the-500-billion-question")).not.toBe("product");
 	});
 
-	it("reads a bare multi-word slug as a post, unless it looks like a catalogue entry", () => {
-		expect(inferPageType("https://toddlerapproved.com/the-most-durable-shoes-for-toddlers/")).toBe("article");
-		expect(inferPageType("https://en.run-motion.com/marathon-training-plan-for-sub-3-hours/")).toBe("article");
-		// a trailing year is a post; a trailing id is a product
-		expect(inferPageType("https://millcityrunning.com/carbon-plated-racing-shoes-tested-2026")).toBe("article");
-		expect(inferPageType("https://flightclub.com/air-jordan-1-retro-high-og-sail-obsidian-blue-152035")).not.toBe(
-			"article",
-		);
-		// short slugs and nested paths are left alone
-		expect(inferPageType("https://shop.com/nike-air-max")).toBe("other");
+	it("leaves blog taxonomy paths out of commerce", () => {
+		expect(inferPageType("https://someblog.com/category/running-tips/")).not.toBe("product");
+		expect(inferPageType("https://someblog.com/browse/topics/health")).not.toBe("product");
 	});
 
 	it("reads Shopify's /blogs/ path as an article", () => {
