@@ -49,7 +49,7 @@ jobs:
           TARGET_OVERRIDE: ${{ inputs.target }}
         run: |
           if [ -n "$TARGET_OVERRIDE" ]; then
-            pnpm tsx apps/worker/scripts/test-provider.ts --target "$TARGET_OVERRIDE" --output-json result.json
+            pnpm tsx apps/worker/scripts/test-provider.ts --target "$TARGET_OVERRIDE" --output-json result.json --dump ./dumps
           else
             pnpm tsx apps/worker/scripts/test-provider.ts --output-json result.json
           fi
@@ -99,6 +99,13 @@ jobs:
           }
           push().catch(e => { console.error(e); process.exit(1); });
           '
+      - name: Upload raw payload dumps
+        if: always() && hashFiles('dumps/*') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: provider-dumps
+          path: dumps
+          retention-days: 3
       - name: Upload results artifact
         if: always() && hashFiles('result.json') != ''
         uses: actions/upload-artifact@v7
