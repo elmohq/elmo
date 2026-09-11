@@ -33,6 +33,10 @@ function OpportunitiesPage() {
 		content = <LoadingState />;
 	} else if (error) {
 		content = <EmptyCard>Couldn't generate recommendations right now. Reload the page to try again.</EmptyCard>;
+	} else if (data?.reason === "generating") {
+		content = (
+			<EmptyCard>Your first set of recommendations is being generated — check back in a few minutes.</EmptyCard>
+		);
 	} else if (!data || data.reason === "insufficient-data" || !data.report) {
 		content = (
 			<EmptyCard>

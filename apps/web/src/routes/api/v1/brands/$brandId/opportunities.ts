@@ -1,6 +1,7 @@
 /**
- * No POST to regenerate: producing a report spends provider budget with nothing
- * metering it per call. Elmo decides when one is stale.
+ * No POST to regenerate, and the GET doesn't either: producing a report spends
+ * provider budget with nothing metering it per call. Elmo decides when one is
+ * stale, so this endpoint only ever reads what it already wrote.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
