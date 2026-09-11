@@ -71,8 +71,8 @@ function VisionPage() {
 								<p>
 									A wave of VC-funded startups has flooded the "AI Engine Optimization" space, charging premium prices
 									for what amounts to running queries against LLM APIs and tracking the results. Many of these companies
-									will fail — not because the problem isn't real, but because their cost structures require enterprise
-									pricing for commodity work.
+									will fail. The problem is real, but their cost structures require enterprise pricing for commodity
+									work.
 								</p>
 								<p>
 									There's also a real possibility that LLM providers themselves start offering brand visibility data
@@ -82,8 +82,8 @@ function VisionPage() {
 								</p>
 								<p>
 									Meanwhile, the AEO space is rife with misinformation. Consultants sell "optimization" services based
-									on flawed assumptions about how LLMs work. Rankings are presented as deterministic when they're
-									probabilistic. Correlation is sold as causation.
+									on flawed assumptions about how LLMs work. Rankings get presented as deterministic when they are
+									probabilistic, and correlation gets sold as causation.
 								</p>
 							</div>
 						</div>
@@ -103,8 +103,8 @@ function VisionPage() {
 								</p>
 								<p>
 									We believe AI visibility data should be cost-effective to access. The underlying operations — querying
-									LLMs, parsing responses, tracking results over time — aren't expensive to run. The pricing should
-									reflect that reality, not the fundraising ambitions of the company providing them.
+									LLMs, parsing responses, tracking results over time — aren't expensive to run. Pricing should reflect
+									that, rather than the fundraising ambitions of the company doing the collecting.
 								</p>
 								<div className="-mx-4 rounded-md border border-zinc-200 bg-white px-4 py-6 md:-mx-8 md:px-8">
 									<h3 className="mb-4 text-lg font-semibold text-zinc-950">How we fund Elmo</h3>
@@ -146,9 +146,9 @@ function VisionPage() {
 									explaining how they're calculated, then charge you to improve numbers you can't independently verify.
 								</p>
 								<p>
-									We take the opposite approach. Elmo is open source — you can read every line of code that generates
-									your data. Our methodology is documented. When we don't know something, we say so. When a metric has
-									limitations, we explain what they are.
+									We do the opposite. Elmo is open source, so you can read every line of code that generates your data,
+									and our methodology is documented. When we don't know something, or a metric has limitations, we say
+									so.
 								</p>
 							</div>
 						</div>
@@ -165,9 +165,9 @@ function VisionPage() {
 							</h2>
 							<div className="mt-8 space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 								<p>
-									We're not in the business of "optimizing" your content for AI. We're focused on a more fundamental
-									question: how do large language models use and interpret the web? How do they decide which brands to
-									mention, which sources to cite, and what information to present?
+									We are less interested in "optimizing" your content for AI than in a more basic question: how do large
+									language models use and interpret the web? How do they decide which brands to mention, which sources
+									to cite, and what information to present?
 								</p>
 								<div className="mt-8 grid gap-6 sm:grid-cols-2">
 									<div className="rounded-md border border-zinc-200 bg-white p-5">
