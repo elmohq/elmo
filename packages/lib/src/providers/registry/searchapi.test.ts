@@ -1,9 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { searchapi } from "./searchapi";
 
-// A ChatGPT answer with web search on: the cited pages in `reference_links`,
-// the full retrieved set in `web_results` (not citations), and the verbatim
-// `search_queries` ChatGPT ran.
 const CHATGPT_RESPONSE = {
 	markdown: "The **Marshall Stockwell III** is a well-reviewed portable speaker.",
 	text_blocks: [{ type: "paragraph", answer: "The Marshall Stockwell III is a well-reviewed portable speaker." }],
@@ -22,8 +19,6 @@ const CHATGPT_RESPONSE = {
 	response_metadata: { model: "gpt-5-6", is_web_search_performed: true },
 };
 
-// The Google SERP that carries an AI Overview, alongside the organic results and
-// pagination that make the page an order of magnitude bigger than the overview.
 const AI_OVERVIEW_SERP = {
 	search_metadata: { id: "search_1", status: "Success" },
 	search_parameters: { engine: "google", q: "best running shoes for beginners" },
@@ -101,8 +96,6 @@ describe("searchapi provider", () => {
 	});
 
 	it("keeps the queries when ChatGPT searches on its own initiative", async () => {
-		// ChatGPT may search whether or not it was asked to, and the response says
-		// which happened — dropping the queries would understate the fan-out.
 		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(CHATGPT_RESPONSE)));
 
 		const result = await searchapi.run("chatgpt", "What is a well-reviewed speaker?", { webSearch: false });
@@ -127,8 +120,6 @@ describe("searchapi provider", () => {
 	});
 
 	it("reports a source Google served as a redirect it could not resolve", async () => {
-		// Like the Google Shopping links the other scrapers report, the wrapper is
-		// stored as the provider gave it and excluded from the reports by URL.
 		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(AI_OVERVIEW_SERP)));
 
 		const result = await searchapi.run("google-ai-overview", "best running shoes for beginners", { webSearch: true });
@@ -148,8 +139,6 @@ describe("searchapi provider", () => {
 	});
 
 	it("fails a run Google answered with a page token instead of the overview", async () => {
-		// Google loads the overview separately from the result page often enough to
-		// matter. Storing the shell would count as a run where nobody was mentioned.
 		vi.stubGlobal(
 			"fetch",
 			vi.fn().mockResolvedValue(

@@ -343,18 +343,12 @@ export function extractTextFromCloro(rawOutput: any): string {
 	}
 }
 
-/**
- * SearchApi answers every AI surface in one shape — `markdown`, typed
- * `text_blocks`, and `reference_links`. Google AI Overview is the exception:
- * it rides inside a normal Google SERP response, so unwrap it first.
- */
 export function searchapiAnswer(rawOutput: any): Record<string, any> | null {
 	if (!rawOutput || typeof rawOutput !== "object") return null;
 	const answer = "ai_overview" in rawOutput ? rawOutput.ai_overview : rawOutput;
 	return answer && typeof answer === "object" ? answer : null;
 }
 
-/** Blocks nest their prose under `items`, so walk them for the `answer` strings. */
 function collectSearchapiBlocks(node: any, out: string[], depth = 0): void {
 	if (depth > 8) return;
 	for (const block of asArray(node)) {
@@ -663,14 +657,7 @@ export function extractCitationsFromCloro(rawOutput: any): Citation[] {
 
 export function extractCitationsFromSearchapi(rawOutput: any): Citation[] {
 	return collectCitations((add) => {
-		// `reference_links` is what the answer cites, on every engine. ChatGPT also
-		// returns `web_results`, the full ranked set it retrieved, which is not the
-		// same thing and is deliberately not read.
-		//
-		// Google's redirect wrappers reach this list when SearchApi could not
-		// resolve one back to its publisher, and they stay: the citations page
-		// excludes them from the source mix by URL, the same way it handles the
-		// Google Shopping deep links the other scrapers report.
+		// ChatGPT's `web_results` is everything it retrieved, not what it cited.
 		for (const ref of pluck([searchapiAnswer(rawOutput)], "reference_links")) {
 			add(sourceUrl(ref, "link", "url"), ref?.title ?? ref?.source);
 		}

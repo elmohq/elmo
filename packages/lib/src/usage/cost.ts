@@ -13,8 +13,7 @@
  */
 
 const PROVIDER_COST_ESTIMATES_USD: Record<string, number> = {
-	// Exact rather than rounded: SearchApi bills one flat price per search on
-	// every engine, $4/1,000 on its entry plan.
+	// Exact, not rounded: one flat price per search on every engine.
 	searchapi: 0.004,
 	olostep: 0.01,
 	brightdata: 0.01,

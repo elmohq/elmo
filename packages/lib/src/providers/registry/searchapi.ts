@@ -6,33 +6,19 @@ import { type Attempt, isTransientStatus, nonEmptyStrings, responseError, retryT
 
 const SEARCHAPI_URL = "https://www.searchapi.io/api/v1/search";
 
-/** SearchApi localizes every surface it can; default to a US audience. */
+// SearchApi localizes every surface it can; default to a US audience.
 const GOOGLE_LOCALE = { gl: "us", hl: "en" } as const;
 
-/**
- * SearchApi answers on the same connection rather than handing back a task to
- * poll, so this bounds a request that has stopped making progress. It is not a
- * statement about how long an answer should take.
- */
 const SEARCHAPI_TIMEOUT_MS = 3 * 60 * 1000;
 
 type SearchapiTarget = {
 	engine: string;
 	params?: Record<string, string>;
-	/** Set when the answer rides inside a larger response rather than being it. */
 	nested?: "ai_overview";
 };
 
-/**
- * One synchronous endpoint serves every surface, keyed by `engine`.
- *
- * Google AI Overview is the exception. Its dedicated `google_ai_overview`
- * engine takes a `page_token` minted by the Google SERP engine that expires in
- * under a minute, so Elmo reads the overview straight off the SERP response
- * instead: one billed search rather than two, and no race against the token.
- * `link=resolved` makes Google's encrypted source redirects come back as
- * publisher URLs — AI Mode resolves them without being asked.
- */
+// AI Overview rides on the SERP engine because the dedicated one needs a
+// page_token that only a SERP call mints, making it two searches instead of one.
 const SEARCHAPI_TARGETS: Record<string, SearchapiTarget> = {
 	chatgpt: { engine: "chatgpt" },
 	perplexity: { engine: "perplexity" },
@@ -42,12 +28,7 @@ const SEARCHAPI_TARGETS: Record<string, SearchapiTarget> = {
 	"google-ai-overview": { engine: "google", params: { ...GOOGLE_LOCALE, link: "resolved" }, nested: "ai_overview" },
 };
 
-/**
- * Perplexity gates some sessions behind a sign-up wall, and SearchApi passes
- * that page through as a successful search whose answer is the wall's text.
- * Stored as a run it would read as the brand going unmentioned, so it is failed
- * here instead.
- */
+// Perplexity's gate, which SearchApi passes through as a successful search.
 const PERPLEXITY_SIGNUP_WALL = "sign up and repeat your request.";
 
 async function attemptSearch(params: URLSearchParams): Promise<Attempt<Record<string, any>>> {
@@ -69,23 +50,14 @@ async function attemptSearch(params: URLSearchParams): Promise<Attempt<Record<st
 	return { result: body };
 }
 
-/** Whether a surface actually answered, as opposed to returning a shell. */
 function hasAnswerBody(answer: Record<string, any>): boolean {
 	if (typeof answer.markdown === "string" && answer.markdown.trim()) return true;
 	return Array.isArray(answer.text_blocks) && answer.text_blocks.length > 0;
 }
 
-/**
- * The answer body for a surface, or a thrown error when there isn't one.
- *
- * Google sometimes loads its AI Overview separately from the result page, and
- * the SERP then carries `ai_overview.page_token` — a handle for SearchApi's
- * dedicated `google_ai_overview` engine — in place of the overview itself. It
- * is uncommon (once in roughly twenty live calls, and not reproducible per
- * query, so it is a property of the request rather than the search) and the
- * token dies in under a minute. A shell like that is failed rather than stored:
- * an empty answer would count as a run where the brand went unmentioned.
- */
+// A shell with no answer in it — Google handing back an ai_overview.page_token
+// instead of the overview — fails rather than storing as a run nobody was
+// mentioned in.
 function readAnswer(payload: Record<string, any>, target: SearchapiTarget): Record<string, any> {
 	const answer = target.nested ? payload[target.nested] : payload;
 	if (!answer || typeof answer !== "object") {
@@ -105,11 +77,7 @@ function readAnswer(payload: Record<string, any>, target: SearchapiTarget): Reco
 	return answer;
 }
 
-/**
- * What gets stored. An AI Overview arrives on a whole result page whose organic
- * results, ads and pagination no extractor reads and which runs an order of
- * magnitude larger than the overview itself.
- */
+// The rest of the result page dwarfs the overview and no extractor reads it.
 function storedOutput(payload: Record<string, any>, target: SearchapiTarget): Record<string, any> {
 	if (!target.nested) return payload;
 	return {
@@ -131,8 +99,7 @@ export const searchapi: Provider = {
 		if (!SEARCHAPI_TARGETS[config.model]) {
 			return `SearchApi does not support model "${config.model}". Supported: ${Object.keys(SEARCHAPI_TARGETS).join(", ")}`;
 		}
-		// ChatGPT is the one surface with a web-search toggle; the rest are search
-		// products that always search.
+		// ChatGPT is the one surface with a toggle; the rest always search.
 		if (config.model !== "chatgpt" && !config.webSearch) {
 			return `${config.model}:searchapi requires :online — SearchApi reads the live web-search UIs`;
 		}
@@ -162,10 +129,8 @@ export const searchapi: Provider = {
 		return {
 			rawOutput: stored,
 			textContent: extractTextFromSearchapi(stored),
-			// ChatGPT searches on its own initiative as well as on request, and
-			// `is_web_search_performed` reports what actually happened — better
-			// evidence than the target's toggle. No other engine sets it, and they
-			// all always search.
+			// ChatGPT searches on its own initiative too, so trust what the response
+			// reports over the target's toggle. No other engine sets the field.
 			webQueries: reportedWebQueries(nonEmptyStrings(answer.search_queries), {
 				webSearch: answer.response_metadata?.is_web_search_performed !== false,
 				searchProven: citations.length > 0,

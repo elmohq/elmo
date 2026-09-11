@@ -688,8 +688,6 @@ describe("text-extraction", () => {
 	});
 
 	describe("searchapi", () => {
-		// The dashboard re-reads stored runs through these, so the AI Overview
-		// payload has to unwrap the same way it did when the run was collected.
 		const AI_OVERVIEW = {
 			ai_overview: {
 				markdown: "The **Brooks Ghost** is a well-reviewed beginner shoe.",
