@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
 
 // Curated llms.txt for the marketing site, following the llmstxt.org convention:
 // an H1, a one-paragraph summary, a short positioning blurb, then sections of
@@ -7,13 +8,13 @@ const llmsTxt = `# Elmo
 
 > Elmo is an open source, self-hosted AI visibility platform. Track how AI answer engines like ChatGPT, Google AI Overviews, Perplexity, Gemini, Copilot, and Grok talk about your brand — monitor mentions, analyze citations, and benchmark competitors. Because Elmo is open source and runs on your own infrastructure, your data stays yours and you're never locked in.
 
-Elmo is Answer Engine Optimization (AEO), also called generative engine optimization (GEO), without the black box. On a schedule, it runs your prompts across every major AI answer engine, then measures how often your brand appears, which competitors show up alongside it, and which sources the models cite. The methodology is documented and every line of code is open, so each number is something you can independently verify. Elmo is built by Blue Whale Software, LLC — bootstrapped, transparent, and priced so AI visibility data is a commodity rather than a luxury. Self-host it for free, explore the live demo, or get in touch about managed cloud hosting and white-label deployments.
+Elmo is Answer Engine Optimization (AEO), also called generative engine optimization (GEO), without the black box. On a schedule, it runs your prompts across every major AI answer engine, then measures how often your brand appears, which competitors show up alongside it, and which sources the models cite. The methodology is documented and every line of code is open, so each number is something you can independently verify. Elmo is built by Blue Whale Software, LLC — bootstrapped, transparent, and priced so AI visibility data is a commodity rather than a luxury. Self-host it for free, explore the live demo, sign up for managed cloud hosting from $${CLOUD_ENTRY_PRICE_USD}/month, or get in touch about white-label deployments.
 
 ## Product
 
 - [Elmo](https://www.elmohq.com/): Know how AI talks about your brand — track visibility across any AI model, monitor mentions, analyze citations, and benchmark competitors.
 - [Features](https://www.elmohq.com/features): Visibility dashboard, per-prompt and per-model tracking, citation analysis, competitor intelligence, prompt management, response deep-dives, and long-term trends.
-- [Pricing](https://www.elmohq.com/pricing): Free and open source to self-host, managed cloud hosting coming soon, and white-label available for agencies.
+- [Pricing](https://www.elmohq.com/pricing): Free and open source to self-host, managed cloud from $${CLOUD_ENTRY_PRICE_USD}/month, and white-label available for agencies.
 - [Live Demo](https://demo.elmohq.com): Explore a fully populated Elmo instance — no installation required.
 - [Vision](https://www.elmohq.com/vision): Why we believe AI visibility monitoring should be affordable, transparent, and built to last.
 

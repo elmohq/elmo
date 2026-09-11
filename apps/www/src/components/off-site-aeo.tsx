@@ -86,7 +86,7 @@ const valuePoints: ValuePoint[] = [
 	},
 	{
 		icon: <Target className="size-4" strokeWidth={2.5} />,
-		title: "Targeted, not spray-and-pray",
+		title: "Targeted by prompt",
 		body: "We start from your AI-visibility data: the prompts you're missing and the competitors cited instead of you. Each placement closes one of those gaps.",
 	},
 	{
@@ -97,7 +97,7 @@ const valuePoints: ValuePoint[] = [
 	{
 		icon: <CalendarClock className="size-4" strokeWidth={2.5} />,
 		title: "Fresh sources, every month",
-		body: "AI answers favor recent data. A one-time burst fades; publishing every month keeps your brand's data fresh. It's a more natural backlink pattern for classic SEO, too.",
+		body: "AI answers favor recent data. A one-time burst fades, so we publish every month to keep your brand's sources fresh. It's a more natural backlink pattern for classic SEO, too.",
 	},
 ];
 
