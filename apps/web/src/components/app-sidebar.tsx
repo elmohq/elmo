@@ -3,12 +3,14 @@ import {
 	IconBuilding,
 	IconBuildings,
 	IconChartBar,
+	IconCode,
 	IconCpu,
 	IconCreditCard,
 	IconDashboard,
 	IconKey,
 	IconLink,
 	IconListDetails,
+	IconPlugConnected,
 	IconSitemap,
 	IconSpeakerphone,
 	IconTarget,
@@ -42,7 +44,7 @@ import type { ShellScope } from "@/lib/shell-scope";
 
 export type AppSidebarProps = ShellScope;
 
-function organizationGroup(organization: OrganizationSummary, features?: FeaturesConfig): NavGroup {
+function organizationGroups(organization: OrganizationSummary, features?: FeaturesConfig): NavGroup[] {
 	const params = orgLinkParams(organization);
 	const items: NavItem[] = [
 		{ title: "Organization", link: { to: "/app/org/$org/settings", params }, icon: IconBriefcase, exact: true },
@@ -57,9 +59,18 @@ function organizationGroup(organization: OrganizationSummary, features?: Feature
 		items.push({ title: "Billing", link: { to: "/app/org/$org/settings/billing", params }, icon: IconCreditCard });
 	}
 
-	items.push({ title: "API keys", link: { to: "/app/org/$org/settings/api-keys", params }, icon: IconKey });
+	items.push({ title: "API Keys", link: { to: "/app/org/$org/settings/api-keys", params }, icon: IconKey });
 
-	return { label: "Organization Settings", items };
+	return [
+		{ label: "Organization Settings", items },
+		{
+			label: "Docs",
+			items: [
+				{ title: "API", link: { to: "/app/org/$org/settings/api", params }, icon: IconCode },
+				{ title: "MCP", link: { to: "/app/org/$org/settings/mcp", params }, icon: IconPlugConnected },
+			],
+		},
+	];
 }
 
 function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts): NavGroup[] {
@@ -120,7 +131,7 @@ export function AppSidebar({ section, organization, brand }: AppSidebarProps) {
 
 	const groups: NavGroup[] = [
 		...(section === "brand" && organization && brand ? brandGroups(organization, brand) : []),
-		...(section === "organization" && organization ? [organizationGroup(organization, features)] : []),
+		...(section === "organization" && organization ? organizationGroups(organization, features) : []),
 		...(section === "admin" && adminItems.length > 0 ? [{ label: "Admin", items: adminItems }] : []),
 	];
 	const brandmark = (

@@ -67,9 +67,11 @@ import { Route as ApiV1OrganizationsOrganizationIdBillingRouteImport } from './r
 import { Route as ApiV1PromptsPromptIdSnapshotRouteImport } from './routes/api/v1/prompts/$promptId/snapshot'
 import { Route as AuthedAppOrgOrgBrandBrandRouteImport } from './routes/_authed/app/org/$org/brand/$brand'
 import { Route as AuthedAppOrgOrgSettingsIndexRouteImport } from './routes/_authed/app/org/$org/settings/index'
+import { Route as AuthedAppOrgOrgSettingsApiRouteImport } from './routes/_authed/app/org/$org/settings/api'
 import { Route as AuthedAppOrgOrgSettingsApiKeysRouteImport } from './routes/_authed/app/org/$org/settings/api-keys'
 import { Route as AuthedAppOrgOrgSettingsBillingRouteImport } from './routes/_authed/app/org/$org/settings/billing'
 import { Route as AuthedAppOrgOrgSettingsBrandsRouteImport } from './routes/_authed/app/org/$org/settings/brands'
+import { Route as AuthedAppOrgOrgSettingsMcpRouteImport } from './routes/_authed/app/org/$org/settings/mcp'
 import { Route as AuthedAppOrgOrgSettingsMembersRouteImport } from './routes/_authed/app/org/$org/settings/members'
 import { Route as ApiV1BrandsBrandIdCitationsDomainsRouteImport } from './routes/api/v1/brands/$brandId/citations/domains'
 import { Route as ApiV1BrandsBrandIdCitationsUrlsRouteImport } from './routes/api/v1/brands/$brandId/citations/urls'
@@ -398,6 +400,12 @@ const AuthedAppOrgOrgSettingsIndexRoute =
     path: '/',
     getParentRoute: () => AuthedAppOrgOrgSettingsRoute,
   } as any)
+const AuthedAppOrgOrgSettingsApiRoute =
+  AuthedAppOrgOrgSettingsApiRouteImport.update({
+    id: '/api',
+    path: '/api',
+    getParentRoute: () => AuthedAppOrgOrgSettingsRoute,
+  } as any)
 const AuthedAppOrgOrgSettingsApiKeysRoute =
   AuthedAppOrgOrgSettingsApiKeysRouteImport.update({
     id: '/api-keys',
@@ -414,6 +422,12 @@ const AuthedAppOrgOrgSettingsBrandsRoute =
   AuthedAppOrgOrgSettingsBrandsRouteImport.update({
     id: '/brands',
     path: '/brands',
+    getParentRoute: () => AuthedAppOrgOrgSettingsRoute,
+  } as any)
+const AuthedAppOrgOrgSettingsMcpRoute =
+  AuthedAppOrgOrgSettingsMcpRouteImport.update({
+    id: '/mcp',
+    path: '/mcp',
     getParentRoute: () => AuthedAppOrgOrgSettingsRoute,
   } as any)
 const AuthedAppOrgOrgSettingsMembersRoute =
@@ -600,9 +614,11 @@ export interface FileRoutesByFullPath {
   '/app/org/$org/': typeof AuthedAppOrgOrgIndexRoute
   '/api/plausible/js/script/': typeof ApiPlausibleJsScriptIndexRoute
   '/app/org/$org/brand/$brand': typeof AuthedAppOrgOrgBrandBrandRouteWithChildren
+  '/app/org/$org/settings/api': typeof AuthedAppOrgOrgSettingsApiRoute
   '/app/org/$org/settings/api-keys': typeof AuthedAppOrgOrgSettingsApiKeysRoute
   '/app/org/$org/settings/billing': typeof AuthedAppOrgOrgSettingsBillingRoute
   '/app/org/$org/settings/brands': typeof AuthedAppOrgOrgSettingsBrandsRoute
+  '/app/org/$org/settings/mcp': typeof AuthedAppOrgOrgSettingsMcpRoute
   '/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
   '/api/v1/brands/$brandId/citations/domains': typeof ApiV1BrandsBrandIdCitationsDomainsRoute
   '/api/v1/brands/$brandId/citations/urls': typeof ApiV1BrandsBrandIdCitationsUrlsRoute
@@ -677,9 +693,11 @@ export interface FileRoutesByTo {
   '/api/v1/prompts/$promptId/snapshot': typeof ApiV1PromptsPromptIdSnapshotRoute
   '/app/org/$org': typeof AuthedAppOrgOrgIndexRoute
   '/api/plausible/js/script': typeof ApiPlausibleJsScriptIndexRoute
+  '/app/org/$org/settings/api': typeof AuthedAppOrgOrgSettingsApiRoute
   '/app/org/$org/settings/api-keys': typeof AuthedAppOrgOrgSettingsApiKeysRoute
   '/app/org/$org/settings/billing': typeof AuthedAppOrgOrgSettingsBillingRoute
   '/app/org/$org/settings/brands': typeof AuthedAppOrgOrgSettingsBrandsRoute
+  '/app/org/$org/settings/mcp': typeof AuthedAppOrgOrgSettingsMcpRoute
   '/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
   '/api/v1/brands/$brandId/citations/domains': typeof ApiV1BrandsBrandIdCitationsDomainsRoute
   '/api/v1/brands/$brandId/citations/urls': typeof ApiV1BrandsBrandIdCitationsUrlsRoute
@@ -762,9 +780,11 @@ export interface FileRoutesById {
   '/_authed/app/org/$org/': typeof AuthedAppOrgOrgIndexRoute
   '/api/plausible/js/script/': typeof ApiPlausibleJsScriptIndexRoute
   '/_authed/app/org/$org/brand/$brand': typeof AuthedAppOrgOrgBrandBrandRouteWithChildren
+  '/_authed/app/org/$org/settings/api': typeof AuthedAppOrgOrgSettingsApiRoute
   '/_authed/app/org/$org/settings/api-keys': typeof AuthedAppOrgOrgSettingsApiKeysRoute
   '/_authed/app/org/$org/settings/billing': typeof AuthedAppOrgOrgSettingsBillingRoute
   '/_authed/app/org/$org/settings/brands': typeof AuthedAppOrgOrgSettingsBrandsRoute
+  '/_authed/app/org/$org/settings/mcp': typeof AuthedAppOrgOrgSettingsMcpRoute
   '/_authed/app/org/$org/settings/members': typeof AuthedAppOrgOrgSettingsMembersRoute
   '/api/v1/brands/$brandId/citations/domains': typeof ApiV1BrandsBrandIdCitationsDomainsRoute
   '/api/v1/brands/$brandId/citations/urls': typeof ApiV1BrandsBrandIdCitationsUrlsRoute
@@ -847,9 +867,11 @@ export interface FileRouteTypes {
     | '/app/org/$org/'
     | '/api/plausible/js/script/'
     | '/app/org/$org/brand/$brand'
+    | '/app/org/$org/settings/api'
     | '/app/org/$org/settings/api-keys'
     | '/app/org/$org/settings/billing'
     | '/app/org/$org/settings/brands'
+    | '/app/org/$org/settings/mcp'
     | '/app/org/$org/settings/members'
     | '/api/v1/brands/$brandId/citations/domains'
     | '/api/v1/brands/$brandId/citations/urls'
@@ -924,9 +946,11 @@ export interface FileRouteTypes {
     | '/api/v1/prompts/$promptId/snapshot'
     | '/app/org/$org'
     | '/api/plausible/js/script'
+    | '/app/org/$org/settings/api'
     | '/app/org/$org/settings/api-keys'
     | '/app/org/$org/settings/billing'
     | '/app/org/$org/settings/brands'
+    | '/app/org/$org/settings/mcp'
     | '/app/org/$org/settings/members'
     | '/api/v1/brands/$brandId/citations/domains'
     | '/api/v1/brands/$brandId/citations/urls'
@@ -1008,9 +1032,11 @@ export interface FileRouteTypes {
     | '/_authed/app/org/$org/'
     | '/api/plausible/js/script/'
     | '/_authed/app/org/$org/brand/$brand'
+    | '/_authed/app/org/$org/settings/api'
     | '/_authed/app/org/$org/settings/api-keys'
     | '/_authed/app/org/$org/settings/billing'
     | '/_authed/app/org/$org/settings/brands'
+    | '/_authed/app/org/$org/settings/mcp'
     | '/_authed/app/org/$org/settings/members'
     | '/api/v1/brands/$brandId/citations/domains'
     | '/api/v1/brands/$brandId/citations/urls'
@@ -1480,6 +1506,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAppOrgOrgSettingsIndexRouteImport
       parentRoute: typeof AuthedAppOrgOrgSettingsRoute
     }
+    '/_authed/app/org/$org/settings/api': {
+      id: '/_authed/app/org/$org/settings/api'
+      path: '/api'
+      fullPath: '/app/org/$org/settings/api'
+      preLoaderRoute: typeof AuthedAppOrgOrgSettingsApiRouteImport
+      parentRoute: typeof AuthedAppOrgOrgSettingsRoute
+    }
     '/_authed/app/org/$org/settings/api-keys': {
       id: '/_authed/app/org/$org/settings/api-keys'
       path: '/api-keys'
@@ -1499,6 +1532,13 @@ declare module '@tanstack/react-router' {
       path: '/brands'
       fullPath: '/app/org/$org/settings/brands'
       preLoaderRoute: typeof AuthedAppOrgOrgSettingsBrandsRouteImport
+      parentRoute: typeof AuthedAppOrgOrgSettingsRoute
+    }
+    '/_authed/app/org/$org/settings/mcp': {
+      id: '/_authed/app/org/$org/settings/mcp'
+      path: '/mcp'
+      fullPath: '/app/org/$org/settings/mcp'
+      preLoaderRoute: typeof AuthedAppOrgOrgSettingsMcpRouteImport
       parentRoute: typeof AuthedAppOrgOrgSettingsRoute
     }
     '/_authed/app/org/$org/settings/members': {
@@ -1668,18 +1708,22 @@ const AuthedAdminRouteWithChildren = AuthedAdminRoute._addFileChildren(
 )
 
 interface AuthedAppOrgOrgSettingsRouteChildren {
+  AuthedAppOrgOrgSettingsApiRoute: typeof AuthedAppOrgOrgSettingsApiRoute
   AuthedAppOrgOrgSettingsApiKeysRoute: typeof AuthedAppOrgOrgSettingsApiKeysRoute
   AuthedAppOrgOrgSettingsBillingRoute: typeof AuthedAppOrgOrgSettingsBillingRoute
   AuthedAppOrgOrgSettingsBrandsRoute: typeof AuthedAppOrgOrgSettingsBrandsRoute
+  AuthedAppOrgOrgSettingsMcpRoute: typeof AuthedAppOrgOrgSettingsMcpRoute
   AuthedAppOrgOrgSettingsMembersRoute: typeof AuthedAppOrgOrgSettingsMembersRoute
   AuthedAppOrgOrgSettingsIndexRoute: typeof AuthedAppOrgOrgSettingsIndexRoute
 }
 
 const AuthedAppOrgOrgSettingsRouteChildren: AuthedAppOrgOrgSettingsRouteChildren =
   {
+    AuthedAppOrgOrgSettingsApiRoute: AuthedAppOrgOrgSettingsApiRoute,
     AuthedAppOrgOrgSettingsApiKeysRoute: AuthedAppOrgOrgSettingsApiKeysRoute,
     AuthedAppOrgOrgSettingsBillingRoute: AuthedAppOrgOrgSettingsBillingRoute,
     AuthedAppOrgOrgSettingsBrandsRoute: AuthedAppOrgOrgSettingsBrandsRoute,
+    AuthedAppOrgOrgSettingsMcpRoute: AuthedAppOrgOrgSettingsMcpRoute,
     AuthedAppOrgOrgSettingsMembersRoute: AuthedAppOrgOrgSettingsMembersRoute,
     AuthedAppOrgOrgSettingsIndexRoute: AuthedAppOrgOrgSettingsIndexRoute,
   }

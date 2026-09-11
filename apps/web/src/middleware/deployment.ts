@@ -11,8 +11,8 @@
  */
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import openApiSpec from "@workspace/api-spec";
 import { getDeployment } from "@workspace/deployment";
+import { deploymentOpenApiSpec } from "@/lib/api/openapi";
 import { evaluateDeploymentPolicy, evaluateReadOnly } from "@/lib/auth/policies";
 
 /**
@@ -45,7 +45,7 @@ export const deploymentMiddleware = createMiddleware().server(async ({ next }) =
 		case "redirect":
 			throw Response.redirect(new URL(result.url, request.url), 302);
 		case "serve-openapi":
-			throw Response.json(openApiSpec, {
+			throw Response.json(deploymentOpenApiSpec(deployment.branding, url.origin), {
 				headers: { "Content-Type": "application/json" },
 			});
 	}
