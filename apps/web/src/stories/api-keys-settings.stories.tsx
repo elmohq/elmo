@@ -43,7 +43,7 @@ const KEYS: ApiKeysPageData["keys"] = [
 		start: "elmo_7dd0",
 		scopes: ["analytics:read"],
 		brandIds: ["brand-2", "brand-3"],
-		enabled: true,
+		enabled: false,
 		createdAt: "2025-09-01T10:00:00.000Z",
 		lastUsedAt: "2026-01-19T10:00:00.000Z",
 		expiresAt: "2026-03-01T10:00:00.000Z",
@@ -94,8 +94,8 @@ export const WithKeys: Story = {
 		await expect(await canvas.findByRole("heading", { name: "API Keys" })).toBeVisible();
 		await expect(await canvas.findByRole("heading", { name: "Active" })).toBeVisible();
 		await expect(await canvas.findByRole("heading", { name: "Inactive" })).toBeVisible();
-		// The expired key is listed apart from the two that still authenticate.
-		await expect(await canvas.findByText("Expired")).toBeVisible();
+		// The revoked key is listed apart from the two that still authenticate.
+		await expect(await canvas.findByText("Revoked")).toBeVisible();
 		// A key that never expires says so rather than showing a dash.
 		await expect((await canvas.findAllByText("Never")).length).toBeGreaterThan(0);
 		await expect((await canvas.findAllByRole("button", { name: "Revoke" })).length).toBe(2);

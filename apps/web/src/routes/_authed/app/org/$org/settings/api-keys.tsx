@@ -605,7 +605,7 @@ function KeyTable({
 									<span className="truncate">{key.name ?? "Untitled key"}</span>
 									{inactive && (
 										<Badge variant="outline" className="font-normal">
-											{key.enabled ? "Expired" : "Revoked"}
+											Revoked
 										</Badge>
 									)}
 								</div>
