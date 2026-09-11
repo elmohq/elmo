@@ -213,8 +213,6 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	);
 	const updatePrompts = useCallback((prompts: EditablePrompt[]) => setData((p) => ({ ...p, prompts })), []);
 
-	// The model routinely suggests a site's own subdomains next to the site, which
-	// suffix matching already covers. Same check the settings form runs.
 	const validateDomain = useCallback(
 		(val: string): true | string => {
 			const cleaned = cleanAndValidateDomain(val);

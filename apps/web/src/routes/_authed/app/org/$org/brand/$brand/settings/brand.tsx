@@ -52,9 +52,6 @@ function BrandSettingsPage() {
 		setSlug(brandSegment(brand));
 	}
 
-	// Matching is suffix-based, so a domain the website or another entry already
-	// covers gets tracked either way. Discouraged as it is typed rather than
-	// enforced on save: what is already stored stays exactly as it is.
 	const validateDomain = useCallback(
 		(val: string): true | string => {
 			const cleaned = cleanAndValidateDomain(val);

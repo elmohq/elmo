@@ -213,10 +213,8 @@ export const Review = () => {
 };
 
 /**
- * Adding a domain the website already covers. Brand matching is suffix-based,
- * so `blog.acme.com` is counted as Acme's the moment `acme.com` is tracked; the
- * input says so instead of taking a chip that would change nothing. Nothing
- * already in the list is touched — this only discourages new entries.
+ * Adding a domain the website already covers. `acme.com` is tracked, so the input
+ * turns down `blog.acme.com` rather than taking a chip that would change nothing.
  */
 export const ReviewRejectsCoveredDomain: StoryObj = {
 	render: () => {
@@ -233,8 +231,7 @@ export const ReviewRejectsCoveredDomain: StoryObj = {
 		const documentBody = within(canvasElement.ownerDocument.body);
 
 		await canvas.findByText("Brand details");
-		// Brand name and website are plain inputs, so additional domains is the
-		// first combobox on the screen and aliases the second.
+		// Brand name and website are plain inputs, so domains is the first combobox.
 		const [domainsInput] = canvas.getAllByRole("combobox");
 		await userEvent.click(domainsInput);
 

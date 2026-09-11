@@ -276,7 +276,7 @@ describe("redundantDomainReason", () => {
 		expect(redundantDomainReason("eu.blog.acme.com", ["acme.com"])).toBe("is already covered by acme.com");
 	});
 
-	it("says a domain already in the list is tracked, without naming it twice", () => {
+	it("says a domain already in the list is tracked", () => {
 		expect(redundantDomainReason("acme.com", ["acme.com"])).toBe("is already tracked");
 	});
 
@@ -285,17 +285,15 @@ describe("redundantDomainReason", () => {
 	});
 
 	it("stays quiet when the domain is the broader one", () => {
-		// Adding acme.com next to blog.acme.com widens coverage rather than repeating it.
 		expect(redundantDomainReason("acme.com", ["blog.acme.com"])).toBeNull();
 	});
 
 	it("requires a label boundary, so a shared suffix is not coverage", () => {
-		// A bare endsWith would reject two genuinely different companies here.
 		expect(redundantDomainReason("notacme.com", ["acme.com"])).toBeNull();
 		expect(redundantDomainReason("fake-acme.com", ["acme.com"])).toBeNull();
 	});
 
-	it("ignores the nulls a caller gets back from cleanAndValidateDomain", () => {
+	it("ignores nulls in the tracked list", () => {
 		expect(redundantDomainReason("blog.acme.com", [null, "acme.com"])).toBe("is already covered by acme.com");
 		expect(redundantDomainReason("blog.acme.com", [null])).toBeNull();
 	});

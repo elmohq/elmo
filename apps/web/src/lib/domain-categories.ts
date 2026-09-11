@@ -317,9 +317,8 @@ export const FORUM_DOMAINS = new Set([
 ]);
 
 /**
- * The entry of `set` that `domain` equals or sits under, or null. Walks the
- * domain's parent suffixes so lookups stay O(labels) regardless of set size —
- * important for the large editorial set.
+ * The entry of `set` that `domain` equals or sits under. Walks parent suffixes
+ * so lookups stay O(labels) regardless of set size — the editorial set is large.
  */
 function coveringDomain(domain: string, set: Set<string>): string | null {
 	let d = domain;
@@ -337,13 +336,8 @@ export function inDomainSet(domain: string, set: Set<string>): boolean {
 }
 
 /**
- * Why adding `domain` next to `tracked` would change nothing, phrased for a
- * validation message — or null if it would. Brand matching is suffix-based, so
- * `acme.io` already counts `blog.acme.io` as the brand's. Nulls in `tracked`
- * are ignored so callers can pass `cleanAndValidateDomain` output straight in.
- *
- * Advisory only: this catches the entry as it is typed, and nothing rejects a
- * redundant domain that is already stored.
+ * Why adding `domain` next to `tracked` would change nothing, as a message
+ * fragment, or null. Advisory: nothing rejects a redundant domain already stored.
  */
 export function redundantDomainReason(domain: string, tracked: (string | null)[]): string | null {
 	const covering = coveringDomain(domain, new Set(tracked.filter((d): d is string => d !== null)));
