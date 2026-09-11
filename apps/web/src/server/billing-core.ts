@@ -4,6 +4,7 @@
  * answers `billingEnabled: false` rather than erroring.
  */
 import { planDisplayName } from "@workspace/config/plans";
+import { getDeployment } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
 import { organization } from "@workspace/lib/db/schema";
 import {
@@ -13,7 +14,6 @@ import {
 	getOrgBillingState,
 } from "@workspace/lib/entitlements";
 import { eq } from "drizzle-orm";
-import { getDeployment } from "@/lib/config/server";
 
 export class OrganizationNotFoundError extends Error {
 	constructor(public readonly organizationId: string) {

@@ -12,22 +12,10 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import type { LookbackPeriod } from "@/lib/chart-utils";
-import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { requireBrandSession } from "@/lib/auth/helpers";
+import { lookbackSchema } from "@/lib/lookback";
+import { resolveLookbackRange } from "@/lib/timezone-utils";
 import { getBrandShareOfVoice } from "@/server/analytics-core";
-
-export const LOOKBACK = z.enum(["1w", "1m", "3m", "6m", "1y", "all"]);
-
-/** Resolve a lookback + timezone into concrete from/to date strings (mirrors server/visibility.ts). */
-export function resolveRange(lookback: LookbackPeriod, timezoneParam: string) {
-	const timezone = resolveTimezone(timezoneParam);
-	const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookback, timezone, { allStrategy: "1y" }) as {
-		fromDateStr: string;
-		toDateStr: string;
-	};
-	return { timezone, fromDateStr, toDateStr };
-}
 
 export interface ShareOfVoiceEntry {
 	name: string;
@@ -52,7 +40,7 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			lookback: LOOKBACK.default("1m"),
+			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
 			search: z.string().optional(),
@@ -60,10 +48,9 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 		}),
 	)
 	.handler(async ({ data }): Promise<ShareOfVoiceResponse> => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
-		const { timezone, fromDateStr, toDateStr } = resolveRange(data.lookback as LookbackPeriod, data.timezone);
+		const { timezone, fromDateStr, toDateStr } = resolveLookbackRange(data.lookback, data.timezone);
 		const result = await getBrandShareOfVoice(
 			data.brandId,
 			{ from: fromDateStr, to: toDateStr, timezone },

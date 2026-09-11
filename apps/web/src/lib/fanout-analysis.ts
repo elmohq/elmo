@@ -56,7 +56,7 @@ export interface FanoutQueryStat {
 }
 
 /** One prompt's contribution to a fan-out query (the Top Queries drill-down). */
-export interface QueryPromptRef {
+interface QueryPromptRef {
 	promptId: string;
 	promptValue: string;
 	/** Run instances of this prompt that issued the query. */
@@ -270,7 +270,7 @@ const STOPWORDS = new Set([
 ]);
 
 /** True for stop words; the Word changes view hides these by default. */
-export function isStopword(word: string): boolean {
+function isStopword(word: string): boolean {
 	return STOPWORDS.has(word.toLowerCase());
 }
 

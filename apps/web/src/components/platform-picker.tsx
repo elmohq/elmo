@@ -41,7 +41,7 @@ export function formatUsd(amount: number): string {
  * monthly figure belongs to the page, which can total the whole selection —
  * per row it invited adding up twelve numbers to answer one question.
  */
-export function PlatformOperatorDetail({ option }: { option: PlatformOption }) {
+function PlatformOperatorDetail({ option }: { option: PlatformOption }) {
 	if (option.providerName == null && option.costPerRunUsd == null) return null;
 
 	const parts = [

@@ -33,12 +33,38 @@ import {
 	type PerPromptRunStats,
 } from "@/lib/postgres-read";
 import { isBrandedPrompt } from "@/lib/prompt-tags";
-import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { resolveLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { computeVolatility, type DailyDomainCount, stabilityScore } from "@/lib/visibility-stats";
-import { normalizeText, withoutRepeats } from "@/server/opportunities-dedupe";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
-export const CATEGORIES = ["creation", "existing-content", "outreach", "social"] as const;
+/** First occurrence of each entry, by whatever `key` identifies it. */
+function distinctBy<T>(items: T[], key: (item: T) => string): T[] {
+	const seen = new Set<string>();
+	return items.filter((item) => {
+		const id = key(item);
+		if (seen.has(id)) return false;
+		seen.add(id);
+		return true;
+	});
+}
+
+const normalizeText = (text: string) => text.trim().toLowerCase();
+
+export function withoutRepeats(report: OpportunitiesReport): OpportunitiesReport {
+	return {
+		...report,
+		summary: distinctBy(report.summary, normalizeText),
+		risks: distinctBy(report.risks, normalizeText),
+		opportunities: distinctBy(report.opportunities, (o) => normalizeText(o.title)).map((o) => ({
+			...o,
+			relatedPrompts: distinctBy(o.relatedPrompts, (p) => normalizeText(p.text)),
+			yourCitations: distinctBy(o.yourCitations, (c) => c.url),
+			competitorCitations: distinctBy(o.competitorCitations, (c) => c.url),
+		})),
+	};
+}
+
+const CATEGORIES = ["creation", "existing-content", "outreach", "social"] as const;
 
 const OpportunitySchema = z.object({
 	category: z
@@ -61,7 +87,7 @@ const OpportunitySchema = z.object({
 		.describe("The tracked prompts (verbatim, exactly as written in the data) this helps. May be empty."),
 });
 
-export const opportunitiesSchema = z.object({
+const opportunitiesSchema = z.object({
 	summary: z
 		.array(z.string())
 		.describe(
@@ -99,7 +125,7 @@ export interface OpportunitiesReport extends Omit<RawReport, "opportunities"> {
 	opportunities: ReportOpportunity[];
 }
 
-export type OpportunitiesReason = "insufficient-data" | null;
+type OpportunitiesReason = "insufficient-data" | null;
 export interface OpportunitiesResponse {
 	report: OpportunitiesReport | null;
 	reason: OpportunitiesReason;
@@ -167,13 +193,6 @@ function modelToPlatform(model: string): string {
 	if (m.startsWith("gpt") || m.startsWith("o1") || m.startsWith("o3") || m.startsWith("o4") || m.includes("chatgpt"))
 		return "ChatGPT";
 	return model;
-}
-
-function resolveRange(lookback: "1w" | "1m", timezone: string) {
-	return getTimezoneLookbackRange(lookback, timezone, { allStrategy: "1y" }) as {
-		fromDateStr: string;
-		toDateStr: string;
-	};
 }
 
 /** Top competitor (by mentions) per prompt, with rate = mentions / runs. */
@@ -358,8 +377,8 @@ function summarizePlatformVisibility(byModel: { model: string; runs: number; bra
  * to enrich the LLM output. Returns null if there isn't enough data. */
 async function buildDigest(brandId: string, timezoneParam: string): Promise<Digest | null> {
 	const timezone = resolveTimezone(timezoneParam);
-	const r30 = resolveRange("1m", timezone);
-	const r7 = resolveRange("1w", timezone);
+	const r30 = resolveLookbackRange("1m", timezone);
+	const r7 = resolveLookbackRange("1w", timezone);
 
 	const prompts = await resolveFilteredPrompts(brandId, {});
 	if (prompts.length === 0) return null;

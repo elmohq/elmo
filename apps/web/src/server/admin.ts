@@ -5,12 +5,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { getModelMeta } from "@workspace/config/models";
+import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { type Brand, brands, organization, type Prompt, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { assertCadenceAllowed, getBrandOrganizationId, getOrgEntitlementsMap } from "@workspace/lib/entitlements";
 import { analyzeBrand } from "@workspace/lib/onboarding";
-import { type ModelConfig, parseScrapeTargets } from "@workspace/lib/providers";
+import type { ModelConfig } from "@workspace/lib/providers";
 import {
 	type PromptRunPlan,
 	resolveBrandPromptRunPlans,
@@ -18,12 +19,11 @@ import {
 	targetKey,
 	targetOverdueStatus,
 } from "@workspace/lib/run-policy";
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { desc, eq, inArray, type SQL, sql } from "drizzle-orm";
 import { Client } from "pg";
 import { z } from "zod";
 import { isAdmin, requireAuthSession } from "@/lib/auth/helpers";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
-import { getAdminActiveBrandsOverTime, getAdminBrandRunStats, getAdminRunsOverTime } from "@/lib/postgres-read";
 
 // ============================================================================
 // Admin guard helper
@@ -46,6 +46,79 @@ async function organizationSlugs(organizationIds: string[]): Promise<Map<string,
 
 function organizationSegment(slugs: Map<string, string>, organizationId: string): string {
 	return slugs.get(organizationId) ?? organizationId;
+}
+
+// ============================================================================
+// Admin analytics queries
+// ============================================================================
+
+interface AdminRunsOverTime {
+	date: string;
+	count: number;
+}
+
+interface AdminBrandRunStats {
+	brand_id: string;
+	runs_7d: number;
+	runs_30d: number;
+	last_run_at: string | null;
+}
+
+interface AdminActiveBrandsOverTime {
+	date: string;
+	count: number;
+}
+
+async function adminRows<T>(query: SQL): Promise<T[]> {
+	const result = await db.execute(query);
+	return result.rows as T[];
+}
+
+async function getAdminRunsOverTime(): Promise<AdminRunsOverTime[]> {
+	const rows = await adminRows<AdminRunsOverTime>(sql`
+		SELECT
+			(created_at AT TIME ZONE 'UTC')::date AS date,
+			count(*)::int AS count
+		FROM prompt_runs
+		WHERE created_at >= now() - interval '30 days'
+		GROUP BY date
+		ORDER BY date
+	`);
+	return rows;
+}
+
+async function getAdminBrandRunStats(): Promise<AdminBrandRunStats[]> {
+	const rows = await adminRows<AdminBrandRunStats>(sql`
+		SELECT
+			brand_id,
+			count(*) FILTER (WHERE created_at >= now() - interval '7 days')::int AS runs_7d,
+			count(*) FILTER (WHERE created_at >= now() - interval '30 days')::int AS runs_30d,
+			to_char(max(created_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS last_run_at
+		FROM prompt_runs
+		GROUP BY brand_id
+	`);
+	return rows;
+}
+
+async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsOverTime[]> {
+	const rows = await adminRows<AdminActiveBrandsOverTime>(sql`
+		SELECT
+			target_date AS date,
+			count(DISTINCT brand_id)::int AS count
+		FROM (
+			SELECT
+				brand_id,
+				(created_at AT TIME ZONE 'UTC')::date + d AS target_date
+			FROM prompt_runs,
+				generate_series(0, 29) AS d
+			WHERE created_at >= now() - interval '60 days'
+		) expanded
+		WHERE target_date >= current_date - 30
+			AND target_date <= current_date
+		GROUP BY target_date
+		ORDER BY target_date
+	`);
+	return rows;
 }
 
 // ============================================================================

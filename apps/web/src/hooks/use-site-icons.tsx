@@ -8,8 +8,8 @@ import { buildBrandDomainIndex, domainForName } from "@/lib/site-icon";
  * render those names look the domain up here.
  */
 export function useSiteIcons(brandId?: string) {
-	const { brand } = useBrand(brandId);
-	const { competitors } = useCompetitors(brandId);
+	const { data: brand } = useBrand(brandId);
+	const { data: competitors } = useCompetitors(brandId);
 
 	return useMemo(() => {
 		const index = buildBrandDomainIndex([

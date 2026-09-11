@@ -59,11 +59,6 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 					await loadInScope(auth, params.competitorId);
 					const { competitorId } = params;
 
-					const existing = await db.query.competitors.findFirst({ where: eq(competitors.id, competitorId) });
-					if (!existing) {
-						throw new ApiError(404, "Not Found", `Competitor with ID '${competitorId}' not found`);
-					}
-
 					const update: Partial<typeof competitors.$inferInsert> = {};
 					if (body.name !== undefined) {
 						update.name = body.name;

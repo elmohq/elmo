@@ -15,17 +15,35 @@
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
-import type { APIRequestContext } from "@playwright/test";
+import { type APIRequestContext, test } from "@playwright/test";
 import pg from "pg";
-import { DATABASE_URL, GENERATED_ENV_PATH, TEST_BRAND_ID, TEST_BRAND_NAME } from "./fixtures";
+import {
+  DATABASE_URL,
+  GENERATED_ENV_PATH,
+  TEST_BRAND_ID,
+  TEST_BRAND_NAME,
+  isDeploymentMode,
+  modeDatabaseUrl,
+} from "./fixtures";
 
 /** better-auth's session cookie name on a non-HTTPS base URL. */
 const SESSION_COOKIE_NAME = "better-auth.session_token";
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+/**
+ * The database behind the stack the running project addresses. Modes no longer
+ * all share one, so a spec asking whether a write landed has to ask the
+ * database its own container writes to. Projects that name no mode — `worker` —
+ * get the default, which is the database the local stack and the worker share.
+ */
+function currentDatabaseUrl(): string {
+  const project = test.info().project.name.replace(/:setup$/, "");
+  return isDeploymentMode(project) ? modeDatabaseUrl(project) : DATABASE_URL;
+}
+
 export async function withDb<T>(fn: (client: pg.Client) => Promise<T>): Promise<T> {
-  const client = new pg.Client({ connectionString: DATABASE_URL });
+  const client = new pg.Client({ connectionString: currentDatabaseUrl() });
   await client.connect();
   try {
     return await fn(client);

@@ -5,6 +5,7 @@
 
 import { selectPremiumModels } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
+import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { citations, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
@@ -31,12 +32,6 @@ const promptValueSchema = z
 	.describe("The question to ask, as a person would type it.");
 
 const promptTagsSchema = z.array(z.string()).describe("Free-form labels used for filtering analytics.");
-
-export const createPromptInputSchema = z.object({
-	brandId: brandIdSchema,
-	value: promptValueSchema,
-	tags: promptTagsSchema.optional(),
-});
 
 export const bulkPromptInputSchema = z.object({
 	brandId: brandIdSchema,
@@ -68,7 +63,6 @@ export const updatePromptInputSchema = z
 		"At least one of value, enabled, tags, or premiumModels must be provided",
 	);
 
-export type CreatePromptInput = z.infer<typeof createPromptInputSchema>;
 export type BulkPromptInput = z.infer<typeof bulkPromptInputSchema>;
 export type UpdatePromptInput = z.infer<typeof updatePromptInputSchema>;
 
@@ -96,6 +90,23 @@ const PROMPT_COLUMNS = {
 export type PromptSummary = {
 	[K in keyof typeof PROMPT_COLUMNS]: Prompt[K];
 };
+
+/** The public shape of a prompt. `listPrompts` selects these columns; a read
+ *  that starts from the whole row projects onto them here, so every edge that
+ *  hands a prompt to a client answers the same fields. */
+export function toPromptSummary(prompt: Prompt): PromptSummary {
+	return {
+		id: prompt.id,
+		brandId: prompt.brandId,
+		value: prompt.value,
+		enabled: prompt.enabled,
+		tags: prompt.tags,
+		systemTags: prompt.systemTags,
+		premiumModels: prompt.premiumModels,
+		createdAt: prompt.createdAt,
+		updatedAt: prompt.updatedAt,
+	};
+}
 
 export interface ListPromptsFilters {
 	brandId?: string;
@@ -128,11 +139,6 @@ export async function listPrompts(filters: ListPromptsFilters): Promise<{ data: 
 	return { data, total: totals?.count ?? 0 };
 }
 
-export async function findPrompt(promptId: string): Promise<PromptSummary | null> {
-	const [prompt] = await db.select(PROMPT_COLUMNS).from(prompts).where(eq(prompts.id, promptId)).limit(1);
-	return prompt ?? null;
-}
-
 export async function findPromptBrandId(promptId: string): Promise<string | null> {
 	const [prompt] = await db.select({ brandId: prompts.brandId }).from(prompts).where(eq(prompts.id, promptId)).limit(1);
 	return prompt?.brandId ?? null;
@@ -142,11 +148,6 @@ export async function requirePrompt(promptId: string): Promise<Prompt> {
 	const [prompt] = await db.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
 	if (!prompt) throw new PromptNotFoundError(promptId);
 	return prompt;
-}
-
-export async function createPrompt(brand: PromptBrand, input: Omit<CreatePromptInput, "brandId">): Promise<Prompt> {
-	const [created] = await createPrompts(brand, { prompts: [{ value: input.value, tags: input.tags }] });
-	return created;
 }
 
 /** One delta against both pools in one transaction, so a batch that would
@@ -201,37 +202,49 @@ function promptUpdateData(
 	return update;
 }
 
+/** The quota-checked half of an update: re-read the row under the lock, charge
+ *  the plan for the change, then write. */
+async function applyPromptUpdate(
+	tx: DbConnection,
+	afterCommit: (task: () => Promise<unknown>) => void,
+	brand: PromptBrand,
+	promptId: string,
+	input: UpdatePromptInput,
+): Promise<Prompt | undefined> {
+	const [existing] = await tx.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
+	if (!existing || existing.brandId !== brand.id) throw new PromptNotFoundError(promptId);
+
+	const wasEnabled = existing.enabled;
+	const willBeEnabled = input.enabled ?? wasEnabled;
+	const nextPremium = input.premiumModels ? selectPremiumModels(input.premiumModels) : existing.premiumModels;
+
+	// Re-enabling re-spends the premium pairings, so the delta is against what
+	// the row costs now, not zero.
+	await assertPromptSaveAllowed(
+		brand.organizationId,
+		{
+			prompts: (willBeEnabled ? 1 : 0) - (wasEnabled ? 1 : 0),
+			premiumPairings: (willBeEnabled ? nextPremium.length : 0) - (wasEnabled ? existing.premiumModels.length : 0),
+		},
+		tx,
+	);
+
+	const [row] = await tx
+		.update(prompts)
+		.set(promptUpdateData(input, brand, nextPremium))
+		.where(eq(prompts.id, promptId))
+		.returning();
+	if (input.enabled !== undefined && wasEnabled !== input.enabled) {
+		afterCommit(() => (input.enabled ? createPromptJobScheduler(promptId) : removePromptJobScheduler(promptId)));
+	}
+	return row;
+}
+
 export async function updatePrompt(brand: PromptBrand, promptId: string, changes: UpdatePromptInput): Promise<Prompt> {
 	const input = updatePromptInputSchema.parse(changes);
-	const updated = await withQuotaLock(brand.organizationId, async (tx, afterCommit) => {
-		const [existing] = await tx.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
-		if (!existing || existing.brandId !== brand.id) throw new PromptNotFoundError(promptId);
-
-		const wasEnabled = existing.enabled;
-		const willBeEnabled = input.enabled ?? wasEnabled;
-		const nextPremium = input.premiumModels ? selectPremiumModels(input.premiumModels) : existing.premiumModels;
-
-		// Re-enabling re-spends the premium pairings, so the delta is against what
-		// the row costs now, not zero.
-		await assertPromptSaveAllowed(
-			brand.organizationId,
-			{
-				prompts: (willBeEnabled ? 1 : 0) - (wasEnabled ? 1 : 0),
-				premiumPairings: (willBeEnabled ? nextPremium.length : 0) - (wasEnabled ? existing.premiumModels.length : 0),
-			},
-			tx,
-		);
-
-		const [row] = await tx
-			.update(prompts)
-			.set(promptUpdateData(input, brand, nextPremium))
-			.where(eq(prompts.id, promptId))
-			.returning();
-		if (input.enabled !== undefined && wasEnabled !== input.enabled) {
-			afterCommit(() => (input.enabled ? createPromptJobScheduler(promptId) : removePromptJobScheduler(promptId)));
-		}
-		return row;
-	});
+	const updated = await withQuotaLock(brand.organizationId, (tx, afterCommit) =>
+		applyPromptUpdate(tx, afterCommit, brand, promptId, input),
+	);
 
 	// The check above can race with a concurrent delete; returning() decides.
 	if (!updated) throw new PromptNotFoundError(promptId);

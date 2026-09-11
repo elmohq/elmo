@@ -6,8 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { breadcrumbJsonLd, canonicalUrl, ogMeta } from "@/lib/seo";
 
 const title = "Features — AI Visibility & Citation Tracking · Elmo";
-const description =
-	"AI visibility tracking, citation analysis, competitor intelligence, and more. Everything you need to monitor your brand in AI search.";
+const description = "Track AI visibility, analyze citations, and monitor competitors — all in one tool.";
 
 export const Route = createFileRoute("/features")({
 	head: () => ({

@@ -1,9 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import { type DashboardSummaryResponse, getDashboardSummaryFn } from "@/server/dashboard";
-
-export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
-export type { CitationTimeSeriesPoint, DashboardSummaryResponse, VisibilityTimeSeriesPoint } from "@/server/dashboard";
+import type { LookbackPeriod } from "@/lib/lookback";
+import { getDashboardSummaryFn } from "@/server/dashboard";
 
 export const dashboardKeys = {
 	all: ["dashboard"] as const,
@@ -27,14 +25,14 @@ export function useDashboardSummary(brandId?: string, lookback: LookbackPeriod =
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,
 		refetchOnReconnect: true,
-		refetchInterval: 60_000, // Auto-refresh every 60 seconds
-		placeholderData: (prev) => prev, // Keep previous data while refetching with new filters
+		refetchInterval: 60_000,
+		placeholderData: (prev) => prev,
 	});
 
 	return {
-		dashboardSummary: query.data,
+		data: query.data,
 		isLoading: query.isLoading,
-		isError: query.error,
-		revalidate: query.refetch,
+		error: query.error,
+		refetch: query.refetch,
 	};
 }

@@ -36,7 +36,11 @@ const listPosts = createServerFn({ method: "GET" }).handler(async (): Promise<Po
 
 export const Route = createFileRoute("/blog/")({
 	head: () => ({
-		meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path: "/blog" })],
+		meta: [
+			{ title },
+			{ name: "description", content: description },
+			...ogMeta({ title, description, path: "/blog", label: "Blog" }),
+		],
 		links: [
 			{ rel: "canonical", href: canonicalUrl("/blog") },
 			{

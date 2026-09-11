@@ -7,9 +7,9 @@ import type { CitedPage, ReportOpportunity } from "./opportunities";
 import { resolveOpportunities } from "./opportunities";
 
 /** So a caller never has to tell "none" from "not enough data yet". */
-export type OpportunitiesStatus = "ready" | "insufficient-data";
+type OpportunitiesStatus = "ready" | "insufficient-data";
 
-export interface PublishedOpportunity {
+interface PublishedOpportunity {
 	category: ReportOpportunity["category"];
 	title: string;
 	why: string;

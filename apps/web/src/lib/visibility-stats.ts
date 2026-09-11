@@ -166,6 +166,40 @@ export interface PerPromptDailyMentions {
 	competitorMentions: number;
 }
 
+interface MentionCounts {
+	brand: number;
+	competitor: number;
+}
+
+function groupMentionsByPromptAndDate(perPrompt: PerPromptDailyMentions[]): Map<string, Map<string, MentionCounts>> {
+	const byPrompt = new Map<string, Map<string, MentionCounts>>();
+	for (const r of perPrompt) {
+		const dateMap = byPrompt.get(r.promptId) ?? new Map<string, MentionCounts>();
+		byPrompt.set(r.promptId, dateMap);
+		dateMap.set(r.date, { brand: r.brandMentions, competitor: r.competitorMentions });
+	}
+	return byPrompt;
+}
+
+/** Folds one prompt's carried-forward counts into the shared daily totals. */
+function accumulateCarriedMentions(
+	dateMap: Map<string, MentionCounts>,
+	dateRange: string[],
+	daily: Map<string, MentionCounts>,
+): void {
+	const sorted = [...dateMap.entries()].sort(([a], [b]) => a.localeCompare(b));
+	let carried = sorted.length > 0 ? sorted[0][1] : null;
+
+	for (const date of dateRange) {
+		carried = dateMap.get(date) ?? carried;
+		if (!carried) continue;
+		const bucket = daily.get(date) ?? { brand: 0, competitor: 0 };
+		daily.set(date, bucket);
+		bucket.brand += carried.brand;
+		bucket.competitor += carried.competitor;
+	}
+}
+
 /**
  * Brand share of voice over time, smoothed with per-prompt Last-Value-Carried-
  * Forward (mirrors the visibility trend): each prompt's last-known brand and
@@ -178,32 +212,9 @@ export function shareOfVoiceTimeSeriesLVCF(
 	perPrompt: PerPromptDailyMentions[],
 	dateRange: string[],
 ): Array<{ date: string; share: number | null }> {
-	const byPrompt = new Map<string, Map<string, { brand: number; competitor: number }>>();
-	for (const r of perPrompt) {
-		let m = byPrompt.get(r.promptId);
-		if (!m) {
-			m = new Map();
-			byPrompt.set(r.promptId, m);
-		}
-		m.set(r.date, { brand: r.brandMentions, competitor: r.competitorMentions });
-	}
-
-	const daily = new Map<string, { brand: number; competitor: number }>();
-	for (const [, dateMap] of byPrompt) {
-		const sorted = [...dateMap.entries()].sort(([a], [b]) => a.localeCompare(b));
-		let carried = sorted.length > 0 ? sorted[0][1] : null;
-		for (const date of dateRange) {
-			const actual = dateMap.get(date);
-			if (actual) carried = actual;
-			if (!carried) continue;
-			let bucket = daily.get(date);
-			if (!bucket) {
-				bucket = { brand: 0, competitor: 0 };
-				daily.set(date, bucket);
-			}
-			bucket.brand += carried.brand;
-			bucket.competitor += carried.competitor;
-		}
+	const daily = new Map<string, MentionCounts>();
+	for (const dateMap of groupMentionsByPromptAndDate(perPrompt).values()) {
+		accumulateCarriedMentions(dateMap, dateRange, daily);
 	}
 
 	return dateRange.map((date) => {

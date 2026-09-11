@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { LookbackPeriod } from "@/lib/chart-utils";
+import type { LookbackPeriod } from "@/lib/lookback";
 import { getTimezoneLookbackRange, resolveTimezone, shiftDateStr } from "@/lib/timezone-utils";
 
 describe("resolveTimezone", () => {

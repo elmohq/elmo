@@ -14,9 +14,10 @@ import { usesWordmarkFont } from "@/components/logo";
 import MissingEnvPage from "@/components/missing-env-page";
 import { NotFoundPage } from "@/components/not-found-page";
 import queryDevtools from "@/integrations/tanstack-query/devtools";
+import { rootConfigQuery } from "@/lib/config/queries";
 import { initCrisp } from "@/lib/crisp";
 import { initPostHog } from "@/lib/posthog";
-import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
+import type { PublicClientConfig } from "@/server/config";
 import appCss from "../styles.css?url";
 
 // clientConfig and envValidation are optional because the router renders against
@@ -31,24 +32,9 @@ interface RouterContext {
 	};
 }
 
-// Client-side cache for config data — avoids HTTP round-trips on every SPA navigation.
-// The server deliberately doesn't cache: `hasUsers` (and with it `canRegister`)
-// flips the first time someone signs up, and a module-scope cache in a
-// long-lived server process would keep serving the pre-signup answer — leaving
-// /auth/register reachable on a bootstrapped instance until the next restart.
-let cachedRootData: {
-	clientConfig: PublicClientConfig;
-	envValidation: { mode: DeploymentMode; missing: MissingEnvVar[]; isValid: boolean };
-} | null = null;
-
 export const Route = createRootRouteWithContext<RouterContext>()({
 	notFoundComponent: NotFoundPage,
-	beforeLoad: async () => {
-		if (cachedRootData) return cachedRootData;
-		const [clientConfig, envValidation] = await Promise.all([getClientConfig(), getEnvValidationStateFn()]);
-		if (typeof window !== "undefined") cachedRootData = { clientConfig, envValidation };
-		return { clientConfig, envValidation };
-	},
+	beforeLoad: ({ context }) => context.queryClient.ensureQueryData(rootConfigQuery),
 	head: ({ match }) => {
 		const branding = match.context?.clientConfig?.branding;
 		const analytics = match.context?.clientConfig?.analytics;

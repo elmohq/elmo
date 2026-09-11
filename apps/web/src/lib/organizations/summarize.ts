@@ -3,12 +3,13 @@
  * are stripped from that module, but anything exported outright would drag the
  * database into the client graph.
  */
+
+import { getDeployment } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { checkBrandCreate } from "@workspace/lib/entitlements";
 import { inArray } from "drizzle-orm";
 import type { UserOrganization } from "@/lib/auth/helpers";
-import { getDeployment } from "@/lib/config/server";
 import type { BrandCreation, OrganizationSummary } from "@/lib/organizations/types";
 
 const NOT_OFFERED: BrandCreation = { kind: "not-offered" };

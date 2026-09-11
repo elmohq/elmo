@@ -8,23 +8,23 @@
 	},
 	"type": "module",
 	"exports": {
-		"./render": "./src/render.ts",
+		"./render": "./src/render.tsx",
+		"./fonts": "./src/fonts.ts",
 		"./rasterize": "./src/rasterize.ts",
 		"./vite-plugin": "./src/vite-plugin.ts",
-		"./virtual": "./src/virtual.d.ts",
-		"./jsx": "./src/jsx.d.ts"
+		"./virtual": "./src/virtual.d.ts"
 	},
 	"dependencies": {
-		"@resvg/resvg-js": "^2.6.2",
+		"@takumi-rs/core": "^2.13.5",
+		"@takumi-rs/helpers": "^2.13.5",
 		"@workspace/config": "workspace:*",
-		"react": "^19.2.8",
-		"satori": "^0.29.0"
+		"react": "^19.2.8"
 	},
 	"devDependencies": {
-		"@types/node": "^26.2.0",
+		"@types/node": "^26.4.1",
 		"@types/react": "^19.2.18",
 		"nitro": "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421",
 		"typescript": "^7.0.2",
-		"vite": "^8.2.1"
+		"vite": "^8.2.2"
 	}
 }

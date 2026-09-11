@@ -134,7 +134,7 @@ test.describe("MCP", () => {
     expect((await below.json()).error.message).toBe("Not Found");
   });
 
-  test("a person can authorize an MCP client from the browser", async ({ page, baseURL }, testInfo) => {
+  test("a person can authorize an MCP client from the browser", async ({ page, baseURL, clientHeaders }, testInfo) => {
     test.skip(
       testInfo.project.name === "demo",
       "a read-only deployment runs no OAuth flow; the Bruno demo suite asserts the refusal",
@@ -142,7 +142,11 @@ test.describe("MCP", () => {
 
     // `storageState: undefined` is load-bearing: a new context otherwise
     // inherits the project's signed-in state, which no MCP client has.
-    const anonymous = await playwrightRequest.newContext({ baseURL, storageState: undefined });
+    const anonymous = await playwrightRequest.newContext({
+      baseURL,
+      storageState: undefined,
+      extraHTTPHeaders: clientHeaders,
+    });
 
     // A loopback redirect URI belongs to a `native` client; the server holds a
     // web client to HTTPS.
@@ -229,11 +233,19 @@ test.describe("MCP", () => {
   });
   /** The signed query has to reach the consent endpoint character for character,
    * so anything that rebuilds it on the way breaks the connection. */
-  test("a person who is not signed in yet arrives at the same consent screen", async ({ browser, baseURL }, testInfo) => {
+  test("a person who is not signed in yet arrives at the same consent screen", async ({
+    browser,
+    baseURL,
+    clientHeaders,
+  }, testInfo) => {
     test.skip(testInfo.project.name === "demo", "a read-only deployment runs no OAuth flow");
     test.skip(testInfo.project.name === "whitelabel", "whitelabel signs in through Auth0, which this suite does not stand up");
 
-    const anonymous = await playwrightRequest.newContext({ baseURL, storageState: undefined });
+    const anonymous = await playwrightRequest.newContext({
+      baseURL,
+      storageState: undefined,
+      extraHTTPHeaders: clientHeaders,
+    });
     const registration = await anonymous.post("/api/auth/oauth2/register", {
       data: {
         client_name: "Playwright Signed-out Client",
@@ -258,7 +270,7 @@ test.describe("MCP", () => {
       code_challenge_method: "S256",
     });
 
-    const context = await browser.newContext({ storageState: undefined });
+    const context = await browser.newContext({ storageState: undefined, extraHTTPHeaders: clientHeaders });
     const page = await context.newPage();
     const delivered: string[] = [];
     page.on("request", (req) => {

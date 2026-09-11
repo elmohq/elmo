@@ -31,7 +31,7 @@ const GROUP_DESCRIPTIONS: Record<PlanPlatformGroupId, string> = {
 };
 
 /** Which group an option belongs to. The one place that rule is decided. */
-export function platformGroupId(option: PlatformOption): PlanPlatformGroupId {
+function platformGroupId(option: PlatformOption): PlanPlatformGroupId {
 	if (option.access === "scraped") return "scraped";
 	return option.webSearch ? "premium" : "api";
 }

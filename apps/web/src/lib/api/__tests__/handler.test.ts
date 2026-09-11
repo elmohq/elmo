@@ -3,6 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { ApiError, createApiHandler } from "../handler";
 
+// A token that is not the admin key goes on to be looked up as an organization
+// key, which needs a database. Standing in for that keeps the 401 here a
+// statement about an unrecognized key rather than about an unreachable one.
+const verifyApiKey = vi.hoisted(() => vi.fn().mockResolvedValue({ valid: false }));
+vi.mock("@/lib/auth/server", () => ({ auth: { api: { verifyApiKey } } }));
+
 const API_KEY = "test-api-key";
 
 function makeRequest(options?: { method?: string; body?: string; apiKey?: string | null }) {

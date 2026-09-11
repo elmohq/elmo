@@ -52,6 +52,46 @@ function sameTags(a: string[], b: string[]) {
 	return [...a].sort().every((t, i) => t === sortedB[i]);
 }
 
+/** How one row differs from its baseline, or null when it is unchanged.
+ *  Clearing the text drops the prompt on save, so it counts as removed rather
+ *  than edited; an untouched blank row from "Add Prompt" isn't a change yet. */
+function classifyPrompt(
+	prompt: EditablePrompt,
+	prev: EditablePrompt | undefined,
+): "added" | "removed" | "edited" | null {
+	if (!prompt.value.trim()) return prev ? "removed" : null;
+	if (!prev) return "added";
+	const edited =
+		prompt.value.trim() !== prev.value.trim() ||
+		prompt.enabled !== prev.enabled ||
+		!sameModels(prompt.premiumModels, prev.premiumModels) ||
+		!sameTags(prompt.tags, prev.tags);
+	return edited ? "edited" : null;
+}
+
+function diffPrompts(baseline: EditablePrompt[], prompts: EditablePrompt[]) {
+	const before = new Map(baseline.map((p) => [p.id, p]));
+	const changed = new Set<string>();
+	let added = 0;
+	let edited = 0;
+
+	for (const p of prompts) {
+		const status = classifyPrompt(p, p.id ? before.get(p.id) : undefined);
+		if (!status) continue;
+		changed.add(p._key);
+		if (status === "added") added++;
+		else if (status === "edited") edited++;
+	}
+
+	const liveIds = new Set(prompts.filter((p) => p.value.trim()).map((p) => p.id));
+	return {
+		changedKeys: changed,
+		addedCount: added,
+		editedCount: edited,
+		removedCount: baseline.filter((p) => !liveIds.has(p.id)).length,
+	};
+}
+
 export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescription, premium }: PromptsEditorProps) {
 	const [baseline, setBaseline] = useState<EditablePrompt[]>(() => toEditablePrompts(initialPrompts));
 	const [prompts, setPrompts] = useState<EditablePrompt[]>(baseline);
@@ -61,47 +101,10 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	const invalidatePromptsSummary = useInvalidatePromptsSummary();
 	const writeError = useWriteErrorMessage();
 
-	const { changedKeys, removedCount, addedCount, editedCount } = useMemo(() => {
-		const before = new Map(baseline.map((p) => [p.id, p]));
-		const changed = new Set<string>();
-		let added = 0;
-		let edited = 0;
-
-		for (const p of prompts) {
-			const prev = p.id ? before.get(p.id) : undefined;
-			if (!prev) {
-				// An untouched blank row from "Add Prompt" isn't a change yet.
-				if (p.value.trim()) {
-					changed.add(p._key);
-					added++;
-				}
-				continue;
-			}
-			// Clearing the text drops the prompt on save, so it counts as removed
-			// rather than edited.
-			if (!p.value.trim()) {
-				changed.add(p._key);
-				continue;
-			}
-			if (
-				p.value.trim() !== prev.value.trim() ||
-				p.enabled !== prev.enabled ||
-				!sameModels(p.premiumModels, prev.premiumModels) ||
-				!sameTags(p.tags, prev.tags)
-			) {
-				changed.add(p._key);
-				edited++;
-			}
-		}
-
-		const liveIds = new Set(prompts.filter((p) => p.value.trim()).map((p) => p.id));
-		return {
-			changedKeys: changed,
-			addedCount: added,
-			editedCount: edited,
-			removedCount: baseline.filter((p) => !liveIds.has(p.id)).length,
-		};
-	}, [prompts, baseline]);
+	const { changedKeys, removedCount, addedCount, editedCount } = useMemo(
+		() => diffPrompts(baseline, prompts),
+		[prompts, baseline],
+	);
 
 	const isDirty = changedKeys.size > 0 || removedCount > 0;
 	const summary = [

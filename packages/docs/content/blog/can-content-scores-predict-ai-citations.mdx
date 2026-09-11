@@ -1,0 +1,124 @@
+---
+title: "Can a Content Score Predict Whether AI Will Cite You?"
+description: "A new validation study re-measured the classic GEO effect sizes on ten modern engines and found they move citation on none. What an engine-free content score can and cannot tell you."
+date: "2026-09-09"
+author: ai
+metaTitle: "Do AI Citability Content Scores Predict Citations?"
+tags:
+  - geo
+  - aeo
+  - ai-citations
+  - ai-visibility
+definedTerms:
+  - term: Deterministic content score
+    definition: "A deterministic content score is a number computed from a page's text alone — via regexes, counts, and simple statistics, with no model call and no answer engine involved — intended to grade how citable the content is for AI answers. Because it never queries an engine, it is cheap and reproducible, and its relationship to actual citation must be validated separately."
+  - term: Causal anchor
+    definition: "A causal anchor is a published experimental effect size — such as the 2023 GEO finding that adding quotations raised visibility — used to check that a score's levers actually move the outcome the score claims to predict. An anchor expires when re-measurement on current engines no longer reproduces the effect."
+  - term: Falsification gate
+    definition: "A falsification gate is an adversarial test a proxy score must pass to stay in use: a negative control that should not move it, a dose–response check, a bound on how far amplifying any lever can raise it, a duplication penalty, and length neutrality. Gates define what a score is robust to; they do not make it predictive."
+howTo:
+  name: "How to evaluate an AI citability score before trusting it"
+  description: "A checklist for deciding whether a content grade — from a vendor dashboard, an audit tool, or a linter — is measurement or decoration."
+  steps:
+    - name: Ask what the score was validated against, and when
+      text: "A citability score is a claim that some text features cause or predict citation. The only published causal effect sizes date from 2023, and a July 2026 re-measurement found they move citation on none of ten modern engine families. Any score justified by those numbers is anchored to expired evidence."
+    - name: Ask for out-of-sample correlation, not in-sample fit
+      text: "Fitting eleven feature weights to a few dozen noisy observations reproduces the training data, not the future: the study's observational fit scored Spearman 0.90 in-sample and 0.20 out-of-sample. A vendor quoting only in-sample agreement is quoting the overfit number."
+    - name: Treat the grade as a floor check, not a forecast
+      text: "The validated role for an engine-free score is quality filtering — catching duplication, padding, and incoherence — the same way a linter catches syntax errors without predicting whether the program is useful. Read a low grade as a to-do and a high grade as an absence of known defects, never as predicted visibility."
+    - name: Do not buy points on the score
+      text: "The study's adversarially bounded score caps lever-stuffing at about 6 points in 100, and real engines reward those levers even less. Spending content budget to move a grade from 78 to 92 is optimizing the proxy, not the outcome."
+    - name: Validate against your own measured citations
+      text: "Whatever score you use, join it against which of your pages actually get cited for your tracked prompts. If high-scoring pages are not cited more often than low-scoring ones in your own data, the score carries no signal for your category, whatever its benchmark says."
+    - name: Re-validate on a schedule
+      text: "The study's framing is that engines are non-stationary oracles: effect sizes measured on 2023 engines were gone by 2026. Any correlation you establish between a score and your citations carries a timestamp and needs re-measuring after major engine updates."
+faq:
+  - question: Can a content score predict whether AI will cite a page?
+    answer: "Barely. In a September 2026 validation study, the best content-only predictor — eleven deterministic text features, ranked within each query — correlated with which sources the engines actually cited at a within-query Spearman of about 0.11. Content quality features carry some signal, but which page gets cited is dominated by retrieval: what the engine's search returns for that query at that moment."
+  - question: Do the classic GEO tactics — adding quotations, statistics, and cited sources — still work in 2026?
+    answer: "Not measurably, on the engines tested. The 2023 GEO experiments put quotation addition at +42.6, statistics at +32.8, and cite-sources at +27.7 on their visibility metric. A July 2026 re-measurement of the same interventions on ten modern engine families — six open-weights and four commercial, including three gpt-5.x arms — found they \"move citation on none,\" with the modern effect vector statistically indistinguishable from zero where it was not nominally negative."
+  - question: Why did the 40% GEO visibility boost stop replicating?
+    answer: "The study reports the negative result without a settled mechanism, but three explanations have independent support: the engines changed (the 2023 measurements ran on a sandboxed engine built from 2023-era models), the metrics differ (word-share of an answer versus being cited at all), and adoption eroded the edge — C-SEO Bench found most conversational-SEO methods ineffective or negative on 2024–2025 models, and competition simulations show fixed tactics losing value as more of the pool optimizes."
+  - question: Are AEO content graders useless, then?
+    answer: "No — they are useful for what they can actually do, which is quality control. The study's own conclusion is that a deterministic score survives as \"a quality filter rather than a citation predictor\": good for catching duplication, padding, thin rewrites, and incoherence at corpus scale, layered over spam detection. What did not survive validation is the promise that raising the grade raises your citation rate."
+  - question: Can a content score be gamed?
+    answer: "A carefully built one, only within bounds: on the study's 500-source adversarial benchmark, amplifying the score's calibrated levers gained an attacker at most 6.1 points on the 0–100 scale, with diminishing returns per dose. That bounded gameability is a design property most commercial grades have never been tested for — and out-of-distribution attacks still evaded the score, which is why the authors position it behind web-spam baselines, not in front of them."
+  - question: What should I ask a vendor about their AI visibility grade?
+    answer: "Three questions. What outcome was the grade validated against — actual citations from named engines, or agreement with older scores? When was that validation run, given that 2023 effect sizes were dead by 2026? And what is the out-of-sample correlation — not the in-sample fit — between the grade and citation? A vendor with a real answer to the third question is rare; a vendor citing the 40% figure is anchored to expired evidence."
+  - question: How do I actually find out whether AI cites my content?
+    answer: "Measure the answers, not the content. Run the prompts your buyers ask against the engines they use, on a schedule, and record which pages are cited and which brands are named. That is the oracle the content scores are trying to approximate — expensive and noisy, but it is the outcome itself. In our own 42-day tracking, cited domains turned over 60–70% day to day, which is exactly why a static grade on the page cannot carry the prediction."
+---
+
+**Every "AI citability grade" rests on the same 2023 experiment, and that experiment just failed to replicate.** A [preprint posted 7 September 2026](https://arxiv.org/abs/2609.07559) by Elisha Bajemon and Andre-Louis Rochet set out to validate a deterministic content score — the engine-free kind that audit tools and dashboards hand out as a number from 0 to 100 — and ran the field's only published causal effect sizes against ten modern engine families along the way. The three strongest interventions from the 2023 GEO study — add quotations, add statistics, cite sources — moved citation on none of them.
+
+**Key takeaways**
+
+- The 2023 anchors are expired. Quotation addition measured +42.6, statistics +32.8, and cite-sources +27.7 in the original GEO experiments; the July 2026 re-measurement on six open-weights and four commercial engine families, including three gpt-5.x arms, found effects "statistically indistinguishable from zero where not nominally negative."
+- Content alone barely predicts citation. The study's best content-only predictor — eleven deterministic text features — correlated with actual within-query citation at Spearman ρ ≈ 0.11.
+- Fitting a score to observed citations overfits at realistic sample sizes: Spearman 0.90 in-sample collapsed to 0.20 out-of-sample, with eleven weights fitted on fewer than 40 noisy observations.
+- What survives validation is a quality filter, not a crystal ball: a score whose gaming is provably bounded (max +6.1 of 100 points from lever-stuffing) is useful for catching padding and duplication, and useless for forecasting visibility.
+- This is the third independent result pointing the same way: C-SEO Bench (NeurIPS 2025) found most conversational-SEO methods ineffective or negative, and the competition simulations we covered [in August](/blog/do-geo-tactics-stop-working) showed fixed tactics inverting under adoption. The disagreement between 2023 and 2026 has explanations; the direction does not change with the explanation.
+- The practical inversion: an engine-free grade cannot substitute for measuring answers, because the thing it omits — retrieval, at ask time — is where most of the outcome lives. Our own tracking put day-to-day churn in cited domains at [60–70%](/blog/citation-volatility).
+
+## The score everyone wants to buy
+
+The appeal of a content score is obvious once you price the alternative. The ground truth for AI visibility — run real prompts against real engines, record who gets cited — is expensive, rate-limited, and unstable from day to day. A number computed from the page itself is free, instant, and reproducible. So the market has produced them in volume: audit tools that grade "AI readiness," dashboards that score pages for citability, linters that check Markdown against answer-engine heuristics. Behind almost all of them sits the same intellectual collateral: the [KDD 2024 GEO paper](https://arxiv.org/abs/2311.09735), which reported that content edits could boost generative-engine visibility "by up to 40%," with quotations, statistics, and cited sources as the strongest levers.
+
+The new preprint asks the uncomfortable prior question: how would you know whether such a score measures anything? Its answer is a validation protocol — and the protocol's first casualty is the collateral.
+
+## What the paper did
+
+The authors build the strongest honest version of the thing being sold: a deterministic score with eleven sub-components (information density, quotable density, entity density, statistic density, self-containment, semantic redundancy, and the like), all computable with regexes, counting, and TF-IDF — no model call, no engine. Then they subject it to two kinds of check.
+
+The first is a battery of falsification gates: a negative control that must not move the score, a dose–response requirement, a proof that amplifying any single lever gains a bounded number of points, a duplication penalty, and length neutrality. On a 500-source adversarial benchmark built from GEO-Bench, the worst attacker gain was 6.1 points on the 0–100 scale — quotation-stuffing at the lowest dose — and gains shrank as the dose rose. These gates are the paper's genuine contribution: they define what the score is robust to, and almost no commercial grade has been tested against any of them.
+
+The second check is external: does the score's construction agree with measured causal effects on real engines? The only published effects are the 2023 ones, so the authors re-ran those interventions — same edits, modern engines — in July 2026, across ten engine families. The result is the sentence the whole field should read twice: the strongest 2023-era GEO interventions "move citation on none of ten engine families." The paper demotes the 2023 numbers to "an expired external check." And recalibrating the score to the honestly measured modern effects has a telling consequence: it zeroes out the lever-responsive features entirely. A 2026-honest content score contains no GEO-tactic levers, because the levers no longer carry measurable weight.
+
+| 2023 GEO intervention | 2023 effect (visibility metric) | July 2026 re-measurement, 10 engine families |
+|---|---|---|
+| Quotation addition | +42.6 | No measurable effect on citation |
+| Statistics addition | +32.8 | No measurable effect on citation |
+| Cite sources | +27.7 | No measurable effect on citation |
+| Keyword stuffing | −8.8 | Still null-to-negative |
+
+One more number completes the picture. Even allowing the score every advantage — conditioning on the query, using all eleven features — the correlation between the content-only prediction and which sources engines actually cited was a within-query Spearman of about 0.11. Not zero: better text is weakly favored. But 0.11 means the overwhelming share of the citation outcome is decided by something the page's text does not contain.
+
+## Three years of results, reconciled
+
+Read in isolation, one preprint reporting null effects would deserve suspicion. Read in sequence, it is the third point on a line.
+
+**2023 — the levers work.** The original GEO experiments measure large effects: up to 40% visibility gains, quotations and statistics leading. But the engine is a research sandbox built on 2023-era models, the metric is position-adjusted word share of the answer, and — as the [competition literature](/blog/do-geo-tactics-stop-working) later formalized — one document is optimized while every competitor stands still.
+
+**2025 — the levers mostly don't.** [C-SEO Bench](https://arxiv.org/abs/2506.11097), by Haritz Puerto and colleagues (NeurIPS Datasets & Benchmarks 2025), tests ten conversational-SEO methods — including the same quotations, statistics, and citations — on GPT-4o-mini, Claude 3.5 Haiku, o3, and o4-mini. Most are "largely ineffective" and frequently negative; the only methods with modest positive effects are holistic content improvement and instruction-like LLM guidance, and the paper's conclusion is that traditional retrieval-rank SEO "remains essential" — if the engine's search does not fetch your page, no phrasing rescues it.
+
+**2026 — the levers measure zero, and the score built on them loses its levers.** The Bajemon–Rochet re-measurement closes the loop on modern commercial engines, including gpt-5.x arms.
+
+The disagreement has candidate explanations, and they matter because they point at different failure modes. The engines changed: grounding, reranking, and answer synthesis in 2026 bear little resemblance to a 2023 sandbox, and the paper's own framing — the engine as a "non-stationary" oracle — implies every effect size carries a timestamp. The metrics differ: word-share of an answer is not the same outcome as being cited at all. And adoption eroded whatever was real: the [Capital One simulations](/blog/do-geo-tactics-stop-working) showed fixed tactics inverting as the optimized share of the pool rises, and the [CISPA prevalence measurement](/blog/geo-detection) shows that share climbing year over year. The three explanations are not exclusive, and none of them rescues the practitioner claim — that adding quotation blocks and statistics to a page reliably raises its citation rate on today's engines. No current measurement supports that claim, and the only current measurements we have contradict it.
+
+What the reconciliation does *not* support is the opposite overcorrection. Retrieval still decides most of the outcome, so the boring machinery that gets pages retrieved — crawlability, [structured, extractable content](/blog/structured-data-for-ai-search), topical authority, being the page a search returns — is precisely what C-SEO Bench found still matters. What expired is the idea that a cosmetic layer of GEO edits on top, or a grade measuring that layer, moves citation.
+
+## What a content score is still for
+
+The paper does not conclude that content scores are worthless — it concludes they are mislabeled. Stripped of expired causal claims, what survives the gates is a quality filter: a cheap, deterministic, manipulation-bounded check for duplication, padding, incoherence, and thin rewrites, positioned behind web-spam detection (which, the authors note, dominates it for catching actual attacks). Their recommended uses are corpus filtering, editorial quality control, and leaderboards — a linter, in software terms. A linter is genuinely useful. Nobody mistakes a clean lint run for a forecast that users will love the program.
+
+That reframing gives an in-house team a clean rule for every grade a tool shows them: read a low score as a defect list and a high score as the absence of known defects. The moment a grade is read as *predicted visibility* — "we moved from 71 to 88, so citations should follow" — it is being read as exactly the thing that failed validation.
+
+## What this does not show
+
+The usual discipline applies. This is one preprint, and its re-measurement runs on GEO-Bench sources — benchmark documents, not your product pages — with "citation" defined by the benchmark's protocol, not by a production Perplexity or ChatGPT session. Ten engine families is broad for an academic study and narrow against the surface area of deployed answer engines. The within-query 0.11 is a correlation under one feature set; a richer representation might extract more signal from content alone, though the direction of every recent result suggests not much more. And a null effect on citation does not rule out subtler effects the protocol cannot see — on how a brand is described once cited, for instance, which is a different outcome from whether it is cited at all.
+
+The overfitting warning cuts in all directions, including toward do-it-yourself dashboards: eleven weights fitted on forty observations scored 0.90 on the data it saw and 0.20 on data it did not. Any internal "citability model" trained on a few weeks of your own citations is running the same trap at the same sample sizes.
+
+## What to do on Monday
+
+1. **Inventory the grades you already pay attention to.** Every "AI readiness" or citability number in your stack gets the three vendor questions: validated against what outcome, on which engines, measured when. Anything anchored to the 2023 effect sizes is anchored to evidence that failed replication in July 2026.
+2. **Reclassify grades as lint.** Keep them in the editorial workflow for what they catch — duplication, padding, missing structure. Remove them from any dashboard where they sit next to visibility metrics as if they predicted them.
+3. **Stop buying points.** A content sprint whose success criterion is a higher grade is optimizing a proxy with a measured ceiling of about 6 points and a measured predictive value of about 0.11.
+4. **Spend the difference on retrieval and measurement.** The retrieval layer — whether engines fetch your pages at all — is where the outcome is decided, and the measurement layer is the only validation that transfers to your category: join your pages' grades against their actual citation rates in [your tracked prompts](/blog/ai-prompt-tracking), and believe your own join over any benchmark.
+5. **Timestamp everything.** The single deepest point in the paper is that the oracle is non-stationary. Whatever relationship you establish between content features and citations this quarter is a fact about this quarter's engines.
+
+The honest summary: the industry built scoring products on a causal result faster than anyone checked whether the result aged, and it did not age. What replaces the grade is not a better grade — it is measuring the outcome the grade was standing in for.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that measures the oracle directly: it runs your prompt set on a schedule across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces and records every answer, mention, and cited page in your own database. That makes the validation this research calls for a query — join any content score against the pages engines actually cite for your prompts, and find out what predicts citation *in your category* instead of on a benchmark.
+
+For the fundamentals, start with [what AI citations are](/blog/ai-citations). For the adjacent evidence, see [whether GEO tactics survive competition](/blog/do-geo-tactics-stop-working), [how much of the web is already optimized](/blog/geo-detection), and [how fast cited sources churn](/blog/citation-volatility). For the practice, the [AEO guide](/blog/answer-engine-optimization) and [how to track your brand in AI search](/blog/track-brand-ai-search). For the vocabulary, the [AI search glossary](/glossary).

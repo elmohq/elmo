@@ -8,11 +8,7 @@ import { getOrgBillingState } from "@workspace/lib/entitlements";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { AppShell, PageContent } from "@/components/app-shell";
-import { AppSidebar } from "@/components/app-sidebar";
-import { SiteHeader } from "@/components/site-header";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
-import { useOrganization } from "@/hooks/use-organizations";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { getAppName } from "@/lib/route-head";
 
@@ -48,43 +44,22 @@ const getBrandData = createServerFn({ method: "GET" })
 
 function BrandLayoutSkeleton() {
 	return (
-		<AppShell
-			sidebar={
-				<div className="w-[var(--sidebar-width)] shrink-0 hidden md:block">
-					<div className="flex flex-col gap-4 p-4">
-						<Skeleton className="h-8 w-full" />
-						<div className="space-y-2">
-							<Skeleton className="h-8 w-full" />
-							<Skeleton className="h-8 w-full" />
-							<Skeleton className="h-8 w-full" />
-							<Skeleton className="h-8 w-full" />
-						</div>
-					</div>
-				</div>
-			}
-			header={
-				<div className="flex h-14 items-center gap-2 px-4 border-b">
-					<Skeleton className="h-6 w-6" />
-					<Skeleton className="h-5 w-32" />
-				</div>
-			}
-		>
-			<PageContent>
-				<div className="space-y-2">
-					<Skeleton className="h-9 w-48" />
-					<Skeleton className="h-5 w-80" />
-				</div>
-				<div className="space-y-4">
-					<Skeleton className="h-10 w-full" />
-					<Skeleton className="h-64 w-full rounded-lg" />
-					<Skeleton className="h-64 w-full rounded-lg" />
-				</div>
-			</PageContent>
-		</AppShell>
+		<>
+			<div className="space-y-2">
+				<Skeleton className="h-9 w-48" />
+				<Skeleton className="h-5 w-80" />
+			</div>
+			<div className="space-y-4">
+				<Skeleton className="h-10 w-full" />
+				<Skeleton className="h-64 w-full rounded-lg" />
+				<Skeleton className="h-64 w-full rounded-lg" />
+			</div>
+		</>
 	);
 }
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
+	staticData: { shell: "brand" },
 	validateSearch: validateBrandFilterSearch,
 	beforeLoad: ({ params, location, context }): { brandId: string } => {
 		const { brands: owned } = context.organization;
@@ -125,18 +100,5 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 	},
 	staleTime: 5 * 60 * 1000,
 	pendingComponent: BrandLayoutSkeleton,
-	component: BrandLayout,
+	component: () => <Outlet />,
 });
-
-function BrandLayout() {
-	const { brand } = Route.useLoaderData();
-	const organization = useOrganization();
-
-	return (
-		<AppShell sidebar={<AppSidebar scope="brand" brand={brand} organization={organization} />} header={<SiteHeader />}>
-			<PageContent>
-				<Outlet />
-			</PageContent>
-		</AppShell>
-	);
-}

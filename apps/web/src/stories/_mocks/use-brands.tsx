@@ -25,19 +25,18 @@ export const brandKeys = {
 
 export function useBrand(_brandId?: string) {
 	return {
-		brandId: _mockBrand?.id || "mock-brand-id",
-		brand: _mockBrand,
+		data: _mockBrand,
 		isLoading: false,
-		isError: null,
-		revalidate: async () => {},
+		error: null,
+		refetch: async () => {},
 	};
 }
 
 export function useCompetitors(_brandId?: string) {
 	return {
-		competitors: _mockCompetitors,
+		data: _mockCompetitors,
 		isLoading: false,
-		isError: null,
-		revalidate: async () => {},
+		error: null,
+		refetch: async () => {},
 	};
 }

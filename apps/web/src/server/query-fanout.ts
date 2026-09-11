@@ -10,10 +10,10 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import type { LookbackPeriod } from "@/lib/chart-utils";
+import { requireBrandSession } from "@/lib/auth/helpers";
 import type { FanoutAnalysis } from "@/lib/fanout-analysis";
-import { LOOKBACK, resolveRange } from "@/server/analysis";
+import { lookbackSchema } from "@/lib/lookback";
+import { resolveLookbackRange } from "@/lib/timezone-utils";
 import { getBrandQueryFanout } from "@/server/analytics-core";
 
 export interface QueryFanoutResponse extends FanoutAnalysis {
@@ -47,7 +47,7 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			lookback: LOOKBACK.default("1m"),
+			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
 			search: z.string().optional(),
@@ -57,10 +57,9 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 		}),
 	)
 	.handler(async ({ data }): Promise<QueryFanoutResponse> => {
-		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		await requireBrandSession(data.brandId);
 
-		const { timezone, fromDateStr, toDateStr } = resolveRange(data.lookback as LookbackPeriod, data.timezone);
+		const { timezone, fromDateStr, toDateStr } = resolveLookbackRange(data.lookback, data.timezone);
 		const analysis = await getBrandQueryFanout(
 			data.brandId,
 			{ from: fromDateStr, to: toDateStr, timezone },

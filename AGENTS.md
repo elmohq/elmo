@@ -11,7 +11,7 @@ Elmo is an open-source AI visibility platform (Answer Engine Optimization): it t
 - `packages/lib` — shared logic and the Drizzle schema/migrations
 - `packages/ui` — shared shadcn-based UI components
 - `packages/docs` — user-facing docs content (MDX), rendered by `apps/www`
-- `packages/deployment` — deployment-mode config (reads `DEPLOYMENT_MODE`, exposes per-mode features)
+- `packages/deployment` — deployment-mode config, per-mode auth hooks, cloud billing/email
 - `packages/config` — env validation and shared constants/types
 - `packages/api-spec` — OpenAPI spec
 - `e2e/` — Playwright end-to-end tests
@@ -67,3 +67,4 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 - Add one only for **user-facing** changes (something an end user of the product would notice). Internal refactors, dependency bumps, and CI tweaks don't get one.
 - Keep it to one short, product-focused sentence; default to `patch`; scope it to the packages actually affected.
 - If a non-package directory (like `e2e/`) breaks Changesets tooling, fix the tooling configuration rather than inventing versions.
+- Never create a changeset for `apps/www`.

@@ -50,12 +50,12 @@ function ShareOfVoicePage() {
 	const { brandId } = Route.useRouteContext();
 	const { model, lookback, tags } = useListFilters();
 
-	const { brand } = useBrand(brandId);
+	const { data: brand } = useBrand(brandId);
 	const { domainFor } = useSiteIcons(brandId);
 	const trackedTargets = brand?.trackedTargets ?? [];
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 
-	const { promptsSummary } = usePromptsSummary(brandId, { lookback, model: modelParam });
+	const { data: promptsSummary } = usePromptsSummary(brandId, { lookback, model: modelParam });
 	const availableTags = promptsSummary?.availableTags ?? [];
 
 	const { data, isLoading } = useShareOfVoice(brandId, { lookback, model: modelParam, tags });

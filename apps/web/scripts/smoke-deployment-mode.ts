@@ -155,8 +155,8 @@ async function smokeMode(mode: SmokeMode): Promise<string[]> {
 	// 3. auth initialization — dynamic import so DATABASE_URL is live before db.ts runs
 	try {
 		const { createAuth } = await import("@workspace/lib/auth/server");
-		const { getWhitelabelAuthOptions } = await import("@workspace/whitelabel/auth-hooks");
-		const { getCloudAuthOptions } = await import("@workspace/cloud/auth-hooks");
+		const { getWhitelabelAuthOptions } = await import("@workspace/deployment/auth-hooks/whitelabel");
+		const { getCloudAuthOptions } = await import("@workspace/deployment/auth-hooks/cloud");
 		const options = getAuthOptions(mode, getWhitelabelAuthOptions, getCloudAuthOptions);
 		const auth = createAuth(options);
 		// Initialization rejects against the dummy DATABASE_URL; left alone that is

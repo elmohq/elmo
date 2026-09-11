@@ -1,9 +1,10 @@
 /**
  * E2E Test Database Seeder
  *
- * Seeds the LOCAL test database with realistic fixture data for E2E testing.
+ * Seeds realistic fixture data into every database the E2E stack stands up, or
+ * into the one a DATABASE_URL names.
  *
- * SAFETY: the database URL (see fixtures.ts) is hardcoded to localhost to
+ * SAFETY: the database URLs (see fixtures.ts) are built against localhost to
  * prevent accidentally running this against a production database (it DELETEs
  * all data).
  *
@@ -19,7 +20,6 @@ import {
   CAPPED_ORG_ID,
   CAPPED_PROMPT_COUNT,
   COMPETITOR_IDS,
-  DATABASE_URL,
   NIKE_BRAND_ID,
   NIKE_COMPETITOR_IDS,
   NIKE_ORG_ID,
@@ -38,6 +38,7 @@ import {
   TEST_BRAND_WEBSITE,
   UNPAID_BRAND_ID,
   UNPAID_ORG_ID,
+  seededDatabaseUrls,
 } from "./fixtures";
 
 const RUN_IDS = [
@@ -202,12 +203,12 @@ async function seedOpportunities(client: pg.Client): Promise<void> {
   console.log(`  Created 1 opportunities report (${report.opportunities.length} opportunities)`);
 }
 
-async function seed() {
-  const client = new pg.Client({ connectionString: DATABASE_URL });
+async function seed(connectionString: string) {
+  const client = new pg.Client({ connectionString });
   await client.connect();
 
   try {
-    console.log("Seeding E2E test database...");
+    console.log(`Seeding ${new URL(connectionString).pathname.slice(1)}...`);
 
     await client.query("DELETE FROM brand_opportunities");
     await client.query("DELETE FROM citations");
@@ -637,7 +638,19 @@ async function seed() {
   }
 }
 
-seed().catch((err) => {
+/**
+ * A run that names a database seeds that one — which is what the scheduling and
+ * mode-compat jobs do, each against a postgres of its own. A run that names
+ * none seeds every database the E2E stack stands up, so no caller has to keep
+ * its own list of them in step with MODE_STACKS.
+ */
+const targets = process.env.DATABASE_URL ? [process.env.DATABASE_URL] : seededDatabaseUrls();
+
+async function seedAll() {
+  for (const target of targets) await seed(target);
+}
+
+seedAll().catch((err) => {
   console.error("Seeding failed:", err);
   process.exit(1);
 });

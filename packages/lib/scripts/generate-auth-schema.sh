@@ -20,7 +20,7 @@ TMP_OUTPUT="/tmp/better-auth-schema-gen.ts"
 # mode injects via CreateAuthOptions.extraPlugins — today that's cloud's
 # Stripe billing plugin (subscription table + stripeCustomerId columns). The
 # schema-relevant options here (subscription.enabled, organization.enabled)
-# must match the runtime construction in packages/cloud/src/billing/plugin.ts.
+# must match the runtime construction in packages/deployment/src/billing/plugin.ts.
 mkdir -p "$(dirname "$AUTH_CONFIG")"
 cat > "$AUTH_CONFIG" <<'EOF'
 import { stripe } from "@better-auth/stripe";

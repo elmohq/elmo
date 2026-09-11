@@ -221,7 +221,7 @@ export interface ModelVisibility {
 	citations: number;
 }
 
-export async function getBrandModelBreakdown(
+async function getBrandModelBreakdown(
 	brandId: string,
 	window: AnalyticsWindow,
 	filters: AnalyticsFilters = {},

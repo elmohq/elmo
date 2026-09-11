@@ -114,9 +114,14 @@ test("does not let the notes ping the channel or borrow the changelog label", ()
     !payload.content.includes("[Full changelog]"),
     "the changelog label only ever points into this repository",
   );
-  assert.ok(
-    payload.content.includes("https://github.com/other-org/other/pull/7"),
-    "a link to another repository keeps its URL visible",
+
+  const [, body] = payload.content.split("\n\n");
+  assert.deepEqual(
+    body.split("\n"),
+    [
+      `* @everyone @here read https://github.com/other-org/other/pull/7 by @someone in [#8](https://github.com/${REPO}/pull/8)`,
+      "**Full Changelog**: https://evil.example/phish",
+    ],
+    "only this repository's pull requests shorten to #n; everything else keeps its URL in plain sight",
   );
-  assert.ok(!payload.content.includes("[#7]"));
 });

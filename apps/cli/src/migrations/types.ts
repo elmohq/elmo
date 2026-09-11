@@ -1,6 +1,6 @@
-export type EnvMap = Record<string, string>;
+type EnvMap = Record<string, string>;
 
-export interface MigrationLogger {
+interface MigrationLogger {
 	info(msg: string): void;
 	warn(msg: string): void;
 	step(msg: string): void;

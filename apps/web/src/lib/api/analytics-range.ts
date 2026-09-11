@@ -67,3 +67,17 @@ export function parsePaging(url: URL, defaultLimit = 20): { page: number; limit:
 	const limit = Number(rawLimit);
 	return { page, limit, offset: (page - 1) * limit };
 }
+
+/**
+ * Clamped rather than rejected, unlike `parsePaging`: on the list endpoints
+ * that predate the spec the cap is there to bound a runaway query, not to
+ * change what an existing caller gets back.
+ */
+export function clampedPaging(
+	searchParams: URLSearchParams,
+	maxLimit = 100,
+): { page: number; limit: number; offset: number } {
+	const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+	const limit = Math.max(1, Math.min(maxLimit, parseInt(searchParams.get("limit") || "20")));
+	return { page, limit, offset: (page - 1) * limit };
+}

@@ -6,7 +6,7 @@ import { Navbar } from "./navbar";
 const suggestedLinks = [
 	{ label: "Documentation", href: "/docs", description: "Get started and learn the API" },
 	{ label: "Features", href: "/features", description: "What Elmo can do for your brand" },
-	{ label: "Pricing", href: "/pricing", description: "Plans for every team size" },
+	{ label: "Pricing", href: "/pricing", description: "Free to self-host; cloud from $29/mo" },
 	{ label: "Roadmap", href: "/roadmap", description: "What we're building next" },
 ];
 
@@ -29,7 +29,7 @@ export function NotFound() {
 								This page doesn't exist
 							</h1>
 							<p className="mx-auto mt-6 max-w-[58ch] text-pretty text-base text-zinc-600 md:text-lg">
-								The page you're looking for may have moved, been renamed, or never existed.
+								The page you're looking for may have moved, or it may never have existed.
 							</p>
 							<div className="mt-8 flex flex-wrap items-center justify-center gap-2">
 								<Link

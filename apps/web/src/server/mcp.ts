@@ -4,9 +4,9 @@
  * page describing the old grant.
  */
 import { createServerFn } from "@tanstack/react-start";
+import { getDeployment } from "@workspace/deployment";
 import type { ApiScope } from "@/lib/api/scopes";
 import { requireAuthSession } from "@/lib/auth/helpers";
-import { getDeployment } from "@/lib/config/server";
 import { MCP_TOOLS } from "@/lib/mcp/tools";
 
 export interface McpToolSummary {

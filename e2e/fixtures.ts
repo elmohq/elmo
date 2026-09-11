@@ -8,11 +8,16 @@ import path from "node:path";
 /** Directory this file lives in, so paths don't depend on the caller's cwd. */
 const E2E_DIR = import.meta.dirname;
 
-// Defaults to localhost so the destructive seeder can never point at a
-// production database. The env override lets CI workflows pass their own
-// credentials (e.g. `elmo`/`elmo` for the scheduling-policy job's postgres
-// service) — the first one to set DATABASE_URL in a given step wins.
-export const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/elmo";
+// Always localhost, so the destructive seeder can never point at a production
+// database.
+function databaseUrl(name: string): string {
+  return `postgres://postgres:postgres@localhost:5432/${name}`;
+}
+
+// The env override lets CI workflows pass their own credentials (e.g.
+// `elmo`/`elmo` for the scheduling-policy job's postgres service) — the first
+// one to set DATABASE_URL in a given step wins.
+export const DATABASE_URL = process.env.DATABASE_URL ?? databaseUrl("elmo");
 
 // Must match ADMIN_API_KEYS in the CI-patched .env (.github/workflows/e2e.yaml)
 // and bruno/environments/local.bru.
@@ -238,11 +243,46 @@ export const API_KEYS = {
 
 /**
  * The deployment modes the E2E suite covers. Each one is a Playwright project
- * that runs the shared specs plus its own; the stack serves one mode at a time,
- * so CI recreates the web container between them (see e2e/modes/*.yaml).
+ * that runs the shared specs plus its own.
+ *
+ * A container serves one mode for its lifetime, so the stack runs one per mode
+ * (see e2e/modes.yaml) rather than recreating a single container between
+ * phases. The ports and databases here are what that file publishes.
+ *
+ * Cloud and whitelabel get a database of their own. Cloud signs accounts up and
+ * deletes them again, so on one shared database every phase had to re-seed to
+ * undo the phase before it, and the order they ran in was load-bearing.
+ *
+ * Local and demo share one on purpose: demo has no signup, so the account its
+ * specs sign in with has to be the one the local phase bootstrapped, and demo
+ * is READ_ONLY so it cannot write back. That mirrors how the public demo is
+ * deployed, and is the one ordering the workflow still keeps.
  */
+const MODE_STACKS = {
+  local: { port: 1515, database: "elmo" },
+  cloud: { port: 1516, database: "elmo_cloud" },
+  whitelabel: { port: 1517, database: "elmo_whitelabel" },
+  demo: { port: 1518, database: "elmo" },
+} as const;
+
 export const DEPLOYMENT_MODES = ["local", "cloud", "whitelabel", "demo"] as const;
 export type DeploymentMode = (typeof DEPLOYMENT_MODES)[number];
+
+/** Where a mode's stack answers. `BASE_URL` overrides it for a one-off run. */
+export function modeUrl(mode: DeploymentMode): string {
+  return process.env.BASE_URL ?? `http://localhost:${MODE_STACKS[mode].port}`;
+}
+
+/** The database a mode's container writes to, which is where a spec checking
+ * whether a write landed has to look. */
+export function modeDatabaseUrl(mode: DeploymentMode): string {
+  return databaseUrl(MODE_STACKS[mode].database);
+}
+
+/** Every database the stack seeds, each named once however many modes read it. */
+export function seededDatabaseUrls(): string[] {
+  return [...new Set(DEPLOYMENT_MODES.map(modeDatabaseUrl))];
+}
 
 export function isDeploymentMode(value: string): value is DeploymentMode {
   return (DEPLOYMENT_MODES as readonly string[]).includes(value);
@@ -260,8 +300,8 @@ export function authStatePath(mode: DeploymentMode): string {
 export const GENERATED_ENV_PATH = path.join(E2E_DIR, ".elmo", ".env");
 
 /**
- * Whitelabel branding, mirroring e2e/modes/whitelabel.yaml. Kept here so specs
- * assert against the same values the container is configured with.
+ * Whitelabel branding, mirroring `web-whitelabel` in e2e/modes.yaml. Kept here
+ * so specs assert against the same values the container is configured with.
  */
 export const WHITELABEL = {
   appName: "Acme AI Search",
@@ -274,10 +314,10 @@ export const WHITELABEL = {
 } as const;
 
 /**
- * Cloud signup fixtures, mirroring CLOUD_SIGNUP_ALLOWLIST in
- * e2e/modes/cloud.yaml. The allowlist admits `allowedDomain` and the disposable
- * domain, so the disposable-address rejection is reached on its own merits
- * rather than being masked by the invite-only gate.
+ * Cloud signup fixtures, mirroring CLOUD_SIGNUP_ALLOWLIST in e2e/modes.yaml.
+ * The allowlist admits `allowedDomain` and the disposable domain, so the
+ * disposable-address rejection is reached on its own merits rather than being
+ * masked by the invite-only gate.
  */
 export const CLOUD_SIGNUP = {
   allowedDomain: "e2e-allowed.test",

@@ -88,7 +88,7 @@ jobs:
             echo "/$target/" >> .git/info/exclude
           done
 
-      - name: Decide whether to create or refresh a post
+      - name: Draft a new post
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -99,7 +99,9 @@ jobs:
 
             Read .agents/blog-candidates.json. List the posts in packages/docs/content/blog/ and read relevant posts as needed. Read .agents/rejected-topics.txt — those drafts were reviewed and turned down; do not propose the same topic again.
 
-            Start from a question an in-house marketing, SEO, or growth team is already asking — not from a news item. The candidates are evidence for answering such a question, not the subject. If today's research updates an answer we have already published, refresh that post instead of writing a new one.
+            Start from a question an in-house marketing, SEO, or growth team is already asking — not from a news item. The candidates are evidence for answering such a question, not the subject.
+
+            This run only ever writes a new post. Never edit, refresh, or restructure an existing one. If today's research bears on a question we have already answered, either find the distinct question it raises and write that post — linking to the existing one — or drop the topic.
 
             Verify every claim against the primary source with WebSearch and WebFetch. Trade-press coverage points at a source; it is never the source. If you cannot reach the original study, paper, filing, or documentation, drop the topic.
 
@@ -112,13 +114,12 @@ jobs:
             Never build a post around a competitor's study, index, or survey. Citing one among several corroborating sources is fine; making it the spine is not.
 
             Blog conventions:
-            - Only add or edit one MDX file in packages/docs/content/blog/.
-            - For a new post, use date "${{ steps.date.outputs.date }}" and author: ai.
-            - Only refresh posts with author: ai. Preserve their original date and author and set updated: "${{ steps.date.outputs.date }}".
+            - Add exactly one new MDX file to packages/docs/content/blog/ and change no other file.
+            - Use date "${{ steps.date.outputs.date }}" and author: ai.
             - Follow the frontmatter, structure, tone, citations, and internal-linking conventions in the existing posts.
             - Do not add an H1, imports, scripts, placeholders, fabricated claims, or a changeset.
 
-            If nothing is worth publishing, make no changes.
+            If nothing is worth publishing, write no file.
           claude_args: |
             --model claude-fable-5
             --max-budget-usd 5.00
@@ -126,26 +127,21 @@ jobs:
             --allowedTools "Read,Glob,Grep,Write,Edit,WebSearch,WebFetch,Skill"
             --disallowedTools "Bash,NotebookEdit,Task"
 
+      # The agent is told to only add a post, so anything it edited is a mistake
+      # rather than a contribution we want to review.
+      - name: Discard edits to existing posts
+        run: git checkout -- packages/docs/content/blog
+
       - name: Prepare pull request details
         run: |
           mkdir -p .agents
           : > .agents/pr-body.md
 
-          change="$(git status --porcelain=v1 --untracked-files=all -- packages/docs/content/blog | head -n 1)"
-          status="${change:0:2}"
-          path="${change:3}"
+          path="$(git status --porcelain=v1 --untracked-files=all -- packages/docs/content/blog | sed -n 's/^?? //p' | head -n 1)"
 
           if [ -n "$path" ]
           then
-            frontmatter() {
-              sed -n "s/^$1:[[:space:]]*//p" "$path" | head -n 1 | sed -E "s/^[\"']//; s/[\"']$//"
-            }
-            if [ "$status" = "??" ]
-            then
-              frontmatter description > .agents/pr-body.md
-            else
-              printf 'Updated "%s".\n' "$(frontmatter title)" > .agents/pr-body.md
-            fi
+            sed -n "s/^description:[[:space:]]*//p" "$path" | head -n 1 | sed -E "s/^[\"']//; s/[\"']$//" > .agents/pr-body.md
           fi
 
       - name: Install dependencies

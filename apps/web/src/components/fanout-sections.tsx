@@ -24,7 +24,7 @@ import {
 } from "@/lib/fanout-analysis";
 import { getModelDisplayName } from "@/lib/utils";
 
-export const FANOUT_PURPLE = "#8b5cf6";
+const FANOUT_PURPLE = "#8b5cf6";
 
 export function InfoTip({ children }: { children: React.ReactNode }) {
 	return (

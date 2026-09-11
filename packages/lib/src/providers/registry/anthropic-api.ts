@@ -1,11 +1,11 @@
 import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
 import Anthropic from "@anthropic-ai/sdk";
-import { generateText, Output } from "ai";
 import { getCredential } from "../../secrets";
 import { extractCitationsFromAnthropic, extractTextFromAnthropic } from "../../text-extraction";
 import {
 	ANTHROPIC_WEB_SEARCH_MAX_USES,
 	API_PROVIDER_MAX_OUTPUT_TOKENS,
+	configuredWhen,
 	RESEARCH_WEB_SEARCH_MAX_USES,
 	warnIfOutputCapped,
 } from "../config";
@@ -16,16 +16,14 @@ import type {
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
+import { structuredResearch } from "./ai-sdk";
+import { sanitizeForJson } from "./scrape-shared";
 
 const DEFAULT_RESEARCH_MODEL = "claude-sonnet-5";
 
 function getAnthropicLanguageModel(model: string) {
 	const apiKey = getCredential("ANTHROPIC_API_KEY");
 	return apiKey ? createAnthropic({ apiKey })(model) : anthropic(model);
-}
-
-function sanitizeForJson(obj: unknown): unknown {
-	return JSON.parse(JSON.stringify(obj));
 }
 
 function getClient(): Anthropic {
@@ -102,9 +100,7 @@ export const anthropicApi: Provider = {
 	access: "api",
 	docsAnchor: "direct-model-apis",
 
-	isConfigured() {
-		return !!getCredential("ANTHROPIC_API_KEY");
-	},
+	isConfigured: configuredWhen("ANTHROPIC_API_KEY"),
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const version = options?.version ?? DEFAULT_RESEARCH_MODEL;
@@ -116,17 +112,13 @@ export const anthropicApi: Provider = {
 		schema,
 		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
-		const result = await generateText({
-			model: getAnthropicLanguageModel(DEFAULT_RESEARCH_MODEL),
+		const object = await structuredResearch(getAnthropicLanguageModel(DEFAULT_RESEARCH_MODEL), {
+			prompt,
+			schema,
 			...(webSearch
 				? { tools: { web_search: anthropic.tools.webSearch_20250305({ maxUses: RESEARCH_WEB_SEARCH_MAX_USES }) } }
 				: {}),
-			output: Output.object({ schema }),
-			prompt,
 		});
-		return {
-			object: result.output as T,
-			modelVersion: DEFAULT_RESEARCH_MODEL,
-		};
+		return { object, modelVersion: DEFAULT_RESEARCH_MODEL };
 	},
 };

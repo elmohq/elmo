@@ -1,5 +1,5 @@
-import { ELMO_BRAND_COLOR } from "@workspace/config/constants";
-import { ACCENT_COLORS } from "@workspace/og/render";
+import { DEFAULT_APP_NAME } from "@workspace/config/constants";
+import { ACCENT_COLORS, OgFrame, OgHeader } from "@workspace/og/render";
 import {
 	overallStatus,
 	PROVIDER_FILTER_LABELS,
@@ -19,16 +19,18 @@ const TIER_TEXT: Record<RateTier, string> = {
 	none: "#a1a1aa",
 };
 
-const TIER_CHIP: Record<RateTier, { bg: string; border: string }> = {
+const TIER_TILE: Record<RateTier, { bg: string; border: string }> = {
 	up: { bg: "#f0fdf4", border: "#bbf7d0" },
 	warn: { bg: "#fffbeb", border: "#fde68a" },
 	down: { bg: "#fef2f2", border: "#fecaca" },
-	none: { bg: "#fafafa", border: "#e4e4e7" },
+	none: { bg: "#ffffff", border: "#e4e4e7" },
 };
 
-// Rendered by Satori: every element with multiple children needs display:flex,
-// styles are inline, and the only usable font faces are the ones the route
-// loads (Titan One 400, Geist Sans 400/500) — so avoid heavier weights.
+const TILE_COLUMNS = 4;
+const TILE_GAP = 12;
+const CONTENT_WIDTH = 1200 - 2 * 64;
+const TILE_WIDTH = (CONTENT_WIDTH - TILE_GAP * (TILE_COLUMNS - 1)) / TILE_COLUMNS;
+
 export function renderStatusOgImage(data: TargetStatus[]) {
 	const overall = overallStatus(data);
 	const categoryOf = (target: string) => {
@@ -63,75 +65,31 @@ export function renderStatusOgImage(data: TargetStatus[]) {
 		);
 
 	return (
-		<div
-			style={{
-				display: "flex",
-				flexDirection: "column",
-				width: "100%",
-				height: "100%",
-				position: "relative",
-				backgroundColor: "#ffffff",
-				fontFamily: "Geist Sans",
-				paddingTop: 60,
-				paddingBottom: 60,
-				paddingLeft: 64,
-				paddingRight: 64,
-			}}
-		>
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "space-between",
-				}}
-			>
-				<div
-					style={{
-						fontFamily: "Titan One",
-						fontSize: 46,
-						color: ELMO_BRAND_COLOR,
-						lineHeight: 1,
-					}}
-				>
-					elmo
-				</div>
-				<div
-					style={{
-						fontSize: 22,
-						letterSpacing: 4,
-						textTransform: "uppercase",
-						color: "#94a3b8",
-					}}
-				>
-					AI Provider Status
-				</div>
-			</div>
+		<OgFrame accentColors={ACCENT_COLORS} footer="elmohq.com/status">
+			<OgHeader appName={DEFAULT_APP_NAME} label="AI Provider Status" />
 
-			<div style={{ display: "flex", flexDirection: "column", marginTop: 52 }}>
+			<div style={{ display: "flex", flexDirection: "column", marginTop: 40 }}>
 				<div style={{ display: "flex", alignItems: "center" }}>
 					<div
 						style={{
-							width: 26,
-							height: 26,
+							width: 22,
+							height: 22,
 							borderRadius: 999,
 							backgroundColor: dotColor,
-							marginRight: 20,
+							marginRight: 18,
 						}}
 					/>
-					<div style={{ fontSize: 62, fontWeight: 500, color: "#1e293b" }}>{headline}</div>
+					<div style={{ fontSize: 56, fontWeight: 500, letterSpacing: -1.5, lineHeight: 1.1, color: "#09090b" }}>
+						{headline}
+					</div>
 				</div>
-				<div style={{ fontSize: 28, color: "#64748b", marginTop: 14 }}>{subParts.join(" · ")}</div>
+				<div style={{ fontSize: 26, color: "#52525b", marginTop: 12 }}>{subParts.join(" · ")}</div>
 			</div>
 
-			<div
-				style={{
-					display: "flex",
-					flexWrap: "wrap",
-					marginTop: 56,
-				}}
-			>
-				{providerStats.map((p) => {
+			<div style={{ display: "flex", flexWrap: "wrap", marginTop: 32, marginBottom: 24 }}>
+				{providerStats.slice(0, TILE_COLUMNS * 2).map((p, i) => {
 					const tier = rateTier(p.rate);
+					const lastInRow = i % TILE_COLUMNS === TILE_COLUMNS - 1;
 					return (
 						<div
 							key={p.label}
@@ -139,41 +97,29 @@ export function renderStatusOgImage(data: TargetStatus[]) {
 								display: "flex",
 								flexDirection: "column",
 								justifyContent: "space-between",
-								width: 328,
-								height: 116,
-								marginRight: 16,
-								marginBottom: 16,
-								paddingTop: 20,
-								paddingBottom: 20,
-								paddingLeft: 24,
-								paddingRight: 24,
-								borderRadius: 18,
+								width: TILE_WIDTH,
+								height: 88,
+								marginRight: lastInRow ? 0 : TILE_GAP,
+								marginBottom: TILE_GAP,
+								paddingTop: 14,
+								paddingBottom: 14,
+								paddingLeft: 20,
+								paddingRight: 20,
+								borderRadius: 14,
 								borderWidth: 1,
 								borderStyle: "solid",
-								borderColor: TIER_CHIP[tier].border,
-								backgroundColor: TIER_CHIP[tier].bg,
+								borderColor: TIER_TILE[tier].border,
+								backgroundColor: TIER_TILE[tier].bg,
 							}}
 						>
-							<div style={{ fontSize: 24, color: "#475569" }}>{p.label}</div>
-							<div style={{ fontSize: 48, fontWeight: 500, color: TIER_TEXT[tier] }}>
+							<div style={{ fontSize: 20, color: "#52525b" }}>{p.label}</div>
+							<div style={{ fontSize: 32, fontWeight: 500, lineHeight: 1, color: TIER_TEXT[tier] }}>
 								{p.rate === null ? "—" : `${Math.round(p.rate)}%`}
 							</div>
 						</div>
 					);
 				})}
 			</div>
-
-			<div
-				style={{
-					display: "flex",
-					position: "absolute",
-					bottom: 0,
-					left: 0,
-					width: "100%",
-					height: 8,
-					backgroundImage: `linear-gradient(to right, ${ACCENT_COLORS.join(", ")})`,
-				}}
-			/>
-		</div>
+		</OgFrame>
 	);
 }
