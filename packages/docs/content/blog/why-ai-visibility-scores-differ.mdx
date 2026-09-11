@@ -2,6 +2,7 @@
 title: "Why Do Two AI Visibility Tools Give Your Brand Different Scores?"
 description: "Same brand, same week, two tools, two very different AI visibility scores — and often neither is broken. A new preprint shows the prompt set and its weights define what the score measures, with a worked example swinging 31 points on weighting alone."
 date: "2026-09-11"
+updated: "2026-09-11"
 author: ai
 metaTitle: "Why AI Visibility Tools Disagree on Your Score"
 tags:
@@ -42,9 +43,26 @@ faq:
     answer: "Not directly. Unless both tools publish their prompt lists, weights, engines, sampling schedules, and scoring rules — and those match — their share-of-voice numbers describe different answer markets. The comparable move is to run the same prompt set at the same cadence on both and diff the scoring layer, or to pick one instrument and only ever compare it against itself over time."
   - question: Does being cited in an AI answer prove your content influenced it?
     answer: "No. The preprint is explicit that citation presence does not establish contribution: engines cite pages whose information the answer barely uses, and removing a source identifier can strip a citation without changing what the answer says. Testing actual influence requires comparing generations with and without the source in a controlled context, which production dashboards cannot do."
+  - question: What is a good AI visibility score?
+    answer: "There is no cross-tool benchmark, because each tool's number describes the answer market its own prompt corpus defines. A 40% share of voice on a corpus of narrow branded comparisons and a 40% on a corpus of broad category prompts are not the same achievement. The only usable baseline is your own number on a frozen prompt set, tracked over time."
+  - question: Why did my AI visibility score change when I added prompts?
+    answer: "Because adding prompts changes the market, not the measurement. An aggregate inherits the composition of its corpus, so a new prompt mix produces a new number even when your presence in every individual answer is unchanged. Recompute both periods on the shared subset of prompts before reading the gap as a visibility change."
+  - question: What should I ask an AI visibility vendor before trusting their number?
+    answer: "Five things, because all five have to match before two scores describe the same quantity: the full prompt list, the weights applied to it, the engines and model versions, the sampling schedule, and the rule that turns an answer into a mention. A vendor that cannot answer all five is selling a number you can only ever compare against itself."
 ---
 
 **Your team runs the same brand through two AI visibility tools and gets two different numbers — 40% share of voice in one, 25% in the other, same week.** The instinct is that one tool is broken. A [16-page preprint posted to arXiv on 6 September 2026](https://arxiv.org/abs/2609.06811) offers the better explanation: an AI visibility score is defined by the prompt set it runs and the weight each prompt gets, and two tools with different prompt sets are not disagreeing about your visibility — they are measuring different things. The paper's worked example makes it concrete: identical per-segment measurements produce aggregate scores anywhere between 39.7% and 70.5% depending on weighting alone.
+
+**Key facts**
+
+| | |
+|---|---|
+| Swing in aggregate score from weighting alone | **30.9 points** (39.7% → 70.5%) — [Martinez, arXiv:2609.06811](https://arxiv.org/abs/2609.06811), 6 Sep 2026 |
+| Per-segment rates held fixed in that example | **51.5%** (search-log), **17.4%** (retail), **94.6%** (explanatory) |
+| Day-to-day churn in cited domains, Elmo 42-day study | **0.55–0.83**, set by prompt breadth — [citation volatility](/blog/citation-volatility) |
+| Distinct domains cited for one broad prompt in 6 weeks | **445**, against 85 for a narrow head-to-head |
+| Days ChatGPT grounded one definitional prompt | **6 of 42** |
+| Share of a real buying session carried by its final prompt | **~⅓** — [multi-turn AI search](/blog/multi-turn-ai-search) |
 
 **Key takeaways**
 
@@ -55,15 +73,21 @@ faq:
 - Citation presence does not establish contribution. Removing a source identifier can strip a citation without changing the answer's information, so citation counts overstate influence by an unknown amount.
 - The practical response is not to abandon tracking but to audit the instrument: get the prompt list, ask how it is weighted, separate mix effects from rate effects, and only compare an instrument against itself.
 
-## A score is a corpus, weights, and a ruler
+**On this page:** [What goes into a score](#what-actually-goes-into-an-ai-visibility-score) · [The 31-point swing](#how-much-can-weighting-alone-move-a-visibility-score) · [Why scores get noisy](#why-do-some-prompts-produce-noisier-scores-than-others) · [The scoring layer](#can-the-scoring-layer-move-your-score-on-its-own) · [What the corpus should represent](#what-should-an-ai-visibility-prompt-corpus-represent) · [Comparing two tools](#how-do-you-compare-two-ai-visibility-tools-fairly) · [What to do](#how-do-you-make-your-number-mean-something)
 
-The preprint — a single-author methodological survey by Olivier Martinez, with 44 references and 9 tables, not peer-reviewed and reporting no new experiments — takes apart what a GEO visibility score is actually made of. Every such score, whether it is called share of voice, citation share, or a visibility index, is built from three decisions: a **prompt corpus** (which questions get asked, and how they are phrased), **weights** (how much each question counts toward the aggregate), and a **scoring rule** (how a raw answer becomes "mentioned," "cited," or "recommended").
+## What actually goes into an AI visibility score?
+
+The preprint — a single-author methodological survey by Olivier Martinez (arXiv:2609.06811, 6 September 2026), with 44 references and 9 tables, not peer-reviewed and reporting no new experiments — takes apart what a GEO visibility score is actually made of. Every such score, whether it is called share of voice, citation share, or a visibility index, is built from three decisions: a **prompt corpus** (which questions get asked, and how they are phrased), **weights** (how much each question counts toward the aggregate), and a **scoring rule** (how a raw answer becomes "mentioned," "cited," or "recommended").
+
+### What an "answer market" is
 
 Together, the paper argues, the corpus and weights define an **answer market**: the set of situations in which brands are deemed to be competing. And that market "need not represent actual user demand." A tool whose corpus is 80% broad category prompts is scoring a different market than one weighted toward branded comparisons, and neither necessarily resembles what your buyers type into ChatGPT.
 
+### Why phrasing is part of the instrument
+
 Prompts do more than select situations. The paper catalogs five jobs a prompt does at once: it specifies the task, selects the situation, phrases the need in particular words, conditions the interaction (history, assumed knowledge), and constrains the output enough to be scorable. These are coupled — asking the engine to cite sources changes retrieval, the answer, *and* the citation denominator simultaneously. It also cites earlier work showing that formatting changes which preserve the task's intent still produce substantial differences in model output and alter comparisons between systems. Phrasing is part of the instrument.
 
-## A 31-point swing without a single answer changing
+## How much can weighting alone move a visibility score?
 
 The paper's worked example is worth sitting with, because it shows how much room the weighting decision alone leaves. Take three prompt subcorpora with very different measured rates for the same outcome:
 
@@ -75,21 +99,27 @@ The paper's worked example is worth sitting with, because it shows how much room
 
 Every number in that table is fixed — nothing about the engine or the answers changes. Now aggregate them. Fix the search-log segment at a 20% weight and let the retail segment's weight range over plausible values, and the overall score lands anywhere in **[39.7%, 70.5%]**. A 30.9-percentage-point spread, produced entirely by a decision about how much each question type matters.
 
-This is the mechanism behind most cross-tool disagreement. When one dashboard says 40% and another says 25%, the first question is not "which tool is wrong" but "what is each tool's prompt mix, and how is it weighted?" The paper's formal answer is that when weights are unknown or contestable, the honest report is a *set* of admissible scores, not a single number. No commercial dashboard reports a range today, so the range is something you have to reconstruct yourself — or collapse, by fixing the corpus and weights and never comparing across instruments.
+This is the mechanism behind most cross-tool disagreement. When one dashboard says 40% and another says 25%, the first question is not "which tool is wrong" but "what is each tool's prompt mix, and how is it weighted?" The paper's formal answer is that when weights are unknown or contestable, the honest report is a *set* of admissible scores, not a single number. As of September 2026 no commercial dashboard reports a range, so it is something you have to reconstruct yourself — or collapse, by fixing the corpus and weights and never comparing across instruments.
 
 The same logic applies inside one tool over time. Add ten prompts to your tracked set and your share of voice will move even if nothing about your brand's presence changed, because you changed the market, not the measurement. We flagged the equivalent problem for published studies in [our comparison of YouTube citation figures](/blog/youtube-ai-citations), where six defensible numbers for the same question ranged from 1% to 23% on denominators alone. The preprint generalizes it: every aggregate visibility number inherits the composition of its corpus.
 
-## The corpus also sets the noise
+## Why do some prompts produce noisier scores than others?
 
 Our own tracking data adds a dimension the paper treats formally: prompt choice determines not just the level of your score but how noisy it is.
 
-In our [42-day citation volatility study](/blog/citation-volatility), day-to-day churn in the set of cited domains ranged from 0.55 for a narrow head-to-head prompt to 0.83 for a broad recommendation prompt on Google AI Mode. The broad prompt "alternatives to Nike for high-performance running" drew on 445 distinct domains over six weeks; "Jordan 1 vs Adidas Forum" drew on 85. A corpus tilted toward broad prompts produces a jumpier score that needs [more samples to read](/blog/ai-prompt-tracking); a corpus of narrow comparisons produces a steadier one. Two tools sampling the same brand at the same cadence will show different week-to-week variance purely because of what they ask.
+### Prompt breadth sets the churn rate
+
+In our [42-day citation volatility study](/blog/citation-volatility), the set of domains Google AI Mode cited for a single prompt turned over between 55% and 83% from one day to the next, and prompt breadth decided where in that range a prompt landed. The broad prompt "alternatives to Nike for high-performance running" drew on 445 distinct domains over six weeks; the narrow "Jordan 1 vs Adidas Forum" drew on 85. A corpus tilted toward broad prompts produces a jumpier score that needs [more samples to read](/blog/ai-prompt-tracking); a corpus of narrow comparisons produces a steadier one. Two tools sampling the same brand at the same cadence will show different week-to-week variance purely because of what they ask.
+
+### Some prompts are not even eligible for a citation
 
 Grounding behaves the same way. ChatGPT ran a web search on only 6 of 42 days for one definitional prompt while grounding commercial prompts almost daily — so whether a prompt is even *eligible* for citations depends on the prompt. A corpus that includes ungroundable prompts dilutes a citation-based score in a way that has nothing to do with your content.
 
+### Real buying sessions are conversations
+
 And the corpus can be mismatched to reality in a deeper way: real buying sessions are conversations, and [the final prompt carries roughly a third of what the user actually said](/blog/multi-turn-ai-search). Every mainstream tool replays single-turn prompts. That is a defensible instrument choice — a trend needs a fixed instrument — but it is one more sense in which the tracked market is a constructed one.
 
-## The ruler moves too
+## Can the scoring layer move your score on its own?
 
 The third component, the scoring rule, gets less attention than the prompts and deserves more. Most tools use an LLM to decide whether an answer mentioned your brand, cited your domain, or recommended you. The preprint's point is that this judge is itself a prompted model, so its instruction is another source of variation: change the judge's wording and the score of an *unchanged* answer can change.
 
@@ -97,13 +127,27 @@ The failure modes it lists are recognizably the ones practitioners hit: a brand 
 
 One more sharp edge from the paper: a citation in an answer does not establish that the source *contributed* to it. Testing contribution requires comparing generations with and without the document in a controlled context — and "removing a source identifier can mechanically remove citation without changing answer information." Production dashboards cannot run that comparison, so citation counts are an upper bound on influence, a point that [audits of citation accuracy](/blog/can-you-trust-ai-citations) reached from the other direction: about a third of checked citations did not support the claim they were attached to.
 
-## What should the corpus represent, then?
+## What should an AI visibility prompt corpus represent?
 
 If the corpus defines the market, the obvious follow-up is: which market is the right one? The principled answer is *demand* — weight each question type by how often real users actually ask it. A [second September 2026 preprint](https://arxiv.org/abs/2609.11915) builds exactly that into a marketing-mix framework, combining repeated generated answers with question counts, shares of use across generative systems, and the probability a user actually notices the brand in the answer. It is early work, validated on simulated answers only, but the direction is telling: the research frontier treats an unweighted prompt list as an incomplete instrument.
 
-The practical problem is that nobody outside the engine companies has real question-frequency data for AI assistants. So the workable standard is not "correctly weighted" but "declared": you should be able to say what your number is weighted by, even if the answer is "nothing — every prompt counts equally," and treat comparisons across differently weighted instruments as invalid. The preprint's implementation checklist for measurement providers — publish configurations, declare where weights come from, record complete prompts and model versions, interleave conditions to detect silent engine updates — is a reasonable due-diligence list to hold any [AI visibility tool](/blog/best-ai-visibility-tools) against, alongside the [decision-grade criteria](/blog/iab-ai-visibility-metrics) the IAB framework applies to the metrics themselves.
+The practical problem is that nobody outside the engine companies has real question-frequency data for AI assistants. So the workable standard is not "correctly weighted" but "declared": you should be able to say what your number is weighted by, even if the answer is "nothing — every prompt counts equally," and treat comparisons across differently weighted instruments as invalid. The preprint's implementation checklist for measurement providers — publish configurations, declare where weights come from, record complete prompts and model versions, interleave conditions to detect silent engine updates — is a reasonable due-diligence list to hold any [AI visibility tool](/blog/best-ai-visibility-tools) against, alongside the [decision-grade criteria](/blog/iab-ai-visibility-metrics) that the IAB's [Measuring Visibility in the AI Era](https://www.iab.com/guidelines/measuring-visibility-in-the-ai-era/) framework applies to the metrics themselves. Very little of that checklist is public today: of the major trackers, [Peec](https://peec.ai/) documents its prompt model in [public docs](https://docs.peec.ai/intro-to-peec-ai.md), while [Profound](https://www.tryprofound.com/), [Otterly](https://otterly.ai/), [Ahrefs Brand Radar](https://ahrefs.com/brand-radar), and [Semrush](https://www.semrush.com/ai-seo/brand-performance/) publish headline methodology without the prompt lists and weights that would make two of their numbers comparable.
 
-## How to make your number mean something
+## How do you compare two AI visibility tools fairly?
+
+You mostly can't, and the useful version of the question is what would have to be true first. Five things have to match before two share-of-voice numbers describe the same quantity:
+
+| What has to match | Why it changes the number | What to ask the vendor |
+|---|---|---|
+| The prompt list | Engines are only scored on the questions in the corpus | "Can I export every prompt behind this aggregate?" |
+| The weights | Weighting alone moved the worked example 30.9 points | "Is this weighted by anything, and by what?" |
+| The engines and model versions | Grounding rates and citation behaviour differ per engine, and engines update silently | "Which engines, which model versions, and how do I see when they changed?" |
+| The sampling schedule | Day-to-day churn runs 55–83%; a weekly sample and a daily one have different noise floors | "How often does each prompt run, and is the raw answer kept?" |
+| The scoring rule | An LLM judge's instruction changes the score of an unchanged answer | "What counts as a mention, and can I re-run detection on stored answers?" |
+
+If a vendor cannot answer all five, the honest thing to do with its number is compare it only against itself. If you want a genuine head-to-head, the one valid design is to run the same prompt set at the same cadence on both tools and diff only the scoring layer — which isolates the one component the corpus and weights are not responsible for.
+
+## How do you make your number mean something?
 
 Six moves, none of which require changing tools:
 
