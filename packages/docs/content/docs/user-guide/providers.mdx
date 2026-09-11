@@ -118,7 +118,7 @@ google-ai-mode:searchapi:online
 google-ai-overview:searchapi:online
 ```
 
-[SearchApi](https://www.searchapi.io/?via=elmo) authenticates with a single bearer API key and serves every surface from one synchronous `GET /api/v1/search`, keyed by an `engine` parameter — no task queue to poll, and answers come back in 3–15 seconds. ChatGPT is the only surface with a web-search toggle, so it is the one target you can run without `:online`; even then ChatGPT often searches on its own, and SearchApi reports whether it did.
+[SearchApi](https://www.searchapi.io/?via=elmo) authenticates with a single bearer API key and serves every surface from one synchronous `GET /api/v1/search`, keyed by an `engine` parameter — one request per run, with no task queue to poll. ChatGPT is the only surface with a web-search toggle, so it is the one target you can run without `:online`; even then ChatGPT often searches on its own, and SearchApi reports whether it did.
 
 Google AI Overview goes through the Google SERP engine rather than SearchApi's dedicated `google_ai_overview` engine, which needs a `page_token` minted by that same SERP call and expiring in under a minute. Reading the overview off the SERP response costs one search instead of two.
 

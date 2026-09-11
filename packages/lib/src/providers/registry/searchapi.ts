@@ -10,8 +10,9 @@ const SEARCHAPI_URL = "https://www.searchapi.io/api/v1/search";
 const GOOGLE_LOCALE = { gl: "us", hl: "en" } as const;
 
 /**
- * Answers come back in seconds, so a single synchronous request is enough. The
- * cap is a bound on a hung connection, not an expected duration.
+ * SearchApi answers on the same connection rather than handing back a task to
+ * poll, so this bounds a request that has stopped making progress. It is not a
+ * statement about how long an answer should take.
  */
 const SEARCHAPI_TIMEOUT_MS = 3 * 60 * 1000;
 
