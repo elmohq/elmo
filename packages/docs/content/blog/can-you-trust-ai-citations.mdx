@@ -2,6 +2,7 @@
 title: "Can You Trust AI Citations? A Third Don't Support the Claim"
 description: "Two independent audits published the same day found 34.7% of Perplexity's citations don't back the sentence they're attached to, and a three-site network manufactured 215,128 buying guides AI cites. Here's what that does to citation counts as a KPI."
 date: "2026-09-02"
+updated: "2026-09-11"
 author: ai
 metaTitle: "Can You Trust AI Citations? What Source Audits Found"
 tags:
@@ -39,6 +40,10 @@ faq:
     answer: "Pages generated to be retrieved by AI engines rather than read by people. Trellner Research found three sites — worldmetrics.org, gitnux.org, and wifitalents.com — that published 215,128 generated buying guides, including guides for software categories that don't exist. The sites were registered within months of each other, share DNS infrastructure and templates, and carry HTML titles reading 'Facts & Grounding Page', wording addressed to a retrieval system, not a reader."
   - question: Why does AI cite unknown websites for product recommendations?
     answer: "Because nobody authoritative has written the page the engine is looking for. In Trellner's audit of 760 software-recommendation queries, the median cited domain ranked 71,611th on Tranco and Wikipedia was cited three times in total. Where authoritative supply exists — a health-query audit found government, commercial health, and academic sources at roughly 22% each — citations concentrate on it. Niche commercial categories have no such supply, so retrieval takes what matches, and content farms manufacture exactly that shape."
+  - question: Why do AI engines get my company's CEO or pricing wrong?
+    answer: "Because those facts are rarely stated plainly on a crawlable, ungated page you control, so the engine cites a B2B directory's stale copy instead. In the Haus audit, company domains and aggregators like PitchBook and Crunchbase split cited sources almost evenly at 23.4% and 23.1%, and the pass rate followed how fast a fact ages: 44.3% for CEO, 53.0% for headquarters, 62.6% for pricing, against 75.0% for founding date."
+  - question: Does a higher-tier AI model give better-sourced answers?
+    answer: "Not measurably. Perplexity's sonar and sonar-pro scored 65.9% and 64.7% on citation support in the same audit — within noise of each other. Paying for the better model does not buy better-grounded citations, because the failure is in whether the engine checks that a cited page supports the sentence it decorates, not in how well the model writes."
   - question: Is a high AI citation count still a good KPI?
     answer: "Only if you split it. A citation whose page supports the claim is evidence your content is doing work; a citation to a dead, gated, or unrelated page is not. With roughly a third of numeric-claim citations failing verification in the Haus audit, an unsplit citation count carries a large error bar of nothing. Track supported citations, unsupported citations, and mentions as separate fields."
   - question: Should I copy what the citation farms are doing?
@@ -47,7 +52,19 @@ faq:
     answer: "Publish canonical, ungated, crawlable pages for the facts engines get wrong most — in the Haus audit, answers about who a company's CEO is passed verification only 44.3% of the time, and 16.1% of all citations pointed at gated pages. Your own domain earned 23.4% of citations in that study, which means your page can be the source if it exists, opens, and states the fact plainly."
 ---
 
-**On the same day, two independent research groups published audits of what Perplexity actually cites — and both found that a citation is a weaker signal than any dashboard treats it as.** [Haus Research](https://hausresearch.com/reports/perplexity-citation-audit) checked 1,826 citations attached to numeric claims about technology companies and found 34.7% pointed at a page that would not open or did not contain a single figure from the sentence. [Trellner Research](https://trellner.com/reports/manufactured-sources-behind-ai-recommendations) mapped the sources behind software recommendations and found a three-site network that had generated 215,128 buying guides — some for categories that don't exist — sitting inside Perplexity's retrieval.
+**On the same day, two independent research groups published audits of what Perplexity actually cites — and both found that a citation is a weaker signal than any dashboard treats it as.** [Haus Research](https://hausresearch.com/reports/perplexity-citation-audit) checked 1,826 citations attached to numeric claims about technology companies and found 34.7% pointed at a page that would not open or did not contain a single figure from the sentence — 14.4% when counted per claim rather than per citation, because Perplexity attaches several citations to one sentence. [Trellner Research](https://trellner.com/reports/manufactured-sources-behind-ai-recommendations) mapped the sources behind software recommendations and found a three-site network that had generated 215,128 buying guides — some for categories that don't exist — sitting inside Perplexity's retrieval.
+
+**Key facts**
+
+| | |
+|---|---|
+| Citations failing verification — per citation / per claim | **34.7% / 14.4%** (1,826 citations, 872 claims) — [Haus Research](https://hausresearch.com/reports/perplexity-citation-audit) |
+| Cited domains outside the [Tranco](https://tranco-list.eu/) top 100,000 | **59.8%**; 23.4% unranked; median ranked domain **71,611th** — [Trellner](https://trellner.com/reports/manufactured-sources-behind-ai-recommendations) |
+| Generated buying guides on one three-site network | **215,128** |
+| Worst-verifying fact type | **"Who is the CEO?" — 44.3%** pass rate, against 82.0% for headcount |
+| Wikipedia citations across 760 recommendation queries | **3** |
+| Cited URLs never captured by the [Wayback Machine](https://web.archive.org/) | **25.1%** |
+| Both audits' snapshot date | **2 September 2026**, single day, Perplexity API |
 
 **Key takeaways**
 
@@ -58,9 +75,9 @@ faq:
 - The facts engines get wrong are the ones brands leave unstated: answers about a company's CEO passed verification 44.3% of the time, headquarters 53.0%, pricing 62.6%.
 - The KPI consequence is direct: a citation count that doesn't distinguish supported from unsupported citations is measuring retrieval, not credibility.
 
-## Two audits, one day, one conclusion
+## What did the two Perplexity citation audits find?
 
-The two studies asked different questions of the same engine and arrived at the same place from opposite ends.
+The two studies asked different questions of the same engine and arrived at the same place from opposite ends. *Two independent audits of Perplexity, both snapshotted 2 September 2026:*
 
 | | Haus Research | Trellner Research |
 |---|---|---|
@@ -75,7 +92,7 @@ Haus measured *support*: fetch every cited URL, check whether the page contains 
 
 Neither publisher sells AI visibility tooling, which matters. Most numbers in this space come from vendors measuring their own product's shadow; these are third-party audits with published methods and, in Haus's case, per-question-type breakdowns you can check.
 
-## 34.7% or 14.4%: read the denominator first
+## Is it 34.7% or 14.4%? Read the denominator first
 
 The Haus headline — a third of citations don't contain the number they're cited for — is a per-citation figure. Perplexity typically attaches several citations to one sentence, so a claim can survive one bad citation if another supports it. Counted per claim, 14.4% of the 872 numeric claims had no supporting source at all.
 
@@ -83,7 +100,7 @@ Both numbers are real; they answer different questions. Per citation tells you h
 
 The accessibility breakdown adds texture: 78.7% of cited pages were live and readable, 16.1% were gated behind paywalls or logins, 1.3% were dead, and 1.4% unreachable after retries. A gated citation isn't necessarily wrong — the page may well contain the figure — but it is unverifiable by the reader the citation is supposed to reassure.
 
-The per-question-type pass rates are the most actionable table in the study:
+The per-question-type pass rates are the most actionable table in the study. *Share of Perplexity citations that supported the claim, by fact type, 1,826 citations, 2 September 2026:*
 
 | Question type | Pass rate |
 |---|---|
@@ -100,17 +117,17 @@ The per-question-type pass rates are the most actionable table in the study:
 
 The pattern: the worse a fact ages, the worse the citations. CEOs change; founding dates don't. And the sources filling the gap are aggregators — 23.1% of citations pointed at B2B directories like PitchBook and Crunchbase, essentially tied with company domains at 23.4%. When your own page doesn't state a fact plainly, the engine cites a directory's stale copy of it instead.
 
-## The long tail is where recommendations come from
+## Which domains do AI engines cite for "best software" queries?
 
 Trellner's audit looked at the queries marketers actually care about — "best [software category]" — and the source picture is starker. The median cited domain that had a Tranco rank at all ranked 71,611th. Nearly a quarter of cited domains had no rank. Wikipedia, the most-cited domain in several [studies of where AI citations come from](/blog/where-ai-citations-come-from), earned three citations across all 760 queries. A vendor's own marketing blog was the third most-cited domain in the entire study, at 194 citations.
 
 Into that vacuum, someone built supply. The three-site network — worldmetrics.org, gitnux.org, wifitalents.com — was registered between December 2023 and May 2024, shares DNS infrastructure and page templates, and had published 215,128 generated buying guides at the time of the audit, including guides for software categories that do not exist. The pages carry HTML titles reading "Facts & Grounding Page" — a phrase with no meaning to a human visitor and a very specific meaning to a retrieval system deciding what grounds an answer.
 
-We looked at worldmetrics.org ourselves on the day the report published. It presents as a market research firm — "proprietary research & verified data," named researchers, an editorial process — and its homepage advertises 72,716 "best lists" across 96 software categories. Ownership is not disclosed. It is, in short, dressed as exactly the kind of source an engine should want to cite, at a volume no research organization produces.
+We looked at worldmetrics.org ourselves on 2 September 2026, the day the report published. It presents as a market research firm — "proprietary research & verified data," named researchers, an editorial process — and its homepage advertises 72,716 "best lists" across 96 software categories. Ownership is not disclosed. It is, in short, dressed as exactly the kind of source an engine should want to cite, at a volume no research organization produces.
 
 This is the supply-side answer to a question our [GEO detection](/blog/geo-detection) piece raised from the demand side: if 9% of the web already shows GEO optimization, what does the fully optimized endpoint look like? It looks like this — content produced for no reader at all.
 
-## Concentration and the long tail are both true
+## Why do other studies show citations concentrating instead?
 
 Set these findings next to the academic audit published two days earlier and you get an apparent contradiction worth resolving. The [Sources of Truth study](https://arxiv.org/abs/2609.00319) recorded 15,942 citations across 1,140 responses to mental health questions on ChatGPT, Perplexity, and Google AI Overviews, and found heavy concentration: the ten most-cited domains carried 43.6% of English citations, with government, commercial health, and academic sources at roughly 22% each.
 
@@ -118,17 +135,37 @@ So which is it — a handful of authoritative domains, or an unranked long tail?
 
 That makes the useful diagnostic category-level, not engine-level: **does your category have authoritative citation supply?** If the top cited domains for your prompts are recognizable institutions, the shortlist is stable and hard to enter. If they're domains ranked 70,000th or nowhere, the shortlist is contestable — by you, and by a content farm. Our own [42-day volatility study](/blog/citation-volatility) found the set of cited domains for a prompt turning over 60–70% day to day, and it is exactly the thin-supply prompts where that churn creates openings.
 
-## What this changes about the KPI
+## What does this change about your citation KPI?
 
 The instinct this research should correct is treating a citation as a unit of credibility. It is a unit of retrieval. Perplexity's own models scored identically in the Haus audit — sonar at 65.9%, sonar-pro at 64.7% — so paying for the better model doesn't buy better-grounded citations, and there is no evidence the engine verifies that a cited page supports the sentence it decorates.
 
 Three practical consequences:
 
-1. **Split your citation KPI.** Supported citation, unsupported citation, and [mention](/blog/ghost-citations) are three different events. If a third of numeric-claim citations fail verification, an unsplit count is a retrieval metric wearing a credibility costume. Open the cited pages for the answers that matter — especially answers making factual claims about your brand — and log whether the page backs the claim.
-2. **Publish the facts engines get wrong.** The worst pass rates were for facts brands rarely state on a canonical page: current CEO, headquarters, pricing. Your domain took 23.4% of citations in the Haus data — the engine will cite you if the page exists, opens without a login, and states the fact in plain text. Every fact you leave unstated gets sourced from a directory's copy of it, at a 44–62% support rate.
-3. **Audit who is cited alongside you, and archive it.** Unfamiliar domains winning your category's recommendations deserve five minutes of provenance checking — registration date, shared templates, guides for impossible categories. And since 25.1% of URLs Perplexity cited had never been captured by the Wayback Machine, save copies of the pages your answers are built on. The evidence layer under AI answers is thinner and more perishable than it looks.
+### Split your citation KPI
+
+Supported citation, unsupported citation, and [mention](/blog/ghost-citations) are three different events. If a third of numeric-claim citations fail verification, an unsplit count is a retrieval metric wearing a credibility costume. Open the cited pages for the answers that matter — especially answers making factual claims about your brand — and log whether the page backs the claim.
+### Publish the facts engines get wrong
+
+The worst pass rates were for facts brands rarely state on a canonical page: current CEO, headquarters, pricing. Your domain took 23.4% of citations in the Haus data — the engine will cite you if the page exists, opens without a login, and states the fact in plain text. Every fact you leave unstated gets sourced from a directory's copy of it, at a 44–62% support rate.
+### Audit who is cited alongside you, and archive it
+
+Unfamiliar domains winning your category's recommendations deserve five minutes of provenance checking — registration date, shared templates, guides for impossible categories. And since 25.1% of URLs Perplexity cited had never been captured by the Wayback Machine, save copies of the pages your answers are built on. The evidence layer under AI answers is thinner and more perishable than it looks.
 
 What this research does not license is imitation. The farms work because a supply gap exists, and the direction of travel on the platform side — laid out in the [mechanism-design work on citation wars](/blog/citation-wars) — is toward rewarding claims that verify against a source and stripping the rest. The durable version of the farms' play is publishing the genuinely grounded page their templates fake: real numbers, stated method, a brand willing to put its name on it.
+
+## How do you check whether a citation about your brand is accurate?
+
+The engine is not running this check and neither is anyone else, so it falls to you. It takes about a minute per answer:
+
+| Step | What you are looking for |
+|---|---|
+| Copy the sentence that names your brand | The claim, not the paragraph — verification is per claim, not per answer |
+| Open every citation attached to it | Several citations per sentence is normal; one supporting source is enough for the claim to stand |
+| Search the page for the specific figure or fact | Not the topic. 34.7% of failures were pages that discussed the subject without containing the number |
+| Record gated and dead pages separately | 16.1% of cited pages were behind a paywall or login and 1.3% were dead — unverifiable is a different state from wrong |
+| Archive the page | 25.1% of cited URLs had never been captured by the Wayback Machine, so the evidence can disappear before you need it |
+
+Do this on the answers that matter — the ones making factual claims about your pricing, your leadership, or your security posture — rather than on all of them. Those are the claims with the worst measured pass rates and the highest cost when they are wrong.
 
 ## Limitations
 

@@ -2,6 +2,7 @@
 title: "How Much of the Web Is GEO-Optimized? 9% Overall, 16% of Pages Touched This Year"
 description: "A new CISPA study puts a number on GEO adoption for the first time: 8.9% of pages AI search retrieves are optimized, and detectors can now flag them — mostly."
 date: "2026-08-18"
+updated: "2026-09-11"
 author: ai
 metaTitle: "GEO Detection: How Much of the Web Is Optimized?"
 tags:
@@ -49,6 +50,18 @@ faq:
 
 **GEO has had tactics, tools, and think pieces for two years. As of this week it has a number.** A [preprint posted on 17 August 2026](https://arxiv.org/abs/2608.16824) by Junjie Chu and colleagues at CISPA Helmholtz Center for Information Security, with co-authors at HPE and the University of Waterloo, ran a GEO detector over 10,095 webpages retrieved for 1,000 real search queries and found 8.90% of them were GEO-optimized. Among pages last modified in 2026, the figure was 16.36% — one page in six.
 
+**Key facts**
+
+| | |
+|---|---|
+| GEO prevalence across retrieved pages | **8.90%** (95% CI 8.36–9.47) of 10,095 pages, 1,000 real queries — [CISPA, arXiv:2608.16824](https://arxiv.org/abs/2608.16824) |
+| Among pages last modified in 2026 | **16.36%** — one page in six |
+| Trend by year of last modification | 2024 **7.02%** → 2025 **12.80%** → 2026 **16.36%** |
+| Gemini-grounded vs Google Search results | **9.09% vs 8.14%**, widening to 18.20% vs 13.52% on 2026 pages |
+| Spread by domain | **20.37%** of sampled Amazon pages · 4.38% YouTube · **0%** Wikipedia and major medical sites |
+| Citations on detected GEO pages failing a verifiability audit | **69.34%** of 6,663 citation occurrences |
+| Best detector, aggregate F1 / worst-group accuracy | **0.944 / 0.883** with intervention-paired training |
+
 **Key takeaways**
 
 - First measured GEO prevalence: 8.90% of pages surfaced by Google Search and Gemini-grounded retrieval (95% CI: 8.36%–9.47%), climbing from 7.02% of pages modified in 2024 to 12.80% for 2025 and 16.36% for 2026.
@@ -58,7 +71,7 @@ faq:
 - The citations on detected GEO pages are largely decoration: 68.84% pointed at the weakest source tier and 69.34% failed a verifiability audit.
 - Caveats are real: this is a preprint, and "prevalence" means "what the detector flags," which inherits the detector's blind spots. Read the trend, hold the decimals loosely.
 
-## The first prevalence number GEO has ever had
+## How much of the web is actually GEO-optimized?
 
 Everything written about [generative engine optimization](/blog/what-is-generative-seo) so far has had to gesture at adoption — vendor counts, agency surveys, anecdote. This paper measured it. The authors sampled 1,000 queries from the ORCAS dataset of real search logs, retrieved candidate pages through both classic Google Search and Gemini-grounded retrieval, and ran their detector over the 10,095 pages they could fetch. It flagged 898.
 
@@ -73,13 +86,13 @@ Everything written about [generative engine optimization](/blog/what-is-generati
 
 Two things in that table deserve more attention than the headline.
 
-First, the trend line. Prevalence more than doubles between pages last touched in 2024 and pages last touched in 2026. Whatever else is true, the window in which doing GEO made you unusual is closing: among the freshest content competing for retrieval, one page in six already carries detectable optimization. (The year-by-year figures come from the 1,976 sampled pages carrying modification metadata, so they're the softest numbers in the paper — but the direction is steep enough to survive the caveat.)
+First, the trend line. Prevalence more than doubles between pages last touched in 2024 and pages last touched in 2026. Whatever else is true, the window in which doing GEO made you unusual is closing: among the freshest content competing for retrieval, one page in six already carries detectable optimization. That matters because tactic effectiveness is a function of how many competitors run the same tactic — a [Capital One simulation](https://arxiv.org/abs/2608.27631) found fixed single tactics scoring *below* the unoptimized baseline once 80% of competing documents are optimized, which makes this prevalence figure the x-axis for [whether your GEO playbook still pays](/blog/do-geo-tactics-stop-working). (The year-by-year figures come from the 1,976 sampled pages carrying modification metadata, so they're the softest numbers in the paper — but the direction is steep enough to survive the caveat.)
 
 Second, the channel gap. Optimized pages are a larger share of what Gemini-grounded retrieval surfaces than of what classic Google Search returns, and the gap widens on recent pages: 18.20% versus 13.52% for 2026-modified content. That is not a controlled experiment proving GEO causes retrieval, but it is exactly what you'd expect to observe if it does — and it's consistent with the pattern we've covered before, where [Google rank and AI citation come apart](/blog/rankings-and-ai-citations). The pages winning the AI retrieval slot are disproportionately the optimized ones.
 
 The domain breakdown adds texture: 20.37% of sampled Amazon pages flagged, against 4.38% for YouTube and 0% for Wikipedia and major medical sites like WebMD and Cleveland Clinic. GEO adoption is concentrated where commercial intent lives, which is presumably where your prompts live too.
 
-## The detectors work, until you ask what they detect
+## Do GEO detectors actually detect optimization?
 
 The paper's other contribution is GEOFlagBench: 3,200 pages across 400 queries in health, finance, technology, and travel, with optimized variants produced by eight optimizer families — academic methods like AutoGEO and RAID, "stealthy" variants prompted to hide, and human-performed optimization.
 
@@ -98,7 +111,7 @@ The middle columns are the finding. A detector with 0.880 F1 and 0.375 worst-gro
 
 Neither loophole looks durable. The paper's fix, intervention-paired training — training the detector on matched pairs so it learns the *intervention* rather than the authorship — lifts ModernBERT to 0.944 F1 and 0.883 worst-group accuracy in one move. And a companion result should give anyone running boilerplate optimization pause: detectors could attribute a flagged page to the specific optimizer family that produced it at 0.895 macro F1. The tools don't just leave a mark; they sign their work.
 
-## The citation audit is the part to sit with
+## What do the citations on optimized pages point at?
 
 The team also built an auditing agent that inspects the outbound citations on detected GEO pages, grading each source by accountability tier and checking whether the cited URL is accessible and verifiable at all.
 

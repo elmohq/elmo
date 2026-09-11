@@ -2,6 +2,7 @@
 title: "AEO vs SEO: What's the Difference?"
 description: "Answer engine optimization (AEO) competes for citations inside AI answers. Search engine optimization (SEO) competes for clicks from ranked links. What transfers, what doesn't, and whether you need both in 2026."
 date: "2026-08-18"
+updated: "2026-09-11"
 author: ai
 metaTitle: "AEO vs SEO: What's the Difference? (2026)"
 tags:
@@ -9,6 +10,33 @@ tags:
   - seo
   - ai-search
   - ai-visibility
+definedTerms:
+  - term: Answer engine optimization (AEO)
+    definition: "Answer engine optimization is the practice of making a brand one of the sources an AI engine retrieves, trusts, and cites when it writes an answer. Success is being in the answer — mentioned, cited, and described accurately — whether or not anyone clicks through, which makes the mention the asset and the click a sometimes-consequence."
+  - term: Search engine optimization (SEO)
+    definition: "Search engine optimization is the practice of making pages rank in the ordered list of links a search engine returns for a query. Success is a position, and a position earns clicks, so visibility and traffic have historically been the same thing."
+  - term: Generative engine optimization (GEO)
+    definition: "Generative engine optimization is another name for answer engine optimization, emphasising the generative systems that write the answers. LLMO — large language model optimization — is a third label for the same work. The tactics underneath are identical, so the label choice carries no strategic content."
+  - term: Zero-click search
+    definition: "A zero-click search is one that ends without the user visiting any result, because the answer appeared on the results page itself. It predates AI answers but AI answers industrialised it: users clicked a result on 8% of pages carrying an AI summary against 15% of pages without one."
+  - term: Grounding impression
+    definition: "A grounding impression is an impression logged when a page is retrieved as raw material for an AI answer without ever being rendered as a link a user could click. It inflates Search Console impressions while click-through rate collapses, which is how a page can sit at position 5 and earn a 0.02% CTR."
+howTo:
+  name: "How to add an AEO scoreboard to an existing SEO program"
+  description: "Stand up citation measurement alongside rank tracking without rebuilding the work that already feeds both."
+  steps:
+    - name: Keep the shared work where it is
+      text: "Crawlability, structured data, topical authority, and genuinely useful content feed the ranked list and the retrieval pool that AI answers are written from. Practitioners put the overlap at 80 to 90% of the same tactics, so nothing here needs a second team or a second budget."
+    - name: Write down the prompts your buyers actually ask
+      text: "Not keywords — questions, in the phrasing a person would type into an assistant, including comparisons, alternatives, and budget-constrained variants. This set is the AEO equivalent of a keyword list, and it is the thing your score will be defined by."
+    - name: Sample them repeatedly across every engine your buyers use
+      text: "AI answers are non-deterministic, so a single run proves almost nothing. Run the full set on a schedule across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces, and compute rates over the samples rather than reading a position."
+    - name: Track mention, citation, and description separately
+      text: "Being named, being linked, and being described accurately are three different outcomes that come apart. A brand can be recommended in an answer with no citation at all, so a single blended number hides the thing you most need to fix."
+    - name: Audit the third-party pages engines actually cite
+      text: "84% of cited links point at domains the brand does not own. Read the roundups, community threads, and review profiles that appear in your tracked answers and fix how you are described there — that is where most of the citation supply lives."
+    - name: Report the two scoreboards side by side, never blended
+      text: "A page-one ranking earning a 0.02% click-through rate and zero citations is a win on exactly one dashboard. Showing rank and citation metrics together is what stops either team from declaring victory while the brand loses on the other."
 faq:
   - question: What is the difference between AEO and SEO?
     answer: "Search engine optimization (SEO) optimizes pages to rank in a list of links that a person clicks. Answer engine optimization (AEO) optimizes to be a source that AI engines like ChatGPT, Perplexity, and Google's AI Overviews cite inside a synthesized answer, where there is often no click at all. They share fundamentals — crawlability, structured data, genuinely useful content — but differ in the unit of success (a position versus a citation), in measurement (rank tracking versus repeated prompt sampling), and in where the work happens (mostly your own site versus heavily third-party sources)."
@@ -20,22 +48,41 @@ faq:
     answer: "No. Ahrefs measured that 37.9% of pages cited in Google's AI Overviews ranked in the top 10 for the matching keyword in March 2026, down from 76.1% in July 2025. For standalone assistants the overlap is lower still: a separate Ahrefs study found about 12% of links cited by ChatGPT, Perplexity, and other assistants ranked in Google's top 10. Rank raises your odds of being retrieved, but it does not decide the citation."
   - question: Is AEO the same as GEO?
     answer: "Largely, yes. Answer engine optimization (AEO) and generative engine optimization (GEO) describe the same practice — earning visibility inside AI-generated answers — with slightly different emphasis. LLMO (large language model optimization) is a third label for the same work. The tactics underneath are identical, so pick one term and move on."
+  - question: Who should own AEO — the SEO team or content?
+    answer: "One team, because the disciplines share 80 to 90% of the same work and splitting them duplicates it. What needs an explicit owner is the divergent slice that is nobody's existing job: citation measurement, which no rank tracker reports; off-site placement on the third-party pages that carry 84% of citations; and answer-shaped content briefed from tracked answers rather than from a keyword list."
+  - question: What is a grounding impression?
+    answer: "An impression logged when a page is retrieved as raw material for an AI answer without ever being rendered as a link anyone could click. It inflates Search Console impressions while click-through rate collapses — Elmo's own comparison pages rank between position 5 and 9 and earn a 0.02% CTR for exactly this reason, which is why position stopped being a proxy for the outcome it used to predict."
   - question: How do you measure AEO if there are no rankings?
     answer: "By sampling. AI answers are non-deterministic — the same prompt returns different sources on different runs — so there is no fixed position to check. You define a set of prompts your buyers actually ask, run them repeatedly across each engine on a schedule, and track mention rate, citation rate, and share of voice against competitors over time. That trend line is the AEO equivalent of a rank report."
 ---
 
 **Search engine optimization (SEO) competes for a click from a ranked list of links. Answer engine optimization (AEO) competes for inclusion in the AI-generated answer itself, where there is often no click at all. They share most of their infrastructure — crawlability, structured data, useful content — but diverge on what success means, how you measure it, and where the work happens.**
 
-That is the short answer, and it survives the long one. The comparison matters more in 2026 than it did a year ago because the answer surfaces stopped being niche: an AI Overview now sits on [about 43% of US Google searches](/blog/ai-overviews-share-of-searches), up from 15% twelve months earlier. What follows is where the two disciplines genuinely differ, what carries over from twenty years of search engine optimization, what actively works against you, and why "AEO vs SEO" is ultimately a false choice dressed up as a strategy question.
+That is the short answer, and it survives the long one. The comparison matters more in 2026 than it did a year ago because the answer surfaces stopped being niche: an AI Overview sits on [about 43% of US Google searches](/blog/ai-overviews-share-of-searches) as of mid-2026, up from 15% twelve months earlier. What follows is where the two disciplines genuinely differ, what carries over from twenty years of search engine optimization, what actively works against you, and why "AEO vs SEO" is ultimately a false choice dressed up as a strategy question.
+
+**Key facts**
+
+| | |
+|---|---|
+| AI Overviews' share of US Google searches | **~43%** as of mid-2026, up from 15% a year earlier |
+| AI Overview citations ranking in Google's top 10 | **37.9%** (Mar 2026), down from **76.1%** (Jul 2025) — Ahrefs |
+| Assistant citations ranking in Google's top 10 | **~12%**; ChatGPT in-text citations **8%**; Google AI Mode **93%** |
+| Click rate with vs without an AI summary | **8% vs 15%**; sessions ended 26% vs 16% — Pew, 900 US adults |
+| Citations pointing at domains the brand does not own | **84%** of 25M+ links — [Muck Rack](https://muckrack.com/blog/what-is-ai-reading-may-2026), May 2026 |
+| Citation rate by engine | ChatGPT **96%** of responses · Gemini **82%** · Claude **55%** |
+| Practitioner-estimated tactic overlap between the two | **80–90%** — [Digiday](https://digiday.com/marketing/mythbusters-ai-visibilitys-biggest-misconceptions), Jul 2026 |
 
 **Key takeaways**
 
-- Search engine optimization competes for a click from a ranked list; answer engine optimization competes for a citation inside a synthesized answer. Rank and citation are different currencies, and the exchange rate is worsening: pages cited by Google's AI Overviews ranked in the top 10 for the matching keyword just 37.9% of the time in March 2026, down from 76.1% eight months earlier.
+- Search engine optimization competes for a click from a ranked list; answer engine optimization competes for a citation inside a synthesized answer. Rank and citation are different currencies.
+- The exchange rate between them is worsening: pages cited by Google's AI Overviews ranked in the top 10 for the matching keyword 37.9% of the time in March 2026, down from 76.1% eight months earlier.
 - Zero-click is the pivot. Users clicked a search result on 8% of result pages carrying an AI summary versus 15% without one, in Pew Research Center's measurement — and that was before the surface reached its current size.
 - Measurement differs in kind, not degree. SEO has Search Console and rank trackers. AEO has no equivalent standard, because answers are non-deterministic; you measure by sampling prompts repeatedly, not by checking a position.
 - Off-site weight is far higher in AEO: across more than 25 million links cited by ChatGPT, Claude, and Gemini, 84% pointed at domains the brand doesn't own.
 - Most of the work transfers — practitioners put the overlap at "80 to 90% of the same tactics" — but the divergent slice is the part that decides citations.
 - You need both, and the common failure mode is running them as separate teams with separate budgets when they are one body of work with two scoreboards.
+
+**On this page:** [What each optimizes for](#what-search-engine-optimization-and-answer-engine-optimization-each-optimize-for) · [Dimension by dimension](#aeo-vs-seo-the-difference-dimension-by-dimension) · [Click vs citation](#a-click-versus-a-citation-the-structural-difference) · [Zero-click](#zero-click-search-is-the-pivot) · [Measurement](#measuring-seo-versus-measuring-aeo) · [Off-site weight](#off-site-work-weighs-more-in-answer-engine-optimization) · [What transfers](#what-transfers-from-seo-to-aeo--and-what-doesnt) · [Do you need both?](#do-you-need-both-aeo-and-seo) · [Who owns it](#who-should-own-aeo--the-seo-team-or-content)
 
 ## What search engine optimization and answer engine optimization each optimize for
 
@@ -75,7 +122,7 @@ None of this makes the citation worthless as a traffic event — Similarweb repo
 
 The clean way to see the difference is to watch what happens to clicks when an AI answer appears. Pew Research Center measured the browsing of 900 US adults and found users clicked a search result on 8% of pages that carried an AI summary, against 15% of pages without one — and ended the browsing session entirely on 26% of summary pages versus 16% without. [Zero-click search](/glossary/zero-click-search) predates AI answers, but AI answers industrialized it, and the surface generating them roughly tripled in a year to [43% of US searches](/blog/ai-overviews-share-of-searches).
 
-Our own Google Search Console data makes the same point at the level of a single site. Elmo's programmatic comparison pages rank at an average position between 5 and 9 for their target queries — page one, by the old scoreboard — and earn a 0.02% click-through rate. The resolution to that apparent contradiction is that a large share of those impressions are AI Mode grounding impressions: the page was retrieved as raw material for an AI answer and counted as an impression without ever being rendered as a blue link anyone could click. We present that as an observation about how the surfaces now behave, not a complaint. Being on page one is no longer the same thing as getting traffic; on some surfaces it is not even the same thing as being seen.
+Our own Google Search Console data makes the same point at the level of a single site. **Elmo's programmatic comparison pages rank between position 5 and 9 for their target queries and earn a 0.02% click-through rate, because a large share of those impressions are AI Mode grounding impressions** — the page was retrieved as raw material for an AI answer and counted as an impression without ever being rendered as a blue link anyone could click. We present that as an observation about how the surfaces now behave, not a complaint. Being on page one is no longer the same thing as getting traffic; on some surfaces it is not even the same thing as being seen.
 
 That is the pivot the AEO-vs-SEO question actually turns on. If position 5 can mean 0.02% CTR, then position stopped being a proxy for the outcome you cared about, and you need a second scoreboard that counts what the first one can't: whether the answer written from those impressions mentions you, cites you, and describes you correctly.
 
@@ -101,7 +148,7 @@ One caution before reallocating the whole budget: the mix is engine-specific and
 
 ## What transfers from SEO to AEO — and what doesn't
 
-The overlap between the disciplines is real and large. Google's own guidance is that its [AI features run on core Search ranking systems](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide) — there is no separate index to optimize for, and a page that can't rank also can't be retrieved for grounding. The practical sorting looks like this:
+The overlap between the disciplines is real and large. Google's own guidance is that its [AI features run on core Search ranking systems](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide) — there is no separate index to optimize for, and a page that can't rank also can't be retrieved for grounding. The practical sorting looks like this. *Which SEO practices carry over to answer engine optimization, as of September 2026:*
 
 | Search engine optimization practice | Transfers to answer engine optimization? | Why |
 |---|---|---|
@@ -115,7 +162,11 @@ The overlap between the disciplines is real and large. Google's own guidance is 
 | Chasing position one for its own sake | No | Top-10 rank overlaps with AI Overview citations ~38% of the time and with assistant citations ~12%; position is an input, not the prize |
 | Volume-based content strategies | No — actively harmful | When a model is choosing which sources to trust, a large surface of thin pages is evidence against you |
 
+### Why volume strategies now cost you
+
 The last row deserves the emphasis. Publishing more pages was a defensible search engine optimization strategy for years: each thin page was a lottery ticket, and a losing ticket cost nothing. In answer engine optimization the losing tickets have a price, because the model forms a judgment about the source, not just the page. A domain that is 90% templated filler is teaching every engine that retrieves it what kind of source it is. Fewer, denser, more accurate pages beat volume in a system where the selector reads the content.
+
+### Why the two feel like one job
 
 The transferable rows explain why the disciplines feel like one job to people doing both. In Digiday's July 2026 survey of agency practitioners, RPA's Nate King put the overlap at ["80 to 90% of the same tactics"](https://digiday.com/marketing/mythbusters-ai-visibilitys-biggest-misconceptions) — while stressing that the remaining 10 to 20% is the critical part. That remaining slice is exactly the three structural differences above: answer-shaped content and extraction-friendly structure, deliberate off-site work, and citation measurement that rank tracking cannot substitute for.
 
@@ -125,7 +176,19 @@ Yes, and the reason is unglamorous: they are mostly the same underlying work rea
 
 The honest caveat is that the ratio between them depends on your market. A local service business whose queries resolve to an address and opening hours lives mostly in classic search and listings. A developer-tools company whose buyers ask ChatGPT for recommendations has an answer-engine problem today. Most brands sit in between and should let their own data set the ratio: if your tracked prompts show AI engines answering your category's questions without you, that gap is real regardless of your rankings.
 
-The common failure mode is organizational, not technical: treating AEO and SEO as separate teams with separate budgets and separate agencies. That structure duplicates the 80–90% of shared work, and — worse — lets each team declare victory on its own scoreboard while the brand loses on the other. The page-one ranking that earns a 0.02% click-through rate and zero citations is a win on exactly one dashboard. One team, one body of work, two scoreboards, and explicit ownership of the divergent slice: measurement, off-site placement, and answer-shaped content.
+## Who should own AEO — the SEO team or content?
+
+One team, whichever one. The common failure mode here is organizational, not technical: treating AEO and SEO as separate functions with separate budgets and separate agencies. That structure duplicates the 80–90% of shared work, and — worse — lets each side declare victory on its own scoreboard while the brand loses on the other. The page-one ranking that earns a 0.02% click-through rate and zero citations is a win on exactly one dashboard.
+
+What does need explicit ownership is the divergent slice, because it is nobody's existing job:
+
+| The divergent 10–20% | Who tends to own it by default | Why it gets dropped |
+|---|---|---|
+| Citation measurement | Nobody — rank tracking does not see it | There is no Search Console for AI answers, so no report arrives to prompt anyone |
+| Off-site placement on cited third-party pages | Split between PR and SEO, so neither | 84% of citations point at domains you don't own, which falls outside a site-scoped remit |
+| Answer-shaped content and extractable structure | Content, usually without the citation data | Written to a keyword brief rather than to what the tracked answers show is missing |
+
+Name an owner for each of those three and the organizational question is settled. The split of effort between them is then a data question rather than an org-chart one, answered by the ratio above.
 
 ## Where to go from here
 
