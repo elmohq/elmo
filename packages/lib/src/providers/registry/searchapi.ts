@@ -123,10 +123,7 @@ export const searchapi: Provider = {
 		return {
 			rawOutput: stored,
 			textContent: extractTextFromSearchapi(stored),
-			// ChatGPT searches on its own initiative too, so trust what the response
-			// reports over the target's toggle. No other engine sets the field.
 			webQueries: reportedWebQueries(nonEmptyStrings(answer.search_queries), {
-				webSearch: answer.response_metadata?.is_web_search_performed !== false,
 				searchProven: citations.length > 0,
 			}),
 			citations,
