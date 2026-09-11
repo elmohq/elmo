@@ -9,14 +9,14 @@ import { failureDetails, isTransientStatus, pollDelay, queriesFromKeys, response
 // send a `prompt`, while Google AI Overview rides on the Google Search task and
 // sends a `query` with the AI Overview block requested. ChatGPT is the only
 // surface that hides its fan-out queries behind an `include` flag.
-type CloroTaskConfig = { taskType: string; field: "prompt" | "query"; include?: Record<string, unknown> };
+type CloroTaskConfig = { taskType: string; field: "prompt" | "query"; include: Record<string, unknown> };
 
 const CLORO_TASKS: Record<string, CloroTaskConfig> = {
-	chatgpt: { taskType: "CHATGPT", field: "prompt", include: { searchQueries: true } },
-	perplexity: { taskType: "PERPLEXITY", field: "prompt" },
-	copilot: { taskType: "COPILOT", field: "prompt" },
-	gemini: { taskType: "GEMINI", field: "prompt" },
-	"google-ai-mode": { taskType: "AIMODE", field: "prompt" },
+	chatgpt: { taskType: "CHATGPT", field: "prompt", include: { markdown: true, searchQueries: true } },
+	perplexity: { taskType: "PERPLEXITY", field: "prompt", include: { markdown: true } },
+	copilot: { taskType: "COPILOT", field: "prompt", include: { markdown: true } },
+	gemini: { taskType: "GEMINI", field: "prompt", include: { markdown: true } },
+	"google-ai-mode": { taskType: "AIMODE", field: "prompt", include: { markdown: true } },
 	"google-ai-overview": { taskType: "GOOGLE", field: "query", include: { aioverview: { markdown: true } } },
 };
 
@@ -174,8 +174,7 @@ export const cloro: Provider = {
 			throw new Error(`Cloro: no task mapping for model "${model}". Supported: ${Object.keys(CLORO_TASKS).join(", ")}`);
 		}
 
-		const payload: Record<string, any> = { [task.field]: prompt, country: CLORO_COUNTRY };
-		if (task.include) payload.include = task.include;
+		const payload: Record<string, any> = { [task.field]: prompt, country: CLORO_COUNTRY, include: task.include };
 
 		const response = await runAsyncTask(task.taskType, payload);
 		const answer = cloroAnswer(response) ?? {};

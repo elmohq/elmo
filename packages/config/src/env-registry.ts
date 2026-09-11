@@ -352,12 +352,6 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Vercel Blob token (www competitor screenshots).",
 	},
 	{
-		name: "DBOS_SYSTEM_DATABASE_URL",
-		scope: "server",
-		requiredBy: "optional",
-		description: "Override for the DBOS system database URL (read by the DBOS runtime).",
-	},
-	{
 		name: "SENTRY_DSN",
 		scope: "server",
 		requiredBy: "optional",

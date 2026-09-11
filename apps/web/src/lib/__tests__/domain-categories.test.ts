@@ -3,6 +3,7 @@ import {
 	attributeProduct,
 	inferPageType,
 	isForumDomain,
+	isGoogleRedirectUrl,
 	isGoogleSearchUrl,
 	isGoogleShoppingUrl,
 	isGoogleSurfaceUrl,
@@ -91,6 +92,59 @@ describe("categorizeDomain priority", () => {
 		expect(cat("bhphotovideo.com")).toBe("ecommerce");
 	});
 
+	it("routes developer surfaces by host shape, not just by name", () => {
+		// docs./developer./api. subdomains, for any vendor
+		expect(cat("docs.stripe.com")).toBe("developer");
+		expect(cat("developers.google.com")).toBe("developer");
+		expect(cat("api.some-saas.io")).toBe("developer");
+		// project hosting platforms, matched through their subdomains
+		expect(cat("alice.github.io")).toBe("developer");
+		expect(cat("jspm-packages.deno.dev")).toBe("developer");
+		expect(cat("my-app.vercel.app")).toBe("developer");
+		expect(cat("firebase.google.com")).toBe("developer");
+		// code-host mirrors and proxies
+		expect(cat("qgithub.com")).toBe("developer");
+		expect(cat("github.blog")).toBe("developer");
+		// language / OSS project sites, which would otherwise be institutional (.org)
+		expect(cat("python.org")).toBe("developer");
+		expect(cat("postgresql.org")).toBe("developer");
+		expect(cat("kubernetes.io")).toBe("developer");
+	});
+
+	it("routes blog/news subdomains to editorial, but not ahead of institutional", () => {
+		expect(cat("blog.some-saas.io")).toBe("editorial");
+		expect(cat("blogs.bing.com")).toBe("editorial");
+		expect(cat("news.mit.edu")).toBe("institutional"); // a university newsroom stays institutional
+	});
+
+	it("routes press subdomains to PR, since a release feed is not coverage", () => {
+		expect(cat("press.some-saas.io")).toBe("pr");
+		expect(cat("newsroom.some-saas.io")).toBe("pr");
+		expect(cat("press.mit.edu")).toBe("institutional"); // a university press office stays institutional
+		expect(cat("newsroom.co.nz")).toBe("editorial"); // an outlet at that apex is still a publisher
+	});
+
+	it("leaves consumer assistant surfaces unbucketed rather than calling them developer", () => {
+		expect(cat("chatgpt.com")).toBe("other");
+		expect(cat("claude.ai")).toBe("other");
+		expect(cat("perplexity.ai")).toBe("other");
+		expect(cat("gemini.google.com")).toBe("other");
+	});
+
+	it("routes storefronts by host shape and app stores by name", () => {
+		expect(cat("shop.mango.com")).toBe("ecommerce");
+		expect(cat("adsport.store")).toBe("ecommerce");
+		expect(cat("acme.myshopify.com")).toBe("ecommerce");
+		expect(cat("apps.apple.com")).toBe("ecommerce");
+		expect(cat("chromewebstore.google.com")).toBe("ecommerce");
+	});
+
+	it("routes software directories to reviews", () => {
+		expect(cat("alternativeto.net")).toBe("reviews");
+		expect(cat("stackshare.io")).toBe("reviews");
+		expect(cat("theresanaiforthat.com")).toBe("reviews");
+	});
+
 	it("brand and competitor always win over list categories", () => {
 		const b = new Set(["amazon.com"]); // hypothetically the brand's own domain
 		const c = new Set(["github.com", "g2.com"]); // hypothetically tracked competitors
@@ -118,6 +172,12 @@ describe("classifyUrl fallback (shrinks 'other')", () => {
 	it("treats unknown-domain forum pages as social", () => {
 		expect(classify("randomforum.xyz", "https://randomforum.xyz/forums/thread-123", "A thread")).toBe("social");
 	});
+	it("treats technical documentation on an unknown domain as developer", () => {
+		expect(classify("some-saas.io", "https://some-saas.io/docs/getting-started", "Getting started")).toBe("developer");
+		expect(classify("some-saas.io", "https://some-saas.io/api/reference", "API")).toBe("developer");
+		// a consumer help centre is not a developer source
+		expect(classify("some-saas.io", "https://some-saas.io/help/billing", "Billing help")).toBe("other");
+	});
 	it("never overrides a domain that already classifies", () => {
 		expect(classify("mybrand.com", "https://mybrand.com/blog/a-review", "A Review")).toBe("brand");
 		expect(classify("amazon.com", "https://amazon.com/dp/B089", "Product")).toBe("ecommerce");
@@ -139,15 +199,12 @@ describe("Google AI Mode URL detection", () => {
 		expect(isGoogleSurfaceUrl("https://forbes.com/article")).toBe(false);
 	});
 
-	it("keeps an unresolved Google redirect out of the source mix", () => {
-		// A wrapper that could not be resolved names google.com and nothing else,
-		// so it is neither a shopping card nor a search — just not a source.
-		const redirect = "https://www.google.com/goto?url=CAESfAHrOzAV7Y5Bq0cBdDMzIJig5SvhvwHpHzaWS4NhP5AyObe3";
-		expect(isGoogleSurfaceUrl(redirect)).toBe(true);
-		expect(isGoogleShoppingUrl(redirect)).toBe(false);
-		expect(isGoogleSearchUrl(redirect)).toBe(false);
-		// A publisher page that merely starts with the same letters is not one.
-		expect(isGoogleSurfaceUrl("https://developers.google.com/urlshortener")).toBe(false);
+	it("treats Google link wrappers as a surface, not a source", () => {
+		expect(isGoogleRedirectUrl("https://www.google.com/goto?url=CAESxAEB6zswFdCL92rz")).toBe(true);
+		expect(isGoogleRedirectUrl("https://www.google.com/aclk?sa=L&ai=DChsSEwi37")).toBe(true);
+		expect(isGoogleSurfaceUrl("https://www.google.com/goto?url=CAESxAEB6zswFdCL92rz")).toBe(true);
+		expect(isGoogleRedirectUrl("https://www.google.com/alerts")).toBe(false);
+		expect(isGoogleRedirectUrl("https://example.com/goto?url=x")).toBe(false);
 	});
 
 	it("parses product name from the title and skips the placeholder query", () => {
@@ -215,6 +272,35 @@ describe("inferPageType", () => {
 		// storefront best-seller / commerce paths are NOT listicles
 		expect(inferPageType("https://shop.com/products/best-seller-serum", "Hydrating Serum")).toBe("product");
 		expect(inferPageType("https://shop.com/collections/best-sellers", "Shop Collection")).toBe("product");
+		// "best-" also counts mid-slug, where most posts put it
+		expect(inferPageType("https://theruntesters.com/running-shoes/the-best-running-shoes-to-buy")).toBe("listicle");
+		// ...but "top-" mid-slug does not, or apparel slugs would collide
+		expect(inferPageType("https://shop.com/tank-top-black-cotton")).not.toBe("listicle");
+	});
+
+	it("reads underscore slugs the same as hyphen slugs", () => {
+		expect(inferPageType("https://runningwarehouse.com/learningcenter/gear_guides/best_running_shoes.html")).toBe(
+			"listicle",
+		);
+	});
+
+	it("separates /p/ product paths from /p/ post paths", () => {
+		expect(inferPageType("https://sivasdescalzo.com/us/p/air-jordan-1-low-gs-553560-072")).toBe("product");
+		expect(inferPageType("https://www.target.com/p/apple-airpods-pro-2/-/A-54191097")).toBe("product");
+		// Substack posts share the path but carry no catalogue id — the numbers in
+		// a post slug are years and counts, which must not read as a SKU
+		expect(inferPageType("https://annsmarty.com/p/reddit-for-llm-visibility")).not.toBe("product");
+		expect(inferPageType("https://www.noahpinion.blog/p/5-lessons-from-2024")).not.toBe("product");
+		expect(inferPageType("https://thediff.co/p/gpt-4-and-the-500-billion-question")).not.toBe("product");
+	});
+
+	it("leaves blog taxonomy paths out of commerce", () => {
+		expect(inferPageType("https://someblog.com/category/running-tips/")).not.toBe("product");
+		expect(inferPageType("https://someblog.com/browse/topics/health")).not.toBe("product");
+	});
+
+	it("reads Shopify's /blogs/ path as an article", () => {
+		expect(inferPageType("https://store.com/blogs/news/how-we-source-leather")).toBe("article");
 	});
 });
 

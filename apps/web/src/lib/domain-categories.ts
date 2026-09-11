@@ -195,23 +195,21 @@ export function isGoogleSearchUrl(url: string): boolean {
 }
 
 /**
- * Google's own redirect wrapper, e.g. `google.com/goto?url=<encrypted>`. Google
- * hands AI Overview sources out this way and scrapers resolve them back to the
- * publisher, but one that can't be resolved arrives still wrapped. The only
- * domain it names is Google's, so counting it would credit Google for a
- * citation some publisher earned.
+ * Google link wrappers: AI Mode's `/goto?url=`, ad clicks (`/aclk`), and the
+ * `/url` and `/imgres` redirectors. The destination is an encoded Google payload
+ * rather than the publisher's address, so the citation names no resolvable
+ * source and can't be attributed to a domain.
  */
 export function isGoogleRedirectUrl(url: string): boolean {
 	if (!googleHost(url)) return false;
 	try {
-		const path = new URL(url).pathname.replace(/\/$/, "");
-		return path === "/goto" || path === "/url";
+		return /^\/(goto|aclk|url|imgres)\/?$/.test(new URL(url).pathname);
 	} catch {
 		return false;
 	}
 }
 
-/** Any Google search/shopping/redirect surface pulled out of the source-mix donut. */
+/** Any Google search/shopping surface pulled out of the source-mix donut. */
 export function isGoogleSurfaceUrl(url: string): boolean {
 	return isGoogleShoppingUrl(url) || isGoogleSearchUrl(url) || isGoogleRedirectUrl(url);
 }
@@ -366,9 +364,22 @@ export function isForumDomain(host: string): boolean {
 }
 
 /**
- * Infer a page type from the URL path + citation title. Heuristic — "good, not
- * perfect"; the long tail falls through to "other".
+ * Path segments that mark technical documentation whoever publishes it — the
+ * signal that makes an otherwise-unclassified host a developer source. Kept
+ * narrower than the "doc" page type, which also covers consumer help centres.
  */
+const DEVELOPER_PATH_RE =
+	/\/(docs?|documentation|developers?|api|apis|sdks?|reference|api-reference|changelog|release-notes|openapi|swagger|graphql)(\/|$)/;
+
+/** True when the URL path is technical documentation (see DEVELOPER_PATH_RE). */
+export function hasDeveloperPath(url: string): boolean {
+	try {
+		return DEVELOPER_PATH_RE.test(new URL(url).pathname.toLowerCase());
+	} catch {
+		return false;
+	}
+}
+
 /**
  * Ordered page-type rules. Order is load-bearing: an earlier rule wins, which
  * is how "/products/return-pillow" reads as a product rather than a returns
@@ -395,7 +406,7 @@ const PAGE_TYPE_RULES: PageTypeRule[] = [
 			/\/(comments|forums?|threads?|viewtopic|discussion)(\/|$)/.test(path) ||
 			/\/r\//.test(path),
 	},
-	{ type: "doc", matches: ({ path }) => /\/(docs?|documentation|developers?|api|sdk|reference)(\/|$)/.test(path) },
+	{ type: "doc", matches: ({ path }) => DEVELOPER_PATH_RE.test(path) },
 	{ type: "review", matches: ({ haystack }) => /\breview(s|ed)?\b/.test(haystack) },
 	{
 		type: "comparison",
@@ -410,7 +421,9 @@ const PAGE_TYPE_RULES: PageTypeRule[] = [
 			/^\s*(best|top)\b/.test(title) ||
 			// "best-"/"top-" in the URL slug (catches review domains whose title doesn't
 			// lead with "Best"), excluding store "best-seller" pages and commerce paths.
-			(/(^|\/)(best|top)-[a-z]/.test(path) &&
+			// "best-" also counts mid-slug ("/the-best-running-shoes"); "top-" does not,
+			// because apparel slugs like "/tank-top-black" would collide.
+			(/(^|\/)(best|top)-[a-z]|-best-[a-z]/.test(path) &&
 				!/best-?sellers?|\/(products?|collections|shop|store|dp|gp|pdp|item|cart|buy)(\/|$|-)/.test(path)),
 	},
 	{
@@ -435,9 +448,13 @@ const PAGE_TYPE_RULES: PageTypeRule[] = [
 		// /products/return-pillow is a product, not a returns page.
 		type: "product",
 		matches: ({ path }) =>
-			/\/(dp|gp\/product|gp\/aw\/d|ip|itm|pdp|products?|item|shop|store|collections|buy|cart|pricing|plans?)(\/|$)/.test(
+			/\/(dp|gp\/product|gp\/aw\/d|ip|itm|pdp|products?|item|shop|store|collections?|catalog(ue)?|buy|cart|pricing|plans?)(\/|$)/.test(
 				path,
-			),
+			) ||
+			// "/p/<slug>" is a widespread product path, but also Substack's post path.
+			// A catalogue id tells them apart: prose slugs carry counts and years
+			// ("/p/5-lessons-from-2024"), not a SKU-length run of digits.
+			hasCatalogueId(path),
 	},
 	{
 		type: "info",
@@ -446,17 +463,34 @@ const PAGE_TYPE_RULES: PageTypeRule[] = [
 				path,
 			),
 	},
-	{ type: "doc", matches: ({ path }) => /\/(support|help|kb)(\/|$)/.test(path) },
+	{ type: "doc", matches: ({ path }) => /\/(support|help|kb|knowledge-?base|glossary)(\/|$)/.test(path) },
 	{
 		type: "article",
 		matches: ({ path }) =>
-			/\/(blog|news|articles?|story|stories|posts?|magazine|tips|advice|journal|features?|insights?|resources?)(\/|$|-)/.test(
+			/\/(blogs?|news|newsroom|articles?|story|stories|posts?|magazine|tips|advice|journal|features?|insights?|resources?|reports?|case-stud(y|ies)|white-?papers?|opinions?|editorials?)(\/|$|-)/.test(
 				path,
 			) ||
 			/\/\d{4}\/\d{2}\//.test(path) ||
 			/\/\d{4}\/[a-z]/.test(path),
 	},
 ];
+
+/**
+ * True when a "/p/" path carries a catalogue id — a run of four or more digits
+ * that isn't a year, anywhere after the prefix (retailers put it in the slug or
+ * in a trailing segment). Four digits is the floor because shorter runs are
+ * prose: counts, model years, "gpt-4".
+ */
+function hasCatalogueId(path: string): boolean {
+	const rest = /\/p\/(.+)/.exec(path)?.[1];
+	if (!rest) return false;
+	return (rest.match(/\d{4,}/g) ?? []).some((run) => !isYear(run));
+}
+
+function isYear(token: string): boolean {
+	const n = Number(token);
+	return n >= 1900 && n <= 2099;
+}
 
 /**
  * Infer a page type from the URL path + citation title. Heuristic — "good, not
@@ -473,7 +507,9 @@ export function inferPageType(url: string, title?: string | null): CitationPageT
 		return "other";
 	}
 
-	const path = parsed.pathname.toLowerCase();
+	// Underscore-separated slugs ("/gear_guides/best_running_shoes") are the same
+	// shape as hyphen-separated ones; normalize so one set of rules covers both.
+	const path = parsed.pathname.toLowerCase().replace(/_/g, "-");
 	if (path === "/" || path === "") return "homepage";
 
 	const lowerTitle = (title ?? "").toLowerCase();
