@@ -1,6 +1,5 @@
 ---
 "@workspace/web": patch
-"@workspace/lib": patch
 ---
 
-Additional brand domains that a broader tracked domain already covers are now rejected with a message naming the covering domain, in brand settings and when adding a domain from a citation; onboarding, the brands API, and AI-suggested domains drop them instead of storing an entry that does nothing.
+Brand settings and the onboarding wizard now reject an additional domain that the website or another domain in the list already covers, so adding `blog.acme.com` alongside `acme.com` tells you why instead of accepting an entry that does nothing.

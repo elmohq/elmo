@@ -20,7 +20,7 @@ import { brandKeys, useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { promptsSummaryKeys } from "@/hooks/use-prompts-summary";
-import { cleanAndValidateDomain, findRedundantDomains, redundantDomainReason } from "@/lib/domain-categories";
+import { cleanAndValidateDomain, redundantDomainReason } from "@/lib/domain-categories";
 import { trackEvent } from "@/lib/posthog";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import {
@@ -213,17 +213,14 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	);
 	const updatePrompts = useCallback((prompts: EditablePrompt[]) => setData((p) => ({ ...p, prompts })), []);
 
-	// Same coverage rule the save applies, surfaced while the chip is being added
-	// so the user is not left wondering where the entry went.
+	// The model routinely suggests a site's own subdomains next to the site, which
+	// suffix matching already covers. Same check the settings form runs.
 	const validateDomain = useCallback(
 		(val: string): true | string => {
 			const cleaned = cleanAndValidateDomain(val);
 			if (!cleaned) return `"${val}" is not a valid domain`;
-			const covering = findRedundantDomains(
-				[...data.additionalDomains, cleaned],
-				cleanAndValidateDomain(data.website),
-			).get(cleaned);
-			if (covering) return `"${cleaned}" is ${redundantDomainReason(cleaned, covering)}`;
+			const reason = redundantDomainReason(cleaned, [cleanAndValidateDomain(data.website), ...data.additionalDomains]);
+			if (reason) return `"${cleaned}" ${reason}`;
 			return true;
 		},
 		[data.additionalDomains, data.website],

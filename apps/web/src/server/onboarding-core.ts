@@ -11,7 +11,7 @@ import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { count, desc, eq, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { dedupeAliases, dedupeDomains, dropRedundantDomains } from "@/lib/domain-categories";
+import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 
 export class BrandConflictError extends Error {
@@ -149,16 +149,11 @@ export class InvalidDomainsError extends Error {
 	}
 }
 
-/**
- * The API takes one flat list where the first valid entry is the website. The
- * rest are only worth storing if the website — or a broader sibling — doesn't
- * already cover them.
- */
 function splitDomainsForStorage(domains: string[]): { website: string; additionalDomains: string[] } {
 	const cleaned = dedupeDomains(domains);
 	if (cleaned.length === 0) throw new InvalidDomainsError();
 	const [primary, ...rest] = cleaned;
-	return { website: `https://${primary}`, additionalDomains: dropRedundantDomains(rest, primary) };
+	return { website: `https://${primary}`, additionalDomains: rest };
 }
 
 export function apiCreateInputToInternal(input: z.infer<typeof createBrandInputSchema>): CreateBrandInput {
@@ -282,7 +277,7 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	const formattedWebsite = validateAndFormatWebsite(input.website);
 	const websiteHost = new URL(formattedWebsite).hostname.replace(/^www\./, "");
 
-	const additionalDomains = dropRedundantDomains(dedupeDomains(input.additionalDomains ?? []), websiteHost);
+	const additionalDomains = dedupeDomains(input.additionalDomains ?? []).filter((d) => d !== websiteHost);
 	const aliases = dedupeAliases(input.aliases ?? []);
 
 	// One transaction for the whole aggregate: a brand with none of its prompts
@@ -363,7 +358,7 @@ export async function updateBrand(input: UpdateBrandInput): Promise<BrandResult>
 	if (input.brandName !== undefined) patch.name = input.brandName;
 	if (formattedWebsite !== null) patch.website = formattedWebsite;
 	if (input.additionalDomains !== undefined) {
-		patch.additionalDomains = dropRedundantDomains(dedupeDomains(input.additionalDomains), websiteHost);
+		patch.additionalDomains = dedupeDomains(input.additionalDomains).filter((d) => d !== websiteHost);
 	}
 	if (input.aliases !== undefined) patch.aliases = dedupeAliases(input.aliases);
 	if (input.enabled !== undefined) patch.enabled = input.enabled;

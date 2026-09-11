@@ -102,10 +102,6 @@ export function cleanAndValidateDomain(input: string): string | null {
 	return cleaned;
 }
 
-// Domain coverage lives in @workspace/lib so the onboarding pipeline answers
-// "is this domain already covered?" the same way the citation categorizer does.
-export { dropRedundantDomains, findRedundantDomains, inDomainSet, redundantDomainReason } from "@workspace/lib/domains";
-
 export function dedupeDomains(values: string[]): string[] {
 	const out: string[] = [];
 	const seen = new Set<string>();
@@ -319,6 +315,41 @@ export const FORUM_DOMAINS = new Set([
 	"thenest.com",
 	"cafemom.com",
 ]);
+
+/**
+ * The entry of `set` that `domain` equals or sits under, or null. Walks the
+ * domain's parent suffixes so lookups stay O(labels) regardless of set size —
+ * important for the large editorial set.
+ */
+function coveringDomain(domain: string, set: Set<string>): string | null {
+	let d = domain;
+	while (true) {
+		if (set.has(d)) return d;
+		const dot = d.indexOf(".");
+		if (dot === -1) return null;
+		d = d.slice(dot + 1);
+	}
+}
+
+/** True if `domain` equals, or is a subdomain of, any entry in `set`. */
+export function inDomainSet(domain: string, set: Set<string>): boolean {
+	return coveringDomain(domain, set) !== null;
+}
+
+/**
+ * Why adding `domain` next to `tracked` would change nothing, phrased for a
+ * validation message — or null if it would. Brand matching is suffix-based, so
+ * `acme.io` already counts `blog.acme.io` as the brand's. Nulls in `tracked`
+ * are ignored so callers can pass `cleanAndValidateDomain` output straight in.
+ *
+ * Advisory only: this catches the entry as it is typed, and nothing rejects a
+ * redundant domain that is already stored.
+ */
+export function redundantDomainReason(domain: string, tracked: (string | null)[]): string | null {
+	const covering = coveringDomain(domain, new Set(tracked.filter((d): d is string => d !== null)));
+	if (!covering) return null;
+	return covering === domain ? "is already tracked" : `is already covered by ${covering}`;
+}
 
 /**
  * True for dedicated forum domains and conventional forum subdomains

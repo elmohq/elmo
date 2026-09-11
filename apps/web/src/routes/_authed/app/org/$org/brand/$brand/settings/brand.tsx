@@ -14,7 +14,7 @@ import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { useOrganization, useOrganizationsChanged } from "@/hooks/use-organizations";
 import { useBrandParams } from "@/hooks/use-route-params";
-import { cleanAndValidateDomain, findRedundantDomains, redundantDomainReason } from "@/lib/domain-categories";
+import { cleanAndValidateDomain, redundantDomainReason } from "@/lib/domain-categories";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updateBrandFn } from "@/server/brands";
@@ -53,16 +53,14 @@ function BrandSettingsPage() {
 	}
 
 	// Matching is suffix-based, so a domain the website or another entry already
-	// covers would be tracked either way. Caught here so the user finds out while
-	// typing rather than when the save is rejected.
+	// covers gets tracked either way. Discouraged as it is typed rather than
+	// enforced on save: what is already stored stays exactly as it is.
 	const validateDomain = useCallback(
 		(val: string): true | string => {
 			const cleaned = cleanAndValidateDomain(val);
 			if (!cleaned) return `"${val}" is not a valid domain`;
-			const covering = findRedundantDomains([...additionalDomains, cleaned], cleanAndValidateDomain(website)).get(
-				cleaned,
-			);
-			if (covering) return `"${cleaned}" is ${redundantDomainReason(cleaned, covering)}`;
+			const reason = redundantDomainReason(cleaned, [cleanAndValidateDomain(website), ...additionalDomains]);
+			if (reason) return `"${cleaned}" ${reason}`;
 			return true;
 		},
 		[additionalDomains, website],

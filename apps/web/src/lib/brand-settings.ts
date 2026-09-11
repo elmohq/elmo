@@ -1,5 +1,5 @@
 import { validateWebsiteUrl } from "@/lib/brand-website";
-import { cleanAndValidateDomain, findRedundantDomains, redundantDomainReason } from "@/lib/domain-categories";
+import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
 /**
  * Pure normalization/validation for the "edit brand settings" flow, extracted
@@ -10,13 +10,11 @@ import { cleanAndValidateDomain, findRedundantDomains, redundantDomainReason } f
  *  - name: trimmed; must be non-empty when provided
  *  - website: validated + normalized to a full URL (path preserved)
  *  - additionalDomains: each cleaned/validated (hard error listing the invalid
- *    ones), then de-duplicated; an entry a broader tracked domain already
- *    covers is a hard error too
+ *    ones), then de-duplicated
  *  - aliases: trimmed, empties dropped, de-duplicated
  *
  * Only keys present on the input are touched, so a partial edit leaves the rest
- * of the brand untouched. The brand's stored website is passed separately so
- * the coverage rule still holds for an update that only sends domains.
+ * of the brand untouched.
  */
 export interface BrandUpdateInput {
 	name?: string;
@@ -34,10 +32,7 @@ interface BrandUpdateFields {
 
 export type NormalizeBrandUpdateResult = { ok: true; updates: BrandUpdateFields } | { ok: false; error: string };
 
-export function normalizeBrandUpdate(
-	input: BrandUpdateInput,
-	currentWebsite?: string | null,
-): NormalizeBrandUpdateResult {
+export function normalizeBrandUpdate(input: BrandUpdateInput): NormalizeBrandUpdateResult {
 	const updates: BrandUpdateFields = {};
 
 	if (input.name !== undefined) {
@@ -61,19 +56,7 @@ export function normalizeBrandUpdate(
 		if (invalid.length > 0) {
 			return { ok: false, error: `Invalid domain(s): ${invalid.join(", ")}` };
 		}
-		const unique = [...new Set(cleaned.filter(Boolean) as string[])];
-		// The website being edited in this same submit wins over the stored one.
-		const websiteDomain = cleanAndValidateDomain(updates.website ?? currentWebsite ?? "");
-		// Saying so beats silently dropping the entry: the user typed it, and the
-		// message names the domain that made it pointless.
-		const redundant = findRedundantDomains(unique, websiteDomain);
-		if (redundant.size > 0) {
-			const listed = [...redundant].map(
-				([domain, covering]) => `${domain} (${redundantDomainReason(domain, covering)})`,
-			);
-			return { ok: false, error: `Redundant domain(s): ${listed.join(", ")}` };
-		}
-		updates.additionalDomains = unique;
+		updates.additionalDomains = [...new Set(cleaned.filter(Boolean) as string[])];
 	}
 
 	if (input.aliases !== undefined) {
