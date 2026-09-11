@@ -7,7 +7,7 @@ export const Route = createFileRoute("/api/v1/organizations/$organizationId/bill
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
-				scopes: ["billing:read"],
+				scopes: ["read"],
 				mapError: (err) =>
 					err instanceof OrganizationNotFoundError ? new ApiError(404, "Not Found", err.message) : undefined,
 				handle: async ({ params, auth }) => {

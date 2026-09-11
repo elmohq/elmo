@@ -15,7 +15,7 @@ export const listBrandsTool = defineTool({
 	name: "list_brands",
 	title: "List brands",
 	description: "Every brand this connection tracks. Start here: the other brand tools take an id from this list.",
-	scopes: ["brands:read"],
+	scopes: ["read"],
 	readOnly: true,
 	input: {},
 	run: async ({ auth }) => {
@@ -28,7 +28,7 @@ export const getBrand = defineTool({
 	name: "get_brand",
 	title: "Get one brand",
 	description: "One brand's configuration: its domains, aliases, tracked models, and cadence.",
-	scopes: ["brands:read"],
+	scopes: ["read"],
 	readOnly: true,
 	input: { brandId: brandIdArg },
 	run: async ({ auth }, args) => buildBrandResult(await requireBrandInScope(auth, args.brandId)),
@@ -39,7 +39,7 @@ export const listCompetitorsTool = defineTool({
 	title: "List competitors",
 	description:
 		"The competitors tracked against a brand, with the domains and aliases a mention is matched on. These are what share of voice is measured against.",
-	scopes: ["competitors:read"],
+	scopes: ["read"],
 	readOnly: true,
 	input: { brandId: brandIdArg },
 	run: async ({ auth }, args) => {
@@ -57,7 +57,7 @@ export const getBilling = defineTool({
 	title: "Get plan and usage",
 	description:
 		"A workspace's plan, its limits, and how much of each is used. Read-only — there is no tool that changes a subscription.",
-	scopes: ["billing:read"],
+	scopes: ["read"],
 	readOnly: true,
 	input: {
 		organizationId: z.string().describe("Organization id, from the organizationIds whoami reports."),

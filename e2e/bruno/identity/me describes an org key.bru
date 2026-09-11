@@ -25,7 +25,6 @@ assert {
 
 tests {
   test("the key reports the scopes it was issued with", function() {
-    expect(res.getBody().scopes).to.include("prompts:write");
-    expect(res.getBody().scopes).to.include("billing:read");
+    expect(res.getBody().scopes).to.eql(["read", "write"]);
   });
 }

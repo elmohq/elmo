@@ -15,7 +15,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/runs/")({
 		handlers: withMethodGuard({
 			GET: createApiHandler({
 				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
-				scopes: ["runs:read"],
+				scopes: ["read"],
 				handle: async ({ params, request, auth }) => {
 					const { promptId } = params;
 					const brandId = await findPromptBrandId(promptId);

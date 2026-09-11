@@ -20,7 +20,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
-				scopes: ["prompts:read"],
+				scopes: ["read"],
 				handle: async ({ request, auth }) => {
 					const { searchParams } = new URL(request.url);
 					const { page, limit, offset } = clampedPaging(searchParams, 1000);
@@ -49,7 +49,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 			POST: createApiHandler({
 				body: createPromptBody,
 				status: 201,
-				scopes: ["prompts:write"],
+				scopes: ["write"],
 				handle: async ({ body, auth }) => {
 					const brand = await requireBrandInScope(auth, body.brandId, "body");
 					const [created] = await createPrompts(brand, {

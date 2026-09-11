@@ -21,7 +21,7 @@ export const listRuns = defineTool({
 	title: "List answers recorded for a prompt",
 	description:
 		"Metadata for the answers recorded for one prompt, newest first. The answer text lives on get_run, which keeps this list small enough to page through.",
-	scopes: ["runs:read"],
+	scopes: ["read"],
 	readOnly: true,
 	input: {
 		promptId: promptIdArg,
@@ -51,7 +51,7 @@ export const getRun = defineTool({
 	title: "Get one answer in full",
 	description:
 		"One recorded answer: the model's reply as text, and every page it cited. Read this when you need to know *how* a model described the brand, not just whether it did.",
-	scopes: ["runs:read"],
+	scopes: ["read"],
 	readOnly: true,
 	input: {
 		promptId: promptIdArg,

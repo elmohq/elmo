@@ -19,7 +19,7 @@ assert {
 }
 
 tests {
-  test("no scope grants a write", function() {
-    expect(res.getBody().scopes.filter((s) => s.endsWith(":write"))).to.eql([]);
+  test("it holds read and nothing more", function() {
+    expect(res.getBody().scopes).to.eql(["read"]);
   });
 }
