@@ -28,9 +28,6 @@ const SEARCHAPI_TARGETS: Record<string, SearchapiTarget> = {
 	"google-ai-overview": { engine: "google", params: { ...GOOGLE_LOCALE, link: "resolved" }, nested: "ai_overview" },
 };
 
-// Perplexity's gate, which SearchApi passes through as a successful search.
-const PERPLEXITY_SIGNUP_WALL = "sign up and repeat your request.";
-
 async function attemptSearch(params: URLSearchParams): Promise<Attempt<Record<string, any>>> {
 	let res: Response;
 	try {
@@ -66,9 +63,6 @@ function readAnswer(payload: Record<string, any>, target: SearchapiTarget): Reco
 				? "SearchApi returned a Google result page with no AI Overview block"
 				: `SearchApi returned an empty ${target.engine} response`,
 		);
-	}
-	if (typeof answer.markdown === "string" && answer.markdown.trim().toLowerCase() === PERPLEXITY_SIGNUP_WALL) {
-		throw new Error("SearchApi returned Perplexity's sign-up wall instead of an answer");
 	}
 	if (!hasAnswerBody(answer)) {
 		const detail = typeof answer.error === "string" ? `: ${answer.error.slice(0, 200)}` : "";

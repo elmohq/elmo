@@ -154,23 +154,6 @@ describe("searchapi provider", () => {
 		);
 	});
 
-	it("fails a Perplexity run that came back as the sign-up wall", async () => {
-		vi.stubGlobal(
-			"fetch",
-			vi.fn().mockResolvedValue(
-				jsonResponse({
-					markdown: "Sign up and repeat your request.",
-					text_blocks: [{ type: "paragraph", answer: "Sign up and repeat your request." }],
-					response_metadata: { model: "turbo" },
-				}),
-			),
-		);
-
-		await expect(searchapi.run("perplexity", "What is a well-reviewed speaker?", { webSearch: true })).rejects.toThrow(
-			/sign-up wall/i,
-		);
-	});
-
 	it("retries a rate-limited request and keeps the answer that follows", async () => {
 		vi.useFakeTimers();
 		const fetchMock = vi
