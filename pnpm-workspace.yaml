@@ -12,7 +12,6 @@ overrides:
   # GHSA-67mh-4wv8-2f99 (drizzle-kit's @esbuild-kit loader asks for the 0.18 line) and
   # GHSA-g7r4-m6w7-qqqr (dev-server arbitrary file read on Windows).
   esbuild: "^0.28.1"
-  protobufjs: "^7.5.8"
   seroval: "^1.5.3" # GHSA-mv8w-475r-vwqw: prototype pollution while deserializing
   # samlify is on the 0.8 line, and 0.9 is a rewrite with a different parser API.
   "@xmldom/xmldom": "~0.8.15"
