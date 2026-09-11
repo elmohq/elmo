@@ -58,3 +58,64 @@ describe("anthropic-api run", () => {
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining("hit the output cap"));
 	});
 });
+
+describe("anthropic-api web search handling", () => {
+	const searchBlocks = [
+		{ type: "server_tool_use", id: "srv_1", name: "web_search", input: { query: "elmo aeo" } },
+		{
+			type: "web_search_tool_result",
+			tool_use_id: "srv_1",
+			content: [
+				{
+					type: "web_search_result",
+					url: "https://example.com/a",
+					title: "A",
+					encrypted_content: "long page text",
+					page_age: null,
+				},
+			],
+		},
+	];
+
+	it("reports the query the server-side search issued", async () => {
+		anthropicClient.create.mockResolvedValue({ content: searchBlocks, model: "claude-sonnet-5" });
+
+		const res = await anthropicApi.run("claude", "prompt", { webSearch: true, version: "claude-sonnet-5" });
+
+		expect(res.webQueries).toEqual(["elmo aeo"]);
+	});
+
+	it("drops the fetched page text from what it stores but keeps url and title", async () => {
+		anthropicClient.create.mockResolvedValue({ content: searchBlocks, model: "claude-sonnet-5" });
+
+		const res = await anthropicApi.run("claude", "prompt", { webSearch: true, version: "claude-sonnet-5" });
+		const stored = (res.rawOutput as any).content.find((b: any) => b.type === "web_search_tool_result");
+
+		expect(stored.content).toEqual([{ type: "web_search_result", url: "https://example.com/a", title: "A" }]);
+	});
+
+	it("retries once when the search itself errored", async () => {
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+		vi.useFakeTimers();
+		anthropicClient.create
+			.mockResolvedValueOnce({
+				content: [
+					{
+						type: "web_search_tool_result",
+						tool_use_id: "srv_1",
+						content: { type: "web_search_tool_result_error", error_code: "max_uses_exceeded" },
+					},
+				],
+				model: "claude-sonnet-5",
+			})
+			.mockResolvedValue({ content: searchBlocks, model: "claude-sonnet-5" });
+
+		const run = anthropicApi.run("claude", "prompt", { webSearch: true, version: "claude-sonnet-5" });
+		await vi.runAllTimersAsync();
+		const res = await run;
+
+		expect(anthropicClient.create).toHaveBeenCalledTimes(2);
+		expect(res.webQueries).toEqual(["elmo aeo"]);
+		vi.useRealTimers();
+	});
+});
