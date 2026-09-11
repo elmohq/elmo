@@ -78,8 +78,11 @@
       "dependsOn": ["^build"],
       "outputs": []
     },
+    "codegen": {
+      "outputs": [".source/**"]
+    },
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": ["^check-types", "codegen"]
     },
     "test": {
       "dependsOn": ["^build"]
