@@ -24,5 +24,5 @@ body:json {
 assert {
   res.status: eq 403
   res.body.code: eq insufficient_scope
-  res.body.message: contains prompts:write
+  res.body.message: contains the write scope
 }

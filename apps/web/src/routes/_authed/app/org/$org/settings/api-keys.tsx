@@ -12,10 +12,15 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { useState } from "react";
-import type { ApiScope } from "@/lib/api/scopes";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
-import { type ApiKeysPageData, createApiKeyFn, listApiKeysFn, revokeApiKeyFn } from "@/server/api-keys";
+import {
+	type ApiKeyAccess,
+	type ApiKeysPageData,
+	createApiKeyFn,
+	listApiKeysFn,
+	revokeApiKeyFn,
+} from "@/server/api-keys";
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings/api-keys")({
 	loader: ({ context }): Promise<ApiKeysPageData> =>
@@ -25,30 +30,28 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/api-keys")(
 	component: ApiKeysSettingsPage,
 });
 
-function preset(name: "read" | "all", scopes: readonly ApiScope[]): ApiScope[] {
-	return name === "all" ? [...scopes] : scopes.filter((scope) => scope.endsWith(":read"));
+const ACCESS_LABELS: Record<ApiKeyAccess, string> = {
+	read: "Read-only",
+	write: "Read and write",
+};
+
+function accessLabel(scopes: readonly string[]): string {
+	if (scopes.includes("write")) return ACCESS_LABELS.write;
+	if (scopes.includes("read")) return ACCESS_LABELS.read;
+	return "No access";
 }
 
 function formatDate(value: string | null): string {
 	return value ? new Date(value).toLocaleDateString() : "—";
 }
 
-function scopeGroups(scopes: readonly ApiScope[]): Map<string, ApiScope[]> {
-	const groups = new Map<string, ApiScope[]>();
-	for (const scope of scopes) {
-		const resource = scope.split(":")[0];
-		groups.set(resource, [...(groups.get(resource) ?? []), scope]);
-	}
-	return groups;
-}
-
 function ApiKeysSettingsPage() {
-	const { keys, brands, allScopes, expiryOptions, canManage, organization } = Route.useLoaderData();
+	const { keys, brands, expiryOptions, canManage, organization } = Route.useLoaderData();
 	const organizationId = organization.id;
 	const router = useRouter();
 
 	const [name, setName] = useState("");
-	const [scopes, setScopes] = useState<ApiScope[]>(() => preset("read", allScopes));
+	const [access, setAccess] = useState<ApiKeyAccess>("read");
 	const [restrictBrands, setRestrictBrands] = useState(false);
 	const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
 	const [expiresInDays, setExpiresInDays] = useState<string>("never");
@@ -72,17 +75,17 @@ function ApiKeysSettingsPage() {
 				data: {
 					organizationId,
 					name,
-					scopes,
+					access,
 					// Null, not `[]`: unrestricted is the absence of a restriction. The
 					// server rejects `[]` rather than reading it as "all".
 					brandIds: restrictBrands ? selectedBrands : null,
 					expiresInDays: expiresInDays === "never" ? null : Number(expiresInDays),
 				},
 			});
-			trackEvent("api_key_created", { scopes: scopes.length, restricted: restrictBrands });
+			trackEvent("api_key_created", { access, restricted: restrictBrands });
 			setIssuedKey(key);
 			setName("");
-			setScopes(preset("read", allScopes));
+			setAccess("read");
 			setRestrictBrands(false);
 			setSelectedBrands([]);
 			await router.invalidate();
@@ -154,6 +157,25 @@ function ApiKeysSettingsPage() {
 							/>
 						</div>
 						<div className="flex flex-col gap-2">
+							<Label htmlFor="key-access">Access</Label>
+							<Select
+								items={ACCESS_LABELS}
+								value={access}
+								onValueChange={(value) => setAccess((value ?? "read") as ApiKeyAccess)}
+							>
+								<SelectTrigger id="key-access" className="w-44">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{Object.entries(ACCESS_LABELS).map(([value, label]) => (
+										<SelectItem key={value} value={value}>
+											{label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="flex flex-col gap-2">
 							<Label htmlFor="key-expiry">Expires</Label>
 							<Select
 								items={{
@@ -178,40 +200,11 @@ function ApiKeysSettingsPage() {
 						</div>
 					</div>
 
-					<div className="space-y-2">
-						<div className="flex items-center gap-3">
-							<Label>Scopes</Label>
-							<Button type="button" variant="outline" size="sm" onClick={() => setScopes(preset("read", allScopes))}>
-								Read only
-							</Button>
-							<Button type="button" variant="outline" size="sm" onClick={() => setScopes(preset("all", allScopes))}>
-								Full access
-							</Button>
-						</div>
-						<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-							{[...scopeGroups(allScopes)].map(([resource, group]) => (
-								<div key={resource} className="space-y-1 rounded border p-2">
-									<p className="text-sm font-medium capitalize">{resource}</p>
-									{group.map((scope) => (
-										<div key={scope} className="flex items-center gap-2 text-sm">
-											<Checkbox
-												id={`scope-${scope}`}
-												checked={scopes.includes(scope)}
-												onCheckedChange={() => setScopes((current) => toggle(current, scope))}
-											/>
-											<Label htmlFor={`scope-${scope}`} className="font-normal">
-												{scope.split(":")[1]}
-											</Label>
-										</div>
-									))}
-								</div>
-							))}
-						</div>
-						<p className="text-sm text-muted-foreground">
-							Scopes gate both the REST API and MCP connections. Not every scope maps to an MCP tool — see the docs for
-							which ones do.
-						</p>
-					</div>
+					<p className="text-sm text-muted-foreground">
+						Access gates both the REST API and MCP connections. Either way a key reaches only this organization, and the
+						operations that spend provider budget or destroy tracked history need an instance admin key no key issued
+						here can be given.
+					</p>
 
 					<div className="space-y-2">
 						<div className="flex items-center gap-2 text-sm">
@@ -242,7 +235,7 @@ function ApiKeysSettingsPage() {
 						)}
 					</div>
 
-					<Button type="submit" disabled={creating || scopes.length === 0}>
+					<Button type="submit" disabled={creating}>
 						{creating ? "Creating..." : "Create key"}
 					</Button>
 				</form>
@@ -260,11 +253,7 @@ function ApiKeysSettingsPage() {
 									<p className="truncate font-medium">{key.name ?? "Untitled key"}</p>
 									<p className="font-mono text-sm text-muted-foreground">{key.start ? `${key.start}…` : "—"}</p>
 									<div className="flex flex-wrap gap-1">
-										{key.scopes.map((scope) => (
-											<Badge key={scope} variant="secondary">
-												{scope}
-											</Badge>
-										))}
+										<Badge variant="secondary">{accessLabel(key.scopes)}</Badge>
 									</div>
 									<p className="text-sm text-muted-foreground">
 										{key.brandIds

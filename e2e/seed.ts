@@ -59,12 +59,7 @@ function hashApiKey(token: string): string {
 }
 
 function toPermissions(scopes: readonly string[]): Record<string, string[]> {
-  const permissions: Record<string, string[]> = {};
-  for (const scope of scopes) {
-    const [resource, action] = scope.split(":");
-    (permissions[resource] ??= []).push(action);
-  }
-  return permissions;
+  return { api: [...scopes] };
 }
 
 /**

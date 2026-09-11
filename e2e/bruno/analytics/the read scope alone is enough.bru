@@ -1,5 +1,5 @@
 meta {
-  name: analytics:read alone is enough
+  name: the read scope alone is enough
   type: http
   seq: 7
 }
@@ -11,7 +11,7 @@ get {
 }
 
 headers {
-  Authorization: Bearer {{orgAnalyticsOnlyKey}}
+  Authorization: Bearer {{orgReadOnlyKey}}
 }
 
 params:query {

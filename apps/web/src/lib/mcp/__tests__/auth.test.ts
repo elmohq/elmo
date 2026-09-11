@@ -50,7 +50,7 @@ const orgKey: OrganizationAuth = {
 	name: "reporting bot",
 	organizationId: "org_1",
 	organizationName: "Acme",
-	scopes: new Set(["analytics:read"]),
+	scopes: new Set(["read"]),
 	brandIds: null,
 	createdAt: null,
 	lastUsedAt: null,
@@ -86,7 +86,7 @@ afterEach(() => vi.resetAllMocks());
 
 describe("principalScopes", () => {
 	it("gives an organization key exactly what it was issued", () => {
-		expect([...principalScopes(orgKey)]).toEqual(["analytics:read"]);
+		expect([...principalScopes(orgKey)]).toEqual(["read"]);
 	});
 
 	it("gives an admin key everything", () => {

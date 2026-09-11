@@ -1,5 +1,5 @@
 meta {
-  name: runs require runs:read
+  name: runs require the read scope
   type: http
   seq: 11
 }
@@ -11,11 +11,11 @@ get {
 }
 
 headers {
-  Authorization: Bearer {{orgAnalyticsOnlyKey}}
+  Authorization: Bearer {{orgNoScopesKey}}
 }
 
 assert {
   res.status: eq 403
   res.body.code: eq insufficient_scope
-  res.body.message: contains runs:read
+  res.body.message: contains the read scope
 }
