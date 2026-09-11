@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
+import { CLOUD_ENTRY_PRICE_USD, CLOUD_SIGNUP_URL } from "@workspace/config/plans";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { ArrowRight } from "lucide-react";
 import { Footer } from "@/components/footer";
@@ -124,7 +124,8 @@ function VisionPage() {
 										<div className="space-y-1">
 											<p className="text-sm font-bold text-zinc-950">Cloud Hosting</p>
 											<p className="text-sm text-zinc-600">
-												In the near future, we will offer a managed version for teams that don't want to self-host.
+												Teams that would rather not self-host pay for a managed version, starting at $
+												{CLOUD_ENTRY_PRICE_USD}/mo.
 											</p>
 										</div>
 									</div>

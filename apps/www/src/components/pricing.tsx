@@ -9,7 +9,6 @@ import {
 import { PlatformTier } from "@workspace/ui/brand/platform-tier";
 import { ArrowRight, Check } from "lucide-react";
 import { ContactForm } from "./contact-form";
-import { WaitlistForm } from "./waitlist-form";
 
 interface Plan {
 	id: string;
@@ -24,7 +23,6 @@ interface Plan {
 	cta:
 		| { type: "link"; text: string; href: string }
 		| { type: "external"; text: string; href: string }
-		| { type: "waitlist" }
 		| { type: "contact" };
 }
 
@@ -161,7 +159,6 @@ export function Pricing({ as: Heading = "h2" }: { as?: "h1" | "h2" } = {}) {
 										<ArrowRight className="size-3.5" />
 									</a>
 								)}
-								{plan.cta.type === "waitlist" && <WaitlistForm source="pricing" />}
 								{plan.cta.type === "contact" && <ContactForm source="pricing" />}
 							</div>
 						</div>
