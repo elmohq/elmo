@@ -64,7 +64,7 @@ function buildSchema(args: { maxCompetitors: number; maxPrompts: number }) {
 		additionalDomains: z
 			.array(z.string())
 			.describe(
-				"Other public domains the brand owns (regional ccTLDs, alternate spellings, parent-company sites). Hostnames only. Matching is suffix-based, so omit the primary website and any subdomain it or another entry already covers (acme.com covers blog.acme.com). Empty if uncertain.",
+				"Other public domains the brand owns (regional ccTLDs, alternate spellings, parent-company sites, subsidiary sites). Hostnames only. Omit the primary website and any subdomain of the primary website. Empty if uncertain.",
 			),
 		aliases: z
 			.array(z.string())
