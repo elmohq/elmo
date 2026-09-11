@@ -46,6 +46,6 @@
 		"@workspace/config": "workspace:*",
 		"rolldown": "^1.2.7",
 		"typescript": "^7.0.2",
-		"vitest": "^4.1.10"
+		"vitest": "^4.1.11"
 	}
 }

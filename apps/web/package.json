@@ -71,8 +71,8 @@
 		"@types/react": "^19.2.18",
 		"@types/react-dom": "^19.2.7",
 		"@vitejs/plugin-react": "^6.1.1",
-		"@vitest/browser-playwright": "^4.1.10",
-		"@vitest/coverage-v8": "^4.1.10",
+		"@vitest/browser-playwright": "^4.1.11",
+		"@vitest/coverage-v8": "^4.1.11",
 		"archiver": "^8.0.0",
 		"nitro": "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421",
 		"playwright": "^1.63.0",
@@ -80,6 +80,6 @@
 		"storybook": "^10.6.0",
 		"typescript": "^7.0.2",
 		"vite": "^8.2.2",
-		"vitest": "^4.1.10"
+		"vitest": "^4.1.11"
 	}
 }
