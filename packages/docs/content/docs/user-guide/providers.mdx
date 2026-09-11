@@ -126,10 +126,6 @@ The dedicated engine exists for the times it doesn't. Google sometimes loads the
 
 Pricing is flat per successful search regardless of surface — $4 per 1,000 on the $40/mo Developer plan, falling to $1 per 1,000 at the top of the [plan ladder](https://www.searchapi.io/pricing). Requests that don't return a 200 aren't billed, and sign-up comes with 100 free searches. Note that plans cap you at 20% of your monthly credits per hour.
 
-<Callout type="warn">
-SearchApi's Perplexity engine currently returns Perplexity's sign-up wall ("Sign up and repeat your request.") instead of an answer. Elmo fails those runs rather than storing the wall as a result, so `perplexity:searchapi:online` will show as failing until SearchApi gets past it — check the [status page](https://www.elmohq.com/status) before configuring it. The other five surfaces are unaffected.
-</Callout>
-
 ### Olostep
 
 ```bash
