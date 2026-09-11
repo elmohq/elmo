@@ -147,6 +147,24 @@ describe("searchapi provider", () => {
 		);
 	});
 
+	it("fails a run Google answered with a page token instead of the overview", async () => {
+		// Google loads the overview separately from the result page often enough to
+		// matter. Storing the shell would count as a run where nobody was mentioned.
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue(
+				jsonResponse({
+					search_metadata: { id: "search_2" },
+					ai_overview: { error: "An AI Overview is not available for this search", page_token: "L2FzeW5jL2Zv" },
+				}),
+			),
+		);
+
+		await expect(searchapi.run("google-ai-overview", "best electric cars 2026", { webSearch: true })).rejects.toThrow(
+			/no google answer: An AI Overview is not available/i,
+		);
+	});
+
 	it("fails a Perplexity run that came back as the sign-up wall", async () => {
 		vi.stubGlobal(
 			"fetch",

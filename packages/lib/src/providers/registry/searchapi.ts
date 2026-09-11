@@ -69,10 +69,22 @@ async function attemptSearch(params: URLSearchParams): Promise<Attempt<Record<st
 	return { result: body };
 }
 
+/** Whether a surface actually answered, as opposed to returning a shell. */
+function hasAnswerBody(answer: Record<string, any>): boolean {
+	if (typeof answer.markdown === "string" && answer.markdown.trim()) return true;
+	return Array.isArray(answer.text_blocks) && answer.text_blocks.length > 0;
+}
+
 /**
- * The answer body for a surface. A Google result page that carries no
- * `ai_overview` is a query Google chose not to summarize — no answer to store,
- * so it fails rather than recording an empty one.
+ * The answer body for a surface, or a thrown error when there isn't one.
+ *
+ * Google sometimes loads its AI Overview separately from the result page, and
+ * the SERP then carries `ai_overview.page_token` — a handle for SearchApi's
+ * dedicated `google_ai_overview` engine — in place of the overview itself. It
+ * is uncommon (once in roughly twenty live calls, and not reproducible per
+ * query, so it is a property of the request rather than the search) and the
+ * token dies in under a minute. A shell like that is failed rather than stored:
+ * an empty answer would count as a run where the brand went unmentioned.
  */
 function readAnswer(payload: Record<string, any>, target: SearchapiTarget): Record<string, any> {
 	const answer = target.nested ? payload[target.nested] : payload;
@@ -85,6 +97,10 @@ function readAnswer(payload: Record<string, any>, target: SearchapiTarget): Reco
 	}
 	if (typeof answer.markdown === "string" && answer.markdown.trim().toLowerCase() === PERPLEXITY_SIGNUP_WALL) {
 		throw new Error("SearchApi returned Perplexity's sign-up wall instead of an answer");
+	}
+	if (!hasAnswerBody(answer)) {
+		const detail = typeof answer.error === "string" ? `: ${answer.error.slice(0, 200)}` : "";
+		throw new Error(`SearchApi returned no ${target.engine} answer${detail}`);
 	}
 	return answer;
 }
