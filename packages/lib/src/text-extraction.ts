@@ -343,6 +343,35 @@ export function extractTextFromCloro(rawOutput: any): string {
 	}
 }
 
+export function searchapiAnswer(rawOutput: any): Record<string, any> | null {
+	if (!rawOutput || typeof rawOutput !== "object") return null;
+	const answer = "ai_overview" in rawOutput ? rawOutput.ai_overview : rawOutput;
+	return answer && typeof answer === "object" ? answer : null;
+}
+
+function collectSearchapiBlocks(node: any, out: string[], depth = 0): void {
+	if (depth > 8) return;
+	for (const block of asArray(node)) {
+		const answer = textOrNull(block?.answer) ?? textOrNull(block?.code);
+		if (answer) out.push(answer.trim());
+		collectSearchapiBlocks(block?.items, out, depth + 1);
+	}
+}
+
+export function extractTextFromSearchapi(rawOutput: any): string {
+	return firstText("No text content found in SearchApi output.", [
+		() => {
+			const answer = searchapiAnswer(rawOutput);
+			if (!answer) return null;
+			const markdown = textOrNull(answer.markdown);
+			if (markdown) return markdown.trim();
+			const blocks: string[] = [];
+			collectSearchapiBlocks(answer.text_blocks, blocks);
+			return blocks.length > 0 ? blocks.join("\n\n") : null;
+		},
+	]);
+}
+
 /**
  * Extract text content from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
@@ -367,6 +396,8 @@ export function extractTextContent(rawOutput: any, providerOrEngine: string): st
 			return extractTextFromDataforseo(rawOutput);
 		case "openrouter":
 			return extractTextFromOpenRouter(rawOutput);
+		case "searchapi":
+			return extractTextFromSearchapi(rawOutput);
 		case "olostep":
 			return extractTextFromOlostep(rawOutput);
 		case "brightdata":
@@ -624,6 +655,15 @@ export function extractCitationsFromCloro(rawOutput: any): Citation[] {
 	});
 }
 
+export function extractCitationsFromSearchapi(rawOutput: any): Citation[] {
+	return collectCitations((add) => {
+		// ChatGPT's `web_results` is everything it retrieved, not what it cited.
+		for (const ref of pluck([searchapiAnswer(rawOutput)], "reference_links")) {
+			add(sourceUrl(ref, "link", "url"), ref?.title ?? ref?.source);
+		}
+	});
+}
+
 /**
  * Extract citations from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
@@ -642,6 +682,8 @@ export function extractCitations(rawOutput: any, providerOrEngine: string): Cita
 			return extractCitationsFromDataforseo(rawOutput);
 		case "openrouter":
 			return extractCitationsFromOpenRouter(rawOutput);
+		case "searchapi":
+			return extractCitationsFromSearchapi(rawOutput);
 		case "olostep":
 			return extractCitationsFromOlostep(rawOutput);
 		case "brightdata":

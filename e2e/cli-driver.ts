@@ -207,6 +207,10 @@ async function main(): Promise<void> {
 	await waitFor("Configure Oxylabs?");
 	await send(ENTER);
 
+	// SearchApi confirm (default No) → No
+	await waitFor("Configure SearchApi?");
+	await send(ENTER);
+
 	// Olostep confirm (default No) → No
 	await waitFor("Configure Olostep?");
 	await send(ENTER);

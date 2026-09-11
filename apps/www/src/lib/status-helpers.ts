@@ -51,6 +51,7 @@ export function formatProvider(provider: string) {
 		cloro: "Cloro",
 		brightdata: "BrightData",
 		oxylabs: "Oxylabs",
+		searchapi: "SearchApi",
 		olostep: "Olostep",
 		dataforseo: "DataForSEO",
 		"openai-api": "OpenAI API",
@@ -81,8 +82,8 @@ export function providerCategory(provider: string, model: string, version?: stri
 
 // The matrix columns split into two kinds of route: Model APIs (Direct API,
 // OpenRouter, DataForSEO API) call an LLM inference endpoint, while AI Search
-// Scrapers (Cloro, BrightData, Oxylabs, Olostep, DataForSEO Scraper) scrape a
-// live web surface.
+// Scrapers (Cloro, BrightData, Oxylabs, SearchApi, Olostep, DataForSEO Scraper)
+// scrape a live web surface.
 export const MODEL_API_CATEGORIES = ["direct-api", "openrouter", "dataforseo-api"];
 
 // Models that only exist as a scraped web surface. Google's AI Mode and AI
@@ -99,6 +100,7 @@ const PROVIDER_MODELS: Record<string, Set<string>> = {
 	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	brightdata: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	oxylabs: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"]),
+	searchapi: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	olostep: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	// Google AI Mode and AI Overview come from the SERP endpoints, ChatGPT and
 	// Gemini from the LLM Scraper API — all four scrape a live surface. There is
@@ -133,6 +135,7 @@ export const PROVIDER_FILTER_ORDER = [
 	"cloro",
 	"brightdata",
 	"oxylabs",
+	"searchapi",
 	"olostep",
 	"dataforseo-scraper",
 ];
@@ -144,6 +147,7 @@ export const PROVIDER_FILTER_LABELS: Record<string, string> = {
 	cloro: "Cloro",
 	brightdata: "BrightData",
 	oxylabs: "Oxylabs",
+	searchapi: "SearchApi",
 	olostep: "Olostep",
 	"dataforseo-scraper": "DataForSEO Scraper",
 };

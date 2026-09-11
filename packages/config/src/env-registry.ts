@@ -161,6 +161,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
 	},
 	{
+		name: "SEARCHAPI_API_KEY",
+		scope: "server",
+		requiredBy: "dynamic-scrape-targets",
+		provider: "searchapi",
+		description: "SearchApi.io API key.",
+	},
+	{
 		name: "OLOSTEP_API_KEY",
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",
