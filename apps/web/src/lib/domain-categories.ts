@@ -332,18 +332,32 @@ export const FORUM_DOMAINS = new Set([
 ]);
 
 /**
- * True if `domain` equals, or is a subdomain of, any entry in `set`. Walks the
- * domain's parent suffixes so lookups stay O(labels) regardless of set size —
- * important for the large editorial set.
+ * The entry of `set` that `domain` equals or sits under. Walks parent suffixes
+ * so lookups stay O(labels) regardless of set size — the editorial set is large.
  */
-export function inDomainSet(domain: string, set: Set<string>): boolean {
+function coveringDomain(domain: string, set: Set<string>): string | null {
 	let d = domain;
 	while (true) {
-		if (set.has(d)) return true;
+		if (set.has(d)) return d;
 		const dot = d.indexOf(".");
-		if (dot === -1) return false;
+		if (dot === -1) return null;
 		d = d.slice(dot + 1);
 	}
+}
+
+/** True if `domain` equals, or is a subdomain of, any entry in `set`. */
+export function inDomainSet(domain: string, set: Set<string>): boolean {
+	return coveringDomain(domain, set) !== null;
+}
+
+/**
+ * Why adding `domain` next to `tracked` would change nothing, as a message
+ * fragment, or null. Advisory: nothing rejects a redundant domain already stored.
+ */
+export function redundantDomainReason(domain: string, tracked: (string | null)[]): string | null {
+	const covering = coveringDomain(domain, new Set(tracked.filter((d): d is string => d !== null)));
+	if (!covering) return null;
+	return covering === domain ? "is already tracked" : `is already covered by ${covering}`;
 }
 
 /**

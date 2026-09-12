@@ -20,6 +20,7 @@ import { brandKeys, useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { promptsSummaryKeys } from "@/hooks/use-prompts-summary";
+import { cleanAndValidateDomain, redundantDomainReason } from "@/lib/domain-categories";
 import { trackEvent } from "@/lib/posthog";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import {
@@ -54,11 +55,15 @@ const EditableTagsInput = memo(
 		onValueChange,
 		placeholder = "Add item...",
 		maxItems = 10,
+		normalizeValue,
+		onValidate,
 	}: {
 		items: string[];
 		onValueChange: (value: string[]) => void;
 		placeholder?: string;
 		maxItems?: number;
+		normalizeValue?: (raw: string) => string;
+		onValidate?: (value: string) => true | string;
 	}) => (
 		<div className="space-y-2">
 			<TagsInput
@@ -67,6 +72,8 @@ const EditableTagsInput = memo(
 				placeholder={placeholder}
 				searchPlaceholder={placeholder}
 				maxItems={maxItems}
+				normalizeValue={normalizeValue}
+				onValidate={onValidate}
 			/>
 			<p className="text-xs text-muted-foreground">
 				<strong>
@@ -206,6 +213,17 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	);
 	const updatePrompts = useCallback((prompts: EditablePrompt[]) => setData((p) => ({ ...p, prompts })), []);
 
+	const validateDomain = useCallback(
+		(val: string): true | string => {
+			const cleaned = cleanAndValidateDomain(val);
+			if (!cleaned) return `"${val}" is not a valid domain`;
+			const reason = redundantDomainReason(cleaned, [cleanAndValidateDomain(data.website), ...data.additionalDomains]);
+			if (reason) return `"${cleaned}" ${reason}`;
+			return true;
+		},
+		[data.additionalDomains, data.website],
+	);
+
 	const previewCounts = useMemo(() => {
 		const enabled = data.prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
 		return { totalNew: enabled };
@@ -329,6 +347,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 							onValueChange={updateAdditionalDomains}
 							placeholder="Add domain..."
 							maxItems={10}
+							normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}
+							onValidate={validateDomain}
 						/>
 					</div>
 					<div>
