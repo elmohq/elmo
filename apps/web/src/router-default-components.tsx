@@ -3,6 +3,7 @@ import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { useEffect } from "react";
 import FullPageCard from "./components/full-page-card";
+import { useI18n } from "./lib/i18n";
 
 export function DefaultPendingComponent() {
 	return (
@@ -21,14 +22,15 @@ export function DefaultPendingComponent() {
 }
 
 export function DefaultErrorComponent({ error }: ErrorComponentProps) {
+	const { t } = useI18n();
 	useEffect(() => {
 		Sentry.captureException(error);
 	}, [error]);
 
 	return (
 		<FullPageCard
-			title="Something went wrong"
-			subtitle="An unexpected error occurred while loading this page."
+			title={t("Something went wrong")}
+			subtitle={t("An unexpected error occurred while loading this page.")}
 			showBackButton={true}
 		/>
 	);

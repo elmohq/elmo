@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import type { Competitor } from "@workspace/lib/db/schema";
 import { getSoVBadgeClasses, type PromptCategory } from "@workspace/lib/report-metrics";
 import { Badge } from "@workspace/ui/components/badge";
@@ -93,6 +94,7 @@ export function PromptChartPrint({
 	hasEverBeenEvaluated = false,
 	category,
 }: PromptChartPrintProps) {
+	const { t } = useI18n();
 	const fileName = `${brand.name}-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`;
 	const { chartRef, isDownloading, handleDownload } = useChartDownload(fileName);
 
@@ -166,9 +168,9 @@ export function PromptChartPrint({
 				<CardContent className="px-3">
 					<div className="h-[250px] flex items-center justify-center">
 						<div className="flex flex-col items-center text-center max-w-xs">
-							<p className="text-sm font-medium text-muted-foreground print:text-xs">No brands found in responses</p>
+							<p className="text-sm font-medium text-muted-foreground print:text-xs">{t("No brands found in responses")}</p>
 							<p className="text-xs text-muted-foreground/70 mt-1 print:text-[10px]">
-								Your brand and competitors weren't mentioned in the evaluated responses for this prompt.
+								{t("Your brand and competitors weren't mentioned in the evaluated responses for this prompt.")}
 							</p>
 						</div>
 					</div>

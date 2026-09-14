@@ -881,5 +881,10 @@ export const fr: Record<string, string> = {
 	Scrapers: "Scrapers",
 	"Direct APIs": "API directes",
 	"Provider setup guide": "Guide de configuration des fournisseurs",
+	// ── Misc ───────────────────────────────────────────────────────────────
+	"Something went wrong": "Une erreur s'est produite",
+	"An unexpected error occurred while loading this page.": "Une erreur inattendue s'est produite lors du chargement de cette page.",
+	"Sign In": "Se connecter",
+	"The page you're looking for doesn't exist.": "La page que vous cherchez n'existe pas.",
 	// @@END
 };

@@ -10,6 +10,7 @@
  * visitor sees the signup screen instead of an empty-database login form.
  * Shows sign-in for unauthenticated users in other modes.
  */
+import { useI18n } from "@/lib/i18n";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { buttonVariants } from "@workspace/ui/components/button";
 import FullPageCard from "@/components/full-page-card";
@@ -46,6 +47,7 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
+	const { t } = useI18n();
 	const { redirect: redirectParam } = Route.useSearch();
 
 	const loginUrl = "/auth/login";
@@ -54,7 +56,7 @@ function HomePage() {
 	return (
 		<FullPageCard className="">
 			<a href={signInUrl} className={buttonVariants({})}>
-				Sign In
+				{t("Sign In")}
 			</a>
 		</FullPageCard>
 	);
