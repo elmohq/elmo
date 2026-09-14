@@ -358,18 +358,23 @@ function collectSearchapiBlocks(node: any, out: string[], depth = 0): void {
 	}
 }
 
+/**
+ * The answer a payload actually carries, or null when it carries none. The
+ * provider gates a run on this so its "is there an answer?" check can't drift
+ * from what the extractor reads.
+ */
+export function searchapiText(rawOutput: any): string | null {
+	const answer = searchapiAnswer(rawOutput);
+	if (!answer) return null;
+	const markdown = textOrNull(answer.markdown);
+	if (markdown) return markdown.trim();
+	const blocks: string[] = [];
+	collectSearchapiBlocks(answer.text_blocks, blocks);
+	return blocks.length > 0 ? blocks.join("\n\n") : null;
+}
+
 export function extractTextFromSearchapi(rawOutput: any): string {
-	return firstText("No text content found in SearchApi output.", [
-		() => {
-			const answer = searchapiAnswer(rawOutput);
-			if (!answer) return null;
-			const markdown = textOrNull(answer.markdown);
-			if (markdown) return markdown.trim();
-			const blocks: string[] = [];
-			collectSearchapiBlocks(answer.text_blocks, blocks);
-			return blocks.length > 0 ? blocks.join("\n\n") : null;
-		},
-	]);
+	return firstText("No text content found in SearchApi output.", [() => searchapiText(rawOutput)]);
 }
 
 /**

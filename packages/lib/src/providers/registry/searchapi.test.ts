@@ -91,16 +91,17 @@ describe("searchapi provider", () => {
 
 		const result = await searchapi.run("chatgpt", "What is a well-reviewed speaker?", { webSearch: false });
 
-		expect(requestedUrl(fetchMock).searchParams.has("web_search")).toBe(false);
+		expect(requestedUrl(fetchMock).searchParams.get("web_search")).toBe("false");
 		expect(result.webQueries).toEqual([]);
 	});
 
-	it("keeps the queries when ChatGPT searches on its own initiative", async () => {
+	it("reports no searches for an offline target even when ChatGPT searched anyway", async () => {
 		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(CHATGPT_RESPONSE)));
 
 		const result = await searchapi.run("chatgpt", "What is a well-reviewed speaker?", { webSearch: false });
 
-		expect(result.webQueries).toEqual(["best speakers released August 2026"]);
+		expect(result.webQueries).toEqual([]);
+		expect(result.citations).toHaveLength(1);
 	});
 
 	it("reads Google AI Overview off the result page and stores only the overview", async () => {
@@ -150,7 +151,44 @@ describe("searchapi provider", () => {
 		);
 
 		await expect(searchapi.run("google-ai-overview", "best electric cars 2026", { webSearch: true })).rejects.toThrow(
-			/no google answer: An AI Overview is not available/i,
+			/no google answer \(An AI Overview is not available/i,
+		);
+	});
+
+	it("fails a run whose blocks carry no readable answer", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue(jsonResponse({ text_blocks: [{ type: "table", table: { rows: [] } }] })),
+		);
+
+		await expect(searchapi.run("gemini", "best running shoes", { webSearch: true })).rejects.toThrow(
+			/no gemini answer/i,
+		);
+	});
+
+	it("retries a 200 that came back as an edge error page instead of JSON", async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(new Response("<!DOCTYPE html><title>502</title>", { status: 200 }))
+			.mockResolvedValueOnce(jsonResponse(CHATGPT_RESPONSE));
+		vi.stubGlobal("fetch", fetchMock);
+
+		const promise = searchapi.run("chatgpt", "What is a well-reviewed speaker?", { webSearch: true });
+		await vi.runAllTimersAsync();
+
+		await expect(promise).resolves.toMatchObject({ modelVersion: "gpt-5-6" });
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it("reports a structured error body rather than serializing it as an object", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue(jsonResponse({ error: { code: "quota_exceeded", message: "Out of credits" } })),
+		);
+
+		await expect(searchapi.run("chatgpt", "What is a well-reviewed speaker?", { webSearch: true })).rejects.toThrow(
+			/quota_exceeded/,
 		);
 	});
 
