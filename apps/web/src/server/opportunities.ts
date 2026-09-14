@@ -15,6 +15,8 @@
  * honors ONBOARDING_LLM_TARGET / the preference order). Reports are persisted to
  * the brand_opportunities table (append-only) and served as-is until the latest
  * is older than REFRESH_AFTER_DAYS, so a normal page load doesn't trigger an LLM call.
+ * Generation is reached through `resolveOpportunities` alone, one caller at a
+ * time per brand; `storedOpportunities` is the read that never pays for one.
  */
 import { db } from "@workspace/lib/db/db";
 import { brandOpportunities, brands, competitors } from "@workspace/lib/db/schema";
@@ -125,7 +127,11 @@ export interface OpportunitiesReport extends Omit<RawReport, "opportunities"> {
 	opportunities: ReportOpportunity[];
 }
 
-type OpportunitiesReason = "insufficient-data" | null;
+/**
+ * `not-generated` and `generating` are only ever answered by a caller that
+ * won't generate: a read-only surface, or one that lost the race for the lock.
+ */
+type OpportunitiesReason = "insufficient-data" | "not-generated" | "generating" | null;
 export interface OpportunitiesResponse {
 	report: OpportunitiesReport | null;
 	reason: OpportunitiesReason;
@@ -543,41 +549,92 @@ async function generateValidReport(prompt: string): Promise<{ report: RawReport;
 	return null;
 }
 
-/**
- * Generation is inline and synchronous — there is no queue, so a caller either
- * gets the current report or waits for the one it just caused. The freshness
- * gate is what bounds the spend.
- */
-export async function resolveOpportunities(brandId: string, timezone = "UTC"): Promise<OpportunitiesResponse> {
+/** Advisory locks share one namespace per database; this class keeps generation
+ * locks off `withQuotaLock`'s, which key on an id from the same space. */
+const GENERATION_LOCK_CLASS = 0x6f707074;
+
+type StoredReport = typeof brandOpportunities.$inferSelect;
+
+async function latestStoredReport(brandId: string): Promise<StoredReport | undefined> {
 	const [latest] = await db
 		.select()
 		.from(brandOpportunities)
 		.where(eq(brandOpportunities.brandId, brandId))
 		.orderBy(desc(brandOpportunities.createdAt))
 		.limit(1);
-	const lastEvaluatedAt = latest?.createdAt.toISOString() ?? null;
-	const servedModel = latest?.model ?? null;
-	const isFresh = latest && Date.now() - new Date(latest.createdAt).getTime() < REFRESH_AFTER_DAYS * 86_400_000;
-	const serveStored = () => ({
-		report: withoutRepeats(latest.report as OpportunitiesReport),
+	return latest;
+}
+
+const isFresh = (stored: StoredReport) => Date.now() - stored.createdAt.getTime() < REFRESH_AFTER_DAYS * 86_400_000;
+
+function serveStored(stored: StoredReport): OpportunitiesResponse {
+	return {
+		report: withoutRepeats(stored.report as OpportunitiesReport),
 		reason: null,
 		generatedFor: null,
-		lastEvaluatedAt,
-		model: servedModel,
-	});
-	if (latest && isFresh) return serveStored();
+		lastEvaluatedAt: stored.createdAt.toISOString(),
+		model: stored.model,
+	};
+}
+
+const nothingStored = (reason: OpportunitiesReason): OpportunitiesResponse => ({
+	report: null,
+	reason,
+	generatedFor: null,
+	lastEvaluatedAt: null,
+	model: null,
+});
+
+/**
+ * Run `generate` holding the brand's generation lock, or answer null if another
+ * caller already holds it.
+ *
+ * The lock is session-scoped rather than transaction-scoped like
+ * `withQuotaLock`'s: it has to cover an LLM call, and a transaction left open
+ * that long pins a snapshot as well as a connection. Nobody queues for it
+ * either — a caller that can't have it has something better to answer with than
+ * a wait on a report it cannot speed up.
+ */
+async function withGenerationLock<T>(brandId: string, generate: () => Promise<T>): Promise<T | null> {
+	const client = await db.$client.connect();
+	let locked = false;
+	try {
+		const result = await client.query<{ locked: boolean }>("select pg_try_advisory_lock($1, hashtext($2)) as locked", [
+			GENERATION_LOCK_CLASS,
+			brandId,
+		]);
+		locked = result.rows[0]?.locked === true;
+		return locked ? await generate() : null;
+	} finally {
+		try {
+			if (locked) {
+				await client.query("select pg_advisory_unlock($1, hashtext($2))", [GENERATION_LOCK_CLASS, brandId]);
+			}
+		} catch {
+			// The session is what holds the lock — if it's gone, so is the lock.
+		}
+		client.release();
+	}
+}
+
+/** Only ever called with the brand's generation lock held. */
+async function generateOpportunities(brandId: string, timezone: string): Promise<OpportunitiesResponse> {
+	// Read again behind the lock: whoever held it may have just written the
+	// report this call was about to pay a second time for.
+	const latest = await latestStoredReport(brandId);
+	if (latest && isFresh(latest)) return serveStored(latest);
 
 	const digest = await buildDigest(brandId, timezone);
 	if (!digest) {
-		if (latest) return serveStored();
-		return { report: null, reason: "insufficient-data", generatedFor: null, lastEvaluatedAt, model: null };
+		if (latest) return serveStored(latest);
+		return nothingStored("insufficient-data");
 	}
 
 	const prompt = `${GUIDANCE}\n\n=== BRAND DATA ===\n${digest.text}\n\n=== TASK ===\n${TASK}`;
 	const generated = await generateValidReport(prompt);
 	if (!generated) {
 		// No schema-valid report; serve the last good one if there is one.
-		if (latest) return serveStored();
+		if (latest) return serveStored(latest);
 		throw new Error("Failed to generate a valid opportunities report");
 	}
 
@@ -594,4 +651,33 @@ export async function resolveOpportunities(brandId: string, timezone = "UTC"): P
 		lastEvaluatedAt: savedReport?.createdAt.toISOString() ?? null,
 		model: generated.model,
 	};
+}
+
+/**
+ * The stored report and nothing more: no digest, no LLM call, no write. What a
+ * surface that promises its caller a read — the public API, the MCP tool — has
+ * to answer from, since generation spends provider budget.
+ */
+export async function storedOpportunities(brandId: string): Promise<OpportunitiesResponse> {
+	const latest = await latestStoredReport(brandId);
+	return latest ? serveStored(latest) : nothingStored("not-generated");
+}
+
+/**
+ * Generation is inline and synchronous — there is no queue, so a caller either
+ * gets the current report or waits for the one it just caused. The freshness
+ * gate bounds how often one is paid for and the lock bounds how many callers
+ * can pay at once: however many ask, at most one generation happens per brand
+ * per REFRESH_AFTER_DAYS.
+ */
+export async function resolveOpportunities(brandId: string, timezone = "UTC"): Promise<OpportunitiesResponse> {
+	const latest = await latestStoredReport(brandId);
+	if (latest && isFresh(latest)) return serveStored(latest);
+
+	const generated = await withGenerationLock(brandId, () => generateOpportunities(brandId, timezone));
+	if (generated) return generated;
+
+	// Someone else is already generating. A stale report beats waiting on them;
+	// with nothing stored, say that rather than start a second generation.
+	return latest ? serveStored(latest) : nothingStored("generating");
 }

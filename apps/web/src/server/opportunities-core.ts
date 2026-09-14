@@ -3,11 +3,12 @@
  * returning it whole would make whatever the generator wrote part of this
  * contract.
  */
-import type { CitedPage, ReportOpportunity } from "./opportunities";
-import { resolveOpportunities } from "./opportunities";
+import type { CitedPage, OpportunitiesResponse, ReportOpportunity } from "./opportunities";
+import { storedOpportunities } from "./opportunities";
 
-/** So a caller never has to tell "none" from "not enough data yet". */
-type OpportunitiesStatus = "ready" | "insufficient-data";
+/** So a caller never has to tell "none" from "not enough data yet" — or from a
+ * brand nobody has generated a report for. */
+type OpportunitiesStatus = "ready" | "insufficient-data" | "not-generated";
 
 interface PublishedOpportunity {
 	category: ReportOpportunity["category"];
@@ -28,13 +29,18 @@ export interface PublishedOpportunities {
 	risks: string[];
 }
 
+function statusOf(result: OpportunitiesResponse): OpportunitiesStatus {
+	if ((result.report?.opportunities.length ?? 0) > 0) return "ready";
+	return result.reason === "not-generated" ? "not-generated" : "insufficient-data";
+}
+
 export async function publishedOpportunities(brandId: string): Promise<PublishedOpportunities> {
-	const result = await resolveOpportunities(brandId, "UTC");
+	const result = await storedOpportunities(brandId);
 	const opportunities = result.report?.opportunities ?? [];
 
 	return {
 		brandId,
-		status: opportunities.length > 0 ? "ready" : "insufficient-data",
+		status: statusOf(result),
 		generatedAt: result.lastEvaluatedAt,
 		model: result.model,
 		summary: result.report?.summary ?? [],
