@@ -30,6 +30,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { cn } from "@workspace/ui/lib/utils";
 import { useState } from "react";
 import { CopyButton } from "@/components/copy-button";
+import { useIsTruncated } from "@/hooks/use-is-truncated";
 import { useOrganization } from "@/hooks/use-organizations";
 import { API_SCOPES } from "@/lib/api/scopes";
 import { trackEvent } from "@/lib/posthog";
@@ -514,8 +515,8 @@ function KeyTable({
 							<TableCell>
 								<AccessCell scopes={key.scopes} />
 							</TableCell>
-							<TableCell className="truncate">
-								{key.brandIds ? key.brandIds.map((id) => brandNames.get(id) ?? id).join(", ") : "All brands"}
+							<TableCell>
+								<BrandsCell names={key.brandIds?.map((id) => brandNames.get(id) ?? id) ?? null} />
 							</TableCell>
 							<TableCell className="whitespace-nowrap">{formatDate(key.createdAt)}</TableCell>
 							<TableCell className="whitespace-nowrap">{formatDate(key.lastUsedAt, "Never")}</TableCell>
@@ -532,6 +533,20 @@ function KeyTable({
 				</TableBody>
 			</Table>
 		</Card>
+	);
+}
+
+/** A key narrowed to several brands names more of them than the column can
+ * hold, so the ones it clips are a hover away rather than lost. */
+function BrandsCell({ names }: { names: string[] | null }) {
+	const { ref, truncated } = useIsTruncated<HTMLSpanElement>();
+	const label = names ? names.join(", ") : "All brands";
+
+	return (
+		<Tooltip disabled={!truncated}>
+			<TooltipTrigger render={<span ref={ref} className="block truncate" />}>{label}</TooltipTrigger>
+			<TooltipContent className="max-w-xs">{label}</TooltipContent>
+		</Tooltip>
 	);
 }
 
