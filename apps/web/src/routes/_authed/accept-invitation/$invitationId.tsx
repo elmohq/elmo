@@ -6,13 +6,14 @@
  * Better-auth requires the session email to match the invited email
  * (case-insensitively) and rejects expired or already-handled invitations.
  */
-import { translate, useI18n } from "@/lib/i18n";
+
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { useOrganizationsChanged } from "@/hooks/use-organizations";
+import { translate, useI18n } from "@/lib/i18n";
 import { buildTitle, getAppName } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { acceptInvitationFn, getInvitationFn } from "@/server/team";

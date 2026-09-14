@@ -3,6 +3,7 @@
  * tail bucketed into "Others". Sits beside the headline share number.
  */
 
+import { useI18n } from "@/lib/i18n";
 import { ChartContainer } from "@workspace/ui/components/chart";
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import { SiteIcon } from "@/components/site-icon";
@@ -17,6 +18,8 @@ interface Slice {
 	domain?: string;
 }
 
+const OTHERS = /* i18n */ "Others";
+
 export function ShareOfVoiceDonut({
 	entries,
 	topN = 6,
@@ -26,6 +29,7 @@ export function ShareOfVoiceDonut({
 	topN?: number;
 	domainFor?: (name: string) => string | undefined;
 }) {
+	const { t, p } = useI18n();
 	const slices: Slice[] = [];
 	let paletteIdx = 0;
 	let shownCompetitors = 0;
@@ -47,7 +51,7 @@ export function ShareOfVoiceDonut({
 			othersValue += e.mentions;
 		}
 	}
-	if (othersValue > 0) slices.push({ name: "Others", value: othersValue, color: OTHERS_COLOR });
+	if (othersValue > 0) slices.push({ name: OTHERS, value: othersValue, color: OTHERS_COLOR });
 
 	const total = slices.reduce((s, x) => s + x.value, 0);
 	if (total === 0) return null;
@@ -74,9 +78,9 @@ export function ShareOfVoiceDonut({
 						const s = payload[0].payload as Slice;
 						return (
 							<div className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs shadow-md">
-								{s.name !== "Others" && <SiteIcon domain={s.domain} size="xs" />}
+								{s.name !== OTHERS && <SiteIcon domain={s.domain} size="xs" />}
 								<span>
-									{s.name}: {Math.round((s.value / total) * 100)}%
+									{t("{name}: {value}", { name: s.name === OTHERS ? t(OTHERS) : s.name, value: p(Math.round((s.value / total) * 100)) })}
 								</span>
 							</div>
 						);

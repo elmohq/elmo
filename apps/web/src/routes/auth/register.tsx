@@ -6,7 +6,6 @@
  * sign-in and also offers Google OAuth.
  */
 
-import { translate, useI18n } from "@/lib/i18n";
 import { IconBrandGoogle } from "@tabler/icons-react";
 import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
 import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
@@ -22,6 +21,7 @@ import { z } from "zod";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
+import { translate, useI18n } from "@/lib/i18n";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
@@ -38,8 +38,10 @@ export const Route = createFileRoute("/auth/register")({
 	head: ({ match }) => {
 		const appName = getAppName(match);
 		return {
-			meta: [{ title: buildTitle(translate(match.context?.locale ?? "en", "Sign up"), { appName }) },
-				{ name: "description", content: translate(match.context?.locale ?? "en", "Create an account.") },],
+			meta: [
+				{ title: buildTitle(translate(match.context?.locale ?? "en", "Sign up"), { appName }) },
+				{ name: "description", content: translate(match.context?.locale ?? "en", "Create an account.") },
+			],
 		};
 	},
 	component: RegisterPage,

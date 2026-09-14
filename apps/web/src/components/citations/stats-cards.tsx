@@ -1,16 +1,18 @@
+import { useI18n } from "@/lib/i18n";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
-function StatCard({ title, tooltip, value }: { title: string; tooltip: React.ReactNode; value: React.ReactNode }) {
+function StatCard({ title, tooltip, value }: { title: string; tooltip: string; value: React.ReactNode }) {
+	const { t } = useI18n();
 	return (
 		<Card className="flex flex-col">
 			<CardHeader className="gap-0">
 				<CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-					{title}
+					{t(title)}
 					<Tooltip>
 						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />} />
-						<TooltipContent className="max-w-xs text-sm font-normal">{tooltip}</TooltipContent>
+						<TooltipContent className="max-w-xs text-sm font-normal">{t(tooltip)}</TooltipContent>
 					</Tooltip>
 				</CardTitle>
 			</CardHeader>
@@ -30,17 +32,18 @@ export function CitationStatsCards({
 	uniqueDomains: number;
 	totalCitations: number;
 }) {
+	const { n, p } = useI18n();
 	return (
 		<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 			<StatCard
-				title="Brand Citation Share"
-				tooltip="The percentage of all citations that link to your brand's domain. A higher share means AI models are more likely to reference your content."
-				value={`${brandShare}%`}
+				title={/* i18n */ "Brand Citation Share"}
+				tooltip={/* i18n */ "The percentage of all citations that link to your brand's domain. A higher share means AI models are more likely to reference your content."}
+				value={p(brandShare)}
 			/>
 			<StatCard
-				title="Unique Domains"
-				tooltip="The number of distinct domains cited across all prompt evaluations in this period."
-				value={uniqueDomains.toLocaleString()}
+				title={/* i18n */ "Unique Domains"}
+				tooltip={/* i18n */ "The number of distinct domains cited across all prompt evaluations in this period."}
+				value={n(uniqueDomains)}
 			/>
 			{/* Kept deliberately simple: the user doesn't need the Google AI Mode
 			    search/shopping nuance. Those surfaces aren't citations in the
@@ -48,9 +51,9 @@ export function CitationStatsCards({
 			    results, not an external domain w.r.t. the model), so they're
 			    excluded from this count and broken out in the Google Shopping card. */}
 			<StatCard
-				title="Total Citations"
-				tooltip="The total external websites cited by AI models across prompt evaluations."
-				value={totalCitations.toLocaleString()}
+				title={/* i18n */ "Total Citations"}
+				tooltip={/* i18n */ "The total external websites cited by AI models across prompt evaluations."}
+				value={n(totalCitations)}
 			/>
 		</div>
 	);

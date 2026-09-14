@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { IconChevronDown, IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -66,6 +67,7 @@ export function useSubredditData(
 }
 
 export function RedditCard({ subreddits }: { subreddits: ReturnType<typeof useSubredditData> }) {
+	const { t, n } = useI18n();
 	const [expandedSubreddit, setExpandedSubreddit] = useState<string | null>(null);
 	const { page, setPage, pageItems, totalItems } = usePagedList(subreddits, SUBREDDITS_PAGE_SIZE);
 
@@ -77,13 +79,14 @@ export function RedditCard({ subreddits }: { subreddits: ReturnType<typeof useSu
 					<Tooltip>
 						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent className="max-w-xs text-sm font-normal">
-							Reddit communities most frequently cited by AI models. Extracted from all reddit.com URLs in your citation
-							data.
+							{t(
+								"Reddit communities most frequently cited by AI models. Extracted from all reddit.com URLs in your citation data.",
+							)}
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>
 				<CardDescription>
-					Top cited subreddits — which Reddit communities AI models reference when answering your prompts
+					{t("Top cited subreddits — which Reddit communities AI models reference when answering your prompts")}
 				</CardDescription>
 			</CardHeader>
 			<Separator />
@@ -107,16 +110,16 @@ export function RedditCard({ subreddits }: { subreddits: ReturnType<typeof useSu
 										</span>
 										{sub.allNew && (
 											<Badge className="text-[10px] px-1.5 py-0 h-[18px] border-0 shadow-none bg-green-100 text-green-700">
-												NEW
+												{t("NEW")}
 											</Badge>
 										)}
 										{!sub.allNew && sub.newPages > 0 && (
-											<span className="text-[10px] text-green-600 whitespace-nowrap">+{sub.newPages} new</span>
+											<span className="text-[10px] text-green-600 whitespace-nowrap">{t("+{count} new", { count: sub.newPages })}</span>
 										)}
-										{sub.hasDropped && <span className="text-[10px] text-red-500 whitespace-nowrap">some dropped</span>}
+										{sub.hasDropped && <span className="text-[10px] text-red-500 whitespace-nowrap">{t("some dropped")}</span>}
 									</button>
 									<div className="flex items-center gap-2 shrink-0 ml-3">
-										<span className="text-sm font-semibold tabular-nums">{sub.count.toLocaleString()}</span>
+										<span className="text-sm font-semibold tabular-nums">{n(sub.count)}</span>
 										<a
 											href={`https://reddit.com/${sub.name}`}
 											target="_blank"
@@ -142,12 +145,12 @@ export function RedditCard({ subreddits }: { subreddits: ReturnType<typeof useSu
 													{u.title || formatUrlForDisplay(u.url)}
 													{u.isNew && (
 														<Badge className="text-[9px] px-1 py-0 h-[14px] border-0 shadow-none bg-green-100 text-green-700 shrink-0">
-															NEW
+															{t("NEW")}
 														</Badge>
 													)}
 												</span>
 												<span className="tabular-nums text-muted-foreground shrink-0 ml-3">
-													{u.count.toLocaleString()}
+													{n(u.count)}
 												</span>
 											</a>
 										))}

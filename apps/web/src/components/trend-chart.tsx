@@ -6,9 +6,9 @@
  * stacked trends stay visually identical without being tuned in two places.
  */
 
-import { useI18n } from "@/lib/i18n";
 import { type ChartConfig, ChartContainer, ChartTooltip } from "@workspace/ui/components/chart";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { useI18n } from "@/lib/i18n";
 
 export interface TrendPoint {
 	date: string;
@@ -46,9 +46,7 @@ export function TrendChart({
 					tickMargin={8}
 					minTickGap={50}
 					tick={{ fontSize: 11 }}
-					tickFormatter={(value: string) =>
-						d(localDate(value), { month: "short", day: "numeric" })
-					}
+					tickFormatter={(value: string) => d(localDate(value), { month: "short", day: "numeric" })}
 				/>
 				<YAxis
 					domain={[0, "auto"]}

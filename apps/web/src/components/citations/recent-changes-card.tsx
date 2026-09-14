@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { formatPeriodLabel, formatUrlForDisplay, UnderlineTabs } from "@/components/citations/shared";
 import type { CitationData } from "@/components/citations/types";
+import { type I18n, useI18n } from "@/lib/i18n";
 
 type WhatsChanged = NonNullable<CitationData["whatsChanged"]>;
 
@@ -25,11 +26,11 @@ type Change =
 	| ({ type: "dropped_domains" } & WhatsChanged["droppedDomains"][number]);
 
 const CHANGE_TYPE_TABS: { key: ChangeType; label: string }[] = [
-	{ key: "new_pages", label: "New Pages" },
-	{ key: "dropped_pages", label: "Dropped Pages" },
-	{ key: "title", label: "Title Changes" },
-	{ key: "new_domains", label: "New Domains" },
-	{ key: "dropped_domains", label: "Dropped Domains" },
+	{ key: "new_pages", label: /* i18n */ "New Pages" },
+	{ key: "dropped_pages", label: /* i18n */ "Dropped Pages" },
+	{ key: "title", label: /* i18n */ "Title Changes" },
+	{ key: "new_domains", label: /* i18n */ "New Domains" },
+	{ key: "dropped_domains", label: /* i18n */ "Dropped Domains" },
 ];
 
 const CHANGE_ICONS: Record<ChangeType, ReactNode> = {
@@ -42,23 +43,25 @@ const CHANGE_ICONS: Record<ChangeType, ReactNode> = {
 
 const MAX_VISIBLE_CHANGES = 6;
 
-const plural = (count: number) => (count === 1 ? "" : "s");
-
-function describeChange(change: Change): { id: string; label: string; url: string; description: ReactNode } {
+function describeChange(change: Change, { tn }: I18n): { id: string; label: string; url: string; description: ReactNode } {
 	switch (change.type) {
 		case "new_pages":
 			return {
 				id: change.url,
 				label: formatUrlForDisplay(change.url),
 				url: change.url,
-				description: `0 → ${change.count} citations across ${change.promptCount} prompt${plural(change.promptCount)}`,
+				description: tn(change.promptCount, "0 → {citations} citations across {count} prompt", "0 → {citations} citations across {count} prompts", {
+					citations: change.count,
+				}),
 			};
 		case "dropped_pages":
 			return {
 				id: change.url,
 				label: formatUrlForDisplay(change.url),
 				url: change.url,
-				description: `${change.previousCount} → ${change.currentCount} citations`,
+				description: tn(change.currentCount, "{previous} → {count} citation", "{previous} → {count} citations", {
+					previous: change.previousCount,
+				}),
 			};
 		case "title":
 			return {
@@ -78,14 +81,18 @@ function describeChange(change: Change): { id: string; label: string; url: strin
 				id: change.domain,
 				label: change.domain,
 				url: `https://${change.domain}`,
-				description: `${change.count} citation${plural(change.count)} in the current period`,
+				description: tn(change.count, "{count} citation in the current period", "{count} citations in the current period"),
 			};
 		case "dropped_domains":
 			return {
 				id: change.domain,
 				label: change.domain,
 				url: `https://${change.domain}`,
-				description: `${change.previousCount} citation${plural(change.previousCount)} last period, none now`,
+				description: tn(
+					change.previousCount,
+					"{count} citation last period, none now",
+					"{count} citations last period, none now",
+				),
 			};
 	}
 }
@@ -106,6 +113,8 @@ function ChangeRow({ icon, label, url, description }: { icon: ReactNode } & Retu
 }
 
 export function RecentChangesCard({ whatsChanged, days }: { whatsChanged: WhatsChanged; days: number }) {
+	const i18n = useI18n();
+	const { t } = i18n;
 	const [changeTypeFilter, setChangeTypeFilter] = useState<ChangeType>("new_pages");
 
 	const visibleChanges = useMemo((): Change[] => {
@@ -119,22 +128,26 @@ export function RecentChangesCard({ whatsChanged, days }: { whatsChanged: WhatsC
 		return byType[changeTypeFilter].slice(0, MAX_VISIBLE_CHANGES);
 	}, [whatsChanged, changeTypeFilter]);
 
-	const activeTabLabel = CHANGE_TYPE_TABS.find((t) => t.key === changeTypeFilter)?.label.toLowerCase();
+	const activeTabLabel = CHANGE_TYPE_TABS.find((tab) => tab.key === changeTypeFilter)?.label;
 
 	return (
 		<Card className="h-full flex flex-col">
 			<CardHeader>
 				<CardTitle className="flex items-center gap-1.5">
-					Recent Changes
+					{t("Recent Changes")}
 					<Tooltip>
 						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent className="max-w-xs text-sm font-normal">
-							Compares this {formatPeriodLabel(days)} with the {formatPeriodLabel(days)} before it. Shows new and
-							dropped pages, title changes, and new and dropped domains.
+							{t(
+								"Compares this {period} with the {period} before it. Shows new and dropped pages, title changes, and new and dropped domains.",
+								{ period: t(formatPeriodLabel(days)) },
+							)}
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>
-				<CardDescription>How AI citations have shifted over the past {formatPeriodLabel(days)}</CardDescription>
+				<CardDescription>
+					{t("How AI citations have shifted over the past {period}", { period: t(formatPeriodLabel(days)) })}
+				</CardDescription>
 			</CardHeader>
 			<Separator />
 			<CardContent className="flex-1">
@@ -145,12 +158,12 @@ export function RecentChangesCard({ whatsChanged, days }: { whatsChanged: WhatsC
 				/>
 				<div className="divide-y divide-border/50">
 					{visibleChanges.map((change) => {
-						const described = describeChange(change);
+						const described = describeChange(change, i18n);
 						return <ChangeRow key={`${change.type}-${described.id}`} icon={CHANGE_ICONS[change.type]} {...described} />;
 					})}
 					{visibleChanges.length === 0 && (
 						<p className="text-sm text-muted-foreground text-center py-4">
-							No {activeTabLabel ?? changeTypeFilter} changes in this period.
+							{t("No {type} changes in this period.", { type: t(activeTabLabel ?? changeTypeFilter).toLowerCase() })}
 						</p>
 					)}
 				</div>

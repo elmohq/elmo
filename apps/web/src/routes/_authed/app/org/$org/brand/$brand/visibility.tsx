@@ -1,7 +1,7 @@
-import { useI18n } from "@/lib/i18n";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PromptsDisplay } from "@/components/prompts-display";
 import { useBrandParams } from "@/hooks/use-route-params";
+import { useI18n } from "@/lib/i18n";
 import { coercePromptOrder, DEFAULT_PROMPT_ORDER, type PromptOrder } from "@/lib/prompt-order";
 import { pageHead } from "@/lib/route-head";
 

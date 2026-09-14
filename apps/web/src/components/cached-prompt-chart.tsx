@@ -1,4 +1,3 @@
-import { useI18n } from "@/lib/i18n";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -8,6 +7,7 @@ import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
 import { useChartExport } from "@/hooks/use-chart-export";
 import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
 import { getBadgeClassName, getBadgeVariant } from "@/lib/chart-utils";
+import { useI18n } from "@/lib/i18n";
 import { BaseChart } from "./base-chart";
 import { ChartActionsFooter } from "./chart-actions-footer";
 import { TextHighlighter } from "./text-highlighter";

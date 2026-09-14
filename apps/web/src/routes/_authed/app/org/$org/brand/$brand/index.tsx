@@ -1,4 +1,3 @@
-import { type I18n, useI18n } from "@/lib/i18n";
 import {
 	IconActivity,
 	IconArrowRight,
@@ -22,6 +21,7 @@ import { useBrand } from "@/hooks/use-brands";
 import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import { useBrandParams } from "@/hooks/use-route-params";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
+import { type I18n, useI18n } from "@/lib/i18n";
 import { describeTargetSchedule, labelForModelFilter, type TrackedTarget } from "@/lib/model-filter";
 import { setPersonProperties } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
@@ -319,17 +319,25 @@ function AwaitingFirstEvaluation({ totalPrompts, hasPrompts }: { totalPrompts: n
 	const params = useBrandParams();
 	const hasEnabledPrompts = totalPrompts > 0;
 	const message = hasEnabledPrompts
-		? t("You are ready to track your AI visibility. We're currently running the first evaluation against AI models. This usually takes a few minutes.")
+		? t(
+				"You are ready to track your AI visibility. We're currently running the first evaluation against AI models. This usually takes a few minutes.",
+			)
 		: hasPrompts
-			? t("You have prompts configured but none are currently enabled. Add or enable some prompts to start tracking your AI visibility.")
-			: t("Set up prompts to start tracking your AI visibility. Once configured, we'll evaluate them against AI models automatically.");
+			? t(
+					"You have prompts configured but none are currently enabled. Add or enable some prompts to start tracking your AI visibility.",
+				)
+			: t(
+					"Set up prompts to start tracking your AI visibility. Once configured, we'll evaluate them against AI models automatically.",
+				);
 
 	return (
 		<div className="flex flex-1 flex-col items-center justify-center p-8 max-w-xl mx-auto text-center">
 			<div className="rounded-full bg-muted p-4 mb-6">
 				<IconClock className="h-10 w-10 text-muted-foreground" />
 			</div>
-			<h2 className="text-2xl font-bold mb-3">{hasEnabledPrompts ? t("Waiting for First Evaluation") : t("No Data Yet")}</h2>
+			<h2 className="text-2xl font-bold mb-3">
+				{hasEnabledPrompts ? t("Waiting for First Evaluation") : t("No Data Yet")}
+			</h2>
 			<p className="text-muted-foreground mb-6 text-balance">{message}</p>
 			<div className="flex flex-col gap-3 w-full">
 				{hasEnabledPrompts && (
@@ -428,7 +436,9 @@ function DashboardPage() {
 			);
 	const sovTooltip = loadingSov
 		? undefined
-		: t("Your brand's share of all brand and competitor mentions across the AI answers to your prompts — the big number is the latest point on this line. It shifts as AI models change, as you and competitors publish, or as the sites AI scans move; the line is smoothed for staggered prompt schedules.");
+		: t(
+				"Your brand's share of all brand and competitor mentions across the AI answers to your prompts — the big number is the latest point on this line. It shifts as AI models change, as you and competitors publish, or as the sites AI scans move; the line is smoothed for staggered prompt schedules.",
+			);
 
 	if (!isLoadingBrand && !brand?.onboarded) {
 		return <ResearchBrandData brandId={brandId} clientConfig={clientConfig} />;

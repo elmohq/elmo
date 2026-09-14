@@ -37,7 +37,9 @@ for (const file of files) {
 }
 
 const frSrc = fs.readFileSync(path.join(root, "lib/i18n/fr.ts"), "utf8");
-const { fr } = await import(`data:text/javascript,${encodeURIComponent(frSrc.replace(/: Record<string, string>/, ""))}`);
+const { fr } = await import(
+	`data:text/javascript,${encodeURIComponent(frSrc.replace(/: Record<string, string>/, ""))}`
+);
 
 const missing = [...used].filter(([k]) => !(k in fr));
 const unused = Object.keys(fr).filter((k) => !used.has(k));

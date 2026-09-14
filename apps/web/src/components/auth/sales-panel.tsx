@@ -10,7 +10,6 @@
  * decided to look, and a whitelabel tenant is not ours to sell to.
  */
 
-import { useI18n } from "@/lib/i18n";
 import { IconCheck, IconCloud, IconEye } from "@tabler/icons-react";
 import { PLANS, platformTierMembers } from "@workspace/config/plans";
 import {
@@ -26,6 +25,7 @@ import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
 import type { ReactNode } from "react";
+import { useI18n } from "@/lib/i18n";
 
 /** Everything Elmo reaches, named — the coverage claim is the product. */
 const ENGINES = [...platformTierMembers("scraped"), ...platformTierMembers("api")];
@@ -116,7 +116,9 @@ function EngineStrip() {
 	const { t } = useI18n();
 	return (
 		<div>
-			<p className="font-mono text-[10px] uppercase leading-none tracking-[0.2em] text-muted-foreground">{t("Tracking")}</p>
+			<p className="font-mono text-[10px] uppercase leading-none tracking-[0.2em] text-muted-foreground">
+				{t("Tracking")}
+			</p>
 			<ul className="mt-3 flex flex-wrap gap-1.5">
 				{ENGINES.map((engine) => (
 					<li

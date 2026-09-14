@@ -1,4 +1,3 @@
-import { useI18n } from "@/lib/i18n";
 import { IconEditCircle } from "@tabler/icons-react";
 import { Link, useSearch } from "@tanstack/react-router";
 import type { Competitor } from "@workspace/lib/db/schema";
@@ -22,6 +21,7 @@ import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrandParams } from "@/hooks/use-route-params";
 import type { ChartSubject, LookbackPeriod } from "@/lib/chart-utils";
+import { useI18n } from "@/lib/i18n";
 import { coercePromptOrder, orderPrompts } from "@/lib/prompt-order";
 import { skeletonRows } from "@/lib/skeleton-rows";
 

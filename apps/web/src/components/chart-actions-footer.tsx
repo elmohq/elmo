@@ -1,10 +1,10 @@
-import { useI18n } from "@/lib/i18n";
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { getOptimizeButtonForMode } from "@workspace/deployment/client";
 import { Button } from "@workspace/ui/components/button";
 import { Download } from "lucide-react";
 import { useCallback } from "react";
+import { useI18n } from "@/lib/i18n";
 import { getPromptWebQueryFn } from "@/server/prompts";
 import { ChartFooter } from "./chart-footer";
 import { HistoryButton } from "./history-button";

@@ -1,8 +1,8 @@
-import { useI18n } from "@/lib/i18n";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
+import { useI18n } from "@/lib/i18n";
 
 interface VisibilityTimeSeriesPoint {
 	date: string;
@@ -157,7 +157,9 @@ export function VisibilityBarEmpty() {
 	const { t } = useI18n();
 	return (
 		<div className="flex items-center min-h-10 px-3 py-2 rounded-lg border border-border/60 bg-muted/20">
-			<span className="text-sm text-muted-foreground">{t("No visibility data for the selected time range and filters.")}</span>
+			<span className="text-sm text-muted-foreground">
+				{t("No visibility data for the selected time range and filters.")}
+			</span>
 		</div>
 	);
 }

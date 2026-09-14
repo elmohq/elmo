@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { type ChartConfig, ChartContainer, ChartTooltip } from "@workspace/ui/components/chart";
@@ -17,6 +18,7 @@ export function TrendAreaChart({
 	keys: string[];
 	meta: Record<string, { label: string; color: string }>;
 }) {
+	const { t, d, p } = useI18n();
 	// Callers pass exactly the keys that appear (same lists the tab filters use).
 	const present = keys;
 	// Display order: largest band first, "other" always last.
@@ -27,16 +29,16 @@ export function TrendAreaChart({
 		a === "other" ? 1 : b === "other" ? -1 : (totals.get(b) ?? 0) - (totals.get(a) ?? 0),
 	);
 	const config: ChartConfig = Object.fromEntries(
-		ordered.map((k) => [k, { label: meta[k]?.label ?? k, color: meta[k]?.color ?? "#9ca3af" }]),
+		ordered.map((k) => [k, { label: t(meta[k]?.label ?? k), color: meta[k]?.color ?? "#9ca3af" }]),
 	);
 	return (
 		<Card>
 			<CardHeader className="gap-0 pb-2">
 				<CardTitle className="text-sm font-medium flex items-center gap-1.5">
-					{title}
+					{t(title)}
 					<Tooltip>
 						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
-						<TooltipContent className="max-w-xs text-sm font-normal">{tooltip}</TooltipContent>
+						<TooltipContent className="max-w-xs text-sm font-normal">{t(tooltip)}</TooltipContent>
 					</Tooltip>
 				</CardTitle>
 			</CardHeader>
@@ -54,7 +56,7 @@ export function TrendAreaChart({
 							tickFormatter={(value) => {
 								const [year, month, day] = String(value).split("-").map(Number);
 								const date = new Date(year, month - 1, day);
-								return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+								return d(date, { month: "short", day: "numeric" });
 							}}
 						/>
 						<YAxis
@@ -64,7 +66,7 @@ export function TrendAreaChart({
 							domain={[0, 100]}
 							ticks={[0, 25, 50, 75, 100]}
 							tick={{ fontSize: 11 }}
-							tickFormatter={(value) => `${value}%`}
+							tickFormatter={(value) => p(value)}
 						/>
 						<ChartTooltip
 							isAnimationActive={false}
@@ -74,7 +76,7 @@ export function TrendAreaChart({
 								const dp = payload[0]?.payload as Record<string, number | string> | undefined;
 								const [year, month, day] = String(label).split("-").map(Number);
 								const date = new Date(year, month - 1, day);
-								const formattedDate = date.toLocaleDateString("en-US", {
+								const formattedDate = d(date, {
 									month: "long",
 									day: "numeric",
 									year: "numeric",
@@ -92,8 +94,8 @@ export function TrendAreaChart({
 														className="shrink-0 rounded-[2px] h-2.5 w-2.5"
 														style={{ backgroundColor: meta[r.k]?.color ?? "#9ca3af" }}
 													/>
-													<span className="text-muted-foreground">{meta[r.k]?.label ?? r.k}</span>
-													<span className="ml-auto font-mono tabular-nums">{r.value}%</span>
+													<span className="text-muted-foreground">{t(meta[r.k]?.label ?? r.k)}</span>
+													<span className="ml-auto font-mono tabular-nums">{p(r.value)}</span>
 												</div>
 											))}
 										</div>

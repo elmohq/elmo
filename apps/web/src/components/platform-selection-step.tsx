@@ -1,7 +1,7 @@
-import { useI18n } from "@/lib/i18n";
 import { getModelMeta } from "@workspace/config/models";
 import { Button } from "@workspace/ui/components/button";
 import { PlatformPicker } from "@/components/platform-picker";
+import { useI18n } from "@/lib/i18n";
 import type { OnboardingPlatformState } from "@/server/platform-picks";
 
 interface PlatformSelectionStepProps {

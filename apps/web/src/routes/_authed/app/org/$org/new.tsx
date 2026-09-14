@@ -1,4 +1,3 @@
-import { useI18n } from "@/lib/i18n";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -9,6 +8,7 @@ import { PlatformSelectionStep } from "@/components/platform-selection-step";
 import { useOrganizationsChanged } from "@/hooks/use-organizations";
 import { useOrganizationParams } from "@/hooks/use-route-params";
 import { validateWebsiteUrl } from "@/lib/brand-website";
+import { useI18n } from "@/lib/i18n";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
@@ -124,7 +124,10 @@ function NewBrandPage() {
 
 	if (step === "platforms" && platformState) {
 		return (
-			<FullPageCard title={t("Create {name}", { name: details.brandName })} subtitle={t("Choose which AI platforms to track")}>
+			<FullPageCard
+				title={t("Create {name}", { name: details.brandName })}
+				subtitle={t("Choose which AI platforms to track")}
+			>
 				<PlatformSelectionStep
 					state={platformState}
 					selected={selected}
@@ -140,8 +143,11 @@ function NewBrandPage() {
 	}
 
 	return (
-		<FullPageCard title={t("Create a new brand")}
-			subtitle={t("Start tracking a brand in {name}", { name: organizationName })} showBackButton>
+		<FullPageCard
+			title={t("Create a new brand")}
+			subtitle={t("Start tracking a brand in {name}", { name: organizationName })}
+			showBackButton
+		>
 			<form action={handleDetailsSubmit} className="space-y-4">
 				<div className="space-y-2">
 					<Label htmlFor="brandName">{t("Brand Name")}</Label>

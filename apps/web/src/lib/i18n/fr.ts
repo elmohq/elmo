@@ -43,7 +43,8 @@ export const fr: Record<string, string> = {
 	"Create your first brand": "Créer votre première marque",
 	"Set up {name}": "Configurer {name}",
 	"{name} organization settings": "Paramètres de l'organisation {name}",
-	"Monitor and manage brands, prompts, and scheduling.": "Surveillez et gérez les marques, les prompts et la planification.",
+	"Monitor and manage brands, prompts, and scheduling.":
+		"Surveillez et gérez les marques, les prompts et la planification.",
 	"Brand onboarding analysis.": "Analyse d'intégration des marques.",
 	"Monitor prompt scheduling and job execution.": "Surveillez la planification des prompts et l'exécution des tâches.",
 	"Modify organizations or navigate to brands.": "Modifiez vos organisations ou accédez à vos marques.",
@@ -69,7 +70,8 @@ export const fr: Record<string, string> = {
 	"Detailed analysis of a tracked prompt's performance.": "Analyse détaillée des performances d'un prompt suivi.",
 	"Manage your brand name and website.": "Gérez le nom et le site web de votre marque.",
 	"Manage your tracked competitors.": "Gérez les concurrents que vous suivez.",
-	"Choose which AI models this brand is tracked against.": "Choisissez les modèles d'IA sur lesquels cette marque est suivie.",
+	"Choose which AI models this brand is tracked against.":
+		"Choisissez les modèles d'IA sur lesquels cette marque est suivie.",
 	"Add, edit, or remove tracked prompts.": "Ajoutez, modifiez ou supprimez les prompts suivis.",
 	"Pick a plan to start tracking how AI answer engines talk about your brand.":
 		"Choisissez une offre pour suivre ce que les moteurs de réponse IA disent de votre marque.",
@@ -179,7 +181,8 @@ export const fr: Record<string, string> = {
 	"Start tracking your AI visibility": "Commencez à suivre votre visibilité IA",
 	"Create your admin account": "Créez votre compte administrateur",
 	"Plans start at ${price}/mo. Cancel any time.": "Offres à partir de {price} $/mois. Résiliable à tout moment.",
-	"This is the owner account for your self-hosted instance.": "C'est le compte propriétaire de votre instance auto-hébergée.",
+	"This is the owner account for your self-hosted instance.":
+		"C'est le compte propriétaire de votre instance auto-hébergée.",
 	Name: "Nom",
 	"Your name": "Votre nom",
 	"Create a password": "Choisissez un mot de passe",
@@ -196,7 +199,8 @@ export const fr: Record<string, string> = {
 	"Back to sign in": "Retour à la connexion",
 	"Passwords do not match": "Les mots de passe ne correspondent pas",
 	"Reset link invalid or expired": "Lien de réinitialisation invalide ou expiré",
-	"Reset links are single-use and time-limited.": "Les liens de réinitialisation sont à usage unique et limités dans le temps.",
+	"Reset links are single-use and time-limited.":
+		"Les liens de réinitialisation sont à usage unique et limités dans le temps.",
 	"Request a new reset link": "Demander un nouveau lien",
 	"Choose a new password": "Choisissez un nouveau mot de passe",
 	"New password": "Nouveau mot de passe",
@@ -222,9 +226,11 @@ export const fr: Record<string, string> = {
 	// ── Organizations, team, brand creation ───────────────────────────────
 	"No organizations": "Aucune organisation",
 	"Your account isn't a member of an organization yet.": "Votre compte n'est encore membre d'aucune organisation.",
-	"Ask an admin to invite you, then reload this page.": "Demandez à un administrateur de vous inviter, puis rechargez cette page.",
+	"Ask an admin to invite you, then reload this page.":
+		"Demandez à un administrateur de vous inviter, puis rechargez cette page.",
 	"Create an organization": "Créer une organisation",
-	"An organization holds its own brands, team, and plan.": "Une organisation a ses propres marques, son équipe et son offre.",
+	"An organization holds its own brands, team, and plan.":
+		"Une organisation a ses propres marques, son équipe et son offre.",
 	"Organization Name": "Nom de l'organisation",
 	"Organization Slug": "Identifiant d'URL de l'organisation",
 	"Creating...": "Création…",
@@ -369,7 +375,8 @@ export const fr: Record<string, string> = {
 	"{n}d": "{n} j",
 	"{n}h": "{n} h",
 	"prompts tracked": "prompts suivis",
-	"Prompts monitored for AI visibility, each evaluated on:": "Prompts suivis pour la visibilité IA, chacun évalué sur :",
+	"Prompts monitored for AI visibility, each evaluated on:":
+		"Prompts suivis pour la visibilité IA, chacun évalué sur :",
 	"Prompts monitored for AI visibility. No platforms are configured for this brand yet.":
 		"Prompts suivis pour la visibilité IA. Aucune plateforme n'est encore configurée pour cette marque.",
 	"evaluations (30d)": "évaluations (30 j)",
@@ -409,5 +416,172 @@ export const fr: Record<string, string> = {
 	"AI Visibility (7d avg)": "Visibilité IA (moy. 7 j)",
 	"View Share of Voice": "Voir la part de voix",
 	"Share of Voice Trends (30d)": "Évolution de la part de voix (30 j)",
+	// ── Share of voice ─────────────────────────────────────────────────────
+	"Share of voice is how often each brand is mentioned in the AI answers to your prompts. Mentions are counted per run, so the brand and competitor figures use the same unit and are directly comparable.":
+		"La part de voix mesure la fréquence à laquelle chaque marque est citée dans les réponses IA à vos prompts. Les mentions sont comptées par exécution : les chiffres de votre marque et de vos concurrents utilisent donc la même unité et sont directement comparables.",
+	"Competitors are the ones you track in settings. Switch the model filter to compare engines.":
+		"Les concurrents sont ceux que vous suivez dans les paramètres. Changez de modèle dans le filtre pour comparer les moteurs.",
+	"No mention data yet for the selected filters. Mentions appear once your prompts have been run.":
+		"Aucune mention pour les filtres sélectionnés. Les mentions apparaissent une fois vos prompts exécutés.",
+	"Share of Voice Trends": "Évolution de la part de voix",
+	"Share of Voice Leaderboard": "Classement de la part de voix",
+	You: "Vous",
+	"How often AI engines mention you versus your competitors.":
+		"La fréquence à laquelle les moteurs IA vous citent par rapport à vos concurrents.",
+	"{brand} across {count} run": "{brand} sur {count} exécution",
+	"{brand} across {count} runs": "{brand} sur {count} exécutions",
+	" and {count} competitor": " et {count} concurrent",
+	" and {count} competitors": " et {count} concurrents",
+	Mentions: "Mentions",
+	Share: "Part",
+	"Number of runs in which this brand was mentioned in the AI answer.":
+		"Nombre d'exécutions dans lesquelles cette marque est citée dans la réponse de l'IA.",
+	"This brand's share of all brand + competitor mentions.":
+		"La part de cette marque dans l'ensemble des mentions (marque + concurrents).",
+	"Number of distinct prompts this brand appeared in.": "Nombre de prompts distincts dans lesquels cette marque apparaît.",
+	"{name}: {value}": "{name} : {value}",
+	Others: "Autres",
+
+	// ── Citations ──────────────────────────────────────────────────────────
+	"Citations are the links and sources that AI models include in their responses when answering your prompts. They show which websites the AI considers authoritative or relevant to your topics.":
+		"Les citations sont les liens et les sources que les modèles d'IA incluent dans leurs réponses à vos prompts. Elles révèlent les sites que l'IA juge fiables ou pertinents sur vos sujets.",
+	"Competitor domains are only those you've added to your":
+		"Les domaines « concurrents » sont uniquement ceux que vous avez ajoutés à votre",
+	"tracked competitors list": "liste de concurrents suivis",
+	". Other domains appear under their detected category (Google, Social Media, Institutional, or Other).":
+		". Les autres domaines sont classés selon la catégorie détectée (Google, réseaux sociaux, institutionnel ou autre).",
+	"See which sources LLMs cite when responding to your prompts.":
+		"Découvrez les sources que les LLM citent lorsqu'ils répondent à vos prompts.",
+	"Failed to load citation data. Please try again.": "Impossible de charger les citations. Veuillez réessayer.",
+	"No citations found for the selected filters.": "Aucune citation trouvée pour les filtres sélectionnés.",
+	"Try adjusting your filters or time period.": "Essayez de modifier vos filtres ou la période.",
+	"No citations found. Citations are only available from prompts evaluated with web search enabled.":
+		"Aucune citation trouvée. Les citations ne sont disponibles que pour les prompts évalués avec la recherche web activée.",
+	"All Sources": "Toutes les sources",
+	"All Page Types": "Tous les types de page",
+	"Citation Categories": "Catégories de citations",
+	"Share of citations by source category over time, as a percentage of all citations each day. Smoothed to account for staggered prompt schedules; Google AI Mode search/shopping are excluded (see the Google Shopping section).":
+		"Répartition des citations par catégorie de source dans le temps, en pourcentage des citations de chaque jour. Lissée pour tenir compte des plannings échelonnés ; la recherche et le shopping de Google AI Mode sont exclus (voir la section Google Shopping).",
+	"Citation Page Types": "Types de pages citées",
+	"Share of citations by page type over time — what kind of page each citation points to, inferred from the URL and title.":
+		"Répartition des citations par type de page dans le temps — le type de page vers lequel pointe chaque citation, déduit de l'URL et du titre.",
+	Competitor: "Concurrent",
+	Editorial: "Éditorial",
+	Reviews: "Avis",
+	Ecommerce: "E-commerce",
+	Social: "Réseaux sociaux",
+	Developer: "Développeurs",
+	PR: "Relations presse",
+	Reference: "Référence",
+	Institutional: "Institutionnel",
+	Other: "Autre",
+	Homepage: "Page d'accueil",
+	Article: "Article",
+	Listicle: "Liste",
+	Guide: "Guide",
+	Comparison: "Comparatif",
+	Review: "Avis",
+	Forum: "Forum",
+	Video: "Vidéo",
+	Storefront: "Boutique",
+	Info: "Info",
+	Search: "Recherche",
+	Shopping: "Shopping",
+	"Content Gaps": "Lacunes de contenu",
+	"Prompts where competitors are cited but your brand isn't — opportunities to improve your citation presence.":
+		"Prompts pour lesquels vos concurrents sont cités mais pas votre marque — autant d'occasions d'améliorer votre présence dans les citations.",
+	"Prompts where competitors are cited but your brand isn't":
+		"Prompts pour lesquels vos concurrents sont cités mais pas votre marque",
+	"your brand cited 0 times": "votre marque, 0 fois",
+	"{count} competitor cited": "{count} concurrent cité",
+	"{count} competitors cited": "{count} concurrents cités",
+	"{count} time": "{count} fois",
+	"{count} times": "{count} fois",
+	"Google Shopping": "Google Shopping",
+	"Product cards Google AI Mode showed when answering your prompts. The number next to each is how many times that card appeared across results (card inclusions, not unique products). Kept separate from the citation mix above.":
+		"Les fiches produits affichées par Google AI Mode en réponse à vos prompts. Le nombre indique combien de fois chaque fiche est apparue dans les résultats (apparitions, pas produits uniques). Comptabilisées à part des citations ci-dessus.",
+	"Products Google AI Mode surfaced —": "Produits mis en avant par Google AI Mode —",
+	"appearances for yours vs": "apparitions pour les vôtres contre",
+	"for competitors": "pour vos concurrents",
+	Products: "Produits",
+	"Search queries": "Requêtes de recherche",
+	"Show {count} more": "Afficher {count} de plus",
+	All: "Tous",
+	Yours: "Les vôtres",
+	"Recent Changes": "Changements récents",
+	"Compares this {period} with the {period} before it. Shows new and dropped pages, title changes, and new and dropped domains.":
+		"Compare la période actuelle ({period}) à la précédente. Affiche les pages et domaines apparus ou disparus, ainsi que les changements de titre.",
+	"How AI citations have shifted over the past {period}":
+		"L'évolution des citations IA sur la période écoulée ({period})",
+	"No {type} changes in this period.": "Aucun changement de type « {type} » sur cette période.",
+	"0 → {citations} citations across {count} prompt": "0 → {citations} citations sur {count} prompt",
+	"0 → {citations} citations across {count} prompts": "0 → {citations} citations sur {count} prompts",
+	"{previous} → {count} citation": "{previous} → {count} citation",
+	"{previous} → {count} citations": "{previous} → {count} citations",
+	"{count} citation in the current period": "{count} citation sur la période actuelle",
+	"{count} citations in the current period": "{count} citations sur la période actuelle",
+	"{count} citation last period, none now": "{count} citation sur la période précédente, aucune aujourd'hui",
+	"{count} citations last period, none now": "{count} citations sur la période précédente, aucune aujourd'hui",
+	"New Pages": "Nouvelles pages",
+	"Dropped Pages": "Pages disparues",
+	"Title Changes": "Changements de titre",
+	"New Domains": "Nouveaux domaines",
+	"Dropped Domains": "Domaines disparus",
+	"Reddit communities most frequently cited by AI models. Extracted from all reddit.com URLs in your citation data.":
+		"Les communautés Reddit les plus citées par les modèles d'IA, extraites de toutes les URL reddit.com de vos citations.",
+	"Top cited subreddits — which Reddit communities AI models reference when answering your prompts":
+		"Subreddits les plus cités — les communautés Reddit auxquelles les modèles d'IA se réfèrent pour répondre à vos prompts",
+	NEW: "NOUVEAU",
+	"+{count} new": "+{count} nouveau(x)",
+	"some dropped": "certains ont disparu",
+	Tabs: "Onglets",
+	"24 hours": "24 heures",
+	week: "semaine",
+	"2 weeks": "2 semaines",
+	month: "mois",
+	"2 months": "2 mois",
+	"3 months": "3 mois",
+	"Brand Citation Share": "Part de citations de la marque",
+	"The percentage of all citations that link to your brand's domain. A higher share means AI models are more likely to reference your content.":
+		"Le pourcentage de citations qui pointent vers le domaine de votre marque. Plus cette part est élevée, plus les modèles d'IA sont susceptibles de citer votre contenu.",
+	"Unique Domains": "Domaines uniques",
+	"The number of distinct domains cited across all prompt evaluations in this period.":
+		"Le nombre de domaines distincts cités dans l'ensemble des évaluations de prompts sur cette période.",
+	"Total Citations": "Total des citations",
+	"The total external websites cited by AI models across prompt evaluations.":
+		"Le nombre total de sites externes cités par les modèles d'IA dans les évaluations de prompts.",
+	"Top Cited Domains": "Domaines les plus cités",
+	"The most frequently cited domains across all prompt evaluations. Each domain is colored by its category (brand, competitor, etc.).":
+		"Les domaines les plus cités dans l'ensemble des évaluations de prompts. Chaque domaine est coloré selon sa catégorie (marque, concurrent, etc.).",
+	"Which domains LLMs reference most when responding to your prompts":
+		"Les domaines que les LLM citent le plus en répondant à vos prompts",
+	"Search domains...": "Rechercher un domaine…",
+	"No domains match the current filters.": "Aucun domaine ne correspond aux filtres actuels.",
+	"Top Cited URLs": "URL les plus citées",
+	"The specific pages most frequently cited by AI models. Filter by category to focus on brand, competitor, or other sources.":
+		"Les pages les plus citées par les modèles d'IA. Filtrez par catégorie pour vous concentrer sur votre marque, vos concurrents ou d'autres sources.",
+	"Competitor domains are only those in your": "Les domaines « concurrents » sont uniquement ceux de votre",
+	"Individual pages cited by LLMs": "Pages citées par les LLM",
+	"{brand} accounts for": "{brand} représente",
+	"of all citations": "de l'ensemble des citations",
+	"Search URLs...": "Rechercher une URL…",
+	"avg {position}": "moy. {position}",
+	"Average citation position (lower = cited earlier in the response)":
+		"Position moyenne de la citation (plus elle est basse, plus la source est citée tôt dans la réponse)",
+	"Total times this URL was cited across all prompt evaluations":
+		"Nombre total de citations de cette URL dans l'ensemble des évaluations de prompts",
+	"No URLs match the current filters.": "Aucune URL ne correspond aux filtres actuels.",
+	"Track {domain}": "Suivre {domain}",
+	Track: "Suivre",
+	"Add as brand domain": "Ajouter comme domaine de la marque",
+	"Applies retroactively — all existing and future citations from this domain will be classified as your brand.":
+		"Rétroactif — toutes les citations existantes et futures de ce domaine seront attribuées à votre marque.",
+	"My brand": "Ma marque",
+	"Add to existing competitor": "Ajouter à un concurrent existant",
+	"Applies retroactively — all existing and future citations from this domain will be classified under the selected competitor.":
+		"Rétroactif — toutes les citations existantes et futures de ce domaine seront attribuées au concurrent sélectionné.",
+	"Or create new competitor:": "Ou créez un nouveau concurrent :",
+	"Competitor name": "Nom du concurrent",
+	Add: "Ajouter",
 	// @@END
 };

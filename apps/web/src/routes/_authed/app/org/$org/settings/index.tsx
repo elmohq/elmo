@@ -1,4 +1,3 @@
-import { useI18n } from "@/lib/i18n";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { normalizeSlug, ORG_URL_PREFIX } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
@@ -7,6 +6,7 @@ import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import { SlugField } from "@/components/slug-field";
 import { useOrganization, useOrganizationsChanged } from "@/hooks/use-organizations";
+import { useI18n } from "@/lib/i18n";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updateOrganizationFn } from "@/server/organizations";

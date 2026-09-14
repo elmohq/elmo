@@ -3,6 +3,7 @@
  * mention rates next to the brand's own, with the brand's overall share, a
  * donut of top competitors, and share of voice over time.
  */
+
 import { createFileRoute } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -20,6 +21,7 @@ import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
 import { useSiteIcons } from "@/hooks/use-site-icons";
+import { useI18n } from "@/lib/i18n";
 import { pageHead } from "@/lib/route-head";
 import { shareOfVoiceColorMap } from "@/lib/share-of-voice-palette";
 
@@ -28,8 +30,6 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/share-o
 	head: pageHead({ description: "See how often AI engines mention you versus your competitors." }),
 	component: ShareOfVoicePage,
 });
-
-const formatPct = (share: number) => `${Math.round(share * 100)}%`;
 
 /** Latest non-null point of the share-of-voice trend — the value the line ends on. */
 function currentShareOf(series: Array<{ share: number | null }>): number | null {
@@ -41,13 +41,15 @@ function currentShareOf(series: Array<{ share: number | null }>): number | null 
 }
 
 const TIPS = {
-	mentions: "Number of runs in which this brand was mentioned in the AI answer.",
-	share: "This brand's share of all brand + competitor mentions.",
-	prompts: "Number of distinct prompts this brand appeared in.",
+	mentions: /* i18n */ "Number of runs in which this brand was mentioned in the AI answer.",
+	share: /* i18n */ "This brand's share of all brand + competitor mentions.",
+	prompts: /* i18n */ "Number of distinct prompts this brand appeared in.",
 };
 
 function ShareOfVoicePage() {
 	const { brandId } = Route.useRouteContext();
+	const { t, tn, n, p } = useI18n();
+	const formatPct = (share: number) => p(Math.round(share * 100));
 	const { model, lookback, tags } = useListFilters();
 
 	const { brand } = useBrand(brandId);
@@ -63,10 +65,11 @@ function ShareOfVoicePage() {
 	const infoContent = (
 		<>
 			<p className="mb-2">
-				Share of voice is how often each brand is mentioned in the AI answers to your prompts. Mentions are counted per
-				run, so the brand and competitor figures use the same unit and are directly comparable.
+				{t(
+					"Share of voice is how often each brand is mentioned in the AI answers to your prompts. Mentions are counted per run, so the brand and competitor figures use the same unit and are directly comparable.",
+				)}
 			</p>
-			<p>Competitors are the ones you track in settings. Switch the model filter to compare engines.</p>
+			<p>{t("Competitors are the ones you track in settings. Switch the model filter to compare engines.")}</p>
 		</>
 	);
 
@@ -92,7 +95,7 @@ function ShareOfVoicePage() {
 			<Card>
 				<CardContent className="pt-6">
 					<div className="text-muted-foreground text-center py-8">
-						No mention data yet for the selected filters. Mentions appear once your prompts have been run.
+						{t("No mention data yet for the selected filters. Mentions appear once your prompts have been run.")}
 					</div>
 				</CardContent>
 			</Card>
@@ -105,16 +108,21 @@ function ShareOfVoicePage() {
 				<div className="grid gap-6 lg:grid-cols-2">
 					<Card>
 						<CardHeader>
-							<CardTitle>Share of Voice</CardTitle>
+							<CardTitle>{t("Share of Voice")}</CardTitle>
 						</CardHeader>
 						<CardContent className="flex items-center justify-between gap-4">
 							<div>
 								<div className="text-3xl sm:text-4xl font-bold tabular-nums">
-									{currentShare !== null ? `${currentShare}%` : "—"}
+									{currentShare !== null ? p(currentShare) : "—"}
 								</div>
 								<p className="text-sm text-muted-foreground mt-1 max-w-[18rem]">
-									{data.brandName} across {data.totalRuns.toLocaleString()} runs
-									{data.entries.length > 1 ? ` and ${data.entries.length - 1} competitors` : ""}.
+									{tn(data.totalRuns, "{brand} across {count} run", "{brand} across {count} runs", {
+										brand: data.brandName,
+									})}
+									{data.entries.length > 1
+										? tn(data.entries.length - 1, " and {count} competitor", " and {count} competitors")
+										: ""}
+									.
 								</p>
 							</div>
 							<ShareOfVoiceDonut entries={data.entries} domainFor={domainFor} />
@@ -123,12 +131,12 @@ function ShareOfVoicePage() {
 
 					<Card>
 						<CardHeader>
-							<CardTitle>Share of Voice Trends</CardTitle>
+							<CardTitle>{t("Share of Voice Trends")}</CardTitle>
 						</CardHeader>
 						<CardContent>
 							<TrendChart
 								data={data.shareTimeSeries.map((p) => ({ date: p.date, value: p.share }))}
-								label="Share of Voice"
+								label={t("Share of Voice")}
 								color="#2563eb"
 								className="aspect-auto h-[180px] w-full"
 							/>
@@ -138,14 +146,14 @@ function ShareOfVoicePage() {
 
 				<Card>
 					<CardHeader>
-						<CardTitle>Share of Voice Leaderboard</CardTitle>
+						<CardTitle>{t("Share of Voice Leaderboard")}</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<Table>
 							<TableHeader>
 								<TableRow>
 									<TableHead className="w-10">#</TableHead>
-									<TableHead>Brand</TableHead>
+									<TableHead>{t("Brand")}</TableHead>
 									<TableHead className="text-right">
 										<ColHead label="Mentions" tip={TIPS.mentions} right />
 									</TableHead>
@@ -167,12 +175,12 @@ function ShareOfVoicePage() {
 												{e.name}
 												{e.isBrand && (
 													<Badge variant="secondary" className="text-xs">
-														You
+														{t("You")}
 													</Badge>
 												)}
 											</span>
 										</TableCell>
-										<TableCell className="text-right tabular-nums">{e.mentions.toLocaleString()}</TableCell>
+										<TableCell className="text-right tabular-nums">{n(e.mentions)}</TableCell>
 										<TableCell>
 											<div className="flex items-center gap-2">
 												<div className="bg-muted h-2 w-full overflow-hidden rounded-full">
@@ -202,8 +210,8 @@ function ShareOfVoicePage() {
 
 	return (
 		<PageHeader
-			title="Share of Voice"
-			subtitle="How often AI engines mention you versus your competitors."
+			title={t("Share of Voice")}
+			subtitle={t("How often AI engines mention you versus your competitors.")}
 			infoContent={infoContent}
 		>
 			<FilterSection>

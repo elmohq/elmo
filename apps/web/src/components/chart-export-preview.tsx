@@ -1,9 +1,9 @@
-import { useI18n } from "@/lib/i18n";
 import { DEFAULT_APP_ICON, DEFAULT_APP_NAME } from "@workspace/config/constants";
 import type { Competitor } from "@workspace/lib/db/schema";
 import { Badge } from "@workspace/ui/components/badge";
 import type { ChartDataPoint, ChartSubject, LookbackPeriod } from "@/lib/chart-utils";
 import { getBadgeClassName, getBadgeVariant } from "@/lib/chart-utils";
+import { useI18n } from "@/lib/i18n";
 import { BaseChart } from "./base-chart";
 
 export interface ChartExportBranding {

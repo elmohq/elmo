@@ -17,8 +17,8 @@ import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
 import { useBrand } from "@/hooks/use-brands";
-import { useI18n } from "@/lib/i18n";
 import { getDefaultLookbackPeriod, type LookbackPeriod } from "@/lib/chart-utils";
+import { useI18n } from "@/lib/i18n";
 
 export { ALL_MODELS_VALUE, getAvailableModels } from "@/lib/model-filter";
 
@@ -155,7 +155,9 @@ export function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarge
 					</DropdownMenuRadioItem>
 					{groups.map((group) => (
 						<DropdownMenuGroup key={group.tier}>
-							<DropdownMenuLabel className="text-muted-foreground text-xs font-medium">{t(group.label)}</DropdownMenuLabel>
+							<DropdownMenuLabel className="text-muted-foreground text-xs font-medium">
+								{t(group.label)}
+							</DropdownMenuLabel>
 							{group.values.map((value) => (
 								<DropdownMenuRadioItem key={value} value={value} className="cursor-pointer gap-2">
 									{iconForModel(value)}

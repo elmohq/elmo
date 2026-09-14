@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { IconExternalLink, IconInfoCircle, IconSearch } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
@@ -36,6 +37,8 @@ export function TopUrlsCard({
 	brandIsCited: boolean;
 }) {
 	const brandParams = useBrandParams();
+	const { t, n, p } = useI18n();
+	const tr = t;
 	const [urlSearch, setUrlSearch] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string>("all");
 	const [selectedPageType, setSelectedPageType] = useState<string>("all");
@@ -66,22 +69,23 @@ export function TopUrlsCard({
 				<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 					<div className="space-y-1 min-w-0">
 						<CardTitle className="flex items-center gap-1.5">
-							Top Cited URLs
+							{t("Top Cited URLs")}
 							<Tooltip>
 								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-sm font-normal">
 									<p className="mb-2">
-										The specific pages most frequently cited by AI models. Filter by category to focus on brand,
-										competitor, or other sources.
+										{t(
+											"The specific pages most frequently cited by AI models. Filter by category to focus on brand, competitor, or other sources.",
+										)}
 									</p>
 									<p>
-										<strong>Competitor</strong> domains are only those in your{" "}
+										{t("Competitor domains are only those in your")}{" "}
 										<Link
 											to="/app/org/$org/brand/$brand/settings/competitors"
 											params={brandParams}
 											className="underline"
 										>
-											tracked competitors list
+											{t("tracked competitors list")}
 										</Link>
 										.
 									</p>
@@ -89,18 +93,19 @@ export function TopUrlsCard({
 							</Tooltip>
 						</CardTitle>
 						<CardDescription>
-							Individual pages cited by LLMs
+							{t("Individual pages cited by LLMs")}
 							{brandIsCited && brandName && (
 								<>
 									{" "}
-									&mdash; {brandName} accounts for <strong>{brandShare}%</strong> of all citations
+									&mdash; {t("{brand} accounts for", { brand: brandName })} <strong>{p(brandShare)}</strong>{" "}
+									{t("of all citations")}
 								</>
 							)}
 						</CardDescription>
 					</div>
 					<InputGroup className="h-8 shrink-0 sm:w-48">
 						<InputGroupInput
-							placeholder="Search URLs..."
+							placeholder={t("Search URLs...")}
 							value={urlSearch}
 							onChange={(e) => {
 								setUrlSearch(e.target.value);
@@ -138,7 +143,7 @@ export function TopUrlsCard({
 								}}
 								className={`px-2 py-0.5 rounded text-[11px] cursor-pointer transition-colors ${selectedPageType === t.key ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
 							>
-								{t.label}
+								{tr(t.label)}
 							</button>
 						))}
 					</div>
@@ -164,11 +169,11 @@ export function TopUrlsCard({
 										<Badge
 											className={`text-[10px] px-1.5 py-0 h-[18px] border-0 shadow-none ${getCategoryColorClass(citation.category)}`}
 										>
-											{getCategoryLabel(citation.category)}
+											{t(getCategoryLabel(citation.category))}
 										</Badge>
 										{citation.isNew && (
 											<Badge className="text-[10px] px-1.5 py-0 h-[18px] border-0 shadow-none bg-green-100 text-green-700">
-												NEW
+												{t("NEW")}
 											</Badge>
 										)}
 										<span className="text-sm font-medium truncate group-hover:underline">
@@ -184,10 +189,10 @@ export function TopUrlsCard({
 									{citation.avgPosition != null && (
 										<Tooltip>
 											<TooltipTrigger render={<span className="text-[11px] text-muted-foreground tabular-nums" />}>
-												avg {citation.avgPosition.toFixed(1)}
+												{t("avg {position}", { position: n(citation.avgPosition, { maximumFractionDigits: 1, minimumFractionDigits: 1 }) })}
 											</TooltipTrigger>
 											<TooltipContent className="text-xs">
-												Average citation position (lower = cited earlier in the response)
+												{t("Average citation position (lower = cited earlier in the response)")}
 											</TooltipContent>
 										</Tooltip>
 									)}
@@ -195,10 +200,10 @@ export function TopUrlsCard({
 										<TooltipTrigger
 											render={<span className="text-sm font-semibold tabular-nums min-w-[2rem] text-right" />}
 										>
-											{citation.count.toLocaleString()}
+											{n(citation.count)}
 										</TooltipTrigger>
 										<TooltipContent className="text-xs">
-											Total times this URL was cited across all prompt evaluations
+											{t("Total times this URL was cited across all prompt evaluations")}
 										</TooltipContent>
 									</Tooltip>
 									<IconExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -207,7 +212,7 @@ export function TopUrlsCard({
 						);
 					})}
 					{filteredUrls.length === 0 && (
-						<p className="text-sm text-muted-foreground text-center pt-8 pb-4">No URLs match the current filters.</p>
+						<p className="text-sm text-muted-foreground text-center pt-8 pb-4">{t("No URLs match the current filters.")}</p>
 					)}
 				</div>
 				<ListPagination page={page} pageSize={maxUrls} totalItems={totalItems} onPageChange={setPage} />

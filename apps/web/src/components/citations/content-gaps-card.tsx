@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { IconAlertTriangle, IconInfoCircle } from "@tabler/icons-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -13,21 +14,23 @@ export function ContentGapsCard({
 	prompts: Array<{ id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }>;
 }) {
 	const { page, setPage, pageItems, totalItems } = usePagedList(prompts, PAGE_SIZE);
+	const { t, tn } = useI18n();
 
 	return (
 		<Card className="h-full flex flex-col">
 			<CardHeader>
 				<CardTitle className="flex items-center gap-1.5">
-					Content Gaps
+					{t("Content Gaps")}
 					<Tooltip>
 						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent className="max-w-xs text-sm font-normal">
-							Prompts where competitors are cited but your brand isn&apos;t — opportunities to improve your citation
-							presence.
+							{t(
+								"Prompts where competitors are cited but your brand isn't — opportunities to improve your citation presence.",
+							)}
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>
-				<CardDescription>Prompts where competitors are cited but your brand isn&apos;t</CardDescription>
+				<CardDescription>{t("Prompts where competitors are cited but your brand isn't")}</CardDescription>
 			</CardHeader>
 			<Separator />
 			<CardContent className="flex-1 flex flex-col">
@@ -44,9 +47,8 @@ export function ContentGapsCard({
 									</span>
 								</div>
 								<p className="text-xs text-muted-foreground mt-0.5">
-									{prompt.uniqueCompetitors} {prompt.uniqueCompetitors === 1 ? "competitor" : "competitors"} cited{" "}
-									{prompt.competitorCitationCount} {prompt.competitorCitationCount === 1 ? "time" : "times"} &mdash;
-									your brand cited 0 times
+									{tn(prompt.uniqueCompetitors, "{count} competitor cited", "{count} competitors cited")}{" "}
+									{tn(prompt.competitorCitationCount, "{count} time", "{count} times")} &mdash; {t("your brand cited 0 times")}
 								</p>
 							</div>
 						</BrandPromptLink>

@@ -9,7 +9,6 @@
  * exists, to avoid account enumeration.
  */
 
-import { translate, useI18n } from "@/lib/i18n";
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
@@ -19,6 +18,7 @@ import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
+import { translate, useI18n } from "@/lib/i18n";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/auth/forgot-password")({

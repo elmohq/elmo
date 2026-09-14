@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { useState } from "react";
 import { SiteIcon } from "@/components/site-icon";
 import { useBrand } from "@/hooks/use-brands";
+import { useI18n } from "@/lib/i18n";
 import { addDomainToBrandFn, addDomainToCompetitorFn, createCompetitorFromDomainFn } from "@/server/brands";
 
 export function TrackDomainPopover({
@@ -24,6 +25,7 @@ export function TrackDomainPopover({
 	onAdded?: () => void;
 }) {
 	const { brand } = useBrand(brandId);
+	const { t } = useI18n();
 	const [open, setOpen] = useState(false);
 	const [newName, setNewName] = useState("");
 	const [saving, setSaving] = useState(false);
@@ -40,7 +42,7 @@ export function TrackDomainPopover({
 
 	const handleError = (e: unknown) => {
 		setSaving(false);
-		setError("Something went wrong. Please try again.");
+		setError(t("Something went wrong. Please try again."));
 		Sentry.captureException(e);
 	};
 
@@ -94,7 +96,7 @@ export function TrackDomainPopover({
 					<button
 						type="button"
 						className="shrink-0 p-1 rounded hover:bg-muted cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
-						title={`Track ${domain}`}
+						title={t("Track {domain}", { domain })}
 					/>
 				}
 			>
@@ -103,19 +105,20 @@ export function TrackDomainPopover({
 			<PopoverContent className="w-72 p-3" align="end">
 				<div className="space-y-3">
 					<p className="text-xs font-medium">
-						Track <strong>{domain}</strong>
+						{t("Track")} <strong>{domain}</strong>
 					</p>
 
 					{error && <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">{error}</p>}
 
 					<div className="space-y-1">
 						<div className="flex items-center gap-1">
-							<p className="text-[11px] text-muted-foreground">Add as brand domain</p>
+							<p className="text-[11px] text-muted-foreground">{t("Add as brand domain")}</p>
 							<Tooltip>
 								<TooltipTrigger render={<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-xs font-normal">
-									Applies <strong>retroactively</strong> &mdash; all existing and future citations from this domain will
-									be classified as your brand.
+									{t(
+										"Applies retroactively — all existing and future citations from this domain will be classified as your brand.",
+									)}
 								</TooltipContent>
 							</Tooltip>
 						</div>
@@ -126,19 +129,20 @@ export function TrackDomainPopover({
 							className="flex w-full items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
 						>
 							<SiteIcon domain={brand?.website} size="sm" />
-							{brandName || "My brand"}
+							{brandName || t("My brand")}
 						</button>
 					</div>
 
 					{competitors.length > 0 && (
 						<div className="space-y-1">
 							<div className="flex items-center gap-1">
-								<p className="text-[11px] text-muted-foreground">Add to existing competitor</p>
+								<p className="text-[11px] text-muted-foreground">{t("Add to existing competitor")}</p>
 								<Tooltip>
 									<TooltipTrigger render={<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />} />
 									<TooltipContent className="max-w-xs text-xs font-normal">
-										Applies <strong>retroactively</strong> &mdash; all existing and future citations from this domain
-										will be classified under the selected competitor.
+										{t(
+											"Applies retroactively — all existing and future citations from this domain will be classified under the selected competitor.",
+										)}
 									</TooltipContent>
 								</Tooltip>
 							</div>
@@ -160,12 +164,12 @@ export function TrackDomainPopover({
 					)}
 
 					<div className="space-y-1.5">
-						<p className="text-[11px] text-muted-foreground">Or create new competitor:</p>
+						<p className="text-[11px] text-muted-foreground">{t("Or create new competitor:")}</p>
 						<div className="flex gap-1.5">
 							<Input
 								value={newName}
 								onChange={(e) => setNewName(e.target.value)}
-								placeholder="Competitor name"
+								placeholder={t("Competitor name")}
 								className="h-7 text-xs"
 								onKeyDown={(e) => {
 									if (e.key === "Enter") {
@@ -181,7 +185,7 @@ export function TrackDomainPopover({
 								disabled={saving || !newName.trim()}
 								className="h-7 px-2 text-xs cursor-pointer shrink-0"
 							>
-								Add
+								{t("Add")}
 							</Button>
 						</div>
 					</div>

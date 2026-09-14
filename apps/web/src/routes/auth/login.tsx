@@ -7,7 +7,6 @@
  * Whitelabel mode: auto-redirects to Auth0 SSO (no form shown).
  */
 
-import { translate, useI18n } from "@/lib/i18n";
 import { IconBrandGoogle, IconInfoCircle } from "@tabler/icons-react";
 import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
@@ -22,6 +21,7 @@ import { z } from "zod";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
+import { translate, useI18n } from "@/lib/i18n";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 

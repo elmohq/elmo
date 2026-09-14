@@ -5,6 +5,7 @@ import {
 	type CitationCategory,
 	PAGE_TYPE_CONFIG,
 } from "@/lib/domain-categories";
+import { useI18n } from "@/lib/i18n";
 
 export const getCategoryLabel = (category: string) => CATEGORY_CONFIG[category as CitationCategory]?.label ?? category;
 
@@ -23,13 +24,14 @@ export const formatUrlForDisplay = (url: string) => {
 	return displayUrl;
 };
 
+/** Reads as "this {period}" / "the past {period}" — pass the matching phrase key. */
 export function formatPeriodLabel(days: number): string {
-	if (days === 1) return "24 hours";
-	if (days === 7) return "week";
-	if (days === 14) return "2 weeks";
-	if (days === 30) return "month";
-	if (days === 60) return "2 months";
-	if (days === 90) return "3 months";
+	if (days === 1) return /* i18n */ "24 hours";
+	if (days === 7) return /* i18n */ "week";
+	if (days === 14) return /* i18n */ "2 weeks";
+	if (days === 30) return /* i18n */ "month";
+	if (days === 60) return /* i18n */ "2 months";
+	if (days === 90) return /* i18n */ "3 months";
 	return `${days} days`;
 }
 
@@ -72,8 +74,9 @@ export function UnderlineTabs<T extends string>({
 	activeKey: T;
 	onSelect: (key: T) => void;
 }) {
+	const { t } = useI18n();
 	return (
-		<nav className="-mb-px flex gap-4 overflow-x-auto border-b border-border" aria-label="Tabs">
+		<nav className="-mb-px flex gap-4 overflow-x-auto border-b border-border" aria-label={t("Tabs")}>
 			{tabs.map(({ key, label }) => (
 				<button
 					key={key}
@@ -85,7 +88,7 @@ export function UnderlineTabs<T extends string>({
 							: "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
 					}`}
 				>
-					{label}
+					{t(label)}
 				</button>
 			))}
 		</nav>

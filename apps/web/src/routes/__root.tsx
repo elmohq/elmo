@@ -10,8 +10,8 @@ import { DEFAULT_APP_ICON, ELMO_THEME_COLOR } from "@workspace/config/constants"
 import type { MissingEnvVar } from "@workspace/config/env";
 import type { DeploymentMode } from "@workspace/config/types";
 import { useEffect } from "react";
-import { usesWordmarkFont } from "@/components/logo";
 import { LanguageToggle } from "@/components/language-toggle";
+import { usesWordmarkFont } from "@/components/logo";
 import MissingEnvPage from "@/components/missing-env-page";
 import { NotFoundPage } from "@/components/not-found-page";
 import queryDevtools from "@/integrations/tanstack-query/devtools";

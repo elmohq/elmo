@@ -20,7 +20,10 @@ export function isLocale(value: unknown): value is Locale {
 }
 
 /** Cookie wins; otherwise the browser's Accept-Language preference. */
-export function resolveLocale(cookieHeader: string | null | undefined, acceptLanguage: string | null | undefined): Locale {
+export function resolveLocale(
+	cookieHeader: string | null | undefined,
+	acceptLanguage: string | null | undefined,
+): Locale {
 	const match = cookieHeader?.match(new RegExp(`(?:^|;\\s*)${LOCALE_COOKIE}=([^;]+)`));
 	if (isLocale(match?.[1])) return match[1];
 	return acceptLanguage?.trim().toLowerCase().startsWith("fr") ? "fr" : "en";
@@ -36,11 +39,19 @@ export function formatNumber(locale: Locale, value: number, options?: Intl.Numbe
 	return value.toLocaleString(INTL_TAG[locale], options);
 }
 
-export function formatDate(locale: Locale, value: Date | string | number, options?: Intl.DateTimeFormatOptions): string {
+export function formatDate(
+	locale: Locale,
+	value: Date | string | number,
+	options?: Intl.DateTimeFormatOptions,
+): string {
 	return new Date(value).toLocaleDateString(INTL_TAG[locale], options);
 }
 
-export function formatDateTime(locale: Locale, value: Date | string | number, options?: Intl.DateTimeFormatOptions): string {
+export function formatDateTime(
+	locale: Locale,
+	value: Date | string | number,
+	options?: Intl.DateTimeFormatOptions,
+): string {
 	return new Date(value).toLocaleString(INTL_TAG[locale], options);
 }
 

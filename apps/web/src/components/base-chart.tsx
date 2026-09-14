@@ -1,4 +1,3 @@
-import { useI18n } from "@/lib/i18n";
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import type { Competitor } from "@workspace/lib/db/schema";
@@ -17,6 +16,7 @@ import {
 	type LookbackPeriod,
 	selectCompetitorsToDisplay,
 } from "@/lib/chart-utils";
+import { useI18n } from "@/lib/i18n";
 
 /** The brand's own line is the one people are looking for, so it carries more
  *  weight than the competitors it's plotted against. */

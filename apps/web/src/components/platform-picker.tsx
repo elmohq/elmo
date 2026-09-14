@@ -1,4 +1,3 @@
-import { useI18n } from "@/lib/i18n";
 import { getModelMeta } from "@workspace/config/models";
 import type { ProviderAccess } from "@workspace/lib/providers";
 import { projectMonthlyTargetCostUsd } from "@workspace/lib/usage";
@@ -6,6 +5,7 @@ import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { cn } from "@workspace/ui/lib/utils";
 import { type ReactNode, useId } from "react";
+import { useI18n } from "@/lib/i18n";
 
 export type PlatformOption = {
 	model: string;

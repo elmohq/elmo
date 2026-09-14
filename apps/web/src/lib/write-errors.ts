@@ -1,6 +1,6 @@
-import { useI18n } from "@/lib/i18n";
 import { useCallback } from "react";
 import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
+import { useI18n } from "@/lib/i18n";
 import { READ_ONLY_ERROR, READ_ONLY_MESSAGE, READ_ONLY_REFUSED } from "@/lib/read-only-errors";
 
 function isReadOnlyRefusal(message: string): boolean {

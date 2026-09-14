@@ -5,7 +5,6 @@
  * ?error=INVALID_TOKEN on a bad one.
  */
 
-import { translate, useI18n } from "@/lib/i18n";
 import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
@@ -17,6 +16,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
+import { translate, useI18n } from "@/lib/i18n";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/auth/reset-password")({
@@ -29,7 +29,10 @@ export const Route = createFileRoute("/auth/reset-password")({
 		return {
 			meta: [
 				{ title: buildTitle(translate(match.context?.locale ?? "en", "Choose a new password"), { appName }) },
-				{ name: "description", content: translate(match.context?.locale ?? "en", "Set a new password for your account.") },
+				{
+					name: "description",
+					content: translate(match.context?.locale ?? "en", "Set a new password for your account."),
+				},
 			],
 		};
 	},

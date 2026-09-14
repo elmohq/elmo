@@ -1,4 +1,3 @@
-import { useI18n } from "@/lib/i18n";
 import { createFileRoute, notFound, useRouter } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
@@ -8,6 +7,7 @@ import { Label } from "@workspace/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { useState } from "react";
 import { useOrganization } from "@/hooks/use-organizations";
+import { useI18n } from "@/lib/i18n";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
@@ -25,7 +25,11 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/members")({
 	component: TeamSettingsPage,
 });
 
-const ROLE_LABELS: Record<string, string> = { owner: /* i18n */ "Owner", admin: /* i18n */ "Admin", member: /* i18n */ "Member" };
+const ROLE_LABELS: Record<string, string> = {
+	owner: /* i18n */ "Owner",
+	admin: /* i18n */ "Admin",
+	member: /* i18n */ "Member",
+};
 
 function TeamSettingsPage() {
 	const { t, d } = useI18n();
@@ -149,9 +153,7 @@ function TeamSettingsPage() {
 							<div key={inv.id} className="flex items-center justify-between gap-3 p-3">
 								<div className="min-w-0">
 									<p className="truncate font-medium">{inv.email}</p>
-									<p className="text-sm text-muted-foreground">
-										{t("Expires {date}", { date: d(inv.expiresAt) })}
-									</p>
+									<p className="text-sm text-muted-foreground">{t("Expires {date}", { date: d(inv.expiresAt) })}</p>
 								</div>
 								<div className="flex shrink-0 items-center gap-3">
 									<Badge variant="secondary">{t(ROLE_LABELS[inv.role ?? "member"] ?? inv.role ?? "member")}</Badge>

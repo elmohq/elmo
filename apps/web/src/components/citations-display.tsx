@@ -67,14 +67,14 @@ function useCitationSections(citationData: CitationData) {
 
 	const urlSourceTabs = useMemo<{ key: string; label: string }[]>(
 		() => [
-			{ key: "all", label: "All Sources" },
+			{ key: "all", label: /* i18n */ "All Sources" },
 			...chartSourceCategories.map((c) => ({ key: c as string, label: CATEGORY_CONFIG[c].label })),
 		],
 		[chartSourceCategories],
 	);
 	const urlPageTypeTabs = useMemo<{ key: string; label: string }[]>(
 		() => [
-			{ key: "all", label: "All Page Types" },
+			{ key: "all", label: /* i18n */ "All Page Types" },
 			...chartPageTypes.map((p) => ({ key: p as string, label: PAGE_TYPE_CONFIG[p].label })),
 		],
 		[chartPageTypes],
@@ -137,8 +137,8 @@ export function CitationsDisplay({
 			{/* Citation Categories over time */}
 			{citationData.citationTimeSeries && citationData.citationTimeSeries.length > 0 && (
 				<TrendAreaChart
-					title="Citation Categories"
-					tooltip="Share of citations by source category over time, as a percentage of all citations each day. Smoothed to account for staggered prompt schedules; Google AI Mode search/shopping are excluded (see the Google Shopping section)."
+					title={/* i18n */ "Citation Categories"}
+					tooltip={/* i18n */ "Share of citations by source category over time, as a percentage of all citations each day. Smoothed to account for staggered prompt schedules; Google AI Mode search/shopping are excluded (see the Google Shopping section)."}
 					data={(citationData.citationTimeSeries ?? []) as unknown as Array<Record<string, number | string>>}
 					keys={chartSourceCategories}
 					meta={CATEGORY_META}
@@ -148,8 +148,8 @@ export function CitationsDisplay({
 			{/* Citation Page Types over time */}
 			{citationData.pageTypeTimeSeries && citationData.pageTypeTimeSeries.length > 0 && (
 				<TrendAreaChart
-					title="Citation Page Types"
-					tooltip="Share of citations by page type over time — what kind of page each citation points to, inferred from the URL and title."
+					title={/* i18n */ "Citation Page Types"}
+					tooltip={/* i18n */ "Share of citations by page type over time — what kind of page each citation points to, inferred from the URL and title."}
 					data={(citationData.pageTypeTimeSeries ?? []) as unknown as Array<Record<string, number | string>>}
 					keys={chartPageTypes}
 					meta={PAGE_TYPE_META}

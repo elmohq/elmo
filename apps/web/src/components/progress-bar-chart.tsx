@@ -1,8 +1,8 @@
-import { useI18n } from "@/lib/i18n";
 import { getModelMeta, KNOWN_MODELS } from "@workspace/config/models";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import React from "react";
+import { useI18n } from "@/lib/i18n";
 
 export type ProgressBarItem = {
 	label: string;

@@ -1,4 +1,3 @@
-import { useI18n } from "@/lib/i18n";
 import { useNavigate } from "@tanstack/react-router";
 import { brandSegment } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
@@ -9,6 +8,7 @@ import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
 import { useOrganizationsChanged } from "@/hooks/use-organizations";
 import { validateWebsiteUrl } from "@/lib/brand-website";
+import { useI18n } from "@/lib/i18n";
 import { trackEvent } from "@/lib/posthog";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { createBrandFn } from "@/server/brands";
@@ -96,8 +96,11 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 	}
 
 	return (
-		<FullPageCard title={t("Set up {name}", { name: brandName })}
-			subtitle={t("Configure your brand to get started")} showBackButton={true}>
+		<FullPageCard
+			title={t("Set up {name}", { name: brandName })}
+			subtitle={t("Configure your brand to get started")}
+			showBackButton={true}
+		>
 			<form action={handleWebsiteSubmit} className="space-y-4">
 				<div className="space-y-2">
 					<Label htmlFor="website">{t("Website")}</Label>

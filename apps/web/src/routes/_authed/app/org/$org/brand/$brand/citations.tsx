@@ -12,6 +12,7 @@ import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { useBrandParams } from "@/hooks/use-route-params";
 import { getDaysFromLookback } from "@/lib/chart-utils";
+import { useI18n } from "@/lib/i18n";
 import { pageHead } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/citations")({
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/citatio
 
 function CitationsPage() {
 	const brandParams = useBrandParams();
+	const { t } = useI18n();
 	const { brandId } = Route.useRouteContext();
 	const queryClient = useQueryClient();
 
@@ -46,15 +48,16 @@ function CitationsPage() {
 	const infoContent = (
 		<>
 			<p className="mb-2">
-				Citations are the links and sources that AI models include in their responses when answering your prompts. They
-				show which websites the AI considers authoritative or relevant to your topics.
+				{t(
+					"Citations are the links and sources that AI models include in their responses when answering your prompts. They show which websites the AI considers authoritative or relevant to your topics.",
+				)}
 			</p>
 			<p>
-				<strong>Competitor</strong> domains are only those you&apos;ve added to your{" "}
+				{t("Competitor domains are only those you've added to your")}{" "}
 				<Link to="/app/org/$org/brand/$brand/settings/competitors" params={brandParams} className="underline">
-					tracked competitors list
+					{t("tracked competitors list")}
 				</Link>
-				. Other domains appear under their detected category (Google, Social Media, Institutional, or Other).
+				{t(". Other domains appear under their detected category (Google, Social Media, Institutional, or Other).")}
 			</p>
 		</>
 	);
@@ -63,8 +66,8 @@ function CitationsPage() {
 
 	return (
 		<PageHeader
-			title="Citations"
-			subtitle="See which sources LLMs cite when responding to your prompts."
+			title={t("Citations")}
+			subtitle={t("See which sources LLMs cite when responding to your prompts.")}
 			infoContent={infoContent}
 		>
 			<FilteredListShell
@@ -92,19 +95,19 @@ function CitationsPage() {
 					<Card>
 						<CardContent className="pt-6">
 							<div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
-								Failed to load citation data. Please try again.
+								{t("Failed to load citation data. Please try again.")}
 							</div>
 						</CardContent>
 					</Card>
 				}
 				totalCount={citationData?.totalCitations}
-				noMatchesTitle="No citations found for the selected filters."
-				noMatchesDescription="Try adjusting your filters or time period."
+				noMatchesTitle={t("No citations found for the selected filters.")}
+				noMatchesDescription={t("Try adjusting your filters or time period.")}
 				emptyState={
 					<Card>
 						<CardContent className="pt-6">
 							<div className="text-muted-foreground text-center py-8">
-								No citations found. Citations are only available from prompts evaluated with web search enabled.
+								{t("No citations found. Citations are only available from prompts evaluated with web search enabled.")}
 							</div>
 						</CardContent>
 					</Card>
