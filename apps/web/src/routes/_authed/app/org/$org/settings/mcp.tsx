@@ -10,6 +10,7 @@ import { Badge } from "@workspace/ui/components/badge";
 import { Card } from "@workspace/ui/components/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
+import type { ReactNode } from "react";
 import { CodeBlock, InlineCode } from "@/components/code-block";
 import { CopyButton } from "@/components/copy-button";
 import { useAppOrigin } from "@/hooks/use-app-origin";
@@ -36,37 +37,122 @@ function clientId(appName: string): string {
 	return slug || "mcp";
 }
 
-function claudeCodeSnippet(id: string, endpoint: string): string {
-	return `claude mcp add --transport http ${id} ${endpoint} \\\n  --header "Authorization: Bearer ${KEY_PLACEHOLDER}"`;
+function json(value: unknown): string {
+	return JSON.stringify(value, null, 2);
 }
 
-function jsonConfigSnippet(id: string, endpoint: string): string {
-	return JSON.stringify(
-		{
-			mcpServers: {
-				[id]: { url: endpoint, headers: { Authorization: `Bearer ${KEY_PLACEHOLDER}` } },
-			},
-		},
-		null,
-		2,
-	);
+interface ClientSnippet {
+	note?: ReactNode;
+	code: string;
 }
 
-function openCodeSnippet(id: string, endpoint: string): string {
-	return JSON.stringify(
+interface ClientDocs {
+	value: string;
+	label: string;
+	signIn: ClientSnippet;
+	apiKey: ClientSnippet;
+}
+
+function clientDocs(id: string, endpoint: string): ClientDocs[] {
+	const bearer = { Authorization: `Bearer ${KEY_PLACEHOLDER}` };
+	const keyEnvVar = `${id.toUpperCase().replace(/-/g, "_")}_API_KEY`;
+
+	return [
 		{
-			$schema: "https://opencode.ai/config.json",
-			mcp: {
-				[id]: {
-					type: "remote",
-					url: endpoint,
-					enabled: true,
-					headers: { Authorization: `Bearer ${KEY_PLACEHOLDER}` },
-				},
+			value: "claude-code",
+			label: "Claude Code",
+			signIn: {
+				note: (
+					<>
+						Then run <InlineCode>/mcp</InlineCode> and choose Authenticate.
+					</>
+				),
+				code: `claude mcp add --transport http ${id} ${endpoint}`,
+			},
+			apiKey: {
+				code: `claude mcp add --transport http ${id} ${endpoint} \\\n  --header "Authorization: Bearer ${KEY_PLACEHOLDER}"`,
 			},
 		},
-		null,
-		2,
+		{
+			value: "codex",
+			label: "Codex",
+			signIn: { code: `codex mcp add ${id} --url ${endpoint}\ncodex mcp login ${id}` },
+			apiKey: {
+				note: "Codex reads the key from the environment rather than the config file.",
+				code: `codex mcp add ${id} --url ${endpoint} \\\n  --bearer-token-env-var ${keyEnvVar}`,
+			},
+		},
+		{
+			value: "cursor",
+			label: "Cursor",
+			signIn: {
+				note: (
+					<>
+						In <InlineCode>~/.cursor/mcp.json</InlineCode>. Cursor shows the server as needing login; sign in from
+						there. Older Cursor releases send a callback this deployment can't accept, so use a key if signing in fails.
+					</>
+				),
+				code: json({ mcpServers: { [id]: { url: endpoint } } }),
+			},
+			apiKey: { code: json({ mcpServers: { [id]: { url: endpoint, headers: bearer } } }) },
+		},
+		{
+			value: "vs-code",
+			label: "VS Code",
+			signIn: {
+				note: (
+					<>
+						Or put it under <InlineCode>servers</InlineCode> in <InlineCode>mcp.json</InlineCode>. VS Code asks you to
+						sign in the first time it starts the server.
+					</>
+				),
+				code: `code --add-mcp '${JSON.stringify({ name: id, type: "http", url: endpoint })}'`,
+			},
+			apiKey: {
+				note: (
+					<>
+						In <InlineCode>mcp.json</InlineCode>.
+					</>
+				),
+				code: json({ servers: { [id]: { type: "http", url: endpoint, headers: bearer } } }),
+			},
+		},
+		{
+			value: "opencode",
+			label: "OpenCode",
+			signIn: {
+				note: (
+					<>
+						In <InlineCode>opencode.json</InlineCode>, then <InlineCode>opencode mcp auth {id}</InlineCode>.
+					</>
+				),
+				code: json({
+					$schema: "https://opencode.ai/config.json",
+					mcp: { [id]: { type: "remote", url: endpoint, enabled: true } },
+				}),
+			},
+			apiKey: {
+				note: (
+					<>
+						In <InlineCode>opencode.json</InlineCode>.
+					</>
+				),
+				code: json({
+					$schema: "https://opencode.ai/config.json",
+					mcp: { [id]: { type: "remote", url: endpoint, enabled: true, headers: bearer } },
+				}),
+			},
+		},
+	];
+}
+
+function Snippet({ heading, snippet }: { heading: string; snippet: ClientSnippet }) {
+	return (
+		<div className="space-y-2">
+			<h3 className="text-sm font-medium">{heading}</h3>
+			{snippet.note && <p className="text-sm text-muted-foreground">{snippet.note}</p>}
+			<CodeBlock code={snippet.code} />
+		</div>
 	);
 }
 
@@ -79,6 +165,7 @@ function McpSettingsPage() {
 	const appName = branding?.name || DEFAULT_APP_NAME;
 	const endpoint = `${origin}${MCP_PATH}`;
 	const id = clientId(appName);
+	const clients = clientDocs(id, endpoint);
 
 	return (
 		<div className="max-w-4xl space-y-8">
@@ -93,16 +180,17 @@ function McpSettingsPage() {
 					<code className="rounded-md border bg-muted/40 px-2 py-1 font-mono text-sm">{endpoint}</code>
 					<CopyButton value={endpoint} />
 				</div>
-				<p className="text-sm text-muted-foreground">
-					Authenticate with <InlineCode>Authorization: Bearer {KEY_PLACEHOLDER}</InlineCode>, using a key from{" "}
+				<p className="max-w-2xl text-sm text-muted-foreground">
+					Give a client the endpoint and it opens a browser for you to sign in — there is no application to register
+					first, and the connection acts as you. A client that can't open a browser sends a key from{" "}
 					<Link
 						to="/app/org/$org/settings/api-keys"
 						params={orgLinkParams(organization)}
 						className="underline underline-offset-4"
 					>
 						API Keys
-					</Link>
-					.
+					</Link>{" "}
+					instead, which is also how you grant it <em>less</em> than your own access.
 				</p>
 			</div>
 
@@ -110,30 +198,24 @@ function McpSettingsPage() {
 				<div className="space-y-1">
 					<h2 className="text-lg font-semibold">Connect a client</h2>
 					<p className="text-sm text-muted-foreground">
-						Swap {KEY_PLACEHOLDER} for a key you issued, and keep it out of anything you commit.
+						Signing in needs nothing but the endpoint. For the key form, swap {KEY_PLACEHOLDER} for one you issued and
+						keep it out of anything you commit.
 					</p>
 				</div>
-				<Tabs defaultValue="claude-code">
+				<Tabs defaultValue={clients[0].value}>
 					<TabsList>
-						<TabsTrigger value="claude-code">Claude Code</TabsTrigger>
-						<TabsTrigger value="opencode">OpenCode</TabsTrigger>
-						<TabsTrigger value="json">Cursor</TabsTrigger>
+						{clients.map((client) => (
+							<TabsTrigger key={client.value} value={client.value}>
+								{client.label}
+							</TabsTrigger>
+						))}
 					</TabsList>
-					<TabsContent value="claude-code" className="space-y-2 pt-2">
-						<CodeBlock code={claudeCodeSnippet(id, endpoint)} />
-					</TabsContent>
-					<TabsContent value="opencode" className="space-y-2 pt-2">
-						<p className="text-sm text-muted-foreground">
-							In <InlineCode>opencode.json</InlineCode>.
-						</p>
-						<CodeBlock code={openCodeSnippet(id, endpoint)} />
-					</TabsContent>
-					<TabsContent value="json" className="space-y-2 pt-2">
-						<p className="text-sm text-muted-foreground">
-							Cursor reads <InlineCode>~/.cursor/mcp.json</InlineCode>; most other clients take the same shape.
-						</p>
-						<CodeBlock code={jsonConfigSnippet(id, endpoint)} />
-					</TabsContent>
+					{clients.map((client) => (
+						<TabsContent key={client.value} value={client.value} className="space-y-5 pt-2">
+							<Snippet heading="Sign in" snippet={client.signIn} />
+							<Snippet heading="Or send an API key" snippet={client.apiKey} />
+						</TabsContent>
+					))}
 				</Tabs>
 			</section>
 
@@ -141,8 +223,8 @@ function McpSettingsPage() {
 				<div className="space-y-1">
 					<h2 className="text-lg font-semibold">Tools</h2>
 					<p className="text-sm text-muted-foreground">
-						A connection is only offered the tools its key holds the scope for, so a client is never shown something it
-						would then be refused.
+						A key is only offered the tools its scopes allow, so a client is never shown something it would then be
+						refused. A connection you signed in from acts as you and reaches everything you can.
 						{readOnlyDeployment &&
 							" This deployment is read-only, so the tools that write are withheld from every key."}
 					</p>
@@ -163,7 +245,7 @@ function McpSettingsPage() {
 									<TableCell>{tool.title}</TableCell>
 									<TableCell>
 										{tool.scopes.length === 0 ? (
-											<span className="text-muted-foreground">Any key</span>
+											<span className="text-muted-foreground">Any connection</span>
 										) : (
 											<div className="flex flex-wrap gap-1">
 												{tool.scopes.map((scope) => (

@@ -1,5 +1,6 @@
 ---
 "@workspace/lib": patch
+"@workspace/web": patch
 "@workspace/docs": patch
 ---
 
