@@ -16,6 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/component
 import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
+import { useBrand } from "@/hooks/use-brands";
+import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
 import { LOOKBACK_PERIODS, type LookbackPeriod } from "@/lib/lookback";
 
 export { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
@@ -27,7 +29,7 @@ import { ALL_MODELS_VALUE, iconIdForModelFilter, labelForModelFilter } from "@wo
 // others, and write through `useFilterNavigate` (replace, no scroll reset).
 // The router commits search updates synchronously within the interaction, so
 // the URL itself is the authoritative filter state.
-import { coerceLookback, joinTags, splitTags, useDefaultLookback, useFilterNavigate } from "@/hooks/use-list-filters";
+import { coerceLookback, joinTags, splitTags, useFilterNavigate } from "@/hooks/use-list-filters";
 import { getAvailableModels, groupTrackedTargets, type TrackedTarget } from "@/lib/model-filter";
 
 /** The model filter's trigger glyph. `all` is the no-filter sentinel; every
@@ -157,7 +159,8 @@ function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) 
 // ------------------------------------------------------------------
 
 function LookbackDropdown() {
-	const defaultLookback = useDefaultLookback();
+	const { data: brand } = useBrand();
+	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
 	const urlLookback = useSearch({ strict: false, select: (s) => s.lookback });
 	const setFilters = useFilterNavigate();
 	const selected = coerceLookback(urlLookback, defaultLookback);

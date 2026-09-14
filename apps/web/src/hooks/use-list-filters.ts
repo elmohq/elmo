@@ -1,8 +1,8 @@
-import { useMatches, useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 import { useCallback, useMemo } from "react";
 import { useBrand } from "@/hooks/use-brands";
-import { resolveDefaultLookback } from "@/lib/chart-utils";
+import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
 import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
 
 /** The shared dashboard filter params. Validated once at the `$brand` layout
@@ -66,19 +66,6 @@ export function useFilterNavigate() {
 	);
 }
 
-/** Shared by the dropdown and the data hooks so the label and query can't drift. */
-export function useDefaultLookback(): LookbackPeriod {
-	const { data: brand } = useBrand();
-	const matches = useMatches();
-	const routeIds = matches.map((match) => match.routeId);
-	// Joined because `matches` is a fresh array every render.
-	const routeKey = routeIds.join(" ");
-	return useMemo(
-		() => resolveDefaultLookback(routeKey ? routeKey.split(" ") : [], brand?.earliestDataDate),
-		[routeKey, brand?.earliestDataDate],
-	);
-}
-
 /** URL-persisted state for the standard dashboard filter set (search, tags,
  *  model, lookback). Page-specific keys (e.g. the fan-out `tab`) live in
  *  their own route's `validateSearch` instead.
@@ -88,7 +75,8 @@ export function useDefaultLookback(): LookbackPeriod {
  *  keep their own per-key `useSearch` selectors so a lookback click doesn't
  *  re-render the whole bar. */
 export function useListFilters() {
-	const defaultLookback = useDefaultLookback();
+	const { data: brand } = useBrand();
+	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
 
 	const urlFilters: BrandFilterSearch = useSearch({ strict: false });
 	const setFilters = useFilterNavigate();

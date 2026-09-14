@@ -2,7 +2,6 @@ import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { CITATION_CATEGORIES, type CitationCategory } from "@/lib/domain-categories";
 import type { LookbackPeriod } from "@/lib/lookback";
 import type { PerPromptDailyCitationStats, PerPromptVisibilityPoint } from "@/lib/postgres-read";
-import { QUERY_FANOUT_ROUTE_ID } from "@/lib/route-subject";
 
 /** Charts key a series by id and label it by name; nothing else about a brand is read. */
 export interface ChartSubject {
@@ -22,24 +21,6 @@ export function getDefaultLookbackPeriod(earliestDataDate: string | null | undef
 	const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
 
 	return diffInDays > 7 ? "1m" : "1w";
-}
-
-/** Query Fan-out reads a wider window: engines expose searches unevenly, so a
- *  month often holds too few queries to see a pattern in. */
-const ROUTE_LOOKBACK_DEFAULTS: Partial<Record<string, LookbackPeriod>> = {
-	[QUERY_FANOUT_ROUTE_ID]: "3m",
-};
-
-/** Matched routes come in outermost-first, so the deepest declaration wins. */
-export function resolveDefaultLookback(
-	routeIds: readonly string[],
-	earliestDataDate: string | null | undefined,
-): LookbackPeriod {
-	for (const routeId of [...routeIds].reverse()) {
-		const override = ROUTE_LOOKBACK_DEFAULTS[routeId];
-		if (override) return override;
-	}
-	return getDefaultLookbackPeriod(earliestDataDate);
 }
 
 export function getDaysFromLookback(lookback: LookbackPeriod): number {

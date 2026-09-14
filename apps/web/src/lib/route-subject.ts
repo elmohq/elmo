@@ -4,7 +4,6 @@ import type { FileRoutesById } from "@/routeTree.gen";
 // that quietly stops appearing.
 export const ORG_ROUTE_ID = "/_authed/app/org/$org" satisfies keyof FileRoutesById;
 export const BRAND_ROUTE_ID = "/_authed/app/org/$org/brand/$brand" satisfies keyof FileRoutesById;
-export const QUERY_FANOUT_ROUTE_ID = "/_authed/app/org/$org/brand/$brand/query-fan-out" satisfies keyof FileRoutesById;
 
 type LoaderDataOf<Id extends keyof FileRoutesById> = FileRoutesById[Id]["types"]["loaderData"];
 

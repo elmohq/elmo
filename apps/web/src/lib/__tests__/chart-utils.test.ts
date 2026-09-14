@@ -5,7 +5,6 @@ import {
 	generateDateRange,
 	getDaysFromLookback,
 	getDefaultLookbackPeriod,
-	resolveDefaultLookback,
 } from "@/lib/chart-utils";
 import { toRoundedPercentages } from "@/lib/domain-categories";
 import type { LookbackPeriod } from "@/lib/lookback";
@@ -20,34 +19,6 @@ describe("getDaysFromLookback", () => {
 		["all", 365 * 2],
 	])("maps %s to %i days", (lookback, days) => {
 		expect(getDaysFromLookback(lookback)).toBe(days);
-	});
-});
-
-describe("resolveDefaultLookback", () => {
-	const BRAND_ROUTE = "/_authed/app/org/$org/brand/$brand";
-	const FANOUT_ROUTE = `${BRAND_ROUTE}/query-fan-out`;
-	const lastWeek = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-
-	it("opens Query Fan-out on 3 months so sparse engine searches still read", () => {
-		expect(resolveDefaultLookback([BRAND_ROUTE, FANOUT_ROUTE], "2020-01-01")).toBe("3m");
-	});
-
-	it("keeps the wider window for a brand too new for the usual default", () => {
-		expect(resolveDefaultLookback([BRAND_ROUTE, FANOUT_ROUTE], lastWeek)).toBe("3m");
-	});
-
-	// Named individually: the wider window is meant for Query Fan-out alone, so
-	// every sibling dashboard is pinned against picking it up.
-	it.each(["", "/visibility", "/citations", "/share-of-voice", "/opportunities", "/prompts", "/prompts/$promptId"])(
-		"leaves %s on the brand-history default",
-		(suffix) => {
-			expect(resolveDefaultLookback([BRAND_ROUTE, `${BRAND_ROUTE}${suffix}`], "2020-01-01")).toBe("1m");
-			expect(resolveDefaultLookback([BRAND_ROUTE, `${BRAND_ROUTE}${suffix}`], lastWeek)).toBe("1w");
-		},
-	);
-
-	it("falls back to the brand-history default with no matched routes", () => {
-		expect(resolveDefaultLookback([], "2020-01-01")).toBe("1m");
 	});
 });
 
