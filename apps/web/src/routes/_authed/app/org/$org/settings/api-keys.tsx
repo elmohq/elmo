@@ -3,7 +3,7 @@
  * the api-key plugin's own membership check. This page just avoids showing a
  * form that would be refused.
  */
-import { IconAlertTriangle, IconBan, IconCircleCheck, IconKey, IconPlus } from "@tabler/icons-react";
+import { IconAlertTriangle, IconCircleCheck, IconKey, IconPlus, IconX } from "@tabler/icons-react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { orgLinkParams } from "@workspace/lib/app-urls";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
@@ -564,7 +564,7 @@ function RevokeButton({ onClick }: { onClick: () => void }) {
 						className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
 						onClick={onClick}
 					>
-						<IconBan className="size-4" />
+						<IconX className="size-4" />
 						<span className="sr-only">Revoke</span>
 					</Button>
 				}
