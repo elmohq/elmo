@@ -18,6 +18,11 @@ const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
 // recall + cheapest cost in our compare-onboarding runs. Other families that
 // support native search per the docs: Anthropic, Perplexity, xAI.
 const DEFAULT_RESEARCH_MODEL = "openai/gpt-5-mini";
+// Without an explicit cap OpenRouter reserves the model's full output window
+// (65k tokens for GPT-5 Mini) against the account balance and rejects the call
+// with a 402 on low-credit accounts, even though research answers are far
+// smaller. Leaves room for reasoning tokens on top of the JSON.
+const RESEARCH_MAX_OUTPUT_TOKENS = 16_000;
 
 function openrouterHeaders(): Record<string, string> {
 	return {
@@ -92,6 +97,7 @@ export const openrouter: Provider = {
 		const body: Record<string, unknown> = {
 			model: DEFAULT_RESEARCH_MODEL,
 			messages: [{ role: "user", content: prompt }],
+			max_tokens: RESEARCH_MAX_OUTPUT_TOKENS,
 			response_format: {
 				type: "json_schema",
 				json_schema: { name: "research_output", strict: true, schema: jsonSchema },
