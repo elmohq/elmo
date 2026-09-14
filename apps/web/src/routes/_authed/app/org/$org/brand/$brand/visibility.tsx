@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PromptsDisplay } from "@/components/prompts-display";
 import { useBrandParams } from "@/hooks/use-route-params";
@@ -16,12 +17,13 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/visibil
 
 function VisibilityPage() {
 	const params = useBrandParams();
+	const { t } = useI18n();
 
 	const infoContent = (
 		<>
-			Track how different LLMs respond to prompts related to your brand, products, and{" "}
+			{t("Track how different LLMs respond to prompts related to your brand, products, and")}{" "}
 			<Link to="/app/org/$org/brand/$brand/settings/competitors" params={params} className="underline">
-				competitors
+				{t("competitors")}
 			</Link>
 			.
 		</>
@@ -29,8 +31,8 @@ function VisibilityPage() {
 
 	return (
 		<PromptsDisplay
-			pageTitle="Visibility"
-			pageDescription="See how LLMs are evaluating prompts related to your brand."
+			pageTitle={t("Visibility")}
+			pageDescription={t("See how LLMs are evaluating prompts related to your brand.")}
 			pageInfoContent={infoContent}
 		/>
 	);

@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { IconEditCircle } from "@tabler/icons-react";
 import { Link, useSearch } from "@tanstack/react-router";
 import type { Competitor } from "@workspace/lib/db/schema";
@@ -52,6 +53,7 @@ export function PromptsDisplay({ pageTitle, pageDescription, pageInfoContent }: 
 function PromptsContent({ brandId }: { brandId: string | undefined }) {
 	const { brand } = useBrand(brandId);
 	const brandParams = useBrandParams();
+	const { t } = useI18n();
 	const filters = useListFilters();
 	const { model, lookback, tags, search } = filters;
 	// `order` is this route's own search key (not a narrowing filter), so it
@@ -111,27 +113,27 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 			errorState={
 				<Card className="p-6">
 					<div className="text-center text-muted-foreground">
-						<p className="mb-2">Failed to load prompts data</p>
-						<p className="text-sm">Try refreshing the page</p>
+						<p className="mb-2">{t("Failed to load prompts data")}</p>
+						<p className="text-sm">{t("Try refreshing the page")}</p>
 					</div>
 				</Card>
 			}
 			totalCount={promptsSummary?.prompts?.length}
 			filteredCount={sortedPrompts.length}
-			noMatchesTitle="No prompts match your filters."
-			noMatchesDescription="Try adjusting your search or tag filters."
+			noMatchesTitle={t("No prompts match your filters.")}
+			noMatchesDescription={t("Try adjusting your search or tag filters.")}
 			emptyState={
 				<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
 					<div className="text-center py-8 text-muted-foreground">
 						<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
-						<p className="mb-4">No prompts yet.</p>
+						<p className="mb-4">{t("No prompts yet.")}</p>
 						<Link
 							to="/app/org/$org/brand/$brand/settings/prompts"
 							params={brandParams}
 							className={cn(buttonVariants({ size: "sm" }), "h-7 flex cursor-pointer")}
 						>
 							<IconEditCircle />
-							<span>Edit</span>
+							<span>{t("Edit")}</span>
 						</Link>
 					</div>
 				</div>

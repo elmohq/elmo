@@ -9,6 +9,12 @@
  */
 import { ALL_MODELS_VALUE, labelForModelFilter } from "@workspace/config/model-filter";
 import { PLATFORM_TIER_LABELS, type PlanPlatformGroupId } from "@workspace/config/plans";
+import { type I18n, translate, translatePlural } from "@/lib/i18n";
+
+const EN: Pick<I18n, "t" | "tn"> = {
+	t: (text, vars) => translate("en", text, vars),
+	tn: (count, one, other, vars) => translatePlural("en", count, one, other, vars),
+};
 
 export {
 	ALL_MODELS_VALUE,
@@ -34,18 +40,18 @@ export interface TrackedTarget {
 }
 
 /** How often a target runs, as a rate: "4×/day", or "every 3 days" once past one. */
-export function describeCadence(intervalHours: number): string {
+export function describeCadence(intervalHours: number, { t, tn } = EN): string {
 	if (intervalHours <= 0) return "—";
-	if (intervalHours >= 48) return `every ${Math.round(intervalHours / 24)} days`;
-	if (intervalHours > 24) return "every other day";
+	if (intervalHours >= 48) return tn(Math.round(intervalHours / 24), "every {count} day", "every {count} days");
+	if (intervalHours > 24) return t("every other day");
 	const perDay = 24 / intervalHours;
-	return `${Number.isInteger(perDay) ? perDay : perDay.toFixed(1)}×/day`;
+	return t("{rate}×/day", { rate: Number.isInteger(perDay) ? perDay : Number(perDay.toFixed(1)) });
 }
 
 /** One line per target: what it is, how often it runs, and how many calls each time. */
-export function describeTargetSchedule(target: TrackedTarget): string {
-	const runs = describeCadence(target.intervalHours);
-	return `${labelForModelFilter(target.value)} — ${runs}${target.replication > 1 ? ` ×${target.replication}` : ""}`;
+export function describeTargetSchedule(target: TrackedTarget, i18n = EN): string {
+	const runs = describeCadence(target.intervalHours, i18n);
+	return `${i18n.t(labelForModelFilter(target.value))} — ${runs}${target.replication > 1 ? ` ×${target.replication}` : ""}`;
 }
 
 /**

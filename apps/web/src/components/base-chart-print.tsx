@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import type { Competitor } from "@workspace/lib/db/schema";
@@ -53,6 +54,7 @@ export function BaseChartPrint({
 	competitors,
 }: BaseChartPrintProps) {
 	const routeContext = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const { t, p } = useI18n();
 	const latestDataPoint = data
 		.filter((point) => {
 			const allIds = [brand.id, ...competitors.map((c) => c.id)];
@@ -69,7 +71,7 @@ export function BaseChartPrint({
 					</div>
 				)}
 				<div className="h-[200px] print:h-[150px] flex items-center justify-center text-muted-foreground text-sm print:text-xs">
-					No data available
+					{t("No data available")}
 				</div>
 			</div>
 		);
@@ -113,7 +115,7 @@ export function BaseChartPrint({
 							variant={getBadgeVariant(visibility!)}
 							className={`text-xs ${getBadgeClassName(visibility!)} print:text-xs`}
 						>
-							{visibility}%
+							{p(visibility ?? 0)}
 						</Badge>
 					)}
 				</div>
@@ -137,7 +139,7 @@ export function BaseChartPrint({
 								fontSize: 10,
 								fill: "#6B7280",
 							}}
-							tickFormatter={(value) => `${value}%`}
+							tickFormatter={(value) => p(value)}
 							width={40}
 						/>
 						<Bar
@@ -149,7 +151,7 @@ export function BaseChartPrint({
 								fontSize: 11,
 								fontWeight: "bold",
 								fill: "#374151",
-								formatter: (value: unknown) => `${value}%`,
+								formatter: (value: unknown) => p(Number(value)),
 							}}
 						>
 							{sortedEntities.map((entry) => (

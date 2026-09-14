@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { DEFAULT_APP_ICON, DEFAULT_APP_NAME } from "@workspace/config/constants";
 import type { Competitor } from "@workspace/lib/db/schema";
 import { Badge } from "@workspace/ui/components/badge";
@@ -42,6 +43,7 @@ export function ChartExportPreview({
 	competitors,
 	branding,
 }: ChartExportPreviewProps) {
+	const { t, p } = useI18n();
 	const name = branding.name || DEFAULT_APP_NAME;
 	const isWhitelabel = branding.isWhitelabel && branding.name !== DEFAULT_APP_NAME;
 	const domain = isWhitelabel ? branding.parentUrl?.replace(/^https?:\/\//, "").replace(/\/$/, "") || "" : "elmohq.com";
@@ -66,7 +68,7 @@ export function ChartExportPreview({
 						className={`${getBadgeClassName(visibility)} shrink-0`}
 						style={{ fontSize: 16, padding: "4px 14px" }}
 					>
-						{visibility}% Visibility
+						{t("{value} Visibility", { value: p(visibility) })}
 					</Badge>
 				)}
 			</div>
@@ -96,7 +98,7 @@ export function ChartExportPreview({
 					{isWhitelabel && hasCustomIcon && (
 						<img
 							src={branding.icon}
-							alt={`${name} logo`}
+							alt={t("{name} logo", { name })}
 							style={{ width: 28, height: 28 }}
 							className="object-contain"
 							crossOrigin="anonymous"

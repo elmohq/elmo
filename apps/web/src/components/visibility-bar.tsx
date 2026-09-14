@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -58,6 +59,7 @@ export function VisibilityBar({
 	lookback,
 	isLoading = false,
 }: VisibilityBarProps) {
+	const { t, tn, n, p } = useI18n();
 	if (isLoading) {
 		return <VisibilityBarSkeleton />;
 	}
@@ -83,7 +85,7 @@ export function VisibilityBar({
 			{/* Left side: visibility + chart + info */}
 			<div className="flex items-center gap-2 min-w-0 shrink-0">
 				<span className={`text-base sm:text-lg font-semibold whitespace-nowrap ${colors.text}`}>
-					{currentVisibility}% <span className="font-normal">Visibility</span>
+					{p(currentVisibility)} <span className="font-normal">{t("Visibility")}</span>
 				</span>
 
 				{showChart && (
@@ -110,9 +112,11 @@ export function VisibilityBar({
 				<Tooltip>
 					<TooltipTrigger render={<IconInfoCircle className={`h-3.5 w-3.5 shrink-0 ${colors.muted} cursor-help`} />} />
 					<TooltipContent side="bottom" className="max-w-xs text-sm">
-						AI visibility for the {totalPrompts.toLocaleString()} prompt{totalPrompts !== 1 ? "s" : ""} shown below,
-						calculated as the percentage of AI responses that mention your brand over the time period for the selected
-						filters.
+						{tn(
+							totalPrompts,
+							"AI visibility for the {count} prompt shown below, calculated as the percentage of AI responses that mention your brand over the time period for the selected filters.",
+							"AI visibility for the {count} prompts shown below, calculated as the percentage of AI responses that mention your brand over the time period for the selected filters.",
+						)}
 					</TooltipContent>
 				</Tooltip>
 			</div>
@@ -120,13 +124,13 @@ export function VisibilityBar({
 			{/* Right side: stats */}
 			<div className={`flex items-center gap-x-3 text-xs sm:text-sm ${colors.muted}`}>
 				<span>
-					<span className="font-medium">{totalPrompts.toLocaleString()}</span> prompts
+					<span className="font-medium">{n(totalPrompts)}</span> {tn(totalPrompts, "prompt", "prompts")}
 				</span>
 				<span>
-					<span className="font-medium">{totalRuns.toLocaleString()}</span> runs
+					<span className="font-medium">{n(totalRuns)}</span> {tn(totalRuns, "run", "runs")}
 				</span>
 				<span>
-					<span className="font-medium">{totalCitations.toLocaleString()}</span> citations
+					<span className="font-medium">{n(totalCitations)}</span> {tn(totalCitations, "citation", "citations")}
 				</span>
 			</div>
 		</div>
@@ -150,9 +154,10 @@ export function VisibilityBarSkeleton() {
 }
 
 export function VisibilityBarEmpty() {
+	const { t } = useI18n();
 	return (
 		<div className="flex items-center min-h-10 px-3 py-2 rounded-lg border border-border/60 bg-muted/20">
-			<span className="text-sm text-muted-foreground">No visibility data for the selected time range and filters.</span>
+			<span className="text-sm text-muted-foreground">{t("No visibility data for the selected time range and filters.")}</span>
 		</div>
 	);
 }

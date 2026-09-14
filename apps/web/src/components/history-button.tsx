@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
 import { GoStack } from "react-icons/go";
@@ -11,6 +12,7 @@ interface HistoryButtonProps {
 }
 
 export function HistoryButton({ promptId, tab }: HistoryButtonProps) {
+	const { t } = useI18n();
 	if (!promptId) return null;
 
 	return (
@@ -23,7 +25,7 @@ export function HistoryButton({ promptId, tab }: HistoryButtonProps) {
 			)}
 		>
 			<GoStack className="size-3 mr-0.5" />
-			<span className="text-xs font-normal">View Details</span>
+			<span className="text-xs font-normal">{t("View Details")}</span>
 		</BrandPromptLink>
 	);
 }

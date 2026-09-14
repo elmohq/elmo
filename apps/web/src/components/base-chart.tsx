@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import type { Competitor } from "@workspace/lib/db/schema";
@@ -50,10 +51,11 @@ function SeriesLegend({
 	onHover: (key: string | null) => void;
 	onPin: (key: string | null) => void;
 }) {
+	const { t } = useI18n();
 	return (
 		<div
 			role="toolbar"
-			aria-label="Chart series"
+			aria-label={t("Chart series")}
 			className="flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-2"
 			onMouseLeave={() => onHover(null)}
 		>
@@ -109,6 +111,7 @@ export function BaseChart({
 	chartColors: chartColorsProp,
 	chartHeight = "250px",
 }: BaseChartProps) {
+	const { t, d, p } = useI18n();
 	const completeData = filterAndCompleteChartData(data, lookback);
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const [hoveredSeries, setHoveredSeries] = React.useState<string | null>(null);
@@ -126,7 +129,7 @@ export function BaseChart({
 	const chartColors = chartColorsProp ?? context.clientConfig?.branding.chartColors ?? [];
 	const chartConfig: ChartConfig = {
 		visitors: {
-			label: "Visibility",
+			label: t("Visibility"),
 		},
 		[brand.id]: {
 			label: brand.name,
@@ -201,7 +204,7 @@ export function BaseChart({
 					{title && <h3 className="text-sm font-medium capitalize">{title}</h3>}
 					{showBadge && visibility !== null && (
 						<Badge variant={getBadgeVariant(visibility!)} className={`text-xs ${getBadgeClassName(visibility!)}`}>
-							{visibility}%
+							{p(visibility ?? 0)}
 						</Badge>
 					)}
 				</div>
@@ -224,7 +227,7 @@ export function BaseChart({
 									// value is already a properly bucketed date string like "2025-07-21"
 									const [year, month, day] = value.split("-").map(Number);
 									const date = new Date(year, month - 1, day); // Create local date
-									return date.toLocaleDateString("en-US", {
+									return d(date, {
 										month: "short",
 										day: "numeric",
 									});
@@ -238,7 +241,7 @@ export function BaseChart({
 								axisLine={false}
 								tickMargin={8}
 								tickCount={6}
-								tickFormatter={(value) => `${value}%`}
+								tickFormatter={(value) => p(value)}
 							/>
 							<ChartTooltip
 								isAnimationActive={false}
@@ -248,7 +251,7 @@ export function BaseChart({
 										labelFormatter={(value) => {
 											const [year, month, day] = String(value).split("-").map(Number);
 											const date = new Date(year, month - 1, day);
-											return date.toLocaleDateString("en-US", {
+											return d(date, {
 												month: "short",
 												day: "numeric",
 											});
@@ -271,7 +274,7 @@ export function BaseChart({
 															</span>
 														</div>
 														{value !== null && value !== undefined && (
-															<span className="text-foreground font-mono font-xs tabular-nums">{value}%</span>
+															<span className="text-foreground font-mono font-xs tabular-nums">{p(Number(value))}</span>
 														)}
 													</div>
 												</>
@@ -309,7 +312,7 @@ export function BaseChart({
 									// value is already a properly bucketed date string like "2025-07-21"
 									const [year, month, day] = value.split("-").map(Number);
 									const date = new Date(year, month - 1, day); // Create local date
-									return date.toLocaleDateString("en-US", {
+									return d(date, {
 										month: "short",
 										day: "numeric",
 									});
@@ -323,7 +326,7 @@ export function BaseChart({
 								axisLine={false}
 								tickMargin={8}
 								tickCount={6}
-								tickFormatter={(value) => `${value}%`}
+								tickFormatter={(value) => p(value)}
 							/>
 							<ChartTooltip
 								isAnimationActive={false}
@@ -344,7 +347,7 @@ export function BaseChart({
 
 									const [year, month, day] = (label as string).split("-").map(Number);
 									const date = new Date(year, month - 1, day);
-									const formattedDate = date.toLocaleDateString("en-US", {
+									const formattedDate = d(date, {
 										month: "short",
 										day: "numeric",
 									});
@@ -365,7 +368,7 @@ export function BaseChart({
 																<span className="text-muted-foreground">
 																	{chartConfig[item.dataKey as string]?.label || item.dataKey}
 																</span>
-																<span className="text-foreground font-mono font-xs tabular-nums">{item.value}%</span>
+																<span className="text-foreground font-mono font-xs tabular-nums">{p(item.value)}</span>
 															</div>
 														</div>
 													);

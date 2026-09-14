@@ -6,6 +6,7 @@
  * stacked trends stay visually identical without being tuned in two places.
  */
 
+import { useI18n } from "@/lib/i18n";
 import { type ChartConfig, ChartContainer, ChartTooltip } from "@workspace/ui/components/chart";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
@@ -31,6 +32,7 @@ export function TrendChart({
 	color: string;
 	className?: string;
 }) {
+	const { d, p } = useI18n();
 	const config = { value: { label, color } } satisfies ChartConfig;
 
 	return (
@@ -45,7 +47,7 @@ export function TrendChart({
 					minTickGap={50}
 					tick={{ fontSize: 11 }}
 					tickFormatter={(value: string) =>
-						localDate(value).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+						d(localDate(value), { month: "short", day: "numeric" })
 					}
 				/>
 				<YAxis
@@ -55,7 +57,7 @@ export function TrendChart({
 					tickMargin={8}
 					tickCount={4}
 					tick={{ fontSize: 11 }}
-					tickFormatter={(value: number) => `${value}%`}
+					tickFormatter={(value: number) => p(value)}
 				/>
 				<ChartTooltip
 					isAnimationActive={false}
@@ -64,7 +66,7 @@ export function TrendChart({
 						if (!active || !payload?.length) return null;
 						const value = payload[0]?.value as number | null;
 						if (value == null) return null;
-						const formattedDate = localDate(dateLabel as string).toLocaleDateString("en-US", {
+						const formattedDate = d(localDate(dateLabel as string), {
 							month: "long",
 							day: "numeric",
 							year: "numeric",
@@ -75,7 +77,7 @@ export function TrendChart({
 								<div className="flex items-center gap-2">
 									<div className="shrink-0 rounded-[2px] h-2.5 w-2.5" style={{ background: color }} />
 									<span className="text-muted-foreground">{label}</span>
-									<span className="ml-auto font-mono tabular-nums">{value}%</span>
+									<span className="ml-auto font-mono tabular-nums">{p(value)}</span>
 								</div>
 							</div>
 						);

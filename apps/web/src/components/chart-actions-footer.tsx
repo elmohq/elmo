@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { getOptimizeButtonForMode } from "@workspace/deployment/client";
@@ -37,6 +38,7 @@ export function ChartActionsFooter({
 	availableModels,
 	lookback = "1m",
 }: ChartActionsFooterProps) {
+	const { t } = useI18n();
 	const isSinglePrompt = Boolean(promptId && brandId);
 
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
@@ -77,10 +79,10 @@ export function ChartActionsFooter({
 							size="sm"
 							variant="secondary"
 							className="text-xs cursor-pointer h-6 flex items-center px-2"
-							title="Download chart as PNG"
+							title={t("Download chart as PNG")}
 						>
 							<Download className="size-3 mr-0.5" />
-							<span className="text-xs font-normal">{isDownloading ? "Exporting..." : "Export (PNG)"}</span>
+							<span className="text-xs font-normal">{isDownloading ? t("Exporting...") : t("Export (PNG)")}</span>
 						</Button>
 					)}
 				</div>

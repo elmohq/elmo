@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { getModelMeta, KNOWN_MODELS } from "@workspace/config/models";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
@@ -76,6 +77,7 @@ export function ProgressBarChart({
 	truncateLabels = true,
 	fillHeight = false,
 }: ProgressBarChartProps) {
+	const { n } = useI18n();
 	const total = React.useMemo(() => {
 		if (customTotal !== undefined) {
 			return customTotal;
@@ -145,7 +147,7 @@ export function ProgressBarChart({
 								{item.action}
 							</div>
 							<div className="flex items-center gap-2 ml-2 shrink-0">
-								<span className="text-sm">{item.count.toLocaleString()}</span>
+								<span className="text-sm">{n(item.count)}</span>
 								{item.suffix}
 							</div>
 						</div>

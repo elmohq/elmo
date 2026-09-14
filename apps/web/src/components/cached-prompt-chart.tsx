@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -57,6 +58,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 	hasEverBeenEvaluated = false,
 }: CachedPromptChartProps) {
 	const chartContext = useOptionalChartDataContext();
+	const { t, p } = useI18n();
 
 	const chartData = useMemo(() => {
 		if (!chartContext) return null;
@@ -144,8 +146,8 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 										<div className="h-2 w-2 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:0.2s]" />
 										<div className="h-2 w-2 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:0.4s]" />
 									</div>
-									<p className="text-sm font-medium text-muted-foreground">Evaluating for the first time</p>
-									<p className="text-xs text-muted-foreground/70 mt-1">Results will appear here shortly.</p>
+									<p className="text-sm font-medium text-muted-foreground">{t("Evaluating for the first time")}</p>
+									<p className="text-xs text-muted-foreground/70 mt-1">{t("Results will appear here shortly.")}</p>
 								</>
 							) : (
 								<>
@@ -158,9 +160,9 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 											/>
 										))}
 									</div>
-									<p className="text-sm font-medium text-muted-foreground">No data in selected time range</p>
+									<p className="text-sm font-medium text-muted-foreground">{t("No data in selected time range")}</p>
 									<p className="text-xs text-muted-foreground/70 mt-1">
-										Try selecting a longer time period to see historical data.
+										{t("Try selecting a longer time period to see historical data.")}
 									</p>
 								</>
 							)}
@@ -193,9 +195,9 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 										/>
 									))}
 								</div>
-								<p className="text-sm font-medium text-muted-foreground">No brands found in responses</p>
+								<p className="text-sm font-medium text-muted-foreground">{t("No brands found in responses")}</p>
 								<p className="text-xs text-muted-foreground/70 mt-1">
-									Your brand and competitors weren't mentioned in the evaluated responses for this prompt.
+									{t("Your brand and competitors weren't mentioned in the evaluated responses for this prompt.")}
 								</p>
 							</div>
 						</div>
@@ -226,7 +228,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 					<PromptTitle name={promptName} highlight={searchHighlight} />
 					{lastBrandVisibility !== null && (
 						<Badge variant={getBadgeVariant(lastBrandVisibility)} className={getBadgeClassName(lastBrandVisibility)}>
-							{lastBrandVisibility}% Visibility
+							{t("{value} Visibility", { value: p(lastBrandVisibility) })}
 						</Badge>
 					)}
 				</CardHeader>

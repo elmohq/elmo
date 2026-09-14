@@ -17,6 +17,7 @@ import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
 import { useBrand } from "@/hooks/use-brands";
+import { useI18n } from "@/lib/i18n";
 import { getDefaultLookbackPeriod, type LookbackPeriod } from "@/lib/chart-utils";
 
 export { ALL_MODELS_VALUE, getAvailableModels } from "@/lib/model-filter";
@@ -55,12 +56,12 @@ export function labelForModel(model: string): string {
 }
 
 const LOOKBACK_OPTIONS: { value: LookbackPeriod; label: string }[] = [
-	{ value: "1w", label: "Last 7 days" },
-	{ value: "1m", label: "Last 30 days" },
-	{ value: "3m", label: "Last 3 months" },
-	{ value: "6m", label: "Last 6 months" },
-	{ value: "1y", label: "Last 12 months" },
-	{ value: "all", label: "All time" },
+	{ value: "1w", label: /* i18n */ "Last 7 days" },
+	{ value: "1m", label: /* i18n */ "Last 30 days" },
+	{ value: "3m", label: /* i18n */ "Last 3 months" },
+	{ value: "6m", label: /* i18n */ "Last 6 months" },
+	{ value: "1y", label: /* i18n */ "Last 12 months" },
+	{ value: "all", label: /* i18n */ "All time" },
 ];
 
 function getLookbackLabel(lookback: LookbackPeriod): string {
@@ -117,6 +118,7 @@ export function FilterTriggerButton({
 // ------------------------------------------------------------------
 
 export function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) {
+	const { t } = useI18n();
 	const availableModels = getAvailableModels(trackedTargets);
 	const defaultModel = availableModels.includes(ALL_MODELS_VALUE)
 		? ALL_MODELS_VALUE
@@ -142,22 +144,22 @@ export function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarge
 		<DropdownMenu>
 			<DropdownMenuTrigger
 				render={
-					<FilterTriggerButton icon={iconForModel(selected)} label={labelForModel(selected)} active={isFiltered} />
+					<FilterTriggerButton icon={iconForModel(selected)} label={t(labelForModel(selected))} active={isFiltered} />
 				}
 			/>
 			<DropdownMenuContent align="start" className="w-56">
 				<DropdownMenuRadioGroup value={selected} onValueChange={handleChange}>
 					<DropdownMenuRadioItem value={ALL_MODELS_VALUE} className="cursor-pointer gap-2">
 						{iconForModel(ALL_MODELS_VALUE)}
-						{labelForModel(ALL_MODELS_VALUE)}
+						{t(labelForModel(ALL_MODELS_VALUE))}
 					</DropdownMenuRadioItem>
 					{groups.map((group) => (
 						<DropdownMenuGroup key={group.tier}>
-							<DropdownMenuLabel className="text-muted-foreground text-xs font-medium">{group.label}</DropdownMenuLabel>
+							<DropdownMenuLabel className="text-muted-foreground text-xs font-medium">{t(group.label)}</DropdownMenuLabel>
 							{group.values.map((value) => (
 								<DropdownMenuRadioItem key={value} value={value} className="cursor-pointer gap-2">
 									{iconForModel(value)}
-									{labelForModel(value)}
+									{t(labelForModel(value))}
 								</DropdownMenuRadioItem>
 							))}
 						</DropdownMenuGroup>
@@ -173,6 +175,7 @@ export function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarge
 // ------------------------------------------------------------------
 
 export function LookbackDropdown() {
+	const { t } = useI18n();
 	const { brand } = useBrand();
 	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
 	const urlLookback = useSearch({ strict: false, select: (s) => s.lookback });
@@ -186,13 +189,13 @@ export function LookbackDropdown() {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger
-				render={<FilterTriggerButton icon={<Clock className="size-3.5" />} label={getLookbackLabel(selected)} />}
+				render={<FilterTriggerButton icon={<Clock className="size-3.5" />} label={t(getLookbackLabel(selected))} />}
 			/>
 			<DropdownMenuContent align="start" className="w-48">
 				<DropdownMenuRadioGroup value={selected} onValueChange={(v) => handleChange(v as LookbackPeriod)}>
 					{LOOKBACK_OPTIONS.map((opt) => (
 						<DropdownMenuRadioItem key={opt.value} value={opt.value} className="cursor-pointer">
-							{opt.label}
+							{t(opt.label)}
 						</DropdownMenuRadioItem>
 					))}
 				</DropdownMenuRadioGroup>
@@ -208,6 +211,7 @@ export function LookbackDropdown() {
 // ------------------------------------------------------------------
 
 export function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
+	const { t } = useI18n();
 	const urlTags = useSearch({ strict: false, select: (s) => s.tags });
 	const setFilters = useFilterNavigate();
 	const selected = useMemo(() => splitTags(urlTags), [urlTags]);
@@ -227,7 +231,7 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 				render={
 					<FilterTriggerButton
 						icon={<TagIcon className="size-3.5" />}
-						label="Tags"
+						label={t("Tags")}
 						active={selected.length > 0}
 						badgeCount={selected.length > 0 ? selected.length : undefined}
 					/>
@@ -235,19 +239,19 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 			/>
 			<PopoverContent align="start" className="w-64 p-0" initialFocus={false}>
 				<div className="flex items-center justify-between px-3 h-10 border-b">
-					<span className="font-medium text-sm">Tags</span>
+					<span className="font-medium text-sm">{t("Tags")}</span>
 					{selected.length > 0 && (
 						<button
 							type="button"
 							onClick={() => commit([])}
 							className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
 						>
-							Clear
+							{t("Clear")}
 						</button>
 					)}
 				</div>
 				{availableTags.length === 0 ? (
-					<p className="text-sm text-muted-foreground py-6 text-center">No tags available</p>
+					<p className="text-sm text-muted-foreground py-6 text-center">{t("No tags available")}</p>
 				) : (
 					<div className="py-1 max-h-64 overflow-y-auto">
 						{availableTags.map((tag) => {
@@ -284,7 +288,8 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 // setState) to avoid flashing back when the URL echo races with typing.
 // ------------------------------------------------------------------
 
-export function SearchInput({ placeholder = "Search prompts..." }: { placeholder?: string }) {
+export function SearchInput({ placeholder }: { placeholder?: string }) {
+	const { t } = useI18n();
 	const urlValue = useSearch({ strict: false, select: (s) => s.q });
 	const setFilters = useFilterNavigate();
 	const value = urlValue ?? "";
@@ -334,7 +339,7 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 			<InputGroupInput
 				value={local}
 				onChange={(e) => setLocal(e.target.value)}
-				placeholder={placeholder}
+				placeholder={placeholder ?? t("Search prompts...")}
 				className="h-8 text-sm"
 			/>
 			<InputGroupAddon className="pl-2.5">
@@ -342,7 +347,7 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 			</InputGroupAddon>
 			{local && (
 				<InputGroupAddon align="inline-end" className="pr-1.5">
-					<InputGroupButton size="icon-xs" onClick={clear} className="cursor-pointer" aria-label="Clear search">
+					<InputGroupButton size="icon-xs" onClick={clear} className="cursor-pointer" aria-label={t("Clear search")}>
 						<X className="size-3.5" />
 					</InputGroupButton>
 				</InputGroupAddon>
@@ -358,6 +363,7 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 // ------------------------------------------------------------------
 
 export function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
+	const { t, n } = useI18n();
 	const tags = useSearch({ strict: false, select: (s) => s.tags });
 	const q = useSearch({ strict: false, select: (s) => s.q });
 	const active = Boolean(tags) || Boolean(q);
@@ -365,8 +371,11 @@ export function ResultCount({ count, total }: { count: number | undefined; total
 	const showTotal = total !== undefined && total !== count;
 	return (
 		<span className="text-xs text-muted-foreground tabular-nums ml-1">
-			{count.toLocaleString()}
-			{showTotal && ` of ${total.toLocaleString()}`} {count === 1 && !showTotal ? "result" : "results"}
+			{showTotal
+				? t("{count} of {total} results", { count, total })
+				: count === 1
+					? t("{count} result", { count: n(count) })
+					: t("{count} results", { count })}
 		</span>
 	);
 }

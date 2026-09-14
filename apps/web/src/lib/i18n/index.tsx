@@ -72,6 +72,9 @@ function makeI18n(locale: Locale) {
 		t: (text: string, vars?: Vars) => translate(locale, text, vars),
 		tn: (count: number, one: string, other: string, vars?: Vars) => translatePlural(locale, count, one, other, vars),
 		n: (value: number, options?: Intl.NumberFormatOptions) => formatNumber(locale, value, options),
+		/** A value already in percent units (42 → "42%" / "42 %"). */
+		p: (value: number, options?: Intl.NumberFormatOptions) =>
+			`${formatNumber(locale, value, options)}${locale === "fr" ? " " : ""}%`,
 		d: (value: Date | string | number, options?: Intl.DateTimeFormatOptions) => formatDate(locale, value, options),
 		dt: (value: Date | string | number, options?: Intl.DateTimeFormatOptions) => formatDateTime(locale, value, options),
 	};
