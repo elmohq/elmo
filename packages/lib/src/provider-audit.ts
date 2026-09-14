@@ -1,7 +1,4 @@
 /**
- * Audits recorded provider-test history against `STATUS_TARGET_EXPECTATIONS`,
- * without calling any provider.
- *
  * Judged over a window rather than per run: an engine may decline to search on
  * any single prompt, and providers write the same `unavailable` sentinel for
  * that as they do when extraction breaks.
@@ -32,7 +29,6 @@ export interface Violation {
 	target: string;
 	kind: ViolationKind;
 	message: string;
-	/** False when the expectation itself is the likelier thing to be wrong. */
 	expectationVerified: boolean;
 }
 
@@ -155,10 +151,7 @@ function asQueryValues(value: unknown): string[] {
 	return [];
 }
 
-/**
- * Query-shaped fields anywhere in a payload — what a provider *could* give us,
- * independently of what our extractor took.
- */
+/** What a provider *could* give us, independent of what our extractor took. */
 export function findQueryFields(payload: unknown, path = "$"): QueryField[] {
 	if (payload === null || typeof payload !== "object") return [];
 	if (Array.isArray(payload)) return payload.flatMap((item, i) => findQueryFields(item, `${path}[${i}]`));
@@ -177,10 +170,7 @@ export function findQueryFields(payload: unknown, path = "$"): QueryField[] {
 	return found;
 }
 
-/**
- * Flags a payload carrying searches the run didn't report. Values matching the
- * prompt are ignored — a provider echoing the keyword back isn't a search.
- */
+/** Values matching the prompt are ignored — an echoed keyword isn't a search. */
 export function auditPayload(target: string, payload: unknown, reportedQueries: number, prompt?: string): Violation[] {
 	if (reportedQueries > 0) return [];
 	const fields = findQueryFields(payload).filter((f) =>

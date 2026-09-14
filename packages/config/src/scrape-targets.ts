@@ -137,20 +137,15 @@ export function providersByModel(): Map<string, string[]> {
 }
 
 /**
- * What a monitored target should return, declared independently of the code
- * that extracts it. Without that separation a broken extractor and a provider
- * that exposes nothing are the same observation.
+ * Declared independently of the extractors: without that separation a broken
+ * extractor and a provider that exposes nothing are the same observation.
  */
 export interface TargetExpectation {
 	/**
-	 * Whether this target reports the searches it ran.
-	 *
 	 * - "yes": absence over a window is a defect.
-	 * - "no": established that none exist. Queries appearing anyway mean the
-	 *   provider moved ahead of our extractor.
-	 * - "intermittent": capable, but too rare to assert per window.
-	 * - "unknown": we see none and haven't established why. Settle one by
-	 *   reading a payload (`test-provider.ts --dump`).
+	 * - "no": queries appearing anyway mean the provider moved ahead of us.
+	 * - "intermittent": capable, too rare to assert per window.
+	 * - "unknown": none seen, cause not established. Settle by reading a payload.
 	 */
 	webQueries: "yes" | "no" | "intermittent" | "unknown";
 	citations: "yes" | "no";
@@ -160,10 +155,7 @@ export interface TargetExpectation {
 
 const NO_SEARCH: TargetExpectation = { webQueries: "no", citations: "no", verified: true };
 
-/**
- * Held to a 1:1 match with STATUS_TARGETS by its test, so a target can't be
- * monitored without someone stating what it should return.
- */
+/** Held 1:1 with STATUS_TARGETS by its test, so no target goes undeclared. */
 export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
 	"chatgpt:olostep:online": { webQueries: "yes", citations: "yes", verified: true },
 	"google-ai-mode:olostep:online": { webQueries: "unknown", citations: "yes", verified: false },
@@ -193,21 +185,19 @@ export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
 	"google-ai-mode:cloro:online": { webQueries: "unknown", citations: "yes", verified: false },
 	"google-ai-overview:cloro:online": { webQueries: "unknown", citations: "yes", verified: false },
 
-	// From dataforseo-client's types: no SERP AI Mode model carries a query
-	// field, while the AI Optimization results carry `fan_out_queries`. The
-	// Gemini scraper is the exception with no equivalent.
+	// From dataforseo-client's types: the SERP AI Mode models carry no query
+	// field, and neither does the Gemini scraper; the rest carry fan_out_queries.
 	"google-ai-mode:dataforseo:online": { webQueries: "no", citations: "yes", verified: true },
 	"google-ai-overview:dataforseo:online": { webQueries: "no", citations: "yes", verified: true },
 	"chatgpt:dataforseo:online": { webQueries: "intermittent", citations: "yes", verified: true },
 	"gemini:dataforseo:online": { webQueries: "no", citations: "yes", verified: true },
 	"perplexity:dataforseo:online": { webQueries: "unknown", citations: "yes", verified: false },
-	// A pinned model_name routes to LLM Responses, which returns fan_out_queries
-	// for every model — including the Gemini that has none via the scraper.
+	// A pinned model_name routes to LLM Responses, which answers for every model.
 	"chatgpt:dataforseo:gpt-5.5:online": { webQueries: "yes", citations: "yes", verified: true },
 	"gemini:dataforseo:gemini-2.5-flash:online": { webQueries: "yes", citations: "yes", verified: true },
 
-	// Search is opt-in, so queries without `:online` would mean a target is
-	// searching, and being billed for it, against its own configuration.
+	// Queries without `:online` would mean a target is searching, and being
+	// billed for it, against its own configuration.
 	"chatgpt:openai-api:gpt-5-mini": NO_SEARCH,
 	"chatgpt:openai-api:gpt-5-mini:online": { webQueries: "yes", citations: "yes", verified: true },
 	"claude:anthropic-api:claude-sonnet-5": NO_SEARCH,
@@ -215,8 +205,8 @@ export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
 	"mistral:mistral-api:mistral-medium-latest": NO_SEARCH,
 	"mistral:mistral-api:mistral-medium-latest:online": { webQueries: "yes", citations: "yes", verified: true },
 
-	// `:online` routes to the model's own search where it has one. These fail
-	// today: the provider writes the sentinel without inspecting the payload.
+	// `:online` routes to the model's own search. These fail until the provider
+	// stops writing the sentinel without inspecting the payload.
 	"claude:openrouter:anthropic/claude-sonnet-5": NO_SEARCH,
 	"claude:openrouter:anthropic/claude-sonnet-5:online": { webQueries: "yes", citations: "yes", verified: false },
 	"chatgpt:openrouter:openai/gpt-5-mini": NO_SEARCH,

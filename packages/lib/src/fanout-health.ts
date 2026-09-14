@@ -1,18 +1,12 @@
 /**
- * Detects a provider that has silently stopped reporting the searches it ran.
- *
- * A single run without queries says nothing, so the signal is an aggregate:
- * zero across a whole window. Not a rate threshold — the failures this catches
- * (a renamed field, a moved one) take queries to exactly zero, which needs no
- * per-provider baseline. Partial degradation isn't covered.
+ * A single run without queries says nothing, so the signal is zero across a
+ * whole window. Not a rate threshold: the failures this catches take queries to
+ * exactly zero, which needs no per-provider baseline. Partial decay isn't caught.
  */
 import type { ModelConfig } from "@workspace/config/scrape-targets";
 import { formatScrapeTarget } from "@workspace/config/scrape-targets";
 
-/**
- * At 50 runs, hitting zero by chance needs a search rate under ~20%; below that
- * a target whose engine rarely searches would trip this on its own.
- */
+/** At 50 runs, hitting zero by chance needs a search rate under ~20%. */
 export const FANOUT_HEALTH_MIN_RUNS = 50;
 
 export interface FanoutRunCounts {
@@ -34,9 +28,8 @@ function countsKey(provider: string, model: string): string {
 }
 
 /**
- * Driven by configured targets rather than whatever rows exist, so
- * `exposesWebQueries` is decided against a real `ModelConfig` — DataForSEO both
- * does and doesn't expose queries depending on the surface and version pin.
+ * Driven by configured targets so `exposesWebQueries` sees a real `ModelConfig`
+ * — DataForSEO both does and doesn't, depending on surface and version pin.
  */
 export function findSilentFanoutTargets(
 	configs: ModelConfig[],

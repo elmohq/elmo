@@ -68,8 +68,7 @@ export interface Provider {
 	 */
 	docsAnchor?: string;
 	/**
-	 * Whether this provider reports the searches it ran, for this target, so a
-	 * run with no queries can be told from a defect. Per-target like
+	 * Lets a run with no queries be told from a defect. Per-target like
 	 * `accessFor`: DataForSEO both does and doesn't, depending on the surface.
 	 */
 	exposesWebQueries?(config: ModelConfig): boolean;

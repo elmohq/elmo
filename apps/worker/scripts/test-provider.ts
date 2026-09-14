@@ -128,7 +128,6 @@ export interface TargetResult {
 	citations: number;
 	webQueries: number;
 	genuineWebQueries: number;
-	/** False means the row can't be re-read for what the run reported. */
 	queriesInRawOutput: boolean;
 	webSearch: boolean;
 	sampleOutput: string;

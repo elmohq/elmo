@@ -1,9 +1,9 @@
 #!/usr/bin/env tsx
 
 /**
- * Audits recorded provider-test history against what each target is declared to
- * return, and fails when they disagree. Reads only what the scheduled test
- * already recorded, so it calls no provider.
+ * Fails when recorded provider-test history disagrees with what each target is
+ * declared to return. Reads only what the scheduled test recorded, so it calls
+ * no provider.
  *
  * Usage:
  *   pnpm tsx apps/worker/scripts/audit-providers.ts
@@ -24,10 +24,7 @@ import {
 	type Violation,
 } from "@workspace/lib/provider-audit";
 
-/**
- * A single day rarely reaches the sample a "reported nothing" finding needs.
- * A break still surfaces within a couple of days, as its last result ages out.
- */
+/** A single day rarely reaches the sample a "reported nothing" finding needs. */
 const DEFAULT_DAYS = 7;
 
 interface RedisEntry {
@@ -105,10 +102,7 @@ function report(violations: Violation[], targetCount: number, days: number): voi
 	);
 }
 
-/**
- * Targets we get nothing from and can't yet say why. Not failures, but the
- * backlog — so they stay visible rather than passing silently.
- */
+/** Not failures, but the backlog — visible rather than passing silently. */
 function reportOpenQuestions(inputs: AuditInput[]): void {
 	const open = inputs.filter((i) => i.expectation.webQueries === "unknown").map((i) => i.target);
 	if (open.length === 0) return;

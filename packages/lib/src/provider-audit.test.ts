@@ -61,7 +61,6 @@ describe("auditTarget", () => {
 		expect(kinds("t", expects({ webQueries: "intermittent" }), runs(20))).toEqual([]);
 	});
 
-	// "unknown" is the absence of a claim, so neither direction can be asserted.
 	it("makes no claim in either direction about an unknown target", () => {
 		expect(kinds("t", expects({ webQueries: "unknown" }), runs(20, { genuineWebQueries: 0 }))).toEqual([]);
 		expect(kinds("t", expects({ webQueries: "unknown" }), runs(20))).toEqual([]);
