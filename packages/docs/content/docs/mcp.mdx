@@ -10,6 +10,10 @@ windows.
 On cloud that is `https://app.elmohq.com/api/mcp`. A self-hosted instance serves the same endpoint on
 its own address, so swap `app.elmohq.com` for yours in everything below.
 
+Every deployment also documents its own connection at **Settings → MCP** in the organization's settings
+sidebar: the endpoint on that instance's own address, snippets for the common clients, and the tools
+it registers.
+
 There are two ways to connect. Signing in from the client is the quickest, and the connection then
 acts as you, in the workspaces you belong to. An API key is for a client that can't open a browser —
 a container, a scheduled job — and is also how you grant a client *less* than your own access.
@@ -88,7 +92,7 @@ codex mcp login elmo
 
 ## Or use an API key
 
-Issue one from **Settings → API keys** in the organization's settings sidebar — keys belong to the
+Issue one from **Settings → API Keys** in the organization's settings sidebar — keys belong to the
 organization, so they are not found under a brand. Issue it read-only and optionally narrow it to
 selected brands.
 
