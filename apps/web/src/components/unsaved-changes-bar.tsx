@@ -20,6 +20,7 @@ import {
 import { Spinner } from "@workspace/ui/components/spinner";
 import { Save } from "lucide-react";
 import { useState } from "react";
+import { useI18n } from "@/lib/i18n";
 
 interface UnsavedChangesBarProps {
 	isDirty: boolean;
@@ -34,6 +35,7 @@ interface UnsavedChangesBarProps {
 
 export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, onDiscard }: UnsavedChangesBarProps) {
 	const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+	const { t } = useI18n();
 
 	// A save is in flight until the parent resets its baseline, so keep blocking
 	// through it — the edits aren't durable yet.
@@ -56,7 +58,7 @@ export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, o
 									<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-75" />
 									<span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
 								</span>
-								<span className="font-medium text-amber-700 dark:text-amber-400">Unsaved changes</span>
+								<span className="font-medium text-amber-700 dark:text-amber-400">{t("Unsaved changes")}</span>
 								{summary && <span className="text-muted-foreground">{summary}</span>}
 							</div>
 
@@ -69,7 +71,7 @@ export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, o
 									onClick={() => setConfirmingDiscard(true)}
 									className="cursor-pointer"
 								>
-									Discard
+									{t("Discard")}
 								</Button>
 								<Button
 									type="button"
@@ -80,11 +82,11 @@ export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, o
 								>
 									{isSaving ? (
 										<>
-											<Spinner /> Saving…
+											<Spinner /> {t("Saving…")}
 										</>
 									) : (
 										<>
-											<Save className="h-4 w-4" /> Save changes
+											<Save className="h-4 w-4" /> {t("Save changes")}
 										</>
 									)}
 								</Button>
@@ -103,14 +105,15 @@ export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, o
 			<Dialog open={confirmingDiscard} onOpenChange={setConfirmingDiscard}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Discard changes?</DialogTitle>
+						<DialogTitle>{t("Discard changes?")}</DialogTitle>
 						<DialogDescription>
-							{summary ? `${summary} will be reverted.` : "Your changes will be reverted."} This can&apos;t be undone.
+							{summary ? t("{summary} will be reverted.", { summary }) : t("Your changes will be reverted.")}{" "}
+							{t("This can't be undone.")}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
 						<Button variant="outline" onClick={() => setConfirmingDiscard(false)} className="cursor-pointer">
-							Keep editing
+							{t("Keep editing")}
 						</Button>
 						<Button
 							variant="destructive"
@@ -120,7 +123,7 @@ export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, o
 							}}
 							className="cursor-pointer"
 						>
-							Discard changes
+							{t("Discard changes")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -129,18 +132,18 @@ export function UnsavedChangesBar({ isDirty, isSaving, summary, error, onSave, o
 			<Dialog open={blocker.status === "blocked"} onOpenChange={(open) => !open && blocker.reset?.()}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Leave without saving?</DialogTitle>
+						<DialogTitle>{t("Leave without saving?")}</DialogTitle>
 						<DialogDescription>
-							{summary ? `You have unsaved changes (${summary}).` : "You have unsaved changes."} They&apos;ll be lost if
-							you leave this page.
+							{summary ? t("You have unsaved changes ({summary}).", { summary }) : t("You have unsaved changes.")}{" "}
+							{t("They'll be lost if you leave this page.")}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
 						<Button variant="outline" onClick={() => blocker.reset?.()} className="cursor-pointer">
-							Stay on page
+							{t("Stay on page")}
 						</Button>
 						<Button variant="destructive" onClick={() => blocker.proceed?.()} className="cursor-pointer">
-							Leave without saving
+							{t("Leave without saving")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

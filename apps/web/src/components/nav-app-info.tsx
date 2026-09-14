@@ -2,10 +2,12 @@ import { IconBrandGithub, IconWorld } from "@tabler/icons-react";
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useI18n } from "@/lib/i18n";
 
 export function NavAppInfo() {
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const mode = context.clientConfig?.mode;
+	const { t } = useI18n();
 
 	// Whitelabel deployments hide the version/website/github links.
 	if (mode === "whitelabel") return null;
@@ -38,7 +40,7 @@ export function NavAppInfo() {
 					>
 						<IconBrandGithub className="size-4" />
 					</TooltipTrigger>
-					<TooltipContent>View on GitHub</TooltipContent>
+					<TooltipContent>{t("View on GitHub")}</TooltipContent>
 				</Tooltip>
 			</div>
 		</div>

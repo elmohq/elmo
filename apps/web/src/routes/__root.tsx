@@ -11,12 +11,15 @@ import type { MissingEnvVar } from "@workspace/config/env";
 import type { DeploymentMode } from "@workspace/config/types";
 import { useEffect } from "react";
 import { usesWordmarkFont } from "@/components/logo";
+import { LanguageToggle } from "@/components/language-toggle";
 import MissingEnvPage from "@/components/missing-env-page";
 import { NotFoundPage } from "@/components/not-found-page";
 import queryDevtools from "@/integrations/tanstack-query/devtools";
 import { initCrisp } from "@/lib/crisp";
+import { I18nProvider, i18n, type Locale, translate } from "@/lib/i18n";
 import { initPostHog } from "@/lib/posthog";
 import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
+import { getLocaleFn } from "@/server/locale";
 import appCss from "../styles.css?url";
 
 // clientConfig and envValidation are optional because the router renders against
@@ -24,6 +27,7 @@ import appCss from "../styles.css?url";
 interface RouterContext {
 	queryClient: QueryClient;
 	clientConfig?: PublicClientConfig;
+	locale?: Locale;
 	envValidation?: {
 		mode: DeploymentMode;
 		missing: MissingEnvVar[];
@@ -38,6 +42,7 @@ interface RouterContext {
 // /auth/register reachable on a bootstrapped instance until the next restart.
 let cachedRootData: {
 	clientConfig: PublicClientConfig;
+	locale: Locale;
 	envValidation: { mode: DeploymentMode; missing: MissingEnvVar[]; isValid: boolean };
 } | null = null;
 
@@ -45,9 +50,14 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 	notFoundComponent: NotFoundPage,
 	beforeLoad: async () => {
 		if (cachedRootData) return cachedRootData;
-		const [clientConfig, envValidation] = await Promise.all([getClientConfig(), getEnvValidationStateFn()]);
-		if (typeof window !== "undefined") cachedRootData = { clientConfig, envValidation };
-		return { clientConfig, envValidation };
+		const isClient = typeof window !== "undefined";
+		const [clientConfig, envValidation, locale] = await Promise.all([
+			getClientConfig(),
+			getEnvValidationStateFn(),
+			isClient ? i18n().locale : getLocaleFn(),
+		]);
+		if (isClient) cachedRootData = { clientConfig, locale, envValidation };
+		return { clientConfig, locale, envValidation };
 	},
 	head: ({ match }) => {
 		const branding = match.context?.clientConfig?.branding;
@@ -70,11 +80,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 		const hasCustomIcon = Boolean(branding?.icon && branding.icon !== DEFAULT_APP_ICON);
 		const appName = branding?.name || "Elmo";
+		const locale = match.context?.locale ?? "en";
 		const themeColor = hasCustomIcon ? "#000000" : ELMO_THEME_COLOR;
 		const appUrl = branding?.url ? branding.url.replace(/\/$/, "") : undefined;
 
-		const title = `${appName} - AI Search Optimization`;
-		const description = "Track and optimize your brand's visibility across AI models.";
+		const title = `${appName} - ${translate(locale, "AI Search Optimization")}`;
+		const description = translate(locale, "Track and optimize your brand's visibility across AI models.");
 		// Don't pass `title` to /api/og — the renderer already shows the brand
 		// (Elmo logo or whitelabel icon + name), so a "Brand - AI Search Optimization"
 		// title would render redundantly. Pages that override og:image can supply
@@ -99,7 +110,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 				{ name: "theme-color", content: themeColor },
 				{ name: "apple-mobile-web-app-title", content: appName },
 				{ property: "og:site_name", content: appName },
-				{ property: "og:locale", content: "en_US" },
+				{ property: "og:locale", content: locale === "fr" ? "fr_FR" : "en_US" },
 				{ property: "og:title", content: title },
 				{ property: "og:description", content: description },
 				{ property: "og:image", content: ogImage },
@@ -155,7 +166,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 });
 
 function RootComponent() {
-	const { envValidation, clientConfig } = Route.useRouteContext();
+	const { envValidation, clientConfig, locale = "en" } = Route.useRouteContext();
 	const clarityProjectId = clientConfig?.analytics?.clarityProjectId;
 
 	useEffect(() => {
@@ -174,12 +185,14 @@ function RootComponent() {
 	// envValidation is absent while a navigation's root beforeLoad is in flight.
 	if (envValidation && !envValidation.isValid) {
 		return (
-			<html lang="en">
+			<html lang={locale}>
 				<head>
 					<HeadContent />
 				</head>
 				<body className="font-sans antialiased">
-					<MissingEnvPage mode={envValidation.mode} missing={envValidation.missing} />
+					<I18nProvider locale={locale}>
+						<MissingEnvPage mode={envValidation.mode} missing={envValidation.missing} />
+					</I18nProvider>
 					<Scripts />
 				</body>
 			</html>
@@ -187,13 +200,16 @@ function RootComponent() {
 	}
 
 	return (
-		<html lang="en">
+		<html lang={locale}>
 			<head>
 				{clarityProjectId && <ScriptOnce>{clarityQueueScript}</ScriptOnce>}
 				<HeadContent />
 			</head>
 			<body className="font-sans antialiased">
-				<Outlet />
+				<I18nProvider locale={locale}>
+					<Outlet />
+					<LanguageToggle className="fixed top-3 right-4 z-50 shadow-xs" />
+				</I18nProvider>
 				<TanStackDevtools plugins={[queryDevtools]} />
 				<Scripts />
 			</body>

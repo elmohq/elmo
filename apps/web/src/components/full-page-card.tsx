@@ -5,6 +5,7 @@ import { Separator } from "@workspace/ui/components/separator";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/logo";
 import { useAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/lib/i18n";
 
 interface FullPageCardProps {
 	logoHref?: string;
@@ -25,11 +26,12 @@ export default function FullPageCard({
 	children = undefined,
 	showBackButton = false,
 	backButtonHref = "/app",
-	backButtonText = "Go Back",
+	backButtonText,
 	customBackButton,
 	className = "w-md",
 }: FullPageCardProps) {
 	const { isAuthenticated } = useAuth();
+	const { t } = useI18n();
 	const markHref = logoHref ?? (isAuthenticated ? "/app" : null);
 
 	return (
@@ -37,7 +39,7 @@ export default function FullPageCard({
 			<div className={`mx-auto ${className}`}>
 				<div className="flex items-center justify-center space-x-3">
 					{markHref ? (
-						<Link to={markHref} aria-label="Go to your organizations">
+						<Link to={markHref} aria-label={t("Go to your organizations")}>
 							<Logo />
 						</Link>
 					) : (
@@ -65,7 +67,7 @@ export default function FullPageCard({
 				) : showBackButton ? (
 					<div className="flex justify-center">
 						<Link to={backButtonHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
-							{backButtonText}
+							{backButtonText ?? t("Go Back")}
 						</Link>
 					</div>
 				) : null}

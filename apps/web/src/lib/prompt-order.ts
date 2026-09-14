@@ -7,13 +7,13 @@
  *  pattern from PR #336). The label is used both in the menu and (for a chosen
  *  order) on the bar button. */
 export const PROMPT_ORDER_OPTIONS = [
-	{ value: "default", label: "Default" },
-	{ value: "brand-desc", label: "Brand Visibility ↓" },
-	{ value: "brand-asc", label: "Brand Visibility ↑" },
-	{ value: "competitor-desc", label: "Competitor Visibility ↓" },
-	{ value: "competitor-asc", label: "Competitor Visibility ↑" },
-	{ value: "prompt-asc", label: "Prompt A–Z" },
-	{ value: "prompt-desc", label: "Prompt Z–A" },
+	{ value: "default", label: /* i18n */ "Default" },
+	{ value: "brand-desc", label: /* i18n */ "Brand Visibility ↓" },
+	{ value: "brand-asc", label: /* i18n */ "Brand Visibility ↑" },
+	{ value: "competitor-desc", label: /* i18n */ "Competitor Visibility ↓" },
+	{ value: "competitor-asc", label: /* i18n */ "Competitor Visibility ↑" },
+	{ value: "prompt-asc", label: /* i18n */ "Prompt A–Z" },
+	{ value: "prompt-desc", label: /* i18n */ "Prompt Z–A" },
 ] as const;
 
 export type PromptOrder = (typeof PROMPT_ORDER_OPTIONS)[number]["value"];

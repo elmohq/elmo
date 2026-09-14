@@ -10,14 +10,14 @@ export function adminNavItems({
 	hasReportAccess: boolean;
 	reportsEnabled: boolean;
 }): NavItem[] {
-	const reports: NavItem = { title: "Reports", link: { to: "/reports" }, icon: IconReport };
+	const reports: NavItem = { title: /* i18n */ "Reports", link: { to: "/reports" }, icon: IconReport };
 
 	if (!isAdmin) return hasReportAccess && reportsEnabled ? [reports] : [];
 
 	return [
-		{ title: "Brands", link: { to: "/admin" }, icon: IconTable },
+		{ title: /* i18n */ "Brands", link: { to: "/admin" }, icon: IconTable },
 		...(reportsEnabled ? [reports] : []),
-		{ title: "Workflows", link: { to: "/admin/workflows" }, icon: IconTimeline },
-		{ title: "Tools", link: { to: "/admin/tools" }, icon: IconTool },
+		{ title: /* i18n */ "Workflows", link: { to: "/admin/workflows" }, icon: IconTimeline },
+		{ title: /* i18n */ "Tools", link: { to: "/admin/tools" }, icon: IconTool },
 	];
 }

@@ -3,21 +3,22 @@ import { useMemo } from "react";
 import { useBrand } from "@/hooks/use-brands";
 import { coerceLookback, useFilterNavigate } from "@/hooks/use-list-filters";
 import { getDefaultLookbackPeriod, type LookbackPeriod } from "@/lib/chart-utils";
+import { useI18n } from "@/lib/i18n";
 
 function getLookbackLabel(lookback: LookbackPeriod): string {
 	switch (lookback) {
 		case "1w":
-			return "1w";
+			return /* i18n */ "1w";
 		case "1m":
-			return "1mo";
+			return /* i18n */ "1mo";
 		case "3m":
-			return "3mo";
+			return /* i18n */ "3mo";
 		case "6m":
-			return "6mo";
+			return /* i18n */ "6mo";
 		case "1y":
-			return "1yr";
+			return /* i18n */ "1yr";
 		case "all":
-			return "all";
+			return /* i18n */ "all";
 	}
 }
 
@@ -28,6 +29,7 @@ interface LookbackSelectorProps {
 
 export function LookbackSelector({ defaultPeriod, onLookbackChange }: LookbackSelectorProps) {
 	const { brand } = useBrand();
+	const { t } = useI18n();
 	const computedDefaultPeriod = useMemo(
 		() => defaultPeriod ?? getDefaultLookbackPeriod(brand?.earliestDataDate),
 		[defaultPeriod, brand?.earliestDataDate],
@@ -55,7 +57,7 @@ export function LookbackSelector({ defaultPeriod, onLookbackChange }: LookbackSe
 					}`}
 					type="button"
 				>
-					{getLookbackLabel(period)}
+					{t(getLookbackLabel(period))}
 				</button>
 			))}
 		</div>

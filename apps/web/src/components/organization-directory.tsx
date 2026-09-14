@@ -4,6 +4,7 @@ import { buttonVariants } from "@workspace/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { OrganizationRowIcon } from "@/components/organization-row-icon";
 import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
+import { useI18n } from "@/lib/i18n";
 import { organizationTree } from "@/lib/organizations/tree";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
@@ -11,6 +12,7 @@ const ROW = "flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-acc
 
 export function OrganizationDirectory({ organizations }: { organizations: OrganizationSummary[] }) {
 	const features = useDeploymentFeatures();
+	const { t } = useI18n();
 
 	return (
 		<div className="flex w-full min-w-[280px] flex-col gap-4">
@@ -20,7 +22,7 @@ export function OrganizationDirectory({ organizations }: { organizations: Organi
 			{features?.canCreateOrganizations && (
 				<Link to="/app/new" className={buttonVariants({ variant: "outline", className: "w-full gap-1.5" })}>
 					<IconPlus className="size-4" />
-					New organization
+					{t("New organization")}
 				</Link>
 			)}
 		</div>
@@ -28,7 +30,8 @@ export function OrganizationDirectory({ organizations }: { organizations: Organi
 }
 
 function OrganizationBlock({ organization }: { organization: OrganizationSummary }) {
-	const { heading, children } = organizationTree(organization);
+	const { t } = useI18n();
+	const { heading, children } = organizationTree(organization, t);
 
 	return (
 		<div>
@@ -42,7 +45,7 @@ function OrganizationBlock({ organization }: { organization: OrganizationSummary
 					</span>
 					<IconSettings className="size-4 shrink-0 text-muted-foreground" />
 				</TooltipTrigger>
-				<TooltipContent>Organization Settings</TooltipContent>
+				<TooltipContent>{t("Organization Settings")}</TooltipContent>
 			</Tooltip>
 
 			{children.length > 0 && (

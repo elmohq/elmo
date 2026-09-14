@@ -1,9 +1,11 @@
+import { type Locale, translate } from "@/lib/i18n";
 import { routeSubjects } from "@/lib/route-subject";
 
 const DEFAULT_DESCRIPTION = "Track and optimize your brand's visibility across AI models.";
 
 interface RouteMatchContext {
 	context?: {
+		locale?: Locale;
 		clientConfig?: {
 			branding?: { name?: string; url?: string; icon?: string };
 		};
@@ -38,12 +40,14 @@ interface HeadArgs {
 export function pageHead(page: { title?: string; description?: string }) {
 	return ({ match, matches }: HeadArgs) => {
 		const { organizationName, brandName } = routeSubjects(matches);
-		const name = page.title ?? match.staticData?.crumb;
+		const locale = match.context?.locale ?? "en";
+		const rawName = page.title ?? match.staticData?.crumb;
+		const name = rawName && translate(locale, rawName);
 		const appName = getAppName(match);
 		return {
 			meta: [
 				{ title: name ? buildTitle(name, { appName, subject: brandName ?? organizationName }) : appName },
-				...(page.description ? [{ name: "description", content: page.description }] : []),
+				...(page.description ? [{ name: "description", content: translate(locale, page.description) }] : []),
 			],
 		};
 	};

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useI18n } from "@/lib/i18n";
 
 const PAGER_BUTTON_CLASS =
 	"text-xs text-muted-foreground hover:text-foreground cursor-pointer px-2.5 py-1 rounded-md border border-border hover:bg-muted/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
@@ -13,6 +14,7 @@ interface ListPaginationProps {
 
 /** Controlled pagination footer that renders nothing when all items fit on one page. */
 export function ListPagination({ page, pageSize, totalItems, onPageChange }: ListPaginationProps) {
+	const { t } = useI18n();
 	const totalPages = Math.ceil(totalItems / pageSize);
 	if (totalPages <= 1) return null;
 	const start = page * pageSize + 1;
@@ -20,7 +22,7 @@ export function ListPagination({ page, pageSize, totalItems, onPageChange }: Lis
 	return (
 		<div className="mt-3 flex items-center justify-between">
 			<span className="text-[11px] text-muted-foreground tabular-nums">
-				{start.toLocaleString()}–{end.toLocaleString()} of {totalItems.toLocaleString()}
+				{t("{start}–{end} of {total}", { start, end, total: totalItems })}
 			</span>
 			<div className="flex items-center gap-1.5">
 				<button
@@ -29,7 +31,7 @@ export function ListPagination({ page, pageSize, totalItems, onPageChange }: Lis
 					disabled={page === 0}
 					className={PAGER_BUTTON_CLASS}
 				>
-					Previous
+					{t("Previous")}
 				</button>
 				<button
 					type="button"
@@ -37,7 +39,7 @@ export function ListPagination({ page, pageSize, totalItems, onPageChange }: Lis
 					disabled={page >= totalPages - 1}
 					className={PAGER_BUTTON_CLASS}
 				>
-					Next
+					{t("Next")}
 				</button>
 			</div>
 		</div>

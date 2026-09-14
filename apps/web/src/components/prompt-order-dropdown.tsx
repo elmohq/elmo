@@ -8,6 +8,7 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { ArrowUpDown } from "lucide-react";
 import { FilterTriggerButton } from "@/components/filter-bar";
+import { useI18n } from "@/lib/i18n";
 import { coercePromptOrder, DEFAULT_PROMPT_ORDER, PROMPT_ORDER_OPTIONS, type PromptOrder } from "@/lib/prompt-order";
 
 /** Sort control for the prompts list (#60). Reads/writes the `order` URL key
@@ -17,6 +18,7 @@ import { coercePromptOrder, DEFAULT_PROMPT_ORDER, PROMPT_ORDER_OPTIONS, type Pro
  *  state keeps a clean URL. */
 export function PromptOrderDropdown() {
 	const navigate = useNavigate();
+	const { t } = useI18n();
 	const selected = useSearch({
 		strict: false,
 		select: (s) => coercePromptOrder((s as { order?: unknown }).order),
@@ -37,8 +39,8 @@ export function PromptOrderDropdown() {
 	// chosen order's menu label (arrows and all).
 	const label =
 		selected === DEFAULT_PROMPT_ORDER
-			? "Sort"
-			: (PROMPT_ORDER_OPTIONS.find((o) => o.value === selected)?.label ?? "Sort");
+			? t("Sort")
+			: t(PROMPT_ORDER_OPTIONS.find((o) => o.value === selected)?.label ?? "Sort");
 
 	return (
 		<DropdownMenu>
@@ -55,7 +57,7 @@ export function PromptOrderDropdown() {
 				<DropdownMenuRadioGroup value={selected} onValueChange={(v) => setOrder(v as PromptOrder)}>
 					{PROMPT_ORDER_OPTIONS.map((o) => (
 						<DropdownMenuRadioItem key={o.value} value={o.value} className="cursor-pointer whitespace-nowrap">
-							{o.label}
+							{t(o.label)}
 						</DropdownMenuRadioItem>
 					))}
 				</DropdownMenuRadioGroup>
