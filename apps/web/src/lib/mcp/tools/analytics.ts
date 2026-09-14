@@ -28,7 +28,7 @@ function analyticsTool(tool: {
 }): McpTool {
 	return defineTool({
 		...tool,
-		scopes: ["analytics:read"],
+		scopes: ["read"],
 		readOnly: true,
 		input: { brandId: brandIdArg, ...windowArgs },
 		run: async ({ auth }, args) => {
@@ -100,7 +100,7 @@ export const getOpportunities = defineTool({
 	title: "Get the latest opportunities report",
 	description:
 		"The most recent stored opportunities report for a brand: what to write, what to fix, and the risks Elmo found. `status` says whether there was enough data to write one.",
-	scopes: ["analytics:read"],
+	scopes: ["read"],
 	readOnly: true,
 	input: { brandId: brandIdArg },
 	run: async ({ auth }, args) => {

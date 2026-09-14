@@ -10,12 +10,21 @@ import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { API_SCOPES, type ApiScope, permissionsToScopes, scopesToPermissions } from "@/lib/api/scopes";
+import { type ApiScope, permissionsToScopes, scopesToPermissions } from "@/lib/api/scopes";
 import { readBrandRestriction } from "@/lib/auth/api-auth";
 import { requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 import { auth } from "@/lib/auth/server";
 
 const EXPIRY_DAYS = [30, 90, 180, 365] as const;
+
+/** The two ways a key is issued. Write carries read with it, so there is no
+ * write-only key to end up holding by accident. */
+const ACCESS_SCOPES = {
+	read: ["read"],
+	write: ["read", "write"],
+} as const satisfies Record<string, readonly ApiScope[]>;
+
+export type ApiKeyAccess = keyof typeof ACCESS_SCOPES;
 
 export interface ApiKeySummary {
 	id: string;
@@ -34,7 +43,6 @@ export type ApiKeysPageData = {
 	canManage: boolean;
 	keys: ApiKeySummary[];
 	brands: { id: string; name: string }[];
-	allScopes: readonly ApiScope[];
 	expiryOptions: readonly number[];
 };
 
@@ -92,7 +100,6 @@ export const listApiKeysFn = createServerFn({ method: "GET" })
 			canManage,
 			keys: keys.apiKeys.map(summarize),
 			brands: organizationBrands,
-			allScopes: API_SCOPES,
 			expiryOptions: EXPIRY_DAYS,
 		};
 	});
@@ -100,7 +107,7 @@ export const listApiKeysFn = createServerFn({ method: "GET" })
 const createInput = z.object({
 	organizationId: z.string(),
 	name: z.string().trim().min(1, "Give the key a name"),
-	scopes: z.array(z.enum(API_SCOPES)).min(1, "Choose at least one scope"),
+	access: z.enum(["read", "write"]),
 	/** Null is every brand; `[]` is rejected rather than read as "all", which is
 	 * the reading that fails open. */
 	brandIds: z
@@ -138,7 +145,7 @@ export const createApiKeyFn = createServerFn({ method: "POST" })
 				organizationId: org.id,
 				userId: session.user.id,
 				prefix: "elmo_",
-				permissions: scopesToPermissions(data.scopes),
+				permissions: scopesToPermissions(ACCESS_SCOPES[data.access]),
 				// Absent, not empty: "every brand" is the absence of a narrowing.
 				metadata: data.brandIds ? { brandIds: data.brandIds } : {},
 				...(data.expiresInDays !== null && { expiresIn: data.expiresInDays * 24 * 60 * 60 }),

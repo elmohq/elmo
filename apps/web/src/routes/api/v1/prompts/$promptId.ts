@@ -34,14 +34,14 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 		handlers: withMethodGuard({
 			GET: createApiHandler({
 				params: promptParams,
-				scopes: ["prompts:read"],
+				scopes: ["read"],
 				handle: async ({ params, auth }) => toPromptSummary((await requirePromptInScope(auth, params.promptId)).prompt),
 			}),
 
 			PATCH: createApiHandler({
 				params: promptParams,
 				body: updatePromptInputSchema,
-				scopes: ["prompts:write"],
+				scopes: ["write"],
 				mapError: mapPromptNotFound,
 				handle: async ({ params, body, auth }) => {
 					const { brand } = await requirePromptInScope(auth, params.promptId);
