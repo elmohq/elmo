@@ -10,6 +10,7 @@
  * decided to look, and a whitelabel tenant is not ours to sell to.
  */
 
+import { useI18n } from "@/lib/i18n";
 import { IconCheck, IconCloud, IconEye } from "@tabler/icons-react";
 import { PLANS, platformTierMembers } from "@workspace/config/plans";
 import {
@@ -47,33 +48,34 @@ interface Pitch {
 }
 
 const CLOUD_PITCH: Pitch = {
-	headline: "Be the brand AI recommends.",
+	headline: /* i18n */ "Be the brand AI recommends.",
 	bullets: [
-		{ text: "Track your AI visibility on any model" },
-		{ text: "Benchmark against your competitors" },
-		{ text: "Analyze citations to find opportunities" },
-		{ text: `${RUNS_PER_DAY}× Profound's daily runs, same price` },
+		{ text: /* i18n */ "Track your AI visibility on any model" },
+		{ text: /* i18n */ "Benchmark against your competitors" },
+		{ text: /* i18n */ "Analyze citations to find opportunities" },
+		{ text: /* i18n */ "{runs}× Profound's daily runs, same price" },
 	],
 };
 
 const SELF_HOSTED_PITCH: Pitch = {
-	headline: "Self-host your AEO.",
+	headline: /* i18n */ "Self-host your AEO.",
 	bullets: [
-		{ text: "Track your AI visibility on any model" },
-		{ text: "Unlimited prompts, brands, and seats" },
-		{ text: "Bring your own model and scraper keys" },
-		{ text: "Please star us on GitHub!", href: GITHUB_URL },
+		{ text: /* i18n */ "Track your AI visibility on any model" },
+		{ text: /* i18n */ "Unlimited prompts, brands, and seats" },
+		{ text: /* i18n */ "Bring your own model and scraper keys" },
+		{ text: /* i18n */ "Please star us on GitHub!", href: GITHUB_URL },
 	],
 };
 
 type SalesPanelVariant = "cloud" | "self-hosted";
 
 export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; source: ReferralSource }) {
+	const { t } = useI18n();
 	const pitch = variant === "cloud" ? CLOUD_PITCH : SELF_HOSTED_PITCH;
 
 	return (
 		<div className="flex flex-1 flex-col justify-between gap-8">
-			<h2 className="text-3xl font-semibold leading-[1.1] tracking-tight text-balance">{pitch.headline}</h2>
+			<h2 className="text-3xl font-semibold leading-[1.1] tracking-tight text-balance">{t(pitch.headline)}</h2>
 
 			<ul className="space-y-2.5">
 				{pitch.bullets.map((bullet) => (
@@ -86,10 +88,10 @@ export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; so
 								rel="noopener noreferrer"
 								className="underline underline-offset-2 hover:opacity-80"
 							>
-								{bullet.text}
+								{t(bullet.text, { runs: RUNS_PER_DAY })}
 							</a>
 						) : (
-							<span>{bullet.text}</span>
+							<span>{t(bullet.text, { runs: RUNS_PER_DAY })}</span>
 						)}
 					</li>
 				))}
@@ -102,7 +104,7 @@ export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; so
 			<EngineStrip />
 
 			<OfferCard
-				question={variant === "self-hosted" ? "Don't want to self-host?" : "Try before you buy?"}
+				question={variant === "self-hosted" ? t("Don't want to self-host?") : t("Try before you buy?")}
 				offer={variant === "self-hosted" ? cloudOffer(source) : demoOffer(source)}
 			/>
 		</div>
@@ -111,9 +113,10 @@ export function SalesPanel({ variant, source }: { variant: SalesPanelVariant; so
 
 /** The coverage claim, spelled out. Names sit beside logos because three Google surfaces share a mark. */
 function EngineStrip() {
+	const { t } = useI18n();
 	return (
 		<div>
-			<p className="font-mono text-[10px] uppercase leading-none tracking-[0.2em] text-muted-foreground">Tracking</p>
+			<p className="font-mono text-[10px] uppercase leading-none tracking-[0.2em] text-muted-foreground">{t("Tracking")}</p>
 			<ul className="mt-3 flex flex-wrap gap-1.5">
 				{ENGINES.map((engine) => (
 					<li
@@ -138,14 +141,14 @@ interface Offer {
 }
 
 const demoOffer = (source: ReferralSource): Offer => ({
-	label: "View Live Demo",
+	label: /* i18n */ "View Live Demo",
 	href: demoSiteUrl(source),
 	icon: IconEye,
 	newTab: true,
 });
 
 const cloudOffer = (source: ReferralSource): Offer => ({
-	label: "Try Elmo Cloud",
+	label: /* i18n */ "Try Elmo Cloud",
 	href: cloudSignupUrl(source),
 	icon: IconCloud,
 });
@@ -159,6 +162,7 @@ const cloudOffer = (source: ReferralSource): Offer => ({
  * wrap together when the panel is too narrow to hold both.
  */
 function OfferCard({ question, offer, className = "" }: { question: string; offer: Offer; className?: string }) {
+	const { t } = useI18n();
 	return (
 		<div
 			className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-lg border bg-card p-5 ${className}`}
@@ -173,20 +177,21 @@ function OfferCard({ question, offer, className = "" }: { question: string; offe
 				{...(offer.newTab ? { target: "_blank", rel: "noopener" } : {})}
 			>
 				<offer.icon className="size-4" />
-				{offer.label}
+				{t(offer.label)}
 			</a>
 		</div>
 	);
 }
 
 function Quote() {
+	const { t } = useI18n();
 	const quote = CUSTOMER_QUOTES.speakeasy;
 	return (
 		<figure className="rounded-lg border bg-card p-5">
 			<blockquote className="text-pretty text-sm font-medium leading-relaxed">“{quote.quote}”</blockquote>
 			<figcaption className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
 				<span className="font-semibold text-foreground">{quote.author}</span>
-				<span>at</span>
+				<span>{t("at")}</span>
 				<a
 					href={quote.companyUrl}
 					target="_blank"
@@ -207,15 +212,16 @@ function Quote() {
  * where sending someone away costs a signup.
  */
 export function SalesFooterLinks({ source }: { source: ReferralSource }): ReactNode {
+	const { t } = useI18n();
 	const linkClass = "hover:text-foreground";
 	return (
 		<div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2">
 			<p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
 				<a href={marketingUrl("/docs", source)} className={linkClass}>
-					Docs
+					{t("Docs")}
 				</a>
 				<a href={cloudPricingUrl(source)} className={linkClass}>
-					Pricing
+					{t("Pricing")}
 				</a>
 				<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className={linkClass}>
 					GitHub

@@ -7,6 +7,7 @@
  * Whitelabel mode: auto-redirects to Auth0 SSO (no form shown).
  */
 
+import { translate, useI18n } from "@/lib/i18n";
 import { IconBrandGoogle, IconInfoCircle } from "@tabler/icons-react";
 import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
@@ -38,8 +39,8 @@ export const Route = createFileRoute("/auth/login")({
 		const appName = getAppName(match);
 		return {
 			meta: [
-				{ title: buildTitle("Sign in", { appName }) },
-				{ name: "description", content: "Sign in to your account." },
+				{ title: buildTitle(translate(match.context?.locale ?? "en", "Sign in"), { appName }) },
+				{ name: "description", content: translate(match.context?.locale ?? "en", "Sign in to your account.") },
 			],
 		};
 	},
@@ -79,6 +80,7 @@ function LoginPage() {
 }
 
 export function SSOLogin({ returnTo }: { returnTo?: string }) {
+	const { t } = useI18n();
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
@@ -89,12 +91,12 @@ export function SSOLogin({ returnTo }: { returnTo?: string }) {
 			.then((result) => {
 				if (cancelled) return;
 				if (result.error) {
-					setError(result.error.message ?? "Failed to start sign-in");
+					setError(t(result.error.message ?? "Failed to start sign-in"));
 				}
 			})
 			.catch(() => {
 				if (!cancelled) {
-					setError("Something went wrong. Please try again.");
+					setError(t("Something went wrong. Please try again."));
 				}
 			});
 
@@ -105,24 +107,25 @@ export function SSOLogin({ returnTo }: { returnTo?: string }) {
 
 	if (error) {
 		return (
-			<FullPageCard title="Sign in">
+			<FullPageCard title={t("Sign in")}>
 				<div className="w-full space-y-4">
 					<Alert variant="destructive">
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
 					<Button className="w-full" onClick={() => window.location.reload()}>
-						Try Again
+						{t("Try Again")}
 					</Button>
 				</div>
 			</FullPageCard>
 		);
 	}
 
-	return <FullPageCard title="Signing in..." subtitle="Redirecting to your identity provider" />;
+	return <FullPageCard title={t("Signing in...")} subtitle={t("Redirecting to your identity provider")} />;
 }
 
 /** Signs in the shared demo account, whose credentials are printed on the page. */
 export function DemoLogin({ returnTo }: { returnTo?: string }) {
+	const { t } = useI18n();
 	const navigate = useNavigate();
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
@@ -135,19 +138,19 @@ export function DemoLogin({ returnTo }: { returnTo?: string }) {
 		try {
 			const result = await authClient.signIn.email({ email: "demo@elmohq.com", password: "demo" });
 			if (result.error) {
-				setError(result.error.message ?? "Invalid email or password");
+				setError(t(result.error.message ?? "Invalid email or password"));
 				setLoading(false);
 				return;
 			}
 			navigate({ to: safeReturnTo(returnTo) });
 		} catch {
-			setError("Something went wrong. Please try again.");
+			setError(t("Something went wrong. Please try again."));
 			setLoading(false);
 		}
 	}
 
 	return (
-		<FullPageCard title="Sign in">
+		<FullPageCard title={t("Sign in")}>
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
 				<DemoCredentialsCallout />
 				{error && (
@@ -156,7 +159,7 @@ export function DemoLogin({ returnTo }: { returnTo?: string }) {
 					</Alert>
 				)}
 				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Signing in..." : "Sign in"}
+					{loading ? t("Signing in...") : t("Sign in")}
 				</Button>
 			</form>
 		</FullPageCard>
@@ -175,6 +178,7 @@ export function EmailPasswordLogin({
 	isCloud?: boolean;
 	canRegister?: boolean;
 }) {
+	const { t } = useI18n();
 	const navigate = useNavigate();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
@@ -195,9 +199,9 @@ export function EmailPasswordLogin({
 
 			if (result.error) {
 				if (isCloud && result.error.status === 403) {
-					setError("Please verify your email first — we just sent you a new verification link.");
+					setError(t("Please verify your email first — we just sent you a new verification link."));
 				} else {
-					setError(result.error.message ?? "Invalid email or password");
+					setError(t(result.error.message ?? "Invalid email or password"));
 				}
 				setLoading(false);
 				return;
@@ -205,15 +209,15 @@ export function EmailPasswordLogin({
 
 			navigate({ to: safeReturnTo(returnTo) });
 		} catch {
-			setError("Something went wrong. Please try again.");
+			setError(t("Something went wrong. Please try again."));
 			setLoading(false);
 		}
 	}
 
 	return (
 		<AuthSplitLayout
-			title="Welcome back"
-			subtitle={isCloud ? "Check in on your AI visibility." : "Sign in to your Elmo instance."}
+			title={t("Welcome back")}
+			subtitle={isCloud ? t("Check in on your AI visibility.") : t("Sign in to your Elmo instance.")}
 			pitch={<SalesPanel variant={isCloud ? "cloud" : "self-hosted"} source={source} />}
 			footer={<SalesFooterLinks source={source} />}
 		>
@@ -226,11 +230,11 @@ export function EmailPasswordLogin({
 						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: safeReturnTo(returnTo) })}
 					>
 						<IconBrandGoogle className="size-4" />
-						Continue with Google
+						{t("Continue with Google")}
 					</Button>
 					<div className="flex items-center gap-3">
 						<Separator className="flex-1" />
-						<span className="text-xs text-muted-foreground">or</span>
+						<span className="text-xs text-muted-foreground">{t("or")}</span>
 						<Separator className="flex-1" />
 					</div>
 				</div>
@@ -242,7 +246,7 @@ export function EmailPasswordLogin({
 					</Alert>
 				)}
 				<div className="space-y-2">
-					<Label htmlFor="email">Email</Label>
+					<Label htmlFor="email">{t("Email")}</Label>
 					<Input
 						id="email"
 						type="email"
@@ -256,17 +260,17 @@ export function EmailPasswordLogin({
 				</div>
 				<div className="space-y-2">
 					<div className="flex items-center justify-between">
-						<Label htmlFor="password">Password</Label>
+						<Label htmlFor="password">{t("Password")}</Label>
 						{isCloud && (
 							<Link to="/auth/forgot-password" className="text-xs text-primary hover:underline">
-								Forgot password?
+								{t("Forgot password?")}
 							</Link>
 						)}
 					</div>
 					<Input
 						id="password"
 						type="password"
-						placeholder="Password"
+						placeholder={t("Password")}
 						value={password}
 						onChange={(e) => setPassword(e.target.value)}
 						required
@@ -274,18 +278,18 @@ export function EmailPasswordLogin({
 					/>
 				</div>
 				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Signing in..." : "Sign in"}
+					{loading ? t("Signing in...") : t("Sign in")}
 				</Button>
 			</form>
 			{canRegister && (
 				<p className="text-sm text-muted-foreground pt-4">
-					Don't have an account?{" "}
+					{t("Don't have an account?")}{" "}
 					<Link
 						to="/auth/register"
 						search={{ ...(returnTo ? { returnTo } : {}), ...(incomingRef ? { ref: incomingRef } : {}) }}
 						className="text-primary hover:underline font-medium"
 					>
-						Create one
+						{t("Create one")}
 					</Link>
 				</p>
 			)}
@@ -294,18 +298,19 @@ export function EmailPasswordLogin({
 }
 
 function DemoCredentialsCallout() {
+	const { t } = useI18n();
 	return (
 		<div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
 			<IconInfoCircle className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
 			<div className="space-y-2">
-				<p className="font-medium text-amber-900 dark:text-amber-100">Demo Account</p>
+				<p className="font-medium text-amber-900 dark:text-amber-100">{t("Demo Account")}</p>
 				<dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-amber-900/90 dark:text-amber-100/80">
 					<div className="flex items-center gap-1.5">
-						<dt className="opacity-70">Email</dt>
+						<dt className="opacity-70">{t("Email")}</dt>
 						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">demo@elmohq.com</dd>
 					</div>
 					<div className="flex items-center gap-1.5">
-						<dt className="opacity-70">Password</dt>
+						<dt className="opacity-70">{t("Password")}</dt>
 						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">demo</dd>
 					</div>
 				</dl>

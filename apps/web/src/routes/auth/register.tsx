@@ -6,6 +6,7 @@
  * sign-in and also offers Google OAuth.
  */
 
+import { translate, useI18n } from "@/lib/i18n";
 import { IconBrandGoogle } from "@tabler/icons-react";
 import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
 import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
@@ -37,7 +38,8 @@ export const Route = createFileRoute("/auth/register")({
 	head: ({ match }) => {
 		const appName = getAppName(match);
 		return {
-			meta: [{ title: buildTitle("Sign up", { appName }) }, { name: "description", content: "Create an account." }],
+			meta: [{ title: buildTitle(translate(match.context?.locale ?? "en", "Sign up"), { appName }) },
+				{ name: "description", content: translate(match.context?.locale ?? "en", "Create an account.") },],
 		};
 	},
 	component: RegisterPage,
@@ -76,6 +78,7 @@ export function RegisterForm({
 	/** A local instance before its bootstrap signup has nowhere to send an existing account. */
 	hasUsers?: boolean;
 }) {
+	const { t } = useI18n();
 	const navigate = useNavigate();
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
@@ -100,7 +103,7 @@ export function RegisterForm({
 			});
 
 			if (result.error) {
-				setError(result.error.message ?? "Registration failed");
+				setError(t(result.error.message ?? "Registration failed"));
 				setLoading(false);
 				return;
 			}
@@ -113,7 +116,7 @@ export function RegisterForm({
 
 			navigate({ to: returnTo ?? "/app" });
 		} catch {
-			setError("Something went wrong. Please try again.");
+			setError(t("Something went wrong. Please try again."));
 			setLoading(false);
 		}
 	}
@@ -129,13 +132,13 @@ export function RegisterForm({
 
 	if (pendingVerification) {
 		return (
-			<FullPageCard title="Check your email" subtitle={`We sent a verification link to ${email}`}>
+			<FullPageCard title={t("Check your email")} subtitle={t("We sent a verification link to {email}", { email })}>
 				<div className="space-y-4 w-full">
 					<p className="text-sm text-muted-foreground text-center">
-						Click the link in the email to verify your address and get started. The link expires, so verify soon.
+						{t("Click the link in the email to verify your address and get started. The link expires, so verify soon.")}
 					</p>
 					<Button type="button" variant="outline" className="w-full" onClick={handleResend} disabled={resending}>
-						{resending ? "Sending..." : "Resend verification email"}
+						{resending ? t("Sending...") : t("Resend verification email")}
 					</Button>
 				</div>
 			</FullPageCard>
@@ -144,11 +147,11 @@ export function RegisterForm({
 
 	return (
 		<AuthSplitLayout
-			title={isCloud ? "Start tracking your AI visibility" : "Create your admin account"}
+			title={isCloud ? t("Start tracking your AI visibility") : t("Create your admin account")}
 			subtitle={
 				isCloud
-					? `Plans start at $${CLOUD_ENTRY_PRICE_USD}/mo. Cancel any time.`
-					: "This is the owner account for your self-hosted instance."
+					? t("Plans start at ${price}/mo. Cancel any time.", { price: CLOUD_ENTRY_PRICE_USD })
+					: t("This is the owner account for your self-hosted instance.")
 			}
 			pitch={<SalesPanel variant={isCloud ? "cloud" : "self-hosted"} source={source} />}
 			footer={<SalesFooterLinks source={source} />}
@@ -162,11 +165,11 @@ export function RegisterForm({
 						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: safeReturnTo(returnTo) })}
 					>
 						<IconBrandGoogle className="size-4" />
-						Continue with Google
+						{t("Continue with Google")}
 					</Button>
 					<div className="flex items-center gap-3">
 						<Separator className="flex-1" />
-						<span className="text-xs text-muted-foreground">or</span>
+						<span className="text-xs text-muted-foreground">{t("or")}</span>
 						<Separator className="flex-1" />
 					</div>
 				</div>
@@ -178,11 +181,11 @@ export function RegisterForm({
 					</Alert>
 				)}
 				<div className="space-y-2">
-					<Label htmlFor="name">Name</Label>
+					<Label htmlFor="name">{t("Name")}</Label>
 					<Input
 						id="name"
 						type="text"
-						placeholder="Your name"
+						placeholder={t("Your name")}
 						value={name}
 						onChange={(e) => setName(e.target.value)}
 						required
@@ -191,7 +194,7 @@ export function RegisterForm({
 					/>
 				</div>
 				<div className="space-y-2">
-					<Label htmlFor="email">Email</Label>
+					<Label htmlFor="email">{t("Email")}</Label>
 					<Input
 						id="email"
 						type="email"
@@ -203,11 +206,11 @@ export function RegisterForm({
 					/>
 				</div>
 				<div className="space-y-2">
-					<Label htmlFor="password">Password</Label>
+					<Label htmlFor="password">{t("Password")}</Label>
 					<Input
 						id="password"
 						type="password"
-						placeholder="Create a password"
+						placeholder={t("Create a password")}
 						value={password}
 						onChange={(e) => setPassword(e.target.value)}
 						required
@@ -216,18 +219,18 @@ export function RegisterForm({
 					/>
 				</div>
 				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Creating account..." : "Create account"}
+					{loading ? t("Creating account...") : t("Create account")}
 				</Button>
 			</form>
 			{hasUsers && (
 				<p className="text-sm text-muted-foreground pt-4">
-					Already have an account?{" "}
+					{t("Already have an account?")}{" "}
 					<Link
 						to="/auth/login"
 						search={{ ...(returnTo ? { returnTo } : {}), ...(incomingRef ? { ref: incomingRef } : {}) }}
 						className="text-primary hover:underline font-medium"
 					>
-						Sign in
+						{t("Sign in")}
 					</Link>
 				</p>
 			)}

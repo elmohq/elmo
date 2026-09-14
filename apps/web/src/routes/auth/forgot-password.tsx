@@ -9,6 +9,7 @@
  * exists, to avoid account enumeration.
  */
 
+import { translate, useI18n } from "@/lib/i18n";
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
@@ -25,8 +26,8 @@ export const Route = createFileRoute("/auth/forgot-password")({
 		const appName = getAppName(match);
 		return {
 			meta: [
-				{ title: buildTitle("Reset password", { appName }) },
-				{ name: "description", content: "Request a password reset link." },
+				{ title: buildTitle(translate(match.context?.locale ?? "en", "Reset password"), { appName }) },
+				{ name: "description", content: translate(match.context?.locale ?? "en", "Request a password reset link.") },
 			],
 		};
 	},
@@ -45,6 +46,7 @@ function ForgotPasswordPage() {
 }
 
 export function ForgotPasswordForm({ isCloud, submitted: initiallySubmitted = false }: ForgotPasswordFormProps) {
+	const { t } = useI18n();
 	const [email, setEmail] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [submitted, setSubmitted] = useState(initiallySubmitted);
@@ -67,9 +69,11 @@ export function ForgotPasswordForm({ isCloud, submitted: initiallySubmitted = fa
 	if (submitted) {
 		return (
 			<AuthSplitLayout
-				title="Check your email"
+				title={t("Check your email")}
 				subtitle={
-					email ? `If an account exists for ${email}, a reset link is on its way.` : "A reset link is on its way."
+					email
+						? t("If an account exists for {email}, a reset link is on its way.", { email })
+						: t("A reset link is on its way.")
 				}
 				pitch={panel}
 				footer={<SalesFooterLinks source={source} />}
@@ -81,14 +85,14 @@ export function ForgotPasswordForm({ isCloud, submitted: initiallySubmitted = fa
 
 	return (
 		<AuthSplitLayout
-			title="Reset your password"
-			subtitle="Enter your email and we'll send you a reset link."
+			title={t("Reset your password")}
+			subtitle={t("Enter your email and we'll send you a reset link.")}
 			pitch={panel}
 			footer={<SalesFooterLinks source={source} />}
 		>
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
 				<div className="space-y-2">
-					<Label htmlFor="email">Email</Label>
+					<Label htmlFor="email">{t("Email")}</Label>
 					<Input
 						id="email"
 						type="email"
@@ -101,7 +105,7 @@ export function ForgotPasswordForm({ isCloud, submitted: initiallySubmitted = fa
 					/>
 				</div>
 				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Sending..." : "Send reset link"}
+					{loading ? t("Sending...") : t("Send reset link")}
 				</Button>
 			</form>
 			<div className="pt-4">
@@ -118,10 +122,11 @@ interface ForgotPasswordFormProps {
 }
 
 export function BackToSignIn() {
+	const { t } = useI18n();
 	return (
 		<p className="text-sm text-muted-foreground">
 			<Link to="/auth/login" className="text-primary hover:underline font-medium">
-				Back to sign in
+				{t("Back to sign in")}
 			</Link>
 		</p>
 	);

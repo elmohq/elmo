@@ -5,6 +5,7 @@
  * ?error=INVALID_TOKEN on a bad one.
  */
 
+import { translate, useI18n } from "@/lib/i18n";
 import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
@@ -27,8 +28,8 @@ export const Route = createFileRoute("/auth/reset-password")({
 		const appName = getAppName(match);
 		return {
 			meta: [
-				{ title: buildTitle("Choose a new password", { appName }) },
-				{ name: "description", content: "Set a new password for your account." },
+				{ title: buildTitle(translate(match.context?.locale ?? "en", "Choose a new password"), { appName }) },
+				{ name: "description", content: translate(match.context?.locale ?? "en", "Set a new password for your account.") },
 			],
 		};
 	},
@@ -58,6 +59,7 @@ export function ResetPasswordForm({
 	linkError?: string;
 	isCloud?: boolean;
 }) {
+	const { t } = useI18n();
 	const navigate = useNavigate();
 	const [newPassword, setNewPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
@@ -69,7 +71,7 @@ export function ResetPasswordForm({
 		e.preventDefault();
 		setError(null);
 		if (newPassword !== confirmPassword) {
-			setError("Passwords do not match");
+			setError(t("Passwords do not match"));
 			return;
 		}
 		setLoading(true);
@@ -77,13 +79,13 @@ export function ResetPasswordForm({
 		try {
 			const result = await authClient.resetPassword({ newPassword, token: token as string });
 			if (result.error) {
-				setError(result.error.message ?? "Failed to reset password");
+				setError(t(result.error.message ?? "Failed to reset password"));
 				setLoading(false);
 				return;
 			}
 			navigate({ to: "/auth/login" });
 		} catch {
-			setError("Something went wrong. Please try again.");
+			setError(t("Something went wrong. Please try again."));
 			setLoading(false);
 		}
 	}
@@ -94,22 +96,22 @@ export function ResetPasswordForm({
 	if (linkError || !token) {
 		return (
 			<AuthSplitLayout
-				title="Reset link invalid or expired"
-				subtitle="Reset links are single-use and time-limited."
+				title={t("Reset link invalid or expired")}
+				subtitle={t("Reset links are single-use and time-limited.")}
 				pitch={panel}
 				footer={footer}
 			>
 				{/* The only thing to do from here, so it carries the weight the other
 				    pages give their submit button. */}
 				<Link to="/auth/forgot-password" className={buttonVariants({ className: "w-full" })}>
-					Request a new reset link
+					{t("Request a new reset link")}
 				</Link>
 			</AuthSplitLayout>
 		);
 	}
 
 	return (
-		<AuthSplitLayout title="Choose a new password" pitch={panel} footer={footer}>
+		<AuthSplitLayout title={t("Choose a new password")} pitch={panel} footer={footer}>
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
 				{error && (
 					<Alert variant="destructive">
@@ -117,11 +119,11 @@ export function ResetPasswordForm({
 					</Alert>
 				)}
 				<div className="space-y-2">
-					<Label htmlFor="new-password">New password</Label>
+					<Label htmlFor="new-password">{t("New password")}</Label>
 					<Input
 						id="new-password"
 						type="password"
-						placeholder="New password"
+						placeholder={t("New password")}
 						value={newPassword}
 						onChange={(e) => setNewPassword(e.target.value)}
 						required
@@ -131,11 +133,11 @@ export function ResetPasswordForm({
 					/>
 				</div>
 				<div className="space-y-2">
-					<Label htmlFor="confirm-password">Confirm password</Label>
+					<Label htmlFor="confirm-password">{t("Confirm password")}</Label>
 					<Input
 						id="confirm-password"
 						type="password"
-						placeholder="Confirm password"
+						placeholder={t("Confirm password")}
 						value={confirmPassword}
 						onChange={(e) => setConfirmPassword(e.target.value)}
 						required
@@ -144,7 +146,7 @@ export function ResetPasswordForm({
 					/>
 				</div>
 				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Resetting..." : "Reset password"}
+					{loading ? t("Resetting...") : t("Reset password")}
 				</Button>
 			</form>
 		</AuthSplitLayout>
