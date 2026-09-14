@@ -35,6 +35,7 @@ import { Inbox, ListPlus, Plus } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useOrganizationParams } from "@/hooks/use-route-params";
+import { type I18n, useI18n } from "@/lib/i18n";
 
 export interface EditablePrompt {
 	id?: string;
@@ -91,7 +92,8 @@ function PremiumModelsField({
 	onChange: (models: string[]) => void;
 	showLabel?: boolean;
 }) {
-	const summary = selected.length === 0 ? "None" : selected.map(premiumModelLabel).join(", ");
+	const { t } = useI18n();
+	const summary = selected.length === 0 ? t("None") : selected.map(premiumModelLabel).join(", ");
 
 	return (
 		<Popover>
@@ -103,12 +105,12 @@ function PremiumModelsField({
 						size="sm"
 						disabled={!promptEnabled}
 						className="h-8 w-full justify-center gap-1 px-2"
-						aria-label={`Premium models: ${summary}`}
+						aria-label={t("Premium models: {summary}", { summary })}
 					/>
 				}
 			>
 				{selected.length === 0 ? (
-					<span className="text-muted-foreground">{showLabel ? "Premium: none" : "—"}</span>
+					<span className="text-muted-foreground">{showLabel ? t("Premium: none") : "—"}</span>
 				) : (
 					<>
 						{selected.map((model) => (
@@ -138,14 +140,14 @@ function PremiumModelsField({
 							<ModelIcon iconId={getModelMeta(model).iconId} className="size-4" />
 							<span className="flex-1">{premiumModelLabel(model)}</span>
 							<span className="font-mono text-[10px] text-muted-foreground tabular-nums">
-								{PREMIUM_RUNS_PER_DAY}×/day
+								{t("{rate}×/day", { rate: PREMIUM_RUNS_PER_DAY })}
 							</span>
 						</button>
 					);
 				})}
 				{atCapacity && (
 					<p className="px-2 pt-1 text-xs text-muted-foreground">
-						No premium pairings left. Untick one, or <BillingLink>buy more</BillingLink>.
+						{t("No premium pairings left. Untick one, or")} <BillingLink>{t("buy more")}</BillingLink>.
 					</p>
 				)}
 			</PopoverContent>
@@ -181,7 +183,7 @@ interface PromptsListEditorProps {
  * the rules (trim, dedupe, cap) are tested without a DOM; it runs on every
  * keystroke only to label the button and warn about what will be dropped.
  */
-function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void) {
+function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void, { tn }: I18n) {
 	const [bulkOpen, setBulkOpen] = useState(false);
 	const [bulkText, setBulkText] = useState("");
 
@@ -207,7 +209,12 @@ function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void)
 		bulkNotice: bulkText.trim().length > 0 ? describeSkipped(bulkPreview.skipped) : null,
 		bulkError:
 			overCapacity > 0
-				? `This paste is ${overCapacity} prompt${overCapacity === 1 ? "" : "s"} over the ${MAX_PROMPTS} limit. Remove ${overCapacity === 1 ? "a line" : "some lines"} to continue.`
+				? tn(
+						overCapacity,
+						"This paste is {count} prompt over the {max} limit. Remove a line to continue.",
+						"This paste is {count} prompts over the {max} limit. Remove some lines to continue.",
+						{ max: MAX_PROMPTS },
+					)
 				: null,
 		closeBulk,
 		addBulk: () => {
@@ -258,6 +265,7 @@ function ColumnHeader({
 	onToggleSelectAll: () => void;
 	disabled: boolean;
 }) {
+	const { t } = useI18n();
 	return (
 		<div className={`hidden md:grid ${gridCols} gap-2 text-sm font-medium text-muted-foreground border-b pb-2`}>
 			<div className="flex justify-center">
@@ -265,58 +273,58 @@ function ColumnHeader({
 					checked={allSelected}
 					onCheckedChange={onToggleSelectAll}
 					disabled={disabled}
-					aria-label={allSelected ? "Deselect all prompts" : "Select all prompts"}
+					aria-label={allSelected ? t("Deselect all prompts") : t("Select all prompts")}
 				/>
 			</div>
 			<div className="flex items-center gap-1 min-w-0">
-				Prompt Text
+				{t("Prompt Text")}
 				<Tooltip>
 					<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 					<TooltipContent>
-						<p className="max-w-xs">The question or query that will be sent to AI models for evaluation.</p>
+						<p className="max-w-xs">{t("The question or query that will be sent to AI models for evaluation.")}</p>
 					</TooltipContent>
 				</Tooltip>
 			</div>
 			{showSystemTags && (
 				<div className="hidden md:flex items-center gap-1">
-					System
+					{t("System")}
 					<Tooltip>
 						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent>
 							<p className="max-w-xs">
-								Auto-generated tags like &quot;branded&quot; or &quot;unbranded&quot; based on prompt content.
+								{t('Auto-generated tags like "branded" or "unbranded" based on prompt content.')}
 							</p>
 						</TooltipContent>
 					</Tooltip>
 				</div>
 			)}
 			<div className="flex items-center gap-1 min-w-0">
-				Tags
+				{t("Tags")}
 				<Tooltip>
 					<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 					<TooltipContent>
-						<p className="max-w-xs">Custom labels to organize and filter prompts.</p>
+						<p className="max-w-xs">{t("Custom labels to organize and filter prompts.")}</p>
 					</TooltipContent>
 				</Tooltip>
 			</div>
 			{premium && (
 				<div className="flex items-center justify-center gap-1">
-					Premium
+					{t("Premium")}
 					<Tooltip>
 						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent>
 							<p className="max-w-xs">
-								Also track this prompt on a model called directly with its own web search on, for a grounded answer with
-								citations — {PREMIUM_RUNS_PER_DAY}× a day. Each model you pick here spends one of the
-								organization&apos;s premium pairings. This is on top of the platforms the brand tracks, which run on
-								every prompt either way.
+								{t(
+									"Also track this prompt on a model called directly with its own web search on, for a grounded answer with citations — {rate}× a day. Each model you pick here spends one of the organization's premium pairings. This is on top of the platforms the brand tracks, which run on every prompt either way.",
+									{ rate: PREMIUM_RUNS_PER_DAY },
+								)}
 							</p>
 						</TooltipContent>
 					</Tooltip>
 				</div>
 			)}
 			<div className="flex justify-center">
-				<span className="sr-only">Enabled</span>
+				<span className="sr-only">{t("Enabled")}</span>
 			</div>
 		</div>
 	);
@@ -349,6 +357,7 @@ function PromptRow({
 	selected: boolean;
 	onToggleSelect: () => void;
 }) {
+	const { t } = useI18n();
 	return (
 		<div
 			className={cn(
@@ -357,21 +366,21 @@ function PromptRow({
 				!prompt.enabled && "opacity-60",
 			)}
 		>
-			{changedKeys?.has(prompt._key) && <span className="sr-only">Has unsaved changes</span>}
+			{changedKeys?.has(prompt._key) && <span className="sr-only">{t("Has unsaved changes")}</span>}
 			{/* Mobile: stacked, no selection/bulk */}
 			<div className={`md:hidden flex flex-col gap-2 pb-3 ${index < total - 1 ? "border-b" : ""}`}>
 				<div className="flex items-start gap-2">
 					<Input
 						value={prompt.value}
 						onChange={(e) => update(index, { value: e.target.value })}
-						placeholder="Enter prompt text..."
+						placeholder={t("Enter prompt text...")}
 						className="min-w-0 flex-1"
 					/>
 					<div className="pt-2">
 						<Switch
 							checked={prompt.enabled}
 							onCheckedChange={(checked) => update(index, { enabled: checked })}
-							aria-label={prompt.enabled ? "Disable prompt" : "Enable prompt"}
+							aria-label={prompt.enabled ? t("Disable prompt") : t("Enable prompt")}
 						/>
 					</div>
 				</div>
@@ -379,8 +388,8 @@ function PromptRow({
 					value={prompt.tags}
 					onValueChange={(tags) => update(index, { tags })}
 					options={allTagOptions}
-					placeholder="Add tag..."
-					searchPlaceholder="Search or create tag..."
+					placeholder={t("Add tag...")}
+					searchPlaceholder={t("Search or create tag...")}
 					normalizeValue={(raw) => raw.toLowerCase().trim()}
 				/>
 				{premium && (
@@ -397,12 +406,12 @@ function PromptRow({
 			{/* Desktop (md+): single-line grid */}
 			<div className={`hidden md:grid ${gridCols} gap-2 items-start`}>
 				<div className="flex justify-center pt-2">
-					<Checkbox checked={selected} onCheckedChange={onToggleSelect} aria-label="Select prompt" />
+					<Checkbox checked={selected} onCheckedChange={onToggleSelect} aria-label={t("Select prompt")} />
 				</div>
 				<Input
 					value={prompt.value}
 					onChange={(e) => update(index, { value: e.target.value })}
-					placeholder="Enter prompt text..."
+					placeholder={t("Enter prompt text...")}
 					className="min-w-0"
 				/>
 				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
@@ -410,8 +419,8 @@ function PromptRow({
 					value={prompt.tags}
 					onValueChange={(tags) => update(index, { tags })}
 					options={allTagOptions}
-					placeholder="Add tag..."
-					searchPlaceholder="Search or create tag..."
+					placeholder={t("Add tag...")}
+					searchPlaceholder={t("Search or create tag...")}
 					normalizeValue={(raw) => raw.toLowerCase().trim()}
 				/>
 				{premium && (
@@ -428,7 +437,7 @@ function PromptRow({
 					<Switch
 						checked={prompt.enabled}
 						onCheckedChange={(checked) => update(index, { enabled: checked })}
-						aria-label={prompt.enabled ? "Disable prompt" : "Enable prompt"}
+						aria-label={prompt.enabled ? t("Disable prompt") : t("Enable prompt")}
 					/>
 				</div>
 			</div>
@@ -437,14 +446,15 @@ function PromptRow({
 }
 
 function BulkPasteBox({ bulk }: { bulk: ReturnType<typeof useBulkPaste> }) {
+	const { t, tn } = useI18n();
 	return (
 		<div className="space-y-2 rounded-md border bg-muted/40 p-3">
 			<Textarea
 				value={bulk.bulkText}
 				onChange={(e) => bulk.setBulkText(e.target.value)}
-				placeholder="One prompt per line"
+				placeholder={t("One prompt per line")}
 				rows={6}
-				aria-label="Prompts to add, one per line"
+				aria-label={t("Prompts to add, one per line")}
 			/>
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
@@ -453,11 +463,12 @@ function BulkPasteBox({ bulk }: { bulk: ReturnType<typeof useBulkPaste> }) {
 					onClick={bulk.addBulk}
 					disabled={bulk.bulkPreview.added.length === 0 || bulk.bulkError !== null}
 				>
-					Add {bulk.bulkPreview.added.length > 0 ? `${bulk.bulkPreview.added.length} ` : ""}
-					{bulk.bulkPreview.added.length === 1 ? "Prompt" : "Prompts"}
+					{bulk.bulkPreview.added.length > 0
+						? tn(bulk.bulkPreview.added.length, "Add {count} Prompt", "Add {count} Prompts")
+						: t("Add Prompts")}
 				</Button>
 				<Button variant="ghost" size="sm" type="button" onClick={bulk.closeBulk}>
-					Cancel
+					{t("Cancel")}
 				</Button>
 				{bulk.bulkNotice && <span className="text-xs text-muted-foreground">{bulk.bulkNotice}</span>}
 			</div>
@@ -477,10 +488,12 @@ export function PromptsListEditor({
 	changedKeys,
 	premium,
 }: PromptsListEditorProps) {
+	const i18n = useI18n();
+	const { t } = i18n;
 	const allTagOptions = useMemo(() => {
 		const set = new Set<string>();
-		for (const p of prompts) for (const t of p.tags) set.add(t);
-		return [...set].sort().map((t) => ({ value: t }));
+		for (const p of prompts) for (const tag of p.tags) set.add(tag);
+		return [...set].sort().map((tag) => ({ value: tag }));
 	}, [prompts]);
 
 	const update = (index: number, patch: Partial<EditablePrompt>) => {
@@ -499,6 +512,7 @@ export function PromptsListEditor({
 
 	const bulk = useBulkPaste(filledValues, (added) =>
 		onChange([...prompts, ...added.map((value) => newPromptEntry({ value }))]),
+		i18n,
 	);
 
 	const { selectedKeys, liveSelectedCount, allSelected, toggleSelect, toggleSelectAll, clearSelection } =
@@ -526,7 +540,7 @@ export function PromptsListEditor({
 			{liveSelectedCount > 0 && (
 				<div className="hidden md:flex flex-wrap items-center justify-between gap-x-2 gap-y-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
 					<span className="text-muted-foreground">
-						<strong className="text-foreground">{liveSelectedCount}</strong> selected
+						<strong className="text-foreground">{liveSelectedCount}</strong> {t("selected")}
 					</span>
 					<div className="flex items-center gap-2">
 						<Button
@@ -536,7 +550,7 @@ export function PromptsListEditor({
 							onClick={() => applyEnabledToSelection(true)}
 							className="cursor-pointer"
 						>
-							Enable
+							{t("Enable")}
 						</Button>
 						<Button
 							type="button"
@@ -545,10 +559,10 @@ export function PromptsListEditor({
 							onClick={() => applyEnabledToSelection(false)}
 							className="cursor-pointer"
 						>
-							Disable
+							{t("Disable")}
 						</Button>
 						<Button type="button" size="sm" variant="ghost" onClick={clearSelection} className="cursor-pointer">
-							Clear
+							{t("Clear")}
 						</Button>
 					</div>
 				</div>
@@ -556,15 +570,15 @@ export function PromptsListEditor({
 
 			{premium && (
 				<p className="text-sm text-muted-foreground">
-					Premium:{" "}
+					{t("Premium:")}{" "}
 					<span className="font-medium text-foreground">
-						{premiumUsed} of {premium.total}
+						{t("{used} of {total}", { used: premiumUsed, total: premium.total })}
 					</span>{" "}
-					pairings in use across this organization — one for each model a prompt is tracked on.
+					{t("pairings in use across this organization — one for each model a prompt is tracked on.")}
 					{premiumAtCapacity && (
 						<>
 							{" "}
-							Unassign one to free it up, or <BillingLink>buy more</BillingLink>.
+							{t("Unassign one to free it up, or")} <BillingLink>{t("buy more")}</BillingLink>.
 						</>
 					)}
 				</p>
@@ -583,7 +597,7 @@ export function PromptsListEditor({
 				<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
 					<div className="text-center py-8 text-muted-foreground">
 						<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
-						<p>No prompts yet.</p>
+						<p>{t("No prompts yet.")}</p>
 					</div>
 				</div>
 			) : (
@@ -618,7 +632,7 @@ export function PromptsListEditor({
 							onClick={add}
 							className="flex items-center gap-2 cursor-pointer"
 						>
-							<Plus className="h-4 w-4" /> Add Prompt
+							<Plus className="h-4 w-4" /> {t("Add Prompt")}
 						</Button>
 					)}
 					<Button
@@ -628,7 +642,7 @@ export function PromptsListEditor({
 						onClick={() => bulk.setBulkOpen((open) => !open)}
 						className="flex items-center gap-2 cursor-pointer"
 					>
-						<ListPlus className="h-4 w-4" /> Add Multiple
+						<ListPlus className="h-4 w-4" /> {t("Add Multiple")}
 					</Button>
 				</div>
 			)}
@@ -637,7 +651,7 @@ export function PromptsListEditor({
 
 			{atCapacity && (
 				<p className="text-xs text-muted-foreground">
-					Maximum of {MAX_PROMPTS} prompts allowed. Remove a prompt to add a new one.
+					{t("Maximum of {max} prompts allowed. Remove a prompt to add a new one.", { max: MAX_PROMPTS })}
 				</p>
 			)}
 
@@ -645,7 +659,7 @@ export function PromptsListEditor({
 				<strong>
 					{validCount}/{MAX_PROMPTS}
 				</strong>{" "}
-				prompts configured
+				{t("prompts configured")}
 			</p>
 		</div>
 	);

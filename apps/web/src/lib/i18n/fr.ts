@@ -682,5 +682,204 @@ export const fr: Record<string, string> = {
 		"Soyez présent dans les discussions communautaires — Reddit, YouTube, forums — dont s'inspirent les assistants.",
 	"Your citations": "Vos citations",
 	"Competitor citations": "Citations des concurrents",
+	// ── Prompt details ─────────────────────────────────────────────────────
+	Active: "Actif",
+	Disabled: "Désactivé",
+	"Next run:": "Prochaine exécution :",
+	"Tags:": "Tags :",
+	"Edit prompts": "Modifier les prompts",
+	"Failed to load prompt data. Please try again.": "Impossible de charger les données du prompt. Veuillez réessayer.",
+	"No prompt data found.": "Aucune donnée trouvée pour ce prompt.",
+	"No mention data available for this time period.": "Aucune mention disponible sur cette période.",
+	"Only competitors from your": "Seuls les concurrents de votre",
+	"are shown here.": "sont affichés ici.",
+	"If a competitor isn't showing up, add them to your list.": "Si un concurrent n'apparaît pas, ajoutez-le à votre liste.",
+	"{brand} was mentioned in": "{brand} est cité dans",
+	"of prompt evaluations ({count} total runs).": "des évaluations de prompts ({count} exécutions au total).",
+	"Couldn't load web queries right now. Reload the page to try again.":
+		"Impossible de charger les requêtes web pour le moment. Rechargez la page pour réessayer.",
+	"No web query data available for this time period.": "Aucune requête web disponible sur cette période.",
+	"Every distinct search engines ran while answering this prompt, with how many runs each engine issued it. Your prompt's keywords are bolded.":
+		"Chaque recherche distincte lancée par les moteurs pour répondre à ce prompt, avec le nombre d'exécutions par moteur. Les mots-clés de votre prompt sont en gras.",
+	"No citation data available for this time period.": "Aucune citation disponible sur cette période.",
+	"No prompt runs found for this time period.": "Aucune exécution de prompt sur cette période.",
+	"Individual Prompt Runs": "Exécutions du prompt",
+	Model: "Modèle",
+	Version: "Version",
+	Evaluated: "Évalué le",
+	"Web Queries": "Requêtes web",
+	"Brands Mentioned": "Marques citées",
+	None: "Aucune",
+	"LLM Response": "Réponse du LLM",
+	"LLM Responses": "Réponses des LLM",
+	"Raw Output": "Sortie brute",
+	"{count} run in period": "{count} exécution sur la période",
+	"{count} runs in period": "{count} exécutions sur la période",
+	"{count} distinct search.": "{count} recherche distincte.",
+	"{count} distinct searches.": "{count} recherches distinctes.",
+
+	// ── Brand & competitor settings ────────────────────────────────────────
+	"Loading...": "Chargement…",
+	"Brand not found": "Marque introuvable",
+	"Brand details updated successfully!": "Les informations de la marque ont bien été mises à jour !",
+	"Manage your brand name and website": "Gérez le nom et le site web de votre marque",
+	"Enter your brand's name": "Saisissez le nom de votre marque",
+	"Brand Slug": "Identifiant d'URL de la marque",
+	"Your brand's primary website": "Le site web principal de votre marque",
+	"Additional Domains": "Domaines supplémentaires",
+	"Other domains your brand owns (e.g. blog.example.com, shop.example.com). Citations from these domains will be counted as your brand's citations.":
+		"Les autres domaines de votre marque (ex. blog.exemple.fr, boutique.exemple.fr). Les citations de ces domaines seront comptées comme celles de votre marque.",
+	"Updates retroactively": "Mise à jour rétroactive",
+	"existing citations will be reclassified immediately.": "les citations existantes sont reclassées immédiatement.",
+	"Brand Aliases": "Alias de la marque",
+	"Alternative names for your brand (sub-brands, product lines, abbreviations). Used for mention detection in future prompt runs only — does not apply retroactively to past results.":
+		"Les autres noms de votre marque (sous-marques, gammes de produits, abréviations). Utilisés pour détecter les mentions lors des prochaines exécutions uniquement — sans effet rétroactif sur les résultats passés.",
+	"Save Changes": "Enregistrer les modifications",
+	"Failed to save the brand.": "Impossible d'enregistrer la marque.",
+	'"{value}" is not a valid domain': "« {value} » n'est pas un domaine valide",
+	"Manage your competitive landscape for reputation tracking.":
+		"Gérez votre paysage concurrentiel pour le suivi de votre réputation.",
+	Warning: "Attention",
+	"Updating competitors will only apply to future prompt evaluations. Citation categorization updates retroactively.":
+		"La modification des concurrents ne s'applique qu'aux prochaines évaluations de prompts. La catégorisation des citations, elle, est mise à jour rétroactivement.",
+	"Failed to save competitors.": "Impossible d'enregistrer les concurrents.",
+	"Unnamed competitor": "Concurrent sans nom",
+	"The primary name used to detect this competitor in AI responses. Mention detection applies to future prompt runs only.":
+		"Le nom principal utilisé pour détecter ce concurrent dans les réponses IA. La détection des mentions ne s'applique qu'aux prochaines exécutions.",
+	Domains: "Domaines",
+	'All domains owned by this competitor. Citation categorization updates retroactively — existing citations from these domains will immediately be classified as "competitor".':
+		"Tous les domaines de ce concurrent. La catégorisation des citations est rétroactive — les citations existantes de ces domaines seront immédiatement classées « concurrent ».",
+	"Add domain...": "Ajouter un domaine…",
+	Aliases: "Alias",
+	"Alternative names for this competitor (sub-brands, product names, abbreviations). Used for mention detection in future prompt runs only — does not apply retroactively.":
+		"Les autres noms de ce concurrent (sous-marques, noms de produits, abréviations). Utilisés pour détecter les mentions lors des prochaines exécutions uniquement — sans effet rétroactif.",
+	"Add alias...": "Ajouter un alias…",
+	"Add Competitor": "Ajouter un concurrent",
+	"Maximum of {max} competitors allowed. Remove a competitor to add a new one.":
+		"{max} concurrents maximum. Supprimez-en un pour en ajouter un nouveau.",
+	"competitors configured": "concurrents configurés",
+
+	// ── Prompts editor & onboarding wizard ─────────────────────────────────
+	"Add, edit, or remove your brand tracking keywords and prompts":
+		"Ajoutez, modifiez ou supprimez les mots-clés et les prompts suivis pour votre marque",
+	"Failed to save prompts.": "Impossible d'enregistrer les prompts.",
+	"{count} added": "{count} ajouté(s)",
+	"{count} edited": "{count} modifié(s)",
+	"{count} removed": "{count} supprimé(s)",
+	"Premium models: {summary}": "Modèles premium : {summary}",
+	"Premium: none": "Premium : aucun",
+	"No premium pairings left. Untick one, or": "Plus aucune association premium disponible. Décochez-en une, ou",
+	"buy more": "achetez-en davantage",
+	"Deselect all prompts": "Désélectionner tous les prompts",
+	"Select all prompts": "Sélectionner tous les prompts",
+	"Prompt Text": "Texte du prompt",
+	"The question or query that will be sent to AI models for evaluation.":
+		"La question ou la requête envoyée aux modèles d'IA pour évaluation.",
+	System: "Système",
+	'Auto-generated tags like "branded" or "unbranded" based on prompt content.':
+		"Tags générés automatiquement selon le contenu du prompt, comme « branded » (avec marque) ou « unbranded » (sans marque).",
+	"Custom labels to organize and filter prompts.": "Libellés personnalisés pour organiser et filtrer vos prompts.",
+	Premium: "Premium",
+	"Also track this prompt on a model called directly with its own web search on, for a grounded answer with citations — {rate}× a day. Each model you pick here spends one of the organization's premium pairings. This is on top of the platforms the brand tracks, which run on every prompt either way.":
+		"Suivez aussi ce prompt sur un modèle appelé directement avec sa propre recherche web, pour une réponse sourcée avec citations — {rate}× par jour. Chaque modèle choisi consomme une des associations premium de l'organisation. Cela s'ajoute aux plateformes suivies par la marque, qui s'exécutent de toute façon sur chaque prompt.",
+	Enabled: "Activé",
+	"Has unsaved changes": "Modifications non enregistrées",
+	"Enter prompt text...": "Saisissez le texte du prompt…",
+	"Disable prompt": "Désactiver le prompt",
+	"Enable prompt": "Activer le prompt",
+	"Add tag...": "Ajouter un tag…",
+	"Search or create tag...": "Rechercher ou créer un tag…",
+	"Select prompt": "Sélectionner le prompt",
+	"One prompt per line": "Un prompt par ligne",
+	"Prompts to add, one per line": "Prompts à ajouter, un par ligne",
+	"Add Prompts": "Ajouter les prompts",
+	"Add {count} Prompt": "Ajouter {count} prompt",
+	"Add {count} Prompts": "Ajouter {count} prompts",
+	"This paste is {count} prompt over the {max} limit. Remove a line to continue.":
+		"Ce collage dépasse la limite de {max} prompts de {count} prompt. Supprimez une ligne pour continuer.",
+	"This paste is {count} prompts over the {max} limit. Remove some lines to continue.":
+		"Ce collage dépasse la limite de {max} prompts de {count} prompts. Supprimez quelques lignes pour continuer.",
+	selected: "sélectionné(s)",
+	Enable: "Activer",
+	Disable: "Désactiver",
+	"Premium:": "Premium :",
+	"{used} of {total}": "{used} sur {total}",
+	"pairings in use across this organization — one for each model a prompt is tracked on.":
+		"associations utilisées dans cette organisation — une par modèle sur lequel un prompt est suivi.",
+	"Unassign one to free it up, or": "Retirez-en une pour la libérer, ou",
+	"Add Prompt": "Ajouter un prompt",
+	"Add Multiple": "Ajouter en masse",
+	"Maximum of {max} prompts allowed. Remove a prompt to add a new one.":
+		"{max} prompts maximum. Supprimez-en un pour en ajouter un nouveau.",
+	"prompts configured": "prompts configurés",
+	"items added. Remove an item to add a new one.": "éléments ajoutés. Supprimez-en un pour en ajouter un nouveau.",
+	"items entered.": "éléments saisis.",
+	"Brand analysis timed out. Please try again.": "L'analyse de la marque a expiré. Veuillez réessayer.",
+	"Analysis failed": "L'analyse a échoué",
+	"Failed to save": "Échec de l'enregistrement",
+	"We'll analyze": "Nous allons analyser",
+	"using web search to suggest competitors, additional domains/aliases, and a starter set of AI prompts to track.":
+		"grâce à la recherche web pour vous suggérer des concurrents, des domaines et alias supplémentaires, ainsi qu'une première sélection de prompts IA à suivre.",
+	"Analyzing brand…": "Analyse de la marque…",
+	"Analyze brand": "Analyser la marque",
+	"Brand details": "Informations sur la marque",
+	"Confirm the brand identity, additional domains, and aliases used for tracking.":
+		"Vérifiez l'identité de la marque, ses domaines supplémentaires et les alias utilisés pour le suivi.",
+	"Brand name": "Nom de la marque",
+	"Website URL": "URL du site web",
+	"Additional domains": "Domaines supplémentaires",
+	"Companies you want tracked alongside your brand.": "Les entreprises à suivre en parallèle de votre marque.",
+	"Pick which AI tracking prompts to start with. Untick any you don't want, edit tags, or add your own at the bottom.":
+		"Choisissez les prompts IA à suivre pour commencer. Décochez ceux dont vous ne voulez pas, modifiez les tags ou ajoutez les vôtres en bas de liste.",
+	"Start tracking ({count} new prompts)": "Lancer le suivi ({count} nouveaux prompts)",
+
+	// ── LLM settings ───────────────────────────────────────────────────────
+	"Your prompts are evaluated against these AI models to track how your brand appears across different types of AI search.":
+		"Vos prompts sont évalués sur ces modèles d'IA pour suivre la présence de votre marque dans les différents types de recherche IA.",
+	"Tracked platforms": "Plateformes suivies",
+	"This brand is not tracked on any platform yet.": "Cette marque n'est encore suivie sur aucune plateforme.",
+	"Captures the response of an LLM within an actual UI. You track what a real visitor sees.":
+		"Capture la réponse d'un LLM dans sa vraie interface : vous suivez ce que voit réellement un visiteur.",
+	"LLMs called without web-search tools, so answers show what the model was trained on.":
+		"LLM appelés sans outil de recherche web : les réponses reflètent ce que le modèle a appris.",
+	"LLMs called with their native web-search tools, so answers are grounded using recent updates to their web index.":
+		"LLM appelés avec leur outil de recherche web natif : les réponses s'appuient sur les mises à jour récentes de leur index web.",
+	"Estimated provider spend for this brand: {count} tracked prompt sampled {rate}×/day across the platforms below.":
+		"Coût fournisseur estimé pour cette marque : {count} prompt suivi, échantillonné {rate}×/jour sur les plateformes ci-dessous.",
+	"Estimated provider spend for this brand: {count} tracked prompts sampled {rate}×/day across the platforms below.":
+		"Coût fournisseur estimé pour cette marque : {count} prompts suivis, échantillonnés {rate}×/jour sur les plateformes ci-dessous.",
+	"≈{cost}/mo": "≈{cost}/mois",
+	"Your plan tracks up to {count} platform for this brand, in any combination below. Changes apply from the next sampling cycle.":
+		"Votre offre suit jusqu'à {count} plateforme pour cette marque, parmi celles ci-dessous. Les changements s'appliquent dès le prochain cycle.",
+	"Your plan tracks up to {count} platforms for this brand, in any combination below. Changes apply from the next sampling cycle.":
+		"Votre offre suit jusqu'à {count} plateformes pour cette marque, dans la combinaison de votre choix. Les changements s'appliquent dès le prochain cycle.",
+	"{selected} / {limit} picks": "{selected} / {limit} choix",
+	"Pick at least one platform — a brand with none is not tracked.":
+		"Choisissez au moins une plateforme — une marque sans plateforme n'est pas suivie.",
+	"That is {count} more than your plan allows. Clear some, or upgrade.":
+		"C'est {count} de plus que ce que permet votre offre. Retirez-en, ou passez à une offre supérieure.",
+	"{count} platform selected": "{count} plateforme sélectionnée",
+	"{count} platforms selected": "{count} plateformes sélectionnées",
+	"≈{next}/mo, up from {saved}": "≈{next}/mois, contre {saved} auparavant",
+	"≈{next}/mo, down from {saved}": "≈{next}/mois, contre {saved} auparavant",
+	"≈{next}/mo, unchanged from {saved}": "≈{next}/mois, inchangé",
+	"Could not save platform picks": "Impossible d'enregistrer les plateformes choisies",
+	"Upgrade to track more platforms": "Passez à une offre supérieure pour suivre plus de plateformes",
+	"Compare plans": "Comparer les offres",
+	"{assigned} / {total} pairings": "{assigned} / {total} associations",
+	"{remaining} of {total} pairings still available, shared across every brand in this organization. A prompt spends one for each model you track it on.":
+		"{remaining} associations disponibles sur {total}, partagées entre toutes les marques de l'organisation. Un prompt en consomme une par modèle sur lequel il est suivi.",
+	"All {total} pairings are in use. Free one up or buy more to add another.":
+		"Les {total} associations sont utilisées. Libérez-en une ou achetez-en davantage pour en ajouter.",
+	"Choose prompts": "Choisir les prompts",
+	"Change how many": "Modifier la quantité",
+	"Track more platforms": "Suivre plus de plateformes",
+	"Add these to": "Ajoutez-les à",
+	"to start tracking them. One account is enough, but which kind you pick changes the data: a scraper reads the product a visitor uses, an API asks the model directly.":
+		"pour commencer à les suivre. Un seul compte suffit, mais son type change les données : un scraper lit le produit tel que le voit un visiteur, une API interroge directement le modèle.",
+	Platform: "Plateforme",
+	Scrapers: "Scrapers",
+	"Direct APIs": "API directes",
+	"Provider setup guide": "Guide de configuration des fournisseurs",
 	// @@END
 };

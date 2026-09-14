@@ -20,6 +20,7 @@ import { brandKeys, useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { promptsSummaryKeys } from "@/hooks/use-prompts-summary";
+import { useI18n } from "@/lib/i18n";
 import { trackEvent } from "@/lib/posthog";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import {
@@ -48,6 +49,11 @@ interface WizardData {
 	prompts: EditablePrompt[];
 }
 
+function ItemsCounterText({ full }: { full: boolean }) {
+	const { t } = useI18n();
+	return <>{full ? t("items added. Remove an item to add a new one.") : t("items entered.")}</>;
+}
+
 const EditableTagsInput = memo(
 	({
 		items,
@@ -72,7 +78,7 @@ const EditableTagsInput = memo(
 				<strong>
 					{items.length}/{maxItems}
 				</strong>{" "}
-				{items.length >= maxItems ? "items added. Remove an item to add a new one." : "items entered."}
+				<ItemsCounterText full={items.length >= maxItems} />
 			</p>
 		</div>
 	),
@@ -84,6 +90,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const queryClient = useQueryClient();
 	const router = useRouter();
 	const writeError = useWriteErrorMessage();
+	const { t } = useI18n();
 	const [phase, setPhase] = useState<"idle" | "analyzing" | "review">("idle");
 	const [error, setError] = useState<string | null>(null);
 	const [submitError, setSubmitError] = useState<string | null>(null);
@@ -187,11 +194,11 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	useEffect(() => {
 		if (phase !== "analyzing") return;
 		const timer = window.setTimeout(
-			() => stopAnalyzing("Brand analysis timed out. Please try again."),
+			() => stopAnalyzing(t("Brand analysis timed out. Please try again.")),
 			ANALYZE_TIMEOUT_MS,
 		);
 		return () => window.clearTimeout(timer);
-	}, [phase, stopAnalyzing]);
+	}, [phase, stopAnalyzing, t]);
 
 	const updateBrandName = useCallback((brandName: string) => setData((p) => ({ ...p, brandName })), []);
 	const updateWebsite = useCallback((website: string) => setData((p) => ({ ...p, website })), []);
@@ -266,13 +273,15 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		return (
 			<div className="max-w-2xl mx-auto space-y-3">
 				<p className="text-sm text-muted-foreground">
-					We'll analyze <strong>{brand?.website}</strong> using web search to suggest competitors, additional
-					domains/aliases, and a starter set of AI prompts to track.
+					{t("We'll analyze")} <strong>{brand?.website}</strong>{" "}
+					{t(
+						"using web search to suggest competitors, additional domains/aliases, and a starter set of AI prompts to track.",
+					)}
 				</p>
 				{error && (
 					<div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
 						<AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-						<span>{error}</span>
+						<span>{t(error)}</span>
 					</div>
 				)}
 				<div className="flex items-center gap-2">
@@ -283,17 +292,17 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					>
 						{phase === "analyzing" ? (
 							<>
-								<Spinner /> Analyzing brand…
+								<Spinner /> {t("Analyzing brand…")}
 							</>
 						) : (
 							<>
-								<Play className="h-4 w-4" /> Analyze brand
+								<Play className="h-4 w-4" /> {t("Analyze brand")}
 							</>
 						)}
 					</Button>
 					{phase === "analyzing" && (
 						<Button variant="outline" onClick={() => stopAnalyzing(null)} className="cursor-pointer">
-							Cancel
+							{t("Cancel")}
 						</Button>
 					)}
 				</div>
@@ -304,17 +313,17 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	return (
 		<div className="max-w-2xl mx-auto space-y-6">
 			<div className="space-y-2">
-				<h2 className="text-2xl font-bold">Brand details</h2>
+				<h2 className="text-2xl font-bold">{t("Brand details")}</h2>
 				<p className="text-muted-foreground">
-					Confirm the brand identity, additional domains, and aliases used for tracking.
+					{t("Confirm the brand identity, additional domains, and aliases used for tracking.")}
 				</p>
 				<div className="space-y-3">
 					<div>
-						<p className="text-xs text-muted-foreground">Brand name</p>
-						<Input value={data.brandName} onChange={(e) => updateBrandName(e.target.value)} placeholder="Brand name" />
+						<p className="text-xs text-muted-foreground">{t("Brand name")}</p>
+						<Input value={data.brandName} onChange={(e) => updateBrandName(e.target.value)} placeholder={t("Brand name")} />
 					</div>
 					<div>
-						<p className="text-xs text-muted-foreground">Website URL</p>
+						<p className="text-xs text-muted-foreground">{t("Website URL")}</p>
 						<Input
 							type="url"
 							value={data.website}
@@ -323,20 +332,20 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						/>
 					</div>
 					<div>
-						<p className="text-xs text-muted-foreground">Additional domains</p>
+						<p className="text-xs text-muted-foreground">{t("Additional domains")}</p>
 						<EditableTagsInput
 							items={data.additionalDomains}
 							onValueChange={updateAdditionalDomains}
-							placeholder="Add domain..."
+							placeholder={t("Add domain...")}
 							maxItems={10}
 						/>
 					</div>
 					<div>
-						<p className="text-xs text-muted-foreground">Aliases</p>
+						<p className="text-xs text-muted-foreground">{t("Aliases")}</p>
 						<EditableTagsInput
 							items={data.aliases}
 							onValueChange={updateAliases}
-							placeholder="Add alias..."
+							placeholder={t("Add alias...")}
 							maxItems={10}
 						/>
 					</div>
@@ -347,8 +356,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 			<div className="space-y-3">
 				<div>
-					<h2 className="text-2xl font-bold">Competitors</h2>
-					<p className="text-muted-foreground">Companies you want tracked alongside your brand.</p>
+					<h2 className="text-2xl font-bold">{t("Competitors")}</h2>
+					<p className="text-muted-foreground">{t("Companies you want tracked alongside your brand.")}</p>
 				</div>
 				<CompetitorsEditor competitors={data.competitors} onChange={updateCompetitors} disabled={isSaving} />
 			</div>
@@ -357,10 +366,11 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 			<div className="space-y-3">
 				<div>
-					<h2 className="text-2xl font-bold">Prompts</h2>
+					<h2 className="text-2xl font-bold">{t("Prompts")}</h2>
 					<p className="text-muted-foreground">
-						Pick which AI tracking prompts to start with. Untick any you don't want, edit tags, or add your own at the
-						bottom.
+						{t(
+							"Pick which AI tracking prompts to start with. Untick any you don't want, edit tags, or add your own at the bottom.",
+						)}
 					</p>
 				</div>
 				<PromptsListEditor prompts={data.prompts} onChange={updatePrompts} showSystemTags={false} />
@@ -380,11 +390,11 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			>
 				{isSaving ? (
 					<>
-						<Spinner /> Saving…
+						<Spinner /> {t("Saving…")}
 					</>
 				) : (
 					<>
-						<Rocket className="h-4 w-4" /> Start tracking ({previewCounts.totalNew} new prompts)
+						<Rocket className="h-4 w-4" /> {t("Start tracking ({count} new prompts)", { count: previewCounts.totalNew })}
 					</>
 				)}
 			</Button>

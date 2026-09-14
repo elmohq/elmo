@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { type EditablePrompt, type PremiumAllowance, PromptsListEditor } from "@/components/prompts-list-editor";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
+import { useI18n } from "@/lib/i18n";
 import { trackEvent } from "@/lib/posthog";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updatePromptsFn } from "@/server/prompts";
@@ -60,6 +61,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	const saveInProgress = useRef(false);
 	const invalidatePromptsSummary = useInvalidatePromptsSummary();
 	const writeError = useWriteErrorMessage();
+	const { t } = useI18n();
 
 	const { changedKeys, removedCount, addedCount, editedCount } = useMemo(() => {
 		const before = new Map(baseline.map((p) => [p.id, p]));
@@ -105,9 +107,9 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 
 	const isDirty = changedKeys.size > 0 || removedCount > 0;
 	const summary = [
-		addedCount && `${addedCount} added`,
-		editedCount && `${editedCount} edited`,
-		removedCount && `${removedCount} removed`,
+		addedCount && t("{count} added", { count: addedCount }),
+		editedCount && t("{count} edited", { count: editedCount }),
+		removedCount && t("{count} removed", { count: removedCount }),
 	]
 		.filter(Boolean)
 		.join(" · ");

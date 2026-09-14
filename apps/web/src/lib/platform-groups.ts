@@ -24,10 +24,10 @@ export interface PlatformGroup {
 }
 
 const GROUP_DESCRIPTIONS: Record<PlanPlatformGroupId, string> = {
-	scraped: "Captures the response of an LLM within an actual UI. You track what a real visitor sees.",
-	api: "LLMs called without web-search tools, so answers show what the model was trained on.",
+	scraped: /* i18n */ "Captures the response of an LLM within an actual UI. You track what a real visitor sees.",
+	api: /* i18n */ "LLMs called without web-search tools, so answers show what the model was trained on.",
 	premium:
-		"LLMs called with their native web-search tools, so answers are grounded using recent updates to their web index.",
+		/* i18n */ "LLMs called with their native web-search tools, so answers are grounded using recent updates to their web index.",
 };
 
 /** Which group an option belongs to. The one place that rule is decided. */

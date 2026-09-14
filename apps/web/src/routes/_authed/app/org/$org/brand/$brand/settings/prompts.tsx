@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { premiumSlotsUsed } from "@workspace/config/plans";
@@ -75,13 +76,14 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 function PromptsSettingsPage() {
 	const { prompts: brandPrompts, premium } = Route.useLoaderData();
 	const { brandId } = Route.useRouteContext();
+	const { t } = useI18n();
 
 	return (
 		<PromptsEditor
 			initialPrompts={brandPrompts}
 			brandId={brandId}
-			pageTitle="Prompts"
-			pageDescription="Add, edit, or remove your brand tracking keywords and prompts"
+			pageTitle={t("Prompts")}
+			pageDescription={t("Add, edit, or remove your brand tracking keywords and prompts")}
 			premium={premium}
 		/>
 	);

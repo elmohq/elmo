@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -27,6 +28,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 
 function BrandSettingsPage() {
 	const { brand, isLoading, revalidate } = useBrand();
+	const { t } = useI18n();
 	const queryClient = useQueryClient();
 	const organization = useOrganization();
 	const organizationsChanged = useOrganizationsChanged();
@@ -52,17 +54,17 @@ function BrandSettingsPage() {
 
 	const validateDomain = useCallback((val: string): true | string => {
 		const cleaned = cleanAndValidateDomain(val);
-		if (!cleaned) return `"${val}" is not a valid domain`;
+		if (!cleaned) return t("\"{value}\" is not a valid domain", { value: val });
 		return true;
-	}, []);
+	}, [t]);
 	const handleAliasesChange = useCallback((values: string[]) => setAliases(values), []);
 
 	if (isLoading) {
 		return (
 			<div className="space-y-6">
 				<div>
-					<h1 className="text-3xl font-bold">Brand</h1>
-					<p className="text-muted-foreground">Loading...</p>
+					<h1 className="text-3xl font-bold">{t("Brand")}</h1>
+					<p className="text-muted-foreground">{t("Loading...")}</p>
 				</div>
 			</div>
 		);
@@ -72,8 +74,8 @@ function BrandSettingsPage() {
 		return (
 			<div className="space-y-6">
 				<div>
-					<h1 className="text-3xl font-bold">Brand</h1>
-					<p className="text-destructive">Brand not found</p>
+					<h1 className="text-3xl font-bold">{t("Brand")}</h1>
+					<p className="text-destructive">{t("Brand not found")}</p>
 				</div>
 			</div>
 		);
@@ -107,7 +109,7 @@ function BrandSettingsPage() {
 			queryClient.invalidateQueries({ queryKey: citationKeys.all });
 			queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 
-			setSuccess("Brand details updated successfully!");
+			setSuccess(t("Brand details updated successfully!"));
 			await revalidate();
 			await organizationsChanged(
 				slugMoved
@@ -129,29 +131,29 @@ function BrandSettingsPage() {
 	return (
 		<div className="space-y-6 max-w-2xl">
 			<div>
-				<h1 className="text-3xl font-bold">Brand</h1>
-				<p className="text-muted-foreground">Manage your brand name and website</p>
+				<h1 className="text-3xl font-bold">{t("Brand")}</h1>
+				<p className="text-muted-foreground">{t("Manage your brand name and website")}</p>
 			</div>
 
 			<form action={handleSubmit} className="space-y-6">
 				<div className="space-y-4">
 					<div className="space-y-2">
-						<Label htmlFor="name">Brand Name</Label>
+						<Label htmlFor="name">{t("Brand Name")}</Label>
 						<Input
 							id="name"
 							name="name"
 							type="text"
-							placeholder="Brand Name"
+							placeholder={t("Brand Name")}
 							defaultValue={brand.name}
 							required
 							disabled={isSubmitting}
 						/>
-						<p className="text-xs text-muted-foreground">Enter your brand&apos;s name</p>
+						<p className="text-xs text-muted-foreground">{t("Enter your brand's name")}</p>
 					</div>
 
 					<SlugField
 						id="brand-slug"
-						label="Brand Slug"
+						label={t("Brand Slug")}
 						prefix={brandSlugPrefix(organization)}
 						value={slug}
 						onChange={setSlug}
@@ -159,7 +161,7 @@ function BrandSettingsPage() {
 					/>
 
 					<div className="space-y-2">
-						<Label htmlFor="website">Website</Label>
+						<Label htmlFor="website">{t("Website")}</Label>
 						<Input
 							id="website"
 							name="website"
@@ -169,26 +171,28 @@ function BrandSettingsPage() {
 							required
 							disabled={isSubmitting}
 						/>
-						<p className="text-xs text-muted-foreground">Your brand&apos;s primary website</p>
+						<p className="text-xs text-muted-foreground">{t("Your brand's primary website")}</p>
 					</div>
 
 					<div className="space-y-2">
 						<Label className="flex items-center gap-1.5">
-							Additional Domains
+							{t("Additional Domains")}
 							<Tooltip>
 								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-xs font-normal">
-									Other domains your brand owns (e.g. blog.example.com, shop.example.com). Citations from these domains
-									will be counted as your brand&apos;s citations. <strong>Updates retroactively</strong> &mdash;
-									existing citations will be reclassified immediately.
+									{t(
+										"Other domains your brand owns (e.g. blog.example.com, shop.example.com). Citations from these domains will be counted as your brand's citations.",
+									)}{" "}
+									<strong>{t("Updates retroactively")}</strong> &mdash;{" "}
+									{t("existing citations will be reclassified immediately.")}
 								</TooltipContent>
 							</Tooltip>
 						</Label>
 						<TagsInput
 							value={additionalDomains}
 							onValueChange={setAdditionalDomains}
-							placeholder="Add domain..."
-							searchPlaceholder="Add domain..."
+							placeholder={t("Add domain...")}
+							searchPlaceholder={t("Add domain...")}
 							maxItems={10}
 							normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}
 							onValidate={validateDomain}
@@ -197,21 +201,21 @@ function BrandSettingsPage() {
 
 					<div className="space-y-2">
 						<Label className="flex items-center gap-1.5">
-							Brand Aliases
+							{t("Brand Aliases")}
 							<Tooltip>
 								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-xs font-normal">
-									Alternative names for your brand (sub-brands, product lines, abbreviations). Used for mention
-									detection in <strong>future</strong> prompt runs only &mdash; does not apply retroactively to past
-									results.
+									{t(
+										"Alternative names for your brand (sub-brands, product lines, abbreviations). Used for mention detection in future prompt runs only — does not apply retroactively to past results.",
+									)}
 								</TooltipContent>
 							</Tooltip>
 						</Label>
 						<TagsInput
 							value={aliases}
 							onValueChange={handleAliasesChange}
-							placeholder="Add alias..."
-							searchPlaceholder="Add alias..."
+							placeholder={t("Add alias...")}
+							searchPlaceholder={t("Add alias...")}
 							maxItems={10}
 						/>
 					</div>
@@ -222,7 +226,7 @@ function BrandSettingsPage() {
 
 				<div className="flex gap-2">
 					<Button type="submit" disabled={isSubmitting} className="cursor-pointer">
-						{isSubmitting ? "Saving..." : "Save Changes"}
+						{isSubmitting ? t("Saving...") : t("Save Changes")}
 					</Button>
 				</div>
 			</form>

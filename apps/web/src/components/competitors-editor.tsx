@@ -19,6 +19,7 @@ import { useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { SiteIcon } from "@/components/site-icon";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { useI18n } from "@/lib/i18n";
 
 export interface CompetitorEntry {
 	_key: string;
@@ -45,11 +46,15 @@ export function newCompetitorEntry(partial?: Partial<CompetitorEntry>): Competit
 }
 
 export function CompetitorsEditor({ competitors, onChange, disabled }: CompetitorsEditorProps) {
-	const validateDomain = useCallback((val: string): true | string => {
-		const cleaned = cleanAndValidateDomain(val);
-		if (!cleaned) return `"${val}" is not a valid domain`;
-		return true;
-	}, []);
+	const { t } = useI18n();
+	const validateDomain = useCallback(
+		(val: string): true | string => {
+			const cleaned = cleanAndValidateDomain(val);
+			if (!cleaned) return t("\"{value}\" is not a valid domain", { value: val });
+			return true;
+		},
+		[t],
+	);
 
 	const update = (key: string, patch: Partial<CompetitorEntry>) => {
 		onChange(competitors.map((c) => (c._key === key ? { ...c, ...patch } : c)));
@@ -72,7 +77,7 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 							{competitor.name ? (
 								<span className="text-sm font-medium">{competitor.name}</span>
 							) : (
-								<span className="text-sm text-muted-foreground italic">Unnamed competitor</span>
+								<span className="text-sm text-muted-foreground italic">{t("Unnamed competitor")}</span>
 							)}
 							{competitor.domains.some(Boolean) && (
 								<span className="text-xs text-muted-foreground ml-2">{competitor.domains.filter(Boolean)[0]}</span>
@@ -104,14 +109,15 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 						<div className="px-3 pb-3 pt-0 space-y-3 border-t bg-muted/30">
 							<div className="space-y-1.5 pt-3">
 								<Label className="text-xs font-medium flex items-center gap-1.5">
-									Name
+									{t("Name")}
 									<Tooltip>
 										<TooltipTrigger
 											render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />}
 										/>
 										<TooltipContent className="max-w-xs text-xs font-normal">
-											The primary name used to detect this competitor in AI responses. Mention detection applies to{" "}
-											<strong>future</strong> prompt runs only.
+											{t(
+												"The primary name used to detect this competitor in AI responses. Mention detection applies to future prompt runs only.",
+											)}
 										</TooltipContent>
 									</Tooltip>
 								</Label>
@@ -119,7 +125,7 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 									type="text"
 									value={competitor.name}
 									onChange={(e) => update(competitor._key, { name: e.target.value })}
-									placeholder="Competitor name"
+									placeholder={t("Competitor name")}
 									className="bg-background"
 									disabled={disabled}
 								/>
@@ -127,21 +133,22 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 
 							<div className="space-y-1.5">
 								<Label className="text-xs font-medium flex items-center gap-1.5">
-									Domains
+									{t("Domains")}
 									<Tooltip>
 										<TooltipTrigger
 											render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />}
 										/>
 										<TooltipContent className="max-w-xs text-xs font-normal">
-											All domains owned by this competitor. Citation categorization updates retroactively &mdash;
-											existing citations from these domains will immediately be classified as &quot;competitor&quot;.
+											{t(
+												"All domains owned by this competitor. Citation categorization updates retroactively — existing citations from these domains will immediately be classified as \"competitor\".",
+											)}
 										</TooltipContent>
 									</Tooltip>
 								</Label>
 								<TagsInput
 									value={competitor.domains.filter(Boolean)}
 									onValueChange={(values) => update(competitor._key, { domains: values })}
-									placeholder="Add domain..."
+									placeholder={t("Add domain...")}
 									maxItems={10}
 									normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}
 									pasteSplitter={/[\n,\t]+/}
@@ -151,21 +158,22 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 
 							<div className="space-y-1.5">
 								<Label className="text-xs font-medium flex items-center gap-1.5">
-									Aliases
+									{t("Aliases")}
 									<Tooltip>
 										<TooltipTrigger
 											render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />}
 										/>
 										<TooltipContent className="max-w-xs text-xs font-normal">
-											Alternative names for this competitor (sub-brands, product names, abbreviations). Used for mention
-											detection in <strong>future</strong> prompt runs only &mdash; does not apply retroactively.
+											{t(
+												"Alternative names for this competitor (sub-brands, product names, abbreviations). Used for mention detection in future prompt runs only — does not apply retroactively.",
+											)}
 										</TooltipContent>
 									</Tooltip>
 								</Label>
 								<TagsInput
 									value={competitor.aliases}
 									onValueChange={(values) => update(competitor._key, { aliases: values })}
-									placeholder="Add alias..."
+									placeholder={t("Add alias...")}
 									maxItems={10}
 								/>
 							</div>
@@ -183,13 +191,13 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 					className="flex items-center gap-2 cursor-pointer"
 					disabled={disabled}
 				>
-					<Plus className="h-4 w-4" /> Add Competitor
+					<Plus className="h-4 w-4" /> {t("Add Competitor")}
 				</Button>
 			)}
 
 			{competitors.length >= MAX_COMPETITORS && (
 				<p className="text-xs text-muted-foreground">
-					Maximum of {MAX_COMPETITORS} competitors allowed. Remove a competitor to add a new one.
+					{t("Maximum of {max} competitors allowed. Remove a competitor to add a new one.", { max: MAX_COMPETITORS })}
 				</p>
 			)}
 
@@ -197,7 +205,7 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 				<strong>
 					{validCount}/{MAX_COMPETITORS}
 				</strong>{" "}
-				competitors configured
+				{t("competitors configured")}
 			</p>
 		</div>
 	);
