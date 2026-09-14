@@ -362,18 +362,7 @@ function AccessPicker({ access, onAccess }: { access: ApiKeyAccess; onAccess: (a
 					<TabsTrigger value="read">{ACCESS_LABELS.read}</TabsTrigger>
 					<TabsTrigger value="write">{ACCESS_LABELS.write}</TabsTrigger>
 				</TabsList>
-				<TabsContent value="read" className="pt-1 text-sm text-muted-foreground">
-					Reads everything the API exposes and changes nothing.
-				</TabsContent>
-				<TabsContent value="write" className="pt-1 text-sm text-muted-foreground">
-					Everything a read-only key can do, plus creating, editing and deleting.
-				</TabsContent>
 			</Tabs>
-			<p className="text-sm text-muted-foreground">
-				Access gates both the REST API and MCP connections. Either way a key reaches only this organization, and the
-				operations that spend provider budget or destroy tracked history need an instance admin key no key issued here
-				can be given.
-			</p>
 		</section>
 	);
 }
@@ -400,7 +389,7 @@ function BrandPicker({
 					<TabsTrigger value="custom">Specific brands</TabsTrigger>
 				</TabsList>
 				<TabsContent value="all" className="pt-1 text-sm text-muted-foreground">
-					Reaches every brand in this organization, including ones added later.
+					Every brand in this organization, including brands added later.
 				</TabsContent>
 				<TabsContent value="custom" className="pt-1">
 					{brands.length === 0 ? (

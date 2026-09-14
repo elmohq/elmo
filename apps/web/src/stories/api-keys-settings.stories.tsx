@@ -179,7 +179,7 @@ export const AccessPresets: Story = {
 		const dialog = within(await within(document.body).findByRole("dialog"));
 		await userEvent.click(await dialog.findByRole("tab", { name: "Read and write" }));
 		await expect(await dialog.findByRole("tab", { name: "Read and write" })).toHaveAttribute("aria-selected", "true");
-		await expect(await dialog.findByText(/plus creating, editing and deleting/)).toBeVisible();
+		await expect(await dialog.findByRole("tab", { name: "Read-only" })).toHaveAttribute("aria-selected", "false");
 	},
 };
 
