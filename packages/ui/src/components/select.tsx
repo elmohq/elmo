@@ -58,7 +58,10 @@ function SelectContent({
   >) {
   return (
     <SelectPrimitive.Portal>
+      {/* Above a dialog: both portal to the body, and without this the dialog
+          (also z-50, mounted first) paints over an open select. */}
       <SelectPrimitive.Positioner
+        className="z-50"
         align={align}
         alignOffset={alignOffset}
         side={side}
