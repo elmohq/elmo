@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { normalizeSlug, ORG_URL_PREFIX } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/")({
 });
 
 function OrganizationSettingsPage() {
+	const { t } = useI18n();
 	const organization = useOrganization();
 	const organizationsChanged = useOrganizationsChanged();
 	const navigate = useNavigate();
@@ -56,11 +58,11 @@ function OrganizationSettingsPage() {
 
 	return (
 		<div className="max-w-2xl space-y-6">
-			<h1 className="text-3xl font-bold">Organization</h1>
+			<h1 className="text-3xl font-bold">{t("Organization")}</h1>
 
 			<form onSubmit={handleSave} className="space-y-4">
 				<div className="space-y-2">
-					<Label htmlFor="organization-name">Organization Name</Label>
+					<Label htmlFor="organization-name">{t("Organization Name")}</Label>
 					<Input
 						id="organization-name"
 						value={name}
@@ -72,7 +74,7 @@ function OrganizationSettingsPage() {
 
 				<SlugField
 					id="organization-slug"
-					label="Organization Slug"
+					label={t("Organization Slug")}
 					prefix={ORG_URL_PREFIX}
 					value={slug}
 					onChange={setSlug}
@@ -82,7 +84,7 @@ function OrganizationSettingsPage() {
 				{error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
 
 				<Button type="submit" disabled={saving || !isDirty || !isComplete}>
-					{saving ? "Saving..." : "Save"}
+					{saving ? t("Saving...") : t("Save")}
 				</Button>
 			</form>
 		</div>

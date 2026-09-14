@@ -1,2 +1,2 @@
-export const INVALID_SLUG = "Use lowercase letters, numbers, and hyphens.";
-export const TAKEN_SLUG = "That URL Slug is already taken.";
+export const INVALID_SLUG = /* i18n */ "Use lowercase letters, numbers, and hyphens.";
+export const TAKEN_SLUG = /* i18n */ "That URL Slug is already taken.";

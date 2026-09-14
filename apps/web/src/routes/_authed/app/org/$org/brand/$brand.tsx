@@ -14,6 +14,7 @@ import { SiteHeader } from "@/components/site-header";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
 import { useOrganization } from "@/hooks/use-organizations";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
+import { translate } from "@/lib/i18n";
 import { getAppName } from "@/lib/route-head";
 
 interface BrandData {
@@ -113,12 +114,15 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 	head: ({ match, loaderData }) => {
 		const appName = getAppName(match);
 		const brandName = (loaderData as BrandData | undefined)?.brand?.name;
+		const locale = match.context?.locale ?? "en";
 		return {
 			meta: [
 				{ title: brandName ? `${brandName} · ${appName}` : appName },
 				{
 					name: "description",
-					content: brandName ? `AI visibility tracking for ${brandName}.` : "AI visibility tracking and optimization.",
+					content: brandName
+						? translate(locale, "AI visibility tracking for {name}.", { name: brandName })
+						: translate(locale, "AI visibility tracking and optimization."),
 				},
 			],
 		};

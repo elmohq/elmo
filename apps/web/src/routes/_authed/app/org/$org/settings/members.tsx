@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { createFileRoute, notFound, useRouter } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
@@ -24,7 +25,10 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/members")({
 	component: TeamSettingsPage,
 });
 
+const ROLE_LABELS: Record<string, string> = { owner: /* i18n */ "Owner", admin: /* i18n */ "Admin", member: /* i18n */ "Member" };
+
 function TeamSettingsPage() {
+	const { t, d } = useI18n();
 	const { id: organizationId } = useOrganization();
 	const { members, invitations, currentUserId } = Route.useLoaderData();
 	const writeError = useWriteErrorMessage();
@@ -73,7 +77,7 @@ function TeamSettingsPage() {
 
 	return (
 		<div className="space-y-6">
-			<h1 className="text-3xl font-bold">Team</h1>
+			<h1 className="text-3xl font-bold">{t("Team")}</h1>
 
 			{error && (
 				<Alert variant="destructive">
@@ -83,7 +87,7 @@ function TeamSettingsPage() {
 
 			<form onSubmit={handleInvite} className="flex flex-wrap items-end gap-3">
 				<div className="flex flex-col gap-2">
-					<Label htmlFor="invite-email">Email</Label>
+					<Label htmlFor="invite-email">{t("Email")}</Label>
 					<Input
 						id="invite-email"
 						type="email"
@@ -95,9 +99,9 @@ function TeamSettingsPage() {
 					/>
 				</div>
 				<div className="flex flex-col gap-2">
-					<Label htmlFor="invite-role">Role</Label>
+					<Label htmlFor="invite-role">{t("Role")}</Label>
 					<Select
-						items={{ member: "Member", admin: "Admin" }}
+						items={{ member: t("Member"), admin: t("Admin") }}
 						value={inviteRole}
 						onValueChange={(value) => setInviteRole(value as "member" | "admin")}
 					>
@@ -105,18 +109,18 @@ function TeamSettingsPage() {
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="member">Member</SelectItem>
-							<SelectItem value="admin">Admin</SelectItem>
+							<SelectItem value="member">{t("Member")}</SelectItem>
+							<SelectItem value="admin">{t("Admin")}</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>
 				<Button type="submit" disabled={inviting}>
-					{inviting ? "Inviting..." : "Invite"}
+					{inviting ? t("Inviting...") : t("Invite")}
 				</Button>
 			</form>
 
 			<div className="space-y-3">
-				<h2 className="text-lg font-semibold">Members</h2>
+				<h2 className="text-lg font-semibold">{t("Members")}</h2>
 				<div className="divide-y rounded-md border">
 					{members.map((m) => (
 						<div key={m.id} className="flex items-center justify-between gap-3 p-3">
@@ -125,10 +129,10 @@ function TeamSettingsPage() {
 								<p className="truncate text-sm text-muted-foreground">{m.email}</p>
 							</div>
 							<div className="flex shrink-0 items-center gap-3">
-								<Badge variant="secondary">{m.role}</Badge>
+								<Badge variant="secondary">{t(ROLE_LABELS[m.role] ?? m.role)}</Badge>
 								{m.userId !== currentUserId && (
 									<Button type="button" variant="outline" size="sm" onClick={() => handleRemove(m.id)}>
-										Remove
+										{t("Remove")}
 									</Button>
 								)}
 							</div>
@@ -139,20 +143,20 @@ function TeamSettingsPage() {
 
 			{invitations.length > 0 && (
 				<div className="space-y-3">
-					<h2 className="text-lg font-semibold">Pending invitations</h2>
+					<h2 className="text-lg font-semibold">{t("Pending invitations")}</h2>
 					<div className="divide-y rounded-md border">
 						{invitations.map((inv) => (
 							<div key={inv.id} className="flex items-center justify-between gap-3 p-3">
 								<div className="min-w-0">
 									<p className="truncate font-medium">{inv.email}</p>
 									<p className="text-sm text-muted-foreground">
-										Expires {new Date(inv.expiresAt).toLocaleDateString()}
+										{t("Expires {date}", { date: d(inv.expiresAt) })}
 									</p>
 								</div>
 								<div className="flex shrink-0 items-center gap-3">
-									<Badge variant="secondary">{inv.role ?? "member"}</Badge>
+									<Badge variant="secondary">{t(ROLE_LABELS[inv.role ?? "member"] ?? inv.role ?? "member")}</Badge>
 									<Button type="button" variant="outline" size="sm" onClick={() => handleCancel(inv.id)}>
-										Cancel
+										{t("Cancel")}
 									</Button>
 								</div>
 							</div>

@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { useNavigate } from "@tanstack/react-router";
 import { brandSegment } from "@workspace/lib/app-urls";
 import { Button } from "@workspace/ui/components/button";
@@ -21,6 +22,7 @@ interface BrandOnboardingProps {
 }
 
 export default function BrandOnboarding({ organizationSlug, brandId, brandName, platformState }: BrandOnboardingProps) {
+	const { t } = useI18n();
 	const [step, setStep] = useState<"website" | "platforms">("website");
 	const [website, setWebsite] = useState("");
 	const [selected, setSelected] = useState<Set<string>>(
@@ -65,7 +67,7 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 
 		const validation = validateWebsiteUrl(website);
 		if (!validation.isValid) {
-			setError(validation.error);
+			setError(t(validation.error));
 			return;
 		}
 
@@ -78,7 +80,7 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 
 	if (step === "platforms" && platformState) {
 		return (
-			<FullPageCard title={`Setup ${brandName}`} subtitle="Choose which AI platforms to track">
+			<FullPageCard title={t("Set up {name}", { name: brandName })} subtitle={t("Choose which AI platforms to track")}>
 				<PlatformSelectionStep
 					state={platformState}
 					selected={selected}
@@ -87,17 +89,18 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 					error={error}
 					onBack={() => setStep("website")}
 					onSubmit={() => createBrand([...selected])}
-					submitLabel={isLoading ? "Setting up..." : "Complete Setup"}
+					submitLabel={isLoading ? t("Setting up...") : t("Complete Setup")}
 				/>
 			</FullPageCard>
 		);
 	}
 
 	return (
-		<FullPageCard title={`Setup ${brandName}`} subtitle="Configure your brand to get started" showBackButton={true}>
+		<FullPageCard title={t("Set up {name}", { name: brandName })}
+			subtitle={t("Configure your brand to get started")} showBackButton={true}>
 			<form action={handleWebsiteSubmit} className="space-y-4">
 				<div className="space-y-2">
-					<Label htmlFor="website">Website</Label>
+					<Label htmlFor="website">{t("Website")}</Label>
 					<Input
 						id="website"
 						name="website"
@@ -108,13 +111,13 @@ export default function BrandOnboarding({ organizationSlug, brandId, brandName, 
 						value={website}
 						onChange={(e) => setWebsite(e.target.value)}
 					/>
-					<p className="text-xs text-muted-foreground">Enter your brand's website</p>
+					<p className="text-xs text-muted-foreground">{t("Enter your brand's website")}</p>
 				</div>
 
 				{error && <p className="text-sm text-destructive">{error}</p>}
 
 				<Button type="submit" className="w-full" disabled={isLoading}>
-					{isLoading ? "Setting up..." : platformState ? "Continue" : "Complete Setup"}
+					{isLoading ? t("Setting up...") : platformState ? t("Continue") : t("Complete Setup")}
 				</Button>
 			</form>
 		</FullPageCard>

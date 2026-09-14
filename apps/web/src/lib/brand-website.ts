@@ -14,7 +14,7 @@ export type WebsiteValidationResult = { isValid: true; formattedUrl: string } | 
  */
 export function validateWebsiteUrl(input: string): WebsiteValidationResult {
 	if (!input || input.trim() === "") {
-		return { isValid: false, error: "Website URL is required" };
+		return { isValid: false, error: /* i18n */ "Website URL is required" };
 	}
 	let candidate = input.trim();
 	if (!candidate.startsWith("http://") && !candidate.startsWith("https://")) {
@@ -24,10 +24,10 @@ export function validateWebsiteUrl(input: string): WebsiteValidationResult {
 	try {
 		urlObj = new URL(candidate);
 	} catch {
-		return { isValid: false, error: "Please enter a valid website URL or domain" };
+		return { isValid: false, error: /* i18n */ "Please enter a valid website URL or domain" };
 	}
 	if (!cleanAndValidateDomain(urlObj.hostname)) {
-		return { isValid: false, error: "Website URL must have a valid domain name" };
+		return { isValid: false, error: /* i18n */ "Website URL must have a valid domain name" };
 	}
 	urlObj.username = "";
 	urlObj.password = "";

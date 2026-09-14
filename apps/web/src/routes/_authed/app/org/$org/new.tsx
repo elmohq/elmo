@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -32,6 +33,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/new")({
 });
 
 function NewBrandPage() {
+	const { t } = useI18n();
 	const { organizationId, organizationName, blocked } = Route.useLoaderData();
 	const organizationParams = useOrganizationParams();
 	const [step, setStep] = useState<"details" | "platforms">("details");
@@ -76,7 +78,7 @@ function NewBrandPage() {
 
 		const validation = validateWebsiteUrl(website);
 		if (!validation.isValid) {
-			setError(validation.error);
+			setError(t(validation.error));
 			return;
 		}
 
@@ -92,7 +94,7 @@ function NewBrandPage() {
 			setSelected(new Set(state.defaultSelected));
 			setStep("platforms");
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Could not read this organization's platforms.");
+			setError(err instanceof Error ? t(err.message) : t("Could not read this organization's platforms."));
 		} finally {
 			setIsLoading(false);
 		}
@@ -102,9 +104,11 @@ function NewBrandPage() {
 		return (
 			<FullPageCard
 				title={
-					blocked.code === "no-active-plan" ? "This organization has no plan" : "You've used every brand on your plan"
+					blocked.code === "no-active-plan"
+						? t("This organization has no plan")
+						: t("You've used every brand on your plan")
 				}
-				subtitle={blocked.message}
+				subtitle={t(blocked.message)}
 				showBackButton
 			>
 				<Link
@@ -112,7 +116,7 @@ function NewBrandPage() {
 					params={organizationParams}
 					className={buttonVariants({ className: "w-full" })}
 				>
-					Go to billing
+					{t("Go to billing")}
 				</Link>
 			</FullPageCard>
 		);
@@ -120,7 +124,7 @@ function NewBrandPage() {
 
 	if (step === "platforms" && platformState) {
 		return (
-			<FullPageCard title={`Create ${details.brandName}`} subtitle="Choose which AI platforms to track">
+			<FullPageCard title={t("Create {name}", { name: details.brandName })} subtitle={t("Choose which AI platforms to track")}>
 				<PlatformSelectionStep
 					state={platformState}
 					selected={selected}
@@ -129,17 +133,18 @@ function NewBrandPage() {
 					error={error}
 					onBack={() => setStep("details")}
 					onSubmit={() => createBrand(details.brandName, details.website, [...selected])}
-					submitLabel={isLoading ? "Creating..." : "Create brand"}
+					submitLabel={isLoading ? t("Creating...") : t("Create brand")}
 				/>
 			</FullPageCard>
 		);
 	}
 
 	return (
-		<FullPageCard title="Create a new brand" subtitle={`Start tracking a brand in ${organizationName}`} showBackButton>
+		<FullPageCard title={t("Create a new brand")}
+			subtitle={t("Start tracking a brand in {name}", { name: organizationName })} showBackButton>
 			<form action={handleDetailsSubmit} className="space-y-4">
 				<div className="space-y-2">
-					<Label htmlFor="brandName">Brand Name</Label>
+					<Label htmlFor="brandName">{t("Brand Name")}</Label>
 					<Input
 						id="brandName"
 						name="brandName"
@@ -152,7 +157,7 @@ function NewBrandPage() {
 				</div>
 
 				<div className="space-y-2">
-					<Label htmlFor="website">Website</Label>
+					<Label htmlFor="website">{t("Website")}</Label>
 					<Input
 						id="website"
 						name="website"
@@ -167,7 +172,7 @@ function NewBrandPage() {
 				{error && <p className="text-sm text-destructive">{error}</p>}
 
 				<Button type="submit" className="w-full" disabled={isLoading}>
-					{isLoading ? "Creating..." : "Continue"}
+					{isLoading ? t("Creating...") : t("Continue")}
 				</Button>
 			</form>
 		</FullPageCard>

@@ -6,6 +6,7 @@
  * Better-auth requires the session email to match the invited email
  * (case-insensitively) and rejects expired or already-handled invitations.
  */
+import { translate, useI18n } from "@/lib/i18n";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button, buttonVariants } from "@workspace/ui/components/button";
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/_authed/accept-invitation/$invitationId")
 		} catch (err) {
 			return {
 				invitation: null,
-				error: err instanceof Error ? err.message : "This invitation could not be loaded",
+				error: err instanceof Error ? err.message : /* i18n */ "This invitation could not be loaded",
 			};
 		}
 	},
@@ -32,8 +33,8 @@ export const Route = createFileRoute("/_authed/accept-invitation/$invitationId")
 		const appName = getAppName(match);
 		return {
 			meta: [
-				{ title: buildTitle("Accept invitation", { appName }) },
-				{ name: "description", content: "Join your team." },
+				{ title: buildTitle(translate(match.context?.locale ?? "en", "Accept invitation"), { appName }) },
+				{ name: "description", content: translate(match.context?.locale ?? "en", "Join your team.") },
 			],
 		};
 	},
@@ -41,6 +42,7 @@ export const Route = createFileRoute("/_authed/accept-invitation/$invitationId")
 });
 
 function AcceptInvitationPage() {
+	const { t } = useI18n();
 	const { invitationId } = Route.useParams();
 	const { invitation, error: loadError } = Route.useLoaderData();
 	const organizationsChanged = useOrganizationsChanged();
@@ -51,16 +53,16 @@ function AcceptInvitationPage() {
 
 	if (loadError || !invitation) {
 		return (
-			<FullPageCard title="Invitation unavailable">
+			<FullPageCard title={t("Invitation unavailable")}>
 				<div className="space-y-4 w-full">
 					<Alert variant="destructive">
-						<AlertDescription>{loadError ?? "This invitation could not be loaded"}</AlertDescription>
+						<AlertDescription>{t(loadError ?? "This invitation could not be loaded")}</AlertDescription>
 					</Alert>
 					<p className="text-sm text-muted-foreground text-center">
-						Make sure you're signed in with the email address that received this invitation.
+						{t("Make sure you're signed in with the email address that received this invitation.")}
 					</p>
 					<Link to="/auth/logout" className={buttonVariants({ variant: "outline", className: "w-full" })}>
-						Switch account
+						{t("Switch account")}
 					</Link>
 				</div>
 			</FullPageCard>
@@ -81,8 +83,8 @@ function AcceptInvitationPage() {
 
 	return (
 		<FullPageCard
-			title={`You've been invited to join ${invitation.organizationName}`}
-			subtitle={`Invited by ${invitation.inviterEmail}`}
+			title={t("You've been invited to join {name}", { name: invitation.organizationName })}
+			subtitle={t("Invited by {email}", { email: invitation.inviterEmail })}
 		>
 			<div className="space-y-4 w-full">
 				{acceptError && (
@@ -91,7 +93,7 @@ function AcceptInvitationPage() {
 					</Alert>
 				)}
 				<Button className="w-full" onClick={handleAccept} disabled={accepting}>
-					{accepting ? "Accepting..." : "Accept invitation"}
+					{accepting ? t("Accepting...") : t("Accept invitation")}
 				</Button>
 			</div>
 		</FullPageCard>

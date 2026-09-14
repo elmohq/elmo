@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/_authed/app/new")({
 });
 
 function NewOrganizationPage() {
+	const { t } = useI18n();
 	const organizationsChanged = useOrganizationsChanged();
 	const navigate = useNavigate();
 	const writeError = useWriteErrorMessage();
@@ -49,13 +51,13 @@ function NewOrganizationPage() {
 
 	return (
 		<FullPageCard
-			title="Create an organization"
-			subtitle="An organization holds its own brands, team, and plan."
+			title={t("Create an organization")}
+			subtitle={t("An organization holds its own brands, team, and plan.")}
 			showBackButton
 		>
 			<form onSubmit={handleSubmit} className="space-y-4">
 				<div className="space-y-2">
-					<Label htmlFor="organization-name">Organization Name</Label>
+					<Label htmlFor="organization-name">{t("Organization Name")}</Label>
 					<Input
 						id="organization-name"
 						value={name}
@@ -69,7 +71,7 @@ function NewOrganizationPage() {
 				{error && <p className="text-sm text-destructive">{error}</p>}
 
 				<Button type="submit" className="w-full" disabled={isLoading || trimmed.length === 0}>
-					{isLoading ? "Creating..." : "Create organization"}
+					{isLoading ? t("Creating...") : t("Create organization")}
 				</Button>
 			</form>
 		</FullPageCard>

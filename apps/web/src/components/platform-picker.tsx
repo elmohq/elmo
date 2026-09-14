@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { getModelMeta } from "@workspace/config/models";
 import type { ProviderAccess } from "@workspace/lib/providers";
 import { projectMonthlyTargetCostUsd } from "@workspace/lib/usage";
@@ -42,10 +43,11 @@ export function formatUsd(amount: number): string {
  * per row it invited adding up twelve numbers to answer one question.
  */
 export function PlatformOperatorDetail({ option }: { option: PlatformOption }) {
+	const { t } = useI18n();
 	if (option.providerName == null && option.costPerRunUsd == null) return null;
 
 	const parts = [
-		option.costPerRunUsd != null ? `≈${formatUsd(option.costPerRunUsd)}/run` : null,
+		option.costPerRunUsd != null ? t("≈{cost}/run", { cost: formatUsd(option.costPerRunUsd) }) : null,
 		option.providerName ?? null,
 	].filter(Boolean);
 

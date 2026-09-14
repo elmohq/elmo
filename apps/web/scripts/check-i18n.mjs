@@ -16,6 +16,7 @@ const patterns = [
 	new RegExp(String.raw`\btranslate(?:Plural)?\(\s*\w+,\s*(?:[^,"]+,\s*)?${STR}(?:,\s*${STR})?`, "g"),
 	new RegExp(String.raw`\?\? "en",\s*${STR}`, "g"),
 	new RegExp(String.raw`\bt\([^"()]+\?\?\s*${STR}`, "g"),
+	new RegExp(String.raw`writeError\([^,]+,\s*${STR}`, "g"),
 	new RegExp(String.raw`\bcrumb:\s*${STR}`, "g"),
 	new RegExp(String.raw`pageHead\(\{[^}]*?(?:title|description):\s*${STR}(?:[^}]*?description:\s*${STR})?`, "gs"),
 	new RegExp(String.raw`\/\*\s*i18n\s*\*\/\s*${STR}`, "g"),

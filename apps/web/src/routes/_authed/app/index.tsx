@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n";
 import { createFileRoute } from "@tanstack/react-router";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import FullPageCard from "@/components/full-page-card";
@@ -34,18 +35,19 @@ export const Route = createFileRoute("/_authed/app/")({
 });
 
 function OrganizationPickerPage() {
+	const { t } = useI18n();
 	const organizations = Route.useLoaderData();
 
 	if (organizations.length === 0) {
 		return (
-			<FullPageCard title="No organizations" subtitle="Your account isn't a member of an organization yet.">
-				<p className="text-center text-muted-foreground">Ask an admin to invite you, then reload this page.</p>
+			<FullPageCard title={t("No organizations")} subtitle={t("Your account isn't a member of an organization yet.")}>
+				<p className="text-center text-muted-foreground">{t("Ask an admin to invite you, then reload this page.")}</p>
 			</FullPageCard>
 		);
 	}
 
 	return (
-		<FullPageCard title="Organizations and Brands" subtitle="Modify organizations or navigate to brands.">
+		<FullPageCard title={t("Organizations and Brands")} subtitle={t("Modify organizations or navigate to brands.")}>
 			<OrganizationDirectory organizations={organizations} />
 		</FullPageCard>
 	);
