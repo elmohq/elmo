@@ -31,7 +31,7 @@ const SURFACES: [name: string, provider: string, rawOutput: unknown][] = [
 	["brightdata AI Overview", "brightdata", [{ ai_overview: { markdown: ANSWER } }]],
 	["oxylabs ChatGPT", "oxylabs", { results: [{ content: { markdown_text: ANSWER } }] }],
 	["oxylabs Perplexity", "oxylabs", { results: [{ content: { answer_results_md: ANSWER } }] }],
-	["cloro chatbot", "cloro", { text: ANSWER }],
+	["cloro chatbot", "cloro", { markdown: ANSWER, text: "flattened" }],
 	["cloro AI Overview", "cloro", { aioverview: { markdown: ANSWER, text: "flattened" } }],
 	["dataforseo scraper", "dataforseo", { tasks: [{ result: [{ markdown: ANSWER, sources: [] }] }] }],
 	[

@@ -1,5 +1,5 @@
 meta {
-  name: analytics require analytics:read
+  name: analytics require the read scope
   type: http
   seq: 6
 }
@@ -11,7 +11,7 @@ get {
 }
 
 headers {
-  Authorization: Bearer {{orgBrandsOnlyKey}}
+  Authorization: Bearer {{orgNoScopesKey}}
 }
 
 params:query {
@@ -22,5 +22,5 @@ params:query {
 assert {
   res.status: eq 403
   res.body.code: eq insufficient_scope
-  res.body.message: contains analytics:read
+  res.body.message: contains the read scope
 }

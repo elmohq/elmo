@@ -45,7 +45,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 		handlers: withMethodGuard({
 			GET: createApiHandler({
 				params: competitorParams,
-				scopes: ["competitors:read"],
+				scopes: ["read"],
 				handle: async ({ params, auth }) => {
 					return await loadInScope(auth, params.competitorId);
 				},
@@ -54,7 +54,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 			PATCH: createApiHandler({
 				params: competitorParams,
 				body: updateCompetitorBody,
-				scopes: ["competitors:write"],
+				scopes: ["write"],
 				handle: async ({ params, body, auth }) => {
 					await loadInScope(auth, params.competitorId);
 					const { competitorId } = params;
@@ -86,7 +86,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 
 			DELETE: createApiHandler({
 				params: competitorParams,
-				scopes: ["competitors:delete"],
+				scopes: ["write"],
 				handle: async ({ params, auth }) => {
 					await loadInScope(auth, params.competitorId);
 					const [deleted] = await db.delete(competitors).where(eq(competitors.id, params.competitorId)).returning();

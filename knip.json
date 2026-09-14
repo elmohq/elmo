@@ -16,12 +16,12 @@
         "@tailwindcss/typography",
         "@fontsource/geist-sans",
         "@base-ui/react",
-        "@resvg/resvg-js"
+        "@takumi-rs/core"
       ]
     },
     "apps/www": {
       "entry": ["scripts/**"],
-      "ignoreDependencies": ["shiki", "@resvg/resvg-js"]
+      "ignoreDependencies": ["shiki", "@takumi-rs/core"]
     },
     "packages/og": {
       "ignoreDependencies": ["nitro"]

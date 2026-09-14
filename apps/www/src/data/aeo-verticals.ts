@@ -33,7 +33,7 @@ export const aeoVerticals: AeoVertical[] = [
 			},
 			{
 				name: "Turn gaps into a retainer",
-				text: "Every prompt where a client is missing is a concrete content brief. That is the bridge from reporting to billable work.",
+				text: "Every prompt where a client is missing is a concrete content brief, which turns reporting into billable work.",
 			},
 			{
 				name: "White-label the dashboards",
@@ -196,7 +196,7 @@ export const aeoVerticals: AeoVertical[] = [
 		short: "Build AI visibility from zero without enterprise pricing, on a tool you can self-host for free.",
 		intro: [
 			"A new brand starts out invisible to AI engines, because there is little for the models to have learned. The job is to build a credible footprint quickly: clear content, early reviews, and mentions on sources the models trust.",
-			"Budgets are tight, which is the catch with most tools in this space. An open-source platform you self-host for free lets you start measuring on day one and only pay for the API calls you actually make.",
+			"Budgets are tight, and most tools in this space are priced for larger companies. An open-source platform you self-host for free lets you start measuring on day one and only pay for the API calls you actually make.",
 		],
 		examplePrompts: ["best [new category] tools", "alternatives to [incumbent]", "what is [your brand]"],
 		plays: [
@@ -279,7 +279,7 @@ export const aeoVerticals: AeoVertical[] = [
 		audience: "healthcare brands",
 		short: "Monitor and correct how AI engines describe your healthcare brand, where accuracy is not optional.",
 		intro: [
-			"Health topics are exactly where AI engines are most cautious, and where errors do the most damage. An inaccurate description of a provider, product, or service is a real risk, not a cosmetic one.",
+			"Health topics are exactly where AI engines are most cautious, and where errors do the most damage. An inaccurate description of a provider, product, or service carries real risk.",
 			"Accuracy and data control both matter here. Authoritative, well-sourced content shapes what the models say, and self-hosting keeps sensitive prompt data on your own infrastructure rather than a vendor's.",
 		],
 		examplePrompts: ["is [treatment] safe", "best [specialty] near me", "what does [brand] treat"],
@@ -477,7 +477,7 @@ export const aeoVerticals: AeoVertical[] = [
 		plays: [
 			{
 				name: "Own the neighbourhood question",
-				text: "Portals cover cities; almost nobody covers neighbourhoods well. Publish current, specific analysis at that level and you become the citable source for questions the portals answer vaguely.",
+				text: "Portals cover cities; almost nobody covers neighbourhoods well. Publishing current, specific analysis at that level makes you the citable source for questions the portals answer vaguely.",
 			},
 			{
 				name: "Answer the commission question directly",

@@ -262,7 +262,8 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 
 	// Said before the wizard asks for anything, not after: someone who would
 	// rather buy the managed version should find that out before they have gone
-	// and opened scraper accounts.
+	// and opened scraper accounts. It also comes before the Docker check, so
+	// someone without Docker still sees the option that needs none.
 	p.note(
 		[
 			"Self-hosting Elmo is free, and always will be. But it does mean",
@@ -277,6 +278,8 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 		].join("\n"),
 		"Prefer not to self-host?",
 	);
+
+	assertDockerRunning();
 
 	const cwd = process.cwd();
 

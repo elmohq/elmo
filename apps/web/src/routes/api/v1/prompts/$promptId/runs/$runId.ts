@@ -14,7 +14,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/runs/$runId")({
 					promptId: z.guid("Invalid prompt ID format"),
 					runId: z.guid("Invalid run ID format"),
 				}),
-				scopes: ["runs:read"],
+				scopes: ["read"],
 				handle: async ({ params, auth }) => {
 					const run = await findRunDetail(params.promptId, params.runId);
 					if (!run || !(await isBrandInScope(auth, run.brandId))) {
