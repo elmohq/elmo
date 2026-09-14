@@ -35,12 +35,13 @@ test.describe("API keys", () => {
     await page.locator("#key-expiry").click();
     await page.getByRole("option", { name: "In 30 days", exact: true }).click();
     await expect(page.locator("#key-expiry")).toContainText("In 30 days");
-    await page.getByRole("tab", { name: "Read and write", exact: true }).click();
+    await page.getByRole("tab", { name: "Read/Write", exact: true }).click();
     await page.getByRole("tab", { name: "Specific brands", exact: true }).click();
-    await page.getByRole("checkbox", { name: "Test Organization", exact: true }).first().click();
-    await page.getByRole("button", { name: "Create key", exact: true }).click();
+    await page.locator("[data-slot=combobox-chip-input]").click();
+    await page.getByRole("option", { name: "Test Organization", exact: true }).click();
+    await page.getByRole("button", { name: "Create", exact: true }).click();
 
-    const issued = page.locator("[data-slot=card]").filter({ hasText: "Key created" });
+    const issued = page.locator("[data-slot=card]").filter({ hasText: "Key Created" });
     await expect(issued).toBeVisible({ timeout: 30_000 });
     const key = (await issued.locator("code").innerText()).trim();
     expect(key).toMatch(/^elmo_[A-Za-z]+$/);
@@ -80,7 +81,7 @@ test.describe("API keys", () => {
       if (!(await confirm.isVisible())) {
         await row.getByRole("button", { name: "Revoke", exact: true }).click();
       }
-      await confirm.getByRole("button", { name: "Revoke key", exact: true }).click();
+      await confirm.getByRole("button", { name: "Revoke", exact: true }).click();
       await expect(confirm).toBeHidden({ timeout: 5_000 });
     }).toPass({ timeout: 30_000 });
 
@@ -104,7 +105,7 @@ test.describe("API keys", () => {
 
     // Must not quietly become "every brand"; the server is what refuses.
     await page.getByRole("tab", { name: "Specific brands", exact: true }).click();
-    await page.getByRole("button", { name: "Create key", exact: true }).click();
+    await page.getByRole("button", { name: "Create", exact: true }).click();
 
     await expect(page.getByRole("dialog").getByText(/at least one brand/i)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("row").filter({ hasText: name })).toHaveCount(0);

@@ -9,8 +9,19 @@ import { orgLinkParams } from "@workspace/lib/app-urls";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Checkbox } from "@workspace/ui/components/checkbox";
+import { Card, CardTitle } from "@workspace/ui/components/card";
+import {
+	Combobox,
+	ComboboxChip,
+	ComboboxChips,
+	ComboboxChipsInput,
+	ComboboxContent,
+	ComboboxEmpty,
+	ComboboxItem,
+	ComboboxList,
+	ComboboxValue,
+	useComboboxAnchor,
+} from "@workspace/ui/components/combobox";
 import {
 	Dialog,
 	DialogContent,
@@ -53,18 +64,14 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/api-keys")(
 });
 
 const ACCESS_LABELS: Record<ApiKeyAccess, string> = {
-	read: "Read-only",
-	write: "Read and write",
+	read: "Read",
+	write: "Read/Write",
 };
 
 function formatDate(value: string | null, empty = "—"): string {
 	return value
 		? new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
 		: empty;
-}
-
-function toggle<T>(list: T[], value: T): T[] {
-	return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 }
 
 /** Disabled or past its expiry: either way it no longer authenticates anything. */
@@ -135,10 +142,12 @@ function ApiKeysSettingsPage() {
 			{issuedKey && <IssuedKeyCard value={issuedKey} />}
 
 			{!canManage && (
-				<Alert>
+				<Alert className="border-yellow-200 bg-yellow-50 text-yellow-800">
 					<IconAlertTriangle />
-					<AlertTitle>Read-only view</AlertTitle>
-					<AlertDescription>Only organization admins can issue or revoke keys.</AlertDescription>
+					<AlertTitle>Limited Access</AlertTitle>
+					<AlertDescription className="text-yellow-700">
+						Only organization admins can issue or revoke keys.
+					</AlertDescription>
 				</Alert>
 			)}
 
@@ -224,7 +233,7 @@ function ApiKeysSettingsPage() {
 							onClick={() => revokeTarget && handleRevoke(revokeTarget.id)}
 						>
 							{revoking ? <Spinner /> : null}
-							{revoking ? "Revoking…" : "Revoke key"}
+							{revoking ? "Revoking…" : "Revoke"}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -336,7 +345,7 @@ function CreateKeyForm({
 					restricted={restrictBrands}
 					selected={selectedBrands}
 					onRestricted={setRestrictBrands}
-					onToggle={(brandId) => setSelectedBrands((current) => toggle(current, brandId))}
+					onSelected={setSelectedBrands}
 				/>
 			</div>
 
@@ -345,8 +354,8 @@ function CreateKeyForm({
 					Cancel
 				</Button>
 				<Button type="submit" disabled={creating}>
-					{creating ? <Spinner /> : <IconKey className="size-4" />}
-					{creating ? "Creating…" : "Create key"}
+					{creating && <Spinner />}
+					{creating ? "Creating…" : "Create"}
 				</Button>
 			</DialogFooter>
 		</form>
@@ -372,14 +381,20 @@ function BrandPicker({
 	restricted,
 	selected,
 	onRestricted,
-	onToggle,
+	onSelected,
 }: {
 	brands: ApiKeysPageData["brands"];
 	restricted: boolean;
 	selected: string[];
 	onRestricted: (restricted: boolean) => void;
-	onToggle: (brandId: string) => void;
+	onSelected: (brandIds: string[]) => void;
 }) {
+	// Ids are what the key is issued against; the combobox filters and labels
+	// them by name.
+	const brandIds = brands.map((brand) => brand.id);
+	const names = new Map(brands.map((brand) => [brand.id, brand.name]));
+	const nameOf = (id: string) => names.get(id) ?? id;
+
 	return (
 		<section className="space-y-3">
 			<p className="text-sm font-medium">Brand access</p>
@@ -397,22 +412,7 @@ function BrandPicker({
 							This organization has no brands yet, so there is nothing to narrow the key to.
 						</p>
 					) : (
-						<div className="grid gap-2 sm:grid-cols-2">
-							{brands.map((brand) => (
-								<label
-									key={brand.id}
-									htmlFor={`brand-${brand.id}`}
-									className="flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors hover:bg-accent/50"
-								>
-									<Checkbox
-										id={`brand-${brand.id}`}
-										checked={selected.includes(brand.id)}
-										onCheckedChange={() => onToggle(brand.id)}
-									/>
-									<span className="min-w-0 flex-1 truncate text-sm font-medium">{brand.name}</span>
-								</label>
-							))}
-						</div>
+						<BrandCombobox brandIds={brandIds} nameOf={nameOf} selected={selected} onSelected={onSelected} />
 					)}
 				</TabsContent>
 			</Tabs>
@@ -420,22 +420,65 @@ function BrandPicker({
 	);
 }
 
+function BrandCombobox({
+	brandIds,
+	nameOf,
+	selected,
+	onSelected,
+}: {
+	brandIds: string[];
+	nameOf: (id: string) => string;
+	selected: string[];
+	onSelected: (brandIds: string[]) => void;
+}) {
+	const anchor = useComboboxAnchor();
+
+	return (
+		<Combobox
+			multiple
+			autoHighlight
+			items={brandIds}
+			value={selected}
+			onValueChange={onSelected}
+			itemToStringLabel={nameOf}
+		>
+			<ComboboxChips ref={anchor}>
+				<ComboboxValue>
+					{(ids: string[]) => (
+						<>
+							{ids.map((id) => (
+								<ComboboxChip key={id}>{nameOf(id)}</ComboboxChip>
+							))}
+							<ComboboxChipsInput placeholder={ids.length === 0 ? "Search brands…" : undefined} />
+						</>
+					)}
+				</ComboboxValue>
+			</ComboboxChips>
+			<ComboboxContent anchor={anchor}>
+				<ComboboxEmpty>No brands found.</ComboboxEmpty>
+				<ComboboxList>
+					{(id: string) => (
+						<ComboboxItem key={id} value={id}>
+							{nameOf(id)}
+						</ComboboxItem>
+					)}
+				</ComboboxList>
+			</ComboboxContent>
+		</Combobox>
+	);
+}
+
 function IssuedKeyCard({ value }: { value: string }) {
 	return (
-		<Card className="gap-4 border-emerald-500/40 bg-emerald-50/60">
-			<CardHeader>
-				<CardTitle className="flex items-center gap-2 text-emerald-700">
-					<IconCircleCheck className="size-5" />
-					Key created
-				</CardTitle>
-				<CardDescription>Copy it now — only a hash is stored, so it is never shown again.</CardDescription>
-			</CardHeader>
-			<CardContent className="flex flex-wrap items-center gap-2">
-				<code className="min-w-0 flex-1 break-all rounded-md border bg-background px-3 py-2 font-mono text-sm">
-					{value}
-				</code>
+		<Card className="flex-row flex-wrap items-center justify-between gap-3 border-emerald-500/40 bg-emerald-50/60 px-4 py-3">
+			<CardTitle className="flex items-center gap-2 text-emerald-700">
+				<IconCircleCheck className="size-5" />
+				Key Created
+			</CardTitle>
+			<div className="flex min-w-0 items-center gap-2">
+				<code className="truncate rounded-md border bg-background px-3 py-1.5 font-mono text-sm">{value}</code>
 				<CopyButton value={value} />
-			</CardContent>
+			</div>
 		</Card>
 	);
 }
@@ -493,13 +536,7 @@ function KeyTable({
 								{key.name ?? "Untitled key"}
 							</TableCell>
 							<TableCell>
-								{key.start ? (
-									<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
-										{key.start}…
-									</code>
-								) : (
-									"—"
-								)}
+								<KeyCell start={key.start} />
 							</TableCell>
 							<TableCell>
 								<AccessCell scopes={key.scopes} />
@@ -522,6 +559,25 @@ function KeyTable({
 				</TableBody>
 			</Table>
 		</Card>
+	);
+}
+
+/** Only the opening characters of a key are kept, so the cell says where the
+ * rest went rather than leaving a bare stub. */
+function KeyCell({ start }: { start: string | null }) {
+	if (!start) return <span className="text-muted-foreground">—</span>;
+
+	return (
+		<Tooltip>
+			<TooltipTrigger
+				render={<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground" />}
+			>
+				{start}…
+			</TooltipTrigger>
+			<TooltipContent className="max-w-xs">
+				You can't view a key after it's created. Create a new key if you need one.
+			</TooltipContent>
+		</Tooltip>
 	);
 }
 

@@ -165,7 +165,7 @@ export const CreateKeyDialog: Story = {
 		await userEvent.click(await within(canvasElement).findByRole("button", { name: "Add Key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
 		await expect(await dialog.findByLabelText("Name")).toBeVisible();
-		await expect(await dialog.findByRole("tab", { name: "Read-only" })).toHaveAttribute("aria-selected", "true");
+		await expect(await dialog.findByRole("tab", { name: "Read" })).toHaveAttribute("aria-selected", "true");
 	},
 };
 
@@ -177,9 +177,9 @@ export const AccessPresets: Story = {
 	play: async ({ canvasElement }) => {
 		await userEvent.click(await within(canvasElement).findByRole("button", { name: "Add Key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
-		await userEvent.click(await dialog.findByRole("tab", { name: "Read and write" }));
-		await expect(await dialog.findByRole("tab", { name: "Read and write" })).toHaveAttribute("aria-selected", "true");
-		await expect(await dialog.findByRole("tab", { name: "Read-only" })).toHaveAttribute("aria-selected", "false");
+		await userEvent.click(await dialog.findByRole("tab", { name: "Read/Write" }));
+		await expect(await dialog.findByRole("tab", { name: "Read/Write" })).toHaveAttribute("aria-selected", "true");
+		await expect(await dialog.findByRole("tab", { name: "Read" })).toHaveAttribute("aria-selected", "false");
 	},
 };
 
@@ -191,9 +191,11 @@ export const RestrictedToBrands: Story = {
 	play: async ({ canvasElement }) => {
 		await userEvent.click(await within(canvasElement).findByRole("button", { name: "Add Key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
-		await expect(dialog.queryByRole("checkbox", { name: "Acme Labs" })).toBeNull();
+		await expect(dialog.queryByPlaceholderText("Search brands…")).toBeNull();
 		await userEvent.click(await dialog.findByRole("tab", { name: "Specific brands" }));
-		await expect(await dialog.findByRole("checkbox", { name: "Acme Labs" })).toBeVisible();
+		// The list is portalled, so it lands outside the dialog element.
+		await userEvent.click(await dialog.findByPlaceholderText("Search brands…"));
+		await expect(await within(document.body).findByRole("option", { name: "Acme Labs" })).toBeVisible();
 	},
 };
 
@@ -207,8 +209,8 @@ export const KeyJustCreated: Story = {
 		await userEvent.click(await canvas.findByRole("button", { name: "Add Key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
 		await userEvent.type(await dialog.findByLabelText("Name"), "Nightly export");
-		await userEvent.click(await dialog.findByRole("button", { name: "Create key" }));
-		await expect(await canvas.findByText("Key created")).toBeVisible();
+		await userEvent.click(await dialog.findByRole("button", { name: "Create" }));
+		await expect(await canvas.findByText("Key Created")).toBeVisible();
 		await expect(await canvas.findByText("elmo_5f3b9c1d84a24e7fbc2a6d0e91f7c3b8")).toBeVisible();
 	},
 };
@@ -222,8 +224,8 @@ export const RevokeConfirmation: Story = {
 		const canvas = within(canvasElement);
 		const rows = await canvas.findAllByRole("button", { name: "Revoke" });
 		await userEvent.click(rows[0]);
-		const dialog = within(document.body);
+		const dialog = within(await within(document.body).findByRole("dialog"));
 		await expect(await dialog.findByText(/Revoke .Reporting pipeline.\?/)).toBeVisible();
-		await expect(await dialog.findByRole("button", { name: "Revoke key" })).toBeVisible();
+		await expect(await dialog.findByRole("button", { name: "Revoke" })).toBeVisible();
 	},
 };
