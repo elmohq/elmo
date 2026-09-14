@@ -7,26 +7,27 @@ Elmo tracks which AI answer engines mention your brand. Most AI search traffic c
 
 ## Recommended scrapers
 
-These cover the ChatGPT + Google AI Mode experiences that drive the bulk of AI referral traffic. They're ranked the way we'd pick one today. Elmo runs all five continuously and publishes every result on the [status page](https://www.elmohq.com/status), so the reliability and speed claims below are measured rather than borrowed from marketing copy — go check them yourself before you trust them.
+These cover the ChatGPT + Google AI Mode experiences that drive the bulk of AI referral traffic. They're ranked the way we'd pick one today. Elmo runs all six continuously and publishes every result on the [status page](https://www.elmohq.com/status), so the reliability and speed claims below are measured rather than borrowed from marketing copy — go check them yourself before you trust them.
 
 | Provider | Why | Rough cost per prompt/month | Floor |
 |---|---|---|---|
-| [**Cloro**](https://affiliate.cloro.dev/elmo?sid=docs) | The most reliable of the five, and it covers every surface Elmo scrapes. Good docs, ergonomic API, slightly pricier than BrightData. Also behind Ahrefs, Scrunch, and Evertune — and it's the primary data provider for Elmo Cloud, so it's the one we pay for ourselves. | ~$0.65 | $30/mo plan (≈22 prompts) |
+| [**Cloro**](https://affiliate.cloro.dev/elmo?sid=docs) | The most reliable of the ones we've measured over time, and it covers every surface Elmo scrapes. Good docs, ergonomic API, slightly pricier than BrightData. Also behind Ahrefs, Scrunch, and Evertune — and it's the primary data provider for Elmo Cloud, so it's the one we pay for ourselves. | ~$0.65 | $30/mo plan (≈22 prompts) |
 | [**BrightData**](https://get.brightdata.com/elmo?sid=docs) | The most common scraping option, pay-as-you-go and a little cheaper — but measurably slower than Cloro, and weak on Google AI Overview. | ~$0.45 | Pay-as-you-go, $10 minimum |
-| [**Oxylabs**](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) | Cheapest per run, but it can't reach Gemini or Copilot and it's the least reliable of the five. | ~$0.15 | $49/mo plan (≈325 prompts) |
+| [**Oxylabs**](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) | Cheapest per run, but it can't reach Gemini or Copilot and it's the least reliable of the ones we've measured over time. | ~$0.15 | $49/mo plan (≈325 prompts) |
+| [**SearchApi**](https://www.searchapi.io/?via=elmo) | Simple synchronous scraping API with good documentation and flat pricing per search regardless of the engine. | ~$1.20 | $40/mo plan (≈33 prompts) |
 | [**Olostep**](https://olostep.com/?ref=elmo) | Premium option used by Profound, Athena, and AirOps. Very strong at high-volume scraping with an ergonomic API, but reliability is inconsistent and it's the slowest by a wide margin. | ~$2.25 | Pay-as-you-go |
-| [**DataForSEO**](https://dataforseo.com/?aff=184966) | Solid pay-as-you-go all-rounder with good reliability, the fastest of the five, and the only one here that also fronts direct model APIs. | ~$1.20 | $50 minimum top-up |
+| [**DataForSEO**](https://dataforseo.com/?aff=184966) | Solid pay-as-you-go all-rounder with good reliability, the fastest of the ones we've measured over time, and the only one here that also fronts direct model APIs. | ~$1.20 | $50 minimum top-up |
 
 Which surfaces each one reaches:
 
-| Surface | Cloro | BrightData | Oxylabs | Olostep | DataForSEO |
-|---|:---:|:---:|:---:|:---:|:---:|
-| ChatGPT | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Google AI Mode | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Google AI Overview | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Gemini | ✅ | ✅ | – | ✅ | ✅ |
-| Perplexity | ✅ | ✅ | ✅ | ✅ | API-only |
-| Copilot | ✅ | ✅ | – | ✅ | – |
+| Surface | Cloro | BrightData | Oxylabs | SearchApi | Olostep | DataForSEO |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| ChatGPT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Google AI Mode | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Google AI Overview | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Gemini | ✅ | ✅ | – | ✅ | ✅ | ✅ |
+| Perplexity | ✅ | ✅ | ✅ | ✅ | ✅ | API-only |
+| Copilot | ✅ | ✅ | – | ✅ | ✅ | – |
 
 <Callout>
 Cost estimates assume Elmo's default cadence of about 5 runs/day per target across 2 surfaces (ChatGPT + Google AI Mode), so roughly 300 evaluations/mo per prompt.
@@ -98,6 +99,32 @@ google-ai-overview:oxylabs:online
 ```
 
 [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) uses HTTP Basic auth (Web Scraper API username + password). Elmo submits each request through the asynchronous Push-Pull API and polls until the result is ready, avoiding the Realtime API's connection timeout. `:online` toggles in-product web search for ChatGPT; Perplexity, Google AI Mode, and Google AI Overview always search.
+
+### SearchApi
+
+```bash
+SEARCHAPI_API_KEY=...
+```
+
+Supported scrape targets:
+
+```
+chatgpt:searchapi:online
+chatgpt:searchapi
+perplexity:searchapi:online
+copilot:searchapi:online
+gemini:searchapi:online
+google-ai-mode:searchapi:online
+google-ai-overview:searchapi:online
+```
+
+[SearchApi](https://www.searchapi.io/?via=elmo) authenticates with a single bearer API key and serves every surface from one synchronous `GET /api/v1/search`, keyed by an `engine` parameter — one request per run, with no task queue to poll. ChatGPT is the only surface with a web-search toggle, so it is the one target you can run without `:online`; even then ChatGPT often searches on its own, and SearchApi reports whether it did.
+
+Google AI Overview goes through the Google SERP engine rather than SearchApi's dedicated `google_ai_overview` engine. That engine takes only a `page_token`, and the token comes from a SERP call — so it is always a second request on top of the first, never a route you can take on its own. The SERP response usually carries the overview inline, and reading it there costs one search instead of two.
+
+The dedicated engine exists for the times it doesn't. Google sometimes loads the overview separately from the result page, and the SERP then returns `ai_overview.page_token` instead of the overview — a handle you redeem against `google_ai_overview` within the minute before it expires. Elmo doesn't redeem it: the case is uncommon, and a target that missed one gets another run on the next cycle. Those runs fail rather than storing an empty answer, which would otherwise read as a run where nobody mentioned your brand.
+
+Pricing is flat per successful search regardless of surface — $4 per 1,000 on the $40/mo Developer plan, falling to $1 per 1,000 at the top of the [plan ladder](https://www.searchapi.io/pricing). Requests that don't return a 200 aren't billed, and sign-up comes with 100 free searches. Note that plans cap you at 20% of your monthly credits per hour.
 
 ### Olostep
 
@@ -225,7 +252,7 @@ model:provider[:version][:online]
 ```
 
 - `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `google-ai-overview`, `gemini`, `perplexity`, `copilot`, `grok`, `kimi`).
-- `provider` — how to reach it (`cloro`, `brightdata`, `oxylabs`, `olostep`, `dataforseo`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`).
+- `provider` — how to reach it (`cloro`, `brightdata`, `oxylabs`, `searchapi`, `olostep`, `dataforseo`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`).
 - `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here, or a DataForSEO `model_name` to switch that target to the LLM Responses API).
 - `:online` — append to enable web search. Required for most scraped models since the live UIs always search.
 
