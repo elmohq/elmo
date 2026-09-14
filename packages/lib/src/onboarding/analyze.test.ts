@@ -199,6 +199,24 @@ describe("analyzeBrand", () => {
 		]);
 	});
 
+	it("asks for prompts in the requested language and keeps accented tags intact", async () => {
+		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
+			brandName: "Acme",
+			additionalDomains: [],
+			aliases: [],
+			competitors: [],
+			suggestedPrompts: [{ prompt: "Meilleur engrais écologique", tags: ["Écologie", "agriculture régénérative"] }],
+		});
+
+		const result = await analyzeBrand({ website: "acme.fr", language: "French" });
+		const prompt = vi.mocked(runStructuredResearchPrompt).mock.calls[0]?.[0];
+
+		expect(prompt).toContain("in French");
+		expect(result.suggestedPrompts).toEqual([
+			{ prompt: "meilleur engrais écologique", tags: ["écologie", "agriculture-régénérative"] },
+		]);
+	});
+
 	it("falls back to inferred brand name when LLM omits it", async () => {
 		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
 			brandName: "",

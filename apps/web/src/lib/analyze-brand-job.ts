@@ -39,6 +39,8 @@ export interface AnalyzeBrandInput {
 	brandId: string;
 	website: string;
 	brandName?: string;
+	/** Language the suggested prompts and tags are written in (e.g. "French"). */
+	language?: string;
 }
 
 interface JobRow {

@@ -12,6 +12,7 @@
  * ./onboarding-core.ts, imported only by API routes (server-only).
  */
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
 import {
 	type AnalyzeBrandStatus,
@@ -20,6 +21,7 @@ import {
 	getAnalyzeBrandStatus,
 } from "@/lib/analyze-brand-job";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
+import { resolveLocale } from "@/lib/i18n";
 import { saveWizardOnboarding, wizardOnboardingInputSchema } from "@/server/onboarding-core";
 
 /**
@@ -45,7 +47,9 @@ export const startAnalyzeBrandFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
-		await enqueueAnalyzeBrand(data);
+		const headers = getRequestHeaders();
+		const locale = resolveLocale(headers.get("cookie"), headers.get("accept-language"));
+		await enqueueAnalyzeBrand({ ...data, language: locale === "fr" ? "French" : undefined });
 		return { ok: true };
 	});
 

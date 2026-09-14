@@ -119,6 +119,11 @@ export interface AnalyzeBrandOptions {
 	maxCompetitors?: number;
 	/** 0 disables prompt generation entirely. */
 	maxPrompts?: number;
+	/**
+	 * Language (in English, e.g. "French") the suggested prompts and tags are
+	 * written in. Omitted means English.
+	 */
+	language?: string;
 }
 
 const DEFAULT_MAX_COMPETITORS = 10;
@@ -145,7 +150,13 @@ export interface AnalysisContext {
 }
 
 export async function buildAnalysisContext(options: AnalyzeBrandOptions): Promise<AnalysisContext> {
-	const { website, brandName, maxCompetitors = DEFAULT_MAX_COMPETITORS, maxPrompts = DEFAULT_MAX_PROMPTS } = options;
+	const {
+		website,
+		brandName,
+		maxCompetitors = DEFAULT_MAX_COMPETITORS,
+		maxPrompts = DEFAULT_MAX_PROMPTS,
+		language,
+	} = options;
 
 	const normalizedWebsite = cleanDomain(website);
 	const analysisUrl = cleanUrl(website);
@@ -165,6 +176,7 @@ export async function buildAnalysisContext(options: AnalyzeBrandOptions): Promis
 		websiteExcerpt,
 		includeCompetitors: maxCompetitors > 0,
 		includePrompts: maxPrompts > 0,
+		language,
 	});
 
 	return {
@@ -204,12 +216,12 @@ export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<Onboar
 	return result;
 }
 
-/** Normalize an LLM-supplied tag to lowercase kebab-case. */
+/** Normalize an LLM-supplied tag to lowercase kebab-case, keeping accented letters. */
 function toKebabCase(tag: string): string {
 	return tag
 		.trim()
 		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/[^\p{L}\p{N}]+/gu, "-")
 		.replace(/^-+|-+$/g, "");
 }
 
@@ -252,6 +264,7 @@ function buildPrompt(args: {
 	websiteExcerpt: string;
 	includeCompetitors: boolean;
 	includePrompts: boolean;
+	language?: string;
 }): string {
 	const excerptBlock = args.websiteExcerpt
 		? `\nText from ${args.analysisUrl}:\n---\n${args.websiteExcerpt}\n---\n`
@@ -271,6 +284,11 @@ function buildPrompt(args: {
 	const skipNotes: string[] = [];
 	if (!args.includeCompetitors) skipNotes.push("Return an empty array for competitors.");
 	if (!args.includePrompts) skipNotes.push("Return an empty array for suggestedPrompts.");
+	else if (args.language && args.language !== "English") {
+		skipNotes.push(
+			`Write every suggestedPrompts entry and every tag in ${args.language}, the way ${args.language}-speaking users actually type into AI assistants — not translated English phrasing. Favor competitors active in that market. Keep brand and competitor names as they are.`,
+		);
+	}
 
 	return `Analyze the brand at ${args.analysisUrl}.
 

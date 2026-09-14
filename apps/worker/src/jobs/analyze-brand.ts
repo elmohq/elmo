@@ -8,6 +8,8 @@ export interface AnalyzeBrandData {
 	brandName?: string;
 	maxCompetitors?: number;
 	maxPrompts?: number;
+	/** Language the suggested prompts and tags are written in (e.g. "French"). */
+	language?: string;
 }
 
 /**
@@ -26,6 +28,6 @@ export async function analyzeBrandJob(jobs: Job<AnalyzeBrandData>[]): Promise<On
 		throw new Error("analyze-brand handler received an empty batch");
 	}
 
-	const { website, brandName, maxCompetitors, maxPrompts } = job.data;
-	return analyzeBrand({ website, brandName, maxCompetitors, maxPrompts });
+	const { website, brandName, maxCompetitors, maxPrompts, language } = job.data;
+	return analyzeBrand({ website, brandName, maxCompetitors, maxPrompts, language });
 }
