@@ -31,6 +31,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { useState } from "react";
 import { CopyButton } from "@/components/copy-button";
 import { useOrganization } from "@/hooks/use-organizations";
+import { API_SCOPES } from "@/lib/api/scopes";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import {
@@ -443,10 +444,21 @@ function IssuedKeyCard({ value }: { value: string }) {
 	);
 }
 
+/** One pill per grant, always in scope order rather than the order the key
+ * happens to hold them in. */
 function AccessCell({ scopes }: { scopes: readonly string[] }) {
-	if (scopes.includes("write")) return <Badge variant="secondary">{ACCESS_LABELS.write}</Badge>;
-	if (scopes.includes("read")) return <Badge variant="secondary">{ACCESS_LABELS.read}</Badge>;
-	return <span className="text-muted-foreground">No access</span>;
+	const held = API_SCOPES.filter((scope) => scopes.includes(scope));
+	if (held.length === 0) return <span className="text-muted-foreground">No access</span>;
+
+	return (
+		<div className="flex flex-wrap gap-1">
+			{held.map((scope) => (
+				<Badge key={scope} variant="secondary" className="capitalize">
+					{scope}
+				</Badge>
+			))}
+		</div>
+	);
 }
 
 function KeyTable({

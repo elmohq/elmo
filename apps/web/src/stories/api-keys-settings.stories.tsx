@@ -97,6 +97,9 @@ export const WithKeys: Story = {
 		// A key that never expires says so rather than showing a dash.
 		await expect((await canvas.findAllByText("Never")).length).toBeGreaterThan(0);
 		await expect((await canvas.findAllByRole("button", { name: "Revoke" })).length).toBe(2);
+		// One pill per grant, so a read-write key is visibly more than a read one.
+		await expect((await canvas.findAllByText("read")).length).toBe(3);
+		await expect((await canvas.findAllByText("write")).length).toBe(1);
 		await expect(await canvas.findByRole("button", { name: "New key" })).toBeVisible();
 		await expect(canvas.queryByLabelText("Name")).toBeNull();
 	},
