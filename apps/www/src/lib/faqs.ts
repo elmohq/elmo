@@ -44,7 +44,7 @@ export const PRICING_FAQS: FaqItem[] = [
 	{
 		question: "Is there a hosted or cloud version of Elmo?",
 		answer:
-			"Yes. Elmo Cloud is a managed cloud hosting for teams that would rather not run their own infrastructure, starting at $29/mo. You can also self-host Elmo for free, or get in touch about white-label and managed deployments.",
+			"Yes. Elmo Cloud is managed hosting for teams that would rather not run their own infrastructure, starting at $29/mo. You can also self-host Elmo for free, or get in touch about white-label deployments.",
 	},
 	{
 		question: "Can agencies white-label Elmo?",

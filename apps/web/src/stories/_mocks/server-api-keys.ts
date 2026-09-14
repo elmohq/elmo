@@ -1,4 +1,4 @@
-import { API_SCOPES, type ApiScope } from "@/lib/api/scopes";
+import type { ApiScope } from "@/lib/api/scopes";
 
 export interface ApiKeySummary {
 	id: string;
@@ -17,7 +17,6 @@ export type ApiKeysPageData = {
 	canManage: boolean;
 	keys: ApiKeySummary[];
 	brands: { id: string; name: string }[];
-	allScopes: readonly ApiScope[];
 	expiryOptions: readonly number[];
 };
 
@@ -30,7 +29,6 @@ const DEFAULT: ApiKeysPageData = {
 		{ id: "brand-2", name: "Acme Labs" },
 		{ id: "brand-3", name: "Acme Studio" },
 	],
-	allScopes: API_SCOPES,
 	expiryOptions: [30, 90, 180, 365],
 };
 

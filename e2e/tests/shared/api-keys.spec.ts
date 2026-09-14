@@ -9,13 +9,6 @@ const KEYS_PAGE = `${organizationUrl()}/settings/api-keys`;
 
 type Page = import("@playwright/test").Page;
 
-/** The grid only exists under the Custom tab, and each box is named
- * `<Resource> <action>`. */
-async function tickScope(page: Page, resource: string, action: string) {
-  await page.getByRole("tab", { name: "Custom", exact: true }).click();
-  await page.getByRole("checkbox", { name: `${resource} ${action}`, exact: true }).first().click();
-}
-
 async function openCreateForm(page: Page, name: string) {
   const dialog = page.getByRole("dialog");
   const nameField = page.locator("#key-name");
@@ -29,7 +22,7 @@ async function openCreateForm(page: Page, name: string) {
 }
 
 test.describe("API keys", () => {
-  test("a key issued from the page carries exactly what was ticked", async ({ page, request }, testInfo) => {
+  test("a key issued from the page carries exactly the access it was given", async ({ page, request }, testInfo) => {
     test.skip(testInfo.project.name === "demo", "demo refuses every write; covered by the Bruno demo suite");
 
     await page.goto(KEYS_PAGE, { waitUntil: "networkidle" });
@@ -42,8 +35,7 @@ test.describe("API keys", () => {
     await page.locator("#key-expiry").click();
     await page.getByRole("option", { name: "In 30 days", exact: true }).click();
     await expect(page.locator("#key-expiry")).toContainText("In 30 days");
-    await page.getByRole("tab", { name: "Read only", exact: true }).click();
-    await tickScope(page, "Prompts", "write");
+    await page.getByRole("tab", { name: "Read and write", exact: true }).click();
     await page.getByRole("tab", { name: "Specific brands", exact: true }).click();
     await page.getByRole("checkbox", { name: "Test Organization", exact: true }).first().click();
     await page.getByRole("button", { name: "Create key", exact: true }).click();
@@ -61,8 +53,7 @@ test.describe("API keys", () => {
     const identity = await me.json();
     expect(identity.keyType).toBe("organization");
     expect(identity.brandIds).toEqual([TEST_BRAND_ID]);
-    expect(identity.scopes).toContain("prompts:write");
-    expect(identity.scopes).not.toContain("competitors:delete");
+    expect([...identity.scopes].sort()).toEqual(["read", "write"]);
 
     const allowed = await request.get(
       `/api/v1/brands/${TEST_BRAND_ID}/analytics?start=2020-03-01T00:00:00Z&end=2020-04-01T00:00:00Z`,
@@ -70,15 +61,8 @@ test.describe("API keys", () => {
     );
     expect(allowed.status()).toBe(200);
 
-    const refused = await request.delete("/api/v1/competitors/00000000-0000-0000-0000-999999999999", {
-      headers: auth,
-      failOnStatusCode: false,
-    });
-    expect(refused.status()).toBe(403);
-    expect((await refused.json()).code).toBe("insufficient_scope");
-
-    // Refused because no scope reaches it, so a key ticking every box reads
-    // the same way.
+    // Refused because no scope reaches it, so a read-write key reads the same
+    // way a read-only one does.
     const deletePrompt = await request.delete("/api/v1/prompts/00000000-0000-0000-0000-000000000001", {
       headers: auth,
       failOnStatusCode: false,
@@ -119,7 +103,6 @@ test.describe("API keys", () => {
     await openCreateForm(page, name);
 
     // Must not quietly become "every brand"; the server is what refuses.
-    await page.getByRole("tab", { name: "Read only", exact: true }).click();
     await page.getByRole("tab", { name: "Specific brands", exact: true }).click();
     await page.getByRole("button", { name: "Create key", exact: true }).click();
 

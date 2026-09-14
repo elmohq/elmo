@@ -2,6 +2,7 @@
 title: "Can Google Search Console Measure Your AI Visibility?"
 description: "Search Console's generative AI performance report is now live worldwide. It shows impressions in AI Overviews and AI Mode — and omits queries, clicks, and every other engine. Here's how to read it."
 date: "2026-09-08"
+updated: "2026-09-11"
 author: ai
 metaTitle: "Search Console AI Visibility: What the Report Shows"
 tags:
@@ -9,6 +10,10 @@ tags:
   - ai-search
   - tools
 definedTerms:
+  - term: Grounding impression
+    definition: "A grounding impression is an impression logged when a page is retrieved as raw material for an AI answer without ever being rendered as a link a user could click. It inflates impression counts in Search Console while the click-through rate for the same page collapses, which is why a page can sit on the first page of results and still earn almost no traffic."
+  - term: AI Mode
+    definition: "AI Mode is Google's fully conversational search surface, where a session runs as a dialogue rather than as a results page with a summary on top. Search Console reports it and AI Overviews under one combined impressions number, so a rising trend cannot be attributed to either surface on its own."
   - term: Generative AI performance report
     definition: "The generative AI performance report is a Search Console report, rolled out worldwide on 31 August 2026, that shows how many times links to a site appeared in generative AI features on Google Search — AI Overviews and AI Mode combined — broken down by page, country, device, and date. It reports impressions only; clicks, queries, and position are not included. A parallel report covers generative AI features in Discover."
 howTo:
@@ -42,11 +47,25 @@ faq:
     answer: "Two documented reasons: Google's help page says \"not all properties have access to the report, as we're rolling out over time,\" even after the 31 August 2026 worldwide rollout, and properties need sufficient impressions in AI features for the report to show data at all."
   - question: Does the Search Console AI report cover ChatGPT or Perplexity?
     answer: "No. It covers Google's own generative features — AI Overviews, AI Mode, and a parallel report for generative AI in Discover. ChatGPT, Perplexity, Claude, and Copilot run their own retrieval and share no logs with Google, so visibility there has to be measured separately, either from those platforms' own tools or by sampling prompts across engines."
+  - question: Can I subtract AI impressions from my total impressions to get classic search performance?
+    answer: "Only approximately, and not for a KPI. The generative AI report is a filtered view of data already counted in the Web search type of your overall Performance report, so the AI slice was always inside your totals. But the AI view is impressions-only, its most recent data is documented as preliminary, and the two reports do not share every dimension — so the subtraction is fine for narrative and wrong as a metric anyone reports upward."
   - question: How is the Search Console AI report different from Microsoft Clarity's AI visibility reports?
     answer: "They measure different things in different ecosystems. Search Console reports impressions of your links in Google's AI features, by page, with no queries and no clicks. Clarity reports citations of your pages in Microsoft's AI experiences, including the grounding queries the engine retrieved on and the share of sessions arriving from AI assistants. Neither sees the other's ecosystem, and neither shows what the answers actually said."
 ---
 
 **Google will now tell you how often your site appears in its AI answers.** The generative AI performance report, [announced on 3 June 2026](https://developers.google.com/search/blog/2026/06/gen-ai-performance-reports) and rolled out to properties worldwide on 31 August, gives Search Console a dedicated view of impressions in AI Overviews and AI Mode. It is the first first-party number most teams have ever had for AI visibility on Google — and it answers about a third of the question teams are actually asking.
+
+**Key facts**
+
+| | |
+|---|---|
+| Announced / rolled out worldwide | 3 Jun 2026 / **31 Aug 2026** — [Google](https://developers.google.com/search/blog/2026/06/gen-ai-performance-reports) |
+| Metrics available | **Impressions only** — no clicks, CTR, or position |
+| Dimensions | Pages, Countries, Devices, Dates — **no query dimension** |
+| AI Overviews vs AI Mode | **Combined into a single number** |
+| API / BigQuery export | **Not available** as of September 2026 — UI and manual CSV only |
+| Engines covered | **Google only** |
+| Click rate inside AI summaries | **~1%** of visits where a summary appeared, across ~69,000 observed searches — [Pew](https://www.pewresearch.org/short-reads/2025/07/22/google-users-are-less-likely-to-click-on-links-when-an-ai-summary-appears-in-the-results/) |
 
 **Key takeaways**
 
@@ -58,11 +77,11 @@ faq:
 - It is UI-only. Neither the Search Analytics API nor the BigQuery bulk export carries the generative AI data yet.
 - And it is one engine. Google reporting on Google joins Microsoft reporting on Microsoft; nobody reports on each other, and nobody reports what the answer said.
 
-## What the report actually contains
+## What data does the generative AI report show?
 
 Google's [help documentation](https://support.google.com/webmasters/answer/16984139) is short, and worth taking literally. The report shows one metric: "Impressions are how many times links to your site were shown to a user in a generative AI feature on Google Search." It covers two features under one number — "AI Overviews, AI Mode" — and offers four dimensions.
 
-| | Generative AI report (Search) |
+| Capability | Generative AI report (Search) |
 |---|---|
 | Metric | Impressions only |
 | Features | AI Overviews + AI Mode, combined |
@@ -70,25 +89,31 @@ Google's [help documentation](https://support.google.com/webmasters/answer/16984
 | Queries | Not available |
 | Clicks / CTR / position | Not available |
 | API / BigQuery export | Not available; UI and manual CSV only |
-| Availability | Worldwide since 31 Aug 2026, but "not all properties have access" during rollout, and low-impression properties may see nothing |
+| Availability | Worldwide since 31 Aug 2026; as of September 2026 "not all properties have access," and low-impression properties may see nothing |
 
 A second report covers [generative AI features in Discover](https://support.google.com/webmasters/answer/16983858), and the same June announcement shipped the opt-out toggle — the [Search generative AI control](https://support.google.com/webmasters/answer/16908024) — which we covered separately in [should you opt out of AI Overviews](/blog/opt-out-google-ai-overviews). This post is about the measurement, because that's the half teams will use weekly.
 
 One more line from the documentation deserves attention: the report "includes data from the Web search type in the Performance report." Your AI impressions are not new impressions. They were being counted inside your ordinary Web totals the whole time; the new report labels a slice you previously couldn't see. Two things follow. First, nothing about your historical Performance report changed on 31 August — if impressions rose while clicks stayed flat over the past year, AI features were already part of that story. Second, the tempting arithmetic — subtract the AI report from the Web report to get "classic-only" performance — is only approximate: the AI view is impressions-only, its newest data is documented as preliminary, and the two reports don't share every dimension.
 
-## The three absences that matter
+## What is missing from the report?
 
-**No queries.** The report tells you *page 12 appeared in AI answers 400 times*, not what anyone asked to make that happen. Content work starts from the question — which prompts you're surfacing for, which phrasings retrieve a competitor instead — and none of that is here. Microsoft's equivalent shows its retrieval phrasings ([grounding queries in Clarity](/blog/microsoft-clarity-ai-citations)); Google shows URLs. The only way to attach questions to your Google AI presence today is to ask the questions yourself and record the answers, which is [prompt tracking](/blog/ai-prompt-tracking).
+### No queries
 
-**No clicks.** An impression tells you exposure, not value. The best public estimate of the gap is still the [Pew Research Center's click study](https://www.pewresearch.org/short-reads/2025/07/22/google-users-are-less-likely-to-click-on-links-when-an-ai-summary-appears-in-the-results/): in roughly 69,000 observed searches, users clicked a link inside an AI summary in about 1% of visits where one appeared. So read the impression count the way you'd read a billboard audit — how often you were shown, to whom, where — rather than as a traffic forecast. If being named in the answer is the outcome your business needs (software, B2B, services), that reading is fine; the number is genuinely useful. If you need the visit, this report can't tell you whether you're getting it.
+The report tells you *page 12 appeared in AI answers 400 times*, not what anyone asked to make that happen. Content work starts from the question — which prompts you're surfacing for, which phrasings retrieve a competitor instead — and none of that is here. Microsoft's equivalent shows its retrieval phrasings ([grounding queries in Clarity](/blog/microsoft-clarity-ai-citations)); Google shows URLs. The only way to attach questions to your Google AI presence today is to ask the questions yourself and record the answers, which is [prompt tracking](/blog/ai-prompt-tracking).
 
-**No split between AI Overviews and AI Mode.** A link under a summary at the top of an otherwise classic results page and a link inside a fully conversational AI Mode session are different events with different user intents, and the report adds them together. As AI Mode grows, the blended number gets harder to interpret: a rising trend could be more summaries above classic results, or more of your buyers moving their entire session into a chat surface. The report won't tell you which.
+### No clicks
+
+An impression tells you exposure, not value. The best public estimate of the gap is still the [Pew Research Center's click study](https://www.pewresearch.org/short-reads/2025/07/22/google-users-are-less-likely-to-click-on-links-when-an-ai-summary-appears-in-the-results/): across roughly 69,000 observed searches, users clicked a link inside an AI summary in about 1% of the visits where one appeared. So read the impression count the way you'd read a billboard audit — how often you were shown, to whom, where — rather than as a traffic forecast. If being named in the answer is the outcome your business needs (software, B2B, services), that reading is fine; the number is genuinely useful. If you need the visit, this report can't tell you whether you're getting it.
+
+### No split between AI Overviews and AI Mode
+
+A link under a summary at the top of an otherwise classic results page and a link inside a fully conversational AI Mode session are different events with different user intents, and the report adds them together. As AI Mode grows, the blended number gets harder to interpret: a rising trend could be more summaries above classic results, or more of your buyers moving their entire session into a chat surface. The report won't tell you which.
 
 There's a subtler absence behind all three: the report counts **links shown**, not brands discussed. An AI answer can describe your product — accurately or not — without linking to you at all, a pattern we've written about as [ghost citations](/blog/ghost-citations). A brand with weak link presence and strong model-knowledge presence will look invisible in this report while appearing, unlinked, in answer after answer. Impressions of links are the measurable shadow of your AI presence, not the presence itself.
 
-## Where it fits among the sources you now have
+## How does it compare to the other AI visibility sources?
 
-Six months ago the honest answer to "can we measure AI visibility with first-party data?" was *no*. Now there are two platform-native sources plus sampling, and they answer different questions. The mistake to avoid is treating any one of them as the AI visibility number.
+At the start of 2026 the honest answer to "can we measure AI visibility with first-party data?" was *no*. Now there are two platform-native sources plus sampling, and they answer different questions. The mistake to avoid is treating any one of them as the AI visibility number.
 
 | Question you're asking | Search Console gen-AI report | Microsoft Clarity AI visibility | Cross-engine prompt tracking |
 |---|---|---|---|
@@ -101,6 +126,18 @@ Six months ago the honest answer to "can we measure AI visibility with first-par
 
 The two first-party reports are precise and narrow: observed data, no sampling noise, one ecosystem each, silent on wording. Sampling is the inverse: engine-agnostic and answer-aware, but an estimate — and a noisy one, which is why we keep pointing at our [citation volatility](/blog/citation-volatility) data showing 60–70% day-to-day turnover in cited domains across tracked prompts. A single manual check of ChatGPT was never a measurement; a Search Console impression count is a real one, for the slice it sees.
 
+## How do you get to the report, and who has it?
+
+The generative AI performance report is its own entry alongside the existing Search and Discover performance views, and [Google's help documentation](https://support.google.com/webmasters/answer/16984139) has the current path. Three things decide whether you see anything when you get there:
+
+| | |
+|---|---|
+| Property access | Rolled out worldwide on 31 August 2026, but as of September 2026 Google states that not all properties have access yet |
+| Data volume | Properties with few impressions in AI features may see an empty report rather than a zero |
+| History | The series begins when your property received the report — there is no backfill, which is the argument for baselining now |
+
+If you need the data anywhere other than the Search Console UI, you need to plan around its absence: neither the Search Analytics API nor the BigQuery bulk export carries the generative AI dimension, so a weekly manual CSV is the only pipeline available.
+
 ## What to do on Monday
 
 1. **Open the report and read the Pages tab first.** The headline trend mostly reflects how aggressively Google deploys AI features on your queries. Which pages carry your AI presence — and which obvious candidates are absent — is the actionable part.
@@ -109,7 +146,7 @@ The two first-party reports are precise and narrow: observed data, no sampling n
 4. **Pair every impression figure with a question source.** Attach Clarity's grounding queries (Microsoft's view) and your own tracked prompt set (everyone's view) so the URLs in this report connect to questions you can actually write content for.
 5. **Say what the number is when you report it upward.** "Links shown in Google AI features" — not "AI visibility," not "AI traffic." The one-engine, links-only, impressions-only caveats are the difference between a useful KPI and a misleading one.
 
-## The verdict
+## So can Search Console measure AI visibility?
 
 Can Search Console measure your AI visibility? It can now measure one honest, narrow thing: how often Google's own AI features showed links to your site. That's worth having, worth baselining, and worth reading weekly. What it structurally cannot do — name the questions, value the exposure, see the wording, or see any engine but Google — defines the rest of the measurement stack, not a reason to dismiss the report.
 

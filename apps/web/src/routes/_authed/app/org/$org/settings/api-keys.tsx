@@ -31,10 +31,10 @@ import { cn } from "@workspace/ui/lib/utils";
 import { useState } from "react";
 import { CopyButton } from "@/components/copy-button";
 import { useOrganization } from "@/hooks/use-organizations";
-import type { ApiScope } from "@/lib/api/scopes";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import {
+	type ApiKeyAccess,
 	type ApiKeySummary,
 	type ApiKeysPageData,
 	createApiKeyFn,
@@ -50,32 +50,15 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/api-keys")(
 	component: ApiKeysSettingsPage,
 });
 
-/** Every action the scope list uses, in the order the picker shows them. */
-const SCOPE_ACTIONS = ["read", "write", "delete"] as const;
-
-type ScopeMode = "read" | "all" | "custom";
-
-function preset(name: "read" | "all", scopes: readonly ApiScope[]): ApiScope[] {
-	return name === "all" ? [...scopes] : scopes.filter((scope) => scope.endsWith(":read"));
-}
+const ACCESS_LABELS: Record<ApiKeyAccess, string> = {
+	read: "Read-only",
+	write: "Read and write",
+};
 
 function formatDate(value: string | null, empty = "—"): string {
 	return value
 		? new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
 		: empty;
-}
-
-function scopeGroups(scopes: readonly ApiScope[]): Map<string, ApiScope[]> {
-	const groups = new Map<string, ApiScope[]>();
-	for (const scope of scopes) {
-		const resource = scope.split(":")[0];
-		groups.set(resource, [...(groups.get(resource) ?? []), scope]);
-	}
-	return groups;
-}
-
-function titleCase(value: string): string {
-	return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function toggle<T>(list: T[], value: T): T[] {
@@ -89,7 +72,7 @@ function isActive(key: ApiKeySummary): boolean {
 }
 
 function ApiKeysSettingsPage() {
-	const { keys, brands, allScopes, expiryOptions, canManage, organization } = Route.useLoaderData();
+	const { keys, brands, expiryOptions, canManage, organization } = Route.useLoaderData();
 	const linkParams = orgLinkParams(useOrganization());
 	const router = useRouter();
 
@@ -167,7 +150,6 @@ function ApiKeysSettingsPage() {
 				) : (
 					<KeyTable
 						keys={active}
-						allScopes={allScopes}
 						brandNames={brandNames}
 						onRevoke={
 							canManage
@@ -187,7 +169,7 @@ function ApiKeysSettingsPage() {
 						<h2 className="text-lg font-semibold text-muted-foreground">Inactive</h2>
 						<p className="text-sm text-muted-foreground">Revoked or expired — they no longer authenticate anything.</p>
 					</div>
-					<KeyTable keys={inactive} allScopes={allScopes} brandNames={brandNames} inactive />
+					<KeyTable keys={inactive} brandNames={brandNames} inactive />
 				</section>
 			)}
 
@@ -199,7 +181,6 @@ function ApiKeysSettingsPage() {
 					<CreateKeyForm
 						organizationId={organization.id}
 						brands={brands}
-						allScopes={allScopes}
 						expiryOptions={expiryOptions}
 						onCreated={handleCreated}
 						onCancel={() => setCreatingOpen(false)}
@@ -247,35 +228,23 @@ function ApiKeysSettingsPage() {
 function CreateKeyForm({
 	organizationId,
 	brands,
-	allScopes,
 	expiryOptions,
 	onCreated,
 	onCancel,
 }: {
 	organizationId: string;
 	brands: ApiKeysPageData["brands"];
-	allScopes: readonly ApiScope[];
 	expiryOptions: readonly number[];
 	onCreated: (key: string) => void;
 	onCancel: () => void;
 }) {
 	const [name, setName] = useState("");
-	const [scopeMode, setScopeMode] = useState<ScopeMode>("read");
-	const [customScopes, setCustomScopes] = useState<ApiScope[]>(() => preset("read", allScopes));
+	const [access, setAccess] = useState<ApiKeyAccess>("read");
 	const [restrictBrands, setRestrictBrands] = useState(false);
 	const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
 	const [expiresInDays, setExpiresInDays] = useState<string>("never");
 	const [creating, setCreating] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-
-	const scopes = scopeMode === "custom" ? customScopes : preset(scopeMode, allScopes);
-
-	// Switching to Custom starts from whatever the preset was showing, so the
-	// tab reads as "keep this, but let me edit it".
-	function changeScopeMode(next: ScopeMode) {
-		if (next === "custom") setCustomScopes(scopes);
-		setScopeMode(next);
-	}
 
 	async function handleSubmit(event: React.FormEvent) {
 		event.preventDefault();
@@ -286,14 +255,14 @@ function CreateKeyForm({
 				data: {
 					organizationId,
 					name,
-					scopes,
+					access,
 					// Null, not `[]`: unrestricted is the absence of a restriction. The
 					// server rejects `[]` rather than reading it as "all".
 					brandIds: restrictBrands ? selectedBrands : null,
 					expiresInDays: expiresInDays === "never" ? null : Number(expiresInDays),
 				},
 			});
-			trackEvent("api_key_created", { scopes: scopes.length, restricted: restrictBrands });
+			trackEvent("api_key_created", { access, restricted: restrictBrands });
 			onCreated(key);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to create the API key");
@@ -350,13 +319,7 @@ function CreateKeyForm({
 
 				<Separator />
 
-				<ScopePicker
-					allScopes={allScopes}
-					mode={scopeMode}
-					scopes={scopes}
-					onMode={changeScopeMode}
-					onToggle={(scope) => setCustomScopes((current) => toggle(current, scope))}
-				/>
+				<AccessPicker access={access} onAccess={setAccess} />
 
 				<Separator />
 
@@ -370,11 +333,10 @@ function CreateKeyForm({
 			</div>
 
 			<DialogFooter className="shrink-0 items-center border-t pt-4">
-				{scopes.length === 0 && <p className="mr-auto text-sm text-muted-foreground">Pick at least one scope.</p>}
 				<Button type="button" variant="outline" disabled={creating} onClick={onCancel}>
 					Cancel
 				</Button>
-				<Button type="submit" disabled={creating || scopes.length === 0}>
+				<Button type="submit" disabled={creating}>
 					{creating ? <Spinner /> : <IconKey className="size-4" />}
 					{creating ? "Creating…" : "Create key"}
 				</Button>
@@ -383,95 +345,28 @@ function CreateKeyForm({
 	);
 }
 
-function ScopePicker({
-	allScopes,
-	mode,
-	scopes,
-	onMode,
-	onToggle,
-}: {
-	allScopes: readonly ApiScope[];
-	mode: ScopeMode;
-	scopes: ApiScope[];
-	onMode: (mode: ScopeMode) => void;
-	onToggle: (scope: ApiScope) => void;
-}) {
+function AccessPicker({ access, onAccess }: { access: ApiKeyAccess; onAccess: (access: ApiKeyAccess) => void }) {
 	return (
 		<section className="space-y-3">
-			<p className="text-sm font-medium">Scopes</p>
-			<Tabs value={mode} onValueChange={(value) => onMode(value as ScopeMode)}>
+			<p className="text-sm font-medium">Access</p>
+			<Tabs value={access} onValueChange={(value) => onAccess((value ?? "read") as ApiKeyAccess)}>
 				<TabsList>
-					<TabsTrigger value="read">Read only</TabsTrigger>
-					<TabsTrigger value="all">Full access</TabsTrigger>
-					<TabsTrigger value="custom">Custom</TabsTrigger>
+					<TabsTrigger value="read">{ACCESS_LABELS.read}</TabsTrigger>
+					<TabsTrigger value="write">{ACCESS_LABELS.write}</TabsTrigger>
 				</TabsList>
 				<TabsContent value="read" className="pt-1 text-sm text-muted-foreground">
 					Reads everything the API exposes and changes nothing.
 				</TabsContent>
-				<TabsContent value="all" className="pt-1 text-sm text-muted-foreground">
+				<TabsContent value="write" className="pt-1 text-sm text-muted-foreground">
 					Everything a read-only key can do, plus creating, editing and deleting.
 				</TabsContent>
-				<TabsContent value="custom" className="pt-1">
-					<ScopeMatrix allScopes={allScopes} scopes={scopes} onToggle={onToggle} />
-				</TabsContent>
 			</Tabs>
+			<p className="text-sm text-muted-foreground">
+				Access gates both the REST API and MCP connections. Either way a key reaches only this organization, and the
+				operations that spend provider budget or destroy tracked history need an instance admin key no key issued here
+				can be given.
+			</p>
 		</section>
-	);
-}
-
-function ScopeMatrix({
-	allScopes,
-	scopes,
-	onToggle,
-}: {
-	allScopes: readonly ApiScope[];
-	scopes: ApiScope[];
-	onToggle: (scope: ApiScope) => void;
-}) {
-	// Only the actions some resource actually grants get a column; today nothing
-	// is deletable but competitors.
-	const actions = SCOPE_ACTIONS.filter((action) => allScopes.some((scope) => scope.endsWith(`:${action}`)));
-
-	return (
-		<div className="overflow-hidden rounded-md border">
-			<Table>
-				<TableHeader>
-					<TableRow className="hover:bg-transparent">
-						<TableHead>Resource</TableHead>
-						{actions.map((action) => (
-							<TableHead key={action} className="w-24 text-center">
-								{titleCase(action)}
-							</TableHead>
-						))}
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{[...scopeGroups(allScopes)].map(([resource, group]) => (
-						<TableRow key={resource}>
-							<TableCell className="font-medium">{titleCase(resource)}</TableCell>
-							{actions.map((action) => {
-								const scope = group.find((candidate) => candidate === `${resource}:${action}`);
-								return (
-									<TableCell key={action}>
-										<div className="flex justify-center">
-											{scope ? (
-												<Checkbox
-													aria-label={`${titleCase(resource)} ${action}`}
-													checked={scopes.includes(scope)}
-													onCheckedChange={() => onToggle(scope)}
-												/>
-											) : (
-												<span className="text-muted-foreground">—</span>
-											)}
-										</div>
-									</TableCell>
-								);
-							})}
-						</TableRow>
-					))}
-				</TableBody>
-			</Table>
-		</div>
 	);
 }
 
@@ -548,33 +443,19 @@ function IssuedKeyCard({ value }: { value: string }) {
 	);
 }
 
-function ScopeCell({ scopes, allScopes }: { scopes: ApiScope[]; allScopes: readonly ApiScope[] }) {
-	if (scopes.length === 0) return <span className="text-muted-foreground">None</span>;
-	if (scopes.length === allScopes.length) return <Badge variant="secondary">Full access</Badge>;
-	if (scopes.length === preset("read", allScopes).length && scopes.every((scope) => scope.endsWith(":read"))) {
-		return <Badge variant="secondary">Read only</Badge>;
-	}
-
-	return (
-		<div className="flex flex-wrap gap-1">
-			{[...scopeGroups(scopes)].map(([resource, group]) => (
-				<Badge key={resource} variant="secondary" className="font-mono font-normal">
-					{resource}:{group.map((scope) => scope.split(":")[1]).join(",")}
-				</Badge>
-			))}
-		</div>
-	);
+function AccessCell({ scopes }: { scopes: readonly string[] }) {
+	if (scopes.includes("write")) return <Badge variant="secondary">{ACCESS_LABELS.write}</Badge>;
+	if (scopes.includes("read")) return <Badge variant="secondary">{ACCESS_LABELS.read}</Badge>;
+	return <span className="text-muted-foreground">No access</span>;
 }
 
 function KeyTable({
 	keys,
-	allScopes,
 	brandNames,
 	inactive = false,
 	onRevoke,
 }: {
 	keys: ApiKeySummary[];
-	allScopes: readonly ApiScope[];
 	brandNames: Map<string, string>;
 	inactive?: boolean;
 	onRevoke?: (key: ApiKeySummary) => void;
@@ -587,7 +468,7 @@ function KeyTable({
 					<TableRow className="hover:bg-transparent">
 						<TableHead className="w-[21%]">Name</TableHead>
 						<TableHead className="w-[9%]">Key</TableHead>
-						<TableHead className="w-[22%]">Scopes</TableHead>
+						<TableHead className="w-[22%]">Access</TableHead>
 						<TableHead className="w-[11%]">Brands</TableHead>
 						<TableHead className="w-[9.5%]">Created</TableHead>
 						<TableHead className="w-[9.5%]">Last used</TableHead>
@@ -620,7 +501,7 @@ function KeyTable({
 								)}
 							</TableCell>
 							<TableCell>
-								<ScopeCell scopes={key.scopes} allScopes={allScopes} />
+								<AccessCell scopes={key.scopes} />
 							</TableCell>
 							<TableCell className="truncate">
 								{key.brandIds ? key.brandIds.map((id) => brandNames.get(id) ?? id).join(", ") : "All brands"}

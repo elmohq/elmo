@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
-import { API_SCOPES } from "@/lib/api/scopes";
 import { Route } from "@/routes/_authed/app/org/$org/settings/api-keys";
 import { type ApiKeysPageData, setMockApiKeys } from "./_mocks/server-api-keys";
 import { setMockLoaderData } from "./_mocks/tanstack-router";
@@ -19,7 +18,7 @@ const KEYS: ApiKeysPageData["keys"] = [
 		id: "key-1",
 		name: "Reporting pipeline",
 		start: "elmo_9f2c",
-		scopes: ["brands:read", "prompts:read", "prompts:write", "analytics:read"],
+		scopes: ["read", "write"],
 		brandIds: null,
 		enabled: true,
 		createdAt: "2026-06-14T10:00:00.000Z",
@@ -30,7 +29,7 @@ const KEYS: ApiKeysPageData["keys"] = [
 		id: "key-2",
 		name: "Claude Code (MCP)",
 		start: "elmo_41ba",
-		scopes: ["brands:read", "prompts:read", "analytics:read", "runs:read"],
+		scopes: ["read"],
 		brandIds: ["brand-1"],
 		enabled: true,
 		createdAt: "2026-07-02T10:00:00.000Z",
@@ -41,7 +40,7 @@ const KEYS: ApiKeysPageData["keys"] = [
 		id: "key-3",
 		name: "Old dashboard export",
 		start: "elmo_7dd0",
-		scopes: ["analytics:read"],
+		scopes: ["read"],
 		brandIds: ["brand-2", "brand-3"],
 		enabled: false,
 		createdAt: "2025-09-01T10:00:00.000Z",
@@ -56,7 +55,6 @@ function load(page: Partial<ApiKeysPageData>) {
 		canManage: true,
 		keys: [],
 		brands: BRANDS,
-		allScopes: API_SCOPES,
 		expiryOptions: [30, 90, 180, 365],
 		...page,
 	};
@@ -152,13 +150,11 @@ export const CreateKeyDialog: Story = {
 		await userEvent.click(await within(canvasElement).findByRole("button", { name: "New key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
 		await expect(await dialog.findByLabelText("Name")).toBeVisible();
-		await expect(await dialog.findByRole("tab", { name: "Read only" })).toHaveAttribute("aria-selected", "true");
-		// Custom is what reveals the per-resource grid; the presets stay collapsed.
-		await expect(dialog.queryByRole("checkbox", { name: "Prompts write" })).toBeNull();
+		await expect(await dialog.findByRole("tab", { name: "Read-only" })).toHaveAttribute("aria-selected", "true");
 	},
 };
 
-export const ScopePresets: Story = {
+export const AccessPresets: Story = {
 	render: () => {
 		load({ keys: KEYS, canManage: true });
 		return <ApiKeysSettingsPage />;
@@ -166,9 +162,9 @@ export const ScopePresets: Story = {
 	play: async ({ canvasElement }) => {
 		await userEvent.click(await within(canvasElement).findByRole("button", { name: "New key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
-		await userEvent.click(await dialog.findByRole("tab", { name: "Full access" }));
-		await userEvent.click(await dialog.findByRole("tab", { name: "Custom" }));
-		await expect(await dialog.findByRole("checkbox", { name: "Competitors delete" })).toBeChecked();
+		await userEvent.click(await dialog.findByRole("tab", { name: "Read and write" }));
+		await expect(await dialog.findByRole("tab", { name: "Read and write" })).toHaveAttribute("aria-selected", "true");
+		await expect(await dialog.findByText(/plus creating, editing and deleting/)).toBeVisible();
 	},
 };
 

@@ -11,7 +11,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/opportunities")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
-				scopes: ["analytics:read"],
+				scopes: ["read"],
 				handle: async ({ params, auth }) => {
 					const brand = await requireBrandInScope(auth, params.brandId);
 					return publishedOpportunities(brand.id);
