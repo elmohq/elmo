@@ -14,11 +14,7 @@ vi.mock("olostep", () => ({
 
 import { olostep } from "./olostep";
 
-/**
- * Olostep answers a batch, then the payload is fetched separately, so a run is
- * only reachable through both calls. `json_content` arrives as a JSON string
- * from the real API unless a test says otherwise.
- */
+/** A run needs both calls: the batch, then the separate payload fetch. */
 function stubRun(payload: unknown, { asString = true }: { asString?: boolean } = {}) {
 	sdk.batchesCreate.mockResolvedValue({
 		waitTillDone: vi.fn().mockResolvedValue(undefined),
@@ -81,8 +77,6 @@ describe("olostep run", () => {
 		);
 	});
 
-	// The payload is stored so a row can be re-read later; queries reported from
-	// anywhere else would not survive that round trip.
 	it("stores the payload the reported queries came from", async () => {
 		const payload = {
 			answer: "answer",
@@ -139,8 +133,7 @@ describe("olostep web queries", () => {
 		expect(result.webQueries).toEqual(["real query"]);
 	});
 
-	// The sentinel is the claim "a search happened but the strings weren't
-	// exposed", so citations are what license it.
+	// The sentinel claims a search ran without exposing strings, so citations license it.
 	it("marks queries unavailable when only citations prove a search ran", async () => {
 		stubRun({ answer: "answer", sources: [{ url: "https://example.com/a" }] });
 
@@ -230,8 +223,7 @@ describe("olostep validateTarget", () => {
 		);
 	});
 
-	// These surfaces always search, so an offline target would misdescribe what
-	// the run actually did.
+	// These surfaces always search.
 	it("rejects a target configured without web search", () => {
 		expect(olostep.validateTarget?.({ model: "chatgpt", provider: "olostep", webSearch: false })).toContain(
 			"requires :online",

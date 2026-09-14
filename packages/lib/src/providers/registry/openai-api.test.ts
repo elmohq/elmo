@@ -81,8 +81,7 @@ describe("openai-api citations", () => {
 });
 
 describe("openai-api stored payload", () => {
-	// Shaped like a real gpt-5-mini response: reasoning and web_search_call items
-	// around the message, annotations on the output_text.
+	// Shaped like a real response: reasoning and web_search_call around the message.
 	const body = {
 		id: "resp_1",
 		object: "response",
@@ -108,8 +107,6 @@ describe("openai-api stored payload", () => {
 		],
 	};
 
-	// The rebuilt stand-in holds only the answer and its citations, so a row
-	// written from it can never be re-read for what the model searched.
 	it("stores the payload the searches came from", async () => {
 		aiMock.generateText.mockResolvedValue(generated({ response: { body } }));
 

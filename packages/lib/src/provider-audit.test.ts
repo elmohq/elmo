@@ -31,8 +31,7 @@ describe("auditTarget", () => {
 		expect(kinds("t", expects(), runs(AUDIT_MIN_RUNS, { genuineWebQueries: 0 }))).toEqual(["missing-web-queries"]);
 	});
 
-	// The sentinel is what a broken extractor leaves behind, and it is not a
-	// genuine query — the whole point of recording the two separately.
+	// The sentinel is what a broken extractor leaves, and is not a genuine query.
 	it("counts the unavailable sentinel as no queries at all", () => {
 		const sentinelOnly = runs(AUDIT_MIN_RUNS, { genuineWebQueries: 0 });
 		expect(kinds("t", expects(), sentinelOnly)).toContain("missing-web-queries");
@@ -47,8 +46,7 @@ describe("auditTarget", () => {
 		expect(kinds("t", expects(), records)).toEqual([]);
 	});
 
-	// The direction that catches us falling behind a vendor rather than breaking:
-	// one run is proof, because data cannot appear from a provider that has none.
+	// One run is proof: data can't appear from a provider that has none.
 	it("fails when a target declared silent starts reporting queries", () => {
 		const records = [...runs(1), ...runs(20, { genuineWebQueries: 0 })];
 		expect(kinds("t", expects({ webQueries: "no" }), records)).toEqual(["unexpected-web-queries"]);
@@ -59,15 +57,13 @@ describe("auditTarget", () => {
 		expect(kinds("t", offline, [run({ citations: 5, genuineWebQueries: 0 })])).toEqual(["unexpected-citations"]);
 	});
 
-	// Capability is established but too rare to expect in any one window, so
-	// asserting it would just generate noise.
+	// Too rare to expect in any one window, so asserting it would be noise.
 	it("makes no claim about an intermittent target", () => {
 		expect(kinds("t", expects({ webQueries: "intermittent" }), runs(20, { genuineWebQueries: 0 }))).toEqual([]);
 		expect(kinds("t", expects({ webQueries: "intermittent" }), runs(20))).toEqual([]);
 	});
 
-	// "unknown" is the absence of a claim: a broken extractor and a provider that
-	// exposes nothing look the same, so neither direction can be asserted.
+	// "unknown" is the absence of a claim, so neither direction can be asserted.
 	it("makes no claim in either direction about an unknown target", () => {
 		expect(kinds("t", expects({ webQueries: "unknown" }), runs(20, { genuineWebQueries: 0 }))).toEqual([]);
 		expect(kinds("t", expects({ webQueries: "unknown" }), runs(20))).toEqual([]);
@@ -107,7 +103,6 @@ describe("auditTarget", () => {
 });
 
 describe("the declared expectations", () => {
-	// The two failures that prompted this audit, pinned as regression cases.
 	it("requires fan-out from OpenAI with web search and forbids it without", () => {
 		expect(STATUS_TARGET_EXPECTATIONS["chatgpt:openai-api:gpt-5-mini:online"].webQueries).toBe("yes");
 		expect(STATUS_TARGET_EXPECTATIONS["chatgpt:openai-api:gpt-5-mini"].webQueries).toBe("no");
@@ -141,8 +136,7 @@ describe("findQueryFields", () => {
 		expect(findQueryFields(payload).flatMap((f) => f.values)).toEqual(["a", "b"]);
 	});
 
-	// Documented as the follow-ups an engine suggests below its answer, not
-	// searches it ran — the extractors already skip these by name.
+	// Follow-ups an engine suggests, not searches it ran.
 	it("ignores suggested follow-ups, which are not searches", () => {
 		expect(findQueryFields({ related_queries: ["what about X", "and Y"] })).toEqual([]);
 	});
@@ -153,8 +147,7 @@ describe("findQueryFields", () => {
 });
 
 describe("auditPayload", () => {
-	// The whole reason payloads are kept: this is a defect no amount of watching
-	// our own output could reveal.
+	// The reason payloads are kept: invisible from our own output alone.
 	it("flags a payload carrying searches the run never reported", () => {
 		const violations = auditPayload("t", { search_queries: ["a search"] }, 0);
 
@@ -170,7 +163,6 @@ describe("auditPayload", () => {
 		expect(auditPayload("t", { items: [{ type: "ai_overview", text: "answer" }] }, 0)).toEqual([]);
 	});
 
-	// A provider echoing the keyword back is not a search it chose to run.
 	it("ignores a query field that is just the prompt echoed back", () => {
 		expect(auditPayload("t", { keyword: "best crm", query: "best crm" }, 0, "best crm")).toEqual([]);
 	});

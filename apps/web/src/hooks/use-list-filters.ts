@@ -66,13 +66,12 @@ export function useFilterNavigate() {
 	);
 }
 
-/** The lookback a page starts on, before the URL overrides it. Shared by the
- *  filter dropdown and the data hooks so the label and the query can't drift. */
+/** Shared by the dropdown and the data hooks so the label and query can't drift. */
 export function useDefaultLookback(): LookbackPeriod {
 	const { data: brand } = useBrand();
 	const matches = useMatches();
 	const routeIds = matches.map((match) => match.routeId);
-	// Keyed on the joined ids because `matches` is a fresh array every render.
+	// Joined because `matches` is a fresh array every render.
 	const routeKey = routeIds.join(" ");
 	return useMemo(
 		() => resolveDefaultLookback(routeKey ? routeKey.split(" ") : [], brand?.earliestDataDate),

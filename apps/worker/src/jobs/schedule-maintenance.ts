@@ -29,8 +29,7 @@ export interface ScheduleMaintenanceData {
 const OVERDUE_ALERT_THROTTLE_MS = 30 * 60 * 1000;
 let lastOverdueAlertMs = 0;
 
-// Fan-out health moves far slower than the 5-minute maintenance tick, and its
-// query scans a day of runs, so it runs on its own much longer interval.
+// Far slower-moving than the 5-minute tick, and its query scans a day of runs.
 const FANOUT_HEALTH_INTERVAL_MS = 60 * 60 * 1000;
 const FANOUT_HEALTH_WINDOW_HOURS = 24;
 let lastFanoutHealthCheckMs = 0;
@@ -281,9 +280,8 @@ function reportOverduePrompts(overduePrompts: number): void {
 }
 
 /**
- * Recent web-search runs per (provider, model), and how many of them reported a
- * real query. The sentinel and empty strings don't count — those are exactly
- * what a broken extractor leaves behind.
+ * Recent web-search runs per (provider, model), and how many reported a real
+ * query. The sentinel doesn't count — it's what a broken extractor leaves.
  */
 async function getFanoutRunCounts(): Promise<FanoutRunCounts[]> {
 	const result = await db.execute<{
@@ -315,13 +313,9 @@ async function getFanoutRunCounts(): Promise<FanoutRunCounts[]> {
 }
 
 /**
- * Report to Sentry when a target that reports its searches by design has gone a
- * whole window without reporting one. That is what a broken extractor looks
- * like from the outside: every run still succeeds, with text and citations
- * intact, and only the queries quietly become the `unavailable` sentinel.
- *
- * Fingerprinted per target so a single provider breaking is one issue that
- * keeps accruing events, not a new alert every hour.
+ * Alerts when a target that reports its searches by design has gone a whole
+ * window without one — runs still succeed, only the queries go quiet.
+ * Fingerprinted per target so one break is one issue, not hourly alerts.
  */
 async function checkFanoutHealth(): Promise<void> {
 	const now = Date.now();

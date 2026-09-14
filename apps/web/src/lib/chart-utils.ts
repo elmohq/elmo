@@ -24,16 +24,13 @@ export function getDefaultLookbackPeriod(earliestDataDate: string | null | undef
 	return diffInDays > 7 ? "1m" : "1w";
 }
 
-/** Pages that want a different window than the brand-history default. Query
- *  Fan-out reads a wider one: engines expose their searches unevenly, so a
- *  month of runs often holds too few queries to see a pattern in. */
+/** Query Fan-out reads a wider window: engines expose searches unevenly, so a
+ *  month often holds too few queries to see a pattern in. */
 const ROUTE_LOOKBACK_DEFAULTS: Partial<Record<string, LookbackPeriod>> = {
 	[QUERY_FANOUT_ROUTE_ID]: "3m",
 };
 
-/** The window a page starts on before the URL overrides it: a route's own
- *  default if it declares one, otherwise the brand-history default. Matched
- *  routes come in outermost-first, so the deepest declaration wins. */
+/** Matched routes come in outermost-first, so the deepest declaration wins. */
 export function resolveDefaultLookback(
 	routeIds: readonly string[],
 	earliestDataDate: string | null | undefined,

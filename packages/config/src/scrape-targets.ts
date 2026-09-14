@@ -137,55 +137,36 @@ export function providersByModel(): Map<string, string[]> {
 }
 
 /**
- * What a monitored target is expected to return, asserted independently of the
- * code that extracts it.
- *
- * This is the point of the table: every other check in the repo asks "did our
- * extractor produce something?", so a broken extractor and a provider that
- * genuinely exposes nothing look identical, and the charitable reading always
- * wins. Declaring the expectation separately makes the two distinguishable —
- * when reality and this table disagree, exactly one of them is wrong, and
- * either way somebody needs to look.
+ * What a monitored target should return, declared independently of the code
+ * that extracts it. Without that separation a broken extractor and a provider
+ * that exposes nothing are the same observation.
  */
 export interface TargetExpectation {
 	/**
 	 * Whether this target reports the searches it ran.
 	 *
-	 * - "yes": every window should contain some. Absence is a defect.
-	 * - "no": established that none exist, from a vendor schema or a payload.
-	 *   Checked in the other direction — queries appearing here mean the vendor
-	 *   moved ahead of our extractor and we are dropping data.
-	 * - "intermittent": known capable but too rare to assert per window.
-	 * - "unknown": we observe none and have not established why. Recorded as an
-	 *   open question rather than asserted either way, because "our extractor is
-	 *   broken" and "this surface exposes nothing" look identical from outside.
-	 *   Resolve one by capturing a payload (`test-provider.ts --dump`) and
-	 *   deciding what is actually in it.
+	 * - "yes": absence over a window is a defect.
+	 * - "no": established that none exist. Queries appearing anyway mean the
+	 *   provider moved ahead of our extractor.
+	 * - "intermittent": capable, but too rare to assert per window.
+	 * - "unknown": we see none and haven't established why. Settle one by
+	 *   reading a payload (`test-provider.ts --dump`).
 	 */
 	webQueries: "yes" | "no" | "intermittent" | "unknown";
 	/** Whether answers are expected to cite sources. */
 	citations: "yes" | "no";
-	/**
-	 * False marks a row as an informed guess rather than something confirmed
-	 * against a vendor schema or a real payload. A failing guess most likely
-	 * means this table is wrong; a failing verified row means the code is.
-	 */
+	/** False when this row is a guess, so a failure points at the likelier culprit. */
 	verified: boolean;
 }
 
 const NO_SEARCH: TargetExpectation = { webQueries: "no", citations: "no", verified: true };
 
 /**
- * Expected output per monitored target. Keyed by the same strings as
- * STATUS_TARGETS, which `scrape-targets.test.ts` holds to a 1:1 match so a new
- * target can't be monitored without someone stating what it should return.
+ * Held to a 1:1 match with STATUS_TARGETS by its test, so a target can't be
+ * monitored without someone stating what it should return.
  */
 export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
 	// --- Scrapers driving consumer surfaces -----------------------------------
-	// Queries follow what the product itself shows: Perplexity and Copilot list
-	// their searches, Google AI Mode exposes its fan-out, and Gemini and AI
-	// Overviews show none. Guesses — the scrapers' own field names are known but
-	// which surfaces populate them is not.
 	"chatgpt:olostep:online": { webQueries: "yes", citations: "yes", verified: true },
 	"google-ai-mode:olostep:online": { webQueries: "unknown", citations: "yes", verified: false },
 	"google-ai-overview:olostep:online": { webQueries: "unknown", citations: "yes", verified: false },
@@ -194,7 +175,6 @@ export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
 	"perplexity:olostep:online": { webQueries: "yes", citations: "yes", verified: true },
 
 	"chatgpt:brightdata": NO_SEARCH,
-	// Confirmed in production: this pair backs a live deployment's fan-out.
 	"chatgpt:brightdata:online": { webQueries: "intermittent", citations: "yes", verified: true },
 	"google-ai-mode:brightdata:online": { webQueries: "unknown", citations: "yes", verified: false },
 	"gemini:brightdata:online": { webQueries: "unknown", citations: "yes", verified: false },
@@ -216,9 +196,9 @@ export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
 	"google-ai-overview:cloro:online": { webQueries: "unknown", citations: "yes", verified: false },
 
 	// --- DataForSEO -----------------------------------------------------------
-	// Verified against the client's own types: no SerpGoogleAiMode* or AiMode*
-	// model carries a query field, while the AI Optimization results carry
-	// `fan_out_queries`. The Gemini scraper is the exception with no equivalent.
+	// From dataforseo-client's types: no SERP AI Mode model carries a query
+	// field, while the AI Optimization results carry `fan_out_queries`. The
+	// Gemini scraper is the exception with no equivalent.
 	"google-ai-mode:dataforseo:online": { webQueries: "no", citations: "yes", verified: true },
 	"google-ai-overview:dataforseo:online": { webQueries: "no", citations: "yes", verified: true },
 	"chatgpt:dataforseo:online": { webQueries: "intermittent", citations: "yes", verified: true },
@@ -230,9 +210,8 @@ export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
 	"gemini:dataforseo:gemini-2.5-flash:online": { webQueries: "yes", citations: "yes", verified: true },
 
 	// --- Direct model APIs ----------------------------------------------------
-	// Search is opt-in here, so the offline variants must report nothing at all —
-	// queries appearing without `:online` would mean a target is searching (and
-	// being billed for it) when it was configured not to.
+	// Search is opt-in, so queries without `:online` would mean a target is
+	// searching, and being billed for it, against its own configuration.
 	"chatgpt:openai-api:gpt-5-mini": NO_SEARCH,
 	"chatgpt:openai-api:gpt-5-mini:online": { webQueries: "yes", citations: "yes", verified: true },
 	"claude:anthropic-api:claude-sonnet-5": NO_SEARCH,
@@ -241,10 +220,8 @@ export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
 	"mistral:mistral-api:mistral-medium-latest:online": { webQueries: "yes", citations: "yes", verified: true },
 
 	// --- OpenRouter -----------------------------------------------------------
-	// `:online` routes to the model's own search where it has one, so these are
-	// expected to report queries. They do not today: the provider writes the
-	// `unavailable` sentinel without ever inspecting the payload, so these rows
-	// are the ones meant to fail until that extractor exists.
+	// `:online` routes to the model's own search where it has one. These fail
+	// today: the provider writes the sentinel without inspecting the payload.
 	"claude:openrouter:anthropic/claude-sonnet-5": NO_SEARCH,
 	"claude:openrouter:anthropic/claude-sonnet-5:online": { webQueries: "yes", citations: "yes", verified: false },
 	"chatgpt:openrouter:openai/gpt-5-mini": NO_SEARCH,

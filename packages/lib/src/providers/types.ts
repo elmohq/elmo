@@ -68,11 +68,9 @@ export interface Provider {
 	 */
 	docsAnchor?: string;
 	/**
-	 * Whether this provider reports the searches it ran, for this target. False
-	 * means a run with no queries is expected (the SERP surfaces expose no query
-	 * strings at all); true means it is a defect worth alerting on. Same
-	 * per-target shape as `accessFor` and for the same reason — DataForSEO both
-	 * does and doesn't, depending on the surface and whether a version is pinned.
+	 * Whether this provider reports the searches it ran, for this target, so a
+	 * run with no queries can be told from a defect. Per-target like
+	 * `accessFor`: DataForSEO both does and doesn't, depending on the surface.
 	 */
 	exposesWebQueries?(config: ModelConfig): boolean;
 	isConfigured(): boolean;

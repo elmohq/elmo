@@ -1,12 +1,9 @@
 #!/usr/bin/env tsx
 
 /**
- * Audits the recorded provider-test history against what each target is
- * declared to return, and fails when they disagree.
- *
- * Reads only what the scheduled provider test already pushed to Redis, so it
- * calls no provider and costs no inference. Run it on its own schedule, well
- * after a test run has landed.
+ * Audits recorded provider-test history against what each target is declared to
+ * return, and fails when they disagree. Reads only what the scheduled test
+ * already recorded, so it calls no provider.
  *
  * Usage:
  *   pnpm tsx apps/worker/scripts/audit-providers.ts
@@ -28,10 +25,8 @@ import {
 } from "@workspace/lib/provider-audit";
 
 /**
- * The provider test runs four times a day, so a single day rarely reaches the
- * sample a "reported nothing" finding needs. A week is what Redis retains and
- * what makes silence conclusive; a total break still surfaces within a couple
- * of days, as its last real result ages out.
+ * A single day rarely reaches the sample a "reported nothing" finding needs.
+ * A break still surfaces within a couple of days, as its last result ages out.
  */
 const DEFAULT_DAYS = 7;
 
@@ -42,11 +37,7 @@ interface RedisEntry {
 	queriesInRawOutput?: boolean;
 }
 
-/**
- * Payloads written by `test-provider.ts --dump`, keyed back to their target.
- * The dump encodes a target as a filename, so the mapping is rebuilt from the
- * target list rather than by parsing names back apart.
- */
+/** Keyed back to their target, since the dump encodes one as a filename. */
 function loadPayloads(dir: string): Map<string, unknown> {
 	const byFilename = new Map(STATUS_TARGETS.map((t) => [`${t.replace(/[/:]/g, "-")}.json`, t]));
 	const payloads = new Map<string, unknown>();
@@ -84,11 +75,7 @@ async function fetchEntries(redis: Redis, target: string, sinceMs: number): Prom
 	return raw.map((item) => (typeof item === "string" ? JSON.parse(item) : item) as RedisEntry);
 }
 
-/**
- * Entries predating the richer fields are dropped rather than defaulted: a
- * missing `genuineWebQueries` would read as "reported nothing" and invent a
- * violation out of a schema change.
- */
+/** Entries predating these fields are dropped — defaulting them would invent violations. */
 function toRecords(entries: RedisEntry[]): ProviderRunRecord[] {
 	return entries
 		.filter((e) => e.status !== undefined && e.genuineWebQueries !== undefined)
@@ -108,8 +95,6 @@ function report(violations: Violation[], targetCount: number, days: number): voi
 
 	console.error(`\n${violations.length} target(s) diverged from expectation over the last ${days} day(s):\n`);
 	for (const v of violations) {
-		// Which side is more likely wrong is the first thing anyone reading this
-		// needs, so it leads rather than sitting in a footnote.
 		const blame = v.expectationVerified ? "code" : "expectation is a guess";
 		console.error(`  ${v.target}`);
 		console.error(`    [${v.kind}] ${v.message}`);
@@ -122,9 +107,8 @@ function report(violations: Violation[], targetCount: number, days: number): voi
 }
 
 /**
- * Targets we get nothing from and cannot yet say why. Not failures — nobody can
- * act on a finding that might equally be the provider or our own extractor — but
- * they are the backlog, so they stay visible rather than passing silently.
+ * Targets we get nothing from and can't yet say why. Not failures, but the
+ * backlog — so they stay visible rather than passing silently.
  */
 function reportOpenQuestions(inputs: AuditInput[]): void {
 	const open = inputs.filter((i) => i.expectation.webQueries === "unknown").map((i) => i.target);
@@ -153,9 +137,7 @@ async function main() {
 
 	const violations = auditTargets(inputs);
 
-	// Checking the payloads themselves is what turns an open question into an
-	// answer: a provider carrying searches we never read is a defect no amount of
-	// watching our own output would surface.
+	// A provider carrying searches we never read is invisible from our output alone.
 	const payloadDir = parseFlag("--payloads");
 	if (payloadDir && existsSync(payloadDir)) {
 		const payloads = loadPayloads(payloadDir);

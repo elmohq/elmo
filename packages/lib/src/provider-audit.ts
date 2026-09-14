@@ -1,13 +1,6 @@
 /**
- * Audits recorded provider-test history against what each target is declared to
- * return, without calling any provider.
- *
- * The per-run checks in `test-provider.ts` can only ask whether our extractor
- * produced something, so a broken extractor and a provider that exposes nothing
- * are the same observation and the charitable reading wins every time. This
- * compares recorded reality against `STATUS_TARGET_EXPECTATIONS`, which is
- * written independently of the extractors — so the two can disagree, and a
- * disagreement is the signal.
+ * Audits recorded provider-test history against `STATUS_TARGET_EXPECTATIONS`,
+ * without calling any provider.
  *
  * Judged over a window rather than per run: an engine may decline to search on
  * any single prompt, and providers write the same `unavailable` sentinel for
@@ -15,11 +8,7 @@
  */
 import type { TargetExpectation } from "@workspace/config/scrape-targets";
 
-/**
- * A target reporting nothing is only evidence once there are enough runs for
- * silence to be surprising. Below this, absence is reported as unproven rather
- * than as a defect.
- */
+/** Below this, silence isn't yet evidence of anything. */
 export const AUDIT_MIN_RUNS = 8;
 
 /** One recorded provider test, as pushed by the scheduled workflow. */
@@ -56,11 +45,7 @@ export interface AuditInput {
 	records: ProviderRunRecord[];
 }
 
-/**
- * Fails when reported queries are missing from the payload that was stored.
- * This is the invariant that makes a row replayable, and it holds for every
- * target regardless of what the expectation says.
- */
+/** Reported queries must be in the stored payload, or the row can't be re-read. */
 function auditReplayability(input: AuditInput, passing: ProviderRunRecord[]): Violation[] {
 	const broken = passing.filter((r) => !r.queriesInRawOutput).length;
 	if (broken === 0) return [];
@@ -75,9 +60,8 @@ function auditReplayability(input: AuditInput, passing: ProviderRunRecord[]): Vi
 }
 
 /**
- * Both directions of a "yes"/"no" expectation. Absence needs a sample to mean
- * anything; presence needs only one run, since a target declared silent that
- * produced real data has been overtaken by its vendor.
+ * Absence needs a sample to mean anything; presence needs one run, since data
+ * can't appear from a provider that has none.
  */
 function auditField(
 	input: AuditInput,
@@ -90,9 +74,7 @@ function auditField(
 	const declared = input.expectation[field];
 	const expectationVerified = input.expectation.verified;
 
-	// Neither state makes a claim a window can falsify: "intermittent" is too
-	// rare to expect in any given window, and "unknown" is the absence of a
-	// claim. Both stay silent rather than reporting a finding nobody can act on.
+	// Neither state makes a claim a window can falsify.
 	if (declared === "intermittent" || declared === "unknown") return [];
 
 	if (declared === "yes" && withData === 0 && passing.length >= AUDIT_MIN_RUNS) {
@@ -118,7 +100,7 @@ function auditField(
 	return [];
 }
 
-/** Every way a target's recorded history diverges from what it should return. */
+/** How a target's recorded history diverges from what it should return. */
 export function auditTarget(input: AuditInput): Violation[] {
 	if (input.records.length === 0) {
 		return [
@@ -156,12 +138,7 @@ export function auditTarget(input: AuditInput): Violation[] {
 	];
 }
 
-/**
- * Keys that read like searches but aren't. Both providers document these as the
- * follow-up questions an engine suggests below its answer, so counting them
- * would report searches that never ran — the same mistake the Oxylabs and Cloro
- * extractors already avoid by name.
- */
+/** Follow-ups an engine suggests below its answer, not searches it ran. */
 const NOT_SEARCHES = new Set(["related_queries", "relatedqueries", "suggested_queries", "suggestedqueries"]);
 
 /** A query-shaped field found in a payload, as a JSON path plus what it held. */
@@ -185,12 +162,8 @@ function asQueryValues(value: unknown): string[] {
 }
 
 /**
- * Query-shaped fields anywhere in a stored payload.
- *
- * This is what makes a payload worth keeping: it answers what a provider *could*
- * give us, independently of what our extractor happened to take. A payload
- * carrying searches while the run reported none is a defect on our side, and no
- * amount of watching our own output would ever reveal it.
+ * Query-shaped fields anywhere in a payload — what a provider *could* give us,
+ * independently of what our extractor took.
  */
 export function findQueryFields(payload: unknown, path = "$"): QueryField[] {
 	if (payload === null || typeof payload !== "object") return [];
@@ -201,8 +174,7 @@ export function findQueryFields(payload: unknown, path = "$"): QueryField[] {
 		const here = `${path}.${key}`;
 		const values = isQueryKey(key) ? asQueryValues(value) : [];
 		if (values.length > 0) {
-			// Its contents are the queries themselves, so descending would report
-			// the same strings a second time under a deeper path.
+			// Descending would report the same strings again under a deeper path.
 			found.push({ path: here, values });
 			continue;
 		}
@@ -212,9 +184,8 @@ export function findQueryFields(payload: unknown, path = "$"): QueryField[] {
 }
 
 /**
- * Flags a payload that carries searches the run did not report. Values matching
- * the prompt are ignored: engines do search a prompt verbatim, and a provider
- * echoing the keyword back is not a search it chose to run.
+ * Flags a payload carrying searches the run didn't report. Values matching the
+ * prompt are ignored — a provider echoing the keyword back isn't a search.
  */
 export function auditPayload(target: string, payload: unknown, reportedQueries: number, prompt?: string): Violation[] {
 	if (reportedQueries > 0) return [];

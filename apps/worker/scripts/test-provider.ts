@@ -129,11 +129,7 @@ export interface TargetResult {
 	webQueries: number;
 	/** Reported queries excluding the `unavailable` sentinel. */
 	genuineWebQueries: number;
-	/**
-	 * Whether every genuine query appears in the stored payload. Provider-
-	 * agnostic stand-in for re-extraction: a query we reported but did not store
-	 * is one that can never be re-derived from the row.
-	 */
+	/** Whether every genuine query appears in the stored payload, so the row can be re-read. */
 	queriesInRawOutput: boolean;
 	webSearch: boolean;
 	sampleOutput: string;
