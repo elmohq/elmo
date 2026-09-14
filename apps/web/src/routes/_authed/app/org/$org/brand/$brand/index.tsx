@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/componen
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { type ReactNode, useEffect } from "react";
+import { ExportReportButton } from "@/components/export-report-button";
 import PromptWizard from "@/components/prompt-wizard";
 import { TrendChart, type TrendPoint } from "@/components/trend-chart";
 import { useBrand } from "@/hooks/use-brands";
@@ -452,6 +453,14 @@ function DashboardPage() {
 	return (
 		<div className="flex flex-1 flex-col">
 			<div className="m-auto flex w-full max-w-[1600px] flex-col gap-3 p-4">
+				<div className="flex justify-end">
+					<ExportReportButton
+						brandId={brandId}
+						brandName={brand?.name ?? ""}
+						summary={loadingVisibility ? undefined : dashboardSummary}
+						sov={sovData}
+					/>
+				</div>
 				<TrendSection
 					icon={IconEye}
 					title={t("AI Visibility")}

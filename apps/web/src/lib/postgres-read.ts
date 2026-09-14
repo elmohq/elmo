@@ -1109,6 +1109,92 @@ export async function getBrandMentionRateByModel(
 }
 
 // ============================================================================
+// Per-Prompt × Model breakdowns (exportable report)
+// ============================================================================
+
+export interface PerPromptModelRunRow {
+	prompt_id: string;
+	model: string;
+	runs: number;
+	brand_mentions: number;
+	last_run_at: string;
+}
+
+export async function getPerPromptModelRunStats(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+): Promise<PerPromptModelRunRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	return queryPg<PerPromptModelRunRow>(sql`
+		SELECT
+			prompt_id,
+			model,
+			count(*)::int AS runs,
+			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentions,
+			max(created_at)::text AS last_run_at
+		FROM prompt_runs
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+		GROUP BY prompt_id, model
+	`);
+}
+
+export interface PerPromptModelCompetitorRow {
+	prompt_id: string;
+	model: string;
+	competitor: string;
+	/** Runs whose answer named this competitor. */
+	mentions: number;
+}
+
+export async function getPerPromptModelCompetitorMentions(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+): Promise<PerPromptModelCompetitorRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	return queryPg<PerPromptModelCompetitorRow>(sql`
+		SELECT prompt_id, model, competitor, count(*)::int AS mentions
+		FROM prompt_runs, unnest(competitors_mentioned) AS competitor
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+		GROUP BY prompt_id, model, competitor
+	`);
+}
+
+export interface PerPromptModelCitationDomainRow {
+	prompt_id: string;
+	model: string;
+	domain: string;
+	count: number;
+}
+
+export async function getPerPromptModelCitationDomains(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+): Promise<PerPromptModelCitationDomainRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	return queryPg<PerPromptModelCitationDomainRow>(sql`
+		SELECT prompt_id, model, domain, count(*)::int AS count
+		FROM citations
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+		GROUP BY prompt_id, model, domain
+	`);
+}
+
+// ============================================================================
 // Brand Data Age
 // ============================================================================
 
