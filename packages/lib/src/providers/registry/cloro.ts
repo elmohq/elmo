@@ -155,6 +155,7 @@ export const cloro: Provider = {
 	access: "scraped",
 	docsAnchor: "cloro",
 
+	exposesWebQueries: () => true,
 	isConfigured: configuredWhen("CLORO_API_KEY"),
 
 	validateTarget(config: ModelConfig) {

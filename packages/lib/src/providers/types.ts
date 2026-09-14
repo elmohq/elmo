@@ -67,6 +67,11 @@ export interface Provider {
 	 * public setup docs (the stub used by tests).
 	 */
 	docsAnchor?: string;
+	/**
+	 * Lets a run with no queries be told from a defect. Per-target like
+	 * `accessFor`: DataForSEO both does and doesn't, depending on the surface.
+	 */
+	exposesWebQueries?(config: ModelConfig): boolean;
 	isConfigured(): boolean;
 	run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
 	/** Validate a target config. Returns an error message if invalid, null if valid.

@@ -4,6 +4,7 @@ import {
 	type ModelConfig,
 	parseScrapeTargets,
 	providersByModel,
+	STATUS_TARGET_EXPECTATIONS,
 	STATUS_TARGETS,
 } from "./scrape-targets";
 
@@ -148,5 +149,19 @@ describe("providersByModel", () => {
 	it("covers every model STATUS_TARGETS names, and nothing else", () => {
 		const fromTargets = new Set(parseScrapeTargets(STATUS_TARGETS.join(",")).map((t) => t.model));
 		expect(new Set(providersByModel().keys())).toEqual(fromTargets);
+	});
+});
+
+describe("STATUS_TARGET_EXPECTATIONS", () => {
+	it("states an expectation for every monitored target, and none for anything else", () => {
+		expect(Object.keys(STATUS_TARGET_EXPECTATIONS).sort()).toEqual([...STATUS_TARGETS].sort());
+	});
+
+	it("expects nothing from targets configured without web search", () => {
+		for (const target of STATUS_TARGETS) {
+			const [config] = parseScrapeTargets(target);
+			if (config.webSearch) continue;
+			expect(STATUS_TARGET_EXPECTATIONS[target]).toEqual({ webQueries: "no", citations: "no", verified: true });
+		}
 	});
 });
