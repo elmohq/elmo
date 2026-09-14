@@ -17,6 +17,7 @@
  * is older than REFRESH_AFTER_DAYS, so a normal page load doesn't trigger an LLM call.
  */
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeaders } from "@tanstack/react-start/server";
 import { db } from "@workspace/lib/db/db";
 import { brandOpportunities, brands, competitors } from "@workspace/lib/db/schema";
 import { runStructuredCompletionPrompt } from "@workspace/lib/onboarding";
@@ -24,6 +25,7 @@ import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import { type CitationCategory, extractDomain } from "@/lib/domain-categories";
+import { type Locale, resolveLocale } from "@/lib/i18n";
 import { categorizeDomain } from "@/lib/domain-categories.server";
 import {
 	getBrandMentionRateByModel,
@@ -103,6 +105,8 @@ export interface ReportOpportunity extends Omit<RawReport["opportunities"][numbe
 }
 export interface OpportunitiesReport extends Omit<RawReport, "opportunities"> {
 	opportunities: ReportOpportunity[];
+	/** UI language the copy was written in. Absent on reports stored before it was recorded (English). */
+	language?: Locale;
 }
 
 export type OpportunitiesReason = "insufficient-data" | null;
@@ -154,6 +158,13 @@ const TASK = `Using ONLY the data above, return the structured output:
 - summary: 3-5 bullets, one short sentence each — the competitive gaps, where AI sources its answers, and the through-line of the plan. Don't restate overall/per-platform visibility or define metrics.
 - opportunities: 8-12 prioritized opportunities (highest impact first), each sorted into a category, with a plain-language "why" (the motivation, for a non-expert) and the tracked prompts it helps (verbatim). Spread them across the categories the data supports — don't force all four.
 - risks: 2-4 short caveats (hard-to-win areas or tactics to avoid).`;
+
+const LANGUAGE_NAMES: Record<Locale, string> = { en: "English", fr: "French" };
+
+function languageInstruction(locale: Locale): string {
+	if (locale === "en") return "";
+	return `\n- LANGUAGE: write summary, every opportunity's title and why, and risks in ${LANGUAGE_NAMES[locale]}, natural for a marketing team in that market. Keep relatedPrompts verbatim as they appear in the data (do not translate them), and keep category values exactly as the schema defines them.`;
+}
 
 // ============================================================================
 // Digest builder
@@ -557,7 +568,15 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" })
 			.orderBy(desc(brandOpportunities.createdAt))
 			.limit(1);
 		const lastEvaluatedAt = latest?.createdAt.toISOString() ?? null;
-		const isFresh = latest && Date.now() - new Date(latest.createdAt).getTime() < REFRESH_AFTER_DAYS * 86_400_000;
+		const headers = getRequestHeaders();
+		const locale = resolveLocale(headers.get("cookie"), headers.get("accept-language"));
+		// A report written in another language counts as stale, so switching the UI
+		// language regenerates it.
+		const latestLanguage = (latest?.report as OpportunitiesReport | undefined)?.language ?? "en";
+		const isFresh =
+			latest &&
+			latestLanguage === locale &&
+			Date.now() - new Date(latest.createdAt).getTime() < REFRESH_AFTER_DAYS * 86_400_000;
 		if (latest && isFresh) {
 			return {
 				report: withoutRepeats(latest.report as OpportunitiesReport),
@@ -579,7 +598,7 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" })
 			return { report: null, reason: "insufficient-data", generatedFor: null, lastEvaluatedAt };
 		}
 
-		const prompt = `${GUIDANCE}\n\n=== BRAND DATA ===\n${digest.text}\n\n=== TASK ===\n${TASK}`;
+		const prompt = `${GUIDANCE}\n\n=== BRAND DATA ===\n${digest.text}\n\n=== TASK ===\n${TASK}${languageInstruction(locale)}`;
 		const generated = await generateValidReport(prompt);
 		if (!generated) {
 			// Couldn't get a schema-valid report — serve the last good one if we have it.
@@ -593,7 +612,7 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" })
 			throw new Error("Failed to generate a valid opportunities report");
 		}
 
-		const report = enrichReport(generated.report, digest);
+		const report = { ...enrichReport(generated.report, digest), language: locale };
 		const [savedReport] = await db
 			.insert(brandOpportunities)
 			.values({ brandId: data.brandId, report, model: generated.model })
