@@ -14,7 +14,7 @@ async function openCreateForm(page: Page, name: string) {
   const nameField = page.locator("#key-name");
   await expect(async () => {
     if (!(await dialog.isVisible())) {
-      await page.getByRole("button", { name: "New key" }).click();
+      await page.getByRole("button", { name: "Add Key" }).click();
     }
     await nameField.fill(name);
     await expect(nameField).toHaveValue(name, { timeout: 1_000 });

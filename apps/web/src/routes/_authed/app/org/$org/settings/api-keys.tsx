@@ -148,7 +148,7 @@ function ApiKeysSettingsPage() {
 					{canManage && (
 						<Button type="button" size="sm" onClick={() => setCreatingOpen(true)}>
 							<IconPlus className="size-4" />
-							New key
+							Add Key
 						</Button>
 					)}
 				</div>
@@ -569,7 +569,7 @@ function RevokeButton({ onClick }: { onClick: () => void }) {
 					</Button>
 				}
 			/>
-			<TooltipContent>Revoke key</TooltipContent>
+			<TooltipContent>Revoke Key</TooltipContent>
 		</Tooltip>
 	);
 }

@@ -112,7 +112,7 @@ export const WithKeys: Story = {
 		// One pill per grant, so a read-write key is visibly more than a read one.
 		await expect((await canvas.findAllByText("read")).length).toBe(4);
 		await expect((await canvas.findAllByText("write")).length).toBe(2);
-		await expect(await canvas.findByRole("button", { name: "New key" })).toBeVisible();
+		await expect(await canvas.findByRole("button", { name: "Add Key" })).toBeVisible();
 		await expect(canvas.queryByLabelText("Name")).toBeNull();
 	},
 };
@@ -150,7 +150,7 @@ export const NonAdmin: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(canvas.queryByRole("button", { name: "New key" })).toBeNull();
+		await expect(canvas.queryByRole("button", { name: "Add Key" })).toBeNull();
 		await expect(canvas.queryByRole("button", { name: "Revoke" })).toBeNull();
 		await expect(await canvas.findByText("Reporting pipeline")).toBeVisible();
 	},
@@ -162,7 +162,7 @@ export const CreateKeyDialog: Story = {
 		return <ApiKeysSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
-		await userEvent.click(await within(canvasElement).findByRole("button", { name: "New key" }));
+		await userEvent.click(await within(canvasElement).findByRole("button", { name: "Add Key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
 		await expect(await dialog.findByLabelText("Name")).toBeVisible();
 		await expect(await dialog.findByRole("tab", { name: "Read-only" })).toHaveAttribute("aria-selected", "true");
@@ -175,7 +175,7 @@ export const AccessPresets: Story = {
 		return <ApiKeysSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
-		await userEvent.click(await within(canvasElement).findByRole("button", { name: "New key" }));
+		await userEvent.click(await within(canvasElement).findByRole("button", { name: "Add Key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
 		await userEvent.click(await dialog.findByRole("tab", { name: "Read and write" }));
 		await expect(await dialog.findByRole("tab", { name: "Read and write" })).toHaveAttribute("aria-selected", "true");
@@ -189,7 +189,7 @@ export const RestrictedToBrands: Story = {
 		return <ApiKeysSettingsPage />;
 	},
 	play: async ({ canvasElement }) => {
-		await userEvent.click(await within(canvasElement).findByRole("button", { name: "New key" }));
+		await userEvent.click(await within(canvasElement).findByRole("button", { name: "Add Key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
 		await expect(dialog.queryByRole("checkbox", { name: "Acme Labs" })).toBeNull();
 		await userEvent.click(await dialog.findByRole("tab", { name: "Specific brands" }));
@@ -204,7 +204,7 @@ export const KeyJustCreated: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await userEvent.click(await canvas.findByRole("button", { name: "New key" }));
+		await userEvent.click(await canvas.findByRole("button", { name: "Add Key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
 		await userEvent.type(await dialog.findByLabelText("Name"), "Nightly export");
 		await userEvent.click(await dialog.findByRole("button", { name: "Create key" }));
