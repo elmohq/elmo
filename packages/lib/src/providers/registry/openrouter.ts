@@ -79,7 +79,7 @@ export const openrouter: Provider = {
 	access: "api",
 	docsAnchor: "direct-model-apis",
 
-	/** Never — OpenRouter exposes no query strings, so runs only ever carry the sentinel. */
+	// Declared false while the provider writes the sentinel without reading the payload.
 	exposesWebQueries: () => false,
 	isConfigured: configuredWhen("OPENROUTER_API_KEY"),
 

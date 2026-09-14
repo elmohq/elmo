@@ -31,7 +31,6 @@ describe("auditTarget", () => {
 		expect(kinds("t", expects(), runs(AUDIT_MIN_RUNS, { genuineWebQueries: 0 }))).toEqual(["missing-web-queries"]);
 	});
 
-	// The sentinel is what a broken extractor leaves, and is not a genuine query.
 	it("counts the unavailable sentinel as no queries at all", () => {
 		const sentinelOnly = runs(AUDIT_MIN_RUNS, { genuineWebQueries: 0 });
 		expect(kinds("t", expects(), sentinelOnly)).toContain("missing-web-queries");
@@ -57,7 +56,6 @@ describe("auditTarget", () => {
 		expect(kinds("t", offline, [run({ citations: 5, genuineWebQueries: 0 })])).toEqual(["unexpected-citations"]);
 	});
 
-	// Too rare to expect in any one window, so asserting it would be noise.
 	it("makes no claim about an intermittent target", () => {
 		expect(kinds("t", expects({ webQueries: "intermittent" }), runs(20, { genuineWebQueries: 0 }))).toEqual([]);
 		expect(kinds("t", expects({ webQueries: "intermittent" }), runs(20))).toEqual([]);
@@ -136,7 +134,6 @@ describe("findQueryFields", () => {
 		expect(findQueryFields(payload).flatMap((f) => f.values)).toEqual(["a", "b"]);
 	});
 
-	// Follow-ups an engine suggests, not searches it ran.
 	it("ignores suggested follow-ups, which are not searches", () => {
 		expect(findQueryFields({ related_queries: ["what about X", "and Y"] })).toEqual([]);
 	});
@@ -147,7 +144,6 @@ describe("findQueryFields", () => {
 });
 
 describe("auditPayload", () => {
-	// The reason payloads are kept: invisible from our own output alone.
 	it("flags a payload carrying searches the run never reported", () => {
 		const violations = auditPayload("t", { search_queries: ["a search"] }, 0);
 

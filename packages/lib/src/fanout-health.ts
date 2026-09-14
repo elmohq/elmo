@@ -15,18 +15,14 @@ import { formatScrapeTarget } from "@workspace/config/scrape-targets";
  */
 export const FANOUT_HEALTH_MIN_RUNS = 50;
 
-/** Recent-run counts for one (provider, model) pair over the health window. */
 export interface FanoutRunCounts {
 	provider: string;
 	model: string;
-	/** Runs with web search on. */
 	runs: number;
-	/** Of those, runs that reported at least one real query (not the sentinel). */
 	runsWithQueries: number;
 }
 
 export interface SilentTarget {
-	/** The configured target, formatted as it appears in SCRAPE_TARGETS. */
 	target: string;
 	provider: string;
 	model: string;

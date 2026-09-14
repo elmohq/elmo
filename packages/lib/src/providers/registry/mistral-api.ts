@@ -89,7 +89,6 @@ export const mistralApi: Provider = {
 	access: "api",
 	docsAnchor: "direct-model-apis",
 
-	/** Always — tool.execution entries carry the query. */
 	exposesWebQueries: () => true,
 	isConfigured: configuredWhen("MISTRAL_API_KEY"),
 

@@ -155,7 +155,6 @@ export const cloro: Provider = {
 	access: "scraped",
 	docsAnchor: "cloro",
 
-	/** Always — the scraped answer carries the search queries. */
 	exposesWebQueries: () => true,
 	isConfigured: configuredWhen("CLORO_API_KEY"),
 

@@ -100,7 +100,6 @@ export const olostep: Provider = {
 	access: "scraped",
 	docsAnchor: "olostep",
 
-	/** Always — the scraped payload carries the search queries. */
 	exposesWebQueries: () => true,
 	isConfigured: configuredWhen("OLOSTEP_API_KEY"),
 

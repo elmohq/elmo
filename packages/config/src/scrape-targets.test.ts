@@ -157,8 +157,6 @@ describe("STATUS_TARGET_EXPECTATIONS", () => {
 		expect(Object.keys(STATUS_TARGET_EXPECTATIONS).sort()).toEqual([...STATUS_TARGETS].sort());
 	});
 
-	// Search is opt-in, so an offline target reporting queries is searching
-	// against its own configuration.
 	it("expects nothing from targets configured without web search", () => {
 		for (const target of STATUS_TARGETS) {
 			const [config] = parseScrapeTargets(target);

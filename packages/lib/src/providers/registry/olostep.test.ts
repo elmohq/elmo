@@ -14,7 +14,6 @@ vi.mock("olostep", () => ({
 
 import { olostep } from "./olostep";
 
-/** A run needs both calls: the batch, then the separate payload fetch. */
 function stubRun(payload: unknown, { asString = true }: { asString?: boolean } = {}) {
 	sdk.batchesCreate.mockResolvedValue({
 		waitTillDone: vi.fn().mockResolvedValue(undefined),
@@ -133,7 +132,6 @@ describe("olostep web queries", () => {
 		expect(result.webQueries).toEqual(["real query"]);
 	});
 
-	// The sentinel claims a search ran without exposing strings, so citations license it.
 	it("marks queries unavailable when only citations prove a search ran", async () => {
 		stubRun({ answer: "answer", sources: [{ url: "https://example.com/a" }] });
 
@@ -223,7 +221,6 @@ describe("olostep validateTarget", () => {
 		);
 	});
 
-	// These surfaces always search.
 	it("rejects a target configured without web search", () => {
 		expect(olostep.validateTarget?.({ model: "chatgpt", provider: "olostep", webSearch: false })).toContain(
 			"requires :online",

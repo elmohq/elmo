@@ -8,7 +8,6 @@ const counts = (over: Partial<FanoutRunCounts> & Pick<FanoutRunCounts, "provider
 	...over,
 });
 
-/** Stands in for the registry: everything reports queries but DataForSEO. */
 const exposes = (config: { provider: string }) => config.provider !== "dataforseo";
 
 describe("findSilentFanoutTargets", () => {
@@ -54,7 +53,6 @@ describe("findSilentFanoutTargets", () => {
 		expect(silent).toEqual([]);
 	});
 
-	// Too small a sample is not evidence of anything.
 	it("stays quiet below the minimum sample", () => {
 		const silent = findSilentFanoutTargets(
 			parseScrapeTargets("chatgpt:openai-api:gpt-5-mini:online"),

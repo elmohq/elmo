@@ -11,13 +11,10 @@ import type { TargetExpectation } from "@workspace/config/scrape-targets";
 /** Below this, silence isn't yet evidence of anything. */
 export const AUDIT_MIN_RUNS = 8;
 
-/** One recorded provider test, as pushed by the scheduled workflow. */
 export interface ProviderRunRecord {
 	status: "pass" | "fail";
 	citations: number;
-	/** Reported queries with the `unavailable` sentinel excluded. */
 	genuineWebQueries: number;
-	/** Whether the stored payload contained every query the run reported. */
 	queriesInRawOutput: boolean;
 }
 
@@ -45,7 +42,6 @@ export interface AuditInput {
 	records: ProviderRunRecord[];
 }
 
-/** Reported queries must be in the stored payload, or the row can't be re-read. */
 function auditReplayability(input: AuditInput, passing: ProviderRunRecord[]): Violation[] {
 	const broken = passing.filter((r) => !r.queriesInRawOutput).length;
 	if (broken === 0) return [];
@@ -100,7 +96,6 @@ function auditField(
 	return [];
 }
 
-/** How a target's recorded history diverges from what it should return. */
 export function auditTarget(input: AuditInput): Violation[] {
 	if (input.records.length === 0) {
 		return [
@@ -141,7 +136,6 @@ export function auditTarget(input: AuditInput): Violation[] {
 /** Follow-ups an engine suggests below its answer, not searches it ran. */
 const NOT_SEARCHES = new Set(["related_queries", "relatedqueries", "suggested_queries", "suggestedqueries"]);
 
-/** A query-shaped field found in a payload, as a JSON path plus what it held. */
 export interface QueryField {
 	path: string;
 	values: string[];

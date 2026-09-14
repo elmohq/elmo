@@ -279,10 +279,7 @@ function reportOverduePrompts(overduePrompts: number): void {
 	});
 }
 
-/**
- * Recent web-search runs per (provider, model), and how many reported a real
- * query. The sentinel doesn't count — it's what a broken extractor leaves.
- */
+/** The sentinel doesn't count as a query — it's what a broken extractor leaves. */
 async function getFanoutRunCounts(): Promise<FanoutRunCounts[]> {
 	const result = await db.execute<{
 		provider: string;
@@ -313,9 +310,8 @@ async function getFanoutRunCounts(): Promise<FanoutRunCounts[]> {
 }
 
 /**
- * Alerts when a target that reports its searches by design has gone a whole
- * window without one — runs still succeed, only the queries go quiet.
- * Fingerprinted per target so one break is one issue, not hourly alerts.
+ * Runs still succeed when this breaks; only the queries go quiet. Fingerprinted
+ * per target so one break is one issue, not an alert every hour.
  */
 async function checkFanoutHealth(): Promise<void> {
 	const now = Date.now();

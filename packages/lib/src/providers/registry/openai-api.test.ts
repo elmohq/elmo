@@ -81,7 +81,6 @@ describe("openai-api citations", () => {
 });
 
 describe("openai-api stored payload", () => {
-	// Shaped like a real response: reasoning and web_search_call around the message.
 	const body = {
 		id: "resp_1",
 		object: "response",

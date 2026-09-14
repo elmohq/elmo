@@ -37,7 +37,6 @@ interface RedisEntry {
 	queriesInRawOutput?: boolean;
 }
 
-/** Keyed back to their target, since the dump encodes one as a filename. */
 function loadPayloads(dir: string): Map<string, unknown> {
 	const byFilename = new Map(STATUS_TARGETS.map((t) => [`${t.replace(/[/:]/g, "-")}.json`, t]));
 	const payloads = new Map<string, unknown>();

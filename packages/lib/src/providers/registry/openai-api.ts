@@ -48,12 +48,10 @@ function webSearchQueries(output: unknown): string[] {
 	return nonEmptyStrings([action.query, ...(action.queries ?? [])]);
 }
 
-/** Whether the SDK handed back a real Responses payload rather than nothing. */
 function isResponsesPayload(body: unknown): body is { output: unknown[] } {
 	return Array.isArray((body as { output?: unknown } | null | undefined)?.output);
 }
 
-/** The answer and its citations in the "output" shape the OpenAI extractors read. */
 function rebuildRawOutput(result: { text: string; sources: readonly { sourceType: string }[] }) {
 	const annotations = result.sources
 		.filter((source): source is typeof source & { url: string; title?: string } => source.sourceType === "url")
@@ -83,13 +81,8 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 
 	warnIfOutputCapped("openai-api", model, result.finishReason);
 
-	// Store the Responses payload itself, so everything reported here can be
-	// re-derived from the stored row later — its web_search_call items are the
-	// only record of what the model searched.
-	//
-	// Older SDK versions left `response.body` unset, which is what the rebuild
-	// below covers: an "output" shape carrying just the answer and its citation
-	// annotations, and no search calls at all.
+	// The payload's web_search_call items are the only record of what the model
+	// searched; the rebuilt fallback carries the answer and citations but none.
 	const body = result.response?.body;
 	const rawOutput = isResponsesPayload(body) ? body : rebuildRawOutput(result);
 
@@ -112,7 +105,6 @@ export const openaiApi: Provider = {
 	access: "api",
 	docsAnchor: "direct-model-apis",
 
-	/** Always — web_search_call items in the Responses payload. */
 	exposesWebQueries: () => true,
 	isConfigured: configuredWhen("OPENAI_API_KEY"),
 

@@ -153,7 +153,6 @@ export interface TargetExpectation {
 	 *   reading a payload (`test-provider.ts --dump`).
 	 */
 	webQueries: "yes" | "no" | "intermittent" | "unknown";
-	/** Whether answers are expected to cite sources. */
 	citations: "yes" | "no";
 	/** False when this row is a guess, so a failure points at the likelier culprit. */
 	verified: boolean;
@@ -166,7 +165,6 @@ const NO_SEARCH: TargetExpectation = { webQueries: "no", citations: "no", verifi
  * monitored without someone stating what it should return.
  */
 export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
-	// --- Scrapers driving consumer surfaces -----------------------------------
 	"chatgpt:olostep:online": { webQueries: "yes", citations: "yes", verified: true },
 	"google-ai-mode:olostep:online": { webQueries: "unknown", citations: "yes", verified: false },
 	"google-ai-overview:olostep:online": { webQueries: "unknown", citations: "yes", verified: false },
@@ -195,7 +193,6 @@ export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
 	"google-ai-mode:cloro:online": { webQueries: "unknown", citations: "yes", verified: false },
 	"google-ai-overview:cloro:online": { webQueries: "unknown", citations: "yes", verified: false },
 
-	// --- DataForSEO -----------------------------------------------------------
 	// From dataforseo-client's types: no SERP AI Mode model carries a query
 	// field, while the AI Optimization results carry `fan_out_queries`. The
 	// Gemini scraper is the exception with no equivalent.
@@ -209,7 +206,6 @@ export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
 	"chatgpt:dataforseo:gpt-5.5:online": { webQueries: "yes", citations: "yes", verified: true },
 	"gemini:dataforseo:gemini-2.5-flash:online": { webQueries: "yes", citations: "yes", verified: true },
 
-	// --- Direct model APIs ----------------------------------------------------
 	// Search is opt-in, so queries without `:online` would mean a target is
 	// searching, and being billed for it, against its own configuration.
 	"chatgpt:openai-api:gpt-5-mini": NO_SEARCH,
@@ -219,7 +215,6 @@ export const STATUS_TARGET_EXPECTATIONS: Record<string, TargetExpectation> = {
 	"mistral:mistral-api:mistral-medium-latest": NO_SEARCH,
 	"mistral:mistral-api:mistral-medium-latest:online": { webQueries: "yes", citations: "yes", verified: true },
 
-	// --- OpenRouter -----------------------------------------------------------
 	// `:online` routes to the model's own search where it has one. These fail
 	// today: the provider writes the sentinel without inspecting the payload.
 	"claude:openrouter:anthropic/claude-sonnet-5": NO_SEARCH,
