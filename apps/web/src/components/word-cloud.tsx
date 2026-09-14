@@ -5,6 +5,7 @@
  * placement — so it's SSR-stable.
  */
 import { cn } from "@workspace/ui/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export interface WordCloudTerm {
 	term: string;
@@ -34,11 +35,12 @@ export function WordCloud({
 	maxItems?: number;
 	className?: string;
 }) {
+	const { t, n } = useI18n();
 	// Sort here rather than relying on the caller: slicing the top terms and the
 	// center-weighted ordering below both assume descending counts.
 	const items = [...terms].sort((a, b) => b.count - a.count).slice(0, maxItems);
 	if (items.length === 0) {
-		return <div className="text-muted-foreground py-6 text-center text-sm">No terms for this period.</div>;
+		return <div className="text-muted-foreground py-6 text-center text-sm">{t("No terms for this period.")}</div>;
 	}
 
 	const counts = items.map((i) => i.count);
@@ -59,14 +61,14 @@ export function WordCloud({
 	return (
 		<div className={cn("flex flex-wrap items-center justify-center gap-x-3 gap-y-1 leading-tight", className)}>
 			{ordered.map((it) => {
-				const t = scale(it.count);
-				const color = PALETTE[Math.min(PALETTE.length - 1, Math.round((1 - t) * (PALETTE.length - 1)))];
+				const weight = scale(it.count);
+				const color = PALETTE[Math.min(PALETTE.length - 1, Math.round((1 - weight) * (PALETTE.length - 1)))];
 				return (
 					<span
 						key={it.term}
-						title={`${it.term} · ${it.count.toLocaleString()}`}
+						title={`${it.term} · ${n(it.count)}`}
 						className="font-semibold"
-						style={{ fontSize: Math.round(MIN_PX + t * (MAX_PX - MIN_PX)), color, opacity: 0.62 + t * 0.38 }}
+						style={{ fontSize: Math.round(MIN_PX + weight * (MAX_PX - MIN_PX)), color, opacity: 0.62 + weight * 0.38 }}
 					>
 						{it.term}
 					</span>

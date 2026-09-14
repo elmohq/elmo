@@ -14,6 +14,7 @@ import { Spinner } from "@workspace/ui/components/spinner";
 import { OpportunitiesReport } from "@/components/opportunities-report";
 import { PageHeader } from "@/components/page-header";
 import { useOpportunities } from "@/hooks/use-opportunities";
+import { useI18n } from "@/lib/i18n";
 import { pageHead } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/opportunities")({
@@ -25,19 +26,21 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/opportu
 function OpportunitiesPage() {
 	const { brandId } = Route.useRouteContext();
 	const { data, isLoading, isError } = useOpportunities(brandId);
+	const { t } = useI18n();
 
-	const infoContent = "Recommendations based on your visibility and citation metrics. Refreshed weekly.";
+	const infoContent = t("Recommendations based on your visibility and citation metrics. Refreshed weekly.");
 
 	let content: React.ReactNode;
 	if (isLoading) {
 		content = <LoadingState />;
 	} else if (isError) {
-		content = <EmptyCard>Couldn't generate recommendations right now. Reload the page to try again.</EmptyCard>;
+		content = <EmptyCard>{t("Couldn't generate recommendations right now. Reload the page to try again.")}</EmptyCard>;
 	} else if (!data || data.reason === "insufficient-data" || !data.report) {
 		content = (
 			<EmptyCard>
-				We need a bit more tracking data before we can recommend opportunities — check back once your prompts have run
-				for a few days.
+				{t(
+					"We need a bit more tracking data before we can recommend opportunities — check back once your prompts have run for a few days.",
+				)}
 			</EmptyCard>
 		);
 	} else {
@@ -46,8 +49,10 @@ function OpportunitiesPage() {
 
 	return (
 		<PageHeader
-			title="Opportunities"
-			subtitle="What to create, pitch, and seed to earn more AI citations — generated from your tracked answer data."
+			title={t("Opportunities")}
+			subtitle={t(
+				"What to create, pitch, and seed to earn more AI citations — generated from your tracked answer data.",
+			)}
 			infoContent={infoContent}
 		>
 			<div className="space-y-6">
@@ -59,12 +64,13 @@ function OpportunitiesPage() {
 }
 
 function LastEvaluatedAt({ date }: { date: string }) {
+	const { t, d } = useI18n();
 	return (
 		<p className="flex items-center gap-1.5 text-sm text-muted-foreground">
 			<IconClock className="size-4" aria-hidden />
-			Last evaluated{" "}
+			{t("Last evaluated")}{" "}
 			<time dateTime={date}>
-				{new Date(date).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}
+				{d(date, { month: "long", day: "numeric", year: "numeric" })}
 			</time>
 		</p>
 	);
@@ -79,11 +85,12 @@ function EmptyCard({ children }: { children: React.ReactNode }) {
 }
 
 function LoadingState() {
+	const { t } = useI18n();
 	return (
 		<div className="space-y-6">
 			<div className="flex items-center gap-2 text-sm text-muted-foreground">
 				<Spinner />
-				Analyzing your citation landscape and drafting your opportunities…
+				{t("Analyzing your citation landscape and drafting your opportunities…")}
 			</div>
 			<div className="space-y-2">
 				<Skeleton className="h-6 w-2/3" />

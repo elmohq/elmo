@@ -583,5 +583,104 @@ export const fr: Record<string, string> = {
 	"Or create new competitor:": "Ou créez un nouveau concurrent :",
 	"Competitor name": "Nom du concurrent",
 	Add: "Ajouter",
+	// ── Query fan-out ──────────────────────────────────────────────────────
+	"When an AI engine with web search capabilities responds to a prompt, it may choose to make a number of web searches before creating its answer. These underlying web searches, or web queries, are only available for some engines.":
+		"Lorsqu'un moteur IA doté de la recherche web répond à un prompt, il peut lancer plusieurs recherches web avant de rédiger sa réponse. Ces recherches sous-jacentes (requêtes web) ne sont disponibles que pour certains moteurs.",
+	"Couldn't load query fan-out right now. Reload the page to try again.":
+		"Impossible de charger le fan-out des requêtes pour le moment. Rechargez la page pour réessayer.",
+	"No runs with web search enabled for the selected filters. Fan-out appears once your prompts have been run by an engine with web search.":
+		"Aucune exécution avec recherche web pour les filtres sélectionnés. Le fan-out apparaît dès que vos prompts ont été exécutés par un moteur doté de la recherche web.",
+	"No web queries in this period — the engines you track didn't expose any searches for these prompts and filters.":
+		"Aucune requête web sur cette période — les moteurs suivis n'ont exposé aucune recherche pour ces prompts et ces filtres.",
+	"Prompt Fan-Out": "Fan-out par prompt",
+	"Top Queries": "Requêtes principales",
+	"Query Words": "Mots des requêtes",
+	"The web searches AI engines run when answering your prompts.":
+		"Les recherches web lancées par les moteurs IA pour répondre à vos prompts.",
+	"Prompt runs that produced at least one web search. Some engines do not expose web searches, so this number may be lower than expected.":
+		"Exécutions de prompts ayant généré au moins une recherche web. Certains moteurs n'exposent pas leurs recherches : ce chiffre peut donc être inférieur à la réalité.",
+	"Search-enabled runs without known queries. The engine may have chosen not to search at all, searched with just the prompt itself, or searched without revealing its queries.":
+		"Exécutions avec recherche web mais sans requête connue. Le moteur a pu ne pas chercher du tout, chercher avec le prompt tel quel, ou chercher sans révéler ses requêtes.",
+	"Each prompt's fan-out: how many searches it generates (Queries) and how many per run that searched (Avg/Prompt Run). Expand a prompt to see the searches, with your prompt's keywords bolded.":
+		"Le fan-out de chaque prompt : le nombre de recherches générées (Requêtes) et leur nombre moyen par exécution ayant cherché (Moy./exécution). Dépliez un prompt pour voir les recherches, avec les mots-clés de votre prompt en gras.",
+	"The web searches each prompt triggers.": "Les recherches web déclenchées par chaque prompt.",
+	Prompt: "Prompt",
+	"(untitled prompt)": "(prompt sans titre)",
+	"No prompts match your search.": "Aucun prompt ne correspond à votre recherche.",
+	"The searches with the widest reach — sort by how many distinct prompts triggered them, or how many prompt runs issued them. Expand a query to see the prompts behind it.":
+		"Les recherches à la plus large portée — triez selon le nombre de prompts distincts qui les déclenchent ou le nombre d'exécutions qui les lancent. Dépliez une requête pour voir les prompts associés.",
+	"The searches that recur across your prompts.": "Les recherches qui reviennent d'un prompt à l'autre.",
+	Query: "Requête",
+	"Runs of this prompt that issued the search": "Exécutions de ce prompt ayant lancé cette recherche",
+	"No queries for this period.": "Aucune requête sur cette période.",
+	"{count} variation": "{count} variante",
+	"{count} variations": "{count} variantes",
+	"Search Prompt Runs": "Exécutions avec recherche",
+	"How many times your prompts were run against engines configured with web search. An engine may still choose not to execute a search on a given run.":
+		"Nombre d'exécutions de vos prompts sur des moteurs configurés avec la recherche web. Un moteur peut toutefois choisir de ne pas chercher lors d'une exécution donnée.",
+	"Prompt Runs w/ Unknown Queries": "Exécutions sans requête connue",
+	"Prompt Runs w/ Known Queries": "Exécutions avec requêtes connues",
+	"Average Fan-Out": "Fan-out moyen",
+	"Average queries per run that had at least one web query.":
+		"Nombre moyen de requêtes par exécution ayant lancé au moins une recherche web.",
+	Queries: "Requêtes",
+	"Avg/Prompt Run": "Moy./exécution",
+	"Prompt Runs": "Exécutions",
+	"{engines} ran with web search enabled but the queries are unknown — the engine may not have searched, searched with just the prompt itself, or searched without revealing its queries.":
+		"{engines} : recherche web activée, mais requêtes inconnues — le moteur n'a peut-être pas cherché, a cherché avec le prompt tel quel, ou n'a pas révélé ses requêtes.",
+	"Times each engine ran this search": "Nombre de fois où chaque moteur a lancé cette recherche",
+	"Times engines ran this search": "Nombre de fois où les moteurs ont lancé cette recherche",
+	"No web queries for this selection.": "Aucune requête web pour cette sélection.",
+	"Top {shown} of {total} variations shown": "{shown} principales variantes affichées sur {total}",
+	"Word Changes": "Évolution des mots",
+	"How engines rewrite your prompt wording.": "Comment les moteurs reformulent les mots de vos prompts.",
+	"Hide stop words": "Masquer les mots vides",
+	Added: "Ajoutés",
+	Preserved: "Conservés",
+	Dropped: "Supprimés",
+	"(try showing stop words)": "(essayez d'afficher les mots vides)",
+	"Words engines add that weren't in your prompt — the intent they layer on (e.g. “best”, “2026”, “vs”).":
+		"Les mots ajoutés par les moteurs qui ne figuraient pas dans votre prompt — l'intention qu'ils y greffent (ex. « meilleur », « 2026 », « vs »).",
+	"Words from your prompt engines keep in their searches.":
+		"Les mots de votre prompt que les moteurs conservent dans leurs recherches.",
+	"Words from your prompt engines leave out of their searches.":
+		"Les mots de votre prompt que les moteurs retirent de leurs recherches.",
+	"No added words.": "Aucun mot ajouté.",
+	"No preserved words.": "Aucun mot conservé.",
+	"No dropped words.": "Aucun mot supprimé.",
+	"No terms for this period.": "Aucun terme sur cette période.",
+
+	// ── Opportunities ──────────────────────────────────────────────────────
+	"Recommendations based on your visibility and citation metrics. Refreshed weekly.":
+		"Recommandations basées sur vos indicateurs de visibilité et de citations. Mises à jour chaque semaine.",
+	"Couldn't generate recommendations right now. Reload the page to try again.":
+		"Impossible de générer des recommandations pour le moment. Rechargez la page pour réessayer.",
+	"We need a bit more tracking data before we can recommend opportunities — check back once your prompts have run for a few days.":
+		"Il nous faut un peu plus de données de suivi pour recommander des opportunités — revenez quand vos prompts auront tourné quelques jours.",
+	"What to create, pitch, and seed to earn more AI citations — generated from your tracked answer data.":
+		"Ce qu'il faut créer, proposer et diffuser pour obtenir davantage de citations IA — à partir des réponses que vous suivez.",
+	"Last evaluated": "Dernière évaluation le",
+	"Analyzing your citation landscape and drafting your opportunities…":
+		"Analyse de vos citations et rédaction de vos opportunités…",
+	"No specific prompts linked.": "Aucun prompt associé.",
+	"You're not cited for these prompts yet.": "Vous n'êtes pas encore cité pour ces prompts.",
+	"No competitor pages cited for these prompts.": "Aucune page concurrente citée pour ces prompts.",
+	Summary: "Synthèse",
+	"Reality Check": "Points de vigilance",
+	"Generated by AI from your tracked citation data. Suggestions are a starting point — apply your own judgment before acting.":
+		"Généré par l'IA à partir de vos données de citations. Ces suggestions sont un point de départ — faites preuve de discernement avant d'agir.",
+	Creation: "Création",
+	"Net-new content to publish or earn — comparisons, guides, and 'best of' angles for topics you're absent on.":
+		"Nouveaux contenus à publier ou à obtenir — comparatifs, guides et sélections « meilleurs » sur les sujets où vous êtes absent.",
+	"Existing Content": "Contenus existants",
+	"Pages already getting cited that are slipping, or could win the mention with a refresh.":
+		"Pages déjà citées qui perdent du terrain, ou qui pourraient décrocher la mention avec une mise à jour.",
+	Outreach: "Netlinking & RP",
+	"Earn placements on the third-party review sites and editorial roundups assistants cite.":
+		"Obtenez une place sur les sites d'avis et les sélections éditoriales que citent les assistants.",
+	"Show up in the community conversations — Reddit, YouTube, forums — assistants pull from.":
+		"Soyez présent dans les discussions communautaires — Reddit, YouTube, forums — dont s'inspirent les assistants.",
+	"Your citations": "Vos citations",
+	"Competitor citations": "Citations des concurrents",
 	// @@END
 };
