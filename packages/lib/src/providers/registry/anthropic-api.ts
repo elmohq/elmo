@@ -17,7 +17,7 @@ import type {
 	StructuredResearchResult,
 } from "../types";
 import { structuredResearch } from "./ai-sdk";
-import { sanitizeForJson } from "./scrape-shared";
+import { nonEmptyStrings, sanitizeForJson, sleep } from "./scrape-shared";
 
 const DEFAULT_RESEARCH_MODEL = "claude-sonnet-5";
 
@@ -53,35 +53,41 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 
 	// Check for web search errors like max_uses_exceeded and retry once
 	for (const block of response.content) {
-		const b = block as any;
-		if (b.type === "web_search_tool_result" && b.content?.type === "web_search_tool_result_error") {
-			console.warn(`[anthropic-api] web search error: ${b.content.error_code}, retrying in 10s...`);
-			await new Promise((r) => setTimeout(r, 10_000));
-			response = await makeRequest();
-			break;
-		}
+		if (block.type !== "web_search_tool_result") continue;
+		const error = Array.isArray(block.content) ? undefined : block.content;
+		if (error?.type !== "web_search_tool_result_error") continue;
+		console.warn(`[anthropic-api] web search error: ${error.error_code}, retrying in 10s...`);
+		await sleep(10_000);
+		response = await makeRequest();
+		break;
 	}
 
 	warnIfOutputCapped("anthropic-api", model, response.stop_reason);
 
 	const textContent = extractTextFromAnthropic(response);
 
-	const webQueries = response.content
-		.filter((block) => block.type === "server_tool_use" && (block as any).name === "web_search")
-		.map((block) => (block as any).input?.query)
-		.filter(Boolean);
+	const webQueries = nonEmptyStrings(
+		response.content.flatMap((block) =>
+			// A tool's input is typed `unknown` because its shape is tool-specific.
+			block.type === "server_tool_use" && block.name === "web_search"
+				? [(block.input as { query?: unknown } | null)?.query]
+				: [],
+		),
+	);
 
 	const citations = extractCitationsFromAnthropic(response);
 
 	// Strip full page text from web search results to reduce storage.
 	// Only url/title are used for citation extraction.
-	const trimmedContent = response.content.map((block: any) => {
+	const trimmedContent = response.content.map((block) => {
 		if (block.type !== "web_search_tool_result" || !Array.isArray(block.content)) return block;
 		return {
 			...block,
-			content: block.content.map((r: any) =>
-				r.type === "web_search_result" ? { type: r.type, url: r.url, title: r.title } : r,
-			),
+			content: block.content.map((result) => ({
+				type: result.type,
+				url: result.url,
+				title: result.title,
+			})),
 		};
 	});
 
