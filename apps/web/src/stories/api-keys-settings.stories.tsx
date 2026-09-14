@@ -47,6 +47,17 @@ const KEYS: ApiKeysPageData["keys"] = [
 		lastUsedAt: "2026-01-19T10:00:00.000Z",
 		expiresAt: "2026-03-01T10:00:00.000Z",
 	},
+	{
+		id: "key-4",
+		name: "Spring campaign",
+		start: "elmo_c33a",
+		scopes: ["read", "write"],
+		brandIds: null,
+		enabled: true,
+		createdAt: "2026-02-01T10:00:00.000Z",
+		lastUsedAt: "2026-04-10T10:00:00.000Z",
+		expiresAt: "2026-05-01T10:00:00.000Z",
+	},
 ];
 
 function load(page: Partial<ApiKeysPageData>) {
@@ -92,14 +103,15 @@ export const WithKeys: Story = {
 		await expect(await canvas.findByRole("heading", { name: "API Keys" })).toBeVisible();
 		await expect(await canvas.findByRole("heading", { name: "Active" })).toBeVisible();
 		await expect(await canvas.findByRole("heading", { name: "Inactive" })).toBeVisible();
-		// The revoked key is listed apart from the two that still authenticate.
+		// The keys that no longer authenticate say why, apart from the two that do.
 		await expect(await canvas.findByText("Revoked")).toBeVisible();
+		await expect(await canvas.findByText("Expired May 1, 2026")).toBeVisible();
 		// A key that never expires says so rather than showing a dash.
 		await expect((await canvas.findAllByText("Never")).length).toBeGreaterThan(0);
 		await expect((await canvas.findAllByRole("button", { name: "Revoke" })).length).toBe(2);
 		// One pill per grant, so a read-write key is visibly more than a read one.
-		await expect((await canvas.findAllByText("read")).length).toBe(3);
-		await expect((await canvas.findAllByText("write")).length).toBe(1);
+		await expect((await canvas.findAllByText("read")).length).toBe(4);
+		await expect((await canvas.findAllByText("write")).length).toBe(2);
 		await expect(await canvas.findByRole("button", { name: "New key" })).toBeVisible();
 		await expect(canvas.queryByLabelText("Name")).toBeNull();
 	},

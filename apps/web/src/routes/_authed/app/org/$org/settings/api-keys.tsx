@@ -72,6 +72,12 @@ function isActive(key: ApiKeySummary): boolean {
 	return !(key.expiresAt && new Date(key.expiresAt).getTime() < Date.now());
 }
 
+/** Why it stopped authenticating: the act somebody took if there was one, the
+ * expiry that overtook it otherwise. */
+function inactiveReason(key: ApiKeySummary): string {
+	return key.enabled ? `Expired ${formatDate(key.expiresAt)}` : "Revoked";
+}
+
 function ApiKeysSettingsPage() {
 	const { keys, brands, expiryOptions, canManage, organization } = Route.useLoaderData();
 	const linkParams = orgLinkParams(useOrganization());
@@ -478,14 +484,14 @@ function KeyTable({
 			<Table className="min-w-[58rem] table-fixed [&_td]:px-4 [&_th]:px-4">
 				<TableHeader>
 					<TableRow className="hover:bg-transparent">
-						<TableHead className="w-[21%]">Name</TableHead>
-						<TableHead className="w-[9%]">Key</TableHead>
-						<TableHead className="w-[22%]">Access</TableHead>
-						<TableHead className="w-[11%]">Brands</TableHead>
-						<TableHead className="w-[9.5%]">Created</TableHead>
-						<TableHead className="w-[9.5%]">Last used</TableHead>
-						<TableHead className="w-[10%]">Expires</TableHead>
-						<TableHead className="w-[8%] text-right">
+						<TableHead className="w-[22%]">Name</TableHead>
+						<TableHead className="w-[10%]">Key</TableHead>
+						<TableHead className="w-[14%]">Access</TableHead>
+						<TableHead className="w-[12%]">Brands</TableHead>
+						<TableHead className="w-[10%]">Created</TableHead>
+						<TableHead className="w-[10%]">Last used</TableHead>
+						<TableHead className="w-[15%]">{inactive ? "Reason" : "Expires"}</TableHead>
+						<TableHead className="w-[7%] text-right">
 							<span className="sr-only">Actions</span>
 						</TableHead>
 					</TableRow>
@@ -493,15 +499,8 @@ function KeyTable({
 				<TableBody>
 					{keys.map((key) => (
 						<TableRow key={key.id}>
-							<TableCell className={cn("font-medium", !inactive && "text-foreground")}>
-								<div className="flex items-center gap-2">
-									<span className="truncate">{key.name ?? "Untitled key"}</span>
-									{inactive && (
-										<Badge variant="outline" className="font-normal">
-											Revoked
-										</Badge>
-									)}
-								</div>
+							<TableCell className={cn("truncate font-medium", !inactive && "text-foreground")}>
+								{key.name ?? "Untitled key"}
 							</TableCell>
 							<TableCell>
 								{key.start ? (
@@ -520,7 +519,13 @@ function KeyTable({
 							</TableCell>
 							<TableCell className="whitespace-nowrap">{formatDate(key.createdAt)}</TableCell>
 							<TableCell className="whitespace-nowrap">{formatDate(key.lastUsedAt, "Never")}</TableCell>
-							<TableCell className="whitespace-nowrap">{formatDate(key.expiresAt, "Never")}</TableCell>
+							<TableCell>
+								{inactive ? (
+									inactiveReason(key)
+								) : (
+									<span className="whitespace-nowrap">{formatDate(key.expiresAt, "Never")}</span>
+								)}
+							</TableCell>
 							<TableCell className="text-right">{onRevoke && <RevokeButton onClick={() => onRevoke(key)} />}</TableCell>
 						</TableRow>
 					))}
