@@ -39,6 +39,9 @@ test.describe("API keys", () => {
     await page.getByRole("tab", { name: "Specific brands", exact: true }).click();
     await page.locator("[data-slot=combobox-chip-input]").click();
     await page.getByRole("option", { name: "Test Organization", exact: true }).click();
+    // Picking does not close a multi-select list, and the open list hides the
+    // rest of the dialog from the accessibility tree.
+    await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Create", exact: true }).click();
 
     const issued = page.locator("[data-slot=card]").filter({ hasText: "Key Created" });
