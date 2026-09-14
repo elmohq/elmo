@@ -8,62 +8,16 @@
  * tested via the auth helpers, not through the Deployment interface.
  */
 import type { Deployment, FeaturesConfig } from "@workspace/config/types";
+import { FEATURES_BY_MODE } from "@workspace/deployment";
 
 // ============================================================================
-// Feature flag presets (match the real deployment implementations)
+// Feature flag presets
 // ============================================================================
 
-export const LOCAL_FEATURES: FeaturesConfig = {
-	readOnly: false,
-	showOptimizeButton: false,
-	canCreateBrands: true,
-	canCreateOrganizations: false,
-	canEditOrganizations: true,
-	selfServeSignup: false,
-	billing: false,
-	reportGeneration: true,
-	teamInvites: false,
-	platformPicksEditable: true,
-};
-
-export const DEMO_FEATURES: FeaturesConfig = {
-	readOnly: true,
-	showOptimizeButton: false,
-	canCreateBrands: false,
-	canCreateOrganizations: false,
-	canEditOrganizations: false,
-	selfServeSignup: false,
-	billing: false,
-	reportGeneration: true,
-	teamInvites: false,
-	platformPicksEditable: false,
-};
-
-export const WHITELABEL_FEATURES: FeaturesConfig = {
-	readOnly: false,
-	showOptimizeButton: true,
-	canCreateBrands: false,
-	canCreateOrganizations: false,
-	canEditOrganizations: false,
-	selfServeSignup: false,
-	billing: false,
-	reportGeneration: true,
-	teamInvites: false,
-	platformPicksEditable: false,
-};
-
-export const CLOUD_FEATURES: FeaturesConfig = {
-	readOnly: false,
-	showOptimizeButton: false,
-	canCreateBrands: true,
-	canCreateOrganizations: true,
-	canEditOrganizations: true,
-	selfServeSignup: true,
-	billing: true,
-	reportGeneration: false,
-	teamInvites: true,
-	platformPicksEditable: true,
-};
+export const LOCAL_FEATURES: FeaturesConfig = FEATURES_BY_MODE.local;
+export const DEMO_FEATURES: FeaturesConfig = FEATURES_BY_MODE.demo;
+export const WHITELABEL_FEATURES: FeaturesConfig = FEATURES_BY_MODE.whitelabel;
+export const CLOUD_FEATURES: FeaturesConfig = FEATURES_BY_MODE.cloud;
 
 // ============================================================================
 // Mock Session (for tests that need a user object)
@@ -85,13 +39,6 @@ export function createMockSession(overrides: Partial<{ id: string; name: string;
 // ============================================================================
 
 export type DeploymentMode = "local" | "demo" | "whitelabel" | "cloud";
-
-const FEATURES_BY_MODE: Record<DeploymentMode, FeaturesConfig> = {
-	local: LOCAL_FEATURES,
-	demo: DEMO_FEATURES,
-	whitelabel: WHITELABEL_FEATURES,
-	cloud: CLOUD_FEATURES,
-};
 
 export interface MockDeploymentOptions {
 	featureOverrides?: Partial<FeaturesConfig>;

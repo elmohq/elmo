@@ -28,15 +28,15 @@ function CitationsPage() {
 	const filters = useListFilters();
 	const days = getDaysFromLookback(filters.lookback);
 
-	const { brand } = useBrand(brandId);
+	const { data: brand } = useBrand(brandId);
 	const trackedTargets = brand?.trackedTargets ?? [];
 
 	const modelParam = filters.model === ALL_MODELS_VALUE ? undefined : filters.model;
 	const {
-		citations: citationData,
+		data: citationData,
 		isLoading,
-		isError,
-		revalidate: revalidateCitations,
+		error: citationsError,
+		refetch: refetchCitations,
 	} = useCitations(brandId, {
 		days,
 		tags: filters.tags.length > 0 ? filters.tags : undefined,
@@ -87,7 +87,7 @@ function CitationsPage() {
 						</CardContent>
 					</Card>
 				}
-				isError={Boolean(isError) || !citationData}
+				isError={Boolean(citationsError) || !citationData}
 				errorState={
 					<Card>
 						<CardContent className="pt-6">
@@ -120,7 +120,7 @@ function CitationsPage() {
 						maxUrls={20}
 						days={days}
 						onCompetitorAdded={() => {
-							revalidateCitations();
+							refetchCitations();
 							queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 							queryClient.invalidateQueries({ queryKey: brandKeys.competitors(brandId) });
 							queryClient.invalidateQueries({ queryKey: brandKeys.detail(brandId) });

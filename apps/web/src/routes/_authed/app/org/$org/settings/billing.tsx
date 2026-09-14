@@ -14,7 +14,6 @@ import { Progress } from "@workspace/ui/components/progress";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { type ReactNode, useState } from "react";
 import { PlanComparison } from "@/components/plan-comparison";
-import { useOrganization } from "@/hooks/use-organizations";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { type BillingState, getBillingStateFn, setPremiumAddonQuantityFn } from "@/server/billing";
@@ -38,7 +37,6 @@ function formatDate(iso: string | null): string {
 
 function BillingSettingsPage() {
 	const state = Route.useLoaderData();
-	const { id: organizationId } = useOrganization();
 	const router = useRouter();
 	const isAdmin = isOrgAdminRole(state.organization.role);
 	const { entitlements } = state;
@@ -193,7 +191,7 @@ function BillingSettingsPage() {
 					description={`Beyond what your plan includes, at $${PREMIUM_ADDON_MONTHLY_USD} per pairing per month.`}
 				>
 					<PremiumAddonCard
-						organizationId={organizationId}
+						organizationId={state.organization.id}
 						quantity={state.premiumAddonQuantity}
 						isAdmin={isAdmin}
 						hasSubscription={state.subscription !== null}
@@ -266,6 +264,26 @@ function BillingAction({
 	);
 }
 
+/** Only a self-serve plan has a published price; custom agreements are billed
+ *  outside Stripe, so there is no total to compute. */
+function resolveSubscriptionCost(state: BillingState, annual: boolean) {
+	const { entitlements, subscription } = state;
+	if (!subscription || entitlements.planKey === null || entitlements.planKey === "custom") return null;
+
+	return summarizeSubscriptionCost({
+		plan: entitlements.planKey,
+		interval: annual ? "annual" : "monthly",
+		addonQuantity: state.premiumAddonQuantity,
+	});
+}
+
+function billingCadenceLine(state: BillingState, annual: boolean): string {
+	const { entitlements, subscription } = state;
+	if (subscription) return `${annual ? "Annual" : "Monthly"} billing · renews ${formatDate(subscription.periodEnd)}`;
+	if (entitlements.planKey === "custom") return "Custom agreement billed outside self-serve.";
+	return "No subscription on file.";
+}
+
 /**
  * The state of the subscription in one line, plus what it bills.
  *
@@ -292,17 +310,7 @@ function SubscriptionSummary({
 }) {
 	const { entitlements, subscription } = state;
 	const annual = subscription?.billingInterval === "year";
-
-	// Only a self-serve plan has a published price; custom agreements are billed
-	// outside Stripe, so there is no total to compute.
-	const cost =
-		subscription && entitlements.planKey !== null && entitlements.planKey !== "custom"
-			? summarizeSubscriptionCost({
-					plan: entitlements.planKey,
-					interval: annual ? "annual" : "monthly",
-					addonQuantity: state.premiumAddonQuantity,
-				})
-			: null;
+	const cost = resolveSubscriptionCost(state, annual);
 
 	return (
 		<div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2">
@@ -315,13 +323,7 @@ function SubscriptionSummary({
 						{humanizeStatus(subscription.status)}
 					</Badge>
 				)}
-				<span className="text-muted-foreground">
-					{subscription
-						? `${annual ? "Annual" : "Monthly"} billing · renews ${formatDate(subscription.periodEnd)}`
-						: entitlements.planKey === "custom"
-							? "Custom agreement billed outside self-serve."
-							: "No subscription on file."}
-				</span>
+				<span className="text-muted-foreground">{billingCadenceLine(state, annual)}</span>
 			</div>
 
 			<div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
@@ -330,7 +332,7 @@ function SubscriptionSummary({
 				{/* Without the grid there is no current-plan card to hang these off. */}
 				{isAdmin && !showPlanGrid && (
 					<BillingAction
-						hasSubscription={subscription !== null && subscription !== undefined}
+						hasSubscription={Boolean(subscription)}
 						isCustomPlan={entitlements.planKey === "custom"}
 						busy={busy}
 						onOpenPortal={onOpenPortal}

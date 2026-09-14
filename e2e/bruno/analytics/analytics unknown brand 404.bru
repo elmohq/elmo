@@ -1,0 +1,25 @@
+meta {
+  name: analytics for an unknown brand
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/does-not-exist/analytics?start={{windowStart}}&end={{windowEnd}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+params:query {
+  start: {{windowStart}}
+  end: {{windowEnd}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}

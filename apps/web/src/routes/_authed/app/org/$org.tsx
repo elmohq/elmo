@@ -11,10 +11,11 @@ export const Route = createFileRoute("/_authed/app/org/$org")({
 
 		const canonical = organization.slug;
 		if (canonical !== params.org) {
-			throw redirect({ href: canonicalOrgHref(location, canonical) });
+			throw redirect({ href: canonicalOrgHref(location, canonical), replace: true });
 		}
 
 		return { organization };
 	},
+	loader: ({ context }): { organization: OrganizationSummary } => ({ organization: context.organization }),
 	component: () => <Outlet />,
 });

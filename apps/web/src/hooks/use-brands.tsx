@@ -4,7 +4,7 @@ import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { TrackedTarget } from "@/lib/model-filter";
 import { getBrand, getCompetitors } from "@/server/brands";
 
-export type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
+type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	earliestDataDate?: string | null;
 	/**
 	 * What this brand's results can be broken down by, resolved server-side so
@@ -45,17 +45,16 @@ export function useBrand(brandId?: string) {
 		refetchOnReconnect: true,
 	});
 
-	const revalidate = async () => {
+	const refetch = async () => {
 		await query.refetch();
 		queryClient.invalidateQueries({ queryKey: brandKeys.all });
 	};
 
 	return {
-		brandId: resolvedBrandId,
-		brand: query.data as BrandWithPromptsAndDataInfo | undefined,
+		data: query.data as BrandWithPromptsAndDataInfo | undefined,
 		isLoading: query.isLoading,
-		isError: query.error,
-		revalidate,
+		error: query.error,
+		refetch,
 	};
 }
 
@@ -75,9 +74,9 @@ export function useCompetitors(brandId?: string) {
 	});
 
 	return {
-		competitors: query.data || [],
+		data: query.data ?? [],
 		isLoading: query.isLoading,
-		isError: query.error,
-		revalidate: query.refetch,
+		error: query.error,
+		refetch: query.refetch,
 	};
 }

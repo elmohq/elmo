@@ -1,4 +1,3 @@
-export type { Entitlements } from "@workspace/config/entitlements";
 export {
 	assertAllowed,
 	assertCadenceAllowed,
@@ -26,6 +25,7 @@ export {
 	type WriteDecision,
 	type WriteDenialCode,
 	WriteDeniedError,
+	withQuotaLock,
 } from "./guards";
 export {
 	getBrandOrganizationId,

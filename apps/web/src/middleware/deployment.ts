@@ -12,8 +12,8 @@
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import openApiSpec from "@workspace/api-spec";
-import { evaluateApiKeyAuth, evaluateDeploymentPolicy, evaluateReadOnly, getAdminApiKeys } from "@/lib/auth/policies";
-import { getDeployment } from "@/lib/config/server";
+import { getDeployment } from "@workspace/deployment";
+import { evaluateDeploymentPolicy, evaluateReadOnly } from "@/lib/auth/policies";
 
 /**
  * Global request middleware - provides deployment config context
@@ -24,22 +24,24 @@ export const deploymentMiddleware = createMiddleware().server(async ({ next }) =
 	const request = getRequest();
 	const url = new URL(request.url);
 
-	const result = evaluateDeploymentPolicy(
-		deployment.features,
-		{
-			pathname: url.pathname,
-			method: request.method,
-			authorizationHeader: request.headers.get("Authorization"),
-		},
-		{ adminApiKeys: getAdminApiKeys() },
-	);
+	const result = evaluateDeploymentPolicy(deployment.features, {
+		pathname: url.pathname,
+		method: request.method,
+		authorizationHeader: request.headers.get("Authorization"),
+	});
 
 	switch (result.action) {
 		case "block":
-			throw new Response(JSON.stringify({ error: result.error, message: result.message }), {
-				status: result.status,
-				headers: { "Content-Type": "application/json" },
-			});
+			throw new Response(
+				JSON.stringify({
+					error: result.error,
+					message: result.message,
+					// /api/v1 refusals carry the same machine code every route emits,
+					// so a client has one shape to parse wherever the refusal came from.
+					...(result.code ? { code: result.code } : {}),
+				}),
+				{ status: result.status, headers: { "Content-Type": "application/json" } },
+			);
 		case "redirect":
 			throw Response.redirect(new URL(result.url, request.url), 302);
 		case "serve-openapi":
@@ -73,26 +75,6 @@ export const readOnlyMiddleware = createMiddleware({ type: "function" }).server(
 		if (result.action === "block" && result.error === "Demo Mode") {
 			throw new Error(result.message);
 		}
-	}
-
-	return next();
-});
-
-/**
- * API key authentication middleware for public API routes (/api/v1/*).
- * Validates Bearer token against ADMIN_API_KEYS environment variable.
- */
-export const apiKeyMiddleware = createMiddleware().server(async ({ next }) => {
-	const request = getRequest();
-	const authHeader = request.headers.get("Authorization");
-
-	const result = evaluateApiKeyAuth(authHeader, getAdminApiKeys());
-
-	if (result !== "allow") {
-		throw new Response(JSON.stringify({ error: result.error, message: result.message }), {
-			status: 401,
-			headers: { "Content-Type": "application/json" },
-		});
 	}
 
 	return next();

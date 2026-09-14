@@ -22,7 +22,7 @@ import pngToIco from "png-to-ico";
  *                                 elmo-icon-maskable-512.png
  *
  * Mirrors apps/web/scripts/generate-brand-icons.tsx — SVG built by embedding the
- * Titan One WOFF2 as base64, PNGs rasterized via Satori + resvg, ICO packaged by
+ * Titan One WOFF2 as base64, PNGs rasterized via Takumi, ICO packaged by
  * png-to-ico.
  *
  * Usage:
@@ -40,10 +40,7 @@ const ICONS_DIR = resolve(PUBLIC_DIR, "icons");
 // SVG icons — hand-built with Titan One embedded as base64
 // ---------------------------------------------------------------------------
 
-function loadFontBase64(): string {
-	const fontPath = require.resolve("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2");
-	return readFileSync(fontPath).toString("base64");
-}
+const TITAN_ONE = readFileSync(require.resolve("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2"));
 
 function fontFaceRule(base64: string): string {
 	return `@font-face { font-family: 'Titan One'; src: url(data:font/woff2;base64,${base64}) format('woff2'); }`;
@@ -65,25 +62,13 @@ function buildMaskableSvg(fontBase64: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// PNG icons — rendered via Satori + resvg (JSX → image)
+// PNG icons — rendered via Takumi (JSX → image)
 // ---------------------------------------------------------------------------
 
-function loadFont(path: string): ArrayBuffer {
-	const buf = readFileSync(require.resolve(path));
-	return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-}
-
-const fonts = [
-	{
-		name: "Titan One",
-		data: loadFont("@fontsource/titan-one/files/titan-one-latin-400-normal.woff"),
-		style: "normal" as const,
-		weight: 400 as const,
-	},
-];
+const fonts = [{ name: "Titan One", data: TITAN_ONE, style: "normal" as const, weight: 400 as const }];
 
 async function renderPng(element: React.ReactElement, size: number): Promise<Buffer> {
-	return Buffer.from(await renderOgPng(element, { width: size, height: size, fonts }));
+	return renderOgPng(element, { width: size, height: size, fonts });
 }
 
 function StandardIcon({ bg, size }: { bg?: string; size: number }) {
@@ -129,7 +114,7 @@ function MaskableIcon({ size }: { size: number }) {
 
 mkdirSync(ICONS_DIR, { recursive: true });
 
-const fontBase64 = loadFontBase64();
+const fontBase64 = TITAN_ONE.toString("base64");
 
 const svgIcons = [
 	{ name: "elmo-icon.svg", build: buildStandardSvg },

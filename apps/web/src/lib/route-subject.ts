@@ -6,28 +6,26 @@ export const ORG_ROUTE_ID = "/_authed/app/org/$org" satisfies keyof FileRoutesBy
 export const BRAND_ROUTE_ID = "/_authed/app/org/$org/brand/$brand" satisfies keyof FileRoutesById;
 export const QUERY_FANOUT_ROUTE_ID = "/_authed/app/org/$org/brand/$brand/query-fan-out" satisfies keyof FileRoutesById;
 
-type ContextOf<Id extends keyof FileRoutesById> = FileRoutesById[Id]["types"]["allContext"];
 type LoaderDataOf<Id extends keyof FileRoutesById> = FileRoutesById[Id]["types"]["loaderData"];
 
 interface SubjectMatch {
 	routeId: string;
-	context?: unknown;
 	loaderData?: unknown;
 }
 
 export interface RouteSubjects {
-	organizationName?: string;
-	brandName?: string;
+	organization?: LoaderDataOf<typeof ORG_ROUTE_ID>["organization"];
+	brand?: LoaderDataOf<typeof BRAND_ROUTE_ID>["brand"];
 }
 
 export function routeSubjects(matches: SubjectMatch[]): RouteSubjects {
 	const subjects: RouteSubjects = {};
 	for (const match of matches) {
 		if (match.routeId === ORG_ROUTE_ID) {
-			subjects.organizationName = (match.context as ContextOf<typeof ORG_ROUTE_ID> | undefined)?.organization?.name;
+			subjects.organization = (match.loaderData as LoaderDataOf<typeof ORG_ROUTE_ID> | undefined)?.organization;
 		}
 		if (match.routeId === BRAND_ROUTE_ID) {
-			subjects.brandName = (match.loaderData as LoaderDataOf<typeof BRAND_ROUTE_ID> | undefined)?.brand?.name;
+			subjects.brand = (match.loaderData as LoaderDataOf<typeof BRAND_ROUTE_ID> | undefined)?.brand;
 		}
 	}
 	return subjects;

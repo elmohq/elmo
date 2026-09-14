@@ -1,0 +1,19 @@
+meta {
+  name: the refused brand created no organization either
+  type: http
+  seq: 24
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/e2e-orphan-brand
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 404
+}

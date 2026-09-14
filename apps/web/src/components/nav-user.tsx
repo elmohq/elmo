@@ -7,6 +7,7 @@ import {
 	IconRefresh,
 	IconSelector,
 	IconSettings,
+	IconStatusChange,
 	IconUser,
 } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
@@ -22,6 +23,7 @@ import {
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
+import type { NavItem } from "@/components/nav-main";
 import { OrganizationRowIcon } from "@/components/organization-row-icon";
 import { useAuth } from "@/hooks/use-auth";
 import { useBrandId } from "@/hooks/use-brand-id";
@@ -32,7 +34,15 @@ import { organizationTree } from "@/lib/organizations/tree";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 import { resetPostHog } from "@/lib/posthog";
 
-export function NavUser({ showOrganizations = true }: { showOrganizations?: boolean } = {}) {
+const INLINE_ORGANIZATION_LIMIT = 3;
+
+export function NavUser({
+	showOrganizations = true,
+	adminItems = [],
+}: {
+	showOrganizations?: boolean;
+	adminItems?: NavItem[];
+} = {}) {
 	const { user } = useAuth();
 	const { isMobile, setOpenMobile } = useSidebar();
 	const branding = useBranding();
@@ -113,6 +123,25 @@ export function NavUser({ showOrganizations = true }: { showOrganizations?: bool
 							</>
 						)}
 
+						{adminItems.length > 0 && (
+							<>
+								<DropdownMenuGroup>
+									<DropdownMenuLabel className="text-muted-foreground text-xs">Admin</DropdownMenuLabel>
+									{adminItems.map((item) => (
+										<DropdownMenuItem
+											key={item.title}
+											render={<Link {...item.link} onClick={close} />}
+											className="cursor-pointer"
+										>
+											{item.icon && <item.icon />}
+											{item.title}
+										</DropdownMenuItem>
+									))}
+								</DropdownMenuGroup>
+								<DropdownMenuSeparator />
+							</>
+						)}
+
 						{parentDashboard && (
 							<>
 								<DropdownMenuGroup>
@@ -152,8 +181,20 @@ export function NavUser({ showOrganizations = true }: { showOrganizations?: bool
 }
 
 function OrganizationSwitcher({ onNavigate }: { onNavigate: () => void }) {
-	const { organizations, isLoading, isError, isFetching, refetch } = useOrganizations();
+	const { data: organizations, isLoading, isFetching, error, refetch } = useOrganizations();
 	const currentBrandId = useBrandId();
+
+	if (organizations.length > INLINE_ORGANIZATION_LIMIT) {
+		return (
+			<>
+				<DropdownMenuItem render={<Link to="/app" onClick={onNavigate} />} className="cursor-pointer">
+					<IconStatusChange />
+					Switch Brand
+				</DropdownMenuItem>
+				<DropdownMenuSeparator />
+			</>
+		);
+	}
 
 	return (
 		<>
@@ -171,11 +212,11 @@ function OrganizationSwitcher({ onNavigate }: { onNavigate: () => void }) {
 					<span className="text-muted-foreground">Loading organizations…</span>
 				</DropdownMenuItem>
 			)}
-			{isError && (
+			{error && (
 				<DropdownMenuItem
 					className="cursor-pointer"
-					onSelect={(event) => {
-						event.preventDefault();
+					closeOnClick={false}
+					onClick={() => {
 						refetch();
 					}}
 				>

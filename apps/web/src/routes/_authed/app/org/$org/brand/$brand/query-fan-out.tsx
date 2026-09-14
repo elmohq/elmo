@@ -47,14 +47,14 @@ function QueryFanoutPage() {
 			resetScroll: false,
 		});
 
-	const { brand } = useBrand(brandId);
+	const { data: brand } = useBrand(brandId);
 	const trackedTargets = brand?.trackedTargets ?? [];
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 
-	const { promptsSummary } = usePromptsSummary(brandId, { lookback, model: modelParam });
+	const { data: promptsSummary } = usePromptsSummary(brandId, { lookback, model: modelParam });
 	const availableTags = promptsSummary?.availableTags ?? [];
 
-	const { data, isLoading, isError } = useQueryFanout(brandId, {
+	const { data, isLoading, error } = useQueryFanout(brandId, {
 		lookback,
 		tags,
 		model: modelParam,
@@ -71,7 +71,7 @@ function QueryFanoutPage() {
 	let content: React.ReactNode;
 	if (isLoading && !data) {
 		content = <LoadingState />;
-	} else if (isError && !data) {
+	} else if (error && !data) {
 		content = <EmptyState message="Couldn't load query fan-out right now. Reload the page to try again." />;
 	} else if (!data || data.totalRuns === 0) {
 		// totalRuns counts only web-search-enabled runs — a brand whose models all

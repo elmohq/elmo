@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "../../test";
 import { TEST_BRAND_ID, TEST_BRAND_NAME, TEST_ORG_SLUG } from "../../fixtures";
 
 test.describe("Organization settings", () => {

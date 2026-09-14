@@ -51,9 +51,9 @@ test("passes a require of a traced dependency, which does ship", () => {
   const { status } = check(
     {
       ".output/server/index.mjs":
-        'var resvg = __require("@resvg/resvg-js");\nvar pg = __require("pg/lib/native");\n',
+        'var takumi = __require("@takumi-rs/core");\nvar pg = __require("pg/lib/native");\n',
     },
-    { traced: ["@resvg/resvg-js", "pg"] },
+    { traced: ["@takumi-rs/core", "pg"] },
   );
   assert.equal(status, 0);
 });
@@ -81,9 +81,9 @@ test("passes a clean vercel preset build", () => {
   const { status } = check(
     {
       ".vercel/output/functions/__server.func/index.mjs":
-        'var fs = __require("node:fs");\nvar resvg = __require("@resvg/resvg-js");\n',
+        'var fs = __require("node:fs");\nvar takumi = __require("@takumi-rs/core");\n',
     },
-    { traced: ["@resvg/resvg-js"], tracedIn: ".vercel/output/functions/__server.func" },
+    { traced: ["@takumi-rs/core"], tracedIn: ".vercel/output/functions/__server.func" },
   );
   assert.equal(status, 0);
 });

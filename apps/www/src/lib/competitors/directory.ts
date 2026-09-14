@@ -65,7 +65,7 @@ const COMPARE_SLUGS = [
 	"rankshift",
 ] as const;
 
-export const comparePairCompetitors: Competitor[] = COMPARE_SLUGS.map((slug) =>
+const comparePairCompetitors: Competitor[] = COMPARE_SLUGS.map((slug) =>
 	competitors.find((c) => c.slug === slug),
 ).filter((c): c is Competitor => Boolean(c));
 
@@ -89,7 +89,7 @@ const pairBySlug = new Map<string, [Competitor, Competitor]>(
 	comparePairs.map((pair) => [comparePairSlug(pair[0], pair[1]), pair]),
 );
 
-export function getComparePair(slug: string): [Competitor, Competitor] | undefined {
+function getComparePair(slug: string): [Competitor, Competitor] | undefined {
 	return pairBySlug.get(slug);
 }
 
@@ -277,13 +277,13 @@ export function getAlternativesFaqs(c: Competitor, alts: Competitor[]): FaqItem[
 
 // --- Competitor-vs-competitor pairs ------------------------------------------
 
-export function getPairVerdict(a: Competitor, b: Competitor): string {
+function getPairVerdict(a: Competitor, b: Competitor): string {
 	const sameCat = a.category === b.category;
 	const clause = sameCat ? `${CATEGORY_NOUN[a.category]} tools` : "AI visibility tools";
 	return `${a.name} and ${b.name} are both ${clause} that measure how AI answer engines describe your brand. ${a.name} is pitched as "${a.tagline}". ${b.name} leans on "${b.tagline}". Both are closed and hosted, so neither lets you see how its scores are built. Elmo tracks the same engines as an open-source tool you run yourself, which makes it the third option worth weighing here.`;
 }
 
-export function getPairFaqs(a: Competitor, b: Competitor): FaqItem[] {
+function getPairFaqs(a: Competitor, b: Competitor): FaqItem[] {
 	const aGap = featureGap(a, b);
 	const bGap = featureGap(b, a);
 
@@ -338,11 +338,11 @@ export function compareSetSlug(tools: Competitor[]): string {
 
 const setBySlug = new Map<string, Competitor[]>(compareSets.map((set) => [compareSetSlug(set), set]));
 
-export function getCompareSet(slug: string): Competitor[] | undefined {
+function getCompareSet(slug: string): Competitor[] | undefined {
 	return setBySlug.get(slug);
 }
 
-export function getSetVerdict(tools: Competitor[]): string {
+function getSetVerdict(tools: Competitor[]): string {
 	const list = formatList(
 		tools.map((t) => t.name),
 		tools.length,
@@ -356,7 +356,7 @@ export function getSetVerdict(tools: Competitor[]): string {
 	return `${list} all measure how AI answer engines mention and cite your brand.${angle} Every one of them is closed-source and hosted, so you cannot audit how its scores are built. Elmo tracks the same engines as an open-source tool you run yourself, so it belongs in this comparison as the transparent, self-hostable option.`;
 }
 
-export function getSetFaqs(tools: Competitor[]): FaqItem[] {
+function getSetFaqs(tools: Competitor[]): FaqItem[] {
 	const names = tools.map((t) => t.name);
 	const list = formatList(names, names.length, false);
 	const free = tools.filter((t) => t.pricing?.hasFree).map((t) => t.name);

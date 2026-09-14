@@ -1,0 +1,20 @@
+meta {
+  name: a report cannot be deleted over the API
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/opportunities
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 405
+  res.body.code: eq method_not_allowed
+}

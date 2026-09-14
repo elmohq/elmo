@@ -6,9 +6,10 @@
  * ships the full report generator and the stock Elmo branding, and it lets the
  * operator create as many brands as they like.
  */
-import { expect, test } from "@playwright/test";
+import { ABORTED_SSR_STREAM, expect, failedResource, test } from "../../test";
 import { TEST_BRAND_ID, TEST_USER, brandUrl, organizationUrl } from "../../fixtures";
 import { userExists } from "../../session";
+import { openAccountMenu } from "../../interactions";
 
 const SECOND_USER = {
   email: "second-user@test.local",
@@ -31,9 +32,16 @@ test.describe("Local signup is closed after bootstrap", () => {
     expect(await userExists(SECOND_USER.email)).toBe(false);
   });
 
-  test("the register page sends you to sign in", async ({ page }) => {
+  test("the register page sends you to sign in", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(ABORTED_SSR_STREAM);
     await page.goto("/auth/register");
     await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
+  });
+
+  test("the bare app URL opens on sign-in once an account exists", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
+    await expect(page.getByLabel("Email")).toBeVisible({ timeout: 30_000 });
   });
 
   test("sign in is email and password, with no cloud provider options", async ({ page }) => {
@@ -59,12 +67,15 @@ test.describe("Local features", () => {
     await expect(page.getByRole("heading", { name: /reports/i }).first()).toBeVisible({ timeout: 30_000 });
   });
 
-  test("the sidebar offers reports on a brand, and the organization's pages on its own", async ({ page }) => {
+  test("reports are in the account menu on a brand, and the organization's pages are its own", async ({ page }) => {
     await page.goto(`${brandUrl()}`);
-    await expect(page.locator('a[href="/reports"][data-sidebar="menu-button"]')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator(`a[href="${brandUrl()}"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 30_000 });
     await expect(page.locator(`a[href="${organizationUrl()}/settings/brands"][data-sidebar="menu-button"]`)).toHaveCount(
       0,
     );
+
+    await openAccountMenu(page);
+    await expect(page.getByRole("menu").locator('a[href="/reports"]')).toBeVisible({ timeout: 30_000 });
 
     await page.goto(`${organizationUrl()}/settings`);
     await expect(
@@ -75,10 +86,18 @@ test.describe("Local features", () => {
     );
   });
 
-  test("the team is listed, but there is no one to invite", async ({ page }) => {
+  test("the team page is not offered and not reachable — a local install is one user", async ({
+    page,
+    consoleErrors,
+  }) => {
+    consoleErrors.allow(failedResource(404, `${organizationUrl()}/settings/members`));
+    await page.goto(`${organizationUrl()}/settings`);
+    await expect(
+      page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),
+    ).toHaveCount(0);
+
     await page.goto(`${organizationUrl()}/settings/members`);
-    await expect(page.getByRole("heading", { name: "Team" })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("button", { name: "Invite" })).toHaveCount(0);
+    await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
   });
 
   test("brands can be created from the UI", async ({ page }) => {
@@ -114,5 +133,14 @@ test.describe("Local features", () => {
     const manifest = (await response.json()) as { short_name: string; icons: { src: string }[] };
     expect(manifest.short_name).toBe("Elmo");
     expect(manifest.icons.some((icon) => icon.src.startsWith("/icons/elmo-icon"))).toBe(true);
+  });
+
+  test("an installed app launches at the app root, not the manifest's own directory", async ({ request }) => {
+    const response = await request.get("/api/manifest");
+    const manifest = (await response.json()) as { start_url: string; scope: string };
+
+    const manifestUrl = "https://elmo.test/api/manifest";
+    expect(new URL(manifest.start_url, manifestUrl).pathname).toBe("/");
+    expect(new URL(manifest.scope, manifestUrl).pathname).toBe("/");
   });
 });

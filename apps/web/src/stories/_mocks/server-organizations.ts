@@ -13,11 +13,24 @@ let _organizations: OrganizationSummary[] = [
 	},
 ];
 
+let _failuresRemaining = 0;
+
 export function setMockOrganizations(organizations: OrganizationSummary[]) {
 	_organizations = organizations;
+	_failuresRemaining = 0;
 }
 
-export const listOrganizationsFn = async () => ({ signedIn: true, organizations: _organizations });
+export function setMockOrganizationsFailures(count: number) {
+	_failuresRemaining = count;
+}
+
+export const listOrganizationsFn = async () => {
+	if (_failuresRemaining > 0) {
+		_failuresRemaining -= 1;
+		throw new Error("failed to list organizations");
+	}
+	return { signedIn: true, organizations: _organizations };
+};
 export const updateOrganizationFn = async () => ({ slug: _organizations[0].slug });
 export const syncOrganizationMembershipsFn = async () => false;
 export const createOrganizationFn = async () => ({ slug: _organizations[0].slug });

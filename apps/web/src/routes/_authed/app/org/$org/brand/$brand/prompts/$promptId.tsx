@@ -49,6 +49,16 @@ type PromptMetadata = {
 	nextRunAt?: string | null;
 };
 
+type PromptRunsData = ReturnType<typeof usePromptRunsOnly>["data"];
+type PromptRun = NonNullable<PromptRunsData>["runs"][number];
+
+const RUNS_PER_PAGE = 15;
+
+function runsPage(data: PromptRunsData) {
+	const total = Number(data?.total ?? 0);
+	return { runs: data?.runs ?? [], total, totalPages: Math.ceil(total / RUNS_PER_PAGE) || 1 };
+}
+
 const TABS: { key: PromptDetailTab; label: string }[] = [
 	{ key: "mentions", label: "Mentions" },
 	{ key: "web-queries", label: "Web Queries" },
@@ -205,28 +215,30 @@ function PromptHistoryPage() {
 	const [currentPage, setCurrentPage] = useState(1);
 	const { promptMeta, isMetaLoading } = usePromptMetadata(brandId, promptId);
 
-	const { brand } = useBrand(brandId);
+	const { data: brand } = useBrand(brandId);
 	const { domainFor } = useSiteIcons(brandId);
 
 	// Web Queries fetches its own data (useQueryFanout) — stats only back Mentions/Citations.
 	const shouldFetchStats = visitedTabs.has("mentions") || visitedTabs.has("citations");
 	const {
+		data: promptStats,
 		isLoading: isStatsLoading,
-		isError: isStatsError,
-		aggregations,
+		error: statsError,
 	} = usePromptStats(shouldFetchStats ? promptId : "", { days });
+	const aggregations = promptStats?.aggregations;
 
 	const shouldFetchRuns = visitedTabs.has("responses");
 	const {
-		runs,
-		pagination,
+		data: runsData,
 		isLoading: isRunsLoading,
-		isError: isRunsError,
+		error: runsError,
 	} = usePromptRunsOnly(shouldFetchRuns ? promptId : "", {
 		page: currentPage,
-		limit: 15,
+		limit: RUNS_PER_PAGE,
 		days,
 	});
+
+	const { runs, total: totalRunCount, totalPages } = runsPage(runsData);
 
 	const handleTabChange = useCallback(
 		(tab: PromptDetailTab) => {
@@ -244,7 +256,7 @@ function PromptHistoryPage() {
 	}, []);
 
 	const handlePageChange = (newPage: number) => {
-		if (newPage >= 1 && newPage <= (pagination?.totalPages || 1)) {
+		if (newPage >= 1 && newPage <= totalPages) {
 			setCurrentPage(newPage);
 		}
 	};
@@ -252,7 +264,7 @@ function PromptHistoryPage() {
 	const mentionStats = aggregations?.mentionStats || [];
 	const citationStats = aggregations?.citationStats;
 
-	if (isStatsError || isRunsError) {
+	if (statsError || runsError) {
 		return (
 			<div className="space-y-6">
 				<div className="flex justify-between items-start">
@@ -347,7 +359,7 @@ function PromptHistoryPage() {
 				{activeTab === "responses" && (
 					<ResponsesTab
 						runs={runs}
-						pagination={pagination}
+						totalRuns={totalRunCount}
 						isLoading={isRunsLoading}
 						currentPage={currentPage}
 						onPageChange={handlePageChange}
@@ -465,7 +477,7 @@ function WebQueriesTab({
 	// Same pipeline as the Query Fan-Out page, scoped to this prompt — echo and
 	// "unavailable" sentinels filtered, and (unlike the brand-wide page) every
 	// variation returned.
-	const { data, isLoading, isError } = useQueryFanout(brandId, { lookback, promptId });
+	const { data, isLoading, error } = useQueryFanout(brandId, { lookback, promptId });
 
 	// query → per-model counts, for the inline "2× ChatGPT" breakdown. byModel
 	// lists are uncapped in single-prompt mode, so every variation resolves.
@@ -483,7 +495,7 @@ function WebQueriesTab({
 	}, [data]);
 
 	if (isLoading && !data) return <TabLoadingSkeleton lines={6} />;
-	if (isError && !data) {
+	if (error && !data) {
 		return (
 			<div className="py-12 text-center text-muted-foreground text-sm">
 				Couldn't load web queries right now. Reload the page to try again.
@@ -572,22 +584,22 @@ function CitationsTab({
 
 function ResponsesTab({
 	runs,
-	pagination,
+	totalRuns,
 	isLoading,
 	currentPage,
 	onPageChange,
 	brandName,
 	domainFor,
 }: {
-	runs: any[];
-	pagination: any;
+	runs: PromptRun[];
+	totalRuns: number;
 	isLoading: boolean;
 	currentPage: number;
 	onPageChange: (page: number) => void;
 	brandName?: string;
 	domainFor: (name: string) => string | undefined;
 }) {
-	const formatDate = (dateString: string) => new Date(dateString).toLocaleString(undefined, { timeZoneName: "short" });
+	const formatDate = (value: Date | string) => new Date(value).toLocaleString(undefined, { timeZoneName: "short" });
 
 	const formatRawOutput = (rawOutput: any) =>
 		typeof rawOutput === "string" ? rawOutput : JSON.stringify(rawOutput, null, 2);
@@ -633,7 +645,7 @@ function ResponsesTab({
 		<div className="space-y-4">
 			<h3 className="text-base font-medium">Individual Prompt Runs</h3>
 
-			{runs.map((run: any) => (
+			{runs.map((run) => (
 				<Card key={run.id}>
 					<CardHeader className="pb-0 gap-y-0">
 						<div className="grid grid-cols-3 gap-x-4 text-sm">
@@ -708,8 +720,8 @@ function ResponsesTab({
 
 			<ListPagination
 				page={currentPage - 1}
-				pageSize={pagination?.limit ?? 15}
-				totalItems={pagination?.total ?? runs.length}
+				pageSize={RUNS_PER_PAGE}
+				totalItems={totalRuns}
 				onPageChange={(p) => onPageChange(p + 1)}
 			/>
 		</div>

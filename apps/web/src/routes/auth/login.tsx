@@ -9,6 +9,7 @@
 
 import { IconBrandGoogle, IconInfoCircle } from "@tabler/icons-react";
 import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
+import { MCP_AUTHORIZE_ENDPOINT } from "@workspace/config/constants";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
@@ -24,16 +25,31 @@ import FullPageCard from "@/components/full-page-card";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
 
+/**
+ * When the OAuth plugin sent the browser here mid-flow, handing the signed query
+ * back to the authorization endpoint resumes it — including for the paths that
+ * leave for an identity provider, where the request is gone on return.
+ */
+function postSignInDestination(search: LoginSearch): string {
+	if (!search.sig) return safeReturnTo(search.returnTo);
+	const query = new URLSearchParams(
+		Object.entries(search).flatMap(([key, value]) =>
+			value === undefined ? [] : [[key, String(value)] as [string, string]],
+		),
+	);
+	return `${MCP_AUTHORIZE_ENDPOINT}?${query}`;
+}
+
+/** A passthrough: the plugin signs the whole query, so a dropped parameter is a
+ * signature that no longer verifies. */
+interface LoginSearch {
+	returnTo?: string;
+	ref?: string;
+	sig?: string;
+}
+
 export const Route = createFileRoute("/auth/login")({
-	validateSearch: z.object({
-		returnTo: z.string().optional(),
-		/**
-		 * Attribution tag carried by links back to us (see
-		 * @workspace/config/referrals). Declared so the router keeps it in the URL
-		 * long enough for analytics to record the pageview it arrived on.
-		 */
-		ref: z.string().optional(),
-	}),
+	validateSearch: (search: Record<string, unknown>): LoginSearch => search,
 	head: ({ match }) => {
 		const appName = getAppName(match);
 		return {
@@ -47,22 +63,22 @@ export const Route = createFileRoute("/auth/login")({
 });
 
 function LoginPage() {
-	const { returnTo, ref: incomingRef } = Route.useSearch();
+	const search = Route.useSearch();
+	const { returnTo, ref: incomingRef } = search;
+	const destination = postSignInDestination(search);
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const mode = context.clientConfig?.mode;
 	const canRegister = context.clientConfig?.canRegister ?? false;
 	const hasUsers = context.clientConfig?.hasUsers ?? false;
 
 	if (mode === "whitelabel") {
-		return <SSOLogin returnTo={returnTo} />;
+		return <SSOLogin destination={destination} />;
 	}
 
 	if (mode === "demo") {
-		return <DemoLogin returnTo={returnTo} />;
+		return <DemoLogin destination={destination} />;
 	}
 
-	// A fresh self-hosted instance has no account to sign in to, so the form
-	// could only ever fail. Send them to the one thing that can work.
 	if (mode === "local" && !hasUsers) {
 		window.location.href = "/auth/register";
 		return null;
@@ -70,6 +86,7 @@ function LoginPage() {
 
 	return (
 		<EmailPasswordLogin
+			destination={destination}
 			returnTo={returnTo}
 			incomingRef={incomingRef}
 			isCloud={mode === "cloud"}
@@ -78,14 +95,14 @@ function LoginPage() {
 	);
 }
 
-export function SSOLogin({ returnTo }: { returnTo?: string }) {
+export function SSOLogin({ destination = "/app" }: { destination?: string }) {
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
 		let cancelled = false;
 
 		authClient.signIn
-			.sso({ providerId: "auth0-whitelabel", callbackURL: safeReturnTo(returnTo) })
+			.sso({ providerId: "auth0-whitelabel", callbackURL: destination })
 			.then((result) => {
 				if (cancelled) return;
 				if (result.error) {
@@ -101,7 +118,7 @@ export function SSOLogin({ returnTo }: { returnTo?: string }) {
 		return () => {
 			cancelled = true;
 		};
-	}, [returnTo]);
+	}, [destination]);
 
 	if (error) {
 		return (
@@ -121,9 +138,7 @@ export function SSOLogin({ returnTo }: { returnTo?: string }) {
 	return <FullPageCard title="Signing in..." subtitle="Redirecting to your identity provider" />;
 }
 
-/** Signs in the shared demo account, whose credentials are printed on the page. */
-export function DemoLogin({ returnTo }: { returnTo?: string }) {
-	const navigate = useNavigate();
+export function DemoLogin({ destination = "/app" }: { destination?: string }) {
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 
@@ -139,7 +154,7 @@ export function DemoLogin({ returnTo }: { returnTo?: string }) {
 				setLoading(false);
 				return;
 			}
-			navigate({ to: safeReturnTo(returnTo) });
+			window.location.href = destination;
 		} catch {
 			setError("Something went wrong. Please try again.");
 			setLoading(false);
@@ -164,13 +179,14 @@ export function DemoLogin({ returnTo }: { returnTo?: string }) {
 }
 
 export function EmailPasswordLogin({
+	destination = "/app",
 	returnTo,
 	incomingRef,
 	isCloud,
 	canRegister,
 }: {
+	destination?: string;
 	returnTo?: string;
-	/** The `ref` this page was reached with, kept on links that stay inside auth. */
 	incomingRef?: string;
 	isCloud?: boolean;
 	canRegister?: boolean;
@@ -194,6 +210,15 @@ export function EmailPasswordLogin({
 			});
 
 			if (result.error) {
+				// An expired authorization request; dropping it makes the next attempt
+				// an ordinary sign-in.
+				if ((result.error as { error?: string }).error === "invalid_signature") {
+					// Through the router, so `destination` is recomputed.
+					navigate({ to: "/auth/login", search: {}, replace: true });
+					setError("That connection request expired. Sign in again, then start the connection from your MCP client.");
+					setLoading(false);
+					return;
+				}
 				if (isCloud && result.error.status === 403) {
 					setError("Please verify your email first — we just sent you a new verification link.");
 				} else {
@@ -203,7 +228,7 @@ export function EmailPasswordLogin({
 				return;
 			}
 
-			navigate({ to: safeReturnTo(returnTo) });
+			window.location.href = destination;
 		} catch {
 			setError("Something went wrong. Please try again.");
 			setLoading(false);
@@ -223,7 +248,7 @@ export function EmailPasswordLogin({
 						type="button"
 						variant="outline"
 						className="w-full"
-						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: safeReturnTo(returnTo) })}
+						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: destination })}
 					>
 						<IconBrandGoogle className="size-4" />
 						Continue with Google

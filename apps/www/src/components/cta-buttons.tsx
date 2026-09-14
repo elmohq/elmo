@@ -38,7 +38,7 @@ function Anchor({
 	return null;
 }
 
-export function PrimaryCTA({
+function PrimaryCTA({
 	to,
 	href,
 	external,
@@ -58,7 +58,7 @@ export function PrimaryCTA({
 	);
 }
 
-export function GhostCTA({
+function GhostCTA({
 	to,
 	href,
 	external,

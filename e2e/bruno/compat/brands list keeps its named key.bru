@@ -1,0 +1,47 @@
+meta {
+  name: the brand list still answers under `brands`
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands?page=1&limit=20
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+docs {
+  The `compat` folder is what an integration written against the API as it
+  shipped — before organization keys existed — still sees. Every case here
+  authenticates with the admin key, because that is the only kind that existed,
+  and asserts the fields and status codes of that surface rather than anything
+  added since.
+
+  Kept apart from the per-resource folders on purpose: those track what the API
+  is and drift with it, while these track what it promised and may only change
+  when we decide to break something deliberately.
+}
+
+assert {
+  res.status: eq 200
+  res.body.brands: isArray
+  res.body.pagination.page: eq 1
+  res.body.pagination.limit: eq 20
+  res.body.pagination.total: isNumber
+  res.body.pagination.totalPages: isNumber
+}
+
+tests {
+  test("a brand carries every field the shipped schema required", function() {
+    const brand = res.getBody().brands[0];
+    for (const field of ["id", "name", "domains", "aliases", "enabled", "onboarded", "createdAt", "updatedAt"]) {
+      expect(brand, `Brand.${field}`).to.have.property(field);
+    }
+    expect(brand.domains).to.be.an("array");
+    expect(brand.aliases).to.be.an("array");
+  });
+}

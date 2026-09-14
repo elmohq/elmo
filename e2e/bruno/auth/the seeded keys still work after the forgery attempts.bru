@@ -1,0 +1,26 @@
+meta {
+  name: the forgery attempts changed nothing
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{baseUrl}}/api/v1/me
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.organizationId: eq default
+  res.body.brandIds: isNull
+}
+
+docs {
+  The update attempt above aimed at this very key. If it had landed, the key's
+  organization or brand narrowing would have moved.
+}

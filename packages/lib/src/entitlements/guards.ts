@@ -1,26 +1,14 @@
 /**
- * Write-time enforcement, shared by the web server functions and the /api/v1
- * handlers so the two surfaces cannot drift.
- *
- * Two kinds of limit share one vocabulary here. Plan limits answer to the org's
- * entitlements and skip their queries when those are unlimited; the flat caps
- * (MAX_PROMPTS, MAX_COMPETITORS) are product-wide and apply with no plan at all.
- * Both speak in `WriteDecision`, so a caller refuses a write the same way
- * whichever kind said no.
- *
- * Shape: pure decide* functions (inputs → verdict) that the tests exercise
- * exhaustively, wrapped by assert* helpers that load what the decision needs.
- *
- * Downgrade policy: these guards only block *adding* beyond a limit. Anything
- * already over a limit is left alone — the worker's run policy stops running the
- * overage, oldest-first wins.
+ * These block only *adding* beyond a limit; anything already over is left to the
+ * worker's run policy, oldest-first.
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
-import { MAX_SELF_SERVE_BRANDS, premiumPairings, premiumSlotsUsed } from "@workspace/config/plans";
+import { MAX_SELF_SERVE_BRANDS, premiumPairings, premiumPlanNames, premiumSlotsUsed } from "@workspace/config/plans";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { MAX_COMPETITORS, MAX_PROMPTS } from "../constants";
 import { db } from "../db/db";
+import type { DbConnection } from "../db/db-connection";
 import { brands, competitors, prompts } from "../db/schema";
 import { getOrgEntitlements, getOrgEntitlementsMap } from "./service";
 
@@ -36,12 +24,8 @@ export type WriteDenialCode =
 	| "prompt-cap"
 	| "competitor-cap";
 
-/**
- * Thrown by the assert* helpers. `status`/`error` are the HTTP response /api/v1
- * renders; server functions surface `message` directly. Having no plan at all
- * is a payment problem; every other denial is a request that conflicts with a
- * limit the caller could satisfy by asking for less.
- */
+/** No plan at all is a payment problem; every other denial is satisfiable by
+ * asking for less. */
 export class WriteDeniedError extends Error {
 	readonly code: WriteDenialCode;
 	readonly status: number;
@@ -76,9 +60,6 @@ export function decideBrandCreate(entitlements: Entitlements, currentBrandCount:
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
 	if (entitlements.maxBrands !== null && currentBrandCount >= entitlements.maxBrands) {
-		// Only point at an upgrade when one actually sells more brands; at the top
-		// of the ladder that would send a customer looking for a tier that does
-		// not exist.
 		const included = `Your plan includes ${entitlements.maxBrands} brand${entitlements.maxBrands === 1 ? "" : "s"}.`;
 		return deny(
 			"brand-limit",
@@ -90,11 +71,8 @@ export function decideBrandCreate(entitlements: Entitlements, currentBrandCount:
 	return ALLOWED;
 }
 
-/**
- * Blocks adding rows, not the brand's current size. Brands can already be over
- * the cap because the admin API ignores it, and the editor resubmits every row
- * on each save — blocking those saves would leave the brand uneditable.
- */
+/** Blocks adding, not the current size: the editor resubmits every row on save,
+ * and a brand can already be over the cap. */
 export function decidePromptCap(existing: number, adding: number): WriteDecision {
 	if (adding <= 0 || existing + adding <= MAX_PROMPTS) return ALLOWED;
 	return deny("prompt-cap", `A brand may have at most ${MAX_PROMPTS} prompts (this one has ${existing}).`);
@@ -108,7 +86,6 @@ export function decideCompetitorCap(resulting: number): WriteDecision {
 	);
 }
 
-/** Adding or re-enabling prompts consumes the org-wide tracked-prompt pool. */
 export function decidePromptAdd(
 	entitlements: Entitlements,
 	currentEnabledPrompts: number,
@@ -127,7 +104,6 @@ export function decidePromptAdd(
 	return ALLOWED;
 }
 
-/** Brand platform picks: every model must be on the plan menu, within the pick count. */
 export function decideEnabledModels(entitlements: Entitlements, requestedModels: string[]): WriteDecision {
 	const gate = requireActivePlan(entitlements);
 	if (gate) return gate;
@@ -163,7 +139,7 @@ export function decidePremiumAssign(
 	if (entitlements.premiumPool <= 0) {
 		return deny(
 			"premium-not-in-plan",
-			"Premium tracking — adding a grounded, cited answer to a prompt from a model's own web search — is available on the Pro and Business plans.",
+			`Premium tracking — adding a grounded, cited answer to a prompt from a model's own web search — is available on the ${premiumPlanNames()} plans.`,
 		);
 	}
 	if (currentAssignedEnabled + adding > entitlements.premiumPool) {
@@ -209,9 +185,9 @@ export function assertAllowed(decision: WriteDecision): void {
 // Usage counts (cloud-only paths; every assert below skips them when unlimited)
 // ---------------------------------------------------------------------------
 
-export async function countBrandsByOrg(orgIds: string[]): Promise<Map<string, number>> {
+export async function countBrandsByOrg(orgIds: string[], conn: DbConnection = db): Promise<Map<string, number>> {
 	if (orgIds.length === 0) return new Map();
-	const rows = await db
+	const rows = await conn
 		.select({ organizationId: brands.organizationId, value: count() })
 		.from(brands)
 		.where(inArray(brands.organizationId, orgIds))
@@ -219,12 +195,12 @@ export async function countBrandsByOrg(orgIds: string[]): Promise<Map<string, nu
 	return new Map(rows.map((row) => [row.organizationId, row.value]));
 }
 
-export async function countOrgBrands(organizationId: string): Promise<number> {
-	return (await countBrandsByOrg([organizationId])).get(organizationId) ?? 0;
+export async function countOrgBrands(organizationId: string, conn: DbConnection = db): Promise<number> {
+	return (await countBrandsByOrg([organizationId], conn)).get(organizationId) ?? 0;
 }
 
-export async function countOrgEnabledPrompts(organizationId: string): Promise<number> {
-	const [row] = await db
+export async function countOrgEnabledPrompts(organizationId: string, conn: DbConnection = db): Promise<number> {
+	const [row] = await conn
 		.select({ value: count() })
 		.from(prompts)
 		.innerJoin(brands, eq(prompts.brandId, brands.id))
@@ -232,13 +208,8 @@ export async function countOrgEnabledPrompts(organizationId: string): Promise<nu
 	return row?.value ?? 0;
 }
 
-/**
- * Premium pairings the org has spent: one per prompt/model pair on enabled prompts,
- * so a prompt tracked on two premium models counts twice. Picking the same model
- * ungrounded is a platform pick and never counts here.
- */
-export async function countOrgAssignedPremiumSlots(organizationId: string): Promise<number> {
-	const [row] = await db
+export async function countOrgAssignedPremiumSlots(organizationId: string, conn: DbConnection = db): Promise<number> {
+	const [row] = await conn
 		.select({ value: sql<string>`coalesce(sum(cardinality(${prompts.premiumModels})), 0)` })
 		.from(prompts)
 		.innerJoin(brands, eq(prompts.brandId, brands.id))
@@ -258,16 +229,44 @@ export async function countOrgAssignedPremiumSlots(organizationId: string): Prom
 async function withEntitlements(
 	organizationId: string,
 	decide: (entitlements: Entitlements) => WriteDecision[] | Promise<WriteDecision[]>,
+	conn?: DbConnection,
 ): Promise<void> {
-	const entitlements = await getOrgEntitlements(organizationId);
+	const entitlements = await getOrgEntitlements(organizationId, conn ? { conn } : undefined);
 	if (entitlements.unlimited) return;
 	for (const decision of await decide(entitlements)) assertAllowed(decision);
 }
 
-export async function assertCanCreateBrand(organizationId: string): Promise<void> {
-	await withEntitlements(organizationId, async (entitlements) => [
-		decideBrandCreate(entitlements, await countOrgBrands(organizationId)),
-	]);
+/** Advisory locks share one namespace per database; the first argument keeps
+ * quota locks off any other use of the same org id. */
+const QUOTA_LOCK_CLASS = 0x656c6d6f;
+
+/**
+ * Serialize one organization's quota-consuming writes, so two requests cannot
+ * both see the last free slot and both take it.
+ *
+ * `run` must do all of its work on the `tx` it is handed, checks included.
+ * Reaching for the pooled `db` holds this transaction open while waiting for a
+ * second connection, which deadlocks the pool under enough concurrent callers.
+ */
+export async function withQuotaLock<T>(
+	organizationId: string,
+	run: (tx: DbConnection, afterCommit: (task: () => Promise<unknown>) => void) => Promise<T>,
+): Promise<T> {
+	const deferred: Array<() => Promise<unknown>> = [];
+	const value = await db.transaction(async (tx) => {
+		await tx.execute(sql`select pg_advisory_xact_lock(${QUOTA_LOCK_CLASS}, hashtext(${organizationId}))`);
+		return run(tx, (task) => deferred.push(task));
+	});
+	for (const task of deferred) await task();
+	return value;
+}
+
+export async function assertCanCreateBrand(organizationId: string, conn?: DbConnection): Promise<void> {
+	await withEntitlements(
+		organizationId,
+		async (entitlements) => [decideBrandCreate(entitlements, await countOrgBrands(organizationId, conn ?? db))],
+		conn,
+	);
 }
 
 /**
@@ -290,17 +289,21 @@ export async function checkBrandCreate(orgIds: string[]): Promise<Map<string, Wr
 }
 
 /** Guard creating `adding` new enabled prompts (or re-enabling that many). */
-export async function assertCompetitorCap(brandId: string, adding: number): Promise<void> {
+export async function assertCompetitorCap(brandId: string, adding: number, conn: DbConnection = db): Promise<void> {
 	if (adding <= 0) return;
-	const [row] = await db.select({ value: count() }).from(competitors).where(eq(competitors.brandId, brandId));
+	const [row] = await conn.select({ value: count() }).from(competitors).where(eq(competitors.brandId, brandId));
 	assertAllowed(decideCompetitorCap((row?.value ?? 0) + adding));
 }
 
-export async function assertCanAddPrompts(organizationId: string, adding: number): Promise<void> {
+export async function assertCanAddPrompts(organizationId: string, adding: number, conn?: DbConnection): Promise<void> {
 	if (adding <= 0) return;
-	await withEntitlements(organizationId, async (entitlements) => [
-		decidePromptAdd(entitlements, await countOrgEnabledPrompts(organizationId), adding),
-	]);
+	await withEntitlements(
+		organizationId,
+		async (entitlements) => [
+			decidePromptAdd(entitlements, await countOrgEnabledPrompts(organizationId, conn ?? db), adding),
+		],
+		conn,
+	);
 }
 
 export async function assertEnabledModelsAllowed(organizationId: string, requestedModels: string[]): Promise<void> {
@@ -342,16 +345,28 @@ export function promptSaveDelta(plan: PromptSavePools): PromptSaveDelta {
 	};
 }
 
-export async function assertPromptSaveAllowed(organizationId: string, delta: PromptSaveDelta): Promise<void> {
+/**
+ * Both pools against one snapshot, so a save cannot pass one limit against a
+ * plan the other was denied under.
+ */
+export async function assertPromptSaveAllowed(
+	organizationId: string,
+	delta: PromptSaveDelta,
+	conn?: DbConnection,
+): Promise<void> {
 	if (delta.prompts <= 0 && delta.premiumPairings <= 0) return;
-	await withEntitlements(organizationId, async (entitlements) => {
-		const [enabledPrompts, assignedPremium] = await Promise.all([
-			delta.prompts > 0 ? countOrgEnabledPrompts(organizationId) : 0,
-			delta.premiumPairings > 0 ? countOrgAssignedPremiumSlots(organizationId) : 0,
-		]);
-		return [
-			decidePromptAdd(entitlements, enabledPrompts, delta.prompts),
-			decidePremiumAssign(entitlements, assignedPremium, delta.premiumPairings),
-		];
-	});
+	await withEntitlements(
+		organizationId,
+		async (entitlements) => {
+			const [enabledPrompts, assignedPremium] = await Promise.all([
+				delta.prompts > 0 ? countOrgEnabledPrompts(organizationId, conn ?? db) : 0,
+				delta.premiumPairings > 0 ? countOrgAssignedPremiumSlots(organizationId, conn ?? db) : 0,
+			]);
+			return [
+				decidePromptAdd(entitlements, enabledPrompts, delta.prompts),
+				decidePremiumAssign(entitlements, assignedPremium, delta.premiumPairings),
+			];
+		},
+		conn,
+	);
 }

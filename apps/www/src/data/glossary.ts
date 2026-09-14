@@ -58,7 +58,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		short: "Large language model optimization: another name for the work of getting cited in AI answers.",
 		body: [
 			"LLMO puts the large language model at the center of the name, but the practice is the same one described by AEO and GEO. The terminology in this space is still settling, and the labels overlap more than they differ.",
-			"Pick whichever term your team finds clearest and move on. What counts is whether the models that answer your buyers' questions know your brand and treat it as a trustworthy source.",
+			"Pick whichever term your team finds clearest. The work is the same either way: making sure the models that answer your buyers' questions know your brand and treat it as a trustworthy source.",
 		],
 		related: ["answer-engine-optimization", "generative-engine-optimization", "large-language-model"],
 	},
@@ -69,7 +69,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		short: "How present your brand is across AI answers: how often it is mentioned, cited, and described accurately.",
 		body: [
 			"AI visibility is the outcome AEO works toward. It is the share of relevant AI answers where your brand appears, the sources those answers cite, and whether the description of you is correct.",
-			"Because answers vary between runs and shift over time, visibility is something you sample rather than check once. Tracking a consistent set of prompts on a schedule gives a far more reliable read than a single manual look.",
+			"Because answers vary between runs and shift over time, you sample visibility rather than check it once. Tracking a consistent set of prompts on a schedule gives a far more reliable read than a single manual look.",
 		],
 		related: ["share-of-voice", "visibility-score", "brand-mention", "prompt-tracking"],
 		seeAlso: [{ label: "AI visibility software", href: "/ai-visibility-tools" }],
@@ -83,7 +83,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		short: "A system that responds to a question with a synthesized answer rather than a page of links.",
 		body: [
 			"An answer engine reads a question, gathers relevant sources, and writes a direct response. ChatGPT, Perplexity, Gemini, and Google's AI Overviews all work this way, even though they differ in how much they browse the live web.",
-			"The shift matters because the unit of visibility changes. There is often no ranking to hold. There is one answer, and your brand is either named in it or it is not.",
+			"That changes what visibility means. Instead of a ranking you can hold, there is a single answer that either names your brand or does not.",
 		],
 		related: ["ai-search-engine", "google-ai-overviews", "chatgpt-search"],
 	},
@@ -94,7 +94,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		short: "A search product that returns AI-written answers with citations instead of a ranked list.",
 		body: [
 			"AI search engines pair a language model with live retrieval, then cite the sources they used. Perplexity is the clearest example, but ChatGPT Search and Google's AI Mode work along the same lines.",
-			"For brands, the citation is the prize. Being named in the answer drives awareness, and being cited with a link drives the qualified clicks that remain.",
+			"Citations are what brands are after. Being named in an answer drives awareness, and being cited with a link drives the qualified clicks that remain.",
 		],
 		related: ["answer-engine", "ai-citation", "chatgpt-search"],
 		seeAlso: [{ label: "AI search engines compared", href: "/blog/best-ai-search-engine" }],
@@ -169,9 +169,9 @@ export const glossaryTerms: GlossaryTerm[] = [
 		short:
 			"The percentage of AI answers about your category in which your brand appears, measured against competitors.",
 		body: [
-			"Share of voice is the comparative metric, which is what makes it useful. A raw mention count tells you that you appeared. Share of voice tells you whether you are winning or losing the answer against specific rivals.",
+			"Share of voice is comparative, which is what makes it useful. A raw mention count only tells you that you appeared; share of voice tells you whether you are winning or losing the answer against specific rivals.",
 			"There is no single formula. The two common methods are mention-count share, your mentions divided by the total across you and your competitors, and presence share, the portion of tracked prompts where your brand appears at all.",
-			"If an engine names a competitor in eight of ten category questions and you in three, the problem is concrete and you can prioritize it. This is usually the most actionable number in AI search.",
+			"If an engine names a competitor in eight of ten category questions and you in three, the problem is concrete enough to prioritize, which is why it is usually the most actionable number in AI search.",
 		],
 		related: ["brand-mention", "ai-visibility", "visibility-score"],
 		seeAlso: [{ label: "AI share of voice", href: "/blog/ai-share-of-voice" }],
@@ -196,7 +196,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"Running a fixed set of prompts across AI engines on a schedule to monitor how your brand appears over time.",
 		body: [
 			"A prompt set is the defined list of questions you track, ideally the ones your buyers actually ask. Running it repeatedly turns noisy, one-off answers into a trend you can act on.",
-			"Good sets mix buyer-intent questions, competitor comparisons, and broad category prompts. The point is to measure the same things consistently so a real change stands out from normal variation.",
+			"Good sets mix buyer-intent questions, competitor comparisons, and broad category prompts. Measuring the same things consistently is what makes a real change stand out from normal variation.",
 		],
 		related: ["prompt-volume", "ai-visibility", "share-of-voice"],
 		seeAlso: [{ label: "AI prompt tracking", href: "/blog/ai-prompt-tracking" }],
@@ -207,7 +207,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		group: "What to measure",
 		short: "An aggregate metric rolling mentions, citations, and competitor presence into a single number.",
 		body: [
-			"A visibility score compresses several signals into one figure so you can track direction at a glance. The exact formula varies by tool, which is precisely why how it is calculated matters.",
+			"A visibility score compresses several signals into one figure so you can track direction at a glance. The exact formula varies by tool, which is why how it is calculated matters.",
 			"A score you cannot inspect is hard to trust or reproduce. Open methodology lets you see what went into the number, rather than taking a vendor's word for it.",
 		],
 		related: ["ai-visibility", "share-of-voice"],
@@ -219,7 +219,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		short: "How AI engines characterize your brand, not just whether they mention it.",
 		body: [
 			"Sentiment is the tone and framing of what the model says about you. An engine can mention your brand accurately, vaguely, or wrongly, and the difference shapes what a buyer takes away.",
-			"Inaccuracies creep in through stale information, hallucinations, and skew when the loudest sources are not the most accurate. The result is a view of your brand you did not author, which is worth watching and correcting.",
+			"Inaccuracies creep in through stale information, hallucinations, and skew when the loudest sources are not the most accurate. The result is a description of your brand you did not write, which is worth watching and correcting.",
 		],
 		related: ["brand-mention", "hallucination"],
 		seeAlso: [{ label: "AI brand sentiment", href: "/blog/ai-brand-sentiment" }],
@@ -258,7 +258,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		short: "A proposed plain-text file that points AI crawlers to your most important content in Markdown.",
 		body: [
 			"The llms.txt convention is a simple file at your domain root that lists key pages, often with Markdown versions that are easy for models to read. Adoption is inconsistent and its impact is debated.",
-			"The honest read is that the downside is low and the upside is uncertain. It is cheap to add, so most sites may as well, while keeping expectations modest.",
+			"The downside is low and the upside is uncertain. It is cheap to add, so most sites may as well, while keeping expectations modest.",
 		],
 		related: ["structured-data", "ai-crawler"],
 		seeAlso: [{ label: "Do llms.txt files matter?", href: "/blog/do-llms-txt-files-matter-for-aeo" }],
@@ -271,7 +271,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		short: "A method where a model fetches relevant documents at answer time and writes from them.",
 		body: [
 			"RAG is why a model can answer questions about events after its training cutoff, and why fresh, well-structured content can show up in answers quickly. The engine retrieves sources, then generates a response grounded in them.",
-			"It also explains the leverage AEO has. If you are among the documents retrieved for a query, you can influence the answer, even though you never see the index.",
+			"It is also why AEO works at all. If you are among the documents retrieved for a query, you can influence the answer, even though you never see the index.",
 		],
 		related: ["grounding", "ai-citation", "semantic-search"],
 	},
@@ -282,7 +282,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		short: "Tying a model's answer to specific sources so claims can be traced and checked.",
 		body: [
 			"A grounded answer is one backed by retrieved documents rather than the model's memory alone. Grounding is what makes citations possible and reduces, though does not eliminate, made-up details.",
-			"For brands, grounding is the opening. Be a clear, trustworthy source on your topic and you become something the model can ground its answer in.",
+			"Grounding is where brands have leverage. A clear, trustworthy page on your topic gives the model something to ground an answer in.",
 		],
 		related: ["retrieval-augmented-generation", "ai-citation", "hallucination"],
 	},
@@ -315,7 +315,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		short: "A search that ends without a click because the answer appears directly on the results surface.",
 		body: [
 			"Zero-click searches were already common with featured snippets. AI Overviews and answer engines push the share higher by resolving the question in place.",
-			"This is the strategic reason AEO matters. If buyers read an answer and never click, being named in that answer is the visibility that counts.",
+			"This is why AEO matters strategically. If buyers read an answer and never click, the mention in that answer is all the visibility you get.",
 		],
 		related: ["google-ai-overviews", "brand-mention"],
 	},
@@ -337,7 +337,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		short: "Search that matches on meaning rather than exact keywords, usually via embeddings.",
 		body: [
 			"Semantic search compares the meaning of a query and a document, so a page can match a question even when it shares few of the same words. It is the retrieval style behind most AI answer engines.",
-			"The practical takeaway is to write for the question, not the keyword. Cover the topic clearly and you become findable across the many ways people phrase the same intent.",
+			"So write for the question rather than the keyword. Covering a topic clearly makes you findable across the many ways people phrase the same intent.",
 		],
 		related: ["embedding", "retrieval-augmented-generation"],
 	},
@@ -348,7 +348,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		short: "A numeric representation of text that lets a model compare meaning and find related content.",
 		body: [
 			"An embedding turns a piece of text into a vector, a list of numbers, so that similar meanings sit close together. Engines use embeddings to retrieve the documents most relevant to a query.",
-			"You do not optimize embeddings directly. You optimize the content behind them: clear, focused, well-organized text that captures a topic cleanly.",
+			"You cannot optimize embeddings directly, only the content behind them: clear, focused, well-organized text on a single topic.",
 		],
 		related: ["semantic-search", "retrieval-augmented-generation"],
 	},

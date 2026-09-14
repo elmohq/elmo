@@ -5,9 +5,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { CRISP_WEBSITE_ID } from "@workspace/config/constants";
 import { getDeploymentModeFromEnv, getEnvValidationState } from "@workspace/config/env";
 import type { ClientConfig } from "@workspace/config/types";
+import { getDeployment } from "@workspace/deployment";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { countUsers } from "@workspace/lib/db/provisioning";
-import { getDeployment } from "@/lib/config/server";
 
 export type PublicClientConfig = Omit<ClientConfig, "branding"> & {
 	branding: Omit<ClientConfig["branding"], "onboardingRedirectUrl">;

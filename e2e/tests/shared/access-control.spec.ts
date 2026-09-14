@@ -8,16 +8,25 @@
  * point — a mode-specific auth or middleware change that quietly opens one of
  * these up fails here.
  */
-import { expect, test } from "@playwright/test";
+import { expect, failedResource, test } from "../../test";
 import { NIKE_BRAND_ID, TEST_API_KEY, TEST_BRAND_ID, brandUrl, organizationUrl } from "../../fixtures";
 
 test.describe("Unauthenticated access", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
-  test("the dashboard redirects to login", async ({ page }) => {
-    await page.goto(`${brandUrl()}`);
-    await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
-    expect(page.url()).toContain("returnTo");
+  // Asserted on the response rather than on where a browser settles: a
+  // whitelabel login page starts SSO the moment it hydrates, so the browser
+  // leaves for the identity provider — a placeholder domain that never resolves
+  // — and whether it is still on /auth/login when the assertion runs is a race.
+  // The redirect is what the guarantee rests on anyway: no anonymous request is
+  // served the dashboard.
+  test("the dashboard redirects to login", async ({ request }) => {
+    const response = await request.get(brandUrl(), { maxRedirects: 0, failOnStatusCode: false });
+    expect(response.status()).toBe(307);
+
+    const [pathname, query] = (response.headers().location ?? "").split("?");
+    expect(pathname).toBe("/auth/login");
+    expect(new URLSearchParams(query).get("returnTo")).toBe(brandUrl());
   });
 
   test("the public API rejects a request with no key", async ({ request }) => {
@@ -42,7 +51,8 @@ test.describe("Unauthenticated access", () => {
 });
 
 test.describe("Authenticated access", () => {
-  test("a brand in another org is not found", async ({ page }) => {
+  test("a brand in another org is not found", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(404, `${organizationUrl()}/brand/${NIKE_BRAND_ID}`));
     await page.goto(`${organizationUrl()}/brand/${NIKE_BRAND_ID}`);
     await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
   });

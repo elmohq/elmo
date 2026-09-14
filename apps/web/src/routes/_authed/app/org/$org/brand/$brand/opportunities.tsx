@@ -24,14 +24,14 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/opportu
 
 function OpportunitiesPage() {
 	const { brandId } = Route.useRouteContext();
-	const { data, isLoading, isError } = useOpportunities(brandId);
+	const { data, isLoading, error } = useOpportunities(brandId);
 
 	const infoContent = "Recommendations based on your visibility and citation metrics. Refreshed weekly.";
 
 	let content: React.ReactNode;
 	if (isLoading) {
 		content = <LoadingState />;
-	} else if (isError) {
+	} else if (error) {
 		content = <EmptyCard>Couldn't generate recommendations right now. Reload the page to try again.</EmptyCard>;
 	} else if (!data || data.reason === "insufficient-data" || !data.report) {
 		content = (

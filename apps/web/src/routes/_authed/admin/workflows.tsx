@@ -298,46 +298,107 @@ function RetryButton({ promptId, onSuccess }: { promptId?: string; jobId?: strin
 	);
 }
 
-function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySuccess?: () => void }) {
-	const isFailed = job.status === "failed";
-	const [isOpen, setIsOpen] = useState(false);
-	const writeError = useWriteErrorMessage();
+/** Logs load lazily, only once the dialog has been opened. */
+function useJobLogs(jobId: string, isOpen: boolean) {
 	const [logs, setLogs] = useState<string[]>([]);
-	const [logsLoading, setLogsLoading] = useState(false);
-	const [logsError, setLogsError] = useState<string | null>(null);
-	const [retryLoading, setRetryLoading] = useState(false);
-	const [retryError, setRetryError] = useState<string | null>(null);
-	const [retrySuccess, setRetrySuccess] = useState(false);
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
-		if (isOpen && job.id) {
-			setLogsLoading(true);
-			setLogsError(null);
-			getJobLogsFn({ data: { jobId: job.id } })
-				.then((data) => setLogs(data.logs || []))
-				.catch((err) => setLogsError(err.message))
-				.finally(() => setLogsLoading(false));
-		}
-	}, [isOpen, job.id]);
+		if (!isOpen || !jobId) return;
+		setLoading(true);
+		setError(null);
+		getJobLogsFn({ data: { jobId } })
+			.then((data) => setLogs(data.logs || []))
+			.catch((err) => setError(err.message))
+			.finally(() => setLoading(false));
+	}, [isOpen, jobId]);
+
+	return { logs, loading, error };
+}
+
+function JobLogsPanel({ logs, loading, error }: { logs: string[]; loading: boolean; error: string | null }) {
+	if (loading) {
+		return (
+			<div className="flex items-center gap-2 text-sm text-muted-foreground">
+				<Spinner />
+				Loading logs...
+			</div>
+		);
+	}
+	if (error) {
+		return (
+			<div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-800">
+				Error loading logs: {error}
+			</div>
+		);
+	}
+	if (logs.length === 0) return <p className="text-sm text-muted-foreground italic">No logs available</p>;
+
+	return (
+		<pre className="bg-muted rounded p-3 text-xs overflow-x-auto max-h-80 whitespace-pre-wrap">{logs.join("\n")}</pre>
+	);
+}
+
+/** Closes the dialog a beat after a successful retry, so the confirmation is
+ *  visible before the list refreshes underneath it. */
+function RetryJobFooter({
+	job,
+	onClose,
+	onRetrySuccess,
+}: {
+	job: RecentJob;
+	onClose: () => void;
+	onRetrySuccess?: () => void;
+}) {
+	const writeError = useWriteErrorMessage();
+	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [succeeded, setSucceeded] = useState(false);
 
 	const handleRetry = async () => {
-		setRetryLoading(true);
-		setRetryError(null);
-		setRetrySuccess(false);
+		setIsLoading(true);
+		setError(null);
+		setSucceeded(false);
 
 		try {
 			await retryJobFn({ data: { jobId: job.id, promptId: job.data?.promptId } });
-			setRetrySuccess(true);
+			setSucceeded(true);
 			setTimeout(() => {
-				setIsOpen(false);
+				onClose();
 				onRetrySuccess?.();
 			}, 1000);
 		} catch (err) {
-			setRetryError(writeError(err, "Could not retry this job"));
+			setError(writeError(err, "Could not retry this job"));
 		} finally {
-			setRetryLoading(false);
+			setIsLoading(false);
 		}
 	};
+
+	return (
+		<div className="flex items-center gap-3 pt-2 border-t">
+			{succeeded ? (
+				<div className="flex items-center gap-2 text-emerald-600">
+					<CheckCircle2 className="h-4 w-4" />
+					<span>Job queued for retry</span>
+				</div>
+			) : (
+				<>
+					<Button onClick={handleRetry} disabled={isLoading} className="cursor-pointer">
+						{isLoading ? <Spinner className="mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+						Retry This Job
+					</Button>
+					{error && <span className="text-sm text-red-600">{error}</span>}
+				</>
+			)}
+		</div>
+	);
+}
+
+function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySuccess?: () => void }) {
+	const isFailed = job.status === "failed";
+	const [isOpen, setIsOpen] = useState(false);
+	const { logs, loading: logsLoading, error: logsError } = useJobLogs(job.id, isOpen);
 
 	return (
 		<Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -385,45 +446,11 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 							<div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-800">{job.failedReason}</div>
 						</div>
 					)}
-					{/* Job Logs Section */}
 					<div>
 						<p className="text-muted-foreground mb-1">Execution Logs</p>
-						{logsLoading ? (
-							<div className="flex items-center gap-2 text-sm text-muted-foreground">
-								<Spinner />
-								Loading logs...
-							</div>
-						) : logsError ? (
-							<div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-800">
-								Error loading logs: {logsError}
-							</div>
-						) : logs.length > 0 ? (
-							<pre className="bg-muted rounded p-3 text-xs overflow-x-auto max-h-80 whitespace-pre-wrap">
-								{logs.join("\n")}
-							</pre>
-						) : (
-							<p className="text-sm text-muted-foreground italic">No logs available</p>
-						)}
+						<JobLogsPanel logs={logs} loading={logsLoading} error={logsError} />
 					</div>
-					{/* Retry Button for Failed Jobs */}
-					{isFailed && (
-						<div className="flex items-center gap-3 pt-2 border-t">
-							{retrySuccess ? (
-								<div className="flex items-center gap-2 text-emerald-600">
-									<CheckCircle2 className="h-4 w-4" />
-									<span>Job queued for retry</span>
-								</div>
-							) : (
-								<>
-									<Button onClick={handleRetry} disabled={retryLoading} className="cursor-pointer">
-										{retryLoading ? <Spinner className="mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-										Retry This Job
-									</Button>
-									{retryError && <span className="text-sm text-red-600">{retryError}</span>}
-								</>
-							)}
-						</div>
-					)}
+					{isFailed && <RetryJobFooter job={job} onClose={() => setIsOpen(false)} onRetrySuccess={onRetrySuccess} />}
 				</div>
 			</DialogContent>
 		</Dialog>

@@ -9,6 +9,7 @@
  * app.
  */
 
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import type { PlanKey } from "@workspace/config/plans";
 import { authClient } from "@workspace/lib/auth/client";
@@ -19,10 +20,8 @@ import { Spinner } from "@workspace/ui/components/spinner";
 import { Switch } from "@workspace/ui/components/switch";
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { AppShell } from "@/components/app-shell";
-import { AppSidebar } from "@/components/app-sidebar";
 import { PlanComparison } from "@/components/plan-comparison";
-import { SiteHeader } from "@/components/site-header";
+import { forgetPaywall } from "@/lib/billing/queries";
 import { pageHead } from "@/lib/route-head";
 import { getPaywallStateFn, type PaywallRequired, type PaywallState } from "@/server/billing";
 
@@ -32,7 +31,7 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute("/_authed/choose-plan")({
-	staticData: { crumb: "Choose a plan" },
+	staticData: { crumb: "Choose a plan", shell: "account" },
 	validateSearch: searchSchema,
 	loaderDeps: ({ search }) => ({ status: search.status, org: search.org }),
 	// The explicit return type breaks the type-inference cycle created by this
@@ -64,20 +63,13 @@ function ChoosePlanPage() {
 			<PlanPicker paywall={paywall} />
 		) : null;
 
-	// The app's own shell, minus everywhere it could take you: a customer who
-	// cannot get past this page still needs to see whose product it is, which
-	// account they are signed into, and how to sign out of it — most of all the
-	// non-admin who is told to go ask someone else.
-	return (
-		<AppShell sidebar={<AppSidebar scope="account" />} header={<SiteHeader />}>
-			<div className="flex flex-1 flex-col">{body}</div>
-		</AppShell>
-	);
+	return body;
 }
 
 /** Post-checkout: wait for the Stripe webhook to record the subscription. */
 function ActivatingOrganization({ organizationId }: { organizationId?: string }) {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 
 	useEffect(() => {
 		let cancelled = false;
@@ -85,6 +77,7 @@ function ActivatingOrganization({ organizationId }: { organizationId?: string })
 			for (let i = 0; i < 30 && !cancelled; i++) {
 				const state = await getPaywallStateFn({ data: { organizationId } });
 				if (!state.needsPlan) {
+					forgetPaywall(queryClient);
 					navigate({ to: "/app" });
 					return;
 				}
@@ -95,7 +88,7 @@ function ActivatingOrganization({ organizationId }: { organizationId?: string })
 		return () => {
 			cancelled = true;
 		};
-	}, [navigate, organizationId]);
+	}, [navigate, organizationId, queryClient]);
 
 	return (
 		<div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">

@@ -1,0 +1,39 @@
+meta {
+  name: an admin key naming an organization that does not exist is refused
+  type: http
+  seq: 23
+}
+
+post {
+  url: {{baseUrl}}/api/v1/brands
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+body:json {
+  {
+    "id": "e2e-orphan-brand",
+    "name": "Orphan Brand",
+    "domains": ["orphan.example.com"],
+    "organizationId": "no-such-organization"
+  }
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq not_found
+  res.body.message: contains no-such-organization
+}
+
+tests {
+  test("naming an organization is joining one, not creating one", function() {
+    // Omitting the field is what provisions an organization. A typo that
+    // silently created a tenant would be the same operation with none of the
+    // intent, so the named one has to already exist.
+    expect(res.getStatus()).to.equal(404);
+  });
+}

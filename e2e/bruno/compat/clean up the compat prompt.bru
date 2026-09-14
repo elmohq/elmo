@@ -1,0 +1,20 @@
+meta {
+  name: clean up the compat prompt
+  type: http
+  seq: 9
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/prompts/{{compatPromptId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{compatPromptId}}
+}

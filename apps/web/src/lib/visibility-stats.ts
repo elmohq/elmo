@@ -40,6 +40,7 @@ interface DayBucket {
 }
 
 const round3 = (x: number): number => Math.round(x * 1000) / 1000;
+
 const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 /** Collapse raw rows into one bucket per day (summing duplicate domains), sorted chronologically. */
@@ -136,10 +137,9 @@ export interface VoiceShare {
  * mention count and each competitor's are directly comparable.
  *
  * `share`/`brandShare` are exact ratios, deliberately NOT pre-rounded: the
- * leaderboard renders `round(share * 100)`, the donut `round(mentions / total *
- * 100)`, and the trend `round(brand / denom * 100)` — all the same single round
- * of the same ratio. Pre-rounding `share` here (e.g. to 3 decimals) would
- * double-round and let the table read a point off the headline/donut.
+ * leaderboard, the donut, and the trend each render `round(share * 100)` — the
+ * same single round of the same ratio. Pre-rounding here would double-round and
+ * let the table read a point off the headline.
  */
 export function computeShareOfVoice(
 	brand: { name: string; mentions: number },
@@ -166,6 +166,40 @@ export interface PerPromptDailyMentions {
 	competitorMentions: number;
 }
 
+interface MentionCounts {
+	brand: number;
+	competitor: number;
+}
+
+function groupMentionsByPromptAndDate(perPrompt: PerPromptDailyMentions[]): Map<string, Map<string, MentionCounts>> {
+	const byPrompt = new Map<string, Map<string, MentionCounts>>();
+	for (const r of perPrompt) {
+		const dateMap = byPrompt.get(r.promptId) ?? new Map<string, MentionCounts>();
+		byPrompt.set(r.promptId, dateMap);
+		dateMap.set(r.date, { brand: r.brandMentions, competitor: r.competitorMentions });
+	}
+	return byPrompt;
+}
+
+/** Folds one prompt's carried-forward counts into the shared daily totals. */
+function accumulateCarriedMentions(
+	dateMap: Map<string, MentionCounts>,
+	dateRange: string[],
+	daily: Map<string, MentionCounts>,
+): void {
+	const sorted = [...dateMap.entries()].sort(([a], [b]) => a.localeCompare(b));
+	let carried = sorted.length > 0 ? sorted[0][1] : null;
+
+	for (const date of dateRange) {
+		carried = dateMap.get(date) ?? carried;
+		if (!carried) continue;
+		const bucket = daily.get(date) ?? { brand: 0, competitor: 0 };
+		daily.set(date, bucket);
+		bucket.brand += carried.brand;
+		bucket.competitor += carried.competitor;
+	}
+}
+
 /**
  * Brand share of voice over time, smoothed with per-prompt Last-Value-Carried-
  * Forward (mirrors the visibility trend): each prompt's last-known brand and
@@ -178,39 +212,16 @@ export function shareOfVoiceTimeSeriesLVCF(
 	perPrompt: PerPromptDailyMentions[],
 	dateRange: string[],
 ): Array<{ date: string; share: number | null }> {
-	const byPrompt = new Map<string, Map<string, { brand: number; competitor: number }>>();
-	for (const r of perPrompt) {
-		let m = byPrompt.get(r.promptId);
-		if (!m) {
-			m = new Map();
-			byPrompt.set(r.promptId, m);
-		}
-		m.set(r.date, { brand: r.brandMentions, competitor: r.competitorMentions });
-	}
-
-	const daily = new Map<string, { brand: number; competitor: number }>();
-	for (const [, dateMap] of byPrompt) {
-		const sorted = [...dateMap.entries()].sort(([a], [b]) => a.localeCompare(b));
-		let carried = sorted.length > 0 ? sorted[0][1] : null;
-		for (const date of dateRange) {
-			const actual = dateMap.get(date);
-			if (actual) carried = actual;
-			if (!carried) continue;
-			let bucket = daily.get(date);
-			if (!bucket) {
-				bucket = { brand: 0, competitor: 0 };
-				daily.set(date, bucket);
-			}
-			bucket.brand += carried.brand;
-			bucket.competitor += carried.competitor;
-		}
+	const daily = new Map<string, MentionCounts>();
+	for (const dateMap of groupMentionsByPromptAndDate(perPrompt).values()) {
+		accumulateCarriedMentions(dateMap, dateRange, daily);
 	}
 
 	return dateRange.map((date) => {
 		const b = daily.get(date);
 		if (!b) return { date, share: null };
 		const denom = b.brand + b.competitor;
-		return { date, share: denom === 0 ? null : Math.round((b.brand / denom) * 100) };
+		return { date, share: denom === 0 ? null : b.brand / denom };
 	});
 }
 

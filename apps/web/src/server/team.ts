@@ -1,12 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
+import { getDeployment } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
 import { invitation, member, organization, user } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireOrganization } from "@/lib/auth/helpers";
 import { auth } from "@/lib/auth/server";
-import { getDeployment } from "@/lib/config/server";
 
 function requireTeamInvites(): void {
 	if (!getDeployment().features.teamInvites) {
@@ -24,8 +24,7 @@ export type TeamData = {
 export const listTeamFn = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string() }))
 	.handler(async ({ data }): Promise<TeamData> => {
-		// Not gated on `teamInvites`: every deployment has a member list worth
-		// looking at, and only changing it is cloud's.
+		requireTeamInvites();
 		const session = await requireAuthSession();
 		const org = await requireOrganization(session.user.id, data.organizationId);
 

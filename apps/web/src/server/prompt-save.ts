@@ -14,19 +14,19 @@ export interface StoredPrompt {
 	premiumModels: string[];
 }
 
-export interface PlannedState {
+interface PlannedState {
 	enabled: boolean;
 	premiumModels: string[];
 }
 
-export interface PlannedUpdate {
+interface PlannedUpdate {
 	id: string;
 	prompt: SubmittedPrompt;
 	before: StoredPrompt;
 	after: PlannedState;
 }
 
-export interface PlannedInsert {
+interface PlannedInsert {
 	prompt: SubmittedPrompt;
 	after: PlannedState;
 }

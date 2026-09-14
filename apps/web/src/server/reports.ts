@@ -1,12 +1,12 @@
 /** Server functions for report operations. */
 import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
-import { type NewReport, reports } from "@workspace/lib/db/schema";
+import { reports } from "@workspace/lib/db/schema";
 import { cleanOnboardingUrl } from "@workspace/lib/onboarding";
-import { desc, eq } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 import { z } from "zod";
 import { hasReportAccess, requireAuthSession } from "@/lib/auth/helpers";
-import { sendReportJob } from "@/lib/job-scheduler";
+import { createReport, findReport } from "@/server/reports-core";
 
 async function requireReportAccess() {
 	const session = await requireAuthSession();
@@ -35,9 +35,8 @@ export const getReportByIdFn = createServerFn({ method: "GET" })
 	.handler(async ({ data }) => {
 		await requireReportAccess();
 
-		const result = await db.select().from(reports).where(eq(reports.id, data.reportId)).limit(1);
-		if (result.length === 0) throw new Error("Report not found");
-		const report = result[0];
+		const report = await findReport(data.reportId);
+		if (!report) throw new Error("Report not found");
 		return { ...report, rawOutput: report.rawOutput as {} | null };
 	});
 
@@ -57,40 +56,16 @@ export const createReportFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		await requireReportAccess();
 
-		const parsedManualPrompts: string[] = [];
-		if (data.manualPrompts?.trim()) {
-			parsedManualPrompts.push(
-				...data.manualPrompts
-					.split("\n")
-					.map((line) => line.trim())
-					.filter((line) => line.length > 0),
-			);
-		}
+		const manualPrompts = (data.manualPrompts ?? "")
+			.split("\n")
+			.map((line) => line.trim())
+			.filter((line) => line.length > 0);
 
-		const newReport: NewReport = {
-			brandName: data.brandName.trim(),
-			// Full path is kept — it's what the analysis reads — but credentials
-			// are stripped before the URL is stored or handed to any fetcher.
-			brandWebsite: cleanOnboardingUrl(data.brandWebsite),
-			status: "pending",
-		};
-
-		const result = await db.insert(reports).values(newReport).returning();
-		const createdReport = result[0];
-		if (!createdReport) throw new Error("Failed to create report");
-
-		try {
-			const success = await sendReportJob(
-				createdReport.id,
-				createdReport.brandName,
-				createdReport.brandWebsite,
-				parsedManualPrompts.length > 0 ? parsedManualPrompts : undefined,
-			);
-			if (!success) throw new Error("Failed to send report job");
-		} catch (error) {
-			await db.update(reports).set({ status: "failed", updatedAt: new Date() }).where(eq(reports.id, createdReport.id));
-			throw new Error("Failed to queue report generation");
-		}
+		const createdReport = await createReport({
+			brandName: data.brandName,
+			brandWebsite: data.brandWebsite,
+			manualPrompts,
+		});
 
 		return { ...createdReport, rawOutput: createdReport.rawOutput as {} | null };
 	});

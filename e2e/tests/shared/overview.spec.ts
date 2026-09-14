@@ -1,5 +1,6 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "../../test";
 import { brandUrl } from "../../fixtures";
+import { openAccountMenu } from "../../interactions";
 
 const BRAND_URL = brandUrl();
 
@@ -51,15 +52,20 @@ test.describe("Overview Page", () => {
     await page.waitForURL(new RegExp(`${BRAND_URL}$`));
   });
 
-  test("an admin can reach the admin brand list", async ({ page }) => {
+  test("an admin can reach the admin brand list from the account menu", async ({ page }) => {
     await page.goto(`${BRAND_URL}`);
 
     await expect(page.locator(`a[href="${BRAND_URL}"][data-sidebar="menu-button"]`)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('a[href="/admin"][data-sidebar="menu-button"]')).toHaveCount(0);
 
-    const adminLink = page.locator('a[href="/admin"][data-sidebar="menu-button"]');
+    const adminLink = (await openAccountMenu(page)).locator('a[href="/admin"]');
     await expect(adminLink).toBeVisible({ timeout: 15_000 });
     await adminLink.click();
     await page.waitForURL(/\/admin$/);
+
+    await expect(page.locator('a[href="/admin/workflows"][data-sidebar="menu-button"]')).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test("settings pages are accessible", async ({ page }) => {

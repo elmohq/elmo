@@ -31,8 +31,12 @@ function saveable(competitors: CompetitorEntry[]) {
 
 function CompetitorsSettingsPage() {
 	const { brandId } = Route.useRouteContext();
-	const { brand, isLoading } = useBrand(brandId);
-	const { competitors: existingCompetitors, isLoading: competitorsLoading, revalidate } = useCompetitors(brandId);
+	const { data: brand, isLoading } = useBrand(brandId);
+	const {
+		data: existingCompetitors,
+		isLoading: competitorsLoading,
+		refetch: refetchCompetitors,
+	} = useCompetitors(brandId);
 	const queryClient = useQueryClient();
 	const writeError = useWriteErrorMessage();
 
@@ -92,7 +96,7 @@ function CompetitorsSettingsPage() {
 
 			queryClient.invalidateQueries({ queryKey: citationKeys.all });
 			queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
-			await revalidate();
+			await refetchCompetitors();
 		} catch (err) {
 			setError(writeError(err, "Failed to save competitors."));
 		} finally {

@@ -1,14 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	applyPerPromptKeyedLVCF,
 	citationDateWindow,
 	generateDateRange,
 	getDaysFromLookback,
 	getDefaultLookbackPeriod,
-	type LookbackPeriod,
 	resolveDefaultLookback,
 } from "@/lib/chart-utils";
 import { toRoundedPercentages } from "@/lib/domain-categories";
+import type { LookbackPeriod } from "@/lib/lookback";
 
 describe("getDaysFromLookback", () => {
 	it.each<[LookbackPeriod, number]>([
@@ -52,6 +52,17 @@ describe("resolveDefaultLookback", () => {
 });
 
 describe("getDefaultLookbackPeriod", () => {
+	// Freeze the clock: the 7-day cutoff is exact, so a real clock ticking between
+	// building the input date and reading `now` inside the function flips the boundary case.
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-06-09T12:00:00Z"));
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
 	it.each<[string, string | null | undefined]>([

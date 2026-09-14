@@ -1,0 +1,27 @@
+meta {
+  name: an out-of-scope brand is indistinguishable from one that does not exist
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/definitely-not-a-brand
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq Not Found
+}
+
+tests {
+  test("a brand held by another tenant reads exactly like one that never existed", function() {
+    const shape = JSON.stringify(res.getBody()).split("definitely-not-a-brand").join("<id>");
+    expect(shape).to.equal(bru.getVar("crossTenantShape"));
+  });
+}

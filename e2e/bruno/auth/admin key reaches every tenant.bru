@@ -1,0 +1,20 @@
+meta {
+  name: an admin key reaches both tenants
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{nikeBrandId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq nike
+}

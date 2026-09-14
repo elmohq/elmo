@@ -5,22 +5,16 @@
  * on prompt_runs and citations tables.
  */
 
+import { parseModelFilter } from "@workspace/config/model-filter";
+import { db } from "@workspace/lib/db/db";
 import { getAllProviders } from "@workspace/lib/providers";
 import { type SQL, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/node-postgres";
 import {
 	type FanoutBreakdownRow,
 	type FanoutModelTotalRow,
 	type FanoutPromptTotalRow,
 	UNAVAILABLE_SENTINEL,
 } from "@/lib/fanout-analysis";
-import { parseModelFilter } from "@/lib/model-filter";
-
-const db = drizzle(process.env.DATABASE_URL!);
-
-// ============================================================================
-// Types
-// ============================================================================
 
 export interface DashboardSummary {
 	total_prompts: number;
@@ -40,7 +34,9 @@ export interface VisibilityTimeSeriesPoint {
 export interface PromptSummary {
 	prompt_id: string;
 	total_runs: number;
+	/** Fraction of runs in which the brand was mentioned, 0..1. */
 	brand_mention_rate: number;
+	/** Fraction of runs in which any tracked competitor was mentioned, 0..1. */
 	competitor_mention_rate: number;
 	total_weighted_mentions: number;
 	last_run_date: string | null;
@@ -49,24 +45,6 @@ export interface PromptSummary {
 export interface PromptFirstEvaluatedAt {
 	prompt_id: string;
 	first_evaluated_at: string;
-}
-
-export interface PromptDailyStats {
-	date: string;
-	total_runs: number;
-	brand_mentioned_count: number;
-}
-
-export interface PromptCompetitorDailyStats {
-	date: string;
-	competitor_name: string;
-	mention_count: number;
-}
-
-export interface WebQueryMapping {
-	model: string;
-	web_query: string;
-	created_at_iso: string;
 }
 
 export interface CitationDomainStats {
@@ -109,35 +87,31 @@ export interface ProcessedBatchChartDataPoint {
 	competitor_counts: Record<string, number>;
 }
 
-export interface AdminRunsOverTime {
-	date: string;
-	count: number;
-}
-
-export interface AdminBrandRunStats {
-	brand_id: string;
-	runs_7d: number;
-	runs_30d: number;
-	last_run_at: string | null;
-}
-
-export interface AdminActiveBrandsOverTime {
-	date: string;
-	count: number;
-}
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
 async function queryPg<T>(query: SQL): Promise<T[]> {
 	const result = await db.execute(query);
 	return result.rows as T[];
 }
 
+/**
+ * Two spellings reach here. The dashboard asks for calendar days, so
+ * `YYYY-MM-DD` is resolved against `timezone` with `to` covering the whole of
+ * its last day; `/api/v1` asks with instants, which are used as given.
+ *
+ * The only place that distinction exists — every window below is half-open.
+ */
+export const isCalendarDay = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+function windowStart(from: string, timezone: string): SQL {
+	return isCalendarDay(from) ? sql`(${from}::date AT TIME ZONE ${timezone})` : sql`${from}::timestamptz`;
+}
+
+function windowEnd(to: string, timezone: string): SQL {
+	return isCalendarDay(to) ? sql`((${to}::date + interval '1 day') AT TIME ZONE ${timezone})` : sql`${to}::timestamptz`;
+}
+
 function dateFilter(fromDate: string | null, toDate: string | null, timezone: string): SQL {
 	if (!fromDate || !toDate) return sql``;
-	return sql`AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone}) AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})`;
+	return sql`AND created_at >= ${windowStart(fromDate, timezone)} AND created_at < ${windowEnd(toDate, timezone)}`;
 }
 
 function uuidList(ids: string[]): SQL {
@@ -206,10 +180,6 @@ function webSearchFilter(webSearchEnabled?: boolean): SQL {
 	return sql`AND web_search_enabled = ${webSearchEnabled}`;
 }
 
-// ============================================================================
-// Dashboard Summary
-// ============================================================================
-
 export async function getDashboardSummary(
 	brandId: string,
 	fromDate: string | null,
@@ -231,10 +201,6 @@ export async function getDashboardSummary(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Per-Prompt Visibility Time Series (for LVCF smoothing)
-// ============================================================================
 
 export interface PerPromptVisibilityPoint {
 	prompt_id: string;
@@ -268,10 +234,6 @@ export async function getPerPromptVisibilityTimeSeries(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Aggregated Visibility With SQL-Side LVCF
-// ============================================================================
 
 export interface VisibilityDailyAggregate {
 	date: string;
@@ -351,8 +313,8 @@ export async function getVisibilityDailyAggregate(
 				FROM prompt_runs
 				WHERE brand_id = ${brandId}
 					AND prompt_id IN (${uuidList(enabledPromptIds)})
-					AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-					AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+					AND created_at >= ${windowStart(fromDate, timezone)}
+					AND created_at < ${windowEnd(toDate, timezone)}
 					${modelFilter(model)}
 				-- Group by the SELECT alias, not the full expression: drizzle
 				-- emits a fresh $N parameter for every timezone interpolation,
@@ -434,17 +396,13 @@ export async function getCitationsTotalCount(
 		SELECT count(*)::int AS total
 		FROM citations
 		WHERE brand_id = ${brandId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND created_at >= ${windowStart(fromDate, timezone)}
+			AND created_at < ${windowEnd(toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
 			${modelFilter(model, { source: "citations" })}
 	`);
 	return Number(rows[0]?.total ?? 0);
 }
-
-// ============================================================================
-// Visibility Time Series
-// ============================================================================
 
 export async function getVisibilityTimeSeries(
 	brandId: string,
@@ -472,10 +430,6 @@ export async function getVisibilityTimeSeries(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Prompts Summary
-// ============================================================================
 
 export async function getPromptsFirstEvaluatedAt(
 	brandId: string,
@@ -508,8 +462,8 @@ export async function getPromptsSummary(
 		SELECT
 			prompt_id,
 			count(*)::int AS total_runs,
-			round(count(*) FILTER (WHERE brand_mentioned) * 100.0 / NULLIF(count(*), 0), 0)::int AS brand_mention_rate,
-			round(count(*) FILTER (WHERE array_length(competitors_mentioned, 1) > 0) * 100.0 / NULLIF(count(*), 0), 0)::int AS competitor_mention_rate,
+			(count(*) FILTER (WHERE brand_mentioned)::float / NULLIF(count(*), 0)) AS brand_mention_rate,
+			(count(*) FILTER (WHERE array_length(competitors_mentioned, 1) > 0)::float / NULLIF(count(*), 0)) AS competitor_mention_rate,
 			(count(*) FILTER (WHERE brand_mentioned) * 2 + COALESCE(sum(array_length(competitors_mentioned, 1)), 0))::int AS total_weighted_mentions,
 			max((created_at AT TIME ZONE ${timezone})::date) AS last_run_date
 		FROM prompt_runs
@@ -523,90 +477,6 @@ export async function getPromptsSummary(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Prompt Daily Stats
-// ============================================================================
-
-export async function getPromptDailyStats(
-	promptId: string,
-	fromDate: string | null,
-	toDate: string | null,
-	timezone: string,
-	webSearchEnabled?: boolean,
-	model?: string,
-): Promise<PromptDailyStats[]> {
-	const rows = await queryPg<PromptDailyStats>(sql`
-		SELECT
-			(created_at AT TIME ZONE ${timezone})::date AS date,
-			count(*)::int AS total_runs,
-			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
-		FROM prompt_runs
-		WHERE prompt_id = ${promptId}
-			${dateFilter(fromDate, toDate, timezone)}
-			${webSearchFilter(webSearchEnabled)}
-			${modelFilter(model)}
-		GROUP BY date
-		ORDER BY date
-	`);
-	return rows;
-}
-
-// ============================================================================
-// Prompt Competitor Daily Stats
-// ============================================================================
-
-export async function getPromptCompetitorDailyStats(
-	promptId: string,
-	fromDate: string | null,
-	toDate: string | null,
-	timezone: string,
-	webSearchEnabled?: boolean,
-	model?: string,
-): Promise<PromptCompetitorDailyStats[]> {
-	const rows = await queryPg<PromptCompetitorDailyStats>(sql`
-		SELECT
-			(created_at AT TIME ZONE ${timezone})::date AS date,
-			competitor_name,
-			count(*)::int AS mention_count
-		FROM prompt_runs, unnest(competitors_mentioned) AS competitor_name
-		WHERE prompt_id = ${promptId}
-			${dateFilter(fromDate, toDate, timezone)}
-			${webSearchFilter(webSearchEnabled)}
-			${modelFilter(model)}
-		GROUP BY date, competitor_name
-		ORDER BY date, competitor_name
-	`);
-	return rows;
-}
-
-// ============================================================================
-// Web Queries for Mapping
-// ============================================================================
-
-export async function getPromptWebQueriesForMapping(
-	promptId: string,
-	fromDate: string | null,
-	toDate: string | null,
-	timezone: string,
-): Promise<WebQueryMapping[]> {
-	const rows = await queryPg<WebQueryMapping>(sql`
-		SELECT
-			model,
-			web_query,
-			to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS created_at_iso
-		FROM prompt_runs, unnest(web_queries) AS web_query
-		WHERE prompt_id = ${promptId}
-			AND array_length(web_queries, 1) > 0
-			${dateFilter(fromDate, toDate, timezone)}
-		ORDER BY created_at ASC
-	`);
-	return rows;
-}
-
-// ============================================================================
-// Web Query Counts
-// ============================================================================
 
 export interface WebQueryCount {
 	model: string;
@@ -641,10 +511,6 @@ export async function getPromptWebQueryCounts(
 	return rows;
 }
 
-// ============================================================================
-// Citation Stats (Domain Level)
-// ============================================================================
-
 export async function getCitationDomainStats(
 	brandId: string,
 	fromDate: string,
@@ -660,8 +526,8 @@ export async function getCitationDomainStats(
 			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS example_title
 		FROM citations
 		WHERE brand_id = ${brandId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND created_at >= ${windowStart(fromDate, timezone)}
+			AND created_at < ${windowEnd(toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
 			${modelFilter(model, { source: "citations" })}
 		GROUP BY domain
@@ -669,10 +535,6 @@ export async function getCitationDomainStats(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Citation Stats (URL Level)
-// ============================================================================
 
 export async function getCitationUrlStats(
 	brandId: string,
@@ -692,8 +554,8 @@ export async function getCitationUrlStats(
 			count(DISTINCT prompt_id)::int AS prompt_count
 		FROM citations
 		WHERE brand_id = ${brandId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND created_at >= ${windowStart(fromDate, timezone)}
+			AND created_at < ${windowEnd(toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
 			${modelFilter(model, { source: "citations" })}
 		GROUP BY url, domain
@@ -702,9 +564,26 @@ export async function getCitationUrlStats(
 	return rows;
 }
 
-// ============================================================================
-// Prompt-Level Citation Stats
-// ============================================================================
+export async function getCitationDomainPromptCounts(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<Map<string, number>> {
+	const rows = await queryPg<{ domain: string; prompt_count: number }>(sql`
+		SELECT domain, count(DISTINCT prompt_id)::int AS prompt_count
+		FROM citations
+		WHERE brand_id = ${brandId}
+			AND created_at >= ${windowStart(fromDate, timezone)}
+			AND created_at < ${windowEnd(toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model, { source: "citations" })}
+		GROUP BY domain
+	`);
+	return new Map(rows.map((row) => [row.domain, Number(row.prompt_count)]));
+}
 
 export async function getPromptCitationUrlStats(
 	promptId: string,
@@ -722,17 +601,13 @@ export async function getPromptCitationUrlStats(
 			count(DISTINCT prompt_id)::int AS prompt_count
 		FROM citations
 		WHERE prompt_id = ${promptId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND created_at >= ${windowStart(fromDate, timezone)}
+			AND created_at < ${windowEnd(toDate, timezone)}
 		GROUP BY url, domain
 		ORDER BY count DESC
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Prompt Snapshot Queries
-// ============================================================================
 
 export async function getPromptMentionSummary(
 	promptId: string,
@@ -747,8 +622,8 @@ export async function getPromptMentionSummary(
 			COALESCE(sum(array_length(competitors_mentioned, 1)), 0)::int AS competitor_mentioned_count
 		FROM prompt_runs
 		WHERE prompt_id = ${promptId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND created_at >= ${windowStart(fromDate, timezone)}
+			AND created_at < ${windowEnd(toDate, timezone)}
 	`);
 	return rows[0] || { total_runs: 0, brand_mentioned_count: 0, competitor_mentioned_count: 0 };
 }
@@ -766,18 +641,14 @@ export async function getPromptTopCompetitorMentions(
 			count(DISTINCT pr.id)::int AS mention_count
 		FROM prompt_runs pr, unnest(pr.competitors_mentioned) AS competitor_name
 		WHERE pr.prompt_id = ${promptId}
-			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND pr.created_at >= ${windowStart(fromDate, timezone)}
+			AND pr.created_at < ${windowEnd(toDate, timezone)}
 		GROUP BY competitor_name
 		ORDER BY mention_count DESC
 		LIMIT ${limit}
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Daily Citation Stats
-// ============================================================================
 
 export async function getDailyCitationStats(
 	brandId: string,
@@ -794,8 +665,8 @@ export async function getDailyCitationStats(
 			count(*)::int AS count
 		FROM citations
 		WHERE brand_id = ${brandId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND created_at >= ${windowStart(fromDate, timezone)}
+			AND created_at < ${windowEnd(toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
 			${modelFilter(model, { source: "citations" })}
 		GROUP BY date, domain
@@ -803,10 +674,6 @@ export async function getDailyCitationStats(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Per-Prompt Daily Citation Stats (for LVCF smoothing)
-// ============================================================================
 
 export interface PerPromptDailyCitationStats {
 	prompt_id: string;
@@ -832,8 +699,8 @@ export async function getPerPromptDailyCitationStats(
 			count(*)::int AS count
 		FROM citations
 		WHERE brand_id = ${brandId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND created_at >= ${windowStart(fromDate, timezone)}
+			AND created_at < ${windowEnd(toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
 			${modelFilter(model, { source: "citations" })}
 		GROUP BY prompt_id, date, domain
@@ -841,10 +708,6 @@ export async function getPerPromptDailyCitationStats(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Per-Prompt Run Stats (grounding coverage + mention rates)
-// ============================================================================
 
 export interface PerPromptRunStats {
 	prompt_id: string;
@@ -881,10 +744,6 @@ export async function getPerPromptRunStats(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Share of Voice (competitor mention leaderboard)
-// ============================================================================
 
 export interface BrandMentionTotals {
 	total_runs: number;
@@ -951,6 +810,70 @@ export async function getPerPromptDailyMentions(
 	return rows;
 }
 
+export interface PromptRunRow {
+	id: string;
+	prompt_id: string;
+	brand_id: string;
+	model: string;
+	provider: string | null;
+	web_search_enabled: boolean;
+	brand_mentioned: boolean;
+	competitors_mentioned: string[];
+	web_queries: string[];
+	citation_count: number;
+	created_at: string;
+}
+
+/** Here rather than in the route so the window goes through the same
+ * timezone-aware `dateFilter` as every other read. */
+export async function getPromptRuns(
+	promptId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	limit: number,
+	offset: number,
+	model?: string,
+): Promise<PromptRunRow[]> {
+	return queryPg<PromptRunRow>(sql`
+		SELECT
+			prompt_runs.id::text AS id,
+			prompt_runs.prompt_id::text AS prompt_id,
+			prompt_runs.brand_id,
+			prompt_runs.model,
+			prompt_runs.provider,
+			prompt_runs.web_search_enabled,
+			prompt_runs.brand_mentioned,
+			prompt_runs.competitors_mentioned,
+			prompt_runs.web_queries,
+			(SELECT count(*) FROM citations c WHERE c.prompt_run_id = prompt_runs.id)::int AS citation_count,
+			prompt_runs.created_at
+		FROM prompt_runs
+		WHERE prompt_id = ${promptId}::uuid
+			${dateFilter(fromDate, toDate, timezone)}
+			${modelFilter(model)}
+		ORDER BY prompt_runs.created_at DESC
+		LIMIT ${limit} OFFSET ${offset}
+	`);
+}
+
+export async function countPromptRuns(
+	promptId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	model?: string,
+): Promise<number> {
+	const rows = await queryPg<{ total: number }>(sql`
+		SELECT count(*)::int AS total
+		FROM prompt_runs
+		WHERE prompt_id = ${promptId}::uuid
+			${dateFilter(fromDate, toDate, timezone)}
+			${modelFilter(model)}
+	`);
+	return rows[0]?.total ?? 0;
+}
+
 export interface PerPromptDailyCompetitorRow {
 	prompt_id: string;
 	date: string;
@@ -990,10 +913,6 @@ export async function getPerPromptDailyCompetitorMentions(
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Per-Prompt Cited Pages (titles for the opportunities digest)
-// ============================================================================
 
 export interface PerPromptCitationPageRow {
 	prompt_id: string;
@@ -1073,10 +992,6 @@ export async function getPerPromptDailyCitationPages(
 	return rows;
 }
 
-// ============================================================================
-// Brand Mention Rate by Model (per-platform standing for the digest)
-// ============================================================================
-
 export interface ModelMentionRateRow {
 	model: string;
 	runs: number;
@@ -1091,6 +1006,7 @@ export async function getBrandMentionRateByModel(
 	toDate: string,
 	timezone: string,
 	enabledPromptIds?: string[],
+	model?: string,
 ): Promise<ModelMentionRateRow[]> {
 	if (!enabledPromptIds?.length) return [];
 	const rows = await queryPg<ModelMentionRateRow>(sql`
@@ -1102,15 +1018,12 @@ export async function getBrandMentionRateByModel(
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model, { source: "prompt_runs" })}
 		GROUP BY model
 		ORDER BY runs DESC
 	`);
 	return rows;
 }
-
-// ============================================================================
-// Brand Data Age
-// ============================================================================
 
 export async function getBrandEarliestRunDate(brandId: string): Promise<string | null> {
 	const rows = await queryPg<{ earliest_date: string | null }>(sql`
@@ -1120,10 +1033,6 @@ export async function getBrandEarliestRunDate(brandId: string): Promise<string |
 	`);
 	return rows[0]?.earliest_date || null;
 }
-
-// ============================================================================
-// Batch Chart Data
-// ============================================================================
 
 export async function getBatchChartData(
 	brandId: string,
@@ -1197,73 +1106,6 @@ export async function getBatchChartData(
 	}));
 }
 
-// ============================================================================
-// Admin Stats
-// ============================================================================
-
-export async function getAdminRunsOverTime(): Promise<AdminRunsOverTime[]> {
-	const rows = await queryPg<AdminRunsOverTime>(sql`
-		SELECT
-			(created_at AT TIME ZONE 'UTC')::date AS date,
-			count(*)::int AS count
-		FROM prompt_runs
-		WHERE created_at >= now() - interval '30 days'
-		GROUP BY date
-		ORDER BY date
-	`);
-	return rows;
-}
-
-export async function getAdminBrandRunStats(): Promise<AdminBrandRunStats[]> {
-	const rows = await queryPg<AdminBrandRunStats>(sql`
-		SELECT
-			brand_id,
-			count(*) FILTER (WHERE created_at >= now() - interval '7 days')::int AS runs_7d,
-			count(*) FILTER (WHERE created_at >= now() - interval '30 days')::int AS runs_30d,
-			to_char(max(created_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS last_run_at
-		FROM prompt_runs
-		GROUP BY brand_id
-	`);
-	return rows;
-}
-
-export async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsOverTime[]> {
-	const rows = await queryPg<AdminActiveBrandsOverTime>(sql`
-		SELECT
-			target_date AS date,
-			count(DISTINCT brand_id)::int AS count
-		FROM (
-			SELECT
-				brand_id,
-				(created_at AT TIME ZONE 'UTC')::date + d AS target_date
-			FROM prompt_runs,
-				generate_series(0, 29) AS d
-			WHERE created_at >= now() - interval '60 days'
-		) expanded
-		WHERE target_date >= current_date - 30
-			AND target_date <= current_date
-		GROUP BY target_date
-		ORDER BY target_date
-	`);
-	return rows;
-}
-
-// ============================================================================
-// Query Fanout
-//
-// The sub-queries an engine issues to the web while answering a prompt, read
-// from `prompt_runs.web_queries` — the single source for every figure, with no
-// provider-specific handling. Entries that aren't genuine fan-out are dropped
-// via `genuineFanoutWq`: the `unavailable` sentinel providers emit when a
-// search happened but the strings aren't exposed, and the prompt echoed
-// verbatim. A run that lists the same query twice counts it ONCE — one
-// instance per (run, normalized query) — so a single run can't satisfy the
-// count >= 2 Invisible/Won gate.
-// Every fan-out query joins `prompts` (to compare against the prompt text) so
-// columns are qualified (`pr.`, the join brings two `created_at` columns into
-// scope) and the shared unqualified filter helpers are inlined instead.
-// ============================================================================
-
 /**
  * Predicate selecting genuine fan-out queries: non-empty, not the `unavailable`
  * sentinel (OpenRouter and DataForSEO always; BrightData/Olostep on extraction
@@ -1315,8 +1157,8 @@ export async function getFanoutBreakdown(
 			SELECT DISTINCT lower(btrim(wq)) AS query FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
 		) fq
 		WHERE pr.brand_id = ${brandId}
-			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND pr.created_at >= ${windowStart(fromDate, timezone)}
+			AND pr.created_at < ${windowEnd(toDate, timezone)}
 			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
 			${modelFilter(model, { alias: "pr" })}
 		GROUP BY pr.prompt_id, pr.model, fq.query
@@ -1351,8 +1193,8 @@ export async function getFanoutModelTotals(
 			SELECT count(DISTINCT lower(btrim(wq)))::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
 		) fq
 		WHERE pr.brand_id = ${brandId}
-			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND pr.created_at >= ${windowStart(fromDate, timezone)}
+			AND pr.created_at < ${windowEnd(toDate, timezone)}
 			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
 			${modelFilter(model, { alias: "pr" })}
 		GROUP BY pr.model
@@ -1384,8 +1226,8 @@ export async function getFanoutPromptTotals(
 			SELECT count(DISTINCT lower(btrim(wq)))::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
 		) fq
 		WHERE pr.brand_id = ${brandId}
-			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND pr.created_at >= ${windowStart(fromDate, timezone)}
+			AND pr.created_at < ${windowEnd(toDate, timezone)}
 			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
 			${modelFilter(model, { alias: "pr" })}
 		GROUP BY pr.prompt_id

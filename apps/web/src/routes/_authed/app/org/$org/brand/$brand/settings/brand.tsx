@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 });
 
 function BrandSettingsPage() {
-	const { brand, isLoading, revalidate } = useBrand();
+	const { data: brand, isLoading, refetch: refetchBrand } = useBrand();
 	const queryClient = useQueryClient();
 	const organization = useOrganization();
 	const organizationsChanged = useOrganizationsChanged();
@@ -108,7 +108,7 @@ function BrandSettingsPage() {
 			queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 
 			setSuccess("Brand details updated successfully!");
-			await revalidate();
+			await refetchBrand();
 			await organizationsChanged(
 				slugMoved
 					? () =>

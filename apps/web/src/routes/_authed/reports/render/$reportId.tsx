@@ -809,6 +809,31 @@ function OpportunitiesPage({
 	);
 }
 
+/** How much room the brand has left to gain. The badge and the recommendation
+ *  read off the same SoV tiers, so they're resolved together. */
+function sovOpportunity(overallSoV: number | null) {
+	const sov = overallSoV ?? 0;
+	if (sov < 20) {
+		return {
+			label: "High",
+			badgeClass: "bg-rose-50 text-rose-700",
+			recommendation: "Prioritize content creation to establish AI presence",
+		};
+	}
+	if (sov < 40) {
+		return {
+			label: "Medium",
+			badgeClass: "bg-amber-50 text-amber-700",
+			recommendation: "Expand content to increase brand share of voice",
+		};
+	}
+	return {
+		label: "Low",
+		badgeClass: "bg-emerald-50 text-emerald-700",
+		recommendation: "Maintain leadership and defend competitive position",
+	};
+}
+
 function NextStepsPage({
 	report,
 	branding,
@@ -819,6 +844,7 @@ function NextStepsPage({
 	model: ReportModel;
 }) {
 	const { overallSoV, promptSoVs, promptMap, sovColor, totalPrompts, promptsWithMentions } = model;
+	const opportunity = sovOpportunity(overallSoV);
 	return (
 		<>
 			{/* ===== SoV OPPORTUNITY + WHAT TO DO NEXT ===== */}
@@ -850,18 +876,12 @@ function NextStepsPage({
 								</td>
 								<td className="text-center py-3 px-4">
 									<span
-										className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold ${(overallSoV ?? 0) < 20 ? "bg-rose-50 text-rose-700" : (overallSoV ?? 0) < 40 ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}
+										className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold ${opportunity.badgeClass}`}
 									>
-										{(overallSoV ?? 0) < 20 ? "High" : (overallSoV ?? 0) < 40 ? "Medium" : "Low"}
+										{opportunity.label}
 									</span>
 								</td>
-								<td className="py-3 px-4 text-xs text-slate-600">
-									{(overallSoV ?? 0) < 20
-										? "Prioritize content creation to establish AI presence"
-										: (overallSoV ?? 0) < 40
-											? "Expand content to increase brand share of voice"
-											: "Maintain leadership and defend competitive position"}
-								</td>
+								<td className="py-3 px-4 text-xs text-slate-600">{opportunity.recommendation}</td>
 							</tr>
 						</tbody>
 					</table>

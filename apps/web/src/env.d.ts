@@ -71,7 +71,6 @@ declare global {
 			readonly DEFAULT_BRAND_DOMAINS?: string;
 			readonly CLOUD_SIGNUP_ALLOWLIST?: string;
 			readonly ENVIRONMENT?: string;
-			readonly DBOS_SYSTEM_DATABASE_URL?: string;
 			readonly SENTRY_DSN?: string;
 			readonly SENTRY_ORG?: string;
 			readonly SENTRY_PROJECT?: string;

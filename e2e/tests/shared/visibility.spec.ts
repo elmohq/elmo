@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "../../test";
 import { brandUrl } from "../../fixtures";
 
 const BRAND_URL = brandUrl();

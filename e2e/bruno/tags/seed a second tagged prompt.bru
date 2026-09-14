@@ -1,0 +1,27 @@
+meta {
+  name: seed a prompt tagged beta
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}",
+    "value": "Bruno tag fixture beta",
+    "tags": ["bruno-alpha"]
+  }
+}
+
+assert {
+  res.status: eq 201
+}

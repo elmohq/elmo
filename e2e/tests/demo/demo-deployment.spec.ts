@@ -11,7 +11,7 @@
  * write leaves the database untouched — a 403 that still wrote would pass the
  * unit tests.
  */
-import { expect, test } from "@playwright/test";
+import { ABORTED_SSR_STREAM, expect, failedResource, test } from "../../test";
 import {
   COMPETITOR_IDS,
   DEMO_CREDENTIALS,
@@ -24,6 +24,7 @@ import {
   organizationUrl,
 } from "../../fixtures";
 import { withDb } from "../../session";
+import { fillUntilSaveable } from "../../interactions";
 
 const authed = { Authorization: `Bearer ${TEST_API_KEY}` };
 
@@ -81,7 +82,8 @@ test.describe("Demo refuses writes", () => {
     expect(prompt.status()).toBe(200);
   });
 
-  test("saving brand settings from the UI fails and writes nothing", async ({ page }) => {
+  test("saving brand settings from the UI fails and writes nothing", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(403, "/_serverFn/"));
     await page.goto(`${brandUrl()}/settings/brand`);
 
     const nameInput = page.getByLabel("Brand Name");
@@ -148,9 +150,16 @@ test.describe("Demo auth is sign-in only", () => {
     await expect(page.getByLabel("Password")).toHaveCount(0);
   });
 
-  test("the register page sends you to sign in", async ({ page }) => {
+  test("the register page sends you to sign in", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(ABORTED_SSR_STREAM);
     await page.goto("/auth/register");
     await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
+  });
+
+  test("the bare app URL opens on sign-in", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForURL(/\/auth\/login/, { timeout: 30_000 });
+    await expect(page.getByText("Demo Account")).toBeVisible({ timeout: 30_000 });
   });
 });
 
@@ -169,21 +178,27 @@ test.describe("Demo features", () => {
     await page.waitForURL(new RegExp(`${organizationUrl()}/settings$`), { timeout: 30_000 });
   });
 
-  test("saving organization settings fails and says why", async ({ page }) => {
+  test("saving organization settings fails and says why", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(403, "/_serverFn/"));
     await page.goto(`${organizationUrl()}/settings`);
 
     const nameField = page.getByLabel("Organization Name", { exact: true });
     await expect(nameField).toBeEnabled({ timeout: 30_000 });
-    await nameField.fill("Renamed In Demo");
 
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    const save = page.getByRole("button", { name: "Save", exact: true });
+    await fillUntilSaveable(nameField, "Renamed In Demo", save);
+    await save.click();
     await expect(page.getByText("Edits are not allowed in demo mode.")).toBeVisible({ timeout: 30_000 });
   });
 
-  test("the team is listed, and nothing about it can be changed", async ({ page }) => {
+  test("the team page is not offered and not reachable", async ({ page, consoleErrors }) => {
+    consoleErrors.allow(failedResource(404, `${organizationUrl()}/settings/members`));
+    await page.goto(`${organizationUrl()}/settings`);
+    await expect(
+      page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),
+    ).toHaveCount(0);
+
     await page.goto(`${organizationUrl()}/settings/members`);
-    await expect(page.getByRole("heading", { name: "Team" })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("button", { name: "Invite" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Remove" })).toHaveCount(0);
+    await expect(page.getByText("404 Not Found")).toBeVisible({ timeout: 30_000 });
   });
 });

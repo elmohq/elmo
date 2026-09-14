@@ -1,0 +1,20 @@
+meta {
+  name: the brand survived the refused disable
+  type: http
+  seq: 26
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.enabled: isTruthy
+}

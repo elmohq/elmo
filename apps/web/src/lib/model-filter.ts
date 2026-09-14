@@ -10,14 +10,6 @@
 import { ALL_MODELS_VALUE, labelForModelFilter } from "@workspace/config/model-filter";
 import { PLATFORM_TIER_LABELS, type PlanPlatformGroupId } from "@workspace/config/plans";
 
-export {
-	ALL_MODELS_VALUE,
-	iconIdForModelFilter,
-	labelForModelFilter,
-	parseModelFilter,
-	targetFilterValue,
-} from "@workspace/config/model-filter";
-
 /** One thing a brand's results can be filtered down to. */
 export interface TrackedTarget {
 	/** What travels in the URL — the model id, or `<model>::premium`. */
@@ -34,7 +26,7 @@ export interface TrackedTarget {
 }
 
 /** How often a target runs, as a rate: "4×/day", or "every 3 days" once past one. */
-export function describeCadence(intervalHours: number): string {
+function describeCadence(intervalHours: number): string {
 	if (intervalHours <= 0) return "—";
 	if (intervalHours >= 48) return `every ${Math.round(intervalHours / 24)} days`;
 	if (intervalHours > 24) return "every other day";

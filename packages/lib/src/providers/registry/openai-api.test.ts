@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS, OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } from "../config";
 
 const aiMock = vi.hoisted(() => ({ generateText: vi.fn() }));
@@ -13,8 +12,13 @@ import { openaiApi } from "./openai-api";
 
 const CAP = API_PROVIDER_MAX_OUTPUT_TOKENS["openai-api"];
 
+/** `sources` and `content` are non-optional on a real generateText result. */
+function generated(over: Record<string, any> = {}) {
+	return { text: "answer", sources: [], content: [], ...over };
+}
+
 beforeEach(() => {
-	aiMock.generateText.mockResolvedValue({ text: "answer" });
+	aiMock.generateText.mockResolvedValue(generated());
 });
 
 afterEach(() => {
@@ -47,32 +51,87 @@ describe("openai-api run", () => {
 		expect(args).not.toHaveProperty("providerOptions");
 	});
 
-	it("stores the Responses payload and reads its searches back out", async () => {
-		// Shaped like a real gpt-5-mini response: reasoning and web_search_call
-		// items around the message, annotations on the output_text.
-		const body = {
-			id: "resp_1",
-			object: "response",
-			output: [
-				{ id: "rs_1", type: "reasoning", summary: [] },
-				{
-					id: "ws_1",
-					type: "web_search_call",
-					status: "completed",
-					action: {
-						type: "search",
-						queries: ["best crm 2026", "crm pricing"],
-						query: "best crm 2026",
-						sources: [{ type: "url", url: "https://example.com/a" }],
+	it("logs a warning when the response stops on the output cap", async () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		aiMock.generateText.mockResolvedValue(generated({ text: "clipped", finishReason: "length" }));
+
+		await openaiApi.run("chatgpt", "prompt", { webSearch: false, version: "gpt-5-mini" });
+
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining("hit the output cap"));
+	});
+});
+
+describe("openai-api citations", () => {
+	it("keeps url sources and ignores document sources", async () => {
+		aiMock.generateText.mockResolvedValue(
+			generated({
+				sources: [
+					{ type: "source", sourceType: "url", id: "1", url: "https://example.com/a", title: "A" },
+					{ type: "source", sourceType: "document", id: "2", mediaType: "application/pdf", title: "B" },
+				],
+			}),
+		);
+
+		const res = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
+
+		expect(res.citations).toEqual([
+			{ url: "https://example.com/a", title: "A", domain: "example.com", citationIndex: 0 },
+		]);
+	});
+});
+
+describe("openai-api stored payload", () => {
+	// Shaped like a real gpt-5-mini response: reasoning and web_search_call items
+	// around the message, annotations on the output_text.
+	const body = {
+		id: "resp_1",
+		object: "response",
+		output: [
+			{ id: "rs_1", type: "reasoning", summary: [] },
+			{
+				id: "ws_1",
+				type: "web_search_call",
+				status: "completed",
+				action: { type: "search", query: "elmo aeo", queries: ["elmo aeo", "elmo pricing"] },
+			},
+			{
+				id: "msg_1",
+				type: "message",
+				content: [
+					{
+						type: "output_text",
+						text: "answer",
+						annotations: [{ type: "url_citation", url: "https://example.com/a", title: "A" }],
 					},
-				},
+				],
+			},
+		],
+	};
+
+	// The rebuilt stand-in holds only the answer and its citations, so a row
+	// written from it can never be re-read for what the model searched.
+	it("stores the payload the searches came from", async () => {
+		aiMock.generateText.mockResolvedValue(generated({ response: { body } }));
+
+		const res = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
+
+		expect(res.rawOutput).toBe(body);
+		expect(res.textContent).toBe("answer");
+		expect(res.citations.map((c) => c.url)).toEqual(["https://example.com/a"]);
+	});
+
+	it("rebuilds an answer-and-citations payload when the SDK reports no body", async () => {
+		aiMock.generateText.mockResolvedValue(
+			generated({
+				sources: [{ type: "source", sourceType: "url", id: "1", url: "https://example.com/a", title: "A" }],
+			}),
+		);
+
+		const res = await openaiApi.run("chatgpt", "prompt", { webSearch: false, version: "gpt-5-mini" });
+
+		expect(res.rawOutput).toEqual({
+			output: [
 				{
-					id: "ws_2",
-					type: "web_search_call",
-					action: { type: "search", query: "crm reviews" },
-				},
-				{
-					id: "msg_1",
 					type: "message",
 					content: [
 						{
@@ -83,77 +142,36 @@ describe("openai-api run", () => {
 					],
 				},
 			],
-		};
-		aiMock.generateText.mockResolvedValue({ text: "answer", response: { body } });
-
-		const result = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
-
-		expect(result.rawOutput).toBe(body);
-		expect(result.webQueries).toEqual(["best crm 2026", "crm pricing", "crm reviews"]);
-		expect(result.textContent).toBe("answer");
-		expect(result.citations.map((c) => c.url)).toEqual(["https://example.com/a"]);
-	});
-
-	it("falls back to the rebuilt payload when the SDK reports no response body", async () => {
-		aiMock.generateText.mockResolvedValue({
-			text: "answer",
-			content: [
-				{ type: "tool-call", toolName: "web_search", input: {} },
-				{
-					type: "tool-result",
-					toolName: "web_search",
-					output: { action: { type: "search", queries: ["best crm 2026", "crm pricing"] } },
-				},
-				{ type: "tool-result", toolName: "web_search", output: { action: { type: "search", query: "crm reviews" } } },
-				{ type: "text", text: "answer" },
-			],
-		});
-
-		const result = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
-
-		expect(result.webQueries).toEqual(["best crm 2026", "crm pricing", "crm reviews"]);
-		// The rebuilt payload carries no web_search_call items, so re-extracting
-		// from this stored shape can never recover the queries above.
-		expect(result.rawOutput).toEqual({
-			output: [{ type: "message", content: [{ type: "output_text", text: "answer", annotations: [] }] }],
 		});
 	});
+});
 
-	it("ignores non-search web_search actions", async () => {
-		aiMock.generateText.mockResolvedValue({
-			text: "answer",
-			content: [
-				{
-					type: "tool-result",
-					toolName: "web_search",
-					output: { action: { type: "openPage", url: "https://example.com" } },
-				},
-			],
-		});
+describe("openai-api web queries", () => {
+	function searchResult(action: Record<string, any>) {
+		return generated({ content: [{ type: "tool-result", toolName: "web_search", output: { action } }] });
+	}
 
-		const result = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
+	it("reports the query the provider-run search actually issued", async () => {
+		aiMock.generateText.mockResolvedValue(searchResult({ type: "search", query: "elmo aeo" }));
 
-		expect(result.webQueries).toEqual([WEB_QUERIES_UNAVAILABLE]);
+		const res = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
+
+		expect(res.webQueries).toEqual(["elmo aeo"]);
 	});
 
-	it("marks queries unavailable when web search ran but exposed no query strings", async () => {
-		const result = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
+	it("reports every query when the search fans out", async () => {
+		aiMock.generateText.mockResolvedValue(searchResult({ type: "search", queries: ["one", "two"] }));
 
-		expect(result.webQueries).toEqual([WEB_QUERIES_UNAVAILABLE]);
+		const res = await openaiApi.run("chatgpt", "prompt", { webSearch: true, version: "gpt-5-mini" });
+
+		expect(res.webQueries).toEqual(["one", "two"]);
 	});
 
-	it("reports no queries when web search is off", async () => {
-		const result = await openaiApi.run("chatgpt", "prompt", { webSearch: false, version: "gpt-5-mini" });
+	it("reports nothing for non-search actions", async () => {
+		aiMock.generateText.mockResolvedValue(searchResult({ type: "openPage", url: "https://example.com" }));
 
-		expect(result.webQueries).toEqual([]);
-	});
+		const res = await openaiApi.run("chatgpt", "prompt", { webSearch: false, version: "gpt-5-mini" });
 
-	it("logs a warning when the response stops on the output cap", async () => {
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-		aiMock.generateText.mockResolvedValue({ text: "clipped", finishReason: "length" });
-
-		await openaiApi.run("chatgpt", "prompt", { webSearch: false, version: "gpt-5-mini" });
-
-		expect(warn).toHaveBeenCalledWith(expect.stringContaining("hit the output cap"));
+		expect(res.webQueries).toEqual([]);
 	});
 });

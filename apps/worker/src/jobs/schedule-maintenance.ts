@@ -1,18 +1,20 @@
 import * as Sentry from "@sentry/node";
-import { getDeployment } from "@workspace/deployment";
+import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours, WEB_QUERIES_UNAVAILABLE } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { getOrgEntitlementsMap } from "@workspace/lib/entitlements";
 import { type FanoutRunCounts, findSilentFanoutTargets } from "@workspace/lib/fanout-health";
-import { getProvider, parseScrapeTargets } from "@workspace/lib/providers";
+import { getProvider } from "@workspace/lib/providers";
 import {
 	computeMaintenanceDecisions,
+	type LastRunRow,
 	lastRunQueryWindowMs,
+	lastRunsByTargetKey,
 	type MaintenancePromptState,
 	type PromptRunPlan,
 	resolveBrandPromptRunPlans,
-	targetKey,
+	slowestIntervalHours,
 } from "@workspace/lib/run-policy";
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
@@ -123,10 +125,7 @@ function resolveRunPlans(args: {
  * aggregate stops scanning all of prompt_runs on every 5-minute tick.
  */
 async function loadLastRuns(plans: Map<string, PromptRunPlan>): Promise<Map<string, Map<string, Date>>> {
-	const maxIntervalHours = Math.max(
-		1,
-		...[...plans.values()].flatMap((plan) => plan.targets.map((t) => t.intervalHours)),
-	);
+	const maxIntervalHours = Math.max(1, ...[...plans.values()].map((plan) => slowestIntervalHours(plan.targets)));
 	const windowStart = new Date(Date.now() - lastRunQueryWindowMs(maxIntervalHours));
 	const rows = await db
 		.select({
@@ -140,22 +139,14 @@ async function loadLastRuns(plans: Map<string, PromptRunPlan>): Promise<Map<stri
 		.where(gt(promptRuns.createdAt, windowStart))
 		.groupBy(promptRuns.promptId, promptRuns.model, promptRuns.provider, promptRuns.webSearchEnabled);
 
-	const byPrompt = new Map<string, Map<string, Date>>();
+	const rowsByPrompt = new Map<string, LastRunRow[]>();
 	for (const run of rows) {
-		// provider is nullable on the column; a row without one predates target
-		// keying and can't be matched to a target anyway.
-		if (!run.provider) continue;
-		let byKey = byPrompt.get(run.promptId);
-		if (!byKey) {
-			byKey = new Map();
-			byPrompt.set(run.promptId, byKey);
-		}
-		byKey.set(
-			targetKey({ model: run.model, provider: run.provider, webSearch: run.webSearchEnabled }),
-			new Date(run.lastRunAt),
-		);
+		const forPrompt = rowsByPrompt.get(run.promptId);
+		if (forPrompt) forPrompt.push(run);
+		else rowsByPrompt.set(run.promptId, [run]);
 	}
-	return byPrompt;
+
+	return new Map([...rowsByPrompt].map(([promptId, promptRows]) => [promptId, lastRunsByTargetKey(promptRows)]));
 }
 
 async function expediteJobs(jobIds: string[]): Promise<void> {

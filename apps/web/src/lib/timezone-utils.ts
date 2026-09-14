@@ -1,4 +1,4 @@
-import type { LookbackPeriod } from "@/lib/chart-utils";
+import type { LookbackPeriod } from "@/lib/lookback";
 
 type DateShift = {
 	days?: number;
@@ -113,4 +113,18 @@ export function getTimezoneLookbackRange(
 				toDateStr: todayStr,
 			};
 	}
+}
+
+/** `allStrategy: "1y"` keeps the bounds non-null for "all", which is what the
+ * cast below rests on. */
+export function resolveLookbackRange(
+	lookback: LookbackPeriod,
+	timezoneParam: string,
+): { timezone: string; fromDateStr: string; toDateStr: string } {
+	const timezone = resolveTimezone(timezoneParam);
+	const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookback, timezone, { allStrategy: "1y" }) as {
+		fromDateStr: string;
+		toDateStr: string;
+	};
+	return { timezone, fromDateStr, toDateStr };
 }

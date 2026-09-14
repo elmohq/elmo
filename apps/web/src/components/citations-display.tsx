@@ -14,15 +14,11 @@ import {
 	CITATION_CATEGORIES,
 	CITATION_PAGE_TYPES,
 	type CitationCategory,
+	type CitationPageType,
 	PAGE_TYPE_CONFIG,
 } from "@/lib/domain-categories";
 
-export type {
-	CitationData,
-	GoogleModuleData,
-	GoogleProductRow,
-	GoogleQueryRow,
-} from "@/components/citations/types";
+export type { CitationData } from "@/components/citations/types";
 
 interface CitationsDisplayProps {
 	citationData: CitationData;
@@ -81,20 +77,85 @@ function useCitationSections(citationData: CitationData) {
 	);
 
 	const changed = citationData.whatsChanged;
+	const totalChanges = changed
+		? changed.newUrls.length +
+			changed.droppedUrls.length +
+			changed.titleChanges.length +
+			changed.newDomains.length +
+			changed.droppedDomains.length
+		: 0;
+
 	return {
 		brandShare: lastTrendPoint ? (lastTrendPoint.brand ?? 0) : windowShare,
 		chartSourceCategories,
 		chartPageTypes,
 		urlSourceTabs,
 		urlPageTypeTabs,
-		totalChanges: changed
-			? changed.newUrls.length +
-				changed.droppedUrls.length +
-				changed.titleChanges.length +
-				changed.newDomains.length +
-				changed.droppedDomains.length
-			: 0,
+		// An empty change set reads as no change set: nothing downstream
+		// distinguishes them, so the section is resolved here rather than at
+		// every render site.
+		whatsChanged: totalChanges > 0 ? changed : undefined,
 	};
+}
+
+/** The two "over time" area charts. Each renders only once its series exists. */
+function CitationTrendCharts({
+	citationData,
+	chartSourceCategories,
+	chartPageTypes,
+}: {
+	citationData: CitationData;
+	chartSourceCategories: CitationCategory[];
+	chartPageTypes: CitationPageType[];
+}) {
+	const sourceSeries = citationData.citationTimeSeries ?? [];
+	const pageTypeSeries = citationData.pageTypeTimeSeries ?? [];
+
+	return (
+		<>
+			{sourceSeries.length > 0 && (
+				<TrendAreaChart
+					title="Citation Categories"
+					tooltip="Share of citations by source category over time, as a percentage of all citations each day. Smoothed to account for staggered prompt schedules; Google AI Mode search/shopping are excluded (see the Google Shopping section)."
+					data={sourceSeries as unknown as Array<Record<string, number | string>>}
+					keys={chartSourceCategories}
+					meta={CATEGORY_META}
+				/>
+			)}
+
+			{pageTypeSeries.length > 0 && (
+				<TrendAreaChart
+					title="Citation Page Types"
+					tooltip="Share of citations by page type over time — what kind of page each citation points to, inferred from the URL and title."
+					data={pageTypeSeries as unknown as Array<Record<string, number | string>>}
+					keys={chartPageTypes}
+					meta={PAGE_TYPE_META}
+				/>
+			)}
+		</>
+	);
+}
+
+/** Recent Changes and Content Gaps share a row when both are present, and
+ *  each takes the full width on its own. */
+function ChangesAndGapsRow({
+	whatsChanged,
+	contentGaps,
+	days,
+}: {
+	whatsChanged: CitationData["whatsChanged"];
+	contentGaps: NonNullable<CitationData["competitorOnlyPrompts"]>;
+	days: number;
+}) {
+	const hasGaps = contentGaps.length > 0;
+	if (!whatsChanged && !hasGaps) return null;
+
+	return (
+		<div className={whatsChanged && hasGaps ? "grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch" : "contents"}>
+			{whatsChanged && <RecentChangesCard whatsChanged={whatsChanged} days={days} />}
+			{hasGaps && <ContentGapsCard prompts={contentGaps} />}
+		</div>
+	);
 }
 
 /** Composes the citation sections. Each card owns its own in-card filter
@@ -111,14 +172,12 @@ export function CitationsDisplay({
 	days = 7,
 	onCompetitorAdded,
 }: CitationsDisplayProps) {
-	const { brandShare, chartSourceCategories, chartPageTypes, urlSourceTabs, urlPageTypeTabs, totalChanges } =
+	const { brandShare, chartSourceCategories, chartPageTypes, urlSourceTabs, urlPageTypeTabs, whatsChanged } =
 		useCitationSections(citationData);
 	const domainSourceTabs = urlSourceTabs; // identical by construction (same chart-category list)
 
 	const contentGaps = citationData.competitorOnlyPrompts ?? [];
-	const hasGaps = contentGaps.length > 0;
 	const googleModule = citationData.googleModule;
-	const whatsChanged = citationData.whatsChanged;
 	const subredditData = useSubredditData(citationData.specificUrls, citationData.whatsChanged);
 
 	// Bail out only AFTER every hook above has run unconditionally (Rules of Hooks).
@@ -134,37 +193,13 @@ export function CitationsDisplay({
 				/>
 			)}
 
-			{/* Citation Categories over time */}
-			{citationData.citationTimeSeries && citationData.citationTimeSeries.length > 0 && (
-				<TrendAreaChart
-					title="Citation Categories"
-					tooltip="Share of citations by source category over time, as a percentage of all citations each day. Smoothed to account for staggered prompt schedules; Google AI Mode search/shopping are excluded (see the Google Shopping section)."
-					data={(citationData.citationTimeSeries ?? []) as unknown as Array<Record<string, number | string>>}
-					keys={chartSourceCategories}
-					meta={CATEGORY_META}
-				/>
-			)}
+			<CitationTrendCharts
+				citationData={citationData}
+				chartSourceCategories={chartSourceCategories}
+				chartPageTypes={chartPageTypes}
+			/>
 
-			{/* Citation Page Types over time */}
-			{citationData.pageTypeTimeSeries && citationData.pageTypeTimeSeries.length > 0 && (
-				<TrendAreaChart
-					title="Citation Page Types"
-					tooltip="Share of citations by page type over time — what kind of page each citation points to, inferred from the URL and title."
-					data={(citationData.pageTypeTimeSeries ?? []) as unknown as Array<Record<string, number | string>>}
-					keys={chartPageTypes}
-					meta={PAGE_TYPE_META}
-				/>
-			)}
-
-			{/* Recent Changes + Content Gaps (side by side) */}
-			{(totalChanges > 0 || hasGaps) && (
-				<div
-					className={totalChanges > 0 && hasGaps ? "grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch" : "contents"}
-				>
-					{totalChanges > 0 && whatsChanged && <RecentChangesCard whatsChanged={whatsChanged} days={days} />}
-					{hasGaps && <ContentGapsCard prompts={contentGaps} />}
-				</div>
-			)}
+			<ChangesAndGapsRow whatsChanged={whatsChanged} contentGaps={contentGaps} days={days} />
 
 			{/* Top Cited Domains */}
 			{citationData.domainDistribution.length > 0 && (

@@ -5,13 +5,14 @@ import type { OrganizationSummary } from "@/lib/organizations/types";
 import { getOnboardingPlatformStateFn, type OnboardingPlatformState } from "@/server/platform-picks";
 
 export const Route = createFileRoute("/_authed/app/org/$org/")({
-	loader: async ({
-		context,
-	}): Promise<{ organization: OrganizationSummary; onboardingPlatformState: OnboardingPlatformState }> => {
+	beforeLoad: ({ context }) => {
 		if (!needsSetup(context.organization)) {
 			throw redirect({ to: "/app/org/$org/settings", params: { org: context.organization.slug } });
 		}
-
+	},
+	loader: async ({
+		context,
+	}): Promise<{ organization: OrganizationSummary; onboardingPlatformState: OnboardingPlatformState }> => {
 		return {
 			organization: context.organization,
 			onboardingPlatformState: await getOnboardingPlatformStateFn({
