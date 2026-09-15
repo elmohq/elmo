@@ -10,9 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AnswerEngineOptimizationRouteImport } from './routes/answer-engine-optimization'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as FeaturesRouteImport } from './routes/features'
+import { Route as GenerativeEngineOptimizationRouteImport } from './routes/generative-engine-optimization'
 import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as OffSiteAeoRouteImport } from './routes/off-site-aeo'
@@ -66,6 +68,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnswerEngineOptimizationRoute =
+  AnswerEngineOptimizationRouteImport.update({
+    id: '/answer-engine-optimization',
+    path: '/answer-engine-optimization',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const BrandRoute = BrandRouteImport.update({
   id: '/brand',
   path: '/brand',
@@ -81,6 +89,12 @@ const FeaturesRoute = FeaturesRouteImport.update({
   path: '/features',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GenerativeEngineOptimizationRoute =
+  GenerativeEngineOptimizationRouteImport.update({
+    id: '/generative-engine-optimization',
+    path: '/generative-engine-optimization',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LlmsFullDottxtRoute = LlmsFullDottxtRouteImport.update({
   id: '/llms-full.txt',
   path: '/llms-full.txt',
@@ -332,9 +346,11 @@ const ApiPlausibleJsScriptIndexRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/features': typeof FeaturesRoute
+  '/generative-engine-optimization': typeof GenerativeEngineOptimizationRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/off-site-aeo': typeof OffSiteAeoRoute
@@ -385,9 +401,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/features': typeof FeaturesRoute
+  '/generative-engine-optimization': typeof GenerativeEngineOptimizationRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/off-site-aeo': typeof OffSiteAeoRoute
@@ -439,9 +457,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/answer-engine-optimization': typeof AnswerEngineOptimizationRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/features': typeof FeaturesRoute
+  '/generative-engine-optimization': typeof GenerativeEngineOptimizationRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/off-site-aeo': typeof OffSiteAeoRoute
@@ -494,9 +514,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/answer-engine-optimization'
     | '/brand'
     | '/changelog'
     | '/features'
+    | '/generative-engine-optimization'
     | '/llms-full.txt'
     | '/llms.txt'
     | '/off-site-aeo'
@@ -547,9 +569,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/answer-engine-optimization'
     | '/brand'
     | '/changelog'
     | '/features'
+    | '/generative-engine-optimization'
     | '/llms-full.txt'
     | '/llms.txt'
     | '/off-site-aeo'
@@ -600,9 +624,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/answer-engine-optimization'
     | '/brand'
     | '/changelog'
     | '/features'
+    | '/generative-engine-optimization'
     | '/llms-full.txt'
     | '/llms.txt'
     | '/off-site-aeo'
@@ -654,9 +680,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnswerEngineOptimizationRoute: typeof AnswerEngineOptimizationRoute
   BrandRoute: typeof BrandRoute
   ChangelogRoute: typeof ChangelogRoute
   FeaturesRoute: typeof FeaturesRoute
+  GenerativeEngineOptimizationRoute: typeof GenerativeEngineOptimizationRoute
   LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   OffSiteAeoRoute: typeof OffSiteAeoRoute
@@ -715,6 +743,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/answer-engine-optimization': {
+      id: '/answer-engine-optimization'
+      path: '/answer-engine-optimization'
+      fullPath: '/answer-engine-optimization'
+      preLoaderRoute: typeof AnswerEngineOptimizationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/brand': {
       id: '/brand'
       path: '/brand'
@@ -734,6 +769,13 @@ declare module '@tanstack/react-router' {
       path: '/features'
       fullPath: '/features'
       preLoaderRoute: typeof FeaturesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/generative-engine-optimization': {
+      id: '/generative-engine-optimization'
+      path: '/generative-engine-optimization'
+      fullPath: '/generative-engine-optimization'
+      preLoaderRoute: typeof GenerativeEngineOptimizationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/llms-full.txt': {
@@ -1070,9 +1112,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnswerEngineOptimizationRoute: AnswerEngineOptimizationRoute,
   BrandRoute: BrandRoute,
   ChangelogRoute: ChangelogRoute,
   FeaturesRoute: FeaturesRoute,
+  GenerativeEngineOptimizationRoute: GenerativeEngineOptimizationRoute,
   LlmsFullDottxtRoute: LlmsFullDottxtRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
   OffSiteAeoRoute: OffSiteAeoRoute,

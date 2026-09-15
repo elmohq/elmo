@@ -35,7 +35,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"In practice that means publishing clear, well-structured content, earning mentions on sources the models already trust, and tracking the prompts that matter to your brand. You want to see where you show up, and where a competitor shows up instead.",
 		],
 		related: ["generative-engine-optimization", "llmo", "ai-visibility", "ai-citation"],
-		seeAlso: [{ label: "Full AEO guide", href: "/blog/answer-engine-optimization" }],
+		seeAlso: [{ label: "Full AEO guide", href: "/answer-engine-optimization" }],
 	},
 	{
 		slug: "generative-engine-optimization",
@@ -48,7 +48,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"You will also see LLMO and LLM SEO used for the same idea. None of these labels should change what you actually do, which is make your content easy to retrieve, quote, and trust.",
 		],
 		related: ["answer-engine-optimization", "llmo", "retrieval-augmented-generation"],
-		seeAlso: [{ label: "What is generative SEO?", href: "/blog/what-is-generative-seo" }],
+		seeAlso: [{ label: "Full GEO guide", href: "/generative-engine-optimization" }],
 	},
 	{
 		slug: "llmo",
@@ -62,8 +62,8 @@ export const glossaryTerms: GlossaryTerm[] = [
 		],
 		related: ["answer-engine-optimization", "generative-engine-optimization", "large-language-model"],
 		seeAlso: [
-			{ label: "What is answer engine optimization?", href: "/blog/answer-engine-optimization" },
-			{ label: "What is generative SEO?", href: "/blog/what-is-generative-seo" },
+			{ label: "Full AEO guide", href: "/answer-engine-optimization" },
+			{ label: "Full GEO guide", href: "/generative-engine-optimization" },
 		],
 	},
 	{
@@ -170,7 +170,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		],
 		related: ["ai-citation", "share-of-voice", "ai-brand-sentiment"],
 		seeAlso: [
-			{ label: "How to track your brand in AI search", href: "/blog/track-brand-ai-search" },
+			{ label: "Full AEO guide", href: "/answer-engine-optimization" },
 			{ label: "When AI cites you without naming you", href: "/blog/ghost-citations" },
 		],
 	},
@@ -330,7 +330,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		related: ["grounding", "ai-brand-sentiment"],
 		seeAlso: [
 			{ label: "Do AI engines fact-check what they read?", href: "/blog/ai-search-fact-checking" },
-			{ label: "How to track your brand in AI search", href: "/blog/track-brand-ai-search" },
+			{ label: "Full AEO guide", href: "/answer-engine-optimization" },
 		],
 	},
 	{
