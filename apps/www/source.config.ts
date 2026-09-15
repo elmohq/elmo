@@ -22,6 +22,9 @@ export const docs = defineDocs({
 export const blog = defineDocs({
 	dir: "../../packages/docs/content/blog",
 	docs: {
+		postprocess: {
+			includeProcessedMarkdown: true,
+		},
 		schema: pageSchema.extend({
 			// An unquoted date in YAML frontmatter (date: 2026-05-30) is parsed
 			// into a Date, while a quoted one ("2026-05-30") stays a string.
