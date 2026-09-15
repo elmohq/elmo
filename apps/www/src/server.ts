@@ -32,6 +32,7 @@ function addSecurityHeaders(response: Response): Response {
 }
 
 const DISCOVERY_LINKS = [
+	`</.well-known/agent-skills/index.json>; rel="agent-skills"`,
 	`</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"`,
 	`</.well-known/ard.json>; rel="ard"`,
 	`</api/openapi.json>; rel="service-desc"`,
