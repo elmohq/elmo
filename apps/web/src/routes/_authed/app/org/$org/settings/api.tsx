@@ -8,6 +8,7 @@ import { Card } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { CopyButton } from "@/components/copy-button";
+import { DemoModeAlert } from "@/components/demo-mode-alert";
 import { useAppOrigin } from "@/hooks/use-app-origin";
 import { useBranding } from "@/hooks/use-deployment-features";
 import { pageHead } from "@/lib/route-head";
@@ -33,6 +34,10 @@ function ApiSettingsPage() {
 				<h1 className="text-3xl font-bold">API Docs</h1>
 				<p className="max-w-2xl text-muted-foreground">Programmatic interface for {appName}.</p>
 			</header>
+
+			<DemoModeAlert>
+				The API is documented but not callable here: API keys can't be issued, and the endpoints that write are refused.
+			</DemoModeAlert>
 
 			<div className="flex flex-wrap items-center gap-2">
 				<span className="text-sm text-muted-foreground">Base URL</span>

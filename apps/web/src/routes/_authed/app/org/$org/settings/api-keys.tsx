@@ -41,6 +41,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { cn } from "@workspace/ui/lib/utils";
 import { useState } from "react";
 import { CopyButton } from "@/components/copy-button";
+import { DemoModeAlert } from "@/components/demo-mode-alert";
+import { useDeploymentFeatures } from "@/hooks/use-deployment-features";
 import { useIsTruncated } from "@/hooks/use-is-truncated";
 import { useOrganization } from "@/hooks/use-organizations";
 import { API_SCOPES } from "@/lib/api/scopes";
@@ -87,7 +89,11 @@ function inactiveReason(key: ApiKeySummary): string {
 }
 
 function ApiKeysSettingsPage() {
-	const { keys, brands, expiryOptions, canManage, organization } = Route.useLoaderData();
+	const { keys, brands, expiryOptions, canManage: isKeyAdmin, organization } = Route.useLoaderData();
+	const readOnly = useDeploymentFeatures()?.readOnly ?? false;
+	// Issuing and revoking are both writes, so a read-only deployment refuses
+	// them whatever the role says.
+	const canManage = isKeyAdmin && !readOnly;
 	const linkParams = orgLinkParams(useOrganization());
 	const router = useRouter();
 
@@ -141,7 +147,9 @@ function ApiKeysSettingsPage() {
 
 			{issuedKey && <IssuedKeyCard value={issuedKey} />}
 
-			{!canManage && (
+			<DemoModeAlert>Keys can't be issued or revoked here. Existing keys are listed read-only.</DemoModeAlert>
+
+			{!isKeyAdmin && !readOnly && (
 				<Alert className="border-yellow-200 bg-yellow-50 text-yellow-800">
 					<IconAlertTriangle />
 					<AlertTitle>Limited Access</AlertTitle>
@@ -163,7 +171,12 @@ function ApiKeysSettingsPage() {
 				</div>
 
 				{active.length === 0 ? (
-					<EmptyKeys canManage={canManage} hasInactive={inactive.length > 0} onCreate={() => setCreatingOpen(true)} />
+					<EmptyKeys
+						canManage={canManage}
+						readOnly={readOnly}
+						hasInactive={inactive.length > 0}
+						onCreate={() => setCreatingOpen(true)}
+					/>
 				) : (
 					<KeyTable
 						keys={active}
@@ -621,13 +634,19 @@ function RevokeButton({ onClick }: { onClick: () => void }) {
 
 function EmptyKeys({
 	canManage,
+	readOnly,
 	hasInactive,
 	onCreate,
 }: {
 	canManage: boolean;
+	readOnly: boolean;
 	hasInactive: boolean;
 	onCreate: () => void;
 }) {
+	const reason = readOnly
+		? "This deployment is read-only, so no key can be issued."
+		: "An organization admin can issue one.";
+
 	return (
 		<div className="flex flex-col items-center gap-3 rounded-md border border-dashed px-6 py-12 text-center">
 			<span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -636,9 +655,7 @@ function EmptyKeys({
 			<div className="space-y-1">
 				<p className="font-medium">{hasInactive ? "No active API keys" : "No API keys yet"}</p>
 				<p className="max-w-sm text-sm text-muted-foreground">
-					{canManage
-						? "Issue one to call the REST API or connect an MCP client."
-						: "An organization admin can issue one."}
+					{canManage ? "Issue one to call the REST API or connect an MCP client." : reason}
 				</p>
 			</div>
 			{canManage && (

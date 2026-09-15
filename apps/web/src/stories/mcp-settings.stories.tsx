@@ -8,8 +8,11 @@ import { setMockLoaderData, setMockRouteContext } from "./_mocks/tanstack-router
 const McpSettingsPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 
 function load(page: Partial<McpPageData>, appName = "Elmo", appUrl = "https://app.elmohq.com/") {
+	const readOnly = page.readOnlyDeployment ?? false;
 	setMockMcpPage(page);
-	setMockRouteContext({ clientConfig: { branding: { name: appName, url: appUrl } } });
+	setMockRouteContext({
+		clientConfig: { branding: { name: appName, url: appUrl }, features: { readOnly } },
+	});
 	setMockLoaderData({
 		tools: [],
 		readOnlyDeployment: false,
@@ -52,6 +55,7 @@ export const Connect: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
+		await expect(canvas.queryByText("Demo mode")).toBeNull();
 		// The endpoint is the host the app is served from, not a placeholder to fill in.
 		await expect(await canvas.findByText(`${window.location.origin}/api/mcp`)).toBeVisible();
 		await expect(await canvas.findByText("create_prompts")).toBeVisible();
@@ -111,5 +115,9 @@ export const ReadOnlyDeployment: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText(/read-only, so the tools that write are withheld/)).toBeVisible();
+		// Both snippets are still shown, so the page has to say up front that
+		// neither of them leads anywhere here.
+		await expect(await canvas.findByText("Demo mode")).toBeVisible();
+		await expect(await canvas.findByText(/OAuth sign-in is turned off, and API keys can't be issued/)).toBeVisible();
 	},
 };
