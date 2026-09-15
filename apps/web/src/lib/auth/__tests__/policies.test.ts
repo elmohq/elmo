@@ -4,10 +4,6 @@
  * This file is the single source of truth for "who can do what" across all
  * deployment modes. If a policy changes, a test here MUST break — that's
  * the whole point.
- *
- * Covers the request policy matrix `deploymentMiddleware` applies, the admin
- * key list, and the brand-creation flag. Route guards are not here: each lives
- * in its own `beforeLoad`, and the e2e access-control suite is what holds them.
  */
 import { describe, expect, it } from "vitest";
 import { evaluateDeploymentPolicy, evaluateRequireCanCreateBrands, type RequestInfo } from "@/lib/auth/policies";

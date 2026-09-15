@@ -1,20 +1,9 @@
-/**
- * Where a deployment's own refusals happen, for every request the app serves.
- *
- * The decision itself is `evaluateDeploymentPolicy`, which is pure and tested
- * on its own. This is a request middleware rather than a function one so that
- * it covers route handlers and server functions alike — `/_serverFn/*` is a
- * path like any other, which is what makes this the single place a read-only
- * deployment refuses a write.
- *
- * It does not authenticate: resolving an API key needs a database, and
- * createApiHandler is the gate for `/api/v1`.
- */
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { getDeployment } from "@workspace/deployment";
 import { deploymentOpenApiSpec } from "@/lib/api/openapi";
 import { evaluateDeploymentPolicy } from "@/lib/auth/policies";
+
 export const deploymentMiddleware = createMiddleware().server(async ({ next }) => {
 	const deployment = getDeployment();
 	const request = getRequest();

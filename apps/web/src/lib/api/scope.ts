@@ -71,12 +71,6 @@ export async function requirePromptInScope(
 	return { prompt, brand };
 }
 
-/**
- * The id of the brand a prompt belongs to, for callers that address something
- * *through* a prompt and never need the prompt row itself — the runs endpoints,
- * where reaching the prompt is what reaches its runs. Fails exactly as
- * `requirePromptInScope` does, so the two are indistinguishable from outside.
- */
 export async function requirePromptBrandInScope(auth: Principal, promptId: string): Promise<string> {
 	const brandId = await findPromptBrandId(promptId);
 	if (!brandId || !(await isBrandInScope(auth, brandId))) {

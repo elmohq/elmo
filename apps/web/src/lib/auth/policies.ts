@@ -1,12 +1,3 @@
-/**
- * What a deployment mode refuses, as pure functions — framework-agnostic and
- * side-effect-free, so the rules can be tested without a server.
- *
- * Only what a caller actually consults belongs here. A guard stated twice, once
- * inline where it runs and once here for a test to assert, is a guard that can
- * drift from itself; a route's own `beforeLoad` is the decision, and the e2e
- * suite is what holds it.
- */
 import { timingSafeEqual } from "node:crypto";
 import { MCP_PATH } from "@workspace/config/constants";
 import type { FeaturesConfig } from "@workspace/config/types";
@@ -153,11 +144,6 @@ function refuseUnauthenticatedApiV1(
 }
 
 /**
- * What `deploymentMiddleware` does to a request, in order: the endpoints the
- * app only ever reaches server-side, then read-only mode over API and
- * server-function writes, then the spec, then a bare `/api/v1` request with no
- * token on it.
- *
  * No /api/v1 authentication: resolving a key needs a database, and this is pure
  * and synchronous. createApiHandler is the gate for those routes.
  */

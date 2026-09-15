@@ -1,5 +1,4 @@
-/** The answers the models actually gave, and what they cited. A run belongs to a
- *  prompt, so reaching the prompt is what reaches the run. */
+/** The answers the models actually gave, and what they cited. */
 import { z } from "zod";
 import { ApiError } from "@/lib/api/handler";
 import { requirePromptBrandInScope } from "@/lib/api/scope";
