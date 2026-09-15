@@ -34,9 +34,6 @@ describe("safeReturnTo", () => {
 		expect(safeReturnTo(`${ORIGIN}/app/org/acme`)).toBe("/app/org/acme");
 	});
 
-	// Each of these reads as root-relative and each resolves to another origin
-	// once a browser parses it: `\` is normalized to `/`, and tabs and newlines
-	// are stripped before parsing.
 	it.each([
 		["a backslash", "/\\evil.com"],
 		["doubled backslashes", "/\\\\evil.com"],
@@ -44,6 +41,9 @@ describe("safeReturnTo", () => {
 		["an embedded tab", "/\t/evil.com"],
 		["an embedded newline", "/\n/evil.com"],
 		["an embedded carriage return", "/\r/evil.com"],
+		["a dot segment", "/.//evil.com"],
+		["a parent segment", "/app/..//evil.com"],
+		["an on-origin URL with a doubled-slash path", `${ORIGIN}//evil.com`],
 	])("refuses a path that escapes the origin with %s", (_label, returnTo) => {
 		withWindow(ORIGIN);
 		expect(safeReturnTo(returnTo)).toBe("/app");
@@ -67,6 +67,7 @@ describe("safeReturnTo", () => {
 		it("still refuses one that escapes the origin", () => {
 			expect(safeReturnTo("/\\evil.com")).toBe("/app");
 			expect(safeReturnTo("//evil.com")).toBe("/app");
+			expect(safeReturnTo("/.//evil.com")).toBe("/app");
 		});
 
 		it("refuses an absolute URL, having no origin to compare against", () => {

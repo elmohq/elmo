@@ -1,16 +1,12 @@
 /**
  * Reject cross-origin returnTo values to prevent open redirects.
  *
- * Every value goes through the URL parser, because the shape of the string is
- * not what the browser navigates to: `\` is normalized to `/` in an http(s)
- * URL, and tabs and newlines are stripped before parsing. So `/\evil.com` and
- * `/<tab>/evil.com` both look root-relative and both land on another origin.
- * The parsed origin is the only thing worth trusting.
+ * Judged on the parsed origin rather than the shape of the string: a browser
+ * normalizes `\` to `/` in an http(s) URL and strips tabs and newlines before
+ * parsing, so `/\evil.com` reads as root-relative but lands elsewhere. The
+ * path handed back is re-checked because normalization can collapse it to a
+ * protocol-relative `//evil.com`, which escapes again on the way out.
  */
-
-/** Stands in for the real origin off the browser, where there isn't one. A
- *  relative path resolves against it; anything absolute lands elsewhere and is
- *  refused, which is the safe answer when there is nothing to compare to. */
 const RELATIVE_ONLY_ORIGIN = "https://return-to.invalid";
 
 export function safeReturnTo(returnTo: string | undefined): string {
@@ -19,9 +15,8 @@ export function safeReturnTo(returnTo: string | undefined): string {
 	try {
 		const url = new URL(returnTo, origin);
 		if (url.origin !== origin) return "/app";
-		// Re-serialized from the parse, so what the caller navigates to is what
-		// was judged here rather than the string that was handed in.
-		return `${url.pathname}${url.search}${url.hash}`;
+		const path = `${url.pathname}${url.search}${url.hash}`;
+		return new URL(path, origin).origin === origin ? path : "/app";
 	} catch {
 		return "/app";
 	}
