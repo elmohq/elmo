@@ -55,6 +55,7 @@ import { Route as AiVisibilityToolsCompareSlugRouteImport } from './routes/ai-vi
 import { Route as AiVisibilityToolsFeaturesIndexRouteImport } from './routes/ai-visibility-tools/features/index'
 import { Route as AiVisibilityToolsFeaturesSlugRouteImport } from './routes/ai-visibility-tools/features/$slug'
 import { Route as ApiRepoActivityRefreshRouteImport } from './routes/api/repo-activity/refresh'
+import { Route as LlmsDotmdxBlogSplatRouteImport } from './routes/llms[.]mdx.blog.$'
 import { Route as LlmsDotmdxDocsSplatRouteImport } from './routes/llms[.]mdx.docs.$'
 import { Route as OgDocsSplatRouteImport } from './routes/og/docs/$'
 import { Route as ApiPlausibleEventIndexRouteImport } from './routes/api/plausible/event/index'
@@ -302,6 +303,11 @@ const ApiRepoActivityRefreshRoute = ApiRepoActivityRefreshRouteImport.update({
   path: '/api/repo-activity/refresh',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LlmsDotmdxBlogSplatRoute = LlmsDotmdxBlogSplatRouteImport.update({
+  id: '/llms.mdx/blog/$',
+  path: '/llms.mdx/blog/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LlmsDotmdxDocsSplatRoute = LlmsDotmdxDocsSplatRouteImport.update({
   id: '/llms.mdx/docs/$',
   path: '/llms.mdx/docs/$',
@@ -367,6 +373,7 @@ export interface FileRoutesByFullPath {
   '/ai-visibility-tools/compare/$slug': typeof AiVisibilityToolsCompareSlugRoute
   '/ai-visibility-tools/features/$slug': typeof AiVisibilityToolsFeaturesSlugRoute
   '/api/repo-activity/refresh': typeof ApiRepoActivityRefreshRoute
+  '/llms.mdx/blog/$': typeof LlmsDotmdxBlogSplatRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
   '/og/docs/$': typeof OgDocsSplatRoute
   '/ai-visibility-tools/alternatives/': typeof AiVisibilityToolsAlternativesIndexRoute
@@ -419,6 +426,7 @@ export interface FileRoutesByTo {
   '/ai-visibility-tools/compare/$slug': typeof AiVisibilityToolsCompareSlugRoute
   '/ai-visibility-tools/features/$slug': typeof AiVisibilityToolsFeaturesSlugRoute
   '/api/repo-activity/refresh': typeof ApiRepoActivityRefreshRoute
+  '/llms.mdx/blog/$': typeof LlmsDotmdxBlogSplatRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
   '/og/docs/$': typeof OgDocsSplatRoute
   '/ai-visibility-tools/alternatives': typeof AiVisibilityToolsAlternativesIndexRoute
@@ -472,6 +480,7 @@ export interface FileRoutesById {
   '/ai-visibility-tools/compare/$slug': typeof AiVisibilityToolsCompareSlugRoute
   '/ai-visibility-tools/features/$slug': typeof AiVisibilityToolsFeaturesSlugRoute
   '/api/repo-activity/refresh': typeof ApiRepoActivityRefreshRoute
+  '/llms.mdx/blog/$': typeof LlmsDotmdxBlogSplatRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
   '/og/docs/$': typeof OgDocsSplatRoute
   '/ai-visibility-tools/alternatives/': typeof AiVisibilityToolsAlternativesIndexRoute
@@ -526,6 +535,7 @@ export interface FileRouteTypes {
     | '/ai-visibility-tools/compare/$slug'
     | '/ai-visibility-tools/features/$slug'
     | '/api/repo-activity/refresh'
+    | '/llms.mdx/blog/$'
     | '/llms.mdx/docs/$'
     | '/og/docs/$'
     | '/ai-visibility-tools/alternatives/'
@@ -578,6 +588,7 @@ export interface FileRouteTypes {
     | '/ai-visibility-tools/compare/$slug'
     | '/ai-visibility-tools/features/$slug'
     | '/api/repo-activity/refresh'
+    | '/llms.mdx/blog/$'
     | '/llms.mdx/docs/$'
     | '/og/docs/$'
     | '/ai-visibility-tools/alternatives'
@@ -630,6 +641,7 @@ export interface FileRouteTypes {
     | '/ai-visibility-tools/compare/$slug'
     | '/ai-visibility-tools/features/$slug'
     | '/api/repo-activity/refresh'
+    | '/llms.mdx/blog/$'
     | '/llms.mdx/docs/$'
     | '/og/docs/$'
     | '/ai-visibility-tools/alternatives/'
@@ -683,6 +695,7 @@ export interface RootRouteChildren {
   AiVisibilityToolsCompareSlugRoute: typeof AiVisibilityToolsCompareSlugRoute
   AiVisibilityToolsFeaturesSlugRoute: typeof AiVisibilityToolsFeaturesSlugRoute
   ApiRepoActivityRefreshRoute: typeof ApiRepoActivityRefreshRoute
+  LlmsDotmdxBlogSplatRoute: typeof LlmsDotmdxBlogSplatRoute
   LlmsDotmdxDocsSplatRoute: typeof LlmsDotmdxDocsSplatRoute
   OgDocsSplatRoute: typeof OgDocsSplatRoute
   AiVisibilityToolsAlternativesIndexRoute: typeof AiVisibilityToolsAlternativesIndexRoute
@@ -1017,6 +1030,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRepoActivityRefreshRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/llms.mdx/blog/$': {
+      id: '/llms.mdx/blog/$'
+      path: '/llms.mdx/blog/$'
+      fullPath: '/llms.mdx/blog/$'
+      preLoaderRoute: typeof LlmsDotmdxBlogSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/llms.mdx/docs/$': {
       id: '/llms.mdx/docs/$'
       path: '/llms.mdx/docs/$'
@@ -1094,6 +1114,7 @@ const rootRouteChildren: RootRouteChildren = {
   AiVisibilityToolsCompareSlugRoute: AiVisibilityToolsCompareSlugRoute,
   AiVisibilityToolsFeaturesSlugRoute: AiVisibilityToolsFeaturesSlugRoute,
   ApiRepoActivityRefreshRoute: ApiRepoActivityRefreshRoute,
+  LlmsDotmdxBlogSplatRoute: LlmsDotmdxBlogSplatRoute,
   LlmsDotmdxDocsSplatRoute: LlmsDotmdxDocsSplatRoute,
   OgDocsSplatRoute: OgDocsSplatRoute,
   AiVisibilityToolsAlternativesIndexRoute:

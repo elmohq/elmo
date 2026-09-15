@@ -31,16 +31,38 @@ function addSecurityHeaders(response: Response): Response {
 	return response;
 }
 
-// Serve the raw markdown for a docs page from the existing /llms.mdx/docs/*
-// route. Three things resolve to the same markdown, all via an internal rewrite
-// (the URL the client sees never changes — no redirect):
-//   • /docs/foo.md  and  /docs/foo.mdx  — explicit suffix, always markdown
-//   • /docs/foo  with `Accept: text/markdown` — content negotiation for agents
-// Pages are resolved by slug, so the `.md` suffix works even though every
-// source file is `.mdx`. See https://fumadocs.dev/docs/integrations/llms#accept
-const { rewrite: stripMdSuffix } = rewritePath("/docs{/*path}.md", "/llms.mdx/docs{/*path}");
-const { rewrite: stripMdxSuffix } = rewritePath("/docs{/*path}.mdx", "/llms.mdx/docs{/*path}");
-const { rewrite: toMarkdownRoute } = rewritePath("/docs{/*path}", "/llms.mdx/docs{/*path}");
+const MARKDOWN_SOURCES = [
+	{ base: "/docs", indexIsPage: true },
+	{ base: "/blog", indexIsPage: false },
+].map(({ base, indexIsPage }) => ({
+	base,
+	indexIsPage,
+	stripMd: rewritePath(`${base}{/*path}.md`, `/llms.mdx${base}{/*path}`).rewrite,
+	stripMdx: rewritePath(`${base}{/*path}.mdx`, `/llms.mdx${base}{/*path}`).rewrite,
+	toMarkdown: rewritePath(`${base}{/*path}`, `/llms.mdx${base}{/*path}`).rewrite,
+}));
+
+function suffixedMarkdownRoute(path: string): string | undefined {
+	for (const source of MARKDOWN_SOURCES) {
+		const target = source.stripMd(path) || source.stripMdx(path);
+		if (target) return target;
+	}
+}
+
+function negotiableMarkdownRoute(path: string): string | undefined {
+	for (const { base, indexIsPage, toMarkdown } of MARKDOWN_SOURCES) {
+		if (path === base && !indexIsPage) continue;
+		if (path !== base && !path.startsWith(`${base}/`)) continue;
+		const target = toMarkdown(path);
+		if (target) return target;
+	}
+}
+
+function withAcceptHtml(request: Request): Request {
+	const headers = new Headers(request.headers);
+	headers.set("Accept", "text/html");
+	return new Request(request.url, { method: request.method, headers, signal: request.signal });
+}
 
 // Keep permanent redirects server-side so backlinks and ranking signals reach
 // the canonical replacement rather than a client-rendered not-found page.
@@ -60,23 +82,21 @@ export default createServerEntry({
 		}
 
 		// An explicit .md / .mdx suffix always serves markdown, ignoring Accept.
-		let target = stripMdSuffix(path) || stripMdxSuffix(path);
+		let target = suffixedMarkdownRoute(path);
 
-		// A bare docs page negotiates HTML vs. markdown on the Accept header.
-		const negotiable = !target && (path === "/docs" || path.startsWith("/docs/"));
-		if (negotiable && isMarkdownPreferred(request)) {
-			target = toMarkdownRoute(path);
-		}
+		const negotiable = target ? undefined : negotiableMarkdownRoute(path);
+		const wantsMarkdown = !target && isMarkdownPreferred(request);
+		if (negotiable && wantsMarkdown) target = negotiable;
 
 		let req = request;
 		if (target) {
 			url.pathname = target;
 			req = new Request(url, request);
+		} else if (wantsMarkdown && (request.method === "GET" || request.method === "HEAD")) {
+			req = withAcceptHtml(request);
 		}
 
 		const response = await handler.fetch(req);
-		// A bare docs URL can resolve to either HTML or markdown depending on
-		// the Accept header, so shared caches must key on it.
 		if (negotiable) response.headers.set("Vary", "Accept");
 		return addSecurityHeaders(response);
 	},
