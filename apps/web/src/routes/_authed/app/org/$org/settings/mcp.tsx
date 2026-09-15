@@ -174,32 +174,30 @@ function McpSettingsPage() {
 				<p className="max-w-2xl text-muted-foreground">Connect any chat bot to {appName}.</p>
 			</header>
 
-			<div className="space-y-2">
-				<div className="flex flex-wrap items-center gap-2">
-					<span className="text-sm text-muted-foreground">Endpoint</span>
-					<code className="rounded-md border bg-muted/40 px-2 py-1 font-mono text-sm">{endpoint}</code>
-					<CopyButton value={endpoint} />
+			<section className="space-y-3">
+				<h2 className="text-lg font-semibold">Endpoint</h2>
+				<div className="flex min-w-0 items-stretch gap-2">
+					<code className="min-w-0 truncate rounded-md border bg-muted/40 px-3 py-1.5 font-mono text-sm">
+						{endpoint}
+					</code>
+					{/* The icon button is square by default and stands taller than the chip beside it. */}
+					<CopyButton value={endpoint} className="h-auto w-9" />
 				</div>
-				<p className="max-w-2xl text-sm text-muted-foreground">
-					Give a client the endpoint and it opens a browser for you to sign in — there is no application to register
-					first, and the connection acts as you. A client that can't open a browser sends a key from{" "}
-					<Link
-						to="/app/org/$org/settings/api-keys"
-						params={orgLinkParams(organization)}
-						className="underline underline-offset-4"
-					>
-						API Keys
-					</Link>{" "}
-					instead, which is also how you grant it <em>less</em> than your own access.
-				</p>
-			</div>
+			</section>
 
 			<section className="space-y-3">
 				<div className="space-y-1">
-					<h2 className="text-lg font-semibold">Connect a client</h2>
+					<h2 className="text-lg font-semibold">Connect</h2>
 					<p className="text-sm text-muted-foreground">
-						Signing in needs nothing but the endpoint. For the key form, swap {KEY_PLACEHOLDER} for one you issued and
-						keep it out of anything you commit.
+						Signing in needs nothing but the endpoint. For the key form, swap {KEY_PLACEHOLDER} for one from{" "}
+						<Link
+							to="/app/org/$org/settings/api-keys"
+							params={orgLinkParams(organization)}
+							className="underline underline-offset-4"
+						>
+							API Keys
+						</Link>{" "}
+						and keep it out of anything you commit.
 					</p>
 				</div>
 				<Tabs defaultValue={clients[0].value}>
