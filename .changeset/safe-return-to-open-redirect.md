@@ -2,4 +2,4 @@
 "@workspace/web": patch
 ---
 
-Fixed an open redirect that let a crafted `returnTo` link send someone to another site after they signed in.
+Fixed an open redirect where a crafted `returnTo` link could send a user to another site after sign-in.
