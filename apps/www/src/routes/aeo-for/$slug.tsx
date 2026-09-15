@@ -11,8 +11,8 @@ export const Route = createFileRoute("/aeo-for/$slug")({
 	head: ({ params }) => {
 		const v = getAeoVertical(params.slug);
 		if (!v) return {};
-		const title = `AEO for ${v.audience}: Track AI Visibility · Elmo`;
-		const description = v.short;
+		const title = v.metaTitle ?? `AEO for ${v.audience}: Track AI Visibility · Elmo`;
+		const description = v.metaDescription ?? v.short;
 		const path = `/aeo-for/${v.slug}`;
 		const others = aeoVerticals.filter((x) => x.slug !== v.slug);
 		return {
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/aeo-for/$slug")({
 				breadcrumbJsonLd([
 					{ name: "Home", path: "/" },
 					{ name: "AEO by industry", path: "/aeo-for" },
-					{ name: `AEO for ${v.audience}`, path },
+					{ name: v.headline ?? `AEO for ${v.audience}`, path },
 				]),
 				faqJsonLd(v.faqs),
 				howToJsonLd({
@@ -64,7 +64,11 @@ function VerticalPage() {
 					</a>
 				</div>
 
-				<DirectoryHero eyebrow="Use case" title={`AEO for ${vertical.audience}`} lead={vertical.short} />
+				<DirectoryHero
+					eyebrow="Use case"
+					title={vertical.headline ?? `AEO for ${vertical.audience}`}
+					lead={vertical.short}
+				/>
 
 				<section className="border-b border-zinc-200 bg-white py-12">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
