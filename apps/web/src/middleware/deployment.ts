@@ -1,24 +1,20 @@
 /**
- * Deployment mode middleware for TanStack Start
+ * Where a deployment's own refusals happen, for every request the app serves.
  *
- * Enforces deployment-level access policies:
- * - Read-only mode enforcement (demo mode)
- * - Admin access control
- * - API key authentication for public API routes
+ * The decision itself is `evaluateDeploymentPolicy`, which is pure and tested
+ * on its own. This is a request middleware rather than a function one so that
+ * it covers route handlers and server functions alike — `/_serverFn/*` is a
+ * path like any other, which is what makes this the single place a read-only
+ * deployment refuses a write.
  *
- * Access-control decisions are delegated to pure policy functions
- * in `@/lib/auth/policies` so they can be tested independently.
+ * It does not authenticate: resolving an API key needs a database, and
+ * createApiHandler is the gate for `/api/v1`.
  */
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { getDeployment } from "@workspace/deployment";
 import { deploymentOpenApiSpec } from "@/lib/api/openapi";
-import { evaluateDeploymentPolicy, evaluateReadOnly } from "@/lib/auth/policies";
-
-/**
- * Global request middleware - provides deployment config context
- * and enforces read-only mode for API routes.
- */
+import { evaluateDeploymentPolicy } from "@/lib/auth/policies";
 export const deploymentMiddleware = createMiddleware().server(async ({ next }) => {
 	const deployment = getDeployment();
 	const request = getRequest();
@@ -55,27 +51,4 @@ export const deploymentMiddleware = createMiddleware().server(async ({ next }) =
 			deploymentConfig: deployment,
 		},
 	});
-});
-
-/**
- * Read-only enforcement middleware for server functions.
- * Blocks write operations when in demo/read-only mode.
- */
-export const readOnlyMiddleware = createMiddleware({ type: "function" }).server(async ({ next }) => {
-	const deployment = getDeployment();
-	const request = getRequest();
-	const url = new URL(request.url);
-
-	if (evaluateReadOnly(deployment.features.readOnly) === "deny") {
-		const result = evaluateDeploymentPolicy(deployment.features, {
-			pathname: url.pathname,
-			method: request.method,
-		});
-
-		if (result.action === "block" && result.error === "Demo Mode") {
-			throw new Error(result.message);
-		}
-	}
-
-	return next();
 });

@@ -119,3 +119,9 @@ export const MCP_PATH = "/api/mcp";
 /** Where an interrupted MCP sign-in resumes. Named here so the sign-in page
  * need not know the auth base path or the plugin's own. */
 export const MCP_AUTHORIZE_ENDPOINT = "/api/auth/oauth2/authorize";
+
+/** Requests an API key may make per minute. Stamped onto the key row at
+ * creation, so this is the ceiling for newly issued keys — and the number the
+ * `X-RateLimit-Limit` header falls back to when a row predates the column.
+ * Here so those two cannot name different numbers. */
+export const API_KEY_RATE_LIMIT_PER_MINUTE = 1_000;
