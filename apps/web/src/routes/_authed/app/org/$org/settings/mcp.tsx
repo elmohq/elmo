@@ -3,9 +3,8 @@
  * actually registered, whether writes are served at all — so a whitelabel or
  * air-gapped instance never has to send anybody to elmohq.com to connect.
  */
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { DEFAULT_APP_NAME, MCP_PATH } from "@workspace/config/constants";
-import { orgLinkParams } from "@workspace/lib/app-urls";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card } from "@workspace/ui/components/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
@@ -15,7 +14,6 @@ import { CodeBlock, InlineCode } from "@/components/code-block";
 import { CopyButton } from "@/components/copy-button";
 import { useAppOrigin } from "@/hooks/use-app-origin";
 import { useBranding } from "@/hooks/use-deployment-features";
-import { useOrganization } from "@/hooks/use-organizations";
 import { pageHead } from "@/lib/route-head";
 import { listMcpToolsFn, type McpPageData } from "@/server/mcp";
 
@@ -158,7 +156,6 @@ function Snippet({ heading, snippet }: { heading: string; snippet: ClientSnippet
 
 function McpSettingsPage() {
 	const { tools, readOnlyDeployment } = Route.useLoaderData();
-	const organization = useOrganization();
 	const branding = useBranding();
 	const origin = useAppOrigin();
 
@@ -186,20 +183,7 @@ function McpSettingsPage() {
 			</section>
 
 			<section className="space-y-3">
-				<div className="space-y-1">
-					<h2 className="text-lg font-semibold">Connect</h2>
-					<p className="text-sm text-muted-foreground">
-						Signing in needs nothing but the endpoint. For the key form, swap {KEY_PLACEHOLDER} for one from{" "}
-						<Link
-							to="/app/org/$org/settings/api-keys"
-							params={orgLinkParams(organization)}
-							className="underline underline-offset-4"
-						>
-							API Keys
-						</Link>{" "}
-						and keep it out of anything you commit.
-					</p>
-				</div>
+				<h2 className="text-lg font-semibold">Connect</h2>
 				<Tabs defaultValue={clients[0].value}>
 					<TabsList>
 						{clients.map((client) => (
