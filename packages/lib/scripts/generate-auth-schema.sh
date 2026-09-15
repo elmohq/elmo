@@ -97,10 +97,8 @@ cat <<'HEADER'
  * new table needs indexes beyond what the generator emits, add them in a new
  * migration — not in this file.
  *
- * One column deserves a warning the generator can't carry: `apikey.metadata` is
- * writable by anyone with a session, by plugin design. Never store anything
- * there that grants access — see readBrandRestriction in
- * apps/web/src/lib/auth/api-auth.ts.
+ * `apikey.metadata` is writable by anyone with a session, by plugin design.
+ * Never store anything there that grants access.
  */
 HEADER
 cat "$TMP_OUTPUT"
