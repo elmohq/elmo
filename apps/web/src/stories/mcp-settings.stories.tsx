@@ -115,8 +115,6 @@ export const ReadOnlyDeployment: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText(/read-only, so the tools that write are withheld/)).toBeVisible();
-		// Both snippets are still shown, so the page has to say up front that
-		// neither of them leads anywhere here.
 		await expect(await canvas.findByText("MCP access is disabled in demo mode.")).toBeVisible();
 	},
 };

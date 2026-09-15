@@ -240,11 +240,8 @@ export const ReadOnlyDeployment: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText("API access is disabled in demo mode.")).toBeVisible();
-		// An admin still can't write here, so the forms that would be refused are
-		// gone rather than left to fail on submit.
 		await expect(canvas.queryByRole("button", { name: "Add Key" })).toBeNull();
 		await expect(canvas.queryByRole("button", { name: "Revoke" })).toBeNull();
-		// The role warning is about being a member, not about the deployment.
 		await expect(canvas.queryByText("Limited Access")).toBeNull();
 		await expect(await canvas.findByText("Reporting pipeline")).toBeVisible();
 	},
@@ -257,8 +254,6 @@ export const ReadOnlyDeploymentWithNoKeys: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		// The empty state can't tell somebody to ask an admin: no admin can issue
-		// one here either.
 		await expect(await canvas.findByText("Keys can't be issued in demo mode.")).toBeVisible();
 		await expect(canvas.queryByRole("button", { name: "Create your first key" })).toBeNull();
 	},

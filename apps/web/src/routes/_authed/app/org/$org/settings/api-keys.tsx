@@ -91,8 +91,6 @@ function inactiveReason(key: ApiKeySummary): string {
 function ApiKeysSettingsPage() {
 	const { keys, brands, expiryOptions, canManage: isKeyAdmin, organization } = Route.useLoaderData();
 	const readOnly = useDeploymentFeatures()?.readOnly ?? false;
-	// Issuing and revoking are both writes, so a read-only deployment refuses
-	// them whatever the role says.
 	const canManage = isKeyAdmin && !readOnly;
 	const linkParams = orgLinkParams(useOrganization());
 	const router = useRouter();

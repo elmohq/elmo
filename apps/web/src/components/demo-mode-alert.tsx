@@ -1,8 +1,3 @@
-/**
- * The connection pages hand out steps somebody is meant to follow elsewhere, and
- * a read-only deployment refuses them. Each page names its own surface rather
- * than sharing one vague sentence.
- */
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { Alert, AlertTitle } from "@workspace/ui/components/alert";
 import type { ReactNode } from "react";
