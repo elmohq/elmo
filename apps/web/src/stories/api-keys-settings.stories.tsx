@@ -3,7 +3,7 @@ import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import { Route } from "@/routes/_authed/app/org/$org/settings/api-keys";
 import { type ApiKeysPageData, setMockApiKeys } from "./_mocks/server-api-keys";
-import { setMockLoaderData } from "./_mocks/tanstack-router";
+import { setMockLoaderData, setMockRouteContext } from "./_mocks/tanstack-router";
 
 const ApiKeysSettingsPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 
@@ -60,7 +60,7 @@ const KEYS: ApiKeysPageData["keys"] = [
 	},
 ];
 
-function load(page: Partial<ApiKeysPageData>) {
+function load(page: Partial<ApiKeysPageData>, readOnly = false) {
 	const data: ApiKeysPageData = {
 		organization: { id: "org-1", name: "Acme", role: "admin" },
 		canManage: true,
@@ -71,6 +71,7 @@ function load(page: Partial<ApiKeysPageData>) {
 	};
 	setMockApiKeys(data);
 	setMockLoaderData(data);
+	setMockRouteContext({ clientConfig: { features: { readOnly } } });
 }
 
 function Shell({ children }: { children: ReactNode }) {
@@ -114,6 +115,7 @@ export const WithKeys: Story = {
 		await expect((await canvas.findAllByText("write")).length).toBe(2);
 		await expect(await canvas.findByRole("button", { name: "Add Key" })).toBeVisible();
 		await expect(canvas.queryByLabelText("Name")).toBeNull();
+		await expect(canvas.queryByText(/disabled in demo mode/)).toBeNull();
 	},
 };
 
@@ -227,5 +229,32 @@ export const RevokeConfirmation: Story = {
 		const dialog = within(await within(document.body).findByRole("dialog"));
 		await expect(await dialog.findByText(/Revoke .Reporting pipeline.\?/)).toBeVisible();
 		await expect(await dialog.findByRole("button", { name: "Revoke" })).toBeVisible();
+	},
+};
+
+export const ReadOnlyDeployment: Story = {
+	render: () => {
+		load({ keys: KEYS, canManage: true }, true);
+		return <ApiKeysSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText("API access is disabled in demo mode.")).toBeVisible();
+		await expect(canvas.queryByRole("button", { name: "Add Key" })).toBeNull();
+		await expect(canvas.queryByRole("button", { name: "Revoke" })).toBeNull();
+		await expect(canvas.queryByText("Limited Access")).toBeNull();
+		await expect(await canvas.findByText("Reporting pipeline")).toBeVisible();
+	},
+};
+
+export const ReadOnlyDeploymentWithNoKeys: Story = {
+	render: () => {
+		load({ keys: [], canManage: true }, true);
+		return <ApiKeysSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText("Keys can't be issued in demo mode.")).toBeVisible();
+		await expect(canvas.queryByRole("button", { name: "Create your first key" })).toBeNull();
 	},
 };

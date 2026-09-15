@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/componen
 import type { ReactNode } from "react";
 import { CodeBlock, InlineCode } from "@/components/code-block";
 import { CopyButton } from "@/components/copy-button";
+import { DemoModeAlert } from "@/components/demo-mode-alert";
 import { useAppOrigin } from "@/hooks/use-app-origin";
 import { useBranding } from "@/hooks/use-deployment-features";
 import { pageHead } from "@/lib/route-head";
@@ -163,6 +164,8 @@ function McpSettingsPage() {
 				<h1 className="text-3xl font-bold">MCP</h1>
 				<p className="max-w-2xl text-muted-foreground">Connect any chat bot to {appName}.</p>
 			</header>
+
+			<DemoModeAlert>MCP access is disabled in demo mode.</DemoModeAlert>
 
 			<section className="space-y-3">
 				<h2 className="text-lg font-semibold">Endpoint</h2>
