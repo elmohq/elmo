@@ -8,7 +8,6 @@ export const Route = createFileRoute("/.well-known/agent-skills/index.json")({
 				new Response(JSON.stringify(skillsIndex), {
 					headers: {
 						"Content-Type": "application/json",
-						// Read before an agent holds any credential, often cross-origin.
 						"Access-Control-Allow-Origin": "*",
 					},
 				}),
