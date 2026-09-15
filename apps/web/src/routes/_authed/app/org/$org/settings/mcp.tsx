@@ -213,7 +213,7 @@ function McpSettingsPage() {
 					{clients.map((client) => (
 						<TabsContent key={client.value} value={client.value} className="space-y-5 pt-2">
 							<Snippet heading="Sign in" snippet={client.signIn} />
-							<Snippet heading="Or send an API key" snippet={client.apiKey} />
+							<Snippet heading="Or use an API key" snippet={client.apiKey} />
 						</TabsContent>
 					))}
 				</Tabs>
