@@ -1,5 +1,29 @@
 # @workspace/web
 
+## 0.4.0
+
+### Minor Changes
+
+- c9142f7: Elmo now serves a full external API and an MCP server. `/api/v1` covers brands, prompts, competitors, reports, analytics, models, tags, and opportunities. `/api/mcp` connects Claude Code, Codex, Cursor, OpenCode, and VS Code, either by signing in from the client or with an API key. Keys belong to an organization and are issued read-only or read-write from Settings, which now also has API and MCP pages describing your own deployment.
+
+### Patch Changes
+
+- 8c953b1: Every `/api/v1` list response now includes a `data` array. The `brands`, `prompts`, `competitors`, and `reports` keys still carry the same array and will be removed in a future release.
+- 8eac13b: Citation categorization now covers developer docs, blog subdomains, software directories, and Google link wrappers.
+- e30d6d4: Redesigned the Open Graph share images with a cleaner layout, headline sizing that fits long titles, and the app's host in the footer.
+- Updated dependencies [8c953b1]
+- Updated dependencies [f6e90d9]
+- Updated dependencies [99f537c]
+- Updated dependencies [c9142f7]
+- Updated dependencies [e30d6d4]
+- Updated dependencies [aa8c80d]
+  - @workspace/api-spec@0.4.0
+  - @workspace/lib@0.4.0
+  - @workspace/og@0.4.0
+  - @workspace/deployment@0.4.0
+  - @workspace/config@0.4.0
+  - @workspace/ui@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

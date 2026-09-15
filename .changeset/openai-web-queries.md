@@ -1,5 +1,0 @@
----
-"@workspace/lib": patch
----
-
-Prompt runs on the OpenAI API provider now correctly show the search queries the model ran.
