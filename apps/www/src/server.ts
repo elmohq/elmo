@@ -31,9 +31,6 @@ function addSecurityHeaders(response: Response): Response {
 	return response;
 }
 
-// RFC 8288 links to the machine-readable entry points of this site, so an agent
-// that fetched one page knows what else is here without guessing at well-known
-// paths. Relative references so they also resolve on preview deployments.
 const DISCOVERY_LINKS = [
 	`</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"`,
 	`</.well-known/ard.json>; rel="ard"`,
@@ -45,7 +42,6 @@ const DISCOVERY_LINKS = [
 	`<https://github.com/elmohq/elmo/blob/main/LICENSE.md>; rel="license"`,
 ].join(", ");
 
-/** Only the responses an agent reads as content; assets carry no useful links. */
 function isDiscoverable(response: Response): boolean {
 	const type = response.headers.get("Content-Type") ?? "";
 	return type.startsWith("text/html") || type.startsWith("text/markdown");
