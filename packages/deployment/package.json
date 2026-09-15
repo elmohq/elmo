@@ -19,11 +19,11 @@
 		"./auth-hooks/whitelabel": "./src/auth-hooks/whitelabel.ts"
 	},
 	"dependencies": {
-		"@better-auth/stripe": "^1.7.2",
+		"@better-auth/stripe": "^1.7.4",
 		"@workspace/config": "workspace:*",
 		"@workspace/lib": "workspace:*",
 		"@workspace/ui": "workspace:*",
-		"better-auth": "^1.7.2",
+		"better-auth": "^1.7.4",
 		"disposable-email-domains": "^1.0.62",
 		"drizzle-orm": "^0.45.2",
 		"resend": "^6.17.2",
