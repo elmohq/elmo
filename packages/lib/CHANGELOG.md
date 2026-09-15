@@ -1,5 +1,12 @@
 # @workspace/lib
 
+## 0.4.1
+
+### Patch Changes
+
+- e2543e8: Fix MCP sign-in for clients that use a client ID metadata document.
+- @workspace/config@0.4.1
+
 ## 0.4.0
 
 ### Minor Changes

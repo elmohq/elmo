@@ -1,5 +1,11 @@
 # @workspace/docs
 
+## 0.4.1
+
+### Patch Changes
+
+- @workspace/ui@0.4.1
+
 ## 0.4.0
 
 ### Minor Changes
