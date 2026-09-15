@@ -117,6 +117,13 @@ export function createAuth(options?: CreateAuthOptions) {
 		basePath: "/api/auth",
 		trustedOrigins: origins,
 
+		// Counted in Postgres rather than in the process: the default memory store
+		// is per-instance and empty again after a cold start, which on a
+		// serverless platform leaves the built-in limits on sign-in and password
+		// reset counting almost nothing. The windows themselves are better-auth's
+		// own — 3 sign-in attempts per 10s, 3 reset or verification mails per 60s.
+		rateLimit: { storage: "database" },
+
 		emailAndPassword: {
 			enabled: options?.emailAndPasswordEnabled !== false,
 			requireEmailVerification: options?.requireEmailVerification === true,
