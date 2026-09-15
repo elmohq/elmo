@@ -59,6 +59,21 @@ export const Connect: Story = {
 	},
 };
 
+export const SignInNeedsNoKey: Story = {
+	render: () => {
+		load({ tools: TOOLS });
+		return <McpSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		// Signing in is the path that works without issuing anything, so its
+		// snippet must not carry a key the reader has to go and fetch first.
+		const signIn = await canvas.findByText(`claude mcp add --transport http elmo ${window.location.origin}/api/mcp`);
+		await expect(signIn).toBeVisible();
+		await expect(signIn).not.toHaveTextContent("Authorization");
+	},
+};
+
 export const OtherClients: Story = {
 	render: () => {
 		load({ tools: TOOLS });
@@ -70,6 +85,8 @@ export const OtherClients: Story = {
 		await expect(await canvas.findByRole("tab", { name: "Claude Code" })).toHaveAttribute("aria-selected", "true");
 		await userEvent.click(await canvas.findByRole("tab", { name: "Cursor" }));
 		await expect(await canvas.findByText(/~\/.cursor\/mcp.json/)).toBeVisible();
+		await userEvent.click(await canvas.findByRole("tab", { name: "Codex" }));
+		await expect(await canvas.findByText(/codex mcp login elmo/)).toBeVisible();
 	},
 };
 
