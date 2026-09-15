@@ -12,9 +12,8 @@ import { createAuthMiddleware } from "better-auth/api";
 const HTTP_LOOPBACK_REDIRECT = /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])([:/?#]|$)/i;
 
 /**
- * The redirects RFC 8252 gives a native app: a loopback port, a claimed https
- * URL, or a private-use scheme of its own. Judged with the predicates the
- * registration endpoint itself applies, so nothing it would accept is dropped.
+ * Judged with the predicates the registration endpoint itself applies, so a
+ * redirect it would have accepted is never dropped.
  */
 function usableByNativeClient(uri: unknown): boolean {
 	if (typeof uri !== "string") return false;

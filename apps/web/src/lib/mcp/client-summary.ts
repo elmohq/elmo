@@ -18,8 +18,7 @@ export interface McpClientSummary {
 	 * is attributable to someone. Null for a client that registered itself. */
 	publisherHost: string | null;
 	redirectHosts: string[];
-	/** Every redirect goes to the user's own machine, where any program could
-	 * be the one listening. */
+	/** Any program on the user's own machine could be the one listening. */
 	loopbackOnly: boolean;
 }
 

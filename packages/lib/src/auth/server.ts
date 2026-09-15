@@ -178,9 +178,6 @@ export function createAuth(options?: CreateAuthOptions) {
 			jwt({ disableSettingJwtHeader: true }),
 			mcpResourceDefault(resource),
 			nativeClientRegistrationDefault(),
-			// The registration MCP prefers: the client is identified by a metadata
-			// document it hosts, so nothing about it is self-asserted at a POST we
-			// cannot attribute to anyone.
 			cimd({ fetchClientMetadataResource, metadataProfile: "mcp-2026-07-28" }),
 			mcp({
 				loginPage: LOGIN_PAGE,
