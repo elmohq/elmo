@@ -1,6 +1,7 @@
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
+import { REPROCESS_QUEUE } from "@workspace/lib/rollups/constants";
 import { eq } from "drizzle-orm";
 import { getBoss } from "@/lib/boss-client";
 
@@ -122,6 +123,27 @@ export async function createMultiplePromptJobSchedulers(
 	const results = await Promise.allSettled(promptIds.map((promptId) => createPromptJobScheduler(promptId, options)));
 
 	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
+}
+
+/**
+ * Ask the worker to re-derive this brand's history against its current name,
+ * aliases, and competitors. Debounced per brand, because a settings screen
+ * saves several fields in a row and the job re-reads the whole brand anyway.
+ *
+ * Never throws: the caller's write has already committed, and the nightly
+ * reconcile plus the next config change both bring the brand back in line.
+ */
+export async function requestBrandReprocess(brandId: string): Promise<void> {
+	try {
+		const boss = await getBoss();
+		await boss.send(
+			REPROCESS_QUEUE,
+			{ brandId, layers: ["interpretation"] },
+			{ singletonKey: `reprocess:${brandId}`, singletonSeconds: 60 },
+		);
+	} catch (error) {
+		console.error(`Failed to request reprocess for brand ${brandId}:`, error);
+	}
 }
 
 /**

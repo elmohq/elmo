@@ -4,6 +4,7 @@ import { targetFilterValue } from "@workspace/config/model-filter";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeployment } from "@workspace/deployment";
 import { isValidSlug, MAX_SLUG_LENGTH, slugify } from "@workspace/lib/app-urls";
+import { cleanAndValidateDomain } from "@workspace/lib/citations/domain-categories";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
@@ -36,7 +37,7 @@ import {
 import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { requestBrandReprocess } from "@/lib/job-scheduler";
 import type { TrackedTarget } from "@/lib/model-filter";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
@@ -386,6 +387,10 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 			throw new Error("Failed to update brand");
 		}
 
+		// The brand's identity is what mention detection matches on, so history
+		// has to be re-derived against the new one.
+		if (Object.keys(updateData).length > 0) await requestBrandReprocess(data.brandId);
+
 		return result[0];
 	});
 
@@ -437,7 +442,7 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 			};
 		});
 
-		return db.transaction(async (tx) => {
+		const saved = await db.transaction(async (tx) => {
 			await tx.delete(competitors).where(eq(competitors.brandId, data.brandId));
 
 			if (cleanedCompetitors.length > 0) {
@@ -455,6 +460,9 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 				where: eq(competitors.brandId, data.brandId),
 			});
 		});
+
+		await requestBrandReprocess(data.brandId);
+		return saved;
 	});
 
 /**
@@ -482,8 +490,12 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 			.where(and(eq(brands.id, data.brandId), sql`NOT (${domain} = ANY(${brands.additionalDomains}))`))
 			.returning();
 
-		if (result) return result;
+		if (result) {
+			await requestBrandReprocess(data.brandId);
+			return result;
+		}
 
+		// No row updated: the brand already had this domain, so nothing to re-derive.
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, data.brandId),
 		});
@@ -521,6 +533,7 @@ export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 			.where(eq(competitors.id, data.competitorId))
 			.returning();
 
+		await requestBrandReprocess(data.brandId);
 		return result;
 	});
 
@@ -552,5 +565,6 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 			})
 			.returning();
 
+		await requestBrandReprocess(data.brandId);
 		return result;
 	});

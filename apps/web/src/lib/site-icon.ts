@@ -5,7 +5,7 @@
  * that site's icon. Nothing is stored on our side: the browser requests the
  * icon directly, so a brand's icon appears the moment its domain is set.
  */
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { cleanAndValidateDomain } from "@workspace/lib/citations/domain-categories";
 
 const FAVICON_ENDPOINT = "https://t1.gstatic.com/faviconV2";
 

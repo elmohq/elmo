@@ -48,4 +48,10 @@ describe("analyzeMentions", () => {
 		const result = analyzeMentions("Globex leads.", brand, [{ name: "Globex", domains: ["://broken"] }]);
 		expect(result.competitorsMentioned).toEqual(["Globex"]);
 	});
+
+	it("treats a blank alias or domain as no signal rather than as a match on everything", () => {
+		const blank = { name: "Zzz", aliases: ["", "   "], domains: ["", "  ", null] };
+		expect(analyzeMentions("Any answer at all.", blank, []).brandMentioned).toBe(false);
+		expect(analyzeMentions("Any answer at all.", brand, [blank]).competitorsMentioned).toEqual([]);
+	});
 });

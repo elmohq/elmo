@@ -2,6 +2,7 @@
  * does not transitively pull in drizzle and pg. */
 
 import { slugify } from "@workspace/lib/app-urls";
+import { dedupeAliases, dedupeDomains } from "@workspace/lib/citations/domain-categories";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { ensureOrganization } from "@workspace/lib/db/provisioning";
@@ -11,8 +12,7 @@ import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { count, desc, eq, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
-import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
+import { createMultiplePromptJobSchedulers, requestBrandReprocess } from "@/lib/job-scheduler";
 
 export class BrandConflictError extends Error {
 	constructor(public readonly brandId: string) {
@@ -364,6 +364,10 @@ export async function updateBrand(input: UpdateBrandInput): Promise<BrandResult>
 	if (input.enabled !== undefined) patch.enabled = input.enabled;
 
 	await db.update(brands).set(patch).where(eq(brands.id, input.brandId));
+	// Mention detection matches on these, so history is re-derived when they move.
+	if (patch.name !== undefined || patch.website !== undefined || patch.additionalDomains || patch.aliases) {
+		await requestBrandReprocess(input.brandId);
+	}
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
 	return buildBrandResult(refreshed!);
 }
@@ -405,6 +409,11 @@ export async function saveWizardOnboarding(input: WizardOnboardingInput): Promis
 		dedupeAgainstExisting: true,
 	});
 	await createMultiplePromptJobSchedulers(wizardPromptIds);
+
+	// The wizard runs against a brand that already exists, and its prompts page
+	// is reachable before it is completed, so the runs it rewrites the name,
+	// domains, and competitors for may already be there.
+	await requestBrandReprocess(input.brandId);
 
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
 	return buildBrandResult(refreshed!);

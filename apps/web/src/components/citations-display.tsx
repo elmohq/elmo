@@ -1,3 +1,11 @@
+import {
+	CATEGORY_CONFIG,
+	CITATION_CATEGORIES,
+	CITATION_PAGE_TYPES,
+	type CitationCategory,
+	type CitationPageType,
+	PAGE_TYPE_CONFIG,
+} from "@workspace/lib/citations/domain-categories";
 import { useMemo } from "react";
 import { ContentGapsCard } from "@/components/citations/content-gaps-card";
 import { GoogleShoppingCard } from "@/components/citations/google-shopping-card";
@@ -9,14 +17,6 @@ import { TopDomainsCard } from "@/components/citations/top-domains-card";
 import { TopUrlsCard } from "@/components/citations/top-urls-card";
 import { TrendAreaChart } from "@/components/citations/trend-area-chart";
 import type { CitationData } from "@/components/citations/types";
-import {
-	CATEGORY_CONFIG,
-	CITATION_CATEGORIES,
-	CITATION_PAGE_TYPES,
-	type CitationCategory,
-	type CitationPageType,
-	PAGE_TYPE_CONFIG,
-} from "@/lib/domain-categories";
 
 export type { CitationData } from "@/components/citations/types";
 
