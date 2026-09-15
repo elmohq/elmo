@@ -61,6 +61,10 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"Pick whichever term your team finds clearest. The work is the same either way: making sure the models that answer your buyers' questions know your brand and treat it as a trustworthy source.",
 		],
 		related: ["answer-engine-optimization", "generative-engine-optimization", "large-language-model"],
+		seeAlso: [
+			{ label: "What is answer engine optimization?", href: "/blog/answer-engine-optimization" },
+			{ label: "What is generative SEO?", href: "/blog/what-is-generative-seo" },
+		],
 	},
 	{
 		slug: "ai-visibility",
@@ -86,6 +90,10 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"That changes what visibility means. Instead of a ranking you can hold, there is a single answer that either names your brand or does not.",
 		],
 		related: ["ai-search-engine", "google-ai-overviews", "chatgpt-search"],
+		seeAlso: [
+			{ label: "How to show up in AI search engines", href: "/ai-search" },
+			{ label: "How AI is changing search", href: "/blog/ai-for-seo" },
+		],
 	},
 	{
 		slug: "ai-search-engine",
@@ -161,6 +169,10 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"Mentions and citations are worth tracking separately. You can be named without being cited, and cited without being named, and the gap between the two tells you where to focus.",
 		],
 		related: ["ai-citation", "share-of-voice", "ai-brand-sentiment"],
+		seeAlso: [
+			{ label: "How to track your brand in AI search", href: "/blog/track-brand-ai-search" },
+			{ label: "When AI cites you without naming you", href: "/blog/ghost-citations" },
+		],
 	},
 	{
 		slug: "share-of-voice",
@@ -186,6 +198,10 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"Relevance beats raw volume, though. Fifty prompts that match real buyer questions are worth more than a thousand generic ones, and they cost less to run.",
 		],
 		related: ["prompt-tracking", "ai-visibility"],
+		seeAlso: [
+			{ label: "How often to run prompt tracking", href: "/blog/ai-prompt-tracking" },
+			{ label: "What prompt tracking misses", href: "/blog/multi-turn-ai-search" },
+		],
 	},
 	{
 		slug: "prompt-tracking",
@@ -211,6 +227,10 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"A score you cannot inspect is hard to trust or reproduce. Open methodology lets you see what went into the number, rather than taking a vendor's word for it.",
 		],
 		related: ["ai-visibility", "share-of-voice"],
+		seeAlso: [
+			{ label: "Why two tools give different scores", href: "/blog/why-ai-visibility-scores-differ" },
+			{ label: "What metrics matter for AI search", href: "/blog/iab-ai-visibility-metrics" },
+		],
 	},
 	{
 		slug: "ai-brand-sentiment",
@@ -237,6 +257,10 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"Clean, consistent naming, structured data, and corroborating mentions on trusted sources all help an engine resolve who you are and what you do.",
 		],
 		related: ["knowledge-graph", "structured-data", "grounding"],
+		seeAlso: [
+			{ label: "Off-site AEO", href: "/off-site-aeo" },
+			{ label: "Where AI citations come from", href: "/blog/where-ai-citations-come-from" },
+		],
 	},
 	{
 		slug: "structured-data",
@@ -274,6 +298,10 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"It is also why AEO works at all. If you are among the documents retrieved for a query, you can influence the answer, even though you never see the index.",
 		],
 		related: ["grounding", "ai-citation", "semantic-search"],
+		seeAlso: [
+			{ label: "How long it takes to get cited by AI", href: "/blog/how-long-to-get-cited-by-ai" },
+			{ label: "How agentic AI search reads your pages", href: "/blog/do-llms-txt-files-matter-for-aeo" },
+		],
 	},
 	{
 		slug: "grounding",
@@ -285,6 +313,10 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"Grounding is where brands have leverage. A clear, trustworthy page on your topic gives the model something to ground an answer in.",
 		],
 		related: ["retrieval-augmented-generation", "ai-citation", "hallucination"],
+		seeAlso: [
+			{ label: "Can you trust AI citations?", href: "/blog/can-you-trust-ai-citations" },
+			{ label: "How to earn AI citations", href: "/blog/ai-citations" },
+		],
 	},
 	{
 		slug: "hallucination",
@@ -296,6 +328,10 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"Grounding and good source material reduce the risk. Monitoring matters too, since the only way to catch a hallucination about your brand is to look for it.",
 		],
 		related: ["grounding", "ai-brand-sentiment"],
+		seeAlso: [
+			{ label: "Do AI engines fact-check what they read?", href: "/blog/ai-search-fact-checking" },
+			{ label: "How to track your brand in AI search", href: "/blog/track-brand-ai-search" },
+		],
 	},
 	{
 		slug: "ai-crawler",
@@ -307,6 +343,10 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"Some tools track these visits as a signal of AI interest in your content. At minimum, make sure your robots rules do not accidentally shut the door on engines you want to reach.",
 		],
 		related: ["llms-txt", "retrieval-augmented-generation"],
+		seeAlso: [
+			{ label: "Robots.txt and AI crawlers", href: "/blog/robots-txt-ai-crawlers" },
+			{ label: "How many websites block AI crawlers?", href: "/blog/how-many-websites-block-ai-crawlers" },
+		],
 	},
 	{
 		slug: "zero-click-search",
@@ -318,6 +358,10 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"This is why AEO matters strategically. If buyers read an answer and never click, the mention in that answer is all the visibility you get.",
 		],
 		related: ["google-ai-overviews", "brand-mention"],
+		seeAlso: [
+			{ label: "How often AI Overviews appear", href: "/blog/ai-overviews-share-of-searches" },
+			{ label: "What AI referral traffic is worth", href: "/blog/ai-referral-traffic-conversion" },
+		],
 	},
 	{
 		slug: "knowledge-graph",
@@ -329,6 +373,10 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"Consistent information about your brand across the web, plus clear structured data, helps engines place you correctly in their graph.",
 		],
 		related: ["entity", "structured-data"],
+		seeAlso: [
+			{ label: "Structured data for AI search", href: "/blog/structured-data-for-ai-search" },
+			{ label: "How AI engines describe your brand", href: "/blog/ai-brand-sentiment" },
+		],
 	},
 	{
 		slug: "semantic-search",
@@ -340,6 +388,10 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"So write for the question rather than the keyword. Covering a topic clearly makes you findable across the many ways people phrase the same intent.",
 		],
 		related: ["embedding", "retrieval-augmented-generation"],
+		seeAlso: [
+			{ label: "Does ranking get you cited by AI?", href: "/blog/rankings-and-ai-citations" },
+			{ label: "AEO vs SEO", href: "/blog/aeo-vs-seo" },
+		],
 	},
 	{
 		slug: "embedding",
@@ -351,6 +403,9 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"You cannot optimize embeddings directly, only the content behind them: clear, focused, well-organized text on a single topic.",
 		],
 		related: ["semantic-search", "retrieval-augmented-generation"],
+		seeAlso: [
+			{ label: "Can a content score predict AI citations?", href: "/blog/can-content-scores-predict-ai-citations" },
+		],
 	},
 	{
 		slug: "large-language-model",
@@ -364,6 +419,10 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"On their own, LLMs answer from training and can go stale or invent details. Paired with retrieval, they can ground answers in current sources, which is the setup most answer engines now use.",
 		],
 		related: ["llmo", "retrieval-augmented-generation", "hallucination"],
+		seeAlso: [
+			{ label: "AI search engines compared", href: "/blog/best-ai-search-engine" },
+			{ label: "Generative AI for marketing", href: "/blog/generative-ai-for-marketing" },
+		],
 	},
 ];
 
