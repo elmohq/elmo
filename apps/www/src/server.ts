@@ -31,6 +31,31 @@ function addSecurityHeaders(response: Response): Response {
 	return response;
 }
 
+const DISCOVERY_LINKS = [
+	`</.well-known/agent-skills/index.json>; rel="agent-skills"`,
+	`</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"`,
+	`</.well-known/ard.json>; rel="ard"`,
+	`</api/openapi.json>; rel="service-desc"`,
+	`</docs>; rel="service-doc"; type="text/html"`,
+	`</llms.txt>; rel="describedby"; type="text/plain"`,
+	`</sitemap.xml>; rel="sitemap"; type="application/xml"`,
+	`<https://status.elmohq.com/>; rel="status"; type="text/html"`,
+	`<https://github.com/elmohq/elmo/blob/main/LICENSE.md>; rel="license"`,
+].join(", ");
+
+function isDiscoverable(response: Response): boolean {
+	const type = response.headers.get("Content-Type") ?? "";
+	return type.startsWith("text/html") || type.startsWith("text/markdown");
+}
+
+function addDiscoveryLinks(response: Response, markdownAlternate?: string): void {
+	if (!isDiscoverable(response)) return;
+	const links = markdownAlternate
+		? `${DISCOVERY_LINKS}, <${markdownAlternate}>; rel="alternate"; type="text/markdown"`
+		: DISCOVERY_LINKS;
+	response.headers.set("Link", links);
+}
+
 const MARKDOWN_SOURCES = [
 	{ base: "/docs", indexIsPage: true },
 	{ base: "/blog", indexIsPage: false },
@@ -98,6 +123,7 @@ export default createServerEntry({
 
 		const response = await handler.fetch(req);
 		if (negotiable) response.headers.set("Vary", "Accept");
+		addDiscoveryLinks(response, negotiable ? `${path}.md` : undefined);
 		return addSecurityHeaders(response);
 	},
 });
