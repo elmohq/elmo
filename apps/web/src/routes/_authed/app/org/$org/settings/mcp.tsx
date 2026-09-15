@@ -218,17 +218,13 @@ function McpSettingsPage() {
 									<TableCell className="font-mono text-xs text-foreground">{tool.name}</TableCell>
 									<TableCell>{tool.title}</TableCell>
 									<TableCell>
-										{tool.scopes.length === 0 ? (
-											<span className="text-muted-foreground">Any connection</span>
-										) : (
-											<div className="flex flex-wrap gap-1">
-												{tool.scopes.map((scope) => (
-													<Badge key={scope} variant="secondary" className="font-mono font-normal">
-														{scope}
-													</Badge>
-												))}
-											</div>
-										)}
+										<div className="flex flex-wrap gap-1">
+											{tool.scopes.map((scope) => (
+												<Badge key={scope} variant="secondary" className="font-mono font-normal">
+													{scope}
+												</Badge>
+											))}
+										</div>
 									</TableCell>
 								</TableRow>
 							))}
