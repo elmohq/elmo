@@ -197,12 +197,11 @@ function McpSettingsPage() {
 			<section className="space-y-3">
 				<div className="space-y-1">
 					<h2 className="text-lg font-semibold">Tools</h2>
-					<p className="text-sm text-muted-foreground">
-						A key is only offered the tools its scopes allow, so a client is never shown something it would then be
-						refused. A connection you signed in from acts as you and reaches everything you can.
-						{readOnlyDeployment &&
-							" This deployment is read-only, so the tools that write are withheld from every key."}
-					</p>
+					{readOnlyDeployment && (
+						<p className="text-sm text-muted-foreground">
+							This deployment is read-only, so the tools that write are withheld from every key.
+						</p>
+					)}
 				</div>
 				<Card className="gap-0 overflow-hidden py-0">
 					<Table className="[&_td]:px-4 [&_th]:px-4">
