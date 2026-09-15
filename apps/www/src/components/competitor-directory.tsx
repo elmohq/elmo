@@ -41,11 +41,11 @@ export function CompetitorDirectory() {
 				<div className="relative mx-auto max-w-6xl px-4 md:px-6">
 					<p className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ RESOURCES</p>
 					<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl lg:text-6xl">
-						AI Visibility Tool Directory
+						AI Visibility Tools
 					</h1>
 					<p className="mt-6 max-w-3xl text-lg text-balance text-zinc-600 md:text-xl">
-						Every AI visibility and Answer Engine Optimization tool in one place. Compare features, pricing, and find
-						the right platform for your team.
+						Every AI visibility tool, AEO platform, LLM visibility tracker and GEO tool in one place. Compare engine
+						coverage, features and pricing, and find the right platform for your team.
 					</p>
 				</div>
 			</section>
