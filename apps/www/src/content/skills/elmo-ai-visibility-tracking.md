@@ -1,9 +1,9 @@
 ---
-name: elmo-ai-visibility
+name: elmo-ai-visibility-tracking
 description: Measure and improve how AI answer engines describe and cite a brand, using an Elmo deployment over MCP or its REST API. Use when asked about AI visibility, answer engine optimization (AEO), generative engine optimization (GEO), share of voice in AI answers, or which sources ChatGPT, Perplexity, Gemini, Copilot, Grok, or Google AI Overviews cite about a company.
 ---
 
-# Elmo AI visibility
+# Elmo AI Visibility Tracking
 
 [Elmo](https://www.elmohq.com) runs a set of prompts across the major AI answer engines on a
 schedule and records what came back: whether the brand appeared, which competitors appeared
