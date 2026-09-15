@@ -25,6 +25,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as VisionRouteImport } from './routes/vision'
 import { Route as DotwellKnownAiCatalogDotjsonRouteImport } from './routes/[.]well-known/ai-catalog[.]json'
+import { Route as DotwellKnownApiCatalogRouteImport } from './routes/[.]well-known/api-catalog'
 import { Route as DotwellKnownArdDotjsonRouteImport } from './routes/[.]well-known/ard[.]json'
 import { Route as AeoForIndexRouteImport } from './routes/aeo-for/index'
 import { Route as AeoForSlugRouteImport } from './routes/aeo-for/$slug'
@@ -140,6 +141,11 @@ const DotwellKnownAiCatalogDotjsonRoute =
     path: '/.well-known/ai-catalog.json',
     getParentRoute: () => rootRouteImport,
   } as any)
+const DotwellKnownApiCatalogRoute = DotwellKnownApiCatalogRouteImport.update({
+  id: '/.well-known/api-catalog',
+  path: '/.well-known/api-catalog',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DotwellKnownArdDotjsonRoute = DotwellKnownArdDotjsonRouteImport.update({
   id: '/.well-known/ard.json',
   path: '/.well-known/ard.json',
@@ -335,6 +341,7 @@ export interface FileRoutesByFullPath {
   '/status': typeof StatusRoute
   '/vision': typeof VisionRoute
   '/.well-known/ai-catalog.json': typeof DotwellKnownAiCatalogDotjsonRoute
+  '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
   '/.well-known/ard.json': typeof DotwellKnownArdDotjsonRoute
   '/aeo-for/$slug': typeof AeoForSlugRoute
   '/ai-search/$slug': typeof AiSearchSlugRoute
@@ -386,6 +393,7 @@ export interface FileRoutesByTo {
   '/status': typeof StatusRoute
   '/vision': typeof VisionRoute
   '/.well-known/ai-catalog.json': typeof DotwellKnownAiCatalogDotjsonRoute
+  '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
   '/.well-known/ard.json': typeof DotwellKnownArdDotjsonRoute
   '/aeo-for/$slug': typeof AeoForSlugRoute
   '/ai-search/$slug': typeof AiSearchSlugRoute
@@ -438,6 +446,7 @@ export interface FileRoutesById {
   '/status': typeof StatusRoute
   '/vision': typeof VisionRoute
   '/.well-known/ai-catalog.json': typeof DotwellKnownAiCatalogDotjsonRoute
+  '/.well-known/api-catalog': typeof DotwellKnownApiCatalogRoute
   '/.well-known/ard.json': typeof DotwellKnownArdDotjsonRoute
   '/aeo-for/$slug': typeof AeoForSlugRoute
   '/ai-search/$slug': typeof AiSearchSlugRoute
@@ -491,6 +500,7 @@ export interface FileRouteTypes {
     | '/status'
     | '/vision'
     | '/.well-known/ai-catalog.json'
+    | '/.well-known/api-catalog'
     | '/.well-known/ard.json'
     | '/aeo-for/$slug'
     | '/ai-search/$slug'
@@ -542,6 +552,7 @@ export interface FileRouteTypes {
     | '/status'
     | '/vision'
     | '/.well-known/ai-catalog.json'
+    | '/.well-known/api-catalog'
     | '/.well-known/ard.json'
     | '/aeo-for/$slug'
     | '/ai-search/$slug'
@@ -593,6 +604,7 @@ export interface FileRouteTypes {
     | '/status'
     | '/vision'
     | '/.well-known/ai-catalog.json'
+    | '/.well-known/api-catalog'
     | '/.well-known/ard.json'
     | '/aeo-for/$slug'
     | '/ai-search/$slug'
@@ -645,6 +657,7 @@ export interface RootRouteChildren {
   StatusRoute: typeof StatusRoute
   VisionRoute: typeof VisionRoute
   DotwellKnownAiCatalogDotjsonRoute: typeof DotwellKnownAiCatalogDotjsonRoute
+  DotwellKnownApiCatalogRoute: typeof DotwellKnownApiCatalogRoute
   DotwellKnownArdDotjsonRoute: typeof DotwellKnownArdDotjsonRoute
   AeoForSlugRoute: typeof AeoForSlugRoute
   AiSearchSlugRoute: typeof AiSearchSlugRoute
@@ -792,6 +805,13 @@ declare module '@tanstack/react-router' {
       path: '/.well-known/ai-catalog.json'
       fullPath: '/.well-known/ai-catalog.json'
       preLoaderRoute: typeof DotwellKnownAiCatalogDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/api-catalog': {
+      id: '/.well-known/api-catalog'
+      path: '/.well-known/api-catalog'
+      fullPath: '/.well-known/api-catalog'
+      preLoaderRoute: typeof DotwellKnownApiCatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.well-known/ard.json': {
@@ -1045,6 +1065,7 @@ const rootRouteChildren: RootRouteChildren = {
   StatusRoute: StatusRoute,
   VisionRoute: VisionRoute,
   DotwellKnownAiCatalogDotjsonRoute: DotwellKnownAiCatalogDotjsonRoute,
+  DotwellKnownApiCatalogRoute: DotwellKnownApiCatalogRoute,
   DotwellKnownArdDotjsonRoute: DotwellKnownArdDotjsonRoute,
   AeoForSlugRoute: AeoForSlugRoute,
   AiSearchSlugRoute: AiSearchSlugRoute,

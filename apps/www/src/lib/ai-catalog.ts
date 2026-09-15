@@ -7,7 +7,7 @@ const mcpServerCard = {
 	version: __APP_VERSION__,
 	title: `${SITE_NAME} AI visibility`,
 	description: "Read AI visibility data — brands, prompts, citations, competitors — and manage prompts.",
-	websiteUrl: canonicalUrl("/docs/mcp"),
+	websiteUrl: canonicalUrl("/docs/api/mcp"),
 	repository: {
 		url: "https://github.com/elmohq/elmo",
 		source: "github",
