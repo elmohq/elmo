@@ -41,6 +41,7 @@ const DISCOVERY_LINKS = [
 	`</docs>; rel="service-doc"; type="text/html"`,
 	`</llms.txt>; rel="describedby"; type="text/plain"`,
 	`</sitemap.xml>; rel="sitemap"; type="application/xml"`,
+	`<https://status.elmohq.com/>; rel="status"; type="text/html"`,
 	`<https://github.com/elmohq/elmo/blob/main/LICENSE.md>; rel="license"`,
 ].join(", ");
 
