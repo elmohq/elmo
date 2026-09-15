@@ -33,12 +33,12 @@ const catalog = {
 			anchor: `${CLOUD_APP_URL}/api/mcp`,
 			"service-doc": [
 				{
-					href: canonicalUrl("/docs/mcp"),
+					href: canonicalUrl("/docs/api/mcp"),
 					type: "text/html",
 					title: "Elmo MCP server",
 				},
 				{
-					href: canonicalUrl("/docs/mcp.md"),
+					href: canonicalUrl("/docs/api/mcp.md"),
 					type: "text/markdown",
 					title: "Elmo MCP server (markdown)",
 				},

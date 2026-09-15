@@ -46,6 +46,7 @@ const { rewrite: toMarkdownRoute } = rewritePath("/docs{/*path}", "/llms.mdx/doc
 // the canonical replacement rather than a client-rendered not-found page.
 const PERMANENT_REDIRECTS: Record<string, string> = {
 	"/blog/best-open-source-aeo-tools": "/ai-visibility-tools/category/open-source",
+	"/docs/mcp": "/docs/api/mcp",
 };
 
 export default createServerEntry({
