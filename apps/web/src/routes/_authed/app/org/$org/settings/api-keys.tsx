@@ -147,7 +147,7 @@ function ApiKeysSettingsPage() {
 
 			{issuedKey && <IssuedKeyCard value={issuedKey} />}
 
-			<DemoModeAlert>Keys can't be issued or revoked here. Existing keys are listed read-only.</DemoModeAlert>
+			<DemoModeAlert>API access is disabled in demo mode.</DemoModeAlert>
 
 			{!isKeyAdmin && !readOnly && (
 				<Alert className="border-yellow-200 bg-yellow-50 text-yellow-800">
@@ -643,9 +643,7 @@ function EmptyKeys({
 	hasInactive: boolean;
 	onCreate: () => void;
 }) {
-	const reason = readOnly
-		? "This deployment is read-only, so no key can be issued."
-		: "An organization admin can issue one.";
+	const reason = readOnly ? "Keys can't be issued in demo mode." : "An organization admin can issue one.";
 
 	return (
 		<div className="flex flex-col items-center gap-3 rounded-md border border-dashed px-6 py-12 text-center">

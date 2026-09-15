@@ -165,10 +165,7 @@ function McpSettingsPage() {
 				<p className="max-w-2xl text-muted-foreground">Connect any chat bot to {appName}.</p>
 			</header>
 
-			<DemoModeAlert>
-				Neither way of connecting is available here: OAuth sign-in is turned off, and API keys can't be issued. The
-				steps below work on a deployment of your own.
-			</DemoModeAlert>
+			<DemoModeAlert>MCP access is disabled in demo mode.</DemoModeAlert>
 
 			<section className="space-y-3">
 				<h2 className="text-lg font-semibold">Endpoint</h2>

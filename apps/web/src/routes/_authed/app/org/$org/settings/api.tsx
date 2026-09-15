@@ -35,9 +35,7 @@ function ApiSettingsPage() {
 				<p className="max-w-2xl text-muted-foreground">Programmatic interface for {appName}.</p>
 			</header>
 
-			<DemoModeAlert>
-				The API is documented but not callable here: API keys can't be issued, and the endpoints that write are refused.
-			</DemoModeAlert>
+			<DemoModeAlert>API access is disabled in demo mode.</DemoModeAlert>
 
 			<div className="flex flex-wrap items-center gap-2">
 				<span className="text-sm text-muted-foreground">Base URL</span>

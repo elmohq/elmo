@@ -38,7 +38,7 @@ export const Reference: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByRole("heading", { name: "API Docs" })).toBeVisible();
-		await expect(canvas.queryByText("Demo mode")).toBeNull();
+		await expect(canvas.queryByText(/disabled in demo mode/)).toBeNull();
 		// Whatever host the app is being served from is the one people should call.
 		await expect(await canvas.findByText(`${window.location.origin}/api/v1`)).toBeVisible();
 		// The reference reads the instance's own spec rather than a hosted copy.
@@ -66,7 +66,6 @@ export const ReadOnlyDeployment: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText("Demo mode")).toBeVisible();
-		await expect(await canvas.findByText(/API keys can't be issued/)).toBeVisible();
+		await expect(await canvas.findByText("API access is disabled in demo mode.")).toBeVisible();
 	},
 };

@@ -115,7 +115,7 @@ export const WithKeys: Story = {
 		await expect((await canvas.findAllByText("write")).length).toBe(2);
 		await expect(await canvas.findByRole("button", { name: "Add Key" })).toBeVisible();
 		await expect(canvas.queryByLabelText("Name")).toBeNull();
-		await expect(canvas.queryByText("Demo mode")).toBeNull();
+		await expect(canvas.queryByText(/disabled in demo mode/)).toBeNull();
 	},
 };
 
@@ -239,7 +239,7 @@ export const ReadOnlyDeployment: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText("Demo mode")).toBeVisible();
+		await expect(await canvas.findByText("API access is disabled in demo mode.")).toBeVisible();
 		// An admin still can't write here, so the forms that would be refused are
 		// gone rather than left to fail on submit.
 		await expect(canvas.queryByRole("button", { name: "Add Key" })).toBeNull();
@@ -259,7 +259,7 @@ export const ReadOnlyDeploymentWithNoKeys: Story = {
 		const canvas = within(canvasElement);
 		// The empty state can't tell somebody to ask an admin: no admin can issue
 		// one here either.
-		await expect(await canvas.findByText("This deployment is read-only, so no key can be issued.")).toBeVisible();
+		await expect(await canvas.findByText("Keys can't be issued in demo mode.")).toBeVisible();
 		await expect(canvas.queryByRole("button", { name: "Create your first key" })).toBeNull();
 	},
 };

@@ -55,7 +55,7 @@ export const Connect: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(canvas.queryByText("Demo mode")).toBeNull();
+		await expect(canvas.queryByText(/disabled in demo mode/)).toBeNull();
 		// The endpoint is the host the app is served from, not a placeholder to fill in.
 		await expect(await canvas.findByText(`${window.location.origin}/api/mcp`)).toBeVisible();
 		await expect(await canvas.findByText("create_prompts")).toBeVisible();
@@ -117,7 +117,6 @@ export const ReadOnlyDeployment: Story = {
 		await expect(await canvas.findByText(/read-only, so the tools that write are withheld/)).toBeVisible();
 		// Both snippets are still shown, so the page has to say up front that
 		// neither of them leads anywhere here.
-		await expect(await canvas.findByText("Demo mode")).toBeVisible();
-		await expect(await canvas.findByText(/OAuth sign-in is turned off, and API keys can't be issued/)).toBeVisible();
+		await expect(await canvas.findByText("MCP access is disabled in demo mode.")).toBeVisible();
 	},
 };
