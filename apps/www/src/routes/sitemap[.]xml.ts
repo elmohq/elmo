@@ -35,6 +35,8 @@ interface SitemapEntry {
 
 const staticPages: SitemapEntry[] = [
 	{ path: "/", changefreq: "weekly", priority: 1.0 },
+	{ path: "/answer-engine-optimization", changefreq: "monthly", priority: 0.9 },
+	{ path: "/generative-engine-optimization", changefreq: "monthly", priority: 0.9 },
 	{ path: "/features", changefreq: "monthly", priority: 0.8 },
 	{ path: "/pricing", changefreq: "monthly", priority: 0.8 },
 	{ path: "/off-site-aeo", changefreq: "monthly", priority: 0.8 },
