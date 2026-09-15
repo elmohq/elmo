@@ -59,14 +59,7 @@ function clientDocs(id: string, endpoint: string): ClientDocs[] {
 		{
 			value: "claude-code",
 			label: "Claude Code",
-			signIn: {
-				note: (
-					<>
-						Then run <InlineCode>/mcp</InlineCode> and choose Authenticate.
-					</>
-				),
-				code: `claude mcp add --transport http ${id} ${endpoint}`,
-			},
+			signIn: { code: `claude mcp add --transport http ${id} ${endpoint}` },
 			apiKey: {
 				code: `claude mcp add --transport http ${id} ${endpoint} \\\n  --header "Authorization: Bearer ${KEY_PLACEHOLDER}"`,
 			},
@@ -194,8 +187,8 @@ function McpSettingsPage() {
 					</TabsList>
 					{clients.map((client) => (
 						<TabsContent key={client.value} value={client.value} className="space-y-5 pt-2">
-							<Snippet heading="Sign in" snippet={client.signIn} />
-							<Snippet heading="Or use an API key" snippet={client.apiKey} />
+							<Snippet heading="Sign in with OAuth" snippet={client.signIn} />
+							<Snippet heading="Sign in with API Key" snippet={client.apiKey} />
 						</TabsContent>
 					))}
 				</Tabs>
