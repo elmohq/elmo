@@ -31,16 +31,7 @@ function addSecurityHeaders(response: Response): Response {
 	return response;
 }
 
-// Serve the raw markdown for an MDX page from the matching /llms.mdx/* route.
-// Three things resolve to the same markdown, all via an internal rewrite (the
-// URL the client sees never changes — no redirect):
-//   • /docs/foo.md  and  /docs/foo.mdx  — explicit suffix, always markdown
-//   • /docs/foo  with `Accept: text/markdown` — content negotiation for agents
-// Pages are resolved by slug, so the `.md` suffix works even though every
-// source file is `.mdx`. See https://fumadocs.dev/docs/integrations/llms#accept
 const MARKDOWN_SOURCES = [
-	// The docs index is itself an MDX page. The blog index is a generated
-	// listing, so /blog has no markdown twin while /blog/a-post does.
 	{ base: "/docs", indexIsPage: true },
 	{ base: "/blog", indexIsPage: false },
 ].map(({ base, indexIsPage }) => ({
@@ -51,7 +42,6 @@ const MARKDOWN_SOURCES = [
 	toMarkdown: rewritePath(`${base}{/*path}`, `/llms.mdx${base}{/*path}`).rewrite,
 }));
 
-/** The markdown route for `path`, when an explicit .md/.mdx suffix asks for it. */
 function suffixedMarkdownRoute(path: string): string | undefined {
 	for (const source of MARKDOWN_SOURCES) {
 		const target = source.stripMd(path) || source.stripMdx(path);
@@ -59,7 +49,6 @@ function suffixedMarkdownRoute(path: string): string | undefined {
 	}
 }
 
-/** The markdown route for `path`, when it is a page an agent can negotiate for. */
 function negotiableMarkdownRoute(path: string): string | undefined {
 	for (const { base, indexIsPage, toMarkdown } of MARKDOWN_SOURCES) {
 		if (path === base && !indexIsPage) continue;
@@ -69,11 +58,6 @@ function negotiableMarkdownRoute(path: string): string | undefined {
 	}
 }
 
-/**
- * The server runtime has its own Request class, which the global Request
- * constructor rejects as an input, so overriding a header means rebuilding the
- * request from its parts. Bodyless methods only — nothing else needs this.
- */
 function withAcceptHtml(request: Request): Request {
 	const headers = new Headers(request.headers);
 	headers.set("Accept", "text/html");
@@ -109,15 +93,10 @@ export default createServerEntry({
 			url.pathname = target;
 			req = new Request(url, request);
 		} else if (wantsMarkdown && (request.method === "GET" || request.method === "HEAD")) {
-			// Every other page only renders HTML, and the document renderer answers
-			// 500 to any request that doesn't accept it. Ask for HTML on the agent's
-			// behalf so it gets the page instead of an error.
 			req = withAcceptHtml(request);
 		}
 
 		const response = await handler.fetch(req);
-		// A bare page URL resolves to either HTML or markdown depending on the
-		// Accept header, so shared caches must key both representations on it.
 		if (negotiable) response.headers.set("Vary", "Accept");
 		return addSecurityHeaders(response);
 	},
