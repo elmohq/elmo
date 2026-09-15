@@ -1,3 +1,4 @@
+import { API_KEY_RATE_LIMIT_PER_MINUTE } from "@workspace/config/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, organization } from "@workspace/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
@@ -210,7 +211,7 @@ export async function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 			createdAt: asDate(key.createdAt),
 			lastUsedAt: asDate(key.lastRequest),
 			expiresAt: asDate(key.expiresAt),
-			rateLimit: { limit: key.rateLimitMax ?? 120, window: "minute" },
+			rateLimit: { limit: key.rateLimitMax ?? API_KEY_RATE_LIMIT_PER_MINUTE, window: "minute" },
 			// The fixed-window counter has already consumed this request by the time
 			// the row is in hand, so this is the honest remainder. Null, and no
 			// header, beats inventing a full window.

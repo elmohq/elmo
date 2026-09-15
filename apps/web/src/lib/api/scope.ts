@@ -6,7 +6,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { eq, inArray, type SQL, sql } from "drizzle-orm";
 import { type Principal, principalReach } from "@/lib/auth/api-auth";
-import { type Prompt, PromptNotFoundError, requirePrompt } from "@/server/prompts-core";
+import { findPromptBrandId, type Prompt, PromptNotFoundError, requirePrompt } from "@/server/prompts-core";
 import { ApiError } from "./handler";
 
 type Brand = typeof brands.$inferSelect;
@@ -69,6 +69,14 @@ export async function requirePromptInScope(
 	const brand = await loadBrandInScope(auth, prompt.brandId);
 	if (!brand) throw notFound();
 	return { prompt, brand };
+}
+
+export async function requirePromptBrandInScope(auth: Principal, promptId: string): Promise<string> {
+	const brandId = await findPromptBrandId(promptId);
+	if (!brandId || !(await isBrandInScope(auth, brandId))) {
+		throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
+	}
+	return brandId;
 }
 
 export async function isBrandInScope(auth: Principal, brandId: string): Promise<boolean> {

@@ -1,13 +1,3 @@
-/**
- * Pure policy evaluation functions for access control.
- *
- * These are framework-agnostic, side-effect-free functions that encode
- * the access control rules for each deployment mode. They are called
- * by the TanStack middleware / route guards and tested independently.
- *
- * The goal: every access-control decision in the app should be traceable
- * to one of these functions, making it trivial to write regression tests.
- */
 import { timingSafeEqual } from "node:crypto";
 import { MCP_PATH } from "@workspace/config/constants";
 import type { FeaturesConfig } from "@workspace/config/types";
@@ -154,13 +144,6 @@ function refuseUnauthenticatedApiV1(
 }
 
 /**
- * Evaluate request-level deployment access policy.
- *
- * Encodes the logic from `deploymentMiddleware` as a pure function:
- * 1. Read-only mode blocks API + server-function writes (except analytics events)
- * 2. Admin access control (disabled / readonly / full)
- * 3. OpenAPI spec serving
- *
  * No /api/v1 authentication: resolving a key needs a database, and this is pure
  * and synchronous. createApiHandler is the gate for those routes.
  */
@@ -215,14 +198,6 @@ export function getAdminApiKeys(): string[] {
 }
 
 /**
- * Evaluate read-only mode enforcement.
- * Used by `readOnlyMiddleware` for server functions.
- */
-export function evaluateReadOnly(readOnly: boolean): "allow" | "deny" {
-	return readOnly ? "deny" : "allow";
-}
-
-/**
  * Evaluate whether the deployment allows the user to create brands from the UI.
  * Used by the create-brand server function. True in local and cloud, which sells
  * brands by the plan — whitelabel brands are provisioned through the admin API,
@@ -230,24 +205,4 @@ export function evaluateReadOnly(readOnly: boolean): "allow" | "deny" {
  */
 export function evaluateRequireCanCreateBrands(canCreateBrands: boolean): "allow" | "deny" {
 	return canCreateBrands ? "allow" : "deny";
-}
-
-export type RouteGuardResult = "allow" | "redirect-to-login" | "not-found";
-
-/**
- * Evaluate the `/_authed` layout guard.
- * Mirrors the `beforeLoad` in `_authed.tsx`.
- */
-export function evaluateAuthedRouteGuard(session: unknown | null): RouteGuardResult {
-	if (!session) return "redirect-to-login";
-	return "allow";
-}
-
-/**
- * Evaluate the `/admin` layout guard.
- * Mirrors the `beforeLoad` in `_authed/admin.tsx`.
- */
-export function evaluateAdminRouteGuard(isAdmin: boolean): RouteGuardResult {
-	if (!isAdmin) return "not-found";
-	return "allow";
 }

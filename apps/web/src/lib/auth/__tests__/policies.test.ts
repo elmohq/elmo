@@ -4,24 +4,10 @@
  * This file is the single source of truth for "who can do what" across all
  * deployment modes. If a policy changes, a test here MUST break — that's
  * the whole point.
- *
- * Structure:
- *   1. Deployment request policy matrix  (deploymentMiddleware)
- *   2. Auth function-level policies       (requireAuth / requireAdmin / requireOrgAccess)
- *   3. Route guard policies               (_authed / admin / $brand beforeLoad)
- *   4. API key authentication
- *   5. Read-only enforcement
  */
 import { describe, expect, it } from "vitest";
-import {
-	evaluateAdminRouteGuard,
-	evaluateAuthedRouteGuard,
-	evaluateDeploymentPolicy,
-	evaluateReadOnly,
-	evaluateRequireCanCreateBrands,
-	type RequestInfo,
-} from "@/lib/auth/policies";
-import { createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
+import { evaluateDeploymentPolicy, evaluateRequireCanCreateBrands, type RequestInfo } from "@/lib/auth/policies";
+import { DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
 
 function req(method: string, pathname: string, authorizationHeader?: string): RequestInfo {
 	return { pathname, method, authorizationHeader };
@@ -370,16 +356,6 @@ describe("evaluateDeploymentPolicy", () => {
 	});
 });
 
-describe("evaluateReadOnly", () => {
-	it("denies writes when read-only is enabled", () => {
-		expect(evaluateReadOnly(true)).toBe("deny");
-	});
-
-	it("allows writes when read-only is disabled", () => {
-		expect(evaluateReadOnly(false)).toBe("allow");
-	});
-});
-
 describe("evaluateRequireCanCreateBrands", () => {
 	it("denies when canCreateBrands is false", () => {
 		expect(evaluateRequireCanCreateBrands(false)).toBe("deny");
@@ -394,97 +370,5 @@ describe("evaluateRequireCanCreateBrands", () => {
 		expect(evaluateRequireCanCreateBrands(LOCAL_FEATURES.canCreateBrands)).toBe("allow");
 		expect(evaluateRequireCanCreateBrands(DEMO_FEATURES.canCreateBrands)).toBe("deny");
 		expect(evaluateRequireCanCreateBrands(WHITELABEL_FEATURES.canCreateBrands)).toBe("deny");
-	});
-});
-
-describe("evaluateAuthedRouteGuard", () => {
-	const session = createMockSession();
-
-	it("redirects to login when no session", () => {
-		expect(evaluateAuthedRouteGuard(null)).toBe("redirect-to-login");
-	});
-
-	it("allows when session exists", () => {
-		expect(evaluateAuthedRouteGuard(session)).toBe("allow");
-	});
-});
-
-describe("evaluateAdminRouteGuard", () => {
-	it("returns not-found when user is not admin", () => {
-		expect(evaluateAdminRouteGuard(false)).toBe("not-found");
-	});
-
-	it("allows admin users", () => {
-		expect(evaluateAdminRouteGuard(true)).toBe("allow");
-	});
-});
-
-describe("full access-control scenarios", () => {
-	describe("local developer", () => {
-		const features = LOCAL_FEATURES;
-		const session = createMockSession();
-
-		it("can access everything after auth", () => {
-			// Deployment policy: allows all
-			expect(evaluateDeploymentPolicy(features, req("GET", "/app/org-1")).action).toBe("allow");
-			expect(evaluateDeploymentPolicy(features, req("GET", "/admin")).action).toBe("allow");
-			expect(evaluateDeploymentPolicy(features, req("POST", "/admin")).action).toBe("allow");
-
-			// Route guards: allow with session
-			expect(evaluateAuthedRouteGuard(session)).toBe("allow");
-		});
-	});
-
-	describe("demo visitor", () => {
-		const features = DEMO_FEATURES;
-		const session = createMockSession();
-
-		it("can read but not write", () => {
-			// Can view
-			expect(evaluateDeploymentPolicy(features, req("GET", "/app/org-1")).action).toBe("allow");
-
-			// Cannot write
-			expect(evaluateDeploymentPolicy(features, req("POST", "/api/brands")).action).toBe("block");
-
-			// Auth route guard passes with session
-			expect(evaluateAuthedRouteGuard(session)).toBe("allow");
-
-			// Read-only middleware blocks server function writes
-			expect(evaluateReadOnly(features.readOnly)).toBe("deny");
-		});
-	});
-
-	describe("whitelabel unauthenticated user", () => {
-		const features = WHITELABEL_FEATURES;
-
-		it("is blocked by auth requirements", () => {
-			// Deployment policy allows the request through (auth is not checked here)
-			expect(evaluateDeploymentPolicy(features, req("GET", "/app/org-1")).action).toBe("allow");
-
-			// Route guard redirects to login
-			expect(evaluateAuthedRouteGuard(null)).toBe("redirect-to-login");
-		});
-	});
-
-	describe("whitelabel authenticated admin", () => {
-		const features = WHITELABEL_FEATURES;
-		const session = createMockSession();
-
-		it("can access admin and org routes", () => {
-			// Deployment: all allowed
-			expect(evaluateDeploymentPolicy(features, req("GET", "/admin")).action).toBe("allow");
-			expect(evaluateDeploymentPolicy(features, req("POST", "/admin")).action).toBe("allow");
-
-			// Route guards: all pass
-			expect(evaluateAuthedRouteGuard(session)).toBe("allow");
-			expect(evaluateAdminRouteGuard(true)).toBe("allow");
-		});
-	});
-
-	describe("whitelabel authenticated non-admin", () => {
-		it("can access org routes but not admin", () => {
-			// Admin denied
-			expect(evaluateAdminRouteGuard(false)).toBe("not-found");
-		});
 	});
 });
