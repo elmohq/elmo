@@ -36,6 +36,7 @@ function addSecurityHeaders(response: Response): Response {
 // paths. Relative references so they also resolve on preview deployments.
 const DISCOVERY_LINKS = [
 	`</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"`,
+	`</.well-known/ard.json>; rel="ard"`,
 	`</api/openapi.json>; rel="service-desc"`,
 	`</docs>; rel="service-doc"; type="text/html"`,
 	`</llms.txt>; rel="describedby"; type="text/plain"`,
