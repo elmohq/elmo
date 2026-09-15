@@ -9,7 +9,6 @@ import {
 import { PlatformTier } from "@workspace/ui/brand/platform-tier";
 import { ArrowRight, Check } from "lucide-react";
 import { ContactForm } from "./contact-form";
-import { WaitlistForm } from "./waitlist-form";
 
 interface Plan {
 	id: string;
@@ -24,7 +23,6 @@ interface Plan {
 	cta:
 		| { type: "link"; text: string; href: string }
 		| { type: "external"; text: string; href: string }
-		| { type: "waitlist" }
 		| { type: "contact" };
 }
 
@@ -39,8 +37,8 @@ const plans: Plan[] = [
 		featured: true,
 		features: [
 			"Managed hosting, automatic updates",
-			"Track ChatGPT, Google, Perplexity & more",
-			"Scraped surfaces sampled up to 4× daily",
+			"Track ChatGPT on Starter; more platforms on higher plans",
+			"We scrape AI answers up to 4× daily",
 			"Premium grounded models on Pro & Business",
 			"API access on every plan",
 			"Unlimited seats",
@@ -68,7 +66,7 @@ const plans: Plan[] = [
 		id: "white-label",
 		tag: "03",
 		name: "White Label",
-		desc: "Provide AEO for all of your customers.",
+		desc: "Offer AEO tracking to your clients.",
 		price: "Custom",
 		priceLabel: "",
 		features: [
@@ -108,7 +106,7 @@ export function Pricing({ as: Heading = "h2" }: { as?: "h1" | "h2" } = {}) {
 				<div>
 					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ PRICING</p>
 					<Heading className="mt-4 max-w-[28ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-						Run it in our cloud, self-host it, or white-label it for your customers.
+						Run it in our cloud, self-host it, or white-label it — you choose.
 					</Heading>
 				</div>
 
@@ -161,7 +159,6 @@ export function Pricing({ as: Heading = "h2" }: { as?: "h1" | "h2" } = {}) {
 										<ArrowRight className="size-3.5" />
 									</a>
 								)}
-								{plan.cta.type === "waitlist" && <WaitlistForm source="pricing" />}
 								{plan.cta.type === "contact" && <ContactForm source="pricing" />}
 							</div>
 						</div>

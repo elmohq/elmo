@@ -15,7 +15,7 @@ const description =
 const path = "/ai-visibility-tools/category/open-source";
 
 const lead =
-	"The most complete open-source answer engine optimization tool is Elmo: MIT-licensed, free to self-host, and auditable down to how each metric is computed. Smaller projects like OneGlanse, GEO/AEO Tracker, and Gego exist alongside it. This is a thin, early space, and the honest picture is one mature platform, a handful of small projects, and the option to script your own checks.";
+	"The most complete open-source answer engine optimization tool is Elmo: MIT-licensed, free to self-host, and auditable down to how each metric is computed. Smaller projects like OneGlanse, GEO/AEO Tracker, and Gego exist alongside it. This is a thin, early space: one mature platform, a handful of small projects, and the option to script your own checks.";
 
 // Public GitHub data, captured 11 August 2026. Kept as a dated snapshot rather
 // than fetched live: the point is a like-for-like comparison across projects at
@@ -305,7 +305,7 @@ function OpenSourcePage() {
 							2.0.
 						</li>
 						<li>
-							Open source buys you three things a hosted tool cannot: auditable metrics, data you keep on your own
+							Open source gives you what a hosted tool cannot: auditable metrics, data you keep on your own
 							infrastructure, and no vendor lock-in.
 						</li>
 						<li>"Free to self-host" is not free to run. You supply the LLM API keys and the infrastructure.</li>
@@ -315,14 +315,14 @@ function OpenSourcePage() {
 				<DirectorySection title="Why open source matters for answer engine optimization">
 					<div className="max-w-3xl space-y-5 leading-relaxed text-zinc-600">
 						<p>
-							Most AI visibility tools are closed and hosted. You send them your prompts, and you trust the score they
-							hand back. Open source changes both halves of that deal. You can read how a metric is built, and you can
-							run the whole thing on your own infrastructure, so your prompts and history never leave your environment.
+							Most AI visibility tools are closed and hosted: you send them your prompts and trust the score they hand
+							back. With open source you can read how a metric is built, and you can run the whole thing on your own
+							infrastructure, so your prompts and history never leave your environment.
 						</p>
 						<p>
 							For a number that might land in a board report or shape a content budget, being able to audit it matters.
 							So does owning your data outright, with no vendor holding your visibility history and nothing to migrate
-							off if you decide to leave. The trade is upkeep. You run the infrastructure, and you keep it current as
+							off if you decide to leave. The tradeoff is upkeep: you run the infrastructure and keep it current as
 							engines change.
 						</p>
 					</div>
@@ -344,9 +344,9 @@ function OpenSourcePage() {
 
 				<DirectorySection title="By the numbers">
 					<p className="mb-6 max-w-3xl leading-relaxed text-zinc-600">
-						Feature grids are easy to write and hard to verify. Public repository activity is neither. These are the
-						numbers as of {STATS_AS_OF}, and the column that matters most is contributors beyond the lead developer: a
-						project with one committer is one person's spare time away from being abandoned.
+						Feature grids are easy to write and hard to verify. Public repository activity can be checked directly.
+						These are the numbers as of {STATS_AS_OF}. The column that matters most is contributors beyond the lead
+						developer, since a project with a single committer depends entirely on one person continuing to work on it.
 					</p>
 					<DataTable
 						headers={[
@@ -385,23 +385,21 @@ function OpenSourcePage() {
 					<div className="mt-6 max-w-3xl space-y-5 leading-relaxed text-zinc-600">
 						<p>
 							OneGlanse's 496 commits landed almost entirely in one burst, between 15 April and 10 May 2026. It has not
-							had a commit since, and it has never cut a release. High commit counts and sustained maintenance are
-							different things.
+							had a commit since, and it has never cut a release.
 						</p>
 						<p>
-							Then there is GetCito, where the numbers tell the story better than any argument. Its repository contains
-							35 commits, 27 of them from humans, across its entire lifetime, for a codebase of well over 100,000 lines.
-							That is because 131,716 of those lines arrived in a single import of Elmo's code in July 2026. Stars
-							measure attention, not work.
+							GetCito's repository contains 35 commits, 27 of them from humans, across its entire lifetime, for a
+							codebase of well over 100,000 lines. That is because 131,716 of those lines arrived in a single import of
+							Elmo's code in July 2026.
 						</p>
 					</div>
 				</DirectorySection>
 
 				<DirectorySection title="The open-source options, tool by tool">
 					<p className="mb-6 max-w-3xl leading-relaxed text-zinc-600">
-						The honest picture is that this is a thin, early space. Elmo is the most complete open-source option,
-						released under the MIT license with broad engine coverage. The other open-source projects we track are
-						below. They are smaller and earlier, but they are real and worth knowing about.
+						This is a thin, early space. Elmo is the most complete open-source option, released under the MIT license
+						with broad engine coverage. The other open-source projects we track are below. They are smaller and earlier,
+						but they are real and worth knowing about.
 					</p>
 					{tools.length > 0 ? (
 						<ToolGrid competitors={tools} />
@@ -413,20 +411,20 @@ function OpenSourcePage() {
 						<div>
 							<h3 className="font-heading mb-3 text-lg text-zinc-950">Elmo</h3>
 							<p>
-								Elmo is the most complete open-source AI visibility platform, and the reason this list has a clear top
-								pick. It is released under the MIT license, free to self-host, and every metric is computed by code you
-								can read. It tracks how AI answer engines mention and cite your brand across ChatGPT, Claude,
-								Perplexity, Gemini, and Google's AI Overviews, among other engines, then turns that into a visibility
-								score, citation analytics, brand-mention tracking, and competitor benchmarking. You can export
-								everything through the API, and agencies can white-label it.
+								Elmo is the most complete open-source AI visibility platform on this list. It is released under the MIT
+								license, free to self-host, and every metric is computed by code you can read. It tracks how AI answer
+								engines mention and cite your brand across ChatGPT, Claude, Perplexity, Gemini, and Google's AI
+								Overviews, among other engines, then turns that into a visibility score, citation analytics,
+								brand-mention tracking, and competitor benchmarking. You can export everything through the API, and
+								agencies can white-label it.
 							</p>
 							<p className="mt-4">
 								It fits teams that want to own their AEO data outright. The self-hosted core runs on Docker and
 								PostgreSQL. You supply your own model API keys, which carry usage costs, and there is no license fee or
-								per-seat charge. Be clear on what it is not: Elmo does not do sentiment analysis, prompt-volume
-								estimates, content generation, shopping-result tracking, or geographic breakdowns. It measures
-								visibility and citations well, and leaves the content work to you. Managed cloud hosting is available
-								for teams that would rather not run the infrastructure.
+								per-seat charge. Elmo does not do sentiment analysis, prompt-volume estimates, content generation,
+								shopping-result tracking, or geographic breakdowns. It measures visibility and citations well, and
+								leaves the content work to you. Managed cloud hosting is available for teams that would rather not run
+								the infrastructure.
 							</p>
 						</div>
 
@@ -457,9 +455,9 @@ function OpenSourcePage() {
 								fetching and model inference.
 							</p>
 							<p className="mt-4">
-								The local-first design is the appeal. Nothing leaves your browser, setup is light, and the platform
-								coverage is broad for a solo project. The flip side is scope. It is a single-user tool built around one
-								person's dashboard, not a team platform, so treat it as a personal monitor rather than shared
+								The local-first design is the appeal: nothing leaves your browser, setup is light, and the platform
+								coverage is broad for a solo project. Scope is the limit. It is a single-user tool built around one
+								person's dashboard rather than a team platform, so treat it as a personal monitor rather than shared
 								infrastructure.
 							</p>
 						</div>
@@ -474,10 +472,10 @@ function OpenSourcePage() {
 								configured declaratively in YAML.
 							</p>
 							<p className="mt-4">
-								One honest caveat on the "open source" label. Canonry ships under the FSL-1.1-ALv2, a source-available
-								license that converts to Apache 2.0 after two years. You can read and self-host the code today, but it
-								is not OSI open source in the strict sense until that conversion. If server-log attribution and agent
-								workflows matter to you, it is worth a look, with that license nuance understood.
+								One caveat on the "open source" label. Canonry ships under the FSL-1.1-ALv2, a source-available license
+								that converts to Apache 2.0 after two years. You can read and self-host the code today, but it is not
+								OSI open source in the strict sense until that conversion. If server-log attribution and agent workflows
+								matter to you, it is worth a look, with that license nuance understood.
 							</p>
 						</div>
 
@@ -533,7 +531,7 @@ function OpenSourcePage() {
 							and answers shift over time.
 						</p>
 						<p>
-							The catch is everything around that loop. You have to cover enough engines, handle the ones without clean
+							Everything around that loop is the work. You have to cover enough engines, handle the ones without clean
 							APIs, keep it running, and build some way to actually read the output. That upkeep is most of what you pay
 							for when you buy a tool, or skip by self-hosting one that already does it.
 						</p>
@@ -542,11 +540,11 @@ function OpenSourcePage() {
 
 				<DirectorySection title="Open source vs enterprise AEO software: the real tradeoffs">
 					<p className="mb-6 max-w-3xl leading-relaxed text-zinc-600">
-						The real choice is not open source versus paid. It is who does the work and who holds the data. Enterprise
-						AEO software gives you a hosted dashboard your team can open tomorrow, managed engine coverage, and a vendor
-						who keeps it running, in exchange for a subscription and a scoring model you cannot inspect. Self-hosting an
-						open-source tool inverts that: no license fee, auditable metrics, and your data on your own machines, with
-						the cost moving from a subscription line to engineering time.
+						The choice is really about who does the work and who holds the data. Enterprise AEO software gives you a
+						hosted dashboard your team can open tomorrow, managed engine coverage, and a vendor who keeps it running, in
+						exchange for a subscription and a scoring model you cannot inspect. Self-hosting an open-source tool trades
+						that for no license fee, auditable metrics, and your data on your own machines, with the cost moving from a
+						subscription line to engineering time.
 					</p>
 					<DataTable headers={["", "Open source, self-hosted", "Managed, paid"]}>
 						{TRADEOFFS.map((row) => (
@@ -562,23 +560,21 @@ function OpenSourcePage() {
 				<DirectorySection title="How to choose">
 					<div className="max-w-3xl space-y-5 leading-relaxed text-zinc-600">
 						<p>
-							Start with how you will use it, not a feature grid. If you want full control, auditable numbers, and no
-							per-seat fees, a self-hosted open-source tool fits, and Elmo is the most complete one on offer, and the
-							one the public GitHub numbers actually favor on stars, contributors, releases, and sustained history
-							alike. If you want the same open code with the smallest footprint, GEO/AEO Tracker's local-first design is
-							worth a look, bearing in mind it is one developer and 28 commits. If your priority is server-log
+							Start with how you will use it rather than with a feature grid. If you want full control, auditable
+							numbers, and no per-seat fees, a self-hosted open-source tool fits, and Elmo is the most complete one on
+							offer, and the one the public GitHub numbers favor on stars, contributors, releases, and sustained
+							history. If you want the same open code with the smallest footprint, GEO/AEO Tracker's local-first design
+							is worth a look, bearing in mind it is one developer and 28 commits. If your priority is server-log
 							attribution, Canonry goes furthest, with its license caveat and single-maintainer concentration in mind.
 						</p>
 						<p>
-							The one thing worth weighing above features is whether anyone will still be maintaining the project in a
-							year. That is what the contributor column is for. A tool with one committer is one person's spare time
-							away from being abandoned, and in a field where models get renamed and APIs shift every few months, an
-							unmaintained tracker quietly stops being correct rather than visibly breaking.
+							Weigh maintenance above features. Whether anyone will still be working on the project in a year is what
+							the contributor column tells you, and in a field where models get renamed and APIs shift every few months,
+							an unmaintained tracker quietly stops being correct rather than visibly breaking.
 						</p>
 						<p>
 							Then weigh coverage, maintenance, and your own capacity to run infrastructure against what a managed
-							subscription would cost. If the honest answer is that you have no time to self-host, that is useful to
-							know early: see the{" "}
+							subscription would cost. If you have no time to self-host, that is useful to know early: see the{" "}
 							<a className="underline underline-offset-2 hover:text-zinc-950" href="/blog/best-aeo-tools">
 								best AEO tools
 							</a>{" "}
@@ -586,9 +582,8 @@ function OpenSourcePage() {
 							<a className="underline underline-offset-2 hover:text-zinc-950" href="/blog/free-ai-visibility-tools">
 								free AI visibility tools
 							</a>{" "}
-							guide for what a zero-budget setup can and cannot do. Whatever you pick, the job is the same: get a
-							reliable, repeatable read on whether AI answers cite you, from a tool you trust because you can see how it
-							works.
+							guide for what a zero-budget setup can and cannot do. Whatever you pick, you want the same thing: a
+							reliable, repeatable read on whether AI answers cite you, from a tool whose workings you can inspect.
 						</p>
 					</div>
 				</DirectorySection>

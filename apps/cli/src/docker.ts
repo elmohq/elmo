@@ -123,6 +123,14 @@ export function assertDockerRunning(): void {
 	const result = spawnSync("docker", ["info"], {
 		stdio: "ignore",
 	});
+	if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+		throw new Error(
+			"Docker does not appear to be installed. Install Docker Desktop or Docker Engine and try again: https://docs.docker.com/get-docker/",
+		);
+	}
+	if (result.error) {
+		throw new Error(`Could not run Docker: ${result.error.message}`);
+	}
 	if (result.status !== 0) {
 		throw new Error("Docker does not appear to be running. Start Docker and try again.");
 	}

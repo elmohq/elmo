@@ -21,7 +21,7 @@ export const listPromptsTool = defineTool({
 	title: "List prompts",
 	description:
 		"The prompts asked of the models on a brand's behalf. `enabled` is what decides whether a prompt is still being sampled. This is the one list that can get long, so it pages.",
-	scopes: ["prompts:read"],
+	scopes: ["read"],
 	readOnly: true,
 	input: {
 		brandId: brandIdArg.optional().describe("Restrict to one brand. Omit for every brand in reach."),
@@ -53,7 +53,7 @@ export const listPromptTags = defineTool({
 	title: "List prompt tags",
 	description:
 		"The tags in use on a brand's prompts, with how many carry each. Tags are derived: one exists exactly as long as some prompt carries it.",
-	scopes: ["prompts:read"],
+	scopes: ["read"],
 	readOnly: true,
 	input: { brandId: brandIdArg },
 	run: async ({ auth }, args) => {
@@ -66,7 +66,7 @@ export const createPromptsTool = defineTool({
 	name: "create_prompts",
 	title: "Create prompts",
 	description: `Add up to ${MAX_PROMPT_BATCH} prompts to a brand in one call. All-or-nothing: a batch that would exceed the organization's plan creates none of it.`,
-	scopes: ["prompts:write"],
+	scopes: ["write"],
 	readOnly: false,
 	input: { brandId: brandIdArg, prompts: bulkPromptInputSchema.shape.prompts },
 	run: async ({ auth }, args) => {
@@ -80,7 +80,7 @@ export const updatePromptTool = defineTool({
 	title: "Update a prompt",
 	description:
 		"Change a prompt's text, tags, or whether it is being sampled. Setting `enabled: false` is how you stop a prompt costing runs — it keeps every answer already recorded.",
-	scopes: ["prompts:write"],
+	scopes: ["write"],
 	readOnly: false,
 	// No `premiumModels`: pairing a prompt with one spends a metered pool, which
 	// is a billing decision an agent should not make on someone's behalf.

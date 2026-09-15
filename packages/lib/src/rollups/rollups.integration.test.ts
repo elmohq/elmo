@@ -350,7 +350,7 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 		expect(
 			pages.map((page) => [page.url, page.title, page.staticCategory, page.pageType, page.classifierVersion]),
 		).toEqual([
-			["https://docs.example.com/api", null, "other", "doc", 1],
+			["https://docs.example.com/api", null, "developer", "doc", 1],
 			[GUIDE, "New guide title", "editorial", "howto", 1],
 			["https://google.com/search?q=best+crm", "best crm", "google", "search", 1],
 			// The domain is unlisted, so the page type is what makes this editorial.
@@ -388,7 +388,7 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 		await rebuildAll(db);
 		const rows = await domainRows(db);
 		expect(rows.map((r) => [r.bucket.toISOString(), r.promptId, r.domain, r.staticCategory, r.citations])).toEqual([
-			[B0.toISOString(), PROMPT_1, "docs.example.com", "other", 1],
+			[B0.toISOString(), PROMPT_1, "docs.example.com", "developer", 1],
 			[B0.toISOString(), PROMPT_1, "example.com", "other", 2],
 			[B0.toISOString(), PROMPT_1, "google.com", "google", 1],
 			[B0.toISOString(), PROMPT_2, "example.com", "other", 1],
@@ -529,7 +529,7 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 		const pages = await pageRows(db);
 		expect(pages.every((page) => page.classifierVersion === CLASSIFIER_VERSION)).toBe(true);
 		expect(pages.map((page) => [page.staticCategory, page.pageType])).toEqual([
-			["other", "doc"],
+			["developer", "doc"],
 			["editorial", "howto"],
 			["google", "search"],
 			["editorial", "article"],

@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
-import { getDeployment } from "@workspace/deployment";
+import type { Entitlements } from "@workspace/config/entitlements";
+import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
@@ -14,16 +15,18 @@ import {
 	usageEvents,
 } from "@workspace/lib/db/schema";
 import { type BrandContext, brandContextFrom, deriveAll } from "@workspace/lib/derivers";
-import { type Entitlements, getOrgEntitlements } from "@workspace/lib/entitlements";
-import { getProvider, type ModelConfig, type Provider, parseScrapeTargets } from "@workspace/lib/providers";
+import { getOrgEntitlements } from "@workspace/lib/entitlements";
+import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
 import { markDirtyForTimestamps, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	dailyRunCeiling,
 	lastRunQueryWindowMs,
+	lastRunsByTargetKey,
 	type PromptRunPlan,
 	resolveBrandPromptRunPlans,
 	selectDueTargets,
+	slowestIntervalHours,
 	targetKey,
 } from "@workspace/lib/run-policy";
 import { type Citation, EXTRACTOR_VERSION } from "@workspace/lib/text-extraction";
@@ -176,15 +179,7 @@ async function getLastRunsByTargetKey(promptId: string, maxIntervalHours: number
 		.where(and(eq(promptRuns.promptId, promptId), gt(promptRuns.createdAt, windowStart)))
 		.groupBy(promptRuns.model, promptRuns.provider, promptRuns.webSearchEnabled);
 
-	const map = new Map<string, Date>();
-	for (const row of rows) {
-		if (!row.provider) continue;
-		map.set(
-			targetKey({ model: row.model, provider: row.provider, webSearch: row.webSearchEnabled }),
-			new Date(row.lastRunAt),
-		);
-	}
-	return map;
+	return lastRunsByTargetKey(rows);
 }
 
 /**
@@ -416,8 +411,7 @@ async function processPrompt(
 		return;
 	}
 
-	const maxIntervalHours = Math.max(...plan.targets.map((t) => t.intervalHours));
-	const lastRuns = await getLastRunsByTargetKey(promptId, maxIntervalHours);
+	const lastRuns = await getLastRunsByTargetKey(promptId, slowestIntervalHours(plan.targets));
 	const dueTargets = selectDueTargets(plan.targets, lastRuns, new Date());
 
 	if (dueTargets.length === 0) {

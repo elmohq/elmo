@@ -13,7 +13,8 @@
 
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { getModelMeta } from "@workspace/config/models";
-import { getProvider, parseScrapeTargets, type ScrapeResult, STATUS_TARGETS } from "@workspace/lib/providers";
+import { parseScrapeTargets, STATUS_TARGETS } from "@workspace/config/scrape-targets";
+import { getProvider, type ScrapeResult } from "@workspace/lib/providers";
 import { extractCitations, extractTextContent } from "@workspace/lib/text-extraction";
 import { escapeGitHubSummaryTableCell } from "./github-summary";
 

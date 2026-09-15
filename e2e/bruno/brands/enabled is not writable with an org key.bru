@@ -27,7 +27,7 @@ assert {
 }
 
 tests {
-  test("the key holding brands:write is still refused", function() {
+  test("the key holding write is still refused", function() {
     // Disabling a brand stops the worker sampling it at all, and no dashboard
     // control does it at any role. Refused rather than ignored, so a caller
     // that meant it learns the field did nothing.

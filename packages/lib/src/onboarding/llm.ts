@@ -19,8 +19,9 @@
  * `ONBOARDING_LLM_TARGET` (parsed like a SCRAPE_TARGETS entry) overrides the
  * preference order if a deployment wants a specific provider/model.
  */
+import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import type { z } from "zod";
-import { getProvider, type Provider, parseScrapeTargets, type StructuredResearchResult } from "../providers";
+import { getProvider, type Provider, type StructuredResearchResult } from "../providers";
 
 /**
  * Direct-API providers in the order onboarding prefers them. GPT-5 Mini was

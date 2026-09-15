@@ -30,6 +30,10 @@ export interface TargetPlan {
 	replication: number;
 }
 
+export function slowestIntervalHours(targets: readonly TargetPlan[]): number {
+	return targets.length > 0 ? Math.max(...targets.map((target) => target.intervalHours)) : 0;
+}
+
 export interface PromptRunPlan {
 	targets: TargetPlan[];
 	/**
@@ -194,6 +198,26 @@ export function defaultPlatformPicks(entitlements: Entitlements, scrapeTargets: 
  */
 export function targetKey(config: Pick<ModelConfig, "model" | "provider" | "webSearch">): string {
 	return `${config.model}::${config.provider}::${config.webSearch ? "web" : "base"}`;
+}
+
+export interface LastRunRow {
+	model: string;
+	/** Nullable on the column: a row without one predates target keying. */
+	provider: string | null;
+	webSearchEnabled: boolean;
+	lastRunAt: Date | string;
+}
+
+export function lastRunsByTargetKey(rows: readonly LastRunRow[]): Map<string, Date> {
+	const byKey = new Map<string, Date>();
+	for (const row of rows) {
+		if (!row.provider) continue;
+		byKey.set(
+			targetKey({ model: row.model, provider: row.provider, webSearch: row.webSearchEnabled }),
+			new Date(row.lastRunAt),
+		);
+	}
+	return byKey;
 }
 
 /**
