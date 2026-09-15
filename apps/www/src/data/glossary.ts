@@ -421,7 +421,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		related: ["llmo", "retrieval-augmented-generation", "hallucination"],
 		seeAlso: [
 			{ label: "AI search engines compared", href: "/blog/best-ai-search-engine" },
-			{ label: "Generative AI for marketing", href: "/blog/generative-ai-for-marketing" },
+			{ label: "AI for SEO", href: "/blog/ai-for-seo" },
 		],
 	},
 ];

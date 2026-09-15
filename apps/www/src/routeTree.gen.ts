@@ -21,6 +21,7 @@ import { Route as OffSiteAeoRouteImport } from './routes/off-site-aeo'
 import { Route as OgDotpngRouteImport } from './routes/og[.]png'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as RepoActivityDotsvgRouteImport } from './routes/repo-activity[.]svg'
+import { Route as ResearchRouteImport } from './routes/research'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -123,6 +124,11 @@ const PricingRoute = PricingRouteImport.update({
 const RepoActivityDotsvgRoute = RepoActivityDotsvgRouteImport.update({
   id: '/repo-activity.svg',
   path: '/repo-activity.svg',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResearchRoute = ResearchRouteImport.update({
+  id: '/research',
+  path: '/research',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RoadmapRoute = RoadmapRouteImport.update({
@@ -357,6 +363,7 @@ export interface FileRoutesByFullPath {
   '/og.png': typeof OgDotpngRoute
   '/pricing': typeof PricingRoute
   '/repo-activity.svg': typeof RepoActivityDotsvgRoute
+  '/research': typeof ResearchRoute
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -412,6 +419,7 @@ export interface FileRoutesByTo {
   '/og.png': typeof OgDotpngRoute
   '/pricing': typeof PricingRoute
   '/repo-activity.svg': typeof RepoActivityDotsvgRoute
+  '/research': typeof ResearchRoute
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -468,6 +476,7 @@ export interface FileRoutesById {
   '/og.png': typeof OgDotpngRoute
   '/pricing': typeof PricingRoute
   '/repo-activity.svg': typeof RepoActivityDotsvgRoute
+  '/research': typeof ResearchRoute
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -525,6 +534,7 @@ export interface FileRouteTypes {
     | '/og.png'
     | '/pricing'
     | '/repo-activity.svg'
+    | '/research'
     | '/roadmap'
     | '/robots.txt'
     | '/sitemap.xml'
@@ -580,6 +590,7 @@ export interface FileRouteTypes {
     | '/og.png'
     | '/pricing'
     | '/repo-activity.svg'
+    | '/research'
     | '/roadmap'
     | '/robots.txt'
     | '/sitemap.xml'
@@ -635,6 +646,7 @@ export interface FileRouteTypes {
     | '/og.png'
     | '/pricing'
     | '/repo-activity.svg'
+    | '/research'
     | '/roadmap'
     | '/robots.txt'
     | '/sitemap.xml'
@@ -691,6 +703,7 @@ export interface RootRouteChildren {
   OgDotpngRoute: typeof OgDotpngRoute
   PricingRoute: typeof PricingRoute
   RepoActivityDotsvgRoute: typeof RepoActivityDotsvgRoute
+  ResearchRoute: typeof ResearchRoute
   RoadmapRoute: typeof RoadmapRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -818,6 +831,13 @@ declare module '@tanstack/react-router' {
       path: '/repo-activity.svg'
       fullPath: '/repo-activity.svg'
       preLoaderRoute: typeof RepoActivityDotsvgRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/research': {
+      id: '/research'
+      path: '/research'
+      fullPath: '/research'
+      preLoaderRoute: typeof ResearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/roadmap': {
@@ -1123,6 +1143,7 @@ const rootRouteChildren: RootRouteChildren = {
   OgDotpngRoute: OgDotpngRoute,
   PricingRoute: PricingRoute,
   RepoActivityDotsvgRoute: RepoActivityDotsvgRoute,
+  ResearchRoute: ResearchRoute,
   RoadmapRoute: RoadmapRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,

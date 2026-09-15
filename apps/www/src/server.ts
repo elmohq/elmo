@@ -94,6 +94,7 @@ function withAcceptHtml(request: Request): Request {
 const PERMANENT_REDIRECTS: Record<string, string> = {
 	"/blog/answer-engine-optimization": "/answer-engine-optimization",
 	"/blog/best-open-source-aeo-tools": "/ai-visibility-tools/category/open-source",
+	"/blog/generative-ai-for-marketing": "/blog/ai-for-seo",
 	"/blog/track-brand-ai-search": "/answer-engine-optimization",
 	"/blog/what-is-generative-seo": "/generative-engine-optimization",
 	"/docs/mcp": "/docs/api/mcp",
