@@ -46,8 +46,9 @@ example. Full analysis in §2.
 
 ### 1.1 ChatGPT (BrightData `gd_m7aof0k82r803d5bjm`)
 
-Every ChatGPT run's `raw_output` carries an `ads` key — undocumented by BrightData, which
-matters (§5). When no ad ran it is `{"carousel_cards": null}`. When an ad ran:
+Every ChatGPT run's `raw_output` carries an `ads` key. It is a declared output field of the
+dataset, though absent from BrightData's prose docs (§5). When no ad ran it is
+`{"carousel_cards": null}`. When an ad ran:
 
 ```json
 {
@@ -611,10 +612,33 @@ markets.
 | Provider | Ads field | Status | Notes |
 |---|---|---|---|
 | **Cloro** | **yes — opt-in `include.ads`** | **untested; not configured** | Sells this as a product ("ChatGPT Ads API"). Already pins `country: "US"`. |
-| BrightData | yes, but **undocumented** | null since 2026-08-25 | Not in their docs' field list; no flag to request it |
+| BrightData | **yes — a declared output field** | null since 2026-08-25 | No flag requests it; one dataset, one collection mode, no alternative |
 | DataForSEO | none | — | `item_types` are text / products / table only |
 | Oxylabs | none | — | No ads field; SSE stream had no ad event on a non-US session |
 | Olostep | unknown | not configured | `@olostep/chatgpt-results`; no public field list found |
+
+### There is no second door on BrightData
+
+Queried from their own catalog (`GET /datasets/v3/scrapers`, which returns full input and
+output schemas for all 1,078 scrapers on the account):
+
+- `gd_m7aof0k82r803d5bjm` ("ChatGPT Search", category **AI Search**) declares **29 output
+  fields, and `ads` is one of them** — alongside `model` ("Model used for answer") and
+  `web_search_query` ("Model-generated web search queries (exact strings, in execution
+  order)"). All three are declared; all three are now always null. That is a contract
+  violation, not a courtesy field quietly retired.
+- Its **complete** input schema is `url`, `prompt`, `country`, `index`, `require_sources`,
+  `additional_prompt`, `web_search`, `geolocation`. Nothing requests ads, selects output
+  fields, or switches ad surface.
+- Its only `scraper_type` is `collect_by_url`. No alternative collection mode.
+- Across all 1,078 scrapers, **exactly two declare an ads field**: ChatGPT Search and Google AI
+  Mode Search — the two we already run. There is no separate ChatGPT-ads dataset or product.
+
+So on BrightData, the way to get ads is the field we are already reading. The remaining
+possibilities are the four input variants (`web_search` off/omitted, `require_sources`,
+`geolocation`), tested separately, or their Browser API / Web Unlocker, where we would drive
+chatgpt.com ourselves and read the `type: "ads"` event off the SSE stream — a different
+integration, not a flag.
 
 ### Is there a flag we should be sending? Yes — on Cloro
 
@@ -675,12 +699,13 @@ neither is ours. In priority order:
    > browsing-turn fields dropped to near zero. `search_sources` and `web_search_triggered`
    > recovered on 2026-09-01; `web_search_query`, `model` and `ads` have not. Reproduced
    > 2026-09-16 across eight high-commercial-intent prompts pinned to `country: "US"` — zero
-   > ads on all eight, three of which rendered a shopping carousel. `model` is a documented
-   > output field of this dataset and is now always null.
+   > ads on all eight, three of which rendered a shopping carousel. `ads`, `model` and
+   > `web_search_query` are all declared output fields of this dataset per your own
+   > `/datasets/v3/scrapers` catalog, and all three are now always null.
 
-   Ask directly whether `ads` is supported going forward. It is undocumented, so if the answer
-   is no, ChatGPT ad tracking on BrightData rests on a field they can drop without notice — and
-   that belongs in the decision about how much to build on it.
+   Ask directly whether `ads` is supported going forward. The catalog still declares it, so
+   "we removed it" would be a schema change they have not made — worth pinning down before
+   building on the field either way.
 
 The thing this changes about the plan: **`AD_CAPABLE_MODELS` is not the whole eligibility
 story.** A surface can be ad-capable and still never show one because of who the scraper looks
