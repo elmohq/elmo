@@ -8,11 +8,15 @@ ChatGPT scraper returns an `ads` object on every run and we persist it verbatim 
 recommendations, citations, etc.)" and only strips HTML). Nothing needs to change in the
 scrape pipeline to have history.
 
-**ChatGPT ads stopped on 2026-08-28 and the data is not recoverable from anywhere else.**
-Between 2026-05-11 and 2026-08-27 we captured 5,900+ ad impressions across 400+ advertisers.
-Since then every ChatGPT run returns `{"carousel_cards": null}`. Live probes of all three
-ChatGPT scrapers on 2026-09-16 confirm it is a capture problem upstream of us, not a parsing
-loss on our side — see §5.
+**ChatGPT ads stopped on 2026-08-25 and the data is not recoverable from anywhere else.**
+Between 2026-05-11 and 2026-08-24 we captured 5,900+ ad impressions across 400+ advertisers.
+It is a BrightData collector regression: on one day, every field that only exists when their
+collector completes a real browsing turn — `web_search_triggered`, `search_sources`,
+`web_search_query`, `model` and `ads` — dropped to near zero together, while `citations` kept
+working. Nothing changed on our side, and OpenAI expanded ads rather than pulling them. **The
+same regression has had ChatGPT query fan-out showing "unavailable" for three weeks**, which
+is a live user-visible bug nobody had noticed. Evidence, probes and the support ticket are in
+§5.
 
 **Google AI Mode ads are live and growing**, so the page is **Ads**, not ChatGPT Ads: one
 extraction pass, two surfaces, filterable by either. That is what keeps the page useful
@@ -39,8 +43,8 @@ example. Full analysis in §2.
 
 ### 1.1 ChatGPT (BrightData `gd_m7aof0k82r803d5bjm`)
 
-Every ChatGPT run's `raw_output` carries an `ads` key. When no ad ran it is
-`{"carousel_cards": null}`. When an ad ran:
+Every ChatGPT run's `raw_output` carries an `ads` key — undocumented by BrightData, which
+matters (§5). When no ad ran it is `{"carousel_cards": null}`. When an ad ran:
 
 ```json
 {
@@ -97,11 +101,13 @@ adding it later is one extractor plus one entry in `AD_CAPABLE_MODELS`, with no 
 
 | Surface | First ad seen | Last ad seen | Ad rate (window) | Distinct advertisers |
 |---|---|---|---|---|
-| ChatGPT (demo DB) | 2026-05-11 | 2026-08-27 | 12.0% (Jul 1 – Aug 27) | 414 |
-| ChatGPT (cloud DB) | 2026-08-10¹ | 2026-08-27 | 6.5% | 209 |
+| ChatGPT (demo DB) | 2026-05-11 | 2026-08-27² | 12.0% (Jul 1 – Aug 27) | 414 |
+| ChatGPT (cloud DB) | 2026-08-10¹ | 2026-08-27² | 6.5% | 209 |
 | Google AI Mode (demo DB) | 2026-08-03 | ongoing | 5.3% and rising | — |
 
 ¹ cloud `prompt_runs` retention starts later; demo has the deeper history.
+² the collector broke on 2026-08-25 (§5); the handful of ads after that date come from the
+~2% of runs that still completed a browsing turn.
 
 Ads rotate hard — the most any single advertiser/prompt pair repeated in 18 days was 4.
 This matters for design: **share and coverage are the meaningful metrics, raw counts are
@@ -434,30 +440,109 @@ So the answer to "is it available somewhere else in the dataset" is **no**. Brig
 `ads` field is the only carrier any of our providers has, it is genuinely empty, and the
 content is absent from the underlying HTML too — this is not a field we are failing to read.
 
-### What the stored data says about why
+The sharpest single probe: `country: "US"` plus a deliberately commercial prompt ("best noise
+cancelling headphones to buy right now"), where the **shopping carousel rendered**
+(`shopping_visible: true`, six products) — so the collector did reach the monetizable part of
+the answer — and `ads` was *still* null, alongside `model: null` and `web_search_query: null`.
+The product carousel works; the ad carousel does not. That is about as specific as a bug
+report gets.
 
-Ads only ever appeared on runs where BrightData also reported the `model` field, and that
-session type collapsed at exactly the point ads stopped:
+### When it happened, and what else broke with it
 
-| Week | runs w/ model reported | of which had ads | runs w/o model | of which had ads |
-|---|---|---|---|---|
-| 2026-08-10 | 999 | 254 (25%) | 384 | 3 |
-| 2026-08-17 | 868 | 231 (27%) | 743 | 0 |
-| 2026-08-24 | 114 | 41 (36%) | 1,494 | 0 |
-| 2026-08-31 | 54 | 0 | 1,958 | 0 |
-| 2026-09-07 | 48 | 0 | 2,210 | 0 |
-| 2026-09-14 | 17 | 0 | 947 | 0 |
+The cliff is **2026-08-25**, and ads were not the only casualty. Five fields collapsed on the
+same day while `citations` kept working:
 
-An identifiable model means the collector landed in the full ChatGPT experience. That
-happened on ~72% of runs in the week of 2026-08-10 and ~2% from 2026-08-31 on. Ads track it
-almost perfectly. Oxylabs, whose session *does* still report `llm_model: gpt-5-6` and returns
-shopping products, simply never parses ads — so it cannot corroborate either way.
+| Date | runs | `web_search_triggered` | `search_sources` | `web_search_query` | `model` | ads |
+|---|---|---|---|---|---|---|
+| 2026-08-23 | 232 | 112 | 112 | 114 | 115 | 51 |
+| 2026-08-24 | 231 | 89 | 88 | 88 | 90 | 37 |
+| **2026-08-25** | 232 | **3** | **3** | **3** | **4** | **0** |
+| 2026-08-28 | 225 | 1 | 1 | 1 | 3 | 0 |
+| 2026-09-02 | 284 | 262 | 270 | 1 | 11 | 0 |
+| 2026-09-15 | 327 | 317 | 320 | 3 | 6 | 0 |
 
-**Conclusion:** this is a BrightData capture regression, not OpenAI withdrawing ads, and it
-is a vendor ticket rather than a code change. It does not block the work — the May–August
-history is worth the page on its own, and Google AI Mode keeps it live — but the page should
-ship with the gone-quiet warning wired up (§3.1), because until this is resolved ChatGPT will
-read as "nobody is buying" and that is not what the data means.
+Those five are exactly the fields that only exist when the collector completes a real browsing
+turn inside the full ChatGPT product. `citations` survives because it is parsed from inline
+links in the answer text. So this is not "ads were removed" — **the collector stopped
+completing the browsing turn**, and the ad slot lives on that turn.
+
+There was then a **partial recovery on 2026-09-01/02**: `web_search_triggered` and
+`search_sources` came back to ~97% of runs. `web_search_query`, `model` and `ads` did not, and
+have not since.
+
+### Collateral damage: ChatGPT query fan-out has been broken since the same day
+
+Worth surfacing on its own, because it is a live user-visible regression nobody had noticed:
+
+| Week | ChatGPT runs | runs with a real reported web query |
+|---|---|---|
+| 2026-08-10 | 1,383 | 971 (70%) |
+| 2026-08-17 | 1,611 | 843 (52%) |
+| 2026-08-24 | 1,608 | **103 (6%)** |
+| 2026-08-31 | 2,012 | 25 (1%) |
+| 2026-09-14 | 968 | 10 (1%) |
+
+The Query Fan-Out page has been showing the `unavailable` sentinel for essentially every
+ChatGPT run for three weeks. Same root cause, same fix, and it should be raised in the same
+ticket.
+
+### Ruling out our own changes
+
+- The last change to `packages/lib/src/providers/registry/brightdata.ts` before the cliff was
+  **#637 on 2026-08-26** — a day *after* ads stopped, so it cannot be the cause. It is also a
+  pure refactor: the diff extracts `triggerSnapshot` and swaps a local `extractSources` for the
+  shared `extractCitationsFromBrightdata`. The trigger body is byte-identical, and the
+  `{ answer_html, response_raw, answer_section_html, ...trimmed }` strip is untouched.
+- No change to `SCRAPE_TARGETS`, the dataset id, or the `web_search` flag in that window.
+- `ads` is passed through in `rawOutput` untouched; there is no code path of ours that could
+  null it.
+
+### Ruling out OpenAI having pulled ads
+
+The opposite happened. OpenAI reported ChatGPT Ads passing a $1B annualized run rate in under
+200 days and opened self-serve buying in India, Europe, the Middle East and North Africa
+around 2026-08-31 — within days of our data going quiet. Ads also remained visible on Google
+AI Mode throughout, including from advertisers we track.
+
+### Ruling out geo
+
+ChatGPT ads were US-only for most of 2026, and our trigger never pinned a country, so this
+looked like the likely mechanism. It is not. `country` *is* a supported input on the dataset
+(BrightData publishes a [ChatGPT country list](https://github.com/brightdata/answer-engines-country-codes/blob/main/chatgpt_countries.csv))
+and we have never sent it. A probe with `country: "US"` on 2026-09-16 was accepted and echoed
+back, and `search_sources` came back populated — but `model`, `web_search_query` and `ads` were
+all still null. Geo is not what broke.
+
+We should start sending `country: "US"` regardless: it makes the sample deterministic instead
+of leaving the exit country to BrightData, and now that ads are live in more markets, country
+becomes a dimension worth controlling rather than ignoring.
+
+### No changelog, because the field was never documented
+
+BrightData's [release notes](https://docs.brightdata.com/release-notes) carry nothing for
+August or September 2026 — the most recent entry is 2026-06-14. Their
+[ChatGPT scraper docs](https://docs.brightdata.com/products/scrapers/chatgpt/introduction)
+do not document an `ads` or `carousel_cards` field at all; it is an undocumented field that
+happened to be populated. Worse, their current sample response (dated 2026-09-06) shows
+`"model": null` — so the degraded shape has been shipped as the documented normal.
+
+That means we have no contractual claim on `ads`, and no announcement to point at. It also
+means the regression is unlikely to be fixed unless someone reports it.
+
+### Conclusion and the ask
+
+This is a BrightData collector regression, not an OpenAI change and not ours. The support
+ticket writes itself:
+
+> Dataset `gd_m7aof0k82r803d5bjm` returned `web_search_query`, `model`, `ads` and
+> `search_sources` on ~50% of runs through 2026-08-24. From 2026-08-25 all five browsing-turn
+> fields dropped to near zero. `search_sources` and `web_search_triggered` recovered on
+> 2026-09-01; `web_search_query`, `model` and `ads` have not. Reproduced on 2026-09-16 with and
+> without `country: "US"`. Same prompts, same dataset, no change on our side.
+
+Worth asking them directly whether `ads` is a supported field going forward, since it is
+undocumented — if it is not, ChatGPT ad tracking depends on a field they may drop again
+without notice, and that belongs in the decision about how much to build on it.
 
 ---
 
@@ -472,4 +557,8 @@ read as "nobody is buying" and that is not what the data means.
    and OpenAPI, the user-guide page, `rollup_ad_advertisers` if volume warrants it, Google AI
    Overview `bottom_ads`.
 
-Raise the BrightData regression in parallel — it is independent of all of the above.
+Independent of all of the above, and more urgent than any of it: **raise the BrightData
+regression** (§5). It is costing us ChatGPT query fan-out today, not just ads. Start sending
+`country: "US"` on the ChatGPT trigger at the same time — it does not fix this, but it makes
+the sample deterministic and country is a dimension worth controlling now that ads serve in
+more markets.
