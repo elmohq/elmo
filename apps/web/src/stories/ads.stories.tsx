@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ReactNode } from "react";
-import { type AdsDisplayProps, AdsVariantA, AdsVariantB, AdsVariantC } from "@/components/ads/variants";
+import { AdsDisplay } from "@/components/ads/ads-display";
+import type { AdsData } from "@/components/ads/types";
 import { PageHeader } from "@/components/page-header";
 import { setMockBrand } from "./_mocks/use-brands";
-import { mockAdsData } from "./ads-fixtures";
+import { mockAdsData, mockAdsNoAdCapablePlatforms, mockAdsNoneEverSeen, mockAdsSurfaceGoneQuiet } from "./ads-fixtures";
 
 const onboardedBrand = {
 	id: "mock-brand-id",
@@ -21,12 +22,12 @@ const onboardedBrand = {
 const INFO = (
 	<>
 		<p className="mb-2">
-			Ads are the sponsored placements answer engines show alongside a response. They are recorded from the same scraped
-			answer as citations, so an ad and the answer it ran next to always come from one observation.
+			Ads are the paid placements an answer engine shows alongside a response. They come from the same scraped answer as
+			citations, so an ad and the answer it ran next to are always one observation.
 		</p>
 		<p>
-			<strong>Tracked competitor</strong> advertisers are only those whose domain you have added to your competitor
-			list. Everything else appears as an unclassified advertiser until you track it.
+			<strong>Tracked competitor</strong> advertisers are only those whose domain is on your competitor list. Everything
+			else stays unclassified until you track it.
 		</p>
 	</>
 );
@@ -45,12 +46,10 @@ function Shell({ children }: { children: ReactNode }) {
 	);
 }
 
-function AdsPage({ variant }: { variant: "a" | "b" | "c" }) {
-	const props: AdsDisplayProps = { data: mockAdsData, brandId: "mock-brand-id", brandName: "Elmo" };
-	const Variant = variant === "a" ? AdsVariantA : variant === "b" ? AdsVariantB : AdsVariantC;
+function AdsPage({ data }: { data: AdsData }) {
 	return (
 		<PageHeader title="Ads" subtitle="See who is buying ads against the prompts you track." infoContent={INFO}>
-			<Variant {...props} />
+			<AdsDisplay data={data} brandId="mock-brand-id" brandName="Elmo" />
 		</PageHeader>
 	);
 }
@@ -74,11 +73,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Variant A — Citations-shaped: numbers, trend, ranked advertisers, then detail. */
-export const VariantAAdIntelligence: Story = { args: { variant: "a" } };
+export const Default: Story = { args: { data: mockAdsData } };
 
-/** Variant B — prompt-first: the auction board leads. */
-export const VariantBAuctionBoard: Story = { args: { variant: "b" } };
+/** Both platforms answering, nobody has ever bought against these prompts. */
+export const NoAdsEverSeen: Story = { args: { data: mockAdsNoneEverSeen } };
 
-/** Variant C — creative-first: the ads themselves are the page. */
-export const VariantCAdLibrary: Story = { args: { variant: "c" } };
+/** Ads used to appear and have stopped — the case that must not read as "nobody is buying". */
+export const PlatformGoneQuiet: Story = { args: { data: mockAdsSurfaceGoneQuiet } };
+
+/** The brand tracks nothing that can carry an ad. */
+export const NoAdCapablePlatforms: Story = { args: { data: mockAdsNoAdCapablePlatforms } };

@@ -33,7 +33,7 @@ function MovementList({
 					{entries.map((entry) => {
 						const meta = AD_ATTRIBUTION_META[entry.attribution];
 						return (
-							<div key={entry.domain} className="flex items-center justify-between gap-2 py-1.5 text-xs">
+							<div key={entry.key} className="flex items-center justify-between gap-2 py-1.5 text-xs">
 								<span className="flex min-w-0 items-center gap-1.5">
 									<Tooltip>
 										<TooltipTrigger render={<span className={cn("size-2 shrink-0 rounded-full", meta.dotClass)} />} />
@@ -41,7 +41,9 @@ function MovementList({
 									</Tooltip>
 									<SiteIcon domain={entry.domain} size="xs" />
 									<span className="truncate font-medium">{entry.competitorName ?? entry.name}</span>
-									<span className="min-w-0 shrink truncate text-muted-foreground">{entry.domain}</span>
+									{entry.domain && entry.domain !== entry.name && (
+										<span className="min-w-0 shrink truncate text-muted-foreground">{entry.domain}</span>
+									)}
 								</span>
 								<span className="shrink-0 tabular-nums text-muted-foreground">
 									{countFor(entry).toLocaleString()} ads

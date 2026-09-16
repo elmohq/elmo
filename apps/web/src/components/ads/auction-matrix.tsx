@@ -56,7 +56,7 @@ export function AuctionMatrix({ data }: { data: AdsData }) {
 		const byKey = new Map<string, number>();
 		for (const prompt of data.prompts) {
 			for (const advertiser of prompt.advertisers) {
-				byKey.set(`${advertiser.domain}|${prompt.id}`, advertiser.count);
+				byKey.set(`${advertiser.key}|${prompt.id}`, advertiser.count);
 			}
 		}
 		return byKey;
@@ -117,7 +117,7 @@ export function AuctionMatrix({ data }: { data: AdsData }) {
 							{advertiserRows.map((advertiser) => {
 								const meta = AD_ATTRIBUTION_META[advertiser.attribution];
 								return (
-									<tr key={advertiser.domain}>
+									<tr key={advertiser.key}>
 										<th scope="row" className="w-56 min-w-56 py-0.5 pr-2 text-left font-normal">
 											<span className="flex min-w-0 items-center gap-1.5">
 												<Tooltip>
@@ -134,7 +134,7 @@ export function AuctionMatrix({ data }: { data: AdsData }) {
 											</span>
 										</th>
 										{visiblePrompts.map((prompt) => {
-											const count = cells.get(`${advertiser.domain}|${prompt.id}`) ?? 0;
+											const count = cells.get(`${advertiser.key}|${prompt.id}`) ?? 0;
 											return (
 												<td key={prompt.id} className="p-0">
 													<Tooltip>

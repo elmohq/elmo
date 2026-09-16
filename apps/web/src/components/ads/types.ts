@@ -17,8 +17,13 @@ export interface AdPromptRef {
 }
 
 export interface AdAdvertiser {
-	/** Registrable host of the advertiser's site — the competitor join key. */
-	domain: string;
+	/** Stable identity: the domain when there is one, else the reported name.
+	 *  Google AI Mode hides the landing page behind a redirect and sometimes
+	 *  reports a display name in its place, so a domain cannot be the key. */
+	key: string;
+	/** Registrable host of the advertiser's site — the competitor join key.
+	 *  Null when the surface only gave us a name. */
+	domain: string | null;
 	/** Verified advertiser name the surface reports ("SEOSpace, LLC"). */
 	name: string;
 	attribution: AdAttribution;
@@ -34,12 +39,17 @@ export interface AdAdvertiser {
 	/** Organic citations to the same domain in the same window. Powers the
 	 *  paid-vs-earned split; 0 means they only ever appear by buying. */
 	citedCount: number;
+	/** Surfaces this advertiser was seen on, in catalog order. */
+	models: string[];
 	prompts: AdPromptRef[];
 }
 
 export interface AdCreative {
 	id: string;
-	advertiserDomain: string;
+	/** Surface this creative ran on — a ChatGPT ad and an AI Mode ad are different buys. */
+	model: string;
+	advertiserKey: string;
+	advertiserDomain: string | null;
 	advertiserName: string;
 	attribution: AdAttribution;
 	competitorName?: string;
@@ -63,7 +73,8 @@ export interface AdPrompt {
 	/** impressions / eligibleRuns, as a percentage. */
 	adRate: number;
 	advertisers: {
-		domain: string;
+		key: string;
+		domain: string | null;
 		name: string;
 		attribution: AdAttribution;
 		competitorName?: string;
@@ -72,12 +83,29 @@ export interface AdPrompt {
 }
 
 export interface AdMovementEntry {
-	domain: string;
+	key: string;
+	domain: string | null;
 	name: string;
 	attribution: AdAttribution;
 	competitorName?: string;
 	impressions: number;
 	previousImpressions: number;
+}
+
+/**
+ * One ad-capable surface the brand tracks, whether or not it produced any ads.
+ * A surface with eligible runs and no impressions is a real answer ("nobody
+ * bought against you there"), and one that used to report ads and stopped is a
+ * third, different answer — so the row exists even when every count is zero.
+ */
+export interface AdSurface {
+	model: string;
+	label: string;
+	impressions: number;
+	eligibleRuns: number;
+	adRate: number;
+	/** Most recent ad on this surface at any time, not just inside the window. */
+	lastAdAt: string | null;
 }
 
 export interface AdsData {
@@ -88,6 +116,8 @@ export interface AdsData {
 	uniqueAdvertisers: number;
 	competitorSharePercent: number;
 	brandImpressions: number;
+	/** Every ad-capable surface the brand tracks, in catalog order. */
+	surfaces: AdSurface[];
 	advertisers: AdAdvertiser[];
 	creatives: AdCreative[];
 	prompts: AdPrompt[];

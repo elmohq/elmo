@@ -83,7 +83,7 @@ export function ContestedPromptsCard({ data }: { data: AdsData }) {
 											</div>
 											<span className="flex shrink-0 items-center gap-1">
 												{top.map((advertiser) => (
-													<Tooltip key={advertiser.domain}>
+													<Tooltip key={advertiser.key}>
 														<TooltipTrigger
 															render={
 																<span className="inline-flex items-center">
@@ -109,10 +109,7 @@ export function ContestedPromptsCard({ data }: { data: AdsData }) {
 												{prompt.advertisers.map((advertiser) => {
 													const meta = AD_ATTRIBUTION_META[advertiser.attribution];
 													return (
-														<div
-															key={advertiser.domain}
-															className="flex items-center justify-between gap-2 py-1 text-xs"
-														>
+														<div key={advertiser.key} className="flex items-center justify-between gap-2 py-1 text-xs">
 															<span className="flex min-w-0 items-center gap-1.5">
 																<span className={cn("size-2 shrink-0 rounded-full", meta.dotClass)} />
 																<SiteIcon domain={advertiser.domain} size="xs" />

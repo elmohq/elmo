@@ -1,4 +1,6 @@
 import { IconChevronDown, IconSearch } from "@tabler/icons-react";
+import { iconIdForModelFilter, labelForModelFilter } from "@workspace/config/model-filter";
+import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Separator } from "@workspace/ui/components/separator";
@@ -93,7 +95,7 @@ export function TopAdvertisersCard({
 		return data.advertisers.filter((advertiser) => {
 			if (filter !== "all" && advertiser.attribution !== filter) return false;
 			if (!query) return true;
-			return advertiser.domain.toLowerCase().includes(query) || advertiser.name.toLowerCase().includes(query);
+			return (advertiser.domain ?? "").toLowerCase().includes(query) || advertiser.name.toLowerCase().includes(query);
 		});
 	}, [data.advertisers, filter, search]);
 
@@ -148,14 +150,14 @@ export function TopAdvertisersCard({
 					<>
 						<div className="divide-y divide-border/50">
 							{pageItems.map((advertiser) => {
-								const isExpanded = expanded === advertiser.domain;
+								const isExpanded = expanded === advertiser.key;
 								const meta = AD_ATTRIBUTION_META[advertiser.attribution];
 								return (
-									<div key={advertiser.domain} className="py-2.5">
+									<div key={advertiser.key} className="py-2.5">
 										<div className="flex items-center justify-between gap-3">
 											<button
 												type="button"
-												onClick={() => setExpanded(isExpanded ? null : advertiser.domain)}
+												onClick={() => setExpanded(isExpanded ? null : advertiser.key)}
 												className="group flex min-w-0 cursor-pointer items-center gap-1.5 text-left"
 											>
 												<IconChevronDown
@@ -200,11 +202,25 @@ export function TopAdvertisersCard({
 													}}
 												/>
 											</div>
-											<span className="shrink-0 text-[11px] text-muted-foreground">
+											<span className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+												{advertiser.models.map((model) => (
+													<Tooltip key={model}>
+														<TooltipTrigger
+															render={
+																<span className="inline-flex">
+																	<ModelIcon iconId={iconIdForModelFilter(model)} className="size-3.5" />
+																</span>
+															}
+														/>
+														<TooltipContent className="text-xs font-normal">
+															{labelForModelFilter(model)}
+														</TooltipContent>
+													</Tooltip>
+												))}
 												{advertiser.promptCount} prompt{advertiser.promptCount === 1 ? "" : "s"} ·{" "}
 												{formatRange(advertiser.firstSeen, advertiser.lastSeen)}
 											</span>
-											{advertiser.attribution === "other" && brandId && (
+											{advertiser.attribution === "other" && advertiser.domain && brandId && (
 												<TrackDomainPopover
 													domain={advertiser.domain}
 													brandId={brandId}

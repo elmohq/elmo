@@ -1,4 +1,6 @@
 import { IconExternalLink, IconSearch } from "@tabler/icons-react";
+import { iconIdForModelFilter, labelForModelFilter } from "@workspace/config/model-filter";
+import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Separator } from "@workspace/ui/components/separator";
@@ -68,7 +70,19 @@ function CreativeCard({ creative }: { creative: AdCreative }) {
 			</div>
 
 			<div className="mt-auto flex items-center justify-between gap-2 border-t border-border/50 pt-2 text-[11px] text-muted-foreground">
-				<span>{formatRange(creative.firstSeen, creative.lastSeen)}</span>
+				<span className="flex items-center gap-1.5">
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<span className="inline-flex">
+									<ModelIcon iconId={iconIdForModelFilter(creative.model)} className="size-3.5" />
+								</span>
+							}
+						/>
+						<TooltipContent className="text-xs font-normal">{labelForModelFilter(creative.model)}</TooltipContent>
+					</Tooltip>
+					{formatRange(creative.firstSeen, creative.lastSeen)}
+				</span>
 				{creative.targetUrl && (
 					<a
 						href={creative.targetUrl}
@@ -117,7 +131,7 @@ export function CreativeGallery({ data, pageSize = 9 }: { data: AdsData; pageSiz
 				creative.headline.toLowerCase().includes(query) ||
 				creative.body.toLowerCase().includes(query) ||
 				creative.advertiserName.toLowerCase().includes(query) ||
-				creative.advertiserDomain.toLowerCase().includes(query)
+				(creative.advertiserDomain ?? "").toLowerCase().includes(query)
 			);
 		});
 	}, [data.creatives, filter, search]);

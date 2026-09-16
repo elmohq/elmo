@@ -59,7 +59,7 @@ export function AdvertiserLabel({
 	attribution,
 	className,
 }: {
-	domain: string;
+	domain: string | null;
 	name: string;
 	attribution: AdAttribution;
 	className?: string;
@@ -69,7 +69,9 @@ export function AdvertiserLabel({
 			<AttributionDot attribution={attribution} />
 			<SiteIcon domain={domain} size="xs" />
 			<span className="min-w-0 truncate font-medium">{name}</span>
-			<span className="min-w-0 shrink truncate text-xs text-muted-foreground">{domain}</span>
+			{domain && domain !== name && (
+				<span className="min-w-0 shrink truncate text-xs text-muted-foreground">{domain}</span>
+			)}
 		</span>
 	);
 }

@@ -73,7 +73,7 @@ export function PaidVsEarnedCard({ data }: { data: AdsData }) {
 					) : (
 						<div className="divide-y divide-border/50">
 							{buyingNotCited.map((advertiser) => (
-								<Row key={advertiser.domain} advertiser={advertiser} metric="paid" />
+								<Row key={advertiser.key} advertiser={advertiser} metric="paid" />
 							))}
 						</div>
 					)}
@@ -85,7 +85,7 @@ export function PaidVsEarnedCard({ data }: { data: AdsData }) {
 					) : (
 						<div className="divide-y divide-border/50">
 							{citedAndBuying.map((advertiser) => (
-								<Row key={advertiser.domain} advertiser={advertiser} metric="cited" />
+								<Row key={advertiser.key} advertiser={advertiser} metric="cited" />
 							))}
 						</div>
 					)}

@@ -4,6 +4,8 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { AD_ATTRIBUTION_META, AttributionLegend, formatDay, InfoTitle } from "@/components/ads/shared";
 import type { AdAttribution, AdsData } from "@/components/ads/types";
 
+const AXIS_STEPS = [0.5, 1, 2, 2.5, 5, 10, 25];
+
 /** Bottom band first so the long tail sits under the two series that matter. */
 const BANDS: AdAttribution[] = ["other", "competitor", "brand"];
 
@@ -20,9 +22,11 @@ const CONFIG: ChartConfig = Object.fromEntries(
  */
 export function AdRateChart({ data }: { data: AdsData["timeSeries"] }) {
 	const peak = data.reduce((max, point) => Math.max(max, point.adRate), 0);
-	const ceiling = Math.max(5, Math.ceil((peak * 1.15) / 5) * 5);
-	// Four even steps; recharts' own tick picker lands on uneven stops here.
-	const ticks = [0, 1, 2, 3, 4].map((step) => (ceiling / 4) * step);
+	// Four even steps off a nice-number ladder, so no tick is ever 11.25%.
+	// Recharts' own picker divides an arbitrary ceiling and lands on stops like that.
+	const step = AXIS_STEPS.find((candidate) => candidate * 4 >= peak * 1.1) ?? AXIS_STEPS.at(-1) ?? 25;
+	const ticks = [0, 1, 2, 3, 4].map((index) => step * index);
+	const ceiling = step * 4;
 	const present = BANDS.filter((band) => data.some((point) => point[band] > 0));
 
 	return (
@@ -37,7 +41,7 @@ export function AdRateChart({ data }: { data: AdsData["timeSeries"] }) {
 			</CardHeader>
 			<CardContent className="space-y-3">
 				<ChartContainer config={CONFIG} className="aspect-auto h-[200px] w-full">
-					<AreaChart data={data} margin={{ top: 10, right: 10, left: -12, bottom: 0 }}>
+					<AreaChart data={data} margin={{ top: 10, right: 10, left: -4, bottom: 0 }}>
 						<CartesianGrid vertical={false} strokeDasharray="3 3" />
 						<XAxis
 							dataKey="date"
