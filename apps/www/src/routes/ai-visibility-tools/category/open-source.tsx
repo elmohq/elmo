@@ -9,9 +9,9 @@ import { openSourceTools } from "@/lib/competitors";
 import type { FaqItem } from "@/lib/faqs";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, itemListJsonLd, ogMeta } from "@/lib/seo";
 
-const title = "Best Open-Source AEO Tools (2026) · Elmo";
+const title = "Best Free & Open-Source AEO Tools (2026) · Elmo";
 const description =
-	"The best open-source answer engine optimization (AEO) tools you can self-host and audit, ranked on public GitHub data. Elmo, OneGlanse, GEO/AEO Tracker, Canonry, and Gego compared.";
+	"The best free and open-source answer engine optimization (AEO) tools you can self-host and audit, ranked on public GitHub data. Elmo, OneGlanse, GEO/AEO Tracker, Canonry, and Gego compared.";
 const path = "/ai-visibility-tools/category/open-source";
 
 const lead =
@@ -28,6 +28,16 @@ const FAQS: FaqItem[] = [
 		question: "What are the best open-source AEO tools?",
 		answer:
 			"Elmo is the most complete open-source answer engine optimization tool: MIT-licensed, free to self-host, and covering ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews. Public GitHub data as of 11 August 2026 backs this up — Elmo leads the field on stars, contributors, and releases, and is the only project with a meaningful number of contributors beyond one person. Smaller projects fill out the rest of the space, including OneGlanse, GEO/AEO Tracker, and Gego, most of them single-developer efforts. Canonry is actively developed but source-available rather than fully open source. GetCito replaced its codebase with Elmo's in July 2026, so running it means running a lagging fork of Elmo.",
+	},
+	{
+		question: "What are the best free tools to track brand mentions in ChatGPT?",
+		answer:
+			"For free tracking that keeps running, self-host an open-source tool: Elmo is MIT-licensed and covers ChatGPT alongside Claude, Perplexity, Gemini, and Google AI Overviews, with no license fee or per-seat charge. Smaller free options include GEO/AEO Tracker, which is local-first and runs entirely in your browser, and Gego, which runs from Docker on a schedule. Free trials from hosted tools work for a one-off check but stop when the trial does. In every case you supply your own model API keys, which carry usage costs, so free means no software licence rather than no spend.",
+	},
+	{
+		question: "Is there a free AI visibility tool?",
+		answer:
+			"Yes. Open-source trackers are free to use and free to self-host — Elmo, GEO/AEO Tracker, OneGlanse, and Gego all fall into this category. The cost you cannot avoid is model API usage, because measuring visibility means actually running prompts through the engines. A useful rule of thumb: free software plus your own API keys is cheaper than any subscription at small prompt counts, and the crossover point arrives when you would rather not maintain the infrastructure.",
 	},
 	{
 		question: "Which open-source AEO tool is the most actively maintained?",
@@ -282,7 +292,7 @@ function OpenSourcePage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero eyebrow="Open source" title="Best open-source AEO tools (2026)" lead={lead} />
+				<DirectoryHero eyebrow="Open source" title="Best free and open-source AEO tools (2026)" lead={lead} />
 
 				<DirectorySection title="Key takeaways">
 					<ul className="max-w-3xl list-disc space-y-3 pl-5 leading-relaxed text-zinc-600">
