@@ -473,62 +473,49 @@ There was then a **partial recovery on 2026-09-01/02**: `web_search_triggered` a
 `search_sources` came back to ~97% of runs. `web_search_query`, `model` and `ads` did not, and
 have not since.
 
-### Collateral damage: ChatGPT query fan-out has been broken since the same day
+### Collateral damage: the Query Fan-Out page is effectively blank
 
-Worth pulling out, because it is a live user-visible regression nobody had noticed:
+This is the more urgent half of the incident, and it is worse than "degraded".
 
-| Week | ChatGPT runs | runs with a real reported web query |
-|---|---|---|
-| 2026-08-10 | 1,383 | 971 (70%) |
-| 2026-08-17 | 1,611 | 843 (52%) |
-| 2026-08-24 | 1,608 | **103 (6%)** |
-| 2026-08-31 | 2,012 | 25 (1%) |
-| 2026-09-14 | 968 | 10 (1%) |
+**Nothing in our code is broken.** The chain, end to end:
 
-The Query Fan-Out page has answered `unavailable` for essentially every ChatGPT run since
-2026-08-25.
+1. BrightData stopped populating `web_search_query`. Through 2026-08-24 it was an array
+   (`["Speakeasy Delhi reviews cocktails"]`); since 2026-08-25 it is `null`.
+2. `extractWebQueries()` reads `web_search_query`, then falls back to
+   `metadata.search_model_queries` / `search_model_queries`. BrightData exposes no `metadata`,
+   so both miss and it returns `[]`.
+3. `reportedWebQueries([], { webSearch: true, searchProven: citations.length > 0 })` stores the
+   `unavailable` sentinel rather than an empty array, because citations prove a search ran.
+   That is the designed behaviour for "searched, but would not say what".
+4. At read time `genuineFanoutWq()` filters `unavailable` out in SQL, so those runs contribute
+   no rows.
+5. The page renders its KPI row plus *"No web queries in this period — the engines you track
+   didn't expose any searches for these prompts and filters."*
 
-**It is broken on the vendor side, not ours**, and that is settled rather than assumed:
+Every layer is behaving correctly and reporting the gap honestly. The data is simply not
+arriving.
 
-- August payloads carried `web_search_query` as a populated array under **the same field name
-  we read** (e.g. `["Speakeasy Delhi reviews cocktails"]`). Today it is `null`.
-- Nothing replaced it. A live probe has no query anywhere in the payload: not in
-  `search_sources` (whose entries are `url` / `title` / `snippet` / `rank` /
-  `date_published`), and not in the 770 KB of `answer_html` — zero "Searched for" chips, zero
-  `search_model_queries`.
-- Our extractor reads the right fields and already has the fallback (`web_search_query`, then
-  `metadata.search_model_queries`), and it degrades honestly: `reportedWebQueries` writes the
-  `unavailable` sentinel rather than reporting an empty fan-out, because citations prove a
-  search ran. The page is telling the truth about a gap it cannot fill.
+**The scale is the problem: ChatGPT was the only model producing fan-out at all.** Across the
+cloud dataset, every other tracked model contributes zero genuine fan-out both before and after
+the cliff — Claude, Gemini, Google AI Mode, Google AI Overview, Perplexity and Copilot all
+report nothing, by design or by provider.
 
-**It is also not BrightData-specific.** DataForSEO's ChatGPT LLM Scraper returns
-`fan_out_queries: null` on a live probe too — a field we already read correctly. Two
-independent vendors driving chatgpt.com lost the same thing on the same schedule, which points
-at a ChatGPT UI change around 2026-08-25 that both DOM-reading scrapers stopped matching,
-rather than one vendor's bug.
+| Model | Aug 1–24 runs | with fan-out | Sept 1+ runs | with fan-out |
+|---|---|---|---|---|
+| **chatgpt** | 3,245 | **1,895 (58%)** | 5,054 | **58 (1.1%)** |
+| claude | 3,128 | 0 | 4,410 | 0 |
+| google-ai-mode | 3,104 | 0 | 1,902 | 0 |
+| google-ai-overview | 3,105 | 0 | 4,438 | 0 |
+| gemini | 10 | 0 | 2,550 | 0 |
+| perplexity | 9 | 0 | 10 | 0 |
 
-### Query fan-out is recoverable today: Oxylabs still has it
+So the page is not partially degraded — for every cloud brand it now shows the empty state.
+ChatGPT was carrying it alone and dropped to ~1%.
 
-Oxylabs reads ChatGPT's **SSE conversation stream** rather than the rendered DOM, and the data
-is still there:
-
-```
-"metadata": { "search_model_queries": { "queries": ["best noise cancelling headphones 2026 …"] },
-              "resolved_model_slug": "gpt-5-6" }
-```
-
-A live Oxylabs run on 2026-09-16 returned `search_queries` populated and
-`llm_model: "gpt-5-6"` — both of the things BrightData lost. Our Oxylabs extractor already
-reads `search_queries` (`OXYLABS_QUERY_KEYS`), so **moving the ChatGPT target to Oxylabs
-restores query fan-out with no code change** — it needs `OXYLABS_USERNAME` / `OXYLABS_PASSWORD`
-in the cloud environment, which are currently only set for demo.
-
-This also explains the shape of the outage: `resolved_model_slug` is alive in the stream while
-BrightData reports `model: null`, so what broke is DOM chrome, not the underlying answer.
-
-**Ads do not come back this way.** The SSE stream carries no ad markers at all — no `tessera`
-image host, no `sponsored` — which fits ads being delivered by a separate call rather than in
-the conversation stream. Oxylabs fixes fan-out; it does not fix ads.
+**It is not BrightData-specific either.** DataForSEO's ChatGPT scraper returns
+`fan_out_queries: null` on a live probe too, a field we already read correctly. Two independent
+vendors driving chatgpt.com lost the same thing on the same schedule, which points at a ChatGPT
+UI change around 2026-08-25 that both DOM-reading scrapers stopped matching.
 
 ### Ruling out our own changes
 
@@ -611,6 +598,13 @@ image }`) maps onto the `ad_impressions` schema in §2.1 with no rework.
 Cloro is also the only provider that fixes **both** problems at once: `include.searchQueries`
 is already on, so a ChatGPT target on Cloro restores query fan-out as well as ads.
 
+**And the extra data is free.** Cloro's credit table charges ChatGPT at 5 credits with
+*"any combination of raw response, query fan-out, ads, and shopping | +2 credits"* — one
+surcharge for the group, not per flag. We already send `searchQueries`, so we are already
+paying the +2 and running at 7 credits. Adding `ads: true` (and `shopping: true`) costs
+**nothing extra**. At Hobby pricing ($0.40 per 1k credits) that is $0.0028 per run either way,
+against the $0.01 per run our internal estimate carries for both BrightData and Cloro today.
+
 On BrightData there is no such flag. The full accepted input set — confirmed by the `input`
 object it echoes back — is `url`, `prompt`, `country`, `index`, `web_search`,
 `additional_prompt`, `geolocation`, plus an undocumented `require_sources`. Nothing selects
@@ -632,9 +626,10 @@ field loss on 2026-08-25 is a real vendor regression. Neither is an OpenAI polic
 neither is ours. In priority order:
 
 1. **Evaluate Cloro for the ChatGPT target.** It is the only provider that supports ads
-   deliberately (`include.ads`), and turning it on also restores query fan-out. Needs a
-   `CLORO_API_KEY` — their free tier is 500 credits/month, enough to answer "do ads come back"
-   in an afternoon. This is the highest-value next step by a wide margin.
+   deliberately (`include.ads`), turning it on also restores query fan-out, and the flag is
+   free because we already pay the +2 surcharge for `searchQueries`. Needs a `CLORO_API_KEY` —
+   their free tier is 500 credits/month, which at 7 credits a run is ~70 probes, plenty to
+   answer "do ads come back" in an afternoon. Highest-value next step by a wide margin.
 2. **Send `country: "US"` on the BrightData ChatGPT trigger.** Ads are a US/English-market
    product and `country` is a supported input we have never sent, so today the exit country is
    whatever BrightData picks. Cheap, and it removes a variable from every other question here.
