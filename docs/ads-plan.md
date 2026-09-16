@@ -14,9 +14,10 @@ It is a BrightData collector regression: on one day, every field that only exist
 collector completes a real browsing turn — `web_search_triggered`, `search_sources`,
 `web_search_query`, `model` and `ads` — dropped to near zero together, while `citations` kept
 working. Nothing changed on our side, and OpenAI expanded ads rather than pulling them. **The
-same regression has had ChatGPT query fan-out showing "unavailable" for three weeks**, which
-is a live user-visible bug nobody had noticed. Evidence, probes and the support ticket are in
-§5.
+same regression has had ChatGPT query fan-out showing "unavailable" for three weeks** — a live
+user-visible bug nobody had noticed, broken on the vendor side rather than ours, and fixable
+today by moving the ChatGPT target to Oxylabs, which still carries the queries. Evidence,
+probes and the support ticket are in §5.
 
 **Google AI Mode ads are live and growing**, so the page is **Ads**, not ChatGPT Ads: one
 extraction pass, two surfaces, filterable by either. That is what keeps the page useful
@@ -472,7 +473,7 @@ have not since.
 
 ### Collateral damage: ChatGPT query fan-out has been broken since the same day
 
-Worth surfacing on its own, because it is a live user-visible regression nobody had noticed:
+Worth pulling out, because it is a live user-visible regression nobody had noticed:
 
 | Week | ChatGPT runs | runs with a real reported web query |
 |---|---|---|
@@ -482,9 +483,50 @@ Worth surfacing on its own, because it is a live user-visible regression nobody 
 | 2026-08-31 | 2,012 | 25 (1%) |
 | 2026-09-14 | 968 | 10 (1%) |
 
-The Query Fan-Out page has been showing the `unavailable` sentinel for essentially every
-ChatGPT run for three weeks. Same root cause, same fix, and it should be raised in the same
-ticket.
+The Query Fan-Out page has answered `unavailable` for essentially every ChatGPT run since
+2026-08-25.
+
+**It is broken on the vendor side, not ours**, and that is settled rather than assumed:
+
+- August payloads carried `web_search_query` as a populated array under **the same field name
+  we read** (e.g. `["Speakeasy Delhi reviews cocktails"]`). Today it is `null`.
+- Nothing replaced it. A live probe has no query anywhere in the payload: not in
+  `search_sources` (whose entries are `url` / `title` / `snippet` / `rank` /
+  `date_published`), and not in the 770 KB of `answer_html` — zero "Searched for" chips, zero
+  `search_model_queries`.
+- Our extractor reads the right fields and already has the fallback (`web_search_query`, then
+  `metadata.search_model_queries`), and it degrades honestly: `reportedWebQueries` writes the
+  `unavailable` sentinel rather than reporting an empty fan-out, because citations prove a
+  search ran. The page is telling the truth about a gap it cannot fill.
+
+**It is also not BrightData-specific.** DataForSEO's ChatGPT LLM Scraper returns
+`fan_out_queries: null` on a live probe too — a field we already read correctly. Two
+independent vendors driving chatgpt.com lost the same thing on the same schedule, which points
+at a ChatGPT UI change around 2026-08-25 that both DOM-reading scrapers stopped matching,
+rather than one vendor's bug.
+
+### Query fan-out is recoverable today: Oxylabs still has it
+
+Oxylabs reads ChatGPT's **SSE conversation stream** rather than the rendered DOM, and the data
+is still there:
+
+```
+"metadata": { "search_model_queries": { "queries": ["best noise cancelling headphones 2026 …"] },
+              "resolved_model_slug": "gpt-5-6" }
+```
+
+A live Oxylabs run on 2026-09-16 returned `search_queries` populated and
+`llm_model: "gpt-5-6"` — both of the things BrightData lost. Our Oxylabs extractor already
+reads `search_queries` (`OXYLABS_QUERY_KEYS`), so **moving the ChatGPT target to Oxylabs
+restores query fan-out with no code change** — it needs `OXYLABS_USERNAME` / `OXYLABS_PASSWORD`
+in the cloud environment, which are currently only set for demo.
+
+This also explains the shape of the outage: `resolved_model_slug` is alive in the stream while
+BrightData reports `model: null`, so what broke is DOM chrome, not the underlying answer.
+
+**Ads do not come back this way.** The SSE stream carries no ad markers at all — no `tessera`
+image host, no `sponsored` — which fits ads being delivered by a separate call rather than in
+the conversation stream. Oxylabs fixes fan-out; it does not fix ads.
 
 ### Ruling out our own changes
 
@@ -531,8 +573,9 @@ means the regression is unlikely to be fixed unless someone reports it.
 
 ### Conclusion and the ask
 
-This is a BrightData collector regression, not an OpenAI change and not ours. The support
-ticket writes itself:
+Ads are a BrightData collector regression; the fan-out half is broader than BrightData and
+recoverable today. Neither is an OpenAI policy change, and neither is ours. The support ticket
+writes itself:
 
 > Dataset `gd_m7aof0k82r803d5bjm` returned `web_search_query`, `model`, `ads` and
 > `search_sources` on ~50% of runs through 2026-08-24. From 2026-08-25 all five browsing-turn
@@ -557,8 +600,13 @@ without notice, and that belongs in the decision about how much to build on it.
    and OpenAPI, the user-guide page, `rollup_ad_advertisers` if volume warrants it, Google AI
    Overview `bottom_ads`.
 
-Independent of all of the above, and more urgent than any of it: **raise the BrightData
-regression** (§5). It is costing us ChatGPT query fan-out today, not just ads. Start sending
-`country: "US"` on the ChatGPT trigger at the same time — it does not fix this, but it makes
-the sample deterministic and country is a dimension worth controlling now that ads serve in
-more markets.
+Independent of all of the above, and more urgent than any of it (§5):
+
+1. **Restore ChatGPT query fan-out** by moving the ChatGPT target to Oxylabs, which still
+   returns `search_queries`. No code change; it needs Oxylabs credentials in the cloud
+   environment. This is a live user-visible bug and the fix is already written.
+2. **Raise the regression with BrightData** — and with DataForSEO, since both lost the same
+   fields.
+3. **Send `country: "US"` on the ChatGPT trigger.** It does not fix any of this, but it makes
+   the sample deterministic instead of leaving the exit country to the vendor, and country is a
+   dimension worth controlling now that ads serve in more markets.
