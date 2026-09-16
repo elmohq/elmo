@@ -634,11 +634,34 @@ output schemas for all 1,078 scrapers on the account):
 - Across all 1,078 scrapers, **exactly two declare an ads field**: ChatGPT Search and Google AI
   Mode Search — the two we already run. There is no separate ChatGPT-ads dataset or product.
 
-So on BrightData, the way to get ads is the field we are already reading. The remaining
-possibilities are the four input variants (`web_search` off/omitted, `require_sources`,
-`geolocation`), tested separately, or their Browser API / Web Unlocker, where we would drive
-chatgpt.com ourselves and read the `type: "ads"` event off the SSE stream — a different
-integration, not a flag.
+So on BrightData, the way to get ads is the field we are already reading.
+
+**Every remaining input was then exercised, one snapshot each, all `country: "US"`, all on a
+commercial prompt:**
+
+| variant | country | model | searched | `web_search_query` | sources | shopping | ads |
+|---|---|---|---|---|---|---|---|
+| `web_search` omitted (their default) | US | null | true | null | 3 | 4 | **no** |
+| `web_search: false` | US | null | **true** | null | 4 | 3 | **no** |
+| `require_sources: true` | US | null | true | null | 5 | 3 | **no** |
+| `geolocation` NYC (`40.7128,-74.0060,10000`) | US | null | true | null | 6 | 4 | **no** |
+
+Forcing `web_search` was the best remaining hypothesis — we set it true on every run, a
+deliberate deviation from the default that had never been questioned, and it plausibly routes
+ChatGPT into a search-mode UI. It is not the cause: omitting it changes nothing, and setting it
+*false* still comes back `web_search_triggered: true`, so the flag does not even control
+whether a search happens.
+
+That is **14 US-pinned runs with zero ads** (8 batch + 4 variants + 2 earlier singles), with a
+shopping carousel rendering on at least seven of them. Against the ~51% US penetration
+trackers report, p ≈ 0.00006.
+
+Two incidental findings worth keeping: `geolocation` is not free text despite its declared
+`type: "text"` — it needs numeric `latitude, longitude, radius` or the crawler errors — and the
+account has exactly one zone, `sdk_serp` (type `serp`), so **the Browser API / Web Unlocker
+route is not provisioned**. Driving chatgpt.com ourselves and reading the `type: "ads"` event
+off the SSE stream is still the one BrightData path left, but it is a different product, a new
+zone, and a different integration — not a flag.
 
 ### Is there a flag we should be sending? Yes — on Cloro
 
