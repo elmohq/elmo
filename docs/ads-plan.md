@@ -356,7 +356,7 @@ Explicitly **not** in v1: campaign/ad-group breakdowns (8% coverage), spend esti
 have no auction data and guessing would be dishonest), or ad *position* within the answer
 (not in the payload).
 
-### 3.1 The three empty states
+### 3.1 The four empty states
 
 Ads are sparse by nature, so "nothing here" is the common case and must not collapse into
 one message. The page distinguishes:
@@ -373,6 +373,12 @@ now. A platform that has gone quiet after previously reporting ads carries a war
 row in the platform strip, with the date of the last ad we saw. Reading "0 ads" as "no
 competitor is buying" when the truth is "our scraper lost the surface" is the single most
 expensive mistake this page could make.
+
+And it is not a hypothetical failure mode. Ad eligibility depends on things no payload
+reports (§5): free or logged-out session, US or another English-speaking market. A scraper
+that drifts into a paid tier, an authenticated session, or a non-US exit returns a perfectly
+valid answer with no ads, indefinitely, and nothing distinguishes that from an uncontested
+prompt. The warning is the only place the page can be honest about it.
 
 ---
 

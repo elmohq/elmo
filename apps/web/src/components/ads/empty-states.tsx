@@ -17,13 +17,16 @@ function EmptyCard({ title, children }: { title: string; children: ReactNode }) 
 }
 
 /**
- * Three different nothings, which the page must not collapse into one message:
+ * Four different nothings, which the page must not collapse into one message:
  * the brand tracks no surface that can show ads, it tracks one but has no
- * answers yet, or it has answers and genuinely drew no ads.
+ * answers yet, or it has answers and genuinely drew no ads — and that last case
+ * splits again on whether ads were ever seen.
  *
- * The last case splits again on whether ads were ever seen — "nobody is buying
- * against you" and "the surface stopped showing us ads" are opposite findings
- * that produce an identical empty table.
+ * "Nobody is buying against you" and "the surface stopped showing us ads" are
+ * opposite findings that produce an identical empty table, and the difference is
+ * unobservable: eligibility turns on things no payload reports (a free or
+ * logged-out session, an English-speaking market), so a scraper that drifts out
+ * of them looks exactly like an uncontested prompt set.
  */
 export function AdsEmptyState({ data, settingsHref }: { data: AdsData; settingsHref?: ReactNode }) {
 	if (data.surfaces.length === 0) {
