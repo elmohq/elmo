@@ -23,6 +23,7 @@
 		"./auth/redirect-uri": "./src/auth/redirect-uri.ts",
 		"./constants": "./src/constants.ts",
 		"./app-urls": "./src/app-urls.ts",
+		"./after-commit": "./src/after-commit.ts",
 		"./expedite": "./src/expedite.ts",
 		"./run-backoff": "./src/run-backoff.ts",
 		"./text-extraction": "./src/text-extraction.ts",

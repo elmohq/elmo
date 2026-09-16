@@ -165,7 +165,7 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 
 	// Under the lock, so two batches cannot both spend the last slot.
 	const enabled = rows.filter((row) => row.enabled);
-	const created = await withQuotaLock(brand.organizationId, async (tx) => {
+	return withQuotaLock(brand.organizationId, async (tx, afterCommit) => {
 		await assertPromptSaveAllowed(
 			brand.organizationId,
 			{
@@ -174,16 +174,15 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 			},
 			tx,
 		);
-		return tx.insert(prompts).values(rows).returning();
+		const created = await tx.insert(prompts).values(rows).returning();
+		// Scheduling waits for the commit: a schedule for a rolled-back prompt
+		// would outlive it, and the queue client goes through the pool. One task
+		// per prompt so a prompt that can't be scheduled only costs itself.
+		for (const prompt of created) {
+			if (prompt.enabled) afterCommit(() => createPromptJobScheduler(prompt.id));
+		}
+		return created;
 	});
-
-	// Outside the transaction: a queue hiccup must not roll back prompts the
-	// customer can see; the worker's scheduler picks up what failed.
-	for (const prompt of created) {
-		if (prompt.enabled) await createPromptJobScheduler(prompt.id);
-	}
-
-	return created;
 }
 
 function promptUpdateData(
