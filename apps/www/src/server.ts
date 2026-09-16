@@ -1,4 +1,5 @@
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
+import { CLOUD_APP_URL } from "@workspace/config/referrals";
 import { isMarkdownPreferred, rewritePath } from "fumadocs-core/negotiation";
 import { estimateTokens, htmlToMarkdown } from "@/lib/html-to-markdown";
 
@@ -117,6 +118,16 @@ async function convertToMarkdown(response: Response, pageUrl: string): Promise<R
 	return new Response(markdown, { status: response.status, headers });
 }
 
+// This origin is not an OAuth issuer and holds no protected resource, so it
+// cannot answer for either document — but an agent that starts from the brand
+// domain looks here first. Pointing at the app is a signpost rather than a
+// claim: a client that derived these URLs from a www issuer still compares the
+// issuer it gets back and rejects it, which is the correct outcome.
+const DISCOVERY_REDIRECTS: Record<string, string> = {
+	"/.well-known/oauth-authorization-server": `${CLOUD_APP_URL}/.well-known/oauth-authorization-server`,
+	"/.well-known/oauth-protected-resource": `${CLOUD_APP_URL}/.well-known/oauth-protected-resource`,
+};
+
 // Keep permanent redirects server-side so backlinks and ranking signals reach
 // the canonical replacement rather than a client-rendered not-found page.
 const PERMANENT_REDIRECTS: Record<string, string> = {
@@ -124,15 +135,21 @@ const PERMANENT_REDIRECTS: Record<string, string> = {
 	"/docs/mcp": "/docs/api/mcp",
 };
 
+function redirectFor(path: string, search: string): Response | undefined {
+	const movedTo = PERMANENT_REDIRECTS[path.replace(/\/+$/, "") || "/"];
+	if (movedTo) return new Response(null, { status: 308, headers: { Location: `${movedTo}${search}` } });
+
+	const servedElsewhere = DISCOVERY_REDIRECTS[path];
+	if (servedElsewhere) return new Response(null, { status: 307, headers: { Location: servedElsewhere } });
+}
+
 export default createServerEntry({
 	async fetch(request) {
 		const url = new URL(request.url);
 		const path = url.pathname;
 
-		const movedTo = PERMANENT_REDIRECTS[path.replace(/\/+$/, "") || "/"];
-		if (movedTo) {
-			return addSecurityHeaders(new Response(null, { status: 308, headers: { Location: `${movedTo}${url.search}` } }));
-		}
+		const redirect = redirectFor(path, url.search);
+		if (redirect) return addSecurityHeaders(redirect);
 
 		// An explicit .md / .mdx suffix always serves markdown, ignoring Accept.
 		let target = suffixedMarkdownRoute(path);
