@@ -577,6 +577,35 @@ It also explains the Oxylabs result: its SSE stream had no ad event, but that se
 may not surface ads from an ad-eligible session; we cannot tell from the one sample, and it
 exposes no ads field to put them in regardless.
 
+### Tested: pinning `country: "US"` on BrightData does not bring ads back
+
+Geo was the most plausible single fix — ads are a US/English-market product and our trigger has
+never pinned a country. It is not one. `country` *is* a supported dataset input (BrightData
+publishes a [ChatGPT country list](https://github.com/brightdata/answer-engines-country-codes/blob/main/chatgpt_countries.csv)),
+and it is accepted and echoed back; it just changes nothing that matters.
+
+Eight high-commercial-intent prompts, all with `country: "US"`, run 2026-09-16:
+
+| prompt | country | model | searched | `web_search_query` | sources | shopping | ads |
+|---|---|---|---|---|---|---|---|
+| best project management software for remote teams | US | null | true | null | 3 | 0 | **no** |
+| best noise cancelling headphones | US | null | true | null | 4 | 3 | **no** |
+| best running shoes for beginners | US | null | true | null | 4 | 6 | **no** |
+| best mattress for back pain | US | null | true | null | 3 | 4 | **no** |
+| best travel credit card | US | null | true | null | 4 | 0 | **no** |
+| best web hosting for a small ecommerce store | US | null | true | null | 4 | 0 | **no** |
+| best crm for small business | US | null | true | null | 5 | 0 | **no** |
+| cheapest car insurance quotes | US | null | true | null | 5 | 0 | **no** |
+
+**0 of 8.** Against the ~51% US penetration trackers report, that is p ≈ 0.004 — not a sampling
+accident. Three of the eight rendered a shopping carousel, so the collector reached the
+monetizable part of the answer and still returned no ad. `model` and `web_search_query` stayed
+null on all eight: the same regression, unmoved by geo.
+
+Send `country: "US"` anyway. One field, does not fix this, but today the exit country is
+whatever BrightData picks — and that is a variable worth removing now that ads serve in more
+markets.
+
 ### Provider support for ChatGPT ads
 
 | Provider | Ads field | Status | Notes |
@@ -636,18 +665,18 @@ neither is ours. In priority order:
    free because we already pay the +2 surcharge for `searchQueries`. Needs a `CLORO_API_KEY` —
    their free tier is 500 credits/month, which at 7 credits a run is ~70 probes, plenty to
    answer "do ads come back" in an afternoon. Highest-value next step by a wide margin.
-2. **Send `country: "US"` on the BrightData ChatGPT trigger.** Ads are a US/English-market
-   product and `country` is a supported input we have never sent, so today the exit country is
-   whatever BrightData picks. Cheap, and it removes a variable from every other question here.
+2. **Send `country: "US"` on the BrightData ChatGPT trigger.** Tested, and it does *not* bring
+   ads back (§5) — but today the exit country is whatever BrightData picks, which is a variable
+   worth removing from every other question here. One field.
 3. **Report the regression** to BrightData, and to DataForSEO for the fan-out half:
 
    > Dataset `gd_m7aof0k82r803d5bjm` returned `web_search_query`, `model`, `ads` and
    > `search_sources` on ~50% of runs through 2026-08-24. From 2026-08-25 all five
    > browsing-turn fields dropped to near zero. `search_sources` and `web_search_triggered`
    > recovered on 2026-09-01; `web_search_query`, `model` and `ads` have not. Reproduced
-   > 2026-09-16 with and without `country: "US"`, including on a commercial prompt where
-   > `shopping_visible` was true and six products came back. `model` is a documented output
-   > field of this dataset and is now always null.
+   > 2026-09-16 across eight high-commercial-intent prompts pinned to `country: "US"` — zero
+   > ads on all eight, three of which rendered a shopping carousel. `model` is a documented
+   > output field of this dataset and is now always null.
 
    Ask directly whether `ads` is supported going forward. It is undocumented, so if the answer
    is no, ChatGPT ad tracking on BrightData rests on a field they can drop without notice — and
