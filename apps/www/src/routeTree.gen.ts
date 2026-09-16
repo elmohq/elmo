@@ -21,10 +21,10 @@ import { Route as OffSiteAeoRouteImport } from './routes/off-site-aeo'
 import { Route as OgDotpngRouteImport } from './routes/og[.]png'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as RepoActivityDotsvgRouteImport } from './routes/repo-activity[.]svg'
-import { Route as ResearchRouteImport } from './routes/research'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as StatisticsRouteImport } from './routes/statistics'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as VisionRouteImport } from './routes/vision'
 import { Route as DotwellKnownAiCatalogDotjsonRouteImport } from './routes/[.]well-known/ai-catalog[.]json'
@@ -126,11 +126,6 @@ const RepoActivityDotsvgRoute = RepoActivityDotsvgRouteImport.update({
   path: '/repo-activity.svg',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResearchRoute = ResearchRouteImport.update({
-  id: '/research',
-  path: '/research',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const RoadmapRoute = RoadmapRouteImport.update({
   id: '/roadmap',
   path: '/roadmap',
@@ -144,6 +139,11 @@ const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatisticsRoute = StatisticsRouteImport.update({
+  id: '/statistics',
+  path: '/statistics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StatusRoute = StatusRouteImport.update({
@@ -363,10 +363,10 @@ export interface FileRoutesByFullPath {
   '/og.png': typeof OgDotpngRoute
   '/pricing': typeof PricingRoute
   '/repo-activity.svg': typeof RepoActivityDotsvgRoute
-  '/research': typeof ResearchRoute
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/statistics': typeof StatisticsRoute
   '/status': typeof StatusRoute
   '/vision': typeof VisionRoute
   '/.well-known/ai-catalog.json': typeof DotwellKnownAiCatalogDotjsonRoute
@@ -419,10 +419,10 @@ export interface FileRoutesByTo {
   '/og.png': typeof OgDotpngRoute
   '/pricing': typeof PricingRoute
   '/repo-activity.svg': typeof RepoActivityDotsvgRoute
-  '/research': typeof ResearchRoute
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/statistics': typeof StatisticsRoute
   '/status': typeof StatusRoute
   '/vision': typeof VisionRoute
   '/.well-known/ai-catalog.json': typeof DotwellKnownAiCatalogDotjsonRoute
@@ -476,10 +476,10 @@ export interface FileRoutesById {
   '/og.png': typeof OgDotpngRoute
   '/pricing': typeof PricingRoute
   '/repo-activity.svg': typeof RepoActivityDotsvgRoute
-  '/research': typeof ResearchRoute
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/statistics': typeof StatisticsRoute
   '/status': typeof StatusRoute
   '/vision': typeof VisionRoute
   '/.well-known/ai-catalog.json': typeof DotwellKnownAiCatalogDotjsonRoute
@@ -534,10 +534,10 @@ export interface FileRouteTypes {
     | '/og.png'
     | '/pricing'
     | '/repo-activity.svg'
-    | '/research'
     | '/roadmap'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/statistics'
     | '/status'
     | '/vision'
     | '/.well-known/ai-catalog.json'
@@ -590,10 +590,10 @@ export interface FileRouteTypes {
     | '/og.png'
     | '/pricing'
     | '/repo-activity.svg'
-    | '/research'
     | '/roadmap'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/statistics'
     | '/status'
     | '/vision'
     | '/.well-known/ai-catalog.json'
@@ -646,10 +646,10 @@ export interface FileRouteTypes {
     | '/og.png'
     | '/pricing'
     | '/repo-activity.svg'
-    | '/research'
     | '/roadmap'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/statistics'
     | '/status'
     | '/vision'
     | '/.well-known/ai-catalog.json'
@@ -703,10 +703,10 @@ export interface RootRouteChildren {
   OgDotpngRoute: typeof OgDotpngRoute
   PricingRoute: typeof PricingRoute
   RepoActivityDotsvgRoute: typeof RepoActivityDotsvgRoute
-  ResearchRoute: typeof ResearchRoute
   RoadmapRoute: typeof RoadmapRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  StatisticsRoute: typeof StatisticsRoute
   StatusRoute: typeof StatusRoute
   VisionRoute: typeof VisionRoute
   DotwellKnownAiCatalogDotjsonRoute: typeof DotwellKnownAiCatalogDotjsonRoute
@@ -833,13 +833,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RepoActivityDotsvgRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/research': {
-      id: '/research'
-      path: '/research'
-      fullPath: '/research'
-      preLoaderRoute: typeof ResearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/roadmap': {
       id: '/roadmap'
       path: '/roadmap'
@@ -859,6 +852,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/statistics': {
+      id: '/statistics'
+      path: '/statistics'
+      fullPath: '/statistics'
+      preLoaderRoute: typeof StatisticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/status': {
@@ -1143,10 +1143,10 @@ const rootRouteChildren: RootRouteChildren = {
   OgDotpngRoute: OgDotpngRoute,
   PricingRoute: PricingRoute,
   RepoActivityDotsvgRoute: RepoActivityDotsvgRoute,
-  ResearchRoute: ResearchRoute,
   RoadmapRoute: RoadmapRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  StatisticsRoute: StatisticsRoute,
   StatusRoute: StatusRoute,
   VisionRoute: VisionRoute,
   DotwellKnownAiCatalogDotjsonRoute: DotwellKnownAiCatalogDotjsonRoute,
