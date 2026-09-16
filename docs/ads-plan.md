@@ -8,16 +8,18 @@ ChatGPT scraper returns an `ads` object on every run and we persist it verbatim 
 recommendations, citations, etc.)" and only strips HTML). Nothing needs to change in the
 scrape pipeline to have history.
 
-**ChatGPT ads stopped on 2026-08-25 and the data is not recoverable from anywhere else.**
-Between 2026-05-11 and 2026-08-24 we captured 5,900+ ad impressions across 400+ advertisers.
-It is a BrightData collector regression: on one day, every field that only exists when their
-collector completes a real browsing turn — `web_search_triggered`, `search_sources`,
-`web_search_query`, `model` and `ads` — dropped to near zero together, while `citations` kept
-working. Nothing changed on our side, and OpenAI expanded ads rather than pulling them. **The
-same regression has had ChatGPT query fan-out showing "unavailable" for three weeks** — a live
-user-visible bug nobody had noticed, broken on the vendor side rather than ours, and fixable
-today by moving the ChatGPT target to Oxylabs, which still carries the queries. Evidence,
-probes and the support ticket are in §5.
+**Our ChatGPT ad capture stopped on 2026-08-25 — but ads did not.** Independent trackers put
+ChatGPT ad penetration at ~51% of US replies and holding, so the zero is ours to fix. On one
+day every field that only exists when BrightData's collector completes a real browsing turn —
+`web_search_triggered`, `search_sources`, `web_search_query`, `model` and `ads` — dropped
+together, while `citations` kept working. Nothing changed on our side.
+
+**The highest-value fix is a provider change, not a ticket.** Cloro sells ChatGPT ad
+monitoring and exposes it behind an `include.ads` flag; our Cloro provider already builds that
+exact `include` object for ChatGPT and asks for two of its six fields, omitting `ads`. The same
+switch also fixes **ChatGPT query fan-out, which has been answering "unavailable" for three
+weeks** — a live user-visible bug nobody had noticed. Evidence, per-provider support matrix and
+the eligibility rules that make ads invisible to the wrong kind of session are in §5.
 
 **Google AI Mode ads are live and growing**, so the page is **Ads**, not ChatGPT Ads: one
 extraction pass, two surfaces, filterable by either. That is what keeps the page useful
@@ -539,53 +541,122 @@ the conversation stream. Oxylabs fixes fan-out; it does not fix ads.
 - `ads` is passed through in `rawOutput` untouched; there is no code path of ours that could
   null it.
 
-### Ruling out OpenAI having pulled ads
+### Ads are alive and well — ~51% of US replies
 
-The opposite happened. OpenAI reported ChatGPT Ads passing a $1B annualized run rate in under
-200 days and opened self-serve buying in India, Europe, the Middle East and North Africa
-around 2026-08-31 — within days of our data going quiet. Ads also remained visible on Google
-AI Mode throughout, including from advertisers we track.
+This is the part I had wrong when I first called it "ads stopped". Independent trackers put
+ChatGPT ad penetration at **51% of US replies** as of July 2026 and holding, with Canada ~54%,
+Australia ~50%, Japan ~19% and the UK ~1.5%; Otterly measures 76.4% on shopping-intent
+queries. OpenAI reported ChatGPT Ads passing a $1B annualized run rate and opened self-serve
+buying in India, Europe and MENA around 2026-08-31.
 
-### Ruling out geo
+So a tracked prompt set that returns **zero** ads across ~5,000 runs is a capture failure on
+our side of the wire, not the market disappearing.
 
-ChatGPT ads were US-only for most of 2026, and our trigger never pinned a country, so this
-looked like the likely mechanism. It is not. `country` *is* a supported input on the dataset
-(BrightData publishes a [ChatGPT country list](https://github.com/brightdata/answer-engines-country-codes/blob/main/chatgpt_countries.csv))
-and we have never sent it. A probe with `country: "US"` on 2026-09-16 was accepted and echoed
-back, and `search_sources` came back populated — but `model`, `web_search_query` and `ads` were
-all still null. Geo is not what broke.
+Two caveats that do matter, from Cloro's penetration study: the rate is genuinely volatile
+(26.5% in late May → **0.05%** → ~51% by July — "still visibly tuning"), and it is an
+English-speaking-market product, "roughly zero" outside a handful of countries. A page built on
+this needs to survive both, which is what §3.1's empty states are for.
 
-We should start sending `country: "US"` regardless: it makes the sample deterministic instead
-of leaving the exit country to BrightData, and now that ads are live in more markets, country
-becomes a dimension worth controlling rather than ignoring.
+### What it actually takes to be served an ad
 
-### No changelog, because the field was never documented
+From a public XHR-level breakdown of the pipeline, ads ride **the conversation SSE stream
+itself** — a `"type": "ads"` event emitted at the end of `/backend-anon/f/conversation`, after
+the text tokens and product entities. The unit is `single_advertiser_ad_unit` with
+`advertiser_brand`, `carousel_cards[]`, `ads_request_id`, and a `target.value` carrying
+`utm_source=chatgpt&utm_medium=cpc`; assets come from `bzrcdn.openai.com`. A
+`multi_advertiser_ad_unit` type exists in their code but is not yet observed in the wild. That
+matches BrightData's `ads` object field-for-field, so both are reading the same unit.
 
-BrightData's [release notes](https://docs.brightdata.com/release-notes) carry nothing for
-August or September 2026 — the most recent entry is 2026-06-14. Their
-[ChatGPT scraper docs](https://docs.brightdata.com/products/scrapers/chatgpt/introduction)
-do not document an `ads` or `carousel_cards` field at all; it is an undocumented field that
-happened to be populated. Worse, their current sample response (dated 2026-09-06) shows
-`"model": null` — so the degraded shape has been shipped as the documented normal.
+Eligibility is narrow, and it is the likely mechanism here:
 
-That means we have no contractual claim on `ads`, and no announcement to point at. It also
-means the regression is unlikely to be fixed unless someone reports it.
+- **Free / Go tiers and unauthenticated sessions only.** The endpoint is literally
+  `/backend-anon/`, and anonymous sessions carry `persona: "chatgpt-noauth"`. Plus, Pro and
+  Business users are never served ads — nor are accounts predicted to be underage.
+- **US and a handful of English-speaking markets.** Cloro's docs call `country` "required for
+  accurate ad detection".
 
-### Conclusion and the ask
+A scraper that drifts into an authenticated session, a paid tier, or a non-US exit returns a
+perfectly valid answer with no ads, forever, and nothing in the payload says why. That is
+exactly what we are looking at.
 
-Ads are a BrightData collector regression; the fan-out half is broader than BrightData and
-recoverable today. Neither is an OpenAI policy change, and neither is ours. The support ticket
-writes itself:
+It also explains the Oxylabs result: its SSE stream had no ad event, but that session's
+`reasoning_titles` came back in Romanian — a non-US exit, so not ad-eligible. Oxylabs may or
+may not surface ads from an ad-eligible session; we cannot tell from the one sample, and it
+exposes no ads field to put them in regardless.
 
-> Dataset `gd_m7aof0k82r803d5bjm` returned `web_search_query`, `model`, `ads` and
-> `search_sources` on ~50% of runs through 2026-08-24. From 2026-08-25 all five browsing-turn
-> fields dropped to near zero. `search_sources` and `web_search_triggered` recovered on
-> 2026-09-01; `web_search_query`, `model` and `ads` have not. Reproduced on 2026-09-16 with and
-> without `country: "US"`. Same prompts, same dataset, no change on our side.
+### Provider support for ChatGPT ads
 
-Worth asking them directly whether `ads` is a supported field going forward, since it is
-undocumented — if it is not, ChatGPT ad tracking depends on a field they may drop again
-without notice, and that belongs in the decision about how much to build on it.
+| Provider | Ads field | Status | Notes |
+|---|---|---|---|
+| **Cloro** | **yes — opt-in `include.ads`** | **untested; not configured** | Sells this as a product ("ChatGPT Ads API"). Already pins `country: "US"`. |
+| BrightData | yes, but **undocumented** | null since 2026-08-25 | Not in their docs' field list; no flag to request it |
+| DataForSEO | none | — | `item_types` are text / products / table only |
+| Oxylabs | none | — | No ads field; SSE stream had no ad event on a non-US session |
+| Olostep | unknown | not configured | `@olostep/chatgpt-results`; no public field list found |
+
+### Is there a flag we should be sending? Yes — on Cloro
+
+Cloro's ChatGPT endpoint takes an `include` object, and **`include.ads` ("Return sponsored
+blocks") is one of its flags**. Our `cloro.ts` already builds exactly that object and asks for
+two of the six:
+
+```ts
+chatgpt: { taskType: "CHATGPT", field: "prompt", include: { markdown: true, searchQueries: true } },
+```
+
+`ads` and `shopping` are both available and both omitted. Adding `ads: true` is a one-line
+change, and the response shape (`brand { name, url, favicon }` + `cards[] { title, body, url,
+image }`) maps onto the `ad_impressions` schema in §2.1 with no rework.
+
+Cloro is also the only provider that fixes **both** problems at once: `include.searchQueries`
+is already on, so a ChatGPT target on Cloro restores query fan-out as well as ads.
+
+On BrightData there is no such flag. The full accepted input set — confirmed by the `input`
+object it echoes back — is `url`, `prompt`, `country`, `index`, `web_search`,
+`additional_prompt`, `geolocation`, plus an undocumented `require_sources`. Nothing selects
+output fields, and `ads` is not in their documented response either. The only knob that touches
+ad eligibility is `country`, **which we have never sent in production**.
+
+### So: has anyone else noticed?
+
+Yes, and more than noticed — Cloro ships ChatGPT ad monitoring as a product, with a penetration
+study and a technical guide. Otterly publishes an ads study. There is a public XHR breakdown of
+the ad pipeline. What nobody has written up is BrightData's ChatGPT collector losing
+`model`, `web_search_query` and `ads` on 2026-08-25, because the field was never documented and
+BrightData published no release notes for August or September.
+
+### Conclusion and what to do
+
+Ads are serving at ~51% of US replies; our zero is a capture failure, and the browsing-turn
+field loss on 2026-08-25 is a real vendor regression. Neither is an OpenAI policy change and
+neither is ours. In priority order:
+
+1. **Evaluate Cloro for the ChatGPT target.** It is the only provider that supports ads
+   deliberately (`include.ads`), and turning it on also restores query fan-out. Needs a
+   `CLORO_API_KEY` — their free tier is 500 credits/month, enough to answer "do ads come back"
+   in an afternoon. This is the highest-value next step by a wide margin.
+2. **Send `country: "US"` on the BrightData ChatGPT trigger.** Ads are a US/English-market
+   product and `country` is a supported input we have never sent, so today the exit country is
+   whatever BrightData picks. Cheap, and it removes a variable from every other question here.
+3. **Report the regression** to BrightData, and to DataForSEO for the fan-out half:
+
+   > Dataset `gd_m7aof0k82r803d5bjm` returned `web_search_query`, `model`, `ads` and
+   > `search_sources` on ~50% of runs through 2026-08-24. From 2026-08-25 all five
+   > browsing-turn fields dropped to near zero. `search_sources` and `web_search_triggered`
+   > recovered on 2026-09-01; `web_search_query`, `model` and `ads` have not. Reproduced
+   > 2026-09-16 with and without `country: "US"`, including on a commercial prompt where
+   > `shopping_visible` was true and six products came back. `model` is a documented output
+   > field of this dataset and is now always null.
+
+   Ask directly whether `ads` is supported going forward. It is undocumented, so if the answer
+   is no, ChatGPT ad tracking on BrightData rests on a field they can drop without notice — and
+   that belongs in the decision about how much to build on it.
+
+The thing this changes about the plan: **`AD_CAPABLE_MODELS` is not the whole eligibility
+story.** A surface can be ad-capable and still never show one because of who the scraper looks
+like — free vs. paid, logged out vs. in, US vs. not. That is unobservable from the payload, and
+it is the strongest argument for the gone-quiet warning in §3.1 being a first-class part of the
+page rather than a nicety.
 
 ---
 
@@ -602,11 +673,12 @@ without notice, and that belongs in the decision about how much to build on it.
 
 Independent of all of the above, and more urgent than any of it (§5):
 
-1. **Restore ChatGPT query fan-out** by moving the ChatGPT target to Oxylabs, which still
-   returns `search_queries`. No code change; it needs Oxylabs credentials in the cloud
-   environment. This is a live user-visible bug and the fix is already written.
-2. **Raise the regression with BrightData** — and with DataForSEO, since both lost the same
-   fields.
-3. **Send `country: "US"` on the ChatGPT trigger.** It does not fix any of this, but it makes
-   the sample deterministic instead of leaving the exit country to the vendor, and country is a
-   dimension worth controlling now that ads serve in more markets.
+1. **Trial Cloro on the ChatGPT target** (§5). It is the only provider that supports ads on
+   purpose, via `include.ads`, and its `include.searchQueries` — which our provider already
+   sends — restores query fan-out at the same time. One flag, both problems.
+2. **Restore query fan-out now** even if Cloro does not pan out: Oxylabs still returns
+   `search_queries`, our extractor already reads it, and it needs only credentials in the cloud
+   environment. Live user-visible bug, fix already written.
+3. **Send `country: "US"` on the BrightData ChatGPT trigger**, so the exit country stops being
+   whatever the vendor picks.
+4. **Report the regression** to BrightData and DataForSEO.
