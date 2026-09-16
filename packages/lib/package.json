@@ -5,6 +5,7 @@
 	"license": "MIT",
 	"scripts": {
 		"check-types": "tsc --noEmit",
+		"codegen": "pnpm run generate:auth-schema",
 		"test": "vitest run",
 		"compare:onboarding": "tsx scripts/compare-onboarding.ts",
 		"generate:auth-schema": "bash scripts/generate-auth-schema.sh",
