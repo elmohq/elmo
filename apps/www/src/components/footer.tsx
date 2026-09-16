@@ -21,7 +21,6 @@ const cols = [
 		heading: "Resources",
 		links: [
 			{ label: "Blog", href: "/blog" },
-			{ label: "AI Search Statistics", href: "/statistics" },
 			{ label: "Documentation", href: "/docs" },
 			{ label: "API Reference", href: "/docs/api" },
 			{
@@ -42,6 +41,7 @@ const cols = [
 		links: [
 			{ label: "AEO Glossary", href: "/glossary" },
 			{ label: "AI Search Guides", href: "/ai-search" },
+			{ label: "AI Search Statistics", href: "/statistics" },
 			{ label: "AEO by Industry", href: "/aeo-for" },
 			{ label: "Tool Directory", href: "/ai-visibility-tools" },
 			{ label: "Compare Tools", href: "/ai-visibility-tools/compare" },
