@@ -15,7 +15,7 @@ type Story = StoryObj<typeof meta>;
 
 /** Standalone freeform input — each field manages its own values. */
 export const Freeform = () => {
-	const [values, setValues] = useState<string[]>(["example.com", "blog.example.com"]);
+	const [values, setValues] = useState<string[]>(["example.com", "example.co.uk"]);
 
 	return (
 		<div className="p-8 max-w-xl space-y-6">

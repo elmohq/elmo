@@ -9,6 +9,7 @@ import {
 	isGoogleSurfaceUrl,
 	parseGoogleProductName,
 	parseGoogleSearchQuery,
+	redundantDomainReason,
 	resolvePageType,
 } from "@/lib/domain-categories";
 import { CURATED_DOMAIN_LISTS, categorizeDomain, classifyUrl } from "@/lib/domain-categories.server";
@@ -363,5 +364,34 @@ describe("isForumDomain", () => {
 		expect(isForumDomain("boardgamegeek.com")).toBe(false);
 		expect(isForumDomain("example.com")).toBe(false);
 		expect(isForumDomain("macrumors.com")).toBe(false); // the news site, not its forum subdomain
+	});
+});
+
+describe("redundantDomainReason", () => {
+	it("names the domain that already covers the one being added", () => {
+		expect(redundantDomainReason("blog.acme.com", ["acme.com"])).toBe("is already covered by acme.com");
+		expect(redundantDomainReason("eu.blog.acme.com", ["acme.com"])).toBe("is already covered by acme.com");
+	});
+
+	it("says a domain already in the list is tracked", () => {
+		expect(redundantDomainReason("acme.com", ["acme.com"])).toBe("is already tracked");
+	});
+
+	it("stays quiet for a domain nothing covers", () => {
+		expect(redundantDomainReason("acme.io", ["acme.com", "acme.co.uk"])).toBeNull();
+	});
+
+	it("stays quiet when the domain is the broader one", () => {
+		expect(redundantDomainReason("acme.com", ["blog.acme.com"])).toBeNull();
+	});
+
+	it("requires a label boundary, so a shared suffix is not coverage", () => {
+		expect(redundantDomainReason("notacme.com", ["acme.com"])).toBeNull();
+		expect(redundantDomainReason("fake-acme.com", ["acme.com"])).toBeNull();
+	});
+
+	it("ignores nulls in the tracked list", () => {
+		expect(redundantDomainReason("blog.acme.com", [null, "acme.com"])).toBe("is already covered by acme.com");
+		expect(redundantDomainReason("blog.acme.com", [null])).toBeNull();
 	});
 });

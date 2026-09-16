@@ -14,7 +14,7 @@ import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { useOrganization, useOrganizationsChanged } from "@/hooks/use-organizations";
 import { useBrandParams } from "@/hooks/use-route-params";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { cleanAndValidateDomain, redundantDomainReason } from "@/lib/domain-categories";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updateBrandFn } from "@/server/brands";
@@ -36,6 +36,7 @@ function BrandSettingsPage() {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState("");
+	const [website, setWebsite] = useState("");
 	const [additionalDomains, setAdditionalDomains] = useState<string[]>([]);
 	const [aliases, setAliases] = useState<string[]>([]);
 	const [slug, setSlug] = useState("");
@@ -45,16 +46,22 @@ function BrandSettingsPage() {
 	const [seededFrom, setSeededFrom] = useState<Date | null>(null);
 	if (brand && brand.updatedAt !== seededFrom) {
 		setSeededFrom(brand.updatedAt);
+		setWebsite(brand.website);
 		setAdditionalDomains(brand.additionalDomains || []);
 		setAliases(brand.aliases || []);
 		setSlug(brandSegment(brand));
 	}
 
-	const validateDomain = useCallback((val: string): true | string => {
-		const cleaned = cleanAndValidateDomain(val);
-		if (!cleaned) return `"${val}" is not a valid domain`;
-		return true;
-	}, []);
+	const validateDomain = useCallback(
+		(val: string): true | string => {
+			const cleaned = cleanAndValidateDomain(val);
+			if (!cleaned) return `"${val}" is not a valid domain`;
+			const reason = redundantDomainReason(cleaned, [cleanAndValidateDomain(website), ...additionalDomains]);
+			if (reason) return `"${cleaned}" ${reason}`;
+			return true;
+		},
+		[additionalDomains, website],
+	);
 	const handleAliasesChange = useCallback((values: string[]) => setAliases(values), []);
 
 	if (isLoading) {
@@ -88,7 +95,6 @@ function BrandSettingsPage() {
 
 		try {
 			const name = formData.get("name") as string;
-			const website = formData.get("website") as string;
 
 			const nextSlug = normalizeSlug(slug);
 			const slugMoved = nextSlug !== currentSlug;
@@ -165,7 +171,8 @@ function BrandSettingsPage() {
 							name="website"
 							type="text"
 							placeholder="example.com"
-							defaultValue={brand.website}
+							value={website}
+							onChange={(e) => setWebsite(e.target.value)}
 							required
 							disabled={isSubmitting}
 						/>
