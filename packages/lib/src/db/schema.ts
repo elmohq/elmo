@@ -1,5 +1,8 @@
+import { sql } from "drizzle-orm";
 import {
+	bigint,
 	boolean,
+	check,
 	index,
 	integer,
 	json,
@@ -7,6 +10,7 @@ import {
 	numeric,
 	pgEnum,
 	pgTable,
+	primaryKey,
 	smallint,
 	text,
 	timestamp,
@@ -123,6 +127,11 @@ export const promptRuns = pgTable(
 		webQueries: text("web_queries").array().notNull().default([]),
 		brandMentioned: boolean("brand_mentioned").notNull(),
 		competitorsMentioned: text("competitors_mentioned").array().notNull().default([]),
+		/** Answer text extracted from `raw_output`; null until the run is extracted. */
+		textContent: text("text_content"),
+		extractorVersion: integer("extractor_version"),
+		/** Deriver name -> the version stamp of the code and brand config that produced its columns. */
+		analysisVersions: jsonb("analysis_versions").$type<Record<string, string>>().notNull().default({}),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	},
 	(table) => ({
@@ -317,3 +326,214 @@ export const secrets = pgTable("secrets", {
 		.$onUpdate(() => new Date())
 		.notNull(),
 }).enableRLS();
+
+// ============================================================================
+// Analytics rollups
+// ============================================================================
+
+/**
+ * The grain every rollup table shares: one brand's prompt, evaluated against one
+ * (model, provider, grounded) target, inside one 30-minute UTC bucket.
+ *
+ * A function rather than a shared object so each table gets its own column
+ * builders. `provider` is stored as '' rather than null because null key parts
+ * never compare equal, which would let a bucket rebuild insert duplicates.
+ *
+ * No foreign keys to brands or prompts: a rebuild deletes and reinserts a range,
+ * and prompt deletion removes these rows explicitly.
+ */
+const rollupKeyColumns = () => ({
+	brandId: text("brand_id").notNull(),
+	bucket: timestamp("bucket", { withTimezone: true }).notNull(),
+	promptId: uuid("prompt_id").notNull(),
+	model: text("model").notNull(),
+	provider: text("provider").notNull().default(""),
+	webSearchEnabled: boolean("web_search_enabled").notNull(),
+});
+
+export const rollupPromptRuns = pgTable(
+	"rollup_prompt_runs",
+	{
+		...rollupKeyColumns(),
+		runs: integer("runs").notNull(),
+		brandMentionedRuns: integer("brand_mentioned_runs").notNull(),
+		/** Runs mentioning at least one competitor. */
+		competitorRuns: integer("competitor_runs").notNull(),
+		/** Total competitor mentions across the bucket's runs. */
+		competitorMentions: integer("competitor_mentions").notNull(),
+		firstRunAt: timestamp("first_run_at", { withTimezone: true }).notNull(),
+		lastRunAt: timestamp("last_run_at", { withTimezone: true }).notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "rollup_prompt_runs_pk",
+			columns: [table.brandId, table.bucket, table.promptId, table.model, table.provider, table.webSearchEnabled],
+		}),
+		index("rollup_prompt_runs_prompt_id_bucket_idx").on(table.promptId, table.bucket),
+	],
+).enableRLS();
+
+export const rollupCompetitorMentions = pgTable(
+	"rollup_competitor_mentions",
+	{
+		...rollupKeyColumns(),
+		/** Keyed by name, not competitor id: a bulk competitor save reinserts rows with new ids. */
+		competitorName: text("competitor_name").notNull(),
+		runs: integer("runs").notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "rollup_competitor_mentions_pk",
+			columns: [
+				table.brandId,
+				table.bucket,
+				table.promptId,
+				table.model,
+				table.provider,
+				table.webSearchEnabled,
+				table.competitorName,
+			],
+		}),
+		index("rollup_competitor_mentions_prompt_id_bucket_idx").on(table.promptId, table.bucket),
+	],
+).enableRLS();
+
+/**
+ * One row per distinct normalized URL, shared by every tenant. Classification
+ * here is the tenant-independent half; brand and competitor domains are applied
+ * at read time.
+ */
+export const citedPages = pgTable(
+	"cited_pages",
+	{
+		id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey().notNull(),
+		url: text("url").notNull().unique(),
+		domain: text("domain").notNull(),
+		/** Most recently seen non-null title. */
+		title: text("title"),
+		pageType: text("page_type").notNull(),
+		staticCategory: text("static_category").notNull(),
+		classifierVersion: integer("classifier_version").notNull(),
+		firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull(),
+		lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
+	},
+	(table) => [index("cited_pages_domain_idx").on(table.domain)],
+).enableRLS();
+
+export const rollupCitationUrls = pgTable(
+	"rollup_citation_urls",
+	{
+		...rollupKeyColumns(),
+		pageId: bigint("page_id", { mode: "number" })
+			.notNull()
+			.references(() => citedPages.id),
+		/** Denormalized from cited_pages so domain and category reads need no join. */
+		domain: text("domain").notNull(),
+		staticCategory: text("static_category").notNull(),
+		pageType: text("page_type").notNull(),
+		citations: integer("citations").notNull(),
+		/** Sum and count are kept apart so citations without a position do not skew the mean. */
+		positionSum: integer("position_sum").notNull(),
+		positionCount: integer("position_count").notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "rollup_citation_urls_pk",
+			columns: [
+				table.brandId,
+				table.bucket,
+				table.promptId,
+				table.model,
+				table.provider,
+				table.webSearchEnabled,
+				table.pageId,
+			],
+		}),
+		index("rollup_citation_urls_prompt_id_bucket_idx").on(table.promptId, table.bucket),
+	],
+).enableRLS();
+
+export const rollupCitationDomains = pgTable(
+	"rollup_citation_domains",
+	{
+		...rollupKeyColumns(),
+		domain: text("domain").notNull(),
+		staticCategory: text("static_category").notNull(),
+		citations: integer("citations").notNull(),
+	},
+	(table) => [
+		primaryKey({
+			name: "rollup_citation_domains_pk",
+			columns: [
+				table.brandId,
+				table.bucket,
+				table.promptId,
+				table.model,
+				table.provider,
+				table.webSearchEnabled,
+				table.domain,
+			],
+		}),
+		index("rollup_citation_domains_prompt_id_bucket_idx").on(table.promptId, table.bucket),
+	],
+).enableRLS();
+
+/**
+ * Invalidation outbox. Whoever changes raw data or interpretation marks the
+ * affected buckets in the same transaction; the refresh job claims marks before
+ * it reads, so a writer that commits mid-rebuild leaves its own mark behind.
+ */
+export const rollupDirty = pgTable(
+	"rollup_dirty",
+	{
+		brandId: text("brand_id").notNull(),
+		bucket: timestamp("bucket", { withTimezone: true }).notNull(),
+		reason: text("reason").notNull(),
+		markedAt: timestamp("marked_at", { withTimezone: true }).defaultNow().notNull(),
+	},
+	(table) => [
+		primaryKey({ name: "rollup_dirty_pk", columns: [table.brandId, table.bucket] }),
+		index("rollup_dirty_bucket_idx").on(table.bucket),
+	],
+).enableRLS();
+
+/**
+ * Single row recording which code versions the stored derived data reflects.
+ * The worker compares it to the constants in lib on startup and enqueues the
+ * work that closes the gap.
+ */
+export const pipelineState = pgTable(
+	"pipeline_state",
+	{
+		id: smallint("id").primaryKey().default(1),
+		backfillEnqueuedAt: timestamp("backfill_enqueued_at", { withTimezone: true }),
+		backfillCompletedAt: timestamp("backfill_completed_at", { withTimezone: true }),
+		rollupVersion: integer("rollup_version").notNull().default(0),
+		classifierVersion: integer("classifier_version").notNull().default(0),
+		extractorVersion: integer("extractor_version").notNull().default(0),
+		/** Deriver name -> the version of that deriver the stored columns reflect. */
+		deriverVersions: jsonb("deriver_versions").$type<Record<string, number>>().notNull().default({}),
+		lastReconcileAt: timestamp("last_reconcile_at", { withTimezone: true }),
+	},
+	() => [check("pipeline_state_singleton", sql`id = 1`)],
+).enableRLS();
+
+export type RollupPromptRun = typeof rollupPromptRuns.$inferSelect;
+export type NewRollupPromptRun = typeof rollupPromptRuns.$inferInsert;
+
+export type RollupCompetitorMention = typeof rollupCompetitorMentions.$inferSelect;
+export type NewRollupCompetitorMention = typeof rollupCompetitorMentions.$inferInsert;
+
+export type CitedPage = typeof citedPages.$inferSelect;
+export type NewCitedPage = typeof citedPages.$inferInsert;
+
+export type RollupCitationUrl = typeof rollupCitationUrls.$inferSelect;
+export type NewRollupCitationUrl = typeof rollupCitationUrls.$inferInsert;
+
+export type RollupCitationDomain = typeof rollupCitationDomains.$inferSelect;
+export type NewRollupCitationDomain = typeof rollupCitationDomains.$inferInsert;
+
+export type RollupDirty = typeof rollupDirty.$inferSelect;
+export type NewRollupDirty = typeof rollupDirty.$inferInsert;
+
+export type PipelineState = typeof pipelineState.$inferSelect;

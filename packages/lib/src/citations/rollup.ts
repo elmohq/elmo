@@ -20,7 +20,7 @@ import {
 	isGoogleSurfaceUrl,
 	normalizeUrl,
 	resolvePageType,
-} from "@/lib/domain-categories";
+} from "./domain-categories";
 
 /** The row shape both callers read out of postgres-read. */
 export interface CitationUrlRow {

@@ -6,7 +6,15 @@
 import { selectPremiumModels } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import { citations, promptRuns, prompts } from "@workspace/lib/db/schema";
+import {
+	citations,
+	promptRuns,
+	prompts,
+	rollupCitationDomains,
+	rollupCitationUrls,
+	rollupCompetitorMentions,
+	rollupPromptRuns,
+} from "@workspace/lib/db/schema";
 import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { and, arrayOverlaps, count, desc, eq, ilike, type SQL } from "drizzle-orm";
@@ -256,6 +264,11 @@ export async function deletePrompt(promptId: string): Promise<{ prompt: Prompt; 
 
 	const result = await db.transaction(async (tx) => {
 		await tx.delete(citations).where(eq(citations.promptId, promptId));
+		// The prompt's rollup rows go with its raw rows, in the same transaction:
+		// nothing else would ever rebuild a bucket for a prompt that is gone.
+		for (const table of [rollupPromptRuns, rollupCompetitorMentions, rollupCitationUrls, rollupCitationDomains]) {
+			await tx.delete(table).where(eq(table.promptId, promptId));
+		}
 		const deletedRuns = await tx
 			.delete(promptRuns)
 			.where(eq(promptRuns.promptId, promptId))

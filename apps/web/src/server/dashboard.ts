@@ -1,26 +1,26 @@
 /** Server functions for dashboard data. */
 import { createServerFn } from "@tanstack/react-start";
-import { db } from "@workspace/lib/db/db";
-import { brands, competitors, prompts } from "@workspace/lib/db/schema";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { and, count, eq } from "drizzle-orm";
-import { z } from "zod";
-import { requireBrandSession } from "@/lib/auth/helpers";
-import { applyPerPromptCitationLVCF, applyPerPromptLVCF, generateDateRange } from "@/lib/chart-utils";
 import {
 	type CitationCategory,
 	emptyCategoryCounts,
 	extractDomain,
 	toRoundedPercentages,
-} from "@/lib/domain-categories";
-import { categorizeDomain } from "@/lib/domain-categories.server";
-import { lookbackSchema } from "@/lib/lookback";
+} from "@workspace/lib/citations/domain-categories";
+import { categorizeDomain } from "@workspace/lib/citations/domain-lists";
+import { db } from "@workspace/lib/db/db";
+import { brands, competitors, prompts } from "@workspace/lib/db/schema";
+import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { and, count, eq } from "drizzle-orm";
+import { z } from "zod";
 import {
 	getDashboardSummary,
 	getPerPromptDailyCitationStats,
 	getPerPromptVisibilityTimeSeries,
-} from "@/lib/postgres-read";
-import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+} from "@/lib/analytics-read";
+import { requireBrandSession } from "@/lib/auth/helpers";
+import { applyPerPromptCitationLVCF, applyPerPromptLVCF, generateDateRange } from "@/lib/chart-utils";
+import { lookbackSchema } from "@/lib/lookback";
+import { resolveBrandWindow } from "@/server/brand-window";
 
 interface VisibilityTimeSeriesPoint {
 	date: string;
@@ -53,15 +53,9 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 	.handler(async ({ data }): Promise<DashboardSummaryResponse> => {
 		await requireBrandSession(data.brandId);
 
-		const lookbackParam = data.lookback;
-		const timezone = resolveTimezone(data.timezone);
-
 		// Same timezone-aware window as the visibility and share-of-voice pages, so
 		// the overview's two trend charts share one date domain (issue #413).
-		// `allStrategy: "1y"` keeps the bounds concrete for every lookback, incl. "all".
-		const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookbackParam, timezone, {
-			allStrategy: "1y",
-		}) as { fromDateStr: string; toDateStr: string };
+		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 
 		const [brandResult, competitorsList, enabledPromptsResult, totalPromptsResult] = await Promise.all([
 			db

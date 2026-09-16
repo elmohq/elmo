@@ -1,5 +1,8 @@
 /** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
+import { extractDomain } from "@workspace/lib/citations/domain-categories";
+import { classifyUrl } from "@workspace/lib/citations/domain-lists";
+import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import {
@@ -10,24 +13,17 @@ import {
 	withQuotaLock,
 } from "@workspace/lib/entitlements";
 import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
+import { type CitationUrlStats, getPromptCitationUrlStats, getPromptsSummary } from "@/lib/analytics-read";
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
 import { generateDateRange } from "@/lib/chart-utils";
-import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@/lib/citation-rollup";
-import { extractDomain } from "@/lib/domain-categories";
-import { classifyUrl } from "@/lib/domain-categories.server";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 import type { LookbackPeriod } from "@/lib/lookback";
-import {
-	type CitationUrlStats,
-	getPromptCitationUrlStats,
-	getPromptsFirstEvaluatedAt,
-	getPromptsSummary,
-	getPromptWebQueryCounts,
-} from "@/lib/postgres-read";
+import { getPromptsFirstEvaluatedAt, getPromptWebQueryCounts } from "@/lib/postgres-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { parseTagFilter } from "@/server/prompt-resolution";
@@ -442,7 +438,14 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		]);
 
 		return {
-			runs: runs.map((r) => ({ ...r, rawOutput: r.rawOutput as {} })),
+			// Rows written before extraction was versioned carry no text, so they are
+			// extracted on read; the model name is the extractor's other accepted key
+			// for rows that also predate the provider column.
+			runs: runs.map((r) => ({
+				...r,
+				rawOutput: r.rawOutput as {},
+				textContent: r.textContent ?? extractTextContent(r.rawOutput, r.provider ?? r.model),
+			})),
 			total: totalResult[0]?.count || 0,
 			page: data.page,
 			limit: data.limit,
