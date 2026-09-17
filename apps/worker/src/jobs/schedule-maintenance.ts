@@ -1,9 +1,11 @@
 import * as Sentry from "@sentry/node";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
-import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { getDefaultDelayHours, WEB_QUERIES_UNAVAILABLE } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { getOrgEntitlementsMap } from "@workspace/lib/entitlements";
+import { type FanoutRunCounts, findSilentFanoutTargets } from "@workspace/lib/fanout-health";
+import { getProvider } from "@workspace/lib/providers";
 import {
 	computeMaintenanceDecisions,
 	type LastRunRow,
@@ -26,6 +28,11 @@ export interface ScheduleMaintenanceData {
 // Don't re-emit the Sentry error more often than this while an outage persists.
 const OVERDUE_ALERT_THROTTLE_MS = 30 * 60 * 1000;
 let lastOverdueAlertMs = 0;
+
+// Far slower-moving than the 5-minute tick, and its query scans a day of runs.
+const FANOUT_HEALTH_INTERVAL_MS = 60 * 60 * 1000;
+const FANOUT_HEALTH_WINDOW_HOURS = 24;
+let lastFanoutHealthCheckMs = 0;
 
 /**
  * Maintenance job that ensures all enabled prompts have scheduled jobs.
@@ -236,6 +243,7 @@ async function runMaintenanceCheck(): Promise<void> {
 
 	const decisions = computeMaintenanceDecisions(promptStates, new Date());
 	reportOverduePrompts(decisions.alertOverdueCount);
+	await checkFanoutHealth();
 
 	if (decisions.toSchedule.length === 0 && decisions.toExpedite.length === 0) {
 		console.log("[schedule-maintenance] All prompts are on schedule or have pending jobs");
@@ -269,6 +277,69 @@ function reportOverduePrompts(overduePrompts: number): void {
 		scope.setFingerprint(["scheduler-overdue-prompts"]);
 		Sentry.captureMessage(`Scheduler: ${overduePrompts} prompt(s) overdue by >30m`, "error");
 	});
+}
+
+/** The sentinel doesn't count as a query — it's what a broken extractor leaves. */
+async function getFanoutRunCounts(): Promise<FanoutRunCounts[]> {
+	const result = await db.execute<{
+		provider: string;
+		model: string;
+		runs: number;
+		runs_with_queries: number;
+	}>(sql`
+		SELECT
+			provider,
+			model,
+			count(*)::int AS runs,
+			count(*) FILTER (WHERE EXISTS (
+				SELECT 1 FROM unnest(web_queries) AS wq
+				WHERE length(btrim(wq)) > 0 AND lower(btrim(wq)) <> ${WEB_QUERIES_UNAVAILABLE}
+			))::int AS runs_with_queries
+		FROM prompt_runs
+		WHERE web_search_enabled
+			AND provider IS NOT NULL
+			AND created_at >= now() - make_interval(hours => ${FANOUT_HEALTH_WINDOW_HOURS})
+		GROUP BY provider, model
+	`);
+	return result.rows.map((r) => ({
+		provider: r.provider,
+		model: r.model,
+		runs: r.runs,
+		runsWithQueries: r.runs_with_queries,
+	}));
+}
+
+/**
+ * Runs still succeed when this breaks; only the queries go quiet. Fingerprinted
+ * per target so one break is one issue, not an alert every hour.
+ */
+async function checkFanoutHealth(): Promise<void> {
+	const now = Date.now();
+	if (now - lastFanoutHealthCheckMs < FANOUT_HEALTH_INTERVAL_MS) return;
+	lastFanoutHealthCheckMs = now;
+
+	const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+	const silent = findSilentFanoutTargets(configs, await getFanoutRunCounts(), (config) => {
+		const provider = getProvider(config.provider);
+		return provider?.exposesWebQueries?.(config) ?? false;
+	});
+
+	for (const target of silent) {
+		console.warn(
+			`[schedule-maintenance] ${target.target} reported no web queries across ${target.runs} runs — reporting to Sentry`,
+		);
+		Sentry.withScope((scope) => {
+			scope.setLevel("error");
+			scope.setTag("provider", target.provider);
+			scope.setTag("model", target.model);
+			scope.setContext("fanout", { target: target.target, runs: target.runs, windowHours: FANOUT_HEALTH_WINDOW_HOURS });
+			scope.setFingerprint(["fanout-no-web-queries", target.provider, target.model]);
+			Sentry.captureMessage(
+				`Fan-out: ${target.target} reported no web queries across ${target.runs} runs in ${FANOUT_HEALTH_WINDOW_HOURS}h`,
+				"error",
+			);
+		});
+	}
 }
 
 /**

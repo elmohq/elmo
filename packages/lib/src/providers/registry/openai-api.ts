@@ -102,6 +102,7 @@ export const openaiApi: Provider = {
 	access: "api",
 	docsAnchor: "direct-model-apis",
 
+	exposesWebQueries: () => true,
 	isConfigured: configuredWhen("OPENAI_API_KEY"),
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {

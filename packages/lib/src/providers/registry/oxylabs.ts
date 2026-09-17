@@ -132,6 +132,7 @@ export const oxylabs: Provider = {
 	access: "scraped",
 	docsAnchor: "oxylabs",
 
+	exposesWebQueries: () => true,
 	isConfigured: configuredWhen("OXYLABS_USERNAME", "OXYLABS_PASSWORD"),
 
 	validateTarget(config: ModelConfig) {

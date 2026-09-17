@@ -100,6 +100,7 @@ export const olostep: Provider = {
 	access: "scraped",
 	docsAnchor: "olostep",
 
+	exposesWebQueries: () => true,
 	isConfigured: configuredWhen("OLOSTEP_API_KEY"),
 
 	validateTarget(config: ModelConfig) {
