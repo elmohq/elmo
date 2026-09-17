@@ -31,6 +31,9 @@ function unauthorized(message: string): Response {
 }
 
 const NOT_FOUND = -32601;
+/** Implementation-defined, per JSON-RPC's reserved range: no code means "the
+ * transport declines this HTTP method". */
+const SERVER_ERROR = -32000;
 
 async function handleMcp({ request }: { request: Request }): Promise<Response> {
 	const resolved = await resolveMcpAuth(request);
@@ -72,7 +75,7 @@ function dispatch({
  */
 function methodNotAllowed(): Response {
 	return Response.json(
-		{ jsonrpc: "2.0", id: null, error: { code: NOT_FOUND, message: "Method Not Allowed" } },
+		{ jsonrpc: "2.0", id: null, error: { code: SERVER_ERROR, message: "Method Not Allowed" } },
 		{ status: 405, headers: { Allow: "POST, DELETE" } },
 	);
 }
