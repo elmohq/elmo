@@ -62,11 +62,26 @@ function dispatch({
 	return Response.json({ jsonrpc: "2.0", id: null, error: { code: NOT_FOUND, message: "Not Found" } }, { status: 404 });
 }
 
+/**
+ * The transport is stateless, so there is never a server-initiated message to
+ * deliver on the standalone stream a GET would open. 405 is the answer the
+ * protocol defines for that; handing back an empty stream instead reads to a
+ * client as a stream that dropped, and it reconnects forever.
+ *
+ * Answered before auth: there is nothing here to authorize either way.
+ */
+function methodNotAllowed(): Response {
+	return Response.json(
+		{ jsonrpc: "2.0", id: null, error: { code: NOT_FOUND, message: "Method Not Allowed" } },
+		{ status: 405, headers: { Allow: "POST, DELETE" } },
+	);
+}
+
 export const Route = createFileRoute("/api/mcp/$")({
 	server: {
 		handlers: {
 			POST: dispatch,
-			GET: dispatch,
+			GET: methodNotAllowed,
 			DELETE: dispatch,
 		},
 	},
