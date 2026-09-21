@@ -1,5 +1,7 @@
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
+import { CLOUD_APP_URL } from "@workspace/config/referrals";
 import { isMarkdownPreferred, rewritePath } from "fumadocs-core/negotiation";
+import { estimateTokens, htmlToMarkdown } from "@/lib/html-to-markdown";
 
 const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy": [
@@ -43,17 +45,21 @@ const DISCOVERY_LINKS = [
 	`<https://github.com/elmohq/elmo/blob/main/LICENSE.md>; rel="license"`,
 ].join(", ");
 
-function isDiscoverable(response: Response): boolean {
-	const type = response.headers.get("Content-Type") ?? "";
-	return type.startsWith("text/html") || type.startsWith("text/markdown");
+function markdownAlternate(path: string): string | undefined {
+	if (path.endsWith(".md")) return undefined;
+	return path === "/" ? "/index.md" : `${path}.md`;
 }
 
-function addDiscoveryLinks(response: Response, markdownAlternate?: string): void {
-	if (!isDiscoverable(response)) return;
-	const links = markdownAlternate
-		? `${DISCOVERY_LINKS}, <${markdownAlternate}>; rel="alternate"; type="text/markdown"`
-		: DISCOVERY_LINKS;
-	response.headers.set("Link", links);
+function addAgentHeaders(response: Response, path: string): void {
+	const type = response.headers.get("Content-Type") ?? "";
+	if (!type.startsWith("text/html") && !type.startsWith("text/markdown")) return;
+
+	response.headers.set("Vary", "Accept");
+	const alternate = markdownAlternate(path);
+	response.headers.set(
+		"Link",
+		alternate ? `${DISCOVERY_LINKS}, <${alternate}>; rel="alternate"; type="text/markdown"` : DISCOVERY_LINKS,
+	);
 }
 
 const MARKDOWN_SOURCES = [
@@ -68,8 +74,9 @@ const MARKDOWN_SOURCES = [
 }));
 
 function suffixedMarkdownRoute(path: string): string | undefined {
-	for (const source of MARKDOWN_SOURCES) {
-		const target = source.stripMd(path) || source.stripMdx(path);
+	for (const { base, indexIsPage, stripMd, stripMdx } of MARKDOWN_SOURCES) {
+		if (!indexIsPage && (path === `${base}.md` || path === `${base}.mdx`)) continue;
+		const target = stripMd(path) || stripMdx(path);
 		if (target) return target;
 	}
 }
@@ -83,11 +90,43 @@ function negotiableMarkdownRoute(path: string): string | undefined {
 	}
 }
 
-function withAcceptHtml(request: Request): Request {
+function withAcceptHtml(request: Request, url: URL): Request {
 	const headers = new Headers(request.headers);
 	headers.set("Accept", "text/html");
-	return new Request(request.url, { method: request.method, headers, signal: request.signal });
+	return new Request(url, { method: request.method, headers, signal: request.signal });
 }
+
+// Routes that are markdown documents in their own right, so stripping the
+// suffix would send them to a page that does not exist.
+const MARKDOWN_DOCUMENTS = new Set(["/auth.md"]);
+
+function pageBehindMarkdownSuffix(path: string): string | undefined {
+	if (!path.endsWith(".md") || MARKDOWN_DOCUMENTS.has(path)) return undefined;
+	const page = path.slice(0, -".md".length);
+	return page === "/index" ? "/" : page;
+}
+
+async function convertToMarkdown(response: Response, pageUrl: string): Promise<Response> {
+	if (!response.ok || !(response.headers.get("Content-Type") ?? "").startsWith("text/html")) return response;
+
+	const markdown = htmlToMarkdown(await response.text(), pageUrl);
+	const headers = new Headers(response.headers);
+	headers.set("Content-Type", "text/markdown; charset=utf-8");
+	headers.delete("Content-Length");
+	if (markdown) headers.set("x-markdown-tokens", String(estimateTokens(markdown)));
+
+	return new Response(markdown, { status: response.status, headers });
+}
+
+// This origin is not an OAuth issuer and holds no protected resource, so it
+// cannot answer for either document — but an agent that starts from the brand
+// domain looks here first. Pointing at the app is a signpost rather than a
+// claim: a client that derived these URLs from a www issuer still compares the
+// issuer it gets back and rejects it, which is the correct outcome.
+const DISCOVERY_REDIRECTS: Record<string, string> = {
+	"/.well-known/oauth-authorization-server": `${CLOUD_APP_URL}/.well-known/oauth-authorization-server`,
+	"/.well-known/oauth-protected-resource": `${CLOUD_APP_URL}/.well-known/oauth-protected-resource`,
+};
 
 // Keep permanent redirects server-side so backlinks and ranking signals reach
 // the canonical replacement rather than a client-rendered not-found page.
@@ -96,15 +135,21 @@ const PERMANENT_REDIRECTS: Record<string, string> = {
 	"/docs/mcp": "/docs/api/mcp",
 };
 
+function redirectFor(path: string, search: string): Response | undefined {
+	const movedTo = PERMANENT_REDIRECTS[path.replace(/\/+$/, "") || "/"];
+	if (movedTo) return new Response(null, { status: 308, headers: { Location: `${movedTo}${search}` } });
+
+	const servedElsewhere = DISCOVERY_REDIRECTS[path];
+	if (servedElsewhere) return new Response(null, { status: 307, headers: { Location: servedElsewhere } });
+}
+
 export default createServerEntry({
 	async fetch(request) {
 		const url = new URL(request.url);
 		const path = url.pathname;
 
-		const movedTo = PERMANENT_REDIRECTS[path.replace(/\/+$/, "") || "/"];
-		if (movedTo) {
-			return addSecurityHeaders(new Response(null, { status: 308, headers: { Location: `${movedTo}${url.search}` } }));
-		}
+		const redirect = redirectFor(path, url.search);
+		if (redirect) return addSecurityHeaders(redirect);
 
 		// An explicit .md / .mdx suffix always serves markdown, ignoring Accept.
 		let target = suffixedMarkdownRoute(path);
@@ -113,17 +158,27 @@ export default createServerEntry({
 		const wantsMarkdown = !target && isMarkdownPreferred(request);
 		if (negotiable && wantsMarkdown) target = negotiable;
 
+		// Pages outside the MDX sources have no markdown twin to route to, so the
+		// rendered HTML is converted on the way out instead.
+		const readable = request.method === "GET" || request.method === "HEAD";
+		const convertFrom =
+			target || negotiable || !readable
+				? undefined
+				: (pageBehindMarkdownSuffix(path) ?? (wantsMarkdown ? path : undefined));
+
 		let req = request;
 		if (target) {
 			url.pathname = target;
 			req = new Request(url, request);
-		} else if (wantsMarkdown && (request.method === "GET" || request.method === "HEAD")) {
-			req = withAcceptHtml(request);
+		} else if (convertFrom) {
+			url.pathname = convertFrom;
+			req = withAcceptHtml(request, url);
 		}
 
-		const response = await handler.fetch(req);
-		if (negotiable) response.headers.set("Vary", "Accept");
-		addDiscoveryLinks(response, negotiable ? `${path}.md` : undefined);
+		let response = await handler.fetch(req);
+		if (convertFrom) response = await convertToMarkdown(response, request.url);
+
+		addAgentHeaders(response, path);
 		return addSecurityHeaders(response);
 	},
 });

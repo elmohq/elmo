@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthDotmdRouteImport } from './routes/auth[.]md'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as FeaturesRouteImport } from './routes/features'
@@ -45,6 +46,7 @@ import { Route as GlossarySlugRouteImport } from './routes/glossary/$slug'
 import { Route as OgStatusDotpngRouteImport } from './routes/og/status[.]png'
 import { Route as DotwellKnownAgentSkillsSplatRouteImport } from './routes/[.]well-known/agent-skills/$'
 import { Route as DotwellKnownAgentSkillsIndexDotjsonRouteImport } from './routes/[.]well-known/agent-skills/index[.]json'
+import { Route as DotwellKnownMcpServerCardDotjsonRouteImport } from './routes/[.]well-known/mcp/server-card[.]json'
 import { Route as AiVisibilityToolsAlternativesIndexRouteImport } from './routes/ai-visibility-tools/alternatives/index'
 import { Route as AiVisibilityToolsAlternativesSlugRouteImport } from './routes/ai-visibility-tools/alternatives/$slug'
 import { Route as AiVisibilityToolsCategoryIndexRouteImport } from './routes/ai-visibility-tools/category/index'
@@ -64,6 +66,11 @@ import { Route as ApiPlausibleJsScriptIndexRouteImport } from './routes/api/plau
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthDotmdRoute = AuthDotmdRouteImport.update({
+  id: '/auth.md',
+  path: '/auth.md',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BrandRoute = BrandRouteImport.update({
@@ -244,6 +251,12 @@ const DotwellKnownAgentSkillsIndexDotjsonRoute =
     path: '/.well-known/agent-skills/index.json',
     getParentRoute: () => rootRouteImport,
   } as any)
+const DotwellKnownMcpServerCardDotjsonRoute =
+  DotwellKnownMcpServerCardDotjsonRouteImport.update({
+    id: '/.well-known/mcp/server-card.json',
+    path: '/.well-known/mcp/server-card.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AiVisibilityToolsAlternativesIndexRoute =
   AiVisibilityToolsAlternativesIndexRouteImport.update({
     id: '/ai-visibility-tools/alternatives/',
@@ -332,6 +345,7 @@ const ApiPlausibleJsScriptIndexRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth.md': typeof AuthDotmdRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/features': typeof FeaturesRoute
@@ -367,6 +381,7 @@ export interface FileRoutesByFullPath {
   '/glossary/': typeof GlossaryIndexRoute
   '/.well-known/agent-skills/$': typeof DotwellKnownAgentSkillsSplatRoute
   '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
+  '/.well-known/mcp/server-card.json': typeof DotwellKnownMcpServerCardDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
   '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
   '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -385,6 +400,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth.md': typeof AuthDotmdRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/features': typeof FeaturesRoute
@@ -420,6 +436,7 @@ export interface FileRoutesByTo {
   '/glossary': typeof GlossaryIndexRoute
   '/.well-known/agent-skills/$': typeof DotwellKnownAgentSkillsSplatRoute
   '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
+  '/.well-known/mcp/server-card.json': typeof DotwellKnownMcpServerCardDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
   '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
   '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -439,6 +456,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth.md': typeof AuthDotmdRoute
   '/brand': typeof BrandRoute
   '/changelog': typeof ChangelogRoute
   '/features': typeof FeaturesRoute
@@ -474,6 +492,7 @@ export interface FileRoutesById {
   '/glossary/': typeof GlossaryIndexRoute
   '/.well-known/agent-skills/$': typeof DotwellKnownAgentSkillsSplatRoute
   '/.well-known/agent-skills/index.json': typeof DotwellKnownAgentSkillsIndexDotjsonRoute
+  '/.well-known/mcp/server-card.json': typeof DotwellKnownMcpServerCardDotjsonRoute
   '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
   '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
   '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -494,6 +513,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth.md'
     | '/brand'
     | '/changelog'
     | '/features'
@@ -529,6 +549,7 @@ export interface FileRouteTypes {
     | '/glossary/'
     | '/.well-known/agent-skills/$'
     | '/.well-known/agent-skills/index.json'
+    | '/.well-known/mcp/server-card.json'
     | '/ai-visibility-tools/alternatives/$slug'
     | '/ai-visibility-tools/category/$slug'
     | '/ai-visibility-tools/category/open-source'
@@ -547,6 +568,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth.md'
     | '/brand'
     | '/changelog'
     | '/features'
@@ -582,6 +604,7 @@ export interface FileRouteTypes {
     | '/glossary'
     | '/.well-known/agent-skills/$'
     | '/.well-known/agent-skills/index.json'
+    | '/.well-known/mcp/server-card.json'
     | '/ai-visibility-tools/alternatives/$slug'
     | '/ai-visibility-tools/category/$slug'
     | '/ai-visibility-tools/category/open-source'
@@ -600,6 +623,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/auth.md'
     | '/brand'
     | '/changelog'
     | '/features'
@@ -635,6 +659,7 @@ export interface FileRouteTypes {
     | '/glossary/'
     | '/.well-known/agent-skills/$'
     | '/.well-known/agent-skills/index.json'
+    | '/.well-known/mcp/server-card.json'
     | '/ai-visibility-tools/alternatives/$slug'
     | '/ai-visibility-tools/category/$slug'
     | '/ai-visibility-tools/category/open-source'
@@ -654,6 +679,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthDotmdRoute: typeof AuthDotmdRoute
   BrandRoute: typeof BrandRoute
   ChangelogRoute: typeof ChangelogRoute
   FeaturesRoute: typeof FeaturesRoute
@@ -689,6 +715,7 @@ export interface RootRouteChildren {
   GlossaryIndexRoute: typeof GlossaryIndexRoute
   DotwellKnownAgentSkillsSplatRoute: typeof DotwellKnownAgentSkillsSplatRoute
   DotwellKnownAgentSkillsIndexDotjsonRoute: typeof DotwellKnownAgentSkillsIndexDotjsonRoute
+  DotwellKnownMcpServerCardDotjsonRoute: typeof DotwellKnownMcpServerCardDotjsonRoute
   AiVisibilityToolsAlternativesSlugRoute: typeof AiVisibilityToolsAlternativesSlugRoute
   AiVisibilityToolsCategorySlugRoute: typeof AiVisibilityToolsCategorySlugRoute
   AiVisibilityToolsCategoryOpenSourceRoute: typeof AiVisibilityToolsCategoryOpenSourceRoute
@@ -713,6 +740,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth.md': {
+      id: '/auth.md'
+      path: '/auth.md'
+      fullPath: '/auth.md'
+      preLoaderRoute: typeof AuthDotmdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/brand': {
@@ -960,6 +994,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotwellKnownAgentSkillsIndexDotjsonRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/mcp/server-card.json': {
+      id: '/.well-known/mcp/server-card.json'
+      path: '/.well-known/mcp/server-card.json'
+      fullPath: '/.well-known/mcp/server-card.json'
+      preLoaderRoute: typeof DotwellKnownMcpServerCardDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ai-visibility-tools/alternatives/': {
       id: '/ai-visibility-tools/alternatives/'
       path: '/ai-visibility-tools/alternatives'
@@ -1070,6 +1111,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthDotmdRoute: AuthDotmdRoute,
   BrandRoute: BrandRoute,
   ChangelogRoute: ChangelogRoute,
   FeaturesRoute: FeaturesRoute,
@@ -1106,6 +1148,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotwellKnownAgentSkillsSplatRoute: DotwellKnownAgentSkillsSplatRoute,
   DotwellKnownAgentSkillsIndexDotjsonRoute:
     DotwellKnownAgentSkillsIndexDotjsonRoute,
+  DotwellKnownMcpServerCardDotjsonRoute: DotwellKnownMcpServerCardDotjsonRoute,
   AiVisibilityToolsAlternativesSlugRoute:
     AiVisibilityToolsAlternativesSlugRoute,
   AiVisibilityToolsCategorySlugRoute: AiVisibilityToolsCategorySlugRoute,
