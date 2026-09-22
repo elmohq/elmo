@@ -3,7 +3,6 @@ import type { DbConnection } from "../db/db-connection";
 import { rollupDirty } from "../db/schema";
 import { bucketSql, bucketStart } from "./bucket";
 import { BUCKET_MS, type DirtyReason } from "./constants";
-import { inTransaction } from "./transaction";
 
 export interface DirtyMark {
 	brandId: string;
@@ -44,15 +43,6 @@ export async function markDirty(
 	return result.rowCount ?? 0;
 }
 
-export function markDirtyForTimestamps(
-	conn: DbConnection,
-	brandId: string,
-	timestamps: Iterable<Date>,
-	reason: DirtyReason,
-): Promise<number> {
-	return markDirty(conn, brandId, timestamps, reason);
-}
-
 /** Marks every bucket in `[from, toExclusive)` that has at least one run. */
 export async function markBrandRangeDirty(
 	conn: DbConnection,
@@ -90,7 +80,7 @@ const toDate = (value: unknown): Date => (value instanceof Date ? value : new Da
  * race-free: a writer that commits afterwards leaves a fresh mark behind.
  */
 export function claimDirty(conn: DbConnection, limit: number): Promise<DirtyMark[]> {
-	return inTransaction(conn, async (tx) => {
+	return conn.transaction(async (tx) => {
 		const result = await tx.execute(sql`
 			DELETE FROM ${rollupDirty}
 			WHERE (brand_id, bucket) IN (

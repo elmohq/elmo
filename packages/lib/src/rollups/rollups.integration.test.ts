@@ -21,7 +21,6 @@ import {
 	coalesceMarks,
 	markBrandRangeDirty,
 	markDirty,
-	markDirtyForTimestamps,
 	restoreDirty,
 } from "./dirty";
 import { getPipelineState, setPipelineState } from "./pipeline-state";
@@ -505,7 +504,7 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 	});
 
 	it("marks the buckets timestamps fall in", async () => {
-		await markDirtyForTimestamps(
+		await markDirty(
 			db,
 			BRAND_ID,
 			[new Date("2026-01-15T10:05:00.000Z"), new Date("2026-01-15T10:29:59.999Z"), B1],

@@ -1,13 +1,13 @@
-import type { BrandContext } from "@workspace/lib/derivers";
-import { mentionsDeriver } from "@workspace/lib/derivers";
+import { type MentionConfig, mentionsStamp } from "@workspace/lib/mentions";
 import { EXTRACTOR_VERSION } from "@workspace/lib/text-extraction";
 import { describe, expect, it } from "vitest";
-import { buildRowUpdate } from "./reprocess";
+import { type BrandMentions, buildRowUpdate } from "./reprocess";
 
-const ctx: BrandContext = {
-	brand: { name: "Acme", aliases: [], website: "https://acme.com", additionalDomains: [] },
+const config: MentionConfig = {
+	brand: { name: "Acme", aliases: [], domains: ["https://acme.com"] },
 	competitors: [],
 };
+const mentions: BrandMentions = { config, stamp: mentionsStamp(config) };
 
 const baseRow = {
 	id: "run-1",
@@ -37,62 +37,40 @@ const openAiPayload = (text: string) => ({
 
 describe("buildRowUpdate", () => {
 	it("returns null when nothing is stale", () => {
-		const update = buildRowUpdate(
-			{ row: baseRow, stale: [], plan: { needsExtraction: false, needsRaw: false } },
-			undefined,
-			ctx,
-		);
+		const update = buildRowUpdate(baseRow, { extraction: false, mentions: false }, undefined, mentions);
 		expect(update).toBeNull();
 	});
 
 	it("re-extracts text and citations when extraction is stale and raw is available", () => {
 		const raw = openAiPayload("Acme is great.");
-		const update = buildRowUpdate(
-			{ row: baseRow, stale: [], plan: { needsExtraction: true, needsRaw: true } },
-			raw,
-			ctx,
-		);
+		const update = buildRowUpdate(baseRow, { extraction: true, mentions: false }, raw, mentions);
 		expect(update?.columns.textContent).toBe("Acme is great.");
 		expect(update?.columns.extractorVersion).toBe(EXTRACTOR_VERSION);
 		expect(update?.citations).toEqual([
 			{ url: "https://example.com/a", title: "A", domain: "example.com", citationIndex: 0 },
 		]);
-		// Extraction alone (no stale derivers) touches no interpreted columns.
 		expect(update?.columns.brandMentioned).toBeUndefined();
 		expect(update?.columns.analysisVersions).toBeUndefined();
 	});
 
 	it("returns null when extraction is stale but raw was not fetched for it", () => {
-		const update = buildRowUpdate(
-			{ row: baseRow, stale: [], plan: { needsExtraction: true, needsRaw: true } },
-			undefined,
-			ctx,
-		);
+		const update = buildRowUpdate(baseRow, { extraction: true, mentions: false }, undefined, mentions);
 		expect(update).toBeNull();
 	});
 
-	it("lazily fills missing text for a stale text deriver without touching citations or the extractor stamp", () => {
+	it("lazily fills missing text for stale mentions without touching citations or the extractor stamp", () => {
 		const raw = openAiPayload("Acme is great.");
-		const update = buildRowUpdate(
-			{ row: baseRow, stale: [mentionsDeriver], plan: { needsExtraction: false, needsRaw: true } },
-			raw,
-			ctx,
-		);
+		const update = buildRowUpdate(baseRow, { extraction: false, mentions: true }, raw, mentions);
 		expect(update?.columns.textContent).toBe("Acme is great.");
 		expect(update?.columns.extractorVersion).toBeUndefined();
 		expect(update?.citations).toBeUndefined();
-		// The freshly-filled text feeds the deriver in the same pass.
 		expect(update?.columns.brandMentioned).toBe(true);
 		expect(update?.columns.analysisVersions).toBeDefined();
 	});
 
 	it("does not fetch or fill text when text_content is already present, and derives from the stored text", () => {
 		const row = { ...baseRow, textContent: "Acme is already stored here." };
-		const update = buildRowUpdate(
-			{ row, stale: [mentionsDeriver], plan: { needsExtraction: false, needsRaw: false } },
-			undefined,
-			ctx,
-		);
+		const update = buildRowUpdate(row, { extraction: false, mentions: true }, undefined, mentions);
 		expect(update?.columns.textContent).toBeUndefined();
 		expect(update?.columns.extractorVersion).toBeUndefined();
 		expect(update?.columns.brandMentioned).toBe(true);
@@ -101,11 +79,7 @@ describe("buildRowUpdate", () => {
 
 	it("combines extraction and interpretation in one pass, deriving from the freshly extracted text", () => {
 		const raw = openAiPayload("No brand mention here.");
-		const update = buildRowUpdate(
-			{ row: baseRow, stale: [mentionsDeriver], plan: { needsExtraction: true, needsRaw: true } },
-			raw,
-			ctx,
-		);
+		const update = buildRowUpdate(baseRow, { extraction: true, mentions: true }, raw, mentions);
 		expect(update?.columns.textContent).toBe("No brand mention here.");
 		expect(update?.citations).toHaveLength(1);
 		expect(update?.columns.brandMentioned).toBe(false);

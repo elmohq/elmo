@@ -1,6 +1,6 @@
 import { db } from "@workspace/lib/db/db";
 import type { PipelineState } from "@workspace/lib/db/schema";
-import { DERIVERS } from "@workspace/lib/derivers";
+import { MENTIONS_ANALYSIS_KEY, MENTIONS_VERSION } from "@workspace/lib/mentions";
 import {
 	CLASSIFIER_VERSION,
 	enqueueBackfill,
@@ -48,25 +48,15 @@ async function initExtractor(state: PipelineState): Promise<void> {
 	await setPipelineState(db, { extractorVersion: EXTRACTOR_VERSION });
 }
 
-/**
- * A deriver missing from `state.deriverVersions` (brand new install, or a
- * brand new deriver on an existing one) needs no retroactive fix: there is
- * nothing yet that depended on it. Only a version bump on a deriver already on
- * record is worth a global reprocess.
- */
-async function initDerivers(state: PipelineState): Promise<void> {
-	const nextVersions: Record<string, number> = {};
-	for (const deriver of DERIVERS) {
-		const stored = state.deriverVersions[deriver.name];
-		if (stored !== undefined && stored !== deriver.version) {
-			await boss.send(REPROCESS_QUEUE, { layers: ["interpretation"], derivers: [deriver.name] });
-			console.log(
-				`[rollups-startup] deriver "${deriver.name}" moved to version ${deriver.version}, reprocess requested`,
-			);
-		}
-		nextVersions[deriver.name] = deriver.version;
+/** An unrecorded version (first startup) needs no catch-up: the backfill covers it. */
+async function initMentions(state: PipelineState): Promise<void> {
+	const stored = state.deriverVersions[MENTIONS_ANALYSIS_KEY];
+	if (stored === MENTIONS_VERSION) return;
+	if (stored !== undefined) {
+		await boss.send(REPROCESS_QUEUE, { layers: ["interpretation"] });
+		console.log(`[rollups-startup] mentions moved to version ${MENTIONS_VERSION}, global reprocess requested`);
 	}
-	await setPipelineState(db, { deriverVersions: nextVersions });
+	await setPipelineState(db, { deriverVersions: { [MENTIONS_ANALYSIS_KEY]: MENTIONS_VERSION } });
 }
 
 /**
@@ -84,6 +74,6 @@ export async function initializePipeline(): Promise<void> {
 	await initClassifier(state);
 	await initRollupSchema(state);
 	await initExtractor(state);
-	await initDerivers(state);
+	await initMentions(state);
 	console.log("[rollups-startup] pipeline initialized");
 }

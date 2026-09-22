@@ -14,10 +14,16 @@ import {
 	prompts,
 	usageEvents,
 } from "@workspace/lib/db/schema";
-import { type BrandContext, brandContextFrom, deriveAll } from "@workspace/lib/derivers";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
+import {
+	analyzeRunMentions,
+	MENTIONS_ANALYSIS_KEY,
+	type MentionConfig,
+	mentionConfigFrom,
+	mentionsStamp,
+} from "@workspace/lib/mentions";
 import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
-import { markDirtyForTimestamps, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
+import { markDirty, REFRESH_ROLLUPS_QUEUE } from "@workspace/lib/rollups";
 import { failureBackoffHours } from "@workspace/lib/run-backoff";
 import {
 	dailyRunCeiling,
@@ -285,7 +291,7 @@ async function runModelIteration({
 	promptId,
 	promptValue,
 	brand,
-	ctx,
+	mentionConfig,
 	config,
 	providerImpl,
 	runIndex,
@@ -293,7 +299,7 @@ async function runModelIteration({
 	promptId: string;
 	promptValue: string;
 	brand: Brand;
-	ctx: BrandContext;
+	mentionConfig: MentionConfig;
 	config: ModelConfig;
 	providerImpl: Provider;
 	runIndex: number;
@@ -315,10 +321,7 @@ async function runModelIteration({
 		console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
 
 		const text = typeof textContent === "string" && textContent.trim() ? textContent : null;
-		const { columns, versions } = deriveAll(
-			{ textContent: text, rawOutput, provider: config.provider, model: config.model },
-			ctx,
-		);
+		const { brandMentioned, competitorsMentioned } = analyzeRunMentions(text, mentionConfig);
 
 		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
@@ -332,14 +335,14 @@ async function runModelIteration({
 				webSearchEnabled: config.webSearch,
 				rawOutput,
 				webQueries,
-				brandMentioned: columns.brandMentioned ?? false,
-				competitorsMentioned: columns.competitorsMentioned ?? [],
+				brandMentioned,
+				competitorsMentioned,
 				textContent: text,
 				extractorVersion: EXTRACTOR_VERSION,
-				analysisVersions: versions,
+				analysisVersions: { [MENTIONS_ANALYSIS_KEY]: mentionsStamp(mentionConfig) },
 			});
 			await saveCitations(tx, run.id, promptId, brand.id, config.model, extractedCitations, run.createdAt);
-			await markDirtyForTimestamps(tx, brand.id, [run.createdAt], "run");
+			await markDirty(tx, brand.id, [run.createdAt], "run");
 			return run;
 		});
 		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
@@ -392,7 +395,7 @@ async function processPrompt(
 	}
 
 	const { prompt, brand, competitors: competitorsList } = context;
-	const ctx = brandContextFrom(brand, competitorsList);
+	const mentionConfig = mentionConfigFrom(brand, competitorsList);
 
 	if (!prompt.enabled || !brand.enabled) {
 		console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
@@ -446,7 +449,7 @@ async function processPrompt(
 				promptId,
 				promptValue: prompt.value,
 				brand,
-				ctx,
+				mentionConfig,
 				config: target.config,
 				providerImpl,
 				runIndex: i + 1,

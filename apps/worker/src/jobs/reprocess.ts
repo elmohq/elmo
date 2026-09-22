@@ -2,17 +2,13 @@ import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
 import { type Brand, brands, citations, competitors, promptRuns, prompts } from "@workspace/lib/db/schema";
 import {
-	type BrandContext,
-	brandContextFrom,
-	DERIVERS,
-	type Deriver,
-	type DeriverInput,
-	deriveAll,
-	planRowWork,
-	type RowWorkPlan,
-	staleDerivers,
-} from "@workspace/lib/derivers";
-import { inTransaction, markDirtyForTimestamps, REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE } from "@workspace/lib/rollups";
+	analyzeRunMentions,
+	MENTIONS_ANALYSIS_KEY,
+	type MentionConfig,
+	mentionConfigFrom,
+	mentionsStamp,
+} from "@workspace/lib/mentions";
+import { markDirty, REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE } from "@workspace/lib/rollups";
 import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { type Citation, EXTRACTOR_VERSION, extractRun, tryExtractTextContent } from "@workspace/lib/text-extraction";
 import { and, asc, eq, gte, inArray, type SQL, sql } from "drizzle-orm";
@@ -23,17 +19,12 @@ export interface ReprocessData {
 	/** Omitted = every brand. */
 	brandId?: string;
 	layers: ("extraction" | "interpretation")[];
-	/** Restrict interpretation to these deriver names; omitted = all of DERIVERS. */
-	derivers?: string[];
 	cursor?: { brandId: string; after: RunCursor | null };
 }
 
 /**
- * Keyset position inside a brand's runs. Ordering by `(created_at, id)` lets
- * the brand's `(brand_id, created_at)` index serve every batch; ordering by id
- * alone would walk the primary key and filter, which for a small brand in a
- * large table means scanning most of it per batch. The timestamp travels as
- * ISO text because the cursor rides in a job payload.
+ * Keyset position inside a brand's runs, ordered by `(created_at, id)` so the
+ * `(brand_id, created_at)` index serves every batch.
  */
 export interface RunCursor {
 	createdAt: string;
@@ -43,10 +34,6 @@ export interface RunCursor {
 const BATCH_SIZE = 200;
 const TIME_BUDGET_MS = 4 * 60 * 1000;
 
-/**
- * A pg-boss client narrowed to the one method this job needs, so a test can
- * pass a stub that records calls instead of a live queue.
- */
 type BossSender = Pick<PgBoss, "send">;
 
 interface StoredRun {
@@ -60,25 +47,24 @@ interface StoredRun {
 	analysisVersions: Record<string, string>;
 }
 
-interface RowPlan {
-	row: StoredRun;
-	stale: Deriver[];
-	plan: RowWorkPlan;
+export interface BrandMentions {
+	config: MentionConfig;
+	stamp: string;
 }
 
-function planRow(
-	row: StoredRun,
-	ctx: BrandContext,
-	data: Pick<ReprocessData, "layers" | "derivers">,
-	derivers: readonly Deriver[] = DERIVERS,
-): RowPlan {
-	const extractionRequested = data.layers.includes("extraction");
-	const stale = data.layers.includes("interpretation")
-		? staleDerivers(row.analysisVersions, ctx, derivers, data.derivers)
-		: [];
-	const plan = planRowWork(row, extractionRequested, EXTRACTOR_VERSION, stale);
-	return { row, stale, plan };
+export interface RowWork {
+	extraction: boolean;
+	mentions: boolean;
 }
+
+function planRow(row: StoredRun, data: Pick<ReprocessData, "layers">, mentions: BrandMentions): RowWork {
+	return {
+		extraction: data.layers.includes("extraction") && row.extractorVersion !== EXTRACTOR_VERSION,
+		mentions: data.layers.includes("interpretation") && row.analysisVersions[MENTIONS_ANALYSIS_KEY] !== mentions.stamp,
+	};
+}
+
+const needsRaw = (row: StoredRun, work: RowWork) => work.extraction || (work.mentions && row.textContent === null);
 
 interface RowColumns {
 	textContent?: string | null;
@@ -90,51 +76,40 @@ interface RowColumns {
 
 interface RowUpdate {
 	columns: RowColumns;
-	/** Present only when extraction ran: the run's citations must be replaced wholesale. */
+	/** Present only when extraction ran: the run's citations are replaced wholesale. */
 	citations?: Citation[];
 }
 
-/**
- * Applies extraction and/or interpretation to one row's stale plan. Pure and
- * DB-free: `raw` is whatever the caller already fetched (or `undefined` when it
- * decided this row does not need it), so this is unit-testable without a
- * database or a real run.
- */
-export function buildRowUpdate(rowPlan: RowPlan, raw: unknown | undefined, ctx: BrandContext): RowUpdate | null {
-	const { row, stale, plan } = rowPlan;
-	if (!plan.needsExtraction && stale.length === 0) return null;
-
+/** `raw` is undefined when the row's plan didn't need it fetched. */
+export function buildRowUpdate(
+	row: StoredRun,
+	work: RowWork,
+	raw: unknown | undefined,
+	mentions: BrandMentions,
+): RowUpdate | null {
 	const columns: RowColumns = {};
 	let citations: Citation[] | undefined;
-	let textForDerive = row.textContent;
+	let text = row.textContent;
 
-	if (plan.needsExtraction && raw !== undefined) {
+	if (work.extraction && raw !== undefined) {
 		const extracted = extractRun(raw, row.provider ?? row.model);
 		columns.textContent = extracted.textContent;
 		columns.extractorVersion = EXTRACTOR_VERSION;
 		citations = extracted.citations;
-		textForDerive = extracted.textContent;
-	} else if (raw !== undefined && row.textContent === null && stale.some((deriver) => deriver.needs === "text")) {
-		// Piggyback on a raw fetch that interpretation already needed to fill the
-		// missing text. The extractor stamp stays as it was: the row's citations
-		// were not re-extracted, so an extraction pass must still treat it as stale.
+		text = extracted.textContent;
+	} else if (work.mentions && raw !== undefined && row.textContent === null) {
+		// The extractor stamp stays as it was: citations weren't re-extracted, so
+		// an extraction pass must still treat the row as stale.
 		columns.textContent = tryExtractTextContent(raw, row.provider ?? row.model);
-		textForDerive = columns.textContent;
+		text = columns.textContent;
 	}
 
-	if (stale.length > 0) {
-		const input: DeriverInput = {
-			textContent: textForDerive,
-			rawOutput: raw ?? null,
-			provider: row.provider,
-			model: row.model,
-		};
-		const { columns: derived, versions } = deriveAll(input, ctx, stale);
-		Object.assign(columns, derived);
-		columns.analysisVersions = sql`${promptRuns.analysisVersions} || ${JSON.stringify(versions)}::jsonb`;
+	if (work.mentions) {
+		Object.assign(columns, analyzeRunMentions(text, mentions.config));
+		columns.analysisVersions = sql`${promptRuns.analysisVersions} || ${JSON.stringify({ [MENTIONS_ANALYSIS_KEY]: mentions.stamp })}::jsonb`;
 	}
 
-	if (Object.keys(columns).length === 0 && citations === undefined) return null;
+	if (Object.keys(columns).length === 0) return null;
 	return { columns, citations };
 }
 
@@ -172,7 +147,6 @@ async function loadRawMap(conn: DbConnection, ids: string[]): Promise<Map<string
 	return new Map(rows.map((row) => [row.id, row.rawOutput]));
 }
 
-/** Replaces a run's citations wholesale, matching the shape saveCitations writes in process-prompt. */
 async function replaceCitations(
 	tx: DbConnection,
 	row: StoredRun,
@@ -196,28 +170,24 @@ async function replaceCitations(
 	);
 }
 
-/** One batch, one transaction: every row rewrite and the dirty marks it earns land together or not at all. */
 async function processBatch(
 	conn: DbConnection,
 	brandId: string,
-	ctx: BrandContext,
-	plans: RowPlan[],
+	mentions: BrandMentions,
+	rows: { row: StoredRun; work: RowWork }[],
 	rawById: Map<string, unknown>,
-): Promise<{ rewritten: number }> {
-	return inTransaction(conn, async (tx) => {
-		let rewritten = 0;
+): Promise<number> {
+	return conn.transaction(async (tx) => {
 		const touched: Date[] = [];
-		for (const rowPlan of plans) {
-			const update = buildRowUpdate(rowPlan, rawById.get(rowPlan.row.id), ctx);
+		for (const { row, work } of rows) {
+			const update = buildRowUpdate(row, work, rawById.get(row.id), mentions);
 			if (!update) continue;
-			// buildRowUpdate never returns both an empty columns object and no citations.
-			await tx.update(promptRuns).set(update.columns).where(eq(promptRuns.id, rowPlan.row.id));
-			if (update.citations) await replaceCitations(tx, rowPlan.row, brandId, update.citations);
-			rewritten++;
-			touched.push(rowPlan.row.createdAt);
+			await tx.update(promptRuns).set(update.columns).where(eq(promptRuns.id, row.id));
+			if (update.citations) await replaceCitations(tx, row, brandId, update.citations);
+			touched.push(row.createdAt);
 		}
-		if (touched.length > 0) await markDirtyForTimestamps(tx, brandId, touched, "reprocess");
-		return { rewritten };
+		await markDirty(tx, brandId, touched, "reprocess");
+		return touched.length;
 	});
 }
 
@@ -231,7 +201,7 @@ interface BrandProcessResult {
 async function processRunsForBrand(
 	conn: DbConnection,
 	brandId: string,
-	ctx: BrandContext,
+	mentions: BrandMentions,
 	data: ReprocessData,
 	startAfter: RunCursor | null,
 	deadline: number,
@@ -245,15 +215,14 @@ async function processRunsForBrand(
 		const rows = await loadRunBatch(conn, brandId, after);
 		if (rows.length === 0) break;
 
-		const plans = rows.map((row) => planRow(row, ctx, data));
+		const planned = rows.map((row) => ({ row, work: planRow(row, data, mentions) }));
 		const rawById = await loadRawMap(
 			conn,
-			plans.filter((p) => p.plan.needsRaw).map((p) => p.row.id),
+			planned.filter(({ row, work }) => needsRaw(row, work)).map(({ row }) => row.id),
 		);
-		const batch = await processBatch(conn, brandId, ctx, plans, rawById);
 
 		processed += rows.length;
-		rewritten += batch.rewritten;
+		rewritten += await processBatch(conn, brandId, mentions, planned, rawById);
 		const lastRow = rows[rows.length - 1];
 		after = { createdAt: lastRow.createdAt.toISOString(), id: lastRow.id };
 	}
@@ -264,7 +233,7 @@ function sameTags(a: string[], b: string[]): boolean {
 	return a.length === b.length && a.every((tag, i) => tag === b[i]);
 }
 
-/** Prompt tags read the same brand config the mentions deriver does, so a reprocess that touched interpretation recomputes them too. */
+/** Prompt tags read the same brand config mentions do, so they're recomputed alongside. */
 async function recomputeSystemTags(conn: DbConnection, brand: Brand): Promise<number> {
 	const brandPrompts = await conn
 		.select({ id: prompts.id, value: prompts.value, systemTags: prompts.systemTags })
@@ -281,14 +250,12 @@ async function recomputeSystemTags(conn: DbConnection, brand: Brand): Promise<nu
 	return updated;
 }
 
-async function loadBrandContext(
-	conn: DbConnection,
-	brandId: string,
-): Promise<{ brand: Brand; ctx: BrandContext } | null> {
+async function loadBrand(conn: DbConnection, brandId: string): Promise<{ brand: Brand; mentions: BrandMentions } | null> {
 	const [brand] = await conn.select().from(brands).where(eq(brands.id, brandId)).limit(1);
 	if (!brand) return null;
 	const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brandId));
-	return { brand, ctx: brandContextFrom(brand, brandCompetitors) };
+	const config = mentionConfigFrom(brand, brandCompetitors);
+	return { brand, mentions: { config, stamp: mentionsStamp(config) } };
 }
 
 async function resolveBrandIds(conn: DbConnection, data: ReprocessData): Promise<string[]> {
@@ -302,7 +269,6 @@ async function resolveBrandIds(conn: DbConnection, data: ReprocessData): Promise
 	return rows.map((row) => row.id);
 }
 
-/** Sends the continuation job for a run that hit its time budget. No singleton key: reprocess is idempotent, so a duplicate in flight costs nothing but redone work. */
 async function sendContinuation(
 	sendBoss: BossSender,
 	data: ReprocessData,
@@ -330,14 +296,14 @@ async function processBrand(
 	brandId: string,
 	deadline: number,
 ): Promise<BrandProcessResult | null> {
-	const context = await loadBrandContext(conn, brandId);
+	const context = await loadBrand(conn, brandId);
 	if (!context) {
 		console.log(`[reprocess] brand ${brandId} no longer exists, skipping`);
 		return null;
 	}
 
 	const startAfter = data.cursor?.brandId === brandId ? data.cursor.after : null;
-	const result = await processRunsForBrand(conn, brandId, context.ctx, data, startAfter, deadline);
+	const result = await processRunsForBrand(conn, brandId, context.mentions, data, startAfter, deadline);
 	console.log(
 		`[reprocess] brand ${brandId} processed=${result.processed} rewritten=${result.rewritten} skipped=${result.processed - result.rewritten}`,
 	);

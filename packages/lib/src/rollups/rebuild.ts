@@ -18,7 +18,6 @@ import {
 } from "./aggregate-citations";
 import { assertBucketAligned, bucketSql } from "./bucket";
 import { chunked } from "./chunk";
-import { inTransaction } from "./transaction";
 
 export interface RebuildStats {
 	/** Rows written to each table, not the raw rows they were aggregated from. */
@@ -46,7 +45,7 @@ export async function rebuildRange(
 ): Promise<RebuildStats> {
 	assertBucketAligned(from);
 	assertBucketAligned(toExclusive);
-	return inTransaction(conn, async (tx) => {
+	return conn.transaction(async (tx) => {
 		// Serializes with any other rebuild of this brand, so a manual rebuild and
 		// the scheduled one cannot interleave their deletes and inserts.
 		await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${brandId}))`);

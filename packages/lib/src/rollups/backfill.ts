@@ -3,7 +3,6 @@ import type { DbConnection } from "../db/db-connection";
 import { rollupDirty } from "../db/schema";
 import { markAllDirty } from "./dirty";
 import { getPipelineState, setPipelineState } from "./pipeline-state";
-import { inTransaction } from "./transaction";
 
 /**
  * Marks every bucket that has ever had a run, once per deployment. The marks are
@@ -11,7 +10,7 @@ import { inTransaction } from "./transaction";
  * Returns false when a backfill was already enqueued.
  */
 export function enqueueBackfill(conn: DbConnection): Promise<boolean> {
-	return inTransaction(conn, async (tx) => {
+	return conn.transaction(async (tx) => {
 		const state = await getPipelineState(tx, { forUpdate: true });
 		if (state.backfillEnqueuedAt) return false;
 		await markAllDirty(tx, "backfill");
@@ -22,7 +21,7 @@ export function enqueueBackfill(conn: DbConnection): Promise<boolean> {
 
 /** Stamps the backfill complete once its last mark has been drained. */
 export function finishBackfillIfDrained(conn: DbConnection): Promise<boolean> {
-	return inTransaction(conn, async (tx) => {
+	return conn.transaction(async (tx) => {
 		const state = await getPipelineState(tx, { forUpdate: true });
 		if (state.backfillCompletedAt || !state.backfillEnqueuedAt) return false;
 		const [remaining] = await tx
