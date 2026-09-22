@@ -34,6 +34,18 @@ export function trackEvent(
 	posthog.capture(eventName, properties);
 }
 
+/**
+ * For an event fired by a click that immediately leaves the page: sent as a
+ * beacon at once, so the navigation cannot cancel it.
+ */
+export function trackEventBeforeNavigation(
+	eventName: string,
+	properties?: Record<string, string | number | boolean | undefined>,
+): void {
+	if (!initialized) return;
+	posthog.capture(eventName, properties, { send_instantly: true, transport: "sendBeacon" });
+}
+
 export function identifyByEmail(email: string): void {
 	if (!initialized) return;
 	posthog.identify(email, { email });
