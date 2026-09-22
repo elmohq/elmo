@@ -1,4 +1,3 @@
-import { REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE, ROLLUP_QUEUE_OPTIONS } from "@workspace/lib/rollups/constants";
 import { PgBoss } from "pg-boss";
 
 let bossInstance: PgBoss | null = null;
@@ -52,9 +51,6 @@ export async function getBoss(): Promise<PgBoss> {
 			retryBackoff: false,
 			expireInSeconds: 60 * 15,
 		});
-		for (const queue of [REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE] as const) {
-			await boss.createQueue(queue, ROLLUP_QUEUE_OPTIONS[queue]);
-		}
 
 		bossInstance = boss;
 		return boss;

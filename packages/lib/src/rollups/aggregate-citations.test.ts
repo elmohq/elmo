@@ -67,7 +67,7 @@ describe("aggregateCitationBucket", () => {
 	});
 
 	it("flags Google search and shopping surfaces", () => {
-		const { urls, domains, pages } = aggregateCitationBucket([
+		const { pages } = aggregateCitationBucket([
 			row({ url: "https://www.google.com/search?q=best+crm", domain: "google.com", title: "best crm" }),
 			row({
 				url: "https://www.google.com/search?q=product&prds=pvt:hg,productid:123",
@@ -76,32 +76,16 @@ describe("aggregateCitationBucket", () => {
 			}),
 		]);
 
-		expect(urls.map((u) => u.staticCategory)).toEqual(["google", "google"]);
-		expect(urls.map((u) => u.pageType).sort()).toEqual(["search", "shopping"]);
-		expect(domains).toEqual([
-			expect.objectContaining({ domain: "google.com", staticCategory: "google", citations: 2 }),
-		]);
-		expect(pages.every((page) => page.staticCategory === "google")).toBe(true);
-	});
-
-	it("treats a domain that also serves search surfaces as Google", () => {
-		const { domains } = aggregateCitationBucket([
-			row({ url: "https://www.google.com/search?q=best+crm", domain: "google.com" }),
-			row({ url: "https://www.google.com/about", domain: "google.com" }),
-		]);
-
-		expect(domains).toEqual([
-			expect.objectContaining({ domain: "google.com", staticCategory: "google", citations: 2 }),
-		]);
+		expect(pages.map((page) => page.staticCategory)).toEqual(["google", "google"]);
+		expect(pages.map((page) => page.pageType).sort()).toEqual(["search", "shopping"]);
 	});
 
 	it("classifies non-Google pages from the domain lists", () => {
-		const { urls, domains } = aggregateCitationBucket([
+		const { pages } = aggregateCitationBucket([
 			row({ url: "https://www.reddit.com/r/crm/comments/1", domain: "reddit.com", title: "Which CRM?" }),
 		]);
 
-		expect(urls[0].staticCategory).toBe("social");
-		expect(domains[0].staticCategory).toBe("social");
+		expect(pages[0].staticCategory).toBe("social");
 	});
 
 	it("counts positions only for citations that reported one", () => {
@@ -115,13 +99,12 @@ describe("aggregateCitationBucket", () => {
 	});
 
 	it("stores a missing provider as the empty string", () => {
-		const { urls, domains } = aggregateCitationBucket([row({ provider: null })]);
+		const { urls } = aggregateCitationBucket([row({ provider: null })]);
 		expect(urls[0].provider).toBe("");
-		expect(domains[0].provider).toBe("");
 	});
 
 	it("splits rows by bucket, prompt, model and grounding", () => {
-		const { urls, domains, pages } = aggregateCitationBucket([
+		const { urls, pages } = aggregateCitationBucket([
 			row({ createdAt: new Date("2026-01-15T10:05:00.000Z") }),
 			row({ createdAt: new Date("2026-01-15T10:35:00.000Z") }),
 			row({ createdAt: new Date("2026-01-15T10:55:00.000Z"), model: "claude-sonnet-4-5" }),
@@ -134,22 +117,7 @@ describe("aggregateCitationBucket", () => {
 			[BUCKET_B, "gpt-5", false, 1],
 			[BUCKET_B, "gpt-5", true, 1],
 		]);
-		expect(domains).toHaveLength(4);
 		expect(pages).toHaveLength(1);
-	});
-
-	it("aggregates domains across the URLs that share them", () => {
-		const { urls, domains } = aggregateCitationBucket([
-			row({ url: "https://example.com/a" }),
-			row({ url: "https://example.com/b" }),
-			row({ url: "https://other.com/a", domain: "other.com" }),
-		]);
-
-		expect(urls).toHaveLength(3);
-		expect(domains).toEqual([
-			expect.objectContaining({ domain: "example.com", citations: 2 }),
-			expect.objectContaining({ domain: "other.com", citations: 1 }),
-		]);
 	});
 
 	it("is order-independent and deterministic", () => {
@@ -162,6 +130,6 @@ describe("aggregateCitationBucket", () => {
 	});
 
 	it("returns nothing for no rows", () => {
-		expect(aggregateCitationBucket([])).toEqual({ pages: [], urls: [], domains: [] });
+		expect(aggregateCitationBucket([])).toEqual({ pages: [], urls: [] });
 	});
 });

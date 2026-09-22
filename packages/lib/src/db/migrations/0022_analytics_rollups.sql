@@ -18,27 +18,10 @@ CREATE TABLE "pipeline_state" (
 	"backfill_completed_at" timestamp with time zone,
 	"rollup_version" integer DEFAULT 0 NOT NULL,
 	"classifier_version" integer DEFAULT 0 NOT NULL,
-	"extractor_version" integer DEFAULT 0 NOT NULL,
-	"deriver_versions" jsonb DEFAULT '{}'::jsonb NOT NULL,
-	"last_reconcile_at" timestamp with time zone,
 	CONSTRAINT "pipeline_state_singleton" CHECK (id = 1)
 );
 --> statement-breakpoint
 ALTER TABLE "pipeline_state" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
-CREATE TABLE "rollup_citation_domains" (
-	"brand_id" text NOT NULL,
-	"bucket" timestamp with time zone NOT NULL,
-	"prompt_id" uuid NOT NULL,
-	"model" text NOT NULL,
-	"provider" text DEFAULT '' NOT NULL,
-	"web_search_enabled" boolean NOT NULL,
-	"domain" text NOT NULL,
-	"static_category" text NOT NULL,
-	"citations" integer NOT NULL,
-	CONSTRAINT "rollup_citation_domains_pk" PRIMARY KEY("brand_id","bucket","prompt_id","model","provider","web_search_enabled","domain")
-);
---> statement-breakpoint
-ALTER TABLE "rollup_citation_domains" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE TABLE "rollup_citation_urls" (
 	"brand_id" text NOT NULL,
 	"bucket" timestamp with time zone NOT NULL,
@@ -48,8 +31,6 @@ CREATE TABLE "rollup_citation_urls" (
 	"web_search_enabled" boolean NOT NULL,
 	"page_id" bigint NOT NULL,
 	"domain" text NOT NULL,
-	"static_category" text NOT NULL,
-	"page_type" text NOT NULL,
 	"citations" integer NOT NULL,
 	"position_sum" integer NOT NULL,
 	"position_count" integer NOT NULL,
@@ -75,6 +56,8 @@ CREATE TABLE "rollup_dirty" (
 	"bucket" timestamp with time zone NOT NULL,
 	"reason" text NOT NULL,
 	"marked_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"claim_id" uuid,
+	"claimed_until" timestamp with time zone,
 	CONSTRAINT "rollup_dirty_pk" PRIMARY KEY("brand_id","bucket")
 );
 --> statement-breakpoint
@@ -96,12 +79,12 @@ CREATE TABLE "rollup_prompt_runs" (
 );
 --> statement-breakpoint
 ALTER TABLE "rollup_prompt_runs" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "brands" ADD COLUMN "analysis_versions" jsonb DEFAULT '{}'::jsonb NOT NULL;--> statement-breakpoint
 ALTER TABLE "prompt_runs" ADD COLUMN "text_content" text;--> statement-breakpoint
 ALTER TABLE "prompt_runs" ADD COLUMN "extractor_version" integer;--> statement-breakpoint
 ALTER TABLE "prompt_runs" ADD COLUMN "analysis_versions" jsonb DEFAULT '{}'::jsonb NOT NULL;--> statement-breakpoint
 ALTER TABLE "rollup_citation_urls" ADD CONSTRAINT "rollup_citation_urls_page_id_cited_pages_id_fk" FOREIGN KEY ("page_id") REFERENCES "public"."cited_pages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "cited_pages_domain_idx" ON "cited_pages" USING btree ("domain");--> statement-breakpoint
-CREATE INDEX "rollup_citation_domains_prompt_id_bucket_idx" ON "rollup_citation_domains" USING btree ("prompt_id","bucket");--> statement-breakpoint
 CREATE INDEX "rollup_citation_urls_prompt_id_bucket_idx" ON "rollup_citation_urls" USING btree ("prompt_id","bucket");--> statement-breakpoint
 CREATE INDEX "rollup_competitor_mentions_prompt_id_bucket_idx" ON "rollup_competitor_mentions" USING btree ("prompt_id","bucket");--> statement-breakpoint
 CREATE INDEX "rollup_dirty_bucket_idx" ON "rollup_dirty" USING btree ("bucket");--> statement-breakpoint

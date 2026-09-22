@@ -4,11 +4,12 @@ import type { DbConnection } from "@workspace/lib/db/db-connection";
 import {
 	claimDirty,
 	coalesceMarks,
-	type DirtyMark,
+	completeDirty,
+	type DirtyClaim,
 	finishBackfillIfDrained,
 	type RebuildRange,
 	rebuildRange,
-	restoreDirty,
+	releaseDirty,
 } from "@workspace/lib/rollups";
 import type { Job } from "pg-boss";
 
@@ -42,28 +43,25 @@ function reportRebuildFailure(error: unknown, range: RebuildRange): void {
 	});
 }
 
-async function processClaimedBatch(
+async function rebuildClaim(
 	conn: DbConnection,
-	marks: DirtyMark[],
+	claim: DirtyClaim,
 	deadline: number,
 ): Promise<{ ranges: number; failed: number; timedOut: boolean }> {
-	const ranges = coalesceMarks(marks);
+	const ranges = coalesceMarks(claim.marks);
 	let rebuilt = 0;
 	let failed = 0;
-	for (let i = 0; i < ranges.length; i++) {
+	for (const [i, range] of ranges.entries()) {
 		if (Date.now() > deadline) {
-			await restoreDirty(
-				conn,
-				ranges.slice(i).flatMap((range) => range.marks),
-			);
+			await releaseDirty(conn, claim.claimId, ranges.slice(i));
 			return { ranges: rebuilt, failed, timedOut: true };
 		}
-		const range = ranges[i];
 		try {
 			await rebuildRange(conn, range.brandId, range.from, range.toExclusive);
+			await completeDirty(conn, claim.claimId, range);
 			rebuilt++;
 		} catch (error) {
-			await restoreDirty(conn, range.marks);
+			// The range keeps its lease, so it's retried once the lease lapses rather than on every claim.
 			failed++;
 			reportRebuildFailure(error, range);
 		}
@@ -84,16 +82,13 @@ export async function runRefreshTick(
 	let marksClaimed = 0;
 
 	while (Date.now() < deadline) {
-		const marks = await claimDirty(conn, maxMarks);
-		if (marks.length === 0) break;
-		marksClaimed += marks.length;
-		const batch = await processClaimedBatch(conn, marks, deadline);
+		const claim = await claimDirty(conn, maxMarks);
+		if (claim.marks.length === 0) break;
+		marksClaimed += claim.marks.length;
+		const batch = await rebuildClaim(conn, claim, deadline);
 		ranges += batch.ranges;
 		failed += batch.failed;
-		// A failed range's marks were just restored and sit at the front of the
-		// queue, so claiming again would retry them in a tight loop for the rest
-		// of the budget; the next tick retries them once instead.
-		if (batch.timedOut || batch.failed > 0) break;
+		if (batch.timedOut) break;
 	}
 
 	await finishBackfillIfDrained(conn);

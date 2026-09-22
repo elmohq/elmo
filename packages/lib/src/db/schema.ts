@@ -44,6 +44,8 @@ export const brands = pgTable(
 		onboarded: boolean("onboarded").default(false).notNull(),
 		delayOverrideHours: integer("delay_override_hours"),
 		enabledModels: text("enabled_models").array(),
+		/** Analysis name -> the stamp this brand's run history was last reprocessed to. */
+		analysisVersions: jsonb("analysis_versions").$type<Record<string, string>>().notNull().default({}),
 		// Hard tenancy scope. Every brand belongs to exactly one better-auth
 		// organization; org membership (the `member` table) is the access-control
 		// mechanism. Brand and organization ids are independent, so billing and
@@ -417,10 +419,8 @@ export const rollupCitationUrls = pgTable(
 		pageId: bigint("page_id", { mode: "number" })
 			.notNull()
 			.references(() => citedPages.id),
-		/** Denormalized from cited_pages so domain and category reads need no join. */
+		/** Denormalized from cited_pages so domain reads need no join. */
 		domain: text("domain").notNull(),
-		staticCategory: text("static_category").notNull(),
-		pageType: text("page_type").notNull(),
 		citations: integer("citations").notNull(),
 		/** Sum and count are kept apart so citations without a position do not skew the mean. */
 		positionSum: integer("position_sum").notNull(),
@@ -443,31 +443,6 @@ export const rollupCitationUrls = pgTable(
 	],
 ).enableRLS();
 
-export const rollupCitationDomains = pgTable(
-	"rollup_citation_domains",
-	{
-		...rollupKeyColumns(),
-		domain: text("domain").notNull(),
-		staticCategory: text("static_category").notNull(),
-		citations: integer("citations").notNull(),
-	},
-	(table) => [
-		primaryKey({
-			name: "rollup_citation_domains_pk",
-			columns: [
-				table.brandId,
-				table.bucket,
-				table.promptId,
-				table.model,
-				table.provider,
-				table.webSearchEnabled,
-				table.domain,
-			],
-		}),
-		index("rollup_citation_domains_prompt_id_bucket_idx").on(table.promptId, table.bucket),
-	],
-).enableRLS();
-
 /**
  * Invalidation outbox. Whoever changes raw data or interpretation marks the
  * affected buckets in the same transaction; the refresh job claims marks before
@@ -480,6 +455,9 @@ export const rollupDirty = pgTable(
 		bucket: timestamp("bucket", { withTimezone: true }).notNull(),
 		reason: text("reason").notNull(),
 		markedAt: timestamp("marked_at", { withTimezone: true }).defaultNow().notNull(),
+		/** Set while a refresh tick rebuilds the bucket; a mark whose lease lapses is claimable again. */
+		claimId: uuid("claim_id"),
+		claimedUntil: timestamp("claimed_until", { withTimezone: true }),
 	},
 	(table) => [
 		primaryKey({ name: "rollup_dirty_pk", columns: [table.brandId, table.bucket] }),
@@ -500,10 +478,6 @@ export const pipelineState = pgTable(
 		backfillCompletedAt: timestamp("backfill_completed_at", { withTimezone: true }),
 		rollupVersion: integer("rollup_version").notNull().default(0),
 		classifierVersion: integer("classifier_version").notNull().default(0),
-		extractorVersion: integer("extractor_version").notNull().default(0),
-		/** Deriver name -> the version of that deriver the stored columns reflect. */
-		deriverVersions: jsonb("deriver_versions").$type<Record<string, number>>().notNull().default({}),
-		lastReconcileAt: timestamp("last_reconcile_at", { withTimezone: true }),
 	},
 	() => [check("pipeline_state_singleton", sql`id = 1`)],
 ).enableRLS();
@@ -519,9 +493,6 @@ export type NewCitedPage = typeof citedPages.$inferInsert;
 
 export type RollupCitationUrl = typeof rollupCitationUrls.$inferSelect;
 export type NewRollupCitationUrl = typeof rollupCitationUrls.$inferInsert;
-
-export type RollupCitationDomain = typeof rollupCitationDomains.$inferSelect;
-export type NewRollupCitationDomain = typeof rollupCitationDomains.$inferInsert;
 
 export type RollupDirty = typeof rollupDirty.$inferSelect;
 export type NewRollupDirty = typeof rollupDirty.$inferInsert;

@@ -197,7 +197,7 @@ export async function getCitationsTotalCount(
 	if (enabledPromptIds && enabledPromptIds.length === 0) return 0;
 	const rows = await queryPg<{ total: number }>(sql`
 		SELECT coalesce(sum(citations), 0)::int AS total
-		FROM rollup_citation_domains
+		FROM rollup_citation_urls
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
@@ -254,7 +254,7 @@ export async function getCitationDomainStats(
 	const rows = await queryPg<CitationDomainStats>(sql`
 		WITH domain_totals AS (
 			SELECT domain, sum(citations)::int AS count
-			FROM rollup_citation_domains
+			FROM rollup_citation_urls
 			WHERE brand_id = ${brandId} ${scope()}
 			GROUP BY domain
 		)
@@ -315,7 +315,7 @@ export async function getCitationDomainPromptCounts(
 ): Promise<Map<string, number>> {
 	const rows = await queryPg<{ domain: string; prompt_count: number }>(sql`
 		SELECT domain, count(DISTINCT prompt_id)::int AS prompt_count
-		FROM rollup_citation_domains
+		FROM rollup_citation_urls
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
@@ -401,7 +401,7 @@ export async function getDailyCitationStats(
 			(bucket AT TIME ZONE ${timezone})::date AS date,
 			domain,
 			sum(citations)::int AS count
-		FROM rollup_citation_domains
+		FROM rollup_citation_urls
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
@@ -427,7 +427,7 @@ export async function getPerPromptDailyCitationStats(
 			(bucket AT TIME ZONE ${timezone})::date AS date,
 			domain,
 			sum(citations)::int AS count
-		FROM rollup_citation_domains
+		FROM rollup_citation_urls
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
@@ -683,7 +683,7 @@ export async function getCitationsCountByModel(
 			provider,
 			web_search_enabled,
 			sum(citations)::int AS count
-		FROM rollup_citation_domains
+		FROM rollup_citation_urls
 		WHERE brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
@@ -701,8 +701,9 @@ export interface PerPromptDailyCitationClassRow {
 	count: number;
 }
 
-// `static_category` is tenant-independent; callers apply the brand/competitor domain
-// override on top.
+// Classified through `cited_pages`, the same page rows the URL table reads, so a page
+// lands in the same category in the chart as in the table. `static_category` is
+// tenant-independent; callers apply the brand/competitor domain override on top.
 export async function getPerPromptDailyCitationClasses(
 	brandId: string,
 	fromDate: string,
@@ -714,19 +715,20 @@ export async function getPerPromptDailyCitationClasses(
 	if (!enabledPromptIds?.length) return [];
 	const rows = await queryPg<PerPromptDailyCitationClassRow>(sql`
 		SELECT
-			prompt_id,
-			(bucket AT TIME ZONE ${timezone})::date AS date,
-			domain,
-			static_category,
-			page_type,
-			sum(citations)::int AS count
-		FROM rollup_citation_urls
-		WHERE brand_id = ${brandId}
+			rcu.prompt_id,
+			(rcu.bucket AT TIME ZONE ${timezone})::date AS date,
+			rcu.domain,
+			cp.static_category,
+			cp.page_type,
+			sum(rcu.citations)::int AS count
+		FROM rollup_citation_urls rcu
+		JOIN cited_pages cp ON cp.id = rcu.page_id
+		WHERE rcu.brand_id = ${brandId}
 			${rollupWindow(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
-			${modelFilter(model)}
-		GROUP BY prompt_id, date, domain, static_category, page_type
-		ORDER BY prompt_id, date
+			${modelFilter(model, { alias: "rcu" })}
+		GROUP BY rcu.prompt_id, date, rcu.domain, cp.static_category, cp.page_type
+		ORDER BY rcu.prompt_id, date
 	`);
 	return rows;
 }

@@ -15,7 +15,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { reconcileRollupsJob, runReconcileTick } from "./jobs/reconcile-rollups";
 import { refreshRollupsJob, runRefreshTick } from "./jobs/refresh-rollups";
-import { runReprocess } from "./jobs/reprocess";
+import { requestStaleReprocesses, runReprocess } from "./jobs/reprocess";
 
 // Don't run this concurrently with packages/lib's rollups integration suite
 // against the same database: both truncate shared tables.
@@ -35,15 +35,13 @@ const B0 = new Date("2026-02-01T10:00:00.000Z");
 async function reset(db: TestDb): Promise<void> {
 	await db.execute(sql`
 		TRUNCATE citations, prompt_runs, prompts, competitors, brands, organization,
-			rollup_prompt_runs, rollup_competitor_mentions, rollup_citation_urls,
-			rollup_citation_domains, cited_pages, rollup_dirty
+			rollup_prompt_runs, rollup_competitor_mentions, rollup_citation_urls, cited_pages, rollup_dirty
 		RESTART IDENTITY CASCADE
 	`);
 	await db.execute(sql`INSERT INTO pipeline_state (id) VALUES (1) ON CONFLICT DO NOTHING`);
 	await db.execute(sql`
 		UPDATE pipeline_state
-		SET backfill_enqueued_at = NULL, backfill_completed_at = NULL, last_reconcile_at = NULL,
-			rollup_version = 0, classifier_version = 0, extractor_version = 0, deriver_versions = '{}'
+		SET backfill_enqueued_at = NULL, backfill_completed_at = NULL, rollup_version = 0, classifier_version = 0
 	`);
 }
 
@@ -135,7 +133,7 @@ describe.skipIf(!connectionString)("worker rollup jobs against postgres", () => 
 	});
 
 	describe("runReconcileTick", () => {
-		it("marks the trailing window dirty for a brand with a recent run and stamps last_reconcile_at", async () => {
+		it("marks the trailing window dirty for a brand with a recent run", async () => {
 			await insertRun(db, { id: RUN(3), createdAt: new Date() });
 
 			await runReconcileTick("test", db);
@@ -143,9 +141,6 @@ describe.skipIf(!connectionString)("worker rollup jobs against postgres", () => 
 			const marks = await db.select().from(rollupDirty).where(eq(rollupDirty.brandId, BRAND_ID));
 			expect(marks.length).toBeGreaterThan(0);
 			expect(marks.every((mark) => mark.reason === "reconcile")).toBe(true);
-
-			const [state] = await db.select().from(pipelineState);
-			expect(state.lastReconcileAt).not.toBeNull();
 		});
 
 		it("flags and marks a sampled bucket whose rollup has drifted from raw", async () => {
@@ -223,12 +218,43 @@ describe.skipIf(!connectionString)("worker rollup jobs against postgres", () => 
 			expect(await db.select().from(rollupDirty)).toHaveLength(0);
 		});
 
-		it("skips a brand that no longer exists and still triggers a refresh", async () => {
-			const sendBoss = fakeBoss();
+		it("skips a brand that no longer exists", async () => {
 			await expect(
-				runReprocess({ layers: ["extraction"], brandId: "no-such-brand" }, db, sendBoss),
+				runReprocess({ layers: ["extraction"], brandId: "no-such-brand" }, db, fakeBoss()),
 			).resolves.toBeUndefined();
-			expect(sendBoss.send).toHaveBeenCalled();
+		});
+
+		it("records the stamps the brand's history was brought to", async () => {
+			await runReprocess({ layers: ["interpretation"], brandId: BRAND_ID }, db, fakeBoss());
+			const [brand] = await db.select().from(brands).where(eq(brands.id, BRAND_ID));
+			expect(Object.keys(brand.analysisVersions)).toEqual(["mentions"]);
+		});
+	});
+
+	describe("requestStaleReprocesses", () => {
+		const sentBrands = (sendBoss: ReturnType<typeof fakeBoss>) =>
+			sendBoss.send.mock.calls.map(([, data]) => [data.brandId, data.layers]);
+
+		it("adopts today's stamps for a brand that predates the rollups", async () => {
+			await db.update(pipelineState).set({ backfillEnqueuedAt: new Date() }).where(eq(pipelineState.id, 1));
+			const sendBoss = fakeBoss();
+			expect(await requestStaleReprocesses(db, sendBoss)).toBe(0);
+			expect(sendBoss.send).not.toHaveBeenCalled();
+			expect(await requestStaleReprocesses(db, sendBoss)).toBe(0);
+		});
+
+		it("requests a reprocess once a brand's config moves, and stops once it has run", async () => {
+			const sendBoss = fakeBoss();
+			expect(await requestStaleReprocesses(db, sendBoss)).toBe(1);
+			expect(sentBrands(sendBoss)).toEqual([[BRAND_ID, ["extraction", "interpretation"]]]);
+
+			await runReprocess({ brandId: BRAND_ID, layers: ["extraction", "interpretation"] }, db, fakeBoss());
+			expect(await requestStaleReprocesses(db, fakeBoss())).toBe(0);
+
+			await db.insert(competitors).values({ brandId: BRAND_ID, name: "Globex", domains: ["globex.test"] });
+			const afterEdit = fakeBoss();
+			expect(await requestStaleReprocesses(db, afterEdit)).toBe(1);
+			expect(sentBrands(afterEdit)).toEqual([[BRAND_ID, ["interpretation"]]]);
 		});
 	});
 

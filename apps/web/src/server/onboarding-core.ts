@@ -12,7 +12,7 @@ import { assertCanAddPrompts, assertCompetitorCap, getBrandOrganizationId } from
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { count, desc, eq, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { createMultiplePromptJobSchedulers, requestBrandReprocess } from "@/lib/job-scheduler";
+import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 
 export class BrandConflictError extends Error {
 	constructor(public readonly brandId: string) {
@@ -364,10 +364,6 @@ export async function updateBrand(input: UpdateBrandInput): Promise<BrandResult>
 	if (input.enabled !== undefined) patch.enabled = input.enabled;
 
 	await db.update(brands).set(patch).where(eq(brands.id, input.brandId));
-	// Mention detection matches on these, so history is re-derived when they move.
-	if (patch.name !== undefined || patch.website !== undefined || patch.additionalDomains || patch.aliases) {
-		await requestBrandReprocess(input.brandId);
-	}
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
 	return buildBrandResult(refreshed!);
 }
@@ -409,9 +405,6 @@ export async function saveWizardOnboarding(input: WizardOnboardingInput): Promis
 		dedupeAgainstExisting: true,
 	});
 	await createMultiplePromptJobSchedulers(wizardPromptIds);
-
-	// Runs may already exist: the prompts page is reachable before the wizard completes.
-	await requestBrandReprocess(input.brandId);
 
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
 	return buildBrandResult(refreshed!);

@@ -1,10 +1,7 @@
-import { isGoogleSurfaceUrl, normalizeUrl } from "../citations/domain-categories";
-import { categorizeDomain } from "../citations/domain-lists";
-import { classifyPage, GOOGLE_STATIC_CATEGORY } from "../citations/page-classification";
+import { normalizeUrl } from "../citations/domain-categories";
+import { classifyPage } from "../citations/page-classification";
 import { bucketStart } from "./bucket";
 import { CLASSIFIER_VERSION } from "./constants";
-
-const NO_DOMAINS: Set<string> = new Set();
 
 export interface CitationSourceRow {
 	brandId: string;
@@ -39,29 +36,14 @@ export interface UrlRollupRow {
 	webSearchEnabled: boolean;
 	url: string;
 	domain: string;
-	staticCategory: string;
-	pageType: string;
 	citations: number;
 	positionSum: number;
 	positionCount: number;
 }
 
-export interface DomainRollupRow {
-	brandId: string;
-	bucket: Date;
-	promptId: string;
-	model: string;
-	provider: string;
-	webSearchEnabled: boolean;
-	domain: string;
-	staticCategory: string;
-	citations: number;
-}
-
 export interface AggregatedCitations {
 	pages: PageUpsert[];
 	urls: UrlRollupRow[];
-	domains: DomainRollupRow[];
 }
 
 interface NormalizedRow {
@@ -83,13 +65,6 @@ interface UrlGroup {
 	citations: number;
 	positionSum: number;
 	positionCount: number;
-	title: string | null;
-}
-
-interface DomainGroup {
-	row: NormalizedRow;
-	citations: number;
-	google: boolean;
 }
 
 interface PageGroup {
@@ -143,27 +118,12 @@ function foldUrls(rows: NormalizedRow[]): Map<string, UrlGroup> {
 	const groups = new Map<string, UrlGroup>();
 	for (const row of rows) {
 		const key = `${rollupKey(row)}\u0000${row.url}`;
-		const group = groups.get(key) ?? { row, citations: 0, positionSum: 0, positionCount: 0, title: null };
+		const group = groups.get(key) ?? { row, citations: 0, positionSum: 0, positionCount: 0 };
 		group.citations += 1;
 		if (row.citationIndex != null) {
 			group.positionSum += row.citationIndex;
 			group.positionCount += 1;
 		}
-		if (row.title) group.title = row.title;
-		groups.set(key, group);
-	}
-	return groups;
-}
-
-function foldDomains(rows: NormalizedRow[]): Map<string, DomainGroup> {
-	const groups = new Map<string, DomainGroup>();
-	for (const row of rows) {
-		const key = `${rollupKey(row)}\u0000${row.domain}`;
-		const group = groups.get(key) ?? { row, citations: 0, google: false };
-		group.citations += 1;
-		// One row per domain, so a domain that serves both search surfaces and
-		// ordinary pages counts as a Google surface and stays out of the mix.
-		group.google ||= isGoogleSurfaceUrl(row.url);
 		groups.set(key, group);
 	}
 	return groups;
@@ -206,7 +166,7 @@ function toPages(pages: Map<string, PageGroup>): PageUpsert[] {
 
 function toUrlRows(groups: Map<string, UrlGroup>): UrlRollupRow[] {
 	return Array.from(groups.values())
-		.map(({ row, citations, positionSum, positionCount, title }) => ({
+		.map(({ row, citations, positionSum, positionCount }) => ({
 			brandId: row.brandId,
 			bucket: row.bucket,
 			promptId: row.promptId,
@@ -215,28 +175,11 @@ function toUrlRows(groups: Map<string, UrlGroup>): UrlRollupRow[] {
 			webSearchEnabled: row.webSearchEnabled,
 			url: row.url,
 			domain: row.domain,
-			...classifyPage(row.url, row.domain, title),
 			citations,
 			positionSum,
 			positionCount,
 		}))
 		.sort((a, b) => compareRollupKeys(a, b) || compareStrings(a.url, b.url));
-}
-
-function toDomainRows(groups: Map<string, DomainGroup>): DomainRollupRow[] {
-	return Array.from(groups.values())
-		.map(({ row, citations, google }) => ({
-			brandId: row.brandId,
-			bucket: row.bucket,
-			promptId: row.promptId,
-			model: row.model,
-			provider: row.provider,
-			webSearchEnabled: row.webSearchEnabled,
-			domain: row.domain,
-			staticCategory: google ? GOOGLE_STATIC_CATEGORY : categorizeDomain(row.domain, NO_DOMAINS, NO_DOMAINS),
-			citations,
-		}))
-		.sort((a, b) => compareRollupKeys(a, b) || compareStrings(a.domain, b.domain));
 }
 
 type RollupKeyFields = Pick<
@@ -261,6 +204,5 @@ export function aggregateCitationBucket(rows: CitationSourceRow[]): AggregatedCi
 	return {
 		pages: toPages(foldPages(normalized)),
 		urls: toUrlRows(foldUrls(normalized)),
-		domains: toDomainRows(foldDomains(normalized)),
 	};
 }

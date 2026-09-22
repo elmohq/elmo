@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { DbConnection } from "../db/db-connection";
-import { citations, promptRuns, rollupCitationDomains, rollupPromptRuns } from "../db/schema";
+import { citations, promptRuns, rollupCitationUrls, rollupPromptRuns } from "../db/schema";
 
 /** Each pair is `[rollup, raw]`; they are equal when the rollup is in step. */
 export interface BucketComparison {
@@ -24,7 +24,7 @@ async function rollupTotals(
 	`);
 	const cited = await conn.execute(sql`
 		SELECT coalesce(sum(citations), 0) AS citations
-		FROM ${rollupCitationDomains}
+		FROM ${rollupCitationUrls}
 		WHERE brand_id = ${brandId} AND bucket >= ${from} AND bucket < ${toExclusive}
 	`);
 	const totals = runs.rows[0] as { runs: unknown; brand_mentioned: unknown };

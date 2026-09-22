@@ -25,7 +25,7 @@ describe("classifyDailyPages", () => {
 	});
 
 	it("classifies each row the tenant-independent way (no brand/competitor domains) and carries the count", () => {
-		const [result] = classifyDailyPages([row({ count: 3 })]);
+		const [result] = classifyDailyPages([row({ count: 3 })], []);
 		// Uncategorized domain: the /blog/ path reads as "article", and an
 		// "other"-category article reads as editorial.
 		expect(result).toEqual({
@@ -43,7 +43,7 @@ describe("classifyDailyPages", () => {
 			row({ url: "https://blog.example.com/blog/great-post", count: 3 }),
 			row({ url: "https://blog.example.com/blog/another-post", title: "Another post", count: 2 }),
 		];
-		const result = classifyDailyPages(rows);
+		const result = classifyDailyPages(rows, []);
 		expect(result).toHaveLength(1);
 		expect(result[0].count).toBe(5);
 	});
@@ -58,14 +58,25 @@ describe("classifyDailyPages", () => {
 				count: 4,
 			}),
 		];
-		const result = classifyDailyPages(rows);
+		const result = classifyDailyPages(rows, []);
 		const byDomain = new Map(result.map((r) => [r.domain, r]));
 		expect(byDomain.get("blog.example.com")).toMatchObject({ static_category: "editorial", page_type: "article" });
 		expect(byDomain.get("shop.example.com")).toMatchObject({ static_category: "ecommerce", page_type: "product" });
 	});
 
+	it("classifies a page by the title the URL table shows, not the one its daily row carries", () => {
+		const url = "https://blog.example.com/p/1";
+		const tableTitle = "How to choose a CRM: a step-by-step guide";
+		const daily = [row({ url, title: "Acme pricing" })];
+		const urlStats = [
+			{ url, domain: "blog.example.com", title: tableTitle, count: 1, avg_position: null, prompt_count: 1 },
+		];
+
+		expect(classifyDailyPages(daily, urlStats)).toEqual(classifyDailyPages([row({ url, title: tableTitle })], []));
+	});
+
 	it("drops a row with no URL, the way a citation row with a page_id always has one", () => {
-		const result = classifyDailyPages([row({ url: null, count: 5 })]);
+		const result = classifyDailyPages([row({ url: null, count: 5 })], []);
 		expect(result).toEqual([]);
 	});
 });

@@ -18,6 +18,7 @@ import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
 import { PROMPT_JOB_OPTIONS } from "./process-prompt";
+import { requestStaleReprocesses } from "./reprocess";
 
 export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
@@ -43,6 +44,8 @@ export async function scheduleMaintenanceJob(jobs: Job<ScheduleMaintenanceData>[
 
 		try {
 			await runMaintenanceCheck();
+			const reprocesses = await requestStaleReprocesses();
+			if (reprocesses > 0) console.log(`[schedule-maintenance] Requested ${reprocesses} brand reprocesses`);
 		} catch (error) {
 			console.error("[schedule-maintenance] Maintenance check failed:", error);
 			throw error; // Will trigger retry

@@ -13,9 +13,9 @@ import { db } from "@workspace/lib/db/db";
 import {
 	citations,
 	promptRuns,
-	rollupCitationDomains,
 	rollupCitationUrls,
 	rollupCompetitorMentions,
+	rollupDirty,
 	rollupPromptRuns,
 } from "@workspace/lib/db/schema";
 import { setPipelineState } from "@workspace/lib/rollups";
@@ -530,9 +530,7 @@ describe.skipIf(!connectionString)("analytics-read integration", () => {
 				await db.select().from(rollupCompetitorMentions).where(eq(rollupCompetitorMentions.promptId, promptId)),
 			).toEqual([]);
 			expect(await db.select().from(rollupCitationUrls).where(eq(rollupCitationUrls.promptId, promptId))).toEqual([]);
-			expect(await db.select().from(rollupCitationDomains).where(eq(rollupCitationDomains.promptId, promptId))).toEqual(
-				[],
-			);
+			expect((await db.select().from(rollupDirty).where(eq(rollupDirty.brandId, BRAND_ID))).length).toBeGreaterThan(0);
 
 			expect((await db.select().from(promptRuns).where(eq(promptRuns.promptId, otherPromptId))).length).toBeGreaterThan(
 				0,

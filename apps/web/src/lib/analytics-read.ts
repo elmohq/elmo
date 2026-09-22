@@ -1,6 +1,7 @@
 // Until the startup backfill finishes the rollup tables don't cover all history, so
 // reads fall back to raw.
 
+import { normalizeUrl } from "@workspace/lib/citations/domain-categories";
 import { classifyPage } from "@workspace/lib/citations/page-classification";
 import { db } from "@workspace/lib/db/db";
 import { rollupsReady } from "@workspace/lib/rollups";
@@ -166,13 +167,27 @@ export async function getCitationsCountByModel(
 		: citationsCountByModelFallback(brandId, fromDate, toDate, timezone, enabledPromptIds);
 }
 
-// Tenant-independent, like the rollup rebuild; the caller applies the
-// brand/competitor override on top.
-export function classifyDailyPages(rows: raw.PerPromptDailyCitationPageRow[]): rollup.PerPromptDailyCitationClassRow[] {
+/**
+ * Classifies each daily row by its page's canonical title, the one the URL table
+ * shows, so a page falls in the same category in the chart as in the table.
+ * Tenant-independent like the rollup rebuild; callers apply the brand/competitor
+ * override on top.
+ */
+export function classifyDailyPages(
+	rows: raw.PerPromptDailyCitationPageRow[],
+	urlStats: raw.CitationUrlStats[],
+): rollup.PerPromptDailyCitationClassRow[] {
+	const titleByUrl = new Map<string, string | null>();
+	for (const { url, title } of urlStats) {
+		const normalized = normalizeUrl(url);
+		if (!titleByUrl.get(normalized)) titleByUrl.set(normalized, title || null);
+	}
+
 	const folded = new Map<string, rollup.PerPromptDailyCitationClassRow>();
 	for (const row of rows) {
 		if (!row.url) continue;
-		const { pageType, staticCategory } = classifyPage(row.url, row.domain, row.title);
+		const url = normalizeUrl(row.url);
+		const { pageType, staticCategory } = classifyPage(url, row.domain, titleByUrl.get(url) ?? row.title);
 		const date = String(row.date);
 		const key = `${row.prompt_id}\u0000${date}\u0000${row.domain}\u0000${staticCategory}\u0000${pageType}`;
 		const existing = folded.get(key);
@@ -200,8 +215,11 @@ async function perPromptDailyCitationClassesFallback(
 	enabledPromptIds?: string[],
 	model?: string,
 ): Promise<rollup.PerPromptDailyCitationClassRow[]> {
-	const rows = await raw.getPerPromptDailyCitationPages(brandId, fromDate, toDate, timezone, enabledPromptIds, model);
-	return classifyDailyPages(rows);
+	const [rows, urlStats] = await Promise.all([
+		raw.getPerPromptDailyCitationPages(brandId, fromDate, toDate, timezone, enabledPromptIds, model),
+		raw.getCitationUrlStats(brandId, fromDate, toDate, timezone, enabledPromptIds, model),
+	]);
+	return classifyDailyPages(rows, urlStats);
 }
 
 export async function getPerPromptDailyCitationClasses(

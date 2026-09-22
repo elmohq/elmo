@@ -9,14 +9,13 @@ import {
 	organization,
 	promptRuns,
 	prompts,
-	rollupCitationDomains,
 	rollupCitationUrls,
 	rollupCompetitorMentions,
 	rollupPromptRuns,
 } from "../db/schema";
 import { enqueueBackfill, finishBackfillIfDrained, rollupsReady } from "./backfill";
 import { BUCKET_MS, CLASSIFIER_VERSION } from "./constants";
-import { claimDirty, coalesceMarks, markBrandRangeDirty, markDirty, restoreDirty } from "./dirty";
+import { claimDirty, coalesceMarks, completeDirty, markBrandRangeDirty, markDirty, releaseDirty } from "./dirty";
 import { getPipelineState, setPipelineState } from "./pipeline-state";
 import { rebuildRange } from "./rebuild";
 import { reclassifyPages } from "./reclassify";
@@ -124,15 +123,13 @@ const SEED_CITATIONS = [
 async function reset(db: TestDb): Promise<void> {
 	await db.execute(sql`
 		TRUNCATE citations, prompt_runs, prompts, competitors, brands, organization,
-			rollup_prompt_runs, rollup_competitor_mentions, rollup_citation_urls,
-			rollup_citation_domains, cited_pages, rollup_dirty
+			rollup_prompt_runs, rollup_competitor_mentions, rollup_citation_urls, cited_pages, rollup_dirty
 		RESTART IDENTITY CASCADE
 	`);
 	await db.execute(sql`INSERT INTO pipeline_state (id) VALUES (1) ON CONFLICT DO NOTHING`);
 	await db.execute(sql`
 		UPDATE pipeline_state
-		SET backfill_enqueued_at = NULL, backfill_completed_at = NULL, last_reconcile_at = NULL,
-			rollup_version = 0, classifier_version = 0, extractor_version = 0, deriver_versions = '{}'
+		SET backfill_enqueued_at = NULL, backfill_completed_at = NULL, rollup_version = 0, classifier_version = 0
 	`);
 }
 
@@ -213,12 +210,6 @@ const urlRows = (db: TestDb) =>
 		.from(rollupCitationUrls)
 		.orderBy(asc(rollupCitationUrls.bucket), asc(rollupCitationUrls.promptId), asc(rollupCitationUrls.domain));
 
-const domainRows = (db: TestDb) =>
-	db
-		.select()
-		.from(rollupCitationDomains)
-		.orderBy(asc(rollupCitationDomains.bucket), asc(rollupCitationDomains.promptId), asc(rollupCitationDomains.domain));
-
 const pageRows = (db: TestDb) => db.select().from(citedPages).orderBy(asc(citedPages.url));
 
 async function snapshot(db: TestDb) {
@@ -226,7 +217,6 @@ async function snapshot(db: TestDb) {
 		runs: await runRollupRows(db),
 		competitors: await competitorRows(db),
 		urls: await urlRows(db),
-		domains: await domainRows(db),
 		pages: await pageRows(db),
 	};
 }
@@ -337,7 +327,7 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 
 	it("folds citation URLs and keeps one page per normalized URL", async () => {
 		const stats = await rebuildAll(db);
-		expect(stats).toMatchObject({ urlRows: 6, domainRows: 6, pages: 4 });
+		expect(stats).toMatchObject({ urlRows: 6, pages: 4 });
 
 		const pages = await pageRows(db);
 		expect(
@@ -375,22 +365,6 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 			expect(guide?.title).toBe("New guide title");
 			expect(guide?.pageType).toBe("howto");
 		}
-	});
-
-	it("keeps domain rows at the same total as the raw citations", async () => {
-		await rebuildAll(db);
-		const rows = await domainRows(db);
-		expect(rows.map((r) => [r.bucket.toISOString(), r.promptId, r.domain, r.staticCategory, r.citations])).toEqual([
-			[B0.toISOString(), PROMPT_1, "docs.example.com", "developer", 1],
-			[B0.toISOString(), PROMPT_1, "example.com", "other", 2],
-			[B0.toISOString(), PROMPT_1, "google.com", "google", 1],
-			[B0.toISOString(), PROMPT_2, "example.com", "other", 1],
-			// Domain rows classify by domain alone, so the page-type fallback that
-			// makes other.com/post editorial does not apply here.
-			[B1.toISOString(), PROMPT_1, "other.com", "other", 1],
-			[B2.toISOString(), PROMPT_2, "example.com", "other", 1],
-		]);
-		expect(rows.reduce((total, row) => total + row.citations, 0)).toBe(SEED_CITATIONS.length);
 	});
 
 	it("is idempotent", async () => {
@@ -488,13 +462,13 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 
 	it("marks the buckets a brand actually has runs in", async () => {
 		expect(await markBrandRangeDirty(db, BRAND_ID, B0, B2, "reconcile")).toBe(2);
-		expect((await claimDirty(db, 10)).map((mark) => mark.bucket.toISOString())).toEqual([
+		expect((await claimDirty(db, 10)).marks.map((mark) => mark.bucket.toISOString())).toEqual([
 			B1.toISOString(),
 			B0.toISOString(),
 		]);
 
 		expect(await markBrandRangeDirty(db, "other-brand", B0, B3, "reconcile")).toBe(0);
-		expect(await claimDirty(db, 10)).toEqual([]);
+		expect((await claimDirty(db, 10)).marks).toEqual([]);
 	});
 
 	it("marks the buckets timestamps fall in", async () => {
@@ -504,7 +478,7 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 			[new Date("2026-01-15T10:05:00.000Z"), new Date("2026-01-15T10:29:59.999Z"), B1],
 			"reprocess",
 		);
-		expect((await claimDirty(db, 10)).map((mark) => mark.bucket.toISOString())).toEqual([
+		expect((await claimDirty(db, 10)).marks.map((mark) => mark.bucket.toISOString())).toEqual([
 			B1.toISOString(),
 			B0.toISOString(),
 		]);
@@ -533,35 +507,49 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 		await db.execute(sql`DELETE FROM pipeline_state`);
 		await expect(getPipelineState(db)).rejects.toThrow(/run migrations/);
 		await db.execute(sql`INSERT INTO pipeline_state (id) VALUES (1)`);
-		await setPipelineState(db, { lastReconcileAt: B0 });
-		expect((await getPipelineState(db)).lastReconcileAt?.toISOString()).toBe(B0.toISOString());
+		await setPipelineState(db, { rollupVersion: 7 });
+		expect((await getPipelineState(db)).rollupVersion).toBe(7);
 	});
 
-	it("round-trips dirty marks newest bucket first", async () => {
+	it("leases dirty marks newest bucket first", async () => {
 		await markDirty(db, BRAND_ID, [B0, B2, B1], "run");
 		await markDirty(db, BRAND_ID, [B0], "reprocess");
 
-		const claimed = await claimDirty(db, 2);
-		expect(claimed.map((mark) => mark.bucket.toISOString())).toEqual([B2.toISOString(), B1.toISOString()]);
-		expect(claimed[0]).toMatchObject({ brandId: BRAND_ID, reason: "run" });
+		const first = await claimDirty(db, 2);
+		expect(first.marks.map((mark) => mark.bucket.toISOString())).toEqual([B2.toISOString(), B1.toISOString()]);
+		expect(first.marks[0]).toMatchObject({ brandId: BRAND_ID, reason: "run" });
 
 		const rest = await claimDirty(db, 10);
 		// The second mark for B0 collapsed into the first, keeping its reason.
-		expect(rest.map((mark) => [mark.bucket.toISOString(), mark.reason])).toEqual([[B0.toISOString(), "run"]]);
-		expect(await claimDirty(db, 10)).toEqual([]);
+		expect(rest.marks.map((mark) => [mark.bucket.toISOString(), mark.reason])).toEqual([[B0.toISOString(), "run"]]);
+		expect((await claimDirty(db, 10)).marks).toEqual([]);
 
-		await restoreDirty(db, [...claimed, ...rest]);
-		const reclaimed = await claimDirty(db, 10);
-		expect(reclaimed.map((mark) => mark.bucket.toISOString())).toEqual([
+		await releaseDirty(db, first.claimId, coalesceMarks(first.marks));
+		expect((await claimDirty(db, 10)).marks.map((mark) => mark.bucket.toISOString())).toEqual([
 			B2.toISOString(),
 			B1.toISOString(),
-			B0.toISOString(),
 		]);
+	});
+
+	it("reclaims marks whose lease lapsed", async () => {
+		await markDirty(db, BRAND_ID, [B0], "run");
+		await claimDirty(db, 10);
+		await db.execute(sql`UPDATE rollup_dirty SET claimed_until = now() - interval '1 second'`);
+		expect((await claimDirty(db, 10)).marks).toHaveLength(1);
+	});
+
+	it("keeps a mark that was re-marked while its range was rebuilding", async () => {
+		await markDirty(db, BRAND_ID, [B0, B1], "run");
+		const claim = await claimDirty(db, 10);
+		await markDirty(db, BRAND_ID, [B1], "run");
+
+		for (const range of coalesceMarks(claim.marks)) await completeDirty(db, claim.claimId, range);
+		expect((await claimDirty(db, 10)).marks.map((mark) => mark.bucket.toISOString())).toEqual([B1.toISOString()]);
 	});
 
 	it("rebuilds the ranges a claim coalesces into", async () => {
 		await markDirty(db, BRAND_ID, [B0, B1, B2], "run");
-		const ranges = coalesceMarks(await claimDirty(db, 10));
+		const ranges = coalesceMarks((await claimDirty(db, 10)).marks);
 		expect(ranges).toHaveLength(1);
 
 		const [range] = ranges;
@@ -580,14 +568,17 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 
 		expect(await finishBackfillIfDrained(db)).toBe(false);
 
-		const claimed = await claimDirty(db, 100);
-		expect(claimed.map((mark) => mark.bucket.toISOString()).sort()).toEqual([
+		const claim = await claimDirty(db, 100);
+		expect(claim.marks.map((mark) => mark.bucket.toISOString()).sort()).toEqual([
 			B0.toISOString(),
 			B1.toISOString(),
 			B2.toISOString(),
 		]);
-		expect(claimed.every((mark) => mark.reason === "backfill")).toBe(true);
+		expect(claim.marks.every((mark) => mark.reason === "backfill")).toBe(true);
+		// Claimed but not yet rebuilt still counts as outstanding.
+		expect(await finishBackfillIfDrained(db)).toBe(false);
 
+		for (const range of coalesceMarks(claim.marks)) await completeDirty(db, claim.claimId, range);
 		expect(await finishBackfillIfDrained(db)).toBe(true);
 		expect(await finishBackfillIfDrained(db)).toBe(false);
 		expect(await rollupsReady(db)).toBe(true);
@@ -595,12 +586,13 @@ describe.skipIf(!connectionString)("rollups against postgres", () => {
 
 	it("does not complete a backfill while any of its marks remain", async () => {
 		await enqueueBackfill(db);
-		const claimed = await claimDirty(db, 1);
+		const first = await claimDirty(db, 1);
 		await markDirty(db, BRAND_ID, [B3], "run");
+		for (const range of coalesceMarks(first.marks)) await completeDirty(db, first.claimId, range);
 		expect(await finishBackfillIfDrained(db)).toBe(false);
 
-		await restoreDirty(db, claimed);
-		await claimDirty(db, 100);
+		const rest = await claimDirty(db, 100);
+		for (const range of coalesceMarks(rest.marks)) await completeDirty(db, rest.claimId, range);
 		expect(await finishBackfillIfDrained(db)).toBe(true);
 	});
 });

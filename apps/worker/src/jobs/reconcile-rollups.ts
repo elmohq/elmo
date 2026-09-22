@@ -9,7 +9,6 @@ import {
 	compareBucket,
 	markBrandRangeDirty,
 	markDirty,
-	setPipelineState,
 } from "@workspace/lib/rollups";
 import { gte, lt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
@@ -109,8 +108,6 @@ export async function runReconcileTick(source: string, conn: DbConnection = db):
 
 	const sample = await sampleOldBuckets(conn, trailingFrom, SAMPLE_SIZE);
 	const { checked, mismatches } = await checkSample(conn, sample);
-
-	await setPipelineState(conn, { lastReconcileAt: now });
 
 	console.log(
 		`[reconcile-rollups] source=${source} brands=${brandIds.length} trailingMarks=${trailingMarks} sampled=${checked} mismatches=${mismatches}`,

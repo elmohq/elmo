@@ -1,8 +1,11 @@
-import { sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { type SQL, sql } from "drizzle-orm";
 import type { DbConnection } from "../db/db-connection";
 import { rollupDirty } from "../db/schema";
 import { bucketSql, bucketStart } from "./bucket";
-import { BUCKET_MS, type DirtyReason } from "./constants";
+import { BUCKET_MS, CLAIM_LEASE_MINUTES, type DirtyReason } from "./constants";
+
+const CLAIM_LEASE = sql.raw(`interval '${CLAIM_LEASE_MINUTES} minutes'`);
 
 export interface DirtyMark {
 	brandId: string;
@@ -26,6 +29,8 @@ function uniqueBuckets(buckets: Iterable<Date>): Date[] {
 	return Array.from(byTime.values());
 }
 
+const RELEASE_CLAIM = sql`DO UPDATE SET claim_id = NULL, claimed_until = NULL`;
+
 export async function markDirty(
 	conn: DbConnection,
 	brandId: string,
@@ -37,71 +42,94 @@ export async function markDirty(
 	const result = await conn
 		.insert(rollupDirty)
 		.values(values)
-		.onConflictDoNothing({ target: [rollupDirty.brandId, rollupDirty.bucket] });
+		.onConflictDoUpdate({
+			target: [rollupDirty.brandId, rollupDirty.bucket],
+			set: { claimId: null, claimedUntil: null },
+		});
 	return result.rowCount ?? 0;
 }
 
-export async function markBrandRangeDirty(
+/**
+ * Re-marking a claimed bucket clears its claim, so a write that lands while the
+ * bucket is being rebuilt keeps the mark alive for another rebuild.
+ */
+async function markRunsDirty(conn: DbConnection, reason: DirtyReason, where: SQL): Promise<number> {
+	const result = await conn.execute(sql`
+		INSERT INTO ${rollupDirty} (brand_id, bucket, reason)
+		SELECT DISTINCT brand_id, ${bucketSql(sql`created_at`)}, ${reason}::text
+		FROM prompt_runs
+		WHERE ${where}
+		ON CONFLICT (brand_id, bucket) ${RELEASE_CLAIM}
+	`);
+	return result.rowCount ?? 0;
+}
+
+export function markBrandRangeDirty(
 	conn: DbConnection,
 	brandId: string,
 	from: Date,
 	toExclusive: Date,
 	reason: DirtyReason,
 ): Promise<number> {
-	const result = await conn.execute(sql`
-		INSERT INTO ${rollupDirty} (brand_id, bucket, reason)
-		SELECT DISTINCT brand_id, ${bucketSql(sql`created_at`)}, ${reason}::text
-		FROM prompt_runs
-		WHERE brand_id = ${brandId} AND created_at >= ${from} AND created_at < ${toExclusive}
-		ON CONFLICT (brand_id, bucket) DO NOTHING
-	`);
-	return result.rowCount ?? 0;
+	return markRunsDirty(
+		conn,
+		reason,
+		sql`brand_id = ${brandId} AND created_at >= ${from} AND created_at < ${toExclusive}`,
+	);
 }
 
-export async function markAllDirty(conn: DbConnection, reason: DirtyReason): Promise<number> {
-	const result = await conn.execute(sql`
-		INSERT INTO ${rollupDirty} (brand_id, bucket, reason)
-		SELECT DISTINCT brand_id, ${bucketSql(sql`created_at`)}, ${reason}::text
-		FROM prompt_runs
-		ON CONFLICT (brand_id, bucket) DO NOTHING
-	`);
-	return result.rowCount ?? 0;
+export function markPromptDirty(conn: DbConnection, promptId: string, reason: DirtyReason): Promise<number> {
+	return markRunsDirty(conn, reason, sql`prompt_id = ${promptId}`);
 }
 
-const toDate = (value: unknown): Date => (value instanceof Date ? value : new Date(String(value)));
+export function markAllDirty(conn: DbConnection, reason: DirtyReason): Promise<number> {
+	return markRunsDirty(conn, reason, sql`TRUE`);
+}
+
+export interface DirtyClaim {
+	claimId: string;
+	marks: DirtyMark[];
+}
 
 /**
- * Takes up to `limit` marks off the queue, newest bucket first, in its own short
- * transaction. Claiming before reading raw rows is what makes a rebuild
- * race-free: a writer that commits afterwards leaves a fresh mark behind.
+ * Leases up to `limit` unclaimed marks, newest bucket first. Marks stay in the
+ * table until their range is rebuilt, so a crashed or killed tick loses nothing:
+ * the lease lapses and another tick picks them up. Claiming before reading raw
+ * rows keeps rebuilds race-free, because a writer that commits afterwards clears
+ * the claim and the completed rebuild then leaves the mark in place.
  */
-export function claimDirty(conn: DbConnection, limit: number): Promise<DirtyMark[]> {
-	return conn.transaction(async (tx) => {
-		const result = await tx.execute(sql`
-			DELETE FROM ${rollupDirty}
-			WHERE (brand_id, bucket) IN (
-				SELECT brand_id, bucket FROM ${rollupDirty}
-				ORDER BY bucket DESC
-				LIMIT ${limit}
-				FOR UPDATE SKIP LOCKED
-			)
-			RETURNING brand_id, bucket, reason
-		`);
-		// RETURNING follows the delete's scan order, so recency is restored here.
-		return (result.rows as { brand_id: string; bucket: unknown; reason: DirtyReason }[])
-			.map((row) => ({ brandId: row.brand_id, bucket: toDate(row.bucket), reason: row.reason }))
-			.sort((a, b) => b.bucket.getTime() - a.bucket.getTime());
-	});
+export async function claimDirty(conn: DbConnection, limit: number): Promise<DirtyClaim> {
+	const claimId = randomUUID();
+	const marks = await conn
+		.update(rollupDirty)
+		.set({ claimId, claimedUntil: sql`now() + ${CLAIM_LEASE}` })
+		.where(sql`(${rollupDirty.brandId}, ${rollupDirty.bucket}) IN (
+			SELECT brand_id, bucket FROM ${rollupDirty}
+			WHERE claimed_until IS NULL OR claimed_until < now()
+			ORDER BY bucket DESC
+			LIMIT ${limit}
+			FOR UPDATE SKIP LOCKED
+		)`)
+		.returning({ brandId: rollupDirty.brandId, bucket: rollupDirty.bucket, reason: rollupDirty.reason });
+	// RETURNING doesn't follow the subquery's order.
+	marks.sort((a, b) => b.bucket.getTime() - a.bucket.getTime());
+	return { claimId, marks: marks as DirtyMark[] };
 }
 
-export async function restoreDirty(conn: DbConnection, marks: DirtyMark[]): Promise<number> {
-	if (marks.length === 0) return 0;
-	const byKey = new Map(marks.map((mark) => [`${mark.brandId} ${mark.bucket.getTime()}`, mark]));
-	const result = await conn
-		.insert(rollupDirty)
-		.values(Array.from(byKey.values(), ({ brandId, bucket, reason }) => ({ brandId, bucket, reason })))
-		.onConflictDoNothing({ target: [rollupDirty.brandId, rollupDirty.bucket] });
-	return result.rowCount ?? 0;
+const inRange = (claimId: string, range: Pick<RebuildRange, "brandId" | "from" | "toExclusive">): SQL =>
+	sql`${rollupDirty.claimId} = ${claimId} AND ${rollupDirty.brandId} = ${range.brandId}
+		AND ${rollupDirty.bucket} >= ${range.from} AND ${rollupDirty.bucket} < ${range.toExclusive}`;
+
+/** Drops a rebuilt range's marks, except any re-marked since the claim. */
+export async function completeDirty(conn: DbConnection, claimId: string, range: RebuildRange): Promise<void> {
+	await conn.delete(rollupDirty).where(inRange(claimId, range));
+}
+
+/** Hands unstarted ranges back without waiting for the lease to lapse. */
+export async function releaseDirty(conn: DbConnection, claimId: string, ranges: RebuildRange[]): Promise<void> {
+	for (const range of ranges) {
+		await conn.update(rollupDirty).set({ claimId: null, claimedUntil: null }).where(inRange(claimId, range));
+	}
 }
 
 function groupMarksByBrand(marks: DirtyMark[]): Map<string, DirtyMark[]> {

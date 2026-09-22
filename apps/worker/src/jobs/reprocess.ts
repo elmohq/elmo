@@ -1,6 +1,14 @@
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import { type Brand, brands, citations, competitors, promptRuns, prompts } from "@workspace/lib/db/schema";
+import {
+	type Brand,
+	brands,
+	type Competitor,
+	citations,
+	competitors,
+	promptRuns,
+	prompts,
+} from "@workspace/lib/db/schema";
 import {
 	analyzeRunMentions,
 	MENTIONS_ANALYSIS_KEY,
@@ -8,18 +16,19 @@ import {
 	mentionConfigFrom,
 	mentionsStamp,
 } from "@workspace/lib/mentions";
-import { markDirty, REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE } from "@workspace/lib/rollups";
+import { getPipelineState, markDirty, REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE } from "@workspace/lib/rollups";
 import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { type Citation, EXTRACTOR_VERSION, extractRun, tryExtractTextContent } from "@workspace/lib/text-extraction";
 import { and, asc, eq, gte, inArray, type SQL, sql } from "drizzle-orm";
 import type { Job, PgBoss } from "pg-boss";
 import boss from "../boss";
 
+export type ReprocessLayer = "extraction" | "interpretation";
+
 export interface ReprocessData {
-	/** Omitted = every brand. */
-	brandId?: string;
-	layers: ("extraction" | "interpretation")[];
-	cursor?: { brandId: string; after: RunCursor | null };
+	brandId: string;
+	layers: ReprocessLayer[];
+	after?: RunCursor | null;
 }
 
 /**
@@ -234,20 +243,31 @@ function sameTags(a: string[], b: string[]): boolean {
 }
 
 /** Prompt tags read the same brand config mentions do, so they're recomputed alongside. */
-async function recomputeSystemTags(conn: DbConnection, brand: Brand): Promise<number> {
+async function recomputeSystemTags(conn: DbConnection, brand: Brand): Promise<void> {
 	const brandPrompts = await conn
 		.select({ id: prompts.id, value: prompts.value, systemTags: prompts.systemTags })
 		.from(prompts)
 		.where(eq(prompts.brandId, brand.id));
 
-	let updated = 0;
 	for (const prompt of brandPrompts) {
 		const nextTags = computeSystemTags(prompt.value, brand.name, brand.website);
 		if (sameTags(nextTags, prompt.systemTags)) continue;
 		await conn.update(prompts).set({ systemTags: nextTags }).where(eq(prompts.id, prompt.id));
-		updated++;
 	}
-	return updated;
+}
+
+const EXTRACTION_ANALYSIS_KEY = "extraction";
+
+/** The stamps a brand's whole run history should carry under today's code and config. */
+export function brandVersions(config: MentionConfig): Record<string, string> {
+	return { [EXTRACTION_ANALYSIS_KEY]: String(EXTRACTOR_VERSION), [MENTIONS_ANALYSIS_KEY]: mentionsStamp(config) };
+}
+
+/** Re-deriving text changes what mentions are found, so extraction always brings interpretation along. */
+export function staleLayers(stored: Record<string, string>, current: Record<string, string>): ReprocessLayer[] {
+	if (stored[EXTRACTION_ANALYSIS_KEY] !== current[EXTRACTION_ANALYSIS_KEY]) return ["extraction", "interpretation"];
+	if (stored[MENTIONS_ANALYSIS_KEY] !== current[MENTIONS_ANALYSIS_KEY]) return ["interpretation"];
+	return [];
 }
 
 async function loadBrand(
@@ -261,24 +281,13 @@ async function loadBrand(
 	return { brand, mentions: { config, stamp: mentionsStamp(config) } };
 }
 
-async function resolveBrandIds(conn: DbConnection, data: ReprocessData): Promise<string[]> {
-	if (data.brandId) return [data.brandId];
-	const startId = data.cursor?.brandId;
-	const rows = await conn
-		.select({ id: brands.id })
-		.from(brands)
-		.where(startId ? gte(brands.id, startId) : undefined)
-		.orderBy(asc(brands.id));
-	return rows.map((row) => row.id);
-}
-
-async function sendContinuation(
-	sendBoss: BossSender,
-	data: ReprocessData,
-	brandId: string,
-	after: RunCursor | null,
-): Promise<void> {
-	await sendBoss.send(REPROCESS_QUEUE, { ...data, cursor: { brandId, after } });
+/**
+ * Stately per brand: one job runs and at most one waits, so jobs for a brand
+ * never interleave, and a config edit during a run is picked up by the waiting
+ * job, which reads the config when it starts.
+ */
+export function sendReprocess(sendBoss: BossSender, data: ReprocessData): Promise<string | null> {
+	return sendBoss.send(REPROCESS_QUEUE, data, { singletonKey: data.brandId });
 }
 
 async function triggerRefresh(sendBoss: BossSender): Promise<void> {
@@ -293,48 +302,75 @@ async function triggerRefresh(sendBoss: BossSender): Promise<void> {
 	}
 }
 
-async function processBrand(
-	conn: DbConnection,
-	data: ReprocessData,
-	brandId: string,
-	deadline: number,
-): Promise<BrandProcessResult | null> {
-	const context = await loadBrand(conn, brandId);
-	if (!context) {
-		console.log(`[reprocess] brand ${brandId} no longer exists, skipping`);
-		return null;
-	}
-
-	const startAfter = data.cursor?.brandId === brandId ? data.cursor.after : null;
-	const result = await processRunsForBrand(conn, brandId, context.mentions, data, startAfter, deadline);
-	console.log(
-		`[reprocess] brand ${brandId} processed=${result.processed} rewritten=${result.rewritten} skipped=${result.processed - result.rewritten}`,
-	);
-
-	if (!result.timedOut && data.layers.includes("interpretation")) {
-		const tagsUpdated = await recomputeSystemTags(conn, context.brand);
-		console.log(`[reprocess] brand ${brandId} system_tags updated=${tagsUpdated}`);
-	}
-	return result;
-}
-
 export async function runReprocess(
 	data: ReprocessData,
 	conn: DbConnection = db,
 	sendBoss: BossSender = boss,
 ): Promise<void> {
 	const deadline = Date.now() + TIME_BUDGET_MS;
-	const brandIds = await resolveBrandIds(conn, data);
-
-	for (const brandId of brandIds) {
-		const result = await processBrand(conn, data, brandId, deadline);
-		if (result?.timedOut) {
-			await sendContinuation(sendBoss, data, brandId, result.last);
-			return;
-		}
+	const context = await loadBrand(conn, data.brandId);
+	if (!context) {
+		console.log(`[reprocess] brand ${data.brandId} no longer exists, skipping`);
+		return;
 	}
 
+	const result = await processRunsForBrand(conn, data.brandId, context.mentions, data, data.after ?? null, deadline);
+	console.log(
+		`[reprocess] brand ${data.brandId} processed=${result.processed} rewritten=${result.rewritten} timedOut=${result.timedOut}`,
+	);
+	if (result.timedOut) {
+		await sendReprocess(sendBoss, { ...data, after: result.last });
+		return;
+	}
+
+	if (data.layers.includes("interpretation")) await recomputeSystemTags(conn, context.brand);
+	const done = pickLayers(brandVersions(context.mentions.config), data.layers);
+	await conn
+		.update(brands)
+		.set({ analysisVersions: sql`${brands.analysisVersions} || ${JSON.stringify(done)}::jsonb` })
+		.where(eq(brands.id, data.brandId));
 	await triggerRefresh(sendBoss);
+}
+
+function pickLayers(versions: Record<string, string>, layers: ReprocessLayer[]): Record<string, string> {
+	return Object.fromEntries(
+		Object.entries(versions).filter(([key]) =>
+			key === EXTRACTION_ANALYSIS_KEY ? layers.includes("extraction") : layers.includes("interpretation"),
+		),
+	);
+}
+
+/**
+ * Finds brands whose history no longer matches their current config or today's
+ * code and requests a reprocess for each, so a missed config-change hook or a
+ * dropped job heals on the next pass. Brands that predate the rollups adopt
+ * today's stamps: their history is taken as is until something changes.
+ */
+export async function requestStaleReprocesses(conn: DbConnection = db, sendBoss: BossSender = boss): Promise<number> {
+	const [state, allBrands, allCompetitors] = await Promise.all([
+		getPipelineState(conn),
+		conn.select().from(brands),
+		conn.select().from(competitors),
+	]);
+	const competitorsByBrand = new Map<string, Competitor[]>();
+	for (const competitor of allCompetitors) {
+		competitorsByBrand.set(competitor.brandId, [...(competitorsByBrand.get(competitor.brandId) ?? []), competitor]);
+	}
+
+	let requested = 0;
+	for (const brand of allBrands) {
+		const current = brandVersions(mentionConfigFrom(brand, competitorsByBrand.get(brand.id) ?? []));
+		const predatesRollups = state.backfillEnqueuedAt !== null && brand.createdAt < state.backfillEnqueuedAt;
+		if (predatesRollups && Object.keys(brand.analysisVersions).length === 0) {
+			await conn.update(brands).set({ analysisVersions: current }).where(eq(brands.id, brand.id));
+			continue;
+		}
+		const layers = staleLayers(brand.analysisVersions, current);
+		if (layers.length === 0) continue;
+		await sendReprocess(sendBoss, { brandId: brand.id, layers });
+		requested++;
+	}
+	return requested;
 }
 
 export async function reprocessJob(jobs: Job<ReprocessData>[]): Promise<void> {

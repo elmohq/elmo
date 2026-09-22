@@ -4,16 +4,7 @@ import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import {
-	type Brand,
-	brands,
-	type Competitor,
-	citations,
-	competitors,
-	promptRuns,
-	prompts,
-	usageEvents,
-} from "@workspace/lib/db/schema";
+import { type Brand, brands, citations, competitors, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
 import {
 	analyzeRunMentions,
@@ -74,7 +65,6 @@ export const PROMPT_JOB_OPTIONS = {
 interface PromptContext {
 	prompt: typeof prompts.$inferSelect;
 	brand: Brand;
-	competitors: Competitor[];
 }
 
 /**
@@ -126,15 +116,13 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 		return null;
 	}
 
-	const brandCompetitors = await db.query.competitors.findMany({
-		where: eq(competitors.brandId, prompt.brandId),
-	});
+	return { prompt, brand };
+}
 
-	return {
-		prompt,
-		brand,
-		competitors: brandCompetitors,
-	};
+async function loadMentionConfig(conn: DbConnection, brandId: string): Promise<MentionConfig> {
+	const [brand] = await conn.select().from(brands).where(eq(brands.id, brandId));
+	const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brandId));
+	return mentionConfigFrom(brand, brandCompetitors);
 }
 
 /**
@@ -291,7 +279,6 @@ async function runModelIteration({
 	promptId,
 	promptValue,
 	brand,
-	mentionConfig,
 	config,
 	providerImpl,
 	runIndex,
@@ -299,7 +286,6 @@ async function runModelIteration({
 	promptId: string;
 	promptValue: string;
 	brand: Brand;
-	mentionConfig: MentionConfig;
 	config: ModelConfig;
 	providerImpl: Provider;
 	runIndex: number;
@@ -321,11 +307,13 @@ async function runModelIteration({
 		console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
 
 		const text = typeof textContent === "string" && textContent.trim() ? textContent : null;
-		const { brandMentioned, competitorsMentioned } = analyzeRunMentions(text, mentionConfig);
-
 		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
 		const { id: promptRunId, createdAt } = await db.transaction(async (tx) => {
+			// Read here rather than at the start of the cycle: a config edit made while the
+			// provider call ran would otherwise be stamped onto this run as current.
+			const mentionConfig = await loadMentionConfig(tx, brand.id);
+			const { brandMentioned, competitorsMentioned } = analyzeRunMentions(text, mentionConfig);
 			const run = await savePromptRun(tx, {
 				promptId,
 				brandId: brand.id,
@@ -394,8 +382,7 @@ async function processPrompt(
 		return;
 	}
 
-	const { prompt, brand, competitors: competitorsList } = context;
-	const mentionConfig = mentionConfigFrom(brand, competitorsList);
+	const { prompt, brand } = context;
 
 	if (!prompt.enabled || !brand.enabled) {
 		console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
@@ -449,7 +436,6 @@ async function processPrompt(
 				promptId,
 				promptValue: prompt.value,
 				brand,
-				mentionConfig,
 				config: target.config,
 				providerImpl,
 				runIndex: i + 1,

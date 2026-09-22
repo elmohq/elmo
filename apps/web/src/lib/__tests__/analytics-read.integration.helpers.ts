@@ -185,15 +185,13 @@ export const REBUILD_TO = new Date("2026-07-11T00:00:00.000Z");
 export async function reset(db: DbConnection): Promise<void> {
 	await db.execute(sql`
 		TRUNCATE citations, prompt_runs, prompts, competitors, brands, organization,
-			rollup_prompt_runs, rollup_competitor_mentions, rollup_citation_urls,
-			rollup_citation_domains, cited_pages, rollup_dirty
+			rollup_prompt_runs, rollup_competitor_mentions, rollup_citation_urls, cited_pages, rollup_dirty
 		RESTART IDENTITY CASCADE
 	`);
 	await db.execute(sql`INSERT INTO pipeline_state (id) VALUES (1) ON CONFLICT DO NOTHING`);
 	await db.execute(sql`
 		UPDATE pipeline_state
-		SET backfill_enqueued_at = NULL, backfill_completed_at = NULL, last_reconcile_at = NULL,
-			rollup_version = 0, classifier_version = 0, extractor_version = 0, deriver_versions = '{}'
+		SET backfill_enqueued_at = NULL, backfill_completed_at = NULL, rollup_version = 0, classifier_version = 0
 	`);
 }
 

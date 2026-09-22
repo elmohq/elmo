@@ -4,7 +4,6 @@ import {
 	citations,
 	citedPages,
 	promptRuns,
-	rollupCitationDomains,
 	rollupCitationUrls,
 	rollupCompetitorMentions,
 	rollupPromptRuns,
@@ -12,7 +11,6 @@ import {
 import {
 	aggregateCitationBucket,
 	type CitationSourceRow,
-	type DomainRollupRow,
 	type PageUpsert,
 	type UrlRollupRow,
 } from "./aggregate-citations";
@@ -24,7 +22,6 @@ export interface RebuildStats {
 	runs: number;
 	competitorRows: number;
 	urlRows: number;
-	domainRows: number;
 	pages: number;
 }
 
@@ -54,7 +51,7 @@ export async function rebuildRange(
 }
 
 async function clearRange(tx: DbConnection, brandId: string, from: Date, toExclusive: Date): Promise<void> {
-	for (const table of [rollupPromptRuns, rollupCompetitorMentions, rollupCitationUrls, rollupCitationDomains]) {
+	for (const table of [rollupPromptRuns, rollupCompetitorMentions, rollupCitationUrls]) {
 		await tx.execute(sql`
 			DELETE FROM ${table}
 			WHERE brand_id = ${brandId} AND bucket >= ${from} AND bucket < ${toExclusive}
@@ -193,21 +190,15 @@ async function insertUrlRollup(tx: DbConnection, rows: UrlRollupRow[], pageIds: 
 	return values.length;
 }
 
-async function insertDomainRollup(tx: DbConnection, rows: DomainRollupRow[]): Promise<number> {
-	for (const chunk of chunked(rows)) await tx.insert(rollupCitationDomains).values(chunk);
-	return rows.length;
-}
-
 async function rebuildCitations(
 	tx: DbConnection,
 	brandId: string,
 	from: Date,
 	toExclusive: Date,
-): Promise<Pick<RebuildStats, "urlRows" | "domainRows" | "pages">> {
+): Promise<Pick<RebuildStats, "urlRows" | "pages">> {
 	const source = await readCitations(tx, brandId, from, toExclusive);
-	const { pages, urls, domains } = aggregateCitationBucket(source);
+	const { pages, urls } = aggregateCitationBucket(source);
 	const pageIds = await upsertPages(tx, pages);
 	const urlRows = await insertUrlRollup(tx, urls, pageIds);
-	const domainRows = await insertDomainRollup(tx, domains);
-	return { urlRows, domainRows, pages: pages.length };
+	return { urlRows, pages: pages.length };
 }

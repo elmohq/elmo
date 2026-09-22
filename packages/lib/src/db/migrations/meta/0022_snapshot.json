@@ -1,5 +1,5 @@
 {
-  "id": "a75c610b-9bf7-4c50-96ee-37ce30980832",
+  "id": "1887ba5a-f688-47a0-8e07-0128fd7123ea",
   "prevId": "71a6f7ef-3f21-46f6-9c6e-f12aae25d56d",
   "version": "7",
   "dialect": "postgresql",
@@ -152,6 +152,13 @@
           "type": "text[]",
           "primaryKey": false,
           "notNull": false
+        },
+        "analysis_versions": {
+          "name": "analysis_versions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
         },
         "organization_id": {
           "name": "organization_id",
@@ -713,26 +720,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
-        },
-        "extractor_version": {
-          "name": "extractor_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "deriver_versions": {
-          "name": "deriver_versions",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
-        "last_reconcile_at": {
-          "name": "last_reconcile_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
@@ -1218,109 +1205,6 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
-    "public.rollup_citation_domains": {
-      "name": "rollup_citation_domains",
-      "schema": "",
-      "columns": {
-        "brand_id": {
-          "name": "brand_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bucket": {
-          "name": "bucket",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "prompt_id": {
-          "name": "prompt_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "model": {
-          "name": "model",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "provider": {
-          "name": "provider",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "web_search_enabled": {
-          "name": "web_search_enabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "domain": {
-          "name": "domain",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "static_category": {
-          "name": "static_category",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "citations": {
-          "name": "citations",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "rollup_citation_domains_prompt_id_bucket_idx": {
-          "name": "rollup_citation_domains_prompt_id_bucket_idx",
-          "columns": [
-            {
-              "expression": "prompt_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "bucket",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "rollup_citation_domains_pk": {
-          "name": "rollup_citation_domains_pk",
-          "columns": [
-            "brand_id",
-            "bucket",
-            "prompt_id",
-            "model",
-            "provider",
-            "web_search_enabled",
-            "domain"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
     "public.rollup_citation_urls": {
       "name": "rollup_citation_urls",
       "schema": "",
@@ -1370,18 +1254,6 @@
         },
         "domain": {
           "name": "domain",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "static_category": {
-          "name": "static_category",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "page_type": {
-          "name": "page_type",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -1587,6 +1459,18 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "claim_id": {
+          "name": "claim_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "claimed_until": {
+          "name": "claimed_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
