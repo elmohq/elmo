@@ -8,39 +8,38 @@ import { renderOgPng } from "@workspace/og/rasterize";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
-function loadFont(path: string): ArrayBuffer {
-	const buf = readFileSync(require.resolve(path));
-	return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+function loadFont(path: string): Buffer {
+	return readFileSync(require.resolve(path));
 }
 
 const fonts = [
 	{
 		name: "Titan One",
-		data: loadFont("@fontsource/titan-one/files/titan-one-latin-400-normal.woff"),
+		data: loadFont("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2"),
 		style: "normal" as const,
 		weight: 400 as const,
 	},
 	{
 		name: "Geist Sans",
-		data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff"),
+		data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2"),
 		style: "normal" as const,
 		weight: 500 as const,
 	},
 	{
 		name: "Geist Sans",
-		data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-600-normal.woff"),
+		data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-600-normal.woff2"),
 		style: "normal" as const,
 		weight: 600 as const,
 	},
 	{
 		name: "Geist Sans",
-		data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-700-normal.woff"),
+		data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-700-normal.woff2"),
 		style: "normal" as const,
 		weight: 700 as const,
 	},
 	{
 		name: "Geist Mono",
-		data: loadFont("@fontsource/geist-mono/files/geist-mono-latin-500-normal.woff"),
+		data: loadFont("@fontsource/geist-mono/files/geist-mono-latin-500-normal.woff2"),
 		style: "normal" as const,
 		weight: 500 as const,
 	},
@@ -350,8 +349,7 @@ function YouTubeThumbnail() {
 }
 
 async function render(element: React.ReactElement, out: string): Promise<void> {
-	const png = await renderOgPng(element, { width: 1280, height: 720, fonts });
-	writeFileSync(out, Buffer.from(png));
+	writeFileSync(out, await renderOgPng(element, { width: 1280, height: 720, fonts }));
 	console.log(`Wrote ${out}`);
 }
 

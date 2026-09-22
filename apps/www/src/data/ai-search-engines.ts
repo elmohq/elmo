@@ -21,7 +21,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 		short: "Get your brand mentioned and cited in ChatGPT, across both its base model and its live web search.",
 		intro: [
 			"ChatGPT answers from two places: what it learned during training, and what it fetches from the web when it browses. The base model reflects how your brand was described across the internet up to its training cutoff. ChatGPT Search, the browsing path, pulls in current pages and cites them.",
-			"That split is the key to working with it. A brand can be missing from the base model yet show up once ChatGPT searches, and the fixes for each are different. Earning durable mentions on trusted sources shapes the trained view, while clear, current, well-structured pages help you get retrieved and cited live.",
+			"The split matters because each path needs a different fix. A brand can be missing from the base model yet show up once ChatGPT searches. Earning durable mentions on trusted sources shapes the trained view, while clear, current, well-structured pages help you get retrieved and cited live.",
 		],
 		steps: [
 			{
@@ -56,7 +56,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 		short: "Become a cited source in Perplexity, the AI search engine that shows its citations on every answer.",
 		intro: [
 			"Perplexity is a retrieval-augmented engine: it searches the web for each query, then writes an answer grounded in what it found and links the sources. Because it shows its citations openly, it is the clearest testbed for measuring whether your AEO work is paying off.",
-			"It selects sources on a few factors: relevance to the exact question, how easy the answer is to extract from your page, how trustworthy the domain looks, and how current the content is. Win on those and you become one of the cited links.",
+			"It selects sources on a few factors: relevance to the exact question, how easy the answer is to extract from your page, how trustworthy the domain looks, and how current the content is. Do well on those and you get cited.",
 		],
 		steps: [
 			{
@@ -77,7 +77,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 			},
 			{
 				name: "Measure which prompts cite you",
-				text: "Track a consistent prompt set and watch which queries cite you and which cite a competitor. The gaps are your roadmap.",
+				text: "Track a consistent prompt set and watch which queries cite you and which cite a competitor. The queries where a competitor wins are where to focus.",
 			},
 		],
 		tracking:
@@ -90,8 +90,8 @@ export const aiSearchEngines: AiSearchEngine[] = [
 		vendor: "Google",
 		short: "Appear in the AI-generated summaries Google shows above its search results for many queries.",
 		intro: [
-			"AI Overviews are Google's AI summaries, built on its Gemini models, shown at the top of the results page for a growing share of queries. They answer directly and link to a few sources. Their reach is the story: they sit on the surface most people search first.",
-			"They affect traffic in two directions. They lift zero-click answers, but a citation in an Overview can still send qualified visitors. The way in is the same set of fundamentals that drive the rest of AI search, applied to the page Google already crawls.",
+			"AI Overviews are Google's AI summaries, built on its Gemini models, shown at the top of the results page for a growing share of queries. They answer directly and link to a few sources. Because they sit on the surface most people search first, their reach is enormous.",
+			"They affect traffic in two directions: they lift zero-click answers, but a citation in an Overview can still send qualified visitors. Getting into one takes the same fundamentals as the rest of AI search, applied to a page Google already crawls.",
 		],
 		steps: [
 			{
@@ -108,7 +108,7 @@ export const aiSearchEngines: AiSearchEngine[] = [
 			},
 			{
 				name: "Keep technical SEO sound",
-				text: "If Google cannot crawl, render, or index a page well, it cannot summarize it. The basics still gate everything.",
+				text: "If Google cannot crawl, render, or index a page well, it cannot summarize it, so the basics still come first.",
 			},
 			{
 				name: "Refresh on a cadence",

@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Generates the Elmo brand kit as a zip of PNGs using Satori + resvg (JSX → PNG).
+ * Generates the Elmo brand kit as a zip of PNGs using Takumi (JSX → PNG).
  *
  * Output: apps/web/elmo-brand-kit.zip
  *
@@ -43,40 +43,39 @@ const OUTPUT_ZIP = resolve(__dirname, "../elmo-brand-kit.zip");
 // Fonts
 // ---------------------------------------------------------------------------
 
-function loadFont(path: string): ArrayBuffer {
-	const buf = readFileSync(require.resolve(path));
-	return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+function loadFont(path: string): Buffer {
+	return readFileSync(require.resolve(path));
 }
 
 const fonts = [
 	{
 		name: "Titan One",
-		data: loadFont("@fontsource/titan-one/files/titan-one-latin-400-normal.woff"),
+		data: loadFont("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2"),
 		style: "normal" as const,
 		weight: 400 as const,
 	},
 	{
 		name: "Geist Sans",
-		data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff"),
+		data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2"),
 		style: "normal" as const,
 		weight: 400 as const,
 	},
 	{
 		name: "Geist Sans",
-		data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff"),
+		data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2"),
 		style: "normal" as const,
 		weight: 500 as const,
 	},
 	{
 		name: "Geist Mono",
-		data: loadFont("@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff"),
+		data: loadFont("@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2"),
 		style: "normal" as const,
 		weight: 400 as const,
 	},
 ];
 
 async function render(element: React.ReactElement, width: number, height: number): Promise<Buffer> {
-	return Buffer.from(await renderOgPng(element, { width, height, fonts }));
+	return renderOgPng(element, { width, height, fonts });
 }
 
 // ---------------------------------------------------------------------------

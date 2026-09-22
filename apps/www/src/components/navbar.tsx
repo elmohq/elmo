@@ -15,6 +15,7 @@ import { Logo } from "./logo";
 
 const navigationLinks = [
 	{ href: "/features", label: "Features" },
+	{ href: "/ai-visibility-tools/category/open-source", label: "Open Source Tools" },
 	{ href: "/pricing", label: "Pricing" },
 	{ href: "/changelog", label: "Changelog" },
 	{ href: "/roadmap", label: "Roadmap" },

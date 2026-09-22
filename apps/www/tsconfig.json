@@ -18,6 +18,6 @@
 			"collections/*": ["./.source/*"]
 		}
 	},
-	"include": ["src/**/*.ts", "src/**/*.tsx", "content/**/*.ts"],
+	"include": ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.tsx", "content/**/*.ts"],
 	"exclude": ["node_modules", "dist", ".output"]
 }

@@ -103,24 +103,9 @@ export const UNPAID_BRAND_ID = "unpaid";
 
 /** One key per access pattern, seeded straight into `apikey` so the suite needs
  * no session. */
-export const API_SCOPES = [
-  "brands:read",
-  "brands:write",
-  "prompts:read",
-  "prompts:write",
-  "competitors:read",
-  "competitors:write",
-  "competitors:delete",
-  "analytics:read",
-  "runs:read",
-  "billing:read",
-] as const;
+export const API_SCOPES = ["read", "write"] as const;
 
 export type ApiScope = (typeof API_SCOPES)[number];
-
-export const READ_SCOPES = API_SCOPES.filter((scope) => scope.endsWith(":read"));
-
-export const NON_DESTRUCTIVE_SCOPES = API_SCOPES.filter((scope) => !scope.endsWith(":delete"));
 
 
 export interface ApiKeyFixture {
@@ -145,14 +130,7 @@ export const API_KEYS = {
     token: "elmo_e2e_org_readonly",
     name: "E2E org key (read-only)",
     organizationId: TEST_BRAND_ID,
-    scopes: READ_SCOPES,
-    brandIds: null,
-  },
-  orgBrandsOnly: {
-    token: "elmo_e2e_org_brands_only",
-    name: "E2E org key (brands only)",
-    organizationId: TEST_BRAND_ID,
-    scopes: ["brands:read"],
+    scopes: ["read"],
     brandIds: null,
   },
   orgNoScopes: {
@@ -160,27 +138,6 @@ export const API_KEYS = {
     name: "E2E org key (no scopes)",
     organizationId: TEST_BRAND_ID,
     scopes: [],
-    brandIds: null,
-  },
-  orgNoDelete: {
-    token: "elmo_e2e_org_no_delete",
-    name: "E2E org key (no delete)",
-    organizationId: TEST_BRAND_ID,
-    scopes: NON_DESTRUCTIVE_SCOPES,
-    brandIds: null,
-  },
-  orgAnalyticsOnly: {
-    token: "elmo_e2e_org_analytics_only",
-    name: "E2E org key (analytics only)",
-    organizationId: TEST_BRAND_ID,
-    scopes: ["analytics:read"],
-    brandIds: null,
-  },
-  orgNoBilling: {
-    token: "elmo_e2e_org_no_billing",
-    name: "E2E org key (no billing)",
-    organizationId: TEST_BRAND_ID,
-    scopes: API_SCOPES.filter((scope) => scope !== "billing:read"),
     brandIds: null,
   },
   /** What a forged restriction looks like: the intersection empties it. */

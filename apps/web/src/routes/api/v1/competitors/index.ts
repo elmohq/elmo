@@ -28,7 +28,7 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
-				scopes: ["competitors:read"],
+				scopes: ["read"],
 				handle: async ({ request, auth }) => {
 					const { searchParams } = new URL(request.url);
 					const { page, limit, offset } = clampedPaging(searchParams);
@@ -54,7 +54,7 @@ export const Route = createFileRoute("/api/v1/competitors/")({
 			POST: createApiHandler({
 				body: createCompetitorBody,
 				status: 201,
-				scopes: ["competitors:write"],
+				scopes: ["write"],
 				handle: async ({ body, auth }) => {
 					const { brandId, name, domains, aliases } = body;
 

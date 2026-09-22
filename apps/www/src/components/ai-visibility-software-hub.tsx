@@ -88,7 +88,7 @@ export function AiVisibilitySoftwareHub() {
 							<p>
 								That changes the unit of visibility. There's often no ranking to hold — there's one answer, and your
 								brand is either named in it or it isn't. Being cited becomes the win. This is the premise of{" "}
-								<a className={LINK} href="/blog/answer-engine-optimization">
+								<a className={LINK} href="/answer-engine-optimization">
 									answer engine optimization
 								</a>
 								, and AI visibility software is how you measure whether it's working.
@@ -141,7 +141,7 @@ export function AiVisibilitySoftwareHub() {
 									best AI visibility tools
 								</a>{" "}
 								or learn{" "}
-								<a className={LINK} href="/blog/track-brand-ai-search">
+								<a className={LINK} href="/answer-engine-optimization">
 									how to track your brand in AI search
 								</a>
 								.

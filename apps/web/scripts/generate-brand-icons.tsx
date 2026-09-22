@@ -20,8 +20,8 @@
  *   - favicon.ico   Multi-resolution (16, 32, 48) PNG-in-ICO
  *
  * SVGs embed the Titan One WOFF2 font as base64 so they render without any
- * external fetches. PNGs are rasterized with Satori + resvg (same pipeline used by
- * the brand-kit generator) so the glyph matches across formats.
+ * external fetches. PNGs are rasterized with Takumi (same pipeline used by the
+ * brand-kit generator) so the glyph matches across formats.
  *
  * Usage:
  *   npx tsx apps/web/scripts/generate-brand-icons.tsx
@@ -43,10 +43,7 @@ const OUTPUT_DIR = resolve(__dirname, "../public/icons");
 // SVG icons — hand-built strings with Titan One embedded as base64
 // ---------------------------------------------------------------------------
 
-function loadFontBase64(): string {
-	const fontPath = require.resolve("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2");
-	return readFileSync(fontPath).toString("base64");
-}
+const TITAN_ONE = readFileSync(require.resolve("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2"));
 
 function fontFaceRule(base64: string): string {
 	return `@font-face { font-family: 'Titan One'; src: url(data:font/woff2;base64,${base64}) format('woff2'); }`;
@@ -80,25 +77,13 @@ function buildMaskableSvg(fontBase64: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// PNG icons — rendered via Satori + resvg (JSX → image), matches brand-kit sizing
+// PNG icons — rendered via Takumi (JSX → image), matches brand-kit sizing
 // ---------------------------------------------------------------------------
 
-function loadFont(path: string): ArrayBuffer {
-	const buf = readFileSync(require.resolve(path));
-	return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-}
-
-const fonts = [
-	{
-		name: "Titan One",
-		data: loadFont("@fontsource/titan-one/files/titan-one-latin-400-normal.woff"),
-		style: "normal" as const,
-		weight: 400 as const,
-	},
-];
+const fonts = [{ name: "Titan One", data: TITAN_ONE, style: "normal" as const, weight: 400 as const }];
 
 async function renderPng(element: React.ReactElement, size: number): Promise<Buffer> {
-	return Buffer.from(await renderOgPng(element, { width: size, height: size, fonts }));
+	return renderOgPng(element, { width: size, height: size, fonts });
 }
 
 function StandardIcon({ bg, size }: { bg?: string; size: number }) {
@@ -144,7 +129,7 @@ function MaskableIcon({ size }: { size: number }) {
 
 mkdirSync(OUTPUT_DIR, { recursive: true });
 
-const fontBase64 = loadFontBase64();
+const fontBase64 = TITAN_ONE.toString("base64");
 
 const svgIcons = [
 	{ name: "elmo-icon.svg", build: buildStandardSvg },
@@ -173,7 +158,7 @@ for (const { name, element, size } of pngIcons) {
 }
 
 // ---------------------------------------------------------------------------
-// ICO — multi-resolution PNG-in-ICO built from Satori-rendered PNGs.
+// ICO — multi-resolution PNG-in-ICO built from the rendered PNGs.
 // Kept at /icons/favicon.ico (not /favicon.ico at the root) so whitelabel
 // deployments don't end up serving Elmo's ICO for default browser requests.
 // ---------------------------------------------------------------------------

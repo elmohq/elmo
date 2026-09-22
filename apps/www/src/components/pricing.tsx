@@ -13,7 +13,6 @@ import { PlatformTier } from "@workspace/ui/brand/platform-tier";
 import { ArrowRight, Check } from "lucide-react";
 import { trackCta } from "@/lib/analytics";
 import { ContactForm } from "./contact-form";
-import { WaitlistForm } from "./waitlist-form";
 
 const SIGNUP_URL = cloudSignupUrl("marketing-pricing");
 const GUARANTEE = `${MONEY_BACK_GUARANTEE_DAYS}-day money-back guarantee`;
@@ -30,11 +29,7 @@ interface Plan {
 	/** Draws the eye to the option we want picked; exactly one plan sets it. */
 	featured?: boolean;
 	features: string[];
-	cta:
-		| { type: "cloud"; text: string }
-		| { type: "self-host"; text: string }
-		| { type: "waitlist" }
-		| { type: "contact" };
+	cta: { type: "cloud"; text: string } | { type: "self-host"; text: string } | { type: "contact" };
 }
 
 const plans: Plan[] = [
@@ -140,8 +135,6 @@ function PlanAction({ plan }: { plan: Plan }) {
 					<ArrowRight className="size-3.5" />
 				</Link>
 			);
-		case "waitlist":
-			return <WaitlistForm source="pricing" />;
 		case "contact":
 			return <ContactForm source="pricing" />;
 	}
