@@ -416,8 +416,6 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		// Before the lookup, so a signed-out caller cannot tell a prompt id that
-		// exists from one that doesn't. Same order as getPromptStatsFn.
 		const session = await requireAuthSession();
 
 		const prompt = await db.query.prompts.findFirst({
