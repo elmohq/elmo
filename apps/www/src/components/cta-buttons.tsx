@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
+import { cloudSignupUrl, type ReferralSource } from "@workspace/config/referrals";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { type CtaDestination, trackCta } from "@/lib/analytics";
 import { externalRel } from "@/lib/external-link";
 
 const PRIMARY_CLS =
@@ -8,101 +9,70 @@ const PRIMARY_CLS =
 const GHOST_CLS =
 	"inline-flex h-8 items-center gap-1.5 rounded-md bg-white px-3 text-sm font-medium leading-none text-zinc-900 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300";
 
-function Anchor({
-	to,
-	href,
-	external,
-	cls,
-	children,
-}: {
-	to?: string;
-	href?: string;
-	external?: boolean;
-	cls: string;
-	children: React.ReactNode;
-}) {
-	if (to) {
-		return (
-			<Link to={to} className={cls}>
-				{children}
-			</Link>
-		);
-	}
-	if (href) {
-		return (
-			<a href={href} className={cls} {...(external ? { target: "_blank", rel: externalRel(href) } : {})}>
-				{children}
-			</a>
-		);
-	}
-	return null;
-}
-
-function PrimaryCTA({
-	to,
-	href,
-	external,
-	children,
-	className = "",
-}: {
-	to?: string;
-	href?: string;
-	external?: boolean;
-	children: React.ReactNode;
-	className?: string;
-}) {
-	return (
-		<Anchor to={to} href={href} external={external} cls={`${PRIMARY_CLS} ${className}`}>
-			{children}
-		</Anchor>
-	);
-}
-
-function GhostCTA({
-	to,
-	href,
-	external,
-	children,
-	className = "",
-}: {
-	to?: string;
-	href?: string;
-	external?: boolean;
-	children: React.ReactNode;
-	className?: string;
-}) {
-	return (
-		<Anchor to={to} href={href} external={external} cls={`${GHOST_CLS} ${className}`}>
-			{children}
-		</Anchor>
-	);
-}
-
 /**
  * The two halves of every call to action on the site, in this order: cloud is
  * what we sell, self-hosting is what makes it trustworthy. Signup opens in the
  * same tab — a conversion click should navigate, not spawn a background tab.
+ *
+ * Every button names the surface it sits on. The signup link carries it as
+ * `ref` so the app can attribute the account, and the click event carries it so
+ * the funnel can be read per button rather than per site.
  */
-export function CloudSignupCTA({ label = "Start with Cloud" }: { label?: string }) {
+export function CloudSignupCTA({
+	source,
+	label = "Start with Cloud",
+	className = "",
+}: {
+	source: ReferralSource;
+	label?: string;
+	className?: string;
+}) {
 	return (
-		<PrimaryCTA href={CLOUD_SIGNUP_URL}>
+		<a
+			href={cloudSignupUrl(source)}
+			onClick={() => trackCta("cloud-signup", source)}
+			className={`${PRIMARY_CLS} ${className}`}
+		>
 			{label}
 			<ArrowRight className="size-3.5" />
-		</PrimaryCTA>
+		</a>
 	);
 }
 
-export function SelfHostCTA({ label = "Self-host free" }: { label?: string }) {
-	return <GhostCTA to="/docs">{label}</GhostCTA>;
+export function SelfHostCTA({
+	source,
+	label = "Self-host free",
+	className = "",
+}: {
+	source: ReferralSource;
+	label?: string;
+	className?: string;
+}) {
+	return (
+		<Link to="/docs" onClick={() => trackCta("self-host", source)} className={`${GHOST_CLS} ${className}`}>
+			{label}
+		</Link>
+	);
 }
 
 /** Third-tier link for the option that supports a CTA without competing with it. */
-export function QuietCTA({ href, children }: { href: string; children: React.ReactNode }) {
+export function QuietCTA({
+	href,
+	source,
+	destination,
+	children,
+}: {
+	href: string;
+	source: ReferralSource;
+	destination: CtaDestination;
+	children: React.ReactNode;
+}) {
 	return (
 		<a
 			href={href}
 			target="_blank"
 			rel={externalRel(href)}
+			onClick={() => trackCta(destination, source)}
 			className="group inline-flex items-center gap-1 px-1 text-sm font-medium text-zinc-600 hover:text-zinc-950"
 		>
 			{children}
