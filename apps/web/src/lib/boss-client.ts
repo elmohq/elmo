@@ -1,4 +1,4 @@
-import { REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE } from "@workspace/lib/rollups/constants";
+import { REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE, ROLLUP_QUEUE_OPTIONS } from "@workspace/lib/rollups/constants";
 import { PgBoss } from "pg-boss";
 
 let bossInstance: PgBoss | null = null;
@@ -52,20 +52,9 @@ export async function getBoss(): Promise<PgBoss> {
 			retryBackoff: false,
 			expireInSeconds: 60 * 15,
 		});
-		// Same options the worker creates these with: whichever process starts
-		// first defines the queue, and a send to a queue that does not exist fails.
-		await boss.createQueue(REFRESH_ROLLUPS_QUEUE, {
-			retryLimit: 2,
-			retryDelay: 30,
-			retryBackoff: true,
-			expireInSeconds: 60 * 5,
-		});
-		await boss.createQueue(REPROCESS_QUEUE, {
-			retryLimit: 2,
-			retryDelay: 60,
-			retryBackoff: true,
-			expireInSeconds: 60 * 10,
-		});
+		for (const queue of [REFRESH_ROLLUPS_QUEUE, REPROCESS_QUEUE] as const) {
+			await boss.createQueue(queue, ROLLUP_QUEUE_OPTIONS[queue]);
+		}
 
 		bossInstance = boss;
 		return boss;
