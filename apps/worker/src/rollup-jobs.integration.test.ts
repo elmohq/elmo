@@ -17,15 +17,8 @@ import { reconcileRollupsJob, runReconcileTick } from "./jobs/reconcile-rollups"
 import { refreshRollupsJob, runRefreshTick } from "./jobs/refresh-rollups";
 import { runReprocess } from "./jobs/reprocess";
 
-// These exercise the job orchestration (claim/coalesce/rebuild, reconcile
-// sampling, reprocess batching) against a real Postgres instance. Every
-// function under test takes its db connection explicitly, so none of this
-// touches the `db`/`boss` singletons or needs a live pg-boss — only
-// ROLLUP_TEST_DATABASE_URL. Run scoped to this package
-// (`ROLLUP_TEST_DATABASE_URL=... pnpm --filter @workspace/worker test`) rather
-// than from the repo root: this and packages/lib's own rollups integration
-// suite both truncate shared tables, so they should not run concurrently
-// against the same database.
+// Don't run this concurrently with packages/lib's rollups integration suite
+// against the same database: both truncate shared tables.
 const connectionString = process.env.ROLLUP_TEST_DATABASE_URL;
 
 const connect = (url: string) => drizzle(url, { schema });
@@ -239,14 +232,9 @@ describe.skipIf(!connectionString)("worker rollup jobs against postgres", () => 
 		});
 	});
 
-	// Task 06 case 4 lives here rather than in apps/web's analytics-read
-	// integration suite: runRefreshTick's module (refresh-rollups.ts) imports
-	// @sentry/node, which is not a dependency of apps/web, so the web test
-	// cannot import it (directly or transitively) even via a relative path.
-	// The "share of voice matches raw" checks below reproduce the shape of
-	// apps/web's rollup-read.ts / postgres-read.ts getPerPromptDailyCompetitorMentions
-	// directly in SQL for the same reason — apps/web's postgres-read.ts pulls in
-	// its own web-only relative imports (@/lib/fanout-analysis).
+	// Lives here rather than in apps/web because refresh-rollups.ts imports
+	// @sentry/node, which apps/web can't resolve; for the same reason the share
+	// of voice checks reproduce getPerPromptDailyCompetitorMentions in SQL.
 	describe("runReprocess through to a refresh, after a competitor's domain changes", () => {
 		it("restamps analysis, updates competitors_mentioned, marks the bucket dirty, and matches raw once refreshed", async () => {
 			// Domain strings deliberately share no substring with the competitor's own

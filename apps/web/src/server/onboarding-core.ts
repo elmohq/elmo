@@ -410,9 +410,7 @@ export async function saveWizardOnboarding(input: WizardOnboardingInput): Promis
 	});
 	await createMultiplePromptJobSchedulers(wizardPromptIds);
 
-	// The wizard runs against a brand that already exists, and its prompts page
-	// is reachable before it is completed, so the runs it rewrites the name,
-	// domains, and competitors for may already be there.
+	// Runs may already exist: the prompts page is reachable before the wizard completes.
 	await requestBrandReprocess(input.brandId);
 
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });

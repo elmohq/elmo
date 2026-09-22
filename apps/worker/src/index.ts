@@ -2,11 +2,7 @@ import * as Sentry from "@sentry/node";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeployment } from "@workspace/deployment";
 import { getProvider, validateScrapeTargets } from "@workspace/lib/providers";
-import {
-	RECONCILE_ROLLUPS_QUEUE,
-	REFRESH_ROLLUPS_QUEUE,
-	ROLLUP_QUEUE_OPTIONS,
-} from "@workspace/lib/rollups/constants";
+import { RECONCILE_ROLLUPS_QUEUE, REFRESH_ROLLUPS_QUEUE, ROLLUP_QUEUE_OPTIONS } from "@workspace/lib/rollups/constants";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import boss from "./boss";
 import { registerHandlers } from "./handlers";

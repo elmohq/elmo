@@ -42,11 +42,6 @@ function reportRebuildFailure(error: unknown, range: RebuildRange): void {
 	});
 }
 
-/**
- * Rebuilds every range in one claimed batch, in coalesced order. Stops (and
- * restores whatever it hasn't gotten to) the moment the deadline passes, so a
- * slow batch never runs past its budget.
- */
 async function processClaimedBatch(
 	conn: DbConnection,
 	marks: DirtyMark[],
@@ -76,12 +71,6 @@ async function processClaimedBatch(
 	return { ranges: rebuilt, failed, timedOut: false };
 }
 
-/**
- * Drains the dirty outbox: claim, coalesce, rebuild, repeat until empty or out
- * of time budget, then checks whether the initial backfill has finished
- * draining. `conn` defaults to the shared db handle; tests pass their own so
- * this can run against a throwaway database without touching pg-boss.
- */
 export async function runRefreshTick(
 	options: { maxMarks?: number; timeBudgetMs?: number; source?: string } = {},
 	conn: DbConnection = db,

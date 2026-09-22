@@ -1,4 +1,3 @@
-/** Width of the UTC bucket every rollup table is keyed by. */
 export const BUCKET_MINUTES = 30;
 export const BUCKET_MS = BUCKET_MINUTES * 60 * 1000;
 

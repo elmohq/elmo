@@ -30,9 +30,8 @@ function parseInstant(name: string, raw: string): string {
 	return parsed.toISOString();
 }
 
-/** Analytics are aggregated per half-hour bucket, and a bucket cannot be split
- * at 10:17. Flooring both bounds is what lets the response echo the window that
- * was actually answered. */
+// Analytics are aggregated per half-hour bucket, which can't be split; flooring
+// lets the response echo the window that was actually answered.
 function alignToBucket(instant: string): string {
 	return bucketStart(new Date(instant)).toISOString();
 }
@@ -47,8 +46,7 @@ export function resolveAnalyticsWindow(rawStart: string | null, rawEnd: string |
 	const requestedEnd = parseInstant("end", rawEnd);
 	const start = alignToBucket(requestedStart);
 	const end = alignToBucket(requestedEnd);
-	// Checked after alignment, so a window narrower than one bucket is refused
-	// rather than answered as empty — and says why.
+	// Must run after alignment so a sub-bucket window is refused, not answered empty.
 	if (start >= end) {
 		invalid(
 			requestedStart < requestedEnd

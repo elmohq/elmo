@@ -127,8 +127,7 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 		await requireBrandSession(data.brandId);
 
 		const lookback = data.lookback;
-		// The same window as the chart section, so the visibility bar cannot read
-		// a different slice of history than the chart beside it.
+		// Shares the chart's window so the visibility bar can't disagree with it.
 		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, lookback, data.timezone);
 
 		const result = await getBrandVisibility(

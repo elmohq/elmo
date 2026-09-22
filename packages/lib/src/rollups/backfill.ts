@@ -4,11 +4,7 @@ import { rollupDirty } from "../db/schema";
 import { markAllDirty } from "./dirty";
 import { getPipelineState, setPipelineState } from "./pipeline-state";
 
-/**
- * Marks every bucket that has ever had a run, once per deployment. The marks are
- * the whole cursor: a crash mid-backfill leaves the remaining work queued.
- * Returns false when a backfill was already enqueued.
- */
+/** The marks are the whole cursor: a crash mid-backfill leaves the remaining work queued. */
 export function enqueueBackfill(conn: DbConnection): Promise<boolean> {
 	return conn.transaction(async (tx) => {
 		const state = await getPipelineState(tx, { forUpdate: true });
@@ -19,7 +15,6 @@ export function enqueueBackfill(conn: DbConnection): Promise<boolean> {
 	});
 }
 
-/** Stamps the backfill complete once its last mark has been drained. */
 export function finishBackfillIfDrained(conn: DbConnection): Promise<boolean> {
 	return conn.transaction(async (tx) => {
 		const state = await getPipelineState(tx, { forUpdate: true });
@@ -35,7 +30,6 @@ export function finishBackfillIfDrained(conn: DbConnection): Promise<boolean> {
 	});
 }
 
-/** Whether the rollup tables cover all of history and reads may trust them. */
 export async function rollupsReady(conn: DbConnection): Promise<boolean> {
 	return (await getPipelineState(conn)).backfillCompletedAt !== null;
 }

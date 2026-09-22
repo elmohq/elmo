@@ -250,7 +250,10 @@ async function recomputeSystemTags(conn: DbConnection, brand: Brand): Promise<nu
 	return updated;
 }
 
-async function loadBrand(conn: DbConnection, brandId: string): Promise<{ brand: Brand; mentions: BrandMentions } | null> {
+async function loadBrand(
+	conn: DbConnection,
+	brandId: string,
+): Promise<{ brand: Brand; mentions: BrandMentions } | null> {
 	const [brand] = await conn.select().from(brands).where(eq(brands.id, brandId)).limit(1);
 	if (!brand) return null;
 	const brandCompetitors = await conn.select().from(competitors).where(eq(competitors.brandId, brandId));

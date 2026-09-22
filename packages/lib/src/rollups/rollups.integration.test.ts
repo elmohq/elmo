@@ -16,13 +16,7 @@ import {
 } from "../db/schema";
 import { enqueueBackfill, finishBackfillIfDrained, rollupsReady } from "./backfill";
 import { BUCKET_MS, CLASSIFIER_VERSION } from "./constants";
-import {
-	claimDirty,
-	coalesceMarks,
-	markBrandRangeDirty,
-	markDirty,
-	restoreDirty,
-} from "./dirty";
+import { claimDirty, coalesceMarks, markBrandRangeDirty, markDirty, restoreDirty } from "./dirty";
 import { getPipelineState, setPipelineState } from "./pipeline-state";
 import { rebuildRange } from "./rebuild";
 import { reclassifyPages } from "./reclassify";

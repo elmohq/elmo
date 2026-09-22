@@ -1,8 +1,4 @@
-/**
- * Analytics reads against the raw `prompt_runs` and `citations` tables. The
- * rollup-backed twin is `rollup-read.ts`; `analytics-read.ts` picks between
- * them. Window and filter helpers shared by both live in `analytics-sql.ts`.
- */
+/** Analytics reads against the raw `prompt_runs` and `citations` tables. */
 
 import { type SQL, sql } from "drizzle-orm";
 import {

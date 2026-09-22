@@ -110,7 +110,12 @@ describe("mentionsStamp", () => {
 
 describe("mentionConfigFrom", () => {
 	it("reads a brand and its competitors, tolerating absent arrays", () => {
-		const brand = { name: "Acme", website: "https://acme.com", aliases: null, additionalDomains: null } as unknown as Brand;
+		const brand = {
+			name: "Acme",
+			website: "https://acme.com",
+			aliases: null,
+			additionalDomains: null,
+		} as unknown as Brand;
 		const competitors = [{ name: "Globex", aliases: null, domains: null }] as unknown as Competitor[];
 
 		expect(mentionConfigFrom(brand, competitors)).toEqual({

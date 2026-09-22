@@ -1,15 +1,5 @@
-/**
- * Facade over `postgres-read.ts` (raw tables) and `rollup-read.ts` (rollup
- * tables): every migrated analytics read goes through here so callers don't
- * know or care which one actually ran.
- *
- * Gate: while the startup backfill hasn't finished, the rollup tables don't
- * cover all of history yet, so reads fall back to raw. `rollupsReady` hits
- * `pipeline_state`, which is cheap but not free on every request, so the
- * result is cached in-module for a minute — long enough that the one-time
- * flip from "not ready" to "ready" is noticed within a request or two, short
- * enough that no deploy needs to know to bust it.
- */
+// Until the startup backfill finishes the rollup tables don't cover all history, so
+// reads fall back to raw.
 
 import { classifyPage } from "@workspace/lib/citations/page-classification";
 import { db } from "@workspace/lib/db/db";
@@ -34,15 +24,8 @@ async function isReady(): Promise<boolean> {
 	return value;
 }
 
-/**
- * Picks the rollup implementation once the backfill has caught up, raw
- * otherwise. Takes thunks rather than the functions themselves so neither
- * module is actually touched until the returned function is called: both
- * `raw` and `rollup` export several dozen names, and a caller (a test with a
- * partial mock of one module, say) may only ever exercise a few of them —
- * resolving `rollup.x`/`raw.x` here, at every export's definition, would
- * touch all of them just by importing this module.
- */
+// Thunks, not functions: resolving `rollup.x`/`raw.x` at definition time would touch
+// every export on import, which breaks partially mocked modules in tests.
 function gated<Args extends unknown[], R>(
 	rollupFn: () => (...args: Args) => Promise<R>,
 	rawFn: () => (...args: Args) => Promise<R>,
@@ -131,8 +114,6 @@ export const getBatchChartData = gated(
 	() => raw.getBatchChartData,
 );
 
-// Same row shapes whichever path answered, so consumers can name one type
-// regardless of which module actually produced the rows.
 export type {
 	BrandMentionTotals,
 	CitationDomainStats,
@@ -153,16 +134,8 @@ export type {
 	VisibilityDailyAggregate,
 } from "@/lib/postgres-read";
 
-/**
- * Reproduces today's per-model citations loop (the one `getBrandModelBreakdown`
- * used to run itself) so the pre-backfill window still shows what production
- * shows today: `getBrandMentionRateByModel`, unfiltered, enumerates the
- * distinct models in scope, and each one's count comes from the bare
- * (non-premium) target — the same call `getCitationsTotalCount(..., row.model)`
- * the old loop made. `web_search_enabled: false` reflects that: a bare model
- * name is never the grounded target, so this fallback cannot distinguish a
- * standard citation from a grounded one the way the rollup path can.
- */
+// A bare model name is never the grounded target, so unlike the rollup path this
+// fallback can't tell standard citations from grounded ones.
 async function citationsCountByModelFallback(
 	brandId: string,
 	fromDate: string,
@@ -193,13 +166,8 @@ export async function getCitationsCountByModel(
 		: citationsCountByModelFallback(brandId, fromDate, toDate, timezone, enabledPromptIds);
 }
 
-/**
- * Classifies each raw per-(prompt, day, URL) row the same way a rebuild
- * would (`classifyPage`, tenant-independent — the brand/competitor override
- * is applied on top of the result by the caller, same as the rollup path),
- * then folds rows that land on the same (prompt, day, domain, category, page
- * type) key together, the way the grouped rollup query would.
- */
+// Tenant-independent, like the rollup rebuild; the caller applies the
+// brand/competitor override on top.
 export function classifyDailyPages(rows: raw.PerPromptDailyCitationPageRow[]): rollup.PerPromptDailyCitationClassRow[] {
 	const folded = new Map<string, rollup.PerPromptDailyCitationClassRow>();
 	for (const row of rows) {

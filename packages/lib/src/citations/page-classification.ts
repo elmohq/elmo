@@ -9,16 +9,13 @@ import {
 import { classifyUrl } from "./domain-lists";
 
 /**
- * Google search and shopping surfaces get their own stored category so reads
- * can pull them out of the source mix — they are rendered as their own module
- * and would otherwise be counted twice. It is deliberately outside
- * `CITATION_CATEGORIES`: it is a storage concern, not a source category.
+ * Stored so reads can pull Google surfaces out of the source mix, where they'd
+ * otherwise be counted twice. Deliberately not in `CITATION_CATEGORIES`.
  */
 export const GOOGLE_STATIC_CATEGORY = "google";
 
 export type StaticCategory = CitationCategory | typeof GOOGLE_STATIC_CATEGORY;
 
-/** The tenant-independent half of a page's classification, stored once per URL. */
 export interface PageClassification {
 	pageType: CitationPageType;
 	staticCategory: StaticCategory;
@@ -48,12 +45,9 @@ export interface ResolvedPageClass {
 }
 
 /**
- * Read-time counterpart of `classifyPage`: what `classifyUrl` and
- * `resolvePageType` would answer for one brand, reconstructed from the stored
- * pair without the URL or title. The brand/competitor override comes first, as
- * in `classifyUrl`, and the content-publisher article fallback runs on the
- * category that override produced. Google surfaces resolve to null: the raw
- * path drops them by URL before it ever classifies.
+ * Must answer what `classifyUrl` + `resolvePageType` would for this brand: the
+ * article fallback runs on the overridden category, and Google surfaces resolve
+ * to null because the raw path drops them by URL before classifying.
  */
 export function resolvePageClass(
 	row: StoredPageClass,

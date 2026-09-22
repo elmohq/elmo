@@ -46,7 +46,6 @@ describe("analytics API query parsing", () => {
 	});
 
 	it("refuses a window that alignment collapses to nothing", () => {
-		// Both bounds sit in the 10:00 bucket, which no aggregate can split.
 		expect(() =>
 			parseAnalyticsWindow(new URL("https://example.com?start=2026-01-01T10:05:00Z&end=2026-01-01T10:25:00Z")),
 		).toThrow("same half-hour bucket");

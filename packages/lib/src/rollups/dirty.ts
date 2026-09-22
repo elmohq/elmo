@@ -10,7 +10,6 @@ export interface DirtyMark {
 	reason: DirtyReason;
 }
 
-/** One rebuild covering a contiguous span of one brand's buckets. */
 export interface RebuildRange {
 	brandId: string;
 	from: Date;
@@ -27,7 +26,6 @@ function uniqueBuckets(buckets: Iterable<Date>): Date[] {
 	return Array.from(byTime.values());
 }
 
-/** Records buckets as needing a rebuild. Safe to call repeatedly; marks collapse. */
 export async function markDirty(
 	conn: DbConnection,
 	brandId: string,
@@ -43,7 +41,6 @@ export async function markDirty(
 	return result.rowCount ?? 0;
 }
 
-/** Marks every bucket in `[from, toExclusive)` that has at least one run. */
 export async function markBrandRangeDirty(
 	conn: DbConnection,
 	brandId: string,
@@ -61,7 +58,6 @@ export async function markBrandRangeDirty(
 	return result.rowCount ?? 0;
 }
 
-/** Marks every bucket of every brand that has a run. */
 export async function markAllDirty(conn: DbConnection, reason: DirtyReason): Promise<number> {
 	const result = await conn.execute(sql`
 		INSERT INTO ${rollupDirty} (brand_id, bucket, reason)
@@ -98,7 +94,6 @@ export function claimDirty(conn: DbConnection, limit: number): Promise<DirtyMark
 	});
 }
 
-/** Puts claimed marks back after a failed rebuild. */
 export async function restoreDirty(conn: DbConnection, marks: DirtyMark[]): Promise<number> {
 	if (marks.length === 0) return 0;
 	const byKey = new Map(marks.map((mark) => [`${mark.brandId} ${mark.bucket.getTime()}`, mark]));

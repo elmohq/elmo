@@ -14,13 +14,8 @@ import { REPROCESS_QUEUE } from "@workspace/lib/rollups/constants";
 import { EXTRACTOR_VERSION } from "@workspace/lib/text-extraction";
 import boss from "./boss";
 
-/**
- * `state.X === 0` means this is the first startup since the rollups feature
- * was deployed (the migration seeds every version at 0), regardless of how
- * much history is already in `prompt_runs`. `enqueueBackfill` already marked
- * all of it dirty, so the version-specific catch-up work below only needs to
- * run for brands that were already initialized under an older version.
- */
+// A stored version of 0 means first startup (the migration seeds 0), and
+// `enqueueBackfill` already marked everything dirty, so no catch-up is needed.
 async function initClassifier(state: PipelineState): Promise<void> {
 	if (state.classifierVersion >= CLASSIFIER_VERSION) return;
 	for (;;) {
@@ -59,13 +54,7 @@ async function initMentions(state: PipelineState): Promise<void> {
 	await setPipelineState(db, { deriverVersions: { [MENTIONS_ANALYSIS_KEY]: MENTIONS_VERSION } });
 }
 
-/**
- * Brings the stored data's version stamps in line with what today's code
- * produces, enqueueing whatever catch-up work the gap requires. Called once at
- * worker startup, after queues exist (the reprocess sends below need
- * `REPROCESS_QUEUE` to already be created) and before job handlers register.
- * Errors here are left to fail startup: they mean a migration is missing.
- */
+// Errors are left to fail startup: they mean a migration is missing.
 export async function initializePipeline(): Promise<void> {
 	const enqueued = await enqueueBackfill(db);
 	console.log(`[rollups-startup] backfill ${enqueued ? "enqueued" : "already enqueued"}`);

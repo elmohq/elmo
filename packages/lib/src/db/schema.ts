@@ -327,20 +327,11 @@ export const secrets = pgTable("secrets", {
 		.notNull(),
 }).enableRLS();
 
-// ============================================================================
-// Analytics rollups
-// ============================================================================
-
 /**
- * The grain every rollup table shares: one brand's prompt, evaluated against one
- * (model, provider, grounded) target, inside one 30-minute UTC bucket.
- *
- * A function rather than a shared object so each table gets its own column
- * builders. `provider` is stored as '' rather than null because null key parts
- * never compare equal, which would let a bucket rebuild insert duplicates.
- *
- * No foreign keys to brands or prompts: a rebuild deletes and reinserts a range,
- * and prompt deletion removes these rows explicitly.
+ * A function so each table gets its own column builders. `provider` is '' rather
+ * than null because null key parts never compare equal, which would let a bucket
+ * rebuild insert duplicates. No foreign keys: a rebuild deletes and reinserts a
+ * range, and prompt deletion removes these rows explicitly.
  */
 const rollupKeyColumns = () => ({
 	brandId: text("brand_id").notNull(),
@@ -399,9 +390,8 @@ export const rollupCompetitorMentions = pgTable(
 ).enableRLS();
 
 /**
- * One row per distinct normalized URL, shared by every tenant. Classification
- * here is the tenant-independent half; brand and competitor domains are applied
- * at read time.
+ * Shared by every tenant, so classification here is the tenant-independent half;
+ * brand and competitor domains are applied at read time.
  */
 export const citedPages = pgTable(
 	"cited_pages",

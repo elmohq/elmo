@@ -264,8 +264,7 @@ export async function deletePrompt(promptId: string): Promise<{ prompt: Prompt; 
 
 	const result = await db.transaction(async (tx) => {
 		await tx.delete(citations).where(eq(citations.promptId, promptId));
-		// The prompt's rollup rows go with its raw rows, in the same transaction:
-		// nothing else would ever rebuild a bucket for a prompt that is gone.
+		// Nothing else would ever rebuild a rollup bucket for a deleted prompt.
 		for (const table of [rollupPromptRuns, rollupCompetitorMentions, rollupCitationUrls, rollupCitationDomains]) {
 			await tx.delete(table).where(eq(table.promptId, promptId));
 		}

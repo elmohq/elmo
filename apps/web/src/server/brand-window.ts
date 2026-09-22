@@ -1,10 +1,3 @@
-/**
- * The concrete window a lookback stands for, for one brand.
- *
- * "all" means all: it opens at the brand's first run rather than at a fixed
- * horizon, so the pages that share this helper cannot disagree about how far
- * back a brand's history reaches.
- */
 import type { LookbackPeriod } from "@/lib/lookback";
 import { getBrandEarliestRunDate } from "@/lib/postgres-read";
 import {

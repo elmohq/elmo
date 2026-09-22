@@ -1,33 +1,14 @@
 #!/usr/bin/env tsx
 /**
- * Equivalence + timing: postgres-read.ts (raw tables) vs rollup-read.ts
- * (rollup tables), for every function task 05a migrated.
+ * Checks that rollup-read.ts returns the same results as postgres-read.ts, and
+ * times both. Citation URL rows are folded through `rollUpCitationUrls` first
+ * because raw rows are pre-fold. `getCitationDomainStats` compares only
+ * `domain`/`count`: `example_title` intentionally answers a different question
+ * once rollups are live ("most-cited page" vs "most recently cited").
  *
- * For the top N brands by run count, every combination of lookback (1w, 1m,
- * 3m), timezone (UTC, America/Los_Angeles, Asia/Kolkata), and model filter
- * (unset, and the first model found in that brand's runs), this calls each
- * migrated function via both modules with identical arguments, canonicalizes
- * both results (sorted by key columns, numbers stringified so a `12` and a
- * `"12"` compare equal), and diffs them. `getCitationUrlStats`,
- * `getPromptCitationUrlStats`, and `getPerPromptCitationPages` are folded
- * through `rollUpCitationUrls` first (raw rows are pre-fold: two literal URLs
- * that normalize the same are still two rows). `getCitationDomainStats`
- * compares only `domain`/`count`: `example_title` is documented in
- * rollup-read.ts as answering a different question once rollups are live
- * ("this domain's most-cited page" instead of "most recently cited"), so it
- * is expected to differ and is excluded rather than reported as a mismatch.
- *
- * Requires DATABASE_URL to be set explicitly — never loads a .env file, and
- * refuses to run if it's unset. Point it only at a throwaway database; this
- * reads real rows but writes nothing.
- *
- * Usage:
+ * Usage (never loads .env; point it only at a throwaway database):
  *   cd apps/web
- *   DATABASE_URL=postgres://... pnpm exec tsx scripts/compare-analytics-reads.ts
  *   DATABASE_URL=postgres://... pnpm exec tsx scripts/compare-analytics-reads.ts --brands=10
- *
- * Do not run this in an agent sandbox against anything but the designated
- * test database.
  */
 import type { CitationCategory } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationUrls } from "@workspace/lib/citations/rollup";
@@ -46,12 +27,7 @@ const BRAND_COUNT = Number(process.argv.find((a) => a.startsWith("--brands="))?.
 const LOOKBACKS = ["1w", "1m", "3m"] as const;
 const TIMEZONES = ["UTC", "America/Los_Angeles", "Asia/Kolkata"] as const;
 
-// ============================================================================
-// Canonicalization + diffing
-// ============================================================================
-
-/** Recursively sorts object keys and stringifies numbers, so two rows that
- * differ only in key order or in string-vs-number typing compare equal. */
+/** Stringifies numbers so a `12` from one module and a `"12"` from the other compare equal. */
 function stableStringify(value: unknown): string {
 	const normalize = (v: unknown): unknown => {
 		if (typeof v === "number") return String(v);
@@ -101,7 +77,6 @@ function recordTiming(name: string, rawMs: number, rollupMs: number) {
 	timings.set(name, entry);
 }
 
-/** Runs one raw/rollup pair, canonicalizes, diffs, and prints a mismatch. */
 async function compare<T>(
 	label: string,
 	context: string,
@@ -138,9 +113,7 @@ const canonMap = (map: Map<string, number>): string =>
 		),
 	);
 
-/** No-op classifier: the citation-url family fold only needs to agree on
- * url/domain/title/count/avgPosition here — category correctness is covered
- * separately (resolveCitationClass and the rollup integration tests). */
+/** Category correctness is covered by the rollup integration tests, not here. */
 const dummyClassify = (): CitationCategory => "other";
 
 interface FoldedUrlRow {
@@ -163,8 +136,7 @@ function foldCitationUrlRows(
 	}));
 }
 
-/** getPerPromptCitationPages has no avg_position and is grouped per prompt —
- * fold each prompt's rows separately so URLs from different prompts never merge. */
+/** Folds each prompt's rows separately so URLs from different prompts never merge. */
 function foldPerPromptCitationPages(
 	rows: { prompt_id: string; url: string | null; domain: string; title: string | null; count: number }[],
 ): (FoldedUrlRow & { prompt_id: string })[] {
@@ -182,10 +154,6 @@ function foldPerPromptCitationPages(
 	}
 	return out;
 }
-
-// ============================================================================
-// Brand discovery
-// ============================================================================
 
 interface BrandCase {
 	brandId: string;
@@ -216,10 +184,6 @@ async function topBrands(limit: number): Promise<BrandCase[]> {
 	}
 	return cases;
 }
-
-// ============================================================================
-// Per-window comparisons
-// ============================================================================
 
 async function compareWindow(brand: BrandCase, from: string, to: string, tz: string, model: string | undefined) {
 	const ctx = `${brand.brandId} ${from}..${to} ${tz} model=${model ?? "unset"}`;
@@ -265,7 +229,6 @@ async function compareWindow(brand: BrandCase, from: string, to: string, tz: str
 		ctx,
 		() => rawRead.getCitationDomainStats(brand.brandId, from, to, tz, ids, model),
 		() => rollupRead.getCitationDomainStats(brand.brandId, from, to, tz, ids, model),
-		// example_title intentionally differs post-rollup (see file header) — compare counts only.
 		(rows) => canonArray(["domain"])(rows.map((r) => ({ domain: r.domain, count: r.count }))),
 	);
 	await compare(
@@ -347,7 +310,6 @@ async function compareWindow(brand: BrandCase, from: string, to: string, tz: str
 		canonArray(["prompt_id", "date"]),
 	);
 
-	// Single-prompt functions: sampled against the brand's first prompt.
 	const promptId = ids[0];
 	if (promptId) {
 		await compare(
@@ -374,9 +336,6 @@ async function compareWindow(brand: BrandCase, from: string, to: string, tz: str
 	}
 }
 
-/** Every (lookback, timezone, model) combination for one brand — the model
- * filter is unset plus, when the brand has one, its first model; a brand with
- * no runs (so no first model) still gets the unset pass. */
 async function compareBrand(brand: BrandCase): Promise<void> {
 	console.log(
 		`\nBrand ${brand.brandId} (${brand.promptIds.length} prompts, first model: ${brand.firstModel ?? "none"})`,

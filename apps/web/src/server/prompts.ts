@@ -438,9 +438,8 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		]);
 
 		return {
-			// Rows written before extraction was versioned carry no text, so they are
-			// extracted on read; the model name is the extractor's other accepted key
-			// for rows that also predate the provider column.
+			// Older rows carry no text and may predate the provider column; the
+			// extractor also accepts the model name.
 			runs: runs.map((r) => ({
 				...r,
 				rawOutput: r.rawOutput as {},

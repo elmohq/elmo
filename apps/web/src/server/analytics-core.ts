@@ -226,20 +226,13 @@ export interface ModelVisibility {
 	citations: number;
 }
 
-/** Whether a citations-by-model row was reached by a grounded API call — the
- * same test `modelFilter` applies at query time. */
+// Must stay in step with the SQL test `modelFilter` applies at query time.
 export function isGroundedCitationRow(row: Pick<CitationCountByModelRow, "provider" | "web_search_enabled">): boolean {
 	return row.web_search_enabled && API_PROVIDER_IDS.includes(row.provider);
 }
 
-/**
- * Sums `getCitationsCountByModel`'s (model, provider, web_search_enabled)
- * rows down to one count per bare model, so it lines up with
- * `getBrandMentionRateByModel`'s rows. A target's premium-ness restricts the
- * sum to matching rows only; no target (the filter is unset) sums every row
- * for that model, matching how the unfiltered mention-rate query counts runs
- * across both grounded and standard.
- */
+// With no target, grounded and standard rows are both summed, matching how the
+// unfiltered mention-rate query counts runs.
 export function citationsByBareModel(
 	rows: CitationCountByModelRow[],
 	target: { model: string; premium: boolean } | null,

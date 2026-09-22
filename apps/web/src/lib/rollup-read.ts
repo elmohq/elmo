@@ -1,10 +1,4 @@
-/**
- * Analytics reads against the rollup tables. Same exported names, signatures,
- * and return shapes as `postgres-read.ts`; `analytics-read.ts` picks between
- * the two once the backfill has caught up. The rollup tables carry `provider`
- * and `web_search_enabled` on every row, so the shared `modelFilter` applies
- * unchanged and the citations `EXISTS` against `prompt_runs` is never needed.
- */
+// Must keep the same exported names, signatures, and return shapes as `postgres-read.ts`.
 
 import { type SQL, sql } from "drizzle-orm";
 import {
@@ -88,14 +82,6 @@ export async function getPerPromptVisibilityTimeSeries(
 	return rows;
 }
 
-/**
- * Single-query replacement for `getPerPromptVisibilityTimeSeries` + JS
- * `applyPerPromptLVCF`, reading `rollup_prompt_runs` instead of `prompt_runs`.
- * Everything past the `observations` CTE (the date grid, the branded join,
- * the LVCF window functions, the final SELECT) is unchanged from
- * `postgres-read.ts` — the LVCF logic doesn't care whether an observation
- * came from one raw row or a bucket's worth of them.
- */
 export async function getVisibilityDailyAggregate(
 	brandId: string,
 	fromDate: string,
@@ -249,14 +235,8 @@ export async function getPromptsSummary(
 	return rows;
 }
 
-/**
- * `example_title` trades "most recently cited" (raw, ordered by `created_at`)
- * for "title of the most-cited page" (the lateral's `ORDER BY sum(citations)
- * DESC`): rollup rows don't carry per-citation timestamps, only bucket-grain
- * sums, so recency isn't reconstructable without reading individual citation
- * rows — which is what the rollup exists to avoid. `page_id` breaks ties
- * deterministically.
- */
+// `example_title` is the most-cited page's title, not the most recently cited one as in
+// the raw read: rollups hold bucket sums, not per-citation timestamps.
 export async function getCitationDomainStats(
 	brandId: string,
 	fromDate: string,
@@ -265,8 +245,7 @@ export async function getCitationDomainStats(
 	enabledPromptIds?: string[],
 	model?: string,
 ): Promise<CitationDomainStats[]> {
-	// A function, called once per query site (CTE, lateral), so each site gets
-	// its own SQL parameters rather than sharing one interpolated fragment.
+	// A function so each query site (CTE, lateral) gets its own SQL parameters.
 	const scope = () => sql`
 		${rollupWindow(fromDate, toDate, timezone)}
 		${promptIdFilter(enabledPromptIds)}
@@ -690,14 +669,7 @@ export interface CitationCountByModelRow {
 	count: number;
 }
 
-/**
- * Per-(model, provider, web_search_enabled) citation counts for the window —
- * one grouped query in place of `getBrandModelBreakdown`'s old per-model
- * `getCitationsTotalCount` loop. Callers split grounded vs standard in JS the
- * same way `modelFilter` does (`web_search_enabled AND provider IN
- * API_PROVIDER_IDS`), since which target a `ModelVisibility` row represents
- * isn't decidable here without re-deriving that logic.
- */
+// Callers split grounded vs standard in JS, the same way `modelFilter` does.
 export async function getCitationsCountByModel(
 	brandId: string,
 	fromDate: string,
@@ -729,15 +701,8 @@ export interface PerPromptDailyCitationClassRow {
 	count: number;
 }
 
-/**
- * Per (prompt, day, domain, static category, page type) citation counts —
- * replaces the per-URL `getPerPromptDailyCitationPages` as the source for the
- * citations page's category and page-type time series. `static_category` and
- * `page_type` are already denormalized onto `rollup_citation_urls` at rebuild
- * time (`classifyPage`), so this needs no `cited_pages` join and no per-URL
- * row leaves the database. Callers apply the brand/competitor domain override
- * on top of `static_category` (tenant-independent) to get the final category.
- */
+// `static_category` is tenant-independent; callers apply the brand/competitor domain
+// override on top.
 export async function getPerPromptDailyCitationClasses(
 	brandId: string,
 	fromDate: string,

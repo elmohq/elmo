@@ -1,21 +1,10 @@
 /**
- * End-to-end coverage for the rollup read path: `rollup-read.ts` must answer
- * exactly what `postgres-read.ts` (the raw oracle) answers, `analytics-read.ts`
- * must pick the right one depending on backfill state, prompt deletion and
- * reprocessing must keep the two in agreement, and `resolveBrandWindow` must
- * resolve "all" the way the dashboard expects.
- *
- * Needs a real Postgres reachable at ROLLUP_TEST_DATABASE_URL, which must be
- * the same database `@workspace/lib/db/db` connects to (it reads DATABASE_URL
- * at import time), so both env vars have to be set and equal:
+ * ROLLUP_TEST_DATABASE_URL must equal DATABASE_URL, since `@workspace/lib/db/db`
+ * reads DATABASE_URL at import time:
  *
  *   DATABASE_URL=postgres://postgres@127.0.0.1:54329/elmo_test \
  *   ROLLUP_TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/elmo_test \
  *   pnpm --filter @workspace/web test
- *
- * `getVisibilityTimeSeries` has no rollup-read counterpart (its only caller is
- * a benchmark script) and is excluded from the equivalence loop below for that
- * reason, per task 05a's report.
  */
 
 import { classifyUrl } from "@workspace/lib/citations/domain-lists";
@@ -66,12 +55,7 @@ function assertSafeTestDatabase(url: string): void {
 
 if (connectionString) assertSafeTestDatabase(connectionString);
 
-// ---------------------------------------------------------------------------
-// Canonicalization: rollup and raw rows may legitimately come back in a
-// different order (ties in an ORDER BY are not guaranteed stable), so every
-// comparison sorts a deep-key-sorted JSON encoding of each row rather than
-// comparing arrays positionally.
-// ---------------------------------------------------------------------------
+// Ties in an ORDER BY aren't stable, so rows are compared as a sorted set.
 
 function sortKeysDeep(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map(sortKeysDeep);
@@ -94,15 +78,8 @@ function expectSameRows(label: string, rollupRows: object[], rawRows: object[]):
 	expect(canonicalRows(rollupRows), label).toEqual(canonicalRows(rawRows));
 }
 
-// ---------------------------------------------------------------------------
-// getCitationUrlStats / getPromptCitationUrlStats / getPerPromptCitationPages:
-// raw rows are pre-fold (grouped by the literal url string), rollup rows are
-// already normalized (grouped by cited_pages.id) — folding both sides through
-// the same rollUpCitationUrls the app uses is what makes them comparable.
-// classify() only needs to be *consistent* across both sides here, since the
-// brand/competitor domain override is applied by callers outside rollup-read.ts
-// and is covered by citation-classification.test.ts instead.
-// ---------------------------------------------------------------------------
+// Raw URL rows are grouped by literal url and rollup rows by normalized page, so both
+// sides are folded through rollUpCitationUrls before comparing.
 
 const classify = (domain: string, url: string, title?: string) =>
 	classifyUrl(domain, url, title ?? null, new Set(), new Set());
@@ -121,7 +98,6 @@ function foldCitationUrlRows(
 	}));
 }
 
-/** getPerPromptCitationPages carries no avg_position; folded per prompt so URLs from different prompts never merge. */
 function foldPerPromptCitationPageRows(rows: PerPromptCitationPageRow[]): object[] {
 	const byPrompt = new Map<
 		string,
@@ -140,18 +116,10 @@ function foldPerPromptCitationPageRows(rows: PerPromptCitationPageRow[]): object
 	return out;
 }
 
-/**
- * example_title genuinely differs from raw by design (task 05a): rollup rows
- * have no per-citation timestamp, so the lateral picks the most-cited page's
- * title rather than the most recently cited one. Excluded from comparison.
- */
+// example_title differs from raw by design: rollups can't tell which page was cited most recently.
 function stripExampleTitle(rows: CitationDomainStats[]): object[] {
 	return rows.map(({ domain, count }) => ({ domain, count }));
 }
-
-// ---------------------------------------------------------------------------
-// Equivalence cases: every rollup-read.ts export with a raw counterpart.
-// ---------------------------------------------------------------------------
 
 interface EquivalenceCombo {
 	fromDateStr: string;
@@ -271,10 +239,8 @@ const EQUIVALENCE_CASES: EquivalenceCase[] = [
 	arrayCase("getPerPromptRunStats", rollupRead.getPerPromptRunStats, rawRead.getPerPromptRunStats),
 	scalarCase("getBrandMentionTotals", rollupRead.getBrandMentionTotals, rawRead.getBrandMentionTotals),
 	arrayCase("getPerPromptDailyMentions", rollupRead.getPerPromptDailyMentions, rawRead.getPerPromptDailyMentions),
-	// Agrees with raw as long as no run lists the same competitor name twice:
-	// rollup_competitor_mentions.runs counts distinct run ids per bucket, while
-	// raw's query here counts unnested rows directly. The seed never repeats a
-	// name within one run's competitorsMentioned.
+	// Only agrees while no run lists a competitor twice: the rollup counts distinct runs,
+	// raw counts unnested rows.
 	arrayCase(
 		"getPerPromptDailyCompetitorMentions",
 		rollupRead.getPerPromptDailyCompetitorMentions,
@@ -385,12 +351,7 @@ const EQUIVALENCE_CASES: EquivalenceCase[] = [
 	},
 ];
 
-// ---------------------------------------------------------------------------
-// Combos: windows x timezones x model filters x prompt subsets, resolved the
-// way the server resolves them (resolveBrandWindow) inside each test, since
-// the "all" window depends on seeded data that only exists once beforeEach
-// has run.
-// ---------------------------------------------------------------------------
+// Windows are resolved inside each test because "all" depends on data seeded in beforeEach.
 
 const LOOKBACKS: LookbackPeriod[] = ["1w", "1m", "all"];
 const TIMEZONES = ["UTC", "America/Los_Angeles", "Asia/Kolkata"];
@@ -449,8 +410,6 @@ describe.skipIf(!connectionString)("analytics-read integration", () => {
 	});
 
 	describe("read equivalence: prompt-scoped functions", () => {
-		// One branded, one unbranded, one with a user tag override — no model
-		// dimension here, since none of these three take a model filter.
 		const representativePromptIds = [PROMPTS[0].id, PROMPTS[2].id, PROMPTS[5].id];
 
 		for (const lookback of LOOKBACKS) {
@@ -472,8 +431,7 @@ describe.skipIf(!connectionString)("analytics-read integration", () => {
 						]);
 						expect(rollupSummary, label).toEqual(rawSummary);
 
-						// getPromptTopCompetitorMentions: same duplicate-name caveat as
-						// getPerPromptDailyCompetitorMentions above.
+						// Same duplicate-competitor caveat as getPerPromptDailyCompetitorMentions.
 						const [rollupTop, rawTop] = await Promise.all([
 							rollupRead.getPromptTopCompetitorMentions(promptId, window.fromDateStr, window.toDateStr, timezone, 10),
 							rawRead.getPromptTopCompetitorMentions(promptId, window.fromDateStr, window.toDateStr, timezone, 10),
@@ -487,8 +445,6 @@ describe.skipIf(!connectionString)("analytics-read integration", () => {
 
 	describe("facade gating", () => {
 		it("reads raw before the backfill completes and rollups (even if stale) once it has", async () => {
-			// A deliberate difference: an extra run inserted after the rebuild, so
-			// raw sees it and the un-rebuilt rollup tables do not.
 			await db.insert(promptRuns).values({
 				id: "eeeeeeee-0000-4000-8000-999999999999",
 				promptId: PROMPTS[0].id,
@@ -524,9 +480,6 @@ describe.skipIf(!connectionString)("analytics-read integration", () => {
 			expect(readyTotal).toBe(staleRollupTotal);
 		});
 
-		// Not held to raw equivalence (task spec): the not-ready fallback
-		// classifies raw per-URL rows in JS instead of calling a raw function, so
-		// this checks the facade against itself across both gate states.
 		it("getPerPromptDailyCitationClasses agrees whether or not the backfill has finished", async () => {
 			const window = await resolveBrandWindow(BRAND_ID, "1m", "UTC", { now: NOW });
 
@@ -592,10 +545,7 @@ describe.skipIf(!connectionString)("analytics-read integration", () => {
 
 	describe("resolveBrandWindow", () => {
 		it("opens the 'all' window at the brand's earliest run, read as a calendar day in the viewer's timezone", async () => {
-			// The earliest seeded run is 2026-07-01T06:59:00Z (day 0's 06:59 UTC
-			// slot, the smallest time-of-day in the rotation) — one minute before
-			// midnight in America/Los_Angeles (PDT), and mid-morning in UTC and
-			// Asia/Kolkata, so only the Los Angeles window opens a day earlier.
+			// The earliest run, 2026-07-01T06:59:00Z, is still June 30 in Los Angeles.
 			expect((await resolveBrandWindow(BRAND_ID, "all", "UTC", { now: NOW })).fromDateStr).toBe("2026-07-01");
 			expect((await resolveBrandWindow(BRAND_ID, "all", "Asia/Kolkata", { now: NOW })).fromDateStr).toBe("2026-07-01");
 			expect((await resolveBrandWindow(BRAND_ID, "all", "America/Los_Angeles", { now: NOW })).fromDateStr).toBe(

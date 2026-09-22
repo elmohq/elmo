@@ -8,11 +8,7 @@
  * at write time, so these functions are primarily for reading historical data.
  */
 
-/**
- * Stamped on every run this module parses. Bumping it marks stored text and
- * citations as no longer what today's parsing would produce, which is what lets
- * a fix to any provider's shape be replayed over history from `raw_output`.
- */
+/** Bump to replay a provider parsing fix over stored runs from `raw_output`. */
 export const EXTRACTOR_VERSION = 1;
 
 // ============================================================================
@@ -398,10 +394,8 @@ function tryGenericExtraction(rawOutput: any): string {
 }
 
 /**
- * `extractTextContent` answers a reader, so an unreadable payload comes back as
- * a human-readable placeholder. Storing one of those as a run's text would let
- * every later layer treat the placeholder as the answer, so extraction for
- * storage reports absence as null instead.
+ * `extractTextContent`'s reader-facing placeholders. Stored as a run's text, one
+ * would be treated as the answer by every later layer.
  */
 const EXTRACTION_FAILURE_SENTINELS: ReadonlySet<string> = new Set([
 	"Error extracting text content.",

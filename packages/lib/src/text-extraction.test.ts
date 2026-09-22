@@ -314,8 +314,6 @@ describe("text-extraction", () => {
 	});
 
 	describe("tryExtractTextContent", () => {
-		// Every shape a provider answers with when its payload holds no answer. The
-		// reader-facing placeholder must never be mistaken for the answer itself.
 		const emptyPayloads: [label: string, providerOrEngine: string, rawOutput: unknown][] = [
 			["openai", "openai-api", {}],
 			["openai by legacy engine", "chatgpt", {}],

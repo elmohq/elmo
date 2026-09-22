@@ -255,10 +255,7 @@ function compareRollupKeys(a: RollupKeyFields, b: RollupKeyFields): number {
 	);
 }
 
-/**
- * Citation rows for a range, folded into the three shapes the rollup stores.
- * Rows may span buckets; the bucket is part of every key.
- */
+/** Rows may span buckets; the bucket is part of every key. */
 export function aggregateCitationBucket(rows: CitationSourceRow[]): AggregatedCitations {
 	const normalized = sortRows(rows.map(normalizeRow));
 	return {

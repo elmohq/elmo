@@ -33,8 +33,7 @@ describe("the window a lookback stands for", () => {
 	});
 
 	it("reads the first run as a calendar day in the viewer's timezone", async () => {
-		// 23:30 UTC is already the next day in Tokyo and still the same one in Los
-		// Angeles, and the window is spelled in calendar days.
+		// 23:30 UTC is already the next day in Tokyo but not in Los Angeles.
 		getBrandEarliestRunDate.mockResolvedValue("2021-07-04T23:30:00Z");
 
 		await expect(resolveBrandWindow("brand", "all", "Asia/Tokyo", { now })).resolves.toMatchObject({

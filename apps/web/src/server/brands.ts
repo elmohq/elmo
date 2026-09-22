@@ -387,8 +387,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 			throw new Error("Failed to update brand");
 		}
 
-		// The brand's identity is what mention detection matches on, so history
-		// has to be re-derived against the new one.
+		// Mention detection matches on the brand's identity, so history must be re-derived.
 		if (Object.keys(updateData).length > 0) await requestBrandReprocess(data.brandId);
 
 		return result[0];

@@ -29,13 +29,9 @@ export interface RebuildStats {
 }
 
 /**
- * Rebuilds every rollup table for one brand over `[from, toExclusive)`.
- *
- * Delete-and-reinsert is the only way rollup rows are written, so a rebuild is
- * idempotent and a bucket can be replayed from raw at any time. Pass the db
- * handle to get a transaction of its own, or an open transaction to join it (the
- * rebuild then runs in a savepoint and rolls back without taking the caller with
- * it). Both bounds must be bucket-aligned.
+ * Delete-and-reinsert is the only way rollup rows are written, so a bucket can be
+ * replayed from raw at any time. Given an open transaction, the rebuild runs in a
+ * savepoint and rolls back without taking the caller with it.
  */
 export async function rebuildRange(
 	conn: DbConnection,
@@ -162,10 +158,7 @@ END`;
 const withTitle = (incoming: SQL, existing: SQL): SQL =>
 	sql`CASE WHEN ${incomingTitleWins} THEN ${incoming} ELSE ${existing} END`;
 
-/**
- * Upserts the range's pages and returns their ids. A page row is shared by every
- * tenant, so the upsert keeps the widest window seen.
- */
+/** A page row is shared by every tenant, so the upsert keeps the widest window seen. */
 async function upsertPages(tx: DbConnection, pages: PageUpsert[]): Promise<Map<string, number>> {
 	const ids = new Map<string, number>();
 	for (const chunk of chunked(pages)) {

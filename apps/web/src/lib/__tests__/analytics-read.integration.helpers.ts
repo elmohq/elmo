@@ -1,26 +1,7 @@
-/**
- * Deterministic seed shared by analytics-read.integration.test.ts: one brand
- * (website acme.com, an additional domain, one alias), three competitors, six
- * prompts (two branded, one with a user tag override), ten days of runs across
- * three models — one of them with both a grounded/premium variant
- * (provider = 'openai-api', web_search_enabled = true) and a scraped variant —
- * and a small catalog of cited pages exercising normalizeUrl's folding rules
- * (a tracking parameter, a www + trailing-slash pair), a Google Shopping URL,
- * brand/competitor domains, and a null-title page.
- *
- * Every page below keeps exactly one title across every citation of it, and
- * one citationIndex across every run that cites it. The rollup classifies a
- * page per bucket from that bucket's latest title, while the raw path
- * classifies from the whole window's latest title — a URL whose title changes
- * between buckets can legitimately land in a different class under the two
- * paths, which is a real (if narrow) divergence documented in task 05a's
- * report, not a bug this seed should manufacture. Similarly, raw's
- * getCitationUrlStats groups by the *literal* url and rounds its average
- * position to one decimal before the equivalence check re-weights it by count
- * through rollUpCitationUrls; that only reconstructs the true average exactly
- * when the pre-rounded average was already exact, which a constant
- * citationIndex per page guarantees.
- */
+// Every page keeps one title and one citationIndex throughout. The rollup classifies per
+// bucket's latest title while raw uses the window's latest, and raw rounds average
+// position before the equivalence check re-weights it; varying either would make the
+// two paths legitimately diverge.
 
 import type { DbConnection } from "@workspace/lib/db/db-connection";
 import {
@@ -38,7 +19,6 @@ import { sql } from "drizzle-orm";
 export const ORG_ID = "org-analytics-read-test";
 export const BRAND_ID = "brand-analytics-read-test";
 
-/** A fixed "now" so lookback windows (1w/1m) are deterministic regardless of when the suite runs. */
 export const NOW = new Date("2026-07-11T12:00:00.000Z");
 
 export interface SeedCompetitor {
@@ -67,18 +47,12 @@ export const PROMPTS: SeedPrompt[] = [
 	{ id: "dddddddd-0000-4000-8000-000000000003", value: "best crm software", branded: false },
 	{ id: "dddddddd-0000-4000-8000-000000000004", value: "top project management tools", branded: false },
 	{ id: "dddddddd-0000-4000-8000-000000000005", value: "crm for small business", branded: false },
-	// The one prompt with a user tag override — unrelated to system_tags/branding.
 	{ id: "dddddddd-0000-4000-8000-000000000006", value: "compare crm vendors", branded: false, tags: ["priority"] },
 ];
 
 export const ALL_PROMPT_IDS = PROMPTS.map((p) => p.id);
 export const BRANDED_PROMPT_IDS = PROMPTS.filter((p) => p.branded).map((p) => p.id);
 
-/**
- * chatgpt gets both a grounded/premium reach (direct API call, web search on)
- * and a scraped one (no provider, i.e. the consumer surface) so the ::premium
- * model filter has something to split.
- */
 const MODEL_VARIANTS: { model: string; provider: string | null; webSearchEnabled: boolean }[] = [
 	{ model: "chatgpt", provider: "openai-api", webSearchEnabled: true },
 	{ model: "chatgpt", provider: null, webSearchEnabled: false },
@@ -86,14 +60,8 @@ const MODEL_VARIANTS: { model: string; provider: string | null; webSearchEnabled
 	{ model: "gemini", provider: null, webSearchEnabled: false },
 ];
 
-/**
- * UTC instants chosen to sit one minute either side of a calendar-day boundary
- * in one of the three timezones the suite tests, plus one plain midday time:
- * 23:45 is 15 minutes before UTC's own midnight; 18:15 is 15 minutes before
- * midnight in Asia/Kolkata (the half-hour-offset zone the rollup plan calls
- * out); 06:59 is one minute before midnight in America/Los_Angeles while it
- * observes PDT (UTC-7), which is why the seed's ten days sit in early July.
- */
+// Just before midnight in UTC, Asia/Kolkata, and America/Los_Angeles (PDT, hence July),
+// plus one midday slot.
 const TIME_SLOTS = ["23:45:00", "18:15:00", "06:59:00", "12:30:00"];
 
 const COMPETITOR_SUBSETS: string[][] = [[], ["Globex"], ["Initech", "Umbrella"], ["Globex", "Initech", "Umbrella"]];
@@ -138,11 +106,10 @@ function buildSeedRuns(): SeedRun[] {
 	return runs;
 }
 
-/** `SEED_RUNS[i].promptId === PROMPTS[i % PROMPTS.length].id` by construction. */
 export const SEED_RUNS: SeedRun[] = buildSeedRuns();
 
 interface SeedPage {
-	/** Every entry normalizes to the same URL; the seed cites more than one variant to exercise normalizeUrl's folding. */
+	/** Variants that all normalize to the same URL. */
 	urls: string[];
 	domain: string;
 	title: string | null;
@@ -150,43 +117,34 @@ interface SeedPage {
 }
 
 const SEED_PAGES: SeedPage[] = [
-	// Brand's own website — utm_source=openai stripping.
 	{
 		urls: ["https://acme.com/guide", "https://acme.com/guide?utm_source=openai"],
 		domain: "acme.com",
 		title: "Acme Guide",
 		citationIndex: 0,
 	},
-	// Brand's additional domain.
 	{ urls: ["https://acme.io/docs/api"], domain: "acme.io", title: "Acme API Docs", citationIndex: 1 },
-	// A tracked competitor's domain.
 	{ urls: ["https://globex.com/product"], domain: "globex.com", title: "Globex Product", citationIndex: 2 },
-	// Unlisted domain, page-type fallback to editorial — www + trailing-slash stripping.
 	{
 		urls: ["https://example-blog.com/blog/best-crm-tools", "https://www.example-blog.com/blog/best-crm-tools/"],
 		domain: "example-blog.com",
 		title: "Best CRM Tools",
 		citationIndex: 3,
 	},
-	// Curated review domain.
 	{ urls: ["https://g2.com/products/acme/reviews"], domain: "g2.com", title: "Acme Reviews on G2", citationIndex: 4 },
-	// Google Shopping surface — excluded from the source mix, stays in rollup_citation_urls as "google".
 	{
 		urls: ["https://www.google.com/search?q=widget&prds=pvt:hg,productid:123"],
 		domain: "google.com",
 		title: "Widget Product",
 		citationIndex: 5,
 	},
-	// Curated ecommerce domain.
 	{ urls: ["https://amazon.com/dp/B000123456"], domain: "amazon.com", title: "Widget on Amazon", citationIndex: 6 },
-	// Curated forum domain.
 	{
 		urls: ["https://reddit.com/r/crm/comments/1/best_crm"],
 		domain: "reddit.com",
 		title: "Reddit thread about CRM",
 		citationIndex: 7,
 	},
-	// Null title throughout.
 	{ urls: ["https://docs.example.com/reference"], domain: "docs.example.com", title: null, citationIndex: 8 },
 ];
 
@@ -204,8 +162,7 @@ function buildSeedCitations(): SeedCitation[] {
 	const out: SeedCitation[] = [];
 	SEED_PAGES.forEach((page, pageIndex) => {
 		for (let k = 0; k < ATTACHMENTS_PER_PAGE; k++) {
-			// 7 and 13 are coprime with 60 (the run count), which spreads a page's
-			// citations across different prompts and days rather than clustering them.
+			// 7 and 13 are coprime with the run count, spreading a page's citations across prompts and days.
 			const runIndex = (pageIndex * 7 + k * 13) % SEED_RUNS.length;
 			const run = SEED_RUNS[runIndex];
 			out.push({
@@ -222,7 +179,6 @@ function buildSeedCitations(): SeedCitation[] {
 
 export const SEED_CITATIONS: SeedCitation[] = buildSeedCitations();
 
-/** Bucket-aligned bounds covering every seeded run. */
 export const REBUILD_FROM = new Date("2026-07-01T00:00:00.000Z");
 export const REBUILD_TO = new Date("2026-07-11T00:00:00.000Z");
 
@@ -306,7 +262,6 @@ export async function seed(db: DbConnection): Promise<void> {
 	);
 }
 
-/** Seeds, rebuilds the whole span, and marks the backfill complete — the steady state most tests want. */
 export async function seedAndRebuild(db: DbConnection): Promise<void> {
 	await seed(db);
 	await rebuildRange(db, BRAND_ID, REBUILD_FROM, REBUILD_TO);

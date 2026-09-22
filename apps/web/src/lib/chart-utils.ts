@@ -265,7 +265,6 @@ export function latestVisibility(chartData: ChartDataPoint[], id: string): numbe
 
 import type { Competitor, PromptRun } from "@workspace/lib/db/schema";
 
-/** Only the run fields the chart reads, so callers need not carry a whole row. */
 type VisibilityRun = Pick<PromptRun, "createdAt" | "brandMentioned" | "competitorsMentioned">;
 
 export function calculateVisibilityPercentages(

@@ -11,7 +11,6 @@ type TimezoneDateRange = {
 	toDateStr: string | null;
 };
 
-/** Every lookback but "all", which only a brand's own history can bound. */
 export type BoundedLookbackPeriod = Exclude<LookbackPeriod, "all">;
 
 export type CalendarDayRange = {
@@ -71,7 +70,6 @@ export function shiftDateStr(dateStr: string, delta: DateShift): string {
 	return date.toISOString().slice(0, 10);
 }
 
-/** The calendar day an instant falls on for a viewer in `timezone`. */
 export function calendarDayInTimezone(timezone: string, instant: Date = new Date()): string {
 	return instant.toLocaleDateString("en-CA", { timeZone: timezone });
 }
@@ -123,9 +121,8 @@ export function getBoundedLookbackRange(
 	}
 }
 
-/** For callers that pick the period themselves. A window for a period the
- * viewer chose — "all" included — comes from `resolveBrandWindow`, which can
- * ask the brand how far back its history goes. */
+/** Viewer-chosen periods (including "all") go through `resolveBrandWindow`,
+ * which can bound "all" by the brand's own history. */
 export function resolveLookbackRange(
 	lookback: BoundedLookbackPeriod,
 	timezoneParam: string,

@@ -125,14 +125,9 @@ export async function createMultiplePromptJobSchedulers(
 	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
 }
 
-/**
- * Ask the worker to re-derive this brand's history against its current name,
- * aliases, and competitors. Debounced per brand, because a settings screen
- * saves several fields in a row and the job re-reads the whole brand anyway.
- *
- * Never throws: the caller's write has already committed, and the nightly
- * reconcile plus the next config change both bring the brand back in line.
- */
+// Debounced per brand: a settings screen saves several fields in a row and the job
+// re-reads the whole brand anyway. Never throws because the caller's write has already
+// committed, and the nightly reconcile brings the brand back in line.
 export async function requestBrandReprocess(brandId: string): Promise<void> {
 	try {
 		const boss = await getBoss();

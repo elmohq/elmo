@@ -21,7 +21,6 @@ export interface ReconcileRollupsData {
 const TRAILING_WINDOW_MS = 48 * 60 * 60 * 1000;
 const SAMPLE_SIZE = 20;
 
-/** A bucket's rollup has drifted from raw when any of the three counts disagree. */
 export function isMismatch(comparison: BucketComparison): boolean {
 	return (
 		comparison.runs[0] !== comparison.runs[1] ||
@@ -45,7 +44,6 @@ function reportDrift(brandId: string, bucket: Date, comparison: BucketComparison
 	});
 }
 
-/** Every brand that recorded at least one run since `since`. */
 async function brandsWithRecentRuns(conn: DbConnection, since: Date): Promise<string[]> {
 	const rows = await conn
 		.selectDistinct({ brandId: promptRuns.brandId })
@@ -54,12 +52,8 @@ async function brandsWithRecentRuns(conn: DbConnection, since: Date): Promise<st
 	return rows.map((row) => row.brandId);
 }
 
-/**
- * Up to `limit` distinct (brand, bucket) pairs older than `before`, chosen at
- * random. Postgres rejects `ORDER BY random()` on a `SELECT DISTINCT` (the
- * order expression would have to appear in the select list), so this groups
- * instead, which carries no such restriction.
- */
+// GROUP BY rather than SELECT DISTINCT: Postgres rejects `ORDER BY random()`
+// on a DISTINCT unless the order expression is in the select list.
 async function sampleOldBuckets(
 	conn: DbConnection,
 	before: Date,
@@ -103,12 +97,8 @@ async function checkSample(
 	return { checked: sample.length, mismatches };
 }
 
-/**
- * Nightly drift check: the trailing 48 hours are always remarked dirty (cheap
- * insurance against a missed invalidation near the write path), and a random
- * sample of older buckets is compared against raw so drift further back still
- * gets noticed and self-heals.
- */
+// The trailing window is remarked dirty unconditionally as cheap insurance
+// against a missed invalidation near the write path; older drift is caught by sampling.
 export async function runReconcileTick(source: string, conn: DbConnection = db): Promise<void> {
 	const now = new Date();
 	const trailingFrom = bucketStart(new Date(now.getTime() - TRAILING_WINDOW_MS));

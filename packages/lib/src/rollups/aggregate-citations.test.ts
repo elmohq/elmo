@@ -135,7 +135,6 @@ describe("aggregateCitationBucket", () => {
 			[BUCKET_B, "gpt-5", true, 1],
 		]);
 		expect(domains).toHaveLength(4);
-		// One page per distinct URL, no matter how many rollup rows cite it.
 		expect(pages).toHaveLength(1);
 	});
 

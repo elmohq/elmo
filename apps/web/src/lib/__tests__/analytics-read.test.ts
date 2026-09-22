@@ -1,13 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PerPromptDailyCitationPageRow } from "@/lib/postgres-read";
 
-// A module this thin would trip the eager-property-access bug the gated()
-// facade used to have: every `export const x = gated(rollup.x, raw.x)` read
-// `raw.x` at module-evaluation time, so importing analytics-read.ts touched
-// every export postgres-read.ts has — vitest's mocked-module guard throws the
-// moment code reads an export a mock factory didn't return, so a test that
-// only needs one or two functions (like this one) used to blow up the whole
-// module graph just by being imported.
 vi.mock("@/lib/postgres-read", () => ({
 	getPromptRuns: async () => [],
 }));
@@ -33,9 +26,8 @@ describe("classifyDailyPages", () => {
 
 	it("classifies each row the tenant-independent way (no brand/competitor domains) and carries the count", () => {
 		const [result] = classifyDailyPages([row({ count: 3 })]);
-		// An uncategorized domain falls to the page-type fallback: an /blog/ path
-		// reads as "article", and an "other"-category article reads as editorial —
-		// the same classifyUrl behavior classifyPage applies at rebuild time.
+		// Uncategorized domain: the /blog/ path reads as "article", and an
+		// "other"-category article reads as editorial.
 		expect(result).toEqual({
 			prompt_id: "prompt-1",
 			date: "2026-01-01",
