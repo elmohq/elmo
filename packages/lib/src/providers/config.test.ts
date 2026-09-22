@@ -5,6 +5,7 @@ import { cloro } from "./registry/cloro";
 import { dataforseo } from "./registry/dataforseo";
 import { olostep } from "./registry/olostep";
 import { oxylabs } from "./registry/oxylabs";
+import { searchapi } from "./registry/searchapi";
 import type { ModelConfig } from "./types";
 
 describe("validateScrapeTargets", () => {
@@ -90,6 +91,7 @@ describe("validateScrapeTargets", () => {
 			{ model: "chatgpt", provider: "olostep", webSearch: true },
 			{ model: "chatgpt", provider: "brightdata", webSearch: true },
 			{ model: "chatgpt", provider: "oxylabs", webSearch: true },
+			{ model: "chatgpt", provider: "searchapi", webSearch: true },
 			{ model: "chatgpt", provider: "cloro", webSearch: true },
 			{ model: "google-ai-mode", provider: "dataforseo", webSearch: true },
 		];
@@ -100,6 +102,7 @@ describe("validateScrapeTargets", () => {
 					olostep: configuredProvider,
 					brightdata: configuredProvider,
 					oxylabs: configuredProvider,
+					searchapi: configuredProvider,
 					cloro: configuredProvider,
 					dataforseo: configuredProvider,
 				}),
@@ -112,6 +115,23 @@ describe("provider validateTarget", () => {
 	function config(model: string, provider: string, webSearch: boolean, version?: string): ModelConfig {
 		return { model, provider, version, webSearch };
 	}
+
+	describe("searchapi", () => {
+		it("accepts every surface it can reach, online", () => {
+			for (const model of ["chatgpt", "perplexity", "copilot", "gemini", "google-ai-mode", "google-ai-overview"]) {
+				expect(searchapi.validateTarget!(config(model, "searchapi", true))).toBeNull();
+			}
+		});
+
+		it("lets ChatGPT run without web search, since it is the only surface that can", () => {
+			expect(searchapi.validateTarget!(config("chatgpt", "searchapi", false))).toBeNull();
+			expect(searchapi.validateTarget!(config("perplexity", "searchapi", false))).toMatch(/requires :online/);
+		});
+
+		it("rejects unknown models", () => {
+			expect(searchapi.validateTarget!(config("claude", "searchapi", true))).toMatch(/does not support/);
+		});
+	});
 
 	describe("olostep", () => {
 		it("accepts valid online targets", () => {
