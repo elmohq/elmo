@@ -11,7 +11,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import type { PlanKey } from "@workspace/config/plans";
+import { MONEY_BACK_GUARANTEE_DAYS, type PlanKey, RECOMMENDED_PLAN } from "@workspace/config/plans";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { PlanComparison } from "@/components/plan-comparison";
 import { forgetPaywall } from "@/lib/billing/queries";
+import { startSessionRecording, stopSessionRecording, trackEvent, trackEventBeforeNavigation } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import { getPaywallStateFn, type PaywallRequired, type PaywallState } from "@/server/billing";
 
@@ -77,6 +78,7 @@ function ActivatingOrganization({ organizationId }: { organizationId?: string })
 			for (let i = 0; i < 30 && !cancelled; i++) {
 				const state = await getPaywallStateFn({ data: { organizationId } });
 				if (!state.needsPlan) {
+					trackEvent("checkout_completed", { organization_id: organizationId });
 					forgetPaywall(queryClient);
 					navigate({ to: "/app" });
 					return;
@@ -105,9 +107,16 @@ function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
 	const [error, setError] = useState<string | null>(null);
 	const isAdmin = paywall.isOrgAdmin;
 
+	// Where the decision to pay is made, so the one page worth watching.
+	useEffect(() => {
+		startSessionRecording();
+		return stopSessionRecording;
+	}, []);
+
 	const subscribe = async (plan: PlanKey) => {
 		setSubscribing(plan);
 		setError(null);
+		trackEventBeforeNavigation("checkout_started", { plan, annual });
 		const origin = window.location.origin;
 		const { error: upgradeError } = await authClient.subscription.upgrade({
 			plan,
@@ -128,7 +137,10 @@ function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
 		<div className="mx-auto max-w-6xl space-y-8 p-8">
 			<div className="space-y-2 text-center">
 				<h1 className="text-3xl font-bold">Choose your plan</h1>
-				<p className="text-muted-foreground">Start tracking how AI answer engines talk about your brand.</p>
+				<p className="text-muted-foreground">
+					Start tracking how AI answer engines talk about your brand. Cancel anytime, {MONEY_BACK_GUARANTEE_DAYS}-day
+					money-back guarantee.
+				</p>
 				<div className="flex items-center justify-center gap-3 pt-2">
 					<span className={annual ? "text-muted-foreground" : "font-medium"}>Monthly</span>
 					<Switch checked={annual} onCheckedChange={setAnnual} aria-label="Annual billing" />
@@ -153,7 +165,7 @@ function PlanPicker({ paywall }: { paywall: PaywallRequired }) {
 
 			<PlanComparison
 				annual={annual}
-				highlightPlan="pro"
+				highlightPlan={RECOMMENDED_PLAN}
 				renderAction={(plan) => (
 					<Button
 						className="w-full"
