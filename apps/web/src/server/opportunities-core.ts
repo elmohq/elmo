@@ -3,8 +3,8 @@
  * returning it whole would make whatever the generator wrote part of this
  * contract.
  */
-import type { CitedPage, OpportunitiesResponse, ReportOpportunity } from "./opportunities";
-import { storedOpportunities } from "./opportunities";
+import type { CitedPage, ReportOpportunity } from "@workspace/lib/opportunities";
+import { type OpportunitiesResponse, storedOpportunities } from "./opportunities";
 
 /** So a caller never has to tell "none" from "not enough data yet". */
 type OpportunitiesStatus = "ready" | "insufficient-data" | "not-generated";

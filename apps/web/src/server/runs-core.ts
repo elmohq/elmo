@@ -4,9 +4,9 @@
  */
 import { db } from "@workspace/lib/db/db";
 import { citations, promptRuns } from "@workspace/lib/db/schema";
+import { countPromptRuns, getPromptRuns } from "@workspace/lib/postgres-read";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, asc, eq } from "drizzle-orm";
-import { countPromptRuns, getPromptRuns } from "@/lib/postgres-read";
 import type { AnalyticsWindow } from "@/server/analytics-core";
 
 export interface RunSummary {

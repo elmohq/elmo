@@ -5,145 +5,34 @@ const BRAND = "brand_1";
 
 const state = vi.hoisted(() => ({
 	reports: [] as Array<{ brandId: string; report: unknown; model: string | null; createdAt: Date }>,
-	locks: new Set<string>(),
-	afterReportRead: null as null | (() => void),
+	jobs: [] as Array<{ state: string; created_on: Date }>,
+	sent: [] as Array<{ name: string; data: unknown; options: unknown }>,
 }));
 
-const llm = vi.hoisted(() => {
-	let entered!: () => void;
-	let release!: () => void;
-	return {
-		calls: 0,
-		fails: false,
-		entered: new Promise<void>((resolve) => {
-			entered = resolve;
-		}),
-		release: new Promise<void>((resolve) => {
-			release = resolve;
-		}),
-		signalEntered: () => entered(),
-		finish: () => release(),
-		reset() {
-			this.calls = 0;
-			this.fails = false;
-			this.entered = new Promise<void>((resolve) => {
-				entered = resolve;
-			});
-			this.release = new Promise<void>((resolve) => {
-				release = resolve;
-			});
-		},
-	};
-});
-
-vi.mock("@workspace/lib/db/db", async () => {
-	const { brandOpportunities, brands } = await import("@workspace/lib/db/schema");
-
-	// One brand per test, so the `where` clauses have nothing to narrow.
-	function rowsFor(table: unknown) {
-		if (table === brandOpportunities) {
-			const rows = [...state.reports].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-			const hook = state.afterReportRead;
-			state.afterReportRead = null;
-			hook?.();
-			return rows;
-		}
-		if (table === brands) return [{ name: "Acme", website: "https://acme.test", additionalDomains: [] }];
-		return [];
-	}
-
-	function select() {
-		let table: unknown;
-		const chain: Record<string | symbol, unknown> = new Proxy(
-			{},
-			{
-				get(_target, prop) {
-					if (prop === "then") {
-						return (resolve: (rows: unknown[]) => unknown) => Promise.resolve(rowsFor(table)).then(resolve);
-					}
-					return (value: unknown) => {
-						if (prop === "from") table = value;
-						return chain;
-					};
-				},
-			},
-		);
-		return chain;
-	}
-
-	// Advisory xact locks: held until the transaction callback settles.
-	async function transaction<T>(run: (tx: unknown) => Promise<T>): Promise<T> {
-		let held: string | null = null;
-		const tx = {
-			execute: async (query: { queryChunks: unknown[] }) => {
-				const key = String(query.queryChunks.find((chunk) => typeof chunk === "string"));
-				if (state.locks.has(key)) return { rows: [{ locked: false }] };
-				state.locks.add(key);
-				held = key;
-				return { rows: [{ locked: true }] };
-			},
-		};
-		try {
-			return await run(tx);
-		} finally {
-			if (held) state.locks.delete(held);
-		}
-	}
-
+vi.mock("@workspace/lib/db/db", () => {
+	const chain: Record<string, unknown> = {};
+	for (const method of ["from", "where", "orderBy"]) chain[method] = () => chain;
+	chain.limit = async () => [...state.reports].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 	return {
 		db: {
-			select,
-			insert: () => ({
-				values: (row: { brandId: string; report: unknown; model: string | null }) => ({
-					returning: async () => {
-						const saved = { ...row, createdAt: new Date() };
-						state.reports.push(saved);
-						return [{ createdAt: saved.createdAt }];
-					},
-				}),
+			select: () => chain,
+			execute: async () => ({
+				rows: [...state.jobs].sort((a, b) => b.created_on.getTime() - a.created_on.getTime()),
 			}),
-			transaction,
 		},
 	};
 });
 
-vi.mock("@workspace/lib/onboarding", () => ({
-	runStructuredCompletionPrompt: async () => {
-		llm.calls += 1;
-		llm.signalEntered();
-		if (llm.fails) throw new Error("provider refused");
-		await llm.release;
-		return {
-			object: {
-				summary: ["Competitors own the roundups"],
-				opportunities: [
-					{
-						category: "outreach",
-						title: "Get into the CRM roundups",
-						why: "Rivals are cited there and you are not.",
-						relatedPrompts: ["best crm for startups"],
-					},
-				],
-				risks: ["Roundup editors move slowly"],
-			},
-			modelVersion: "test-model",
-		};
-	},
+vi.mock("@/lib/boss-client", () => ({
+	getBoss: async () => ({
+		send: async (name: string, data: unknown, options: unknown) => {
+			state.sent.push({ name, data, options });
+			return "job_1";
+		},
+	}),
 }));
 
-vi.mock("@/server/prompt-resolution", () => ({
-	resolveFilteredPrompts: async () => [{ id: "prompt_1", value: "best crm for startups", systemTags: [], tags: [] }],
-}));
-
-vi.mock("@/lib/postgres-read", () => ({
-	getPerPromptRunStats: async () => [{ prompt_id: "prompt_1", runs: 12, brand_mention_rate: 0.25 }],
-	getPerPromptDailyCompetitorMentions: async () => [],
-	getPerPromptDailyCitationStats: async () => [],
-	getPerPromptCitationPages: async () => [],
-	getBrandMentionRateByModel: async () => [],
-}));
-
-const { resolveOpportunities, storedOpportunities } = await import("@/server/opportunities");
+const { resolveOpportunities } = await import("@/server/opportunities");
 const { publishedOpportunities } = await import("@/server/opportunities-core");
 
 function storeReport(title: string, ageDays: number) {
@@ -153,14 +42,7 @@ function storeReport(title: string, ageDays: number) {
 			summary: [],
 			risks: [],
 			opportunities: [
-				{
-					category: "outreach",
-					title,
-					why: "stored",
-					relatedPrompts: [],
-					yourCitations: [],
-					competitorCitations: [],
-				},
+				{ category: "outreach", title, why: "stored", relatedPrompts: [], yourCitations: [], competitorCitations: [] },
 			],
 		},
 		model: "stored-model",
@@ -168,107 +50,105 @@ function storeReport(title: string, ageDays: number) {
 	});
 }
 
+function recordJob(jobState: string, ageMinutes: number) {
+	state.jobs.push({ state: jobState, created_on: new Date(Date.now() - ageMinutes * 60_000) });
+}
+
 const titles = (report: { opportunities: Array<{ title: string }> } | null) =>
 	(report?.opportunities ?? []).map((o) => o.title);
 
 beforeEach(() => {
 	state.reports.length = 0;
-	state.locks.clear();
-	state.afterReportRead = null;
-	llm.reset();
+	state.jobs.length = 0;
+	state.sent.length = 0;
 });
 
 describe("resolveOpportunities", () => {
-	it("serves a report that is still within the refresh window without generating one", async () => {
+	it("serves a fresh report without enqueueing generation", async () => {
 		storeReport("Stored opportunity", 1);
-		llm.finish();
 
 		const result = await resolveOpportunities(BRAND);
 
 		expect(titles(result.report)).toEqual(["Stored opportunity"]);
-		expect(llm.calls).toBe(0);
+		expect(state.sent).toEqual([]);
 	});
 
-	it("generates once when two callers find the same stale report", async () => {
+	it("serves a stale report while enqueueing one generation job keyed by brand", async () => {
 		storeReport("Stored opportunity", 30);
 
-		const first = resolveOpportunities(BRAND);
-		await llm.entered;
-		const second = await resolveOpportunities(BRAND);
-		llm.finish();
+		const result = await resolveOpportunities(BRAND, "America/Chicago");
 
-		expect(titles((await first).report)).toEqual(["Get into the CRM roundups"]);
-		// The second caller is served the stale report rather than paying again.
-		expect(titles(second.report)).toEqual(["Stored opportunity"]);
-		expect(llm.calls).toBe(1);
-		expect(state.reports).toHaveLength(2);
+		expect(titles(result.report)).toEqual(["Stored opportunity"]);
+		expect(state.sent).toEqual([
+			{
+				name: "generate-opportunities",
+				data: { brandId: BRAND, timezone: "America/Chicago" },
+				options: { singletonKey: BRAND },
+			},
+		]);
 	});
 
-	it("tells a caller with nothing stored that a report is on its way", async () => {
-		const first = resolveOpportunities(BRAND);
-		await llm.entered;
-		const second = await resolveOpportunities(BRAND);
-		llm.finish();
-		await first;
+	it("says a first report is being generated when nothing is stored", async () => {
+		const result = await resolveOpportunities(BRAND);
 
-		expect(second.reason).toBe("generating");
-		expect(second.report).toBeNull();
-		expect(llm.calls).toBe(1);
+		expect(result.reason).toBe("generating");
+		expect(result.report).toBeNull();
+		expect(state.sent).toHaveLength(1);
 	});
 
-	it("serves the report a concurrent caller wrote while it waited for the lock", async () => {
-		state.afterReportRead = () => storeReport("Just written", 0);
-		llm.finish();
+	it("reports insufficient data from a recent job that found too little to write about", async () => {
+		recordJob("completed", 5);
 
 		const result = await resolveOpportunities(BRAND);
 
-		expect(titles(result.report)).toEqual(["Just written"]);
-		expect(llm.calls).toBe(0);
+		expect(result.reason).toBe("insufficient-data");
+		expect(state.sent).toEqual([]);
 	});
 
-	it("releases the lock when generation fails, so the next caller can try", async () => {
-		llm.fails = true;
+	it("surfaces a recent failed job instead of paying for another attempt", async () => {
+		recordJob("failed", 5);
 
 		await expect(resolveOpportunities(BRAND)).rejects.toThrow("Failed to generate");
-		expect(state.locks.size).toBe(0);
+		expect(state.sent).toEqual([]);
+	});
 
-		llm.reset();
-		llm.finish();
-		const retry = await resolveOpportunities(BRAND);
+	it("keeps serving a stale report when the last attempt failed", async () => {
+		storeReport("Stored opportunity", 30);
+		recordJob("failed", 5);
 
-		expect(titles(retry.report)).toEqual(["Get into the CRM roundups"]);
+		const result = await resolveOpportunities(BRAND);
+
+		expect(titles(result.report)).toEqual(["Stored opportunity"]);
+		expect(state.sent).toEqual([]);
+	});
+
+	it("tries again once the last attempt is old enough", async () => {
+		recordJob("completed", 120);
+
+		const result = await resolveOpportunities(BRAND);
+
+		expect(result.reason).toBe("generating");
+		expect(state.sent).toHaveLength(1);
 	});
 });
 
 describe("read-only surfaces", () => {
-	it("serves a long-stale report as-is rather than generating a replacement", async () => {
+	it("serves a long-stale report as-is without enqueueing generation", async () => {
 		storeReport("Stored opportunity", 90);
-		llm.finish();
 
 		const published = await publishedOpportunities(BRAND);
 
 		expect(published.status).toBe("ready");
 		expect(published.opportunities.map((o) => o.title)).toEqual(["Stored opportunity"]);
-		expect(llm.calls).toBe(0);
+		expect(state.sent).toEqual([]);
 	});
 
 	it("reports a brand with no stored report as not-generated", async () => {
-		llm.finish();
-
 		const published = await publishedOpportunities(BRAND);
 
 		expect(published.status).toBe("not-generated");
 		expect(published.opportunities).toEqual([]);
 		expect(published.generatedAt).toBeNull();
-		expect(llm.calls).toBe(0);
-	});
-
-	it("never takes the generation lock", async () => {
-		storeReport("Stored opportunity", 90);
-		llm.finish();
-
-		await storedOpportunities(BRAND);
-
-		expect(state.locks.size).toBe(0);
+		expect(state.sent).toEqual([]);
 	});
 });

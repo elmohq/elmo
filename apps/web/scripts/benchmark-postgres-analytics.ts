@@ -13,9 +13,9 @@
  *   pnpm tsx --env-file=../../.env scripts/benchmark-postgres-analytics.ts --brands=3
  */
 
+import * as pgRead from "@workspace/lib/postgres-read";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
-import * as pgRead from "../src/lib/postgres-read";
 
 const db = drizzle(process.env.DATABASE_URL!);
 

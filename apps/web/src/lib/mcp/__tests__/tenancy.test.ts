@@ -42,7 +42,7 @@ vi.mock("@workspace/lib/db/db", () => {
 	return { db: chain };
 });
 
-vi.mock("@/lib/postgres-read", () => ({
+vi.mock("@workspace/lib/postgres-read", () => ({
 	getPromptRuns: async () => [],
 	countPromptRuns: async () => 0,
 }));

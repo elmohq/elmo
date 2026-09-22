@@ -67,7 +67,6 @@ export const mockShareOfVoice = {
 /** Mock opportunities report (the getOpportunitiesFn response shape). */
 export const mockOpportunities = {
 	reason: null,
-	generatedFor: { brandName: "Acme" },
 	lastEvaluatedAt: "2026-06-04T09:12:00.000Z",
 	report: {
 		summary: [

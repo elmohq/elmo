@@ -10,7 +10,8 @@
  */
 import type { OpportunitiesResponse } from "@/server/opportunities";
 
-export type { OpportunitiesReport, OpportunitiesResponse } from "@/server/opportunities";
+export type { OpportunitiesReport } from "@workspace/lib/opportunities";
+export type { OpportunitiesResponse } from "@/server/opportunities";
 
 let _report: OpportunitiesResponse | null = null;
 

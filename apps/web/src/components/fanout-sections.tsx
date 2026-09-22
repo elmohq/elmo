@@ -6,6 +6,14 @@
  */
 
 import { IconInfoCircle } from "@tabler/icons-react";
+import {
+	type FanoutQueryStat,
+	type ModelFanoutStat,
+	normTok,
+	type TermStat,
+	type WordChangeStat,
+	type WordChanges,
+} from "@workspace/lib/fanout-analysis";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Switch } from "@workspace/ui/components/switch";
@@ -14,14 +22,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { useState } from "react";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
 import { WordCloud } from "@/components/word-cloud";
-import {
-	type FanoutQueryStat,
-	type ModelFanoutStat,
-	normTok,
-	type TermStat,
-	type WordChangeStat,
-	type WordChanges,
-} from "@/lib/fanout-analysis";
 import { getModelDisplayName } from "@/lib/utils";
 
 const FANOUT_PURPLE = "#8b5cf6";

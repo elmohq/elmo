@@ -1,4 +1,4 @@
-import type { LookbackPeriod } from "@/lib/lookback";
+import type { LookbackPeriod } from "./lookback";
 
 type DateShift = {
 	days?: number;

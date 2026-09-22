@@ -9,6 +9,7 @@
 
 import { IconInfoCircle } from "@tabler/icons-react";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
+import { cleanAndValidateDomain } from "@workspace/lib/domain-categories";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -18,7 +19,6 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { SiteIcon } from "@/components/site-icon";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
 export interface CompetitorEntry {
 	_key: string;

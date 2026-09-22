@@ -1,6 +1,7 @@
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import type { Competitor } from "@workspace/lib/db/schema";
+import type { LookbackPeriod } from "@workspace/lib/lookback";
 import { Badge } from "@workspace/ui/components/badge";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import * as React from "react";
@@ -14,7 +15,6 @@ import {
 	selectCompetitorsToDisplay,
 	visibilityBadgeProps,
 } from "@/lib/chart-utils";
-import type { LookbackPeriod } from "@/lib/lookback";
 
 /** The brand's own line is the one people are looking for, so it carries more
  *  weight than the competitors it's plotted against. */

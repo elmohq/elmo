@@ -1,8 +1,10 @@
 import * as Sentry from "@sentry/node";
 import { getDeployment } from "@workspace/deployment";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
+import type { GenerateOpportunitiesOutcome } from "@workspace/lib/opportunities";
 import type { Job, PgBoss } from "pg-boss";
 import { type AnalyzeBrandData, analyzeBrandJob } from "./jobs/analyze-brand";
+import { type GenerateOpportunitiesData, generateOpportunitiesJob } from "./jobs/generate-opportunities";
 import { type GenerateReportData, generateReportJob } from "./jobs/generate-report";
 import { type ProcessPromptData, processPromptJob } from "./jobs/process-prompt";
 import { type ScheduleMaintenanceData, scheduleMaintenanceJob } from "./jobs/schedule-maintenance";
@@ -54,6 +56,13 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 		withSentry("analyze-brand", analyzeBrandJob),
 	);
 	console.log("Registered handler: analyze-brand");
+
+	await boss.work<GenerateOpportunitiesData, GenerateOpportunitiesOutcome>(
+		"generate-opportunities",
+		{ batchSize: 1, localConcurrency: 2 },
+		withSentry("generate-opportunities", generateOpportunitiesJob),
+	);
+	console.log("Registered handler: generate-opportunities");
 
 	await boss.work<ScheduleMaintenanceData>(
 		"schedule-maintenance",

@@ -1,5 +1,6 @@
 import { IconChevronDown, IconChevronRight, IconSearch } from "@tabler/icons-react";
 import { createFileRoute } from "@tanstack/react-router";
+import { type PromptFanoutStat, promptKeywords, type TopQueryStat } from "@workspace/lib/fanout-analysis";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Input } from "@workspace/ui/components/input";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -16,7 +17,6 @@ import { useBrand } from "@/hooks/use-brands";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
-import { type PromptFanoutStat, promptKeywords, type TopQueryStat } from "@/lib/fanout-analysis";
 import { pageHead } from "@/lib/route-head";
 import { getModelDisplayName } from "@/lib/utils";
 

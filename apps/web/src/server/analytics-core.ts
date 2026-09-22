@@ -7,13 +7,9 @@
 import { getModelMeta } from "@workspace/config/models";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { eq } from "drizzle-orm";
-import { generateDateRange } from "@/lib/chart-utils";
-import { rollUpCitationDomains, rollUpCitationUrls } from "@/lib/citation-rollup";
-import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
-import { classifyUrl as classifyUrlShared } from "@/lib/domain-categories.server";
-import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@/lib/fanout-analysis";
+import { extractDomain, normalizeUrl } from "@workspace/lib/domain-categories";
+import { classifyUrl as classifyUrlShared } from "@workspace/lib/domain-categories.server";
+import { computeFanoutAnalysis, type FanoutAnalysis, type FanoutLimitOverrides } from "@workspace/lib/fanout-analysis";
 import {
 	getBrandMentionRateByModel,
 	getBrandMentionTotals,
@@ -29,9 +25,17 @@ import {
 	getPromptsSummary,
 	getVisibilityDailyAggregate,
 	isCalendarDay,
-} from "@/lib/postgres-read";
-import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
-import { resolveFilteredPrompts } from "@/server/prompt-resolution";
+} from "@workspace/lib/postgres-read";
+import { resolveFilteredPrompts } from "@workspace/lib/prompt-resolution";
+import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import {
+	computeShareOfVoice,
+	shareOfVoiceLeaderboardLVCF,
+	shareOfVoiceTimeSeriesLVCF,
+} from "@workspace/lib/visibility-stats";
+import { eq } from "drizzle-orm";
+import { generateDateRange } from "@/lib/chart-utils";
+import { rollUpCitationDomains, rollUpCitationUrls } from "@/lib/citation-rollup";
 
 export interface AnalyticsWindow {
 	/** Either calendar days (`YYYY-MM-DD`, read in `timezone`, `to` inclusive) or

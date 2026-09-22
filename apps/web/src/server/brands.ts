@@ -14,6 +14,7 @@ import {
 	findUnusedBrandSlug,
 	isBrandSlugAvailable,
 } from "@workspace/lib/db/unique-names";
+import { cleanAndValidateDomain } from "@workspace/lib/domain-categories";
 import {
 	assertAllowed,
 	assertCanCreateBrand,
@@ -36,7 +37,6 @@ import {
 import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import type { TrackedTarget } from "@/lib/model-filter";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 

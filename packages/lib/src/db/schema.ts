@@ -198,7 +198,7 @@ export const reports = pgTable(
 
 // One row per generated Opportunities report, per brand — append-only history
 // (every generation is kept, not overwritten). The page reads the latest row and
-// regenerates only when it's stale; see apps/web/src/server/opportunities.ts.
+// has the worker regenerate it once stale; see packages/lib/src/opportunities.ts.
 export const brandOpportunities = pgTable(
 	"brand_opportunities",
 	{

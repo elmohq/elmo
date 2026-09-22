@@ -1,7 +1,7 @@
 import { getDefaultDelayHours } from "@workspace/lib/constants";
-import { CITATION_CATEGORIES, type CitationCategory } from "@/lib/domain-categories";
-import type { LookbackPeriod } from "@/lib/lookback";
-import type { PerPromptDailyCitationStats, PerPromptVisibilityPoint } from "@/lib/postgres-read";
+import { CITATION_CATEGORIES, type CitationCategory } from "@workspace/lib/domain-categories";
+import type { LookbackPeriod } from "@workspace/lib/lookback";
+import type { PerPromptDailyCitationStats, PerPromptVisibilityPoint } from "@workspace/lib/postgres-read";
 
 /** Charts key a series by id and label it by name; nothing else about a brand is read. */
 export interface ChartSubject {

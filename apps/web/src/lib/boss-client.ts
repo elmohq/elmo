@@ -51,6 +51,12 @@ export async function getBoss(): Promise<PgBoss> {
 			retryBackoff: false,
 			expireInSeconds: 60 * 15,
 		});
+		await boss.createQueue("generate-opportunities", {
+			policy: "exclusive",
+			retryLimit: 1,
+			retryDelay: 60,
+			expireInSeconds: 60 * 15,
+		});
 
 		bossInstance = boss;
 		return boss;

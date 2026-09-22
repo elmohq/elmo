@@ -1,4 +1,5 @@
 import { useSearch } from "@tanstack/react-router";
+import { LOOKBACK_PERIODS, type LookbackPeriod } from "@workspace/lib/lookback";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
@@ -18,7 +19,6 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
 import { useBrand } from "@/hooks/use-brands";
 import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
-import { LOOKBACK_PERIODS, type LookbackPeriod } from "@/lib/lookback";
 
 export { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 

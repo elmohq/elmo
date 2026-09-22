@@ -1,3 +1,5 @@
+import { toRoundedPercentages } from "@workspace/lib/domain-categories";
+import type { LookbackPeriod } from "@workspace/lib/lookback";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	applyPerPromptKeyedLVCF,
@@ -6,8 +8,6 @@ import {
 	getDaysFromLookback,
 	getDefaultLookbackPeriod,
 } from "@/lib/chart-utils";
-import { toRoundedPercentages } from "@/lib/domain-categories";
-import type { LookbackPeriod } from "@/lib/lookback";
 
 describe("getDaysFromLookback", () => {
 	it.each<[LookbackPeriod, number]>([

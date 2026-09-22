@@ -1,0 +1,572 @@
+/**
+ * AI-generated Opportunities.
+ *
+ * We assemble a compact, deterministic digest of the brand's tracked
+ * AI-visibility data (overall + per-platform visibility, per-prompt standing vs
+ * the leading competitor over 7d + 30d with tags + citation difficulty, and the
+ * citation landscape), then make a SINGLE structured LLM completion — no web
+ * search, no agent loop — to turn it into categorized opportunities (Creation /
+ * Existing content / Outreach / Social), each with a plain-language "why". The
+ * server then attaches each opportunity's related prompts (resolved to IDs) and
+ * its cited pages split into the brand's vs competitors' — the page renders that.
+ *
+ * Provider selection reuses the same config as onboarding / prompt-idea
+ * generation (`runStructuredCompletionPrompt` → `resolveResearchProvider`, which
+ * honors ONBOARDING_LLM_TARGET / the preference order). Reports are persisted to
+ * the brand_opportunities table (append-only) by the worker's
+ * generate-opportunities job; the web app only reads them and enqueues that job
+ * once the latest is older than REFRESH_AFTER_DAYS.
+ */
+
+import { desc, eq } from "drizzle-orm";
+import { z } from "zod";
+import { db } from "./db/db";
+import { brandOpportunities, brands, competitors } from "./db/schema";
+import { type CitationCategory, extractDomain } from "./domain-categories";
+import { categorizeDomain } from "./domain-categories.server";
+import { runStructuredCompletionPrompt } from "./onboarding";
+import {
+	getBrandMentionRateByModel,
+	getPerPromptCitationPages,
+	getPerPromptDailyCitationStats,
+	getPerPromptDailyCompetitorMentions,
+	getPerPromptRunStats,
+	type PerPromptDailyCompetitorRow,
+	type PerPromptRunStats,
+} from "./postgres-read";
+import { resolveFilteredPrompts } from "./prompt-resolution";
+import { getEffectiveBrandedStatus } from "./tag-utils";
+import { resolveLookbackRange, resolveTimezone } from "./timezone-utils";
+import { computeVolatility, type DailyDomainCount, stabilityScore } from "./visibility-stats";
+
+/** First occurrence of each entry, by whatever `key` identifies it. */
+function distinctBy<T>(items: T[], key: (item: T) => string): T[] {
+	const seen = new Set<string>();
+	return items.filter((item) => {
+		const id = key(item);
+		if (seen.has(id)) return false;
+		seen.add(id);
+		return true;
+	});
+}
+
+const normalizeText = (text: string) => text.trim().toLowerCase();
+
+export function withoutRepeats(report: OpportunitiesReport): OpportunitiesReport {
+	return {
+		...report,
+		summary: distinctBy(report.summary, normalizeText),
+		risks: distinctBy(report.risks, normalizeText),
+		opportunities: distinctBy(report.opportunities, (o) => normalizeText(o.title)).map((o) => ({
+			...o,
+			relatedPrompts: distinctBy(o.relatedPrompts, (p) => normalizeText(p.text)),
+			yourCitations: distinctBy(o.yourCitations, (c) => c.url),
+			competitorCitations: distinctBy(o.competitorCitations, (c) => c.url),
+		})),
+	};
+}
+
+const CATEGORIES = ["creation", "existing-content", "outreach", "social"] as const;
+
+const OpportunitySchema = z.object({
+	category: z
+		.enum(CATEGORIES)
+		.describe(
+			"Which workstream this belongs to: creation (net-new content to publish or earn — comparisons, guides, 'best of' angles for topics the brand is absent on), existing-content (a page already getting cited that's slipping, or could win the mention with a refresh), outreach (earn a placement on a third-party site assistants cite — review platforms, editorial roundups), social (show up in the community conversations assistants pull from — Reddit, YouTube, forums).",
+		),
+	title: z
+		.string()
+		.describe(
+			'Short, specific, action-oriented — name the concrete surface or angle, not a metric. e.g. "Get into PCMag\'s best-CRM roundup" or "Answer the recurring r/CRM \'which CRM\' threads".',
+		),
+	why: z
+		.string()
+		.describe(
+			"One or two tight sentences, in plain language a marketer who has never used this tool will understand, on WHY this is worth doing — the motivation and the payoff. You may include one concrete stat from the data if it strengthens the case (and say what it measures). Do NOT propose on-page specifics you can't verify — you cannot see page contents, so never say things like 'add an FAQ / schema / H2s'. Don't restate long page titles (the UI lists the cited pages).",
+		),
+	relatedPrompts: z
+		.array(z.string())
+		.describe("The tracked prompts (verbatim, exactly as written in the data) this helps. May be empty."),
+});
+
+const opportunitiesSchema = z.object({
+	summary: z
+		.array(z.string())
+		.describe(
+			"3-5 bullets, ONE short sentence each (≈20 words max): where the brand is being out-cited by competitors, where AI sources its answers, and the through-line of the plan. Do NOT restate the brand's overall or per-platform visibility, and do NOT define what a metric means — the user already has dedicated Overview and Visibility pages for those.",
+		),
+	opportunities: z
+		.array(OpportunitySchema)
+		.describe("8-12 prioritized opportunities spread across the categories the data supports, highest impact first."),
+	risks: z
+		.array(z.string())
+		.describe("2-4 very concise caveats (one short sentence each): hard-to-win areas, or tactics to avoid."),
+});
+
+/** Raw LLM output. The server enriches it before returning (see OpportunitiesReport). */
+type RawReport = z.infer<typeof opportunitiesSchema>;
+
+export interface ReportPrompt {
+	text: string;
+	/** Resolved tracked-prompt id for deep-linking, or null if it didn't match. */
+	promptId: string | null;
+}
+export interface CitedPage {
+	title: string | null;
+	domain: string;
+	url: string;
+}
+export interface ReportOpportunity extends Omit<RawReport["opportunities"][number], "relatedPrompts"> {
+	relatedPrompts: ReportPrompt[];
+	/** Cited pages on the brand's own domains, for the prompts this opportunity targets. */
+	yourCitations: CitedPage[];
+	/** Cited pages on competitor domains, for the prompts this opportunity targets. */
+	competitorCitations: CitedPage[];
+}
+export interface OpportunitiesReport extends Omit<RawReport, "opportunities"> {
+	opportunities: ReportOpportunity[];
+}
+
+const GUIDANCE = `You are an AI-visibility (AEO) strategist advising a content/marketing team that does NOT know how this tool computes its numbers. From the brand's tracked answer data, produce a prioritized, practical set of opportunities to get the brand cited more often in AI assistant answers (ChatGPT, Perplexity, Google AI, Claude, Copilot).
+
+HOW TO READ THE DATA BELOW (define these for the reader whenever you reference them):
+- "Visibility" / "named in X%" — the share of an assistant's answers (or of all answers) to the tracked prompts that mention the brand. Higher is better. This is NOT share-of-voice.
+- Per prompt, "you X% · top rival Y%" — the share of that prompt's answers that name you vs the single most-cited competitor.
+- "difficulty" (wide-open / contested / locked-in) — how much the cited sources rotate for that prompt: wide-open = sources change often (easier to break in), locked-in = the same sources win every time.
+- "[tags]" after a prompt — its topic tags, for grouping.
+- "cited via" — the third-party domains those answers are built from.
+When you cite a number in an opportunity's "why", say what it measures in plain terms. Do NOT spend summary space defining metrics or restating the brand's overall or per-platform visibility — the user already has dedicated Overview and Visibility pages for those.
+
+Sort every opportunity into one of four categories:
+- creation — net-new content to publish or earn: comparisons / "dupe" / "alternatives" angles, category guides, "best of" pieces for topics the brand is absent on.
+- existing-content — a page already getting cited that's slipping, or could win the mention with a refresh.
+- outreach — earn a placement on a third-party site assistants cite: independent review platforms and editorial "best of" roundups.
+- social — show up in the community conversations assistants pull from: Reddit, YouTube, forums, Q&A.
+
+Assistants lean far more on independent third-party surfaces (reviews, roundups, comparisons, community) than on a brand's own site, so most opportunities should earn third-party presence; net-new owned content is worth it when a topic is clearly under-served.
+
+Per-assistant sourcing (background only, to help you pick the right surfaces — do not output a per-assistant section):
+- ChatGPT — Bing-backed; weights domain authority and freshness; leans on Wikipedia, Reddit, and major media.
+- Perplexity — favors curated authoritative domains and publicly accessible reports; rewards recency.
+- Google AI / Gemini — lean on the Knowledge Graph and established editorial/retail authority.
+- Copilot — Bing-backed; rewards LinkedIn and GitHub presence.
+- Claude — Brave-backed; selective, favors fact-dense, well-sourced pages.
+
+Hard rules — keep every recommendation realistic for a content/marketing team:
+- ETHICAL: never suggest creating or editing the brand's own Wikipedia/encyclopedia entry (conflict-of-interest, against policy), and never suggest fake, incentivized, or undisclosed reviews, astroturfing, sock-puppets, or any coordinated inauthentic activity — assistants increasingly detect and penalize these.
+- AFFORDABLE: prefer low-to-moderate-cost actions a content marketer can run — creating content, pitching editors for inclusion in existing roundups, authentic community participation, normal review drives. Do NOT make the primary action something expensive or specialist (clinical/lab testing, hiring experts, hosting expert AMAs, large paid sponsorships, PR retainers).
+- VERIFIABLE: you do not see the contents of any page, so never recommend on-page specifics like adding an FAQ, schema, or headings. Recommend earning or creating presence, not editing internals you can't inspect.
+- GROUNDED & SPECIFIC: tie every opportunity to the brand's actual data, and name the concrete surface (an actual site, roundup, community, or comparison angle) — never a vague "query cluster". Prefer surfaces where competitors are already cited but the brand is not. Never recommend a competitor-owned domain.
+- Queries marked "*" are branded (contain the brand name); unbranded category queries are where net-new visibility is won, so weight them higher.`;
+
+const TASK = `Using ONLY the data above, return the structured output:
+- summary: 3-5 bullets, one short sentence each — the competitive gaps, where AI sources its answers, and the through-line of the plan. Don't restate overall/per-platform visibility or define metrics.
+- opportunities: 8-12 prioritized opportunities (highest impact first), each sorted into a category, with a plain-language "why" (the motivation, for a non-expert) and the tracked prompts it helps (verbatim). Spread them across the categories the data supports — don't force all four.
+- risks: 2-4 short caveats (hard-to-win areas or tactics to avoid).`;
+
+const TOP_PROMPTS = 30;
+const pct = (v: number) => Math.round(v * 100);
+
+/** Citation volatility (stability 0..100) → a plain difficulty label. Low
+ * stability = sources rotate = wide open; high = entrenched = locked in. */
+function difficultyLabel(stability: number | null): "wide-open" | "contested" | "locked-in" | "n/a" {
+	if (stability === null) return "n/a";
+	if (stability < 40) return "wide-open";
+	if (stability < 70) return "contested";
+	return "locked-in";
+}
+
+/** Map a tracked model id to its assistant/platform family for the digest. */
+function modelToPlatform(model: string): string {
+	const m = model.toLowerCase();
+	if (m.includes("claude")) return "Claude";
+	if (m.includes("gemini") || m.includes("google")) return "Gemini";
+	if (m.includes("sonar") || m.includes("perplex")) return "Perplexity";
+	if (m.includes("copilot")) return "Copilot";
+	if (m.startsWith("gpt") || m.startsWith("o1") || m.startsWith("o3") || m.startsWith("o4") || m.includes("chatgpt"))
+		return "ChatGPT";
+	return model;
+}
+
+/** Top competitor (by mentions) per prompt, with rate = mentions / runs. */
+function topCompetitorByPrompt(
+	rows: PerPromptDailyCompetitorRow[],
+	runsByPrompt: Map<string, PerPromptRunStats>,
+): Map<string, { name: string; rate: number }> {
+	const byPrompt = new Map<string, Map<string, number>>();
+	for (const r of rows) {
+		let m = byPrompt.get(r.prompt_id);
+		if (!m) {
+			m = new Map();
+			byPrompt.set(r.prompt_id, m);
+		}
+		m.set(r.competitor, (m.get(r.competitor) ?? 0) + Number(r.mentions));
+	}
+	const out = new Map<string, { name: string; rate: number }>();
+	for (const [pid, m] of byPrompt) {
+		let best = { name: "", count: 0 };
+		for (const [name, count] of m) if (count > best.count) best = { name, count };
+		const runs = runsByPrompt.get(pid)?.runs ?? 0;
+		out.set(pid, { name: best.name, rate: runs > 0 ? Math.min(1, best.count / runs) : 0 });
+	}
+	return out;
+}
+
+type CitationOwner = "brand" | "competitor" | "other";
+interface DigestCitation extends CitedPage {
+	owner: CitationOwner;
+	count: number;
+}
+
+interface Digest {
+	text: string;
+	prompts: { id: string; value: string }[];
+	/** Per prompt, its cited pages tagged by owner — for the per-opportunity drill-downs. */
+	citationsByPrompt: Map<string, DigestCitation[]>;
+}
+
+async function loadDigestData(
+	brandId: string,
+	timezone: string,
+	promptIds: string[],
+	windows: { r30: { fromDateStr: string; toDateStr: string }; r7: { fromDateStr: string; toDateStr: string } },
+) {
+	const { r30, r7 } = windows;
+	const [brandRows, competitorRows, run30, comp30, daily30, pages30, run7, comp7, byModel] = await Promise.all([
+		db
+			.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains })
+			.from(brands)
+			.where(eq(brands.id, brandId))
+			.limit(1),
+		db
+			.select({ name: competitors.name, domains: competitors.domains })
+			.from(competitors)
+			.where(eq(competitors.brandId, brandId)),
+		getPerPromptRunStats(brandId, r30.fromDateStr, r30.toDateStr, timezone, promptIds),
+		getPerPromptDailyCompetitorMentions(brandId, r30.fromDateStr, r30.toDateStr, timezone, promptIds),
+		getPerPromptDailyCitationStats(brandId, r30.fromDateStr, r30.toDateStr, timezone, promptIds),
+		getPerPromptCitationPages(brandId, r30.fromDateStr, r30.toDateStr, timezone, promptIds),
+		getPerPromptRunStats(brandId, r7.fromDateStr, r7.toDateStr, timezone, promptIds),
+		getPerPromptDailyCompetitorMentions(brandId, r7.fromDateStr, r7.toDateStr, timezone, promptIds),
+		getBrandMentionRateByModel(brandId, r30.fromDateStr, r30.toDateStr, timezone, promptIds),
+	]);
+	return { brandRows, competitorRows, run30, comp30, daily30, pages30, run7, comp7, byModel };
+}
+
+function resolveOwnership(
+	brand: { website: string | null; additionalDomains: string[] | null } | undefined,
+	competitorRows: { domains: string[] | null }[],
+) {
+	const brandDomains = new Set(
+		[extractDomain(brand?.website || ""), ...(brand?.additionalDomains || []).map(extractDomain)].filter(Boolean),
+	);
+	const competitorDomains = new Set(
+		competitorRows.flatMap((c) => (c.domains || []).map(extractDomain)).filter(Boolean),
+	);
+	const catOf = (domain: string) => categorizeDomain(domain, brandDomains, competitorDomains);
+	const ownerOf = (domain: string): CitationOwner => {
+		const category = catOf(domain);
+		if (category === "brand" || category === "competitor") return category;
+		return "other";
+	};
+	return { catOf, ownerOf };
+}
+
+/** How many of a prompt's non-brand citation domains the digest line names. */
+const MAX_CITED_VIA_DOMAINS = 3;
+
+const TOP_THIRD_PARTY_DOMAINS = 10;
+const TOP_COMMUNITY_DOMAINS = 5;
+const TOP_COMPETITOR_PAGES = 8;
+
+function groupByPrompt<Row extends { prompt_id: string }, T>(rows: Row[], project: (row: Row) => T): Map<string, T[]> {
+	const byPrompt = new Map<string, T[]>();
+	for (const row of rows) {
+		const list = byPrompt.get(row.prompt_id) ?? [];
+		list.push(project(row));
+		byPrompt.set(row.prompt_id, list);
+	}
+	return byPrompt;
+}
+
+function promptDigestLine(facts: {
+	rank: number;
+	text: string;
+	branded: boolean;
+	tags: string[];
+	brand30: number;
+	brand7: number;
+	leader30: { name: string; rate: number };
+	leader7: { name: string; rate: number };
+	difficulty: string;
+	citedVia: string[];
+}): string {
+	const leader = facts.leader30.name
+		? `${facts.leader30.name} ${pct(facts.leader30.rate)}% (7d ${pct(facts.leader7.rate)}%)`
+		: "no competitor cited";
+	const tags = facts.tags.length ? ` [${facts.tags.join(", ")}]` : "";
+	const citedVia = facts.citedVia.length ? facts.citedVia.join(", ") : "no citations yet";
+	return `${facts.rank}. ${facts.branded ? "*" : ""}"${facts.text}"${tags} — you ${pct(facts.brand30)}% (7d ${pct(facts.brand7)}%), top rival ${leader}, difficulty ${facts.difficulty}; cited via: ${citedVia}`;
+}
+
+function summarizeCitationLandscape(
+	pages: { domain: string; title: string | null; count: number }[],
+	catOf: (domain: string) => CitationCategory,
+) {
+	const byDomain = new Map<string, { count: number; title: string | null; cat: CitationCategory }>();
+	const mix = { brand: 0, competitor: 0, community: 0, thirdParty: 0 };
+	for (const row of pages) {
+		const cat = catOf(row.domain);
+		const current = byDomain.get(row.domain);
+		if (current) current.count += row.count;
+		else byDomain.set(row.domain, { count: row.count, title: row.title, cat });
+		if (cat === "brand") mix.brand += row.count;
+		else if (cat === "competitor") mix.competitor += row.count;
+		else if (cat === "social") mix.community += row.count;
+		else mix.thirdParty += row.count;
+	}
+
+	const entries = [...byDomain.entries()].map(([domain, value]) => ({ domain, ...value }));
+	const topWhere = (limit: number, keep: (cat: CitationCategory) => boolean) =>
+		entries
+			.filter((entry) => keep(entry.cat))
+			.sort((a, b) => b.count - a.count)
+			.slice(0, limit);
+
+	return {
+		mix,
+		totalCites: mix.brand + mix.competitor + mix.community + mix.thirdParty || 1,
+		thirdPartyTop: topWhere(
+			TOP_THIRD_PARTY_DOMAINS,
+			(cat) => cat !== "brand" && cat !== "competitor" && cat !== "social",
+		),
+		communityTop: topWhere(TOP_COMMUNITY_DOMAINS, (cat) => cat === "social"),
+		competitorPages: topWhere(TOP_COMPETITOR_PAGES, (cat) => cat === "competitor"),
+	};
+}
+
+function summarizePlatformVisibility(byModel: { model: string; runs: number; brand_mentioned_count: number }[]) {
+	const byPlatform = new Map<string, { runs: number; mentioned: number }>();
+	let allRuns = 0;
+	let allMentioned = 0;
+	for (const row of byModel) {
+		if (row.runs <= 0) continue;
+		allRuns += row.runs;
+		allMentioned += row.brand_mentioned_count;
+		const platform = modelToPlatform(row.model);
+		const current = byPlatform.get(platform) ?? { runs: 0, mentioned: 0 };
+		current.runs += row.runs;
+		current.mentioned += row.brand_mentioned_count;
+		byPlatform.set(platform, current);
+	}
+	return {
+		platformLines: [...byPlatform.entries()].map(([platform, v]) => `${platform} ${pct(v.mentioned / v.runs)}%`),
+		overallVis: allRuns > 0 ? allMentioned / allRuns : 0,
+	};
+}
+
+/** Assemble the deterministic digest text + the structured bits the server needs
+ * to enrich the LLM output. Returns null if there isn't enough data. */
+async function buildDigest(brandId: string, timezoneParam: string): Promise<Digest | null> {
+	const timezone = resolveTimezone(timezoneParam);
+	const r30 = resolveLookbackRange("1m", timezone);
+	const r7 = resolveLookbackRange("1w", timezone);
+
+	const prompts = await resolveFilteredPrompts(brandId, {});
+	if (prompts.length === 0) return null;
+	const promptIds = prompts.map((p) => p.id);
+	const isBranded = new Map(
+		prompts.map((p) => [p.id, getEffectiveBrandedStatus(p.systemTags || [], p.tags || []).isBranded]),
+	);
+	const promptText = new Map(prompts.map((p) => [p.id, p.value]));
+	const tagsByPrompt = new Map(prompts.map((p) => [p.id, p.tags ?? []]));
+
+	const { brandRows, competitorRows, run30, comp30, daily30, pages30, run7, comp7, byModel } = await loadDigestData(
+		brandId,
+		timezone,
+		promptIds,
+		{ r30, r7 },
+	);
+
+	const totalRuns = run30.reduce((s, r) => s + r.runs, 0);
+	if (totalRuns === 0) return null;
+
+	const brandName = brandRows[0]?.name ?? "the brand";
+	const { catOf, ownerOf } = resolveOwnership(brandRows[0], competitorRows);
+
+	const run30By = new Map(run30.map((r) => [r.prompt_id, r]));
+	const run7By = new Map(run7.map((r) => [r.prompt_id, r]));
+	const leader30 = topCompetitorByPrompt(comp30, run30By);
+	const leader7 = topCompetitorByPrompt(comp7, run7By);
+
+	const dailyByPrompt = groupByPrompt(daily30, (row) => ({
+		date: String(row.date),
+		domain: row.domain,
+		count: Number(row.count),
+	}));
+
+	// Per-prompt cited pages (URL-level), tagged by owner — powers both the
+	// "cited via" digest line and the per-opportunity drill-downs.
+	const citationsByPrompt = groupByPrompt(
+		pages30.filter((row) => row.url),
+		(row): DigestCitation => ({
+			title: row.title,
+			domain: row.domain,
+			url: row.url as string,
+			count: row.count,
+			owner: ownerOf(row.domain),
+		}),
+	);
+
+	// Rank prompts by the gap to the leading competitor (30d); branded flagged.
+	const ranked = promptIds
+		.map((pid) => {
+			const brand30 = run30By.get(pid)?.brand_mention_rate ?? 0;
+			const l30 = leader30.get(pid) ?? { name: "", rate: 0 };
+			return { pid, gap: l30.rate - brand30 };
+		})
+		.sort((a, b) => b.gap - a.gap)
+		.slice(0, TOP_PROMPTS);
+
+	const queryLines = ranked.map(({ pid }, i) =>
+		promptDigestLine({
+			rank: i + 1,
+			text: promptText.get(pid) ?? "",
+			branded: isBranded.get(pid) ?? false,
+			tags: tagsByPrompt.get(pid) ?? [],
+			brand30: run30By.get(pid)?.brand_mention_rate ?? 0,
+			brand7: run7By.get(pid)?.brand_mention_rate ?? 0,
+			leader30: leader30.get(pid) ?? { name: "", rate: 0 },
+			leader7: leader7.get(pid) ?? { name: "", rate: 0 },
+			difficulty: difficultyLabel(stabilityScore(computeVolatility(dailyByPrompt.get(pid) ?? []).weightedVolatility)),
+			citedVia: [
+				...new Set((citationsByPrompt.get(pid) ?? []).filter((c) => c.owner !== "brand").map((c) => c.domain)),
+			].slice(0, MAX_CITED_VIA_DOMAINS),
+		}),
+	);
+
+	const { mix, totalCites, thirdPartyTop, communityTop, competitorPages } = summarizeCitationLandscape(pages30, catOf);
+	const { platformLines, overallVis } = summarizePlatformVisibility(byModel);
+	const brandedCount = [...isBranded.values()].filter(Boolean).length;
+
+	const fmtDomain = (e: { domain: string; title: string | null }) =>
+		e.title ? `${e.domain} ("${e.title}")` : e.domain;
+
+	const text = [
+		`BRAND: ${brandName}`,
+		`COMPETITORS TRACKED: ${competitorRows.map((c) => c.name).join(", ") || "none"}`,
+		`WINDOWS: 30 days (primary) with 7-day figures in parentheses for momentum.`,
+		``,
+		`OVERALL (30d): ${promptIds.length} tracked prompts (${brandedCount} branded); the brand is named in ${pct(overallVis)}% of all answers (overall visibility); ${competitorRows.length} competitors tracked.`,
+		`PER-PLATFORM VISIBILITY (share of each assistant's answers, across tracked prompts, that name the brand; 30d): ${platformLines.join(" · ") || "no data"}`,
+		``,
+		`PROMPTS (top ${ranked.length} of ${promptIds.length} by gap to the leading competitor; "*" = branded; "[...]" = topic tags):`,
+		...queryLines,
+		``,
+		`CITATION LANDSCAPE (where answers to these prompts are sourced, 30d):`,
+		`- Source mix: third-party ${pct(mix.thirdParty / totalCites)}%, competitor-owned ${pct(mix.competitor / totalCites)}%, community ${pct(mix.community / totalCites)}%, brand-owned ${pct(mix.brand / totalCites)}%.`,
+		`- Independent third-party domains most cited: ${thirdPartyTop.map(fmtDomain).join("; ") || "none"}`,
+		`- Community sources most cited: ${communityTop.map(fmtDomain).join("; ") || "none"}`,
+		`- Competitor-owned pages cited (you cannot get listed on these — for context only): ${competitorPages.map(fmtDomain).join("; ") || "none"}`,
+	].join("\n");
+
+	return { text, prompts: prompts.map((p) => ({ id: p.id, value: p.value })), citationsByPrompt };
+}
+
+/** From an opportunity's related prompt IDs, gather its cited pages (deduped by
+ * URL) split into the brand's own vs competitors'. */
+function citationsForPrompts(
+	promptIds: string[],
+	citationsByPrompt: Map<string, DigestCitation[]>,
+): { yourCitations: CitedPage[]; competitorCitations: CitedPage[] } {
+	const seen = new Set<string>();
+	const yours: DigestCitation[] = [];
+	const comp: DigestCitation[] = [];
+	for (const pid of promptIds) {
+		for (const c of citationsByPrompt.get(pid) ?? []) {
+			if (seen.has(c.url)) continue;
+			seen.add(c.url);
+			if (c.owner === "brand") yours.push(c);
+			else if (c.owner === "competitor") comp.push(c);
+		}
+	}
+	const byCount = (a: DigestCitation, b: DigestCitation) => b.count - a.count;
+	const strip = ({ title, domain, url }: DigestCitation): CitedPage => ({ title, domain, url });
+	return {
+		yourCitations: yours.sort(byCount).slice(0, 8).map(strip),
+		competitorCitations: comp.sort(byCount).slice(0, 8).map(strip),
+	};
+}
+
+/** Regenerate at most this often; stored generations newer than this are served
+ * from cache. Surfaced as "Refreshed weekly" on the page — kept a touch under 7 days. */
+const REFRESH_AFTER_DAYS = 6;
+const MAX_GENERATION_ATTEMPTS = 3;
+
+/** Resolve the LLM output's prompt strings to tracked IDs (for deep-linking) and
+ * attach each opportunity's cited pages split into the brand's vs competitors'. */
+function enrichReport(raw: RawReport, digest: Digest): OpportunitiesReport {
+	const idByText = new Map(digest.prompts.map((p) => [p.value.trim().toLowerCase(), p.id]));
+
+	return withoutRepeats({
+		...raw,
+		opportunities: raw.opportunities.map((o) => {
+			const relatedPrompts: ReportPrompt[] = o.relatedPrompts.map((text) => ({
+				text,
+				promptId: idByText.get(normalizeText(text)) ?? null,
+			}));
+			const ids = relatedPrompts.map((p) => p.promptId).filter((id): id is string => id !== null);
+			return { ...o, relatedPrompts, ...citationsForPrompts(ids, digest.citationsByPrompt) };
+		}),
+	});
+}
+
+/** Generate the report, retrying until the model's output satisfies the schema.
+ * Returns the validated report plus the model id that produced it. */
+async function generateValidReport(prompt: string): Promise<{ report: RawReport; model: string | null } | null> {
+	for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
+		try {
+			const result = await runStructuredCompletionPrompt(prompt, opportunitiesSchema);
+			const parsed = opportunitiesSchema.safeParse(result.object);
+			if (parsed.success) return { report: parsed.data, model: result.modelVersion ?? null };
+			console.warn(`[opportunities] schema mismatch (attempt ${attempt}/${MAX_GENERATION_ATTEMPTS})`);
+		} catch (err) {
+			console.warn(`[opportunities] generation error (attempt ${attempt}/${MAX_GENERATION_ATTEMPTS}):`, err);
+		}
+	}
+	return null;
+}
+
+type StoredReport = typeof brandOpportunities.$inferSelect;
+
+export async function latestOpportunitiesReport(brandId: string): Promise<StoredReport | undefined> {
+	const [latest] = await db
+		.select()
+		.from(brandOpportunities)
+		.where(eq(brandOpportunities.brandId, brandId))
+		.orderBy(desc(brandOpportunities.createdAt))
+		.limit(1);
+	return latest;
+}
+
+export const isReportFresh = (stored: StoredReport) =>
+	Date.now() - stored.createdAt.getTime() < REFRESH_AFTER_DAYS * 86_400_000;
+
+export type GenerateOpportunitiesOutcome = "generated" | "already-fresh" | "insufficient-data";
+
+export async function generateOpportunities(brandId: string, timezone: string): Promise<GenerateOpportunitiesOutcome> {
+	// A report may have landed between the enqueue and this job running.
+	const latest = await latestOpportunitiesReport(brandId);
+	if (latest && isReportFresh(latest)) return "already-fresh";
+
+	const digest = await buildDigest(brandId, timezone);
+	if (!digest) return "insufficient-data";
+
+	const prompt = `${GUIDANCE}\n\n=== BRAND DATA ===\n${digest.text}\n\n=== TASK ===\n${TASK}`;
+	const generated = await generateValidReport(prompt);
+	if (!generated) throw new Error("Failed to generate a valid opportunities report");
+
+	const report = enrichReport(generated.report, digest);
+	await db.insert(brandOpportunities).values({ brandId, report, model: generated.model });
+	return "generated";
+}

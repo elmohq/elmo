@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type OpportunitiesReport, withoutRepeats } from "@/server/opportunities";
+import { type OpportunitiesReport, withoutRepeats } from "./opportunities";
 
 function opportunity(title: string, overrides: Partial<OpportunitiesReport["opportunities"][number]> = {}) {
 	return {

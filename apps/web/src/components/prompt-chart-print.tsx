@@ -1,4 +1,5 @@
 import type { Competitor } from "@workspace/lib/db/schema";
+import type { LookbackPeriod } from "@workspace/lib/lookback";
 import { getSoVBadgeClasses, type PromptCategory } from "@workspace/lib/report-metrics";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -13,7 +14,6 @@ import {
 	selectCompetitorsToDisplay,
 	visibilityBadgeProps,
 } from "@/lib/chart-utils";
-import type { LookbackPeriod } from "@/lib/lookback";
 import { BaseChartPrint } from "./base-chart-print";
 import { ChartDownloadFooter } from "./chart-footer";
 
