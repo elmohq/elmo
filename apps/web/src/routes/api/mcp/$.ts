@@ -14,12 +14,7 @@ function mcpResourceMetadataUrl(): string {
 	return new URL(MCP_RESOURCE_METADATA_PATH, baseURL ?? "http://localhost:3000").toString();
 }
 
-/**
- * RFC 9728 §5.1: the challenge is how a client that arrives with no credential
- * finds the authorization server. No CORS headers alongside it — this endpoint
- * is reached by a client process, not by a page, and the OAuth flow's only
- * browser leg is a navigation, which CORS does not apply to.
- */
+/** Tells a client with no token where to sign in (RFC 9728). */
 function unauthorized(message: string): Response {
 	const challenge = `Bearer resource_metadata="${mcpResourceMetadataUrl()}"`;
 	return Response.json(
