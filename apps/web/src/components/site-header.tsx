@@ -11,6 +11,7 @@ import { Separator } from "@workspace/ui/components/separator";
 import { SidebarTrigger } from "@workspace/ui/components/sidebar";
 import { cn } from "@workspace/ui/lib/utils";
 import { Fragment } from "react";
+import { DemoCloudCta } from "@/components/demo-cloud-cta";
 import { type Crumb, useBreadcrumbs } from "@/lib/breadcrumbs";
 
 // `transition-none` overrides the link's own `transition-colors`: the rail and
@@ -64,6 +65,7 @@ export function SiteHeader() {
 						})}
 					</BreadcrumbList>
 				</Breadcrumb>
+				<DemoCloudCta />
 			</div>
 		</header>
 	);

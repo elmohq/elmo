@@ -25,7 +25,19 @@ export type ReferralSource =
 	| "self-hosted-signup"
 	| "cloud-signin"
 	| "cloud-signup"
-	| "marketing-cta";
+	| "demo-app"
+	// The marketing site, one source per surface, so a signup can be traced to
+	// the button that started it rather than to the site as a whole.
+	| "marketing-navbar"
+	| "marketing-hero"
+	| "marketing-pricing"
+	| "marketing-cta"
+	| "marketing-blog"
+	| "marketing-docs"
+	| "marketing-directory"
+	| "marketing-comparison"
+	| "marketing-glossary"
+	| "marketing-vision";
 
 function tagged(url: string, ref: ReferralSource): string {
 	const link = new URL(url);
@@ -41,6 +53,11 @@ export function marketingUrl(path: string, ref: ReferralSource): string {
 /** Cloud registration, tagged with where the click came from. */
 export function cloudSignupUrl(ref: ReferralSource): string {
 	return tagged(`${CLOUD_APP_URL}/auth/register`, ref);
+}
+
+/** Cloud sign-in, tagged with where the click came from. */
+export function cloudLoginUrl(ref: ReferralSource): string {
+	return tagged(`${CLOUD_APP_URL}/auth/login`, ref);
 }
 
 /** The cloud pricing table, tagged with where the click came from. */

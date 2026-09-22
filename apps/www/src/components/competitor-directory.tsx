@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { buttonVariants } from "@workspace/ui/components/button";
 import { Check, X } from "lucide-react";
 import { useState } from "react";
 import {
@@ -14,6 +13,7 @@ import {
 	getPopularityGrade,
 	sortedCompetitors,
 } from "@/lib/competitors";
+import { CloudSignupCTA, SelfHostCTA } from "./cta-buttons";
 
 function FeatureIcon({ has }: { has: boolean }) {
 	return has ? <Check className="mx-auto h-4 w-4 text-blue-600" /> : <X className="mx-auto h-4 w-4 text-zinc-300" />;
@@ -94,18 +94,9 @@ export function CompetitorDirectory() {
 					<p className="mx-auto mt-4 max-w-xl text-lg text-balance text-zinc-600">
 						Open source, self-hosted, and transparent. Track AI visibility without vendor lock-in or inflated pricing.
 					</p>
-					<div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-						<Link to="/docs" className={buttonVariants({ size: "sm" })}>
-							Read the Docs
-						</Link>
-						<a
-							href="https://github.com/elmohq/elmo"
-							target="_blank"
-							rel="noopener noreferrer"
-							className={buttonVariants({ variant: "outline", size: "sm" })}
-						>
-							View on GitHub
-						</a>
+					<div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+						<CloudSignupCTA source="marketing-directory" />
+						<SelfHostCTA source="marketing-directory" />
 					</div>
 				</div>
 			</section>

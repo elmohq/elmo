@@ -1,10 +1,13 @@
 import MuxPlayer from "@mux/mux-player-react";
-import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
+import { CLOUD_ENTRY_PRICE_USD, MONEY_BACK_GUARANTEE_DAYS } from "@workspace/config/plans";
+import { demoSiteUrl } from "@workspace/config/referrals";
+import { CUSTOMER_QUOTES } from "@workspace/ui/brand/customers";
 import { G2Stars } from "@workspace/ui/brand/g2-rating";
 import { ArrowUpRight } from "lucide-react";
 import { CloudSignupCTA, QuietCTA, SelfHostCTA } from "./cta-buttons";
 import { CustomerLogosInline } from "./customer-logos";
-import { QuickstartBlock } from "./quickstart-block";
+
+const LIVE_DEMO_URL = demoSiteUrl("marketing-hero");
 
 function DemoVideo() {
 	return (
@@ -29,6 +32,33 @@ function DemoVideo() {
 	);
 }
 
+/**
+ * The rating and the shortest customer line, on one row under the buttons:
+ * the moment someone is deciding whether to click is the moment a third party
+ * vouching for the price is worth the most.
+ */
+function HeroProof() {
+	const { quote, author, company, companyUrl, mark } = CUSTOMER_QUOTES.speakeasy;
+	return (
+		<figure className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+			<G2Stars />
+			<blockquote className="text-zinc-700">“{quote}”</blockquote>
+			<figcaption className="flex items-center gap-1.5 text-zinc-500">
+				<span>{author} at</span>
+				<a
+					href={companyUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					aria-label={company}
+					className="inline-flex items-center text-zinc-950 transition-opacity hover:opacity-80"
+				>
+					{mark}
+				</a>
+			</figcaption>
+		</figure>
+	);
+}
+
 export function Hero() {
 	return (
 		<section className="relative border-b border-zinc-200 bg-white">
@@ -37,7 +67,7 @@ export function Hero() {
 				className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,rgb(0_0_0/0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgb(0_0_0/0.04)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]"
 			/>
 			<div className="relative mx-auto max-w-6xl px-4 pb-16 pt-16 md:px-6 lg:pb-24 lg:pt-24">
-				<div className="grid items-start gap-10 lg:grid-cols-12 lg:gap-12">
+				<div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12">
 					<div className="lg:col-span-7">
 						<div className="flex flex-wrap items-center gap-2">
 							<span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-2.5 py-1 font-mono text-[11px] text-zinc-700">
@@ -52,28 +82,30 @@ export function Hero() {
 								Star on GitHub
 								<ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
 							</a>
-							<G2Stars className="ml-auto" />
 						</div>
-						<h1 className="mt-7 max-w-[18ch] text-5xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 sm:text-6xl lg:text-[4.25rem] lg:leading-[1.0]">
-							Know How AI Talks About Your Brand
+						<h1 className="mt-7 max-w-[16ch] text-5xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 sm:text-6xl lg:text-[4.25rem] lg:leading-[1.0]">
+							Your brand, according to ChatGPT.
 						</h1>
 						<p className="mt-6 max-w-[58ch] text-pretty text-base text-zinc-600 md:text-lg">
-							Track your brand's visibility across any AI model. Monitor mentions, analyze citations, and benchmark
-							competitors. Run it in our cloud or self-host — it's open source, so your data stays yours and you'll
-							never get locked in.
+							Elmo records what ChatGPT, Perplexity, Gemini, Claude, and Google AI Overviews say about you: every
+							mention, every citation, every competitor named instead, tracked daily. It's open source, so run it in our
+							cloud or on your own servers and keep the data either way.
 						</p>
 						<div className="mt-8 flex flex-wrap items-center gap-2">
-							<CloudSignupCTA />
-							<SelfHostCTA />
-							<QuietCTA href="https://demo.elmohq.com">Live demo</QuietCTA>
+							<CloudSignupCTA source="marketing-hero" />
+							<SelfHostCTA source="marketing-hero" />
+							<QuietCTA href={LIVE_DEMO_URL} source="marketing-hero" destination="live-demo">
+								Live demo
+							</QuietCTA>
 						</div>
 						<p className="mt-3 text-sm text-zinc-500">
-							Managed cloud from ${CLOUD_ENTRY_PRICE_USD}/mo. Self-hosting is free forever.
+							Cloud from ${CLOUD_ENTRY_PRICE_USD}/mo, cancel anytime, {MONEY_BACK_GUARANTEE_DAYS}-day money-back
+							guarantee. Self-hosting is free forever.
 						</p>
+						<HeroProof />
 						<CustomerLogosInline />
 					</div>
-					<aside className="flex flex-col gap-4 lg:col-span-5">
-						<QuickstartBlock />
+					<aside className="lg:col-span-5">
 						<DemoVideo />
 					</aside>
 				</div>

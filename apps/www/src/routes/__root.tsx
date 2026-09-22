@@ -79,6 +79,11 @@ export const Route = createRootRoute({
 		scripts: [
 			websiteJsonLd(),
 			organizationJsonLd(),
+			// Queues plausible() calls made before the deferred script arrives.
+			{
+				children:
+					"window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)}",
+			},
 			{
 				src: "/api/plausible/js/script",
 				defer: true,
