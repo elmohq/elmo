@@ -1,5 +1,15 @@
 # @elmohq/cli
 
+## 0.4.1
+
+No changes in this release.
+
+## 0.4.0
+
+### Patch Changes
+
+- 859447d: `elmo init` now checks Docker before the setup wizard and reports whether Docker is missing or not running.
+
 ## 0.3.0
 
 ### Patch Changes

@@ -19,6 +19,7 @@
     "ANTHROPIC_API_KEY",
     "MISTRAL_API_KEY",
     "SCRAPE_TARGETS",
+    "SEARCHAPI_API_KEY",
     "OLOSTEP_API_KEY",
     "BRIGHTDATA_API_TOKEN",
     "OXYLABS_USERNAME",
@@ -80,6 +81,10 @@
     },
     "codegen": {
       "outputs": [".source/**"]
+    },
+    "@workspace/lib#codegen": {
+      "inputs": ["$TURBO_DEFAULT$", "!src/db/schema-auth.ts"],
+      "outputs": ["src/db/schema-auth.ts"]
     },
     "check-types": {
       "dependsOn": ["^check-types", "codegen"]

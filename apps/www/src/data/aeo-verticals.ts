@@ -2,6 +2,10 @@ export interface AeoVertical {
 	slug: string;
 	/** Display noun used after "AEO for", e.g. "agencies". */
 	audience: string;
+	/** Page <h1> and <title>, when "AEO for {audience}" is not what buyers search. */
+	headline?: string;
+	metaTitle?: string;
+	metaDescription?: string;
 	short: string;
 	intro: string[];
 	/** Illustrative prompts buyers in this vertical ask AI engines. */
@@ -15,6 +19,10 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "agencies",
 		audience: "agencies",
+		headline: "AI visibility software for agencies",
+		metaTitle: "AI Visibility & SEO Software for Agencies (White-Label) · Elmo",
+		metaDescription:
+			"White-label AI visibility software for agencies: track every client's presence in ChatGPT, Perplexity and AI Overviews, report under your own brand, and self-host without per-seat fees.",
 		short:
 			"Track AI visibility for every client and report it under your own brand, on an open-source platform you can run at agency scale.",
 		intro: [
@@ -58,6 +66,10 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "saas",
 		audience: "SaaS companies",
+		headline: "AEO for B2B SaaS",
+		metaTitle: "AEO for B2B SaaS: Tools and Tactics for Software Buyers · Elmo",
+		metaDescription:
+			"How B2B SaaS teams win the 'best [category] software' and 'X vs Y' answers where buyers now build their shortlists, and which AEO tools fit a software company.",
 		short: "Win the 'best [category] software' and 'X vs Y' answers where buyers now build their shortlists.",
 		intro: [
 			"SaaS buyers increasingly ask an AI engine to shortlist tools before they ever reach a vendor site. Best project management software, Notion vs Asana, alternatives to a given tool. If the model does not name you, you are out of the consideration set before the demo.",
@@ -90,6 +102,11 @@ export const aeoVerticals: AeoVertical[] = [
 		elmoFit:
 			"Elmo tracks exactly these prompts across every major engine, shows which competitors get named with or instead of you, and flags when a model gets your features or pricing wrong.",
 		faqs: [
+			{
+				question: "What is the best AEO tool for B2B SaaS?",
+				answer:
+					"There is no single answer, because SaaS teams buy for two different jobs. If you need broad engine coverage and enterprise reporting, the larger hosted platforms cover it. If you want to own the data, audit how the visibility score is calculated, and avoid per-seat pricing across a growing team, a self-hosted open-source tool fits better — Elmo is the most complete one. Whichever you pick, the requirement specific to SaaS is competitor benchmarking on comparison and alternatives prompts, since that is where buyers build shortlists. Compare the options in the AI visibility tool directory.",
+			},
 			{
 				question: "How do I show up when buyers ask AI for software recommendations?",
 				answer:
@@ -193,6 +210,10 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "startups",
 		audience: "startups",
+		headline: "Startup SEO and AI search visibility",
+		metaTitle: "Startup SEO in the AI Search Era: A Practical Guide · Elmo",
+		metaDescription:
+			"Startup SEO when a growing share of searches end in an AI answer: which prompts to track first, what to publish, and how to measure visibility on no budget.",
 		short: "Build AI visibility from zero without enterprise pricing, on a tool you can self-host for free.",
 		intro: [
 			"A new brand starts out invisible to AI engines, because there is little for the models to have learned. The job is to build a credible footprint quickly: clear content, early reviews, and mentions on sources the models trust.",
@@ -235,6 +256,10 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "enterprise",
 		audience: "enterprises",
+		headline: "Enterprise AI visibility platforms",
+		metaTitle: "Enterprise AI Visibility & AEO Platform Requirements · Elmo",
+		metaDescription:
+			"What an enterprise AEO platform has to do: multi-brand tracking, data residency, SSO, export, and a visibility methodology your analysts can audit rather than trust.",
 		short: "Track AI visibility at scale while keeping your prompts and history on your own infrastructure.",
 		intro: [
 			"Large brands have the most to lose when an AI engine describes them wrongly, and the most scrutiny over where their data goes. Many AI visibility tools are closed and hosted, which means handing your prompt strategy and history to a third party.",
