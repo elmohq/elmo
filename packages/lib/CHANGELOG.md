@@ -1,5 +1,25 @@
 # @workspace/lib
 
+## 0.4.1
+
+### Patch Changes
+
+- e2543e8: Fix MCP sign-in for clients that use a client ID metadata document.
+- @workspace/config@0.4.1
+
+## 0.4.0
+
+### Minor Changes
+
+- c9142f7: Elmo now serves a full external API and an MCP server. `/api/v1` covers brands, prompts, competitors, reports, analytics, models, tags, and opportunities. `/api/mcp` connects Claude Code, Codex, Cursor, OpenCode, and VS Code, either by signing in from the client or with an API key. Keys belong to an organization and are issued read-only or read-write from Settings, which now also has API and MCP pages describing your own deployment.
+
+### Patch Changes
+
+- f6e90d9: Fixed BrightData scraping errors being stored as a prompt run's answer; those runs now fail.
+- 99f537c: Answers scraped through Cloro now keep their formatting and inline citations.
+- aa8c80d: Prompt runs on the OpenAI API provider now correctly show the search queries the model ran.
+- @workspace/config@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

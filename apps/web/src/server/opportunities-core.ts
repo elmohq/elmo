@@ -6,8 +6,7 @@
 import type { CitedPage, OpportunitiesResponse, ReportOpportunity } from "./opportunities";
 import { storedOpportunities } from "./opportunities";
 
-/** So a caller never has to tell "none" from "not enough data yet" — or from a
- * brand nobody has generated a report for. */
+/** So a caller never has to tell "none" from "not enough data yet". */
 type OpportunitiesStatus = "ready" | "insufficient-data" | "not-generated";
 
 interface PublishedOpportunity {

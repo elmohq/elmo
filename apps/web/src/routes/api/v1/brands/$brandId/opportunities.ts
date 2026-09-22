@@ -1,7 +1,6 @@
 /**
- * No POST to regenerate, and the GET doesn't either: producing a report spends
- * provider budget with nothing metering it per call. Elmo decides when one is
- * stale, so this endpoint only ever reads what it already wrote.
+ * No POST to regenerate: producing a report spends provider budget with nothing
+ * metering it per call. Elmo decides when one is stale.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
@@ -12,7 +11,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/opportunities")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
-				scopes: ["analytics:read"],
+				scopes: ["read"],
 				handle: async ({ params, auth }) => {
 					const brand = await requireBrandInScope(auth, params.brandId);
 					return publishedOpportunities(brand.id);

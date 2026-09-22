@@ -28,7 +28,7 @@ function analyticsTool(tool: {
 }): McpTool {
 	return defineTool({
 		...tool,
-		scopes: ["analytics:read"],
+		scopes: ["read"],
 		readOnly: true,
 		input: { brandId: brandIdArg, ...windowArgs },
 		run: async ({ auth }, args) => {
@@ -94,15 +94,13 @@ export const getQueryFanout = analyticsTool({
 	},
 });
 
-/** No window: this reads the newest stored report, whenever it was generated,
- * and never asks for a new one — writing a report costs an LLM call, which is
- * not something a tool declaring `readOnly` may spend. */
+/** No window: this reads the newest stored report, whenever it was generated. */
 export const getOpportunities = defineTool({
 	name: "get_opportunities",
 	title: "Get the latest opportunities report",
 	description:
-		"The most recent stored opportunities report for a brand: what to write, what to fix, and the risks Elmo found. `status` says whether a report has been written yet, and whether there was enough data to write one. Elmo decides when to produce a new one; this tool never triggers generation.",
-	scopes: ["analytics:read"],
+		"The most recent stored opportunities report for a brand: what to write, what to fix, and the risks Elmo found. `status` says whether a report exists yet and whether there was enough data to write one.",
+	scopes: ["read"],
 	readOnly: true,
 	input: { brandId: brandIdArg },
 	run: async ({ auth }, args) => {

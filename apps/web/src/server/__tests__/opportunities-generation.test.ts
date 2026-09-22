@@ -1,11 +1,3 @@
-/**
- * Generating a report is a paid LLM call, so the things that bound the spend —
- * the freshness gate, the per-brand lock, and read surfaces that only read —
- * are behavior worth pinning down.
- *
- * The fake `db` models the two bits of Postgres this leans on: an append-only
- * report table, and advisory locks that a second holder cannot take.
- */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const DAY_MS = 86_400_000;
@@ -14,7 +6,6 @@ const BRAND = "brand_1";
 const state = vi.hoisted(() => ({
 	reports: [] as Array<{ brandId: string; report: unknown; model: string | null; createdAt: Date }>,
 	locks: new Set<string>(),
-	/** Simulates a concurrent writer committing between a read and the lock. */
 	afterReportRead: null as null | (() => void),
 }));
 
@@ -61,7 +52,6 @@ vi.mock("@workspace/lib/db/db", async () => {
 		return [];
 	}
 
-	/** Every builder method chains; awaiting the chain runs the "query". */
 	function select() {
 		let table: unknown;
 		const chain: Record<string | symbol, unknown> = new Proxy(
@@ -81,19 +71,24 @@ vi.mock("@workspace/lib/db/db", async () => {
 		return chain;
 	}
 
-	const client = {
-		query: async (text: string, params: unknown[]) => {
-			const key = String(params[1]);
-			if (text.includes("pg_try_advisory_lock")) {
+	// Advisory xact locks: held until the transaction callback settles.
+	async function transaction<T>(run: (tx: unknown) => Promise<T>): Promise<T> {
+		let held: string | null = null;
+		const tx = {
+			execute: async (query: { queryChunks: unknown[] }) => {
+				const key = String(query.queryChunks.find((chunk) => typeof chunk === "string"));
 				if (state.locks.has(key)) return { rows: [{ locked: false }] };
 				state.locks.add(key);
+				held = key;
 				return { rows: [{ locked: true }] };
-			}
-			if (text.includes("pg_advisory_unlock")) state.locks.delete(key);
-			return { rows: [] };
-		},
-		release: () => {},
-	};
+			},
+		};
+		try {
+			return await run(tx);
+		} finally {
+			if (held) state.locks.delete(held);
+		}
+	}
 
 	return {
 		db: {
@@ -107,7 +102,7 @@ vi.mock("@workspace/lib/db/db", async () => {
 					},
 				}),
 			}),
-			$client: { connect: async () => client },
+			transaction,
 		},
 	};
 });
