@@ -25,6 +25,7 @@ export type ReferralSource =
 	| "self-hosted-signup"
 	| "cloud-signin"
 	| "cloud-signup"
+	| "demo-app"
 	// The marketing site, one source per surface, so a signup can be traced to
 	// the button that started it rather than to the site as a whole.
 	| "marketing-navbar"
