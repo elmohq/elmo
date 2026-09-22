@@ -39,10 +39,13 @@ const cols = [
 	{
 		heading: "Learn",
 		links: [
+			{ label: "What is AEO?", href: "/answer-engine-optimization" },
+			{ label: "What is GEO?", href: "/generative-engine-optimization" },
 			{ label: "AEO Glossary", href: "/glossary" },
 			{ label: "AI Search Guides", href: "/ai-search" },
 			{ label: "AEO by Industry", href: "/aeo-for" },
 			{ label: "Tool Directory", href: "/ai-visibility-tools" },
+			{ label: "Free & Open-Source Tools", href: "/ai-visibility-tools/category/open-source" },
 			{ label: "Compare Tools", href: "/ai-visibility-tools/compare" },
 		],
 	},

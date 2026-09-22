@@ -103,7 +103,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 					...indexableCategories.map((cat) => ({
 						path: `/ai-visibility-tools/category/${CATEGORY_SLUGS[cat]}`,
 						changefreq: "monthly",
-						priority: 0.5,
+						priority: CATEGORY_SLUGS[cat] === "open-source" ? 0.9 : 0.5,
 					})),
 				];
 

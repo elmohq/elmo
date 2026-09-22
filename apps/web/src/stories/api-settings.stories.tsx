@@ -6,8 +6,8 @@ import { setMockRouteContext } from "./_mocks/tanstack-router";
 
 const ApiSettingsPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 
-function load(appName = "Elmo", appUrl = "https://app.elmohq.com/") {
-	setMockRouteContext({ clientConfig: { branding: { name: appName, url: appUrl } } });
+function load(appName = "Elmo", appUrl = "https://app.elmohq.com/", readOnly = false) {
+	setMockRouteContext({ clientConfig: { branding: { name: appName, url: appUrl }, features: { readOnly } } });
 }
 
 function Shell({ children }: { children: ReactNode }) {
@@ -38,6 +38,7 @@ export const Reference: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByRole("heading", { name: "API Docs" })).toBeVisible();
+		await expect(canvas.queryByText(/disabled in demo mode/)).toBeNull();
 		// Whatever host the app is being served from is the one people should call.
 		await expect(await canvas.findByText(`${window.location.origin}/api/v1`)).toBeVisible();
 		// The reference reads the instance's own spec rather than a hosted copy.
@@ -55,5 +56,16 @@ export const Whitelabel: Story = {
 		await expect(await canvas.findByText("Programmatic interface for Acme Visibility.")).toBeVisible();
 		// Nothing on the page names the vendor.
 		await expect(canvas.queryByText(/elmo/i)).toBeNull();
+	},
+};
+
+export const ReadOnlyDeployment: Story = {
+	render: () => {
+		load("Elmo", "https://app.elmohq.com/", true);
+		return <ApiSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText("API access is disabled in demo mode.")).toBeVisible();
 	},
 };
