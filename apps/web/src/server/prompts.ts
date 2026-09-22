@@ -416,12 +416,14 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		}),
 	)
 	.handler(async ({ data }) => {
+		const session = await requireAuthSession();
+
 		const prompt = await db.query.prompts.findFirst({
 			where: eq(prompts.id, data.promptId),
 		});
 		if (!prompt) throw new Error("Prompt not found");
 
-		await requireBrandSession(prompt.brandId);
+		await requireBrandAccess(session.user.id, prompt.brandId);
 
 		const fromDate = new Date();
 		fromDate.setDate(fromDate.getDate() - data.days);
