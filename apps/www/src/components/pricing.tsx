@@ -10,7 +10,7 @@ export function Pricing({ as: Heading = "h2" }: { as?: "h1" | "h2" } = {}) {
 		<section id="pricing" className="border-b border-zinc-200 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
 				<Heading className="max-w-[28ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-					Start at ${CLOUD_ENTRY_PRICE_USD} a month. Self-host for $0.
+					Starting at ${CLOUD_ENTRY_PRICE_USD} a month.
 				</Heading>
 				<p className="mt-4 max-w-[56ch] text-pretty text-zinc-600 md:text-lg">
 					Self-serve, with unlimited seats and API/MCP access. Annual billing saves two months.
