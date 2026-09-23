@@ -234,7 +234,7 @@ function AnswerDetails({ review }: { review: AiReview }) {
 					))}
 				</div>
 				<p className="mt-4 border-t border-zinc-100 pt-3 text-xs text-zinc-500">
-					Asked over the {review.name} API with web search. Answers vary from run to run.
+					Asked over the {review.name} API with web search. Answers vary.
 				</p>
 			</PopoverContent>
 		</Popover>
