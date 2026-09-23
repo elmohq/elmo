@@ -12,8 +12,8 @@ function DiscordIcon({ className = "" }: { className?: string }) {
 
 export function Community() {
 	return (
-		<section id="community" className="bg-white">
-			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
+		<section id="community" className="border-t border-zinc-200/80 bg-white">
+			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-20">
 				<div className="relative overflow-hidden rounded-2xl bg-[#5865F2]/[0.04] px-6 py-12 ring-1 ring-[#5865F2]/25 md:px-12 lg:py-16">
 					<div
 						aria-hidden="true"

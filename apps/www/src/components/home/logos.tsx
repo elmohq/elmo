@@ -74,7 +74,7 @@ const customers: Customer[] = [
 export function LogoStrip() {
 	return (
 		<section aria-labelledby="social-proof" className="border-t border-zinc-200/80 bg-white">
-			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-20">
+			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-20">
 				<div className="flex flex-col items-center gap-4 text-center">
 					<h2
 						id="social-proof"

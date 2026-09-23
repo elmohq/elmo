@@ -116,7 +116,7 @@ export function Pricing() {
 					lede="Self-serve, with unlimited seats and API/MCP access."
 				/>
 
-				<div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+				<div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 					{PLAN_KEYS.map((key) => (
 						<TierCard key={key} planKey={key} />
 					))}

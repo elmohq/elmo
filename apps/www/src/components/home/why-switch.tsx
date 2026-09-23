@@ -13,7 +13,7 @@ const FACTS = [
 export function WhySwitch() {
 	return (
 		<section aria-labelledby="why-switch" className="border-t border-zinc-200/80 bg-zinc-50/70">
-			<div className="mx-auto max-w-6xl px-4 py-14 md:px-6 lg:py-16">
+			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-20">
 				<h2
 					id="why-switch"
 					className="text-center text-2xl font-semibold tracking-[-0.025em] text-zinc-950 md:text-3xl"

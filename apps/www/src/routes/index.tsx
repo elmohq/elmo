@@ -9,6 +9,7 @@ import { LogoStrip } from "@/components/home/logos";
 import { ModelCoverage } from "@/components/home/models";
 import { Pricing } from "@/components/home/pricing";
 import { Reviews } from "@/components/home/reviews";
+import { SelfHost } from "@/components/home/self-host";
 import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
 import { Updates } from "@/components/home/updates";
 import { WhySwitch } from "@/components/home/why-switch";
@@ -54,6 +55,7 @@ function HomePage() {
 				<WhySwitch />
 				<Pricing />
 				<Faq items={HOME_FAQS} />
+				<SelfHost />
 				<Community />
 				<Closing />
 				<Updates />

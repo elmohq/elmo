@@ -239,15 +239,15 @@ function AnswerDetails({ review }: { review: AiReview }) {
 
 export function Reviews() {
 	return (
-		<section className="bg-white">
+		<section className="border-t border-zinc-200/80 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-20 md:px-6 lg:py-28">
 				<SectionHeading title="Loved by marketers. Recommended by AI." />
-				<div className="mt-8 grid gap-4 md:grid-cols-2 lg:hidden">
+				<div className="mt-12 grid gap-4 md:grid-cols-2 lg:hidden">
 					{ROW_ORDER.map((r) => (
 						<ReviewCard key={r.name} review={r} />
 					))}
 				</div>
-				<div className="mt-8 hidden grid-cols-3 items-start gap-5 lg:grid">
+				<div className="mt-12 hidden grid-cols-3 items-start gap-5 lg:grid">
 					{COLUMNS.map((column) => (
 						<div key={column[0].name} className="flex flex-col gap-5">
 							{column.map((r) => (

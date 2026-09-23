@@ -26,7 +26,7 @@ function Chip({ name, iconId }: { name: string; iconId: string }) {
 
 export function ModelCoverage() {
 	return (
-		<section className="border-y border-zinc-200/80 bg-zinc-50/70">
+		<section className="border-t border-zinc-200/80 bg-zinc-50/70">
 			<div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 md:px-6 lg:grid-cols-12 lg:items-center lg:gap-12 lg:py-20">
 				<div className="lg:col-span-5">
 					<SectionHeading
