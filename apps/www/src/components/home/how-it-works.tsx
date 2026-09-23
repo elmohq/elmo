@@ -84,7 +84,7 @@ function Crop({ src, alt }: { src: string; alt: string }) {
 				height={1800}
 				loading="lazy"
 				decoding="async"
-				className="absolute left-[-19%] top-[-2%] w-[165%] max-w-none"
+				className="absolute left-[-23.5%] top-[-2%] w-[165%] max-w-none"
 			/>
 		</div>
 	);
