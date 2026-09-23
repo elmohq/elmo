@@ -128,9 +128,9 @@ const PEOPLE = {
 // Laid out by hand, column by column, so placement is chosen rather than left
 // to the browser's column balancing. Narrower screens read it row by row.
 const COLUMNS: Review[][] = [
-	[PEOPLE.nolan, AI_REVIEWS.claude, PEOPLE.borys],
-	[AI_REVIEWS.perplexity, PEOPLE.deni, PEOPLE.james],
-	[AI_REVIEWS.chatgpt, AI_REVIEWS.gemini, PEOPLE.viveka],
+	[AI_REVIEWS.chatgpt, PEOPLE.james, PEOPLE.borys],
+	[PEOPLE.nolan, AI_REVIEWS.gemini, AI_REVIEWS.perplexity],
+	[AI_REVIEWS.claude, PEOPLE.viveka, PEOPLE.deni],
 ];
 const ROW_ORDER = [0, 1, 2].flatMap((row) => COLUMNS.map((column) => column[row]));
 
