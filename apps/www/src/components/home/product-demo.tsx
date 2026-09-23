@@ -161,26 +161,26 @@ export function ProductDemo() {
 	return (
 		<div ref={ref} className="mx-auto max-w-4xl">
 			<div className="overflow-hidden rounded-xl bg-white shadow-[0_0_0_1px_rgb(24_24_27/0.08),0_2px_4px_rgb(24_24_27/0.04),0_32px_64px_-24px_rgb(37_99_235/0.28)]">
-				<div className="flex h-9 items-center gap-3 border-b border-zinc-200/80 bg-zinc-50/80 px-3.5">
+				<a
+					href={DEMO_URL}
+					target="_blank"
+					rel={externalRel(DEMO_URL)}
+					className="group flex h-10 items-center gap-3 border-b border-zinc-200/80 bg-zinc-50/80 px-3.5 transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-600"
+				>
 					<span aria-hidden="true" className="flex gap-1.5">
 						<span className="size-2.5 rounded-full bg-zinc-300" />
 						<span className="size-2.5 rounded-full bg-zinc-300" />
 						<span className="size-2.5 rounded-full bg-zinc-300" />
 					</span>
-					<a
-						href={DEMO_URL}
-						target="_blank"
-						rel={externalRel(DEMO_URL)}
-						className="group mx-auto inline-flex h-6 min-w-0 items-center justify-center gap-1.5 rounded-md bg-white px-3 text-xs font-medium text-blue-600 ring-1 ring-blue-200 transition hover:bg-blue-50 hover:ring-blue-300"
-					>
+					<span className="mx-auto inline-flex min-w-0 items-center gap-1.5 text-sm font-medium text-blue-600 group-hover:text-blue-700">
 						<span className="truncate">View the Live Demo</span>
 						<ArrowUpRight
-							className="size-3.5 shrink-0 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+							className="size-4 shrink-0 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
 							aria-hidden="true"
 						/>
-					</a>
+					</span>
 					<span aria-hidden="true" className="w-[42px]" />
-				</div>
+				</a>
 				<div className="relative aspect-[5/3] bg-zinc-50">
 					{SLIDES.map((s, i) => (
 						<Shot
