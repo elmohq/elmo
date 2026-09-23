@@ -15,7 +15,6 @@ import { Logo } from "./logo";
 const CLOUD_URL = cloudAppUrl("marketing-nav");
 
 const navigationLinks = [
-	{ href: "/ai-visibility-tools/category/open-source", label: "Open Source Tools" },
 	{ href: "/pricing", label: "Pricing" },
 	{ href: "/changelog", label: "Changelog" },
 	{ href: "/roadmap", label: "Roadmap" },
