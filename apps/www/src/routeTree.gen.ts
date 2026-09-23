@@ -46,22 +46,6 @@ import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as GlossaryIndexRouteImport } from './routes/glossary/index'
 import { Route as GlossarySlugRouteImport } from './routes/glossary/$slug'
 import { Route as OgStatusDotpngRouteImport } from './routes/og/status[.]png'
-import { Route as PreviewHomeARouteImport } from './routes/preview/home-a'
-import { Route as PreviewHomeA1RouteImport } from './routes/preview/home-a1'
-import { Route as PreviewHomeA2RouteImport } from './routes/preview/home-a2'
-import { Route as PreviewHomeA3RouteImport } from './routes/preview/home-a3'
-import { Route as PreviewHomeBRouteImport } from './routes/preview/home-b'
-import { Route as PreviewHomeCRouteImport } from './routes/preview/home-c'
-import { Route as PreviewHomeDRouteImport } from './routes/preview/home-d'
-import { Route as PreviewHomeERouteImport } from './routes/preview/home-e'
-import { Route as PreviewHomeFRouteImport } from './routes/preview/home-f'
-import { Route as PreviewHomeGRouteImport } from './routes/preview/home-g'
-import { Route as PreviewHomeHRouteImport } from './routes/preview/home-h'
-import { Route as PreviewHomeIRouteImport } from './routes/preview/home-i'
-import { Route as PreviewHomeJRouteImport } from './routes/preview/home-j'
-import { Route as PreviewHomeKRouteImport } from './routes/preview/home-k'
-import { Route as PreviewHomeLRouteImport } from './routes/preview/home-l'
-import { Route as PreviewHomeMRouteImport } from './routes/preview/home-m'
 import { Route as DotwellKnownAgentSkillsSplatRouteImport } from './routes/[.]well-known/agent-skills/$'
 import { Route as DotwellKnownAgentSkillsIndexDotjsonRouteImport } from './routes/[.]well-known/agent-skills/index[.]json'
 import { Route as AiVisibilityToolsAlternativesIndexRouteImport } from './routes/ai-visibility-tools/alternatives/index'
@@ -268,86 +252,6 @@ const OgStatusDotpngRoute = OgStatusDotpngRouteImport.update({
   path: '/og/status.png',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PreviewHomeARoute = PreviewHomeARouteImport.update({
-  id: '/preview/home-a',
-  path: '/preview/home-a',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewHomeA1Route = PreviewHomeA1RouteImport.update({
-  id: '/preview/home-a1',
-  path: '/preview/home-a1',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewHomeA2Route = PreviewHomeA2RouteImport.update({
-  id: '/preview/home-a2',
-  path: '/preview/home-a2',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewHomeA3Route = PreviewHomeA3RouteImport.update({
-  id: '/preview/home-a3',
-  path: '/preview/home-a3',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewHomeBRoute = PreviewHomeBRouteImport.update({
-  id: '/preview/home-b',
-  path: '/preview/home-b',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewHomeCRoute = PreviewHomeCRouteImport.update({
-  id: '/preview/home-c',
-  path: '/preview/home-c',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewHomeDRoute = PreviewHomeDRouteImport.update({
-  id: '/preview/home-d',
-  path: '/preview/home-d',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewHomeERoute = PreviewHomeERouteImport.update({
-  id: '/preview/home-e',
-  path: '/preview/home-e',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewHomeFRoute = PreviewHomeFRouteImport.update({
-  id: '/preview/home-f',
-  path: '/preview/home-f',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewHomeGRoute = PreviewHomeGRouteImport.update({
-  id: '/preview/home-g',
-  path: '/preview/home-g',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewHomeHRoute = PreviewHomeHRouteImport.update({
-  id: '/preview/home-h',
-  path: '/preview/home-h',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewHomeIRoute = PreviewHomeIRouteImport.update({
-  id: '/preview/home-i',
-  path: '/preview/home-i',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewHomeJRoute = PreviewHomeJRouteImport.update({
-  id: '/preview/home-j',
-  path: '/preview/home-j',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewHomeKRoute = PreviewHomeKRouteImport.update({
-  id: '/preview/home-k',
-  path: '/preview/home-k',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewHomeLRoute = PreviewHomeLRouteImport.update({
-  id: '/preview/home-l',
-  path: '/preview/home-l',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreviewHomeMRoute = PreviewHomeMRouteImport.update({
-  id: '/preview/home-m',
-  path: '/preview/home-m',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DotwellKnownAgentSkillsSplatRoute =
   DotwellKnownAgentSkillsSplatRouteImport.update({
     id: '/.well-known/agent-skills/$',
@@ -478,22 +382,6 @@ export interface FileRoutesByFullPath {
   '/docs/$': typeof DocsSplatRoute
   '/glossary/$slug': typeof GlossarySlugRoute
   '/og/status.png': typeof OgStatusDotpngRoute
-  '/preview/home-a': typeof PreviewHomeARoute
-  '/preview/home-a1': typeof PreviewHomeA1Route
-  '/preview/home-a2': typeof PreviewHomeA2Route
-  '/preview/home-a3': typeof PreviewHomeA3Route
-  '/preview/home-b': typeof PreviewHomeBRoute
-  '/preview/home-c': typeof PreviewHomeCRoute
-  '/preview/home-d': typeof PreviewHomeDRoute
-  '/preview/home-e': typeof PreviewHomeERoute
-  '/preview/home-f': typeof PreviewHomeFRoute
-  '/preview/home-g': typeof PreviewHomeGRoute
-  '/preview/home-h': typeof PreviewHomeHRoute
-  '/preview/home-i': typeof PreviewHomeIRoute
-  '/preview/home-j': typeof PreviewHomeJRoute
-  '/preview/home-k': typeof PreviewHomeKRoute
-  '/preview/home-l': typeof PreviewHomeLRoute
-  '/preview/home-m': typeof PreviewHomeMRoute
   '/aeo-for/': typeof AeoForIndexRoute
   '/ai-search/': typeof AiSearchIndexRoute
   '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
@@ -550,22 +438,6 @@ export interface FileRoutesByTo {
   '/docs/$': typeof DocsSplatRoute
   '/glossary/$slug': typeof GlossarySlugRoute
   '/og/status.png': typeof OgStatusDotpngRoute
-  '/preview/home-a': typeof PreviewHomeARoute
-  '/preview/home-a1': typeof PreviewHomeA1Route
-  '/preview/home-a2': typeof PreviewHomeA2Route
-  '/preview/home-a3': typeof PreviewHomeA3Route
-  '/preview/home-b': typeof PreviewHomeBRoute
-  '/preview/home-c': typeof PreviewHomeCRoute
-  '/preview/home-d': typeof PreviewHomeDRoute
-  '/preview/home-e': typeof PreviewHomeERoute
-  '/preview/home-f': typeof PreviewHomeFRoute
-  '/preview/home-g': typeof PreviewHomeGRoute
-  '/preview/home-h': typeof PreviewHomeHRoute
-  '/preview/home-i': typeof PreviewHomeIRoute
-  '/preview/home-j': typeof PreviewHomeJRoute
-  '/preview/home-k': typeof PreviewHomeKRoute
-  '/preview/home-l': typeof PreviewHomeLRoute
-  '/preview/home-m': typeof PreviewHomeMRoute
   '/aeo-for': typeof AeoForIndexRoute
   '/ai-search': typeof AiSearchIndexRoute
   '/ai-visibility-tools': typeof AiVisibilityToolsIndexRoute
@@ -623,22 +495,6 @@ export interface FileRoutesById {
   '/docs/$': typeof DocsSplatRoute
   '/glossary/$slug': typeof GlossarySlugRoute
   '/og/status.png': typeof OgStatusDotpngRoute
-  '/preview/home-a': typeof PreviewHomeARoute
-  '/preview/home-a1': typeof PreviewHomeA1Route
-  '/preview/home-a2': typeof PreviewHomeA2Route
-  '/preview/home-a3': typeof PreviewHomeA3Route
-  '/preview/home-b': typeof PreviewHomeBRoute
-  '/preview/home-c': typeof PreviewHomeCRoute
-  '/preview/home-d': typeof PreviewHomeDRoute
-  '/preview/home-e': typeof PreviewHomeERoute
-  '/preview/home-f': typeof PreviewHomeFRoute
-  '/preview/home-g': typeof PreviewHomeGRoute
-  '/preview/home-h': typeof PreviewHomeHRoute
-  '/preview/home-i': typeof PreviewHomeIRoute
-  '/preview/home-j': typeof PreviewHomeJRoute
-  '/preview/home-k': typeof PreviewHomeKRoute
-  '/preview/home-l': typeof PreviewHomeLRoute
-  '/preview/home-m': typeof PreviewHomeMRoute
   '/aeo-for/': typeof AeoForIndexRoute
   '/ai-search/': typeof AiSearchIndexRoute
   '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
@@ -697,22 +553,6 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/glossary/$slug'
     | '/og/status.png'
-    | '/preview/home-a'
-    | '/preview/home-a1'
-    | '/preview/home-a2'
-    | '/preview/home-a3'
-    | '/preview/home-b'
-    | '/preview/home-c'
-    | '/preview/home-d'
-    | '/preview/home-e'
-    | '/preview/home-f'
-    | '/preview/home-g'
-    | '/preview/home-h'
-    | '/preview/home-i'
-    | '/preview/home-j'
-    | '/preview/home-k'
-    | '/preview/home-l'
-    | '/preview/home-m'
     | '/aeo-for/'
     | '/ai-search/'
     | '/ai-visibility-tools/'
@@ -769,22 +609,6 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/glossary/$slug'
     | '/og/status.png'
-    | '/preview/home-a'
-    | '/preview/home-a1'
-    | '/preview/home-a2'
-    | '/preview/home-a3'
-    | '/preview/home-b'
-    | '/preview/home-c'
-    | '/preview/home-d'
-    | '/preview/home-e'
-    | '/preview/home-f'
-    | '/preview/home-g'
-    | '/preview/home-h'
-    | '/preview/home-i'
-    | '/preview/home-j'
-    | '/preview/home-k'
-    | '/preview/home-l'
-    | '/preview/home-m'
     | '/aeo-for'
     | '/ai-search'
     | '/ai-visibility-tools'
@@ -841,22 +665,6 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/glossary/$slug'
     | '/og/status.png'
-    | '/preview/home-a'
-    | '/preview/home-a1'
-    | '/preview/home-a2'
-    | '/preview/home-a3'
-    | '/preview/home-b'
-    | '/preview/home-c'
-    | '/preview/home-d'
-    | '/preview/home-e'
-    | '/preview/home-f'
-    | '/preview/home-g'
-    | '/preview/home-h'
-    | '/preview/home-i'
-    | '/preview/home-j'
-    | '/preview/home-k'
-    | '/preview/home-l'
-    | '/preview/home-m'
     | '/aeo-for/'
     | '/ai-search/'
     | '/ai-visibility-tools/'
@@ -914,22 +722,6 @@ export interface RootRouteChildren {
   DocsSplatRoute: typeof DocsSplatRoute
   GlossarySlugRoute: typeof GlossarySlugRoute
   OgStatusDotpngRoute: typeof OgStatusDotpngRoute
-  PreviewHomeARoute: typeof PreviewHomeARoute
-  PreviewHomeA1Route: typeof PreviewHomeA1Route
-  PreviewHomeA2Route: typeof PreviewHomeA2Route
-  PreviewHomeA3Route: typeof PreviewHomeA3Route
-  PreviewHomeBRoute: typeof PreviewHomeBRoute
-  PreviewHomeCRoute: typeof PreviewHomeCRoute
-  PreviewHomeDRoute: typeof PreviewHomeDRoute
-  PreviewHomeERoute: typeof PreviewHomeERoute
-  PreviewHomeFRoute: typeof PreviewHomeFRoute
-  PreviewHomeGRoute: typeof PreviewHomeGRoute
-  PreviewHomeHRoute: typeof PreviewHomeHRoute
-  PreviewHomeIRoute: typeof PreviewHomeIRoute
-  PreviewHomeJRoute: typeof PreviewHomeJRoute
-  PreviewHomeKRoute: typeof PreviewHomeKRoute
-  PreviewHomeLRoute: typeof PreviewHomeLRoute
-  PreviewHomeMRoute: typeof PreviewHomeMRoute
   AeoForIndexRoute: typeof AeoForIndexRoute
   AiSearchIndexRoute: typeof AiSearchIndexRoute
   AiVisibilityToolsIndexRoute: typeof AiVisibilityToolsIndexRoute
@@ -1216,118 +1008,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OgStatusDotpngRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/preview/home-a': {
-      id: '/preview/home-a'
-      path: '/preview/home-a'
-      fullPath: '/preview/home-a'
-      preLoaderRoute: typeof PreviewHomeARouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/home-a1': {
-      id: '/preview/home-a1'
-      path: '/preview/home-a1'
-      fullPath: '/preview/home-a1'
-      preLoaderRoute: typeof PreviewHomeA1RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/home-a2': {
-      id: '/preview/home-a2'
-      path: '/preview/home-a2'
-      fullPath: '/preview/home-a2'
-      preLoaderRoute: typeof PreviewHomeA2RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/home-a3': {
-      id: '/preview/home-a3'
-      path: '/preview/home-a3'
-      fullPath: '/preview/home-a3'
-      preLoaderRoute: typeof PreviewHomeA3RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/home-b': {
-      id: '/preview/home-b'
-      path: '/preview/home-b'
-      fullPath: '/preview/home-b'
-      preLoaderRoute: typeof PreviewHomeBRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/home-c': {
-      id: '/preview/home-c'
-      path: '/preview/home-c'
-      fullPath: '/preview/home-c'
-      preLoaderRoute: typeof PreviewHomeCRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/home-d': {
-      id: '/preview/home-d'
-      path: '/preview/home-d'
-      fullPath: '/preview/home-d'
-      preLoaderRoute: typeof PreviewHomeDRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/home-e': {
-      id: '/preview/home-e'
-      path: '/preview/home-e'
-      fullPath: '/preview/home-e'
-      preLoaderRoute: typeof PreviewHomeERouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/home-f': {
-      id: '/preview/home-f'
-      path: '/preview/home-f'
-      fullPath: '/preview/home-f'
-      preLoaderRoute: typeof PreviewHomeFRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/home-g': {
-      id: '/preview/home-g'
-      path: '/preview/home-g'
-      fullPath: '/preview/home-g'
-      preLoaderRoute: typeof PreviewHomeGRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/home-h': {
-      id: '/preview/home-h'
-      path: '/preview/home-h'
-      fullPath: '/preview/home-h'
-      preLoaderRoute: typeof PreviewHomeHRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/home-i': {
-      id: '/preview/home-i'
-      path: '/preview/home-i'
-      fullPath: '/preview/home-i'
-      preLoaderRoute: typeof PreviewHomeIRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/home-j': {
-      id: '/preview/home-j'
-      path: '/preview/home-j'
-      fullPath: '/preview/home-j'
-      preLoaderRoute: typeof PreviewHomeJRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/home-k': {
-      id: '/preview/home-k'
-      path: '/preview/home-k'
-      fullPath: '/preview/home-k'
-      preLoaderRoute: typeof PreviewHomeKRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/home-l': {
-      id: '/preview/home-l'
-      path: '/preview/home-l'
-      fullPath: '/preview/home-l'
-      preLoaderRoute: typeof PreviewHomeLRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preview/home-m': {
-      id: '/preview/home-m'
-      path: '/preview/home-m'
-      fullPath: '/preview/home-m'
-      preLoaderRoute: typeof PreviewHomeMRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/.well-known/agent-skills/$': {
       id: '/.well-known/agent-skills/$'
       path: '/.well-known/agent-skills/$'
@@ -1482,22 +1162,6 @@ const rootRouteChildren: RootRouteChildren = {
   DocsSplatRoute: DocsSplatRoute,
   GlossarySlugRoute: GlossarySlugRoute,
   OgStatusDotpngRoute: OgStatusDotpngRoute,
-  PreviewHomeARoute: PreviewHomeARoute,
-  PreviewHomeA1Route: PreviewHomeA1Route,
-  PreviewHomeA2Route: PreviewHomeA2Route,
-  PreviewHomeA3Route: PreviewHomeA3Route,
-  PreviewHomeBRoute: PreviewHomeBRoute,
-  PreviewHomeCRoute: PreviewHomeCRoute,
-  PreviewHomeDRoute: PreviewHomeDRoute,
-  PreviewHomeERoute: PreviewHomeERoute,
-  PreviewHomeFRoute: PreviewHomeFRoute,
-  PreviewHomeGRoute: PreviewHomeGRoute,
-  PreviewHomeHRoute: PreviewHomeHRoute,
-  PreviewHomeIRoute: PreviewHomeIRoute,
-  PreviewHomeJRoute: PreviewHomeJRoute,
-  PreviewHomeKRoute: PreviewHomeKRoute,
-  PreviewHomeLRoute: PreviewHomeLRoute,
-  PreviewHomeMRoute: PreviewHomeMRoute,
   AeoForIndexRoute: AeoForIndexRoute,
   AiSearchIndexRoute: AiSearchIndexRoute,
   AiVisibilityToolsIndexRoute: AiVisibilityToolsIndexRoute,

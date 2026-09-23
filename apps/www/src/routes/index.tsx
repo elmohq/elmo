@@ -1,14 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Community } from "@/components/community";
-import { CTA } from "@/components/cta";
-import { Faq } from "@/components/faq";
-import { Features } from "@/components/features";
 import { Footer } from "@/components/footer";
-import { Hero } from "@/components/hero";
+import { Citations } from "@/components/home/citations";
+import { Closing } from "@/components/home/closing";
+import { Faq } from "@/components/home/faq";
+import { Hero } from "@/components/home/hero";
+import { LogoStrip } from "@/components/home/logos";
+import { ModelCoverage } from "@/components/home/models";
+import { Pricing } from "@/components/home/pricing";
+import { Reviews } from "@/components/home/reviews";
+import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
+import { ProductTour } from "@/components/home/tour";
 import { Navbar } from "@/components/navbar";
-import { Pricing } from "@/components/pricing";
-import { Stats } from "@/components/stats";
-import { SpeakeasyTestimonial, TradeSitesTestimonial } from "@/components/testimonial";
 import { HOME_FAQS } from "@/lib/faqs";
 import { canonicalUrl, faqJsonLd, ogMeta, SITE_NAME, softwareApplicationJsonLd } from "@/lib/seo";
 
@@ -38,18 +40,19 @@ export const Route = createFileRoute("/")({
 
 function HomePage() {
 	return (
-		<div className="min-h-screen">
+		<div className={`${HOME_FONT_CLASS} min-h-screen bg-white antialiased`}>
+			<HomeStyles />
 			<Navbar />
 			<main>
 				<Hero />
-				<Stats />
-				<SpeakeasyTestimonial />
-				<Features />
-				<TradeSitesTestimonial />
-				<Community />
+				<LogoStrip />
+				<ModelCoverage />
+				<ProductTour />
+				<Citations />
+				<Reviews />
 				<Pricing />
-				<Faq items={HOME_FAQS} eyebrow="/ FAQ" />
-				<CTA />
+				<Faq items={HOME_FAQS} />
+				<Closing />
 			</main>
 			<Footer />
 		</div>
