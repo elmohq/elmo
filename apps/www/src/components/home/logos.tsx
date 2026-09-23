@@ -1,5 +1,4 @@
 import { FermatWordmark, SpeakeasyLockup, TradeSitesWordmark } from "@workspace/ui/brand/customers";
-import { G2_MAX_RATING, G2_RATING, G2Stars } from "@workspace/ui/brand/g2-rating";
 
 interface Customer {
 	name: string;
@@ -83,12 +82,6 @@ export function LogoStrip() {
 					>
 						Used by 200+ brands to optimize their AI visibility
 					</h2>
-					<p className="inline-flex items-center gap-2 text-sm text-zinc-600">
-						<G2Stars />
-						<span>
-							{G2_RATING} out of {G2_MAX_RATING} on G2
-						</span>
-					</p>
 				</div>
 				<ul className="mt-10 flex flex-wrap items-center justify-center gap-x-10 gap-y-6 md:gap-x-14">
 					{customers.map((c) => (
