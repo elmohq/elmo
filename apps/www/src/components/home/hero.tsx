@@ -1,7 +1,6 @@
 import MuxPlayer from "@mux/mux-player-react";
 import { Link } from "@tanstack/react-router";
 import { cloudAppUrl, demoSiteUrl } from "@workspace/config/referrals";
-import { CUSTOMER_QUOTES } from "@workspace/ui/brand/customers";
 import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
 import { ArrowRight, ArrowUpRight, Play } from "lucide-react";
 import { useState } from "react";
@@ -114,24 +113,6 @@ export function Hero() {
 							Watch the walkthrough
 						</button>
 					</p>
-
-					<figure className="mt-10 flex items-center gap-3">
-						<img
-							src="/testimonials/nolan.jpg"
-							alt=""
-							width={40}
-							height={40}
-							className="size-10 shrink-0 rounded-full object-cover ring-1 ring-zinc-950/5"
-						/>
-						<div className="text-left">
-							<blockquote className="text-[15px] font-medium text-zinc-950">
-								“{CUSTOMER_QUOTES.speakeasy.quote}”
-							</blockquote>
-							<figcaption className="text-sm text-zinc-500">
-								{CUSTOMER_QUOTES.speakeasy.author}, {CUSTOMER_QUOTES.speakeasy.company}
-							</figcaption>
-						</div>
-					</figure>
 				</div>
 
 				<div className="mt-16 md:mt-20">
