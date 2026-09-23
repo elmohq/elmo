@@ -5,7 +5,16 @@ import { useId, useState } from "react";
 import { identifyByEmail, trackEvent } from "@/lib/posthog";
 
 /** Email signup for product updates. Subscribers land in PostHog as identified people with a `newsletter_subscribe` event. */
-export function NewsletterSignup({ source, className = "" }: { source: string; className?: string }) {
+export function NewsletterSignup({
+	source,
+	className = "",
+	hideLabel = false,
+}: {
+	source: string;
+	className?: string;
+	/** For when a heading beside the form already says what it is. */
+	hideLabel?: boolean;
+}) {
 	const id = useId();
 	const [email, setEmail] = useState("");
 	const [error, setError] = useState("");
@@ -35,10 +44,10 @@ export function NewsletterSignup({ source, className = "" }: { source: string; c
 
 	return (
 		<form onSubmit={handleSubmit} noValidate className={className}>
-			<label htmlFor={id} className="text-sm font-medium text-zinc-950">
+			<label htmlFor={id} className={hideLabel ? "sr-only" : "text-sm font-medium text-zinc-950"}>
 				Get product updates by email
 			</label>
-			<div className="mt-2 flex max-w-md gap-2">
+			<div className={`flex max-w-md gap-2 ${hideLabel ? "" : "mt-2"}`}>
 				<input
 					id={id}
 					type="email"

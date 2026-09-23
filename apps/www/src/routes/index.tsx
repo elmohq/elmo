@@ -11,6 +11,7 @@ import { Pricing } from "@/components/home/pricing";
 import { Reviews } from "@/components/home/reviews";
 import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
 import { ProductTour } from "@/components/home/tour";
+import { Updates } from "@/components/home/updates";
 import { Navbar } from "@/components/navbar";
 import { HOME_FAQS } from "@/lib/faqs";
 import { canonicalUrl, faqJsonLd, ogMeta, SITE_NAME, softwareApplicationJsonLd } from "@/lib/seo";
@@ -55,6 +56,7 @@ function HomePage() {
 				<Faq items={HOME_FAQS} />
 				<Community />
 				<Closing />
+				<Updates />
 			</main>
 			<Footer />
 		</div>
