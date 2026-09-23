@@ -46,6 +46,9 @@ import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as GlossaryIndexRouteImport } from './routes/glossary/index'
 import { Route as GlossarySlugRouteImport } from './routes/glossary/$slug'
 import { Route as OgStatusDotpngRouteImport } from './routes/og/status[.]png'
+import { Route as PreviewHomeARouteImport } from './routes/preview/home-a'
+import { Route as PreviewHomeBRouteImport } from './routes/preview/home-b'
+import { Route as PreviewHomeCRouteImport } from './routes/preview/home-c'
 import { Route as DotwellKnownAgentSkillsSplatRouteImport } from './routes/[.]well-known/agent-skills/$'
 import { Route as DotwellKnownAgentSkillsIndexDotjsonRouteImport } from './routes/[.]well-known/agent-skills/index[.]json'
 import { Route as AiVisibilityToolsAlternativesIndexRouteImport } from './routes/ai-visibility-tools/alternatives/index'
@@ -252,6 +255,21 @@ const OgStatusDotpngRoute = OgStatusDotpngRouteImport.update({
   path: '/og/status.png',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PreviewHomeARoute = PreviewHomeARouteImport.update({
+  id: '/preview/home-a',
+  path: '/preview/home-a',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreviewHomeBRoute = PreviewHomeBRouteImport.update({
+  id: '/preview/home-b',
+  path: '/preview/home-b',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreviewHomeCRoute = PreviewHomeCRouteImport.update({
+  id: '/preview/home-c',
+  path: '/preview/home-c',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DotwellKnownAgentSkillsSplatRoute =
   DotwellKnownAgentSkillsSplatRouteImport.update({
     id: '/.well-known/agent-skills/$',
@@ -382,6 +400,9 @@ export interface FileRoutesByFullPath {
   '/docs/$': typeof DocsSplatRoute
   '/glossary/$slug': typeof GlossarySlugRoute
   '/og/status.png': typeof OgStatusDotpngRoute
+  '/preview/home-a': typeof PreviewHomeARoute
+  '/preview/home-b': typeof PreviewHomeBRoute
+  '/preview/home-c': typeof PreviewHomeCRoute
   '/aeo-for/': typeof AeoForIndexRoute
   '/ai-search/': typeof AiSearchIndexRoute
   '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
@@ -438,6 +459,9 @@ export interface FileRoutesByTo {
   '/docs/$': typeof DocsSplatRoute
   '/glossary/$slug': typeof GlossarySlugRoute
   '/og/status.png': typeof OgStatusDotpngRoute
+  '/preview/home-a': typeof PreviewHomeARoute
+  '/preview/home-b': typeof PreviewHomeBRoute
+  '/preview/home-c': typeof PreviewHomeCRoute
   '/aeo-for': typeof AeoForIndexRoute
   '/ai-search': typeof AiSearchIndexRoute
   '/ai-visibility-tools': typeof AiVisibilityToolsIndexRoute
@@ -495,6 +519,9 @@ export interface FileRoutesById {
   '/docs/$': typeof DocsSplatRoute
   '/glossary/$slug': typeof GlossarySlugRoute
   '/og/status.png': typeof OgStatusDotpngRoute
+  '/preview/home-a': typeof PreviewHomeARoute
+  '/preview/home-b': typeof PreviewHomeBRoute
+  '/preview/home-c': typeof PreviewHomeCRoute
   '/aeo-for/': typeof AeoForIndexRoute
   '/ai-search/': typeof AiSearchIndexRoute
   '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
@@ -553,6 +580,9 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/glossary/$slug'
     | '/og/status.png'
+    | '/preview/home-a'
+    | '/preview/home-b'
+    | '/preview/home-c'
     | '/aeo-for/'
     | '/ai-search/'
     | '/ai-visibility-tools/'
@@ -609,6 +639,9 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/glossary/$slug'
     | '/og/status.png'
+    | '/preview/home-a'
+    | '/preview/home-b'
+    | '/preview/home-c'
     | '/aeo-for'
     | '/ai-search'
     | '/ai-visibility-tools'
@@ -665,6 +698,9 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/glossary/$slug'
     | '/og/status.png'
+    | '/preview/home-a'
+    | '/preview/home-b'
+    | '/preview/home-c'
     | '/aeo-for/'
     | '/ai-search/'
     | '/ai-visibility-tools/'
@@ -722,6 +758,9 @@ export interface RootRouteChildren {
   DocsSplatRoute: typeof DocsSplatRoute
   GlossarySlugRoute: typeof GlossarySlugRoute
   OgStatusDotpngRoute: typeof OgStatusDotpngRoute
+  PreviewHomeARoute: typeof PreviewHomeARoute
+  PreviewHomeBRoute: typeof PreviewHomeBRoute
+  PreviewHomeCRoute: typeof PreviewHomeCRoute
   AeoForIndexRoute: typeof AeoForIndexRoute
   AiSearchIndexRoute: typeof AiSearchIndexRoute
   AiVisibilityToolsIndexRoute: typeof AiVisibilityToolsIndexRoute
@@ -1008,6 +1047,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OgStatusDotpngRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/preview/home-a': {
+      id: '/preview/home-a'
+      path: '/preview/home-a'
+      fullPath: '/preview/home-a'
+      preLoaderRoute: typeof PreviewHomeARouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preview/home-b': {
+      id: '/preview/home-b'
+      path: '/preview/home-b'
+      fullPath: '/preview/home-b'
+      preLoaderRoute: typeof PreviewHomeBRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preview/home-c': {
+      id: '/preview/home-c'
+      path: '/preview/home-c'
+      fullPath: '/preview/home-c'
+      preLoaderRoute: typeof PreviewHomeCRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.well-known/agent-skills/$': {
       id: '/.well-known/agent-skills/$'
       path: '/.well-known/agent-skills/$'
@@ -1162,6 +1222,9 @@ const rootRouteChildren: RootRouteChildren = {
   DocsSplatRoute: DocsSplatRoute,
   GlossarySlugRoute: GlossarySlugRoute,
   OgStatusDotpngRoute: OgStatusDotpngRoute,
+  PreviewHomeARoute: PreviewHomeARoute,
+  PreviewHomeBRoute: PreviewHomeBRoute,
+  PreviewHomeCRoute: PreviewHomeCRoute,
   AeoForIndexRoute: AeoForIndexRoute,
   AiSearchIndexRoute: AiSearchIndexRoute,
   AiVisibilityToolsIndexRoute: AiVisibilityToolsIndexRoute,
