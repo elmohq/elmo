@@ -1,8 +1,12 @@
 import { useMatch } from "@tanstack/react-router";
 import { BRAND_ROUTE_ID } from "@/lib/route-subject";
 
-// Read from the brand layout, not the page's route: the layout stays matched
-// across brand pages, so a page left mid-hydration can still read it.
+/**
+ * The `$brand` segment is a slug or an id, so it is not something to hand to a
+ * server function or use in a query key. This reads the id the brand layout
+ * resolved; the layout stays matched across brand pages, so a page left
+ * mid-hydration can still read it.
+ */
 export function useBrandId(): string;
 export function useBrandId(opts: { shouldThrow: false }): string | undefined;
 export function useBrandId(opts?: { shouldThrow: false }): string | undefined {
