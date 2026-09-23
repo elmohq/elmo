@@ -1,14 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import {
-	CLOUD_ENTRY_PRICE_USD,
-	CLOUD_SIGNUP_URL,
-	PLAN_KEYS,
-	PLANS,
-	planPlatformBreakdown,
-} from "@workspace/config/plans";
+import { CLOUD_ENTRY_PRICE_USD, PLAN_KEYS, PLANS, planPlatformBreakdown } from "@workspace/config/plans";
+import { cloudAppUrl } from "@workspace/config/referrals";
 import { PlatformTier } from "@workspace/ui/brand/platform-tier";
 import { ArrowRight, Check } from "lucide-react";
 import { ContactForm } from "./contact-form";
+
+const CLOUD_URL = cloudAppUrl("marketing-cta");
 
 interface Plan {
 	id: string;
@@ -43,7 +40,7 @@ const plans: Plan[] = [
 			"API access on every plan",
 			"Unlimited seats",
 		],
-		cta: { type: "external", text: "Start with Cloud", href: CLOUD_SIGNUP_URL },
+		cta: { type: "external", text: "Start with Cloud", href: CLOUD_URL },
 	},
 	{
 		id: "self-hosted",
@@ -249,7 +246,7 @@ function CloudPlans() {
 
 			<div className="mt-6 flex flex-wrap gap-3">
 				<a
-					href={CLOUD_SIGNUP_URL}
+					href={CLOUD_URL}
 					className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-blue-600 px-4 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
 				>
 					Sign up

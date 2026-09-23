@@ -1,5 +1,5 @@
 import { Link, useLoaderData } from "@tanstack/react-router";
-import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
+import { cloudAppUrl } from "@workspace/config/referrals";
 import { Button } from "@workspace/ui/components/button";
 import {
 	NavigationMenu,
@@ -11,6 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/component
 import { ArrowRight } from "lucide-react";
 import { formatStarCount } from "@/lib/github-stars";
 import { Logo } from "./logo";
+
+const CLOUD_URL = cloudAppUrl("marketing-cta");
 
 const navigationLinks = [
 	{ href: "/ai-visibility-tools/category/open-source", label: "Open Source Tools" },
@@ -124,7 +126,7 @@ export function Navbar() {
 						)}
 					</a>
 					<a
-						href={CLOUD_SIGNUP_URL}
+						href={CLOUD_URL}
 						className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
 					>
 						Sign up

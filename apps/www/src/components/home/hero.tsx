@@ -1,7 +1,6 @@
 import MuxPlayer from "@mux/mux-player-react";
 import { Link } from "@tanstack/react-router";
-import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
-import { demoSiteUrl } from "@workspace/config/referrals";
+import { cloudAppUrl, demoSiteUrl } from "@workspace/config/referrals";
 import { CUSTOMER_QUOTES } from "@workspace/ui/brand/customers";
 import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
 import { ArrowRight, ArrowUpRight, Play } from "lucide-react";
@@ -9,6 +8,8 @@ import { useState } from "react";
 import { externalRel } from "@/lib/external-link";
 import { ProductDemo } from "./product-demo";
 import { HOME_FONT_CLASS } from "./styles";
+
+const CLOUD_URL = cloudAppUrl("marketing-cta");
 
 const DEMO_URL = demoSiteUrl("marketing-cta");
 
@@ -83,7 +84,7 @@ export function Hero() {
 						recommended.
 					</p>
 					<div className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-						<a href={CLOUD_SIGNUP_URL} className={`${BUTTON} bg-blue-600 text-white hover:bg-blue-700`}>
+						<a href={CLOUD_URL} className={`${BUTTON} bg-blue-600 text-white hover:bg-blue-700`}>
 							Get started
 							<ArrowRight className="size-4" aria-hidden="true" />
 						</a>

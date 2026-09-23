@@ -38,6 +38,11 @@ export function marketingUrl(path: string, ref: ReferralSource): string {
 	return tagged(new URL(path, MARKETING_SITE_URL).toString(), ref);
 }
 
+/** The cloud app itself, tagged with where the click came from. It routes new visitors to sign-up on its own. */
+export function cloudAppUrl(ref: ReferralSource): string {
+	return tagged(`${CLOUD_APP_URL}/`, ref);
+}
+
 /** Cloud registration, tagged with where the click came from. */
 export function cloudSignupUrl(ref: ReferralSource): string {
 	return tagged(`${CLOUD_APP_URL}/auth/register`, ref);

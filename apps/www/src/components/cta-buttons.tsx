@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
+import { cloudAppUrl } from "@workspace/config/referrals";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { externalRel } from "@/lib/external-link";
+
+const CLOUD_URL = cloudAppUrl("marketing-cta");
 
 const PRIMARY_CLS =
 	"inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700";
@@ -85,7 +87,7 @@ function GhostCTA({
  */
 export function CloudSignupCTA({ label = "Start with Cloud" }: { label?: string }) {
 	return (
-		<PrimaryCTA href={CLOUD_SIGNUP_URL}>
+		<PrimaryCTA href={CLOUD_URL}>
 			{label}
 			<ArrowRight className="size-3.5" />
 		</PrimaryCTA>
