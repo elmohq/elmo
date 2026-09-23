@@ -220,14 +220,14 @@ function AnswerDetails({ review }: { review: AiReview }) {
 			</PopoverTrigger>
 			<PopoverContent
 				align="start"
-				className={`${HOME_FONT_CLASS} max-h-[min(32rem,70vh)] w-[min(26rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border-zinc-200 p-5 shadow-xl shadow-zinc-950/10`}
+				className={`${HOME_FONT_CLASS} w-[min(26rem,calc(100vw-2rem))] rounded-xl border-zinc-200 p-5 shadow-xl shadow-zinc-950/10`}
 			>
 				<p className="text-[13px] font-medium text-zinc-500">We asked {review.name}</p>
 				<p className="mt-1.5 rounded-lg bg-zinc-50 p-3 text-pretty text-[13px]/5 text-zinc-800 ring-1 ring-zinc-200/70">
 					{AI_PROMPT}
 				</p>
 				<p className="mt-4 text-[13px] font-medium text-zinc-500">Its full answer, Sept 23, 2026</p>
-				<div className="mt-1.5 space-y-2.5 text-pretty text-sm/6 text-zinc-800">
+				<div className="mt-1.5 max-h-44 space-y-2.5 overflow-y-auto overscroll-contain rounded-lg p-3 text-pretty text-sm/6 text-zinc-800 ring-1 ring-zinc-200/70">
 					{review.response.map((p) => (
 						<p key={p}>{p}</p>
 					))}
