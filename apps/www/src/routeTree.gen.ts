@@ -47,6 +47,9 @@ import { Route as GlossaryIndexRouteImport } from './routes/glossary/index'
 import { Route as GlossarySlugRouteImport } from './routes/glossary/$slug'
 import { Route as OgStatusDotpngRouteImport } from './routes/og/status[.]png'
 import { Route as PreviewHomeARouteImport } from './routes/preview/home-a'
+import { Route as PreviewHomeA1RouteImport } from './routes/preview/home-a1'
+import { Route as PreviewHomeA2RouteImport } from './routes/preview/home-a2'
+import { Route as PreviewHomeA3RouteImport } from './routes/preview/home-a3'
 import { Route as PreviewHomeBRouteImport } from './routes/preview/home-b'
 import { Route as PreviewHomeCRouteImport } from './routes/preview/home-c'
 import { Route as DotwellKnownAgentSkillsSplatRouteImport } from './routes/[.]well-known/agent-skills/$'
@@ -260,6 +263,21 @@ const PreviewHomeARoute = PreviewHomeARouteImport.update({
   path: '/preview/home-a',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PreviewHomeA1Route = PreviewHomeA1RouteImport.update({
+  id: '/preview/home-a1',
+  path: '/preview/home-a1',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreviewHomeA2Route = PreviewHomeA2RouteImport.update({
+  id: '/preview/home-a2',
+  path: '/preview/home-a2',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreviewHomeA3Route = PreviewHomeA3RouteImport.update({
+  id: '/preview/home-a3',
+  path: '/preview/home-a3',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PreviewHomeBRoute = PreviewHomeBRouteImport.update({
   id: '/preview/home-b',
   path: '/preview/home-b',
@@ -401,6 +419,9 @@ export interface FileRoutesByFullPath {
   '/glossary/$slug': typeof GlossarySlugRoute
   '/og/status.png': typeof OgStatusDotpngRoute
   '/preview/home-a': typeof PreviewHomeARoute
+  '/preview/home-a1': typeof PreviewHomeA1Route
+  '/preview/home-a2': typeof PreviewHomeA2Route
+  '/preview/home-a3': typeof PreviewHomeA3Route
   '/preview/home-b': typeof PreviewHomeBRoute
   '/preview/home-c': typeof PreviewHomeCRoute
   '/aeo-for/': typeof AeoForIndexRoute
@@ -460,6 +481,9 @@ export interface FileRoutesByTo {
   '/glossary/$slug': typeof GlossarySlugRoute
   '/og/status.png': typeof OgStatusDotpngRoute
   '/preview/home-a': typeof PreviewHomeARoute
+  '/preview/home-a1': typeof PreviewHomeA1Route
+  '/preview/home-a2': typeof PreviewHomeA2Route
+  '/preview/home-a3': typeof PreviewHomeA3Route
   '/preview/home-b': typeof PreviewHomeBRoute
   '/preview/home-c': typeof PreviewHomeCRoute
   '/aeo-for': typeof AeoForIndexRoute
@@ -520,6 +544,9 @@ export interface FileRoutesById {
   '/glossary/$slug': typeof GlossarySlugRoute
   '/og/status.png': typeof OgStatusDotpngRoute
   '/preview/home-a': typeof PreviewHomeARoute
+  '/preview/home-a1': typeof PreviewHomeA1Route
+  '/preview/home-a2': typeof PreviewHomeA2Route
+  '/preview/home-a3': typeof PreviewHomeA3Route
   '/preview/home-b': typeof PreviewHomeBRoute
   '/preview/home-c': typeof PreviewHomeCRoute
   '/aeo-for/': typeof AeoForIndexRoute
@@ -581,6 +608,9 @@ export interface FileRouteTypes {
     | '/glossary/$slug'
     | '/og/status.png'
     | '/preview/home-a'
+    | '/preview/home-a1'
+    | '/preview/home-a2'
+    | '/preview/home-a3'
     | '/preview/home-b'
     | '/preview/home-c'
     | '/aeo-for/'
@@ -640,6 +670,9 @@ export interface FileRouteTypes {
     | '/glossary/$slug'
     | '/og/status.png'
     | '/preview/home-a'
+    | '/preview/home-a1'
+    | '/preview/home-a2'
+    | '/preview/home-a3'
     | '/preview/home-b'
     | '/preview/home-c'
     | '/aeo-for'
@@ -699,6 +732,9 @@ export interface FileRouteTypes {
     | '/glossary/$slug'
     | '/og/status.png'
     | '/preview/home-a'
+    | '/preview/home-a1'
+    | '/preview/home-a2'
+    | '/preview/home-a3'
     | '/preview/home-b'
     | '/preview/home-c'
     | '/aeo-for/'
@@ -759,6 +795,9 @@ export interface RootRouteChildren {
   GlossarySlugRoute: typeof GlossarySlugRoute
   OgStatusDotpngRoute: typeof OgStatusDotpngRoute
   PreviewHomeARoute: typeof PreviewHomeARoute
+  PreviewHomeA1Route: typeof PreviewHomeA1Route
+  PreviewHomeA2Route: typeof PreviewHomeA2Route
+  PreviewHomeA3Route: typeof PreviewHomeA3Route
   PreviewHomeBRoute: typeof PreviewHomeBRoute
   PreviewHomeCRoute: typeof PreviewHomeCRoute
   AeoForIndexRoute: typeof AeoForIndexRoute
@@ -1054,6 +1093,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PreviewHomeARouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/preview/home-a1': {
+      id: '/preview/home-a1'
+      path: '/preview/home-a1'
+      fullPath: '/preview/home-a1'
+      preLoaderRoute: typeof PreviewHomeA1RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preview/home-a2': {
+      id: '/preview/home-a2'
+      path: '/preview/home-a2'
+      fullPath: '/preview/home-a2'
+      preLoaderRoute: typeof PreviewHomeA2RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preview/home-a3': {
+      id: '/preview/home-a3'
+      path: '/preview/home-a3'
+      fullPath: '/preview/home-a3'
+      preLoaderRoute: typeof PreviewHomeA3RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/preview/home-b': {
       id: '/preview/home-b'
       path: '/preview/home-b'
@@ -1223,6 +1283,9 @@ const rootRouteChildren: RootRouteChildren = {
   GlossarySlugRoute: GlossarySlugRoute,
   OgStatusDotpngRoute: OgStatusDotpngRoute,
   PreviewHomeARoute: PreviewHomeARoute,
+  PreviewHomeA1Route: PreviewHomeA1Route,
+  PreviewHomeA2Route: PreviewHomeA2Route,
+  PreviewHomeA3Route: PreviewHomeA3Route,
   PreviewHomeBRoute: PreviewHomeBRoute,
   PreviewHomeCRoute: PreviewHomeCRoute,
   AeoForIndexRoute: AeoForIndexRoute,
