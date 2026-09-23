@@ -5,6 +5,7 @@ import { buttonVariants } from "@workspace/ui/components/button";
 import { ArrowRight } from "lucide-react";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
+import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { breadcrumbJsonLd, canonicalUrl, ogMeta } from "@/lib/seo";
 
 const CLOUD_URL = cloudAppUrl("marketing-vision");
@@ -220,7 +221,7 @@ function VisionPage() {
 								Start with Cloud
 								<ArrowRight className="size-3.5" />
 							</a>
-							<Link to="/docs" className={buttonVariants({ variant: "outline", size: "sm" })}>
+							<Link {...SELF_HOST_LINK} className={buttonVariants({ variant: "outline", size: "sm" })}>
 								Self-host free
 							</Link>
 							<a

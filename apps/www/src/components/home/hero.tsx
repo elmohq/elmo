@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dia
 import { ArrowRight, ArrowUpRight, Play } from "lucide-react";
 import { useState } from "react";
 import { externalRel } from "@/lib/external-link";
+import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { ProductDemo } from "./product-demo";
 import { HOME_FONT_CLASS } from "./styles";
 
@@ -98,7 +99,7 @@ export function Hero() {
 						</a>
 					</div>
 					<p className="mt-5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-zinc-500">
-						<Link to="/docs" className={QUIET}>
+						<Link {...SELF_HOST_LINK} className={QUIET}>
 							Self-host for free
 						</Link>
 						<span aria-hidden="true" className="text-zinc-300">

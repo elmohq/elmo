@@ -3,6 +3,7 @@ import { PLAN_KEYS, PLANS, type PlanDefinition, type PlanKey } from "@workspace/
 import { cloudAppUrl } from "@workspace/config/referrals";
 import { ArrowRight, Check, Minus } from "lucide-react";
 import { ContactForm } from "@/components/contact-form";
+import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { CARD, SectionHeading } from "./ui";
 
 function planLines(plan: PlanDefinition): { text: string; included: boolean }[] {
@@ -69,6 +70,42 @@ function OtherOption({ name, body, action }: { name: string; body: string; actio
 	);
 }
 
+/** Self-hosting, custom contracts, and white label: the ways to run Elmo that aren't a self-serve cloud tier. */
+export function OtherPlans({ className = "" }: { className?: string }) {
+	return (
+		<div className={`grid gap-4 md:grid-cols-3 ${className}`}>
+			<OtherOption
+				name="Self-hosted"
+				body="The same product on your own servers. Unlimited prompts, every model, full source."
+				action={
+					<Link {...SELF_HOST_LINK} className={LINK}>
+						Read the setup guide
+						<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+					</Link>
+				}
+			/>
+			<OtherOption
+				name="Custom"
+				body="More brands, custom prompt limits, higher sampling rates, and any models."
+				action={
+					<div className={FORM_AS_LINK}>
+						<ContactForm source="pricing-custom" title="Custom Plan Inquiry" />
+					</div>
+				}
+			/>
+			<OtherOption
+				name="White label"
+				body="Offer AI visibility tracking to your clients under your own brand, domain, and SSO."
+				action={
+					<div className={FORM_AS_LINK}>
+						<ContactForm source="pricing" />
+					</div>
+				}
+			/>
+		</div>
+	);
+}
+
 export function Pricing() {
 	return (
 		<section id="pricing" className="border-t border-zinc-200/80 bg-white">
@@ -85,36 +122,7 @@ export function Pricing() {
 					))}
 				</div>
 
-				<div className="mt-4 grid gap-4 md:grid-cols-3">
-					<OtherOption
-						name="Self-hosted"
-						body="The same product on your own servers. Unlimited prompts, every model, full source."
-						action={
-							<Link to="/docs" className={LINK}>
-								Read the setup guide
-								<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-							</Link>
-						}
-					/>
-					<OtherOption
-						name="Custom"
-						body="More brands, custom prompt limits, higher sampling rates, and any models."
-						action={
-							<div className={FORM_AS_LINK}>
-								<ContactForm source="pricing-custom" title="Custom Plan Inquiry" />
-							</div>
-						}
-					/>
-					<OtherOption
-						name="White label"
-						body="Offer AI visibility tracking to your clients under your own brand, domain, and SSO."
-						action={
-							<div className={FORM_AS_LINK}>
-								<ContactForm source="pricing" />
-							</div>
-						}
-					/>
-				</div>
+				<OtherPlans className="mt-4" />
 
 				<div className="mt-10 flex justify-center">
 					<Link to="/pricing" className={LINK}>

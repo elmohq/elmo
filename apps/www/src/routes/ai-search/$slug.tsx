@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { type AiSearchEngine, aiSearchEngines, getAiSearchEngine } from "@/data/ai-search-engines";
 import type { FaqItem } from "@/lib/faqs";
+import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, howToJsonLd, ogMeta } from "@/lib/seo";
 
 function engineFaqs(e: AiSearchEngine): FaqItem[] {
@@ -108,7 +109,7 @@ function EnginePage() {
 							<p className="mt-2 leading-relaxed text-zinc-600">{engine.tracking}</p>
 							<div className="mt-4">
 								<Link
-									to="/docs"
+									{...SELF_HOST_LINK}
 									className="inline-flex h-9 items-center rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700"
 								>
 									Start tracking with Elmo

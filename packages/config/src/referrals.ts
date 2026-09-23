@@ -31,12 +31,15 @@ export type ReferralSource =
 	| "marketing-demo-frame"
 	| "marketing-closing"
 	| "marketing-page-cta"
-	| "marketing-pricing-page"
 	| "marketing-vision"
 	| "marketing-plan-starter"
 	| "marketing-plan-basic"
 	| "marketing-plan-pro"
-	| "marketing-plan-business";
+	| "marketing-plan-business"
+	| "marketing-pricing-starter"
+	| "marketing-pricing-basic"
+	| "marketing-pricing-pro"
+	| "marketing-pricing-business";
 
 function tagged(url: string, ref: ReferralSource): string {
 	const link = new URL(url);
