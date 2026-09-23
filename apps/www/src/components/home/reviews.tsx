@@ -103,7 +103,7 @@ const PEOPLE = {
 	borys: {
 		kind: "person",
 		name: "Borys M.",
-		role: "Runs a backlink agency",
+		role: "Backlink Agency",
 		photo: "/testimonials/borys.jpg",
 		quote:
 			"The biggest thing for me is seeing how our brand shows up in ChatGPT, Claude, Gemini, Perplexity and AI Overviews all in one dashboard. Before this I was literally typing prompts by hand to check.",
