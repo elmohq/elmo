@@ -173,7 +173,7 @@ export function ProductDemo() {
 						rel={externalRel(DEMO_URL)}
 						className="group mx-auto inline-flex h-6 min-w-0 items-center justify-center gap-1.5 rounded-md bg-white px-3 text-xs font-medium text-blue-600 ring-1 ring-blue-200 transition hover:bg-blue-50 hover:ring-blue-300"
 					>
-						<span className="truncate">View this live in the demo</span>
+						<span className="truncate">View the Live Demo</span>
 						<ArrowUpRight
 							className="size-3.5 shrink-0 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
 							aria-hidden="true"
