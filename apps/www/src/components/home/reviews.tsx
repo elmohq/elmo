@@ -104,8 +104,9 @@ const PEOPLE = {
 	},
 	james: {
 		kind: "person",
-		name: CUSTOMER_QUOTES.tradesites.author,
+		name: "James W.",
 		role: CUSTOMER_QUOTES.tradesites.company,
+		photo: "/testimonials/james.jpg",
 		quote: CUSTOMER_QUOTES.tradesites.quote,
 	},
 	deni: {
