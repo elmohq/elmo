@@ -79,9 +79,8 @@ export function Hero() {
 						Win AI Search
 					</h1>
 					<p className="mt-6 max-w-[60ch] text-pretty text-[17px]/7 text-zinc-600 md:text-xl/8">
-						Elmo is the open-source AI visibility platform for AEO and GEO. Track how ChatGPT, Claude, Gemini, and every
-						other AI model talk about your brand, see which sources they cite, and get the actions that get you
-						recommended.
+						Elmo is the open-source AI visibility platform for AEO and GEO. See how ChatGPT, Claude, Gemini, and every
+						other AI model talk about your brand, which sources they trust, and exactly what to do to get recommended.
 					</p>
 					<div className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
 						<a href={CLOUD_URL} className={`${BUTTON} bg-blue-600 text-white hover:bg-blue-700`}>
