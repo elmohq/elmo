@@ -58,6 +58,10 @@ import { Route as PreviewHomeFRouteImport } from './routes/preview/home-f'
 import { Route as PreviewHomeGRouteImport } from './routes/preview/home-g'
 import { Route as PreviewHomeHRouteImport } from './routes/preview/home-h'
 import { Route as PreviewHomeIRouteImport } from './routes/preview/home-i'
+import { Route as PreviewHomeJRouteImport } from './routes/preview/home-j'
+import { Route as PreviewHomeKRouteImport } from './routes/preview/home-k'
+import { Route as PreviewHomeLRouteImport } from './routes/preview/home-l'
+import { Route as PreviewHomeMRouteImport } from './routes/preview/home-m'
 import { Route as DotwellKnownAgentSkillsSplatRouteImport } from './routes/[.]well-known/agent-skills/$'
 import { Route as DotwellKnownAgentSkillsIndexDotjsonRouteImport } from './routes/[.]well-known/agent-skills/index[.]json'
 import { Route as AiVisibilityToolsAlternativesIndexRouteImport } from './routes/ai-visibility-tools/alternatives/index'
@@ -324,6 +328,26 @@ const PreviewHomeIRoute = PreviewHomeIRouteImport.update({
   path: '/preview/home-i',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PreviewHomeJRoute = PreviewHomeJRouteImport.update({
+  id: '/preview/home-j',
+  path: '/preview/home-j',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreviewHomeKRoute = PreviewHomeKRouteImport.update({
+  id: '/preview/home-k',
+  path: '/preview/home-k',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreviewHomeLRoute = PreviewHomeLRouteImport.update({
+  id: '/preview/home-l',
+  path: '/preview/home-l',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreviewHomeMRoute = PreviewHomeMRouteImport.update({
+  id: '/preview/home-m',
+  path: '/preview/home-m',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DotwellKnownAgentSkillsSplatRoute =
   DotwellKnownAgentSkillsSplatRouteImport.update({
     id: '/.well-known/agent-skills/$',
@@ -466,6 +490,10 @@ export interface FileRoutesByFullPath {
   '/preview/home-g': typeof PreviewHomeGRoute
   '/preview/home-h': typeof PreviewHomeHRoute
   '/preview/home-i': typeof PreviewHomeIRoute
+  '/preview/home-j': typeof PreviewHomeJRoute
+  '/preview/home-k': typeof PreviewHomeKRoute
+  '/preview/home-l': typeof PreviewHomeLRoute
+  '/preview/home-m': typeof PreviewHomeMRoute
   '/aeo-for/': typeof AeoForIndexRoute
   '/ai-search/': typeof AiSearchIndexRoute
   '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
@@ -534,6 +562,10 @@ export interface FileRoutesByTo {
   '/preview/home-g': typeof PreviewHomeGRoute
   '/preview/home-h': typeof PreviewHomeHRoute
   '/preview/home-i': typeof PreviewHomeIRoute
+  '/preview/home-j': typeof PreviewHomeJRoute
+  '/preview/home-k': typeof PreviewHomeKRoute
+  '/preview/home-l': typeof PreviewHomeLRoute
+  '/preview/home-m': typeof PreviewHomeMRoute
   '/aeo-for': typeof AeoForIndexRoute
   '/ai-search': typeof AiSearchIndexRoute
   '/ai-visibility-tools': typeof AiVisibilityToolsIndexRoute
@@ -603,6 +635,10 @@ export interface FileRoutesById {
   '/preview/home-g': typeof PreviewHomeGRoute
   '/preview/home-h': typeof PreviewHomeHRoute
   '/preview/home-i': typeof PreviewHomeIRoute
+  '/preview/home-j': typeof PreviewHomeJRoute
+  '/preview/home-k': typeof PreviewHomeKRoute
+  '/preview/home-l': typeof PreviewHomeLRoute
+  '/preview/home-m': typeof PreviewHomeMRoute
   '/aeo-for/': typeof AeoForIndexRoute
   '/ai-search/': typeof AiSearchIndexRoute
   '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
@@ -673,6 +709,10 @@ export interface FileRouteTypes {
     | '/preview/home-g'
     | '/preview/home-h'
     | '/preview/home-i'
+    | '/preview/home-j'
+    | '/preview/home-k'
+    | '/preview/home-l'
+    | '/preview/home-m'
     | '/aeo-for/'
     | '/ai-search/'
     | '/ai-visibility-tools/'
@@ -741,6 +781,10 @@ export interface FileRouteTypes {
     | '/preview/home-g'
     | '/preview/home-h'
     | '/preview/home-i'
+    | '/preview/home-j'
+    | '/preview/home-k'
+    | '/preview/home-l'
+    | '/preview/home-m'
     | '/aeo-for'
     | '/ai-search'
     | '/ai-visibility-tools'
@@ -809,6 +853,10 @@ export interface FileRouteTypes {
     | '/preview/home-g'
     | '/preview/home-h'
     | '/preview/home-i'
+    | '/preview/home-j'
+    | '/preview/home-k'
+    | '/preview/home-l'
+    | '/preview/home-m'
     | '/aeo-for/'
     | '/ai-search/'
     | '/ai-visibility-tools/'
@@ -878,6 +926,10 @@ export interface RootRouteChildren {
   PreviewHomeGRoute: typeof PreviewHomeGRoute
   PreviewHomeHRoute: typeof PreviewHomeHRoute
   PreviewHomeIRoute: typeof PreviewHomeIRoute
+  PreviewHomeJRoute: typeof PreviewHomeJRoute
+  PreviewHomeKRoute: typeof PreviewHomeKRoute
+  PreviewHomeLRoute: typeof PreviewHomeLRoute
+  PreviewHomeMRoute: typeof PreviewHomeMRoute
   AeoForIndexRoute: typeof AeoForIndexRoute
   AiSearchIndexRoute: typeof AiSearchIndexRoute
   AiVisibilityToolsIndexRoute: typeof AiVisibilityToolsIndexRoute
@@ -1248,6 +1300,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PreviewHomeIRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/preview/home-j': {
+      id: '/preview/home-j'
+      path: '/preview/home-j'
+      fullPath: '/preview/home-j'
+      preLoaderRoute: typeof PreviewHomeJRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preview/home-k': {
+      id: '/preview/home-k'
+      path: '/preview/home-k'
+      fullPath: '/preview/home-k'
+      preLoaderRoute: typeof PreviewHomeKRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preview/home-l': {
+      id: '/preview/home-l'
+      path: '/preview/home-l'
+      fullPath: '/preview/home-l'
+      preLoaderRoute: typeof PreviewHomeLRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preview/home-m': {
+      id: '/preview/home-m'
+      path: '/preview/home-m'
+      fullPath: '/preview/home-m'
+      preLoaderRoute: typeof PreviewHomeMRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.well-known/agent-skills/$': {
       id: '/.well-known/agent-skills/$'
       path: '/.well-known/agent-skills/$'
@@ -1414,6 +1494,10 @@ const rootRouteChildren: RootRouteChildren = {
   PreviewHomeGRoute: PreviewHomeGRoute,
   PreviewHomeHRoute: PreviewHomeHRoute,
   PreviewHomeIRoute: PreviewHomeIRoute,
+  PreviewHomeJRoute: PreviewHomeJRoute,
+  PreviewHomeKRoute: PreviewHomeKRoute,
+  PreviewHomeLRoute: PreviewHomeLRoute,
+  PreviewHomeMRoute: PreviewHomeMRoute,
   AeoForIndexRoute: AeoForIndexRoute,
   AiSearchIndexRoute: AiSearchIndexRoute,
   AiVisibilityToolsIndexRoute: AiVisibilityToolsIndexRoute,
