@@ -1,16 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Community } from "@/components/community";
 import { Footer } from "@/components/footer";
-import { Citations } from "@/components/home/citations";
 import { Closing } from "@/components/home/closing";
 import { Faq } from "@/components/home/faq";
 import { Hero } from "@/components/home/hero";
+import { HowItWorks } from "@/components/home/how-it-works";
 import { LogoStrip } from "@/components/home/logos";
 import { ModelCoverage } from "@/components/home/models";
 import { Pricing } from "@/components/home/pricing";
 import { Reviews } from "@/components/home/reviews";
 import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
 import { Updates } from "@/components/home/updates";
+import { WhySwitch } from "@/components/home/why-switch";
 import { Navbar } from "@/components/navbar";
 import { HOME_FAQS } from "@/lib/faqs";
 import { canonicalUrl, faqJsonLd, ogMeta, SITE_NAME, softwareApplicationJsonLd } from "@/lib/seo";
@@ -49,7 +50,8 @@ function HomePage() {
 				<LogoStrip />
 				<ModelCoverage />
 				<Reviews />
-				<Citations />
+				<HowItWorks />
+				<WhySwitch />
 				<Pricing />
 				<Faq items={HOME_FAQS} />
 				<Community />
