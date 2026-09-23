@@ -129,8 +129,8 @@ const PEOPLE = {
 // to the browser's column balancing. Narrower screens read it row by row.
 const COLUMNS: Review[][] = [
 	[AI_REVIEWS.chatgpt, PEOPLE.james, PEOPLE.borys],
-	[PEOPLE.nolan, AI_REVIEWS.gemini, AI_REVIEWS.perplexity],
-	[AI_REVIEWS.claude, PEOPLE.viveka, PEOPLE.deni],
+	[PEOPLE.nolan, AI_REVIEWS.gemini, PEOPLE.deni],
+	[AI_REVIEWS.claude, PEOPLE.viveka, AI_REVIEWS.perplexity],
 ];
 const ROW_ORDER = [0, 1, 2].flatMap((row) => COLUMNS.map((column) => column[row]));
 
