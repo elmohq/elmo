@@ -13,7 +13,6 @@ import { formatStarCount } from "@/lib/github-stars";
 import { Logo } from "./logo";
 
 const navigationLinks = [
-	{ href: "/ai-visibility-tools/category/open-source", label: "Open Source Tools" },
 	{ href: "/pricing", label: "Pricing" },
 	{ href: "/changelog", label: "Changelog" },
 	{ href: "/roadmap", label: "Roadmap" },
