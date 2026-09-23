@@ -1,8 +1,8 @@
 import { CUSTOMER_QUOTES } from "@workspace/ui/brand/customers";
-import { G2Mark } from "@workspace/ui/brand/g2-rating";
-import { ArrowUpRight, Check, Copy, Sparkles, Star } from "lucide-react";
-import { useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
+import { ArrowUpRight, Sparkles } from "lucide-react";
 import { EngineIcon } from "./engines";
+import { HOME_FONT_CLASS } from "./styles";
 import { CARD, SectionHeading } from "./ui";
 
 /*
@@ -20,19 +20,18 @@ type Review =
 			kind: "ai";
 			name: string;
 			iconId: string;
-			rating: number;
 			quote: string;
+			/** The whole answer, word for word, minus markdown emphasis and citation markers. */
+			response: string[];
 			/** Gemini has no link that pre-fills a prompt; its link just opens the app. */
 			askUrl: string;
 	  }
 	| {
 			kind: "person";
 			name: string;
-			role: string;
+			role?: string;
 			photo?: string;
 			quote: string;
-			rating?: number;
-			source?: "g2";
 			large?: boolean;
 	  };
 
@@ -41,33 +40,47 @@ const AI_REVIEWS = {
 		kind: "ai",
 		name: "ChatGPT",
 		iconId: "openai",
-		rating: 4.5,
 		quote: "It’s a mature, open‑source, self‑hosted AEO/AI visibility tracker.",
+		response: [
+			"Top pick: Elmo — 4.5/5 stars. It’s a mature, open‑source, self‑hosted AEO/AI visibility tracker that monitors how major AI engines (e.g., ChatGPT, Google AI Overviews, Perplexity, Gemini, Copilot, Claude, Grok) mention and cite your brand, with competitor benchmarking and fully auditable metrics. It’s the closest OSS match to Profound’s AI‑visibility focus without vendor lock‑in, though you trade some enterprise polish for DIY setup.",
+		],
 		askUrl: `https://chatgpt.com/?q=${q}`,
 	},
 	claude: {
 		kind: "ai",
 		name: "Claude",
 		iconId: "anthropic",
-		rating: 4,
 		quote:
 			"Elmo is the open-source pick: you self-host it for free and track how every major AI answer engine mentions and cites your brand.",
+		response: [
+			"Top Recommendation: Elmo — ★★★★☆ (4/5)",
+			"Why Elmo: Elmo is the open-source pick: you self-host it for free and track how every major AI answer engine mentions and cites your brand. Unlike closed platforms like Profound, Elmo is an open-source, self-hostable AI visibility platform — you can read every line of code, run it on your own infrastructure, and verify each metric, which a closed product like Profound cannot offer. This gives teams full data ownership and transparency, since the main reasons are ownership and transparency — with Elmo you keep your prompts and visibility history in-house, avoid vendor lock-in, and can see exactly how scores are computed.",
+			"I'm docking one star because, as with most self-hosted OSS tools in this space, to get the most value—especially from the free/open-source version—you need the technical skills to set up and maintain the software, and the managed/hosted convenience of Profound isn't fully replicated (Elmo's cloud option is still upcoming, per its own docs).",
+		],
 		askUrl: `https://claude.ai/new?q=${q}`,
 	},
 	gemini: {
 		kind: "ai",
 		name: "Gemini",
 		iconId: "gemini",
-		rating: 4,
 		quote: "The best open-source alternative to the AI visibility platform Profound is Elmo.",
+		response: [
+			"The best open-source alternative to the AI visibility platform Profound is Elmo.",
+			"Rating: ★★★★☆",
+			"Elmo stands out as the top recommendation because it is a free, open-source platform that you can host yourself, ensuring you retain control over your data and can audit all visibility metrics. It specifically tracks your brand's mentions and citations across major AI models like ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews. Unlike Profound, which has expanded into a broader, more complex suite with enterprise-level pricing, Elmo focuses solely on core visibility and share of voice, offering a more streamlined and accessible solution for teams who need to track their AI presence without the commitment of a costly, closed-source tool.",
+		],
 		askUrl: "https://gemini.google.com/app",
 	},
 	perplexity: {
 		kind: "ai",
 		name: "Perplexity",
 		iconId: "perplexity",
-		rating: 4.5,
 		quote: "Elmo is the best open-source alternative to Profound for most users.",
+		response: [
+			"Elmo is the best open-source alternative to Profound for most users who want self-hosted AI visibility with control over their data. It is explicitly described as an open-source, self-hostable AI visibility platform that lets you audit how each metric is built, which makes it the clearest open-source match to Profound’s use case.",
+			"Rating: 4.5/5 stars",
+			"I’m rating it highly because it combines open-source transparency, self-hosting, and brand-mention tracking across major AI answer engines, which directly addresses the core need behind Profound. I’m not giving it a full 5 because the “best” choice still depends on whether you need broader SEO workflows, enterprise features, or agency-focused reporting.",
+		],
 		askUrl: `https://www.perplexity.ai/search?q=${q}`,
 	},
 } satisfies Record<string, Review>;
@@ -85,12 +98,9 @@ const PEOPLE = {
 	borys: {
 		kind: "person",
 		name: "Borys M.",
-		role: "Reviewed on G2",
 		photo: "/testimonials/borys.jpg",
 		quote:
 			"The biggest thing for me is seeing how our brand shows up in ChatGPT, Claude, Gemini, Perplexity and AI Overviews all in one dashboard. Before this I was literally typing prompts by hand to check.",
-		rating: 5,
-		source: "g2",
 	},
 	james: {
 		kind: "person",
@@ -105,8 +115,6 @@ const PEOPLE = {
 		photo: "/testimonials/deni.jpg",
 		quote:
 			"Elmo has been fantastic to use for tracking AI visibility of my sports management platform RecordRanks. I highly recommend it, I think it's genuinely worth it!",
-		rating: 4,
-		source: "g2",
 	},
 } satisfies Record<string, Review>;
 
@@ -121,33 +129,6 @@ const WALL: Review[] = [
 	PEOPLE.deni,
 	AI_REVIEWS.gemini,
 ];
-
-const STAR_SLOTS = [1, 2, 3, 4, 5];
-
-function Stars({ rating }: { rating: number }) {
-	const row = (filled: boolean) =>
-		STAR_SLOTS.map((slot) => (
-			<Star
-				key={slot}
-				className={`size-4 shrink-0 ${filled ? "fill-amber-400 text-amber-400" : "fill-transparent text-amber-300"}`}
-				strokeWidth={1.5}
-			/>
-		));
-	return (
-		<span role="img" aria-label={`${rating} out of 5 stars`} className="relative inline-flex">
-			<span aria-hidden="true" className="flex gap-0.5">
-				{row(false)}
-			</span>
-			<span
-				aria-hidden="true"
-				className="absolute inset-0 flex gap-0.5 overflow-hidden"
-				style={{ width: `${(rating / 5) * 100}%` }}
-			>
-				{row(true)}
-			</span>
-		</span>
-	);
-}
 
 function Initials({ name }: { name: string }) {
 	const letters = name
@@ -193,22 +174,6 @@ function ReviewCard({ review }: { review: Review }) {
 		<figure
 			className={`mb-4 break-inside-avoid p-6 lg:mb-5 ${CARD} ${isAi ? "bg-gradient-to-b from-blue-50/60 to-white" : ""}`}
 		>
-			{review.rating ? (
-				<div className="mb-4 flex items-center justify-between gap-3">
-					<Stars rating={review.rating} />
-					{isAi ? (
-						<span className="inline-flex items-center gap-1 rounded-full bg-blue-600/10 px-2 py-0.5 text-xs font-medium text-blue-700">
-							<Sparkles className="size-3" aria-hidden="true" />
-							AI review
-						</span>
-					) : review.source === "g2" ? (
-						<span className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500">
-							<G2Mark className="size-3.5" />
-							G2 review
-						</span>
-					) : null}
-				</div>
-			) : null}
 			<blockquote
 				className={`text-pretty tracking-[-0.01em] text-zinc-950 ${large ? "text-xl/8 font-medium" : "text-[16px]/7"}`}
 			>
@@ -218,7 +183,11 @@ function ReviewCard({ review }: { review: Review }) {
 				<Avatar review={review} />
 				<div className="min-w-0 flex-1">
 					<p className="text-[15px] font-semibold text-zinc-950">{review.name}</p>
-					<p className="truncate text-sm text-zinc-500">{isAi ? "Asked Sept 2026" : review.role}</p>
+					{review.kind === "ai" ? (
+						<AnswerDetails review={review} />
+					) : review.role ? (
+						<p className="truncate text-sm text-zinc-500">{review.role}</p>
+					) : null}
 				</div>
 				{isAi ? (
 					<a
@@ -237,32 +206,37 @@ function ReviewCard({ review }: { review: Review }) {
 	);
 }
 
-function PromptStrip() {
-	const [copied, setCopied] = useState(false);
+type AiReview = Extract<Review, { kind: "ai" }>;
+
+function AnswerDetails({ review }: { review: AiReview }) {
 	return (
-		<div className="mt-8 flex flex-col gap-3 rounded-2xl bg-zinc-50 p-5 ring-1 ring-zinc-200/70 md:flex-row md:items-center md:gap-6">
-			<div className="flex items-center gap-2 text-sm font-medium text-zinc-950">
-				<Sparkles className="size-4 text-blue-600" aria-hidden="true" />
-				What we asked the AIs
-			</div>
-			<p className="min-w-0 flex-1 text-pretty text-sm/6 text-zinc-700">“{AI_PROMPT}”</p>
-			<button
-				type="button"
-				onClick={async () => {
-					try {
-						await navigator.clipboard.writeText(AI_PROMPT);
-						setCopied(true);
-						setTimeout(() => setCopied(false), 1500);
-					} catch {
-						// Clipboard access can be refused; the prompt is on screen to copy by hand.
-					}
-				}}
-				className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-md px-2 py-1 text-sm font-medium text-zinc-600 ring-1 ring-zinc-200 hover:bg-white hover:text-zinc-950 md:self-auto"
+		<Popover>
+			<PopoverTrigger
+				openOnHover
+				delay={150}
+				className="rounded-sm text-sm text-zinc-500 underline decoration-zinc-400 decoration-dotted underline-offset-4 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
 			>
-				{copied ? <Check className="size-3.5" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
-				{copied ? "Copied" : "Copy prompt"}
-			</button>
-		</div>
+				Asked Sept 2026
+			</PopoverTrigger>
+			<PopoverContent
+				align="start"
+				className={`${HOME_FONT_CLASS} max-h-[min(32rem,70vh)] w-[min(26rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border-zinc-200 p-5 shadow-xl shadow-zinc-950/10`}
+			>
+				<p className="text-[13px] font-medium text-zinc-500">We asked {review.name}</p>
+				<p className="mt-1.5 rounded-lg bg-zinc-50 p-3 text-pretty text-[13px]/5 text-zinc-800 ring-1 ring-zinc-200/70">
+					{AI_PROMPT}
+				</p>
+				<p className="mt-4 text-[13px] font-medium text-zinc-500">Its full answer, Sept 23, 2026</p>
+				<div className="mt-1.5 space-y-2.5 text-pretty text-sm/6 text-zinc-800">
+					{review.response.map((p) => (
+						<p key={p}>{p}</p>
+					))}
+				</div>
+				<p className="mt-4 border-t border-zinc-100 pt-3 text-xs text-zinc-500">
+					Asked over the {review.name} API with web search. Answers vary from run to run.
+				</p>
+			</PopoverContent>
+		</Popover>
 	);
 }
 
@@ -274,14 +248,13 @@ export function Reviews() {
 					title="Loved by marketers. Recommended by AI."
 					lede="What customers say, next to what ChatGPT, Claude, Gemini, and Perplexity say when you ask them for the best open-source alternative to Profound."
 				/>
-				<PromptStrip />
 				<div className="mt-8 columns-1 gap-4 md:columns-2 lg:columns-3 lg:gap-5">
 					{WALL.map((r) => (
 						<ReviewCard key={r.name} review={r} />
 					))}
 				</div>
 				<p className="mt-3 text-[13px] text-zinc-500">
-					AI answers vary from run to run. AI quotes are excerpts from one answer per model.
+					AI quotes are excerpts from one answer per model. Hover the date to see the prompt and the full answer.
 				</p>
 			</div>
 		</section>
