@@ -32,7 +32,6 @@ type Review =
 			role?: string;
 			photo?: string;
 			quote: string;
-			large?: boolean;
 	  };
 
 const AI_REVIEWS = {
@@ -86,18 +85,25 @@ const AI_REVIEWS = {
 } satisfies Record<string, Review>;
 
 const PEOPLE = {
+	nolan: {
+		kind: "person",
+		name: CUSTOMER_QUOTES.speakeasy.author,
+		role: CUSTOMER_QUOTES.speakeasy.company,
+		photo: "/testimonials/nolan.jpg",
+		quote: CUSTOMER_QUOTES.speakeasy.quote,
+	},
 	viveka: {
 		kind: "person",
-		name: "Viveka Mohan Das",
-		role: "Founder, AISearch Global",
+		name: "Viveka D.",
+		role: "AISearch Global",
 		photo: "/testimonials/viveka.jpg",
 		quote:
 			"We're an AEO consultancy, so we turned Elmo on ourselves before any client. It's the tool I trust to tell us the truth about our own AI visibility, and it was tracking within the hour.",
-		large: true,
 	},
 	borys: {
 		kind: "person",
 		name: "Borys M.",
+		role: "Runs a backlink agency",
 		photo: "/testimonials/borys.jpg",
 		quote:
 			"The biggest thing for me is seeing how our brand shows up in ChatGPT, Claude, Gemini, Perplexity and AI Overviews all in one dashboard. Before this I was literally typing prompts by hand to check.",
@@ -111,8 +117,8 @@ const PEOPLE = {
 	},
 	deni: {
 		kind: "person",
-		name: "Deni Mintsaev",
-		role: "Creator of RecordRanks",
+		name: "Deni M.",
+		role: "RecordRanks",
 		photo: "/testimonials/deni.jpg",
 		quote:
 			"Elmo has been fantastic to use for tracking AI visibility of my sports management platform RecordRanks. I highly recommend it, I think it's genuinely worth it!",
@@ -129,6 +135,7 @@ const WALL: Review[] = [
 	AI_REVIEWS.perplexity,
 	PEOPLE.deni,
 	AI_REVIEWS.gemini,
+	PEOPLE.nolan,
 ];
 
 function Initials({ name }: { name: string }) {
@@ -170,16 +177,11 @@ function Avatar({ review }: { review: Review }) {
 
 function ReviewCard({ review }: { review: Review }) {
 	const isAi = review.kind === "ai";
-	const large = review.kind === "person" && review.large;
 	return (
 		<figure
 			className={`mb-4 break-inside-avoid p-6 lg:mb-5 ${CARD} ${isAi ? "bg-gradient-to-b from-blue-50/60 to-white" : ""}`}
 		>
-			<blockquote
-				className={`text-pretty tracking-[-0.01em] text-zinc-950 ${large ? "text-xl/8 font-medium" : "text-[16px]/7"}`}
-			>
-				“{review.quote}”
-			</blockquote>
+			<blockquote className="text-pretty text-[16px]/7 tracking-[-0.01em] text-zinc-950">“{review.quote}”</blockquote>
 			<figcaption className="mt-5 flex items-center gap-3">
 				<Avatar review={review} />
 				<div className="min-w-0 flex-1">

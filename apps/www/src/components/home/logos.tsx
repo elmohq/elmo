@@ -57,6 +57,19 @@ const customers: Customer[] = [
 			/>
 		),
 	},
+	{
+		name: "AISearch Global",
+		url: "https://aisearch.global/?ref=elmo",
+		linkClass: "group/asg flex h-6 items-center",
+		render: () => (
+			<img
+				src="/aisearch-global-logo.svg"
+				alt=""
+				aria-hidden="true"
+				className="block h-6 w-auto opacity-60 grayscale transition-[filter,opacity] duration-150 group-hover/asg:opacity-100 group-hover/asg:grayscale-0"
+			/>
+		),
+	},
 ];
 
 export function LogoStrip() {
