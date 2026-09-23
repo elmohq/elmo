@@ -125,18 +125,14 @@ const PEOPLE = {
 	},
 } satisfies Record<string, Review>;
 
-// Humans and AI interleaved, so the wall reads as one set of reviews.
-const WALL: Review[] = [
-	PEOPLE.viveka,
-	AI_REVIEWS.chatgpt,
-	PEOPLE.borys,
-	AI_REVIEWS.claude,
-	PEOPLE.james,
-	AI_REVIEWS.perplexity,
-	PEOPLE.deni,
-	AI_REVIEWS.gemini,
-	PEOPLE.nolan,
+// Laid out by hand, column by column, so placement is chosen rather than left
+// to the browser's column balancing. Narrower screens read it row by row.
+const COLUMNS: Review[][] = [
+	[PEOPLE.nolan, AI_REVIEWS.claude, PEOPLE.borys],
+	[AI_REVIEWS.perplexity, PEOPLE.deni, PEOPLE.james],
+	[AI_REVIEWS.chatgpt, AI_REVIEWS.gemini, PEOPLE.viveka],
 ];
+const ROW_ORDER = [0, 1, 2].flatMap((row) => COLUMNS.map((column) => column[row]));
 
 function Initials({ name }: { name: string }) {
 	const letters = name
@@ -178,9 +174,7 @@ function Avatar({ review }: { review: Review }) {
 function ReviewCard({ review }: { review: Review }) {
 	const isAi = review.kind === "ai";
 	return (
-		<figure
-			className={`mb-4 break-inside-avoid p-6 lg:mb-5 ${CARD} ${isAi ? "bg-gradient-to-b from-blue-50/60 to-white" : ""}`}
-		>
+		<figure className={`p-6 ${CARD} ${isAi ? "bg-gradient-to-b from-blue-50/60 to-white" : ""}`}>
 			<blockquote className="text-pretty text-[16px]/7 tracking-[-0.01em] text-zinc-950">“{review.quote}”</blockquote>
 			<figcaption className="mt-5 flex items-center gap-3">
 				<Avatar review={review} />
@@ -248,9 +242,18 @@ export function Reviews() {
 		<section className="bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-20 md:px-6 lg:py-28">
 				<SectionHeading title="Loved by marketers. Recommended by AI." />
-				<div className="mt-8 columns-1 gap-4 md:columns-2 lg:columns-3 lg:gap-5">
-					{WALL.map((r) => (
+				<div className="mt-8 grid gap-4 md:grid-cols-2 lg:hidden">
+					{ROW_ORDER.map((r) => (
 						<ReviewCard key={r.name} review={r} />
+					))}
+				</div>
+				<div className="mt-8 hidden grid-cols-3 items-start gap-5 lg:grid">
+					{COLUMNS.map((column) => (
+						<div key={column[0].name} className="flex flex-col gap-5">
+							{column.map((r) => (
+								<ReviewCard key={r.name} review={r} />
+							))}
+						</div>
 					))}
 				</div>
 			</div>
