@@ -254,9 +254,6 @@ export function Reviews() {
 						<ReviewCard key={r.name} review={r} />
 					))}
 				</div>
-				<p className="mt-3 text-[13px] text-zinc-500">
-					AI quotes are excerpts from one answer per model. Hover the date to see the prompt and the full answer.
-				</p>
 			</div>
 		</section>
 	);
