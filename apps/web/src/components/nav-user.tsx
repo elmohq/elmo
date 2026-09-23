@@ -182,7 +182,7 @@ export function NavUser({
 
 function OrganizationSwitcher({ onNavigate }: { onNavigate: () => void }) {
 	const { data: organizations, isLoading, isFetching, error, refetch } = useOrganizations();
-	const currentBrandId = useBrandId();
+	const currentBrandId = useBrandId({ shouldThrow: false });
 
 	if (organizations.length > INLINE_ORGANIZATION_LIMIT) {
 		return (

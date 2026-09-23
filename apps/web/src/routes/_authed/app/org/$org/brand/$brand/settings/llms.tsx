@@ -24,6 +24,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { type ReactNode, useState } from "react";
 import { formatUsd, PlatformList, PlatformPicker, projectSelectionCostUsd } from "@/components/platform-picker";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
+import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrandParams, useOrganizationParams } from "@/hooks/use-route-params";
 import { groupPlatformOptions, type PlatformGroup, platformGroupCopy } from "@/lib/platform-groups";
 import { pageHead } from "@/lib/route-head";
@@ -118,7 +119,7 @@ function PlatformTierCard({
 }
 
 function PlatformGroups({ picker }: { picker: ModelPickerState }) {
-	const { brandId } = Route.useRouteContext();
+	const brandId = useBrandId();
 	const router = useRouter();
 	const writeError = useWriteErrorMessage();
 
