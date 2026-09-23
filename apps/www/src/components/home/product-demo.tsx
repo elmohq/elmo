@@ -171,9 +171,13 @@ export function ProductDemo() {
 						href={DEMO_URL}
 						target="_blank"
 						rel={externalRel(DEMO_URL)}
-						className="mx-auto inline-flex h-6 min-w-0 max-w-[60%] items-center justify-center rounded-md bg-white px-3 font-mono text-[11px] text-zinc-500 ring-1 ring-zinc-200 hover:text-zinc-900"
+						className="group mx-auto inline-flex h-6 min-w-0 items-center justify-center gap-1.5 rounded-md bg-white px-3 text-xs font-medium text-blue-600 ring-1 ring-blue-200 transition hover:bg-blue-50 hover:ring-blue-300"
 					>
-						<span className="truncate">demo.elmohq.com</span>
+						<span className="truncate">View this live in the demo</span>
+						<ArrowUpRight
+							className="size-3.5 shrink-0 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+							aria-hidden="true"
+						/>
 					</a>
 					<span aria-hidden="true" className="w-[42px]" />
 				</div>
@@ -214,15 +218,6 @@ export function ProductDemo() {
 							</button>
 						))}
 					</div>
-					<a
-						href={DEMO_URL}
-						target="_blank"
-						rel={externalRel(DEMO_URL)}
-						className="group inline-flex shrink-0 items-center gap-1 text-[15px] font-medium text-blue-600 hover:text-blue-700"
-					>
-						Click around yourself
-						<ArrowUpRight className="size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-					</a>
 				</div>
 			</div>
 		</div>

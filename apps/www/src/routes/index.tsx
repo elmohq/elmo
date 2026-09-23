@@ -10,7 +10,6 @@ import { ModelCoverage } from "@/components/home/models";
 import { Pricing } from "@/components/home/pricing";
 import { Reviews } from "@/components/home/reviews";
 import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
-import { ProductTour } from "@/components/home/tour";
 import { Updates } from "@/components/home/updates";
 import { Navbar } from "@/components/navbar";
 import { HOME_FAQS } from "@/lib/faqs";
@@ -48,9 +47,8 @@ function HomePage() {
 			<main>
 				<Hero />
 				<LogoStrip />
-				<Reviews />
 				<ModelCoverage />
-				<ProductTour />
+				<Reviews />
 				<Citations />
 				<Pricing />
 				<Faq items={HOME_FAQS} />
