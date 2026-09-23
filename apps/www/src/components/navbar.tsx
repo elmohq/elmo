@@ -12,7 +12,7 @@ import { ArrowRight } from "lucide-react";
 import { formatStarCount } from "@/lib/github-stars";
 import { Logo } from "./logo";
 
-const CLOUD_URL = cloudAppUrl("marketing-cta");
+const CLOUD_URL = cloudAppUrl("marketing-nav");
 
 const navigationLinks = [
 	{ href: "/ai-visibility-tools/category/open-source", label: "Open Source Tools" },

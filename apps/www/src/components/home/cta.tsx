@@ -1,3 +1,4 @@
+import type { ReferralSource } from "@workspace/config/referrals";
 import { CloudSignupCTA, SelfHostCTA } from "@/components/cta-buttons";
 
 const SIZES = {
@@ -6,10 +7,18 @@ const SIZES = {
 };
 
 /** Every call to action on the page is this pair and nothing louder: cloud first, self-hosting beside it. */
-export function CtaPair({ size = "md", className = "" }: { size?: keyof typeof SIZES; className?: string }) {
+export function CtaPair({
+	size = "md",
+	className = "",
+	from,
+}: {
+	size?: keyof typeof SIZES;
+	className?: string;
+	from: ReferralSource;
+}) {
 	return (
 		<div className={`flex flex-wrap items-center justify-center gap-3 ${SIZES[size]} ${className}`}>
-			<CloudSignupCTA />
+			<CloudSignupCTA from={from} />
 			<SelfHostCTA />
 		</div>
 	);

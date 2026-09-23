@@ -5,16 +5,14 @@ import { ArrowRight, Check, Minus } from "lucide-react";
 import { ContactForm } from "@/components/contact-form";
 import { CARD, SectionHeading } from "./ui";
 
-const CLOUD_URL = cloudAppUrl("marketing-cta");
-
 function planLines(plan: PlanDefinition): { text: string; included: boolean }[] {
 	const platforms = plan.platformMenu.length === 1 ? "ChatGPT only" : `Any ${plan.platformPicks} AI platforms`;
 	return [
 		{ text: `${plan.maxBrands} brand${plan.maxBrands === 1 ? "" : "s"}, ${plan.maxPrompts} prompts`, included: true },
 		{ text: platforms, included: true },
-		{ text: `Answers checked ${plan.standardRunsPerDay}× a day`, included: true },
+		{ text: `Answers checked ${plan.standardRunsPerDay}× daily`, included: true },
 		plan.premiumIncluded > 0
-			? { text: `Premium models, ${plan.premiumIncluded} included`, included: true }
+			? { text: `${plan.premiumIncluded} premium prompts 1× daily`, included: true }
 			: { text: "No premium models", included: false },
 	];
 }
@@ -24,7 +22,7 @@ function TierCard({ planKey }: { planKey: PlanKey }) {
 	const plan = PLANS[planKey];
 	return (
 		<a
-			href={CLOUD_URL}
+			href={cloudAppUrl(`marketing-plan-${planKey}`)}
 			className={`group flex flex-col p-6 transition hover:shadow-[0_0_0_1px_rgb(37_99_235/0.45),0_16px_40px_-20px_rgb(37_99_235/0.35)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${CARD}`}
 		>
 			<span className="flex items-center justify-between text-base font-semibold text-zinc-950">

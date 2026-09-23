@@ -9,9 +9,9 @@ import { externalRel } from "@/lib/external-link";
 import { ProductDemo } from "./product-demo";
 import { HOME_FONT_CLASS } from "./styles";
 
-const CLOUD_URL = cloudAppUrl("marketing-cta");
+const CLOUD_URL = cloudAppUrl("marketing-hero");
 
-const DEMO_URL = demoSiteUrl("marketing-cta");
+const DEMO_URL = demoSiteUrl("marketing-hero");
 
 // One size and box model for both buttons, so they sit on the same line.
 const BUTTON =

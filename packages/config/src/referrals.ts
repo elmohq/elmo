@@ -25,7 +25,18 @@ export type ReferralSource =
 	| "self-hosted-signup"
 	| "cloud-signin"
 	| "cloud-signup"
-	| "marketing-cta";
+	| "marketing-cta"
+	| "marketing-nav"
+	| "marketing-hero"
+	| "marketing-demo-frame"
+	| "marketing-closing"
+	| "marketing-page-cta"
+	| "marketing-pricing-page"
+	| "marketing-vision"
+	| "marketing-plan-starter"
+	| "marketing-plan-basic"
+	| "marketing-plan-pro"
+	| "marketing-plan-business";
 
 function tagged(url: string, ref: ReferralSource): string {
 	const link = new URL(url);

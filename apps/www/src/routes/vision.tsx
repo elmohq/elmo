@@ -7,7 +7,7 @@ import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { breadcrumbJsonLd, canonicalUrl, ogMeta } from "@/lib/seo";
 
-const CLOUD_URL = cloudAppUrl("marketing-cta");
+const CLOUD_URL = cloudAppUrl("marketing-vision");
 
 const title = "Our Vision · Elmo";
 const description =

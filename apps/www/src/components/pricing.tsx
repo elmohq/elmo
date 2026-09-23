@@ -5,7 +5,7 @@ import { PlatformTier } from "@workspace/ui/brand/platform-tier";
 import { ArrowRight, Check } from "lucide-react";
 import { ContactForm } from "./contact-form";
 
-const CLOUD_URL = cloudAppUrl("marketing-cta");
+const CLOUD_URL = cloudAppUrl("marketing-pricing-page");
 
 interface Plan {
 	id: string;

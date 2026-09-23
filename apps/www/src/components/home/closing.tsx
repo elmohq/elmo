@@ -6,7 +6,7 @@ import { CtaPair } from "./cta";
 
 export const DISCORD_INVITE_URL = "https://discord.gg/s24nubCtKz";
 const BOOK_URL = bookDemoUrl("marketing-cta");
-const LIVE_DEMO_URL = demoSiteUrl("marketing-cta");
+const LIVE_DEMO_URL = demoSiteUrl("marketing-closing");
 const QUIET = "font-medium text-zinc-800 underline decoration-zinc-300 underline-offset-4 hover:decoration-zinc-800";
 
 /** Final call to action, with the self-host quickstart beside it. */
@@ -26,7 +26,7 @@ export function Closing() {
 						Sign up for the cloud and we run everything for you from ${CLOUD_ENTRY_PRICE_USD}/mo, or run the same
 						open-source product on your own infra for free.
 					</p>
-					<CtaPair size="lg" className="mt-8 justify-start" />
+					<CtaPair size="lg" className="mt-8 justify-start" from="marketing-closing" />
 					<p className="mt-5 text-sm text-zinc-500">
 						Rather look around first? Try the{" "}
 						<a href={LIVE_DEMO_URL} target="_blank" rel={externalRel(LIVE_DEMO_URL)} className={QUIET}>

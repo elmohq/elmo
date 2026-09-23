@@ -3,7 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { externalRel } from "@/lib/external-link";
 
-const DEMO_URL = demoSiteUrl("marketing-cta");
+const DEMO_URL = demoSiteUrl("marketing-demo-frame");
 
 /*
  * Each slide is a real screenshot. `y` is where that page's link sits in the

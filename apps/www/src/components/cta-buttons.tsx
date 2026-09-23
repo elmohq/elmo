@@ -1,9 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { cloudAppUrl } from "@workspace/config/referrals";
+import { cloudAppUrl, type ReferralSource } from "@workspace/config/referrals";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { externalRel } from "@/lib/external-link";
-
-const CLOUD_URL = cloudAppUrl("marketing-cta");
 
 const PRIMARY_CLS =
 	"inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700";
@@ -85,9 +83,16 @@ function GhostCTA({
  * what we sell, self-hosting is what makes it trustworthy. Signup opens in the
  * same tab — a conversion click should navigate, not spawn a background tab.
  */
-export function CloudSignupCTA({ label = "Start with Cloud" }: { label?: string }) {
+/** `from` names the button in the cloud app's analytics, so each placement can be told apart. */
+export function CloudSignupCTA({
+	label = "Start with Cloud",
+	from = "marketing-page-cta",
+}: {
+	label?: string;
+	from?: ReferralSource;
+}) {
 	return (
-		<PrimaryCTA href={CLOUD_URL}>
+		<PrimaryCTA href={cloudAppUrl(from)}>
 			{label}
 			<ArrowRight className="size-3.5" />
 		</PrimaryCTA>
