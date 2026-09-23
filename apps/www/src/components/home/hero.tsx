@@ -4,8 +4,8 @@ import { G2Stars } from "@workspace/ui/brand/g2-rating";
 import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
 import { ArrowUpRight, Play } from "lucide-react";
 import { useState } from "react";
+import { AnswerStory } from "./answer-story";
 import { CtaPair } from "./cta";
-import { HeroFlow } from "./flow";
 import { HOME_FONT_CLASS } from "./styles";
 
 function WalkthroughDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -94,7 +94,7 @@ export function Hero() {
 				</div>
 
 				<div className="mt-16 md:mt-20">
-					<HeroFlow />
+					<AnswerStory />
 				</div>
 			</div>
 			<WalkthroughDialog open={videoOpen} onOpenChange={setVideoOpen} />
