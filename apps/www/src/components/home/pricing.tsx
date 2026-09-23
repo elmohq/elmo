@@ -111,7 +111,6 @@ export function Pricing() {
 		<section id="pricing" className="border-t border-zinc-200/80 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-20 md:px-6 lg:py-28">
 				<SectionHeading
-					eyebrow="Pricing"
 					align="center"
 					title="Start at $29 a month. Self-host for $0."
 					lede="Starter is ⅓ the price of Profound's equivalent plan, and Basic gives you 4× the data of theirs. Every plan is self-serve, with unlimited seats and API access."

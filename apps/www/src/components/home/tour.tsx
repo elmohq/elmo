@@ -188,7 +188,6 @@ export function ProductTour() {
 			<div className="mx-auto max-w-6xl px-4 py-20 md:px-6 lg:py-28">
 				<div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
 					<SectionHeading
-						eyebrow="Product tour"
 						title="Everything behind the answer."
 						lede="Real screens from Elmo, from a single AI answer to a year of trends."
 					/>

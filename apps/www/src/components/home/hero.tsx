@@ -1,12 +1,22 @@
 import MuxPlayer from "@mux/mux-player-react";
-import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
-import { G2Stars } from "@workspace/ui/brand/g2-rating";
+import { Link } from "@tanstack/react-router";
+import { CLOUD_SIGNUP_URL } from "@workspace/config/plans";
+import { demoSiteUrl } from "@workspace/config/referrals";
+import { CUSTOMER_QUOTES } from "@workspace/ui/brand/customers";
 import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
-import { ArrowUpRight, Play } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Play } from "lucide-react";
 import { useState } from "react";
-import { AnswerStory } from "./answer-story";
-import { CtaPair } from "./cta";
+import { externalRel } from "@/lib/external-link";
+import { ProductDemo } from "./product-demo";
 import { HOME_FONT_CLASS } from "./styles";
+
+const DEMO_URL = demoSiteUrl("marketing-cta");
+
+// One size and box model for both buttons, so they sit on the same line.
+const BUTTON =
+	"inline-flex h-12 items-center justify-center gap-2 rounded-lg px-6 text-base font-medium leading-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600";
+const QUIET =
+	"rounded-sm font-medium text-zinc-600 underline decoration-zinc-300 underline-offset-4 hover:text-zinc-950 hover:decoration-zinc-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600";
 
 function WalkthroughDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
 	return (
@@ -51,50 +61,80 @@ export function Hero() {
 
 			<div className="relative mx-auto max-w-6xl px-4 pb-20 pt-14 md:px-6 md:pt-20 lg:pb-28">
 				<div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-					<div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-3">
-						<a
-							href="https://github.com/elmohq/elmo"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="group inline-flex h-7 items-center gap-2 rounded-full bg-white/80 pl-1 pr-3 text-xs font-medium text-zinc-600 shadow-sm ring-1 ring-zinc-200 transition hover:text-zinc-950 hover:ring-zinc-300"
-						>
-							<span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-zinc-100 px-2 font-mono text-[11px] font-normal text-zinc-700">
-								<span className="size-1.5 rounded-full bg-emerald-500" />v{__APP_VERSION__}
-							</span>
-							Open source on GitHub
-							<ArrowUpRight className="size-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-						</a>
-						<G2Stars />
-					</div>
+					<a
+						href="https://github.com/elmohq/elmo"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="group inline-flex h-7 items-center gap-2 rounded-full bg-white/80 pl-1 pr-3 text-xs font-medium text-zinc-600 shadow-sm ring-1 ring-zinc-200 transition hover:text-zinc-950 hover:ring-zinc-300"
+					>
+						<span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-zinc-100 px-2 font-mono text-[11px] font-normal text-zinc-700">
+							<span className="size-1.5 rounded-full bg-emerald-500" />v{__APP_VERSION__}
+						</span>
+						Open Source on GitHub
+						<ArrowUpRight className="size-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+					</a>
 
 					<h1 className="mt-8 text-[3.5rem] font-semibold leading-[0.95] tracking-[-0.045em] text-zinc-950 sm:text-7xl lg:text-[6.5rem]">
 						Win AI Search
 					</h1>
-					<p className="mt-6 max-w-[62ch] text-pretty text-[17px]/7 text-zinc-600 md:text-xl/8">
-						Elmo is the AI visibility platform that shows how ChatGPT, Google AI Overviews, Gemini, Perplexity, and
-						Claude talk about your brand, and what to change so they recommend you.
+					<p className="mt-6 max-w-[60ch] text-pretty text-[17px]/7 text-zinc-600 md:text-xl/8">
+						Elmo is the open-source AI visibility platform for AEO and GEO. Track how ChatGPT, Claude, Gemini, and every
+						other AI model talk about your brand, see which sources they cite, and get the actions that get you
+						recommended.
 					</p>
-					<div className="mt-9">
-						<CtaPair size="lg" />
+					<div className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+						<a href={CLOUD_SIGNUP_URL} className={`${BUTTON} bg-blue-600 text-white hover:bg-blue-700`}>
+							Get started
+							<ArrowRight className="size-4" aria-hidden="true" />
+						</a>
+						<a
+							href={DEMO_URL}
+							target="_blank"
+							rel={externalRel(DEMO_URL)}
+							className={`${BUTTON} bg-white text-zinc-950 ring-1 ring-inset ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300`}
+						>
+							Try the live demo
+							<ArrowUpRight className="size-4" aria-hidden="true" />
+						</a>
 					</div>
-					<p className="mt-5 flex flex-col items-center justify-center gap-x-2 gap-y-1.5 text-sm text-zinc-500 sm:flex-row">
-						<span>Cloud from ${CLOUD_ENTRY_PRICE_USD}/mo, fully self-serve</span>
-						<span aria-hidden="true" className="text-zinc-300 max-sm:hidden">
+					<p className="mt-5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-zinc-500">
+						<Link to="/docs" className={QUIET}>
+							Self-host for free
+						</Link>
+						<span aria-hidden="true" className="text-zinc-300">
 							·
 						</span>
 						<button
 							type="button"
 							onClick={() => setVideoOpen(true)}
-							className="group inline-flex items-center gap-1.5 rounded-sm font-medium text-zinc-700 underline decoration-zinc-300 underline-offset-4 hover:text-zinc-950 hover:decoration-zinc-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+							className={`${QUIET} inline-flex items-center gap-1.5`}
 						>
 							<Play className="size-3 fill-current" aria-hidden="true" />
 							Watch the walkthrough
 						</button>
 					</p>
+
+					<figure className="mt-10 flex items-center gap-3">
+						<img
+							src="/testimonials/nolan.jpg"
+							alt=""
+							width={40}
+							height={40}
+							className="size-10 shrink-0 rounded-full object-cover ring-1 ring-zinc-950/5"
+						/>
+						<div className="text-left">
+							<blockquote className="text-[15px] font-medium text-zinc-950">
+								“{CUSTOMER_QUOTES.speakeasy.quote}”
+							</blockquote>
+							<figcaption className="text-sm text-zinc-500">
+								{CUSTOMER_QUOTES.speakeasy.author}, {CUSTOMER_QUOTES.speakeasy.company}
+							</figcaption>
+						</div>
+					</figure>
 				</div>
 
 				<div className="mt-16 md:mt-20">
-					<AnswerStory />
+					<ProductDemo />
 				</div>
 			</div>
 			<WalkthroughDialog open={videoOpen} onOpenChange={setVideoOpen} />

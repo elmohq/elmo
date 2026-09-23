@@ -1,4 +1,5 @@
 import { FermatWordmark, SpeakeasyLockup, TradeSitesWordmark } from "@workspace/ui/brand/customers";
+import { G2_MAX_RATING, G2_RATING, G2Stars } from "@workspace/ui/brand/g2-rating";
 
 interface Customer {
 	name: string;
@@ -60,10 +61,23 @@ const customers: Customer[] = [
 
 export function LogoStrip() {
 	return (
-		<section aria-label="Customers" className="bg-white">
-			<div className="mx-auto max-w-6xl px-4 pb-16 md:px-6 md:pb-20">
-				<p className="text-center text-sm text-zinc-500">Trusted by teams tracking their AI visibility</p>
-				<ul className="mt-7 flex flex-wrap items-center justify-center gap-x-10 gap-y-6 md:gap-x-14">
+		<section aria-labelledby="social-proof" className="bg-white">
+			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-20">
+				<div className="flex flex-col items-center gap-4 text-center">
+					<h2
+						id="social-proof"
+						className="max-w-[24ch] text-2xl font-semibold tracking-[-0.025em] text-balance text-zinc-950 md:text-3xl"
+					>
+						Used by 200+ brands to optimize their AI visibility
+					</h2>
+					<p className="inline-flex items-center gap-2 text-sm text-zinc-600">
+						<G2Stars />
+						<span>
+							{G2_RATING} out of {G2_MAX_RATING} on G2
+						</span>
+					</p>
+				</div>
+				<ul className="mt-10 flex flex-wrap items-center justify-center gap-x-10 gap-y-6 md:gap-x-14">
 					{customers.map((c) => (
 						<li key={c.name} className="flex h-6 items-center">
 							<a

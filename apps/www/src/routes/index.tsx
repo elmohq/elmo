@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Community } from "@/components/community";
 import { Footer } from "@/components/footer";
 import { Citations } from "@/components/home/citations";
 import { Closing } from "@/components/home/closing";
@@ -46,12 +47,13 @@ function HomePage() {
 			<main>
 				<Hero />
 				<LogoStrip />
+				<Reviews />
 				<ModelCoverage />
 				<ProductTour />
 				<Citations />
-				<Reviews />
 				<Pricing />
 				<Faq items={HOME_FAQS} />
+				<Community />
 				<Closing />
 			</main>
 			<Footer />

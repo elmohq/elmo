@@ -1,15 +1,9 @@
-export function Eyebrow({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-	return <p className={`text-sm font-medium text-blue-600 ${className}`}>{children}</p>;
-}
-
 export function SectionHeading({
-	eyebrow,
 	title,
 	lede,
 	align = "left",
 	as: Heading = "h2",
 }: {
-	eyebrow: string;
 	title: React.ReactNode;
 	lede?: React.ReactNode;
 	align?: "left" | "center";
@@ -18,8 +12,7 @@ export function SectionHeading({
 	const centered = align === "center";
 	return (
 		<div className={centered ? "mx-auto max-w-3xl text-center" : "max-w-2xl"}>
-			<Eyebrow>{eyebrow}</Eyebrow>
-			<Heading className="mt-3 text-[2rem] font-semibold leading-[1.1] tracking-[-0.03em] text-balance text-zinc-950 md:text-[2.75rem]">
+			<Heading className="text-[2rem] font-semibold leading-[1.1] tracking-[-0.03em] text-balance text-zinc-950 md:text-[2.75rem]">
 				{title}
 			</Heading>
 			{lede ? (

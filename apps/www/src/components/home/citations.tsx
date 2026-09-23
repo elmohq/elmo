@@ -74,7 +74,6 @@ export function Citations() {
 			<div className="mx-auto grid max-w-6xl gap-12 px-4 py-20 md:px-6 lg:grid-cols-12 lg:items-center lg:gap-16 lg:py-28">
 				<div className="lg:col-span-5">
 					<SectionHeading
-						eyebrow="Citations"
 						title="Get into the sources AI trusts."
 						lede="Every answer is built from pages the model found. Elmo shows you which ones."
 					/>

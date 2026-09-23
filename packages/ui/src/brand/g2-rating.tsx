@@ -8,8 +8,8 @@
 import { Star } from "lucide-react";
 import { SiG2 } from "react-icons/si";
 
-const G2_RATING = 4.7;
-const G2_MAX_RATING = 5;
+export const G2_RATING = 4.7;
+export const G2_MAX_RATING = 5;
 
 const RATING_LABEL = `Rated ${G2_RATING} out of ${G2_MAX_RATING} on G2`;
 
