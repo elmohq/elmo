@@ -1,7 +1,7 @@
 import { CUSTOMER_QUOTES } from "@workspace/ui/brand/customers";
+import { G2Mark } from "@workspace/ui/brand/g2-rating";
 import { ArrowUpRight, Check, Copy, Sparkles, Star } from "lucide-react";
 import { useState } from "react";
-import { SiG2 } from "react-icons/si";
 import { EngineIcon } from "./engines";
 import { CARD, SectionHeading } from "./ui";
 
@@ -203,7 +203,7 @@ function ReviewCard({ review }: { review: Review }) {
 						</span>
 					) : review.source === "g2" ? (
 						<span className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500">
-							<SiG2 className="size-3.5 text-[#FF492C]" aria-hidden="true" />
+							<G2Mark className="size-3.5" />
 							G2 review
 						</span>
 					) : null}

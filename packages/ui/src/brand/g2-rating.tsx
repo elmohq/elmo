@@ -58,3 +58,8 @@ export function G2Stars({ className = "" }: { className?: string }) {
 		</span>
 	);
 }
+
+/** G2's logo alone, in their red, for crediting a review to G2. */
+export function G2Mark({ className = "size-4" }: { className?: string }) {
+	return <SiG2 className={`shrink-0 ${className}`} style={{ color: G2_RED }} aria-hidden="true" />;
+}
