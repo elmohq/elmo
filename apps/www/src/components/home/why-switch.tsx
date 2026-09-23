@@ -1,13 +1,9 @@
-/**
- * The Profound figures are fixed claims supplied by the team, not derived from
- * the competitor data in lib/competitors.
- */
 const FACTS = [
-	{ lead: "⅓ the price", rest: "of Profound's equivalent plan, on Starter" },
-	{ lead: "4× the data", rest: "of Profound's equivalent plan, on Basic" },
-	{ lead: "Unlimited seats", rest: "on every plan, for your whole team" },
-	{ lead: "API + MCP", rest: "on every plan, to pipe data anywhere" },
-	{ lead: "Open source", rest: "self-host it any time, no lock-in" },
+	{ lead: "More Data", rest: "Elmo runs every prompt 4× daily." },
+	{ lead: "Not Bloated", rest: "We just do AEO / GEO and do it well." },
+	{ lead: "Unlimited Seats", rest: "For your whole team on every plan." },
+	{ lead: "API + MCP", rest: "Fit Elmo into your stack and agents." },
+	{ lead: "Open Source", rest: "Self host at any time, with no lock-in." },
 ];
 
 export function WhySwitch() {
@@ -18,7 +14,7 @@ export function WhySwitch() {
 					id="why-switch"
 					className="text-center text-2xl font-semibold tracking-[-0.025em] text-zinc-950 md:text-3xl"
 				>
-					Why teams switch to Elmo
+					Why Teams Switch to Elmo
 				</h2>
 				<ul className="mt-10 grid gap-px overflow-hidden rounded-2xl bg-zinc-200/80 ring-1 ring-zinc-200/80 sm:grid-cols-2 lg:grid-cols-5">
 					{FACTS.map((f) => (
