@@ -245,10 +245,7 @@ export function Reviews() {
 	return (
 		<section className="bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-20 md:px-6 lg:py-28">
-				<SectionHeading
-					title="Loved by marketers. Recommended by AI."
-					lede="What customers say, next to what ChatGPT, Claude, Gemini, and Perplexity say when you ask them for the best open-source alternative to Profound."
-				/>
+				<SectionHeading title="Loved by marketers. Recommended by AI." />
 				<div className="mt-8 columns-1 gap-4 md:columns-2 lg:columns-3 lg:gap-5">
 					{WALL.map((r) => (
 						<ReviewCard key={r.name} review={r} />
