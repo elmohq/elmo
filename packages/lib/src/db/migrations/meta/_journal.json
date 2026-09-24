@@ -155,6 +155,13 @@
       "when": 1789437070024,
       "tag": "0021_drop_account_issuer",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790118879412,
+      "tag": "0022_rate_limit",
+      "breakpoints": true
     }
   ]
 }

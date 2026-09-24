@@ -117,6 +117,9 @@ export function createAuth(options?: CreateAuthOptions) {
 		basePath: "/api/auth",
 		trustedOrigins: origins,
 
+		// The default memory store is per-instance and resets on cold starts.
+		rateLimit: { storage: "database" },
+
 		emailAndPassword: {
 			enabled: options?.emailAndPasswordEnabled !== false,
 			requireEmailVerification: options?.requireEmailVerification === true,
