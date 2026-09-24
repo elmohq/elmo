@@ -33,7 +33,7 @@ export function ModelCoverage() {
 				<div className="lg:col-span-5">
 					<SectionHeading
 						title="Every answer engine your buyers use."
-						lede="Elmo reads what real users see in ChatGPT, Perplexity, and Google's AI results, and calls the rest through their APIs or OpenRouter."
+						lede="Elmo both scrapes what real users see in popular AI search tools and captures all other models with direct API calls and OpenRouter."
 					/>
 				</div>
 				<div className="lg:col-span-7">
@@ -41,11 +41,8 @@ export function ModelCoverage() {
 						{ENGINES.map((m) => (
 							<Tile key={m.name} {...m} />
 						))}
-						<li className="flex h-14 items-center gap-3 rounded-xl px-4 text-[15px] font-medium text-zinc-600 border border-dashed border-zinc-300">
-							<span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-lg text-zinc-400 ring-1 ring-zinc-200">
-								+
-							</span>
-							<span className="leading-tight">Any OpenRouter model</span>
+						<li className="flex h-14 items-center justify-center rounded-xl border border-dashed border-zinc-300 px-4 text-[15px] font-medium text-zinc-600">
+							+ many more
 						</li>
 					</ul>
 				</div>
