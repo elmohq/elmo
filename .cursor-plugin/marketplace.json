@@ -3,6 +3,9 @@
   "owner": {
     "name": "Elmo"
   },
+  "metadata": {
+    "description": "Official Elmo plugins for Cursor"
+  },
   "plugins": [
     {
       "name": "elmo",
