@@ -22,6 +22,9 @@ On top of the shared variables (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `SCRAPE_TA
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in |
 | `CLOUD_SIGNUP_ALLOWLIST` | Signup gate — empty denies everyone, `*` opens signup |
 
+Optionally, `OPENAI_APPS_CHALLENGE_TOKEN` holds the token OpenAI's plugin submission portal issues to
+verify the domain the MCP server is on. It is served at `<APP_URL>/.well-known/openai-apps-challenge`.
+
 ## Stripe setup
 
 The plan catalog lives in `packages/config/src/plans.ts` — prices, limits, sampling rates, and the

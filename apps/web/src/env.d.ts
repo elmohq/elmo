@@ -83,6 +83,7 @@ declare global {
 			readonly GOOGLE_CLIENT_ID?: string;
 			readonly GOOGLE_CLIENT_SECRET?: string;
 			readonly RESEND_FROM_EMAIL?: string;
+			readonly OPENAI_APPS_CHALLENGE_TOKEN?: string;
 		}
 	}
 }
