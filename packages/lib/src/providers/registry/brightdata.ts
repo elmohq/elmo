@@ -146,6 +146,7 @@ export const brightdata: Provider = {
 	access: "scraped",
 	docsAnchor: "brightdata",
 
+	exposesWebQueries: () => true,
 	isConfigured: configuredWhen("BRIGHTDATA_API_TOKEN"),
 
 	validateTarget(config: ModelConfig) {

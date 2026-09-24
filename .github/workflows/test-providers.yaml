@@ -50,9 +50,9 @@ jobs:
           TARGET_OVERRIDE: ${{ inputs.target }}
         run: |
           if [ -n "$TARGET_OVERRIDE" ]; then
-            pnpm tsx apps/worker/scripts/test-provider.ts --target "$TARGET_OVERRIDE" --output-json result.json
+            pnpm tsx apps/worker/scripts/test-provider.ts --target "$TARGET_OVERRIDE" --output-json result.json --dump dumps
           else
-            pnpm tsx apps/worker/scripts/test-provider.ts --output-json result.json
+            pnpm tsx apps/worker/scripts/test-provider.ts --output-json result.json --dump dumps
           fi
       - name: Push results to Upstash Redis
         if: always() && hashFiles('result.json') != ''
@@ -81,6 +81,8 @@ jobs:
                 rawOutputBytes: r.rawOutputBytes,
                 citations: r.citations,
                 webQueries: r.webQueries,
+                genuineWebQueries: r.genuineWebQueries,
+                queriesInRawOutput: r.queriesInRawOutput,
                 webSearch: r.webSearch,
                 error: r.error || null,
               });
@@ -106,6 +108,16 @@ jobs:
         with:
           name: provider-results
           path: result.json
+          retention-days: 7
+      # Every target's raw payload, so the audit can check what a provider could
+      # give us rather than only what we took from it. Note this repo is public,
+      # so these artifacts are downloadable by anyone.
+      - name: Upload raw payloads
+        if: always() && hashFiles('dumps/*.json') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: provider-payloads
+          path: dumps/
           retention-days: 7
       - name: Fail job if any target failed
         if: always() && steps.test.outcome == 'failure'

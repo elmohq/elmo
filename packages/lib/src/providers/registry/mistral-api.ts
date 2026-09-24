@@ -89,6 +89,7 @@ export const mistralApi: Provider = {
 	access: "api",
 	docsAnchor: "direct-model-apis",
 
+	exposesWebQueries: () => true,
 	isConfigured: configuredWhen("MISTRAL_API_KEY"),
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {

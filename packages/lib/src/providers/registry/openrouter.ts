@@ -79,6 +79,8 @@ export const openrouter: Provider = {
 	access: "api",
 	docsAnchor: "direct-model-apis",
 
+	// Declared false while the provider writes the sentinel without reading the payload.
+	exposesWebQueries: () => false,
 	isConfigured: configuredWhen("OPENROUTER_API_KEY"),
 
 	async runStructuredResearch<T>({
