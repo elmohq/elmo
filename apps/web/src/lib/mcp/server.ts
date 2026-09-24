@@ -57,8 +57,7 @@ export function createMcpServer(auth: Principal, tools: readonly McpTool[]): Mcp
 				annotations: {
 					title: tool.title,
 					readOnlyHint: tool.readOnly,
-					// Creating the same prompts twice creates them twice.
-					destructiveHint: false,
+					destructiveHint: !tool.readOnly,
 					idempotentHint: tool.readOnly,
 					openWorldHint: false,
 				},
