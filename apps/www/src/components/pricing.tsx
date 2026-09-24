@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { CLOUD_ENTRY_PRICE_USD, PLAN_KEYS, PLANS, planPlatformBreakdown } from "@workspace/config/plans";
+import { PLAN_KEYS, PLANS, planPlatformBreakdown } from "@workspace/config/plans";
 import { cloudAppUrl } from "@workspace/config/referrals";
 import { PlatformTier } from "@workspace/ui/brand/platform-tier";
 import { ArrowRight } from "lucide-react";
@@ -10,7 +10,7 @@ export function Pricing({ as: Heading = "h2" }: { as?: "h1" | "h2" } = {}) {
 		<section id="pricing" className="border-b border-zinc-200 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
 				<Heading className="max-w-[28ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-					Starting at ${CLOUD_ENTRY_PRICE_USD} a month.
+					Simple, self-serve pricing.
 				</Heading>
 				<p className="mt-4 text-pretty text-zinc-600 md:text-lg">
 					Self-serve, with unlimited seats and API/MCP access. Annual billing saves two months.

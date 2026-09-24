@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { CLOUD_ENTRY_PRICE_USD, PLAN_KEYS, PLANS, type PlanDefinition, type PlanKey } from "@workspace/config/plans";
+import { PLAN_KEYS, PLANS, type PlanDefinition, type PlanKey } from "@workspace/config/plans";
 import { cloudAppUrl } from "@workspace/config/referrals";
 import { ArrowRight, Check, Minus } from "lucide-react";
 import { ContactForm } from "@/components/contact-form";
@@ -112,7 +112,7 @@ export function Pricing() {
 			<div className="mx-auto max-w-6xl px-4 py-20 md:px-6 lg:py-28">
 				<SectionHeading
 					align="center"
-					title={`Starting at $${CLOUD_ENTRY_PRICE_USD} a month.`}
+					title="Simple, self-serve pricing."
 					lede="Self-serve, with unlimited seats and API/MCP access."
 				/>
 
