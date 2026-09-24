@@ -6,8 +6,8 @@ const ENGINES = [
 	{ name: "Claude", iconId: "anthropic" },
 	{ name: "Gemini", iconId: "gemini" },
 	{ name: "Perplexity", iconId: "perplexity" },
-	{ name: "Google AI Overviews", iconId: "google" },
-	{ name: "Google AI Mode", iconId: "google" },
+	{ name: "AI Overviews", iconId: "google" },
+	{ name: "AI Mode", iconId: "google" },
 	{ name: "Copilot", iconId: "microsoft" },
 	{ name: "Grok", iconId: "x" },
 	{ name: "DeepSeek", iconId: "deepseek" },
@@ -15,11 +15,13 @@ const ENGINES = [
 	{ name: "Qwen", iconId: "qwen" },
 ];
 
-function Chip({ name, iconId }: { name: string; iconId: string }) {
+function Tile({ name, iconId }: { name: string; iconId: string }) {
 	return (
-		<li className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-[15px] font-medium text-zinc-900 shadow-[0_0_0_1px_rgb(24_24_27/0.1)]">
-			<EngineIcon iconId={iconId} className="size-4 shrink-0" />
-			{name}
+		<li className="flex h-14 items-center gap-3 rounded-xl bg-white px-4 text-[15px] font-medium text-zinc-900 shadow-[0_0_0_1px_rgb(24_24_27/0.08),0_1px_2px_rgb(24_24_27/0.04)]">
+			<span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-zinc-50 ring-1 ring-zinc-200/70">
+				<EngineIcon iconId={iconId} className="size-[18px]" />
+			</span>
+			<span className="truncate">{name}</span>
 		</li>
 	);
 }
@@ -35,12 +37,17 @@ export function ModelCoverage() {
 					/>
 				</div>
 				<div className="lg:col-span-7">
-					<ul className="flex flex-wrap gap-2.5" aria-label="AI engines Elmo tracks">
+					<ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3" aria-label="AI engines Elmo tracks">
 						{ENGINES.map((m) => (
-							<Chip key={m.name} {...m} />
+							<Tile key={m.name} {...m} />
 						))}
+						<li className="flex h-14 items-center gap-3 rounded-xl px-4 text-[15px] font-medium text-zinc-600 border border-dashed border-zinc-300">
+							<span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-lg text-zinc-400 ring-1 ring-zinc-200">
+								+
+							</span>
+							<span className="leading-tight">Any OpenRouter model</span>
+						</li>
 					</ul>
-					<p className="mt-4 text-sm text-zinc-500">Plus any other model on OpenRouter when you self-host.</p>
 				</div>
 			</div>
 		</section>
