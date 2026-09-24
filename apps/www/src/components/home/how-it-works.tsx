@@ -19,8 +19,8 @@ const STEPS: Step[] = [
 	{
 		title: "See where you stand",
 		body: "Visibility, share of voice, and the sources AI cites, sampled up to 4× daily from the real apps.",
-		src: "/screenshots/citations.png",
-		alt: "Elmo citations page showing which domains AI answers cite and your share of them",
+		src: "/screenshots/visibility.png",
+		alt: "Elmo visibility page showing per-prompt visibility over time against competitors",
 	},
 	{
 		title: "Know what to fix",
