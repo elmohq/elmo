@@ -3,9 +3,6 @@
   "owner": {
     "name": "Elmo"
   },
-  "metadata": {
-    "description": "Cursor plugins for Elmo, the open-source AI visibility platform"
-  },
   "plugins": [
     {
       "name": "elmo",
