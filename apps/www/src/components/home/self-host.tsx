@@ -5,9 +5,9 @@ import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { SectionHeading } from "./ui";
 
 const POINTS = [
-	{ title: "Full Featured", body: "Every feature from the cloud, MIT-licensed." },
-	{ title: "Your data stays put", body: "Prompts and answers live in your own Postgres." },
-	{ title: "Any model", body: "Bring your own keys, or any model on OpenRouter." },
+	{ title: "Open Source", body: "MIT-licensed and runs on Docker." },
+	{ title: "Own Your Data", body: "Everything is stored in Postgres." },
+	{ title: "Track Anything", body: "BYOK to track any AI model." },
 ];
 
 const LINK = "group inline-flex items-center gap-1 text-[15px] font-medium text-blue-600 hover:text-blue-700";
