@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
 import { Switch } from "@workspace/ui/components/switch";
 import {
 	ACCEPT_ALL,
 	CONSENT_OPEN_EVENT,
 	type CookieConsent,
-	readConsent,
 	REJECT_ALL,
+	readConsent,
 	resolveConsent,
 	saveConsent,
 } from "@workspace/ui/lib/cookie-consent";
+import { useEffect, useState } from "react";
 
 const CATEGORIES: { key: keyof CookieConsent; label: string; description: string }[] = [
 	{
@@ -66,8 +66,7 @@ export function CookieConsentBanner({ consentRequired, policyHref }: { consentRe
 	}
 
 	return (
-		<div
-			role="region"
+		<section
 			aria-label="Cookie consent"
 			className="fixed inset-x-3 bottom-3 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200 sm:inset-x-auto sm:bottom-4 sm:left-4 sm:max-w-sm"
 		>
@@ -129,6 +128,6 @@ export function CookieConsentBanner({ consentRequired, policyHref }: { consentRe
 					)}
 				</div>
 			</div>
-		</div>
+		</section>
 	);
 }

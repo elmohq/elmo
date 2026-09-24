@@ -27,7 +27,7 @@ function SiblingPolicies({ pages, currentSlug }: { pages: LegalPageSummary[]; cu
 	return (
 		<nav aria-label="Other policies" className="not-prose mt-16 border-t border-zinc-200 pt-8">
 			<h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">Other policies</h2>
-			<ul role="list" className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+			<ul className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
 				{others.map((page) => (
 					<li key={page.slug}>
 						<a href={`/legal/${page.slug}`} className="text-zinc-700 hover:text-zinc-950 hover:underline">
