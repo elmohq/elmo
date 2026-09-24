@@ -62,6 +62,7 @@ export const authClient = {
 	signUp: { email: async () => ({ error: null }) },
 	requestPasswordReset: async () => ({ error: null }),
 	resetPassword: async () => ({ error: null }),
+	changePassword: (args: unknown) => respond("changePassword", args),
 	sendVerificationEmail: async () => ({ error: null }),
 	signOut: async () => ({ error: null }),
 	useSession: () => ({ data: null, isPending: false }),
