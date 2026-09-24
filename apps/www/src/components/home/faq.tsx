@@ -8,7 +8,7 @@ export function Faq({ items }: { items: FaqItem[] }) {
 	return (
 		<section className="border-t border-zinc-200/80 bg-white">
 			<div className="mx-auto grid max-w-6xl gap-10 px-4 py-20 md:px-6 lg:grid-cols-12 lg:gap-12 lg:py-28">
-				<div className="lg:col-span-4">
+				<div className="lg:sticky lg:top-24 lg:col-span-4 lg:self-start">
 					<SectionHeading title="Frequently asked questions" />
 					<p className="mt-4 text-pretty text-sm/6 text-zinc-600">
 						Something we didn't cover? Ask the maintainers directly on{" "}
