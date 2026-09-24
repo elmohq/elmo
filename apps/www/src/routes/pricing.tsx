@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CTA } from "@/components/cta";
 import { Footer } from "@/components/footer";
+import { Closing } from "@/components/home/closing";
 import { Faq } from "@/components/home/faq";
 import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
 import { Navbar } from "@/components/navbar";
@@ -39,7 +39,7 @@ function PricingPage() {
 			<main>
 				<Pricing as="h1" />
 				<Faq items={PRICING_FAQS} />
-				<CTA />
+				<Closing from="marketing-pricing-closing" />
 			</main>
 			<Footer />
 		</div>

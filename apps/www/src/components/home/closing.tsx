@@ -1,11 +1,9 @@
 import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
-import { bookDemoUrl, cloudAppUrl, demoSiteUrl } from "@workspace/config/referrals";
+import { bookDemoUrl, cloudAppUrl, demoSiteUrl, type ReferralSource } from "@workspace/config/referrals";
 import { ArrowRight, ArrowUpRight, Check } from "lucide-react";
 import { externalRel } from "@/lib/external-link";
 
 export const DISCORD_INVITE_URL = "https://discord.gg/s24nubCtKz";
-const CLOUD_URL = cloudAppUrl("marketing-closing");
-const LIVE_DEMO_URL = demoSiteUrl("marketing-closing");
 const BOOK_URL = bookDemoUrl("marketing-cta");
 
 const INCLUDED = ["Self-serve", "Unlimited seats", "API and MCP access"];
@@ -15,7 +13,10 @@ const BUTTON =
 const QUIET = "font-medium text-zinc-800 underline decoration-zinc-300 underline-offset-4 hover:decoration-zinc-800";
 
 /** The last push on the page is for the cloud; self-hosting has its own section above. */
-export function Closing() {
+/** `from` tags the sign-up and demo links so each page's closing band shows up separately in analytics. */
+export function Closing({ from = "marketing-closing" }: { from?: ReferralSource }) {
+	const cloudUrl = cloudAppUrl(from);
+	const demoUrl = demoSiteUrl(from);
 	return (
 		<section className="relative overflow-hidden border-t border-zinc-200/80 bg-white">
 			<div
@@ -30,14 +31,14 @@ export function Closing() {
 					Start tracking your brand in minutes. Plans start at ${CLOUD_ENTRY_PRICE_USD}/mo.
 				</p>
 				<div className="mt-9 flex w-full flex-col items-stretch justify-center gap-3 sm:w-auto sm:flex-row sm:items-center">
-					<a href={CLOUD_URL} className={`${BUTTON} bg-blue-600 text-white hover:bg-blue-700`}>
+					<a href={cloudUrl} className={`${BUTTON} bg-blue-600 text-white hover:bg-blue-700`}>
 						Get started
 						<ArrowRight className="size-4" aria-hidden="true" />
 					</a>
 					<a
-						href={LIVE_DEMO_URL}
+						href={demoUrl}
 						target="_blank"
-						rel={externalRel(LIVE_DEMO_URL)}
+						rel={externalRel(demoUrl)}
 						className={`${BUTTON} bg-white text-zinc-950 ring-1 ring-inset ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300`}
 					>
 						Try the live demo

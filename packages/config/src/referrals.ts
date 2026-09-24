@@ -30,6 +30,7 @@ export type ReferralSource =
 	| "marketing-hero"
 	| "marketing-demo-frame"
 	| "marketing-closing"
+	| "marketing-pricing-closing"
 	| "marketing-page-cta"
 	| "marketing-vision"
 	| "marketing-plan-starter"
