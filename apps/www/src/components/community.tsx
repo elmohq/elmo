@@ -15,6 +15,13 @@ export function Community() {
 		<section id="community" className="border-t border-zinc-200/80 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-20">
 				<div className="relative overflow-hidden rounded-2xl bg-[#5865F2]/[0.04] px-6 py-12 ring-1 ring-[#5865F2]/25 md:px-12 lg:py-16">
+					{/* Below lg the text is centered, so one faint mark sits centered behind it instead of the scattered set. */}
+					<div
+						aria-hidden="true"
+						className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[#5865F2]/[0.07] lg:hidden"
+					>
+						<DiscordIcon className="size-64" />
+					</div>
 					<div
 						aria-hidden="true"
 						className="pointer-events-none absolute -right-10 top-1/2 hidden -translate-y-1/2 text-[#5865F2]/10 lg:block"
@@ -34,14 +41,14 @@ export function Community() {
 						<DiscordIcon className="size-20 rotate-[15deg]" />
 					</div>
 
-					<div className="relative">
+					<div className="relative flex flex-col items-center text-center lg:items-start lg:text-left">
 						<h2 className="max-w-[20ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
 							Talk to us!
 						</h2>
 						<p className="mt-5 max-w-[58ch] text-pretty text-zinc-600 md:text-lg">
 							Ask questions and get help straight from the maintainers on Discord.
 						</p>
-						<div className="mt-7 flex flex-wrap items-center gap-3">
+						<div className="mt-7 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
 							<a
 								href={DISCORD_INVITE_URL}
 								target="_blank"
