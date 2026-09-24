@@ -11,7 +11,6 @@ import { Pricing } from "@/components/home/pricing";
 import { Reviews } from "@/components/home/reviews";
 import { SelfHost } from "@/components/home/self-host";
 import { HOME_FONT_CLASS, HomeStyles } from "@/components/home/styles";
-import { Updates } from "@/components/home/updates";
 import { WhySwitch } from "@/components/home/why-switch";
 import { Navbar } from "@/components/navbar";
 import { HOME_FAQS } from "@/lib/faqs";
@@ -58,7 +57,6 @@ function HomePage() {
 				<SelfHost />
 				<Community />
 				<Closing />
-				<Updates />
 			</main>
 			<Footer />
 		</div>

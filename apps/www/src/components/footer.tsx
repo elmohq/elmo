@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { externalRel } from "@/lib/external-link";
 import { Logo } from "./logo";
+import { NewsletterSignup } from "./newsletter-signup";
 
 // externalRel keeps the Referer for this owned domain; `ref` preserves
 // attribution when an intermediary strips that header.
@@ -68,6 +69,17 @@ const cols = [
 export function Footer() {
 	return (
 		<footer className="bg-white">
+			<div className="border-t border-zinc-200/80 bg-zinc-50/70">
+				<div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-12 md:flex-row md:items-center md:justify-between md:px-6 lg:py-14">
+					<div>
+						<h2 className="text-xl font-semibold tracking-[-0.02em] text-zinc-950">Get product updates</h2>
+						<p className="mt-1 text-[15px] text-zinc-600">
+							New features and releases from Elmo, straight to your inbox.
+						</p>
+					</div>
+					<NewsletterSignup source="footer" hideLabel className="w-full md:max-w-md" />
+				</div>
+			</div>
 			<div className="mx-auto max-w-6xl px-4 py-12 md:px-6">
 				<div className="grid gap-10 md:grid-cols-12">
 					<div className="md:col-span-3">
