@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import { EngineIcon } from "./engines";
 import { SectionHeading } from "./ui";
 
@@ -41,8 +42,11 @@ export function ModelCoverage() {
 						{ENGINES.map((m) => (
 							<Tile key={m.name} {...m} />
 						))}
-						<li className="flex h-14 items-center justify-center rounded-xl border border-dashed border-zinc-300 px-4 text-[15px] font-medium text-zinc-600">
-							+ many more
+						<li className="flex h-14 items-center gap-2 rounded-xl border border-dashed border-zinc-300 px-3 text-sm font-medium text-zinc-700 sm:px-4 sm:text-[15px]">
+							<span className="inline-flex size-5 shrink-0 items-center justify-center text-zinc-500">
+								<Plus className="size-[18px]" strokeWidth={2.25} aria-hidden="true" />
+							</span>
+							<span className="whitespace-nowrap">OpenRouter LLMs</span>
 						</li>
 					</ul>
 				</div>
