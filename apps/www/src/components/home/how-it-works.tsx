@@ -1,11 +1,9 @@
-import { Check } from "lucide-react";
 import { CARD, SectionHeading } from "./ui";
 
 interface Step {
 	title: string;
 	body: string;
-	/** A screenshot, or null for the setup step, which has no single page to show. */
-	src: string | null;
+	src: string;
 	alt: string;
 }
 
@@ -13,8 +11,8 @@ const STEPS: Step[] = [
 	{
 		title: "Add your brand",
 		body: "Point Elmo at your site. It suggests the prompts your buyers ask and the competitors to track against.",
-		src: null,
-		alt: "",
+		src: "/screenshots/prompt-settings.png",
+		alt: "Elmo prompts settings listing the buyer prompts tracked for Nike, each tagged by topic",
 	},
 	{
 		title: "See where you stand",
@@ -29,46 +27,6 @@ const STEPS: Step[] = [
 		alt: "Elmo opportunities page with prioritized recommendations for content and sources",
 	},
 ];
-
-const SUGGESTED = [
-	"best standing desk for a small office",
-	"standing desk vs sit-stand converter",
-	"quietest standing desk motor",
-];
-const COMPETITORS = ["Uplane", "Deskhaven", "Riserly"];
-
-/** Stands in for the Prompt Wizard: a site goes in, prompts and competitors come out. */
-function SetupSketch() {
-	return (
-		<div
-			aria-hidden="true"
-			className="flex aspect-[16/10] flex-col justify-center gap-3 rounded-t-2xl border-b border-zinc-200/80 bg-zinc-50 px-6"
-		>
-			<div className="flex h-9 items-center gap-2 rounded-lg bg-white px-3 text-sm text-zinc-900 ring-1 ring-zinc-200">
-				<span className="text-zinc-400">https://</span>yourbrand.com
-				<span className="ml-auto rounded-md bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">Suggest</span>
-			</div>
-			<ul className="space-y-1.5">
-				{SUGGESTED.map((prompt) => (
-					<li key={prompt} className="flex items-center gap-2 text-[13px] text-zinc-700">
-						<span className="inline-flex size-4 shrink-0 items-center justify-center rounded bg-blue-600 text-white">
-							<Check className="size-3" strokeWidth={3} />
-						</span>
-						<span className="truncate">{prompt}</span>
-					</li>
-				))}
-			</ul>
-			<div className="flex flex-wrap items-center gap-1.5 text-xs text-zinc-500">
-				vs.
-				{COMPETITORS.map((c) => (
-					<span key={c} className="rounded-full bg-white px-2 py-0.5 font-medium text-zinc-700 ring-1 ring-zinc-200">
-						{c}
-					</span>
-				))}
-			</div>
-		</div>
-	);
-}
 
 /**
  * The screenshots include the app sidebar, which is noise at this size, so each
@@ -101,7 +59,7 @@ export function HowItWorks() {
 				<ol className="mt-12 grid gap-5 md:grid-cols-3">
 					{STEPS.map((step, i) => (
 						<li key={step.title} className={`flex flex-col overflow-hidden ${CARD}`}>
-							{step.src ? <Crop src={step.src} alt={step.alt} /> : <SetupSketch />}
+							<Crop src={step.src} alt={step.alt} />
 							<div className="p-6">
 								<p className="flex items-center gap-2.5 text-lg font-semibold tracking-[-0.015em] text-zinc-950">
 									<span className="inline-flex size-6 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white tabular-nums">
