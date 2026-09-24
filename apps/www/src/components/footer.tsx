@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { ArrowUpRight } from "lucide-react";
 import { externalRel } from "@/lib/external-link";
 import { Logo } from "./logo";
 import { NewsletterSignup } from "./newsletter-signup";
@@ -89,11 +90,21 @@ export function Footer() {
 						<p className="mt-5 max-w-[36ch] text-pretty text-sm text-zinc-600">
 							Elmo is the #1 open source AEO platform. Track and improve how AI answers talk about your brand.
 						</p>
-						<div className="mt-5 inline-flex h-7 items-center rounded-full bg-white/80 px-1 shadow-sm ring-1 ring-zinc-200">
+						<a
+							href="https://github.com/elmohq/elmo"
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label={`Elmo v${__APP_VERSION__} on GitHub`}
+							className="group mt-5 inline-flex h-7 items-center gap-1.5 rounded-full bg-white/80 pl-1 pr-2.5 text-zinc-500 shadow-sm ring-1 ring-zinc-200 transition hover:text-zinc-950 hover:ring-zinc-300"
+						>
 							<span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-zinc-100 px-2 font-mono text-[11px] text-zinc-700">
 								<span className="size-1.5 rounded-full bg-emerald-500" />v{__APP_VERSION__}
 							</span>
-						</div>
+							<ArrowUpRight
+								className="size-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+								aria-hidden="true"
+							/>
+						</a>
 					</div>
 					<div className="grid grid-cols-2 gap-10 md:col-span-9 md:grid-cols-4">
 						{cols.map((col) => (
