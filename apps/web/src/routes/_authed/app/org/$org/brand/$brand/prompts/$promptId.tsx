@@ -21,6 +21,7 @@ import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selec
 import { ProgressBarChart } from "@/components/progress-bar-chart";
 import { ResponseMarkdown } from "@/components/response-markdown";
 import { SiteIcon } from "@/components/site-icon";
+import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrand } from "@/hooks/use-brands";
 import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
 import { usePromptStats } from "@/hooks/use-prompt-stats";
@@ -195,7 +196,7 @@ function PromptHeader({
 
 function PromptHistoryPage() {
 	const { promptId } = Route.useParams();
-	const { brandId } = Route.useRouteContext();
+	const brandId = useBrandId();
 
 	const lookback = useLookbackPeriod();
 	const days = getDaysFromLookback(lookback);

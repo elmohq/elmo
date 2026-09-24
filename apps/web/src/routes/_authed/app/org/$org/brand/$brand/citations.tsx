@@ -6,6 +6,7 @@ import { CitationsDisplay } from "@/components/citations-display";
 import { ALL_MODELS_VALUE } from "@/components/filter-bar";
 import { FilteredListShell } from "@/components/filtered-list-shell";
 import { PageHeader } from "@/components/page-header";
+import { useBrandId } from "@/hooks/use-brand-id";
 import { brandKeys, useBrand } from "@/hooks/use-brands";
 import { useCitations } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/citatio
 
 function CitationsPage() {
 	const brandParams = useBrandParams();
-	const { brandId } = Route.useRouteContext();
+	const brandId = useBrandId();
 	const queryClient = useQueryClient();
 
 	const filters = useListFilters();

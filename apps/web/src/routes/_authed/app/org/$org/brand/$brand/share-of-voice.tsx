@@ -15,6 +15,7 @@ import { FilterSection, PageHeader } from "@/components/page-header";
 import { ShareOfVoiceDonut } from "@/components/share-of-voice-donut";
 import { SiteIcon } from "@/components/site-icon";
 import { TrendChart } from "@/components/trend-chart";
+import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrand } from "@/hooks/use-brands";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
@@ -47,7 +48,7 @@ const TIPS = {
 };
 
 function ShareOfVoicePage() {
-	const { brandId } = Route.useRouteContext();
+	const brandId = useBrandId();
 	const { model, lookback, tags } = useListFilters();
 
 	const { data: brand } = useBrand(brandId);
