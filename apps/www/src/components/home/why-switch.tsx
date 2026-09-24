@@ -1,6 +1,6 @@
 const FACTS = [
-	{ lead: "More Data", rest: "Elmo runs every prompt 4× daily." },
-	{ lead: "Not Bloated", rest: "We just do AEO / GEO and do it well." },
+	{ lead: "More Data", rest: "Elmo runs every prompt against models 4× daily." },
+	{ lead: "No Bloat", rest: "We only do AEO / GEO, but we do it very well." },
 	{ lead: "Unlimited Seats", rest: "For your whole team on every plan." },
 	{ lead: "API + MCP", rest: "Fit Elmo into your stack and agents." },
 	{ lead: "Open Source", rest: "Self host at any time, with no lock-in." },
