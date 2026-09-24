@@ -1,10 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CLOUD_ENTRY_PRICE_USD, CLOUD_SIGNUP_URL } from "@workspace/config/plans";
+import { CLOUD_ENTRY_PRICE_USD } from "@workspace/config/plans";
+import { cloudAppUrl } from "@workspace/config/referrals";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { ArrowRight } from "lucide-react";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
+import { SELF_HOST_LINK } from "@/lib/self-host-link";
 import { breadcrumbJsonLd, canonicalUrl, ogMeta } from "@/lib/seo";
+
+const CLOUD_URL = cloudAppUrl("marketing-vision");
 
 const title = "Our Vision · Elmo";
 const description =
@@ -213,11 +217,11 @@ function VisionPage() {
 							come build with us.
 						</p>
 						<div className="mt-8 flex flex-wrap justify-center gap-3">
-							<a href={CLOUD_SIGNUP_URL} className={buttonVariants({ size: "sm" })}>
+							<a href={CLOUD_URL} className={buttonVariants({ size: "sm" })}>
 								Start with Cloud
 								<ArrowRight className="size-3.5" />
 							</a>
-							<Link to="/docs" className={buttonVariants({ variant: "outline", size: "sm" })}>
+							<Link {...SELF_HOST_LINK} className={buttonVariants({ variant: "outline", size: "sm" })}>
 								Self-host free
 							</Link>
 							<a

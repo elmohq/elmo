@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router";
+import { ArrowUpRight } from "lucide-react";
 import { externalRel } from "@/lib/external-link";
 import { Logo } from "./logo";
+import { NewsletterSignup } from "./newsletter-signup";
 
 // externalRel keeps the Referer for this owned domain; `ref` preserves
 // attribution when an intermediary strips that header.
@@ -68,6 +70,17 @@ const cols = [
 export function Footer() {
 	return (
 		<footer className="bg-white">
+			<div className="border-t border-zinc-200/80 bg-zinc-50/70">
+				<div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-12 md:flex-row md:items-center md:justify-between md:px-6 lg:py-14">
+					<div>
+						<h2 className="text-xl font-semibold tracking-[-0.02em] text-zinc-950">Get product updates</h2>
+						<p className="mt-1 text-[15px] text-zinc-600">
+							New features and releases from Elmo, straight to your inbox.
+						</p>
+					</div>
+					<NewsletterSignup source="footer" hideLabel className="w-full md:max-w-md" />
+				</div>
+			</div>
 			<div className="mx-auto max-w-6xl px-4 py-12 md:px-6">
 				<div className="grid gap-10 md:grid-cols-12">
 					<div className="md:col-span-3">
@@ -77,9 +90,21 @@ export function Footer() {
 						<p className="mt-5 max-w-[36ch] text-pretty text-sm text-zinc-600">
 							Elmo is the #1 open source AEO platform. Track and improve how AI answers talk about your brand.
 						</p>
-						<div className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-2.5 py-1 font-mono text-[11px] text-zinc-700">
-							<span className="size-1.5 rounded-full bg-emerald-500" />v{__APP_VERSION__}
-						</div>
+						<a
+							href="https://github.com/elmohq/elmo"
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label={`Elmo v${__APP_VERSION__} on GitHub`}
+							className="group mt-5 inline-flex h-7 items-center gap-1.5 rounded-full bg-white/80 pl-1 pr-2.5 text-zinc-500 shadow-sm ring-1 ring-zinc-200 transition hover:text-zinc-950 hover:ring-zinc-300"
+						>
+							<span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-zinc-100 px-2 font-mono text-[11px] text-zinc-700">
+								<span className="size-1.5 rounded-full bg-emerald-500" />v{__APP_VERSION__}
+							</span>
+							<ArrowUpRight
+								className="size-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+								aria-hidden="true"
+							/>
+						</a>
 					</div>
 					<div className="grid grid-cols-2 gap-10 md:col-span-9 md:grid-cols-4">
 						{cols.map((col) => (

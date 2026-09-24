@@ -12,46 +12,54 @@ function DiscordIcon({ className = "" }: { className?: string }) {
 
 export function Community() {
 	return (
-		<section id="community" className="border-b border-zinc-200 bg-white">
-			<div className="relative mx-auto max-w-6xl overflow-hidden px-4 py-16 md:px-6 lg:py-24">
-				<div
-					aria-hidden="true"
-					className="pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 text-[#5865F2]/10 lg:block"
-				>
-					<DiscordIcon className="size-[22rem]" />
-				</div>
-				<div
-					aria-hidden="true"
-					className="pointer-events-none absolute right-[28%] top-10 hidden text-[#5865F2]/5 lg:block"
-				>
-					<DiscordIcon className="size-28 -rotate-12" />
-				</div>
-				<div
-					aria-hidden="true"
-					className="pointer-events-none absolute bottom-10 right-[44%] hidden text-[#5865F2]/5 lg:block"
-				>
-					<DiscordIcon className="size-20 rotate-[15deg]" />
-				</div>
+		<section id="community" className="border-t border-zinc-200/80 bg-white">
+			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-20">
+				<div className="relative overflow-hidden rounded-2xl bg-[#5865F2]/[0.04] px-6 py-12 ring-1 ring-[#5865F2]/25 md:px-12 lg:py-16">
+					{/* Below lg the text is centered, so one faint mark sits centered behind it instead of the scattered set. */}
+					<div
+						aria-hidden="true"
+						className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[#5865F2]/[0.07] lg:hidden"
+					>
+						<DiscordIcon className="size-64" />
+					</div>
+					<div
+						aria-hidden="true"
+						className="pointer-events-none absolute -right-10 top-1/2 hidden -translate-y-1/2 text-[#5865F2]/10 lg:block"
+					>
+						<DiscordIcon className="size-[22rem]" />
+					</div>
+					<div
+						aria-hidden="true"
+						className="pointer-events-none absolute right-[28%] top-10 hidden text-[#5865F2]/5 lg:block"
+					>
+						<DiscordIcon className="size-28 -rotate-12" />
+					</div>
+					<div
+						aria-hidden="true"
+						className="pointer-events-none absolute bottom-10 right-[44%] hidden text-[#5865F2]/5 lg:block"
+					>
+						<DiscordIcon className="size-20 rotate-[15deg]" />
+					</div>
 
-				<div className="relative">
-					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ COMMUNITY</p>
-					<h2 className="mt-4 max-w-[20ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-						Talk to us!
-					</h2>
-					<p className="mt-5 max-w-[58ch] text-pretty text-zinc-600 md:text-lg">
-						Ask questions and get help straight from the maintainers on Discord.
-					</p>
-					<div className="mt-7 flex flex-wrap items-center gap-3">
-						<a
-							href={DISCORD_INVITE_URL}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="inline-flex h-8 items-center gap-2 rounded-md bg-[#5865F2] px-3 text-sm font-medium leading-none text-white ring-1 ring-[#5865F2] hover:bg-[#4752c4]"
-						>
-							<DiscordIcon className="size-4" />
-							Join Discord
-							<ArrowUpRight className="size-3.5" />
-						</a>
+					<div className="relative flex flex-col items-center text-center lg:items-start lg:text-left">
+						<h2 className="max-w-[20ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
+							Talk to us!
+						</h2>
+						<p className="mt-5 max-w-[58ch] text-pretty text-zinc-600 md:text-lg">
+							Ask questions and get help straight from the maintainers on Discord.
+						</p>
+						<div className="mt-7 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+							<a
+								href={DISCORD_INVITE_URL}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="inline-flex h-8 items-center gap-2 rounded-md bg-[#5865F2] px-3 text-sm font-medium leading-none text-white ring-1 ring-[#5865F2] hover:bg-[#4752c4]"
+							>
+								<DiscordIcon className="size-4" />
+								Join Discord
+								<ArrowUpRight className="size-3.5" />
+							</a>
+						</div>
 					</div>
 				</div>
 			</div>

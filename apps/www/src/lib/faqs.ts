@@ -10,7 +10,7 @@ export const HOME_FAQS: FaqItem[] = [
 	{
 		question: "What is Elmo?",
 		answer:
-			"Elmo is an open-source AI visibility platform for Answer Engine Optimization (AEO) — a self-hosted alternative to tools like Profound, Peec, and Otterly. It tracks how AI answer engines — including ChatGPT, Google AI Overviews, Perplexity, Gemini, Copilot, and Grok — mention your brand, which competitors appear alongside you, and which sources each model cites.",
+			"Elmo is an open-source AI visibility platform for Answer Engine Optimization (AEO) — an alternative to tools like Profound, Peec, and Otterly that you can self-host for free or run on Elmo Cloud. It tracks how AI answer engines — including ChatGPT, Google AI Overviews, Perplexity, Gemini, Claude, and Copilot — mention your brand, which competitors appear alongside you, and which sources each model cites.",
 	},
 	{
 		question: "What is Answer Engine Optimization (AEO)?",
@@ -18,19 +18,34 @@ export const HOME_FAQS: FaqItem[] = [
 			"Answer Engine Optimization (AEO) — also called Generative Engine Optimization (GEO) or LLM Optimization (LLMO) — is the practice of measuring and improving how often AI answer engines mention and cite your brand. Instead of ranking in a list of blue links, the goal is to be the source an AI quotes in its answer. (LLMO is also where Elmo gets its name.)",
 	},
 	{
-		question: "Which AI models does Elmo track?",
+		question: "What is the difference between AEO, GEO, and SEO?",
 		answer:
-			"Elmo runs your prompts across every major AI answer engine, including ChatGPT, Google AI Overviews, Perplexity, Gemini, Copilot, and Grok. It records how often your brand appears, which competitors show up alongside it, and which sources the models cite.",
+			"SEO is about ranking pages in traditional search results, while AEO and GEO are two names for the same newer discipline: getting mentioned and cited inside AI-generated answers from tools like ChatGPT, Perplexity, and Google AI Overviews. The two overlap, because AI engines run web searches and cite the pages they find, but success is measured differently — by how often and how favorably an AI names your brand, not by your position on a results page. Elmo measures the AEO side, including the web searches AI engines fan a prompt out into and the sources they cite.",
 	},
 	{
-		question: "Is Elmo really open source?",
+		question: "Which AI models does Elmo track?",
 		answer:
-			"Yes. Every line of Elmo is open source and available on GitHub. You can read the code, self-host the platform on your own infrastructure for free, and verify exactly how each visibility metric is collected and calculated.",
+			"Elmo tracks ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot, and Claude, plus models like Grok, Mistral, DeepSeek, and Qwen. Consumer products like ChatGPT and Google AI Mode are scraped from the real interface your customers see, not approximated through an API. For each answer, Elmo records whether your brand appears, which competitors show up alongside it, and which sources the model cites.",
+	},
+	{
+		question: "How is AI visibility measured?",
+		answer:
+			"Elmo runs a fixed set of prompts across AI engines on a schedule and scores each prompt by how often your brand appears in the answers, from 0 to 100%. It also calculates share of voice — your share of brand mentions versus your competitors — and breaks down which domains and URLs the models cite. Because AI answers vary from run to run, Elmo samples repeatedly and reports trends, not single results.",
+	},
+	{
+		question: "How do I track my brand in ChatGPT?",
+		answer:
+			"Add your website to Elmo and its Prompt Wizard generates the questions your buyers are likely to ask ChatGPT, based on your products, competitors, and personas. Elmo then runs those prompts in ChatGPT on a schedule and records every answer: whether your brand was mentioned, which competitors were named, and which sources were cited. Every Elmo Cloud plan includes ChatGPT, starting with the $29/mo Starter plan.",
+	},
+	{
+		question: "How much does Elmo cost compared to Profound?",
+		answer:
+			"Elmo Cloud starts at $29/mo for the Starter plan, which is 1/3 the price of Profound's equivalent plan. The $99/mo Basic plan gives you 4× the data of Profound's equivalent plan. Pro ($299/mo) and Business ($649/mo) add more brands, more prompts, and premium grounded models, and self-hosting Elmo is free.",
 	},
 	{
 		question: "Is Elmo free?",
 		answer:
-			"Elmo is free and open source to self-host — there is no license fee and no per-seat pricing. You only pay for your own infrastructure and any AI provider API keys you choose to use. Managed cloud hosting and white-label plans are also available.",
+			"Elmo is free and open source to self-host — there is no license fee and no per-seat pricing. You only pay for your own infrastructure and any AI provider API keys you choose to use. If you'd rather not run it yourself, managed Elmo Cloud starts at $29/mo, and white-label plans are available for agencies.",
 	},
 ];
 
@@ -60,6 +75,26 @@ export const PRICING_FAQS: FaqItem[] = [
 		question: "Do I need a credit card to get started?",
 		answer:
 			"No. Self-hosting Elmo does not require an account or a credit card. Clone the open-source repository, deploy with the CLI, and start tracking your AI visibility.",
+	},
+	{
+		question: "Do I need to talk to sales to use Elmo Cloud?",
+		answer:
+			"No. Elmo Cloud is fully self-serve: you sign up, pick a plan, and start tracking without a demo or sales call. Every plan includes unlimited seats plus API and MCP access, and annual billing gets you two months free. Only custom contracts (higher sampling rates, custom limits, or white label) go through a conversation.",
+	},
+	{
+		question: "How often does Elmo run my prompts?",
+		answer:
+			"On Elmo Cloud, the Starter plan runs each prompt once a day, and the Basic, Pro, and Business plans run each prompt up to 4 times a day on every platform you choose. Premium grounded models run once a day, and custom plans can sample more often. When you self-host Elmo, you set the schedule yourself.",
+	},
+	{
+		question: "Does Elmo have an API or MCP server?",
+		answer:
+			"Yes. Elmo has a REST API for brands, prompts, competitors, analytics, citations, runs, and reports, and an MCP server so AI assistants like Claude Code, Codex, Cursor, and VS Code can query your visibility data and manage prompts directly. Both are included on every Elmo Cloud plan and in every self-hosted instance. API keys can be read-only or read-write and limited to specific brands.",
+	},
+	{
+		question: "Is my data private if I self-host Elmo?",
+		answer:
+			"Yes. A self-hosted Elmo instance stores your brands, prompts, and AI responses in your own PostgreSQL database, and prompts are only sent to the scraping and AI providers you configure. Elmo's optional telemetry sends anonymous usage counts and never includes brand names, prompt text, responses, or API keys, and you can turn it off completely with DISABLE_TELEMETRY=1.",
 	},
 ];
 
