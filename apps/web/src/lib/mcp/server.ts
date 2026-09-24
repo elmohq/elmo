@@ -57,8 +57,9 @@ export function createMcpServer(auth: Principal, tools: readonly McpTool[]): Mcp
 				annotations: {
 					title: tool.title,
 					readOnlyHint: tool.readOnly,
-					// Creating the same prompts twice creates them twice.
-					destructiveHint: false,
+					// Both Anthropic's and OpenAI's directory reviews expect any tool that
+					// writes to be marked destructive, not only ones that delete.
+					destructiveHint: !tool.readOnly,
 					idempotentHint: tool.readOnly,
 					openWorldHint: false,
 				},

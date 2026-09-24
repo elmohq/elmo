@@ -67,8 +67,16 @@ describe("the MCP server", () => {
 
 		const { tools } = await client.listTools();
 		expect(tools.map((tool) => tool.name).sort()).toEqual(["reader", "writer"]);
-		expect(tools.find((tool) => tool.name === "reader")?.annotations).toMatchObject({ readOnlyHint: true });
-		expect(tools.find((tool) => tool.name === "writer")?.annotations).toMatchObject({ readOnlyHint: false });
+		expect(tools.find((tool) => tool.name === "reader")?.annotations).toMatchObject({
+			title: "reader",
+			readOnlyHint: true,
+			destructiveHint: false,
+		});
+		expect(tools.find((tool) => tool.name === "writer")?.annotations).toMatchObject({
+			title: "writer",
+			readOnlyHint: false,
+			destructiveHint: true,
+		});
 		await close();
 	});
 
