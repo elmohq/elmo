@@ -22,7 +22,7 @@ const STEPS: Step[] = [
 	},
 	{
 		title: "Know what to fix",
-		body: "Opportunities ranked by impact. Elmo keeps re-asking, so you see which changes moved the answer.",
+		body: "Opportunities ranked by impact. Elmo keeps you updated, so you always know what to do next.",
 		src: "/screenshots/opportunities.png",
 		alt: "Elmo opportunities page with prioritized recommendations for content and sources",
 	},
