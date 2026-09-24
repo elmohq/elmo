@@ -1,17 +1,29 @@
-import { describe, expect, it } from "vitest";
-import { openaiAppsChallenge } from "../openai-apps-challenge";
+import { resetDeploymentCache } from "@workspace/deployment";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { OPENAI_APPS_CHALLENGE_TOKEN, openaiAppsChallenge } from "../openai-apps-challenge";
+
+afterEach(() => {
+	vi.unstubAllEnvs();
+	resetDeploymentCache();
+});
+
+function inMode(mode: string) {
+	vi.stubEnv("DEPLOYMENT_MODE", mode);
+	resetDeploymentCache();
+}
 
 describe("OpenAI domain verification", () => {
-	it("answers with only the token, as plain text", async () => {
-		const response = openaiAppsChallenge("  abc123\n");
+	it("answers on cloud with only the token, as plain text", async () => {
+		inMode("cloud");
+		const response = openaiAppsChallenge();
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get("content-type")).toMatch(/^text\/plain/);
-		expect(await response.text()).toBe("abc123");
+		expect(await response.text()).toBe(OPENAI_APPS_CHALLENGE_TOKEN);
 	});
 
-	it("is not found on a deployment that has no token", () => {
-		expect(openaiAppsChallenge(undefined).status).toBe(404);
-		expect(openaiAppsChallenge("  ").status).toBe(404);
+	it.each(["local", "demo", "whitelabel"])("is not found on a %s deployment", (mode) => {
+		inMode(mode);
+		expect(openaiAppsChallenge().status).toBe(404);
 	});
 });

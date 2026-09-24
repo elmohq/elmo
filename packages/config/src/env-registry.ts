@@ -439,13 +439,6 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description:
 			"Sender address for transactional email, in the form: Elmo <notifications@updates.example.com>. The domain must be verified in Resend.",
 	},
-	{
-		name: "OPENAI_APPS_CHALLENGE_TOKEN",
-		scope: "server",
-		requiredBy: "optional",
-		description:
-			"Domain verification token from OpenAI's plugin submission portal, served at /.well-known/openai-apps-challenge. Only needed to list the MCP server in ChatGPT.",
-	},
 ];
 
 export const CREDENTIAL_ENV_NAMES: ReadonlySet<string> = new Set(

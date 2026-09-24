@@ -61,8 +61,7 @@
     "RESEND_API_KEY",
     "GOOGLE_CLIENT_ID",
     "GOOGLE_CLIENT_SECRET",
-    "RESEND_FROM_EMAIL",
-    "OPENAI_APPS_CHALLENGE_TOKEN"
+    "RESEND_FROM_EMAIL"
   ],
   "tasks": {
     "//#format": {
