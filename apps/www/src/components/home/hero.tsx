@@ -53,11 +53,7 @@ export function Hero() {
 		<section className="relative overflow-hidden bg-white">
 			<div
 				aria-hidden="true"
-				className="pointer-events-none absolute inset-x-0 top-0 h-[900px] bg-[radial-gradient(60%_55%_at_50%_0%,rgb(219_234_254/0.9),rgb(239_246_255/0.5)_45%,transparent_80%)]"
-			/>
-			<div
-				aria-hidden="true"
-				className="pointer-events-none absolute left-1/2 top-[640px] h-[420px] w-[1000px] -translate-x-1/2 rounded-full bg-blue-400/10 blur-[120px] max-md:hidden"
+				className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,rgb(0_0_0/0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgb(0_0_0/0.04)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]"
 			/>
 
 			<div className="relative mx-auto max-w-6xl px-4 pb-20 pt-14 md:px-6 md:pt-20 lg:pb-28">
