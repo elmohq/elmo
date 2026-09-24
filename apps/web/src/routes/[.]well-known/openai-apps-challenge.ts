@@ -1,4 +1,3 @@
-/** OpenAI's plugin portal fetches this to confirm we control the MCP server's domain. */
 import { createFileRoute } from "@tanstack/react-router";
 import { openaiAppsChallenge } from "@/lib/openai-apps-challenge";
 
