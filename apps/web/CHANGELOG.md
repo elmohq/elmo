@@ -1,5 +1,20 @@
 # @workspace/web
 
+## 0.4.2
+
+### Patch Changes
+
+- 208301d: The API, API Keys, and MCP settings pages now say when access is disabled in demo mode, instead of handing out connection steps that the server refuses.
+- a0cd449: Dialogs no longer flash a dark backdrop as they close.
+- 97707a9: Removed an unused CORS header from the MCP server's sign-in challenge.
+- e350e87: Fixed prompt run history revealing whether a prompt id exists to signed-out visitors.
+- @workspace/api-spec@0.4.2
+  - @workspace/config@0.4.2
+  - @workspace/deployment@0.4.2
+  - @workspace/lib@0.4.2
+  - @workspace/og@0.4.2
+  - @workspace/ui@0.4.2
+
 ## 0.4.1
 
 ### Patch Changes

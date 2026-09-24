@@ -1,5 +1,11 @@
 # @elmohq/cli
 
+## 0.4.2
+
+### Patch Changes
+
+- 2043438: Add SearchApi.io as a scraper provider for ChatGPT, Perplexity, Copilot, Gemini, Google AI Mode, and Google AI Overview.
+
 ## 0.4.1
 
 No changes in this release.
