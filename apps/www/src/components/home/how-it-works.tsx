@@ -96,7 +96,7 @@ export function HowItWorks() {
 			<div className="mx-auto max-w-6xl px-4 py-20 md:px-6 lg:py-28">
 				<SectionHeading
 					title="From zero to a plan in one afternoon."
-					lede="No onboarding call, no consultants. Elmo sets up your tracking, measures it, and tells you what to change."
+					lede="No sales call, no bloat. Elmo sets up your tracking and tells you what to change."
 				/>
 				<ol className="mt-12 grid gap-5 md:grid-cols-3">
 					{STEPS.map((step, i) => (
