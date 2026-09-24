@@ -29,21 +29,24 @@ const STEPS: Step[] = [
 ];
 
 /**
- * The screenshots include the app sidebar, which is noise at this size, so each
- * crop is scaled up and shifted to show the page content.
+ * Each screenshot sits in a window that bleeds off the panel's right and
+ * bottom edges, so the crop reads as deliberate. The capture includes the app
+ * sidebar (the left 17.5% of every capture), which is shifted out of view.
  */
 function Crop({ src, alt }: { src: string; alt: string }) {
 	return (
-		<div className="relative aspect-[16/10] overflow-hidden rounded-t-2xl border-b border-zinc-200/80 bg-zinc-50">
-			<img
-				src={src}
-				alt={alt}
-				width={3000}
-				height={1800}
-				loading="lazy"
-				decoding="async"
-				className="absolute left-[-23.5%] top-[-2%] w-[165%] max-w-none"
-			/>
+		<div className="relative aspect-[16/10] overflow-hidden rounded-t-2xl border-b border-zinc-200/80 bg-gradient-to-br from-blue-50 to-zinc-50">
+			<div className="absolute bottom-0 left-6 right-0 top-6 overflow-hidden rounded-tl-xl bg-white shadow-[0_0_0_1px_rgb(24_24_27/0.08),0_12px_32px_-12px_rgb(24_24_27/0.18)]">
+				<img
+					src={src}
+					alt={alt}
+					width={3000}
+					height={1800}
+					loading="lazy"
+					decoding="async"
+					className="absolute left-[-29.75%] top-[-1.5%] w-[170%] max-w-none"
+				/>
+			</div>
 		</div>
 	);
 }
