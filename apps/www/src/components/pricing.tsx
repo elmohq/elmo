@@ -13,7 +13,7 @@ export function Pricing({ as: Heading = "h2" }: { as?: "h1" | "h2" } = {}) {
 					Simple, self-serve pricing.
 				</Heading>
 				<p className="mt-4 text-pretty text-zinc-600 md:text-lg">
-					Self-serve, with unlimited seats and API/MCP access. Annual billing saves two months.
+					Unlimited seats and API/MCP access on every plan. Annual billing saves two months.
 				</p>
 
 				<CloudPlans />

@@ -113,7 +113,7 @@ export function Pricing() {
 				<SectionHeading
 					align="center"
 					title="Simple, self-serve pricing."
-					lede="Self-serve, with unlimited seats and API/MCP access."
+					lede="Unlimited seats and API/MCP access on every plan."
 				/>
 
 				<div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
