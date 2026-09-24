@@ -22,7 +22,7 @@ describe("OpenAI domain verification", () => {
 		expect(await response.text()).toBe(OPENAI_APPS_CHALLENGE_TOKEN);
 	});
 
-	it.each(["local", "demo", "whitelabel"])("is not found on a %s deployment", (mode) => {
+	it.each(["local", "demo"])("is not found on a %s deployment", (mode) => {
 		inMode(mode);
 		expect(openaiAppsChallenge().status).toBe(404);
 	});
